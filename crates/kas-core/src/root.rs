@@ -10,6 +10,7 @@ use crate::event::{ConfigMgr, EventMgr, Scroll};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, FrameStyle, SizeMgr};
+use crate::title_bar::TitleBar;
 use crate::{Action, Decorations, Layout, Widget, WidgetExt, WidgetId, Window, WindowId};
 use kas_macros::impl_scope;
 use smallvec::SmallVec;
@@ -23,7 +24,10 @@ impl_scope! {
     pub struct RootWidget {
         core: widget_core!(),
         #[widget]
+        title_bar: TitleBar,
+        #[widget]
         w: Box<dyn Window>,
+        bar_h: i32,
         dec_offset: Offset,
         dec_size: Size,
         popups: SmallVec<[(WindowId, kas::Popup, Offset); 16]>,
@@ -32,8 +36,19 @@ impl_scope! {
     impl Layout for RootWidget {
         #[inline]
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            let inner = self.w.size_rules(size_mgr.re(), axis);
-            if matches!(self.w.decorations(), Decorations::Border | Decorations::Toolkit) {
+            let mut inner = self.w.size_rules(size_mgr.re(), axis);
+            let decs = self.w.decorations();
+            self.bar_h = 0;
+            if matches!(decs, Decorations::Toolkit) {
+                let bar = self.title_bar.size_rules(size_mgr.re(), axis);
+                if axis.is_horizontal() {
+                    inner.max_with(bar);
+                } else {
+                    inner.append(bar);
+                    self.bar_h = bar.min_size();
+                }
+            }
+            if matches!(decs, Decorations::Border | Decorations::Toolkit) {
                 let frame = size_mgr.frame(FrameStyle::Window, axis);
                 let (rules, offset, size) = frame.surround(inner);
                 self.dec_offset.set_component(axis, offset);
@@ -49,6 +64,12 @@ impl_scope! {
             self.core.rect = rect;
             rect.pos += self.dec_offset;
             rect.size -= self.dec_size;
+            if self.bar_h > 0 {
+                let bar_size = Size(rect.size.0, self.bar_h);
+                self.title_bar.set_rect(mgr, Rect::new(rect.pos, bar_size));
+                rect.pos.1 += self.bar_h;
+                rect.size -= Size(0, self.bar_h);
+            }
             self.w.set_rect(mgr, rect);
         }
 
@@ -65,12 +86,17 @@ impl_scope! {
                     return Some(id);
                 }
             }
-            self.w.find_id(coord).or_else(|| Some(self.id()))
+            self.title_bar.find_id(coord)
+                .or_else(|| self.w.find_id(coord))
+                .or_else(|| Some(self.id()))
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
             if self.dec_size != Size::ZERO {
                 draw.frame(self.core.rect, FrameStyle::Window, Default::default());
+                if self.bar_h > 0 {
+                    draw.recurse(&mut self.title_bar);
+                }
             }
             draw.recurse(&mut self.w);
             for (_, popup, translation) in &self.popups {
@@ -136,7 +162,9 @@ impl RootWidget {
     pub fn new(w: Box<dyn Window>) -> RootWidget {
         RootWidget {
             core: Default::default(),
+            title_bar: TitleBar::new(w.title().to_string()),
             w,
+            bar_h: 0,
             dec_offset: Default::default(),
             dec_size: Default::default(),
             popups: Default::default(),
