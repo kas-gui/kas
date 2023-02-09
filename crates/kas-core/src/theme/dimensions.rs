@@ -235,6 +235,10 @@ impl<D: 'static> ThemeSize for Window<D> {
                 };
                 return SizeRules::fixed_splat(w, self.dims.m_tiny);
             }
+            Feature::Mark(MarkStyle::X) => {
+                let w = self.dims.mark + i32::conv_ceil(self.dims.mark_line);
+                return SizeRules::fixed_splat(w, self.dims.m_tiny);
+            }
             Feature::CheckBox | Feature::RadioBox => {
                 return SizeRules::fixed_splat(self.dims.check_box, self.dims.m_small);
             }

@@ -73,6 +73,7 @@ mod spinner;
 mod splitter;
 mod stack;
 mod tab_stack;
+mod title_bar;
 
 pub mod adapter;
 

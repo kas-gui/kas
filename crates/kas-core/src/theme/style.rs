@@ -49,6 +49,8 @@ pub enum MarginStyle {
 pub enum MarkStyle {
     /// An arrowhead/angle-bracket/triangle pointing in the given direction
     Point(Direction),
+    /// A cross rotated 45°
+    X,
 }
 
 /// Various features which may be sized and drawn
