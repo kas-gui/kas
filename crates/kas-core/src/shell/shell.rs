@@ -200,6 +200,7 @@ where
 pub(super) struct PlatformWrapper<'a>(&'a EventLoop<ProxyAction>);
 impl<'a> PlatformWrapper<'a> {
     /// Get platform
+    #[allow(clippy::needless_return)]
     pub(super) fn platform(&self) -> Platform {
         // Logic copied from winit::platform_impl module.
 

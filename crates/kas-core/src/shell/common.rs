@@ -120,10 +120,7 @@ impl Platform {
                 target_os = "netbsd",
                 target_os = "openbsd"
             ))] {
-                match self {
-                    Platform::Wayland => true,
-                    _ => false,
-                }
+                matches!(self, Platform::Wayland)
             } else {
                 false
             }
@@ -162,10 +159,7 @@ impl Platform {
                 target_os = "netbsd",
                 target_os = "openbsd"
             ))] {
-                match self {
-                    Platform::X11 => true,
-                    _ => false,
-                }
+                matches!(self, Platform::X11)
             } else {
                 false
             }
