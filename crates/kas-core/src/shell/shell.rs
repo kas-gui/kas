@@ -214,12 +214,22 @@ impl<'a> PlatformWrapper<'a> {
             target_os = "openbsd"
         ))]
         {
-            use winit::platform::unix::EventLoopWindowTargetExtUnix;
-            return if self.0.is_wayland() {
-                Platform::Wayland
-            } else {
-                Platform::X11
-            };
+            cfg_if::cfg_if! {
+                if #[cfg(all(feature = "wayland", feature = "x11"))] {
+                    use winit::platform::unix::EventLoopWindowTargetExtUnix;
+                    return if self.0.is_wayland() {
+                        Platform::Wayland
+                    } else {
+                        Platform::X11
+                    };
+                } else if #[cfg(feature = "wayland")] {
+                    return Platform::Wayland;
+                } else if #[cfg(feature = "x11")] {
+                    return Platform::X11;
+                } else {
+                    compile_error!("Please select a feature to build for unix: `x11`, `wayland`");
+                }
+            }
         }
 
         #[cfg(target_os = "macos")]
