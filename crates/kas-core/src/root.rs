@@ -23,6 +23,7 @@ impl_scope! {
     #[widget]
     pub struct RootWidget {
         core: widget_core!(),
+        decorations: Decorations,
         #[widget]
         title_bar: TitleBar,
         #[widget]
@@ -37,9 +38,9 @@ impl_scope! {
         #[inline]
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let mut inner = self.w.size_rules(size_mgr.re(), axis);
-            let decs = self.w.decorations();
+
             self.bar_h = 0;
-            if matches!(decs, Decorations::Toolkit) {
+            if matches!(self.decorations, Decorations::Toolkit) {
                 let bar = self.title_bar.size_rules(size_mgr.re(), axis);
                 if axis.is_horizontal() {
                     inner.max_with(bar);
@@ -48,7 +49,7 @@ impl_scope! {
                     self.bar_h = bar.min_size();
                 }
             }
-            if matches!(decs, Decorations::Border | Decorations::Toolkit) {
+            if matches!(self.decorations, Decorations::Border | Decorations::Toolkit) {
                 let frame = size_mgr.frame(FrameStyle::Window, axis);
                 let (rules, offset, size) = frame.surround(inner);
                 self.dec_offset.set_component(axis, offset);
@@ -111,6 +112,16 @@ impl_scope! {
     }
 
     impl Widget for RootWidget {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
+            self.decorations = self.w.decorations();
+            if mgr.platform().is_wayland() && self.decorations == Decorations::Server {
+                // Wayland's base protocol does not support server-side decorations
+                // TODO: Wayland has extensions for this; server-side is still
+                // usually preferred where supported (e.g. KDE).
+                self.decorations = Decorations::Toolkit;
+            }
+        }
+
         fn handle_scroll(&mut self, mgr: &mut EventMgr, _: Scroll) {
             // Something was scrolled; update pop-up translations
             mgr.config_mgr(|mgr| self.resize_popups(mgr));
@@ -162,6 +173,7 @@ impl RootWidget {
     pub fn new(w: Box<dyn Window>) -> RootWidget {
         RootWidget {
             core: Default::default(),
+            decorations: Decorations::None,
             title_bar: TitleBar::new(w.title().to_string()),
             w,
             bar_h: 0,
