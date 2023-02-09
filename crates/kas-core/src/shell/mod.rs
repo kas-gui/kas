@@ -13,6 +13,7 @@ mod common;
 
 #[cfg(feature = "winit")] use event_loop::Loop as EventLoop;
 #[cfg(feature = "winit")] use shared::SharedState;
+#[cfg(feature = "winit")] use shell::PlatformWrapper;
 #[cfg(feature = "winit")] use window::Window;
 
 pub(crate) use common::ShellWindow;

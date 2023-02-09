@@ -40,13 +40,12 @@ where
     T::Window: kas::theme::Window,
 {
     /// Construct
-    pub fn new(
+    pub(super) fn new(
+        pw: super::PlatformWrapper,
         draw_shared: S::Shared,
         mut theme: T,
         options: Options,
         config: SharedRc<kas::event::Config>,
-        scale_factor: f64,
-        waker: Waker,
     ) -> Result<Self, Error> {
         let mut draw = kas::draw::SharedState::new(draw_shared);
         theme.init(&mut draw);
@@ -58,8 +57,8 @@ where
             theme,
             config,
             pending: vec![],
-            scale_factor,
-            waker,
+            scale_factor: pw.guess_scale_factor(),
+            waker: pw.create_waker(),
             window_id: 0,
             options,
         })
