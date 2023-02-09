@@ -805,6 +805,7 @@ impl<'a> EventMgr<'a> {
     /// Directly access Winit Window
     ///
     /// This is a temporary API, allowing e.g. to minimize the window.
+    #[cfg(features = "winit")]
     pub fn winit_window(&self) -> Option<&winit::window::Window> {
         self.shell.winit_window()
     }

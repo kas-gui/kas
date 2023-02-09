@@ -149,6 +149,7 @@ impl_scope! {
             if let Some(msg) = mgr.try_pop() {
                 match msg {
                     TitleBarButton::Minimize => {
+                        #[cfg(features = "winit")]
                         if let Some(w) = mgr.winit_window() {
                             // TODO: supported in winit 0.28:
                             // let is_minimized = w.is_minimized().unwrap_or(false);
@@ -157,6 +158,7 @@ impl_scope! {
                         }
                     }
                     TitleBarButton::Maximize => {
+                        #[cfg(features = "winit")]
                         if let Some(w) = mgr.winit_window() {
                             w.set_maximized(!w.is_maximized());
                         }
