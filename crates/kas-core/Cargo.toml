@@ -82,9 +82,8 @@ serde_json = { version = "1.0.61", optional = true }
 serde_yaml = { version = "0.9.9", optional = true }
 ron = { version = "0.8.0", package = "ron", optional = true }
 num_enum = "0.5.6"
-dark-light = { version = "0.2.2", optional = true }
+dark-light = { version = "1.0", optional = true }
 raw-window-handle = "0.5.0"
-window_clipboard = { version = "0.2.0", optional = true }
 async-global-executor = { version = "2.3.1", optional = true }
 cfg-if = "1.0.0"
 
@@ -100,6 +99,11 @@ version = "0.5.0" # used in doc links
 
 [dependencies.winit]
 # Provides translations for several winit types
-version = "0.27"
+version = "0.28.1"
 optional = true
 default-features = false
+
+[dependencies.window_clipboard]
+git = "https://github.com/TobTobXX/window_clipboard.git"
+rev = "1392da8339c8aebb9849d00eb7383a73ed076f1d"
+optional = true

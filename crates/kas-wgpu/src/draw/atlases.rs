@@ -52,6 +52,7 @@ impl Atlas {
             dimension: wgpu::TextureDimension::D2,
             format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
         });
 
         let view = tex.create_view(&wgpu::TextureViewDescriptor::default());

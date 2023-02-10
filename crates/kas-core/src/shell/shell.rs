@@ -217,7 +217,7 @@ impl<'a> PlatformWrapper<'a> {
         {
             cfg_if::cfg_if! {
                 if #[cfg(all(feature = "wayland", feature = "x11"))] {
-                    use winit::platform::unix::EventLoopWindowTargetExtUnix;
+                    use winit::platform::wayland::EventLoopWindowTargetExtWayland;
                     return if self.0.is_wayland() {
                         Platform::Wayland
                     } else {

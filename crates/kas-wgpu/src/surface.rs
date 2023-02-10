@@ -10,7 +10,7 @@ use kas::cast::Cast;
 use kas::draw::color::Rgba;
 use kas::draw::{DrawIface, WindowCommon};
 use kas::geom::Size;
-use kas::shell::{raw_window_handle as raw, WindowSurface};
+use kas::shell::{raw_window_handle as raw, Error, WindowSurface};
 use std::time::Instant;
 
 /// Per-window data
@@ -27,11 +27,12 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
         shared: &mut Self::Shared,
         size: Size,
         window: W,
-    ) -> Self {
+    ) -> Result<Self, Error> {
         let mut draw = shared.new_window();
         shared.resize(&mut draw, size);
 
-        let surface = unsafe { shared.instance.create_surface(&window) };
+        let surface = unsafe { shared.instance.create_surface(&window) }
+            .map_err(|e| Error::Graphics(Box::new(e)))?;
         let sc_desc = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: crate::draw::RENDER_TEX_FORMAT,
@@ -43,14 +44,15 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
             // a sub-set of modes are supported (depending on target).
             // Currently it's unclear how to handle this properly.
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
+            view_formats: vec![],
         };
         surface.configure(&shared.device, &sc_desc);
 
-        Surface {
+        Ok(Surface {
             surface,
             sc_desc,
             draw,
-        }
+        })
     }
 
     fn size(&self) -> Size {
