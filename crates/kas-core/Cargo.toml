@@ -99,7 +99,7 @@ version = "0.5.0" # used in doc links
 
 [dependencies.winit]
 # Provides translations for several winit types
-version = "0.27"
+version = "0.28.1"
 optional = true
 default-features = false
 
