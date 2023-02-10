@@ -153,12 +153,24 @@ impl ThemeControl for ShadedTheme {
         self.base.set_font_size(pt_size)
     }
 
+    fn active_scheme(&self) -> &str {
+        self.base.active_scheme()
+    }
+
     fn list_schemes(&self) -> Vec<&str> {
         self.base.list_schemes()
     }
 
-    fn set_scheme(&mut self, name: &str) -> Action {
-        self.base.set_scheme(name)
+    fn get_scheme(&self, name: &str) -> Option<&kas::theme::ColorsSrgb> {
+        self.base.get_scheme(name)
+    }
+
+    fn get_colors(&self) -> &ColorsLinear {
+        self.base.get_colors()
+    }
+
+    fn set_colors(&mut self, name: String, cols: ColorsLinear) -> Action {
+        self.base.set_colors(name, cols)
     }
 }
 
@@ -294,6 +306,14 @@ where
                 let state = InputState::new_except_depress(self.ev, id);
                 let bg_col = self.cols.from_edit_bg(bg, state);
                 self.draw_edit_box(rect, bg_col, state.nav_focus());
+            }
+            FrameStyle::Window => {
+                let outer = Quad::conv(rect);
+                let inner = outer.shrink(self.w.dims.frame as f32);
+                let col = self.cols.background;
+                self.draw
+                    .shaded_round_frame(outer, inner, NORMS_RAISED, col);
+                self.draw.rect(inner, col);
             }
             style => self.as_flat().frame(id, rect, style, bg),
         }

@@ -5,7 +5,7 @@
 
 //! [`Shell`] and supporting elements
 
-use super::{GraphicalShell, ProxyAction, Result, SharedState, Window};
+use super::{GraphicalShell, Platform, ProxyAction, Result, SharedState, Window};
 use crate::config::Options;
 use crate::draw::{DrawImpl, DrawShared, DrawSharedImpl};
 use crate::event::{self, UpdateId};
@@ -13,7 +13,7 @@ use crate::model::SharedRc;
 use crate::theme::{self, Theme, ThemeConfig};
 use crate::util::warn_about_error;
 use crate::WindowId;
-use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy, EventLoopWindowTarget};
+use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 
 /// The KAS shell
 ///
@@ -113,9 +113,8 @@ where
         let windows = vec![];
 
         let draw_shared = graphical_shell.into().build(theme.config().raster())?;
-        let scale_factor = find_scale_factor(&el);
-        let waker = create_waker(Proxy(el.create_proxy()));
-        let shared = SharedState::new(draw_shared, theme, options, config, scale_factor, waker)?;
+        let pw = PlatformWrapper(&el);
+        let shared = SharedState::new(pw, draw_shared, theme, options, config)?;
 
         Ok(Shell {
             el,
@@ -198,53 +197,107 @@ where
     }
 }
 
-fn find_scale_factor<T>(el: &EventLoopWindowTarget<T>) -> f64 {
-    if let Some(mon) = el.primary_monitor() {
-        return mon.scale_factor();
-    }
-    if let Some(mon) = el.available_monitors().next() {
-        return mon.scale_factor();
-    }
-    1.0
-}
+pub(super) struct PlatformWrapper<'a>(&'a EventLoop<ProxyAction>);
+impl<'a> PlatformWrapper<'a> {
+    /// Get platform
+    #[allow(clippy::needless_return)]
+    pub(super) fn platform(&self) -> Platform {
+        // Logic copied from winit::platform_impl module.
 
-/// Create a waker
-///
-/// This waker may be used by a [`Future`](std::future::Future) to revive
-/// event handling.
-fn create_waker(proxy: Proxy) -> std::task::Waker {
-    use std::sync::{Arc, Mutex};
-    use std::task::{RawWaker, RawWakerVTable, Waker};
+        #[cfg(target_os = "windows")]
+        return Platform::Windows;
 
-    // NOTE: Proxy is Send but not Sync. Mutex<T> is Sync for T: Send.
-    // We wrap with Arc which is a Sync type supporting Clone and into_raw.
-    type Data = Mutex<Proxy>;
-    let a: Arc<Data> = Arc::new(Mutex::new(proxy));
-    let data = Arc::into_raw(a);
+        #[cfg(any(
+            target_os = "linux",
+            target_os = "dragonfly",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        ))]
+        {
+            cfg_if::cfg_if! {
+                if #[cfg(all(feature = "wayland", feature = "x11"))] {
+                    use winit::platform::unix::EventLoopWindowTargetExtUnix;
+                    return if self.0.is_wayland() {
+                        Platform::Wayland
+                    } else {
+                        Platform::X11
+                    };
+                } else if #[cfg(feature = "wayland")] {
+                    return Platform::Wayland;
+                } else if #[cfg(feature = "x11")] {
+                    return Platform::X11;
+                } else {
+                    compile_error!("Please select a feature to build for unix: `x11`, `wayland`");
+                }
+            }
+        }
 
-    const VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake_by_ref, drop);
+        #[cfg(target_os = "macos")]
+        return Platform::MacOS;
 
-    unsafe fn clone(data: *const ()) -> RawWaker {
-        let a = Arc::from_raw(data as *const Data);
-        let c = Arc::into_raw(a.clone());
-        let _do_not_drop = Arc::into_raw(a);
-        RawWaker::new(c as *const (), &VTABLE)
-    }
-    unsafe fn wake(data: *const ()) {
-        let a = Arc::from_raw(data as *const Data);
-        a.lock().unwrap().wake_async();
-    }
-    unsafe fn wake_by_ref(data: *const ()) {
-        let a = Arc::from_raw(data as *const Data);
-        a.lock().unwrap().wake_async();
-        let _do_not_drop = Arc::into_raw(a);
-    }
-    unsafe fn drop(data: *const ()) {
-        let _ = Arc::from_raw(data as *const Data);
+        #[cfg(target_os = "android")]
+        return Platform::Android;
+
+        #[cfg(target_os = "ios")]
+        return Platform::IOS;
+
+        #[cfg(target_arch = "wasm32")]
+        return Platform::Web;
+
+        // Otherwise platform is unsupported!
     }
 
-    let raw_waker = RawWaker::new(data as *const (), &VTABLE);
-    unsafe { Waker::from_raw(raw_waker) }
+    /// Guess scale factor of first window
+    pub(super) fn guess_scale_factor(&self) -> f64 {
+        if let Some(mon) = self.0.primary_monitor() {
+            return mon.scale_factor();
+        }
+        if let Some(mon) = self.0.available_monitors().next() {
+            return mon.scale_factor();
+        }
+        1.0
+    }
+
+    /// Create a waker
+    ///
+    /// This waker may be used by a [`Future`](std::future::Future) to revive
+    /// event handling.
+    pub(super) fn create_waker(&self) -> std::task::Waker {
+        use std::sync::{Arc, Mutex};
+        use std::task::{RawWaker, RawWakerVTable, Waker};
+
+        // NOTE: Proxy is Send but not Sync. Mutex<T> is Sync for T: Send.
+        // We wrap with Arc which is a Sync type supporting Clone and into_raw.
+        type Data = Mutex<Proxy>;
+        let proxy = Proxy(self.0.create_proxy());
+        let a: Arc<Data> = Arc::new(Mutex::new(proxy));
+        let data = Arc::into_raw(a);
+
+        const VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake_by_ref, drop);
+
+        unsafe fn clone(data: *const ()) -> RawWaker {
+            let a = Arc::from_raw(data as *const Data);
+            let c = Arc::into_raw(a.clone());
+            let _do_not_drop = Arc::into_raw(a);
+            RawWaker::new(c as *const (), &VTABLE)
+        }
+        unsafe fn wake(data: *const ()) {
+            let a = Arc::from_raw(data as *const Data);
+            a.lock().unwrap().wake_async();
+        }
+        unsafe fn wake_by_ref(data: *const ()) {
+            let a = Arc::from_raw(data as *const Data);
+            a.lock().unwrap().wake_async();
+            let _do_not_drop = Arc::into_raw(a);
+        }
+        unsafe fn drop(data: *const ()) {
+            let _ = Arc::from_raw(data as *const Data);
+        }
+
+        let raw_waker = RawWaker::new(data as *const (), &VTABLE);
+        unsafe { Waker::from_raw(raw_waker) }
+    }
 }
 
 /// A proxy allowing control of a [`Shell`] from another thread.

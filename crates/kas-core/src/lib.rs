@@ -29,6 +29,7 @@ mod action;
 mod core;
 mod erased;
 mod root;
+mod title_bar;
 
 pub use crate::core::*;
 pub use action::Action;

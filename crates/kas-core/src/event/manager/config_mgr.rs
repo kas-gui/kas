@@ -10,6 +10,7 @@ use crate::draw::DrawShared;
 use crate::event::EventState;
 use crate::geom::{Rect, Size};
 use crate::layout::AlignPair;
+use crate::shell::Platform;
 use crate::text::TextApi;
 use crate::theme::{Feature, SizeMgr, TextClass, ThemeSize};
 use crate::{Action, Widget, WidgetExt, WidgetId};
@@ -35,6 +36,11 @@ impl<'a> ConfigMgr<'a> {
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn new(sh: &'a dyn ThemeSize, ds: &'a mut dyn DrawShared, ev: &'a mut EventState) -> Self {
         ConfigMgr { sh, ds, ev }
+    }
+
+    /// Get the platform
+    pub fn platform(&self) -> Platform {
+        self.ds.platform()
     }
 
     /// Access a [`SizeMgr`]

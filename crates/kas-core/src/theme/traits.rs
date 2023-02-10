@@ -5,7 +5,7 @@
 
 //! Theme traits
 
-use super::{ColorsLinear, RasterConfig, ThemeDraw, ThemeSize};
+use super::{ColorsLinear, ColorsSrgb, RasterConfig, ThemeDraw, ThemeSize};
 use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use crate::event::EventState;
 use crate::{autoimpl, Action};
@@ -25,13 +25,37 @@ pub trait ThemeControl {
     /// Units: Points per Em (standard unit of font size)
     fn set_font_size(&mut self, pt_size: f32) -> Action;
 
-    /// Change the colour scheme
+    /// Get the name of the active color scheme
+    fn active_scheme(&self) -> &str;
+
+    /// List available color schemes
+    fn list_schemes(&self) -> Vec<&str>;
+
+    /// Get colors of a named scheme
+    fn get_scheme(&self, name: &str) -> Option<&ColorsSrgb>;
+
+    /// Access the in-use color scheme
+    fn get_colors(&self) -> &ColorsLinear;
+
+    /// Set colors directly
+    ///
+    /// This may be used to provide a custom color scheme. The `name` is
+    /// compulsary (and returned by [`Self::active_scheme`]).
+    /// The `name` is also used when saving config, though the custom colors are
+    /// not currently saved in this config.
+    fn set_colors(&mut self, name: String, scheme: ColorsLinear) -> Action;
+
+    /// Change the color scheme
     ///
     /// If no scheme by this name is found the scheme is left unchanged.
-    fn set_scheme(&mut self, scheme: &str) -> Action;
-
-    /// List available colour schemes
-    fn list_schemes(&self) -> Vec<&str>;
+    fn set_scheme(&mut self, name: &str) -> Action {
+        if name != self.active_scheme() {
+            if let Some(scheme) = self.get_scheme(name) {
+                return self.set_colors(name.to_string(), scheme.into());
+            }
+        }
+        Action::empty()
+    }
 
     /// Switch the theme
     ///
@@ -148,7 +172,9 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
         cols: &'a ColorsLinear,
     ) -> Self::Draw<'a>;
 
-    /// Background colour
+    /// The window/scene clear color
+    ///
+    /// This is not used when the window is transparent.
     fn clear_color(&self) -> color::Rgba;
 }
 

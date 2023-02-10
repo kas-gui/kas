@@ -116,11 +116,8 @@ pub trait CustomPipe: 'static {
 
     /// Render (final)
     ///
-    /// This method is the last step in drawing a frame except for text
-    /// rendering. Depending on the application, it may make more sense to draw
-    /// in [`CustomPipe::render_pass`] or in this method.
-    ///
-    /// This method is optional; by default it does nothing.
+    /// This method is the last step in drawing a frame. Usually (including
+    /// in the default implementation) it does nothing.
     #[allow(unused)]
     fn render_final<'a>(
         &'a self,

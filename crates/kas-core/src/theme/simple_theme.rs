@@ -70,16 +70,8 @@ impl SimpleTheme {
     #[inline]
     #[must_use]
     pub fn with_colours(mut self, name: &str) -> Self {
-        if let Some(scheme) = self.config.get_color_scheme(name) {
-            self.config.set_active_scheme(name);
-            let _ = self.set_colors(scheme.into());
-        }
+        let _ = self.set_scheme(name);
         self
-    }
-
-    pub fn set_colors(&mut self, cols: ColorsLinear) -> Action {
-        self.cols = cols;
-        Action::REDRAW
     }
 }
 
@@ -105,8 +97,9 @@ where
 
     fn apply_config(&mut self, config: &Self::Config) -> Action {
         let mut action = self.config.apply_config(config);
-        if let Some(scheme) = self.config.get_active_scheme() {
-            action |= self.set_colors(scheme.into());
+        if let Some(cols) = self.config.get_active_scheme() {
+            self.cols = cols.into();
+            action |= Action::REDRAW;
         }
         action
     }
@@ -169,6 +162,10 @@ impl ThemeControl for SimpleTheme {
         Action::RESIZE | Action::THEME_UPDATE
     }
 
+    fn active_scheme(&self) -> &str {
+        self.config.active_scheme()
+    }
+
     fn list_schemes(&self) -> Vec<&str> {
         self.config
             .color_schemes_iter()
@@ -176,14 +173,20 @@ impl ThemeControl for SimpleTheme {
             .collect()
     }
 
-    fn set_scheme(&mut self, name: &str) -> Action {
-        if name != self.config.active_scheme() {
-            if let Some(scheme) = self.config.get_color_scheme(name) {
-                self.config.set_active_scheme(name);
-                return self.set_colors(scheme.into());
-            }
-        }
-        Action::empty()
+    fn get_scheme(&self, name: &str) -> Option<&super::ColorsSrgb> {
+        self.config
+            .color_schemes_iter()
+            .find_map(|item| (name == item.0).then_some(item.1))
+    }
+
+    fn get_colors(&self) -> &ColorsLinear {
+        &self.cols
+    }
+
+    fn set_colors(&mut self, name: String, cols: ColorsLinear) -> Action {
+        self.config.set_active_scheme(name);
+        self.cols = cols;
+        Action::REDRAW
     }
 }
 
@@ -235,6 +238,53 @@ where
             self.draw.rect(line, col);
         }
     }
+
+    fn draw_mark(&mut self, rect: Rect, style: MarkStyle, col: Rgba) {
+        match style {
+            MarkStyle::Point(dir) => {
+                let size = match dir.is_horizontal() {
+                    true => Size(self.w.dims.mark / 2, self.w.dims.mark),
+                    false => Size(self.w.dims.mark, self.w.dims.mark / 2),
+                };
+                let offset = Offset::conv((rect.size - size) / 2);
+                let q = Quad::conv(Rect::new(rect.pos + offset, size));
+
+                let (p1, p2, p3);
+                if dir.is_horizontal() {
+                    let (mut x1, mut x2) = (q.a.0, q.b.0);
+                    if dir.is_reversed() {
+                        std::mem::swap(&mut x1, &mut x2);
+                    }
+                    p1 = Vec2(x1, q.a.1);
+                    p2 = Vec2(x2, 0.5 * (q.a.1 + q.b.1));
+                    p3 = Vec2(x1, q.b.1);
+                } else {
+                    let (mut y1, mut y2) = (q.a.1, q.b.1);
+                    if dir.is_reversed() {
+                        std::mem::swap(&mut y1, &mut y2);
+                    }
+                    p1 = Vec2(q.a.0, y1);
+                    p2 = Vec2(0.5 * (q.a.0 + q.b.0), y2);
+                    p3 = Vec2(q.b.0, y1);
+                };
+
+                let f = 0.5 * self.w.dims.mark_line;
+                self.draw.rounded_line(p1, p2, f, col);
+                self.draw.rounded_line(p2, p3, f, col);
+            }
+            MarkStyle::X => {
+                let size = Size::splat(self.w.dims.mark);
+                let offset = Offset::conv((rect.size - size) / 2);
+                let q = Quad::conv(Rect::new(rect.pos + offset, size));
+
+                let f = 0.5 * self.w.dims.mark_line;
+                self.draw.rounded_line(q.a, q.b, f, col);
+                let c = Vec2(q.a.0, q.b.1);
+                let d = Vec2(q.b.0, q.a.1);
+                self.draw.rounded_line(c, d, f, col);
+            }
+        }
+    }
 }
 
 impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS>
@@ -269,7 +319,7 @@ where
     fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle, bg: Background) {
         let outer = Quad::conv(rect);
         match style {
-            FrameStyle::Frame => {
+            FrameStyle::Frame | FrameStyle::Window => {
                 let inner = outer.shrink(self.w.dims.frame as f32);
                 self.draw.frame(outer, inner, self.cols.frame);
             }
@@ -461,45 +511,19 @@ where
     fn mark(&mut self, id: &WidgetId, rect: Rect, style: MarkStyle) {
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
-        } else if self.ev.is_hovered(id) {
-            self.cols.accent
         } else {
-            self.cols.text
+            let is_depressed = self.ev.is_depressed(id);
+            if self.ev.is_hovered(id) || is_depressed {
+                self.draw.rect(rect.cast(), self.cols.accent_soft);
+            }
+            if is_depressed {
+                self.cols.accent
+            } else {
+                self.cols.text
+            }
         };
 
-        match style {
-            MarkStyle::Point(dir) => {
-                let size = match dir.is_horizontal() {
-                    true => Size(self.w.dims.mark / 2, self.w.dims.mark),
-                    false => Size(self.w.dims.mark, self.w.dims.mark / 2),
-                };
-                let offset = Offset::conv((rect.size - size) / 2);
-                let q = Quad::conv(Rect::new(rect.pos + offset, size));
-
-                let (p1, p2, p3);
-                if dir.is_horizontal() {
-                    let (mut x1, mut x2) = (q.a.0, q.b.0);
-                    if dir.is_reversed() {
-                        std::mem::swap(&mut x1, &mut x2);
-                    }
-                    p1 = Vec2(x1, q.a.1);
-                    p2 = Vec2(x2, 0.5 * (q.a.1 + q.b.1));
-                    p3 = Vec2(x1, q.b.1);
-                } else {
-                    let (mut y1, mut y2) = (q.a.1, q.b.1);
-                    if dir.is_reversed() {
-                        std::mem::swap(&mut y1, &mut y2);
-                    }
-                    p1 = Vec2(q.a.0, y1);
-                    p2 = Vec2(0.5 * (q.a.0 + q.b.0), y2);
-                    p3 = Vec2(q.b.0, y1);
-                };
-
-                let f = 0.5 * self.w.dims.mark_line;
-                self.draw.rounded_line(p1, p2, f, col);
-                self.draw.rounded_line(p2, p3, f, col);
-            }
-        }
+        self.draw_mark(rect, style, col);
     }
 
     fn scroll_bar(

@@ -8,7 +8,7 @@
 use std::num::NonZeroU32;
 use std::task::Waker;
 
-use super::{PendingAction, WindowSurface};
+use super::{PendingAction, Platform, WindowSurface};
 use kas::config::Options;
 use kas::event::UpdateId;
 use kas::model::SharedRc;
@@ -22,6 +22,7 @@ use window_clipboard::Clipboard;
 
 /// State shared between windows
 pub struct SharedState<S: WindowSurface, T> {
+    pub(super) platform: Platform,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Clipboard>,
     pub(super) draw: draw::SharedState<S::Shared>,
@@ -40,26 +41,27 @@ where
     T::Window: kas::theme::Window,
 {
     /// Construct
-    pub fn new(
+    pub(super) fn new(
+        pw: super::PlatformWrapper,
         draw_shared: S::Shared,
         mut theme: T,
         options: Options,
         config: SharedRc<kas::event::Config>,
-        scale_factor: f64,
-        waker: Waker,
     ) -> Result<Self, Error> {
-        let mut draw = kas::draw::SharedState::new(draw_shared);
+        let platform = pw.platform();
+        let mut draw = kas::draw::SharedState::new(draw_shared, platform);
         theme.init(&mut draw);
 
         Ok(SharedState {
+            platform,
             #[cfg(feature = "clipboard")]
             clipboard: None,
             draw,
             theme,
             config,
             pending: vec![],
-            scale_factor,
-            waker,
+            scale_factor: pw.guess_scale_factor(),
+            waker: pw.create_waker(),
             window_id: 0,
             options,
         })

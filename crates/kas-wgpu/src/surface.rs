@@ -38,6 +38,10 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
             width: size.0.cast(),
             height: size.1.cast(),
             present_mode: wgpu::PresentMode::Fifo,
+            // FIXME: current output is for Opaque or PostMultiplied, depending
+            // on window transparency. But we can't pick what we want since only
+            // a sub-set of modes are supported (depending on target).
+            // Currently it's unclear how to handle this properly.
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
         };
         surface.configure(&shared.device, &sc_desc);

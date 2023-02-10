@@ -5,15 +5,15 @@
 
 //! Window types
 
-use super::{PendingAction, ProxyAction, SharedState, ShellWindow, WindowSurface};
+use super::{PendingAction, Platform, ProxyAction, SharedState, ShellWindow, WindowSurface};
 use kas::cast::Cast;
-use kas::draw::{AnimationState, DrawShared};
+use kas::draw::{color::Rgba, AnimationState, DrawShared};
 use kas::event::{ConfigMgr, CursorIcon, EventState, UpdateId};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
 use kas::theme::{Theme, Window as _};
-use kas::{Action, Layout, WidgetCore, WidgetExt, WindowId};
+use kas::{Action, Layout, WidgetCore, WidgetExt, Window as _, WindowId};
 use std::mem::take;
 use std::time::Instant;
 use winit::error::OsError;
@@ -49,19 +49,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         let mut widget = kas::RootWidget::new(widget);
 
         // Wayland only supports windows constructed via logical size
-        #[allow(unused_assignments, unused_mut)]
-        let mut use_logical_size = false;
-        #[cfg(any(
-            target_os = "linux",
-            target_os = "dragonfly",
-            target_os = "freebsd",
-            target_os = "netbsd",
-            target_os = "openbsd"
-        ))]
-        {
-            use winit::platform::unix::EventLoopWindowTargetExtUnix;
-            use_logical_size = elwt.is_wayland();
-        }
+        let use_logical_size = shared.platform.is_wayland();
 
         let scale_factor = if use_logical_size {
             1.0
@@ -102,6 +90,8 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         let window = builder
             .with_title(widget.title())
             .with_window_icon(widget.icon())
+            .with_decorations(widget.decorations() == kas::Decorations::Server)
+            .with_transparent(widget.transparent())
             .build(elwt)?;
 
         shared.init_clipboard(&window);
@@ -173,9 +163,8 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
             }
             event => {
                 let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-                let widget = self.widget.as_widget_mut();
                 self.ev_state.with(&mut tkw, |mgr| {
-                    mgr.handle_winit(widget, event);
+                    mgr.handle_winit(&mut self.widget, event);
                 });
 
                 if self.ev_state.action.contains(Action::RECONFIGURE) {
@@ -391,7 +380,11 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
             return Err(());
         }
 
-        let clear_color = shared.theme.clear_color();
+        let clear_color = if self.widget.transparent() {
+            Rgba::TRANSPARENT
+        } else {
+            shared.theme.clear_color()
+        };
         self.surface.present(&mut shared.draw.draw, clear_color);
 
         let text_dur_micros = take(&mut self.surface.common_mut().dur_text);
@@ -481,6 +474,12 @@ where
         self.shared.update_all(id, payload);
     }
 
+    fn drag_window(&self) {
+        if let Some(window) = self.window {
+            let _result = window.drag_window();
+        }
+    }
+
     #[inline]
     fn get_clipboard(&mut self) -> Option<String> {
         self.shared.get_clipboard()
@@ -507,6 +506,16 @@ where
         if let Some(window) = self.window {
             window.set_cursor_icon(icon);
         }
+    }
+
+    fn platform(&self) -> Platform {
+        self.shared.platform
+    }
+
+    #[cfg(features = "winit")]
+    #[inline]
+    fn winit_window(&self) -> Option<&winit::window::Window> {
+        self.window
     }
 
     #[inline]

@@ -802,6 +802,14 @@ impl<'a> EventMgr<'a> {
         result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
     }
 
+    /// Directly access Winit Window
+    ///
+    /// This is a temporary API, allowing e.g. to minimize the window.
+    #[cfg(features = "winit")]
+    pub fn winit_window(&self) -> Option<&winit::window::Window> {
+        self.shell.winit_window()
+    }
+
     /// Grab "press" events for `source` (a mouse or finger)
     ///
     /// When a "press" source is "grabbed", events for this source will be sent

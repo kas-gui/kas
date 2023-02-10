@@ -14,7 +14,7 @@ use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
 use crate::model::SharedRc;
 use crate::shell::ShellWindow;
-use crate::{Action, Widget, WidgetId};
+use crate::{Action, Layout, RootWidget, Widget, WidgetId, Window};
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
@@ -324,7 +324,7 @@ impl<'a> EventMgr<'a> {
     #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
     pub(crate) fn handle_winit(
         &mut self,
-        widget: &mut dyn Widget,
+        widget: &mut RootWidget,
         event: winit::event::WindowEvent,
     ) {
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
@@ -494,7 +494,11 @@ impl<'a> EventMgr<'a> {
                         start_id: self.hover.clone(),
                         coord,
                     };
-                    self.send_popup_first(widget, self.hover.clone(), event);
+                    let used = self.send_popup_first(widget, self.hover.clone(), event);
+
+                    if !used && widget.drag_anywhere() {
+                        self.shell.drag_window();
+                    }
                 }
             }
             // TouchpadPressure { pressure: f32, stage: i64, },

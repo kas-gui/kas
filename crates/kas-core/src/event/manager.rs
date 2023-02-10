@@ -701,7 +701,13 @@ impl<'a> EventMgr<'a> {
         self.send_recurse(widget, id, disabled, event) == Response::Used
     }
 
-    fn send_popup_first(&mut self, widget: &mut dyn Widget, id: Option<WidgetId>, event: Event) {
+    // Returns true if event is used
+    fn send_popup_first(
+        &mut self,
+        widget: &mut dyn Widget,
+        id: Option<WidgetId>,
+        event: Event,
+    ) -> bool {
         while let Some((wid, parent)) = self
             .popups
             .last()
@@ -709,12 +715,13 @@ impl<'a> EventMgr<'a> {
         {
             log::trace!("send_popup_first: parent={parent}: {event:?}");
             if self.send_event(widget, parent, event.clone()) {
-                return;
+                return true;
             }
             self.close_window(wid, false);
         }
         if let Some(id) = id {
-            self.send_event(widget, id, event);
+            return self.send_event(widget, id, event);
         }
+        false
     }
 }

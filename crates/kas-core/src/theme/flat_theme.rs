@@ -159,12 +159,24 @@ impl ThemeControl for FlatTheme {
         self.base.set_font_size(pt_size)
     }
 
+    fn active_scheme(&self) -> &str {
+        self.base.active_scheme()
+    }
+
     fn list_schemes(&self) -> Vec<&str> {
         self.base.list_schemes()
     }
 
-    fn set_scheme(&mut self, name: &str) -> Action {
-        self.base.set_scheme(name)
+    fn get_scheme(&self, name: &str) -> Option<&super::ColorsSrgb> {
+        self.base.get_scheme(name)
+    }
+
+    fn get_colors(&self) -> &ColorsLinear {
+        self.base.get_colors()
+    }
+
+    fn set_colors(&mut self, name: String, cols: ColorsLinear) -> Action {
+        self.base.set_colors(name, cols)
     }
 }
 
@@ -335,7 +347,7 @@ where
     fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle, bg: Background) {
         let outer = Quad::conv(rect);
         match style {
-            FrameStyle::Frame => {
+            FrameStyle::Frame | FrameStyle::Window => {
                 let inner = outer.shrink(self.w.dims.frame as f32);
                 self.draw
                     .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);

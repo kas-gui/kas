@@ -13,9 +13,11 @@ extern crate chrono;
 
 use chrono::prelude::*;
 use std::f32::consts::PI;
+use std::str::FromStr;
 use std::time::Duration;
 
-use kas::draw::{color, Draw, DrawRounded, PassType};
+use kas::draw::color::{Rgba, Rgba8Srgb};
+use kas::draw::{Draw, DrawRounded};
 use kas::geom::{Offset, Quad, Rect, Vec2};
 use kas::prelude::*;
 use kas::shell::ShellAssoc;
@@ -37,7 +39,7 @@ impl_scope! {
 
     impl Layout for Clock {
         fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            kas::layout::LogicalSize(100.0, 100.0)
+            kas::layout::LogicalSize(64.0, 64.0)
                 .to_rules_with_factor(axis, mgr.scale_factor(), 3.0)
                 .with_stretch(Stretch::High)
         }
@@ -51,27 +53,30 @@ impl_scope! {
             let pos = rect.pos + excess / 2;
             self.core.rect = Rect { pos, size };
 
-            let text_height = size.1 / 3;
-            let text_size = Size(size.0, text_height);
+            let text_size = Size(size.0, size.1 / 4);
+            let text_height = text_size.1 as f32;
 
             let mut env = self.date.env();
-            env.dpem = text_height as f32 * 0.4;
+            env.dpem = text_height * 0.5;
             env.bounds = text_size.cast();
             self.date.update_env(env).expect("invalid font_id");
-            env.dpem = text_height as f32 * 0.5;
+            env.dpem = text_height * 0.7;
             self.time.update_env(env).expect("invalid font_id");
 
-            let y_mid = pos.0 + size.1 / 2;
-            self.date_rect = Rect::new(Coord(pos.0, y_mid - text_height), text_size);
-            self.time_rect = Rect::new(Coord(pos.0, y_mid), text_size);
+            let time_pos = pos + Offset(0, size.1 * 5 / 8);
+            let date_pos = pos + Offset(0, size.1 / 8);
+            self.date_rect = Rect::new(date_pos, text_size);
+            self.time_rect = Rect::new(time_pos, text_size);
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let col_face = color::Rgba::grey(0.4);
-            let col_time = color::Rgba::grey(0.0);
-            let col_date = color::Rgba::grey(0.2);
-            let col_hands = color::Rgba8Srgb::rgb(124, 124, 170).into();
-            let col_secs = color::Rgba8Srgb::rgb(203, 124, 124).into();
+            let accent: Rgba = Rgba8Srgb::from_str("#d7916f").unwrap().into();
+            let col_back = Rgba::ga(0.0, 0.5);
+            let col_face = accent.multiply(0.4);
+            let col_time = Rgba::grey(1.0);
+            let col_date = Rgba::grey(0.8);
+            let col_hands = accent.multiply(0.7);
+            let col_secs = accent;
 
             // We use the low-level draw device to draw our clock. This means it is
             // not themeable, but gives us much more flexible draw routines.
@@ -79,7 +84,8 @@ impl_scope! {
 
             let rect = self.core.rect;
             let quad = Quad::conv(rect);
-            draw.circle(quad, 0.95, col_face);
+            draw.circle(quad, 0.0, col_back);
+            draw.circle(quad, 0.98, col_face);
 
             let half = (quad.b.1 - quad.a.1) / 2.0;
             let centre = quad.a + half;
@@ -97,8 +103,6 @@ impl_scope! {
             draw.text(self.date_rect, self.date.as_ref(), col_date);
             draw.text(self.time_rect, self.time.as_ref(), col_time);
 
-            // We use a new pass to control the draw order (force in front).
-            let mut draw = draw.new_pass(rect, Offset::ZERO, PassType::Clip);
             let mut line_seg = |t: f32, r1: f32, r2: f32, w, col| {
                 let v = Vec2(t.sin(), -t.cos());
                 draw.rounded_line(centre + v * r1, centre + v * r2, w, col);
@@ -166,11 +170,20 @@ impl_scope! {
         fn title(&self) -> &str {
             "Clock"
         }
+
+        fn decorations(&self) -> kas::Decorations {
+            kas::Decorations::None
+        }
+
+        fn transparent(&self) -> bool {
+            true
+        }
     }
 }
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    Shell::new(Theme::new())?.with(Clock::new())?.run()
+    let theme = Theme::new();
+    Shell::new(theme)?.with(Clock::new())?.run()
 }
