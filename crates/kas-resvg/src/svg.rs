@@ -45,7 +45,6 @@ fn load(data: &[u8], resources_dir: Option<&Path>) -> Result<Tree, usvg::Error> 
         shape_rendering: usvg::ShapeRendering::default(),
         text_rendering: usvg::TextRendering::default(),
         image_rendering: usvg::ImageRendering::default(),
-        keep_named_groups: false,
         default_size: usvg::Size::new(100.0, 100.0).unwrap(),
         image_href_resolver: Default::default(),
     };
