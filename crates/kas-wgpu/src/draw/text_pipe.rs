@@ -12,7 +12,7 @@ use kas::geom::{Quad, Rect, Vec2};
 use kas::text::fonts::FaceId;
 use kas::text::{Effect, Glyph, TextDisplay};
 use kas::theme::RasterConfig;
-use kas_text::raster::{raster, Config, SpriteDescriptor};
+use kas_text::raster::{Config, SpriteDescriptor};
 use rustc_hash::FxHashMap as HashMap;
 use std::mem::size_of;
 use std::num::NonZeroU32;
@@ -198,7 +198,7 @@ impl Pipeline {
         // NOTE: we only need the allocation and coordinates now; the
         // rendering could be offloaded (though this may not be useful).
         let mut sprite = None;
-        if let Some(rs) = raster(&self.config, desc) {
+        if let Some(rs) = desc.raster(&self.config) {
             match self.atlas_pipe.allocate(rs.size) {
                 Ok((atlas, _, origin, tex_quad)) => {
                     let s = Sprite {

@@ -135,3 +135,6 @@ members = [
     "crates/kas-view",
     "examples/mandlebrot",
 ]
+
+[patch.crates-io]
+kas-text = { path = "../text" }
