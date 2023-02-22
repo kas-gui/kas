@@ -23,7 +23,7 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 #########  meta / build features  #########
 
 # All recommended features for optimal experience
-default = ["minimal", "view", "yaml", "image", "resvg", "clipboard", "markdown", "shaping", "dark-light", "spawn", "wayland", "x11"]
+default = ["minimal", "view", "yaml", "image", "resvg", "clipboard", "markdown", "dark-light", "spawn", "wayland", "x11"]
 
 # Include only "required" features.
 #
@@ -64,11 +64,6 @@ clipboard = ["kas-core/clipboard"]
 
 # Enable Markdown parsing
 markdown = ["kas-core/markdown"]
-
-# Enable text shaping
-shaping = ["kas-core/shaping"]
-# Alternative: use Harfbuzz library for shaping
-harfbuzz = ["kas-core/harfbuzz"]
 
 # Enable serde support (mainly config read/write)
 serde = ["kas-core/serde"]

@@ -31,11 +31,6 @@ internal_doc = []
 # Enable Markdown parsing
 markdown = ["kas-text/markdown"]
 
-# Enable text shaping
-shaping = ["kas-text/shaping"]
-# Alternative: use Harfbuzz library for shaping
-harfbuzz = ["kas-text/harfbuzz"]
-
 # Enable support for YAML (de)serialisation
 yaml = ["serde", "dep:serde_yaml"]
 
@@ -93,6 +88,7 @@ path = "../kas-macros"
 
 [dependencies.kas-text]
 version = "0.6.0"
+features = ["shaping"]
 
 [dependencies.easy-cast]
 version = "0.5.0" # used in doc links
