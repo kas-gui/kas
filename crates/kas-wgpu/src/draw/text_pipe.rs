@@ -5,7 +5,7 @@
 
 //! Text drawing pipeline
 
-use super::{atlases, ShaderManager};
+use super::{atlases, CustomPipe, DrawPipe, DrawWindow, ShaderManager};
 use kas::cast::*;
 use kas::draw::{color::Rgba, PassId};
 use kas::geom::{Quad, Rect, Vec2};
@@ -140,17 +140,32 @@ impl Pipeline {
         }
     }
 
-    /// Write to textures
-    pub fn prepare(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        self.atlas_pipe.prepare(device);
+    /// Enqueue render commands
+    pub fn render<'a>(
+        &'a self,
+        window: &'a Window,
+        pass: usize,
+        rpass: &mut wgpu::RenderPass<'a>,
+        bg_common: &'a wgpu::BindGroup,
+    ) {
+        self.atlas_pipe
+            .render(&window.atlas, pass, rpass, bg_common);
+    }
+}
 
-        if !self.prepare.is_empty() {
-            log::trace!("prepare: uploading {} sprites", self.prepare.len());
+impl<C: CustomPipe> DrawPipe<C> {
+    /// Write to textures
+    pub fn prepare_text(&mut self) {
+        let text = &mut self.text;
+        text.atlas_pipe.prepare(&self.device);
+
+        if !text.prepare.is_empty() {
+            log::trace!("prepare: uploading {} sprites", text.prepare.len());
         }
-        for (atlas, origin, size, data) in self.prepare.drain(..) {
-            queue.write_texture(
+        for (atlas, origin, size, data) in text.prepare.drain(..) {
+            self.queue.write_texture(
                 wgpu::ImageCopyTexture {
-                    texture: self.atlas_pipe.get_texture(atlas),
+                    texture: text.atlas_pipe.get_texture(atlas),
                     mip_level: 0,
                     origin: wgpu::Origin3d {
                         x: origin.0,
@@ -174,25 +189,13 @@ impl Pipeline {
         }
     }
 
-    /// Enqueue render commands
-    pub fn render<'a>(
-        &'a self,
-        window: &'a Window,
-        pass: usize,
-        rpass: &mut wgpu::RenderPass<'a>,
-        bg_common: &'a wgpu::BindGroup,
-    ) {
-        self.atlas_pipe
-            .render(&window.atlas, pass, rpass, bg_common);
-    }
-
     /// Get a rendered sprite
     ///
     /// This returns `None` if there's nothing to render. It may also return
     /// `None` (with a warning) on error.
     fn get_glyph(&mut self, face: FaceId, dpem: f32, glyph: Glyph) -> Option<Sprite> {
-        let desc = SpriteDescriptor::new(&self.config, face, glyph, dpem);
-        if let Some(opt_sprite) = self.glyphs.get(&desc).cloned() {
+        let desc = SpriteDescriptor::new(&self.text.config, face, glyph, dpem);
+        if let Some(opt_sprite) = self.text.glyphs.get(&desc).cloned() {
             opt_sprite
         } else {
             // NOTE: this branch is *rare*. We don't use HashMap::entry and push
@@ -206,10 +209,10 @@ impl Pipeline {
         // rendering could be offloaded (though this may not be useful).
 
         let mut result: Option<RasterResult> = None;
-        if let Some(rs) = desc.raster(&self.config) {
+        if let Some(rs) = desc.raster(&self.text.config) {
             let offset = Vec2(rs.offset.0.cast(), rs.offset.1.cast());
             result = Some((rs.size, offset, ColorType::Alpha, rs.data));
-        } else if let Some(rs) = desc.raster_image(&self.config) {
+        } else if let Some(rs) = desc.raster_image(&self.text.config) {
             // TODO: we need some size binning for cache!
             match rs.format {
                 #[cfg(feature = "png")]
@@ -224,7 +227,7 @@ impl Pipeline {
         let mut sprite = None;
         if let Some((size, offset, color_type, data)) = result {
             assert_eq!(color_type, ColorType::Alpha);
-            match self.atlas_pipe.allocate(size) {
+            match self.text.atlas_pipe.allocate(size) {
                 Ok((atlas, _, origin, tex_quad)) => {
                     let s = Sprite {
                         atlas,
@@ -233,7 +236,7 @@ impl Pipeline {
                         tex_quad,
                     };
 
-                    self.prepare.push((s.atlas, origin, size, data));
+                    self.text.prepare.push((s.atlas, origin, size, data));
                     sprite = Some(s);
                 }
                 Err(_) => {
@@ -242,7 +245,7 @@ impl Pipeline {
             };
         }
 
-        self.glyphs.insert(desc, sprite.clone());
+        self.text.glyphs.insert(desc, sprite.clone());
         sprite
     }
 }
@@ -301,10 +304,12 @@ impl Window {
     ) {
         self.atlas.write_buffers(device, staging_belt, encoder);
     }
+}
 
-    pub fn text(
+impl<C: CustomPipe> DrawPipe<C> {
+    pub fn draw_text_impl(
         &mut self,
-        pipe: &mut Pipeline,
+        window: &mut DrawWindow<C::Window>,
         pass: PassId,
         rect: Rect,
         text: &TextDisplay,
@@ -313,11 +318,11 @@ impl Window {
         let rect = Quad::conv(rect);
 
         let for_glyph = |face: FaceId, dpem: f32, glyph: Glyph| {
-            if let Some(sprite) = pipe.get_glyph(face, dpem, glyph) {
+            if let Some(sprite) = self.get_glyph(face, dpem, glyph) {
                 let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
                 let b = a + sprite.size;
                 if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
-                    self.atlas.rect(pass, sprite.atlas, instance);
+                    window.text.atlas.rect(pass, sprite.atlas, instance);
                 }
             }
         };
@@ -326,15 +331,14 @@ impl Window {
         }
     }
 
-    pub fn text_effects(
+    pub fn draw_text_effects_impl(
         &mut self,
-        pipe: &mut Pipeline,
+        window: &mut DrawWindow<C::Window>,
         pass: PassId,
         rect: Rect,
         text: &TextDisplay,
         col: Rgba,
         effects: &[Effect<()>],
-        mut draw_quad: impl FnMut(Quad),
     ) {
         // Optimisation: use cheaper TextDisplay::glyphs method
         if effects.len() <= 1
@@ -343,18 +347,18 @@ impl Window {
                 .map(|e| e.flags == Default::default())
                 .unwrap_or(true)
         {
-            self.text(pipe, pass, rect, text, col);
+            self.draw_text_impl(window, pass, rect, text, col);
             return;
         }
 
         let rect = Quad::conv(rect);
 
         let mut for_glyph = |face: FaceId, dpem: f32, glyph: Glyph, _: usize, _: ()| {
-            if let Some(sprite) = pipe.get_glyph(face, dpem, glyph) {
+            if let Some(sprite) = self.get_glyph(face, dpem, glyph) {
                 let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
                 let b = a + sprite.size;
                 if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
-                    self.atlas.rect(pass, sprite.atlas, instance);
+                    window.text.atlas.rect(pass, sprite.atlas, instance);
                 }
             }
         };
@@ -371,7 +375,7 @@ impl Window {
                 if let Some(quad) = Quad::from_coords(rect.a + Vec2(x1, y), rect.a + Vec2(x2, y2))
                     .intersection(&rect)
                 {
-                    draw_quad(quad);
+                    window.shaded_square.rect(pass, quad, col);
                 }
             };
             text.glyphs_with_effects(effects, (), for_glyph, for_rect)
@@ -384,14 +388,13 @@ impl Window {
         }
     }
 
-    pub fn text_effects_rgba(
+    pub fn draw_text_effects_rgba_impl(
         &mut self,
-        pipe: &mut Pipeline,
+        window: &mut DrawWindow<C::Window>,
         pass: PassId,
         rect: Rect,
         text: &TextDisplay,
         effects: &[Effect<Rgba>],
-        mut draw_quad: impl FnMut(Quad, Rgba),
     ) {
         // Optimisation: use cheaper TextDisplay::glyphs method
         if effects.len() <= 1
@@ -401,18 +404,18 @@ impl Window {
                 .unwrap_or(true)
         {
             let col = effects.get(0).map(|e| e.aux).unwrap_or(Rgba::BLACK);
-            self.text(pipe, pass, rect, text, col);
+            self.draw_text_impl(window, pass, rect, text, col);
             return;
         }
 
         let rect = Quad::conv(rect);
 
         let for_glyph = |face: FaceId, dpem: f32, glyph: Glyph, _, col: Rgba| {
-            if let Some(sprite) = pipe.get_glyph(face, dpem, glyph) {
+            if let Some(sprite) = self.get_glyph(face, dpem, glyph) {
                 let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
                 let b = a + sprite.size;
                 if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
-                    self.atlas.rect(pass, sprite.atlas, instance);
+                    window.text.atlas.rect(pass, sprite.atlas, instance);
                 }
             }
         };
@@ -423,7 +426,7 @@ impl Window {
             if let Some(quad) =
                 Quad::from_coords(rect.a + Vec2(x1, y), rect.a + Vec2(x2, y2)).intersection(&rect)
             {
-                draw_quad(quad, col);
+                window.shaded_square.rect(pass, quad, col);
             }
         };
 

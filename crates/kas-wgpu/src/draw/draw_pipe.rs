@@ -248,7 +248,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             &mut self.staging_belt,
             &mut encoder,
         );
-        self.text.prepare(&self.device, &self.queue);
+        self.prepare_text();
         window
             .text
             .write_buffers(&self.device, &mut self.staging_belt, &mut encoder);
@@ -366,7 +366,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         col: Rgba,
     ) {
         let time = std::time::Instant::now();
-        draw.text.text(&mut self.text, pass, rect, text, col);
+        self.draw_text_impl(draw, pass, rect, text, col);
         draw.common.report_dur_text(time.elapsed());
     }
 
@@ -380,10 +380,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         effects: &[Effect<()>],
     ) {
         let time = std::time::Instant::now();
-        draw.text
-            .text_effects(&mut self.text, pass, rect, text, col, effects, |quad| {
-                draw.shaded_square.rect(pass, quad, col);
-            });
+        self.draw_text_effects_impl(draw, pass, rect, text, col, effects);
         draw.common.report_dur_text(time.elapsed());
     }
 
@@ -396,10 +393,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         effects: &[Effect<Rgba>],
     ) {
         let time = std::time::Instant::now();
-        draw.text
-            .text_effects_rgba(&mut self.text, pass, rect, text, effects, |quad, col| {
-                draw.shaded_square.rect(pass, quad, col);
-            });
+        self.draw_text_effects_rgba_impl(draw, pass, rect, text, effects);
         draw.common.report_dur_text(time.elapsed());
     }
 }
