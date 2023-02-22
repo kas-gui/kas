@@ -13,7 +13,7 @@ documentation = "https://docs.rs/kas-wgpu/"
 
 [features]
 # WARNING: if "raster" is disabled, an alternative like "kas-text/fontdue" is required!
-default = ["raster"]
+default = ["raster", "png"]
 
 # Enables documentation of APIs for shells and internal usage.
 # This API is not intended for use by end-user applications and
@@ -31,6 +31,7 @@ wgpu = { version = "0.15.0", features = ["spirv"] }
 thiserror = "1.0.23"
 guillotiere = "0.6.0"
 rustc-hash = "1.0"
+png = { version = "0.17.7", optional = true }
 
 [dependencies.kas]
 # Rename package purely for convenience:

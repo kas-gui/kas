@@ -12,10 +12,17 @@ use kas::geom::{Quad, Rect, Vec2};
 use kas::text::fonts::FaceId;
 use kas::text::{Effect, Glyph, TextDisplay};
 use kas::theme::RasterConfig;
-use kas_text::raster::{Config, SpriteDescriptor};
+use kas_text::raster::{Config, RasterGlyphImage, RasterImageFormat, SpriteDescriptor};
 use rustc_hash::FxHashMap as HashMap;
 use std::mem::size_of;
 use std::num::NonZeroU32;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ColorType {
+    Alpha,
+}
+/// Size, offset, color type, data
+type RasterResult = ((u32, u32), Vec2, ColorType, Vec<u8>);
 
 /// A Sprite
 ///
@@ -197,38 +204,84 @@ impl Pipeline {
     fn raster_glyph(&mut self, desc: SpriteDescriptor) -> Option<Sprite> {
         // NOTE: we only need the allocation and coordinates now; the
         // rendering could be offloaded (though this may not be useful).
-        let mut sprite = None;
+
+        let mut result: Option<RasterResult> = None;
         if let Some(rs) = desc.raster(&self.config) {
-            match self.atlas_pipe.allocate(rs.size) {
+            let offset = Vec2(rs.offset.0.cast(), rs.offset.1.cast());
+            result = Some((rs.size, offset, ColorType::Alpha, rs.data));
+        } else if let Some(rs) = desc.raster_image(&self.config) {
+            // TODO: we need some size binning for cache!
+            match rs.format {
+                #[cfg(feature = "png")]
+                RasterImageFormat::PNG => result = raster_png(rs),
+                #[allow(unreachable_patterns)]
+                format => log::debug!("raster_glyph: unsupported format {format:?}"),
+            }
+        } else {
+            log::debug!("raster_glyph: failed to raster {desc:?}");
+        };
+
+        let mut sprite = None;
+        if let Some((size, offset, color_type, data)) = result {
+            assert_eq!(color_type, ColorType::Alpha);
+            match self.atlas_pipe.allocate(size) {
                 Ok((atlas, _, origin, tex_quad)) => {
                     let s = Sprite {
                         atlas,
-                        size: Vec2(rs.size.0.cast(), rs.size.1.cast()),
-                        offset: Vec2(rs.offset.0.cast(), rs.offset.1.cast()),
+                        size: Vec2(size.0.cast(), size.1.cast()),
+                        offset,
                         tex_quad,
                     };
 
-                    self.prepare.push((s.atlas, origin, rs.size, rs.data));
+                    self.prepare.push((s.atlas, origin, size, data));
                     sprite = Some(s);
                 }
                 Err(_) => {
-                    log::warn!(
-                        "raster_glyph: failed to allocate glyph with size {:?}",
-                        rs.size
-                    );
+                    log::warn!("raster_glyph: failed to allocate glyph with size {size:?}",);
                 }
             };
-        } else {
-            // This comes up a lot and is usually harmless
-            log::debug!(
-                "raster_glyph: failed to raster glyph {:?} of face {:?}",
-                desc.glyph(),
-                desc.face()
-            );
-        };
+        }
 
         self.glyphs.insert(desc, sprite.clone());
         sprite
+    }
+}
+
+#[cfg(feature = "png")]
+fn raster_png(rs: RasterGlyphImage) -> Option<RasterResult> {
+    debug_assert_eq!(rs.format, RasterImageFormat::PNG);
+    let offset = Vec2(rs.x.cast(), rs.y.cast());
+
+    let mut dcdr = png::Decoder::new(rs.data);
+    dcdr.set_transformations(png::Transformations::STRIP_16 | png::Transformations::EXPAND);
+    let mut rdr = dcdr
+        .read_info()
+        .map_err(|e| log::warn!("raster_glyph: {e:?}"))
+        .ok()?;
+
+    let info = rdr.info();
+    if info.animation_control.is_some() {
+        log::warn!("raster_glyph: animation not supported");
+    }
+
+    let mut buf = vec![0; rdr.output_buffer_size()];
+    let info = rdr
+        .next_frame(&mut buf)
+        .map_err(|e| log::warn!("raster_glyph: {e:?}"))
+        .ok()?;
+    debug_assert!(info.width == rs.width as u32 && info.height == rs.height as u32);
+    debug_assert_eq!(info.bit_depth, png::BitDepth::Eight); // via transformations
+    match info.color_type {
+        png::ColorType::Grayscale => {
+            assert_eq!(info.line_size, info.width.cast());
+            let size = (info.width, info.height);
+            let color_type = ColorType::Alpha; // possible mis-use
+            Some((size, offset, color_type, buf))
+        }
+        color => {
+            log::warn!("raster_glyph: unsupported color type {color:?}");
+            None
+        }
     }
 }
 
