@@ -21,8 +21,9 @@ use std::num::NonZeroU32;
 enum ColorType {
     Alpha,
 }
-/// Size, offset, color type, data
-type RasterResult = ((u32, u32), Vec2, ColorType, Vec<u8>);
+
+/// Color type, bytes per row, Size, offset, data
+type RasterResult = (ColorType, u32, (u32, u32), Vec2, Vec<u8>);
 
 /// A Sprite
 ///
@@ -80,13 +81,22 @@ impl Instance {
     }
 }
 
+struct Prepare {
+    color_type: ColorType,
+    bytes_per_row: u32,
+    atlas: u32,
+    origin: (u32, u32),
+    size: (u32, u32),
+    data: Vec<u8>,
+}
+
 /// A pipeline for rendering text
 pub struct Pipeline {
     config: Config,
     atlas_pipe: atlases::Pipeline<Instance>,
     glyphs: HashMap<SpriteDescriptor, Option<Sprite>>,
     #[allow(clippy::type_complexity)]
-    prepare: Vec<(u32, (u32, u32), (u32, u32), Vec<u8>)>,
+    prepare: Vec<Prepare>,
 }
 
 impl Pipeline {
@@ -162,27 +172,27 @@ impl<C: CustomPipe> DrawPipe<C> {
         if !text.prepare.is_empty() {
             log::trace!("prepare: uploading {} sprites", text.prepare.len());
         }
-        for (atlas, origin, size, data) in text.prepare.drain(..) {
+        for p in text.prepare.drain(..) {
             self.queue.write_texture(
                 wgpu::ImageCopyTexture {
-                    texture: text.atlas_pipe.get_texture(atlas),
+                    texture: text.atlas_pipe.get_texture(p.atlas),
                     mip_level: 0,
                     origin: wgpu::Origin3d {
-                        x: origin.0,
-                        y: origin.1,
+                        x: p.origin.0,
+                        y: p.origin.1,
                         z: 0,
                     },
                     aspect: wgpu::TextureAspect::All,
                 },
-                &data,
+                &p.data,
                 wgpu::ImageDataLayout {
                     offset: 0,
-                    bytes_per_row: NonZeroU32::new(size.0),
-                    rows_per_image: NonZeroU32::new(size.1),
+                    bytes_per_row: NonZeroU32::new(p.bytes_per_row),
+                    rows_per_image: NonZeroU32::new(p.size.1),
                 },
                 wgpu::Extent3d {
-                    width: size.0,
-                    height: size.1,
+                    width: p.size.0,
+                    height: p.size.1,
                     depth_or_array_layers: 1,
                 },
             );
@@ -211,7 +221,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let mut result: Option<RasterResult> = None;
         if let Some(rs) = desc.raster(&self.text.config) {
             let offset = Vec2(rs.offset.0.cast(), rs.offset.1.cast());
-            result = Some((rs.size, offset, ColorType::Alpha, rs.data));
+            result = Some((ColorType::Alpha, rs.size.0, rs.size, offset, rs.data));
         } else if let Some(rs) = desc.raster_image(&self.text.config) {
             // TODO: we need some size binning for cache!
             match rs.format {
@@ -225,7 +235,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         };
 
         let mut sprite = None;
-        if let Some((size, offset, color_type, data)) = result {
+        if let Some((color_type, bytes_per_row, size, offset, data)) = result {
             assert_eq!(color_type, ColorType::Alpha);
             match self.text.atlas_pipe.allocate(size) {
                 Ok((atlas, _, origin, tex_quad)) => {
@@ -236,7 +246,14 @@ impl<C: CustomPipe> DrawPipe<C> {
                         tex_quad,
                     };
 
-                    self.text.prepare.push((s.atlas, origin, size, data));
+                    self.text.prepare.push(Prepare {
+                        color_type,
+                        bytes_per_row,
+                        atlas,
+                        origin,
+                        size,
+                        data,
+                    });
                     sprite = Some(s);
                 }
                 Err(_) => {
@@ -276,10 +293,9 @@ fn raster_png(rs: RasterGlyphImage) -> Option<RasterResult> {
     debug_assert_eq!(info.bit_depth, png::BitDepth::Eight); // via transformations
     match info.color_type {
         png::ColorType::Grayscale => {
-            assert_eq!(info.line_size, info.width.cast());
             let size = (info.width, info.height);
             let color_type = ColorType::Alpha; // possible mis-use
-            Some((size, offset, color_type, buf))
+            Some((color_type, info.line_size.cast(), size, offset, buf))
         }
         color => {
             log::warn!("raster_glyph: unsupported color type {color:?}");
