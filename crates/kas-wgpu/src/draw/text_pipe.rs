@@ -19,7 +19,10 @@ use std::num::NonZeroU32;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ColorType {
+    /// Single channel is alpha; color supplied by Instance
     Alpha,
+    /// RGBA texture (uses image atlas)
+    Rgba,
 }
 
 /// Color type, bytes per row, Size, offset, data
@@ -31,6 +34,7 @@ type RasterResult = (ColorType, u32, (u32, u32), Vec2, Vec<u8>);
 /// struct contains everything needed to draw from the sprite.
 #[derive(Clone, Debug)]
 struct Sprite {
+    color_type: ColorType,
     atlas: u32,
     // TODO(opt): u16 or maybe even u8 would be enough
     size: Vec2,
@@ -78,6 +82,17 @@ impl Instance {
         }
 
         Some(Instance { a, b, ta, tb, col })
+    }
+}
+
+impl From<Instance> for super::images::Instance {
+    fn from(instance: Instance) -> Self {
+        super::images::Instance {
+            a: instance.a,
+            b: instance.b,
+            ta: instance.ta,
+            tb: instance.tb,
+        }
     }
 }
 
@@ -168,14 +183,20 @@ impl<C: CustomPipe> DrawPipe<C> {
     pub fn prepare_text(&mut self) {
         let text = &mut self.text;
         text.atlas_pipe.prepare(&self.device);
+        self.images.atlas_pipe.prepare(&self.device);
 
         if !text.prepare.is_empty() {
             log::trace!("prepare: uploading {} sprites", text.prepare.len());
         }
         for p in text.prepare.drain(..) {
+            let texture = match p.color_type {
+                ColorType::Alpha => text.atlas_pipe.get_texture(p.atlas),
+                ColorType::Rgba => self.images.atlas_pipe.get_texture(p.atlas),
+            };
+
             self.queue.write_texture(
                 wgpu::ImageCopyTexture {
-                    texture: text.atlas_pipe.get_texture(p.atlas),
+                    texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d {
                         x: p.origin.0,
@@ -236,10 +257,14 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         let mut sprite = None;
         if let Some((color_type, bytes_per_row, size, offset, data)) = result {
-            assert_eq!(color_type, ColorType::Alpha);
-            match self.text.atlas_pipe.allocate(size) {
+            let result = match color_type {
+                ColorType::Alpha => self.text.atlas_pipe.allocate(size),
+                ColorType::Rgba => self.images.atlas_pipe.allocate(size),
+            };
+            match result {
                 Ok((atlas, _, origin, tex_quad)) => {
                     let s = Sprite {
+                        color_type,
                         atlas,
                         size: Vec2(size.0.cast(), size.1.cast()),
                         offset,
@@ -297,6 +322,11 @@ fn raster_png(rs: RasterGlyphImage) -> Option<RasterResult> {
             let color_type = ColorType::Alpha; // possible mis-use
             Some((color_type, info.line_size.cast(), size, offset, buf))
         }
+        png::ColorType::Rgba => {
+            let size = (info.width, info.height);
+            let color_type = ColorType::Rgba;
+            Some((color_type, info.line_size.cast(), size, offset, buf))
+        }
         color => {
             log::warn!("raster_glyph: unsupported color type {color:?}");
             None
@@ -338,7 +368,10 @@ impl<C: CustomPipe> DrawPipe<C> {
                 let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
                 let b = a + sprite.size;
                 if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
-                    window.text.atlas.rect(pass, sprite.atlas, instance);
+                    match sprite.color_type {
+                        ColorType::Alpha => window.text.atlas.rect(pass, sprite.atlas, instance),
+                        ColorType::Rgba => window.images.atlas.rect(pass, sprite.atlas, instance.into()),
+                    }
                 }
             }
         };
@@ -374,7 +407,10 @@ impl<C: CustomPipe> DrawPipe<C> {
                 let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
                 let b = a + sprite.size;
                 if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
-                    window.text.atlas.rect(pass, sprite.atlas, instance);
+                    match sprite.color_type {
+                        ColorType::Alpha => window.text.atlas.rect(pass, sprite.atlas, instance),
+                        ColorType::Rgba => window.images.atlas.rect(pass, sprite.atlas, instance.into()),
+                    }
                 }
             }
         };
@@ -431,7 +467,10 @@ impl<C: CustomPipe> DrawPipe<C> {
                 let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
                 let b = a + sprite.size;
                 if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
-                    window.text.atlas.rect(pass, sprite.atlas, instance);
+                    match sprite.color_type {
+                        ColorType::Alpha => window.text.atlas.rect(pass, sprite.atlas, instance),
+                        ColorType::Rgba => window.images.atlas.rect(pass, sprite.atlas, instance.into()),
+                    }
                 }
             }
         };

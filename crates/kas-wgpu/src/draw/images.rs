@@ -65,17 +65,17 @@ impl Image {
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct Instance {
-    a: Vec2,
-    b: Vec2,
-    ta: Vec2,
-    tb: Vec2,
+    pub(super) a: Vec2,
+    pub(super) b: Vec2,
+    pub(super) ta: Vec2,
+    pub(super) tb: Vec2,
 }
 unsafe impl bytemuck::Zeroable for Instance {}
 unsafe impl bytemuck::Pod for Instance {}
 
 /// Image loader and storage
 pub struct Images {
-    atlas_pipe: atlases::Pipeline<Instance>,
+    pub(super) atlas_pipe: atlases::Pipeline<Instance>,
     last_image_n: u32,
     images: HashMap<ImageId, Image>,
 }
@@ -209,7 +209,7 @@ impl Images {
 
 #[derive(Debug, Default)]
 pub struct Window {
-    atlas: atlases::Window<Instance>,
+    pub(super) atlas: atlases::Window<Instance>,
 }
 
 impl Window {
