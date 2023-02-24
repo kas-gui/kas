@@ -244,13 +244,17 @@ impl<C: CustomPipe> DrawPipe<C> {
             let offset = Vec2(rs.offset.0.cast(), rs.offset.1.cast());
             result = Some((ColorType::Alpha, rs.size.0, rs.size, offset, rs.data));
         } else if let Some(rs) = desc.raster_image(&self.text.config) {
-            // TODO: we need some size binning for cache!
+            // TODO: dpem binning of SpriteDescriptor is not ideal.
+            // TODO: what should our output size be? Is dpem too large?
+            let dpem = desc.dpem(&self.text.config);
             match rs.format {
                 #[cfg(feature = "png")]
-                RasterImageFormat::PNG => result = raster_png(rs),
+                RasterImageFormat::PNG => result = raster_png(rs, dpem),
                 #[allow(unreachable_patterns)]
                 format => log::debug!("raster_glyph: unsupported format {format:?}"),
             }
+        } else if let Some(_svg) = desc.svg_image() {
+            println!("SVG image: {desc:?}");
         } else {
             log::debug!("raster_glyph: failed to raster {desc:?}");
         };
@@ -279,7 +283,7 @@ impl<C: CustomPipe> DrawPipe<C> {
                         size,
                         data,
                     });
-                    sprite = Some(s);
+                    sprite = Some(s);//TODO
                 }
                 Err(_) => {
                     log::warn!("raster_glyph: failed to allocate glyph with size {size:?}",);
@@ -293,7 +297,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 }
 
 #[cfg(feature = "png")]
-fn raster_png(rs: RasterGlyphImage) -> Option<RasterResult> {
+fn raster_png(rs: RasterGlyphImage, height: f32) -> Option<RasterResult> {
     debug_assert_eq!(rs.format, RasterImageFormat::PNG);
     let offset = Vec2(rs.x.cast(), rs.y.cast());
 
@@ -315,17 +319,32 @@ fn raster_png(rs: RasterGlyphImage) -> Option<RasterResult> {
         .map_err(|e| log::warn!("raster_glyph: {e:?}"))
         .ok()?;
     debug_assert!(info.width == rs.width as u32 && info.height == rs.height as u32);
+    let size = (info.width, info.height);
+    let mut resize = None;
+    if info.height != height.cast_nearest() {
+        println!("TODO: downscale {size:?} to {height}");
+        let w = f32::conv(size.0) / f32::conv(size.1) * height;
+        resize = Some((u32::conv_nearest(w), u32::conv_nearest(height)));
+    }
     debug_assert_eq!(info.bit_depth, png::BitDepth::Eight); // via transformations
     match info.color_type {
         png::ColorType::Grayscale => {
-            let size = (info.width, info.height);
             let color_type = ColorType::Alpha; // possible mis-use
-            Some((color_type, info.line_size.cast(), size, offset, buf))
+            if let Some(size) = resize {
+                buf = vec![127; usize::conv(size.0) * usize::conv(size.1)];
+                Some((color_type, size.0, size, offset, buf))
+            } else {
+                Some((color_type, info.line_size.cast(), size, offset, buf))
+            }
         }
         png::ColorType::Rgba => {
-            let size = (info.width, info.height);
             let color_type = ColorType::Rgba;
-            Some((color_type, info.line_size.cast(), size, offset, buf))
+            if let Some(size) = resize {
+                buf = vec![127; 4 * usize::conv(size.0) * usize::conv(size.1)];
+                Some((color_type, 4 * size.0, size, offset, buf))
+            } else {
+                Some((color_type, info.line_size.cast(), size, offset, buf))
+            }
         }
         color => {
             log::warn!("raster_glyph: unsupported color type {color:?}");
