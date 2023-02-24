@@ -86,6 +86,12 @@ impl Glide {
             None
         }
     }
+
+    fn stop(&mut self) {
+        if matches!(self, Glide::Glide(_, _, _)) {
+            *self = Glide::None;
+        }
+    }
 }
 
 /// Logic for a scroll region
@@ -145,11 +151,15 @@ impl ScrollComponent {
     /// The offset is clamped to the available scroll range.
     /// Returns [`Action::empty()`] if the offset is identical to the old offset,
     /// or [`Action::REGION_MOVED`] if the offset changes.
+    ///
+    /// Also cancels any momentum scrolling, but only if `offset` is not equal
+    /// to the current offset.
     pub fn set_offset(&mut self, offset: Offset) -> Action {
-        let offset = offset.min(self.max_offset).max(Offset::ZERO);
+        let offset = offset.clamp(Offset::ZERO, self.max_offset);
         if offset == self.offset {
             Action::empty()
         } else {
+            self.glide.stop();
             self.offset = offset;
             Action::REGION_MOVED
         }
@@ -165,6 +175,7 @@ impl ScrollComponent {
     ///     may be set via [`EventMgr::set_scroll`]
     /// -   returned `Action`: action to pass to the event manager
     pub fn focus_rect(&mut self, rect: Rect, window_rect: Rect) -> (Rect, Action) {
+        self.glide.stop();
         let v = rect.pos - window_rect.pos;
         let off = Offset::conv(rect.size) - Offset::conv(window_rect.size);
         let offset = self.offset.max(v + off).min(v);
@@ -193,15 +204,23 @@ impl ScrollComponent {
     }
 
     fn scroll_by_delta(&mut self, mgr: &mut EventMgr, d: Offset) -> bool {
-        let old_offset = self.offset;
-        *mgr |= self.set_offset(old_offset - d);
-        let delta = d - (old_offset - self.offset);
+        let mut delta = d;
+        let mut moved = false;
+        let offset = (self.offset - d).clamp(Offset::ZERO, self.max_offset);
+        if offset != self.offset {
+            moved = true;
+            delta = d - (self.offset - offset);
+            self.offset = offset;
+            *mgr |= Action::REGION_MOVED;
+        }
+
         mgr.set_scroll(if delta != Offset::ZERO {
             Scroll::Offset(delta)
         } else {
             Scroll::Scrolled
         });
-        old_offset != self.offset
+
+        moved
     }
 
     /// Use an event to scroll, if possible
@@ -219,7 +238,8 @@ impl ScrollComponent {
     /// `PressMove` is used to scroll by the motion delta and to track speed;
     /// `PressEnd` initiates momentum-scrolling if the speed is high enough.
     ///
-    /// Returns `(moved, response)`.
+    /// Returns `(moved, response)` where `moved` means *this component
+    /// scrolled* (scrolling of a parent is possible even if `!moved`).
     pub fn scroll_by_event(
         &mut self,
         mgr: &mut EventMgr,
@@ -262,6 +282,7 @@ impl ScrollComponent {
                     LineDelta(x, y) => mgr.config().scroll_distance((x, y)),
                     PixelDelta(d) => d,
                 };
+                self.glide.stop();
                 moved = self.scroll_by_delta(mgr, delta);
             }
             Event::PressStart { source, coord, .. }
@@ -283,15 +304,9 @@ impl ScrollComponent {
                 // Momentum/glide scrolling: update per arbitrary step time until movment stops.
                 let decay = mgr.config().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(decay) {
-                    let action = self.set_offset(self.offset - delta);
-                    if !action.is_empty() {
-                        *mgr |= action;
-                        moved = true;
-                    }
-                    if delta == Offset::ZERO || !action.is_empty() {
-                        // Note: when FPS > pixels/sec, delta may be zero while
-                        // still scrolling. Glide returns None when we're done,
-                        // but we're also done if unable to scroll further.
+                    moved = self.scroll_by_delta(mgr, delta);
+
+                    if matches!(&self.glide, Glide::Glide(_, _, _)) {
                         let dur = Duration::from_millis(GLIDE_POLL_MS);
                         mgr.request_update(id, PAYLOAD_GLIDE, dur, true);
                         mgr.set_scroll(Scroll::Scrolled);
