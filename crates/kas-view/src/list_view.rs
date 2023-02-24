@@ -675,7 +675,7 @@ impl_scope! {
                 Event::PressStart { source, coord, .. } => {
                     return if source.is_primary() {
                         mgr.grab_press_unique(self.id(), source, coord, None);
-                        self.press_phase = PressPhase::Pan;
+                        self.press_phase = PressPhase::Start(coord);
                         Response::Used
                     } else {
                         Response::Unused
