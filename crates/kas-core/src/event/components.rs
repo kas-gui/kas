@@ -17,102 +17,116 @@ use std::time::{Duration, Instant};
 const PAYLOAD_SELECT: u64 = 1 << 60;
 const PAYLOAD_GLIDE: u64 = (1 << 60) + 1;
 const GLIDE_POLL_MS: u64 = 3;
+const GLIDE_MAX_SAMPLES: usize = 8;
 
-#[derive(Clone, Debug, Default, PartialEq)]
-enum Glide {
-    #[default]
-    None,
-    Drag(u8, [(Instant, Offset); 4]),
-    Glide(Instant, Vec2, Vec2),
+#[derive(Clone, Debug)]
+struct Glide {
+    samples: [(Instant, Offset); GLIDE_MAX_SAMPLES],
+    last: u32,
+    pressed: bool,
+    t_step: Instant,
+    vel: Vec2,
+    rest: Vec2,
+}
+
+impl Default for Glide {
+    #[inline]
+    fn default() -> Self {
+        let now = Instant::now();
+
+        Glide {
+            samples: [(now, Offset::ZERO); GLIDE_MAX_SAMPLES],
+            last: 0,
+            pressed: false,
+            t_step: now,
+            vel: Vec2::ZERO,
+            rest: Vec2::ZERO,
+        }
+    }
 }
 
 impl Glide {
-    fn move_delta(&mut self, delta: Offset) {
-        match self {
-            Glide::Drag(next, samples) => {
-                samples[*next as usize] = (Instant::now(), delta);
-                *next = (*next + 1) % 4;
-            }
-            _ => {
-                let x = (Instant::now(), delta);
-                *self = Glide::Drag(1, [x; 4]);
-            }
-        }
+    fn press_start(&mut self) {
+        let next = (self.last as usize + 1) % GLIDE_MAX_SAMPLES;
+        self.samples[next] = (Instant::now(), Offset::ZERO);
+        self.last = next.cast();
+        self.pressed = true;
     }
 
-    fn opt_start(&mut self, timeout: Duration) -> bool {
-        if let Glide::Drag(_, samples) = self {
-            let now = Instant::now();
-            let mut delta = Offset::ZERO;
-            let mut t0 = now;
-            for (time, d) in samples {
-                if *time + timeout >= now {
-                    t0 = t0.min(*time);
-                    delta += *d;
-                }
-            }
-            let dur = now - t0;
-            let v = Vec2::conv(delta) / dur.as_secs_f32();
-            if dur >= Duration::from_millis(1) && v != Vec2::ZERO {
-                *self = Glide::Glide(now, v, Vec2::ZERO);
-                true
-            } else {
-                *self = Glide::None;
-                false
-            }
-        } else {
-            false
-        }
+    /// Returns true if component should immediately scroll by delta
+    fn press_move(&mut self, delta: Offset) -> bool {
+        let next = (self.last as usize + 1) % GLIDE_MAX_SAMPLES;
+        self.samples[next] = (Instant::now(), delta);
+        self.last = next.cast();
+        self.vel == Vec2::ZERO
     }
 
-    fn step(&mut self, (decay_mul, decay_sub): (f32, f32)) -> Option<Offset> {
-        if let Glide::Glide(start, v, rest) = self {
-            let now = Instant::now();
-            let dur = (now - *start).as_secs_f32();
-            let d = *v * dur + *rest;
-            let delta = Offset::conv_approx(d);
-            let rest = d - Vec2::conv(delta);
+    /// Returns true if momentum scrolling starts
+    fn press_end(&mut self, timeout: Duration, pan_dist_thresh: f32) -> bool {
+        self.pressed = false;
 
-            if v.abs().max_comp() >= 1.0 {
-                let mut v = *v * decay_mul.powf(dur);
-                v = v - v.abs().min(Vec2::splat(decay_sub * dur)) * v.sign();
-                *self = Glide::Glide(now, v, rest);
-                Some(delta)
-            } else {
-                *self = Glide::None;
-                None
+        let now = Instant::now();
+        let mut delta = Offset::ZERO;
+        let mut t0 = now;
+        for (time, d) in &self.samples {
+            if *time + timeout >= now {
+                t0 = t0.min(*time);
+                delta += *d;
             }
-        } else {
-            None
         }
+        let dur = timeout; //now - t0;
+        let mut is_start = false;
+        if f32::conv(delta.distance_l_inf()) >= pan_dist_thresh {
+            if self.vel == Vec2::ZERO {
+                self.t_step = Instant::now();
+                is_start = true;
+            }
+            self.vel += Vec2::conv(delta) / dur.as_secs_f32();
+        } else {
+            self.vel = Vec2::ZERO;
+            self.rest = Vec2::ZERO;
+        }
+        is_start
+    }
+
+    fn step(&mut self, timeout: Duration, (decay_mul, decay_sub): (f32, f32)) -> Option<Offset> {
+        // Stop on click+hold as well as min velocity. Do not stop on reaching
+        // the maximum scroll offset since we might still be scrolling a parent!
+        let stop = self.pressed && self.samples[self.last as usize].0.elapsed() > timeout;
+        if stop || self.vel.abs().max_comp() < 1.0 {
+            self.vel = Vec2::ZERO;
+            self.rest = Vec2::ZERO;
+            return None;
+        }
+
+        let now = Instant::now();
+        let dur = (now - self.t_step).as_secs_f32();
+        self.t_step = now;
+
+        let v = self.vel * decay_mul.powf(dur);
+        self.vel = v - v.abs().min(Vec2::splat(decay_sub * dur)) * v.sign();
+
+        let d = self.vel * dur + self.rest;
+        let delta = Offset::conv_trunc(d);
+        self.rest = d - Vec2::conv(delta);
+
+        Some(delta)
     }
 
     fn stop(&mut self) {
-        if matches!(self, Glide::Glide(_, _, _)) {
-            *self = Glide::None;
-        }
+        self.vel = Vec2::ZERO;
+        self.rest = Vec2::ZERO;
     }
 }
 
 /// Logic for a scroll region
 ///
 /// This struct handles some scroll logic. It does not provide scroll bars.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default)]
 pub struct ScrollComponent {
     max_offset: Offset,
     offset: Offset,
     glide: Glide,
-}
-
-impl Default for ScrollComponent {
-    #[inline]
-    fn default() -> Self {
-        ScrollComponent {
-            max_offset: Offset::ZERO,
-            offset: Offset::ZERO,
-            glide: Glide::None,
-        }
-    }
 }
 
 impl ScrollComponent {
@@ -290,23 +304,28 @@ impl ScrollComponent {
             {
                 let icon = Some(CursorIcon::Grabbing);
                 mgr.grab_press_unique(id, source, coord, icon);
+                self.glide.press_start();
             }
             Event::PressMove { delta, .. } => {
-                self.glide.move_delta(delta);
-                moved = self.scroll_by_delta(mgr, delta);
+                if self.glide.press_move(delta) {
+                    moved = self.scroll_by_delta(mgr, delta);
+                }
             }
             Event::PressEnd { .. } => {
-                if self.glide.opt_start(mgr.config().scroll_flick_timeout()) {
+                let timeout = mgr.config().scroll_flick_timeout();
+                let pan_dist_thresh = mgr.config().pan_dist_thresh();
+                if self.glide.press_end(timeout, pan_dist_thresh) {
                     mgr.request_update(id, PAYLOAD_GLIDE, Duration::new(0, 0), true);
                 }
             }
             Event::TimerUpdate(pl) if pl == PAYLOAD_GLIDE => {
                 // Momentum/glide scrolling: update per arbitrary step time until movment stops.
+                let timeout = mgr.config().scroll_flick_timeout();
                 let decay = mgr.config().scroll_flick_decay();
-                if let Some(delta) = self.glide.step(decay) {
+                if let Some(delta) = self.glide.step(timeout, decay) {
                     moved = self.scroll_by_delta(mgr, delta);
 
-                    if matches!(&self.glide, Glide::Glide(_, _, _)) {
+                    if self.glide.vel != Vec2::ZERO {
                         let dur = Duration::from_millis(GLIDE_POLL_MS);
                         mgr.request_update(id, PAYLOAD_GLIDE, dur, true);
                         mgr.set_scroll(Scroll::Scrolled);
@@ -392,6 +411,7 @@ impl TextInput {
                     ),
                 };
                 mgr.grab_press_unique(w_id, source, coord, icon);
+                self.glide.press_start();
                 action
             }
             Event::PressMove {
@@ -400,7 +420,7 @@ impl TextInput {
                 delta,
                 ..
             } => {
-                self.glide.move_delta(delta);
+                self.glide.press_move(delta);
                 match source {
                     PressSource::Touch(touch_id) => match self.touch_phase {
                         TouchPhase::Start(id, start_coord) if id == touch_id => {
@@ -422,7 +442,9 @@ impl TextInput {
                 }
             }
             Event::PressEnd { source, .. } => {
-                if self.glide.opt_start(mgr.config().scroll_flick_timeout())
+                let timeout = mgr.config().scroll_flick_timeout();
+                let pan_dist_thresh = mgr.config().pan_dist_thresh();
+                if self.glide.press_end(timeout, pan_dist_thresh)
                     && (matches!(source, PressSource::Touch(id) if self.touch_phase == TouchPhase::Pan(id))
                         || matches!(source, PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan()))
                 {
@@ -445,8 +467,9 @@ impl TextInput {
             }
             Event::TimerUpdate(pl) if pl == PAYLOAD_GLIDE => {
                 // Momentum/glide scrolling: update per arbitrary step time until movment stops.
+                let timeout = mgr.config().scroll_flick_timeout();
                 let decay = mgr.config().scroll_flick_decay();
-                if let Some(delta) = self.glide.step(decay) {
+                if let Some(delta) = self.glide.step(timeout, decay) {
                     let dur = Duration::from_millis(GLIDE_POLL_MS);
                     mgr.request_update(w_id, PAYLOAD_GLIDE, dur, true);
                     Action::Pan(delta)
