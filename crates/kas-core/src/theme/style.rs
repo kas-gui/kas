@@ -110,7 +110,7 @@ pub enum SelectionStyle {
 impl SelectionStyle {
     /// True if an external margin is required
     ///
-    /// Margin size: [`SizeMgr::inner_margins`]
+    /// Margin size is [`SizeMgr::inner_margins`](super::SizeMgr::inner_margins)
     pub fn is_external(self) -> bool {
         matches!(self, SelectionStyle::Frame | SelectionStyle::Both)
     }
