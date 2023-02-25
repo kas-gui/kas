@@ -12,6 +12,7 @@ use kas::layout::{solve_size_rules, AlignHints};
 #[allow(unused)] use kas::model::SharedData;
 use kas::model::{MatrixData, SharedDataMut};
 use kas::prelude::*;
+use kas::theme::SelectionStyle;
 #[allow(unused)] // doc links
 use kas_widgets::ScrollBars;
 use kas_widgets::SelectMsg;
@@ -78,6 +79,7 @@ impl_scope! {
         child_size: Size,
         scroll: ScrollComponent,
         sel_mode: SelectionMode,
+        sel_style: SelectionStyle,
         // TODO(opt): replace selection list with RangeOrSet type?
         selection: LinearSet<T::Key>,
         press_target: Option<(usize, T::Key)>,
@@ -115,6 +117,7 @@ impl_scope! {
                 child_size: Size::ZERO,
                 scroll: Default::default(),
                 sel_mode: SelectionMode::None,
+                sel_style: SelectionStyle::Highlight,
                 selection: Default::default(),
                 press_target: None,
             }
@@ -209,6 +212,32 @@ impl_scope! {
         #[must_use]
         pub fn with_selection_mode(mut self, mode: SelectionMode) -> Self {
             let _ = self.set_selection_mode(mode);
+            self
+        }
+
+        /// Get the current selection style
+        pub fn selection_style(&self) -> SelectionStyle {
+            self.sel_style
+        }
+        /// Set the current selection style
+        ///
+        /// By default, [`SelectionStyle::Highlight`] is used. Other modes may
+        /// add margin between elements.
+        pub fn set_selection_style(&mut self, style: SelectionStyle) -> Action {
+            let action = if style.is_external() != self.sel_style.is_external() {
+                Action::RESIZE
+            } else {
+                Action::empty()
+            };
+            self.sel_style = style;
+            action
+        }
+        /// Set the selection style (inline)
+        ///
+        /// See [`Self::set_selection_style`] documentation.
+        #[must_use]
+        pub fn with_selection_style(mut self, style: SelectionStyle) -> Self {
+            self.sel_style = style;
             self
         }
 
@@ -451,7 +480,11 @@ impl_scope! {
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
-            let inner_margin = size_mgr.inner_margins().extract(axis);
+            let inner_margin = if self.sel_style.is_external() {
+                size_mgr.inner_margins().extract(axis)
+            } else {
+                (0, 0)
+            };
             let frame = kas::layout::FrameRules::new(0, inner_margin, (0, 0));
 
             let other = axis.other().map(|mut size| {
@@ -569,10 +602,10 @@ impl_scope! {
                     // visible, so check intersection before drawing:
                     if rect.intersection(&child.widget.rect()).is_some() {
                         if let Some(ref key) = child.key {
-                            draw.recurse(&mut child.widget);
                             if self.selection.contains(key) {
-                                draw.selection_box(child.widget.rect());
+                                draw.selection(child.widget.rect(), self.sel_style);
                             }
+                            draw.recurse(&mut child.widget);
                         }
                     }
                 }

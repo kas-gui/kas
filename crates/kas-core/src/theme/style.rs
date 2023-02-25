@@ -94,6 +94,28 @@ pub enum FrameStyle {
     Window,
 }
 
+/// Selection style hint
+///
+/// How to draw selections
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub enum SelectionStyle {
+    /// Adjust background color
+    Highlight,
+    /// Draw a frame around the selection
+    Frame,
+    /// Both
+    Both,
+}
+
+impl SelectionStyle {
+    /// True if an external margin is required
+    ///
+    /// Margin size: [`SizeMgr::inner_margins`]
+    pub fn is_external(self) -> bool {
+        matches!(self, SelectionStyle::Frame | SelectionStyle::Both)
+    }
+}
+
 /// Class of text drawn
 ///
 /// Themes choose font, font size, colour, and alignment based on this.

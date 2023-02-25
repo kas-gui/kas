@@ -20,7 +20,7 @@ use kas::text::{fonts, Effect, TextApi, TextDisplay};
 use kas::theme::dimensions as dim;
 use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use kas::theme::{ColorsLinear, Config, InputState, Theme};
-use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
+use kas::theme::{SelectionStyle, ThemeControl, ThemeDraw, ThemeSize};
 use kas::{Action, WidgetId};
 
 /// A simple theme
@@ -362,12 +362,24 @@ where
         self.draw.rect(outer, self.cols.frame);
     }
 
-    fn selection_box(&mut self, rect: Rect) {
+    fn selection(&mut self, rect: Rect, style: SelectionStyle) {
         let inner = Quad::conv(rect);
-        let outer = inner.grow(self.w.dims.m_inner.into());
-        // TODO: this should use its own colour and a stippled pattern
-        let col = self.cols.text_sel_bg;
-        self.draw.frame(outer, inner, col);
+        match style {
+            SelectionStyle::Highlight => {
+                self.draw.rect(inner, self.cols.text_sel_bg);
+            }
+            SelectionStyle::Frame => {
+                let outer = inner.grow(self.w.dims.m_inner.into());
+                // TODO: this should use its own colour and a stippled pattern
+                let col = self.cols.accent;
+                self.draw.frame(outer, inner, col);
+            }
+            SelectionStyle::Both => {
+                let outer = inner.grow(self.w.dims.m_inner.into());
+                self.draw.rect(outer, self.cols.accent);
+                self.draw.rect(inner, self.cols.text_sel_bg);
+            }
+        }
     }
 
     fn text(&mut self, id: &WidgetId, rect: Rect, text: &TextDisplay, _: TextClass) {
