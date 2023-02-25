@@ -64,7 +64,7 @@ impl Extends {
                 (#base).get_clip_rect()
             }
 
-            fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle, bg: Background) {
+            fn frame(&mut self, id: &WidgetId, rect: Rect, style: ::kas::theme::FrameStyle, bg: Background) {
                 (#base).frame(id, rect, style, bg);
             }
 
@@ -72,8 +72,8 @@ impl Extends {
                 (#base).separator(rect);
             }
 
-            fn selection_box(&mut self, rect: Rect) {
-                (#base).selection_box(rect);
+            fn selection(&mut self, rect: Rect, style: ::kas::theme::SelectionStyle) {
+                (#base).selection(rect, style);
             }
 
             fn text(&mut self, id: &WidgetId, rect: Rect, text: &TextDisplay, class: TextClass) {

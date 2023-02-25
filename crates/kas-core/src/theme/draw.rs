@@ -5,7 +5,7 @@
 
 //! "Handle" types used by themes
 
-use super::{FrameStyle, MarkStyle, SizeMgr, TextClass, ThemeSize};
+use super::{FrameStyle, MarkStyle, SelectionStyle, SizeMgr, TextClass, ThemeSize};
 use crate::dir::Direction;
 use crate::draw::color::Rgb;
 use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType};
@@ -194,13 +194,13 @@ impl<'a> DrawMgr<'a> {
         self.h.separator(rect);
     }
 
-    /// Draw a selection box
+    /// Draw a selection highlight / frame
     ///
-    /// This appears as a dashed box or similar around this `rect`. Note that
-    /// the selection indicator is drawn *outside* of this rect, within a margin
-    /// of size [`SizeMgr::inner_margins`] that is expected to be present around this box.
-    pub fn selection_box(&mut self, rect: Rect) {
-        self.h.selection_box(rect);
+    /// Adjusts the background color and/or draws a line around the given rect.
+    /// In the latter case, a margin of size [`SizeMgr::inner_margins`] around
+    /// `rect` is expected.
+    pub fn selection(&mut self, rect: Rect, style: SelectionStyle) {
+        self.h.selection(rect, style);
     }
 
     /// Draw text
@@ -412,12 +412,8 @@ pub trait ThemeDraw {
     /// Draw a separator in the given `rect`
     fn separator(&mut self, rect: Rect);
 
-    /// Draw a selection box
-    ///
-    /// This appears as a dashed box or similar around this `rect`. Note that
-    /// the selection indicator is drawn *outside* of this rect, within a margin
-    /// of size `inner_margin` that is expected to be present around this box.
-    fn selection_box(&mut self, rect: Rect);
+    /// Draw a selection highlight / frame
+    fn selection(&mut self, rect: Rect, style: SelectionStyle);
 
     /// Draw text
     ///

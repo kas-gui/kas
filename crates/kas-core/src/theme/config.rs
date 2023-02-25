@@ -33,6 +33,25 @@ pub struct Config {
     color_schemes: BTreeMap<String, ColorsSrgb>,
 
     /// Font aliases, used when searching for a font family matching the key.
+    ///
+    /// Example:
+    /// ```yaml
+    /// font_aliases:
+    ///   sans-serif:
+    ///     mode: Prepend
+    ///     list:
+    ///     - noto sans
+    /// ```
+    ///
+    /// Fonts are named by *family*. Several standard families exist, e.g.
+    /// "serif", "sans-serif", "monospace"; these resolve to a list
+    /// of aliases (e.g. "Noto Sans", "DejaVu Sans", "Arial"), each of which may
+    /// have further aliases.
+    ///
+    /// In the above example, "noto sans" is inserted at the top of the alias
+    /// list for "sans-serif".
+    ///
+    /// Supported modes: `Prepend`, `Append`, `Replace`.
     #[cfg_attr(feature = "serde", serde(default))]
     font_aliases: BTreeMap<String, FontAliases>,
 

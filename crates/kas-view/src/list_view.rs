@@ -5,13 +5,14 @@
 
 //! List view controller
 
-use super::{driver, Driver, PressPhase, SelectionError, SelectionMode, SelectionMsg};
+use super::{driver, Driver, SelectionError, SelectionMode, SelectionMsg};
 use kas::event::components::ScrollComponent;
-use kas::event::{Command, CursorIcon, Scroll};
+use kas::event::{Command, Scroll};
 use kas::layout::{solve_size_rules, AlignHints};
 #[allow(unused)] use kas::model::SharedData;
 use kas::model::{ListData, SharedDataMut};
 use kas::prelude::*;
+use kas::theme::SelectionStyle;
 #[allow(unused)] // doc links
 use kas_widgets::ScrollBars;
 use kas_widgets::SelectMsg;
@@ -72,10 +73,10 @@ impl_scope! {
         child_size: Size,
         scroll: ScrollComponent,
         sel_mode: SelectionMode,
+        sel_style: SelectionStyle,
         // TODO(opt): replace selection list with RangeOrSet type?
         selection: LinearSet<T::Key>,
-        press_phase: PressPhase,
-        press_target: Option<T::Key>,
+        press_target: Option<(usize, T::Key)>,
     }
 
     impl Self
@@ -140,8 +141,8 @@ impl_scope! {
                 child_size: Size::ZERO,
                 scroll: Default::default(),
                 sel_mode: SelectionMode::None,
+                sel_style: SelectionStyle::Highlight,
                 selection: Default::default(),
-                press_phase: PressPhase::None,
                 press_target: None,
             }
         }
@@ -235,6 +236,32 @@ impl_scope! {
         #[must_use]
         pub fn with_selection_mode(mut self, mode: SelectionMode) -> Self {
             let _ = self.set_selection_mode(mode);
+            self
+        }
+
+        /// Get the current selection style
+        pub fn selection_style(&self) -> SelectionStyle {
+            self.sel_style
+        }
+        /// Set the current selection style
+        ///
+        /// By default, [`SelectionStyle::Highlight`] is used. Other modes may
+        /// add margin between elements.
+        pub fn set_selection_style(&mut self, style: SelectionStyle) -> Action {
+            let action = if style.is_external() != self.sel_style.is_external() {
+                Action::RESIZE
+            } else {
+                Action::empty()
+            };
+            self.sel_style = style;
+            action
+        }
+        /// Set the selection style (inline)
+        ///
+        /// See [`Self::set_selection_style`] documentation.
+        #[must_use]
+        pub fn with_selection_style(mut self, style: SelectionStyle) -> Self {
+            self.sel_style = style;
             self
         }
 
@@ -475,7 +502,11 @@ impl_scope! {
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
-            let inner_margin = size_mgr.inner_margins().extract(axis);
+            let inner_margin = if self.sel_style.is_external() {
+                size_mgr.inner_margins().extract(axis)
+            } else {
+                (0, 0)
+            };
             let frame = kas::layout::FrameRules::new(0, inner_margin, (0, 0));
 
             let other = axis.other().map(|mut size| {
@@ -581,12 +612,12 @@ impl_scope! {
             let offset = self.scroll_offset();
             draw.with_clip_region(self.core.rect, offset, |mut draw| {
                 for child in &mut self.widgets[..self.cur_len.cast()] {
-                    draw.recurse(&mut child.widget);
                     if let Some(ref key) = child.key {
                         if self.selection.contains(key) {
-                            draw.selection_box(child.widget.rect());
+                            draw.selection(child.widget.rect(), self.sel_style);
                         }
                     }
+                    draw.recurse(&mut child.widget);
                 }
             });
         }
@@ -662,7 +693,7 @@ impl_scope! {
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
-            match event {
+            let response = match event {
                 Event::Update { .. } => {
                     let data_ver = self.data.version();
                     if data_ver > self.data_ver {
@@ -671,52 +702,6 @@ impl_scope! {
                         self.data_ver = data_ver;
                     }
                     return Response::Used;
-                }
-                Event::PressStart { source, coord, .. } => {
-                    return if source.is_primary() {
-                        mgr.grab_press_unique(self.id(), source, coord, None);
-                        self.press_phase = PressPhase::Pan;
-                        Response::Used
-                    } else {
-                        Response::Unused
-                    };
-                }
-                Event::PressMove { coord, .. } => {
-                    if let PressPhase::Start(start_coord) = self.press_phase {
-                        if mgr.config_test_pan_thresh(coord - start_coord) {
-                            self.press_phase = PressPhase::Pan;
-                        }
-                    }
-                    match self.press_phase {
-                        PressPhase::Pan => {
-                            mgr.update_grab_cursor(self.id(), CursorIcon::Grabbing);
-                            // fall through to scroll handler
-                        }
-                        _ => return Response::Used,
-                    }
-                }
-                Event::PressEnd { ref end_id, .. } => {
-                    if self.press_phase == PressPhase::Pan {
-                        // fall through to scroll handler
-                    } else if end_id.is_some() {
-                        if let Some(ref key) = self.press_target {
-                            if mgr.config().mouse_nav_focus() {
-                                for w in &mut self.widgets {
-                                    if w.key.as_ref().map(|k| k == key).unwrap_or(false) {
-                                        mgr.next_nav_focus(&mut w.widget, false, false);
-                                        break;
-                                    }
-                                }
-                            }
-
-                            if !matches!(self.sel_mode, SelectionMode::None) {
-                                mgr.push(SelectMsg);
-                            }
-                        }
-                        return Response::Used;
-                    } else {
-                        return Response::Used;
-                    }
                 }
                 Event::Command(cmd) => {
                     let last = self.data.len().wrapping_sub(1);
@@ -761,34 +746,53 @@ impl_scope! {
                         Response::Unused
                     };
                 }
-                _ => (), // fall through to scroll handler
-            }
+                Event::PressStart { source, coord, .. } if source.is_primary() && mgr.config().mouse_nav_focus() => {
+                    if let Some((index, ref key)) = self.press_target {
+                        let w = &mut self.widgets[index];
+                        if w.key.as_ref().map(|k| k == key).unwrap_or(false) {
+                            mgr.next_nav_focus(&mut w.widget, false, false);
+                        }
+                    }
 
-            let (moved, r) = self
+                    // Press may also be grabbed by scroll component (replacing
+                    // this). Either way we can select on PressEnd.
+                    mgr.grab_press_unique(self.id(), source, coord, None);
+                    Response::Used
+                }
+                Event::PressMove { .. } => Response::Used,
+                Event::PressEnd { source, coord, .. } if source.is_primary() => {
+                    if let Some((index, ref key)) = self.press_target {
+                        let w = &mut self.widgets[index];
+                        if !matches!(self.sel_mode, SelectionMode::None)
+                            && !self.scroll.is_gliding()
+                            && w.key.as_ref().map(|k| k == key).unwrap_or(false)
+                            && w.widget.rect().contains(coord + self.scroll.offset())
+                        {
+                            mgr.push(SelectMsg);
+                        }
+                    }
+                    Response::Used
+                }
+                _ => Response::Unused, // fall through to scroll handler
+            };
+
+            let (moved, sber_response) = self
                 .scroll
                 .scroll_by_event(mgr, event, self.id(), self.core.rect);
             if moved {
                 mgr.config_mgr(|mgr| self.update_widgets(mgr));
             }
-            r
+            response | sber_response
         }
 
         fn handle_unused(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
-            if let Event::PressStart { source, coord, .. } = event {
-                if source.is_primary() {
-                    // We request a grab with our ID, hence the
-                    // PressMove/PressEnd events are matched in handle_event().
-                    mgr.grab_press_unique(self.id(), source, coord, None);
-                    self.press_phase = PressPhase::Start(coord);
-                    let index = mgr.last_child().unwrap();
-                    self.press_target = self.widgets[index].key.clone();
-                    Response::Used
-                } else {
-                    Response::Unused
+            if matches!(&event, Event::PressStart { .. }) {
+                if let Some(index) = mgr.last_child() {
+                    self.press_target = self.widgets[index].key.clone().map(|k| (index, k));
                 }
-            } else {
-                self.handle_event(mgr, event)
             }
+
+            self.handle_event(mgr, event)
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr) {
@@ -803,7 +807,10 @@ impl_scope! {
                 self.driver.on_message(mgr, &mut w.widget, &self.data, &key);
             } else {
                 // Message is from self
-                key = self.press_target.clone().unwrap();
+                key = match self.press_target.clone() {
+                    Some((_, k)) => k,
+                    None => return,
+                };
             }
 
             if let Some(SelectMsg) = mgr.try_pop() {

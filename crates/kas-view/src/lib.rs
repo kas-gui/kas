@@ -56,13 +56,6 @@ pub enum SelectionMsg<K> {
     Deselect(K),
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-enum PressPhase {
-    None,
-    Start(kas::geom::Coord),
-    Pan,
-}
-
 /// Selection mode used by [`ListView`]
 #[derive(Clone, Copy, Debug, Default)]
 pub enum SelectionMode {
