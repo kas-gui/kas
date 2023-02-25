@@ -130,6 +130,12 @@ pub struct ScrollComponent {
 }
 
 impl ScrollComponent {
+    /// True if momentum scrolling is active
+    #[inline]
+    pub fn is_gliding(&self) -> bool {
+        self.glide.vel != Vec2::ZERO
+    }
+
     /// Get the maximum offset
     ///
     /// Note: the minimum offset is always zero.
@@ -307,12 +313,16 @@ impl ScrollComponent {
                 mgr.grab_press_unique(id, source, coord, icon);
                 self.glide.press_start();
             }
-            Event::PressMove { delta, .. } => {
+            Event::PressMove { source, delta, .. }
+                if self.max_offset != Offset::ZERO && mgr.config_enable_pan(source) =>
+            {
                 if self.glide.press_move(delta) {
                     moved = self.scroll_by_delta(mgr, delta);
                 }
             }
-            Event::PressEnd { .. } => {
+            Event::PressEnd { source, .. }
+                if self.max_offset != Offset::ZERO && mgr.config_enable_pan(source) =>
+            {
                 let timeout = mgr.config().scroll_flick_timeout();
                 let pan_dist_thresh = mgr.config().pan_dist_thresh();
                 if self.glide.press_end(timeout, pan_dist_thresh) {
