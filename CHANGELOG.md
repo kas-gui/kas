@@ -2,6 +2,32 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] — 2023-02-26
+
+### Additions
+
+-   Add `EventMgr::push_async`, `push_spawn` (#376)
+-   Support transparent windows (#380)
+-   Support borderless windows and basic toolkit-drawn titlebar (#380)
+
+### Changes
+
+-   Move theme traits, `SimpleTheme` and `FlatTheme` to kas-core (#374)
+-   Move `ShadedTheme` to kas-wgpu (#374)
+-   Move `Shell` to kas-core. Add `WindowSurface`, `GraphicalShell`,
+    `ShellAssoc` traits for better abstraction of shell implementation.
+    Add `kas::shell::DefaultShell`. (#375)
+-   Rename `ToolkitProxy` → `Proxy`, `TkAction` → `Action` (#375)
+-   `Widget::handle_message` is now called on the widget submitting a message (#376)
+-   `Canvas` uses async rendering (#376)
+-   `Svg` uses async rendering (#378)
+-   Update to Winit 0.28, Wgpu 0.15, dark-light 1.0 (#379)
+-   Improved momentum scrolling (#381)
+
+### Fixes
+
+-   Translate pop-up menus inside scroll regions (#373)
+
 ## [0.12.1] — 2022-12-22
 
 ### Fixes
