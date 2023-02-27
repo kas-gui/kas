@@ -45,19 +45,13 @@ impl PressSource {
     /// Returns true if this represents the right mouse button
     #[inline]
     pub fn is_secondary(self) -> bool {
-        match self {
-            PressSource::Mouse(MouseButton::Right, _) => true,
-            _ => false,
-        }
+        matches!(self, PressSource::Mouse(MouseButton::Right, _))
     }
 
     /// Returns true if this represents the middle mouse button
     #[inline]
     pub fn is_tertiary(self) -> bool {
-        match self {
-            PressSource::Mouse(MouseButton::Middle, _) => true,
-            _ => false,
-        }
+        matches!(self, PressSource::Mouse(MouseButton::Middle, _))
     }
 
     /// Returns true if this represents a touch event
