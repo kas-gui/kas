@@ -26,7 +26,9 @@ pub enum GripMsg {
     /// the posision; e.g. `Slider` pins the position to the nearest detent.
     PressMove(Offset),
     /// Widget received [`Event::PressEnd`]
-    PressEnd,
+    ///
+    /// Parameter: `success` (see [`Event::PressEnd`]).
+    PressEnd(bool),
 }
 
 impl_scope! {
@@ -104,8 +106,8 @@ impl_scope! {
                     mgr.push(GripMsg::PressMove(offset));
                     Response::Used
                 }
-                Event::PressEnd { .. } => {
-                    mgr.push(GripMsg::PressEnd);
+                Event::PressEnd { success, .. } => {
+                    mgr.push(GripMsg::PressEnd(success));
                     Response::Used
                 }
                 _ => Response::Unused,

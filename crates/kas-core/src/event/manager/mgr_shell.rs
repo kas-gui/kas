@@ -456,19 +456,15 @@ impl<'a> EventMgr<'a> {
                     self.last_click_timeout = now + DOUBLE_CLICK_TIMEOUT;
                 }
 
-                if let Some(grab) = self.remove_mouse_grab() {
-                    if grab.mode == GrabMode::Grab {
-                        // Mouse grab active: send events there
-                        // Note: any button release may end the grab (intended).
-                        let event = Event::PressEnd {
-                            source: PressSource::Mouse(grab.button, grab.repetitions),
-                            end_id: self.hover.clone(),
-                            coord,
-                            success: state == ElementState::Released,
-                        };
-                        self.send_event(widget, grab.start_id, event);
+                if self
+                    .mouse_grab
+                    .as_ref()
+                    .map(|g| g.button == button)
+                    .unwrap_or(false)
+                {
+                    if let Some((id, event)) = self.remove_mouse_grab(true) {
+                        self.send_event(widget, id, event);
                     }
-                    // Pan events do not receive Start/End notifications
                 }
 
                 if state == ElementState::Pressed {
@@ -491,7 +487,7 @@ impl<'a> EventMgr<'a> {
                     };
                     let used = self.send_popup_first(widget, self.hover.clone(), event);
 
-                    if !used && widget.drag_anywhere() {
+                    if !used && self.mouse_grab.is_none() && widget.drag_anywhere() {
                         self.shell.drag_window();
                     }
                 }

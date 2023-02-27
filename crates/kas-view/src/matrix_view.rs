@@ -789,10 +789,11 @@ impl_scope! {
                     Response::Used
                 }
                 Event::PressMove { .. } => Response::Used,
-                Event::PressEnd { source, coord, .. } if source.is_primary() => {
+                Event::PressEnd { source, coord, success, .. } if source.is_primary() => {
                     if let Some((index, ref key)) = self.press_target {
                         let w = &mut self.widgets[index];
-                        if !matches!(self.sel_mode, SelectionMode::None)
+                        if success
+                            && !matches!(self.sel_mode, SelectionMode::None)
                             && !self.scroll.is_gliding()
                             && w.key.as_ref().map(|k| k == key).unwrap_or(false)
                             && w.widget.rect().contains(coord + self.scroll.offset())

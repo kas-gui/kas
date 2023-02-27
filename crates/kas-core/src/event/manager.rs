@@ -549,13 +549,24 @@ impl<'a> EventMgr<'a> {
     }
 
     // Clears mouse grab and pan grab, resets cursor and redraws
-    fn remove_mouse_grab(&mut self) -> Option<MouseGrab> {
+    fn remove_mouse_grab(&mut self, success: bool) -> Option<(WidgetId, Event)> {
         if let Some(grab) = self.mouse_grab.take() {
             log::trace!("remove_mouse_grab: start_id={}", grab.start_id);
             self.shell.set_cursor_icon(self.hover_icon);
             self.send_action(Action::REDRAW); // redraw(..)
-            self.remove_pan_grab(grab.pan_grab);
-            Some(grab)
+            if grab.mode.is_pan() {
+                self.remove_pan_grab(grab.pan_grab);
+                // Pan grabs do not receive Event::PressEnd
+                None
+            } else {
+                let event = Event::PressEnd {
+                    source: PressSource::Mouse(grab.button, grab.repetitions),
+                    end_id: self.hover.clone(),
+                    coord: self.last_mouse_coord,
+                    success,
+                };
+                Some((grab.start_id, event))
+            }
         } else {
             None
         }

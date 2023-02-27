@@ -821,10 +821,9 @@ impl<'a> EventMgr<'a> {
     ///
     /// Notes:
     ///
-    /// -   For mouse sources, a click-press event from another button will
-    ///     cancel this grab; [`Event::PressEnd`] will be sent (with mode
-    ///     [`GrabMode::Grab`]), then [`Event::PressStart`] will be sent to the
-    ///     widget under the mouse like normal.
+    /// -   Only a single mouse grab is allowed at any one time; requesting a
+    ///     second will cancel the first (sending [`Event::PressEnd`] with
+    ///     `success: false`).
     /// -   For touch-screen sources, events are delivered until the finger is
     ///     removed or the touch is cancelled (e.g. by dragging off-screen).
     /// -   [`Self::grab_press_unique`] is a variant of this method which
@@ -853,9 +852,8 @@ impl<'a> EventMgr<'a> {
         let mut pan_grab = (u16::MAX, 0);
         match source {
             PressSource::Mouse(button, repetitions) => {
-                if self.remove_mouse_grab().is_some() {
-                    #[cfg(debug_assertions)]
-                    log::error!(target: "kas_core::event::manager", "grab_press: existing mouse grab!");
+                if let Some((id, event)) = self.remove_mouse_grab(false) {
+                    self.pending.push_back(Pending::Send(id, event));
                 }
                 if mode.is_pan() {
                     pan_grab = self.set_pan_on(id.clone(), mode, false, coord);
@@ -878,7 +876,7 @@ impl<'a> EventMgr<'a> {
             PressSource::Touch(touch_id) => {
                 if self.remove_touch(touch_id).is_some() {
                     #[cfg(debug_assertions)]
-                    log::error!(target: "kas_core::event::manager", "grab_press: existing touch grab!");
+                    log::error!(target: "kas_core::event::manager", "grab_press: touch_id conflict!");
                 }
                 if mode.is_pan() {
                     pan_grab = self.set_pan_on(id.clone(), mode, true, coord);
@@ -911,11 +909,6 @@ impl<'a> EventMgr<'a> {
         coord: Coord,
         cursor: Option<CursorIcon>,
     ) {
-        if id == self.mouse_grab.as_ref().map(|grab| &grab.start_id) {
-            self.remove_mouse_grab();
-        }
-        self.touch_grab.retain(|grab| id != grab.start_id);
-
         self.grab_press(id, source, coord, GrabMode::Grab, cursor);
     }
 
