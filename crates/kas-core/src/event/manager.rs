@@ -29,7 +29,7 @@ mod mgr_pub;
 mod mgr_shell;
 mod press;
 pub use config_mgr::ConfigMgr;
-pub use press::{GrabBuilder, Press};
+pub use press::{GrabBuilder, Press, PressSource};
 
 /// Controls the types of events delivered by [`EventMgr::grab_press`]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

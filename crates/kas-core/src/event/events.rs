@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 #[allow(unused)]
 use super::{EventMgr, EventState, GrabMode, Response}; // for doc-links
-use super::{MouseButton, Press, UpdateId, VirtualKeyCode};
+use super::{Press, UpdateId, VirtualKeyCode};
 use crate::geom::{DVec2, Offset};
 #[allow(unused)] use crate::Widget;
 use crate::{dir::Direction, WidgetId, WindowId};
@@ -510,55 +510,6 @@ impl Command {
             Command::Up => Some(Direction::Up),
             Command::Down => Some(Direction::Down),
             _ => None,
-        }
-    }
-}
-
-/// Source of `EventChild::Press`
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum PressSource {
-    /// A mouse click
-    ///
-    /// Arguments: `button, repeats`.
-    ///
-    /// The `repeats` argument is used for double-clicks and similar. For a
-    /// single-click, `repeats == 1`; for a double-click it is 2, for a
-    /// triple-click it is 3, and so on (without upper limit).
-    ///
-    /// For `PressMove` and `PressEnd` events delivered with a mouse-grab,
-    /// both arguments are copied from the initiating `PressStart` event.
-    /// For a `PressMove` delivered without a grab (only possible with pop-ups)
-    /// a fake `button` value is used and `repeats == 0`.
-    Mouse(MouseButton, u32),
-    /// A touch event (with given `id`)
-    Touch(u64),
-}
-
-impl PressSource {
-    /// Returns true if this represents the left mouse button or a touch event
-    #[inline]
-    pub fn is_primary(self) -> bool {
-        match self {
-            PressSource::Mouse(button, _) => button == MouseButton::Left,
-            PressSource::Touch(_) => true,
-        }
-    }
-
-    /// Returns true if this represents a touch event
-    #[inline]
-    pub fn is_touch(self) -> bool {
-        matches!(self, PressSource::Touch(_))
-    }
-
-    /// The `repetitions` value
-    ///
-    /// This is 1 for a single-click and all touch events, 2 for a double-click,
-    /// 3 for a triple-click, etc. For `PressMove` without a grab this is 0.
-    #[inline]
-    pub fn repetitions(self) -> u32 {
-        match self {
-            PressSource::Mouse(_, repetitions) => repetitions,
-            PressSource::Touch(_) => 1,
         }
     }
 }
