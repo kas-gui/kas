@@ -17,14 +17,13 @@ use kas::theme::Theme;
 use kas::util::warn_about_error;
 use kas::{draw, WindowId};
 
-#[cfg(feature = "clipboard")]
-use copypasta::{ClipboardContext, ClipboardProvider};
+#[cfg(feature = "clipboard")] use arboard::Clipboard;
 
 /// State shared between windows
 pub struct SharedState<S: WindowSurface, T> {
     pub(super) platform: Platform,
     #[cfg(feature = "clipboard")]
-    clipboard: Option<ClipboardContext>,
+    clipboard: Option<Clipboard>,
     pub(super) draw: draw::SharedState<S::Shared>,
     pub(super) theme: T,
     pub(super) config: SharedRc<kas::event::Config>,
@@ -53,10 +52,10 @@ where
         theme.init(&mut draw);
 
         #[cfg(feature = "clipboard")]
-        let clipboard = match ClipboardContext::new() {
+        let clipboard = match Clipboard::new() {
             Ok(cb) => Some(cb),
             Err(e) => {
-                warn_about_error("Failed to connect clipboard", e.as_ref());
+                warn_about_error("Failed to connect clipboard", &e);
                 None
             }
         };
@@ -86,9 +85,9 @@ where
         #[cfg(feature = "clipboard")]
         {
             if let Some(cb) = self.clipboard.as_mut() {
-                match cb.get_contents() {
+                match cb.get_text() {
                     Ok(s) => return Some(s),
-                    Err(e) => warn_about_error("Failed to get clipboard contents", e.as_ref()),
+                    Err(e) => warn_about_error("Failed to get clipboard contents", &e),
                 }
             }
         }
@@ -100,9 +99,9 @@ where
     pub fn set_clipboard(&mut self, _content: String) {
         #[cfg(feature = "clipboard")]
         if let Some(cb) = self.clipboard.as_mut() {
-            match cb.set_contents(_content) {
+            match cb.set_text(_content) {
                 Ok(()) => (),
-                Err(e) => warn_about_error("Failed to set clipboard contents", e.as_ref()),
+                Err(e) => warn_about_error("Failed to set clipboard contents", &e),
             }
         }
     }
