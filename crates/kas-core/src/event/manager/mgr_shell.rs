@@ -399,12 +399,12 @@ impl<'a> EventMgr<'a> {
                     }
                 } else if let Some(id) = self.popups.last().map(|(_, p, _)| p.parent.clone()) {
                     let source = PressSource::Mouse(FAKE_MOUSE_BUTTON, 0);
-                    let event = Event::PressMove {
+                    let press = Press {
                         source,
-                        cur_id,
+                        id: cur_id,
                         coord,
-                        delta,
                     };
+                    let event = Event::PressMove { press, delta };
                     self.send_event(widget, id, event);
                 } else {
                     // We don't forward move events without a grab
@@ -480,11 +480,12 @@ impl<'a> EventMgr<'a> {
                     }
 
                     let source = PressSource::Mouse(button, self.last_click_repetitions);
-                    let event = Event::PressStart {
+                    let press = Press {
                         source,
-                        start_id: self.hover.clone(),
+                        id: self.hover.clone(),
                         coord,
                     };
+                    let event = Event::PressStart { press };
                     let used = self.send_popup_first(widget, self.hover.clone(), event);
 
                     if !used && self.mouse_grab.is_none() && widget.drag_anywhere() {
@@ -509,11 +510,12 @@ impl<'a> EventMgr<'a> {
                                 }
                             }
 
-                            let event = Event::PressStart {
+                            let press = Press {
                                 source,
-                                start_id: start_id.clone(),
+                                id: start_id.clone(),
                                 coord,
                             };
+                            let event = Event::PressStart { press };
                             self.send_popup_first(widget, start_id, event);
                         }
                     }
@@ -553,12 +555,10 @@ impl<'a> EventMgr<'a> {
                             }
 
                             if grab.mode == GrabMode::Grab {
-                                let event = Event::PressEnd {
-                                    source,
-                                    end_id: grab.cur_id.clone(),
-                                    coord,
-                                    success: ev == TouchPhase::Ended,
-                                };
+                                let id = grab.cur_id.clone();
+                                let press = Press { source, id, coord };
+                                let success = ev == TouchPhase::Ended;
+                                let event = Event::PressEnd { press, success };
                                 self.send_event(widget, grab.start_id, event);
                             }
                         }

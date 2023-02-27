@@ -775,7 +775,7 @@ impl_scope! {
                         Response::Unused
                     };
                 }
-                Event::PressStart { source, coord, .. } if source.is_primary() && mgr.config().mouse_nav_focus() => {
+                Event::PressStart { ref press } if press.is_primary() && mgr.config().mouse_nav_focus() => {
                     if let Some((index, ref key)) = self.press_target {
                         let w = &mut self.widgets[index];
                         if w.key.as_ref().map(|k| k == key).unwrap_or(false) {
@@ -785,18 +785,18 @@ impl_scope! {
 
                     // Press may also be grabbed by scroll component (replacing
                     // this). Either way we can select on PressEnd.
-                    mgr.grab_press_unique(self.id(), source, coord, None);
+                    mgr.grab_press_unique(self.id(), press.source, press.coord, None);
                     Response::Used
                 }
                 Event::PressMove { .. } => Response::Used,
-                Event::PressEnd { source, coord, success, .. } if source.is_primary() => {
+                Event::PressEnd { ref press, success } if press.is_primary() => {
                     if let Some((index, ref key)) = self.press_target {
                         let w = &mut self.widgets[index];
                         if success
                             && !matches!(self.sel_mode, SelectionMode::None)
                             && !self.scroll.is_gliding()
                             && w.key.as_ref().map(|k| k == key).unwrap_or(false)
-                            && w.widget.rect().contains(coord + self.scroll.offset())
+                            && w.widget.rect().contains(press.coord + self.scroll.offset())
                         {
                             mgr.push(SelectMsg);
                         }

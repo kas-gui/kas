@@ -92,16 +92,16 @@ impl_scope! {
     impl Widget for GripPart {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
-                Event::PressStart { source, coord, .. } => {
+                Event::PressStart { press, .. } => {
                     mgr.push(GripMsg::PressStart);
-                    mgr.grab_press_unique(self.id(), source, coord, Some(CursorIcon::Grabbing));
+                    mgr.grab_press_unique(self.id(), *press, press.coord, Some(CursorIcon::Grabbing));
 
                     // Event delivery implies coord is over the grip.
-                    self.press_coord = coord - self.offset();
+                    self.press_coord = press.coord - self.offset();
                     Response::Used
                 }
-                Event::PressMove { coord, .. } => {
-                    let offset = coord - self.press_coord;
+                Event::PressMove { press, .. } => {
+                    let offset = press.coord - self.press_coord;
                     let offset = offset.clamp(Offset::ZERO, self.max_offset());
                     mgr.push(GripMsg::PressMove(offset));
                     Response::Used

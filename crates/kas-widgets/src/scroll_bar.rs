@@ -309,8 +309,8 @@ impl_scope! {
                     *mgr |= Action::REDRAW;
                     Response::Used
                 }
-                Event::PressStart { source, coord, .. } => {
-                    let offset = self.handle.handle_press_on_track(mgr, source, coord);
+                Event::PressStart { press } => {
+                    let offset = self.handle.handle_press_on_track(mgr, *press, press.coord);
                     self.apply_grip_offset(mgr, offset);
                     Response::Used
                 }

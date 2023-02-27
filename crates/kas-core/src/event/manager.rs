@@ -91,12 +91,12 @@ impl<'a> EventMgr<'a> {
                 }
                 GrabMode::Grab => {
                     let target = grab.start_id.clone();
-                    let event = Event::PressMove {
+                    let press = Press {
                         source: PressSource::Mouse(grab.button, grab.repetitions),
-                        cur_id: grab.cur_id.clone(),
+                        id: grab.cur_id.clone(),
                         coord: grab.coord,
-                        delta,
                     };
+                    let event = Event::PressMove { press, delta };
                     self.send_event(widget, target, event);
                 }
                 _ => (),
@@ -140,12 +140,12 @@ impl TouchGrab {
         if self.mode == GrabMode::Grab && self.last_move != self.coord {
             let delta = self.coord - self.last_move;
             let target = self.start_id.clone();
-            let event = Event::PressMove {
+            let press = Press {
                 source: PressSource::Touch(self.id),
-                cur_id: self.cur_id.clone(),
+                id: self.cur_id.clone(),
                 coord: self.coord,
-                delta,
             };
+            let event = Event::PressMove { press, delta };
             self.last_move = self.coord;
             Some((target, event))
         } else {
@@ -559,12 +559,12 @@ impl<'a> EventMgr<'a> {
                 // Pan grabs do not receive Event::PressEnd
                 None
             } else {
-                let event = Event::PressEnd {
+                let press = Press {
                     source: PressSource::Mouse(grab.button, grab.repetitions),
-                    end_id: self.hover.clone(),
+                    id: self.hover.clone(),
                     coord: self.last_mouse_coord,
-                    success,
                 };
+                let event = Event::PressEnd { press, success };
                 Some((grab.start_id, event))
             }
         } else {

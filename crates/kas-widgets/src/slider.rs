@@ -333,8 +333,8 @@ impl_scope! {
                         }
                     }
                 }
-                Event::PressStart { source, coord, .. } => {
-                    let offset = self.handle.handle_press_on_track(mgr, source, coord);
+                Event::PressStart { press } => {
+                    let offset = self.handle.handle_press_on_track(mgr, *press, press.coord);
                     self.apply_grip_offset(mgr, offset);
                 }
                 _ => return Response::Unused,

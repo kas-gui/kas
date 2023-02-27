@@ -15,6 +15,18 @@ use crate::geom::{Coord, DVec2, Offset};
 #[allow(unused)] use crate::Widget;
 use crate::{dir::Direction, WidgetId, WindowId};
 
+/// Details of press events
+#[crate::autoimpl(Deref using self.source)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Press {
+    /// Source
+    pub source: PressSource,
+    /// Identifier of current widget
+    pub id: Option<WidgetId>,
+    /// Current coordinate
+    pub coord: Coord,
+}
+
 /// Events addressed to a widget
 ///
 /// Note regarding disabled widgets: [`Event::Update`], [`Event::PopupRemoved`]
@@ -115,11 +127,7 @@ pub enum Event {
     ///
     /// When handling, it may be desirable to call [`EventMgr::grab_press`] in
     /// order to receive corresponding Move and End events from this `source`.
-    PressStart {
-        source: PressSource,
-        start_id: Option<WidgetId>,
-        coord: Coord,
-    },
+    PressStart { press: Press },
     /// Movement of mouse or a touch press
     ///
     /// This event is sent in exactly two cases, in this order:
@@ -132,12 +140,7 @@ pub enum Event {
     ///
     /// If `cur_id` is `None`, no widget was found at the coordinate (either
     /// outside the window or [`crate::Layout::find_id`] failed).
-    PressMove {
-        source: PressSource,
-        cur_id: Option<WidgetId>,
-        coord: Coord,
-        delta: Offset,
-    },
+    PressMove { press: Press, delta: Offset },
     /// End of a click/touch press
     ///
     /// If `success`, this is a button-release or touch finish; otherwise this
@@ -154,12 +157,7 @@ pub enum Event {
     ///
     /// If `cur_id` is `None`, no widget was found at the coordinate (either
     /// outside the window or [`crate::Layout::find_id`] failed).
-    PressEnd {
-        source: PressSource,
-        end_id: Option<WidgetId>,
-        coord: Coord,
-        success: bool,
-    },
+    PressEnd { press: Press, success: bool },
     /// Update from a timer
     ///
     /// This event is received after requesting timed wake-up(s)
@@ -225,14 +223,14 @@ impl std::ops::Add<Offset> for Event {
 impl std::ops::AddAssign<Offset> for Event {
     fn add_assign(&mut self, offset: Offset) {
         match self {
-            Event::PressStart { coord, .. } => {
-                *coord += offset;
+            Event::PressStart { ref mut press, .. } => {
+                press.coord += offset;
             }
-            Event::PressMove { coord, .. } => {
-                *coord += offset;
+            Event::PressMove { ref mut press, .. } => {
+                press.coord += offset;
             }
-            Event::PressEnd { coord, .. } => {
-                *coord += offset;
+            Event::PressEnd { ref mut press, .. } => {
+                press.coord += offset;
             }
             _ => (),
         }
@@ -255,14 +253,17 @@ impl Event {
     ) -> Response {
         match self {
             Event::Command(cmd) if cmd.is_activate() => f(mgr),
-            Event::PressStart { source, coord, .. } if source.is_primary() => {
-                mgr.grab_press(id, source, coord, GrabMode::Grab, None);
+            Event::PressStart { press, .. } if press.is_primary() => {
+                mgr.grab_press(id, press.source, press.coord, GrabMode::Grab, None);
                 Response::Used
             }
-            Event::PressEnd {
-                end_id, success, ..
-            } if success && id == end_id => f(mgr),
-            Event::PressEnd { .. } => Response::Used,
+            Event::PressEnd { press, success } => {
+                if success && id == press.id {
+                    f(mgr)
+                } else {
+                    Response::Used
+                }
+            }
             _ => Response::Unused,
         }
     }
