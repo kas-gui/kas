@@ -46,7 +46,7 @@ json = ["serde", "dep:serde_json"]
 ron = ["serde", "dep:ron"]
 
 # Enables clipboard read/write
-clipboard = ["dep:copypasta"]
+clipboard = ["dep:copypasta", "dep:smithay-clipboard"]
 
 # Inject logging into macro-generated code.
 # Requires that all crates using these macros depend on the log crate.
@@ -70,6 +70,9 @@ dark-light = ["dep:dark-light"]
 # Support spawning async tasks
 spawn = ["dep:async-global-executor"]
 
+[build-dependencies]
+cfg_aliases = "0.1.1"
+
 [dependencies]
 log = "0.4"
 smallvec = "1.6.1"
@@ -87,6 +90,7 @@ raw-window-handle = "0.5.0"
 async-global-executor = { version = "2.3.1", optional = true }
 cfg-if = "1.0.0"
 copypasta = { version = "0.8.2", optional = true }
+smithay-clipboard = { version = "0.6.6", optional = true }
 
 [dependencies.kas-macros]
 version = "0.13.0"

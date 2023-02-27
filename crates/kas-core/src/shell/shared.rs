@@ -52,10 +52,19 @@ where
         let mut draw = kas::draw::SharedState::new(draw_shared, platform);
         theme.init(&mut draw);
 
+        #[cfg(feature = "clipboard")]
+        let clipboard = match ClipboardContext::new() {
+            Ok(cb) => Some(cb),
+            Err(e) => {
+                warn_about_error("Failed to connect clipboard", e.as_ref());
+                None
+            }
+        };
+
         Ok(SharedState {
             platform,
             #[cfg(feature = "clipboard")]
-            clipboard: None,
+            clipboard,
             draw,
             theme,
             config,
@@ -65,20 +74,6 @@ where
             window_id: 0,
             options,
         })
-    }
-
-    /// Initialise the clipboard context
-    ///
-    /// This requires a window handle (on some platforms), thus is done when the
-    /// first window is constructed.
-    pub fn init_clipboard(&mut self, _window: &winit::window::Window) {
-        #[cfg(feature = "clipboard")]
-        {
-            match ClipboardContext::new() {
-                Ok(cb) => self.clipboard = Some(cb),
-                Err(e) => warn_about_error("Failed to connect clipboard", e.as_ref()),
-            }
-        }
     }
 
     pub fn next_window_id(&mut self) -> WindowId {
