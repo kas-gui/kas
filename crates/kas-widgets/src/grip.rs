@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use kas::event::{CursorIcon, PressSource};
+use kas::event::{CursorIcon, Press};
 use kas::prelude::*;
 
 /// A message from a [`GripPart`]
@@ -94,7 +94,9 @@ impl_scope! {
             match event {
                 Event::PressStart { press, .. } => {
                     mgr.push(GripMsg::PressStart);
-                    mgr.grab_press_unique(self.id(), *press, press.coord, Some(CursorIcon::Grabbing));
+                    press.grab(self.id())
+                        .with_icon(CursorIcon::Grabbing)
+                        .with_mgr(mgr);
 
                     // Event delivery implies coord is over the grip.
                     self.press_coord = press.coord - self.offset();
@@ -182,17 +184,15 @@ impl GripPart {
     /// The grip position is not adjusted; the caller should also call
     /// [`Self::set_offset`] to do so. This is separate to allow adjustment of
     /// the posision; e.g. `Slider` pins the position to the nearest detent.
-    pub fn handle_press_on_track(
-        &mut self,
-        mgr: &mut EventMgr,
-        source: PressSource,
-        coord: Coord,
-    ) -> Offset {
-        mgr.grab_press_unique(self.id(), source, coord, Some(CursorIcon::Grabbing));
+    pub fn handle_press_on_track(&mut self, mgr: &mut EventMgr, press: &Press) -> Offset {
+        press
+            .grab(self.id())
+            .with_icon(CursorIcon::Grabbing)
+            .with_mgr(mgr);
 
-        let offset = coord - self.track.pos - Offset::conv(self.core.rect.size / 2);
+        let offset = press.coord - self.track.pos - Offset::conv(self.core.rect.size / 2);
         let offset = offset.clamp(Offset::ZERO, self.max_offset());
-        self.press_coord = coord - offset;
+        self.press_coord = press.coord - offset;
         offset
     }
 }

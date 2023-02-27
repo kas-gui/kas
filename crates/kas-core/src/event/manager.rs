@@ -27,7 +27,9 @@ use crate::{Action, Erased, Widget, WidgetExt, WidgetId, WindowId};
 mod config_mgr;
 mod mgr_pub;
 mod mgr_shell;
+mod press;
 pub use config_mgr::ConfigMgr;
+pub use press::{GrabBuilder, Press};
 
 /// Controls the types of events delivered by [`EventMgr::grab_press`]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

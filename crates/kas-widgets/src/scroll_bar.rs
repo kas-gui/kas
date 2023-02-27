@@ -310,7 +310,7 @@ impl_scope! {
                     Response::Used
                 }
                 Event::PressStart { press } => {
-                    let offset = self.handle.handle_press_on_track(mgr, *press, press.coord);
+                    let offset = self.handle.handle_press_on_track(mgr, &press);
                     self.apply_grip_offset(mgr, offset);
                     Response::Used
                 }

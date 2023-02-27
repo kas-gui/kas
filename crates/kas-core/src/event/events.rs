@@ -10,22 +10,10 @@ use serde::{Deserialize, Serialize};
 
 #[allow(unused)]
 use super::{EventMgr, EventState, GrabMode, Response}; // for doc-links
-use super::{MouseButton, UpdateId, VirtualKeyCode};
-use crate::geom::{Coord, DVec2, Offset};
+use super::{MouseButton, Press, UpdateId, VirtualKeyCode};
+use crate::geom::{DVec2, Offset};
 #[allow(unused)] use crate::Widget;
 use crate::{dir::Direction, WidgetId, WindowId};
-
-/// Details of press events
-#[crate::autoimpl(Deref using self.source)]
-#[derive(Clone, Debug, PartialEq)]
-pub struct Press {
-    /// Source
-    pub source: PressSource,
-    /// Identifier of current widget
-    pub id: Option<WidgetId>,
-    /// Current coordinate
-    pub coord: Coord,
-}
 
 /// Events addressed to a widget
 ///
@@ -59,6 +47,9 @@ pub enum Event {
     /// A mouse or touchpad scroll event
     Scroll(ScrollDelta),
     /// A mouse or touch-screen move/zoom/rotate event
+    ///
+    /// This event is sent for certain types of grab ([`EventMgr::grab_press`]),
+    /// enabling two-finger scale/rotate gestures as well as translation.
     ///
     /// Mouse-grabs generate translation (`delta` component) only. Touch grabs
     /// optionally also generate rotation and scaling components, depending on
@@ -114,6 +105,9 @@ pub enum Event {
     },
     /// A mouse button was pressed or touch event started
     ///
+    /// Call [`EventMgr::grab_press`] in order to "grab" corresponding motion
+    /// and release events.
+    ///
     /// This event is sent in exactly two cases, in this order:
     ///
     /// 1.  When a pop-up layer is active ([`EventMgr::add_popup`]), the owner
@@ -124,9 +118,6 @@ pub enum Event {
     ///
     /// If `start_id` is `None`, then no widget was found at the coordinate and
     /// the event will only be delivered to pop-up layer owners.
-    ///
-    /// When handling, it may be desirable to call [`EventMgr::grab_press`] in
-    /// order to receive corresponding Move and End events from this `source`.
     PressStart { press: Press },
     /// Movement of mouse or a touch press
     ///
@@ -253,10 +244,7 @@ impl Event {
     ) -> Response {
         match self {
             Event::Command(cmd) if cmd.is_activate() => f(mgr),
-            Event::PressStart { press, .. } if press.is_primary() => {
-                mgr.grab_press(id, press.source, press.coord, GrabMode::Grab, None);
-                Response::Used
-            }
+            Event::PressStart { press, .. } if press.is_primary() => press.grab(id).with_mgr(mgr),
             Event::PressEnd { press, success } => {
                 if success && id == press.id {
                     f(mgr)

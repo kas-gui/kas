@@ -756,8 +756,7 @@ impl_scope! {
 
                     // Press may also be grabbed by scroll component (replacing
                     // this). Either way we can select on PressEnd.
-                    mgr.grab_press_unique(self.id(), press.source, press.coord, None);
-                    Response::Used
+                    press.grab(self.id()).with_mgr(mgr)
                 }
                 Event::PressMove { .. } => Response::Used,
                 Event::PressEnd { ref press, success } if press.is_primary() => {

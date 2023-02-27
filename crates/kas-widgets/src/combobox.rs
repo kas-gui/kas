@@ -114,7 +114,7 @@ impl_scope! {
                 Event::PressStart { press } => {
                     if press.id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
                         if press.is_primary() {
-                            mgr.grab_press_unique(self.id(), *press, press.coord, None);
+                            press.grab(self.id()).with_mgr(mgr);
                             mgr.set_grab_depress(*press, press.id);
                             self.opening = self.popup_id.is_none();
                         }

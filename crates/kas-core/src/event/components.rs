@@ -309,8 +309,7 @@ impl ScrollComponent {
             Event::PressStart { press, .. }
                 if self.max_offset != Offset::ZERO && mgr.config_enable_pan(*press) =>
             {
-                let icon = Some(CursorIcon::Grabbing);
-                mgr.grab_press_unique(id, press.source, press.coord, icon);
+                let _ = press.grab(id).with_icon(CursorIcon::Grabbing).with_mgr(mgr);
                 self.glide.press_start();
             }
             Event::PressMove { press, delta, .. }
@@ -421,7 +420,7 @@ impl TextInput {
                         None,
                     ),
                 };
-                mgr.grab_press_unique(w_id, press.source, press.coord, icon);
+                press.grab(w_id).with_opt_icon(icon).with_mgr(mgr);
                 self.glide.press_start();
                 action
             }
