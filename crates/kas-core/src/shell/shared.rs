@@ -106,6 +106,46 @@ where
         }
     }
 
+    #[inline]
+    pub fn get_primary(&mut self) -> Option<String> {
+        #[cfg(all(
+            unix,
+            not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
+            feature = "clipboard",
+        ))]
+        {
+            use arboard::{GetExtLinux, LinuxClipboardKind};
+            if let Some(cb) = self.clipboard.as_mut() {
+                match cb.get().clipboard(LinuxClipboardKind::Primary).text() {
+                    Ok(s) => return Some(s),
+                    Err(e) => warn_about_error("Failed to get clipboard contents", &e),
+                }
+            }
+        }
+
+        None
+    }
+
+    #[inline]
+    pub fn set_primary(&mut self, _content: String) {
+        #[cfg(all(
+            unix,
+            not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
+            feature = "clipboard",
+        ))]
+        if let Some(cb) = self.clipboard.as_mut() {
+            use arboard::{LinuxClipboardKind, SetExtLinux};
+            match cb
+                .set()
+                .clipboard(LinuxClipboardKind::Primary)
+                .text(_content)
+            {
+                Ok(()) => (),
+                Err(e) => warn_about_error("Failed to set clipboard contents", &e),
+            }
+        }
+    }
+
     pub fn update_all(&mut self, id: UpdateId, payload: u64) {
         self.pending.push(PendingAction::Update(id, payload));
     }

@@ -536,6 +536,39 @@ where
         self.shared.set_clipboard(content);
     }
 
+    #[inline]
+    fn get_primary(&mut self) -> Option<String> {
+        if let Some(cb) = self
+            .window
+            .as_ref()
+            .and_then(|data| data.wayland_clipboard.as_ref())
+        {
+            return match cb.load_primary() {
+                Ok(s) => Some(s),
+                Err(e) => {
+                    warn_about_error("Failed to get clipboard contents", &e);
+                    None
+                }
+            };
+        }
+
+        self.shared.get_primary()
+    }
+
+    #[inline]
+    fn set_primary<'c>(&mut self, content: String) {
+        if let Some(cb) = self
+            .window
+            .as_ref()
+            .and_then(|data| data.wayland_clipboard.as_ref())
+        {
+            cb.store_primary(content);
+            return;
+        }
+
+        self.shared.set_primary(content);
+    }
+
     fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeControl) -> Action) {
         let action = f(&mut self.shared.theme);
         self.shared.pending.push(PendingAction::Action(action));

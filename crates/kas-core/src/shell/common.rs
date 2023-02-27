@@ -273,6 +273,18 @@ pub(crate) trait ShellWindow {
     /// Attempt to set clipboard contents
     fn set_clipboard(&mut self, content: String);
 
+    /// Get contents of primary buffer
+    ///
+    /// Linux has a "primary buffer" with implicit copy on text selection and
+    /// paste on middle-click. This method does nothing on other platforms.
+    fn get_primary(&mut self) -> Option<String>;
+
+    /// Set contents of primary buffer
+    ///
+    /// Linux has a "primary buffer" with implicit copy on text selection and
+    /// paste on middle-click. This method does nothing on other platforms.
+    fn set_primary(&mut self, content: String);
+
     /// Adjust the theme
     ///
     /// Note: theme adjustments apply to all windows, as does the [`Action`]

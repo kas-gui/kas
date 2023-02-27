@@ -762,6 +762,24 @@ impl<'a> EventMgr<'a> {
         self.shell.set_clipboard(content)
     }
 
+    /// Get contents of primary buffer
+    ///
+    /// Linux has a "primary buffer" with implicit copy on text selection and
+    /// paste on middle-click. This method does nothing on other platforms.
+    #[inline]
+    pub fn get_primary(&mut self) -> Option<String> {
+        self.shell.get_primary()
+    }
+
+    /// Set contents of primary buffer
+    ///
+    /// Linux has a "primary buffer" with implicit copy on text selection and
+    /// paste on middle-click. This method does nothing on other platforms.
+    #[inline]
+    pub fn set_primary(&mut self, content: String) {
+        self.shell.set_primary(content)
+    }
+
     /// Adjust the theme
     #[inline]
     pub fn adjust_theme<F: FnMut(&mut dyn ThemeControl) -> Action>(&mut self, mut f: F) {
