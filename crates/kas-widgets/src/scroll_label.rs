@@ -133,6 +133,13 @@ impl_scope! {
             }
         }
 
+        fn set_primary(&self, mgr: &mut EventMgr) {
+            if !self.selection.is_empty() {
+                let range = self.selection.range();
+                mgr.set_primary(String::from(&self.text.as_str()[range]));
+            }
+        }
+
         // Pan by given delta. Return `Response::Scrolled` or `Response::Pan(remaining)`.
         fn pan_delta(&mut self, mgr: &mut EventMgr, mut delta: Offset) -> Response {
             let new_offset = (self.view_offset - delta)
@@ -216,6 +223,7 @@ impl_scope! {
                     Command::SelectAll => {
                         self.selection.set_sel_pos(0);
                         self.selection.set_edit_pos(self.text.str_len());
+                        self.set_primary(mgr);
                         mgr.redraw(self.id());
                         Response::Used
                     }
@@ -255,6 +263,7 @@ impl_scope! {
                             if repeats > 1 {
                                 self.selection.expand(&self.text, repeats);
                             }
+                            self.set_primary(mgr);
                         }
                         Response::Used
                     }
