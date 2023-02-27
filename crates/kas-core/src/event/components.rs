@@ -424,7 +424,7 @@ impl TextInput {
                 self.glide.press_start();
                 action
             }
-            Event::PressMove { press, delta } => {
+            Event::PressMove { press, delta } if press.is_primary() => {
                 self.glide.press_move(delta);
                 match press.source {
                     PressSource::Touch(touch_id) => match self.touch_phase {
@@ -448,7 +448,7 @@ impl TextInput {
                     }
                 }
             }
-            Event::PressEnd { press, .. } => {
+            Event::PressEnd { press, .. } if press.is_primary() => {
                 let timeout = mgr.config().scroll_flick_timeout();
                 let pan_dist_thresh = mgr.config().pan_dist_thresh();
                 if self.glide.press_end(timeout, pan_dist_thresh)
