@@ -810,10 +810,16 @@ impl<'a> EventMgr<'a> {
         self.shell.winit_window()
     }
 
-    /// Grab "press" events for `source` (a mouse or finger)
+    /// Call on [`Event::PressStart`] to "grab" related events
     ///
-    /// When a "press" source is "grabbed", events for this source will be sent
-    /// to the grabbing widget. Notes:
+    /// There are three types of grab ([`GrabMode`]):
+    ///
+    /// -   `Click`: send the corresponding [`Event::PressEnd`] only
+    /// -   `Grab`: send [`Event::PressMove`] and [`Event::PressEnd`]
+    /// -   Pan modes: send [`Event::Pan`] on motion.
+    ///     Note: this is most useful when grabbing multiple touch events.
+    ///
+    /// Notes:
     ///
     /// -   For mouse sources, a click-press event from another button will
     ///     cancel this grab; [`Event::PressEnd`] will be sent (with mode
@@ -824,20 +830,12 @@ impl<'a> EventMgr<'a> {
     /// -   [`Self::grab_press_unique`] is a variant of this method which
     ///     cancels grabs of other sources by the same widget.
     ///
-    /// Each grab can optionally visually depress one widget, and initially
-    /// depresses the widget owning the grab (the `id` passed here). Call
-    /// [`EventState::set_grab_depress`] to update the grab's depress target.
-    /// This is cleared automatically when the grab ends.
+    /// Additional effects:
     ///
-    /// The events sent depends on the `mode`:
-    ///
-    /// -   [`GrabMode::Grab`]: simple / low-level interpretation of input
-    ///     which delivers [`Event::PressMove`] and [`Event::PressEnd`] events.
-    /// -   All other [`GrabMode`] values: generates [`Event::Pan`] events.
-    ///     Requesting additional grabs on the same widget from the same source
-    ///     (i.e. multiple touches) allows generation of rotation and scale
-    ///     factors (depending on the [`GrabMode`]).
-    ///     Any previously existing `Pan` grabs by this widgets are replaced.
+    /// -   [`EventState::is_depressed`] will return true for the grabbing
+    ///     widget. Call [`EventState::set_grab_depress`] on `PressMove` to
+    ///     update the grab's depress target. (This is done automatically for
+    ///     [`GrabMode::Click`], and ends automatically when the grab ends.)
     ///
     /// Since these events are *requested*, the widget should consume them even
     /// if not required, although in practice this
@@ -859,7 +857,7 @@ impl<'a> EventMgr<'a> {
                     #[cfg(debug_assertions)]
                     log::error!(target: "kas_core::event::manager", "grab_press: existing mouse grab!");
                 }
-                if mode != GrabMode::Grab {
+                if mode.is_pan() {
                     pan_grab = self.set_pan_on(id.clone(), mode, false, coord);
                 }
                 self.mouse_grab = Some(MouseGrab {
@@ -882,7 +880,7 @@ impl<'a> EventMgr<'a> {
                     #[cfg(debug_assertions)]
                     log::error!(target: "kas_core::event::manager", "grab_press: existing touch grab!");
                 }
-                if mode != GrabMode::Grab {
+                if mode.is_pan() {
                     pan_grab = self.set_pan_on(id.clone(), mode, true, coord);
                 }
                 self.touch_grab.push(TouchGrab {

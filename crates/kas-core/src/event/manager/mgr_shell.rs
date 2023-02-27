@@ -148,12 +148,11 @@ impl EventState {
             mgr.send_event(widget, parent, Event::PopupRemoved(wid));
         }
 
-        if let Some((id, event)) = mgr.mouse_grab().and_then(|g| g.flush_move()) {
-            mgr.send_event(widget, id, event);
-        }
-
+        mgr.flush_mouse_grab_motion(widget);
         for i in 0..mgr.touch_grab.len() {
-            if let Some((id, event)) = mgr.touch_grab[i].flush_move() {
+            let action = mgr.touch_grab[i].flush_click_move();
+            mgr.state.action |= action;
+            if let Some((id, event)) = mgr.touch_grab[i].flush_grab_move() {
                 mgr.send_event(widget, id, event);
             }
         }
@@ -389,7 +388,7 @@ impl<'a> EventMgr<'a> {
                 self.set_hover(cur_id.clone());
 
                 if let Some(grab) = self.state.mouse_grab.as_mut() {
-                    if grab.mode == GrabMode::Grab {
+                    if !grab.mode.is_pan() {
                         grab.cur_id = cur_id;
                         grab.coord = coord;
                         grab.delta += delta;
@@ -417,7 +416,7 @@ impl<'a> EventMgr<'a> {
             CursorLeft { .. } => {
                 self.last_click_button = FAKE_MOUSE_BUTTON;
 
-                if self.mouse_grab().is_none() {
+                if self.mouse_grab.is_none() {
                     // If there's a mouse grab, we will continue to receive
                     // coordinates; if not, set a fake coordinate off the window
                     self.last_mouse_coord = Coord(-1, -1);
@@ -425,9 +424,7 @@ impl<'a> EventMgr<'a> {
                 }
             }
             MouseWheel { delta, .. } => {
-                if let Some((id, event)) = self.mouse_grab().and_then(|g| g.flush_move()) {
-                    self.send_event(widget, id, event);
-                }
+                self.flush_mouse_grab_motion(widget);
 
                 self.last_click_button = FAKE_MOUSE_BUTTON;
 
@@ -445,9 +442,7 @@ impl<'a> EventMgr<'a> {
                 }
             }
             MouseInput { state, button, .. } => {
-                if let Some((id, event)) = self.mouse_grab().and_then(|g| g.flush_move()) {
-                    self.send_event(widget, id, event);
-                }
+                self.flush_mouse_grab_motion(widget);
 
                 let coord = self.last_mouse_coord;
 
@@ -556,7 +551,8 @@ impl<'a> EventMgr<'a> {
                     }
                     ev @ (TouchPhase::Ended | TouchPhase::Cancelled) => {
                         if let Some(mut grab) = self.remove_touch(touch.id) {
-                            if let Some((id, event)) = grab.flush_move() {
+                            self.send_action(grab.flush_click_move());
+                            if let Some((id, event)) = grab.flush_grab_move() {
                                 self.send_event(widget, id, event);
                             }
 

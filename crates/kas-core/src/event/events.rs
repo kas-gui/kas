@@ -259,11 +259,6 @@ impl Event {
                 mgr.grab_press(id, source, coord, GrabMode::Grab, None);
                 Response::Used
             }
-            Event::PressMove { source, cur_id, .. } => {
-                let target = if id == cur_id { cur_id } else { None };
-                mgr.set_grab_depress(source, target);
-                Response::Used
-            }
             Event::PressEnd {
                 end_id, success, ..
             } if success && id == end_id => f(mgr),
