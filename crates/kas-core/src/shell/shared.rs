@@ -18,13 +18,13 @@ use kas::util::warn_about_error;
 use kas::{draw, WindowId};
 
 #[cfg(feature = "clipboard")]
-use window_clipboard::Clipboard;
+use copypasta::{ClipboardContext, ClipboardProvider};
 
 /// State shared between windows
 pub struct SharedState<S: WindowSurface, T> {
     pub(super) platform: Platform,
     #[cfg(feature = "clipboard")]
-    clipboard: Option<Clipboard>,
+    clipboard: Option<ClipboardContext>,
     pub(super) draw: draw::SharedState<S::Shared>,
     pub(super) theme: T,
     pub(super) config: SharedRc<kas::event::Config>,
@@ -73,8 +73,8 @@ where
     /// first window is constructed.
     pub fn init_clipboard(&mut self, _window: &winit::window::Window) {
         #[cfg(feature = "clipboard")]
-        if self.clipboard.is_none() {
-            match Clipboard::connect(_window) {
+        {
+            match ClipboardContext::new() {
                 Ok(cb) => self.clipboard = Some(cb),
                 Err(e) => warn_about_error("Failed to connect clipboard", e.as_ref()),
             }
@@ -90,15 +90,14 @@ where
     pub fn get_clipboard(&mut self) -> Option<String> {
         #[cfg(feature = "clipboard")]
         {
-            self.clipboard.as_ref().and_then(|cb| match cb.read() {
-                Ok(c) => Some(c),
-                Err(e) => {
-                    warn_about_error("Failed to get clipboard contents", e.as_ref());
-                    None
+            if let Some(cb) = self.clipboard.as_mut() {
+                match cb.get_contents() {
+                    Ok(s) => return Some(s),
+                    Err(e) => warn_about_error("Failed to get clipboard contents", e.as_ref()),
                 }
-            })
+            }
         }
-        #[cfg(not(feature = "clipboard"))]
+
         None
     }
 
@@ -106,7 +105,7 @@ where
     pub fn set_clipboard(&mut self, _content: String) {
         #[cfg(feature = "clipboard")]
         if let Some(cb) = self.clipboard.as_mut() {
-            match cb.write(_content) {
+            match cb.set_contents(_content) {
                 Ok(()) => (),
                 Err(e) => warn_about_error("Failed to set clipboard contents", e.as_ref()),
             }
