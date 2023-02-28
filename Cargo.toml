@@ -32,8 +32,9 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 minimal = ["wgpu", "winit", "wayland", "x11"]
 # All recommended features for optimal experience
 default = ["minimal", "view", "yaml", "image", "resvg", "clipboard", "markdown", "shaping", "dark-light", "spawn"]
-# All features usable on stable rust
-stable = ["default", "dynamic", "serde", "json", "ron", "macros_log"]
+# All standard test target features
+# NOTE: dynamic is excluded due to linker problems on Windows
+stable = ["default", "serde", "json", "ron", "macros_log"]
 # Enables "recommended" unstable features
 nightly = ["min_spec"]
 
