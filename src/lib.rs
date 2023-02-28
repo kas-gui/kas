@@ -78,6 +78,10 @@ pub mod shell {
 
     pub use kas_core::shell::*;
 
+    /// The WGPU shell
+    #[cfg(feature = "wgpu")]
+    pub type WgpuShell<CB, T> = kas_core::shell::Shell<kas_wgpu::WgpuShellBuilder<CB>, T>;
+
     /// The default (configuration-specific) shell
     #[cfg(feature = "wgpu")]
     pub type DefaultShell<T> = kas_core::shell::Shell<kas_wgpu::DefaultGraphicalShell, T>;
