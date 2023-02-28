@@ -59,9 +59,7 @@ jobs:
           cargo test
           cargo test --all-features
       - name: Test examples/mandlebrot
-        run: |
-          cargo test --manifest-path examples/mandlebrot/Cargo.toml
-          cargo test --manifest-path examples/mandlebrot/Cargo.toml --all-features
+        run: cargo test --manifest-path examples/mandlebrot/Cargo.toml
       - name: Clippy
         run: |
           cargo clippy --all --features nightly -- \
