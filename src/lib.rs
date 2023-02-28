@@ -80,7 +80,7 @@ pub mod shell {
 
     /// The default (configuration-specific) shell
     #[cfg(feature = "wgpu")]
-    pub type DefaultShell<T> = kas_wgpu::Shell<(), T>;
+    pub type DefaultShell<T> = kas_core::shell::Shell<kas_wgpu::DefaultGraphicalShell, T>;
 }
 
 #[cfg(feature = "dynamic")]

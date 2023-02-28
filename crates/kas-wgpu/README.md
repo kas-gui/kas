@@ -1,10 +1,9 @@
 KAS WGPU
 ======
 
-[KAS] shell interface over [winit] and [wgpu].
+[KAS] shell interface over [wgpu].
 
 [KAS]: https://crates.io/crates/kas
-[winit]: https://github.com/rust-windowing/winit/
 [wgpu]: https://github.com/gfx-rs/wgpu-rs
 
 
@@ -31,7 +30,6 @@ Optional features
 
 This crate has the following feature flags:
 
--   `clipboard` (enabled by default): clipboard integration
 -   `raster` (enabled by default): use [kas-text]'s default backend for glyph
     rastering (alternatively, specify `kas-text/ab_glyph` or `kas-text/fontdue`)
 -   `shaping` (enabled by default): use [kas-text]'s default backend (Rustybuzz)

@@ -23,7 +23,7 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 #########  meta / build features  #########
 
 # All recommended features for optimal experience
-default = ["minimal", "view", "yaml", "image", "resvg", "clipboard", "markdown", "shaping", "dark-light", "spawn", "wayland", "x11"]
+default = ["minimal", "view", "yaml", "image", "resvg", "clipboard", "markdown", "shaping", "dark-light", "spawn", "winit", "wayland", "x11"]
 
 # Include only "required" features.
 #
