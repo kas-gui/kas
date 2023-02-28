@@ -28,7 +28,6 @@ mod surface;
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
 use kas::shell::{GraphicalShell, Result};
-use kas::theme::RasterConfig;
 
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
 pub use options::Options;
@@ -43,8 +42,8 @@ impl<CB: CustomPipeBuilder> GraphicalShell for WgpuShellBuilder<CB> {
     type Window = draw::DrawWindow<<CB::Pipe as draw::CustomPipe>::Window>;
     type Surface = surface::Surface<CB::Pipe>;
 
-    fn build(self, raster_config: &RasterConfig) -> Result<Self::Shared> {
-        DrawPipe::new(self.0, &self.1, raster_config)
+    fn build(self) -> Result<Self::Shared> {
+        DrawPipe::new(self.0, &self.1)
     }
 }
 

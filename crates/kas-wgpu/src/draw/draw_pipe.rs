@@ -18,6 +18,7 @@ use kas::draw::*;
 use kas::geom::{Quad, Rect, Size, Vec2};
 use kas::shell::Error;
 use kas::text::{Effect, TextDisplay};
+use kas::theme::RasterConfig;
 
 /// Possible failures from constructing a [`Shell`]
 ///
@@ -33,7 +34,6 @@ impl<C: CustomPipe> DrawPipe<C> {
     pub fn new<CB: CustomPipeBuilder<Pipe = C>>(
         mut custom: CB,
         options: &Options,
-        raster_config: &kas::theme::RasterConfig,
     ) -> Result<Self, Error> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: options.backend(),
@@ -105,7 +105,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let flat_round = flat_round::Pipeline::new(&device, &shaders, &bgl_common);
         let round_2col = round_2col::Pipeline::new(&device, &shaders, &bgl_common);
         let custom = custom.build(&device, &bgl_common, RENDER_TEX_FORMAT);
-        let text = text_pipe::Pipeline::new(&device, &shaders, &bgl_common, raster_config);
+        let text = text_pipe::Pipeline::new(&device, &shaders, &bgl_common);
 
         Ok(DrawPipe {
             instance,
@@ -327,6 +327,10 @@ impl<C: CustomPipe> DrawPipe<C> {
 
 impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
     type Draw = DrawWindow<C::Window>;
+
+    fn set_raster_config(&mut self, config: &RasterConfig) {
+        self.text.set_raster_config(config);
+    }
 
     #[inline]
     fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError> {

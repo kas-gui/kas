@@ -87,7 +87,6 @@ impl Pipeline {
         device: &wgpu::Device,
         shaders: &ShaderManager,
         bgl_common: &wgpu::BindGroupLayout,
-        config: &RasterConfig,
     ) -> Self {
         let atlas_pipe = atlases::Pipeline::new(
             device,
@@ -121,16 +120,22 @@ impl Pipeline {
             },
         );
         Pipeline {
-            config: Config::new(
-                config.mode,
-                config.scale_steps,
-                config.subpixel_threshold,
-                config.subpixel_steps,
-            ),
+            config: Config::default(),
             atlas_pipe,
             glyphs: Default::default(),
             prepare: Default::default(),
         }
+    }
+
+    pub fn set_raster_config(&mut self, config: &RasterConfig) {
+        self.config = Config::new(
+            config.mode,
+            config.scale_steps,
+            config.subpixel_threshold,
+            config.subpixel_steps,
+        )
+        // NOTE: possibly this should force re-drawing of all glyphs, but for
+        // now that is out of scope
     }
 
     /// Write to textures
