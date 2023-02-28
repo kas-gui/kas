@@ -13,6 +13,7 @@ use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
 use kas::theme::{Theme, Window as _};
+#[cfg(wayland_platform)] use kas::util::warn_about_error;
 use kas::{Action, Layout, WidgetCore, WidgetExt, Window as _, WindowId};
 use std::mem::take;
 use std::time::Instant;
@@ -20,14 +21,39 @@ use winit::event::WindowEvent;
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::WindowBuilder;
 
+#[crate::autoimpl(Deref, DerefMut using self.window)]
+pub(super) struct WindowData {
+    window: winit::window::Window,
+    #[cfg(wayland_platform)]
+    wayland_clipboard: Option<smithay_clipboard::Clipboard>,
+}
+
+impl WindowData {
+    #[cfg(not(wayland_platform))]
+    fn new(window: winit::window::Window) -> Self {
+        WindowData { window }
+    }
+
+    #[cfg(wayland_platform)]
+    fn new(window: winit::window::Window) -> Self {
+        use winit::platform::wayland::WindowExtWayland;
+        let wayland_clipboard = window
+            .wayland_display()
+            .map(|display| unsafe { smithay_clipboard::Clipboard::new(display) });
+        WindowData {
+            window,
+            wayland_clipboard,
+        }
+    }
+}
+
 /// Per-window data
 pub struct Window<S: WindowSurface, T: Theme<S::Shared>> {
     pub(super) widget: kas::RootWidget,
     pub(super) window_id: WindowId,
     ev_state: EventState,
     solve_cache: SolveCache,
-    /// The winit window
-    pub(super) window: winit::window::Window,
+    pub(super) window: WindowData,
     theme_window: T::Window,
     next_avail_frame_time: Instant,
     queued_frame_time: Option<Instant>,
@@ -93,8 +119,6 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
             .with_transparent(widget.transparent())
             .build(elwt)?;
 
-        shared.init_clipboard(&window);
-
         let scale_factor = window.scale_factor();
         shared.scale_factor = scale_factor;
         let size: Size = window.inner_size().cast();
@@ -120,7 +144,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
             window_id,
             ev_state,
             solve_cache,
-            window,
+            window: WindowData::new(window),
             theme_window,
             next_avail_frame_time: time,
             queued_frame_time: Some(time),
@@ -414,7 +438,7 @@ where
     T::Window: kas::theme::Window,
 {
     shared: &'a mut SharedState<S, T>,
-    window: Option<&'a winit::window::Window>,
+    window: Option<&'a WindowData>,
     theme_window: &'a mut T::Window,
 }
 
@@ -424,7 +448,7 @@ where
 {
     fn new(
         shared: &'a mut SharedState<S, T>,
-        window: Option<&'a winit::window::Window>,
+        window: Option<&'a WindowData>,
         theme_window: &'a mut T::Window,
     ) -> Self {
         TkWindow {
@@ -481,12 +505,72 @@ where
 
     #[inline]
     fn get_clipboard(&mut self) -> Option<String> {
+        #[cfg(wayland_platform)]
+        if let Some(cb) = self
+            .window
+            .as_ref()
+            .and_then(|data| data.wayland_clipboard.as_ref())
+        {
+            return match cb.load() {
+                Ok(s) => Some(s),
+                Err(e) => {
+                    warn_about_error("Failed to get clipboard contents", &e);
+                    None
+                }
+            };
+        }
+
         self.shared.get_clipboard()
     }
 
     #[inline]
     fn set_clipboard<'c>(&mut self, content: String) {
+        #[cfg(wayland_platform)]
+        if let Some(cb) = self
+            .window
+            .as_ref()
+            .and_then(|data| data.wayland_clipboard.as_ref())
+        {
+            cb.store(content);
+            return;
+        }
+
         self.shared.set_clipboard(content);
+    }
+
+    #[inline]
+    fn get_primary(&mut self) -> Option<String> {
+        #[cfg(wayland_platform)]
+        if let Some(cb) = self
+            .window
+            .as_ref()
+            .and_then(|data| data.wayland_clipboard.as_ref())
+        {
+            return match cb.load_primary() {
+                Ok(s) => Some(s),
+                Err(e) => {
+                    warn_about_error("Failed to get clipboard contents", &e);
+                    None
+                }
+            };
+        }
+
+        self.shared.get_primary()
+    }
+
+    #[inline]
+    fn set_primary<'c>(&mut self, content: String) {
+        #[cfg(wayland_platform)]
+        if let Some(cb) = self
+            .window
+            .as_ref()
+            .and_then(|data| data.wayland_clipboard.as_ref())
+        {
+            cb.store_primary(content);
+            return;
+        }
+
+        self.shared.set_primary(content);
     }
 
     fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeControl) -> Action) {

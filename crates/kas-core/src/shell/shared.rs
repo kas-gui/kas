@@ -17,8 +17,7 @@ use kas::theme::Theme;
 use kas::util::warn_about_error;
 use kas::{draw, WindowId};
 
-#[cfg(feature = "clipboard")]
-use window_clipboard::Clipboard;
+#[cfg(feature = "clipboard")] use arboard::Clipboard;
 
 /// State shared between windows
 pub struct SharedState<S: WindowSurface, T> {
@@ -52,10 +51,19 @@ where
         let mut draw = kas::draw::SharedState::new(draw_shared, platform);
         theme.init(&mut draw);
 
+        #[cfg(feature = "clipboard")]
+        let clipboard = match Clipboard::new() {
+            Ok(cb) => Some(cb),
+            Err(e) => {
+                warn_about_error("Failed to connect clipboard", &e);
+                None
+            }
+        };
+
         Ok(SharedState {
             platform,
             #[cfg(feature = "clipboard")]
-            clipboard: None,
+            clipboard,
             draw,
             theme,
             config,
@@ -67,20 +75,6 @@ where
         })
     }
 
-    /// Initialise the clipboard context
-    ///
-    /// This requires a window handle (on some platforms), thus is done when the
-    /// first window is constructed.
-    pub fn init_clipboard(&mut self, _window: &winit::window::Window) {
-        #[cfg(feature = "clipboard")]
-        if self.clipboard.is_none() {
-            match Clipboard::connect(_window) {
-                Ok(cb) => self.clipboard = Some(cb),
-                Err(e) => warn_about_error("Failed to connect clipboard", e.as_ref()),
-            }
-        }
-    }
-
     pub fn next_window_id(&mut self) -> WindowId {
         self.window_id += 1;
         WindowId::new(NonZeroU32::new(self.window_id).unwrap())
@@ -90,15 +84,14 @@ where
     pub fn get_clipboard(&mut self) -> Option<String> {
         #[cfg(feature = "clipboard")]
         {
-            self.clipboard.as_ref().and_then(|cb| match cb.read() {
-                Ok(c) => Some(c),
-                Err(e) => {
-                    warn_about_error("Failed to get clipboard contents", e.as_ref());
-                    None
+            if let Some(cb) = self.clipboard.as_mut() {
+                match cb.get_text() {
+                    Ok(s) => return Some(s),
+                    Err(e) => warn_about_error("Failed to get clipboard contents", &e),
                 }
-            })
+            }
         }
-        #[cfg(not(feature = "clipboard"))]
+
         None
     }
 
@@ -106,9 +99,49 @@ where
     pub fn set_clipboard(&mut self, _content: String) {
         #[cfg(feature = "clipboard")]
         if let Some(cb) = self.clipboard.as_mut() {
-            match cb.write(_content) {
+            match cb.set_text(_content) {
                 Ok(()) => (),
-                Err(e) => warn_about_error("Failed to set clipboard contents", e.as_ref()),
+                Err(e) => warn_about_error("Failed to set clipboard contents", &e),
+            }
+        }
+    }
+
+    #[inline]
+    pub fn get_primary(&mut self) -> Option<String> {
+        #[cfg(all(
+            unix,
+            not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
+            feature = "clipboard",
+        ))]
+        {
+            use arboard::{GetExtLinux, LinuxClipboardKind};
+            if let Some(cb) = self.clipboard.as_mut() {
+                match cb.get().clipboard(LinuxClipboardKind::Primary).text() {
+                    Ok(s) => return Some(s),
+                    Err(e) => warn_about_error("Failed to get clipboard contents", &e),
+                }
+            }
+        }
+
+        None
+    }
+
+    #[inline]
+    pub fn set_primary(&mut self, _content: String) {
+        #[cfg(all(
+            unix,
+            not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
+            feature = "clipboard",
+        ))]
+        if let Some(cb) = self.clipboard.as_mut() {
+            use arboard::{LinuxClipboardKind, SetExtLinux};
+            match cb
+                .set()
+                .clipboard(LinuxClipboardKind::Primary)
+                .text(_content)
+            {
+                Ok(()) => (),
+                Err(e) => warn_about_error("Failed to set clipboard contents", &e),
             }
         }
     }

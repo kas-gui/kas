@@ -131,31 +131,27 @@ impl_scope! {
                     }
                     Response::Used
                 }
-                Event::PressStart {
-                    source,
-                    start_id,
-                    coord,
-                } => {
-                    if start_id
+                Event::PressStart { press } => {
+                    if press.id
                         .as_ref()
                         .map(|id| self.is_ancestor_of(id))
                         .unwrap_or(false)
                     {
-                        if source.is_primary() {
+                        if press.is_primary() {
                             let any_menu_open = self.widgets.iter().any(|w| w.menu_is_open());
-                            let press_in_the_bar = self.rect().contains(coord);
+                            let press_in_the_bar = self.rect().contains(press.coord);
 
                             if !press_in_the_bar || !any_menu_open {
-                                mgr.grab_press_unique(self.id(), source, coord, None);
+                                press.grab(self.id()).with_mgr(mgr);
                             }
-                            mgr.set_grab_depress(source, start_id.clone());
+                            mgr.set_grab_depress(*press, press.id.clone());
                             if press_in_the_bar {
                                 if self
                                     .widgets
                                     .iter()
-                                    .any(|w| w.eq_id(&start_id) && !w.menu_is_open())
+                                    .any(|w| w.eq_id(&press.id) && !w.menu_is_open())
                                 {
-                                    self.set_menu_path(mgr, start_id.as_ref(), false);
+                                    self.set_menu_path(mgr, press.id.as_ref(), false);
                                 } else {
                                     self.set_menu_path(mgr, None, false);
                                 }
@@ -169,15 +165,10 @@ impl_scope! {
                         Response::Unused
                     }
                 }
-                Event::PressMove {
-                    source,
-                    cur_id,
-                    coord,
-                    ..
-                } => {
-                    mgr.set_grab_depress(source, cur_id.clone());
+                Event::PressMove { press, .. } => {
+                    mgr.set_grab_depress(*press, press.id.clone());
 
-                    let id = match cur_id {
+                    let id = match press.id {
                         Some(x) => x,
                         None => return Response::Used,
                     };
@@ -185,7 +176,7 @@ impl_scope! {
                     if self.is_strict_ancestor_of(&id) {
                         // We instantly open a sub-menu on motion over the bar,
                         // but delay when over a sub-menu (most intuitive?)
-                        if self.rect().contains(coord) {
+                        if self.rect().contains(press.coord) {
                             mgr.clear_nav_focus();
                             self.delayed_open = None;
                             self.set_menu_path(mgr, Some(&id), false);
@@ -201,17 +192,16 @@ impl_scope! {
                     Response::Used
                 }
                 Event::PressEnd {
-                    coord,
-                    end_id,
+                    press,
                     success,
                     ..
                 } if success => {
-                    let id = match end_id {
+                    let id = match press.id {
                         Some(x) => x,
                         None => return Response::Used,
                     };
 
-                    if !self.rect().contains(coord) {
+                    if !self.rect().contains(press.coord) {
                         // not on the menubar
                         self.delayed_open = None;
                         mgr.send(self, id, Event::Command(Command::Activate));

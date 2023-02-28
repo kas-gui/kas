@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use kas::event::{CursorIcon, PressSource};
+use kas::event::{CursorIcon, Press};
 use kas::prelude::*;
 
 /// A message from a [`GripPart`]
@@ -26,7 +26,9 @@ pub enum GripMsg {
     /// the posision; e.g. `Slider` pins the position to the nearest detent.
     PressMove(Offset),
     /// Widget received [`Event::PressEnd`]
-    PressEnd,
+    ///
+    /// Parameter: `success` (see [`Event::PressEnd`]).
+    PressEnd(bool),
 }
 
 impl_scope! {
@@ -90,22 +92,24 @@ impl_scope! {
     impl Widget for GripPart {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
-                Event::PressStart { source, coord, .. } => {
+                Event::PressStart { press, .. } => {
                     mgr.push(GripMsg::PressStart);
-                    mgr.grab_press_unique(self.id(), source, coord, Some(CursorIcon::Grabbing));
+                    press.grab(self.id())
+                        .with_icon(CursorIcon::Grabbing)
+                        .with_mgr(mgr);
 
                     // Event delivery implies coord is over the grip.
-                    self.press_coord = coord - self.offset();
+                    self.press_coord = press.coord - self.offset();
                     Response::Used
                 }
-                Event::PressMove { coord, .. } => {
-                    let offset = coord - self.press_coord;
+                Event::PressMove { press, .. } => {
+                    let offset = press.coord - self.press_coord;
                     let offset = offset.clamp(Offset::ZERO, self.max_offset());
                     mgr.push(GripMsg::PressMove(offset));
                     Response::Used
                 }
-                Event::PressEnd { .. } => {
-                    mgr.push(GripMsg::PressEnd);
+                Event::PressEnd { success, .. } => {
+                    mgr.push(GripMsg::PressEnd(success));
                     Response::Used
                 }
                 _ => Response::Unused,
@@ -180,17 +184,15 @@ impl GripPart {
     /// The grip position is not adjusted; the caller should also call
     /// [`Self::set_offset`] to do so. This is separate to allow adjustment of
     /// the posision; e.g. `Slider` pins the position to the nearest detent.
-    pub fn handle_press_on_track(
-        &mut self,
-        mgr: &mut EventMgr,
-        source: PressSource,
-        coord: Coord,
-    ) -> Offset {
-        mgr.grab_press_unique(self.id(), source, coord, Some(CursorIcon::Grabbing));
+    pub fn handle_press_on_track(&mut self, mgr: &mut EventMgr, press: &Press) -> Offset {
+        press
+            .grab(self.id())
+            .with_icon(CursorIcon::Grabbing)
+            .with_mgr(mgr);
 
-        let offset = coord - self.track.pos - Offset::conv(self.core.rect.size / 2);
+        let offset = press.coord - self.track.pos - Offset::conv(self.core.rect.size / 2);
         let offset = offset.clamp(Offset::ZERO, self.max_offset());
-        self.press_coord = coord - offset;
+        self.press_coord = press.coord - offset;
         offset
     }
 }

@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 
 #[allow(unused)]
 use super::{EventMgr, EventState, GrabMode, Response}; // for doc-links
-use super::{MouseButton, UpdateId, VirtualKeyCode};
-use crate::geom::{Coord, DVec2, Offset};
+use super::{Press, UpdateId, VirtualKeyCode};
+use crate::geom::{DVec2, Offset};
 #[allow(unused)] use crate::Widget;
 use crate::{dir::Direction, WidgetId, WindowId};
 
@@ -47,6 +47,9 @@ pub enum Event {
     /// A mouse or touchpad scroll event
     Scroll(ScrollDelta),
     /// A mouse or touch-screen move/zoom/rotate event
+    ///
+    /// This event is sent for certain types of grab ([`EventMgr::grab_press`]),
+    /// enabling two-finger scale/rotate gestures as well as translation.
     ///
     /// Mouse-grabs generate translation (`delta` component) only. Touch grabs
     /// optionally also generate rotation and scaling components, depending on
@@ -102,6 +105,9 @@ pub enum Event {
     },
     /// A mouse button was pressed or touch event started
     ///
+    /// Call [`EventMgr::grab_press`] in order to "grab" corresponding motion
+    /// and release events.
+    ///
     /// This event is sent in exactly two cases, in this order:
     ///
     /// 1.  When a pop-up layer is active ([`EventMgr::add_popup`]), the owner
@@ -112,14 +118,7 @@ pub enum Event {
     ///
     /// If `start_id` is `None`, then no widget was found at the coordinate and
     /// the event will only be delivered to pop-up layer owners.
-    ///
-    /// When handling, it may be desirable to call [`EventMgr::grab_press`] in
-    /// order to receive corresponding Move and End events from this `source`.
-    PressStart {
-        source: PressSource,
-        start_id: Option<WidgetId>,
-        coord: Coord,
-    },
+    PressStart { press: Press },
     /// Movement of mouse or a touch press
     ///
     /// This event is sent in exactly two cases, in this order:
@@ -132,12 +131,7 @@ pub enum Event {
     ///
     /// If `cur_id` is `None`, no widget was found at the coordinate (either
     /// outside the window or [`crate::Layout::find_id`] failed).
-    PressMove {
-        source: PressSource,
-        cur_id: Option<WidgetId>,
-        coord: Coord,
-        delta: Offset,
-    },
+    PressMove { press: Press, delta: Offset },
     /// End of a click/touch press
     ///
     /// If `success`, this is a button-release or touch finish; otherwise this
@@ -154,12 +148,7 @@ pub enum Event {
     ///
     /// If `cur_id` is `None`, no widget was found at the coordinate (either
     /// outside the window or [`crate::Layout::find_id`] failed).
-    PressEnd {
-        source: PressSource,
-        end_id: Option<WidgetId>,
-        coord: Coord,
-        success: bool,
-    },
+    PressEnd { press: Press, success: bool },
     /// Update from a timer
     ///
     /// This event is received after requesting timed wake-up(s)
@@ -225,14 +214,14 @@ impl std::ops::Add<Offset> for Event {
 impl std::ops::AddAssign<Offset> for Event {
     fn add_assign(&mut self, offset: Offset) {
         match self {
-            Event::PressStart { coord, .. } => {
-                *coord += offset;
+            Event::PressStart { ref mut press, .. } => {
+                press.coord += offset;
             }
-            Event::PressMove { coord, .. } => {
-                *coord += offset;
+            Event::PressMove { ref mut press, .. } => {
+                press.coord += offset;
             }
-            Event::PressEnd { coord, .. } => {
-                *coord += offset;
+            Event::PressEnd { ref mut press, .. } => {
+                press.coord += offset;
             }
             _ => (),
         }
@@ -255,19 +244,14 @@ impl Event {
     ) -> Response {
         match self {
             Event::Command(cmd) if cmd.is_activate() => f(mgr),
-            Event::PressStart { source, coord, .. } if source.is_primary() => {
-                mgr.grab_press(id, source, coord, GrabMode::Grab, None);
-                Response::Used
+            Event::PressStart { press, .. } if press.is_primary() => press.grab(id).with_mgr(mgr),
+            Event::PressEnd { press, success } => {
+                if success && id == press.id {
+                    f(mgr)
+                } else {
+                    Response::Used
+                }
             }
-            Event::PressMove { source, cur_id, .. } => {
-                let target = if id == cur_id { cur_id } else { None };
-                mgr.set_grab_depress(source, target);
-                Response::Used
-            }
-            Event::PressEnd {
-                end_id, success, ..
-            } if success && id == end_id => f(mgr),
-            Event::PressEnd { .. } => Response::Used,
             _ => Response::Unused,
         }
     }
@@ -526,55 +510,6 @@ impl Command {
             Command::Up => Some(Direction::Up),
             Command::Down => Some(Direction::Down),
             _ => None,
-        }
-    }
-}
-
-/// Source of `EventChild::Press`
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum PressSource {
-    /// A mouse click
-    ///
-    /// Arguments: `button, repeats`.
-    ///
-    /// The `repeats` argument is used for double-clicks and similar. For a
-    /// single-click, `repeats == 1`; for a double-click it is 2, for a
-    /// triple-click it is 3, and so on (without upper limit).
-    ///
-    /// For `PressMove` and `PressEnd` events delivered with a mouse-grab,
-    /// both arguments are copied from the initiating `PressStart` event.
-    /// For a `PressMove` delivered without a grab (only possible with pop-ups)
-    /// a fake `button` value is used and `repeats == 0`.
-    Mouse(MouseButton, u32),
-    /// A touch event (with given `id`)
-    Touch(u64),
-}
-
-impl PressSource {
-    /// Returns true if this represents the left mouse button or a touch event
-    #[inline]
-    pub fn is_primary(self) -> bool {
-        match self {
-            PressSource::Mouse(button, _) => button == MouseButton::Left,
-            PressSource::Touch(_) => true,
-        }
-    }
-
-    /// Returns true if this represents a touch event
-    #[inline]
-    pub fn is_touch(self) -> bool {
-        matches!(self, PressSource::Touch(_))
-    }
-
-    /// The `repetitions` value
-    ///
-    /// This is 1 for a single-click and all touch events, 2 for a double-click,
-    /// 3 for a triple-click, etc. For `PressMove` without a grab this is 0.
-    #[inline]
-    pub fn repetitions(self) -> u32 {
-        match self {
-            PressSource::Mouse(_, repetitions) => repetitions,
-            PressSource::Touch(_) => 1,
         }
     }
 }

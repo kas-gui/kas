@@ -409,14 +409,11 @@ impl_scope! {
 
                     mgr.push(ViewUpdate);
                 }
-                Event::PressStart { source, coord, .. } => {
-                    mgr.grab_press(
-                        self.id(),
-                        source,
-                        coord,
-                        event::GrabMode::PanFull,
-                        Some(event::CursorIcon::Grabbing),
-                    );
+                Event::PressStart { press } => {
+                    return press.grab(self.id())
+                        .with_mode(event::GrabMode::PanFull)
+                        .with_icon(event::CursorIcon::Grabbing)
+                        .with_mgr(mgr);
                 }
                 _ => return Response::Unused,
             }

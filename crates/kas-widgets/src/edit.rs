@@ -635,6 +635,31 @@ impl_scope! {
                     };
                     self.pan_delta(mgr, delta2)
                 }
+                Event::PressStart { press } if press.is_tertiary() =>
+                    press.grab(self.id())
+                        .with_mode(kas::event::GrabMode::Click)
+                        .with_mgr(mgr),
+                Event::PressEnd { press, .. } if press.is_tertiary() => {
+                    if let Some(content) = mgr.get_primary() {
+                        self.set_edit_pos_from_coord(mgr, press.coord);
+                        self.selection.set_empty();
+                        let pos = self.selection.edit_pos();
+                        let range = self.trim_paste(&content);
+                        let len = range.len();
+
+                        self.old_state =
+                            Some((self.text.clone_string(), pos, self.selection.sel_pos()));
+                        self.last_edit = LastEdit::Paste;
+
+                        self.text.replace_range(pos..pos, &content[range]);
+                        self.selection.set_pos(pos + len);
+                        self.edit_x_coord = None;
+                        self.prepare_text(mgr);
+
+                        G::edit(self, mgr);
+                    }
+                    Response::Used
+                }
                 event => match self.input_handler.handle(mgr, self.id(), event) {
                     TextInputAction::None => Response::Used,
                     TextInputAction::Unused => Response::Unused,
@@ -656,6 +681,7 @@ impl_scope! {
                             if repeats > 1 {
                                 self.selection.expand(&self.text, repeats);
                             }
+                            self.set_primary(mgr);
                         }
                         Response::Used
                     }
@@ -947,6 +973,22 @@ impl<G: EditGuard> EditField<G> {
         self.set_view_offset_from_edit_pos(mgr);
     }
 
+    fn trim_paste(&self, text: &str) -> Range<usize> {
+        let mut end = text.len();
+        if !self.multi_line() {
+            // We cut the content short on control characters and
+            // ignore them (preventing line-breaks and ignoring any
+            // actions such as recursive-paste).
+            for (i, c) in text.char_indices() {
+                if c < '\u{20}' || ('\u{7f}'..='\u{9f}').contains(&c) {
+                    end = i;
+                    break;
+                }
+            }
+        }
+        0..end
+    }
+
     // returns true on success, false on unhandled event
     fn received_char(&mut self, mgr: &mut EventMgr, c: char) -> bool {
         if !self.editable {
@@ -1167,21 +1209,9 @@ impl<G: EditGuard> EditField<G> {
             }
             Command::Paste if editable => {
                 if let Some(content) = mgr.get_clipboard() {
-                    let mut end = content.len();
-                    if !multi_line {
-                        // We cut the content short on control characters and
-                        // ignore them (preventing line-breaks and ignoring any
-                        // actions such as recursive-paste).
-                        for (i, c) in content.char_indices() {
-                            if c < '\u{20}' || ('\u{7f}'..='\u{9f}').contains(&c) {
-                                end = i;
-                                break;
-                            }
-                        }
-                    }
-
+                    let range = self.trim_paste(&content);
                     string = content;
-                    Action::Insert(&string[0..end], LastEdit::Paste)
+                    Action::Insert(&string[range], LastEdit::Paste)
                 } else {
                     Action::None
                 }
@@ -1246,6 +1276,8 @@ impl<G: EditGuard> EditField<G> {
                 self.selection.set_edit_pos(pos);
                 if !shift {
                     self.selection.set_empty();
+                } else {
+                    self.set_primary(mgr);
                 }
                 self.edit_x_coord = x_coord;
                 mgr.redraw(self.id());
@@ -1266,6 +1298,13 @@ impl<G: EditGuard> EditField<G> {
                 self.edit_x_coord = None;
                 mgr.redraw(self.id());
             }
+        }
+    }
+
+    fn set_primary(&self, mgr: &mut EventMgr) {
+        if !self.selection.is_empty() {
+            let range = self.selection.range();
+            mgr.set_primary(String::from(&self.text.as_str()[range]));
         }
     }
 

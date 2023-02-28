@@ -7,12 +7,11 @@
 
 use std::future::IntoFuture;
 use std::time::{Duration, Instant};
-use std::u16;
 
 use super::*;
 use crate::cast::Conv;
 use crate::draw::DrawShared;
-use crate::geom::{Coord, Offset, Vec2};
+use crate::geom::{Offset, Vec2};
 use crate::theme::{SizeMgr, ThemeControl};
 use crate::{Action, Erased, WidgetId, WindowId};
 #[allow(unused)] use crate::{Layout, Widget}; // for doc-links
@@ -763,6 +762,24 @@ impl<'a> EventMgr<'a> {
         self.shell.set_clipboard(content)
     }
 
+    /// Get contents of primary buffer
+    ///
+    /// Linux has a "primary buffer" with implicit copy on text selection and
+    /// paste on middle-click. This method does nothing on other platforms.
+    #[inline]
+    pub fn get_primary(&mut self) -> Option<String> {
+        self.shell.get_primary()
+    }
+
+    /// Set contents of primary buffer
+    ///
+    /// Linux has a "primary buffer" with implicit copy on text selection and
+    /// paste on middle-click. This method does nothing on other platforms.
+    #[inline]
+    pub fn set_primary(&mut self, content: String) {
+        self.shell.set_primary(content)
+    }
+
     /// Adjust the theme
     #[inline]
     pub fn adjust_theme<F: FnMut(&mut dyn ThemeControl) -> Action>(&mut self, mut f: F) {
@@ -808,117 +825,6 @@ impl<'a> EventMgr<'a> {
     #[cfg(features = "winit")]
     pub fn winit_window(&self) -> Option<&winit::window::Window> {
         self.shell.winit_window()
-    }
-
-    /// Grab "press" events for `source` (a mouse or finger)
-    ///
-    /// When a "press" source is "grabbed", events for this source will be sent
-    /// to the grabbing widget. Notes:
-    ///
-    /// -   For mouse sources, a click-press event from another button will
-    ///     cancel this grab; [`Event::PressEnd`] will be sent (with mode
-    ///     [`GrabMode::Grab`]), then [`Event::PressStart`] will be sent to the
-    ///     widget under the mouse like normal.
-    /// -   For touch-screen sources, events are delivered until the finger is
-    ///     removed or the touch is cancelled (e.g. by dragging off-screen).
-    /// -   [`Self::grab_press_unique`] is a variant of this method which
-    ///     cancels grabs of other sources by the same widget.
-    ///
-    /// Each grab can optionally visually depress one widget, and initially
-    /// depresses the widget owning the grab (the `id` passed here). Call
-    /// [`EventState::set_grab_depress`] to update the grab's depress target.
-    /// This is cleared automatically when the grab ends.
-    ///
-    /// The events sent depends on the `mode`:
-    ///
-    /// -   [`GrabMode::Grab`]: simple / low-level interpretation of input
-    ///     which delivers [`Event::PressMove`] and [`Event::PressEnd`] events.
-    /// -   All other [`GrabMode`] values: generates [`Event::Pan`] events.
-    ///     Requesting additional grabs on the same widget from the same source
-    ///     (i.e. multiple touches) allows generation of rotation and scale
-    ///     factors (depending on the [`GrabMode`]).
-    ///     Any previously existing `Pan` grabs by this widgets are replaced.
-    ///
-    /// Since these events are *requested*, the widget should consume them even
-    /// if not required, although in practice this
-    /// only affects parents intercepting [`Response::Unused`] events.
-    pub fn grab_press(
-        &mut self,
-        id: WidgetId,
-        source: PressSource,
-        coord: Coord,
-        mode: GrabMode,
-        cursor: Option<CursorIcon>,
-    ) {
-        let start_id = id.clone();
-        log::trace!(target: "kas_core::event::manager", "grab_press: start_id={start_id}, source={source:?}");
-        let mut pan_grab = (u16::MAX, 0);
-        match source {
-            PressSource::Mouse(button, repetitions) => {
-                if self.remove_mouse_grab().is_some() {
-                    #[cfg(debug_assertions)]
-                    log::error!(target: "kas_core::event::manager", "grab_press: existing mouse grab!");
-                }
-                if mode != GrabMode::Grab {
-                    pan_grab = self.set_pan_on(id.clone(), mode, false, coord);
-                }
-                self.mouse_grab = Some(MouseGrab {
-                    button,
-                    repetitions,
-                    start_id: start_id.clone(),
-                    cur_id: Some(start_id),
-                    depress: Some(id),
-                    mode,
-                    pan_grab,
-                    coord,
-                    delta: Offset::ZERO,
-                });
-                if let Some(icon) = cursor {
-                    self.shell.set_cursor_icon(icon);
-                }
-            }
-            PressSource::Touch(touch_id) => {
-                if self.remove_touch(touch_id).is_some() {
-                    #[cfg(debug_assertions)]
-                    log::error!(target: "kas_core::event::manager", "grab_press: existing touch grab!");
-                }
-                if mode != GrabMode::Grab {
-                    pan_grab = self.set_pan_on(id.clone(), mode, true, coord);
-                }
-                self.touch_grab.push(TouchGrab {
-                    id: touch_id,
-                    start_id,
-                    depress: Some(id.clone()),
-                    cur_id: Some(id),
-                    last_move: coord,
-                    coord,
-                    mode,
-                    pan_grab,
-                });
-            }
-        }
-
-        self.send_action(Action::REDRAW);
-    }
-
-    /// A variant of [`Self::grab_press`], where a unique grab is desired
-    ///
-    /// This removes any existing press-grabs by widget `id`, then calls
-    /// [`Self::grab_press`] with `mode = GrabMode::Grab` to create a new grab.
-    /// Previous grabs are discarded without delivering [`Event::PressEnd`].
-    pub fn grab_press_unique(
-        &mut self,
-        id: WidgetId,
-        source: PressSource,
-        coord: Coord,
-        cursor: Option<CursorIcon>,
-    ) {
-        if id == self.mouse_grab.as_ref().map(|grab| &grab.start_id) {
-            self.remove_mouse_grab();
-        }
-        self.touch_grab.retain(|grab| id != grab.start_id);
-
-        self.grab_press(id, source, coord, GrabMode::Grab, cursor);
     }
 
     /// Update the mouse cursor used during a grab

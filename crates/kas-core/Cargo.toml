@@ -46,7 +46,7 @@ json = ["serde", "dep:serde_json"]
 ron = ["serde", "dep:ron"]
 
 # Enables clipboard read/write
-clipboard = ["dep:window_clipboard"]
+clipboard = ["dep:arboard", "dep:smithay-clipboard"]
 
 # Inject logging into macro-generated code.
 # Requires that all crates using these macros depend on the log crate.
@@ -70,6 +70,9 @@ dark-light = ["dep:dark-light"]
 # Support spawning async tasks
 spawn = ["dep:async-global-executor"]
 
+[build-dependencies]
+cfg_aliases = "0.1.1"
+
 [dependencies]
 log = "0.4"
 smallvec = "1.6.1"
@@ -87,6 +90,13 @@ raw-window-handle = "0.5.0"
 async-global-executor = { version = "2.3.1", optional = true }
 cfg-if = "1.0.0"
 
+[target.'cfg(any(target_os="linux", target_os="dragonfly", target_os="freebsd", target_os="netbsd", target_os="openbsd"))'.dependencies]
+smithay-clipboard = { version = "0.6.6", optional = true }
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+arboard = { version = "3.2.0", optional = true, default-features = false }
+
+
 [dependencies.kas-macros]
 version = "0.13.0"
 path = "../kas-macros"
@@ -102,8 +112,3 @@ version = "0.5.0" # used in doc links
 version = "0.28.1"
 optional = true
 default-features = false
-
-[dependencies.window_clipboard]
-git = "https://github.com/TobTobXX/window_clipboard.git"
-rev = "1392da8339c8aebb9849d00eb7383a73ed076f1d"
-optional = true

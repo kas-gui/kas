@@ -4,13 +4,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.13.0] — 2023-02-26
 
+### Changed behaviour
+
+-   `Canvas` uses async rendering (#376)
+-   `Svg` uses async rendering (#378)
+-   Improved momentum scrolling (#381)
+-   Support primary buffer (middle-click clipboard) on Linux (#383)
+
 ### Additions
 
 -   Add `EventMgr::push_async`, `push_spawn` (#376)
 -   Support transparent windows (#380)
 -   Support borderless windows and basic toolkit-drawn titlebar (#380)
+-   New `GrabMode::Click` (#383)
+-   Add `PressSource::is_secondary`, `is_tertiary` (#383)
+-   Add `EventMgr::get_primary`, `set_primary` (#383)
 
-### Changes
+### Other changes
 
 -   Move theme traits, `SimpleTheme` and `FlatTheme` to kas-core (#374)
 -   Move `ShadedTheme` to kas-wgpu (#374)
@@ -19,10 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     Add `kas::shell::DefaultShell`. (#375)
 -   Rename `ToolkitProxy` → `Proxy`, `TkAction` → `Action` (#375)
 -   `Widget::handle_message` is now called on the widget submitting a message (#376)
--   `Canvas` uses async rendering (#376)
--   `Svg` uses async rendering (#378)
 -   Update to Winit 0.28, Wgpu 0.15, dark-light 1.0 (#379)
--   Improved momentum scrolling (#381)
+-   Switch from window_clipboard to arboard + smithay-clipboard (#383)
+-   Cancel existing mouse grab when requesting a new one (#383)
+-   Change data structure of `Event::PressStart`, `PressMove`, `PressEnd` (#383)
+-   Replace `EventMgr::grab_press` with `Press::grab` builder pattern (#383)
 
 ### Fixes
 

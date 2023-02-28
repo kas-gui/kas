@@ -111,15 +111,11 @@ impl_scope! {
                     }
                     Response::Used
                 }
-                Event::PressStart {
-                    source,
-                    start_id,
-                    coord,
-                } => {
-                    if start_id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
-                        if source.is_primary() {
-                            mgr.grab_press_unique(self.id(), source, coord, None);
-                            mgr.set_grab_depress(source, start_id);
+                Event::PressStart { press } => {
+                    if press.id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
+                        if press.is_primary() {
+                            press.grab(self.id()).with_mgr(mgr);
+                            mgr.set_grab_depress(*press, press.id);
                             self.opening = self.popup_id.is_none();
                         }
                         Response::Used
@@ -130,25 +126,20 @@ impl_scope! {
                         Response::Unused
                     }
                 }
-                Event::PressMove {
-                    source,
-                    cur_id,
-                    coord,
-                    ..
-                } => {
+                Event::PressMove { press, .. } => {
                     if self.popup_id.is_none() {
                         open_popup(self, mgr, false);
                     }
-                    let cond = self.popup.inner.rect().contains(coord);
-                    let target = if cond { cur_id } else { None };
-                    mgr.set_grab_depress(source, target.clone());
+                    let cond = self.popup.inner.rect().contains(press.coord);
+                    let target = if cond { press.id } else { None };
+                    mgr.set_grab_depress(press.source, target.clone());
                     if let Some(id) = target {
                         mgr.set_nav_focus(id, false);
                     }
                     Response::Used
                 }
-                Event::PressEnd { end_id, success, .. } if success => {
-                    if let Some(id) = end_id {
+                Event::PressEnd { press, success } if success => {
+                    if let Some(id) = press.id {
                         if self.eq_id(&id) {
                             if self.opening {
                                 if self.popup_id.is_none() {
@@ -166,7 +157,7 @@ impl_scope! {
                     }
                     Response::Used
                 }
-                Event::PressEnd { .. } =>Response::Used,
+                Event::PressEnd { .. } => Response::Used,
                 Event::PopupRemoved(id) => {
                     debug_assert_eq!(Some(id), self.popup_id);
                     self.popup_id = None;

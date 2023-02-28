@@ -27,11 +27,15 @@ use crate::{Action, Erased, Widget, WidgetExt, WidgetId, WindowId};
 mod config_mgr;
 mod mgr_pub;
 mod mgr_shell;
+mod press;
 pub use config_mgr::ConfigMgr;
+pub use press::{GrabBuilder, Press, PressSource};
 
 /// Controls the types of events delivered by [`EventMgr::grab_press`]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GrabMode {
+    /// Deliver [`Event::PressEnd`] only for each grabbed press
+    Click,
     /// Deliver [`Event::PressMove`] and [`Event::PressEnd`] for each grabbed press
     Grab,
     /// Deliver [`Event::Pan`] events, with scaling and rotation
@@ -42,6 +46,13 @@ pub enum GrabMode {
     PanRotate,
     /// Deliver [`Event::Pan`] events, without scaling or rotation
     PanOnly,
+}
+
+impl GrabMode {
+    fn is_pan(self) -> bool {
+        use GrabMode::*;
+        matches!(self, PanFull | PanScale | PanRotate | PanOnly)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -57,19 +68,41 @@ struct MouseGrab {
     delta: Offset,
 }
 
-impl MouseGrab {
-    fn flush_move(&mut self) -> Option<(WidgetId, Event)> {
-        if self.delta != Offset::ZERO {
-            let event = Event::PressMove {
-                source: PressSource::Mouse(self.button, self.repetitions),
-                cur_id: self.cur_id.clone(),
-                coord: self.coord,
-                delta: self.delta,
-            };
-            self.delta = Offset::ZERO;
-            Some((self.start_id.clone(), event))
-        } else {
-            None
+impl<'a> EventMgr<'a> {
+    fn flush_mouse_grab_motion(&mut self, widget: &mut dyn Widget) {
+        if let Some(grab) = self.mouse_grab.as_mut() {
+            let delta = grab.delta;
+            if delta == Offset::ZERO {
+                return;
+            }
+            grab.delta = Offset::ZERO;
+
+            match grab.mode {
+                GrabMode::Click => {
+                    if grab.start_id == grab.cur_id {
+                        if grab.depress != grab.cur_id {
+                            grab.depress = grab.cur_id.clone();
+                            self.action |= Action::REDRAW;
+                        }
+                    } else {
+                        if grab.depress.is_some() {
+                            grab.depress = None;
+                            self.action |= Action::REDRAW;
+                        }
+                    }
+                }
+                GrabMode::Grab => {
+                    let target = grab.start_id.clone();
+                    let press = Press {
+                        source: PressSource::Mouse(grab.button, grab.repetitions),
+                        id: grab.cur_id.clone(),
+                        coord: grab.coord,
+                    };
+                    let event = Event::PressMove { press, delta };
+                    self.send_event(widget, target, event);
+                }
+                _ => (),
+            }
         }
     }
 }
@@ -87,16 +120,34 @@ struct TouchGrab {
 }
 
 impl TouchGrab {
-    fn flush_move(&mut self) -> Option<(WidgetId, Event)> {
-        if self.last_move != self.coord {
+    fn flush_click_move(&mut self) -> Action {
+        if self.mode == GrabMode::Click && self.last_move != self.coord {
+            self.last_move = self.coord;
+            if self.start_id == self.cur_id {
+                if self.depress != self.cur_id {
+                    self.depress = self.cur_id.clone();
+                    return Action::REDRAW;
+                }
+            } else {
+                if self.depress.is_some() {
+                    self.depress = None;
+                    return Action::REDRAW;
+                }
+            }
+        }
+        Action::empty()
+    }
+
+    fn flush_grab_move(&mut self) -> Option<(WidgetId, Event)> {
+        if self.mode == GrabMode::Grab && self.last_move != self.coord {
             let delta = self.coord - self.last_move;
             let target = self.start_id.clone();
-            let event = Event::PressMove {
+            let press = Press {
                 source: PressSource::Touch(self.id),
-                cur_id: self.cur_id.clone(),
+                id: self.cur_id.clone(),
                 coord: self.coord,
-                delta,
             };
+            let event = Event::PressMove { press, delta };
             self.last_move = self.coord;
             Some((target, event))
         } else {
@@ -287,10 +338,6 @@ impl EventState {
         if let Some(id) = self.key_depress.remove(&scancode) {
             self.redraw(id);
         }
-    }
-
-    fn mouse_grab(&mut self) -> Option<&mut MouseGrab> {
-        self.mouse_grab.as_mut()
     }
 
     #[inline]
@@ -504,13 +551,24 @@ impl<'a> EventMgr<'a> {
     }
 
     // Clears mouse grab and pan grab, resets cursor and redraws
-    fn remove_mouse_grab(&mut self) -> Option<MouseGrab> {
+    fn remove_mouse_grab(&mut self, success: bool) -> Option<(WidgetId, Event)> {
         if let Some(grab) = self.mouse_grab.take() {
             log::trace!("remove_mouse_grab: start_id={}", grab.start_id);
             self.shell.set_cursor_icon(self.hover_icon);
             self.send_action(Action::REDRAW); // redraw(..)
-            self.remove_pan_grab(grab.pan_grab);
-            Some(grab)
+            if grab.mode.is_pan() {
+                self.remove_pan_grab(grab.pan_grab);
+                // Pan grabs do not receive Event::PressEnd
+                None
+            } else {
+                let press = Press {
+                    source: PressSource::Mouse(grab.button, grab.repetitions),
+                    id: self.hover.clone(),
+                    coord: self.last_mouse_coord,
+                };
+                let event = Event::PressEnd { press, success };
+                Some((grab.start_id, event))
+            }
         } else {
             None
         }

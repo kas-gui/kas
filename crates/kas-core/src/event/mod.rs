@@ -77,7 +77,7 @@ pub use winit::event::{ModifiersState, MouseButton, VirtualKeyCode};
 #[cfg(not(feature = "winit"))]
 pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
 pub use events::*;
-pub use manager::{ConfigMgr, EventMgr, EventState, GrabMode};
+pub use manager::*;
 pub use response::{Response, Scroll};
 pub use update::UpdateId;
 

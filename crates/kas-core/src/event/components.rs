@@ -306,22 +306,21 @@ impl ScrollComponent {
                 self.glide.stop();
                 moved = self.scroll_by_delta(mgr, delta);
             }
-            Event::PressStart { source, coord, .. }
-                if self.max_offset != Offset::ZERO && mgr.config_enable_pan(source) =>
+            Event::PressStart { press, .. }
+                if self.max_offset != Offset::ZERO && mgr.config_enable_pan(*press) =>
             {
-                let icon = Some(CursorIcon::Grabbing);
-                mgr.grab_press_unique(id, source, coord, icon);
+                let _ = press.grab(id).with_icon(CursorIcon::Grabbing).with_mgr(mgr);
                 self.glide.press_start();
             }
-            Event::PressMove { source, delta, .. }
-                if self.max_offset != Offset::ZERO && mgr.config_enable_pan(source) =>
+            Event::PressMove { press, delta, .. }
+                if self.max_offset != Offset::ZERO && mgr.config_enable_pan(*press) =>
             {
                 if self.glide.press_move(delta) {
                     moved = self.scroll_by_delta(mgr, delta);
                 }
             }
-            Event::PressEnd { source, .. }
-                if self.max_offset != Offset::ZERO && mgr.config_enable_pan(source) =>
+            Event::PressEnd { press, .. }
+                if self.max_offset != Offset::ZERO && mgr.config_enable_pan(*press) =>
             {
                 let timeout = mgr.config().scroll_flick_timeout();
                 let pan_dist_thresh = mgr.config().pan_dist_thresh();
@@ -405,10 +404,10 @@ impl TextInput {
     pub fn handle(&mut self, mgr: &mut EventMgr, w_id: WidgetId, event: Event) -> TextInputAction {
         use TextInputAction as Action;
         match event {
-            Event::PressStart { source, coord, .. } if source.is_primary() => {
-                let (action, icon) = match source {
+            Event::PressStart { press } if press.is_primary() => {
+                let (action, icon) = match *press {
                     PressSource::Touch(touch_id) => {
-                        self.touch_phase = TouchPhase::Start(touch_id, coord);
+                        self.touch_phase = TouchPhase::Start(touch_id, press.coord);
                         let delay = mgr.config().touch_select_delay();
                         mgr.request_update(w_id.clone(), PAYLOAD_SELECT, delay, false);
                         (Action::Focus, None)
@@ -417,25 +416,20 @@ impl TextInput {
                         (Action::Focus, Some(CursorIcon::Grabbing))
                     }
                     PressSource::Mouse(_, repeats) => (
-                        Action::Cursor(coord, true, !mgr.modifiers().shift(), repeats),
+                        Action::Cursor(press.coord, true, !mgr.modifiers().shift(), repeats),
                         None,
                     ),
                 };
-                mgr.grab_press_unique(w_id, source, coord, icon);
+                press.grab(w_id).with_opt_icon(icon).with_mgr(mgr);
                 self.glide.press_start();
                 action
             }
-            Event::PressMove {
-                source,
-                coord,
-                delta,
-                ..
-            } => {
+            Event::PressMove { press, delta } if press.is_primary() => {
                 self.glide.press_move(delta);
-                match source {
+                match press.source {
                     PressSource::Touch(touch_id) => match self.touch_phase {
                         TouchPhase::Start(id, start_coord) if id == touch_id => {
-                            let delta = coord - start_coord;
+                            let delta = press.coord - start_coord;
                             if mgr.config_test_pan_thresh(delta) {
                                 self.touch_phase = TouchPhase::Pan(id);
                                 Action::Pan(delta)
@@ -444,20 +438,22 @@ impl TextInput {
                             }
                         }
                         TouchPhase::Pan(id) if id == touch_id => Action::Pan(delta),
-                        _ => Action::Cursor(coord, false, false, 1),
+                        _ => Action::Cursor(press.coord, false, false, 1),
                     },
                     PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan() => {
                         Action::Pan(delta)
                     }
-                    PressSource::Mouse(_, repeats) => Action::Cursor(coord, false, false, repeats),
+                    PressSource::Mouse(_, repeats) => {
+                        Action::Cursor(press.coord, false, false, repeats)
+                    }
                 }
             }
-            Event::PressEnd { source, .. } => {
+            Event::PressEnd { press, .. } if press.is_primary() => {
                 let timeout = mgr.config().scroll_flick_timeout();
                 let pan_dist_thresh = mgr.config().pan_dist_thresh();
                 if self.glide.press_end(timeout, pan_dist_thresh)
-                    && (matches!(source, PressSource::Touch(id) if self.touch_phase == TouchPhase::Pan(id))
-                        || matches!(source, PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan()))
+                    && (matches!(press.source, PressSource::Touch(id) if self.touch_phase == TouchPhase::Pan(id))
+                        || matches!(press.source, PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan()))
                 {
                     self.touch_phase = TouchPhase::None;
                     mgr.request_update(w_id, PAYLOAD_GLIDE, Duration::new(0, 0), true);
