@@ -112,7 +112,8 @@ where
         let el = EventLoopBuilder::with_user_event().build();
         let windows = vec![];
 
-        let draw_shared = graphical_shell.into().build(theme.config().raster())?;
+        let mut draw_shared = graphical_shell.into().build()?;
+        draw_shared.set_raster_config(theme.config().raster());
         let pw = PlatformWrapper(&el);
         let shared = SharedState::new(pw, draw_shared, theme, options, config)?;
 

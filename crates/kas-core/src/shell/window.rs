@@ -13,7 +13,8 @@ use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
 use kas::theme::{Theme, Window as _};
-#[cfg(wayland_platform)] use kas::util::warn_about_error;
+#[cfg(all(wayland_platform, feature = "clipboard"))]
+use kas::util::warn_about_error;
 use kas::{Action, Layout, WidgetCore, WidgetExt, Window as _, WindowId};
 use std::mem::take;
 use std::time::Instant;
@@ -24,17 +25,17 @@ use winit::window::WindowBuilder;
 #[crate::autoimpl(Deref, DerefMut using self.window)]
 pub(super) struct WindowData {
     window: winit::window::Window,
-    #[cfg(wayland_platform)]
+    #[cfg(all(wayland_platform, feature = "clipboard"))]
     wayland_clipboard: Option<smithay_clipboard::Clipboard>,
 }
 
 impl WindowData {
-    #[cfg(not(wayland_platform))]
+    #[cfg(not(all(wayland_platform, feature = "clipboard")))]
     fn new(window: winit::window::Window) -> Self {
         WindowData { window }
     }
 
-    #[cfg(wayland_platform)]
+    #[cfg(all(wayland_platform, feature = "clipboard"))]
     fn new(window: winit::window::Window) -> Self {
         use winit::platform::wayland::WindowExtWayland;
         let wayland_clipboard = window
@@ -505,7 +506,7 @@ where
 
     #[inline]
     fn get_clipboard(&mut self) -> Option<String> {
-        #[cfg(wayland_platform)]
+        #[cfg(all(wayland_platform, feature = "clipboard"))]
         if let Some(cb) = self
             .window
             .as_ref()
@@ -525,7 +526,7 @@ where
 
     #[inline]
     fn set_clipboard<'c>(&mut self, content: String) {
-        #[cfg(wayland_platform)]
+        #[cfg(all(wayland_platform, feature = "clipboard"))]
         if let Some(cb) = self
             .window
             .as_ref()
@@ -540,7 +541,7 @@ where
 
     #[inline]
     fn get_primary(&mut self) -> Option<String> {
-        #[cfg(wayland_platform)]
+        #[cfg(all(wayland_platform, feature = "clipboard"))]
         if let Some(cb) = self
             .window
             .as_ref()
@@ -560,7 +561,7 @@ where
 
     #[inline]
     fn set_primary<'c>(&mut self, content: String) {
-        #[cfg(wayland_platform)]
+        #[cfg(all(wayland_platform, feature = "clipboard"))]
         if let Some(cb) = self
             .window
             .as_ref()

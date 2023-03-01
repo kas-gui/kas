@@ -13,10 +13,10 @@ repository = "https://github.com/kas-gui/kas"
 exclude = ["/screenshots"]
 
 [package.metadata.docs.rs]
-features = ["canvas", "svg"]
+all-features = true
 rustdoc-args = ["--cfg", "doc_cfg"]
 # To build locally:
-# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=canvas,svg --no-deps --open
+# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --all-features --no-deps --open
 
 [features]
 # Support SVG images

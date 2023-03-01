@@ -15,10 +15,12 @@ repository = "https://github.com/kas-gui/kas"
 crate-type = ["dylib"]
 
 [features]
+default = ["raster"]
+raster = ["kas-wgpu/raster"]
 resvg = ["dep:kas-resvg"]
 
 [dependencies]
 kas-core = { version = "0.13.0", path = "../kas-core" }
 kas-widgets = { version = "0.13.0", path = "../kas-widgets" }
 kas-resvg = { version = "0.13.0", path = "../kas-resvg", optional = true }
-kas-wgpu = { version = "0.13.0", path = "../kas-wgpu" }
+kas-wgpu = { version = "0.13.0", path = "../kas-wgpu", default-features = false }

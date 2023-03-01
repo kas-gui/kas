@@ -3,11 +3,9 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! KAS shell over [winit] and [WGPU]
+//! KAS shell over [WGPU]
 //!
-//! This crate implements a KAS shell (backend) using [WGPU] for
-//! GPU-accelerated rendering and [winit] for windowing, thus it should be
-//! portable to most desktop and potentially also mobile platforms.
+//! This crate implements a KAS's drawing APIs over [WGPU].
 //!
 //! This crate supports themes via the [`kas::theme`], and provides one
 //! additional theme, [`ShadedTheme`].
@@ -19,8 +17,6 @@
 //! See [`options::Options::from_env`] for documentation.
 //!
 //! [WGPU]: https://github.com/gfx-rs/wgpu
-//! [winit]: https://github.com/rust-windowing/winit
-//! [clipboard]: https://crates.io/crates/clipboard
 
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 
@@ -31,8 +27,7 @@ mod shaded_theme;
 mod surface;
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
-use kas::shell::{self, GraphicalShell, Result};
-use kas::theme::RasterConfig;
+use kas::shell::{GraphicalShell, Result};
 
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
 pub use options::Options;
@@ -47,8 +42,8 @@ impl<CB: CustomPipeBuilder> GraphicalShell for WgpuShellBuilder<CB> {
     type Window = draw::DrawWindow<<CB::Pipe as draw::CustomPipe>::Window>;
     type Surface = surface::Surface<CB::Pipe>;
 
-    fn build(self, raster_config: &RasterConfig) -> Result<Self::Shared> {
-        DrawPipe::new(self.0, &self.1, raster_config)
+    fn build(self) -> Result<Self::Shared> {
+        DrawPipe::new(self.0, &self.1)
     }
 }
 
@@ -64,5 +59,5 @@ impl<CB: CustomPipeBuilder> From<CB> for WgpuShellBuilder<CB> {
     }
 }
 
-/// A KAS shell over Winit and WGPU
-pub type Shell<C, T> = shell::Shell<WgpuShellBuilder<C>, T>;
+/// The default (unparameterised) implementation of [`DrawSharedBuilder`]
+pub type DefaultGraphicalShell = WgpuShellBuilder<()>;

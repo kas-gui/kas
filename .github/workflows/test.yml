@@ -26,25 +26,40 @@ jobs:
         run: |
           cargo fmt --all -- --check
       - name: Build docs
-        run: cargo doc --all-features --all --no-deps
+        run: |
+          cargo doc --all --no-deps
+          cargo doc --all-features --all --no-deps
       - name: Test kas-macros
-        run: cargo test --manifest-path crates/kas-macros/Cargo.toml --all-features
+        run: |
+          cargo test --manifest-path crates/kas-macros/Cargo.toml
+          cargo test --manifest-path crates/kas-macros/Cargo.toml --all-features
       - name: Test kas-core
-        run: cargo test --manifest-path crates/kas-core/Cargo.toml --all-features
+        run: |
+          cargo test --manifest-path crates/kas-core/Cargo.toml
+          cargo test --manifest-path crates/kas-core/Cargo.toml --all-features
       - name: Test kas-widgets
-        run: cargo test --manifest-path crates/kas-widgets/Cargo.toml --all-features
+        run: |
+          cargo test --manifest-path crates/kas-widgets/Cargo.toml
+          cargo test --manifest-path crates/kas-widgets/Cargo.toml --all-features
       - name: Test kas-resvg
-        run: cargo test --manifest-path crates/kas-resvg/Cargo.toml --all-features
+        run: |
+          cargo test --manifest-path crates/kas-resvg/Cargo.toml
+          cargo test --manifest-path crates/kas-resvg/Cargo.toml --all-features
       - name: Test kas-wgpu
         run: |
+          cargo test --manifest-path crates/kas-wgpu/Cargo.toml
           cargo test --manifest-path crates/kas-wgpu/Cargo.toml --no-default-features --features raster,kas/x11
           cargo test --manifest-path crates/kas-wgpu/Cargo.toml --all-features --features kas/x11
       - name: Test kas-dylib
-        run: cargo test --manifest-path crates/kas-dylib/Cargo.toml --all-features --features kas-core/x11
+        run: |
+          cargo test --manifest-path crates/kas-dylib/Cargo.toml
+          cargo test --manifest-path crates/kas-dylib/Cargo.toml --all-features --features kas-core/x11
       - name: Test kas
-        run: cargo test --all-features
+        run: |
+          cargo test
+          cargo test --all-features
       - name: Test examples/mandlebrot
-        run: cargo test --manifest-path examples/mandlebrot/Cargo.toml --all-features
+        run: cargo test --manifest-path examples/mandlebrot/Cargo.toml
       - name: Clippy
         run: |
           cargo clippy --all --features nightly -- \
@@ -83,7 +98,7 @@ jobs:
       - name: Test kas-macros
         run: cargo test --manifest-path crates/kas-macros/Cargo.toml --all-features
       - name: Test kas-core
-        run: cargo test --manifest-path crates/kas-core/Cargo.toml
+        run: cargo test --manifest-path crates/kas-core/Cargo.toml --features stable
       - name: Test kas-widgets
         run: cargo test --manifest-path crates/kas-widgets/Cargo.toml
       - name: Test kas-resvg
@@ -93,7 +108,7 @@ jobs:
       - name: Test kas-dylib
         run: cargo test --manifest-path crates/kas-dylib/Cargo.toml --features kas-core/x11
       - name: Test kas
-        run: cargo test
+        run: cargo test --features stable
       - name: Test examples/mandlebrot
         run: cargo test --manifest-path examples/mandlebrot/Cargo.toml
       - name: Clippy (stable)

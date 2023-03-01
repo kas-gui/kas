@@ -490,7 +490,7 @@ fn main() -> kas::shell::Result<()> {
     let theme = kas::theme::FlatTheme::new().with_colours("dark");
 
     let options = kas::config::Options::from_env();
-    kas_wgpu::Shell::new_custom(PipeBuilder, theme, options)?
+    kas::shell::WgpuShell::new_custom(PipeBuilder, theme, options)?
         .with(MandlebrotWindow::new())?
         .run()
 }

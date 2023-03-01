@@ -11,6 +11,7 @@ use crate::cast::Cast;
 use crate::geom::{Quad, Rect, Size};
 use crate::shell::Platform;
 use crate::text::{Effect, TextDisplay};
+use crate::theme::RasterConfig;
 use std::any::Any;
 use std::num::NonZeroU32;
 use std::rc::Rc;
@@ -157,6 +158,9 @@ impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait DrawSharedImpl: Any {
     type Draw: DrawImpl;
+
+    /// Set font raster config
+    fn set_raster_config(&mut self, config: &RasterConfig);
 
     /// Allocate an image
     ///

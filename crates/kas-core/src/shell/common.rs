@@ -9,7 +9,7 @@ use crate::draw::{color::Rgba, DrawIface, WindowCommon};
 use crate::draw::{DrawImpl, DrawShared, DrawSharedImpl};
 use crate::event::{CursorIcon, UpdateId};
 use crate::geom::Size;
-use crate::theme::{RasterConfig, ThemeControl, ThemeSize};
+use crate::theme::{ThemeControl, ThemeSize};
 use crate::{Action, WindowId};
 use raw_window_handle as raw;
 use thiserror::Error;
@@ -183,7 +183,7 @@ pub trait GraphicalShell {
     type Surface: WindowSurface<Shared = Self::Shared> + 'static;
 
     /// Construct shared state
-    fn build(self, raster_config: &RasterConfig) -> Result<Self::Shared>;
+    fn build(self) -> Result<Self::Shared>;
 }
 
 /// Window graphical surface requirements
