@@ -14,13 +14,13 @@ use crate::util::IdentifyWidget;
 use crate::WidgetId;
 
 /// Public API over a contextualized widget
-pub struct Node<'a>(&'a mut dyn Widget);
+pub struct Node<'a>(&'a mut dyn Widget, &'a ());
 
 impl<'a> Node<'a> {
     /// Construct
     // TODO: should this be hidden?
-    pub fn new(widget: &'a mut dyn Widget) -> Self {
-        Node(widget)
+    pub fn new(widget: &'a mut dyn Widget, data: &'a ()) -> Self {
+        Node(widget, data)
     }
 
     /// Reborrow with a new lifetime
@@ -33,7 +33,7 @@ impl<'a> Node<'a> {
     where
         'a: 'b,
     {
-        Node(self.0)
+        Node(self.0, self.1)
     }
 
     /// Get the widget's identifier
@@ -125,7 +125,7 @@ impl<'a> Node<'a> {
     /// This method may be removed in the future.
     #[inline]
     pub fn get_child(self, index: usize) -> Option<Node<'a>> {
-        self.0.get_child(index)
+        self.0.get_child(self.1, index)
     }
 
     /// Find the child which is an ancestor of this `id`, if any

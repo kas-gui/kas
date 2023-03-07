@@ -363,8 +363,8 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
 
             #[inline]
-            fn as_node(&mut self) -> ::kas::Node {
-                Node::new(self)
+            fn as_node<'s>(&'s mut self, data: &'s ()) -> ::kas::Node<'s> {
+                Node::new(self, data)
             }
         }
     });
@@ -392,7 +392,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     self.#inner.num_children()
                 }
                 #[inline]
-                fn get_child(&mut self, index: usize) -> Option<::kas::Node> {
+                fn get_child<'s>(&'s mut self, data: &'s (), index: usize) -> Option<::kas::Node<'s>> {
                     self.#inner.get_child(index)
                 }
                 #[inline]
@@ -545,11 +545,12 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             let mut get_mut_rules = quote! {};
             for (i, child) in children.iter().enumerate() {
                 let ident = child;
-                get_mut_rules.append_all(quote! { #i => Some(self.#ident.as_node()), });
+                get_mut_rules.append_all(quote! { #i => Some(self.#ident.as_node(data)), });
             }
             for (i, path) in layout_children.iter().enumerate() {
                 let index = count + i;
-                get_mut_rules.append_all(quote! { #index => Some(self.#core.#path.as_node()), });
+                get_mut_rules
+                    .append_all(quote! { #index => Some(self.#core.#path.as_node(data)), });
             }
             count += layout_children.len();
 
@@ -560,7 +561,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     fn num_children(&self) -> usize {
                         #count
                     }
-                    fn get_child(&mut self, _index: usize) -> Option<::kas::Node> {
+                    fn get_child<'s>(&'s mut self, data: &'s (), _index: usize) -> Option<::kas::Node<'s>> {
                         use ::kas::WidgetCore;
                         match _index {
                             #get_mut_rules
