@@ -189,7 +189,6 @@ impl SolveCache {
         mgr: &mut ConfigMgr,
         mut rect: Rect,
         inner_margin: bool,
-        print_heirarchy: bool,
     ) {
         let start = std::time::Instant::now();
 
@@ -224,33 +223,41 @@ impl SolveCache {
         widget.set_rect(mgr, rect);
 
         log::trace!(target: "kas_perf::layout", "apply_rect: {}μs", start.elapsed().as_micros());
-        if print_heirarchy {
-            log::trace!(
-                target: "kas_core::layout::hierarchy",
-                "apply_rect: rect={rect:?}:{}",
-                WidgetHeirarchy(widget, 0),
-            );
-        }
-
         self.refresh_rules = false;
+    }
+
+    /// Print widget heirarchy in the trace log
+    ///
+    /// This is sometimes called after [`Self::apply_rect`].
+    pub fn print_widget_heirarchy(&mut self, widget: &mut dyn Widget) {
+        let rect = widget.rect();
+        let mut buf = String::new();
+        print_widget_heirarchy(&mut buf, widget, 0).expect("print_widget_heirarchy failed");
+        log::trace!(
+            target: "kas_core::layout::hierarchy",
+            "apply_rect: rect={rect:?}:{buf}",
+        );
     }
 }
 
-struct WidgetHeirarchy<'a>(&'a dyn Widget, usize);
-impl<'a> fmt::Display for WidgetHeirarchy<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let len = 43 - 2 * self.1;
-        let trail = "| ".repeat(self.1);
-        // Note: pre-format some items to ensure correct alignment
-        let identify = format!("{}", self.0.identify());
-        let pos = format!("{:?}", self.0.rect().pos);
-        let plen = 17usize.saturating_sub(identify.len().saturating_sub(len));
-        let size = self.0.rect().size;
-        write!(f, "\n{trail}{identify:<len$} {pos:<plen$} {size:?}")?;
+fn print_widget_heirarchy(
+    buf: &mut String,
+    widget: &dyn Widget,
+    indent: usize,
+) -> Result<(), fmt::Error> {
+    use std::fmt::Write;
 
-        for i in 0..self.0.num_children() {
-            WidgetHeirarchy(self.0.get_child(i).unwrap(), self.1 + 1).fmt(f)?;
-        }
-        Ok(())
+    let len = 43 - 2 * indent;
+    let trail = "| ".repeat(indent);
+    // Note: pre-format some items to ensure correct alignment
+    let identify = format!("{}", widget.identify());
+    let pos = format!("{:?}", widget.rect().pos);
+    let plen = 17usize.saturating_sub(identify.len().saturating_sub(len));
+    let size = widget.rect().size;
+    write!(buf, "\n{trail}{identify:<len$} {pos:<plen$} {size:?}")?;
+
+    for i in 0..widget.num_children() {
+        print_widget_heirarchy(buf, widget.get_child(i).unwrap(), indent + 1)?;
     }
+    Ok(())
 }

@@ -298,6 +298,7 @@ impl RootWidget {
             Rect::new(Coord(x, y), Size::new(w, h))
         };
 
-        cache.apply_rect(widget, mgr, rect, false, true);
+        cache.apply_rect(widget, mgr, rect, false);
+        cache.print_widget_heirarchy(widget);
     }
 }

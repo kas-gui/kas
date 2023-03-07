@@ -353,7 +353,10 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
             &mut shared.draw,
             &mut self.ev_state,
         );
-        solve_cache.apply_rect(widget.as_widget_mut(), &mut mgr, rect, true, first);
+        solve_cache.apply_rect(widget.as_widget_mut(), &mut mgr, rect, true);
+        if first {
+            solve_cache.print_widget_heirarchy(widget.as_widget_mut());
+        }
         widget.resize_popups(&mut mgr);
 
         let restrict_dimensions = self.widget.restrict_dimensions();
