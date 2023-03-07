@@ -44,8 +44,6 @@ pub trait WidgetCore: Layout + fmt::Debug {
     fn widget_name(&self) -> &'static str;
 
     /// Erase type
-    fn as_widget(&self) -> &dyn Widget;
-    /// Erase type
     fn as_widget_mut(&mut self) -> &mut dyn Widget;
 }
 
@@ -76,15 +74,9 @@ pub trait WidgetChildren: WidgetCore {
     /// index.
     fn num_children(&self) -> usize;
 
-    /// Get a reference to a child widget by index, or `None` if the index is
-    /// out of bounds.
+    /// Get a child by index (if valid)
     ///
-    /// For convenience, `Index<usize>` is implemented via this method.
-    ///
-    /// Required: `index < self.len()`.
-    fn get_child(&self, index: usize) -> Option<&dyn Widget>;
-
-    /// Mutable variant of get
+    /// Returns `Some(_)` exactly when `index < self.num_children()`.
     ///
     /// Warning: directly adjusting a widget without requiring reconfigure or
     /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
@@ -463,10 +455,10 @@ pub trait Widget: WidgetChildren {
     /// -   Determine the next child after `from` (if provided) or the whole
     ///     range, optionally in `reverse` order
     /// -   Ensure that the selected widget is addressable through
-    ///     [`WidgetChildren::get_child`]
+    ///     [`WidgetChildren::get_child_mut`]
     ///
     /// Both `from` and the return value use the widget index, as used by
-    /// [`WidgetChildren::get_child`].
+    /// [`WidgetChildren::get_child_mut`].
     ///
     /// Default implementation:
     ///
@@ -626,18 +618,6 @@ pub trait WidgetExt: Widget {
     #[inline]
     fn is_strict_ancestor_of(&self, id: &WidgetId) -> bool {
         !self.eq_id(id) && self.id().is_ancestor_of(id)
-    }
-
-    /// Find the descendant with this `id`, if any
-    fn find_widget(&self, id: &WidgetId) -> Option<&dyn Widget> {
-        if let Some(index) = self.find_child_index(id) {
-            self.get_child(index)
-                .and_then(|child| child.find_widget(id))
-        } else if self.eq_id(id) {
-            return Some(self.as_widget());
-        } else {
-            None
-        }
     }
 
     /// Find the descendant with this `id`, if any

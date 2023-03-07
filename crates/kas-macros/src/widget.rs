@@ -363,8 +363,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
 
             #[inline]
-            fn as_widget(&self) -> &dyn ::kas::Widget { self }
-            #[inline]
             fn as_widget_mut(&mut self) -> &mut dyn ::kas::Widget { self }
         }
     });
@@ -390,10 +388,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 #[inline]
                 fn num_children(&self) -> usize {
                     self.#inner.num_children()
-                }
-                #[inline]
-                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Widget> {
-                    self.#inner.get_child(index)
                 }
                 #[inline]
                 fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::Widget> {
@@ -546,16 +540,13 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         if impl_widget_children {
             let mut count = children.len();
 
-            let mut get_rules = quote! {};
             let mut get_mut_rules = quote! {};
             for (i, child) in children.iter().enumerate() {
                 let ident = child;
-                get_rules.append_all(quote! { #i => Some(&self.#ident), });
                 get_mut_rules.append_all(quote! { #i => Some(&mut self.#ident), });
             }
             for (i, path) in layout_children.iter().enumerate() {
                 let index = count + i;
-                get_rules.append_all(quote! { #index => Some(&self.#core.#path), });
                 get_mut_rules.append_all(quote! { #index => Some(&mut self.#core.#path), });
             }
             count += layout_children.len();
@@ -566,12 +557,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 {
                     fn num_children(&self) -> usize {
                         #count
-                    }
-                    fn get_child(&self, _index: usize) -> Option<&dyn ::kas::Widget> {
-                        match _index {
-                            #get_rules
-                            _ => None
-                        }
                     }
                     fn get_child_mut(&mut self, _index: usize) -> Option<&mut dyn ::kas::Widget> {
                         match _index {

@@ -242,7 +242,7 @@ impl SolveCache {
 
 fn print_widget_heirarchy(
     buf: &mut String,
-    widget: &dyn Widget,
+    widget: &mut dyn Widget,
     indent: usize,
 ) -> Result<(), fmt::Error> {
     use std::fmt::Write;
@@ -257,7 +257,7 @@ fn print_widget_heirarchy(
     write!(buf, "\n{trail}{identify:<len$} {pos:<plen$} {size:?}")?;
 
     for i in 0..widget.num_children() {
-        print_widget_heirarchy(buf, widget.get_child(i).unwrap(), indent + 1)?;
+        print_widget_heirarchy(buf, widget.get_child_mut(i).unwrap(), indent + 1)?;
     }
     Ok(())
 }

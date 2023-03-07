@@ -113,14 +113,6 @@ impl_scope! {
             self.widgets.len() + self.handles.len()
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
-            if (index & 1) != 0 {
-                self.handles.get(index >> 1).map(|w| w.as_widget())
-            } else {
-                self.widgets.get(index >> 1).map(|w| w.as_widget())
-            }
-        }
-        #[inline]
         fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
             if (index & 1) != 0 {
                 self.handles.get_mut(index >> 1).map(|w| w.as_widget_mut())

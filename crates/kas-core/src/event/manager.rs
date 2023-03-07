@@ -536,7 +536,7 @@ impl<'a> EventMgr<'a> {
 
         if let Some(id) = target {
             if widget
-                .find_widget(&id)
+                .find_widget_mut(&id)
                 .map(|w| w.navigable())
                 .unwrap_or(false)
             {
@@ -889,7 +889,7 @@ impl<'a> EventMgr<'a> {
         let mut opt_id = None;
         if let Some(ref id) = target {
             if widget
-                .find_widget(id)
+                .find_widget_mut(id)
                 .map(|w| w.navigable())
                 .unwrap_or(false)
             {
