@@ -88,10 +88,10 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
 
         let mut ev_state = EventState::new(shared.config.clone(), scale_factor, dpem);
         let mut tkw = TkWindow::new(shared, None, &mut theme_window);
-        ev_state.full_configure(&mut tkw, widget.as_widget_mut());
+        ev_state.full_configure(&mut tkw, widget.as_node());
 
         let size_mgr = SizeMgr::new(theme_window.size());
-        let mut solve_cache = SolveCache::find_constraints(widget.as_widget_mut(), size_mgr);
+        let mut solve_cache = SolveCache::find_constraints(widget.as_node(), size_mgr);
 
         // Opening a zero-size window causes a crash, so force at least 1x1:
         let ideal = solve_cache.ideal(true).max(Size(1, 1));
@@ -203,7 +203,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
     /// Update, after receiving all events
     pub(super) fn update(&mut self, shared: &mut SharedState<S, T>) -> (Action, Option<Instant>) {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-        let action = self.ev_state.update(&mut tkw, self.widget.as_widget_mut());
+        let action = self.ev_state.update(&mut tkw, self.widget.as_node());
 
         if action.contains(Action::CLOSE | Action::EXIT) {
             return (action, None);
@@ -229,9 +229,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
     /// Returns: time of next scheduled resume.
     pub(super) fn post_draw(&mut self, shared: &mut SharedState<S, T>) -> Option<Instant> {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-        let has_action = self
-            .ev_state
-            .post_draw(&mut tkw, self.widget.as_widget_mut());
+        let has_action = self.ev_state.post_draw(&mut tkw, self.widget.as_node());
 
         if has_action {
             self.queued_frame_time = Some(self.next_avail_frame_time);
@@ -263,7 +261,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
             self.ev_state.region_moved(&mut *self.widget);
         } else*/
         if action.contains(Action::REGION_MOVED) {
-            self.ev_state.region_moved(&mut self.widget.as_widget_mut());
+            self.ev_state.region_moved(self.widget.as_node());
         }
         if !action.is_empty() {
             self.queued_frame_time = Some(self.next_avail_frame_time);
@@ -276,12 +274,12 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         self.ev_state.with(&mut tkw, |mgr| {
             widget.handle_closure(mgr);
         });
-        self.ev_state.update(&mut tkw, self.widget.as_widget_mut())
+        self.ev_state.update(&mut tkw, self.widget.as_node())
     }
 
     pub(super) fn update_timer(&mut self, shared: &mut SharedState<S, T>) -> Option<Instant> {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-        let widget = self.widget.as_widget_mut();
+        let widget = self.widget.as_node();
         self.ev_state.with(&mut tkw, |mgr| mgr.update_timer(widget));
         self.next_resume()
     }
@@ -293,7 +291,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         payload: u64,
     ) {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-        let widget = self.widget.as_widget_mut();
+        let widget = self.widget.as_node();
         self.ev_state
             .with(&mut tkw, |mgr| mgr.update_widgets(widget, id, payload));
     }
@@ -334,7 +332,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
 
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         self.ev_state
-            .full_configure(&mut tkw, self.widget.as_widget_mut());
+            .full_configure(&mut tkw, self.widget.as_node());
 
         self.solve_cache.invalidate_rule_cache();
         self.apply_size(shared, false);
@@ -353,9 +351,9 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
             &mut shared.draw,
             &mut self.ev_state,
         );
-        solve_cache.apply_rect(widget.as_widget_mut(), &mut mgr, rect, true);
+        solve_cache.apply_rect(widget.as_node(), &mut mgr, rect, true);
         if first {
-            solve_cache.print_widget_heirarchy(widget.as_widget_mut());
+            solve_cache.print_widget_heirarchy(widget.as_node());
         }
         widget.resize_popups(&mut mgr);
 

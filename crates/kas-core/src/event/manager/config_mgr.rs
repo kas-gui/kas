@@ -13,7 +13,7 @@ use crate::layout::AlignPair;
 use crate::shell::Platform;
 use crate::text::TextApi;
 use crate::theme::{Feature, SizeMgr, TextClass, ThemeSize};
-use crate::{Action, Widget, WidgetId};
+use crate::{Action, Node, WidgetId};
 use std::ops::{Deref, DerefMut};
 
 #[allow(unused)] use crate::{event::Event, Layout};
@@ -91,12 +91,12 @@ impl<'a> ConfigMgr<'a> {
     ///
     /// Pass the `id` to assign to the widget: this should be constructed from
     /// the parent's id via [`WidgetId::make_child`].
-    pub fn configure(&mut self, id: WidgetId, widget: &mut dyn Widget) {
+    pub fn configure(&mut self, id: WidgetId, mut widget: Node) {
         widget.pre_configure(self, id);
 
         for index in 0..widget.num_children() {
             let id = widget.make_child_id(index);
-            if let Some(widget) = widget.get_child(index) {
+            if let Some(widget) = widget.re().get_child(index) {
                 self.configure(id, widget);
             }
         }

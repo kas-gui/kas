@@ -363,7 +363,9 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
 
             #[inline]
-            fn as_widget_mut(&mut self) -> &mut dyn ::kas::Widget { self }
+            fn as_node(&mut self) -> ::kas::Node {
+                Node::new(self)
+            }
         }
     });
 
@@ -390,7 +392,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     self.#inner.num_children()
                 }
                 #[inline]
-                fn get_child(&mut self, index: usize) -> Option<&mut dyn ::kas::Widget> {
+                fn get_child(&mut self, index: usize) -> Option<::kas::Node> {
                     self.#inner.get_child(index)
                 }
                 #[inline]
@@ -543,11 +545,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             let mut get_mut_rules = quote! {};
             for (i, child) in children.iter().enumerate() {
                 let ident = child;
-                get_mut_rules.append_all(quote! { #i => Some(&mut self.#ident), });
+                get_mut_rules.append_all(quote! { #i => Some(self.#ident.as_node()), });
             }
             for (i, path) in layout_children.iter().enumerate() {
                 let index = count + i;
-                get_mut_rules.append_all(quote! { #index => Some(&mut self.#core.#path), });
+                get_mut_rules.append_all(quote! { #index => Some(self.#core.#path.as_node()), });
             }
             count += layout_children.len();
 
@@ -558,7 +560,8 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     fn num_children(&self) -> usize {
                         #count
                     }
-                    fn get_child(&mut self, _index: usize) -> Option<&mut dyn ::kas::Widget> {
+                    fn get_child(&mut self, _index: usize) -> Option<::kas::Node> {
+                        use ::kas::WidgetCore;
                         match _index {
                             #get_mut_rules
                             _ => None

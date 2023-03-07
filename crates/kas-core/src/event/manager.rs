@@ -22,7 +22,7 @@ use super::*;
 use crate::cast::Cast;
 use crate::geom::{Coord, Offset};
 use crate::shell::ShellWindow;
-use crate::{Action, Erased, Widget, WidgetExt, WidgetId, WindowId};
+use crate::{Action, Erased, Node, WidgetId, WindowId};
 
 mod config_mgr;
 mod mgr_pub;
@@ -69,7 +69,7 @@ struct MouseGrab {
 }
 
 impl<'a> EventMgr<'a> {
-    fn flush_mouse_grab_motion(&mut self, widget: &mut dyn Widget) {
+    fn flush_mouse_grab_motion(&mut self, widget: Node) {
         if let Some(grab) = self.mouse_grab.as_mut() {
             let delta = grab.delta;
             if delta == Offset::ZERO {
@@ -449,7 +449,7 @@ impl<'a> Drop for EventMgr<'a> {
 
 /// Internal methods
 impl<'a> EventMgr<'a> {
-    fn start_key_event(&mut self, widget: &mut dyn Widget, vkey: VirtualKeyCode, scancode: u32) {
+    fn start_key_event(&mut self, mut widget: Node, vkey: VirtualKeyCode, scancode: u32) {
         log::trace!(
             "start_key_event: widget={}, vkey={vkey:?}, scancode={scancode}",
             widget.id()
@@ -461,9 +461,10 @@ impl<'a> EventMgr<'a> {
 
         if let Some(cmd) = opt_command {
             let mut targets = vec![];
+            let w = &mut widget;
             let mut send = |_self: &mut Self, id: WidgetId, cmd| -> bool {
                 if !targets.contains(&id) {
-                    let used = _self.send_event(widget, id.clone(), Event::Command(cmd));
+                    let used = _self.send_event(w.re(), id.clone(), Event::Command(cmd));
                     if used {
                         _self.add_key_depress(scancode, id.clone());
                     }
@@ -536,6 +537,7 @@ impl<'a> EventMgr<'a> {
 
         if let Some(id) = target {
             if widget
+                .re()
                 .find_widget(&id)
                 .map(|w| w.navigable())
                 .unwrap_or(false)
@@ -594,7 +596,7 @@ impl<'a> EventMgr<'a> {
     // Note: cannot use internal stack of mutable references due to borrow checker
     fn send_recurse(
         &mut self,
-        widget: &mut dyn Widget,
+        mut widget: Node,
         id: WidgetId,
         disabled: bool,
         event: Event,
@@ -629,7 +631,7 @@ impl<'a> EventMgr<'a> {
 
         if let Some(index) = widget.find_child_index(&id) {
             let translation = widget.translation();
-            if let Some(w) = widget.get_child(index) {
+            if let Some(w) = widget.re().get_child(index) {
                 response = self.send_recurse(w, id, disabled, event.clone() + translation);
                 self.last_child = Some(index);
                 if self.scroll != Scroll::None {
@@ -659,9 +661,9 @@ impl<'a> EventMgr<'a> {
     }
 
     // Traverse widget tree by recursive call to a specific target
-    fn replay_recurse(&mut self, widget: &mut dyn Widget, id: WidgetId, msg: Erased) {
+    fn replay_recurse(&mut self, mut widget: Node, id: WidgetId, msg: Erased) {
         if let Some(index) = widget.find_child_index(&id) {
-            if let Some(w) = widget.get_child(index) {
+            if let Some(w) = widget.re().get_child(index) {
                 self.replay_recurse(w, id, msg);
                 self.last_child = Some(index);
                 if self.scroll != Scroll::None {
@@ -689,7 +691,7 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Replay a message as if it was pushed by `id`
-    fn replay(&mut self, widget: &mut dyn Widget, id: WidgetId, msg: Erased) {
+    fn replay(&mut self, widget: Node, id: WidgetId, msg: Erased) {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         debug_assert!(self.messages.is_empty());
@@ -703,10 +705,10 @@ impl<'a> EventMgr<'a> {
 
     // Traverse widget tree by recursive call, broadcasting
     #[inline]
-    fn send_update(&mut self, widget: &mut dyn Widget, id: UpdateId, payload: u64) -> usize {
+    fn send_update(&mut self, widget: Node, id: UpdateId, payload: u64) -> usize {
         fn inner(
             mgr: &mut EventMgr,
-            widget: &mut dyn Widget,
+            mut widget: Node,
             count: &mut usize,
             id: UpdateId,
             payload: u64,
@@ -714,7 +716,7 @@ impl<'a> EventMgr<'a> {
             widget.handle_event(mgr, Event::Update { id, payload });
             *count += 1;
             for index in 0..widget.num_children() {
-                if let Some(w) = widget.get_child(index) {
+                if let Some(w) = widget.re().get_child(index) {
                     inner(mgr, w, count, id, payload);
                 }
             }
@@ -732,7 +734,7 @@ impl<'a> EventMgr<'a> {
 
     // Wrapper around Self::send; returns true when event is used
     #[inline]
-    fn send_event(&mut self, widget: &mut dyn Widget, id: WidgetId, event: Event) -> bool {
+    fn send_event(&mut self, widget: Node, id: WidgetId, event: Event) -> bool {
         let used = self.send_event_impl(widget, id, event);
         self.drop_messages();
         self.last_child = None;
@@ -741,7 +743,7 @@ impl<'a> EventMgr<'a> {
     }
 
     // Send an event; possibly leave messages on the stack
-    fn send_event_impl(&mut self, widget: &mut dyn Widget, mut id: WidgetId, event: Event) -> bool {
+    fn send_event_impl(&mut self, widget: Node, mut id: WidgetId, event: Event) -> bool {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         debug_assert!(self.messages.is_empty());
@@ -765,19 +767,14 @@ impl<'a> EventMgr<'a> {
     }
 
     // Returns true if event is used
-    fn send_popup_first(
-        &mut self,
-        widget: &mut dyn Widget,
-        id: Option<WidgetId>,
-        event: Event,
-    ) -> bool {
+    fn send_popup_first(&mut self, mut widget: Node, id: Option<WidgetId>, event: Event) -> bool {
         while let Some((wid, parent)) = self
             .popups
             .last()
             .map(|(wid, p, _)| (*wid, p.parent.clone()))
         {
             log::trace!("send_popup_first: parent={parent}: {event:?}");
-            if self.send_event(widget, parent, event.clone()) {
+            if self.send_event(widget.re(), parent, event.clone()) {
                 return true;
             }
             self.close_window(wid, false);
@@ -791,7 +788,7 @@ impl<'a> EventMgr<'a> {
     /// Advance the keyboard navigation focus
     pub fn next_nav_focus_impl(
         &mut self,
-        mut widget: &mut dyn Widget,
+        mut widget: Node,
         mut target: Option<WidgetId>,
         reverse: bool,
         key_focus: bool,
@@ -821,7 +818,7 @@ impl<'a> EventMgr<'a> {
 
         fn nav(
             mgr: &mut EventMgr,
-            widget: &mut dyn Widget,
+            mut widget: Node,
             focus: Option<&WidgetId>,
             rev: bool,
         ) -> Option<WidgetId> {
@@ -834,6 +831,7 @@ impl<'a> EventMgr<'a> {
             if !rev {
                 if let Some(index) = child {
                     if let Some(id) = widget
+                        .re()
                         .get_child(index)
                         .and_then(|w| nav(mgr, w, focus, rev))
                     {
@@ -846,6 +844,7 @@ impl<'a> EventMgr<'a> {
                 loop {
                     if let Some(index) = widget.nav_next(mgr, rev, child) {
                         if let Some(id) = widget
+                            .re()
                             .get_child(index)
                             .and_then(|w| nav(mgr, w, focus, rev))
                         {
@@ -859,6 +858,7 @@ impl<'a> EventMgr<'a> {
             } else {
                 if let Some(index) = child {
                     if let Some(id) = widget
+                        .re()
                         .get_child(index)
                         .and_then(|w| nav(mgr, w, focus, rev))
                     {
@@ -869,6 +869,7 @@ impl<'a> EventMgr<'a> {
                 loop {
                     if let Some(index) = widget.nav_next(mgr, rev, child) {
                         if let Some(id) = widget
+                            .re()
                             .get_child(index)
                             .and_then(|w| nav(mgr, w, focus, rev))
                         {
@@ -889,6 +890,7 @@ impl<'a> EventMgr<'a> {
         let mut opt_id = None;
         if let Some(ref id) = target {
             if widget
+                .re()
                 .find_widget(id)
                 .map(|w| w.navigable())
                 .unwrap_or(false)
@@ -903,7 +905,7 @@ impl<'a> EventMgr<'a> {
         let restart = target.is_some();
 
         if opt_id.is_none() {
-            opt_id = nav(self, widget, target.as_ref(), reverse);
+            opt_id = nav(self, widget.re(), target.as_ref(), reverse);
         }
         if restart && opt_id.is_none() {
             opt_id = nav(self, widget, None, reverse);

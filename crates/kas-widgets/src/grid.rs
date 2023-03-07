@@ -69,7 +69,7 @@ impl_scope! {
         }
         #[inline]
         fn get_child(&mut self, index: usize) -> Option<&mut dyn Widget> {
-            self.widgets.get_mut(index).map(|c| c.1.as_widget_mut())
+            self.widgets.get_mut(index).map(|c| c.1.as_node_mut())
         }
     }
 

@@ -12,7 +12,7 @@ use crate::cast::Conv;
 use crate::event::ConfigMgr;
 use crate::geom::{Rect, Size};
 use crate::theme::SizeMgr;
-use crate::{Widget, WidgetExt};
+use crate::{Node, Widget};
 
 /// A [`SizeRules`] solver for layouts
 ///
@@ -135,7 +135,7 @@ impl SolveCache {
     /// Calculate required size of widget
     ///
     /// Assumes no explicit alignment.
-    pub fn find_constraints(widget: &mut dyn Widget, size_mgr: SizeMgr) -> Self {
+    pub fn find_constraints(mut widget: Node, size_mgr: SizeMgr) -> Self {
         let start = std::time::Instant::now();
 
         let w = widget.size_rules(size_mgr.re(), AxisInfo::new(false, None, None));
@@ -185,7 +185,7 @@ impl SolveCache {
     /// last used).
     pub fn apply_rect(
         &mut self,
-        widget: &mut dyn Widget,
+        mut widget: Node,
         mgr: &mut ConfigMgr,
         mut rect: Rect,
         inner_margin: bool,
@@ -229,7 +229,7 @@ impl SolveCache {
     /// Print widget heirarchy in the trace log
     ///
     /// This is sometimes called after [`Self::apply_rect`].
-    pub fn print_widget_heirarchy(&mut self, widget: &mut dyn Widget) {
+    pub fn print_widget_heirarchy(&mut self, widget: Node) {
         let rect = widget.rect();
         let mut buf = String::new();
         print_widget_heirarchy(&mut buf, widget, 0).expect("print_widget_heirarchy failed");
@@ -242,7 +242,7 @@ impl SolveCache {
 
 fn print_widget_heirarchy(
     buf: &mut String,
-    widget: &mut dyn Widget,
+    mut widget: Node,
     indent: usize,
 ) -> Result<(), fmt::Error> {
     use std::fmt::Write;
@@ -257,7 +257,7 @@ fn print_widget_heirarchy(
     write!(buf, "\n{trail}{identify:<len$} {pos:<plen$} {size:?}")?;
 
     for i in 0..widget.num_children() {
-        print_widget_heirarchy(buf, widget.get_child(i).unwrap(), indent + 1)?;
+        print_widget_heirarchy(buf, widget.re().get_child(i).unwrap(), indent + 1)?;
     }
     Ok(())
 }

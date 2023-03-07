@@ -14,7 +14,7 @@ use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
 use crate::model::SharedRc;
 use crate::shell::ShellWindow;
-use crate::{Action, Layout, RootWidget, Widget, WidgetId, Window};
+use crate::{Action, RootWidget, WidgetCore, WidgetId, Window};
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
@@ -72,7 +72,7 @@ impl EventState {
     /// [`WidgetId`] identifiers and call widgets' [`Widget::configure`]
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
-    pub(crate) fn full_configure(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
+    pub(crate) fn full_configure(&mut self, shell: &mut dyn ShellWindow, mut widget: Node) {
         log::debug!(target: "kas_core::event::manager", "full_configure");
         self.action.remove(Action::RECONFIGURE);
 
@@ -84,7 +84,7 @@ impl EventState {
 
         shell.size_and_draw_shared(Box::new(|size, draw_shared| {
             let mut mgr = ConfigMgr::new(size, draw_shared, self);
-            mgr.configure(WidgetId::ROOT, widget);
+            mgr.configure(WidgetId::ROOT, widget.re());
         }));
 
         let hover = widget.find_id(self.last_mouse_coord);
@@ -92,7 +92,7 @@ impl EventState {
     }
 
     /// Update the widgets under the cursor and touch events
-    pub(crate) fn region_moved(&mut self, widget: &mut dyn Widget) {
+    pub(crate) fn region_moved(&mut self, mut widget: Node) {
         log::trace!(target: "kas_core::event::manager", "region_moved");
         // Note: redraw is already implied.
 
@@ -130,11 +130,7 @@ impl EventState {
 
     /// Update, after receiving all events
     #[inline]
-    pub(crate) fn update(
-        &mut self,
-        shell: &mut dyn ShellWindow,
-        widget: &mut dyn Widget,
-    ) -> Action {
+    pub(crate) fn update(&mut self, shell: &mut dyn ShellWindow, mut widget: Node) -> Action {
         let old_hover_icon = self.hover_icon;
 
         let mut mgr = EventMgr {
@@ -146,15 +142,15 @@ impl EventState {
         };
 
         while let Some((parent, wid)) = mgr.popup_removed.pop() {
-            mgr.send_event(widget, parent, Event::PopupRemoved(wid));
+            mgr.send_event(widget.re(), parent, Event::PopupRemoved(wid));
         }
 
-        mgr.flush_mouse_grab_motion(widget);
+        mgr.flush_mouse_grab_motion(widget.re());
         for i in 0..mgr.touch_grab.len() {
             let action = mgr.touch_grab[i].flush_click_move();
             mgr.state.action |= action;
             if let Some((id, event)) = mgr.touch_grab[i].flush_grab_move() {
-                mgr.send_event(widget, id, event);
+                mgr.send_event(widget.re(), id, event);
             }
         }
 
@@ -197,7 +193,7 @@ impl EventState {
             let id = grab.id.clone();
             if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
                 let event = Event::Pan { alpha, delta };
-                mgr.send_event(widget, id, event);
+                mgr.send_event(widget.re(), id, event);
             }
         }
 
@@ -206,7 +202,7 @@ impl EventState {
                 mgr.pending_configures.sort();
 
                 // TODO(opt): walk tree; only configure contents of pending_configures
-                mgr.config_mgr(|mgr| mgr.configure(WidgetId::ROOT, widget));
+                mgr.config_mgr(|mgr| mgr.configure(WidgetId::ROOT, widget.re()));
 
                 let hover = widget.find_id(mgr.state.last_mouse_coord);
                 mgr.state.set_hover(hover);
@@ -223,7 +219,7 @@ impl EventState {
                     if matches!(&event, &Event::LostMouseHover) {
                         mgr.hover_icon = Default::default();
                     }
-                    mgr.send_event(widget, id, event);
+                    mgr.send_event(widget.re(), id, event);
                 }
                 Pending::SetRect(_id) => {
                     // TODO(opt): set only this child
@@ -234,7 +230,7 @@ impl EventState {
                     reverse,
                     key_focus,
                 } => {
-                    mgr.next_nav_focus_impl(widget, target, reverse, key_focus);
+                    mgr.next_nav_focus_impl(widget.re(), target, reverse, key_focus);
                 }
             }
         }
@@ -256,11 +252,7 @@ impl EventState {
     ///
     /// Returns true if action is non-empty
     #[inline]
-    pub(crate) fn post_draw(
-        &mut self,
-        shell: &mut dyn ShellWindow,
-        widget: &mut dyn Widget,
-    ) -> bool {
+    pub(crate) fn post_draw(&mut self, shell: &mut dyn ShellWindow, widget: Node) -> bool {
         let mut mgr = EventMgr {
             state: self,
             shell,
@@ -282,7 +274,7 @@ impl EventState {
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl<'a> EventMgr<'a> {
     /// Update widgets due to timer
-    pub(crate) fn update_timer(&mut self, widget: &mut dyn Widget) {
+    pub(crate) fn update_timer(&mut self, mut widget: Node) {
         let now = Instant::now();
 
         // assumption: time_updates are sorted in reverse order
@@ -292,14 +284,14 @@ impl<'a> EventMgr<'a> {
             }
 
             let update = self.time_updates.pop().unwrap();
-            self.send_event(widget, update.1, Event::TimerUpdate(update.2));
+            self.send_event(widget.re(), update.1, Event::TimerUpdate(update.2));
         }
 
         self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
     }
 
     /// Update widgets with an [`UpdateId`]
-    pub(crate) fn update_widgets(&mut self, widget: &mut dyn Widget, id: UpdateId, payload: u64) {
+    pub(crate) fn update_widgets(&mut self, widget: Node, id: UpdateId, payload: u64) {
         if id == self.state.config.config.id() {
             let (sf, dpem) = self.size_mgr(|size| (size.scale_factor(), size.dpem()));
             self.state.config.update(sf, dpem);
@@ -314,7 +306,7 @@ impl<'a> EventMgr<'a> {
         );
     }
 
-    fn poll_futures(&mut self, widget: &mut dyn Widget) {
+    fn poll_futures(&mut self, mut widget: Node) {
         let mut i = 0;
         while i < self.state.fut_messages.len() {
             let (_, fut) = &mut self.state.fut_messages[i];
@@ -328,7 +320,7 @@ impl<'a> EventMgr<'a> {
 
                     // Replay message. This could push another future; if it
                     // does we should poll it immediately to start its work.
-                    self.replay(widget, id, msg);
+                    self.replay(widget.re(), id, msg);
                 }
             }
         }
@@ -347,6 +339,8 @@ impl<'a> EventMgr<'a> {
         event: winit::event::WindowEvent,
     ) {
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
+        let drag_anywhere = widget.drag_anywhere();
+        let mut widget = widget.as_node();
 
         match event {
             CloseRequested => self.send_action(Action::CLOSE),
@@ -362,7 +356,7 @@ impl<'a> EventMgr<'a> {
                     // layer. We use our own shortcut system instead.
                     if c >= '\x20' && !('\x7f'..='\u{9f}').contains(&c) {
                         let event = Event::ReceivedCharacter(c);
-                        self.send_event(widget, id, event);
+                        self.send_event(widget.re(), id, event);
                     }
                 }
             }
@@ -425,7 +419,7 @@ impl<'a> EventMgr<'a> {
                         coord,
                     };
                     let event = Event::PressMove { press, delta };
-                    self.send_event(widget, id, event);
+                    self.send_event(widget.re(), id, event);
                 } else {
                     // We don't forward move events without a grab
                 }
@@ -444,7 +438,7 @@ impl<'a> EventMgr<'a> {
                 }
             }
             MouseWheel { delta, .. } => {
-                self.flush_mouse_grab_motion(widget);
+                self.flush_mouse_grab_motion(widget.re());
 
                 self.last_click_button = FAKE_MOUSE_BUTTON;
 
@@ -458,11 +452,11 @@ impl<'a> EventMgr<'a> {
                     }
                 });
                 if let Some(id) = self.hover.clone() {
-                    self.send_event(widget, id, event);
+                    self.send_event(widget.re(), id, event);
                 }
             }
             MouseInput { state, button, .. } => {
-                self.flush_mouse_grab_motion(widget);
+                self.flush_mouse_grab_motion(widget.re());
 
                 let coord = self.last_mouse_coord;
 
@@ -483,7 +477,7 @@ impl<'a> EventMgr<'a> {
                     .unwrap_or(false)
                 {
                     if let Some((id, event)) = self.remove_mouse_grab(true) {
-                        self.send_event(widget, id, event);
+                        self.send_event(widget.re(), id, event);
                     }
                 }
 
@@ -491,7 +485,7 @@ impl<'a> EventMgr<'a> {
                     if let Some(start_id) = self.hover.clone() {
                         // No mouse grab but have a hover target
                         if self.config.mouse_nav_focus() {
-                            if let Some(w) = widget.find_widget(&start_id) {
+                            if let Some(w) = widget.re().find_widget(&start_id) {
                                 if w.navigable() {
                                     self.set_nav_focus(w.id(), false);
                                 }
@@ -506,9 +500,9 @@ impl<'a> EventMgr<'a> {
                         coord,
                     };
                     let event = Event::PressStart { press };
-                    let used = self.send_popup_first(widget, self.hover.clone(), event);
+                    let used = self.send_popup_first(widget.re(), self.hover.clone(), event);
 
-                    if !used && self.mouse_grab.is_none() && widget.drag_anywhere() {
+                    if !used && self.mouse_grab.is_none() && drag_anywhere {
                         self.shell.drag_window();
                     }
                 }
@@ -523,7 +517,7 @@ impl<'a> EventMgr<'a> {
                         let start_id = widget.find_id(coord);
                         if let Some(id) = start_id.as_ref() {
                             if self.config.touch_nav_focus() {
-                                if let Some(w) = widget.find_widget(id) {
+                                if let Some(w) = widget.re().find_widget(id) {
                                     if w.navigable() {
                                         self.set_nav_focus(w.id(), false);
                                     }
@@ -536,7 +530,7 @@ impl<'a> EventMgr<'a> {
                                 coord,
                             };
                             let event = Event::PressStart { press };
-                            self.send_popup_first(widget, start_id, event);
+                            self.send_popup_first(widget.re(), start_id, event);
                         }
                     }
                     TouchPhase::Moved => {
@@ -571,7 +565,7 @@ impl<'a> EventMgr<'a> {
                         if let Some(mut grab) = self.remove_touch(touch.id) {
                             self.send_action(grab.flush_click_move());
                             if let Some((id, event)) = grab.flush_grab_move() {
-                                self.send_event(widget, id, event);
+                                self.send_event(widget.re(), id, event);
                             }
 
                             if grab.mode == GrabMode::Grab {
@@ -579,7 +573,7 @@ impl<'a> EventMgr<'a> {
                                 let press = Press { source, id, coord };
                                 let success = ev == TouchPhase::Ended;
                                 let event = Event::PressEnd { press, success };
-                                self.send_event(widget, grab.start_id, event);
+                                self.send_event(widget.re(), grab.start_id, event);
                             }
                         }
                     }

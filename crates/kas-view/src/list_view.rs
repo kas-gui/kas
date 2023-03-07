@@ -481,10 +481,10 @@ impl_scope! {
             self.widgets.len()
         }
         #[inline]
-        fn get_child(&mut self, index: usize) -> Option<&mut dyn Widget> {
+        fn get_child(&mut self, index: usize) -> Option<Node> {
             self.widgets
                 .get_mut(index)
-                .map(|w| w.widget.as_widget_mut())
+                .map(|w| w.widget.as_node())
         }
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
             let key = self.data.reconstruct_key(self.id_ref(), id);

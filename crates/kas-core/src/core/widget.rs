@@ -12,7 +12,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::util::IdentifyWidget;
-use crate::WidgetId;
+use crate::{Node, WidgetId};
 use kas_macros::autoimpl;
 
 #[allow(unused)] use crate::event::EventState;
@@ -44,7 +44,7 @@ pub trait WidgetCore: Layout + fmt::Debug {
     fn widget_name(&self) -> &'static str;
 
     /// Erase type
-    fn as_widget_mut(&mut self) -> &mut dyn Widget;
+    fn as_node(&mut self) -> Node;
 }
 
 /// Listing of a [`Widget`]'s children
@@ -82,7 +82,7 @@ pub trait WidgetChildren: WidgetCore {
     /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
     /// be requested. This can be done via [`EventState::send_action`].
     /// This method may be removed in the future.
-    fn get_child(&mut self, index: usize) -> Option<&mut dyn Widget>;
+    fn get_child(&mut self, index: usize) -> Option<Node>;
 
     /// Find the child which is an ancestor of this `id`, if any
     ///
@@ -621,15 +621,9 @@ pub trait WidgetExt: Widget {
     }
 
     /// Find the descendant with this `id`, if any
-    fn find_widget(&mut self, id: &WidgetId) -> Option<&mut dyn Widget> {
-        if let Some(index) = self.find_child_index(id) {
-            self.get_child(index)
-                .and_then(|child| child.find_widget(id))
-        } else if self.eq_id(id) {
-            return Some(self.as_widget_mut());
-        } else {
-            None
-        }
+    #[inline]
+    fn find_widget(&mut self, id: &WidgetId) -> Option<Node> {
+        self.as_node().find_widget(id)
     }
 }
 impl<W: Widget + ?Sized> WidgetExt for W {}
