@@ -219,32 +219,27 @@ impl RootWidget {
 
 // Search for a widget by `id`. On success, return that widget's [`Rect`] and
 // the translation of its children.
-fn find_rect(mut widget: &dyn Widget, id: WidgetId) -> Option<(Rect, Offset)> {
-    let mut translation = Offset::ZERO;
-    loop {
-        if let Some(i) = widget.find_child_index(&id) {
-            if let Some(w) = widget.get_child(i) {
-                translation += widget.translation();
-                widget = w;
-                continue;
+fn find_rect(widget: &mut dyn Widget, id: WidgetId) -> Option<(Rect, Offset)> {
+    fn inner(w: &mut dyn Widget, id: WidgetId, t: Offset) -> Option<(Rect, Offset)> {
+        if let Some(i) = w.find_child_index(&id) {
+            let t = t + w.translation();
+            if let Some(w2) = w.get_child_mut(i) {
+                return inner(w2, id, t);
             }
         }
 
-        return if widget.eq_id(&id) {
-            if widget.translation() != Offset::ZERO {
+        return if w.eq_id(&id) {
+            if w.translation() != Offset::ZERO {
                 // Unvalidated: does this cause issues with the parent's event handlers?
-                log::warn!(
-                    "Parent of pop-up {} has non-zero translation",
-                    widget.identify()
-                );
+                log::warn!("Parent of pop-up {} has non-zero translation", w.identify());
             }
 
-            let rect = widget.rect();
-            Some((rect, translation))
+            Some((w.rect(), t))
         } else {
             None
         };
     }
+    inner(widget, id, Offset::ZERO)
 }
 
 impl RootWidget {
@@ -254,7 +249,7 @@ impl RootWidget {
         let r = self.core.rect;
         let (_, ref mut popup, ref mut translation) = self.popups[index];
 
-        let (c, t) = find_rect(&self.w, popup.parent.clone()).unwrap();
+        let (c, t) = find_rect(&mut self.w, popup.parent.clone()).unwrap();
         *translation = t;
         let r = r + t; // work in translated coordinate space
         let widget = self.w.find_widget_mut(&popup.id).unwrap();
