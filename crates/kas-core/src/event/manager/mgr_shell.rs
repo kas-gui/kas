@@ -81,10 +81,10 @@ impl EventState {
 
         self.new_accel_layer(WidgetId::ROOT, false);
 
-        shell.size_and_draw_shared(&mut |size, draw_shared| {
+        shell.size_and_draw_shared(Box::new(|size, draw_shared| {
             let mut mgr = ConfigMgr::new(size, draw_shared, self);
             mgr.configure(WidgetId::ROOT, widget);
-        });
+        }));
 
         let hover = widget.find_id(self.last_mouse_coord);
         self.set_hover(hover);

@@ -782,8 +782,8 @@ impl<'a> EventMgr<'a> {
 
     /// Adjust the theme
     #[inline]
-    pub fn adjust_theme<F: FnMut(&mut dyn ThemeControl) -> Action>(&mut self, mut f: F) {
-        self.shell.adjust_theme(&mut f);
+    pub fn adjust_theme<F: FnOnce(&mut dyn ThemeControl) -> Action>(&mut self, f: F) {
+        self.shell.adjust_theme(Box::new(f));
     }
 
     /// Access a [`SizeMgr`]
@@ -792,30 +792,31 @@ impl<'a> EventMgr<'a> {
     /// This may change, even without user action, since some platforms
     /// always initialize windows with scale factor 1.
     /// See also notes on [`Widget::configure`].
-    pub fn size_mgr<F: FnMut(SizeMgr) -> T, T>(&mut self, mut f: F) -> T {
+    pub fn size_mgr<F: FnOnce(SizeMgr) -> T, T>(&mut self, f: F) -> T {
         let mut result = None;
-        self.shell.size_and_draw_shared(&mut |size, _| {
+        self.shell.size_and_draw_shared(Box::new(|size, _| {
             result = Some(f(SizeMgr::new(size)));
-        });
+        }));
         result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
     }
 
     /// Access a [`ConfigMgr`]
-    pub fn config_mgr<F: FnMut(&mut ConfigMgr) -> T, T>(&mut self, mut f: F) -> T {
+    pub fn config_mgr<F: FnOnce(&mut ConfigMgr) -> T, T>(&mut self, f: F) -> T {
         let mut result = None;
-        self.shell.size_and_draw_shared(&mut |size, draw_shared| {
-            let mut mgr = ConfigMgr::new(size, draw_shared, self.state);
-            result = Some(f(&mut mgr));
-        });
+        self.shell
+            .size_and_draw_shared(Box::new(|size, draw_shared| {
+                let mut mgr = ConfigMgr::new(size, draw_shared, self.state);
+                result = Some(f(&mut mgr));
+            }));
         result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
     }
 
     /// Access a [`DrawShared`]
-    pub fn draw_shared<F: FnMut(&mut dyn DrawShared) -> T, T>(&mut self, mut f: F) -> T {
+    pub fn draw_shared<F: FnOnce(&mut dyn DrawShared) -> T, T>(&mut self, f: F) -> T {
         let mut result = None;
-        self.shell.size_and_draw_shared(&mut |_, draw_shared| {
+        self.shell.size_and_draw_shared(Box::new(|_, draw_shared| {
             result = Some(f(draw_shared));
-        });
+        }));
         result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
     }
 

@@ -98,7 +98,7 @@ impl<'a> DrawMgr<'a> {
     }
 
     /// Access a [`ConfigMgr`]
-    pub fn config_mgr<F: FnMut(&mut ConfigMgr) -> T, T>(&mut self, mut f: F) -> T {
+    pub fn config_mgr<F: FnOnce(&mut ConfigMgr) -> T, T>(&mut self, f: F) -> T {
         let (sh, draw, ev) = self.h.components();
         let mut mgr = ConfigMgr::new(sh, draw.shared(), ev);
         f(&mut mgr)
