@@ -270,7 +270,7 @@ impl_scope! {
             self.list.len()
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
+        fn get_child(&mut self, index: usize) -> Option<&mut dyn Widget> {
             self.list.get_mut(index).map(|w| w.as_widget_mut())
         }
     }

@@ -390,8 +390,8 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     self.#inner.num_children()
                 }
                 #[inline]
-                fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::Widget> {
-                    self.#inner.get_child_mut(index)
+                fn get_child(&mut self, index: usize) -> Option<&mut dyn ::kas::Widget> {
+                    self.#inner.get_child(index)
                 }
                 #[inline]
                 fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
@@ -558,7 +558,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     fn num_children(&self) -> usize {
                         #count
                     }
-                    fn get_child_mut(&mut self, _index: usize) -> Option<&mut dyn ::kas::Widget> {
+                    fn get_child(&mut self, _index: usize) -> Option<&mut dyn ::kas::Widget> {
                         match _index {
                             #get_mut_rules
                             _ => None

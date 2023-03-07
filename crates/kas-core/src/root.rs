@@ -81,7 +81,7 @@ impl_scope! {
             for (_, popup, translation) in self.popups.iter_mut().rev() {
                 if let Some(id) = self
                     .w
-                    .find_widget_mut(&popup.id)
+                    .find_widget(&popup.id)
                     .and_then(|w| w.find_id(coord + *translation))
                 {
                     return Some(id);
@@ -101,7 +101,7 @@ impl_scope! {
             }
             draw.recurse(&mut self.w);
             for (_, popup, translation) in &self.popups {
-                if let Some(widget) = self.w.find_widget_mut(&popup.id) {
+                if let Some(widget) = self.w.find_widget(&popup.id) {
                     let clip_rect = widget.rect() - *translation;
                     draw.with_overlay(clip_rect, *translation, |mut draw| {
                         draw.recurse(widget);
@@ -223,7 +223,7 @@ fn find_rect(widget: &mut dyn Widget, id: WidgetId) -> Option<(Rect, Offset)> {
     fn inner(w: &mut dyn Widget, id: WidgetId, t: Offset) -> Option<(Rect, Offset)> {
         if let Some(i) = w.find_child_index(&id) {
             let t = t + w.translation();
-            if let Some(w2) = w.get_child_mut(i) {
+            if let Some(w2) = w.get_child(i) {
                 return inner(w2, id, t);
             }
         }
@@ -252,7 +252,7 @@ impl RootWidget {
         let (c, t) = find_rect(&mut self.w, popup.parent.clone()).unwrap();
         *translation = t;
         let r = r + t; // work in translated coordinate space
-        let widget = self.w.find_widget_mut(&popup.id).unwrap();
+        let widget = self.w.find_widget(&popup.id).unwrap();
         let mut cache = layout::SolveCache::find_constraints(widget, mgr.size_mgr());
         let ideal = cache.ideal(false);
         let m = cache.margins();

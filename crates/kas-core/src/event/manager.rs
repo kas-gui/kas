@@ -536,7 +536,7 @@ impl<'a> EventMgr<'a> {
 
         if let Some(id) = target {
             if widget
-                .find_widget_mut(&id)
+                .find_widget(&id)
                 .map(|w| w.navigable())
                 .unwrap_or(false)
             {
@@ -629,7 +629,7 @@ impl<'a> EventMgr<'a> {
 
         if let Some(index) = widget.find_child_index(&id) {
             let translation = widget.translation();
-            if let Some(w) = widget.get_child_mut(index) {
+            if let Some(w) = widget.get_child(index) {
                 response = self.send_recurse(w, id, disabled, event.clone() + translation);
                 self.last_child = Some(index);
                 if self.scroll != Scroll::None {
@@ -661,7 +661,7 @@ impl<'a> EventMgr<'a> {
     // Traverse widget tree by recursive call to a specific target
     fn replay_recurse(&mut self, widget: &mut dyn Widget, id: WidgetId, msg: Erased) {
         if let Some(index) = widget.find_child_index(&id) {
-            if let Some(w) = widget.get_child_mut(index) {
+            if let Some(w) = widget.get_child(index) {
                 self.replay_recurse(w, id, msg);
                 self.last_child = Some(index);
                 if self.scroll != Scroll::None {
@@ -714,7 +714,7 @@ impl<'a> EventMgr<'a> {
             widget.handle_event(mgr, Event::Update { id, payload });
             *count += 1;
             for index in 0..widget.num_children() {
-                if let Some(w) = widget.get_child_mut(index) {
+                if let Some(w) = widget.get_child(index) {
                     inner(mgr, w, count, id, payload);
                 }
             }
@@ -803,7 +803,7 @@ impl<'a> EventMgr<'a> {
         if let Some(id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
             if id.is_ancestor_of(widget.id_ref()) {
                 // do nothing
-            } else if let Some(w) = widget.find_widget_mut(&id) {
+            } else if let Some(w) = widget.find_widget(&id) {
                 widget = w;
             } else {
                 log::warn!(
@@ -834,7 +834,7 @@ impl<'a> EventMgr<'a> {
             if !rev {
                 if let Some(index) = child {
                     if let Some(id) = widget
-                        .get_child_mut(index)
+                        .get_child(index)
                         .and_then(|w| nav(mgr, w, focus, rev))
                     {
                         return Some(id);
@@ -846,7 +846,7 @@ impl<'a> EventMgr<'a> {
                 loop {
                     if let Some(index) = widget.nav_next(mgr, rev, child) {
                         if let Some(id) = widget
-                            .get_child_mut(index)
+                            .get_child(index)
                             .and_then(|w| nav(mgr, w, focus, rev))
                         {
                             return Some(id);
@@ -859,7 +859,7 @@ impl<'a> EventMgr<'a> {
             } else {
                 if let Some(index) = child {
                     if let Some(id) = widget
-                        .get_child_mut(index)
+                        .get_child(index)
                         .and_then(|w| nav(mgr, w, focus, rev))
                     {
                         return Some(id);
@@ -869,7 +869,7 @@ impl<'a> EventMgr<'a> {
                 loop {
                     if let Some(index) = widget.nav_next(mgr, rev, child) {
                         if let Some(id) = widget
-                            .get_child_mut(index)
+                            .get_child(index)
                             .and_then(|w| nav(mgr, w, focus, rev))
                         {
                             return Some(id);
@@ -889,7 +889,7 @@ impl<'a> EventMgr<'a> {
         let mut opt_id = None;
         if let Some(ref id) = target {
             if widget
-                .find_widget_mut(id)
+                .find_widget(id)
                 .map(|w| w.navigable())
                 .unwrap_or(false)
             {

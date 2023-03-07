@@ -82,7 +82,7 @@ pub trait WidgetChildren: WidgetCore {
     /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
     /// be requested. This can be done via [`EventState::send_action`].
     /// This method may be removed in the future.
-    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget>;
+    fn get_child(&mut self, index: usize) -> Option<&mut dyn Widget>;
 
     /// Find the child which is an ancestor of this `id`, if any
     ///
@@ -455,10 +455,10 @@ pub trait Widget: WidgetChildren {
     /// -   Determine the next child after `from` (if provided) or the whole
     ///     range, optionally in `reverse` order
     /// -   Ensure that the selected widget is addressable through
-    ///     [`WidgetChildren::get_child_mut`]
+    ///     [`WidgetChildren::get_child`]
     ///
     /// Both `from` and the return value use the widget index, as used by
-    /// [`WidgetChildren::get_child_mut`].
+    /// [`WidgetChildren::get_child`].
     ///
     /// Default implementation:
     ///
@@ -621,10 +621,10 @@ pub trait WidgetExt: Widget {
     }
 
     /// Find the descendant with this `id`, if any
-    fn find_widget_mut(&mut self, id: &WidgetId) -> Option<&mut dyn Widget> {
+    fn find_widget(&mut self, id: &WidgetId) -> Option<&mut dyn Widget> {
         if let Some(index) = self.find_child_index(id) {
-            self.get_child_mut(index)
-                .and_then(|child| child.find_widget_mut(id))
+            self.get_child(index)
+                .and_then(|child| child.find_widget(id))
         } else if self.eq_id(id) {
             return Some(self.as_widget_mut());
         } else {
