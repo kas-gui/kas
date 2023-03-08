@@ -16,6 +16,7 @@ impl_scope! {
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
     #[widget{
+        data = W::Data;
         layout = frame(kas::theme::FrameStyle::Frame): self.inner;
     }]
     pub struct Frame<W: Widget> {
@@ -44,6 +45,7 @@ impl_scope! {
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
     #[widget{
+        data = W::Data;
         layout = frame(kas::theme::FrameStyle::Popup): self.inner;
     }]
     pub struct PopupFrame<W: Widget> {

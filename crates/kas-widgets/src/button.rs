@@ -21,6 +21,7 @@ impl_scope! {
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone)]
     #[widget {
+        data = W::Data;
         layout = button(self.color): self.inner;
         navigable = true;
         hover_highlight = true;

@@ -17,6 +17,7 @@ use syn::{parse2, parse_quote, token::Eq, Ident, ImplItem, Index, ItemImpl, Memb
 mod kw {
     use syn::custom_keyword;
 
+    custom_keyword!(data);
     custom_keyword!(layout);
     custom_keyword!(navigable);
     custom_keyword!(hover_highlight);
@@ -40,6 +41,7 @@ pub struct ExprToken {
 
 #[derive(Debug, Default)]
 pub struct WidgetArgs {
+    pub data: Option<Type>,
     pub navigable: Option<TokenStream>,
     pub hover_highlight: Option<BoolToken>,
     pub cursor_icon: Option<ExprToken>,
@@ -49,6 +51,7 @@ pub struct WidgetArgs {
 
 impl Parse for WidgetArgs {
     fn parse(content: ParseStream) -> Result<Self> {
+        let mut data = None;
         let mut navigable = None;
         let mut hover_highlight = None;
         let mut cursor_icon = None;
@@ -58,7 +61,11 @@ impl Parse for WidgetArgs {
 
         while !content.is_empty() {
             let lookahead = content.lookahead1();
-            if lookahead.peek(kw::navigable) && navigable.is_none() {
+            if lookahead.peek(kw::data) && data.is_none() {
+                let _ = content.parse::<kw::data>()?;
+                let _: Eq = content.parse()?;
+                data = Some(content.parse::<syn::Type>()?);
+            } else if lookahead.peek(kw::navigable) && navigable.is_none() {
                 let span = content.parse::<kw::navigable>()?.span();
                 let _: Eq = content.parse()?;
                 let value = content.parse::<syn::LitBool>()?;
@@ -102,6 +109,7 @@ impl Parse for WidgetArgs {
         }
 
         Ok(WidgetArgs {
+            data,
             navigable,
             hover_highlight,
             cursor_icon,
@@ -536,6 +544,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 "expected: a field with type `widget_core!()`",
             ));
         };
+        let data_ty = args.data.unwrap_or_else(|| parse_quote! { () });
         widget_methods = vec![];
 
         scope.generated.push(quote! {
@@ -561,7 +570,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             impl #impl_generics ::kas::WidgetNode
                 for #name #ty_generics #where_clause
             {
-                type Data = ();
+                type Data = #data_ty;
 
                 #[inline]
                 fn as_node<'s>(&'s mut self, data: &'s Self::Data) -> ::kas::Node<'s> {
@@ -572,12 +581,27 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
         if impl_widget_children {
             let mut count = children.len();
-
+            // let mut where_clause: Option<WhereClause> = where_clause.clone().unwrap_or(None);
             let mut get_mut_rules = quote! {};
-            for (i, child) in children.iter().enumerate() {
-                let ident = child;
-                get_mut_rules.append_all(quote! { #i => Some(self.#ident.as_node(data)), });
+
+            if count != 0 {
+                // let mut predicates = Punctuated::new();
+                for (i, ident) in children.iter().enumerate() {
+                    // TODO: incorrect or unconstrained data type of child causes a poor error
+                    // message here. Add a constaint like this (assuming no mapping fn):
+                    // <#ty as WidgetNode::Data> == Self::Data
+                    // But this is unsupported: rust#20041
+                    // predicates.push(..);
+
+                    get_mut_rules.append_all(quote! { #i => Some(self.#ident.as_node(data)), });
+                }
+
+                // where_clause = Some(WhereClause {
+                //     where_token: Default::default(),
+                //     predicates,
+                // });
             }
+
             for (i, path) in layout_children.iter().enumerate() {
                 let index = count + i;
                 get_mut_rules

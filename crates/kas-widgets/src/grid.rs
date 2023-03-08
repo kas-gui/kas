@@ -53,7 +53,9 @@ impl_scope! {
     #[autoimpl(Default)]
     #[autoimpl(Debug ignore self.on_message)]
     #[derive(Clone)]
-    #[widget]
+    #[widget{
+        data = W::Data;
+    }]
     pub struct Grid<W: Widget> {
         core: widget_core!(),
         widgets: Vec<(GridChildInfo, W)>,
