@@ -140,6 +140,7 @@ impl ScopeAttr for AttrImplWidget {
 pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     scope.expand_impl_self();
     let name = &scope.ident;
+    let data_ty = quote! { <#name as ::kas::WidgetNode>::Data };
     let opt_derive = &args.derive;
 
     let mut impl_widget_children = true;
@@ -192,7 +193,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             if let Some((stor_ty, stor_def)) = args
                 .layout
                 .as_ref()
-                .and_then(|(_, l)| l.storage_fields(&mut layout_children))
+                .and_then(|(_, l)| l.storage_fields(&mut layout_children, &data_ty))
             {
                 let name = format!("_{name}CoreTy");
                 let core_type = Ident::new(&name, Span::call_site());
@@ -362,8 +363,15 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 #widget_name
             }
 
+        }
+
+        impl #impl_generics ::kas::WidgetNode
+            for #name #ty_generics #where_clause
+        {
+            type Data = ();
+
             #[inline]
-            fn as_node<'s>(&'s mut self, data: &'s ()) -> ::kas::Node<'s> {
+            fn as_node<'s>(&'s mut self, data: &'s Self::Data) -> ::kas::Node<'s> {
                 Node::new(self, data)
             }
         }
@@ -392,8 +400,8 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     self.#inner.num_children()
                 }
                 #[inline]
-                fn get_child<'s>(&'s mut self, data: &'s (), index: usize) -> Option<::kas::Node<'s>> {
-                    self.#inner.get_child(index)
+                fn get_child<'s>(&'s mut self, data: &'s Self::Data, index: usize) -> Option<::kas::Node<'s>> {
+                    self.#inner.get_child(data, index)
                 }
                 #[inline]
                 fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
@@ -561,7 +569,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     fn num_children(&self) -> usize {
                         #count
                     }
-                    fn get_child<'s>(&'s mut self, data: &'s (), _index: usize) -> Option<::kas::Node<'s>> {
+                    fn get_child<'s>(&'s mut self, data: &'s Self::Data, _index: usize) -> Option<::kas::Node<'s>> {
                         use ::kas::WidgetCore;
                         match _index {
                             #get_mut_rules
@@ -832,6 +840,9 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
         });
     }
+
+    // use quote::ToTokens;
+    // println!("{}\n", scope.to_token_stream());
 
     Ok(())
 }

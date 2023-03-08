@@ -14,13 +14,20 @@ use crate::util::IdentifyWidget;
 use crate::WidgetId;
 
 /// Public API over a contextualized widget
-pub struct Node<'a>(&'a mut dyn Widget, &'a ());
+//
+// NOTE: we unsafely transmute the data type of both the widget Data type and
+// the data reference. Alternative: store a `Box<dyn NodeT>` where `NodeT` is
+// a trait offering roughly this same API, implemented over a
+// `struct NodeRef<'a, W: Widget>(&'a mut W, &'a W::Data);`.
+pub struct Node<'a>(&'a mut dyn Widget<Data = ()>, &'a ());
 
 impl<'a> Node<'a> {
     /// Construct
     // TODO: should this be hidden?
-    pub fn new(widget: &'a mut dyn Widget, data: &'a ()) -> Self {
-        Node(widget, data)
+    pub fn new<W: Widget>(widget: &'a mut W, data: &'a W::Data) -> Self {
+        use std::mem::transmute;
+        let widget: &'a mut dyn Widget<Data = W::Data> = widget;
+        unsafe { Node(transmute(widget), transmute(data)) }
     }
 
     /// Reborrow with a new lifetime

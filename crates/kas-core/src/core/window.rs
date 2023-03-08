@@ -52,7 +52,7 @@ pub enum Decorations {
 }
 
 /// Functionality required by a window
-pub trait Window: Widget {
+pub trait Window: Widget<Data = ()> {
     /// Get the window title
     fn title(&self) -> &str;
 

@@ -42,9 +42,15 @@ pub trait WidgetCore: Layout + fmt::Debug {
 
     /// Get the name of the widget struct
     fn widget_name(&self) -> &'static str;
+}
+
+/// Data type, as_node method
+#[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
+pub trait WidgetNode: WidgetCore {
+    type Data;
 
     /// Erase type
-    fn as_node<'s>(&'s mut self, data: &'s ()) -> Node<'s>;
+    fn as_node<'s>(&'s mut self, data: &'s Self::Data) -> Node<'s>;
 }
 
 /// Listing of a [`Widget`]'s children
@@ -67,7 +73,7 @@ pub trait WidgetCore: Layout + fmt::Debug {
 /// get configured, either by sending [`Action::RECONFIGURE`] by calling
 /// [`ConfigMgr::configure`].
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait WidgetChildren: WidgetCore {
+pub trait WidgetChildren: WidgetNode {
     /// Get the number of child widgets
     ///
     /// Every value in the range `0..self.num_children()` is a valid child
@@ -82,7 +88,7 @@ pub trait WidgetChildren: WidgetCore {
     /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
     /// be requested. This can be done via [`EventState::send_action`].
     /// This method may be removed in the future.
-    fn get_child<'s>(&'s mut self, data: &'s (), index: usize) -> Option<Node<'s>>;
+    fn get_child<'s>(&'s mut self, data: &'s Self::Data, index: usize) -> Option<Node<'s>>;
 
     /// Find the child which is an ancestor of this `id`, if any
     ///
@@ -622,7 +628,7 @@ pub trait WidgetExt: Widget {
 
     /// Find the descendant with this `id`, if any
     #[inline]
-    fn find_widget<'s>(&'s mut self, data: &'s (), id: &WidgetId) -> Option<Node<'s>> {
+    fn find_widget<'s>(&'s mut self, data: &'s Self::Data, id: &WidgetId) -> Option<Node<'s>> {
         self.as_node(data).find_widget(id)
     }
 }

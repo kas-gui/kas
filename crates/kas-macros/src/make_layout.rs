@@ -45,9 +45,10 @@ pub struct Tree(Layout);
 impl Tree {
     /// If extra fields are needed for storage, return these: `(fields_ty, fields_init)`
     /// (e.g. `({ layout_frame: FrameStorage, }, { layout_frame: Default::default()), }`).
-    pub fn storage_fields(&self, children: &mut Vec<Toks>) -> Option<(Toks, Toks)> {
+    pub fn storage_fields(&self, children: &mut Vec<Toks>, data_ty: &Toks) -> Option<(Toks, Toks)> {
         let (mut ty_toks, mut def_toks) = (Toks::new(), Toks::new());
-        self.0.append_fields(&mut ty_toks, &mut def_toks, children);
+        self.0
+            .append_fields(&mut ty_toks, &mut def_toks, children, data_ty);
         if ty_toks.is_empty() && def_toks.is_empty() {
             None
         } else {
@@ -699,26 +700,32 @@ impl ToTokens for GridDimensions {
 }
 
 impl Layout {
-    fn append_fields(&self, ty_toks: &mut Toks, def_toks: &mut Toks, children: &mut Vec<Toks>) {
+    fn append_fields(
+        &self,
+        ty_toks: &mut Toks,
+        def_toks: &mut Toks,
+        children: &mut Vec<Toks>,
+        data_ty: &Toks,
+    ) {
         match self {
             Layout::Align(layout, _) | Layout::NonNavigable(layout) => {
-                layout.append_fields(ty_toks, def_toks, children);
+                layout.append_fields(ty_toks, def_toks, children, data_ty);
             }
             Layout::AlignSingle(..) | Layout::Margins(..) | Layout::Single(_) => (),
             Layout::Pack(stor, layout, _) => {
                 ty_toks.append_all(quote! { #stor: ::kas::layout::PackStorage, });
                 def_toks.append_all(quote! { #stor: Default::default(), });
-                layout.append_fields(ty_toks, def_toks, children);
+                layout.append_fields(ty_toks, def_toks, children, data_ty);
             }
             Layout::Widget(stor, expr) => {
                 children.push(stor.to_token_stream());
-                ty_toks.append_all(quote! { #stor: Box<dyn ::kas::Widget>, });
+                ty_toks.append_all(quote! { #stor: Box<dyn ::kas::Widget<Data = #data_ty>>, });
                 def_toks.append_all(quote! { #stor: Box::new(#expr), });
             }
             Layout::Frame(stor, layout, _) | Layout::Button(stor, layout, _) => {
                 ty_toks.append_all(quote! { #stor: ::kas::layout::FrameStorage, });
                 def_toks.append_all(quote! { #stor: Default::default(), });
-                layout.append_fields(ty_toks, def_toks, children);
+                layout.append_fields(ty_toks, def_toks, children, data_ty);
             }
             Layout::List(stor, _, vec) => {
                 def_toks.append_all(quote! { #stor: Default::default(), });
@@ -730,12 +737,12 @@ impl Layout {
                     quote! { #stor: ::kas::layout::FixedRowStorage<#len>, }
                 });
                 for item in vec {
-                    item.append_fields(ty_toks, def_toks, children);
+                    item.append_fields(ty_toks, def_toks, children, data_ty);
                 }
             }
             Layout::Float(vec) => {
                 for item in vec {
-                    item.append_fields(ty_toks, def_toks, children);
+                    item.append_fields(ty_toks, def_toks, children, data_ty);
                 }
             }
             Layout::Slice(stor, _, _) => {
@@ -749,7 +756,7 @@ impl Layout {
                 def_toks.append_all(quote! { #stor: Default::default(), });
 
                 for (_info, layout) in cells {
-                    layout.append_fields(ty_toks, def_toks, children);
+                    layout.append_fields(ty_toks, def_toks, children, data_ty);
                 }
             }
             Layout::Label(stor, text) => {
