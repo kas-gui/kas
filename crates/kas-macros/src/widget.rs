@@ -265,7 +265,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
     }
 
-    crate::widget_index::visit_impls(&children, &mut scope.impls);
+    crate::widget_index::visit_impls(children.iter(), &mut scope.impls);
 
     for (index, impl_) in scope.impls.iter().enumerate() {
         if let Some((_, ref path, _)) = impl_.trait_ {
@@ -623,7 +623,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         };
         if let Some((_, layout)) = args.layout.take() {
             gen_layout = true;
-            fn_nav_next = match layout.nav_next(&children) {
+            fn_nav_next = match layout.nav_next(children.iter()) {
                 NavNextResult::Err(span, msg) => {
                     fn_nav_next_err = Some((span, msg));
                     None

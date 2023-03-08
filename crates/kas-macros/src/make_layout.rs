@@ -59,7 +59,10 @@ impl Tree {
         self.0.generate(core)
     }
 
-    pub fn nav_next(&self, children: &[Member]) -> NavNextResult {
+    pub fn nav_next<'a, I: Clone + ExactSizeIterator<Item = &'a Member>>(
+        &self,
+        children: I,
+    ) -> NavNextResult {
         match &self.0 {
             Layout::Slice(_, dir, _) => NavNextResult::Slice(dir.to_token_stream()),
             layout => {
@@ -867,9 +870,9 @@ impl Layout {
     ///
     /// -   `output`: the result
     /// -   `index`: the next widget's index
-    fn nav_next(
+    fn nav_next<'a, I: Clone + Iterator<Item = &'a Member>>(
         &self,
-        children: &[Member],
+        children: I,
         output: &mut Vec<usize>,
         index: &mut usize,
     ) -> std::result::Result<(), (Span, &'static str)> {
@@ -886,7 +889,7 @@ impl Layout {
                 Ok(())
             }
             Layout::AlignSingle(m, _) | Layout::Single(m) => {
-                for (i, child) in children.iter().enumerate() {
+                for (i, child) in children.enumerate() {
                     if m.member == *child {
                         output.push(i);
                         return Ok(());
@@ -902,7 +905,7 @@ impl Layout {
             Layout::List(_, dir, list) => {
                 let start = output.len();
                 for item in list {
-                    item.nav_next(children, output, index)?;
+                    item.nav_next(children.clone(), output, index)?;
                 }
                 match dir {
                     _ if output.len() <= start + 1 => Ok(()),
@@ -917,13 +920,13 @@ impl Layout {
             Layout::Grid(_, _, cells) => {
                 // TODO: sort using CellInfo?
                 for (_, item) in cells {
-                    item.nav_next(children, output, index)?;
+                    item.nav_next(children.clone(), output, index)?;
                 }
                 Ok(())
             }
             Layout::Float(list) => {
                 for item in list {
-                    item.nav_next(children, output, index)?;
+                    item.nav_next(children.clone(), output, index)?;
                 }
                 Ok(())
             }
