@@ -68,7 +68,9 @@ impl_scope! {
     /// Similar to [`crate::List`] but with draggable handles between items.
     // TODO: better doc
     #[derive(Clone, Default, Debug)]
-    #[widget]
+    #[widget {
+        data = W::Data;
+    }]
     pub struct Splitter<D: Directional, W: Widget> {
         core: widget_core!(),
         widgets: Vec<W>,
@@ -115,7 +117,7 @@ impl_scope! {
         #[inline]
         fn get_child<'s>(&'s mut self, data: &'s Self::Data, index: usize) -> Option<Node<'s>> {
             if (index & 1) != 0 {
-                self.handles.get_mut(index >> 1).map(|w| w.as_node(data))
+                self.handles.get_mut(index >> 1).map(|w| w.as_node(&()))
             } else {
                 self.widgets.get_mut(index >> 1).map(|w| w.as_node(data))
             }

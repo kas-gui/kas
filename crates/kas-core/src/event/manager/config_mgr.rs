@@ -153,32 +153,48 @@ impl<'a> DerefMut for ConfigMgr<'a> {
 
 /// Context around a [`ConfigMgr`] and widget data
 pub struct ConfigCx<'a, T> {
-    mgr: &'a mut ConfigMgr<'a>,
+    sh: &'a dyn ThemeSize,
+    ds: &'a mut dyn DrawShared,
+    ev: &'a mut EventState,
     data: &'a T,
 }
 
 impl<'a, T> std::ops::BitOrAssign<Action> for ConfigCx<'a, T> {
     #[inline]
     fn bitor_assign(&mut self, action: Action) {
-        self.mgr.ev.send_action(action);
+        self.ev.send_action(action);
     }
 }
 
 impl<'a, T> Deref for ConfigCx<'a, T> {
-    type Target = ConfigMgr<'a>;
-    fn deref(&self) -> &ConfigMgr<'a> {
-        self.mgr
+    type Target = EventState;
+    fn deref(&self) -> &EventState {
+        self.ev
     }
 }
 impl<'a, T> DerefMut for ConfigCx<'a, T> {
-    fn deref_mut(&mut self) -> &mut ConfigMgr<'a> {
-        self.mgr
+    fn deref_mut(&mut self) -> &mut EventState {
+        self.ev
     }
 }
 
 impl<'a, T> ConfigCx<'a, T> {
+    /// Reborrow with mapped data
+    pub fn map<'b, F, U>(&'b mut self, f: F) -> ConfigCx<'b, U>
+    where
+        'a: 'b,
+        F: FnOnce(&'a T) -> &'b U,
+    {
+        ConfigCx::<'b, U> {
+            sh: self.sh,
+            ds: self.ds,
+            ev: self.ev,
+            data: f(self.data),
+        }
+    }
+
     /// Configure a widget
     pub fn configure<W: Widget<Data = T>>(&mut self, id: WidgetId, widget: &mut W) {
-        self.mgr.configure(id, widget.as_node(self.data));
+        ConfigMgr::new(self.sh, self.ds, self.ev).configure(id, widget.as_node(self.data));
     }
 }

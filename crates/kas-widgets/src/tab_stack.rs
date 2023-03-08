@@ -53,7 +53,7 @@ impl_scope! {
     pub struct TabStack<W: Widget> {
         core: widget_core!(),
         direction: Direction = Direction::Up,
-        #[widget]
+        #[widget(&())]
         tabs: Row<Tab>, // TODO: want a TabBar widget for scrolling support?
         #[widget]
         stack: Stack<W>,
