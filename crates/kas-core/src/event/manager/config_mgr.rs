@@ -13,7 +13,7 @@ use crate::layout::AlignPair;
 use crate::shell::Platform;
 use crate::text::TextApi;
 use crate::theme::{Feature, SizeMgr, TextClass, ThemeSize};
-use crate::{Action, Node, WidgetId};
+use crate::{Action, Node, Widget, WidgetId};
 use std::ops::{Deref, DerefMut};
 
 #[allow(unused)] use crate::{event::Event, Layout};
@@ -148,5 +148,37 @@ impl<'a> Deref for ConfigMgr<'a> {
 impl<'a> DerefMut for ConfigMgr<'a> {
     fn deref_mut(&mut self) -> &mut EventState {
         self.ev
+    }
+}
+
+/// Context around a [`ConfigMgr`] and widget data
+pub struct ConfigCx<'a, T> {
+    mgr: &'a mut ConfigMgr<'a>,
+    data: &'a T,
+}
+
+impl<'a, T> std::ops::BitOrAssign<Action> for ConfigCx<'a, T> {
+    #[inline]
+    fn bitor_assign(&mut self, action: Action) {
+        self.mgr.ev.send_action(action);
+    }
+}
+
+impl<'a, T> Deref for ConfigCx<'a, T> {
+    type Target = ConfigMgr<'a>;
+    fn deref(&self) -> &ConfigMgr<'a> {
+        self.mgr
+    }
+}
+impl<'a, T> DerefMut for ConfigCx<'a, T> {
+    fn deref_mut(&mut self) -> &mut ConfigMgr<'a> {
+        self.mgr
+    }
+}
+
+impl<'a, T> ConfigCx<'a, T> {
+    /// Configure a widget
+    pub fn configure<W: Widget<Data = T>>(&mut self, id: WidgetId, widget: &mut W) {
+        self.mgr.configure(id, widget.as_node(self.data));
     }
 }

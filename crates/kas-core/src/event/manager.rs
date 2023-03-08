@@ -28,7 +28,7 @@ mod config_mgr;
 mod mgr_pub;
 mod mgr_shell;
 mod press;
-pub use config_mgr::ConfigMgr;
+pub use config_mgr::{ConfigCx, ConfigMgr};
 pub use press::{GrabBuilder, Press, PressSource};
 
 /// Controls the types of events delivered by [`Press::grab`]

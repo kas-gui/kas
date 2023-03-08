@@ -35,7 +35,9 @@ impl_scope! {
     /// so is event handling in the expected case.
     #[autoimpl(Default)]
     #[derive(Clone, Debug)]
-    #[widget]
+    #[widget{
+        data = W::Data;
+    }]
     pub struct Stack<W: Widget> {
         core: widget_core!(),
         widgets: Vec<W>,

@@ -68,6 +68,7 @@ impl_scope! {
     #[autoimpl(Debug ignore self.on_message)]
     #[autoimpl(Default where D: Default)]
     #[widget {
+        data = W::Data;
         layout = slice(self.direction) 'layout: self.widgets;
     }]
     pub struct List<D: Directional, W: Widget> {

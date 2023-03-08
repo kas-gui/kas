@@ -44,6 +44,7 @@ impl_scope! {
     #[impl_default]
     #[derive(Clone, Debug)]
     #[widget {
+        data = W::Data;
         layout = list(self.direction): [
             self.stack,
             self.tabs,
