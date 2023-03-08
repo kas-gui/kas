@@ -113,11 +113,11 @@ impl_scope! {
             self.widgets.len() + self.handles.len()
         }
         #[inline]
-        fn get_child(&mut self, index: usize) -> Option<Node> {
+        fn get_child<'s>(&'s mut self, data: &'s Self::Data, index: usize) -> Option<Node<'s>> {
             if (index & 1) != 0 {
-                self.handles.get_mut(index >> 1).map(|w| w.as_node())
+                self.handles.get_mut(index >> 1).map(|w| w.as_node(data))
             } else {
-                self.widgets.get_mut(index >> 1).map(|w| w.as_node())
+                self.widgets.get_mut(index >> 1).map(|w| w.as_node(data))
             }
         }
 
