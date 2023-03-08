@@ -142,6 +142,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let name = &scope.ident;
     let data_ty = quote! { <#name as ::kas::WidgetNode>::Data };
     let opt_derive = &args.derive;
+    let mut derive_ty = None;
 
     let mut impl_widget_children = true;
     let mut layout_impl = None;
@@ -235,6 +236,12 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             continue;
         }
 
+        if let Some(member) = opt_derive {
+            if *member == ident {
+                derive_ty = Some(field.ty.clone());
+            }
+        }
+
         let mut is_widget = false;
         let mut other_attrs = Vec::with_capacity(field.attrs.len());
         for attr in field.attrs.drain(..) {
@@ -311,72 +318,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
     let widget_name = name.to_string();
 
-    let core_methods;
-    if let Some(ref cd) = core_data {
-        core_methods = quote! {
-            #[inline]
-            fn id_ref(&self) -> &::kas::WidgetId {
-                &self.#cd.id
-            }
-            #[inline]
-            fn rect(&self) -> ::kas::geom::Rect {
-                self.#cd.rect
-            }
-        };
-    } else if let Some(ref inner) = opt_derive {
-        core_methods = quote! {
-            #[inline]
-            fn id_ref(&self) -> &::kas::WidgetId {
-                self.#inner.id_ref()
-            }
-            #[inline]
-            fn rect(&self) -> ::kas::geom::Rect {
-                self.#inner.rect()
-            }
-        };
-    } else {
-        let span = match scope.item {
-            ScopeItem::Struct {
-                fields: Fields::Named(ref fields),
-                ..
-            } => fields.brace_token.span,
-            ScopeItem::Struct {
-                fields: Fields::Unnamed(ref fields),
-                ..
-            } => fields.paren_token.span,
-            _ => unreachable!(),
-        };
-        return Err(Error::new(
-            span,
-            "expected: a field with type `widget_core!()`",
-        ));
-    }
-
-    scope.generated.push(quote! {
-        impl #impl_generics ::kas::WidgetCore
-            for #name #ty_generics #where_clause
-        {
-            #core_methods
-
-            #[inline]
-            fn widget_name(&self) -> &'static str {
-                #widget_name
-            }
-
-        }
-
-        impl #impl_generics ::kas::WidgetNode
-            for #name #ty_generics #where_clause
-        {
-            type Data = ();
-
-            #[inline]
-            fn as_node<'s>(&'s mut self, data: &'s Self::Data) -> ::kas::Node<'s> {
-                Node::new(self, data)
-            }
-        }
-    });
-
     let mut fn_size_rules = None;
     let (fn_set_rect, fn_find_id);
     let mut fn_draw = None;
@@ -391,7 +332,41 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let widget_methods;
 
     if let Some(inner) = opt_derive {
+        let Some(derive_ty) = derive_ty else {
+            return Err(Error::new(inner.span(), "field not found"));
+        };
+
         scope.generated.push(quote! {
+            impl #impl_generics ::kas::WidgetCore
+                for #name #ty_generics #where_clause
+            {
+                #[inline]
+                fn id_ref(&self) -> &::kas::WidgetId {
+                    self.#inner.id_ref()
+                }
+                #[inline]
+                fn rect(&self) -> ::kas::geom::Rect {
+                    self.#inner.rect()
+                }
+
+                #[inline]
+                fn widget_name(&self) -> &'static str {
+                    #widget_name
+                }
+
+            }
+
+            impl #impl_generics ::kas::WidgetNode
+                for #name #ty_generics #where_clause
+            {
+                type Data = <#derive_ty as ::kas::WidgetNode>::Data;
+
+                #[inline]
+                fn as_node<'s>(&'s mut self, data: &'s Self::Data) -> ::kas::Node<'s> {
+                    Node::new(self, data)
+                }
+            }
+
             impl #impl_generics ::kas::WidgetChildren
                 for #name #ty_generics #where_clause
             {
@@ -544,8 +519,56 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             ("handle_scroll", handle_scroll),
         ];
     } else {
-        let core = core_data.unwrap();
+        let Some(core) = core_data else {
+            let span = match scope.item {
+                ScopeItem::Struct {
+                    fields: Fields::Named(ref fields),
+                    ..
+                } => fields.brace_token.span,
+                ScopeItem::Struct {
+                    fields: Fields::Unnamed(ref fields),
+                    ..
+                } => fields.paren_token.span,
+                _ => unreachable!(),
+            };
+            return Err(Error::new(
+                span,
+                "expected: a field with type `widget_core!()`",
+            ));
+        };
         widget_methods = vec![];
+
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::WidgetCore
+                for #name #ty_generics #where_clause
+            {
+                #[inline]
+                fn id_ref(&self) -> &::kas::WidgetId {
+                    &self.#core.id
+                }
+                #[inline]
+                fn rect(&self) -> ::kas::geom::Rect {
+                    self.#core.rect
+                }
+
+                #[inline]
+                fn widget_name(&self) -> &'static str {
+                    #widget_name
+                }
+
+            }
+
+            impl #impl_generics ::kas::WidgetNode
+                for #name #ty_generics #where_clause
+            {
+                type Data = ();
+
+                #[inline]
+                fn as_node<'s>(&'s mut self, data: &'s Self::Data) -> ::kas::Node<'s> {
+                    Node::new(self, data)
+                }
+            }
+        });
 
         if impl_widget_children {
             let mut count = children.len();
