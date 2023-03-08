@@ -29,7 +29,7 @@ use crate::layout::{self, AlignPair, AutoLayout};
 /// **Directly implementing this trait is not supported**.
 /// See [`Widget`] trait documentation.
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait WidgetCore: fmt::Debug {
+pub trait WidgetCore: Layout + fmt::Debug {
     /// Get the widget's identifier
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
@@ -400,7 +400,7 @@ pub trait Layout {
 /// }
 /// ```
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait Widget: WidgetChildren + Layout {
+pub trait Widget: WidgetChildren {
     /// Pre-configuration
     ///
     /// This method is called before children are configured to assign a
