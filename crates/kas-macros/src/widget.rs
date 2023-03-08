@@ -254,14 +254,20 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         let mut other_attrs = Vec::with_capacity(field.attrs.len());
         for attr in field.attrs.drain(..) {
             if attr.path == parse_quote! { widget } {
-                if !attr.tokens.is_empty() {
-                    emit_error!(attr.tokens, "unexpected token");
-                }
                 if Some(&ident) == opt_derive.as_ref() {
                     emit_error!(attr, "#[widget] must not be used on widget derive target");
                 }
+                let data = if attr.tokens.is_empty() {
+                    None
+                } else {
+                    let paren: syn::ExprParen = parse2(attr.tokens)?;
+                    for attr in &paren.attrs {
+                        emit_error!(attr, "unexpected attribute");
+                    }
+                    Some(paren.expr)
+                };
                 is_widget = true;
-                children.push(ident.clone());
+                children.push((ident.clone(), data));
             } else {
                 other_attrs.push(attr);
             }
@@ -282,7 +288,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
     }
 
-    crate::widget_index::visit_impls(children.iter(), &mut scope.impls);
+    crate::widget_index::visit_impls(children.iter().map(|(ident, _)| ident), &mut scope.impls);
 
     for (index, impl_) in scope.impls.iter().enumerate() {
         if let Some((_, ref path, _)) = impl_.trait_ {
@@ -586,14 +592,18 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
             if count != 0 {
                 // let mut predicates = Punctuated::new();
-                for (i, ident) in children.iter().enumerate() {
+                for (i, (ident, opt_data)) in children.iter().enumerate() {
                     // TODO: incorrect or unconstrained data type of child causes a poor error
                     // message here. Add a constaint like this (assuming no mapping fn):
                     // <#ty as WidgetNode::Data> == Self::Data
                     // But this is unsupported: rust#20041
                     // predicates.push(..);
 
-                    get_mut_rules.append_all(quote! { #i => Some(self.#ident.as_node(data)), });
+                    get_mut_rules.append_all(if let Some(data) = opt_data {
+                        quote! { #i => Some(self.#ident.as_node(#data)), }
+                    } else {
+                        quote! { #i => Some(self.#ident.as_node(data)), }
+                    });
                 }
 
                 // where_clause = Some(WhereClause {
@@ -616,9 +626,9 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     fn num_children(&self) -> usize {
                         #count
                     }
-                    fn get_child<'s>(&'s mut self, data: &'s Self::Data, _index: usize) -> Option<::kas::Node<'s>> {
+                    fn get_child<'s>(&'s mut self, data: &'s Self::Data, index: usize) -> Option<::kas::Node<'s>> {
                         use ::kas::WidgetCore;
-                        match _index {
+                        match index {
                             #get_mut_rules
                             _ => None
                         }
@@ -634,7 +644,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         };
         if let Some((kw_span, layout)) = args.layout.take() {
             kw_layout = Some(kw_span);
-            fn_nav_next = match layout.nav_next(children.iter()) {
+            fn_nav_next = match layout.nav_next(children.iter().map(|(ident, _)| ident)) {
                 NavNextResult::Err(msg) => {
                     fn_nav_next_err = Some(msg);
                     None

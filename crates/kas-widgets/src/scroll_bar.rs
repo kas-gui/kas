@@ -340,14 +340,16 @@ impl_scope! {
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[impl_default(where W: trait)]
     #[derive(Clone, Debug)]
-    #[widget]
+    #[widget{
+        data = W::Data;
+    }]
     pub struct ScrollBars<W: Scrollable> {
         core: widget_core!(),
         mode: ScrollBarMode,
         show_bars: (bool, bool), // set by user (or set_rect when mode == Auto)
-        #[widget]
+        #[widget(&())]
         horiz_bar: ScrollBar<kas::dir::Right>,
-        #[widget]
+        #[widget(&())]
         vert_bar: ScrollBar<kas::dir::Down>,
         #[widget]
         inner: W,

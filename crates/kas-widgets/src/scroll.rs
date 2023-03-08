@@ -26,7 +26,9 @@ impl_scope! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
-    #[widget]
+    #[widget{
+        data = W::Data;
+    }]
     pub struct ScrollRegion<W: Widget> {
         core: widget_core!(),
         min_child_size: Size,
