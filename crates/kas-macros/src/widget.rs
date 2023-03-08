@@ -349,65 +349,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
     let widget_name = name.to_string();
 
-    let core_methods;
-    if let Some(ref cd) = core_data {
-        core_methods = quote! {
-            #[inline]
-            fn id_ref(&self) -> &::kas::WidgetId {
-                &self.#cd.id
-            }
-            #[inline]
-            fn rect(&self) -> ::kas::geom::Rect {
-                self.#cd.rect
-            }
-        };
-    } else if let Some(ref inner) = opt_derive {
-        core_methods = quote! {
-            #[inline]
-            fn id_ref(&self) -> &::kas::WidgetId {
-                self.#inner.id_ref()
-            }
-            #[inline]
-            fn rect(&self) -> ::kas::geom::Rect {
-                self.#inner.rect()
-            }
-        };
-    } else {
-        let span = match scope.item {
-            ScopeItem::Struct {
-                fields: Fields::Named(ref fields),
-                ..
-            } => fields.brace_token.span,
-            ScopeItem::Struct {
-                fields: Fields::Unnamed(ref fields),
-                ..
-            } => fields.paren_token.span,
-            _ => unreachable!(),
-        };
-        return Err(Error::new(
-            span,
-            "expected: a field with type `widget_core!()`",
-        ));
-    }
-
-    scope.generated.push(quote! {
-        impl #impl_generics ::kas::WidgetCore
-            for #name #ty_generics #where_clause
-        {
-            #core_methods
-
-            #[inline]
-            fn widget_name(&self) -> &'static str {
-                #widget_name
-            }
-
-            #[inline]
-            fn as_widget(&self) -> &dyn ::kas::Widget { self }
-            #[inline]
-            fn as_widget_mut(&mut self) -> &mut dyn ::kas::Widget { self }
-        }
-    });
-
     let mut fn_size_rules = None;
     let (fn_set_rect, fn_find_id);
     let mut fn_draw = None;
@@ -423,6 +364,29 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
     if let Some(inner) = opt_derive {
         scope.generated.push(quote! {
+            impl #impl_generics ::kas::WidgetCore
+                for #name #ty_generics #where_clause
+            {
+                #[inline]
+                fn id_ref(&self) -> &::kas::WidgetId {
+                    self.#inner.id_ref()
+                }
+                #[inline]
+                fn rect(&self) -> ::kas::geom::Rect {
+                    self.#inner.rect()
+                }
+
+                #[inline]
+                fn widget_name(&self) -> &'static str {
+                    #widget_name
+                }
+
+                #[inline]
+                fn as_widget(&self) -> &dyn ::kas::Widget { self }
+                #[inline]
+                fn as_widget_mut(&mut self) -> &mut dyn ::kas::Widget { self }
+            }
+
             impl #impl_generics ::kas::WidgetChildren
                 for #name #ty_generics #where_clause
             {
@@ -568,8 +532,49 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             ("handle_scroll", handle_scroll),
         ];
     } else {
-        let core = core_data.unwrap();
+        let Some(core) = core_data else {
+            let span = match scope.item {
+                ScopeItem::Struct {
+                    fields: Fields::Named(ref fields),
+                    ..
+                } => fields.brace_token.span,
+                ScopeItem::Struct {
+                    fields: Fields::Unnamed(ref fields),
+                    ..
+                } => fields.paren_token.span,
+                _ => unreachable!(),
+            };
+            return Err(Error::new(
+                span,
+                "expected: a field with type `widget_core!()`",
+            ));
+        };
         widget_methods = vec![];
+
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::WidgetCore
+                for #name #ty_generics #where_clause
+            {
+                #[inline]
+                fn id_ref(&self) -> &::kas::WidgetId {
+                    &self.#core.id
+                }
+                #[inline]
+                fn rect(&self) -> ::kas::geom::Rect {
+                    self.#core.rect
+                }
+
+                #[inline]
+                fn widget_name(&self) -> &'static str {
+                    #widget_name
+                }
+
+                #[inline]
+                fn as_widget(&self) -> &dyn ::kas::Widget { self }
+                #[inline]
+                fn as_widget_mut(&mut self) -> &mut dyn ::kas::Widget { self }
+            }
+        });
 
         if impl_widget_children {
             let mut count = children.len();
