@@ -16,7 +16,7 @@ use std::ops::{Index, IndexMut};
 /// This is parameterised over the handler message type.
 ///
 /// See documentation of [`Grid`] type.
-pub type BoxGrid = Grid<Box<dyn Widget>>;
+pub type BoxGrid<T> = Grid<Box<dyn Widget<Data = T>>>;
 
 impl_scope! {
     /// A generic grid widget

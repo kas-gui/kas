@@ -104,25 +104,25 @@ pub trait Menu: Widget {
 }
 
 /// A boxed menu
-pub type BoxedMenu = Box<dyn Menu>;
+pub type BoxedMenu<T> = Box<dyn Menu<Data = T>>;
 
 /// Builder for a [`SubMenu`]
 ///
 /// Access through [`MenuBar::builder`].
-pub struct SubMenuBuilder<'a> {
-    menu: &'a mut Vec<BoxedMenu>,
+pub struct SubMenuBuilder<'a, T> {
+    menu: &'a mut Vec<BoxedMenu<T>>,
 }
 
-impl<'a> SubMenuBuilder<'a> {
+impl<'a, T> SubMenuBuilder<'a, T> {
     /// Append an item
     #[inline]
-    pub fn push_item(&mut self, item: BoxedMenu) {
+    pub fn push_item(&mut self, item: BoxedMenu<T>) {
         self.menu.push(item);
     }
 
     /// Append an item, chain style
     #[inline]
-    pub fn item(mut self, item: BoxedMenu) -> Self {
+    pub fn item(mut self, item: BoxedMenu<T>) -> Self {
         self.push_item(item);
         self
     }
@@ -182,7 +182,7 @@ impl<'a> SubMenuBuilder<'a> {
     #[inline]
     pub fn push_submenu<F>(&mut self, label: impl Into<AccelString>, f: F)
     where
-        F: FnOnce(SubMenuBuilder),
+        F: FnOnce(SubMenuBuilder<T>),
     {
         self.push_submenu_with_dir(Right, label, f);
     }
@@ -193,7 +193,7 @@ impl<'a> SubMenuBuilder<'a> {
     #[inline]
     pub fn submenu<F>(mut self, label: impl Into<AccelString>, f: F) -> Self
     where
-        F: FnOnce(SubMenuBuilder),
+        F: FnOnce(SubMenuBuilder<T>),
     {
         self.push_submenu_with_dir(Right, label, f);
         self
@@ -205,7 +205,7 @@ impl<'a> SubMenuBuilder<'a> {
     pub fn push_submenu_with_dir<D, F>(&mut self, dir: D, label: impl Into<AccelString>, f: F)
     where
         D: Directional,
-        F: FnOnce(SubMenuBuilder),
+        F: FnOnce(SubMenuBuilder<T>),
     {
         let mut menu = Vec::new();
         f(SubMenuBuilder { menu: &mut menu });
@@ -220,7 +220,7 @@ impl<'a> SubMenuBuilder<'a> {
     pub fn submenu_with_dir<D, F>(mut self, dir: D, label: impl Into<AccelString>, f: F) -> Self
     where
         D: Directional,
-        F: FnOnce(SubMenuBuilder),
+        F: FnOnce(SubMenuBuilder<T>),
     {
         self.push_submenu_with_dir(dir, label, f);
         self

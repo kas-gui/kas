@@ -19,7 +19,7 @@ impl_scope! {
     #[widget {
         layout = self.label;
     }]
-    pub struct SubMenu<D: Directional> {
+    pub struct SubMenu<T, D: Directional> {
         core: widget_core!(),
         direction: D,
         pub(crate) navigable: bool,
@@ -28,7 +28,7 @@ impl_scope! {
         #[widget]
         mark: Mark,
         #[widget]
-        list: PopupFrame<MenuView<BoxedMenu>>,
+        list: PopupFrame<MenuView<BoxedMenu<T>>>,
         popup_id: Option<WindowId>,
     }
 
@@ -38,26 +38,26 @@ impl_scope! {
     {
         /// Construct a sub-menu
         #[inline]
-        pub fn new<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu>) -> Self {
+        pub fn new<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<T>>) -> Self {
             SubMenu::new_with_direction(Default::default(), label, list)
         }
     }
 
-    impl SubMenu<kas::dir::Right> {
+    impl<T> SubMenu<T, kas::dir::Right> {
         /// Construct a sub-menu, opening to the right
         // NOTE: this is used since we can't infer direction of a boxed SubMenu.
         // Consider only accepting an enum of special menu widgets?
         // Then we can pass type information.
         #[inline]
-        pub fn right<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu>) -> Self {
+        pub fn right<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<T>>) -> Self {
             SubMenu::new(label, list)
         }
     }
 
-    impl SubMenu<kas::dir::Down> {
+    impl<T> SubMenu<T, kas::dir::Down> {
         /// Construct a sub-menu, opening downwards
         #[inline]
-        pub fn down<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu>) -> Self {
+        pub fn down<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<T>>) -> Self {
             SubMenu::new(label, list)
         }
     }
@@ -70,7 +70,7 @@ impl_scope! {
         pub fn new_with_direction<S: Into<AccelString>>(
             direction: D,
             label: S,
-            list: Vec<BoxedMenu>,
+            list: Vec<BoxedMenu<T>>,
         ) -> Self {
             SubMenu {
                 core: Default::default(),

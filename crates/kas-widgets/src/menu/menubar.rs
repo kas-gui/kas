@@ -18,10 +18,10 @@ impl_scope! {
     /// menus.
     #[autoimpl(Debug where D: trait)]
     #[widget]
-    pub struct MenuBar<D: Directional = kas::dir::Right> {
+    pub struct MenuBar<T, D: Directional = kas::dir::Right> {
         core: widget_core!(),
         direction: D,
-        widgets: Vec<SubMenu<D::Flipped>>,
+        widgets: Vec<SubMenu<T, D::Flipped>>,
         layout_store: layout::DynRowStorage,
         delayed_open: Option<WidgetId>,
     }
@@ -35,14 +35,14 @@ impl_scope! {
         /// Note: it appears that `MenuBar::new(..)` causes a type inference error,
         /// however `MenuBar::<_>::new(..)` does not. Alternatively one may specify
         /// the direction explicitly: `MenuBar::<_, kas::dir::Right>::new(..)`.
-        pub fn new(menus: Vec<SubMenu<D::Flipped>>) -> Self {
+        pub fn new(menus: Vec<SubMenu<T, D::Flipped>>) -> Self {
             MenuBar::new_with_direction(D::default(), menus)
         }
     }
 
     impl Self {
         /// Construct a menubar with explicit direction
-        pub fn new_with_direction(direction: D, mut menus: Vec<SubMenu<D::Flipped>>) -> Self {
+        pub fn new_with_direction(direction: D, mut menus: Vec<SubMenu<T, D::Flipped>>) -> Self {
             for menu in menus.iter_mut() {
                 menu.navigable = false;
             }
@@ -55,7 +55,7 @@ impl_scope! {
             }
         }
 
-        pub fn builder() -> MenuBuilder<D> {
+        pub fn builder() -> MenuBuilder<T, D> {
             MenuBuilder { menus: vec![] }
         }
     }
@@ -260,17 +260,17 @@ impl_scope! {
 /// Builder for [`MenuBar`]
 ///
 /// Access through [`MenuBar::builder`].
-pub struct MenuBuilder<D: Directional> {
-    menus: Vec<SubMenu<D::Flipped>>,
+pub struct MenuBuilder<T, D: Directional> {
+    menus: Vec<SubMenu<T, D::Flipped>>,
 }
 
-impl<D: Directional> MenuBuilder<D> {
+impl<T, D: Directional> MenuBuilder<T, D> {
     /// Add a new menu
     ///
     /// The menu's direction is determined via [`Directional::Flipped`].
     pub fn menu<F>(mut self, label: impl Into<AccelString>, f: F) -> Self
     where
-        F: FnOnce(SubMenuBuilder),
+        F: FnOnce(SubMenuBuilder<T>),
         D::Flipped: Default,
     {
         let mut menu = Vec::new();
