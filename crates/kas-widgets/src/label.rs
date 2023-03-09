@@ -206,30 +206,34 @@ impl_scope! {
     ///     }
     //// }
     /// ```
+    ///
+    /// A text label. Vertical alignment defaults to centred, horizontal
+    /// alignment depends on the script direction if not specified.
+    /// Line-wrapping is enabled by default.
+    #[impl_default]
     #[derive(Clone, Debug)]
-    #[widget{
-        derive = self.0;
-    }]
-    pub struct AccelLabel(Label<AccelString>);
-
-    impl Default for Self {
-        fn default() -> Self {
-            AccelLabel::new("")
-        }
+    #[widget]
+    pub struct AccelLabel {
+        core: widget_core!(),
+        class: TextClass = TextClass::Label(true),
+        label: Text<AccelString>,
     }
 
     impl Self {
         /// Construct from `label`
         #[inline]
         pub fn new<S: Into<AccelString>>(label: S) -> Self {
-            let label = label.into();
-            AccelLabel(Label::new(label)).with_class(TextClass::AccelLabel(true))
+            AccelLabel {
+                core: Default::default(),
+                class: TextClass::AccelLabel(true),
+                label: Text::new(label.into()),
+            }
         }
 
         /// Get text class
         #[inline]
         pub fn class(&self) -> TextClass {
-            self.0.class
+            self.class
         }
 
         /// Set text class
@@ -237,7 +241,7 @@ impl_scope! {
         /// Default: `AccelLabel::Label(true)`
         #[inline]
         pub fn set_class(&mut self, class: TextClass) {
-            self.0.set_class(class);
+            self.class = class;
         }
 
         /// Set text class (inline)
@@ -245,37 +249,37 @@ impl_scope! {
         /// Default: `AccelLabel::Label(true)`
         #[inline]
         pub fn with_class(mut self, class: TextClass) -> Self {
-            self.0.set_class(class);
+            self.class = class;
             self
         }
 
         /// Get whether line-wrapping is enabled
         #[inline]
         pub fn wrap(&self) -> bool {
-            self.0.wrap()
+            self.class.multi_line()
         }
 
         /// Enable/disable line wrapping
         ///
-        /// This is equivalent to `label.set_class(AccelLabel::Label(wrap))`.
+        /// This is equivalent to `label.set_class(TextClass::AccelLabel(wrap))`.
         ///
         /// By default this is enabled.
         #[inline]
         pub fn set_wrap(&mut self, wrap: bool) {
-            self.0.set_wrap(wrap);
+            self.class = TextClass::AccelLabel(wrap);
         }
 
         /// Enable/disable line wrapping (inline)
         #[inline]
         pub fn with_wrap(mut self, wrap: bool) -> Self {
-            self.0.set_wrap(wrap);
+            self.class = TextClass::Label(wrap);
             self
         }
 
         /// Get read access to the text object
         #[inline]
         pub fn text(&self) -> &Text<AccelString> {
-            self.0.text()
+            &self.label
         }
 
         /// Set text in an existing `Label`
@@ -283,29 +287,44 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: AccelString) -> Action {
-            match self.0.label.set_and_try_prepare(text) {
+            match self.label.set_and_try_prepare(text) {
                 Ok(true) => Action::RESIZE,
                 _ => Action::REDRAW,
             }
+        }
+
+        /// Get the accelerator keys
+        pub fn keys(&self) -> &[event::VirtualKeyCode] {
+            self.label.text().keys()
+        }
+    }
+
+    impl Layout for Self {
+        #[inline]
+        fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
+            axis.set_default_align_hv(Align::Default, Align::Center);
+            size_mgr.text_rules(&mut self.label, self.class, axis)
+        }
+
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+            self.core.rect = rect;
+            mgr.text_set_size(&mut self.label, self.class, rect.size, None);
+        }
+
+        fn draw(&mut self, mut draw: DrawMgr) {
+            draw.text_effects(self.rect(), &self.label, self.class);
         }
     }
 
     impl HasStr for Self {
         fn get_str(&self) -> &str {
-            self.0.label.as_str()
-        }
-    }
-
-    impl AccelLabel {
-        /// Get the accelerator keys
-        pub fn keys(&self) -> &[event::VirtualKeyCode] {
-            self.0.label.text().keys()
+            self.label.as_str()
         }
     }
 
     impl SetAccel for AccelLabel {
         fn set_accel_string(&mut self, string: AccelString) -> Action {
-            if self.0.label.text().keys() != string.keys() {
+            if self.label.text().keys() != string.keys() {
                 return Action::RECONFIGURE;
             }
             self.set_text(string)
