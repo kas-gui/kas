@@ -192,7 +192,28 @@ impl<'a, Data> DerefMut for ConfigCx<'a, Data> {
 }
 
 impl<'a, Data> ConfigCx<'a, Data> {
+    /// Construct
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    pub fn new(sh: &'a dyn ThemeSize, ds: &'a mut dyn DrawShared, ev: &'a mut EventState, data: &'a Data) -> Self {
+        ConfigCx { sh, ds, ev, data }
+    }
+
+    /// Reborrow as a [`ConfigMgr`]
+    #[inline]
+    pub fn as_mgr<'b>(&'b mut self) -> ConfigMgr<'b>
+    where
+        'a: 'b,
+    {
+        ConfigMgr::<'b> {
+            sh: self.sh,
+            ds: self.ds,
+            ev: self.ev,
+        }
+    }
+
     /// Reborrow with mapped data
+    #[inline]
     pub fn map<'b, F, U>(&'b mut self, f: F) -> ConfigCx<'b, U>
     where
         'a: 'b,
@@ -211,8 +232,77 @@ impl<'a, Data> ConfigCx<'a, Data> {
         self.ds.platform()
     }
 
+    /// Access a [`SizeMgr`]
+    ///
+    /// Warning: sizes are calculated using the window's current scale factor.
+    /// This may change, even without user action, since some platforms
+    /// always initialize windows with scale factor 1.
+    /// See also notes on [`Widget::configure`].
+    #[inline]
+    pub fn size_mgr(&self) -> SizeMgr<'a> {
+        SizeMgr::new(self.sh)
+    }
+
+    /// Access [`DrawShared`]
+    #[inline]
+    pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
+        self.ds
+    }
+
+    /// Access [`EventState`]
+    #[inline]
+    pub fn ev_state(&mut self) -> &mut EventState {
+        self.ev
+    }
+
+    /// Disable or enable navigation focus
+    ///
+    /// When nav focus is disabled, [`EventState::nav_focus`] always returns
+    /// `None`. Any existing focus is immediately cleared. Both
+    /// [`EventState::set_nav_focus`] and [`Self::next_nav_focus`] will fail to
+    /// do anything. Input such as the <kbd>Tab</kbd> key and mouse click
+    /// will not set navigation focus.
+    pub fn disable_nav_focus(&mut self, disabled: bool) {
+        self.as_mgr().disable_nav_focus(disabled)
+    }
+
     /// Configure a widget
+    ///
+    /// All widgets must be configured after construction (see
+    /// [`Widget::configure`]). This method may be used to configure a new
+    /// child widget without requiring the whole window to be reconfigured.
+    ///
+    /// Pass the `id` to assign to the widget: this should be constructed from
+    /// the parent's id via [`WidgetId::make_child`].
     pub fn configure<W: Widget<Data = Data>>(&mut self, id: WidgetId, widget: &mut W) {
-        ConfigMgr::new(self.sh, self.ds, self.ev).configure(id, widget.as_node(self.data));
+        let node = Node::new(widget, self.data);
+        self.as_mgr().configure(id, node);
+    }
+
+    /// Align a feature's rect
+    ///
+    /// In case the input `rect` is larger than desired on either axis, it is
+    /// reduced in size and offset within the original `rect` as is preferred.
+    #[inline]
+    pub fn align_feature(&self, feature: Feature, rect: Rect, align: AlignPair) -> Rect {
+        self.sh.align_feature(feature, rect, align)
+    }
+
+    /// Prepare a text object
+    ///
+    /// This sets the text's font, font size, wrapping and optionally alignment,
+    /// then performs the text preparation necessary before display.
+    ///
+    /// Note: setting alignment here is not necessary when the default alignment
+    /// is desired or when [`SizeMgr::text_rules`] is used.
+    #[inline]
+    pub fn text_set_size(
+        &self,
+        text: &mut dyn TextApi,
+        class: TextClass,
+        size: Size,
+        align: Option<AlignPair>,
+    ) {
+        self.sh.text_set_size(text, class, size, align)
     }
 }
