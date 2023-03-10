@@ -177,10 +177,10 @@ impl_scope! {
         ///
         /// This does not call the event handler set by [`Self::on_select`] or [`Self::new_on`].
         pub fn select(&mut self, mgr: &mut EventMgr) -> bool {
+            self.last_change = Some(Instant::now());
             if !self.state {
                 log::trace!("select: {}", self.id());
                 self.state = true;
-                self.last_change = Some(Instant::now());
                 mgr.redraw(self.id());
                 self.group.update(mgr, Some(self.id()));
                 true
