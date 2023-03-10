@@ -362,7 +362,7 @@ impl EventState {
     /// Set a grab's depress target
     ///
     /// When a grab on mouse or touch input is in effect
-    /// ([`EventMgr::grab_press`]), the widget owning the grab may set itself
+    /// ([`Press::grab`]), the widget owning the grab may set itself
     /// or any other widget as *depressed* ("pushed down"). Each grab depresses
     /// at most one widget, thus setting a new depress target clears any
     /// existing target. Initially a grab depresses its owner.
@@ -462,7 +462,7 @@ impl EventState {
     /// cases, calling this method may be ineffective. The cursor is
     /// automatically "unset" when the widget is no longer hovered.
     ///
-    /// If a mouse grab ([`EventMgr::grab_press`]) is active, its icon takes precedence.
+    /// If a mouse grab ([`Press::grab`]) is active, its icon takes precedence.
     pub fn set_cursor_icon(&mut self, icon: CursorIcon) {
         // Note: this is acted on by EventState::update
         self.hover_icon = icon;
@@ -831,7 +831,7 @@ impl<'a> EventMgr<'a> {
     /// Update the mouse cursor used during a grab
     ///
     /// This only succeeds if widget `id` has an active mouse-grab (see
-    /// [`EventMgr::grab_press`]). The cursor will be reset when the mouse-grab
+    /// [`Press::grab`]). The cursor will be reset when the mouse-grab
     /// ends.
     pub fn update_grab_cursor(&mut self, id: WidgetId, icon: CursorIcon) {
         if let Some(ref grab) = self.mouse_grab {
