@@ -22,6 +22,7 @@ impl_scope! {
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
     #[widget{
+        data = W::Data;
         navigable = true;
         layout = frame(kas::theme::FrameStyle::NavFocus): self.inner;
     }]

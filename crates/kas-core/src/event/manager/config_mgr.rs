@@ -38,6 +38,19 @@ impl<'a> ConfigMgr<'a> {
         ConfigMgr { sh, ds, ev }
     }
 
+    /// Add data to yield a [`ConfigCx`]
+    pub fn with_data<'b, T>(&'b mut self, data: &'b T) -> ConfigCx<'b, T>
+    where
+        'a: 'b,
+    {
+        ConfigCx::<'b, T> {
+            sh: self.sh,
+            ds: self.ds,
+            ev: self.ev,
+            data,
+        }
+    }
+
     /// Get the platform
     pub fn platform(&self) -> Platform {
         self.ds.platform()
@@ -191,6 +204,11 @@ impl<'a, T> ConfigCx<'a, T> {
             ev: self.ev,
             data: f(self.data),
         }
+    }
+
+    /// Get the platform
+    pub fn platform(&self) -> Platform {
+        self.ds.platform()
     }
 
     /// Configure a widget

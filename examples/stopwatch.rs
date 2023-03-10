@@ -36,7 +36,7 @@ fn make_window() -> Box<dyn kas::Window> {
             start: Option<Instant>,
         }
         impl Widget for Self {
-            fn configure(&mut self, mgr: &mut ConfigMgr) {
+            fn configure(&mut self, mgr: &mut ConfigCx<Self::Data>) {
                 mgr.enable_alt_bypass(self.id_ref(), true);
             }
             fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {

@@ -452,7 +452,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
         let configure = quote! {
             #[inline]
-            fn configure(&mut self, mgr: &mut ::kas::event::ConfigMgr) {
+            fn configure(&mut self, mgr: &mut ::kas::event::ConfigCx<Self::Data>) {
                 self.#inner.configure(mgr);
             }
         };

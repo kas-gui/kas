@@ -627,7 +627,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigCx<Self::Data>) {
             if self.widgets.is_empty() {
                 // Initial configure: ensure some widgets are loaded to allow
                 // better sizing of self.

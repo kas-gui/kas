@@ -200,7 +200,7 @@ impl_scope! {
     /// widget must do something like:
     /// ```no_test
     /// impl Widget for Self {
-    ///     fn configure(&mut self, mgr: &mut EventMgr) {
+    ///     fn configure(&mut self, mgr: &mut ConfigCx<Self::Data>) {
     ///         let target = self.id(); // widget receiving Event::Activate
     ///         mgr.add_accel_keys(target, self.label.keys());
     ///     }

@@ -72,7 +72,7 @@ impl_scope! {
         calc: Calculator = Calculator::new(),
     }
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigCx<Self::Data>) {
             mgr.disable_nav_focus(true);
 
             // Enable key bindings without Alt held:

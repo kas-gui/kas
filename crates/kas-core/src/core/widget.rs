@@ -7,7 +7,7 @@
 
 use std::fmt;
 
-use crate::event::{ConfigMgr, Event, EventMgr, Response, Scroll};
+use crate::event::{ConfigCx, ConfigMgr, Event, EventMgr, Response, Scroll};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
@@ -384,7 +384,7 @@ pub trait Layout {
 ///         }
 ///     }
 ///     impl Widget for Self {
-///         fn configure(&mut self, mgr: &mut ConfigMgr) {
+///         fn configure(&mut self, mgr: &mut ConfigCx<Self::Data>) {
 ///             mgr.add_accel_keys(self.id_ref(), self.label.keys());
 ///         }
 ///
@@ -426,7 +426,7 @@ pub trait Widget: WidgetChildren {
     /// construct all windows using scale factor 1) and/or may change in the
     /// future. Changes to the scale factor result in recalculation of
     /// [`Layout::size_rules`] but not repeated configuration.
-    fn configure(&mut self, mgr: &mut ConfigMgr) {
+    fn configure(&mut self, mgr: &mut ConfigCx<Self::Data>) {
         let _ = mgr;
     }
 

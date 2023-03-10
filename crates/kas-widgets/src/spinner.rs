@@ -327,7 +327,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigCx<Self::Data>) {
             *mgr |= self.edit.set_string(self.edit.guard.value.to_string());
         }
 

@@ -24,9 +24,9 @@ pub struct Node<'a>(&'a mut dyn Widget<Data = ()>, &'a ());
 impl<'a> Node<'a> {
     /// Construct
     // TODO: should this be hidden?
-    pub fn new<W: Widget>(widget: &'a mut W, data: &'a W::Data) -> Self {
+    pub fn new<T>(widget: &'a mut dyn Widget<Data = T>, data: &'a T) -> Self {
         use std::mem::transmute;
-        let widget: &'a mut dyn Widget<Data = W::Data> = widget;
+        let widget: &'a mut dyn Widget<Data = T> = widget;
         unsafe { Node(transmute(widget), transmute(data)) }
     }
 
@@ -204,7 +204,7 @@ impl<'a> Node<'a> {
     /// Configure widget
     #[inline]
     pub(crate) fn configure(&mut self, mgr: &mut ConfigMgr) {
-        self.0.configure(mgr);
+        self.0.configure(&mut mgr.with_data(self.1));
     }
 
     /// Is this widget navigable via <kbd>Tab</kbd> key?

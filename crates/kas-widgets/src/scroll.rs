@@ -132,7 +132,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigCx<Self::Data>) {
             mgr.register_nav_fallback(self.id());
         }
 

@@ -131,7 +131,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigCx<Self::Data>) {
             // We set data now, after child is configured
             let item = self.data.borrow(&()).unwrap();
             *mgr |= self.driver.set(&mut self.child, &(), item.borrow());

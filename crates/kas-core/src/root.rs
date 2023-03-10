@@ -6,7 +6,7 @@
 //! Window widgets
 
 use crate::dir::Directional;
-use crate::event::{ConfigMgr, EventMgr, Scroll};
+use crate::event::{ConfigCx, ConfigMgr, EventMgr, Scroll};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, FrameStyle, SizeMgr};
@@ -115,7 +115,7 @@ impl_scope! {
     }
 
     impl Widget for RootWidget {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigCx<Self::Data>) {
             self.decorations = self.w.decorations();
             if mgr.platform().is_wayland() && self.decorations == Decorations::Server {
                 // Wayland's base protocol does not support server-side decorations
