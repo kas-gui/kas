@@ -8,9 +8,9 @@
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
+use super::{EventCx, Press, UpdateId, VirtualKeyCode};
 #[allow(unused)]
 use super::{EventMgr, EventState, GrabMode, Response}; // for doc-links
-use super::{Press, UpdateId, VirtualKeyCode};
 use crate::geom::{DVec2, Offset};
 #[allow(unused)] use crate::Widget;
 use crate::{dir::Direction, WidgetId, WindowId};
@@ -236,15 +236,15 @@ impl Event {
     /// -   Mouse click and release on the same widget
     /// -   Touchscreen press and release on the same widget
     /// -   `Event::Command(cmd, _)` where [`cmd.is_activate()`](Command::is_activate)
-    pub fn on_activate<F: FnOnce(&mut EventMgr) -> Response>(
+    pub fn on_activate<Data, F: FnOnce(&mut EventCx<Data>) -> Response>(
         self,
-        mgr: &mut EventMgr,
+        mgr: &mut EventCx<Data>,
         id: WidgetId,
         f: F,
     ) -> Response {
         match self {
             Event::Command(cmd) if cmd.is_activate() => f(mgr),
-            Event::PressStart { press, .. } if press.is_primary() => press.grab(id).with_mgr(mgr),
+            Event::PressStart { press, .. } if press.is_primary() => press.grab(id).with_cx(mgr),
             Event::PressEnd { press, success } => {
                 if success && id == press.id {
                     f(mgr)

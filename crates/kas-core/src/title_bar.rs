@@ -99,7 +99,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<Self::Data>, event: Event) -> Response {
             event.on_activate(mgr, self.id(), |mgr| {
                 mgr.push(self.msg.clone());
                 Response::Used
@@ -145,7 +145,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
             if let Some(msg) = mgr.try_pop() {
                 match msg {
                     TitleBarButton::Minimize => {

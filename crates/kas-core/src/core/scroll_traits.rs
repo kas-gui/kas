@@ -6,7 +6,7 @@
 //! Scroll bar traits
 
 use super::Widget;
-use crate::event::EventMgr;
+use crate::event::EventCx;
 use crate::geom::{Offset, Size};
 use crate::Action;
 
@@ -15,7 +15,7 @@ use crate::Action;
 /// This trait should be implemented by widgets supporting scrolling, enabling
 /// a parent to control scrolling.
 ///
-/// If the widget scrolls itself it should set a scroll action via [`EventMgr::set_scroll`].
+/// If the widget scrolls itself it should set a scroll action via [`EventCx::set_scroll`].
 pub trait Scrollable: Widget {
     /// Given size `size`, returns whether `(horiz, vert)` scrolling is required
     fn scroll_axes(&self, size: Size) -> (bool, bool);
@@ -42,7 +42,7 @@ pub trait Scrollable: Widget {
     ///
     /// The offset is clamped to the available scroll range and applied. The
     /// resulting offset is returned.
-    fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset;
+    fn set_scroll_offset(&mut self, mgr: &mut EventCx<Self::Data>, offset: Offset) -> Offset;
 }
 
 /// Scroll bar mode

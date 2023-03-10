@@ -483,7 +483,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         fn_pre_handle_event = quote! {
             fn pre_handle_event(
                 &mut self,
-                mgr: &mut ::kas::event::EventMgr,
+                mgr: &mut ::kas::event::EventCx<Self::Data>,
                 event: ::kas::event::Event,
             ) -> ::kas::event::Response {
                 self.#inner.pre_handle_event(mgr, event)
@@ -493,7 +493,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             #[inline]
             fn handle_event(
                 &mut self,
-                mgr: &mut ::kas::event::EventMgr,
+                mgr: &mut ::kas::event::EventCx<Self::Data>,
                 event: ::kas::event::Event,
             ) -> ::kas::event::Response {
                 self.#inner.handle_event(mgr, event)
@@ -503,7 +503,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             #[inline]
             fn handle_unused(
                 &mut self,
-                mgr: &mut ::kas::event::EventMgr,
+                mgr: &mut ::kas::event::EventCx<Self::Data>,
                 event: ::kas::event::Event,
             ) -> ::kas::event::Response {
                 self.#inner.handle_unused(mgr, event)
@@ -511,7 +511,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         };
         let handle_message = quote! {
             #[inline]
-            fn handle_message(&mut self, mgr: &mut ::kas::event::EventMgr) {
+            fn handle_message(&mut self, mgr: &mut ::kas::event::EventCx<Self::Data>) {
                 self.#inner.handle_message(mgr);
             }
         };
@@ -519,7 +519,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             #[inline]
             fn handle_scroll(
                 &mut self,
-                mgr: &mut ::kas::event::EventMgr,
+                mgr: &mut ::kas::event::EventCx<Self::Data>,
                 scroll: ::kas::event::Scroll,
             ) {
                 self.#inner.handle_scroll(mgr, scroll);
@@ -796,7 +796,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         fn_pre_handle_event = quote! {
             fn pre_handle_event(
                 &mut self,
-                mgr: &mut ::kas::event::EventMgr,
+                mgr: &mut ::kas::event::EventCx<Self::Data>,
                 event: ::kas::event::Event,
             ) -> ::kas::event::Response {
                 use ::kas::{event::{Event, Response}, WidgetExt};

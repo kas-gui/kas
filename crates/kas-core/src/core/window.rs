@@ -6,7 +6,7 @@
 //! Window trait and identifier
 
 use super::{Icon, Widget};
-use crate::event::EventMgr;
+use crate::event::EventCx;
 use std::num::NonZeroU32;
 
 /// Identifier for a window or pop-up
@@ -125,7 +125,7 @@ pub trait Window: Widget<Data = ()> {
     /// This allows for actions on destruction.
     ///
     /// Default: do nothing.
-    fn handle_closure(&mut self, mgr: &mut EventMgr) {
+    fn handle_closure(&mut self, mgr: &mut EventCx<Self::Data>) {
         let _ = mgr;
     }
 }

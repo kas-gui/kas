@@ -233,13 +233,13 @@ impl<'a> Node<'a> {
     /// Pre-event-handler
     #[inline]
     pub(crate) fn pre_handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
-        self.0.pre_handle_event(mgr, event)
+        self.0.pre_handle_event(&mut mgr.with_data(self.1), event)
     }
 
     /// Handle an [`Event`] sent to this widget
     #[inline]
     pub(crate) fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
-        self.0.handle_event(mgr, event)
+        self.0.handle_event(&mut mgr.with_data(self.1), event)
     }
 
     /// Potentially steal an event before it reaches a child
@@ -250,24 +250,24 @@ impl<'a> Node<'a> {
         id: &WidgetId,
         event: &Event,
     ) -> Response {
-        self.0.steal_event(mgr, id, event)
+        self.0.steal_event(&mut mgr.with_data(self.1), id, event)
     }
 
     /// Handle an event sent to child `index` but left unhandled
     #[inline]
     pub(crate) fn handle_unused(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
-        self.0.handle_unused(mgr, event)
+        self.0.handle_unused(&mut mgr.with_data(self.1), event)
     }
 
     /// Handler for messages from children/descendants
     #[inline]
     pub(crate) fn handle_message(&mut self, mgr: &mut EventMgr) {
-        self.0.handle_message(mgr);
+        self.0.handle_message(&mut mgr.with_data(self.1));
     }
 
     /// Handler for scrolling
     #[inline]
     pub(crate) fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) {
-        self.0.handle_scroll(mgr, scroll);
+        self.0.handle_scroll(&mut mgr.with_data(self.1), scroll);
     }
 }

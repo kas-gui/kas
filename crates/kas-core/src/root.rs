@@ -6,7 +6,7 @@
 //! Window widgets
 
 use crate::dir::Directional;
-use crate::event::{ConfigCx, ConfigMgr, EventMgr, Scroll};
+use crate::event::{ConfigCx, ConfigMgr, EventCx, EventMgr, Scroll};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, FrameStyle, SizeMgr};
@@ -115,7 +115,7 @@ impl_scope! {
     }
 
     impl Widget for RootWidget {
-        fn configure(&mut self, mgr: &mut ConfigCx<Self::Data>) {
+        fn configure(&mut self, mgr: &mut ConfigCx<()>) {
             self.decorations = self.w.decorations();
             if mgr.platform().is_wayland() && self.decorations == Decorations::Server {
                 // Wayland's base protocol does not support server-side decorations
@@ -125,9 +125,9 @@ impl_scope! {
             }
         }
 
-        fn handle_scroll(&mut self, mgr: &mut EventMgr, _: Scroll) {
+        fn handle_scroll(&mut self, mgr: &mut EventCx<()>, _: Scroll) {
             // Something was scrolled; update pop-up translations
-            mgr.config_mgr(|mgr| self.resize_popups(mgr));
+            mgr.config_cx(|mgr| self.resize_popups(mgr));
         }
     }
 
@@ -165,7 +165,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn handle_closure(&mut self, mgr: &mut EventMgr) {
+        fn handle_closure(&mut self, mgr: &mut EventCx<()>) {
             self.w.handle_closure(mgr);
         }
     }
@@ -195,11 +195,11 @@ impl RootWidget {
     /// Add a pop-up as a layer in the current window
     ///
     /// Each [`crate::Popup`] is assigned a [`WindowId`]; both are passed.
-    pub fn add_popup(&mut self, mgr: &mut EventMgr, id: WindowId, popup: kas::Popup) {
+    pub fn add_popup(&mut self, cx: &mut EventCx<()>, id: WindowId, popup: kas::Popup) {
         let index = self.popups.len();
         self.popups.push((id, popup, Offset::ZERO));
-        mgr.config_mgr(|mgr| self.resize_popup(mgr, index));
-        mgr.send_action(Action::REDRAW);
+        cx.config_cx(|cx| self.resize_popup(cx, index));
+        cx.send_action(Action::REDRAW);
     }
 
     /// Trigger closure of a pop-up
@@ -219,7 +219,7 @@ impl RootWidget {
     ///
     /// This is called immediately after [`Layout::set_rect`] to resize
     /// existing pop-ups.
-    pub fn resize_popups(&mut self, mgr: &mut ConfigMgr) {
+    pub fn resize_popups(&mut self, mgr: &mut ConfigCx<()>) {
         for i in 0..self.popups.len() {
             self.resize_popup(mgr, i);
         }
@@ -252,7 +252,7 @@ fn find_rect(widget: Node, id: WidgetId) -> Option<(Rect, Offset)> {
 }
 
 impl RootWidget {
-    fn resize_popup(&mut self, mgr: &mut ConfigMgr, index: usize) {
+    fn resize_popup(&mut self, mgr: &mut ConfigCx<()>, index: usize) {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
         let r = self.core.rect;
@@ -303,7 +303,7 @@ impl RootWidget {
             Rect::new(Coord(x, y), Size::new(w, h))
         };
 
-        cache.apply_rect(widget.re(), mgr, rect, false);
+        cache.apply_rect(widget.re(), &mut mgr.as_mgr(), rect, false);
         cache.print_widget_heirarchy(widget);
     }
 }

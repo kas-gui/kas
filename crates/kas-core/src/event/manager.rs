@@ -467,6 +467,28 @@ impl<'a> DerefMut for EventMgr<'a> {
     }
 }
 
+/// [`EventMgr`] with widget data
+#[must_use]
+#[crate::autoimpl(Debug ignore self.state, self.shell, self.data)]
+pub struct EventCx<'a, Data> {
+    state: &'a mut EventState,
+    shell: &'a mut dyn ShellWindow,
+    mgr: &'a mut Mgr,
+    data: &'a Data,
+}
+
+impl<'a, Data> Deref for EventCx<'a, Data> {
+    type Target = EventState;
+    fn deref(&self) -> &Self::Target {
+        self.state
+    }
+}
+impl<'a, Data> DerefMut for EventCx<'a, Data> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.state
+    }
+}
+
 /// Internal methods
 impl<'a> EventMgr<'a> {
     fn start_key_event(&mut self, mut widget: Node, vkey: VirtualKeyCode, scancode: u32) {

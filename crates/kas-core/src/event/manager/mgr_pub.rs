@@ -564,6 +564,19 @@ impl EventState {
 
 /// Public API
 impl<'a> EventMgr<'a> {
+    /// Add data to yield an [`EventCx`]
+    pub fn with_data<'b, T>(&'b mut self, data: &'b T) -> EventCx<'b, T>
+    where
+        'a: 'b,
+    {
+        EventCx::<'b, T> {
+            state: self.state,
+            shell: self.shell,
+            mgr: self.mgr,
+            data,
+        }
+    }
+
     /// Get the index of the last child visited
     ///
     /// This is only used when unwinding (traversing back up the widget tree),
@@ -882,5 +895,287 @@ impl<'a> EventMgr<'a> {
                 self.shell.set_cursor_icon(icon);
             }
         }
+    }
+}
+
+/// Public API
+impl<'a, Data> EventCx<'a, Data> {
+    /// Reborrow as an [`EventMgr`]
+    #[inline]
+    pub fn as_mgr<'b>(&'b mut self) -> EventMgr<'b>
+    where
+        'a: 'b,
+    {
+        EventMgr::<'b> {
+            state: self.state,
+            shell: self.shell,
+            mgr: self.mgr,
+        }
+    }
+
+    /// Reborrow with mapped data
+    #[inline]
+    pub fn map<'b, F, U>(&'b mut self, f: F) -> EventCx<'b, U>
+    where
+        'a: 'b,
+        F: FnOnce(&'a Data) -> &'b U,
+    {
+        EventCx::<'b, U> {
+            state: self.state,
+            shell: self.shell,
+            mgr: self.mgr,
+            data: f(self.data),
+        }
+    }
+
+    /// Get the index of the last child visited
+    ///
+    /// This is only used when unwinding (traversing back up the widget tree),
+    /// and returns the index of the child last visited. E.g. when
+    /// [`Widget::handle_message`] is called, this method returns the index of
+    /// the child which submitted the message (or whose descendant did).
+    /// Otherwise this returns `None` (including when the widget itself is the
+    /// submitter of the message).
+    pub fn last_child(&self) -> Option<usize> {
+        self.mgr.last_child
+    }
+
+    /// Send an event to a widget
+    ///
+    /// Sends `event` to widget `id`, where `widget` is either the target `id`
+    /// or any ancestor.
+    /// Ancestors of `id` up to and including `widget` have the usual
+    /// event-handling interactions: the ability to steal events and handle
+    /// unused events, to handle messages and to react to scroll actions.
+    ///
+    /// This method may be called from event handlers. It is implementation
+    /// defined whether the event is sent immediately or later, thus it may
+    /// or may not be observed by the caller that messages are left on the stack
+    /// and scroll state is adjusted.
+    ///
+    /// When calling this method, be aware that:
+    ///
+    /// -   Some widgets use an inner component to handle events, thus calling
+    ///     with the outer widget's `id` may not have the desired effect.
+    ///     [`Layout::find_id`] and [`Self::next_nav_focus`] are able to find
+    ///     the appropriate event-handling target.
+    ///     (TODO: do we need another method to find this target?)
+    /// -   Some events such as [`Event::PressMove`] contain embedded widget
+    ///     identifiers which may affect handling of the event.
+    pub fn send(&mut self, widget: &mut dyn Widget<Data = Data>, id: WidgetId, event: Event) {
+        let node = Node::new(widget, self.data);
+        self.as_mgr().send(node, id, event);
+    }
+
+    /// Push a message to the stack
+    ///
+    /// The message is first type-erased by wrapping with [`Erased`],
+    /// then pushed to the stack.
+    ///
+    /// The message may be [popped](EventMgr::try_pop) or
+    /// [observed](EventMgr::try_observe) from [`Widget::handle_message`]
+    /// by the widget itself, its parent, or any ancestor.
+    pub fn push<M: Debug + 'static>(&mut self, msg: M) {
+        self.push_erased(Erased::new(msg));
+    }
+
+    /// Push a type-erased message to the stack
+    ///
+    /// This is a lower-level variant of [`Self::push`].
+    ///
+    /// The message may be [popped](EventMgr::try_pop) or
+    /// [observed](EventMgr::try_observe) from [`Widget::handle_message`]
+    /// by the widget itself, its parent, or any ancestor.
+    pub fn push_erased(&mut self, msg: Erased) {
+        self.mgr.messages.push(msg);
+    }
+
+    /// True if the message stack is non-empty
+    pub fn has_msg(&self) -> bool {
+        !self.mgr.messages.is_empty()
+    }
+
+    /// Try popping the last message from the stack with the given type
+    ///
+    /// This method may be called from [`Widget::handle_message`].
+    pub fn try_pop<M: Debug + 'static>(&mut self) -> Option<M> {
+        self.as_mgr().try_pop()
+    }
+
+    /// Try observing the last message on the stack without popping
+    ///
+    /// This method may be called from [`Widget::handle_message`].
+    pub fn try_observe<M: Debug + 'static>(&self) -> Option<&M> {
+        self.mgr.messages.last().and_then(|m| m.downcast_ref::<M>())
+    }
+
+    /// Set a scroll action
+    ///
+    /// When setting [`Scroll::Rect`], use the widgets own coordinate space.
+    ///
+    /// Note that calling this method has no effect on the widget itself, but
+    /// affects parents via their [`Widget::handle_scroll`] method.
+    #[inline]
+    pub fn set_scroll(&mut self, scroll: Scroll) {
+        self.mgr.scroll = scroll;
+    }
+
+    /// Add an overlay (pop-up)
+    ///
+    /// A pop-up is a box used for things like tool-tips and menus which is
+    /// drawn on top of other content and has focus for input.
+    ///
+    /// Depending on the host environment, the pop-up may be a special type of
+    /// window without borders and with precise placement, or may be a layer
+    /// drawn in an existing window.
+    ///
+    /// The parent of a popup automatically receives mouse-motion events
+    /// ([`Event::PressMove`]) which may be used to navigate menus.
+    /// The parent automatically receives the "depressed" visual state.
+    ///
+    /// It is recommended to call [`EventState::set_nav_focus`] or
+    /// [`EventMgr::next_nav_focus`] after this method.
+    ///
+    /// A pop-up may be closed by calling [`EventMgr::close_window`] with
+    /// the [`WindowId`] returned by this method.
+    ///
+    /// Returns `None` if window creation is not currently available (but note
+    /// that `Some` result does not guarantee the operation succeeded).
+    pub fn add_popup(&mut self, popup: crate::Popup) -> Option<WindowId> {
+        self.as_mgr().add_popup(popup)
+    }
+
+    /// Add a window
+    ///
+    /// Typically an application adds at least one window before the event-loop
+    /// starts (see `kas_wgpu::Toolkit::add`), however this method is not
+    /// available to a running UI. Instead, this method may be used.
+    ///
+    /// Caveat: if an error occurs opening the new window it will not be
+    /// reported (except via log messages).
+    #[inline]
+    pub fn add_window(&mut self, widget: Box<dyn crate::Window>) -> WindowId {
+        self.shell.add_window(widget)
+    }
+
+    /// Close a window or pop-up
+    ///
+    /// In the case of a pop-up, all pop-ups created after this will also be
+    /// removed (on the assumption they are a descendant of the first popup).
+    ///
+    /// If `restore_focus` then navigation focus will return to whichever widget
+    /// had focus before the popup was open. (Usually this is true excepting
+    /// where focus has already been changed.)
+    pub fn close_window(&mut self, id: WindowId, restore_focus: bool) {
+        self.as_mgr().close_window(id, restore_focus);
+    }
+
+    /// Send [`Event::Update`] to all widgets
+    ///
+    /// All widgets across all windows will receive [`Event::Update`] with
+    /// [`UpdateId::ZERO`] and the given `payload`.
+    #[inline]
+    pub fn update_all(&mut self, payload: u64) {
+        self.shell.update_all(UpdateId::ZERO, payload);
+    }
+
+    /// Send [`Event::Update`] to all widgets
+    ///
+    /// All widgets across all windows will receive [`Event::Update`] with
+    /// the given `id` and `payload`.
+    pub fn update_with_id(&mut self, id: UpdateId, payload: u64) {
+        log::debug!(target: "kas_core::event::manager", "update_all: id={id:?}, payload={payload}");
+        self.shell.update_all(id, payload);
+    }
+
+    /// Attempt to get clipboard contents
+    ///
+    /// In case of failure, paste actions will simply fail. The implementation
+    /// may wish to log an appropriate warning message.
+    #[inline]
+    pub fn get_clipboard(&mut self) -> Option<String> {
+        self.shell.get_clipboard()
+    }
+
+    /// Attempt to set clipboard contents
+    #[inline]
+    pub fn set_clipboard(&mut self, content: String) {
+        self.shell.set_clipboard(content)
+    }
+
+    /// Get contents of primary buffer
+    ///
+    /// Linux has a "primary buffer" with implicit copy on text selection and
+    /// paste on middle-click. This method does nothing on other platforms.
+    #[inline]
+    pub fn get_primary(&mut self) -> Option<String> {
+        self.shell.get_primary()
+    }
+
+    /// Set contents of primary buffer
+    ///
+    /// Linux has a "primary buffer" with implicit copy on text selection and
+    /// paste on middle-click. This method does nothing on other platforms.
+    #[inline]
+    pub fn set_primary(&mut self, content: String) {
+        self.shell.set_primary(content)
+    }
+
+    /// Adjust the theme
+    #[inline]
+    pub fn adjust_theme<F: FnOnce(&mut dyn ThemeControl) -> Action>(&mut self, f: F) {
+        self.shell.adjust_theme(Box::new(f));
+    }
+
+    /// Access a [`SizeMgr`]
+    ///
+    /// Warning: sizes are calculated using the window's current scale factor.
+    /// This may change, even without user action, since some platforms
+    /// always initialize windows with scale factor 1.
+    /// See also notes on [`Widget::configure`].
+    pub fn size_mgr<F: FnOnce(SizeMgr) -> T, T>(&mut self, f: F) -> T {
+        let mut result = None;
+        self.shell.size_and_draw_shared(Box::new(|size, _| {
+            result = Some(f(SizeMgr::new(size)));
+        }));
+        result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
+    }
+
+    /// Access a [`ConfigCx`]
+    pub fn config_cx<F: FnOnce(&mut ConfigCx<Data>) -> T, T>(&mut self, f: F) -> T {
+        let mut result = None;
+        self.shell
+            .size_and_draw_shared(Box::new(|size, draw_shared| {
+                let mut cx = ConfigCx::new(size, draw_shared, self.state, self.data);
+                result = Some(f(&mut cx));
+            }));
+        result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
+    }
+
+    /// Access a [`DrawShared`]
+    pub fn draw_shared<F: FnOnce(&mut dyn DrawShared) -> T, T>(&mut self, f: F) -> T {
+        let mut result = None;
+        self.shell.size_and_draw_shared(Box::new(|_, draw_shared| {
+            result = Some(f(draw_shared));
+        }));
+        result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
+    }
+
+    /// Directly access Winit Window
+    ///
+    /// This is a temporary API, allowing e.g. to minimize the window.
+    #[cfg(features = "winit")]
+    pub fn winit_window(&self) -> Option<&winit::window::Window> {
+        self.shell.winit_window()
+    }
+
+    /// Update the mouse cursor used during a grab
+    ///
+    /// This only succeeds if widget `id` has an active mouse-grab (see
+    /// [`EventMgr::grab_press`]). The cursor will be reset when the mouse-grab
+    /// ends.
+    #[inline]
+    pub fn update_grab_cursor(&mut self, id: WidgetId, icon: CursorIcon) {
+        self.as_mgr().update_grab_cursor(id, icon);
     }
 }

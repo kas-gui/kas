@@ -195,7 +195,12 @@ impl<'a, Data> ConfigCx<'a, Data> {
     /// Construct
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(sh: &'a dyn ThemeSize, ds: &'a mut dyn DrawShared, ev: &'a mut EventState, data: &'a Data) -> Self {
+    pub fn new(
+        sh: &'a dyn ThemeSize,
+        ds: &'a mut dyn DrawShared,
+        ev: &'a mut EventState,
+        data: &'a Data,
+    ) -> Self {
         ConfigCx { sh, ds, ev, data }
     }
 

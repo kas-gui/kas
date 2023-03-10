@@ -6,7 +6,7 @@
 //! Event handling: events
 
 #[allow(unused)] use super::{Event, EventState}; // for doc-links
-use super::{EventMgr, GrabMode, MouseGrab, Pending, Response, TouchGrab};
+use super::{EventCx, EventMgr, GrabMode, MouseGrab, Pending, Response, TouchGrab};
 use crate::event::{CursorIcon, MouseButton};
 use crate::geom::{Coord, Offset};
 use crate::{Action, WidgetId};
@@ -149,6 +149,11 @@ impl GrabBuilder {
     pub fn with_opt_icon(mut self, icon: Option<CursorIcon>) -> Self {
         self.cursor = icon;
         self
+    }
+
+    /// Complete the grab, providing an [`EventCx`]
+    pub fn with_cx<Data>(self, cx: &mut EventCx<Data>) -> Response {
+        self.with_mgr(&mut cx.as_mgr())
     }
 
     /// Complete the grab, providing the [`EventMgr`]

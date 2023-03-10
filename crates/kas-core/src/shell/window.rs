@@ -272,7 +272,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = &mut self.widget;
         self.ev_state.with(&mut tkw, |mgr| {
-            widget.handle_closure(mgr);
+            widget.handle_closure(&mut mgr.with_data(&()));
         });
         self.ev_state.update(&mut tkw, self.widget.as_node())
     }
@@ -304,8 +304,9 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
     ) {
         let widget = &mut self.widget;
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-        self.ev_state
-            .with(&mut tkw, |mgr| widget.add_popup(mgr, id, popup));
+        self.ev_state.with(&mut tkw, |mgr| {
+            widget.add_popup(&mut mgr.with_data(&()), id, popup)
+        });
     }
 
     pub(super) fn send_action(&mut self, action: Action) {
@@ -355,7 +356,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         if first {
             solve_cache.print_widget_heirarchy(widget.as_node());
         }
-        widget.resize_popups(&mut mgr);
+        widget.resize_popups(&mut mgr.with_data(&()));
 
         let restrict_dimensions = self.widget.restrict_dimensions();
         if restrict_dimensions.0 {

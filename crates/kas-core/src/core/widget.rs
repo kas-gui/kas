@@ -7,7 +7,7 @@
 
 use std::fmt;
 
-use crate::event::{ConfigCx, ConfigMgr, Event, EventMgr, Response, Scroll};
+use crate::event::{ConfigCx, ConfigMgr, Event, EventCx, Response, Scroll};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
@@ -15,7 +15,7 @@ use crate::util::IdentifyWidget;
 use crate::{Node, WidgetId};
 use kas_macros::autoimpl;
 
-#[allow(unused)] use crate::event::EventState;
+#[allow(unused)] use crate::event::{EventMgr, EventState};
 #[allow(unused)]
 use crate::layout::{self, AlignPair, AutoLayout};
 #[allow(unused)] use crate::Action;
@@ -388,7 +388,7 @@ pub trait Layout {
 ///             mgr.add_accel_keys(self.id_ref(), self.label.keys());
 ///         }
 ///
-///         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+///         fn handle_event(&mut self, mgr: &mut EventCx<Self::Data>, event: Event) -> Response {
 ///             event.on_activate(mgr, self.id(), |mgr| {
 ///                 mgr.push(self.message.clone());
 ///                 Response::Used
@@ -487,7 +487,7 @@ pub trait Widget: WidgetChildren {
     /// part of the stable API. Do not implement or call this method directly.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn pre_handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response;
+    fn pre_handle_event(&mut self, mgr: &mut EventCx<Self::Data>, event: Event) -> Response;
 
     /// Handle an [`Event`] sent to this widget
     ///
@@ -503,7 +503,7 @@ pub trait Widget: WidgetChildren {
     /// effects and calling other event-handling methods on parents.
     /// Instead, one should call [`EventMgr::send`] with the target's `id`.
     #[inline]
-    fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+    fn handle_event(&mut self, mgr: &mut EventCx<Self::Data>, event: Event) -> Response {
         let _ = (mgr, event);
         Response::Unused
     }
@@ -519,7 +519,12 @@ pub trait Widget: WidgetChildren {
     ///
     /// Default implementation: return [`Response::Unused`].
     #[inline]
-    fn steal_event(&mut self, mgr: &mut EventMgr, id: &WidgetId, event: &Event) -> Response {
+    fn steal_event(
+        &mut self,
+        mgr: &mut EventCx<Self::Data>,
+        id: &WidgetId,
+        event: &Event,
+    ) -> Response {
         let _ = (mgr, id, event);
         Response::Unused
     }
@@ -533,7 +538,7 @@ pub trait Widget: WidgetChildren {
     ///
     /// Default implementation: call [`Self::handle_event`] with `event`.
     #[inline]
-    fn handle_unused(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+    fn handle_unused(&mut self, mgr: &mut EventCx<Self::Data>, event: Event) -> Response {
         self.handle_event(mgr, event)
     }
 
@@ -550,7 +555,7 @@ pub trait Widget: WidgetChildren {
     ///
     /// The default implementation does nothing.
     #[inline]
-    fn handle_message(&mut self, mgr: &mut EventMgr) {
+    fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
         let _ = mgr;
     }
 
@@ -575,7 +580,7 @@ pub trait Widget: WidgetChildren {
     ///
     /// The default implementation does nothing.
     #[inline]
-    fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) {
+    fn handle_scroll(&mut self, mgr: &mut EventCx<Self::Data>, scroll: Scroll) {
         let _ = (mgr, scroll);
     }
 }
