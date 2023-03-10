@@ -148,7 +148,11 @@ impl_scope! {
     impl Widget for Self {
         fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
-            mgr.add_accel_keys(self.id_ref(), self.label.keys());
+            // FIXME: new layer should apply to self.list but not to self.label.
+            // We don't currently have a way to do that. Possibly we should
+            // remove `EventMgr::add_accel_keys` bindings, simply checking all
+            // visible widgets whenever a shortcut key is pressed (also related:
+            // currently all pages of a TabStack have active shortcut keys).
             mgr.new_accel_layer(self.id(), true);
         }
 
@@ -180,7 +184,13 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr) {
-            self.close_menu(mgr, true);
+            if let Some(kas::message::Activate) = mgr.try_pop() {
+                if self.popup_id.is_none() {
+                    self.open_menu(mgr, true);
+                }
+            } else {
+                self.close_menu(mgr, true);
+            }
         }
 
         fn handle_scroll(&mut self, mgr: &mut EventMgr, _: Scroll) {

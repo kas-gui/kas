@@ -5,9 +5,9 @@
 
 //! Text widgets
 
+use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
 use kas::theme::TextClass;
-use kas::{event, prelude::*};
 
 impl_scope! {
     /// A text label
@@ -292,11 +292,6 @@ impl_scope! {
                 _ => Action::REDRAW,
             }
         }
-
-        /// Get the accelerator keys
-        pub fn keys(&self) -> &[event::VirtualKeyCode] {
-            self.label.text().keys()
-        }
     }
 
     impl Layout for Self {
@@ -313,6 +308,22 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.text_effects(self.rect(), &self.label, self.class);
+        }
+    }
+
+    impl Widget for Self {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
+            mgr.add_accel_keys(self.id_ref(), self.label.text().keys());
+        }
+
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+            match event {
+                Event::Command(cmd) if cmd.is_activate() => {
+                    mgr.push(kas::message::Activate);
+                    Response::Used
+                }
+                _ => Response::Unused
+            }
         }
     }
 

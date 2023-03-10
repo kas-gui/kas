@@ -6,7 +6,7 @@
 //! Wrapper adding a label
 
 use crate::AccelLabel;
-use kas::{event, layout, prelude::*};
+use kas::{layout, prelude::*};
 
 impl_scope! {
     /// A wrapper widget with a label
@@ -101,22 +101,11 @@ impl_scope! {
         pub fn set_text<T: Into<AccelString>>(&mut self, text: T) -> Action {
             self.label.set_text(text.into())
         }
-
-        /// Get the accelerator keys
-        pub fn keys(&self) -> &[event::VirtualKeyCode] {
-            self.label.keys()
-        }
     }
 
     impl Layout for Self {
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             self.rect().contains(coord).then(|| self.inner.id())
-        }
-    }
-
-    impl Widget for Self {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
-            mgr.add_accel_keys(self.inner.id_ref(), self.keys());
         }
     }
 

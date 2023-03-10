@@ -246,8 +246,10 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
-            mgr.add_accel_keys(self.inner.id_ref(), self.label.keys());
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
+            if let Some(kas::message::Activate) = mgr.try_pop() {
+                self.inner.select(mgr);
+            }
         }
     }
 

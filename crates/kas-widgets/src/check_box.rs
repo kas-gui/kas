@@ -118,6 +118,14 @@ impl_scope! {
         pub fn set_editable(&mut self, editable: bool) {
             self.editable = editable;
         }
+
+        fn toggle(&mut self, mgr: &mut EventMgr) {
+            self.state = !self.state;
+            self.last_change = Some(Instant::now());
+            if let Some(f) = self.on_toggle.as_ref() {
+                f(mgr, self.state);
+            }
+        }
     }
 
     impl HasBool for Self {
@@ -139,11 +147,7 @@ impl_scope! {
     impl Widget for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             event.on_activate(mgr, self.id(), |mgr| {
-                self.state = !self.state;
-                self.last_change = Some(Instant::now());
-                if let Some(f) = self.on_toggle.as_ref() {
-                    f(mgr, self.state);
-                }
+                self.toggle(mgr);
                 Response::Used
             })
         }
@@ -203,8 +207,10 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
-            mgr.add_accel_keys(self.inner.id_ref(), self.label.keys());
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
+            if let Some(kas::message::Activate) = mgr.try_pop() {
+                self.inner.toggle(mgr);
+            }
         }
     }
 
