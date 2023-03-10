@@ -7,12 +7,6 @@
 
 use kas::prelude::*;
 
-/// Message indicating that a child wishes to be selected
-///
-/// Emitted by [`NavFrame`].
-#[derive(Clone, Debug)]
-pub struct SelectMsg;
-
 impl_scope! {
     /// Navigation Frame wrapper
     ///
@@ -21,7 +15,9 @@ impl_scope! {
     ///
     /// # Messages
     ///
-    /// When activated, this widget pushes [`SelectMsg`] to the message stack.
+    /// When activated, this widget pushes [`Select`] to the message stack.
+    ///
+    /// [`Select`]: kas::message::Select
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
@@ -50,7 +46,7 @@ impl_scope! {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd) if cmd.is_activate() => {
-                    mgr.push(SelectMsg);
+                    mgr.push(kas::message::Select);
                     Response::Used
                 }
                 _ => Response::Unused,

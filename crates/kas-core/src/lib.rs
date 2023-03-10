@@ -48,6 +48,7 @@ pub mod geom;
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub mod label;
 pub mod layout;
+pub mod message;
 pub mod model;
 pub mod prelude;
 pub mod shell;

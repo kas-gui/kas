@@ -88,7 +88,7 @@ pub use grip::{GripMsg, GripPart};
 pub use label::{AccelLabel, Label, StrLabel, StringLabel};
 pub use list::*;
 pub use mark::{Mark, MarkButton};
-pub use nav_frame::{NavFrame, SelectMsg};
+pub use nav_frame::NavFrame;
 pub use progress::ProgressBar;
 pub use radio_box::{RadioBox, RadioButton, RadioGroup};
 pub use scroll::ScrollRegion;
