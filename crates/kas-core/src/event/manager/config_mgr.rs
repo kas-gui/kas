@@ -39,11 +39,11 @@ impl<'a> ConfigMgr<'a> {
     }
 
     /// Add data to yield a [`ConfigCx`]
-    pub fn with_data<'b, T>(&'b mut self, data: &'b T) -> ConfigCx<'b, T>
+    pub fn with_data<'b, Data>(&'b mut self, data: &'b Data) -> ConfigCx<'b, Data>
     where
         'a: 'b,
     {
-        ConfigCx::<'b, T> {
+        ConfigCx::<'b, Data> {
             sh: self.sh,
             ds: self.ds,
             ev: self.ev,
@@ -165,38 +165,38 @@ impl<'a> DerefMut for ConfigMgr<'a> {
 }
 
 /// Context around a [`ConfigMgr`] and widget data
-pub struct ConfigCx<'a, T> {
+pub struct ConfigCx<'a, Data> {
     sh: &'a dyn ThemeSize,
     ds: &'a mut dyn DrawShared,
     ev: &'a mut EventState,
-    data: &'a T,
+    data: &'a Data,
 }
 
-impl<'a, T> std::ops::BitOrAssign<Action> for ConfigCx<'a, T> {
+impl<'a, Data> std::ops::BitOrAssign<Action> for ConfigCx<'a, Data> {
     #[inline]
     fn bitor_assign(&mut self, action: Action) {
         self.ev.send_action(action);
     }
 }
 
-impl<'a, T> Deref for ConfigCx<'a, T> {
+impl<'a, Data> Deref for ConfigCx<'a, Data> {
     type Target = EventState;
     fn deref(&self) -> &EventState {
         self.ev
     }
 }
-impl<'a, T> DerefMut for ConfigCx<'a, T> {
+impl<'a, Data> DerefMut for ConfigCx<'a, Data> {
     fn deref_mut(&mut self) -> &mut EventState {
         self.ev
     }
 }
 
-impl<'a, T> ConfigCx<'a, T> {
+impl<'a, Data> ConfigCx<'a, Data> {
     /// Reborrow with mapped data
     pub fn map<'b, F, U>(&'b mut self, f: F) -> ConfigCx<'b, U>
     where
         'a: 'b,
-        F: FnOnce(&'a T) -> &'b U,
+        F: FnOnce(&'a Data) -> &'b U,
     {
         ConfigCx::<'b, U> {
             sh: self.sh,
@@ -212,7 +212,7 @@ impl<'a, T> ConfigCx<'a, T> {
     }
 
     /// Configure a widget
-    pub fn configure<W: Widget<Data = T>>(&mut self, id: WidgetId, widget: &mut W) {
+    pub fn configure<W: Widget<Data = Data>>(&mut self, id: WidgetId, widget: &mut W) {
         ConfigMgr::new(self.sh, self.ds, self.ev).configure(id, widget.as_node(self.data));
     }
 }
