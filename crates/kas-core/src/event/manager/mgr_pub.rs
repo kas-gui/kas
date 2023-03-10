@@ -573,7 +573,7 @@ impl<'a> EventMgr<'a> {
     /// Otherwise this returns `None` (including when the widget itself is the
     /// submitter of the message).
     pub fn last_child(&self) -> Option<usize> {
-        self.last_child
+        self.mgr.last_child
     }
 
     /// Send an event to a widget
@@ -599,19 +599,21 @@ impl<'a> EventMgr<'a> {
     /// -   Some events such as [`Event::PressMove`] contain embedded widget
     ///     identifiers which may affect handling of the event.
     pub fn send(&mut self, mut widget: Node, id: WidgetId, event: Event) {
-        if matches!(self.scroll, Scroll::None | Scroll::Scrolled) && self.messages.is_empty() {
+        if matches!(self.mgr.scroll, Scroll::None | Scroll::Scrolled)
+            && self.mgr.messages.is_empty()
+        {
             // Safe to send immediately, except from steal_event when responding
             // Unused (hence noted possible panic in that method)!
-            let last_child = std::mem::take(&mut self.last_child);
-            let scroll = std::mem::take(&mut self.scroll);
+            let last_child = std::mem::take(&mut self.mgr.last_child);
+            let scroll = std::mem::take(&mut self.mgr.scroll);
             self.send_event_impl(widget.re(), id, event);
-            self.last_child = last_child;
-            if self.scroll == Scroll::None {
-                self.scroll = scroll;
+            self.mgr.last_child = last_child;
+            if self.mgr.scroll == Scroll::None {
+                self.mgr.scroll = scroll;
             } else {
                 // send_recurse does not call handle_scroll on its target, which
                 // is *presumably* the widget calling this method
-                widget.handle_scroll(self, self.scroll);
+                widget.handle_scroll(self, self.mgr.scroll);
             }
         } else {
             // Possibly not safe: send later.
@@ -640,25 +642,21 @@ impl<'a> EventMgr<'a> {
     /// [observed](EventMgr::try_observe) from [`Widget::handle_message`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn push_erased(&mut self, msg: Erased) {
-        self.messages.push(msg);
+        self.mgr.messages.push(msg);
     }
 
     /// True if the message stack is non-empty
     pub fn has_msg(&self) -> bool {
-        !self.messages.is_empty()
+        !self.mgr.messages.is_empty()
     }
 
     /// Try popping the last message from the stack with the given type
     ///
     /// This method may be called from [`Widget::handle_message`].
     pub fn try_pop<M: Debug + 'static>(&mut self) -> Option<M> {
-        if self.messages.last().map(|m| m.is::<M>()).unwrap_or(false) {
-            self.messages
-                .pop()
-                .unwrap()
-                .downcast::<M>()
-                .ok()
-                .map(|m| *m)
+        let messages = &mut self.mgr.messages;
+        if messages.last().map(|m| m.is::<M>()).unwrap_or(false) {
+            messages.pop().unwrap().downcast::<M>().ok().map(|m| *m)
         } else {
             None
         }
@@ -668,7 +666,7 @@ impl<'a> EventMgr<'a> {
     ///
     /// This method may be called from [`Widget::handle_message`].
     pub fn try_observe<M: Debug + 'static>(&self) -> Option<&M> {
-        self.messages.last().and_then(|m| m.downcast_ref::<M>())
+        self.mgr.messages.last().and_then(|m| m.downcast_ref::<M>())
     }
 
     /// Set a scroll action
@@ -679,7 +677,7 @@ impl<'a> EventMgr<'a> {
     /// affects parents via their [`Widget::handle_scroll`] method.
     #[inline]
     pub fn set_scroll(&mut self, scroll: Scroll) {
-        self.scroll = scroll;
+        self.mgr.scroll = scroll;
     }
 
     /// Add an overlay (pop-up)

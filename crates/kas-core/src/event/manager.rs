@@ -416,17 +416,43 @@ impl EventState {
     }
 }
 
+#[derive(Debug, Default)]
+struct Mgr {
+    messages: Vec<Erased>,
+    last_child: Option<usize>,
+    scroll: Scroll,
+}
+
+impl Drop for Mgr {
+    fn drop(&mut self) {
+        self.drop_messages();
+    }
+}
+
+impl Mgr {
+    fn clear_state(&mut self) {
+        self.drop_messages();
+        self.last_child = None;
+        self.scroll = Scroll::None;
+    }
+
+    fn drop_messages(&mut self) {
+        for msg in self.messages.drain(..) {
+            log::warn!(target: "kas_core::event::manager", "unhandled: {msg:?}");
+        }
+    }
+}
+
 /// Manager of event-handling and toolkit actions
 ///
 /// `EventMgr` and [`EventState`] (available via [`Deref`]) support various
 /// event management and event-handling state querying operations.
 #[must_use]
+#[crate::autoimpl(Debug ignore self.state, self.shell)]
 pub struct EventMgr<'a> {
     state: &'a mut EventState,
     shell: &'a mut dyn ShellWindow,
-    messages: Vec<Erased>,
-    last_child: Option<usize>,
-    scroll: Scroll,
+    mgr: &'a mut Mgr,
 }
 
 impl<'a> Deref for EventMgr<'a> {
@@ -438,12 +464,6 @@ impl<'a> Deref for EventMgr<'a> {
 impl<'a> DerefMut for EventMgr<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.state
-    }
-}
-
-impl<'a> Drop for EventMgr<'a> {
-    fn drop(&mut self) {
-        self.drop_messages();
     }
 }
 
@@ -581,12 +601,6 @@ impl<'a> EventMgr<'a> {
         }
     }
 
-    fn drop_messages(&mut self) {
-        for msg in self.messages.drain(..) {
-            log::warn!(target: "kas_core::event::manager", "unhandled: {msg:?}");
-        }
-    }
-
     // Traverse widget tree by recursive call to a specific target
     //
     // If `disabled`, widget `id` does not receive the `event`. Widget `id` is
@@ -624,7 +638,7 @@ impl<'a> EventMgr<'a> {
             }
             if response.is_used() {
                 return response;
-            } else if self.scroll != Scroll::None || !self.messages.is_empty() {
+            } else if self.mgr.scroll != Scroll::None || !self.mgr.messages.is_empty() {
                 panic!("steal_event affected EventMgr and returned Unused");
             }
         }
@@ -633,9 +647,9 @@ impl<'a> EventMgr<'a> {
             let translation = widget.translation();
             if let Some(w) = widget.re().get_child(index) {
                 response = self.send_recurse(w, id, disabled, event.clone() + translation);
-                self.last_child = Some(index);
-                if self.scroll != Scroll::None {
-                    widget.handle_scroll(self, self.scroll);
+                self.mgr.last_child = Some(index);
+                if self.mgr.scroll != Scroll::None {
+                    widget.handle_scroll(self, self.mgr.scroll);
                 }
             } else {
                 log::warn!(
@@ -665,9 +679,9 @@ impl<'a> EventMgr<'a> {
         if let Some(index) = widget.find_child_index(&id) {
             if let Some(w) = widget.re().get_child(index) {
                 self.replay_recurse(w, id, msg);
-                self.last_child = Some(index);
-                if self.scroll != Scroll::None {
-                    widget.handle_scroll(self, self.scroll);
+                self.mgr.last_child = Some(index);
+                if self.mgr.scroll != Scroll::None {
+                    widget.handle_scroll(self, self.mgr.scroll);
                 }
             } else {
                 log::warn!(
@@ -680,7 +694,7 @@ impl<'a> EventMgr<'a> {
                 widget.handle_message(self);
             }
         } else if id == widget.id_ref() {
-            self.messages.push(msg);
+            self.mgr.messages.push(msg);
             widget.handle_message(self);
         } else {
             log::warn!(
@@ -692,15 +706,13 @@ impl<'a> EventMgr<'a> {
 
     /// Replay a message as if it was pushed by `id`
     fn replay(&mut self, widget: Node, id: WidgetId, msg: Erased) {
-        debug_assert!(self.scroll == Scroll::None);
-        debug_assert!(self.last_child.is_none());
-        debug_assert!(self.messages.is_empty());
+        debug_assert!(self.mgr.scroll == Scroll::None);
+        debug_assert!(self.mgr.last_child.is_none());
+        debug_assert!(self.mgr.messages.is_empty());
         log::trace!(target: "kas_core::event::manager", "replay: id={id}: {msg:?}");
 
         self.replay_recurse(widget, id, msg);
-        self.drop_messages();
-        self.last_child = None;
-        self.scroll = Scroll::None;
+        self.mgr.clear_state();
     }
 
     // Traverse widget tree by recursive call, broadcasting
@@ -724,11 +736,11 @@ impl<'a> EventMgr<'a> {
 
         let mut count = 0;
         inner(self, widget, &mut count, id, payload);
-        if !self.messages.is_empty() {
+        if !self.mgr.messages.is_empty() {
             log::error!(target: "kas_core::event::manager", "message(s) sent when handling Event::Update");
-            self.drop_messages();
+            self.mgr.drop_messages();
         }
-        self.scroll = Scroll::None;
+        self.mgr.scroll = Scroll::None;
         count
     }
 
@@ -736,17 +748,15 @@ impl<'a> EventMgr<'a> {
     #[inline]
     fn send_event(&mut self, widget: Node, id: WidgetId, event: Event) -> bool {
         let used = self.send_event_impl(widget, id, event);
-        self.drop_messages();
-        self.last_child = None;
-        self.scroll = Scroll::None;
+        self.mgr.clear_state();
         used
     }
 
     // Send an event; possibly leave messages on the stack
     fn send_event_impl(&mut self, widget: Node, mut id: WidgetId, event: Event) -> bool {
-        debug_assert!(self.scroll == Scroll::None);
-        debug_assert!(self.last_child.is_none());
-        debug_assert!(self.messages.is_empty());
+        debug_assert!(self.mgr.scroll == Scroll::None);
+        debug_assert!(self.mgr.last_child.is_none());
+        debug_assert!(self.mgr.messages.is_empty());
         log::trace!(target: "kas_core::event::manager", "send_event: id={id}: {event:?}");
 
         // TODO(opt): we should be able to use binary search here

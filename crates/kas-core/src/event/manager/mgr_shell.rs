@@ -121,9 +121,7 @@ impl EventState {
         let mut mgr = EventMgr {
             state: self,
             shell,
-            messages: vec![],
-            last_child: None,
-            scroll: Scroll::None,
+            mgr: &mut Default::default(),
         };
         f(&mut mgr);
     }
@@ -136,9 +134,7 @@ impl EventState {
         let mut mgr = EventMgr {
             state: self,
             shell,
-            messages: vec![],
-            last_child: None,
-            scroll: Scroll::None,
+            mgr: &mut Default::default(),
         };
 
         while let Some((parent, wid)) = mgr.popup_removed.pop() {
@@ -256,9 +252,7 @@ impl EventState {
         let mut mgr = EventMgr {
             state: self,
             shell,
-            messages: vec![],
-            last_child: None,
-            scroll: Scroll::None,
+            mgr: &mut Default::default(),
         };
 
         // Widget::draw may add futures; we should poll those now.
