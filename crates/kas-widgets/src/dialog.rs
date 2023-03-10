@@ -26,7 +26,7 @@ impl_scope! {
     #[autoimpl(Clone where W: Clone)]
     #[autoimpl(Debug ignore self.icon)]
     #[widget(layout = self.inner;)]
-    pub struct Window<W: Widget> {
+    pub struct Window<W: Widget<Data = ()>> {
         core: widget_core!(),
         restrict_dimensions: (bool, bool),
         title: String,
@@ -35,7 +35,7 @@ impl_scope! {
         icon: Option<Icon>,
     }
 
-    impl<W: Widget> kas::Window for Window<W> {
+    impl<W: Widget<Data = ()>> kas::Window for Window<W> {
         fn title(&self) -> &str {
             &self.title
         }
@@ -50,7 +50,7 @@ impl_scope! {
     }
 }
 
-impl<W: Widget> Window<W> {
+impl<W: Widget<Data = ()>> Window<W> {
     /// Construct
     pub fn new<T: ToString>(title: T, inner: W) -> Window<W> {
         Window {
