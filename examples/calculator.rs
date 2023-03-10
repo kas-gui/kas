@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 use kas::event::{Command, VirtualKeyCode as VK};
 use kas::prelude::*;
-use kas::widgets::{EditBox, TextButton};
+use kas::widget::{EditBox, TextButton};
 
 #[derive(Clone, Debug)]
 enum Key {

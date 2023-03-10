@@ -17,7 +17,7 @@
 //! In a release build, 250k entries (1M widgets) is quite viable!
 
 use kas::prelude::*;
-use kas::widgets::*;
+use kas::widget::*;
 
 thread_local! {
     pub static RADIO: RadioGroup = RadioGroup::new();

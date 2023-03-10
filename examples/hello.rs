@@ -5,7 +5,7 @@
 
 //! Hello world example
 
-use kas::widgets::dialog::MessageBox;
+use kas::widget::dialog::MessageBox;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let window = MessageBox::new("Message", "Hello world");

@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use kas::class::HasString;
 use kas::event::{ConfigMgr, Event, EventMgr, Response};
-use kas::widgets::{Frame, Label, TextButton};
+use kas::widget::{Frame, Label, TextButton};
 use kas::{Decorations, Widget, WidgetCore, WidgetExt, Window};
 
 #[derive(Clone, Debug)]

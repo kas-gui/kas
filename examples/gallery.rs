@@ -15,7 +15,7 @@ use kas::prelude::*;
 use kas::resvg::Svg;
 use kas::theme::{MarginStyle, ThemeControl};
 use kas::view::{driver, SingleView};
-use kas::widgets::{menu::MenuEntry, *};
+use kas::widget::{menu::MenuEntry, *};
 
 #[derive(Clone, Debug)]
 enum Item {

@@ -3,7 +3,7 @@
 use kas::model::{MatrixData, SharedData};
 use kas::prelude::*;
 use kas::view::{driver, MatrixView, SelectionMode};
-use kas::widgets::{EditBox, ScrollBars};
+use kas::widget::{EditBox, ScrollBars};
 
 #[derive(Debug)]
 struct TableData(u64, usize);
