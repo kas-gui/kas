@@ -41,7 +41,7 @@ pub struct ExprToken {
 
 #[derive(Debug, Default)]
 pub struct WidgetArgs {
-    pub data: Option<Type>,
+    pub data: Option<(Span, Type)>,
     pub navigable: Option<TokenStream>,
     pub hover_highlight: Option<BoolToken>,
     pub cursor_icon: Option<ExprToken>,
@@ -62,9 +62,9 @@ impl Parse for WidgetArgs {
         while !content.is_empty() {
             let lookahead = content.lookahead1();
             if lookahead.peek(kw::data) && data.is_none() {
-                let _ = content.parse::<kw::data>()?;
+                let span = content.parse::<kw::data>()?.span();
                 let _: Eq = content.parse()?;
-                data = Some(content.parse::<syn::Type>()?);
+                data = Some((span, content.parse::<syn::Type>()?));
             } else if lookahead.peek(kw::navigable) && navigable.is_none() {
                 let span = content.parse::<kw::navigable>()?.span();
                 let _: Eq = content.parse()?;
@@ -102,6 +102,9 @@ impl Parse for WidgetArgs {
         }
 
         if let Some(_derive) = kw_derive {
+            if let Some((span, _)) = data {
+                return Err(Error::new(span, "forbidden with widget derive"));
+            }
             if let Some((span, _)) = layout {
                 return Err(Error::new(span, "incompatible with widget derive"));
                 // note = derive.span() => "this derive"
@@ -148,13 +151,50 @@ impl ScopeAttr for AttrImplWidget {
 pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     scope.expand_impl_self();
     let name = &scope.ident;
-    let data_ty = args.data.unwrap_or_else(|| parse_quote! { () });
+    let mut data_ty = parse_quote! { () };
     let opt_derive = &args.derive;
     let mut derive_ty = None;
 
     let mut impl_widget_children = true;
     let mut layout_impl = None;
     let mut widget_impl = None;
+
+    for (index, impl_) in scope.impls.iter().enumerate() {
+        if let Some((_, ref path, _)) = impl_.trait_ {
+            if *path == parse_quote! { ::kas::Layout }
+                || *path == parse_quote! { kas::Layout }
+                || *path == parse_quote! { Layout }
+            {
+                if layout_impl.is_none() {
+                    layout_impl = Some(index);
+                }
+
+                for item in impl_.items.iter() {
+                    match item {
+                        ImplItem::Type(ty) if ty.ident == "Data" => {
+                            if let Some((span, _)) = args.data {
+                                emit_error!(item, "duplicate definition of `type Data`";
+                                            note = span => "also defined here");
+                            }
+                            data_ty = ty.ty.clone();
+                        }
+                        _ => (),
+                    }
+                }
+            } else if *path == parse_quote! { ::kas::Widget }
+                || *path == parse_quote! { kas::Widget }
+                || *path == parse_quote! { Widget }
+            {
+                if widget_impl.is_none() {
+                    widget_impl = Some(index);
+                }
+            }
+        }
+    }
+
+    if let Some((_, ty)) = args.data {
+        data_ty = ty;
+    }
 
     let fields = match &mut scope.item {
         ScopeItem::Struct { token, fields } => match fields {
@@ -288,7 +328,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
     crate::widget_index::visit_impls(children.iter().map(|(ident, _)| ident), &mut scope.impls);
 
-    for (index, impl_) in scope.impls.iter().enumerate() {
+    for impl_ in scope.impls.iter() {
         if let Some((_, ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::WidgetChildren }
                 || *path == parse_quote! { kas::WidgetChildren }
@@ -309,20 +349,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     );
                 }
                 impl_widget_children = false;
-            } else if *path == parse_quote! { ::kas::Layout }
-                || *path == parse_quote! { kas::Layout }
-                || *path == parse_quote! { Layout }
-            {
-                if layout_impl.is_none() {
-                    layout_impl = Some(index);
-                }
-            } else if *path == parse_quote! { ::kas::Widget }
-                || *path == parse_quote! { kas::Widget }
-                || *path == parse_quote! { Widget }
-            {
-                if widget_impl.is_none() {
-                    widget_impl = Some(index);
-                }
             }
         }
     }
