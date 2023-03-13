@@ -8,7 +8,7 @@ use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::{emit_error, emit_warning};
-use quote::{quote, quote_spanned, TokenStreamExt};
+use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::{parse2, parse_quote, token::Eq, Ident, ImplItem, Index, ItemImpl, Member, Token, Type};
@@ -148,7 +148,7 @@ impl ScopeAttr for AttrImplWidget {
 pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     scope.expand_impl_self();
     let name = &scope.ident;
-    let data_ty = quote! { <#name as ::kas::WidgetNode>::Data };
+    let data_ty = args.data.unwrap_or_else(|| parse_quote! { () });
     let opt_derive = &args.derive;
     let mut derive_ty = None;
 
@@ -199,11 +199,9 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
             core_data = Some(ident.clone());
 
-            if let Some((stor_ty, stor_def)) = args
-                .layout
-                .as_ref()
-                .and_then(|(_, l)| l.storage_fields(&mut layout_children, &data_ty))
-            {
+            if let Some((stor_ty, stor_def)) = args.layout.as_ref().and_then(|(_, l)| {
+                l.storage_fields(&mut layout_children, &data_ty.to_token_stream())
+            }) {
                 let name = format!("_{name}CoreTy");
                 let core_type = Ident::new(&name, Span::call_site());
                 scope.generated.push(quote! {
@@ -550,7 +548,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 "expected: a field with type `widget_core!()`",
             ));
         };
-        let data_ty = args.data.unwrap_or_else(|| parse_quote! { () });
         widget_methods = vec![];
 
         scope.generated.push(quote! {
@@ -898,7 +895,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         });
     }
 
-    // use quote::ToTokens;
     // println!("{}\n", scope.to_token_stream());
 
     Ok(())
