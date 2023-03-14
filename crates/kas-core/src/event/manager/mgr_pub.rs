@@ -519,6 +519,11 @@ impl EventState {
     {
         self.push_async(id, async_global_executor::spawn(fut.into_future()));
     }
+
+    /// Request configure of the given path
+    pub fn request_configure(&mut self, id: WidgetId) {
+        self.pending_configures.push(id);
+    }
 }
 
 /// Public API

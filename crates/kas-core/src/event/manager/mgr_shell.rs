@@ -52,6 +52,7 @@ impl EventState {
             popup_removed: Default::default(),
             time_updates: vec![],
             fut_messages: vec![],
+            pending_configures: vec![],
             pending: Default::default(),
             action: Action::empty(),
         }
@@ -198,6 +199,19 @@ impl EventState {
                 let event = Event::Pan { alpha, delta };
                 mgr.send_event(widget, id, event);
             }
+        }
+
+        if !mgr.pending_configures.is_empty() {
+            if !mgr.state.action.contains(Action::RECONFIGURE) {
+                mgr.pending_configures.sort();
+
+                // TODO(opt): walk tree; only configure contents of pending_configures
+                mgr.config_mgr(|mgr| mgr.configure(WidgetId::ROOT, widget));
+
+                let hover = widget.find_id(mgr.state.last_mouse_coord);
+                mgr.state.set_hover(hover);
+            }
+            mgr.pending_configures.clear();
         }
 
         // Warning: infinite loops are possible here if widgets always queue a
