@@ -171,6 +171,7 @@ struct PanGrab {
 #[allow(clippy::enum_variant_names)] // they all happen to be about Focus
 enum Pending {
     Send(WidgetId, Event),
+    SetRect(WidgetId),
 }
 
 type AccelLayer = (bool, HashMap<VirtualKeyCode, WidgetId>);

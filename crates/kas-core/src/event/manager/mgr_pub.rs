@@ -527,6 +527,11 @@ impl EventState {
     pub fn request_configure(&mut self, id: WidgetId) {
         self.pending_configures.push(id);
     }
+
+    /// Request set_rect of the given path
+    pub fn request_set_rect(&mut self, id: WidgetId) {
+        self.pending.push_back(Pending::SetRect(id));
+    }
 }
 
 /// Public API

@@ -254,7 +254,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         if action.contains(Action::RESIZE) {
             self.solve_cache.invalidate_rule_cache();
             self.apply_size(shared, false);
-        } else if action.contains(Action::SET_SIZE) {
+        } else if action.contains(Action::SET_RECT) {
             self.apply_size(shared, false);
         }
         /*if action.contains(Action::Popup) {

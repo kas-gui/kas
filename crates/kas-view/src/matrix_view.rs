@@ -304,8 +304,8 @@ impl_scope! {
                 w.key = None;
             }
             mgr.config_mgr(|mgr| self.update_widgets(mgr));
-            // Force SET_SIZE so that scroll-bar wrappers get updated
-            *mgr |= Action::SET_SIZE;
+            // Force SET_RECT so that scroll-bar wrappers get updated
+            *mgr |= Action::SET_RECT;
         }
 
         /// Set the preferred number of items visible (inline)

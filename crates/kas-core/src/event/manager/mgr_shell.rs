@@ -225,6 +225,10 @@ impl EventState {
                     }
                     mgr.send_event(widget, id, event);
                 }
+                Pending::SetRect(_id) => {
+                    // TODO(opt): set only this child
+                    mgr.send_action(Action::SET_RECT);
+                }
             }
         }
 

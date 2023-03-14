@@ -114,7 +114,7 @@ impl_scope! {
         /// Set the direction of contents
         pub fn set_direction(&mut self, direction: Direction) -> Action {
             self.direction = direction;
-            Action::SET_SIZE
+            Action::SET_RECT
         }
     }
     impl Self {
@@ -328,8 +328,8 @@ impl_scope! {
                 w.key = None;
             }
             mgr.config_mgr(|mgr| self.update_widgets(mgr));
-            // Force SET_SIZE so that scroll-bar wrappers get updated
-            *mgr |= Action::SET_SIZE;
+            // Force SET_RECT so that scroll-bar wrappers get updated
+            *mgr |= Action::SET_RECT;
         }
 
         /// Get the direction of contents
