@@ -218,19 +218,14 @@ impl EventState {
         // new pending event when evaluating one of these:
         while let Some(item) = mgr.pending.pop_front() {
             log::trace!(target: "kas_core::event::manager", "update: handling Pending::{item:?}");
-            let (id, event) = match item {
-                Pending::SetNavFocus(id, key_focus) => (id, Event::NavFocus(key_focus)),
-                Pending::MouseHover(id) => (id, Event::MouseHover),
-                Pending::LostNavFocus(id) => (id, Event::LostNavFocus),
-                Pending::LostMouseHover(id) => {
-                    mgr.hover_icon = Default::default();
-                    (id, Event::LostMouseHover)
+            match item {
+                Pending::Send(id, event) => {
+                    if matches!(&event, &Event::LostMouseHover) {
+                        mgr.hover_icon = Default::default();
+                    }
+                    mgr.send_event(widget, id, event);
                 }
-                Pending::LostCharFocus(id) => (id, Event::LostCharFocus),
-                Pending::LostSelFocus(id) => (id, Event::LostSelFocus),
-                Pending::Send(id, event) => (id, event),
-            };
-            mgr.send_event(widget, id, event);
+            }
         }
 
         // Poll futures last. This means that any newly pushed future should

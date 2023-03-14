@@ -170,12 +170,6 @@ struct PanGrab {
 #[derive(Clone, Debug)]
 #[allow(clippy::enum_variant_names)] // they all happen to be about Focus
 enum Pending {
-    SetNavFocus(WidgetId, bool),
-    MouseHover(WidgetId),
-    LostNavFocus(WidgetId),
-    LostMouseHover(WidgetId),
-    LostCharFocus(WidgetId),
-    LostSelFocus(WidgetId),
     Send(WidgetId, Event),
 }
 
@@ -368,7 +362,8 @@ impl EventState {
             log::trace!("clear_char_focus");
             // If widget has char focus, this is lost
             self.char_focus = false;
-            self.pending.push_back(Pending::LostCharFocus(id));
+            self.pending
+                .push_back(Pending::Send(id, Event::LostCharFocus));
         }
     }
 
@@ -386,11 +381,13 @@ impl EventState {
         if let Some(id) = self.sel_focus.clone() {
             if self.char_focus {
                 // If widget has char focus, this is lost
-                self.pending.push_back(Pending::LostCharFocus(id.clone()));
+                self.pending
+                    .push_back(Pending::Send(id.clone(), Event::LostCharFocus));
             }
 
             // Selection focus is lost if another widget receives char focus
-            self.pending.push_back(Pending::LostSelFocus(id));
+            self.pending
+                .push_back(Pending::Send(id, Event::LostSelFocus));
         }
 
         self.char_focus = char_focus;
@@ -401,12 +398,13 @@ impl EventState {
         if self.hover != w_id {
             log::trace!("set_hover: w_id={w_id:?}");
             if let Some(id) = self.hover.take() {
-                self.pending.push_back(Pending::LostMouseHover(id));
+                self.pending
+                    .push_back(Pending::Send(id, Event::LostMouseHover));
             }
             self.hover = w_id.clone();
 
             if let Some(id) = w_id {
-                self.pending.push_back(Pending::MouseHover(id));
+                self.pending.push_back(Pending::Send(id, Event::MouseHover));
             }
         }
     }

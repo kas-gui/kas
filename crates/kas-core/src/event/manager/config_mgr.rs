@@ -77,7 +77,8 @@ impl<'a> ConfigMgr<'a> {
         self.ev.config.nav_focus = !disabled;
         if disabled {
             if let Some(id) = self.ev.nav_focus.take() {
-                self.pending.push_back(Pending::LostNavFocus(id));
+                self.pending
+                    .push_back(Pending::Send(id, Event::LostNavFocus));
             }
         }
     }
@@ -258,14 +259,16 @@ impl<'a> ConfigMgr<'a> {
         }
 
         if let Some(id) = old_nav_focus {
-            self.pending.push_back(Pending::LostNavFocus(id));
+            self.pending
+                .push_back(Pending::Send(id, Event::LostNavFocus));
         }
 
         if let Some(id) = opt_id {
             if id != self.sel_focus {
                 self.clear_char_focus();
             }
-            self.pending.push_back(Pending::SetNavFocus(id, key_focus));
+            self.pending
+                .push_back(Pending::Send(id, Event::NavFocus(key_focus)));
             true
         } else {
             // Most likely an error occurred
@@ -293,7 +296,8 @@ impl<'a> ConfigMgr<'a> {
 
         self.send_action(Action::REDRAW);
         if let Some(old_id) = self.nav_focus.take() {
-            self.pending.push_back(Pending::LostNavFocus(old_id));
+            self.pending
+                .push_back(Pending::Send(old_id, Event::LostNavFocus));
         }
         self.clear_char_focus();
         if widget
@@ -303,7 +307,8 @@ impl<'a> ConfigMgr<'a> {
         {
             log::trace!(target: "kas_core::event::manager", "set_nav_focus: {id}");
             self.nav_focus = Some(id.clone());
-            self.pending.push_back(Pending::SetNavFocus(id, key_focus));
+            self.pending
+                .push_back(Pending::Send(id, Event::NavFocus(key_focus)));
             true
         } else {
             self.nav_focus = Some(id);
