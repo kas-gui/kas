@@ -122,6 +122,14 @@ impl_scope! {
                 Response::Used
             })
         }
+
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
+            if let Some(kas::message::Activate) = mgr.try_pop() {
+                if let Some(f) = self.on_press.as_ref() {
+                    f(mgr);
+                }
+            }
+        }
     }
 }
 
@@ -239,7 +247,6 @@ impl_scope! {
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.add_accel_keys(self.id_ref(), &self.keys1);
-            mgr.add_accel_keys(self.id_ref(), self.label.keys());
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
@@ -249,6 +256,14 @@ impl_scope! {
                 }
                 Response::Used
             })
+        }
+
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
+            if let Some(kas::message::Activate) = mgr.try_pop() {
+                if let Some(f) = self.on_press.as_ref() {
+                    f(mgr);
+                }
+            }
         }
     }
 }

@@ -353,7 +353,10 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
             &mut shared.draw,
             &mut self.ev_state,
         );
-        solve_cache.apply_rect(widget.as_widget_mut(), &mut mgr, rect, true, first);
+        solve_cache.apply_rect(widget.as_widget_mut(), &mut mgr, rect, true);
+        if first {
+            solve_cache.print_widget_heirarchy(widget.as_widget_mut());
+        }
         widget.resize_popups(&mut mgr);
 
         let restrict_dimensions = self.widget.restrict_dimensions();
@@ -574,12 +577,15 @@ where
         self.shared.set_primary(content);
     }
 
-    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeControl) -> Action) {
+    fn adjust_theme<'s>(&'s mut self, f: Box<dyn FnOnce(&mut dyn ThemeControl) -> Action + 's>) {
         let action = f(&mut self.shared.theme);
         self.shared.pending.push(PendingAction::Action(action));
     }
 
-    fn size_and_draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn ThemeSize, &mut dyn DrawShared)) {
+    fn size_and_draw_shared<'s>(
+        &'s mut self,
+        f: Box<dyn FnOnce(&mut dyn ThemeSize, &mut dyn DrawShared) + 's>,
+    ) {
         use kas::theme::Window;
         let mut size = self.theme_window.size();
         f(&mut size, &mut self.shared.draw);

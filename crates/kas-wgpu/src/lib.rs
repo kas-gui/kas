@@ -59,5 +59,5 @@ impl<CB: CustomPipeBuilder> From<CB> for WgpuShellBuilder<CB> {
     }
 }
 
-/// The default (unparameterised) implementation of [`DrawSharedBuilder`]
+/// The default (unparameterised) implementation of [`WgpuShellBuilder`]
 pub type DefaultGraphicalShell = WgpuShellBuilder<()>;

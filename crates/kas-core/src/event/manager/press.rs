@@ -5,9 +5,8 @@
 
 //! Event handling: events
 
-#[allow(unused)]
-use super::{EventMgr, EventState, GrabMode, Response}; // for doc-links
-use super::{MouseGrab, Pending, TouchGrab};
+#[allow(unused)] use super::{Event, EventState}; // for doc-links
+use super::{EventMgr, GrabMode, MouseGrab, Pending, Response, TouchGrab};
 use crate::event::{CursorIcon, MouseButton};
 use crate::geom::{Coord, Offset};
 use crate::{Action, WidgetId};

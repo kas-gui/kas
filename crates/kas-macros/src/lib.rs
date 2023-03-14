@@ -259,7 +259,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// >
 /// > _Widget_ :\
 /// > &nbsp;&nbsp; _ExprStartingUpperCase_\
-/// > &nbsp;&nbsp; An expression yielding a widget, e.g. `Label::new("Hello world")`. The result must be an object of some type `W: Widget`. Since the expression must start with an upper case letter it is necessary to bring the type into scope first, e.g. `use kas::widgets::Label;`.
+/// > &nbsp;&nbsp; An expression yielding a widget, e.g. `Label::new("Hello world")`. The result must be an object of some type `W: Widget`. Since the expression must start with an upper case letter it is necessary to bring the type into scope first, e.g. `use kas::widget::Label;`.
 /// >
 /// > _Label_ :\
 /// > &nbsp;&nbsp; _StrLit_\

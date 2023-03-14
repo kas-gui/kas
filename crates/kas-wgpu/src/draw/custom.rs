@@ -12,7 +12,7 @@ use kas::geom::{Rect, Size};
 /// Allows use of the low-level graphics API
 ///
 /// To use this, write an implementation of [`CustomPipe`], then pass the
-/// corresponding [`CustomPipeBuilder`] to [`crate::Shell::new_custom`].
+/// corresponding [`CustomPipeBuilder`] to `Shell::new_custom`.
 pub trait DrawCustom<CW: CustomWindow> {
     /// Call a custom draw pipe
     fn custom(&mut self, pass: PassId, rect: Rect, param: CW::Param);
@@ -52,7 +52,7 @@ pub trait CustomPipeBuilder {
 /// A custom pipe allows direct use of the `wgpu` graphics stack.
 ///
 /// To use this, pass the corresponding [`CustomPipeBuilder`] to
-/// [`crate::Shell::new_custom`].
+/// `Shell::new_custom`.
 ///
 /// Note that `kas-wgpu` accepts only a single custom pipe. To use more than
 /// one custom graphics pipeline, you must implement your own multiplexer.

@@ -48,7 +48,7 @@ pub enum Event {
     Scroll(ScrollDelta),
     /// A mouse or touch-screen move/zoom/rotate event
     ///
-    /// This event is sent for certain types of grab ([`EventMgr::grab_press`]),
+    /// This event is sent for certain types of grab ([`Press::grab`]),
     /// enabling two-finger scale/rotate gestures as well as translation.
     ///
     /// Mouse-grabs generate translation (`delta` component) only. Touch grabs
@@ -105,7 +105,7 @@ pub enum Event {
     },
     /// A mouse button was pressed or touch event started
     ///
-    /// Call [`EventMgr::grab_press`] in order to "grab" corresponding motion
+    /// Call [`Press::grab`] in order to "grab" corresponding motion
     /// and release events.
     ///
     /// This event is sent in exactly two cases, in this order:
@@ -123,7 +123,7 @@ pub enum Event {
     ///
     /// This event is sent in exactly two cases, in this order:
     ///
-    /// 1.  Given a grab ([`EventMgr::grab_press`]), motion events for the
+    /// 1.  Given a grab ([`Press::grab`]), motion events for the
     ///     grabbed mouse pointer or touched finger will be sent.
     /// 2.  When a pop-up layer is active ([`EventMgr::add_popup`]), the owner
     ///     of the top-most layer will receive this event. If the event is not
@@ -143,7 +143,7 @@ pub enum Event {
     ///
     /// This event is sent in exactly one case:
     ///
-    /// 1.  Given a grab ([`EventMgr::grab_press`]), release/cancel events
+    /// 1.  Given a grab ([`Press::grab`]), release/cancel events
     ///     for the same mouse button or touched finger will be sent.
     ///
     /// If `cur_id` is `None`, no widget was found at the coordinate (either

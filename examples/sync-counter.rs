@@ -7,7 +7,7 @@
 
 use kas::model::SharedRc;
 use kas::view::{driver, SingleView};
-use kas::widgets::dialog::Window;
+use kas::widget::dialog::Window;
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();

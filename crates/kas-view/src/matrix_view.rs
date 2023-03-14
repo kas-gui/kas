@@ -15,7 +15,6 @@ use kas::prelude::*;
 use kas::theme::SelectionStyle;
 #[allow(unused)] // doc links
 use kas_widgets::ScrollBars;
-use kas_widgets::SelectMsg;
 use linear_map::set::LinearSet;
 use std::borrow::Borrow;
 use std::time::Instant;
@@ -182,14 +181,16 @@ impl_scope! {
         ///
         /// By default, selection is disabled. If enabled, items may be selected
         /// and deselected via mouse-click/touch or via a view widget emitting
-        /// [`SelectMsg`].
+        /// [`Select`].
         ///
         /// On selection and deselection, a [`SelectionMsg`] message is emitted.
         /// This is not sent to [`Driver::on_message`].
         ///
-        /// The driver may trigger selection by emitting [`SelectMsg`] from
+        /// The driver may trigger selection by emitting [`Select`] from
         /// [`Driver::on_message`]. The driver is not notified of selection
-        /// except via [`SelectMsg`] from view widgets. (TODO: reconsider this.)
+        /// except via [`Select`] from view widgets. (TODO: reconsider this.)
+        ///
+        /// [`Select`]: kas::message::Select
         pub fn set_selection_mode(&mut self, mode: SelectionMode) -> Action {
             self.sel_mode = mode;
             match mode {
@@ -797,7 +798,7 @@ impl_scope! {
                             && w.key.as_ref().map(|k| k == key).unwrap_or(false)
                             && w.widget.rect().contains(press.coord + self.scroll.offset())
                         {
-                            mgr.push(SelectMsg);
+                            mgr.push(kas::message::Select);
                         }
                     }
                     Response::Used
@@ -842,7 +843,7 @@ impl_scope! {
                 };
             }
 
-            if let Some(SelectMsg) = mgr.try_pop() {
+            if let Some(kas::message::Select) = mgr.try_pop() {
                 match self.sel_mode {
                     SelectionMode::None => (),
                     SelectionMode::Single => {

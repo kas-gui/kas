@@ -31,7 +31,7 @@ mod press;
 pub use config_mgr::ConfigMgr;
 pub use press::{GrabBuilder, Press, PressSource};
 
-/// Controls the types of events delivered by [`EventMgr::grab_press`]
+/// Controls the types of events delivered by [`Press::grab`]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GrabMode {
     /// Deliver [`Event::PressEnd`] only for each grabbed press

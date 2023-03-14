@@ -362,7 +362,7 @@ impl EventState {
     /// Set a grab's depress target
     ///
     /// When a grab on mouse or touch input is in effect
-    /// ([`EventMgr::grab_press`]), the widget owning the grab may set itself
+    /// ([`Press::grab`]), the widget owning the grab may set itself
     /// or any other widget as *depressed* ("pushed down"). Each grab depresses
     /// at most one widget, thus setting a new depress target clears any
     /// existing target. Initially a grab depresses its owner.
@@ -462,7 +462,7 @@ impl EventState {
     /// cases, calling this method may be ineffective. The cursor is
     /// automatically "unset" when the widget is no longer hovered.
     ///
-    /// If a mouse grab ([`EventMgr::grab_press`]) is active, its icon takes precedence.
+    /// If a mouse grab ([`Press::grab`]) is active, its icon takes precedence.
     pub fn set_cursor_icon(&mut self, icon: CursorIcon) {
         // Note: this is acted on by EventState::update
         self.hover_icon = icon;
@@ -782,8 +782,8 @@ impl<'a> EventMgr<'a> {
 
     /// Adjust the theme
     #[inline]
-    pub fn adjust_theme<F: FnMut(&mut dyn ThemeControl) -> Action>(&mut self, mut f: F) {
-        self.shell.adjust_theme(&mut f);
+    pub fn adjust_theme<F: FnOnce(&mut dyn ThemeControl) -> Action>(&mut self, f: F) {
+        self.shell.adjust_theme(Box::new(f));
     }
 
     /// Access a [`SizeMgr`]
@@ -792,30 +792,31 @@ impl<'a> EventMgr<'a> {
     /// This may change, even without user action, since some platforms
     /// always initialize windows with scale factor 1.
     /// See also notes on [`Widget::configure`].
-    pub fn size_mgr<F: FnMut(SizeMgr) -> T, T>(&mut self, mut f: F) -> T {
+    pub fn size_mgr<F: FnOnce(SizeMgr) -> T, T>(&mut self, f: F) -> T {
         let mut result = None;
-        self.shell.size_and_draw_shared(&mut |size, _| {
+        self.shell.size_and_draw_shared(Box::new(|size, _| {
             result = Some(f(SizeMgr::new(size)));
-        });
+        }));
         result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
     }
 
     /// Access a [`ConfigMgr`]
-    pub fn config_mgr<F: FnMut(&mut ConfigMgr) -> T, T>(&mut self, mut f: F) -> T {
+    pub fn config_mgr<F: FnOnce(&mut ConfigMgr) -> T, T>(&mut self, f: F) -> T {
         let mut result = None;
-        self.shell.size_and_draw_shared(&mut |size, draw_shared| {
-            let mut mgr = ConfigMgr::new(size, draw_shared, self.state);
-            result = Some(f(&mut mgr));
-        });
+        self.shell
+            .size_and_draw_shared(Box::new(|size, draw_shared| {
+                let mut mgr = ConfigMgr::new(size, draw_shared, self.state);
+                result = Some(f(&mut mgr));
+            }));
         result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
     }
 
     /// Access a [`DrawShared`]
-    pub fn draw_shared<F: FnMut(&mut dyn DrawShared) -> T, T>(&mut self, mut f: F) -> T {
+    pub fn draw_shared<F: FnOnce(&mut dyn DrawShared) -> T, T>(&mut self, f: F) -> T {
         let mut result = None;
-        self.shell.size_and_draw_shared(&mut |_, draw_shared| {
+        self.shell.size_and_draw_shared(Box::new(|_, draw_shared| {
             result = Some(f(draw_shared));
-        });
+        }));
         result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
     }
 
@@ -830,7 +831,7 @@ impl<'a> EventMgr<'a> {
     /// Update the mouse cursor used during a grab
     ///
     /// This only succeeds if widget `id` has an active mouse-grab (see
-    /// [`EventMgr::grab_press`]). The cursor will be reset when the mouse-grab
+    /// [`Press::grab`]). The cursor will be reset when the mouse-grab
     /// ends.
     pub fn update_grab_cursor(&mut self, id: WidgetId, icon: CursorIcon) {
         if let Some(ref grab) = self.mouse_grab {
