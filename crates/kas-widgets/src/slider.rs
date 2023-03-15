@@ -11,7 +11,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use super::{GripMsg, GripPart};
-use kas::event::{Command, Scroll};
+use kas::event::Command;
 use kas::prelude::*;
 use kas::theme::Feature;
 
@@ -296,9 +296,6 @@ impl_scope! {
     impl Widget for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
-                Event::NavFocus(true) => {
-                    mgr.set_scroll(Scroll::Rect(self.rect()));
-                }
                 Event::Command(cmd) => {
                     let rev = self.direction.is_reversed();
                     let v = match cmd {
