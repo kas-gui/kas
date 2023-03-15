@@ -72,6 +72,7 @@ impl_scope! {
         alloc_len: Dim,
         /// The number of widgets in use (cur_len ≤ widgets.len())
         cur_len: u32,
+        first_data: (u32, u32),
         child_size_min: Size,
         child_size_ideal: Size,
         child_inter_margin: Size,
@@ -110,6 +111,7 @@ impl_scope! {
                 ideal_len: Dim { cols: 3, rows: 5 },
                 alloc_len: Dim::default(),
                 cur_len: 0,
+                first_data: (0, 0),
                 child_size_min: Size::ZERO,
                 child_size_ideal: Size::ZERO,
                 child_inter_margin: Size::ZERO,
@@ -318,61 +320,51 @@ impl_scope! {
             self
         }
 
-        /// Construct a position solver. Note: this does more work and updates to
-        /// self than is necessary in several cases where it is used.
-        fn position_solver(&mut self, mgr: &mut ConfigMgr) -> PositionSolver {
-            let (d_cols, d_rows) = self.data.len();
-            let data_len = Size(d_cols.cast(), d_rows.cast());
-            let view_size = self.rect().size;
-            let skip = self.child_size + self.child_inter_margin;
-            let content_size = (skip.cwise_mul(data_len) - self.child_inter_margin).max(Size::ZERO);
-            *mgr |= self.scroll.set_sizes(view_size, content_size);
-
-            let offset = self.scroll_offset();
-            let first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
-            let first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
-            let col_len = self.alloc_len.cols.cast();
-            let row_len = self.alloc_len.rows.cast();
-            self.cur_len = u32::conv(col_len * row_len);
-
-            let pos_start = self.core.rect.pos + self.frame_offset;
-
+        fn position_solver(&self) -> PositionSolver {
             PositionSolver {
-                pos_start,
-                skip,
+                pos_start: self.core.rect.pos + self.frame_offset,
+                skip: self.child_size + self.child_inter_margin,
                 size: self.child_size,
-                first_col,
-                first_row,
-                col_len,
-                row_len,
+                first_data: self.first_data,
+                alloc_len: self.alloc_len,
             }
         }
 
         fn update_widgets(&mut self, mgr: &mut ConfigMgr) -> PositionSolver {
             let time = Instant::now();
-            let solver = self.position_solver(mgr);
+
+            let offset = self.scroll_offset();
+            let skip = self.child_size + self.child_inter_margin;
+            let first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
+            let first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
+            let col_len = self.alloc_len.cols.cast();
+            let row_len = self.alloc_len.rows.cast();
+            self.cur_len = u32::conv(col_len * row_len);
+            self.first_data = (first_row.cast(), first_col.cast());
+
+            let solver = self.position_solver();
 
             let cols: Vec<_> = self
                 .data
-                .col_iter_from(solver.first_col, solver.col_len)
+                .col_iter_from(first_col, col_len)
                 .collect();
-            if cols.len() < solver.col_len {
+            if cols.len() < col_len {
                 log::warn!(
                     "{}: data.col_iter_vec_from({}, {}) yielded insufficient items (possibly incorrect data.len())", self.identify(),
-                    solver.first_col,
-                    solver.col_len,
+                    first_col,
+                    col_len,
                 );
             }
 
-            let row_iter = self.data.row_iter_from(solver.first_row, solver.row_len);
+            let row_iter = self.data.row_iter_from(first_row, row_len);
 
             let mut action = Action::empty();
             let mut row_count = 0;
             for (rn, row) in row_iter.enumerate() {
                 row_count += 1;
-                let ri = solver.first_row + rn;
+                let ri = first_row + rn;
                 for (cn, col) in cols.iter().enumerate() {
-                    let ci = solver.first_col + cn;
+                    let ci = first_col + cn;
                     let i = solver.data_to_child(ci, ri);
                     let key = T::make_key(col, &row);
                     let id = self.data.make_id(self.id_ref(), &key);
@@ -402,11 +394,11 @@ impl_scope! {
                 }
             }
 
-            if row_count < solver.row_len {
+            if row_count < row_len {
                 log::warn!(
                     "{}: data.row_iter_vec_from({}, {}) yielded insufficient items (possibly incorrect data.len())", self.identify(),
-                    solver.first_row,
-                    solver.row_len,
+                    first_row,
+                    row_len,
                 );
             }
 
@@ -541,6 +533,12 @@ impl_scope! {
 
             let (d_cols, d_rows) = self.data.len();
             let data_len = Size(d_cols.cast(), d_rows.cast());
+
+            let view_size = rect.size;
+            let skip = self.child_size + self.child_inter_margin;
+            let content_size = (skip.cwise_mul(data_len) - self.child_inter_margin).max(Size::ZERO);
+            *mgr |= self.scroll.set_sizes(view_size, content_size);
+
             let (avail_widgets, mut req_widgets) = (self.widgets.len(), d_cols * d_rows);
             let vis_len;
             if avail_widgets >= req_widgets {
@@ -548,7 +546,6 @@ impl_scope! {
                 vis_len = data_len;
             } else {
                 // Case: reallocate children when scrolling
-                let skip = child_size + self.child_inter_margin;
                 vis_len = data_len
                     .min((rect.size + skip - Size::splat(1)).cwise_div(skip) + Size::splat(1));
                 req_widgets = usize::conv(vis_len.0) * usize::conv(vis_len.1);
@@ -659,7 +656,7 @@ impl_scope! {
                 return None;
             }
 
-            let mut solver = self.position_solver(mgr);
+            let mut solver = self.position_solver();
             let (d_cols, d_rows) = self.data.len();
             let (ci, ri) = if let Some(index) = from {
                 let (ci, ri) = solver.child_to_data(index);
@@ -717,7 +714,8 @@ impl_scope! {
                     let (d_cols, d_rows) = self.data.len();
                     let (last_col, last_row) = (d_cols.wrapping_sub(1), d_rows.wrapping_sub(1));
 
-                    let mut solver = mgr.config_mgr(|mgr| self.position_solver(mgr));
+                    let row_len: usize = self.alloc_len.rows.cast();
+                    let mut solver = self.position_solver();
                     let (ci, ri) = match mgr.nav_focus().and_then(|id| self.find_child_index(id)) {
                         Some(index) => solver.child_to_data(index),
                         None => return Response::Unused,
@@ -733,9 +731,9 @@ impl_scope! {
                         C::Up if ri > 0 => Some((ci, ri - 1)),
                         C::Right | C::WordRight if ci < last_col => Some((ci + 1, ri)),
                         C::Down if ri < last_row => Some((ci, ri + 1)),
-                        C::PageUp if ri > 0 => Some((ci, ri.saturating_sub(solver.row_len / 2))),
+                        C::PageUp if ri > 0 => Some((ci, ri.saturating_sub(row_len / 2))),
                         C::PageDown if ri < last_row => {
-                            Some((ci, (ri + solver.row_len / 2).min(last_row)))
+                            Some((ci, (ri + row_len / 2).min(last_row)))
                         }
                         // TODO: C::ViewUp, ...
                         _ => None,
@@ -876,29 +874,33 @@ struct PositionSolver {
     pos_start: Coord,
     skip: Size,
     size: Size,
-    first_col: usize,
-    first_row: usize,
-    col_len: usize,
-    row_len: usize,
+    first_data: (u32, u32),
+    alloc_len: Dim,
 }
 
 impl PositionSolver {
     /// Map a data index to child index
     fn data_to_child(&self, ci: usize, ri: usize) -> usize {
-        (ci % self.col_len) + (ri % self.row_len) * self.col_len
+        let col_len: usize = self.alloc_len.cols.cast();
+        let row_len: usize = self.alloc_len.rows.cast();
+        (ci % col_len) + (ri % row_len) * col_len
     }
 
     /// Map a child index to `(col_index, row_index)`
     fn child_to_data(&self, index: usize) -> (usize, usize) {
-        let col_start = (self.first_col / self.col_len) * self.col_len;
-        let row_start = (self.first_row / self.row_len) * self.row_len;
-        let mut col_index = col_start + index % self.col_len;
-        let mut row_index = row_start + index / self.col_len;
-        if col_index < self.first_col {
-            col_index += self.col_len;
+        let col_len: usize = self.alloc_len.cols.cast();
+        let row_len: usize = self.alloc_len.rows.cast();
+        let first_col: usize = self.first_data.0.cast();
+        let first_row: usize = self.first_data.1.cast();
+        let col_start = (first_col / col_len) * col_len;
+        let row_start = (first_row / row_len) * row_len;
+        let mut col_index = col_start + index % col_len;
+        let mut row_index = row_start + index / col_len;
+        if col_index < first_col {
+            col_index += col_len;
         }
-        if row_index < self.first_row {
-            row_index += self.row_len;
+        if row_index < first_row {
+            row_index += row_len;
         }
         (col_index, row_index)
     }

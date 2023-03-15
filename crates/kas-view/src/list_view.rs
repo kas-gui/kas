@@ -63,12 +63,15 @@ impl_scope! {
         widgets: Vec<WidgetData<T::Key, V::Widget>>,
         /// The number of widgets in use (cur_len ≤ widgets.len())
         cur_len: u32,
+        /// First data item mapped to a widget
+        first_data: u32,
         direction: D,
         align_hints: AlignHints,
         ideal_visible: i32,
         child_size_min: i32,
         child_size_ideal: i32,
         child_inter_margin: i32,
+        skip: i32,
         child_size: Size,
         scroll: ScrollComponent,
         sel_mode: SelectionMode,
@@ -131,12 +134,14 @@ impl_scope! {
                 data_ver: 0,
                 widgets: Default::default(),
                 cur_len: 0,
+                first_data: 0,
                 direction,
                 align_hints: Default::default(),
                 ideal_visible: 5,
                 child_size_min: 0,
                 child_size_ideal: 0,
                 child_inter_margin: 0,
+                skip: 0,
                 child_size: Size::ZERO,
                 scroll: Default::default(),
                 sel_mode: SelectionMode::None,
@@ -347,35 +352,16 @@ impl_scope! {
             self
         }
 
-        /// Construct a position solver. Note: this does more work and updates to
-        /// self than is necessary in several cases where it is used.
-        fn position_solver(&mut self, mgr: &mut ConfigMgr) -> PositionSolver {
-            let data_len = self.data.len();
-            let data_len32 = i32::conv(data_len);
-            let view_size = self.rect().size;
-            let mut content_size = view_size;
-            let mut skip;
-            if self.direction.is_horizontal() {
-                skip = Offset(self.child_size.0 + self.child_inter_margin, 0);
-                content_size.0 = (skip.0 * data_len32 - self.child_inter_margin).max(0);
-            } else {
-                skip = Offset(0, self.child_size.1 + self.child_inter_margin);
-                content_size.1 = (skip.1 * data_len32 - self.child_inter_margin).max(0);
-            }
-            *mgr |= self.scroll.set_sizes(view_size, content_size);
-
-            let offset = u64::conv(self.scroll_offset().extract(self.direction));
-            // first visible data item, in downward direction:
-            let mut first_data = usize::conv(offset / u64::conv(skip.extract(self.direction)));
-
-            // set_rect allocates enough widgets to view a page; we update widget-data allocations
-            let cur_len = self.widgets.len().min(data_len - first_data);
-            self.cur_len = cur_len.cast();
+        fn position_solver(&self) -> PositionSolver {
+            let cur_len: usize = self.cur_len.cast();
+            let mut first_data: usize = self.first_data.cast();
+            let mut skip = Offset::ZERO;
+            skip.set_component(self.direction, self.skip);
 
             let mut pos_start = self.core.rect.pos + self.frame_offset;
             if self.direction.is_reversed() {
-                first_data = (data_len - first_data).saturating_sub(cur_len);
-                pos_start += skip * i32::conv(data_len - 1);
+                first_data = (self.data.len() - first_data).saturating_sub(cur_len);
+                pos_start += skip * i32::conv(self.data.len() - 1);
                 skip = skip * -1;
             }
 
@@ -390,9 +376,20 @@ impl_scope! {
 
         fn update_widgets(&mut self, mgr: &mut ConfigMgr) {
             let time = Instant::now();
-            let solver = self.position_solver(mgr);
             let mut action = Action::empty();
 
+            let offset = u64::conv(self.scroll_offset().extract(self.direction));
+            let mut first_data = usize::conv(offset / u64::conv(self.skip));
+
+            let mut cur_len = self.widgets.len();
+            if self.data.len() - first_data < cur_len {
+                cur_len = cur_len.min(self.data.len());
+                first_data = self.data.len() - cur_len;
+            }
+            self.cur_len = cur_len.cast();
+            self.first_data = first_data.cast();
+
+            let solver = self.position_solver();
             let keys = self.data.iter_from(solver.first_data, solver.cur_len);
 
             let mut count = 0;
@@ -554,26 +551,34 @@ impl_scope! {
         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             self.core.rect = rect;
 
+            let data_len = self.data.len();
+            let data_len32 = i32::conv(data_len);
             let mut child_size = rect.size - self.frame_size;
-            let num = if self.direction.is_horizontal() {
+            let skip;
+            let view_size = rect.size;
+            let mut content_size = view_size;
+            let mut req_widgets;
+            if self.direction.is_horizontal() {
                 child_size.0 = (child_size.0 / self.ideal_visible)
                     .min(self.child_size_ideal)
                     .max(self.child_size_min);
-                let skip = child_size.0 + self.child_inter_margin;
-                (rect.size.0 + skip - 1) / skip + 1
+                skip = child_size.0 + self.child_inter_margin;
+                content_size.0 = (skip * data_len32 - self.child_inter_margin).max(0);
+                req_widgets = usize::conv((rect.size.0 + skip - 1) / skip + 1);
             } else {
                 child_size.1 = (child_size.1 / self.ideal_visible)
                     .min(self.child_size_ideal)
                     .max(self.child_size_min);
-                let skip = child_size.1 + self.child_inter_margin;
-                (rect.size.1 + skip - 1) / skip + 1
-            };
+                skip = child_size.1 + self.child_inter_margin;
+                content_size.1 = (skip * data_len32 - self.child_inter_margin).max(0);
+                req_widgets = usize::conv((rect.size.1 + skip - 1) / skip + 1);
+            }
 
             self.child_size = child_size;
+            self.skip = skip;
+            *mgr |= self.scroll.set_sizes(view_size, content_size);
 
-            let data_len = self.data.len();
             let avail_widgets = self.widgets.len();
-            let mut req_widgets = usize::conv(num);
             if data_len <= avail_widgets {
                 req_widgets = data_len
             } else if avail_widgets < req_widgets {
@@ -662,7 +667,7 @@ impl_scope! {
                 return None;
             }
 
-            let solver = self.position_solver(mgr);
+            let solver = self.position_solver();
             let last_data = self.data.len() - 1;
             let data = if let Some(index) = from {
                 let data = solver.child_to_data(index);
@@ -710,7 +715,7 @@ impl_scope! {
                         return Response::Unused;
                     }
 
-                    let solver = mgr.config_mgr(|mgr| self.position_solver(mgr));
+                    let solver = self.position_solver();
                     let cur = match mgr.nav_focus().and_then(|id| self.find_child_index(id)) {
                         Some(index) => solver.child_to_data(index),
                         None => return Response::Unused,
