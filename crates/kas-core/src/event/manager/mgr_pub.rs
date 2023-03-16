@@ -606,6 +606,10 @@ impl<'a> EventMgr<'a> {
             self.last_child = last_child;
             if self.scroll == Scroll::None {
                 self.scroll = scroll;
+            } else {
+                // send_recurse does not call handle_scroll on its target, which
+                // is *presumably* the widget calling this method
+                widget.handle_scroll(self, self.scroll);
             }
         } else {
             // Possibly not safe: send later.
