@@ -17,6 +17,7 @@ impl_scope! {
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone)]
     #[widget{
+        data = W::Data;
         layout = self.inner;
     }]
     pub struct MapMessage<
@@ -69,7 +70,7 @@ impl_scope! {
         }
         fn set_menu_path(
             &mut self,
-            mgr: &mut EventCx<Self::Data>,
+            mgr: &mut EventCx<()>,
             target: Option<&WidgetId>,
             set_focus: bool,
         ) {
