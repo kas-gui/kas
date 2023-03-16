@@ -461,7 +461,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
         fn_pre_configure = quote! {
             #[inline]
-            fn pre_configure(&mut self, mgr: &mut ::kas::event::ConfigMgr, id: ::kas::WidgetId) {
+            fn pre_configure(&mut self, mgr: &mut ::kas::event::ConfigCx<Self::Data>, id: ::kas::WidgetId) {
                 self.#inner.pre_configure(mgr, id)
             }
         };
@@ -490,7 +490,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             #[inline]
             fn nav_next(
                 &mut self,
-                mgr: &mut ::kas::event::EventMgr,
+                mgr: &mut ::kas::event::EventCx<Self::Data>,
                 reverse: bool,
                 from: Option<usize>,
             ) -> Option<usize> {
@@ -675,7 +675,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 NavNextResult::Slice(dir) => Some(quote! {
                     fn nav_next(
                         &mut self,
-                        _: &mut ::kas::event::EventMgr,
+                        _: &mut ::kas::event::EventCx<Self::Data>,
                         reverse: bool,
                         from: Option<usize>,
                     ) -> Option<usize> {
@@ -686,7 +686,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 NavNextResult::List(order) => Some(quote! {
                     fn nav_next(
                         &mut self,
-                        _: &mut ::kas::event::EventMgr,
+                        _: &mut ::kas::event::EventCx<Self::Data>,
                         reverse: bool,
                         from: Option<usize>,
                     ) -> Option<usize> {
@@ -782,7 +782,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         };
 
         fn_pre_configure = quote! {
-            fn pre_configure(&mut self, _: &mut ::kas::event::ConfigMgr, id: ::kas::WidgetId) {
+            fn pre_configure(&mut self, _: &mut ::kas::event::ConfigCx<Self::Data>, id: ::kas::WidgetId) {
                 self.#core.id = id;
             }
         };

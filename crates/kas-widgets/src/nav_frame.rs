@@ -44,7 +44,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<Self::Data>, event: Event) -> Response {
             match event {
                 Event::Command(cmd) if cmd.is_activate() => {
                     mgr.push(kas::message::Select);

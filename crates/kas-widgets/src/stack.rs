@@ -54,7 +54,7 @@ impl_scope! {
             self.widgets.len()
         }
         #[inline]
-        fn get_child<'s>(&'s mut self, data: &'s Self::Data, index: usize) -> Option<Node<'s>> {
+        fn get_child<'s>(&'s mut self, data: &'s W::Data, index: usize) -> Option<Node<'s>> {
             self.widgets.get_mut(index).map(|w| w.as_node(data))
         }
 
@@ -124,12 +124,12 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn pre_configure(&mut self, _: &mut ConfigMgr, id: WidgetId) {
+        fn pre_configure(&mut self, _: &mut ConfigCx<Self::Data>, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();
         }
 
-        fn nav_next(&mut self, _: &mut EventMgr, _: bool, from: Option<usize>) -> Option<usize> {
+        fn nav_next(&mut self, _: &mut EventCx<Self::Data>, _: bool, from: Option<usize>) -> Option<usize> {
             match from {
                 None => Some(self.active),
                 Some(active) if active != self.active => Some(self.active),

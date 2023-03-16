@@ -137,7 +137,7 @@ impl_scope! {
             *mgr |= self.driver.set(&mut self.child, &(), item.borrow());
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<Self::Data>, event: Event) -> Response {
             match event {
                 Event::Update { .. } => {
                     let data_ver = self.data.version();
@@ -152,7 +152,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
             self.driver
                 .on_message(mgr, &mut self.child, &self.data, &());
         }

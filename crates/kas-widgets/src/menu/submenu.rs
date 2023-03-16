@@ -83,7 +83,7 @@ impl_scope! {
             }
         }
 
-        fn open_menu(&mut self, mgr: &mut EventMgr, set_focus: bool) {
+        fn open_menu(&mut self, mgr: &mut EventCx<()>, set_focus: bool) {
             if self.popup_id.is_none() {
                 self.popup_id = mgr.add_popup(kas::Popup {
                     id: self.list.id(),
@@ -95,13 +95,13 @@ impl_scope! {
                 }
             }
         }
-        fn close_menu(&mut self, mgr: &mut EventMgr, restore_focus: bool) {
+        fn close_menu(&mut self, mgr: &mut EventCx<()>, restore_focus: bool) {
             if let Some(id) = self.popup_id {
                 mgr.close_window(id, restore_focus);
             }
         }
 
-        fn handle_dir_key(&mut self, mgr: &mut EventMgr, cmd: Command) -> Response {
+        fn handle_dir_key(&mut self, mgr: &mut EventCx<()>, cmd: Command) -> Response {
             if self.menu_is_open() {
                 if let Some(dir) = cmd.as_direction() {
                     if dir.is_vertical() {
@@ -146,7 +146,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId) {
+        fn pre_configure(&mut self, mgr: &mut ConfigCx<Self::Data>, id: WidgetId) {
             self.core.id = id;
             // FIXME: new layer should apply to self.list but not to self.label.
             // We don't currently have a way to do that. Possibly we should
@@ -160,12 +160,12 @@ impl_scope! {
             self.navigable
         }
 
-        fn nav_next(&mut self, _: &mut EventMgr, _: bool, _: Option<usize>) -> Option<usize> {
+        fn nav_next(&mut self, _: &mut EventCx<Self::Data>, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<()>, event: Event) -> Response {
             match event {
                 Event::Command(cmd) if cmd.is_activate() => {
                     if self.popup_id.is_none() {
@@ -183,7 +183,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<()>) {
             if let Some(kas::message::Activate) = mgr.try_pop() {
                 if self.popup_id.is_none() {
                     self.open_menu(mgr, true);
@@ -193,7 +193,7 @@ impl_scope! {
             }
         }
 
-        fn handle_scroll(&mut self, mgr: &mut EventMgr, _: Scroll) {
+        fn handle_scroll(&mut self, mgr: &mut EventCx<()>, _: Scroll) {
             mgr.set_scroll(Scroll::None);
         }
     }
@@ -213,7 +213,7 @@ impl_scope! {
 
         fn set_menu_path(
             &mut self,
-            mgr: &mut EventMgr,
+            mgr: &mut EventCx<()>,
             target: Option<&WidgetId>,
             set_focus: bool,
         ) {
@@ -270,7 +270,7 @@ impl_scope! {
             self.list.len()
         }
         #[inline]
-        fn get_child<'s>(&'s mut self, data: &'s Self::Data, index: usize) -> Option<Node<'s>> {
+        fn get_child<'s>(&'s mut self, data: &'s (), index: usize) -> Option<Node<'s>> {
             self.list.get_mut(index).map(|w| w.as_node(data))
         }
     }
@@ -351,7 +351,7 @@ impl_scope! {
             solver.finish(store)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, mgr: &mut ConfigCx<Self::Data>, rect: Rect) {
             self.core.rect = rect;
             let store = &mut self.store;
             let mut setter = layout::GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, store);

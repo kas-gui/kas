@@ -66,7 +66,7 @@ impl_scope! {
             self.widgets.len()
         }
         #[inline]
-        fn get_child<'s>(&'s mut self, data: &'s Self::Data, index: usize) -> Option<Node<'s>> {
+        fn get_child<'s>(&'s mut self, data: &'s (), index: usize) -> Option<Node<'s>> {
             self.widgets.get_mut(index).map(|w| w.as_node(data))
         }
     }
@@ -117,7 +117,7 @@ impl_scope! {
     }
 
     impl<D: Directional> Widget for MenuBar<D> {
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<()>, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(id_code) => {
                     if let Some(id) = self.delayed_open.clone() {
@@ -138,7 +138,7 @@ impl_scope! {
                             let press_in_the_bar = self.rect().contains(press.coord);
 
                             if !press_in_the_bar || !any_menu_open {
-                                press.grab(self.id()).with_mgr(mgr);
+                                press.grab(self.id()).with_cx(mgr);
                             }
                             mgr.set_grab_depress(*press, press.id.clone());
                             if press_in_the_bar {
@@ -241,7 +241,7 @@ impl_scope! {
     impl Self {
         fn set_menu_path(
             &mut self,
-            mgr: &mut EventMgr,
+            mgr: &mut EventCx<()>,
             target: Option<&WidgetId>,
             set_focus: bool,
         ) {

@@ -42,7 +42,7 @@ impl RadioGroup {
         (self.0).1.borrow().clone()
     }
 
-    fn update(&self, mgr: &mut EventMgr, item: Option<WidgetId>) {
+    fn update(&self, mgr: &mut EventCx<()>, item: Option<WidgetId>) {
         *(self.0).1.borrow_mut() = item;
         mgr.update_with_id((self.0).0, 0);
     }
@@ -64,11 +64,11 @@ impl_scope! {
         state: bool,
         last_change: Option<Instant>,
         group: RadioGroup,
-        on_select: Option<Rc<dyn Fn(&mut EventMgr)>>,
+        on_select: Option<Rc<dyn Fn(&mut EventCx<()>)>>,
     }
 
     impl Widget for Self {
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<()>, event: Event) -> Response {
             match event {
                 Event::Update { id, .. } if id == self.group.id() => {
                     if self.state && !self.eq_id(self.group.get()) {
@@ -133,7 +133,7 @@ impl_scope! {
         #[must_use]
         pub fn on_select<F>(self, f: F) -> RadioBox
         where
-            F: Fn(&mut EventMgr) + 'static,
+            F: Fn(&mut EventCx<()>) + 'static,
         {
             RadioBox {
                 core: self.core,
@@ -156,7 +156,7 @@ impl_scope! {
         #[inline]
         pub fn new_on<F>(group: RadioGroup, f: F) -> Self
         where
-            F: Fn(&mut EventMgr) + 'static,
+            F: Fn(&mut EventCx<()>) + 'static,
         {
             RadioBox::new(group).on_select(f)
         }
@@ -176,7 +176,7 @@ impl_scope! {
         /// be set false. Returns true if newly selected, false if already selected.
         ///
         /// This does not call the event handler set by [`Self::on_select`] or [`Self::new_on`].
-        pub fn select(&mut self, mgr: &mut EventMgr) -> bool {
+        pub fn select(&mut self, mgr: &mut EventCx<()>) -> bool {
             self.last_change = Some(Instant::now());
             if !self.state {
                 log::trace!("select: {}", self.id());
@@ -193,7 +193,7 @@ impl_scope! {
         ///
         /// Note: state will not update until the next draw.
         #[inline]
-        pub fn unset_all(&self, mgr: &mut EventMgr) {
+        pub fn unset_all(&self, mgr: &mut EventCx<()>) {
             self.group.update(mgr, None);
         }
     }
@@ -246,7 +246,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<()>) {
             if let Some(kas::message::Activate) = mgr.try_pop() {
                 self.inner.select(mgr);
             }
@@ -279,7 +279,7 @@ impl_scope! {
         #[must_use]
         pub fn on_select<F>(self, f: F) -> RadioButton
         where
-            F: Fn(&mut EventMgr) + 'static,
+            F: Fn(&mut EventCx<()>) + 'static,
         {
             RadioButton {
                 core: self.core,
@@ -302,7 +302,7 @@ impl_scope! {
         #[inline]
         pub fn new_on<T: Into<AccelString>, F>(label: T, group: RadioGroup, f: F) -> Self
         where
-            F: Fn(&mut EventMgr) + 'static,
+            F: Fn(&mut EventCx<()>) + 'static,
         {
             RadioButton::new(label, group).on_select(f)
         }
@@ -343,7 +343,7 @@ impl_scope! {
         ///
         /// This does not call the event handler set by [`Self::on_select`] or [`Self::new_on`].
         #[inline]
-        pub fn select(&mut self, mgr: &mut EventMgr) -> bool {
+        pub fn select(&mut self, mgr: &mut EventCx<()>) -> bool {
             self.inner.select(mgr)
         }
 
@@ -351,7 +351,7 @@ impl_scope! {
         ///
         /// Note: state will not update until the next draw.
         #[inline]
-        pub fn unset_all(&self, mgr: &mut EventMgr) {
+        pub fn unset_all(&self, mgr: &mut EventCx<()>) {
             self.inner.unset_all(mgr)
         }
 

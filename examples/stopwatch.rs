@@ -8,7 +8,7 @@
 use std::time::{Duration, Instant};
 
 use kas::class::HasString;
-use kas::event::{ConfigMgr, Event, EventMgr, Response};
+use kas::event::{ConfigCx, Event, EventMgr, Response};
 use kas::widget::{Frame, Label, TextButton};
 use kas::{Decorations, Widget, WidgetCore, WidgetExt, Window};
 
@@ -39,7 +39,7 @@ fn make_window() -> Box<dyn kas::Window> {
             fn configure(&mut self, mgr: &mut ConfigCx<Self::Data>) {
                 mgr.enable_alt_bypass(self.id_ref(), true);
             }
-            fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+            fn handle_event(&mut self, mgr: &mut EventCx<Self::Data>, event: Event) -> Response {
                 match event {
                     Event::TimerUpdate(0) => {
                         if let Some(start) = self.start {
@@ -53,7 +53,7 @@ fn make_window() -> Box<dyn kas::Window> {
                     _ => Response::Unused,
                 }
             }
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
                 if let Some(MsgReset) = mgr.try_pop() {
                     self.saved = Duration::default();
                     self.start = None;

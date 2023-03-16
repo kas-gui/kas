@@ -106,7 +106,7 @@ impl_scope! {
         value: T,
         #[widget]
         handle: GripPart,
-        on_move: Option<Rc<dyn Fn(&mut EventMgr, T)>>,
+        on_move: Option<Rc<dyn Fn(&mut EventCx<()>, T)>>,
     }
 
     impl Self
@@ -132,7 +132,7 @@ impl_scope! {
         #[inline]
         pub fn new_on<F>(range: RangeInclusive<T>, step: T, f: F) -> Self
         where
-            F: Fn(&mut EventMgr, T) + 'static,
+            F: Fn(&mut EventCx<()>, T) + 'static,
         {
             Slider::new(range, step).on_move(f)
         }
@@ -170,7 +170,7 @@ impl_scope! {
         #[must_use]
         pub fn on_move<F>(mut self, f: F) -> Self
         where
-            F: Fn(&mut EventMgr, T) + 'static,
+            F: Fn(&mut EventCx<()>, T) + 'static,
         {
             self.on_move = Some(Rc::new(f));
             self
@@ -238,7 +238,7 @@ impl_scope! {
             }
         }
 
-        fn apply_grip_offset(&mut self, mgr: &mut EventMgr, offset: Offset) {
+        fn apply_grip_offset(&mut self, mgr: &mut EventCx<()>, offset: Offset) {
             let b = self.range.1 - self.range.0;
             let max_offset = self.handle.max_offset();
             let mut a = match self.direction.is_vertical() {
@@ -294,7 +294,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<()>, event: Event) -> Response {
             match event {
                 Event::Command(cmd) => {
                     let rev = self.direction.is_reversed();
@@ -339,7 +339,7 @@ impl_scope! {
             Response::Used
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<()>) {
             match mgr.try_pop() {
                 Some(GripMsg::PressStart) => mgr.set_nav_focus(self.id(), false),
                 Some(GripMsg::PressMove(pos)) => {

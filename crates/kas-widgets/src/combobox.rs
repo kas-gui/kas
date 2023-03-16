@@ -46,22 +46,22 @@ impl_scope! {
         active: usize,
         opening: bool,
         popup_id: Option<WindowId>,
-        on_select: Option<Rc<dyn Fn(&mut EventMgr, M)>>,
+        on_select: Option<Rc<dyn Fn(&mut EventCx<()>, M)>>,
     }
 
     impl Widget for Self {
-        fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId) {
+        fn pre_configure(&mut self, mgr: &mut ConfigCx<Self::Data>, id: WidgetId) {
             self.core.id = id;
             mgr.new_accel_layer(self.id(), true);
         }
 
-        fn nav_next(&mut self, _: &mut EventMgr, _: bool, _: Option<usize>) -> Option<usize> {
+        fn nav_next(&mut self, _: &mut EventCx<Self::Data>, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
-            let open_popup = |s: &mut Self, mgr: &mut EventMgr, key_focus: bool| {
+        fn handle_event(&mut self, mgr: &mut EventCx<Self::Data>, event: Event) -> Response {
+            let open_popup = |s: &mut Self, mgr: &mut EventCx<Self::Data>, key_focus: bool| {
                 s.popup_id = mgr.add_popup(kas::Popup {
                     id: s.popup.id(),
                     parent: s.id(),
@@ -75,7 +75,7 @@ impl_scope! {
             match event {
                 Event::Command(cmd) => {
                     if let Some(popup_id) = self.popup_id {
-                        let next = |mgr: &mut EventMgr, id, clr, rev| {
+                        let next = |mgr: &mut EventCx<Self::Data>, id, clr, rev| {
                             if clr {
                                 mgr.clear_nav_focus();
                             }
@@ -114,7 +114,7 @@ impl_scope! {
                 Event::PressStart { press } => {
                     if press.id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
                         if press.is_primary() {
-                            press.grab(self.id()).with_mgr(mgr);
+                            press.grab(self.id()).with_cx(mgr);
                             mgr.set_grab_depress(*press, press.id);
                             self.opening = self.popup_id.is_none();
                         }
@@ -167,7 +167,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
             if let Some(IndexMsg(index)) = mgr.try_pop() {
                 *mgr |= self.set_active(index);
                 if let Some(id) = self.popup_id {
@@ -181,7 +181,7 @@ impl_scope! {
             }
         }
 
-        fn handle_scroll(&mut self, mgr: &mut EventMgr, _: Scroll) {
+        fn handle_scroll(&mut self, mgr: &mut EventCx<Self::Data>, _: Scroll) {
             mgr.set_scroll(Scroll::None);
         }
     }
@@ -249,7 +249,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     #[must_use]
     pub fn on_select<F>(self, f: F) -> ComboBox<M>
     where
-        F: Fn(&mut EventMgr, M) + 'static,
+        F: Fn(&mut EventCx<()>, M) + 'static,
     {
         ComboBox {
             core: self.core,

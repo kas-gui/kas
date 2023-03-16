@@ -443,7 +443,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventCx<Self::Data>, offset: Offset) -> Offset {
             *mgr |= self.scroll.set_offset(offset);
             mgr.config_mgr(|mgr| self.update_widgets(mgr));
             self.scroll.offset()
@@ -629,7 +629,7 @@ impl_scope! {
 
         fn nav_next(
             &mut self,
-            mgr: &mut EventMgr,
+            mgr: &mut EventCx<Self::Data>,
             reverse: bool,
             from: Option<usize>,
         ) -> Option<usize> {
@@ -676,7 +676,7 @@ impl_scope! {
             self.scroll_offset()
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<Self::Data>, event: Event) -> Response {
             let response = match event {
                 Event::Update { .. } => {
                     let data_ver = self.data.version();
@@ -758,7 +758,7 @@ impl_scope! {
 
                     // Press may also be grabbed by scroll component (replacing
                     // this). Either way we can select on PressEnd.
-                    press.grab(self.id()).with_mgr(mgr)
+                    press.grab(self.id()).with_cx(mgr)
                 }
                 Event::PressMove { .. } => Response::Used,
                 Event::PressEnd { ref press, success } if press.is_primary() => {
@@ -787,7 +787,7 @@ impl_scope! {
             response | sber_response
         }
 
-        fn handle_unused(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_unused(&mut self, mgr: &mut EventCx<Self::Data>, event: Event) -> Response {
             if matches!(&event, Event::PressStart { .. }) {
                 if let Some(index) = mgr.last_child() {
                     self.press_target = self.widgets[index].key.clone().map(|k| (index, k));
@@ -797,7 +797,7 @@ impl_scope! {
             self.handle_event(mgr, event)
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
             let key;
             if let Some(index) = mgr.last_child() {
                 let w = &mut self.widgets[index];
@@ -837,7 +837,7 @@ impl_scope! {
             }
         }
 
-        fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) {
+        fn handle_scroll(&mut self, mgr: &mut EventCx<Self::Data>, scroll: Scroll) {
             self.scroll.scroll(mgr, self.rect(), scroll);
             mgr.config_mgr(|mgr| self.update_widgets(mgr));
         }

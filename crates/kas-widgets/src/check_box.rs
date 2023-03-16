@@ -18,6 +18,7 @@ impl_scope! {
     #[autoimpl(Debug ignore self.on_toggle)]
     #[derive(Clone, Default)]
     #[widget{
+        data = ();
         navigable = true;
         hover_highlight = true;
     }]
@@ -27,7 +28,7 @@ impl_scope! {
         state: bool,
         editable: bool,
         last_change: Option<Instant>,
-        on_toggle: Option<Rc<dyn Fn(&mut EventMgr, bool)>>,
+        on_toggle: Option<Rc<dyn Fn(&mut EventCx<()>, bool)>>,
     }
 
     impl Layout for Self {
@@ -67,7 +68,7 @@ impl_scope! {
         #[must_use]
         pub fn on_toggle<F>(self, f: F) -> CheckBox
         where
-            F: Fn(&mut EventMgr, bool) + 'static,
+            F: Fn(&mut EventCx<()>, bool) + 'static,
         {
             CheckBox {
                 core: self.core,
@@ -85,7 +86,7 @@ impl_scope! {
         #[inline]
         pub fn new_on<F>(f: F) -> Self
         where
-            F: Fn(&mut EventMgr, bool) + 'static,
+            F: Fn(&mut EventCx<()>, bool) + 'static,
         {
             CheckBox::new().on_toggle(f)
         }
@@ -119,7 +120,7 @@ impl_scope! {
             self.editable = editable;
         }
 
-        fn toggle(&mut self, mgr: &mut EventMgr) {
+        fn toggle(&mut self, mgr: &mut EventCx<()>) {
             self.state = !self.state;
             self.last_change = Some(Instant::now());
             if let Some(f) = self.on_toggle.as_ref() {
@@ -145,7 +146,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<()>, event: Event) -> Response {
             event.on_activate(mgr, self.id(), |mgr| {
                 self.toggle(mgr);
                 Response::Used
@@ -184,6 +185,7 @@ impl_scope! {
     #[autoimpl(HasBool using self.inner)]
     #[derive(Clone, Default)]
     #[widget{
+        data = ();
         layout = list(self.direction()): [self.inner, non_navigable: self.label];
     }]
     pub struct CheckButton {
@@ -207,7 +209,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<()>) {
             if let Some(kas::message::Activate) = mgr.try_pop() {
                 self.inner.toggle(mgr);
             }
@@ -235,7 +237,7 @@ impl_scope! {
         #[must_use]
         pub fn on_toggle<F>(self, f: F) -> CheckButton
         where
-            F: Fn(&mut EventMgr, bool) + 'static,
+            F: Fn(&mut EventCx<()>, bool) + 'static,
         {
             CheckButton {
                 core: self.core,
@@ -253,7 +255,7 @@ impl_scope! {
         #[inline]
         pub fn new_on<T: Into<AccelString>, F>(label: T, f: F) -> Self
         where
-            F: Fn(&mut EventMgr, bool) + 'static,
+            F: Fn(&mut EventCx<()>, bool) + 'static,
         {
             CheckButton::new(label).on_toggle(f)
         }

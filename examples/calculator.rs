@@ -81,7 +81,7 @@ impl_scope! {
             mgr.register_nav_fallback(self.id());
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<Self::Data>, event: Event) -> Response {
             match event {
                 Event::Command(Command::DelBack) => {
                     mgr.push(Key::DelBack);
@@ -91,7 +91,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
             if let Some(msg) = mgr.try_pop::<Key>() {
                 if self.calc.handle(msg) {
                     *mgr |= self.display.set_string(self.calc.display());

@@ -363,7 +363,7 @@ impl_scope! {
             true
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<Self::Data>, event: Event) -> Response {
             match event {
                 Event::Command(cmd) => {
                     match cmd {
@@ -413,7 +413,7 @@ impl_scope! {
                     return press.grab(self.id())
                         .with_mode(event::GrabMode::PanFull)
                         .with_icon(event::CursorIcon::Grabbing)
-                        .with_mgr(mgr);
+                        .with_cx(mgr);
                 }
                 _ => return Response::Unused,
             }
@@ -463,7 +463,7 @@ impl_scope! {
         }
     }
     impl Widget for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
             if let Some(iter) = mgr.try_pop() {
                 self.mbrot.iter = iter;
                 *mgr |= self.iters.set_string(format!("{iter}"));

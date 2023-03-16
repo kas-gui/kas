@@ -61,7 +61,7 @@ impl_scope! {
         widgets: Vec<(GridChildInfo, W)>,
         data: DynGridStorage,
         dim: GridDimensions,
-        on_message: Option<fn(&mut EventMgr, usize)>,
+        on_message: Option<fn(&mut EventCx<W::Data>, usize)>,
     }
 
     impl WidgetChildren for Self {
@@ -70,7 +70,7 @@ impl_scope! {
             self.widgets.len()
         }
         #[inline]
-        fn get_child<'s>(&'s mut self, data: &'s Self::Data, index: usize) -> Option<Node<'s>> {
+        fn get_child<'s>(&'s mut self, data: &'s W::Data, index: usize) -> Option<Node<'s>> {
             self.widgets.get_mut(index).map(|c| c.1.as_node(data))
         }
     }
@@ -112,7 +112,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<W::Data>) {
             if let Some(f) = self.on_message {
                 let index = mgr.last_child().expect("message not sent from self");
                 f(mgr, index);
@@ -144,7 +144,7 @@ impl<W: Widget> Grid<W> {
     /// This handler (if any) is called when a child pushes a message:
     /// `f(mgr, index)`, where `index` is the child's index.
     #[inline]
-    pub fn set_on_message(&mut self, f: Option<fn(&mut EventMgr, usize)>) {
+    pub fn set_on_message(&mut self, f: Option<fn(&mut EventCx<W::Data>, usize)>) {
         self.on_message = f;
     }
 
@@ -153,7 +153,7 @@ impl<W: Widget> Grid<W> {
     /// This handler is called when a child pushes a message:
     /// `f(mgr, index)`, where `index` is the child's index.
     #[inline]
-    pub fn on_message(mut self, f: fn(&mut EventMgr, usize)) -> Self {
+    pub fn on_message(mut self, f: fn(&mut EventCx<W::Data>, usize)) -> Self {
         self.on_message = Some(f);
         self
     }

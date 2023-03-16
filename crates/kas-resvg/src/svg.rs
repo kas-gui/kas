@@ -252,7 +252,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
             if let Some(pixmap) = mgr.try_pop::<Pixmap>() {
                 let size = (pixmap.width(), pixmap.height());
                 mgr.draw_shared(|ds| {

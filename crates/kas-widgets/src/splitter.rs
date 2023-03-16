@@ -115,7 +115,7 @@ impl_scope! {
             self.widgets.len() + self.handles.len()
         }
         #[inline]
-        fn get_child<'s>(&'s mut self, data: &'s Self::Data, index: usize) -> Option<Node<'s>> {
+        fn get_child<'s>(&'s mut self, data: &'s W::Data, index: usize) -> Option<Node<'s>> {
             if (index & 1) != 0 {
                 self.handles.get_mut(index >> 1).map(|w| w.as_node(&()))
             } else {
@@ -235,12 +235,12 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn pre_configure(&mut self, _: &mut ConfigMgr, id: WidgetId) {
+        fn pre_configure(&mut self, _: &mut ConfigCx<W::Data>, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<W::Data>) {
             let index = mgr.last_child().expect("message not sent from self");
             if (index & 1) == 1 {
                 if let Some(GripMsg::PressMove(offset)) = mgr.try_pop() {

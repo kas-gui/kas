@@ -23,6 +23,13 @@ impl<'a> std::ops::BitOrAssign<Action> for EventMgr<'a> {
     }
 }
 
+impl<'a, Data> std::ops::BitOrAssign<Action> for EventCx<'a, Data> {
+    #[inline]
+    fn bitor_assign(&mut self, action: Action) {
+        self.send_action(action);
+    }
+}
+
 impl std::ops::BitOrAssign<Action> for EventState {
     #[inline]
     fn bitor_assign(&mut self, action: Action) {
@@ -1148,6 +1155,17 @@ impl<'a, Data> EventCx<'a, Data> {
             .size_and_draw_shared(Box::new(|size, draw_shared| {
                 let mut cx = ConfigCx::new(size, draw_shared, self.state, self.data);
                 result = Some(f(&mut cx));
+            }));
+        result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
+    }
+
+    /// Access a [`ConfigMgr`]
+    pub fn config_mgr<F: FnOnce(&mut ConfigMgr) -> T, T>(&mut self, f: F) -> T {
+        let mut result = None;
+        self.shell
+            .size_and_draw_shared(Box::new(|size, draw_shared| {
+                let mut mgr = ConfigMgr::new(size, draw_shared, self.state);
+                result = Some(f(&mut mgr));
             }));
         result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
     }

@@ -75,7 +75,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<()>, event: Event) -> Response {
             match event {
                 Event::Command(cmd) if cmd.is_activate() => {
                     mgr.push(self.msg.clone());
@@ -158,7 +158,7 @@ impl_scope! {
         #[must_use]
         pub fn on_toggle<F>(self, f: F) -> Self
         where
-            F: Fn(&mut EventMgr, bool) + 'static,
+            F: Fn(&mut EventCx<()>, bool) + 'static,
         {
             MenuToggle {
                 core: self.core,
@@ -175,7 +175,7 @@ impl_scope! {
         #[inline]
         pub fn new_on<T: Into<AccelString>, F>(label: T, f: F) -> Self
         where
-            F: Fn(&mut EventMgr, bool) + 'static,
+            F: Fn(&mut EventCx<()>, bool) + 'static,
         {
             MenuToggle::new(label).on_toggle(f)
         }

@@ -111,7 +111,7 @@ impl<T: SpinnerValue> SpinnerGuard<T> {
 }
 
 impl<T: SpinnerValue> EditGuard for SpinnerGuard<T> {
-    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
+    fn activate(edit: &mut EditField<Self>, mgr: &mut EventCx<()>) -> Response {
         if edit.has_error() {
             *mgr |= edit.set_string(edit.guard.value.to_string());
             edit.set_error_state(false);
@@ -120,14 +120,14 @@ impl<T: SpinnerValue> EditGuard for SpinnerGuard<T> {
         Response::Used
     }
 
-    fn focus_lost(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+    fn focus_lost(edit: &mut EditField<Self>, mgr: &mut EventCx<()>) {
         if edit.has_error() {
             *mgr |= edit.set_string(edit.guard.value.to_string());
             edit.set_error_state(false);
         }
     }
 
-    fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+    fn edit(edit: &mut EditField<Self>, mgr: &mut EventCx<()>) {
         let is_err = match edit.get_str().parse() {
             Ok(value) if edit.guard.range().contains(&value) => {
                 if value != edit.guard.value {
@@ -173,7 +173,7 @@ impl_scope! {
         #[widget]
         b_down: MarkButton<SpinBtn>,
         step: T,
-        on_change: Option<Rc<dyn Fn(&mut EventMgr, T)>>,
+        on_change: Option<Rc<dyn Fn(&mut EventCx<()>, T)>>,
     }
 
     impl Self {
@@ -198,7 +198,7 @@ impl_scope! {
         #[inline]
         pub fn new_on<F>(range: RangeInclusive<T>, step: T, f: F) -> Self
         where
-            F: Fn(&mut EventMgr, T) + 'static,
+            F: Fn(&mut EventCx<()>, T) + 'static,
         {
             Spinner::new(range, step).on_change(f)
         }
@@ -215,7 +215,7 @@ impl_scope! {
         #[must_use]
         pub fn on_change<F>(mut self, f: F) -> Self
         where
-            F: Fn(&mut EventMgr, T) + 'static,
+            F: Fn(&mut EventCx<()>, T) + 'static,
         {
             self.on_change = Some(Rc::new(f));
             self
@@ -279,7 +279,7 @@ impl_scope! {
             }
         }
 
-        fn handle_btn(&mut self, mgr: &mut EventMgr, btn: SpinBtn) {
+        fn handle_btn(&mut self, mgr: &mut EventCx<()>, btn: SpinBtn) {
             let value = match btn {
                 SpinBtn::Down => self.value().sub_step(self.step, self.edit.guard.start),
                 SpinBtn::Up => self.value().add_step(self.step, self.edit.guard.end),
@@ -327,11 +327,11 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut ConfigCx<Self::Data>) {
+        fn configure(&mut self, mgr: &mut ConfigCx<()>) {
             *mgr |= self.edit.set_string(self.edit.guard.value.to_string());
         }
 
-        fn steal_event(&mut self, mgr: &mut EventMgr, _: &WidgetId, event: &Event) -> Response {
+        fn steal_event(&mut self, mgr: &mut EventCx<()>, _: &WidgetId, event: &Event) -> Response {
             let btn = match event {
                 Event::Command(cmd) => match cmd {
                     Command::Down => SpinBtn::Down,
@@ -354,7 +354,7 @@ impl_scope! {
             Response::Used
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<()>) {
             if let Some(ValueMsg(value)) = mgr.try_pop() {
                 if let Some(ref f) = self.on_change {
                     f(mgr, value);

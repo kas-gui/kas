@@ -230,7 +230,7 @@ impl_scope! {
         }
 
         // true if not equal to old value
-        fn apply_grip_offset(&mut self, mgr: &mut EventMgr, offset: Offset) {
+        fn apply_grip_offset(&mut self, mgr: &mut EventCx<()>, offset: Offset) {
             let (offset, action) = self.handle.set_offset(offset);
             *mgr |= action;
 
@@ -302,7 +302,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<()>, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(_) => {
                     self.force_visible = false;
@@ -318,7 +318,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<()>) {
             if let Some(GripMsg::PressMove(offset)) = mgr.try_pop() {
                 self.apply_grip_offset(mgr, offset);
             }
@@ -431,7 +431,7 @@ impl_scope! {
         fn scroll_offset(&self) -> Offset {
             self.inner.scroll_offset()
         }
-        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventCx<W::Data>, offset: Offset) -> Offset {
             let offset = self.inner.set_scroll_offset(mgr, offset);
             self.horiz_bar.set_value(mgr, offset.0);
             self.vert_bar.set_value(mgr, offset.1);
@@ -530,7 +530,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<W::Data>) {
             let index = mgr.last_child().expect("message not sent from self");
             if index == widget_index![self.horiz_bar] {
                 if let Some(ScrollMsg(x)) = mgr.try_pop() {
@@ -545,7 +545,7 @@ impl_scope! {
             }
         }
 
-        fn handle_scroll(&mut self, mgr: &mut EventMgr, _: Scroll) {
+        fn handle_scroll(&mut self, mgr: &mut EventCx<W::Data>, _: Scroll) {
             // We assume the inner already updated its positions; this is just to set bars
             let offset = self.inner.scroll_offset();
             self.horiz_bar.set_value(mgr, offset.0);
@@ -620,7 +620,7 @@ impl_scope! {
             self.0.inner.scroll_offset()
         }
         #[inline]
-        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventCx<W::Data>, offset: Offset) -> Offset {
             self.0.set_scroll_offset(mgr, offset)
         }
     }

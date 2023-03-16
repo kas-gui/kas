@@ -121,7 +121,7 @@ impl_scope! {
             Action::REDRAW
         }
 
-        fn set_edit_pos_from_coord(&mut self, mgr: &mut EventMgr, coord: Coord) {
+        fn set_edit_pos_from_coord(&mut self, mgr: &mut EventCx<()>, coord: Coord) {
             let rel_pos = (coord - self.rect().pos + self.view_offset).cast();
             if let Ok(pos) = self.text.text_index_nearest(rel_pos) {
                 if pos != self.selection.edit_pos() {
@@ -133,7 +133,7 @@ impl_scope! {
             }
         }
 
-        fn set_primary(&self, mgr: &mut EventMgr) {
+        fn set_primary(&self, mgr: &mut EventCx<()>) {
             if !self.selection.is_empty() {
                 let range = self.selection.range();
                 mgr.set_primary(String::from(&self.text.as_str()[range]));
@@ -141,7 +141,7 @@ impl_scope! {
         }
 
         // Pan by given delta. Return `Response::Scrolled` or `Response::Pan(remaining)`.
-        fn pan_delta(&mut self, mgr: &mut EventMgr, mut delta: Offset) -> Response {
+        fn pan_delta(&mut self, mgr: &mut EventCx<()>, mut delta: Offset) -> Response {
             let new_offset = (self.view_offset - delta)
                 .min(self.max_scroll_offset())
                 .max(Offset::ZERO);
@@ -161,7 +161,7 @@ impl_scope! {
         /// Update view_offset from edit_pos
         ///
         /// This method is mostly identical to its counterpart in `EditField`.
-        fn set_view_offset_from_edit_pos(&mut self, mgr: &mut EventMgr, edit_pos: usize) {
+        fn set_view_offset_from_edit_pos(&mut self, mgr: &mut EventCx<()>, edit_pos: usize) {
             if let Some(marker) = self
                 .text
                 .text_glyph_pos(edit_pos)
@@ -212,7 +212,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<()>, event: Event) -> Response {
             match event {
                 Event::Command(cmd) => match cmd {
                     Command::Escape | Command::Deselect if !self.selection.is_empty() => {
@@ -247,7 +247,7 @@ impl_scope! {
                     };
                     self.pan_delta(mgr, delta2)
                 }
-                event => match self.input_handler.handle(mgr, self.id(), event) {
+                event => match self.input_handler.handle(&mut mgr.as_mgr(), self.id(), event) {
                     TextInputAction::None | TextInputAction::Focus => Response::Used,
                     TextInputAction::Unused => Response::Unused,
                     TextInputAction::Pan(delta) => self.pan_delta(mgr, delta),
@@ -271,7 +271,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<()>) {
             if let Some(ScrollMsg(y)) = mgr.try_pop() {
                 let y = y.clamp(0, self.max_scroll_offset().1);
                 self.view_offset.1 = y;
@@ -296,7 +296,7 @@ impl_scope! {
             self.view_offset
         }
 
-        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventCx<()>, offset: Offset) -> Offset {
             let new_offset = offset.min(self.max_scroll_offset()).max(Offset::ZERO);
             if new_offset != self.view_offset {
                 self.set_offset(mgr, new_offset);

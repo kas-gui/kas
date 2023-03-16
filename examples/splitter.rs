@@ -37,7 +37,7 @@ fn main() -> kas::shell::Result<()> {
             #[widget] panes: RowSplitter<EditField> = panes,
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
                 if let Some(msg) = mgr.try_pop::<Message>() {
                     match msg {
                         Message::Decr => {

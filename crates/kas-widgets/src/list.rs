@@ -77,7 +77,7 @@ impl_scope! {
         direction: D,
         next: usize,
         id_map: HashMap<usize, usize>, // map key of WidgetId to index
-        on_message: Option<fn(&mut EventMgr, usize)>,
+        on_message: Option<fn(&mut EventCx<W::Data>, usize)>,
     }
 
     impl WidgetChildren for Self {
@@ -86,7 +86,7 @@ impl_scope! {
             self.widgets.len()
         }
         #[inline]
-        fn get_child<'s>(&'s mut self, data: &'s Self::Data, index: usize) -> Option<Node<'s>> {
+        fn get_child<'s>(&'s mut self, data: &'s W::Data, index: usize) -> Option<Node<'s>> {
             self.widgets.get_mut(index).map(|w| w.as_node(data))
         }
 
@@ -118,12 +118,12 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn pre_configure(&mut self, _: &mut ConfigMgr, id: WidgetId) {
+        fn pre_configure(&mut self, _: &mut ConfigCx<W::Data>, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<W::Data>) {
             if let Some(f) = self.on_message {
                 let index = mgr.last_child().expect("message not sent from self");
                 f(mgr, index);
@@ -190,7 +190,7 @@ impl_scope! {
         /// This handler (if any) is called when a child pushes a message:
         /// `f(mgr, index)`, where `index` is the child's index.
         #[inline]
-        pub fn set_on_message(&mut self, f: Option<fn(&mut EventMgr, usize)>) {
+        pub fn set_on_message(&mut self, f: Option<fn(&mut EventCx<W::Data>, usize)>) {
             self.on_message = f;
         }
 
@@ -199,7 +199,7 @@ impl_scope! {
         /// This handler is called when a child pushes a message:
         /// `f(mgr, index)`, where `index` is the child's index.
         #[inline]
-        pub fn on_message(mut self, f: fn(&mut EventMgr, usize)) -> Self {
+        pub fn on_message(mut self, f: fn(&mut EventCx<W::Data>, usize)) -> Self {
             self.on_message = Some(f);
             self
         }

@@ -35,15 +35,15 @@ enum Item {
 // We do not wish to disable navigation, but do with to disable controls.
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 trait SetDisabled: Widget {
-    fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool);
+    fn set_disabled(&mut self, mgr: &mut EventCx<Self::Data>, state: bool);
 }
 impl<T: SetDisabled> SetDisabled for ScrollBarRegion<T> {
-    fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
+    fn set_disabled(&mut self, mgr: &mut EventCx<Self::Data>, state: bool) {
         self.inner_mut().set_disabled(mgr, state);
     }
 }
 impl<T: SetDisabled> SetDisabled for TabStack<T> {
-    fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
+    fn set_disabled(&mut self, mgr: &mut EventCx<Self::Data>, state: bool) {
         for index in 0..self.len() {
             if let Some(w) = self.get_mut(index) {
                 w.set_disabled(mgr, state);
@@ -73,12 +73,12 @@ fn widgets() -> Box<dyn SetDisabled> {
     #[derive(Debug)]
     struct Guard;
     impl EditGuard for Guard {
-        fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
+        fn activate(edit: &mut EditField<Self>, mgr: &mut EventCx<Self::Data>) -> Response {
             mgr.push(Item::Edit(edit.get_string()));
             Response::Used
         }
 
-        fn edit(edit: &mut EditField<Self>, _: &mut EventMgr) {
+        fn edit(edit: &mut EditField<Self>, _: &mut EventCx<Self::Data>) {
             // 7a is the colour of *magic*!
             edit.set_error_state(edit.get_str().len() % (7 + 1) == 0);
         }
@@ -101,7 +101,7 @@ fn widgets() -> Box<dyn SetDisabled> {
                 SingleView::new(SharedRc::new("Use button to edit →".to_string())),
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
                 if let Some(MsgEdit) = mgr.try_pop() {
                     let text = self.label.data().clone();
                     let window = dialog::TextEdit::new("Edit text", true, text);
@@ -181,7 +181,7 @@ fn widgets() -> Box<dyn SetDisabled> {
             #[widget] pu = popup_edit_box,
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
                 if let Some(ScrollMsg(value)) = mgr.try_pop() {
                     if mgr.last_child() == Some(widget_index![self.sc]) {
                         let ratio = value as f32 / self.sc.max_value() as f32;
@@ -196,7 +196,7 @@ fn widgets() -> Box<dyn SetDisabled> {
             }
         }
         impl SetDisabled for Self {
-            fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
+            fn set_disabled(&mut self, mgr: &mut EventCx<Self::Data>, state: bool) {
                 mgr.set_disabled(self.id(), state);
             }
         }
@@ -213,7 +213,7 @@ fn editor() -> Box<dyn SetDisabled> {
     #[derive(Debug)]
     struct Guard;
     impl EditGuard for Guard {
-        fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+        fn edit(edit: &mut EditField<Self>, mgr: &mut EventCx<Self::Data>) {
             let result = Markdown::new(edit.get_str());
             edit.set_error_state(result.is_err());
             mgr.push(result.unwrap_or_else(|err| Markdown::new(&format!("{err}")).unwrap()));
@@ -258,7 +258,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
                 ScrollLabel::new(Markdown::new(doc).unwrap()),
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
                 if let Some(MsgDirection) = mgr.try_pop() {
                     self.dir = match self.dir {
                         Direction::Up => Direction::Right,
@@ -271,7 +271,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
             }
         }
         impl SetDisabled for Self {
-            fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
+            fn set_disabled(&mut self, mgr: &mut EventCx<Self::Data>, state: bool) {
                 mgr.set_disabled(self.id(), state);
             }
         }
@@ -329,7 +329,7 @@ fn filter_list() -> Box<dyn SetDisabled> {
                 ScrollBars::new(MyListView::new(filtered))
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
                 if let Some(mode) = mgr.try_pop() {
                     *mgr |= self.list.set_selection_mode(mode);
                 } else if let Some(msg) = mgr.try_pop::<SelectionMsg<usize>>() {
@@ -338,7 +338,7 @@ fn filter_list() -> Box<dyn SetDisabled> {
             }
         }
         impl SetDisabled for Self {
-            fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
+            fn set_disabled(&mut self, mgr: &mut EventCx<Self::Data>, state: bool) {
                 mgr.set_disabled(self.id(), state);
             }
         }
@@ -432,7 +432,7 @@ fn canvas() -> Box<dyn SetDisabled> {
             #[widget] canvas = Canvas::new(Program(Instant::now())),
         }
         impl SetDisabled for Self {
-            fn set_disabled(&mut self, _: &mut EventMgr, _: bool) {}
+            fn set_disabled(&mut self, _: &mut EventCx<Self::Data>, _: bool) {}
         }
     })
 }
@@ -469,7 +469,7 @@ KAS_CONFIG_MODE=readwrite
         }
 
         impl SetDisabled for Self {
-            fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
+            fn set_disabled(&mut self, mgr: &mut EventCx<Self::Data>, state: bool) {
                 mgr.set_disabled(self.view.id(), state);
             }
         }
@@ -556,7 +556,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .with_title("Confi&g", config(shell.event_config().clone())),
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
                 if let Some(msg) = mgr.try_pop::<Menu>() {
                     match msg {
                         Menu::Theme(name) => {

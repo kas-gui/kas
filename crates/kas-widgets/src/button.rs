@@ -32,7 +32,7 @@ impl_scope! {
         color: Option<Rgb>,
         #[widget]
         pub inner: W,
-        on_press: Option<Rc<dyn Fn(&mut EventMgr)>>,
+        on_press: Option<Rc<dyn Fn(&mut EventCx<W::Data>)>>,
     }
 
     impl<W: Widget> Button<W> {
@@ -55,7 +55,7 @@ impl_scope! {
         #[must_use]
         pub fn on_press<F>(self, f: F) -> Button<W>
         where
-            F: Fn(&mut EventMgr) + 'static,
+            F: Fn(&mut EventCx<W::Data>) + 'static,
         {
             Button {
                 core: self.core,
@@ -74,7 +74,7 @@ impl_scope! {
         #[inline]
         pub fn new_on<F>(inner: W, f: F) -> Self
         where
-            F: Fn(&mut EventMgr) + 'static,
+            F: Fn(&mut EventCx<W::Data>) + 'static,
         {
             Button::new(inner).on_press(f)
         }
@@ -111,11 +111,11 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut ConfigCx<Self::Data>) {
+        fn configure(&mut self, mgr: &mut ConfigCx<W::Data>) {
             mgr.add_accel_keys(self.id_ref(), &self.keys1);
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<W::Data>, event: Event) -> Response {
             event.on_activate(mgr, self.id(), |mgr| {
                 if let Some(f) = self.on_press.as_ref() {
                     f(mgr);
@@ -124,7 +124,7 @@ impl_scope! {
             })
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<W::Data>) {
             if let Some(kas::message::Activate) = mgr.try_pop() {
                 if let Some(f) = self.on_press.as_ref() {
                     f(mgr);
@@ -154,7 +154,7 @@ impl_scope! {
         #[widget]
         label: AccelLabel,
         color: Option<Rgb>,
-        on_press: Option<Rc<dyn Fn(&mut EventMgr)>>,
+        on_press: Option<Rc<dyn Fn(&mut EventCx<()>)>>,
     }
 
     impl Self {
@@ -177,7 +177,7 @@ impl_scope! {
         #[must_use]
         pub fn on_press<F>(self, f: F) -> TextButton
         where
-            F: Fn(&mut EventMgr) + 'static,
+            F: Fn(&mut EventCx<()>) + 'static,
         {
             TextButton {
                 core: self.core,
@@ -194,7 +194,7 @@ impl_scope! {
         #[inline]
         pub fn new_on<S: Into<AccelString>, F>(label: S, f: F) -> Self
         where
-            F: Fn(&mut EventMgr) + 'static,
+            F: Fn(&mut EventCx<()>) + 'static,
         {
             TextButton::new(label).on_press(f)
         }
@@ -246,11 +246,11 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut ConfigCx<Self::Data>) {
+        fn configure(&mut self, mgr: &mut ConfigCx<()>) {
             mgr.add_accel_keys(self.id_ref(), &self.keys1);
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<()>, event: Event) -> Response {
             event.on_activate(mgr, self.id(), |mgr| {
                 if let Some(f) = self.on_press.as_ref() {
                     f(mgr);
@@ -259,7 +259,7 @@ impl_scope! {
             })
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<()>) {
             if let Some(kas::message::Activate) = mgr.try_pop() {
                 if let Some(f) = self.on_press.as_ref() {
                     f(mgr);

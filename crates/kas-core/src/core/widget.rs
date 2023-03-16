@@ -71,7 +71,7 @@ pub trait WidgetNode: WidgetCore {
 ///
 /// Note that parents are responsible for ensuring that newly added children
 /// get configured, either by sending [`Action::RECONFIGURE`] by calling
-/// [`ConfigMgr::configure`].
+/// [`ConfigCx::configure`].
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait WidgetChildren: WidgetNode {
     /// Get the number of child widgets
@@ -407,12 +407,12 @@ pub trait Widget: WidgetChildren {
     /// [`EventState::new_accel_layer`].
     ///
     /// Default impl: assign `id` to self
-    fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId);
+    fn pre_configure(&mut self, mgr: &mut ConfigCx<Self::Data>, id: WidgetId);
 
     /// Configure widget
     ///
     /// Widgets are *configured* on window creation or dynamically via the
-    /// parent calling [`ConfigMgr::configure`]. Parent widgets are responsible
+    /// parent calling [`ConfigCx::configure`]. Parent widgets are responsible
     /// for ensuring that children are configured before calling
     /// [`Layout::size_rules`] or [`Layout::set_rect`]. Configuration may be
     /// repeated and may be used as a mechanism to change a child's [`WidgetId`],
@@ -473,7 +473,7 @@ pub trait Widget: WidgetChildren {
     #[inline]
     fn nav_next(
         &mut self,
-        mgr: &mut EventMgr,
+        mgr: &mut EventCx<Self::Data>,
         reverse: bool,
         from: Option<usize>,
     ) -> Option<usize> {

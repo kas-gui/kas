@@ -198,7 +198,7 @@ impl<'a> Node<'a> {
     /// Pre-configuration
     #[inline]
     pub(crate) fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId) {
-        self.0.pre_configure(mgr, id);
+        self.0.pre_configure(&mut mgr.with_data(self.1), id);
     }
 
     /// Configure widget
@@ -227,7 +227,7 @@ impl<'a> Node<'a> {
         reverse: bool,
         from: Option<usize>,
     ) -> Option<usize> {
-        self.0.nav_next(mgr, reverse, from)
+        self.0.nav_next(&mut mgr.with_data(self.1), reverse, from)
     }
 
     /// Pre-event-handler

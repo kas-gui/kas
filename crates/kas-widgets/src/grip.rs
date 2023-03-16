@@ -90,13 +90,13 @@ impl_scope! {
     }
 
     impl Widget for GripPart {
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<()>, event: Event) -> Response {
             match event {
                 Event::PressStart { press, .. } => {
                     mgr.push(GripMsg::PressStart);
                     press.grab(self.id())
                         .with_icon(CursorIcon::Grabbing)
-                        .with_mgr(mgr);
+                        .with_cx(mgr);
 
                     // Event delivery implies coord is over the grip.
                     self.press_coord = press.coord - self.offset();
@@ -184,11 +184,11 @@ impl GripPart {
     /// The grip position is not adjusted; the caller should also call
     /// [`Self::set_offset`] to do so. This is separate to allow adjustment of
     /// the posision; e.g. `Slider` pins the position to the nearest detent.
-    pub fn handle_press_on_track(&mut self, mgr: &mut EventMgr, press: &Press) -> Offset {
+    pub fn handle_press_on_track(&mut self, mgr: &mut EventCx<()>, press: &Press) -> Offset {
         press
             .grab(self.id())
             .with_icon(CursorIcon::Grabbing)
-            .with_mgr(mgr);
+            .with_cx(mgr);
 
         let offset = press.coord - self.track.pos - Offset::conv(self.core.rect.size / 2);
         let offset = offset.clamp(Offset::ZERO, self.max_offset());

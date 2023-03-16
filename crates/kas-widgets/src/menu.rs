@@ -98,7 +98,7 @@ pub trait Menu: Widget {
     /// When opening menus and `set_focus` is true, the first navigable child
     /// of the newly opened menu will be given focus. This is used for keyboard
     /// navigation only.
-    fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
+    fn set_menu_path(&mut self, mgr: &mut EventCx<()>, target: Option<&WidgetId>, set_focus: bool) {
         let _ = (mgr, target, set_focus);
     }
 }
@@ -148,7 +148,7 @@ impl<'a, T> SubMenuBuilder<'a, T> {
     /// Append a [`MenuToggle`]
     pub fn push_toggle<S: Into<AccelString>, F>(&mut self, label: S, f: F)
     where
-        F: Fn(&mut EventMgr, bool) + 'static,
+        F: Fn(&mut EventCx<()>, bool) + 'static,
     {
         self.menu
             .push(Box::new(MenuToggle::new(label).on_toggle(f)));
@@ -158,7 +158,7 @@ impl<'a, T> SubMenuBuilder<'a, T> {
     #[inline]
     pub fn toggle<S: Into<AccelString>, F>(mut self, label: S, f: F) -> Self
     where
-        F: Fn(&mut EventMgr, bool) + 'static,
+        F: Fn(&mut EventCx<()>, bool) + 'static,
     {
         self.push_toggle(label, f);
         self

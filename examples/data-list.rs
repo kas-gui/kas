@@ -43,12 +43,12 @@ enum Button {
 #[derive(Clone, Debug)]
 struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
-    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
+    fn activate(edit: &mut EditField<Self>, mgr: &mut EventCx<Self::Data>) -> Response {
         mgr.push(Control::Select(edit.guard.0));
         Response::Used
     }
 
-    fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+    fn edit(edit: &mut EditField<Self>, mgr: &mut EventCx<Self::Data>) {
         mgr.push(Control::Update(edit.guard.0, edit.get_string()));
     }
 }
@@ -113,7 +113,7 @@ fn main() -> kas::shell::Result<()> {
             n: usize = 3,
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
                 if mgr.last_child() == Some(widget_index![self.edit]) {
                     if let Some(n) = mgr.try_pop::<usize>() {
                         if n != self.n {
@@ -163,7 +163,7 @@ fn main() -> kas::shell::Result<()> {
             active: usize = 0,
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
                 if let Some(control) = mgr.try_pop() {
                     match control {
                         Control::SetLen(len) => {

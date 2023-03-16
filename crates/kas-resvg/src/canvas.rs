@@ -185,7 +185,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
             if let Some((program, mut pixmap)) = mgr.try_pop::<(P, Pixmap)>() {
                 debug_assert!(matches!(self.inner, State::Rendering));
                 let size = (pixmap.width(), pixmap.height());

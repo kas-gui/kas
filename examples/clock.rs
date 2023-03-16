@@ -124,7 +124,7 @@ impl_scope! {
             mgr.request_update(self.id(), 0, Duration::new(0, 0), true);
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<Self::Data>, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(0) => {
                     self.now = Local::now();

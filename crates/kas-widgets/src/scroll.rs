@@ -85,7 +85,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventCx<Self::Data>, offset: Offset) -> Offset {
             *mgr |= self.scroll.set_offset(offset);
             self.scroll.offset()
         }
@@ -141,14 +141,14 @@ impl_scope! {
             self.scroll_offset()
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<Self::Data>, event: Event) -> Response {
             self.scroll
-                .scroll_by_event(mgr, event, self.id(), self.core.rect)
+                .scroll_by_event(&mut mgr.as_mgr(), event, self.id(), self.core.rect)
                 .1
         }
 
-        fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) {
-            self.scroll.scroll(mgr, self.rect(), scroll);
+        fn handle_scroll(&mut self, mgr: &mut EventCx<Self::Data>, scroll: Scroll) {
+            self.scroll.scroll(&mut mgr.as_mgr(), self.rect(), scroll);
         }
     }
 }

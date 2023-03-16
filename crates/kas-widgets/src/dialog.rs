@@ -109,13 +109,13 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<()>) {
             if let Some(MessageBoxOk) = mgr.try_pop() {
                 mgr.send_action(Action::CLOSE);
             }
         }
 
-        fn configure(&mut self, mgr: &mut ConfigCx<Self::Data>) {
+        fn configure(&mut self, mgr: &mut ConfigCx<()>) {
             mgr.enable_alt_bypass(self.id_ref(), true);
         }
     }
@@ -171,9 +171,9 @@ impl_scope! {
             }
         }
 
-        fn close(&mut self, mgr: &mut EventMgr, commit: bool) -> Response {
+        fn close(&mut self, mgr: &mut EventCx<()>, commit: bool) -> Response {
             if commit {
-                self.data.set(mgr, &(), self.edit.get_string());
+                self.data.set(&mut mgr.as_mgr(), &(), self.edit.get_string());
             }
             mgr.send_action(Action::CLOSE);
             Response::Used
@@ -181,7 +181,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut ConfigCx<Self::Data>) {
+        fn configure(&mut self, mgr: &mut ConfigCx<()>) {
             mgr.register_nav_fallback(self.id());
 
             // Focus first item initially:
@@ -190,7 +190,7 @@ impl_scope! {
             }
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventCx<()>, event: Event) -> Response {
             match event {
                 Event::Command(Command::Escape) => self.close(mgr, false),
                 Event::Command(Command::Enter) => self.close(mgr, true),
@@ -198,7 +198,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, mgr: &mut EventCx<()>) {
             if let Some(MsgClose(commit)) = mgr.try_pop() {
                 let _ = self.close(mgr, commit);
             }

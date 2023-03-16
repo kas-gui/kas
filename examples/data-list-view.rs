@@ -127,12 +127,12 @@ impl ListData for MySharedData {
 #[derive(Clone, Debug)]
 struct ListEntryGuard;
 impl EditGuard for ListEntryGuard {
-    fn activate(_edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
+    fn activate(_edit: &mut EditField<Self>, mgr: &mut EventCx<Self::Data>) -> Response {
         mgr.push(EntryMsg::Select);
         Response::Used
     }
 
-    fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+    fn edit(edit: &mut EditField<Self>, mgr: &mut EventCx<Self::Data>) {
         mgr.push(EntryMsg::Update(edit.get_string()));
     }
 }
@@ -190,7 +190,7 @@ impl Driver<(bool, String), MySharedData> for MyDriver {
 
     fn on_message(
         &self,
-        mgr: &mut EventMgr,
+        mgr: &mut EventCx<Self::Data>,
         _: &mut Self::Widget,
         data: &MySharedData,
         key: &usize,
@@ -237,7 +237,7 @@ fn main() -> kas::shell::Result<()> {
             n: usize = 3,
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
                 if mgr.last_child() == Some(widget_index![self.edit]) {
                     if let Some(n) = mgr.try_pop::<usize>() {
                         if n != self.n {
@@ -286,7 +286,7 @@ fn main() -> kas::shell::Result<()> {
                 ScrollBars::new(list).with_fixed_bars(false, true),
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
                 if let Some(control) = mgr.try_pop::<Control>() {
                     match control {
                         Control::SetLen(len) => {
