@@ -232,6 +232,12 @@ impl<'a, Data> ConfigCx<'a, Data> {
         }
     }
 
+    /// Access data
+    #[inline]
+    pub fn data(&self) -> &'a Data {
+        self.data
+    }
+
     /// Get the platform
     pub fn platform(&self) -> Platform {
         self.ds.platform()

@@ -935,6 +935,12 @@ impl<'a, Data> EventCx<'a, Data> {
         }
     }
 
+    /// Access data
+    #[inline]
+    pub fn data(&self) -> &'a Data {
+        self.data
+    }
+
     /// Get the index of the last child visited
     ///
     /// This is only used when unwinding (traversing back up the widget tree),
