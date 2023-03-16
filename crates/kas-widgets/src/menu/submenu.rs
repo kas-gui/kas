@@ -19,7 +19,7 @@ impl_scope! {
     #[widget {
         layout = self.label;
     }]
-    pub struct SubMenu<T, D: Directional> {
+    pub struct SubMenu<D: Directional> {
         core: widget_core!(),
         direction: D,
         pub(crate) navigable: bool,
@@ -28,7 +28,7 @@ impl_scope! {
         #[widget]
         mark: Mark,
         #[widget]
-        list: PopupFrame<MenuView<BoxedMenu<T>>>,
+        list: PopupFrame<MenuView<BoxedMenu>>,
         popup_id: Option<WindowId>,
     }
 
@@ -38,26 +38,26 @@ impl_scope! {
     {
         /// Construct a sub-menu
         #[inline]
-        pub fn new<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<T>>) -> Self {
+        pub fn new<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu>) -> Self {
             SubMenu::new_with_direction(Default::default(), label, list)
         }
     }
 
-    impl<T> SubMenu<T, kas::dir::Right> {
+    impl SubMenu<kas::dir::Right> {
         /// Construct a sub-menu, opening to the right
         // NOTE: this is used since we can't infer direction of a boxed SubMenu.
         // Consider only accepting an enum of special menu widgets?
         // Then we can pass type information.
         #[inline]
-        pub fn right<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<T>>) -> Self {
+        pub fn right<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu>) -> Self {
             SubMenu::new(label, list)
         }
     }
 
-    impl<T> SubMenu<T, kas::dir::Down> {
+    impl SubMenu<kas::dir::Down> {
         /// Construct a sub-menu, opening downwards
         #[inline]
-        pub fn down<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<T>>) -> Self {
+        pub fn down<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu>) -> Self {
             SubMenu::new(label, list)
         }
     }
@@ -70,7 +70,7 @@ impl_scope! {
         pub fn new_with_direction<S: Into<AccelString>>(
             direction: D,
             label: S,
-            list: Vec<BoxedMenu<T>>,
+            list: Vec<BoxedMenu>,
         ) -> Self {
             SubMenu {
                 core: Default::default(),
@@ -256,7 +256,7 @@ const fn menu_view_row_info(row: u32) -> layout::GridChildInfo {
 impl_scope! {
     /// A menu view
     #[autoimpl(Debug)]
-    #[widget]
+    #[widget{ data = W::Data; }]
     struct MenuView<W: Menu> {
         core: widget_core!(),
         dim: layout::GridDimensions,
@@ -270,7 +270,7 @@ impl_scope! {
             self.list.len()
         }
         #[inline]
-        fn get_child<'s>(&'s mut self, data: &'s (), index: usize) -> Option<Node<'s>> {
+        fn get_child<'s>(&'s mut self, data: &'s W::Data, index: usize) -> Option<Node<'s>> {
             self.list.get_mut(index).map(|w| w.as_node(data))
         }
     }
@@ -351,7 +351,7 @@ impl_scope! {
             solver.finish(store)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigCx<Self::Data>, rect: Rect) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             self.core.rect = rect;
             let store = &mut self.store;
             let mut setter = layout::GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, store);
