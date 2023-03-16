@@ -459,6 +459,32 @@ impl EventState {
             .push_back(Pending::Send(id, Event::NavFocus(key_focus)));
     }
 
+    /// Advance the keyboard navigation focus
+    ///
+    /// If `target == Some(id)`, this looks for the next widget from `id`
+    /// (inclusive) which is navigable ([`Widget::navigable`]). Otherwise where
+    /// some widget `id` has [`nav_focus`](Self::nav_focus) this looks for the
+    /// next navigable widget *excluding* `id`. If no reference is available,
+    /// this instead looks for the first navigable widget.
+    ///
+    /// If `reverse`, instead search for the previous or last navigable widget.
+    ///
+    /// Parameter `key_focus` should be `true` for keyboard-driven and
+    /// programmatic navigation, `false` for mouse/touch-driven navigation.
+    /// The parameter is passed to the target through [`Event::NavFocus`].
+    pub fn next_nav_focus(
+        &mut self,
+        target: impl Into<Option<WidgetId>>,
+        reverse: bool,
+        key_focus: bool,
+    ) {
+        self.pending.push_back(Pending::NextNavFocus {
+            target: target.into(),
+            reverse,
+            key_focus,
+        });
+    }
+
     /// Set the cursor icon
     ///
     /// This is normally called when handling [`Event::MouseHover`]. In other
@@ -565,7 +591,7 @@ impl<'a> EventMgr<'a> {
     ///
     /// -   Some widgets use an inner component to handle events, thus calling
     ///     with the outer widget's `id` may not have the desired effect.
-    ///     [`Layout::find_id`] and [`Self::next_nav_focus`] are able to find
+    ///     [`Layout::find_id`] and [`EventState::next_nav_focus`] are able to find
     ///     the appropriate event-handling target.
     ///     (TODO: do we need another method to find this target?)
     /// -   Some events such as [`Event::PressMove`] contain embedded widget
@@ -664,7 +690,7 @@ impl<'a> EventMgr<'a> {
     /// The parent automatically receives the "depressed" visual state.
     ///
     /// It is recommended to call [`EventState::set_nav_focus`] or
-    /// [`EventMgr::next_nav_focus`] after this method.
+    /// [`EventState::next_nav_focus`] after this method.
     ///
     /// A pop-up may be closed by calling [`EventMgr::close_window`] with
     /// the [`WindowId`] returned by this method.
@@ -851,58 +877,6 @@ impl<'a> EventMgr<'a> {
             if grab.start_id == id {
                 self.shell.set_cursor_icon(icon);
             }
-        }
-    }
-
-    /// Advance the keyboard navigation focus
-    ///
-    /// This is a shim around [`ConfigMgr::next_nav_focus`].
-    #[inline]
-    pub fn next_nav_focus(
-        &mut self,
-        widget: &mut dyn Widget,
-        reverse: bool,
-        key_focus: bool,
-    ) -> bool {
-        self.config_mgr(|mgr| mgr.next_nav_focus(widget, reverse, key_focus))
-    }
-
-    /// Advance the keyboard navigation focus
-    ///
-    /// This is similar to [`Self::next_nav_focus`], but looks for the next
-    /// widget from `id` which is [`Widget::navigable`].
-    #[inline]
-    pub fn next_nav_focus_from(
-        &mut self,
-        widget: &mut dyn Widget,
-        id: WidgetId,
-        key_focus: bool,
-    ) -> bool {
-        if id == self.nav_focus {
-            return true;
-        } else if !self.config.nav_focus {
-            return false;
-        }
-
-        self.send_action(Action::REDRAW);
-        if let Some(old_id) = self.nav_focus.take() {
-            self.pending
-                .push_back(Pending::Send(old_id, Event::LostNavFocus));
-        }
-        self.clear_char_focus();
-        if widget
-            .find_widget(&id)
-            .map(|w| w.navigable())
-            .unwrap_or(false)
-        {
-            log::trace!(target: "kas_core::event::manager", "set_nav_focus: {id}");
-            self.nav_focus = Some(id.clone());
-            self.pending
-                .push_back(Pending::Send(id, Event::NavFocus(key_focus)));
-            true
-        } else {
-            self.nav_focus = Some(id);
-            self.next_nav_focus(widget, false, key_focus)
         }
     }
 }

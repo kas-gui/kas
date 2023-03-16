@@ -85,7 +85,7 @@ impl_scope! {
 
     impl Widget for Self {
         fn nav_next(&mut self,
-            _: &mut ConfigMgr,
+            _: &mut EventMgr,
             reverse: bool,
             from: Option<usize>,
         ) -> Option<usize> {

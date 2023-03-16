@@ -229,6 +229,13 @@ impl EventState {
                     // TODO(opt): set only this child
                     mgr.send_action(Action::SET_RECT);
                 }
+                Pending::NextNavFocus {
+                    target,
+                    reverse,
+                    key_focus,
+                } => {
+                    mgr.next_nav_focus_impl(widget, target, reverse, key_focus);
+                }
             }
         }
 

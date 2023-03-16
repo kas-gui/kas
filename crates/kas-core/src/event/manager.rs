@@ -172,6 +172,11 @@ struct PanGrab {
 enum Pending {
     Send(WidgetId, Event),
     SetRect(WidgetId),
+    NextNavFocus {
+        target: Option<WidgetId>,
+        reverse: bool,
+        key_focus: bool,
+    },
 }
 
 type AccelLayer = (bool, HashMap<VirtualKeyCode, WidgetId>);
@@ -542,7 +547,7 @@ impl<'a> EventMgr<'a> {
         } else if self.config.nav_focus && vkey == VK::Tab {
             self.clear_char_focus();
             let shift = self.modifiers.shift();
-            self.next_nav_focus(widget, shift, true);
+            self.next_nav_focus_impl(widget, None, shift, true);
         } else if vkey == VK::Escape {
             if let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
                 self.close_window(id, true);
@@ -781,5 +786,152 @@ impl<'a> EventMgr<'a> {
             return self.send_event(widget, id, event);
         }
         false
+    }
+
+    /// Advance the keyboard navigation focus
+    pub fn next_nav_focus_impl(
+        &mut self,
+        mut widget: &mut dyn Widget,
+        mut target: Option<WidgetId>,
+        reverse: bool,
+        key_focus: bool,
+    ) {
+        if !self.config.nav_focus || (target.is_some() && target == self.nav_focus) {
+            return;
+        }
+
+        if let Some(id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
+            if id.is_ancestor_of(widget.id_ref()) {
+                // do nothing
+            } else if let Some(w) = widget.find_widget_mut(&id) {
+                widget = w;
+            } else {
+                log::warn!(
+                    target: "kas_core::event::config_mgr",
+                    "next_nav_focus: have open pop-up which is not a child of widget",
+                );
+                return;
+            }
+        }
+
+        // We redraw in all cases. Since this is not part of widget event
+        // processing, we can push directly to self.action.
+        self.send_action(Action::REDRAW);
+        let old_nav_focus = self.nav_focus.take();
+
+        fn nav(
+            mgr: &mut EventMgr,
+            widget: &mut dyn Widget,
+            focus: Option<&WidgetId>,
+            rev: bool,
+        ) -> Option<WidgetId> {
+            if mgr.is_disabled(widget.id_ref()) {
+                return None;
+            }
+
+            let mut child = focus.and_then(|id| widget.find_child_index(id));
+
+            if !rev {
+                if let Some(index) = child {
+                    if let Some(id) = widget
+                        .get_child_mut(index)
+                        .and_then(|w| nav(mgr, w, focus, rev))
+                    {
+                        return Some(id);
+                    }
+                } else if !widget.eq_id(focus) && widget.navigable() {
+                    return Some(widget.id());
+                }
+
+                loop {
+                    if let Some(index) = widget.nav_next(mgr, rev, child) {
+                        if let Some(id) = widget
+                            .get_child_mut(index)
+                            .and_then(|w| nav(mgr, w, focus, rev))
+                        {
+                            return Some(id);
+                        }
+                        child = Some(index);
+                    } else {
+                        return None;
+                    }
+                }
+            } else {
+                if let Some(index) = child {
+                    if let Some(id) = widget
+                        .get_child_mut(index)
+                        .and_then(|w| nav(mgr, w, focus, rev))
+                    {
+                        return Some(id);
+                    }
+                }
+
+                loop {
+                    if let Some(index) = widget.nav_next(mgr, rev, child) {
+                        if let Some(id) = widget
+                            .get_child_mut(index)
+                            .and_then(|w| nav(mgr, w, focus, rev))
+                        {
+                            return Some(id);
+                        }
+                        child = Some(index);
+                    } else {
+                        return if !widget.eq_id(focus) && widget.navigable() {
+                            Some(widget.id())
+                        } else {
+                            None
+                        };
+                    }
+                }
+            }
+        }
+
+        let mut opt_id = None;
+        if let Some(ref id) = target {
+            if widget
+                .find_widget(&id)
+                .map(|w| w.navigable())
+                .unwrap_or(false)
+            {
+                opt_id = Some(id.clone());
+            }
+        } else {
+            target = old_nav_focus.clone();
+        }
+
+        // Whether to restart from the beginning on failure
+        let restart = target.is_some();
+
+        if opt_id.is_none() {
+            opt_id = nav(self, widget, target.as_ref(), reverse);
+        }
+        if restart && opt_id.is_none() {
+            opt_id = nav(self, widget, None, reverse);
+        }
+
+        log::trace!(
+            target: "kas_core::event::config_mgr",
+            "next_nav_focus: nav_focus={opt_id:?}",
+        );
+        self.nav_focus = opt_id.clone();
+
+        if opt_id == target {
+            return;
+        }
+
+        if let Some(id) = old_nav_focus {
+            self.pending
+                .push_back(Pending::Send(id, Event::LostNavFocus));
+        }
+
+        if self.sel_focus != opt_id {
+            self.clear_char_focus();
+        }
+        if let Some(id) = opt_id {
+            self.pending
+                .push_back(Pending::Send(id, Event::NavFocus(key_focus)));
+        } else {
+            // Most likely an error occurred
+        }
     }
 }

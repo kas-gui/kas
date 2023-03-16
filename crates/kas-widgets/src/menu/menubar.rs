@@ -231,7 +231,7 @@ impl_scope! {
                             Response::Used
                         }
                         Some(_) => {
-                            mgr.next_nav_focus(self, reverse, true);
+                            mgr.next_nav_focus(self.id(), reverse, true);
                             Response::Used
                         }
                         None => Response::Unused,

@@ -55,7 +55,7 @@ impl_scope! {
             mgr.new_accel_layer(self.id(), true);
         }
 
-        fn nav_next(&mut self, _: &mut ConfigMgr, _: bool, _: Option<usize>) -> Option<usize> {
+        fn nav_next(&mut self, _: &mut EventMgr, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None
         }
@@ -68,25 +68,25 @@ impl_scope! {
                     direction: Direction::Down,
                 });
                 if let Some(w) = s.popup.inner.inner.get_child_mut(s.active) {
-                    mgr.next_nav_focus(w, false, key_focus);
+                    mgr.next_nav_focus(w.id(), false, key_focus);
                 }
             };
 
             match event {
                 Event::Command(cmd) => {
                     if let Some(popup_id) = self.popup_id {
-                        let next = |mgr: &mut EventMgr, s, clr, rev| {
+                        let next = |mgr: &mut EventMgr, id, clr, rev| {
                             if clr {
                                 mgr.clear_nav_focus();
                             }
-                            mgr.next_nav_focus(s, rev, true);
+                            mgr.next_nav_focus(Some(id), rev, true);
                         };
                         match cmd {
                             cmd if cmd.is_activate() => mgr.close_window(popup_id, true),
-                            Command::Up => next(mgr, self, false, true),
-                            Command::Down => next(mgr, self, false, false),
-                            Command::Home => next(mgr, self, true, false),
-                            Command::End => next(mgr, self, true, true),
+                            Command::Up => next(mgr, self.id(), false, true),
+                            Command::Down => next(mgr, self.id(), false, false),
+                            Command::Home => next(mgr, self.id(), true, false),
+                            Command::End => next(mgr, self.id(), true, true),
                             _ => return Response::Unused,
                         }
                     } else {

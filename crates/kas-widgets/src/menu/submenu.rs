@@ -91,7 +91,7 @@ impl_scope! {
                     direction: self.direction.as_direction(),
                 });
                 if set_focus {
-                    mgr.next_nav_focus(self, false, true);
+                    mgr.next_nav_focus(self.id(), false, true);
                 }
             }
         }
@@ -106,7 +106,7 @@ impl_scope! {
                 if let Some(dir) = cmd.as_direction() {
                     if dir.is_vertical() {
                         let rev = dir.is_reversed();
-                        mgr.next_nav_focus(self, rev, true);
+                        mgr.next_nav_focus(self.id(), rev, true);
                         Response::Used
                     } else if dir == self.direction.as_direction().reversed() {
                         self.close_menu(mgr, true);
@@ -117,7 +117,7 @@ impl_scope! {
                 } else if matches!(cmd, Command::Home | Command::End) {
                     mgr.clear_nav_focus();
                     let rev = cmd == Command::End;
-                    mgr.next_nav_focus(self, rev, true);
+                    mgr.next_nav_focus(self.id(), rev, true);
                     Response::Used
                 } else {
                     Response::Unused
@@ -160,7 +160,7 @@ impl_scope! {
             self.navigable
         }
 
-        fn nav_next(&mut self, _: &mut ConfigMgr, _: bool, _: Option<usize>) -> Option<usize> {
+        fn nav_next(&mut self, _: &mut EventMgr, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None
         }

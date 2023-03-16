@@ -131,7 +131,7 @@ impl_scope! {
             self.id_map.clear();
         }
 
-        fn nav_next(&mut self, _: &mut ConfigMgr, _: bool, from: Option<usize>) -> Option<usize> {
+        fn nav_next(&mut self, _: &mut EventMgr, _: bool, from: Option<usize>) -> Option<usize> {
             match from {
                 None => Some(self.active),
                 Some(active) if active != self.active => Some(self.active),

@@ -659,7 +659,7 @@ impl_scope! {
 
         fn nav_next(
             &mut self,
-            mgr: &mut ConfigMgr,
+            mgr: &mut EventMgr,
             reverse: bool,
             from: Option<usize>,
         ) -> Option<usize> {
@@ -687,7 +687,7 @@ impl_scope! {
             let (_, action) = self.scroll.focus_rect(solver.rect(data), self.core.rect);
             if !action.is_empty() {
                 *mgr |= action;
-                self.update_widgets(mgr);
+                mgr.config_mgr(|mgr| self.update_widgets(mgr));
             }
 
             Some(data % usize::conv(self.cur_len))
@@ -745,7 +745,7 @@ impl_scope! {
                             mgr.config_mgr(|mgr| self.update_widgets(mgr));
                         }
                         let index = i_data % usize::conv(self.cur_len);
-                        mgr.next_nav_focus(&mut self.widgets[index].widget, false, true);
+                        mgr.next_nav_focus(self.widgets[index].widget.id(), false, true);
                         mgr.set_scroll(Scroll::Rect(rect));
                         Response::Used
                     } else {
@@ -756,7 +756,7 @@ impl_scope! {
                     if let Some((index, ref key)) = self.press_target {
                         let w = &mut self.widgets[index];
                         if w.key.as_ref().map(|k| k == key).unwrap_or(false) {
-                            mgr.next_nav_focus(&mut w.widget, false, false);
+                            mgr.next_nav_focus(w.widget.id(), false, false);
                         }
                     }
 
