@@ -92,7 +92,7 @@ fn main() -> kas::shell::Result<()> {
                         if data.1 != max {
                             data.0 += 1;
                             data.1 = max;
-                            self.table.update_view(mgr);
+                            mgr.update_all(0);
                         }
                     }
                 }

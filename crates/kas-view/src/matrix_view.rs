@@ -299,13 +299,25 @@ impl_scope! {
         }
 
         /// Manually trigger an update to handle changed data
-        pub fn update_view(&mut self, mgr: &mut EventMgr) {
+        pub fn update_view(&mut self, mgr: &mut ConfigMgr) {
             let data = &self.data;
+            self.data_ver = data.version();
+
             self.selection.retain(|key| data.contains_key(key));
+
+            let (d_cols, d_rows) = data.len();
+            let data_len = Size(d_cols.cast(), d_rows.cast());
+
+            let view_size = self.rect().size - self.frame_size;
+            let skip = self.child_size + self.child_inter_margin;
+            let content_size = (skip.cwise_mul(data_len) - self.child_inter_margin).max(Size::ZERO);
+            *mgr |= self.scroll.set_sizes(view_size, content_size);
+
             for w in &mut self.widgets {
                 w.key = None;
             }
-            mgr.config_mgr(|mgr| self.update_widgets(mgr));
+            self.update_widgets(mgr);
+
             // Force SET_RECT so that scroll-bar wrappers get updated
             *mgr |= Action::SET_RECT;
         }
@@ -358,7 +370,6 @@ impl_scope! {
 
             let row_iter = self.data.row_iter_from(first_row, row_len);
 
-            let mut action = Action::empty();
             let mut row_count = 0;
             for (rn, row) in row_iter.enumerate() {
                 row_count += 1;
@@ -376,7 +387,7 @@ impl_scope! {
                         mgr.configure(id, &mut w.widget);
 
                         if let Some(item) = self.data.borrow(&key) {
-                            action |= self.driver.set(&mut w.widget, &key, item.borrow());
+                            *mgr |= self.driver.set(&mut w.widget, &key, item.borrow());
                             w.key = Some(key);
                             solve_size_rules(
                                 &mut w.widget,
@@ -402,7 +413,6 @@ impl_scope! {
                 );
             }
 
-            *mgr |= action;
             let dur = (Instant::now() - time).as_micros();
             log::trace!(target: "kas_perf::view::matrix_view", "update_widgets: {dur}μs");
             solver
@@ -531,46 +541,33 @@ impl_scope! {
                 .max(self.child_size_min);
             self.child_size = child_size;
 
-            let (d_cols, d_rows) = self.data.len();
-            let data_len = Size(d_cols.cast(), d_rows.cast());
-
-            let view_size = rect.size;
             let skip = self.child_size + self.child_inter_margin;
-            let content_size = (skip.cwise_mul(data_len) - self.child_inter_margin).max(Size::ZERO);
-            *mgr |= self.scroll.set_sizes(view_size, content_size);
+            let vis_len = (rect.size + skip - Size::splat(1)).cwise_div(skip) + Size::splat(1);
+            let req_widgets = usize::conv(vis_len.0) * usize::conv(vis_len.1);
 
-            let (avail_widgets, mut req_widgets) = (self.widgets.len(), d_cols * d_rows);
-            let vis_len;
-            if avail_widgets >= req_widgets {
-                // Case: enough children to allocate all data directly
-                vis_len = data_len;
-            } else {
-                // Case: reallocate children when scrolling
-                vis_len = data_len
-                    .min((rect.size + skip - Size::splat(1)).cwise_div(skip) + Size::splat(1));
-                req_widgets = usize::conv(vis_len.0) * usize::conv(vis_len.1);
-            }
             self.alloc_len = Dim {
                 cols: vis_len.0,
                 rows: vis_len.1,
             };
 
+            let avail_widgets = self.widgets.len();
             if avail_widgets < req_widgets {
                 log::debug!(
                     "set_rect: allocating widgets (old len = {}, new = {})",
                     avail_widgets,
                     req_widgets
                 );
-                self.widgets.reserve(req_widgets - avail_widgets);
-                for _ in avail_widgets..req_widgets {
+                self.widgets.resize_with(req_widgets, || {
                     let widget = self.driver.make();
-                    self.widgets.push(WidgetData { key: None, widget });
-                }
+                    WidgetData { key: None, widget }
+                });
             } else if req_widgets + 64 <= avail_widgets {
                 // Free memory (rarely useful?)
                 self.widgets.truncate(req_widgets);
             }
-            self.update_widgets(mgr);
+
+            // Widgets need configuring and updating: do so by re-configuring self.
+            mgr.request_configure(self.id());
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
@@ -613,34 +610,22 @@ impl_scope! {
 
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
-            // If data is available but not loaded yet, make some widgets for
-            // use by size_rules (this allows better sizing). Configure the new
-            // widgets (this allows resource loading which may affect size.)
-            self.data_ver = self.data.version();
-            if self.widgets.is_empty() && !self.data.is_empty() {
-                let cols: Vec<_> = self
-                    .data
-                    .col_iter_limit(self.ideal_len.cols.cast())
-                    .collect();
-                let rows = self.data.row_iter_limit(self.ideal_len.rows.cast());
-                let lbound = cols.len() * rows.size_hint().0;
-                log::debug!("configure: allocating {} widgets", lbound);
-                self.widgets.reserve(lbound);
-                for row in rows {
-                    for col in cols.iter() {
-                        let key = T::make_key(col, &row);
-                        let id = self.data.make_id(self.id_ref(), &key);
-                        let mut widget = self.driver.make();
-                        mgr.configure(id, &mut widget);
-                        let key = if let Some(item) = self.data.borrow(&key) {
-                            *mgr |= self.driver.set(&mut widget, &key, item.borrow());
-                            Some(key)
-                        } else {
-                            None
-                        };
-                        self.widgets.push(WidgetData { key, widget });
-                    }
-                }
+            if self.widgets.is_empty() {
+                // Initial configure: ensure some widgets are loaded to allow
+                // better sizing of self.
+                self.child_size = Size::splat(1); // hack: avoid div by 0
+
+                let len = self.ideal_len.cols * self.ideal_len.rows;
+                self.widgets.resize_with(len.cast(), || {
+                    let key = None;
+                    let widget = self.driver.make();
+                    WidgetData { key, widget }
+                });
+                self.alloc_len = self.ideal_len;
+                self.update_view(mgr);
+            } else {
+                // This method is invoked from set_rect to update widgets
+                self.update_widgets(mgr);
             }
 
             mgr.register_nav_fallback(self.id());
@@ -700,8 +685,7 @@ impl_scope! {
                 Event::Update { .. } => {
                     let data_ver = self.data.version();
                     if data_ver > self.data_ver {
-                        self.update_view(mgr);
-                        self.data_ver = data_ver;
+                        mgr.config_mgr(|mgr| self.update_view(mgr));
                     }
                     return Response::Used;
                 }
