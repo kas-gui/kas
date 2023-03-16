@@ -452,7 +452,9 @@ impl EventState {
             self.pending
                 .push_back(Pending::Send(old_id, Event::LostNavFocus));
         }
-        self.clear_char_focus();
+        if id != self.sel_focus {
+            self.clear_char_focus();
+        }
         self.nav_focus = Some(id.clone());
         log::trace!(target: "kas_core::event::manager", "set_nav_focus: {id}");
         self.pending
