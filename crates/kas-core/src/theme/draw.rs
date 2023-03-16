@@ -9,7 +9,8 @@ use super::{FrameStyle, MarkStyle, SelectionStyle, SizeMgr, TextClass, ThemeSize
 use crate::dir::Direction;
 use crate::draw::color::Rgb;
 use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType};
-use crate::event::{ConfigMgr, EventState};
+#[allow(unused)] use crate::event::ConfigMgr;
+use crate::event::EventState;
 use crate::geom::{Offset, Rect};
 use crate::text::{TextApi, TextDisplay};
 use crate::{autoimpl, Action, Widget, WidgetCore, WidgetId};
@@ -95,13 +96,6 @@ impl<'a> DrawMgr<'a> {
     /// Access a [`SizeMgr`]
     pub fn size_mgr(&mut self) -> SizeMgr {
         SizeMgr::new(self.h.components().0)
-    }
-
-    /// Access a [`ConfigMgr`]
-    pub fn config_mgr<F: FnOnce(&mut ConfigMgr) -> T, T>(&mut self, f: F) -> T {
-        let (sh, draw, ev) = self.h.components();
-        let mut mgr = ConfigMgr::new(sh, draw.shared(), ev);
-        f(&mut mgr)
     }
 
     /// Access a [`DrawShared`]
