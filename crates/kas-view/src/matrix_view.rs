@@ -683,9 +683,7 @@ impl_scope! {
                 (d_cols - 1, d_rows - 1)
             };
 
-            let (_, action) = self.scroll.focus_rect(solver.rect(ci, ri), self.core.rect);
-            if !action.is_empty() {
-                *mgr |= action;
+            if self.scroll.focus_rect(mgr, solver.rect(ci, ri), self.core.rect) {
                 solver = mgr.config_mgr(|mgr| self.update_widgets(mgr));
             }
 
@@ -740,10 +738,7 @@ impl_scope! {
                     };
                     return if let Some((ci, ri)) = data {
                         // Set nav focus and update scroll position
-                        let (rect, action) =
-                            self.scroll.focus_rect(solver.rect(ci, ri), self.core.rect);
-                        if !action.is_empty() {
-                            *mgr |= action;
+                        if self.scroll.focus_rect(mgr, solver.rect(ci, ri), self.core.rect) {
                             solver = mgr.config_mgr(|mgr| self.update_widgets(mgr));
                         }
 
@@ -768,7 +763,6 @@ impl_scope! {
                         }
 
                         mgr.next_nav_focus(self.widgets[index].widget.id(), false, true);
-                        mgr.set_scroll(Scroll::Rect(rect));
                         Response::Used
                     } else {
                         Response::Unused

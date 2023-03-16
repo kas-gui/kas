@@ -667,7 +667,7 @@ impl<'a> EventMgr<'a> {
 
     /// Set a scroll action
     ///
-    /// When setting [`Scroll::Rect`], use the widgets own coordinate space.
+    /// When setting [`Scroll::Rect`], use the widget's own coordinate space.
     ///
     /// Note that calling this method has no effect on the widget itself, but
     /// affects parents via their [`Widget::handle_scroll`] method.
