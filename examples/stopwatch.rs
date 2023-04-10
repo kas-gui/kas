@@ -8,7 +8,7 @@
 use std::time::{Duration, Instant};
 
 use kas::class::HasString;
-use kas::event::{ConfigCx, Event, EventMgr, Response};
+use kas::event::{ConfigCx, Event, EventCx, Response};
 use kas::widget::{Frame, Label, TextButton};
 use kas::{Decorations, Widget, WidgetCore, WidgetExt, Window};
 

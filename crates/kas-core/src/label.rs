@@ -14,7 +14,7 @@ use crate::geom::Rect;
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::{Text, TextApi};
 use crate::theme::{DrawMgr, SizeMgr, TextClass};
-use crate::{Layout, Node, WidgetCore};
+use crate::{Layout, WidgetCore};
 use kas_macros::impl_scope;
 
 impl_scope! {

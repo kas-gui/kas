@@ -401,7 +401,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
                 #[inline]
                 fn as_node<'s>(&'s mut self, data: &'s Self::Data) -> ::kas::Node<'s> {
-                    Node::new(self, data)
+                    ::kas::Node::new(self, data)
                 }
             }
 
@@ -603,7 +603,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
                 #[inline]
                 fn as_node<'s>(&'s mut self, data: &'s Self::Data) -> ::kas::Node<'s> {
-                    Node::new(self, data)
+                    ::kas::Node::new(self, data)
                 }
             }
         });
