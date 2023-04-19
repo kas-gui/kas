@@ -476,8 +476,14 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
         let configure = quote! {
             #[inline]
-            fn configure(&mut self, mgr: &mut ::kas::event::ConfigCx<Self::Data>) {
-                self.#inner.configure(mgr);
+            fn configure(&mut self, cx: &mut ::kas::event::ConfigCx<Self::Data>) {
+                self.#inner.configure(cx);
+            }
+        };
+        let update = quote! {
+            #[inline]
+            fn update(&mut self, cx: &mut ::kas::event::ConfigCx<Self::Data>) {
+                self.#inner.update(cx);
             }
         };
         let translation = quote! {
@@ -551,6 +557,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         };
         widget_methods = vec![
             ("configure", configure),
+            ("update", update),
             ("translation", translation),
             ("handle_unused", handle_unused),
             ("handle_message", handle_message),
@@ -574,7 +581,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 "expected: a field with type `widget_core!()`",
             ));
         };
-        widget_methods = vec![];
 
         scope.generated.push(quote! {
             impl #impl_generics ::kas::WidgetCore
@@ -787,6 +793,13 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
         };
 
+        let update = quote! {
+            #[inline]
+            fn update(&mut self, cx: &mut ::kas::event::ConfigCx<Self::Data>) {
+                // TODO: call on children
+            }
+        };
+
         let hover_highlight = args
             .hover_highlight
             .map(|tok| tok.lit.value)
@@ -828,6 +841,8 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
         };
         fn_handle_event = None;
+
+        widget_methods = vec![("update", update)];
     }
 
     fn collect_idents(item_impl: &ItemImpl) -> Vec<Ident> {

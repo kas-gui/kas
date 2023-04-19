@@ -407,7 +407,7 @@ pub trait Widget: WidgetChildren {
     /// [`EventState::new_accel_layer`].
     ///
     /// Default impl: assign `id` to self
-    fn pre_configure(&mut self, mgr: &mut ConfigCx<Self::Data>, id: WidgetId);
+    fn pre_configure(&mut self, cx: &mut ConfigCx<Self::Data>, id: WidgetId);
 
     /// Configure widget
     ///
@@ -426,8 +426,21 @@ pub trait Widget: WidgetChildren {
     /// construct all windows using scale factor 1) and/or may change in the
     /// future. Changes to the scale factor result in recalculation of
     /// [`Layout::size_rules`] but not repeated configuration.
-    fn configure(&mut self, mgr: &mut ConfigCx<Self::Data>) {
-        let _ = mgr;
+    ///
+    /// The default implementation calls [`Widget::update`] on self.
+    fn configure(&mut self, cx: &mut ConfigCx<Self::Data>) {
+        self.update(cx);
+    }
+
+    /// Update data
+    ///
+    /// This method is called after input data is updated,
+    /// before [`Layout::draw`] is called. Typically it is either called
+    /// immediately after the data is updated or when the widget becomes
+    /// visible. It need not be called if [`Widget::configure`] has already been
+    /// called since the last data update.
+    fn update(&mut self, cx: &mut ConfigCx<Self::Data>) {
+        let _ = cx;
     }
 
     /// Is this widget navigable via <kbd>Tab</kbd> key?
