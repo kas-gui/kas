@@ -650,7 +650,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                         #count
                     }
                     fn get_child<'s>(&'s mut self, data: &'s Self::Data, index: usize) -> Option<::kas::Node<'s>> {
-                        use ::kas::WidgetCore;
+                        use ::kas::{WidgetCore, WidgetNode};
                         match index {
                             #get_mut_rules
                             _ => None

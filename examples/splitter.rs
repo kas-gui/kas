@@ -5,7 +5,7 @@
 
 //! Counter example (simple button)
 
-use kas::event::EventMgr;
+use kas::event::EventCx;
 use kas::widget::{EditField, RowSplitter, TextButton};
 use kas::{Widget, Window};
 
