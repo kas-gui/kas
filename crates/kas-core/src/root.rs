@@ -127,7 +127,7 @@ impl_scope! {
 
         fn handle_scroll(&mut self, mgr: &mut EventCx<()>, _: Scroll) {
             // Something was scrolled; update pop-up translations
-            mgr.config_cx(|mgr| self.resize_popups(mgr));
+            mgr.config_mgr(|mgr| self.resize_popups(mgr));
         }
     }
 
@@ -198,7 +198,7 @@ impl RootWidget {
     pub fn add_popup(&mut self, cx: &mut EventCx<()>, id: WindowId, popup: kas::Popup) {
         let index = self.popups.len();
         self.popups.push((id, popup, Offset::ZERO));
-        cx.config_cx(|cx| self.resize_popup(cx, index));
+        cx.config_mgr(|mgr| self.resize_popup(mgr, index));
         cx.send_action(Action::REDRAW);
     }
 
@@ -219,7 +219,7 @@ impl RootWidget {
     ///
     /// This is called immediately after [`Layout::set_rect`] to resize
     /// existing pop-ups.
-    pub fn resize_popups(&mut self, mgr: &mut ConfigCx<()>) {
+    pub fn resize_popups(&mut self, mgr: &mut ConfigMgr) {
         for i in 0..self.popups.len() {
             self.resize_popup(mgr, i);
         }
@@ -252,7 +252,7 @@ fn find_rect(widget: Node, id: WidgetId) -> Option<(Rect, Offset)> {
 }
 
 impl RootWidget {
-    fn resize_popup(&mut self, mgr: &mut ConfigCx<()>, index: usize) {
+    fn resize_popup(&mut self, mgr: &mut ConfigMgr, index: usize) {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
         let r = self.core.rect;
@@ -303,7 +303,7 @@ impl RootWidget {
             Rect::new(Coord(x, y), Size::new(w, h))
         };
 
-        cache.apply_rect(widget.re(), &mut mgr.as_mgr(), rect, false);
+        cache.apply_rect(widget.re(), mgr, rect, false);
         cache.print_widget_heirarchy(widget);
     }
 }

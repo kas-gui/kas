@@ -356,7 +356,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         if first {
             solve_cache.print_widget_heirarchy(widget.as_node());
         }
-        widget.resize_popups(&mut mgr.with_data(&()));
+        widget.resize_popups(&mut mgr);
 
         let restrict_dimensions = self.widget.restrict_dimensions();
         if restrict_dimensions.0 {
