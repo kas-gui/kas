@@ -188,20 +188,27 @@ impl ScrollComponent {
 
     /// Scroll to make the given `rect` visible
     ///
-    /// Inputs and outputs:
+    /// Inputs:
     ///
     /// -   `rect`: the rect to focus in child's coordinate space
     /// -   `window_rect`: the rect of the scroll window
-    /// -   returned `Rect`: the focus rect, adjusted for scroll offset; this
-    ///     may be set via [`EventMgr::set_scroll`]
-    /// -   returned `Action`: action to pass to the event manager
-    pub fn focus_rect(&mut self, rect: Rect, window_rect: Rect) -> (Rect, Action) {
+    ///
+    /// Sets [`Scroll::Rect`] to ensure correct scrolling of parents.
+    ///
+    /// Returns `true` when the scroll offset changes.
+    pub fn focus_rect(&mut self, mgr: &mut EventMgr, rect: Rect, window_rect: Rect) -> bool {
         self.glide.stop();
         let v = rect.pos - window_rect.pos;
         let off = Offset::conv(rect.size) - Offset::conv(window_rect.size);
         let offset = self.offset.max(v + off).min(v);
         let action = self.set_offset(offset);
-        (rect - self.offset, action)
+        mgr.set_scroll(Scroll::Rect(rect - self.offset));
+        if action.is_empty() {
+            false
+        } else {
+            *mgr |= action;
+            true
+        }
     }
 
     /// Handle a [`Scroll`] action
@@ -217,9 +224,7 @@ impl ScrollComponent {
                 });
             }
             Scroll::Rect(rect) => {
-                let (rect, action) = self.focus_rect(rect, window_rect);
-                *mgr |= action;
-                mgr.set_scroll(Scroll::Rect(rect));
+                self.focus_rect(mgr, rect, window_rect);
             }
         }
     }

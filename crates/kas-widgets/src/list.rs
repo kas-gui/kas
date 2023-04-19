@@ -163,7 +163,7 @@ impl_scope! {
         /// Set the direction of contents
         pub fn set_direction(&mut self, direction: Direction) -> Action {
             self.direction = direction;
-            // Note: most of the time SET_SIZE would be enough, but margins can be different
+            // Note: most of the time SET_RECT would be enough, but margins can be different
             Action::RESIZE
         }
     }
@@ -263,11 +263,13 @@ impl_scope! {
         /// triggered.
         ///
         /// Returns the new element's index.
-        pub fn push(&mut self, mgr: &mut ConfigMgr, widget: W) -> usize {
+        pub fn push(&mut self, mgr: &mut EventState, widget: W) -> usize {
             let index = self.widgets.len();
             self.widgets.push(widget);
+
+            // id resolves to the child index even without assigning to child
             let id = self.make_child_id(index);
-            mgr.configure(id, &mut self.widgets[index]);
+            mgr.request_configure(id);
             *mgr |= Action::RESIZE;
             index
         }
@@ -275,7 +277,7 @@ impl_scope! {
         /// Remove the last child widget (if any) and return
         ///
         /// Triggers [`Action::RESIZE`].
-        pub fn pop(&mut self, mgr: &mut ConfigMgr) -> Option<W> {
+        pub fn pop(&mut self, mgr: &mut EventState) -> Option<W> {
             let result = self.widgets.pop();
             if let Some(w) = result.as_ref() {
                 *mgr |= Action::RESIZE;
@@ -294,7 +296,7 @@ impl_scope! {
         /// Panics if `index > len`.
         ///
         /// The new child is configured immediately. Triggers [`Action::RESIZE`].
-        pub fn insert(&mut self, mgr: &mut ConfigMgr, index: usize, widget: W) {
+        pub fn insert(&mut self, mgr: &mut EventState, index: usize, widget: W) {
             for v in self.id_map.values_mut() {
                 if *v >= index {
                     *v += 1;
@@ -302,7 +304,7 @@ impl_scope! {
             }
             self.widgets.insert(index, widget);
             let id = self.make_child_id(index);
-            mgr.configure(id, &mut self.widgets[index]);
+            mgr.request_configure(id);
             *mgr |= Action::RESIZE;
         }
 
@@ -311,7 +313,7 @@ impl_scope! {
         /// Panics if `index` is out of bounds.
         ///
         /// Triggers [`Action::RESIZE`].
-        pub fn remove(&mut self, mgr: &mut ConfigMgr, index: usize) -> W {
+        pub fn remove(&mut self, mgr: &mut EventState, index: usize) -> W {
             let w = self.widgets.remove(index);
             if w.id_ref().is_valid() {
                 if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
@@ -334,7 +336,7 @@ impl_scope! {
         /// Panics if `index` is out of bounds.
         ///
         /// The new child is configured immediately. Triggers [`Action::RESIZE`].
-        pub fn replace(&mut self, mgr: &mut ConfigMgr, index: usize, mut w: W) -> W {
+        pub fn replace(&mut self, mgr: &mut EventState, index: usize, mut w: W) -> W {
             std::mem::swap(&mut w, &mut self.widgets[index]);
 
             if w.id_ref().is_valid() {
@@ -344,7 +346,7 @@ impl_scope! {
             }
 
             let id = self.make_child_id(index);
-            mgr.configure(id, &mut self.widgets[index]);
+            mgr.request_configure(id);
 
             *mgr |= Action::RESIZE;
 
@@ -354,12 +356,12 @@ impl_scope! {
         /// Append child widgets from an iterator
         ///
         /// New children are configured immediately. Triggers [`Action::RESIZE`].
-        pub fn extend<T: IntoIterator<Item = W>>(&mut self, mgr: &mut ConfigMgr, iter: T) {
+        pub fn extend<T: IntoIterator<Item = W>>(&mut self, mgr: &mut EventState, iter: T) {
             let old_len = self.widgets.len();
             self.widgets.extend(iter);
             for index in old_len..self.widgets.len() {
                 let id = self.make_child_id(index);
-                mgr.configure(id, &mut self.widgets[index]);
+                mgr.request_configure(id);
             }
 
             *mgr |= Action::RESIZE;
@@ -368,7 +370,7 @@ impl_scope! {
         /// Resize, using the given closure to construct new widgets
         ///
         /// New children are configured immediately. Triggers [`Action::RESIZE`].
-        pub fn resize_with<F: Fn(usize) -> W>(&mut self, mgr: &mut ConfigMgr, len: usize, f: F) {
+        pub fn resize_with<F: Fn(usize) -> W>(&mut self, mgr: &mut EventState, len: usize, f: F) {
             let old_len = self.widgets.len();
 
             if len < old_len {
@@ -390,9 +392,8 @@ impl_scope! {
                 self.widgets.reserve(len - old_len);
                 for index in old_len..len {
                     let id = self.make_child_id(index);
-                    let mut widget = f(index);
-                    mgr.configure(id, &mut widget);
-                    self.widgets.push(widget);
+                    mgr.request_configure(id);
+                    self.widgets.push(f(index));
                 }
                 *mgr |= Action::RESIZE;
             }

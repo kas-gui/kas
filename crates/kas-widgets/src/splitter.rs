@@ -385,17 +385,19 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// triggered.
     ///
     /// Returns the new element's index.
-    pub fn push(&mut self, mgr: &mut ConfigMgr, widget: W) -> usize {
+    pub fn push(&mut self, mgr: &mut EventState, widget: W) -> usize {
         let index = self.widgets.len();
         if index > 0 {
             let len = self.handles.len();
             self.handles.push(GripPart::new());
+
+            // id resolves to the child index even without assigning to child
             let id = self.make_next_id(true, len);
-            mgr.configure(id, &mut self.handles[len]);
+            mgr.request_configure(id);
         }
         self.widgets.push(widget);
         let id = self.make_next_id(false, index);
-        mgr.configure(id, &mut self.widgets[index]);
+        mgr.request_configure(id);
         self.size_solved = false;
         *mgr |= Action::RESIZE;
         index
@@ -404,7 +406,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// Remove the last child widget (if any) and return
     ///
     /// Triggers [`Action::RESIZE`].
-    pub fn pop(&mut self, mgr: &mut ConfigMgr) -> Option<W> {
+    pub fn pop(&mut self, mgr: &mut EventState) -> Option<W> {
         let result = self.widgets.pop();
         if let Some(w) = result.as_ref() {
             *mgr |= Action::RESIZE;
@@ -431,7 +433,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// Panics if `index > len`.
     ///
     /// The new child is configured immediately. Triggers [`Action::RESIZE`].
-    pub fn insert(&mut self, mgr: &mut ConfigMgr, index: usize, widget: W) {
+    pub fn insert(&mut self, mgr: &mut EventState, index: usize, widget: W) {
         for v in self.id_map.values_mut() {
             if *v >= index {
                 *v += 2;
@@ -442,12 +444,12 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
             let index = index.min(self.handles.len());
             self.handles.insert(index, GripPart::new());
             let id = self.make_next_id(true, index);
-            mgr.configure(id, &mut self.handles[index]);
+            mgr.request_configure(id);
         }
 
         self.widgets.insert(index, widget);
         let id = self.make_next_id(false, index);
-        mgr.configure(id, &mut self.widgets[index]);
+        mgr.request_configure(id);
 
         self.size_solved = false;
         *mgr |= Action::RESIZE;
@@ -458,7 +460,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// Panics if `index` is out of bounds.
     ///
     /// Triggers [`Action::RESIZE`].
-    pub fn remove(&mut self, mgr: &mut ConfigMgr, index: usize) -> W {
+    pub fn remove(&mut self, mgr: &mut EventState, index: usize) -> W {
         if !self.handles.is_empty() {
             let index = index.min(self.handles.len());
             let w = self.handles.remove(index);
@@ -489,7 +491,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// Panics if `index` is out of bounds.
     ///
     /// The new child is configured immediately. Triggers [`Action::RESIZE`].
-    pub fn replace(&mut self, mgr: &mut ConfigMgr, index: usize, mut w: W) -> W {
+    pub fn replace(&mut self, mgr: &mut EventState, index: usize, mut w: W) -> W {
         std::mem::swap(&mut w, &mut self.widgets[index]);
 
         if w.id_ref().is_valid() {
@@ -499,7 +501,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         }
 
         let id = self.make_next_id(false, index);
-        mgr.configure(id, &mut self.widgets[index]);
+        mgr.request_configure(id);
 
         self.size_solved = false;
         *mgr |= Action::RESIZE;

@@ -473,7 +473,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             #[inline]
             fn nav_next(
                 &mut self,
-                mgr: &mut ::kas::event::ConfigMgr,
+                mgr: &mut ::kas::event::EventMgr,
                 reverse: bool,
                 from: Option<usize>,
             ) -> Option<usize> {
@@ -598,7 +598,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 NavNextResult::Slice(dir) => Some(quote! {
                     fn nav_next(
                         &mut self,
-                        _: &mut ::kas::event::ConfigMgr,
+                        _: &mut ::kas::event::EventMgr,
                         reverse: bool,
                         from: Option<usize>,
                     ) -> Option<usize> {
@@ -609,7 +609,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 NavNextResult::List(order) => Some(quote! {
                     fn nav_next(
                         &mut self,
-                        _: &mut ::kas::event::ConfigMgr,
+                        _: &mut ::kas::event::EventMgr,
                         reverse: bool,
                         from: Option<usize>,
                     ) -> Option<usize> {

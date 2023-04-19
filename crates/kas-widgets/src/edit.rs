@@ -736,8 +736,8 @@ impl_scope! {
             if self.text.try_prepare().is_ok() {
                 self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
                 self.view_offset = self.view_offset.min(self.max_scroll_offset());
-                // We use SET_SIZE just to set the outer scroll bar position:
-                action = Action::SET_SIZE;
+                // We use SET_RECT just to set the outer scroll bar position:
+                action = Action::SET_RECT;
             }
             G::update(self);
             action

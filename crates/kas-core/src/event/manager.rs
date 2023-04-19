@@ -170,13 +170,13 @@ struct PanGrab {
 #[derive(Clone, Debug)]
 #[allow(clippy::enum_variant_names)] // they all happen to be about Focus
 enum Pending {
-    SetNavFocus(WidgetId, bool),
-    MouseHover(WidgetId),
-    LostNavFocus(WidgetId),
-    LostMouseHover(WidgetId),
-    LostCharFocus(WidgetId),
-    LostSelFocus(WidgetId),
     Send(WidgetId, Event),
+    SetRect(WidgetId),
+    NextNavFocus {
+        target: Option<WidgetId>,
+        reverse: bool,
+        key_focus: bool,
+    },
 }
 
 type AccelLayer = (bool, HashMap<VirtualKeyCode, WidgetId>);
@@ -225,6 +225,7 @@ pub struct EventState {
     time_updates: Vec<(Instant, WidgetId, u64)>,
     // Set of futures of messages together with id of sending widget
     fut_messages: Vec<(WidgetId, Pin<Box<dyn Future<Output = Erased>>>)>,
+    pending_configures: Vec<WidgetId>,
     // FIFO queue of events pending handling
     pending: VecDeque<Pending>,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -367,7 +368,8 @@ impl EventState {
             log::trace!("clear_char_focus");
             // If widget has char focus, this is lost
             self.char_focus = false;
-            self.pending.push_back(Pending::LostCharFocus(id));
+            self.pending
+                .push_back(Pending::Send(id, Event::LostCharFocus));
         }
     }
 
@@ -385,11 +387,13 @@ impl EventState {
         if let Some(id) = self.sel_focus.clone() {
             if self.char_focus {
                 // If widget has char focus, this is lost
-                self.pending.push_back(Pending::LostCharFocus(id.clone()));
+                self.pending
+                    .push_back(Pending::Send(id.clone(), Event::LostCharFocus));
             }
 
             // Selection focus is lost if another widget receives char focus
-            self.pending.push_back(Pending::LostSelFocus(id));
+            self.pending
+                .push_back(Pending::Send(id, Event::LostSelFocus));
         }
 
         self.char_focus = char_focus;
@@ -400,12 +404,13 @@ impl EventState {
         if self.hover != w_id {
             log::trace!("set_hover: w_id={w_id:?}");
             if let Some(id) = self.hover.take() {
-                self.pending.push_back(Pending::LostMouseHover(id));
+                self.pending
+                    .push_back(Pending::Send(id, Event::LostMouseHover));
             }
             self.hover = w_id.clone();
 
             if let Some(id) = w_id {
-                self.pending.push_back(Pending::MouseHover(id));
+                self.pending.push_back(Pending::Send(id, Event::MouseHover));
             }
         }
     }
@@ -542,7 +547,7 @@ impl<'a> EventMgr<'a> {
         } else if self.config.nav_focus && vkey == VK::Tab {
             self.clear_char_focus();
             let shift = self.modifiers.shift();
-            self.next_nav_focus(widget, shift, true);
+            self.next_nav_focus_impl(widget, None, shift, true);
         } else if vkey == VK::Escape {
             if let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
                 self.close_window(id, true);
@@ -781,5 +786,152 @@ impl<'a> EventMgr<'a> {
             return self.send_event(widget, id, event);
         }
         false
+    }
+
+    /// Advance the keyboard navigation focus
+    pub fn next_nav_focus_impl(
+        &mut self,
+        mut widget: &mut dyn Widget,
+        mut target: Option<WidgetId>,
+        reverse: bool,
+        key_focus: bool,
+    ) {
+        if !self.config.nav_focus || (target.is_some() && target == self.nav_focus) {
+            return;
+        }
+
+        if let Some(id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
+            if id.is_ancestor_of(widget.id_ref()) {
+                // do nothing
+            } else if let Some(w) = widget.find_widget_mut(&id) {
+                widget = w;
+            } else {
+                log::warn!(
+                    target: "kas_core::event::config_mgr",
+                    "next_nav_focus: have open pop-up which is not a child of widget",
+                );
+                return;
+            }
+        }
+
+        // We redraw in all cases. Since this is not part of widget event
+        // processing, we can push directly to self.action.
+        self.send_action(Action::REDRAW);
+        let old_nav_focus = self.nav_focus.take();
+
+        fn nav(
+            mgr: &mut EventMgr,
+            widget: &mut dyn Widget,
+            focus: Option<&WidgetId>,
+            rev: bool,
+        ) -> Option<WidgetId> {
+            if mgr.is_disabled(widget.id_ref()) {
+                return None;
+            }
+
+            let mut child = focus.and_then(|id| widget.find_child_index(id));
+
+            if !rev {
+                if let Some(index) = child {
+                    if let Some(id) = widget
+                        .get_child_mut(index)
+                        .and_then(|w| nav(mgr, w, focus, rev))
+                    {
+                        return Some(id);
+                    }
+                } else if !widget.eq_id(focus) && widget.navigable() {
+                    return Some(widget.id());
+                }
+
+                loop {
+                    if let Some(index) = widget.nav_next(mgr, rev, child) {
+                        if let Some(id) = widget
+                            .get_child_mut(index)
+                            .and_then(|w| nav(mgr, w, focus, rev))
+                        {
+                            return Some(id);
+                        }
+                        child = Some(index);
+                    } else {
+                        return None;
+                    }
+                }
+            } else {
+                if let Some(index) = child {
+                    if let Some(id) = widget
+                        .get_child_mut(index)
+                        .and_then(|w| nav(mgr, w, focus, rev))
+                    {
+                        return Some(id);
+                    }
+                }
+
+                loop {
+                    if let Some(index) = widget.nav_next(mgr, rev, child) {
+                        if let Some(id) = widget
+                            .get_child_mut(index)
+                            .and_then(|w| nav(mgr, w, focus, rev))
+                        {
+                            return Some(id);
+                        }
+                        child = Some(index);
+                    } else {
+                        return if !widget.eq_id(focus) && widget.navigable() {
+                            Some(widget.id())
+                        } else {
+                            None
+                        };
+                    }
+                }
+            }
+        }
+
+        let mut opt_id = None;
+        if let Some(ref id) = target {
+            if widget
+                .find_widget(id)
+                .map(|w| w.navigable())
+                .unwrap_or(false)
+            {
+                opt_id = Some(id.clone());
+            }
+        } else {
+            target = old_nav_focus.clone();
+        }
+
+        // Whether to restart from the beginning on failure
+        let restart = target.is_some();
+
+        if opt_id.is_none() {
+            opt_id = nav(self, widget, target.as_ref(), reverse);
+        }
+        if restart && opt_id.is_none() {
+            opt_id = nav(self, widget, None, reverse);
+        }
+
+        log::trace!(
+            target: "kas_core::event::config_mgr",
+            "next_nav_focus: nav_focus={opt_id:?}",
+        );
+        self.nav_focus = opt_id.clone();
+
+        if opt_id == target {
+            return;
+        }
+
+        if let Some(id) = old_nav_focus {
+            self.pending
+                .push_back(Pending::Send(id, Event::LostNavFocus));
+        }
+
+        if self.sel_focus != opt_id {
+            self.clear_char_focus();
+        }
+        if let Some(id) = opt_id {
+            self.pending
+                .push_back(Pending::Send(id, Event::NavFocus(key_focus)));
+        } else {
+            // Most likely an error occurred
+        }
     }
 }

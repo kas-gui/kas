@@ -78,14 +78,14 @@ impl_scope! {
         /// Default value: [`Direction::Up`]
         pub fn set_direction(&mut self, direction: Direction) -> Action {
             self.direction = direction;
-            // Note: most of the time SET_SIZE would be enough, but margins can be different
+            // Note: most of the time SET_RECT would be enough, but margins can be different
             Action::RESIZE
         }
     }
 
     impl Widget for Self {
         fn nav_next(&mut self,
-            _: &mut ConfigMgr,
+            _: &mut EventMgr,
             reverse: bool,
             from: Option<usize>,
         ) -> Option<usize> {
@@ -212,7 +212,7 @@ impl<W: Widget> TabStack<W> {
     /// and then [`Action::RESIZE`] will be triggered.
     ///
     /// Returns the new page's index.
-    pub fn push(&mut self, mgr: &mut ConfigMgr, tab: Tab, widget: W) -> usize {
+    pub fn push(&mut self, mgr: &mut EventState, tab: Tab, widget: W) -> usize {
         let ti = self.tabs.push(mgr, tab);
         let si = self.stack.push(mgr, widget);
         debug_assert_eq!(ti, si);
@@ -222,7 +222,7 @@ impl<W: Widget> TabStack<W> {
     /// Remove the last child widget (if any) and return
     ///
     /// If this page was active then the previous page becomes active.
-    pub fn pop(&mut self, mgr: &mut ConfigMgr) -> Option<(Tab, W)> {
+    pub fn pop(&mut self, mgr: &mut EventState) -> Option<(Tab, W)> {
         let tab = self.tabs.pop(mgr);
         let w = self.stack.pop(mgr);
         debug_assert_eq!(tab.is_some(), w.is_some());
@@ -235,7 +235,7 @@ impl<W: Widget> TabStack<W> {
     ///
     /// The new child is configured immediately. The active page does not
     /// change.
-    pub fn insert(&mut self, mgr: &mut ConfigMgr, index: usize, tab: Tab, widget: W) {
+    pub fn insert(&mut self, mgr: &mut EventState, index: usize, tab: Tab, widget: W) {
         self.tabs.insert(mgr, index, tab);
         self.stack.insert(mgr, index, widget);
     }
@@ -246,7 +246,7 @@ impl<W: Widget> TabStack<W> {
     ///
     /// If the active page is removed then the previous page (if any) becomes
     /// active.
-    pub fn remove(&mut self, mgr: &mut ConfigMgr, index: usize) -> (Tab, W) {
+    pub fn remove(&mut self, mgr: &mut EventState, index: usize) -> (Tab, W) {
         let tab = self.tabs.remove(mgr, index);
         let stack = self.stack.remove(mgr, index);
         (tab, stack)
@@ -258,7 +258,7 @@ impl<W: Widget> TabStack<W> {
     ///
     /// The new child is configured immediately. If it replaces the active page,
     /// then [`Action::RESIZE`] is triggered.
-    pub fn replace(&mut self, mgr: &mut ConfigMgr, index: usize, w: W) -> W {
+    pub fn replace(&mut self, mgr: &mut EventState, index: usize, w: W) -> W {
         self.stack.replace(mgr, index, w)
     }
 
@@ -266,7 +266,7 @@ impl<W: Widget> TabStack<W> {
     ///
     /// New children are configured immediately. If a new page becomes active,
     /// then [`Action::RESIZE`] is triggered.
-    pub fn extend<T: IntoIterator<Item = (Tab, W)>>(&mut self, mgr: &mut ConfigMgr, iter: T) {
+    pub fn extend<T: IntoIterator<Item = (Tab, W)>>(&mut self, mgr: &mut EventState, iter: T) {
         let iter = iter.into_iter();
         // let min_len = iter.size_hint().0;
         // self.tabs.reserve(min_len);

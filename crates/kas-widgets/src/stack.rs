@@ -131,7 +131,7 @@ impl_scope! {
             self.id_map.clear();
         }
 
-        fn nav_next(&mut self, _: &mut ConfigMgr, _: bool, from: Option<usize>) -> Option<usize> {
+        fn nav_next(&mut self, _: &mut EventMgr, _: bool, from: Option<usize>) -> Option<usize> {
             match from {
                 None => Some(self.active),
                 Some(active) if active != self.active => Some(self.active),
@@ -295,14 +295,18 @@ impl<W: Widget> Stack<W> {
     /// and then [`Action::RESIZE`] will be triggered.
     ///
     /// Returns the new page's index.
-    pub fn push(&mut self, mgr: &mut ConfigMgr, widget: W) -> usize {
+    pub fn push(&mut self, mgr: &mut EventState, widget: W) -> usize {
         let index = self.widgets.len();
         self.widgets.push(widget);
+
+        // id resolves to the child index even without assigning to child
         let id = self.make_child_id(index);
-        mgr.configure(id, &mut self.widgets[index]);
+        mgr.request_configure(id);
+
         if index == self.active {
             *mgr |= Action::RESIZE;
         }
+
         self.sized_range.end = self.sized_range.end.min(index);
         index
     }
@@ -310,13 +314,13 @@ impl<W: Widget> Stack<W> {
     /// Remove the last child widget (if any) and return
     ///
     /// If this page was active then the previous page becomes active.
-    pub fn pop(&mut self, mgr: &mut ConfigMgr) -> Option<W> {
+    pub fn pop(&mut self, mgr: &mut EventState) -> Option<W> {
         let result = self.widgets.pop();
         if let Some(w) = result.as_ref() {
             if self.active > 0 && self.active == self.widgets.len() {
                 self.active -= 1;
                 if self.sized_range.contains(&self.active) {
-                    self.widgets[self.active].set_rect(mgr, self.core.rect);
+                    mgr.request_set_rect(self.widgets[self.active].id());
                 } else {
                     *mgr |= Action::RESIZE;
                 }
@@ -337,7 +341,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// The new child is configured immediately. The active page does not
     /// change.
-    pub fn insert(&mut self, mgr: &mut ConfigMgr, index: usize, widget: W) {
+    pub fn insert(&mut self, mgr: &mut EventState, index: usize, widget: W) {
         if self.active < index {
             self.sized_range.end = self.sized_range.end.min(index);
         } else {
@@ -345,14 +349,16 @@ impl<W: Widget> Stack<W> {
             self.sized_range.end += 1;
             self.active = self.active.saturating_add(1);
         }
+
+        self.widgets.insert(index, widget);
+
         for v in self.id_map.values_mut() {
             if *v >= index {
                 *v += 1;
             }
         }
-        self.widgets.insert(index, widget);
         let id = self.make_child_id(index);
-        mgr.configure(id, &mut self.widgets[index]);
+        mgr.request_configure(id);
     }
 
     /// Removes the child widget at position `index`
@@ -361,7 +367,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// If the active page is removed then the previous page (if any) becomes
     /// active.
-    pub fn remove(&mut self, mgr: &mut ConfigMgr, index: usize) -> W {
+    pub fn remove(&mut self, mgr: &mut EventState, index: usize) -> W {
         let w = self.widgets.remove(index);
         if w.id_ref().is_valid() {
             if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
@@ -372,7 +378,7 @@ impl<W: Widget> Stack<W> {
         if self.active == index {
             self.active = self.active.saturating_sub(1);
             if self.sized_range.contains(&self.active) {
-                self.widgets[self.active].set_rect(mgr, self.core.rect);
+                mgr.request_set_rect(self.widgets[self.active].id());
             } else {
                 *mgr |= Action::RESIZE;
             }
@@ -398,7 +404,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// The new child is configured immediately. If it replaces the active page,
     /// then [`Action::RESIZE`] is triggered.
-    pub fn replace(&mut self, mgr: &mut ConfigMgr, index: usize, mut w: W) -> W {
+    pub fn replace(&mut self, mgr: &mut EventState, index: usize, mut w: W) -> W {
         std::mem::swap(&mut w, &mut self.widgets[index]);
 
         if w.id_ref().is_valid() {
@@ -408,7 +414,7 @@ impl<W: Widget> Stack<W> {
         }
 
         let id = self.make_child_id(index);
-        mgr.configure(id, &mut self.widgets[index]);
+        mgr.request_configure(id);
 
         if self.active < index {
             self.sized_range.end = self.sized_range.end.min(index);
@@ -427,12 +433,13 @@ impl<W: Widget> Stack<W> {
     ///
     /// New children are configured immediately. If a new page becomes active,
     /// then [`Action::RESIZE`] is triggered.
-    pub fn extend<T: IntoIterator<Item = W>>(&mut self, mgr: &mut ConfigMgr, iter: T) {
+    pub fn extend<T: IntoIterator<Item = W>>(&mut self, mgr: &mut EventState, iter: T) {
         let old_len = self.widgets.len();
         self.widgets.extend(iter);
         for index in old_len..self.widgets.len() {
+            // id resolves to the child index even without assigning to child
             let id = self.make_child_id(index);
-            mgr.configure(id, &mut self.widgets[index]);
+            mgr.request_configure(id);
         }
 
         if (old_len..self.widgets.len()).contains(&self.active) {
@@ -444,7 +451,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// New children are configured immediately. If a new page becomes active,
     /// then [`Action::RESIZE`] is triggered.
-    pub fn resize_with<F: Fn(usize) -> W>(&mut self, mgr: &mut ConfigMgr, len: usize, f: F) {
+    pub fn resize_with<F: Fn(usize) -> W>(&mut self, mgr: &mut EventState, len: usize, f: F) {
         let old_len = self.widgets.len();
 
         if len < old_len {
@@ -466,9 +473,8 @@ impl<W: Widget> Stack<W> {
             self.widgets.reserve(len - old_len);
             for index in old_len..len {
                 let id = self.make_child_id(index);
-                let mut widget = f(index);
-                mgr.configure(id, &mut widget);
-                self.widgets.push(widget);
+                mgr.request_configure(id);
+                self.widgets.push(f(index));
             }
 
             if (old_len..len).contains(&self.active) {

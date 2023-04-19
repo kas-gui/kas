@@ -475,7 +475,7 @@ pub trait Widget: WidgetChildren {
     #[inline]
     fn nav_next(
         &mut self,
-        mgr: &mut ConfigMgr,
+        mgr: &mut EventMgr,
         reverse: bool,
         from: Option<usize>,
     ) -> Option<usize> {

@@ -186,7 +186,7 @@ impl_scope! {
 
             // Focus first item initially:
             if mgr.nav_focus().is_none() {
-                mgr.next_nav_focus(self, false, true);
+                mgr.next_nav_focus(self.id(), false, true);
             }
         }
 

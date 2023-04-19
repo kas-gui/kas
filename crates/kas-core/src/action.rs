@@ -44,7 +44,7 @@ bitflags! {
         Popup,
         */
         /// Reset size of all widgets without recalculating requirements
-        const SET_SIZE = 1 << 8;
+        const SET_RECT = 1 << 8;
         /// Resize all widgets in the window
         const RESIZE = 1 << 9;
         /// Update theme memory
