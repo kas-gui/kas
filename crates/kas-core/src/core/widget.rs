@@ -300,7 +300,21 @@ pub trait Events: Sized {
     /// construct all windows using scale factor 1) and/or may change in the
     /// future. Changes to the scale factor result in recalculation of
     /// [`Layout::size_rules`] but not repeated configuration.
+    ///
+    /// The default implementation does nothing.
     fn configure(&mut self, data: &Self::Data, mgr: &mut ConfigMgr) {
+        let _ = (data, mgr);
+    }
+
+    /// Update data
+    ///
+    /// This method is called immediately after [`Self::configure`] and after
+    /// any input data is updated, before [`Layout::draw`] is called.
+    /// Typically this method is called immediately after the data is updated
+    /// but the call may be delayed until when the widget becomes visible.
+    ///
+    /// The default implementation does nothing.
+    fn update(&mut self, data: &Self::Data, mgr: &mut ConfigMgr) {
         let _ = (data, mgr);
     }
 

@@ -28,6 +28,7 @@ pub fn _configure<W: Widget + Events<Data = <W as Widget>::Data>>(
     }
 
     widget.configure(data, cx);
+    widget.update(data, cx);
 }
 
 /// Generic implementation of [`Widget::_broadcast`]
