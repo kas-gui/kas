@@ -94,7 +94,7 @@ impl_scope! {
     }
 
     impl Self {
-        pub fn new<A: ToString>(title: A, message: T) -> Self {
+        pub fn new<I: ToString>(title: I, message: T) -> Self {
             MessageBox {
                 core: Default::default(),
                 title: title.to_string(),
