@@ -47,6 +47,7 @@
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "min_spec", feature(min_specialization))]
 
+mod adapt;
 mod button;
 mod check_box;
 mod combobox;
@@ -78,6 +79,7 @@ mod text;
 pub mod adapter;
 
 pub use crate::image::Image;
+pub use adapt::Adapt;
 pub use button::{Button, TextButton};
 pub use check_box::{CheckBox, CheckButton};
 pub use combobox::ComboBox;
