@@ -167,19 +167,9 @@ pub type StringText<A> = Text<A, String>;
 #[macro_export]
 macro_rules! format_text {
     ($data:ident, $($arg:tt)*) => {
-        Text::new(move |$data, label: &mut String| {
-            use std::fmt::Write;
-            label.clear();
-            write!(label, $($arg)*)
-                .expect("format_text: formatting error");
-        })
+        $crate::Text::new(move |$data| format!($($arg)*))
     };
     ($data:ident : $data_ty:ty , $($arg:tt)*) => {
-        Text::new(move | $data : $data_ty , label: &mut String | {
-            use std::fmt::Write;
-            label.clear();
-            write!(label, $($arg)*)
-                .expect("format_text: formatting error");
-        })
+        $crate::Text::new(move |$data : $data_ty| format!($($arg)*))
     };
 }

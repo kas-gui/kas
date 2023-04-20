@@ -80,3 +80,29 @@ impl_scope! {
         }
     }
 }
+
+impl_scope! {
+    /// Data adaptation: map to ()
+    #[widget {
+        data = A;
+        layout = self.inner;
+    }]
+    #[autoimpl(Debug)]
+    pub struct DiscardData<A, W: Widget<Data = ()>> {
+        core: widget_core!(),
+        #[widget(&())]
+        inner: W,
+        _data: PhantomData<A>,
+    }
+
+    impl Self {
+        /// Construct
+        pub fn new(inner: W) -> Self {
+            DiscardData {
+                core: Default::default(),
+                inner,
+                _data: PhantomData,
+            }
+        }
+    }
+}
