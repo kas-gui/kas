@@ -3,7 +3,9 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Text widgets
+//! Fixed text widgets
+//!
+//! TODO: *should* tese be wrappers around `Text` variants?
 
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
@@ -12,6 +14,9 @@ use kas::theme::TextClass;
 
 impl_scope! {
     /// A text label
+    ///
+    /// `Label` derives its contents from input data. Use [`Text`](crate::Text)
+    /// instead for fixed contents.
     ///
     /// A text label. Vertical alignment defaults to centred, horizontal
     /// alignment depends on the script direction if not specified.
