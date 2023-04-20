@@ -79,7 +79,6 @@ struct MessageBoxOk;
 
 impl_scope! {
     /// A simple message box.
-    #[derive(Clone)]
     #[widget{
         layout = column: [self.label, self.button];
     }]

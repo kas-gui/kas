@@ -7,7 +7,6 @@
 
 use std::fmt::Debug;
 use std::ops::{Add, RangeInclusive, Sub};
-use std::rc::Rc;
 use std::time::Duration;
 
 use super::{GripMsg, GripPart};
@@ -91,7 +90,6 @@ impl_scope! {
     ///
     /// Sliders allow user input of a value from a fixed range.
     #[autoimpl(Debug ignore self.on_move)]
-    #[derive(Clone)]
     #[widget{
         navigable = true;
         hover_highlight = true;
@@ -106,7 +104,7 @@ impl_scope! {
         value: T,
         #[widget]
         handle: GripPart,
-        on_move: Option<Rc<dyn Fn(&mut EventMgr, T)>>,
+        on_move: Option<Box<dyn Fn(&mut EventMgr, T)>>,
     }
 
     impl Self
@@ -172,7 +170,7 @@ impl_scope! {
         where
             F: Fn(&mut EventMgr, T) + 'static,
         {
-            self.on_move = Some(Rc::new(f));
+            self.on_move = Some(Box::new(f));
             self
         }
 

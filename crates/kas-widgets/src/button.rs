@@ -11,14 +11,12 @@ use kas::event::{VirtualKeyCode, VirtualKeyCodes};
 use kas::prelude::*;
 use kas::theme::TextClass;
 use std::fmt::Debug;
-use std::rc::Rc;
 
 impl_scope! {
     /// A push-button with a generic label
     ///
     /// Default alignment of content is centered.
     #[autoimpl(class_traits using self.inner where W: trait)]
-    #[derive(Clone)]
     #[widget {
         layout = button(self.color): self.inner;
         navigable = true;
@@ -30,7 +28,7 @@ impl_scope! {
         color: Option<Rgb>,
         #[widget]
         pub inner: W,
-        on_press: Option<Rc<dyn Fn(&mut EventMgr)>>,
+        on_press: Option<Box<dyn Fn(&mut EventMgr)>>,
     }
 
     impl<W: Widget> Button<W> {
@@ -60,7 +58,7 @@ impl_scope! {
                 keys1: self.keys1,
                 color: self.color,
                 inner: self.inner,
-                on_press: Some(Rc::new(f)),
+                on_press: Some(Box::new(f)),
             }
         }
     }
@@ -139,7 +137,6 @@ impl_scope! {
     /// [`AccelString`] label and using a custom text class (and thus theme colour).
     ///
     /// Default alignment of content is centered.
-    #[derive(Clone)]
     #[widget {
         layout = button(self.color): self.label;
         navigable = true;
@@ -151,7 +148,7 @@ impl_scope! {
         #[widget]
         label: AccelLabel,
         color: Option<Rgb>,
-        on_press: Option<Rc<dyn Fn(&mut EventMgr)>>,
+        on_press: Option<Box<dyn Fn(&mut EventMgr)>>,
     }
 
     impl Self {
@@ -181,7 +178,7 @@ impl_scope! {
                 keys1: self.keys1,
                 color: self.color,
                 label: self.label,
-                on_press: Some(Rc::new(f)),
+                on_press: Some(Box::new(f)),
             }
         }
 

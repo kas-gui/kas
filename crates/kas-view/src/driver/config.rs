@@ -81,12 +81,12 @@ impl driver::Driver<Config, SharedRc<Config>> for EventConfig {
     type Widget = EventConfigWidget;
 
     fn make(&self) -> Self::Widget {
-        let mouse_pan = ComboBox::from([
+        let pan_options = [
             ("&Never", MousePan::Never),
             ("With &Alt key", MousePan::WithAlt),
             ("With &Ctrl key", MousePan::WithCtrl),
             ("Alwa&ys", MousePan::Always),
-        ]);
+        ];
 
         EventConfigWidget {
             core: Default::default(),
@@ -103,10 +103,9 @@ impl driver::Driver<Config, SharedRc<Config>> for EventConfig {
                 .on_change(|mgr, v| mgr.push(Msg::ScrollDistEm(v))),
             pan_dist_thresh: Spinner::new(0.25..=25.0, 0.25)
                 .on_change(|mgr, v| mgr.push(Msg::PanDistThresh(v))),
-            mouse_pan: mouse_pan
-                .clone()
-                .on_select(|mgr, v| mgr.push(Msg::MousePan(v))),
-            mouse_text_pan: mouse_pan.on_select(|mgr, v| mgr.push(Msg::MouseTextPan(v))),
+            mouse_pan: ComboBox::from(pan_options).on_select(|mgr, v| mgr.push(Msg::MousePan(v))),
+            mouse_text_pan: ComboBox::from(pan_options)
+                .on_select(|mgr, v| mgr.push(Msg::MouseTextPan(v))),
             mouse_nav_focus: CheckButton::new("&Mouse navigation focus")
                 .on_toggle(|mgr, v| mgr.push(Msg::MouseNavFocus(v))),
             touch_nav_focus: CheckButton::new("&Touchscreen navigation focus")
