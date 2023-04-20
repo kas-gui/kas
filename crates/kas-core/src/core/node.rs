@@ -207,6 +207,12 @@ impl<'a> Node<'a> {
         self.0.configure(&mut mgr.with_data(self.1));
     }
 
+    /// Update a widget
+    #[inline]
+    pub(crate) fn update(&mut self, mgr: &mut ConfigMgr) {
+        self.0.update(&mut mgr.with_data(self.1));
+    }
+
     /// Is this widget navigable via <kbd>Tab</kbd> key?
     #[inline]
     pub(crate) fn navigable(&self) -> bool {

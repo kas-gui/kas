@@ -117,6 +117,17 @@ impl<'a> ConfigMgr<'a> {
         widget.configure(self);
     }
 
+    /// Update a widget
+    pub fn update(&mut self, mut widget: Node) {
+        for index in 0..widget.num_children() {
+            if let Some(widget) = widget.re().get_child(index) {
+                self.update(widget);
+            }
+        }
+
+        widget.update(self);
+    }
+
     /// Align a feature's rect
     ///
     /// In case the input `rect` is larger than desired on either axis, it is
@@ -288,6 +299,12 @@ impl<'a, Data> ConfigCx<'a, Data> {
     pub fn configure<W: Widget<Data = Data>>(&mut self, id: WidgetId, widget: &mut W) {
         let node = Node::new(widget, self.data);
         self.as_mgr().configure(id, node);
+    }
+
+    /// Update a widget
+    pub fn update<W: Widget<Data = Data>>(&mut self, widget: &mut W) {
+        let node = Node::new(widget, self.data);
+        self.as_mgr().update(node);
     }
 
     /// Align a feature's rect

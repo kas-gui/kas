@@ -75,8 +75,12 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn update(&mut self, cx: &mut ConfigCx<A>) {
-            self.inner.update(&mut cx.map(|data| (self.map_fn)(data, &self.state)));
+        fn handle_message(&mut self, cx: &mut EventCx<Self::Data>) {
+            for mh in self.message_handlers.iter() {
+                mh(cx, &mut self.state);
+            }
+
+            cx.config_cx(|cx| cx.update(self));
         }
     }
 }

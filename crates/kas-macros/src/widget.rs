@@ -793,13 +793,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
         };
 
-        let update = quote! {
-            #[inline]
-            fn update(&mut self, cx: &mut ::kas::event::ConfigCx<Self::Data>) {
-                // TODO: call on children
-            }
-        };
-
         let hover_highlight = args
             .hover_highlight
             .map(|tok| tok.lit.value)
@@ -842,7 +835,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         };
         fn_handle_event = None;
 
-        widget_methods = vec![("update", update)];
+        widget_methods = vec![];
     }
 
     fn collect_idents(item_impl: &ItemImpl) -> Vec<Ident> {
