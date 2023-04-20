@@ -7,6 +7,7 @@
 
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
+use kas::text::Text;
 use kas::theme::TextClass;
 
 impl_scope! {

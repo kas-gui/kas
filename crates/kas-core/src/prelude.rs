@@ -20,7 +20,7 @@ pub use crate::geom::{Coord, Offset, Rect, Size};
 pub use crate::layout::{Align, AlignPair, AxisInfo, SizeRules, Stretch};
 #[doc(no_inline)] pub use crate::text::AccelString;
 #[doc(no_inline)]
-pub use crate::text::{EditableTextApi, Text, TextApi, TextApiExt};
+pub use crate::text::{EditableTextApi, TextApi, TextApiExt};
 #[doc(no_inline)] pub use crate::theme::{DrawMgr, SizeMgr};
 #[doc(no_inline)] pub use crate::Action;
 #[doc(no_inline)] pub use crate::WidgetId;
