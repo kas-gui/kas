@@ -35,7 +35,7 @@ impl FnSizeRules for WithMinSizeEm {
 
 /// Provides some convenience methods on widgets
 ///
-/// TODO: add `fn with_any<A: 'static>(self) -> WithAny<A, Self>`
+/// TODO: add `fn with_any<A>(self) -> WithAny<A, Self>`
 /// Problem: this must be limited to `where Self::Data == ()` but "equality
 /// constraints are not yet supported in `where` clauses" (Rust#20041).
 pub trait AdaptWidget: Widget {
