@@ -11,7 +11,6 @@ use kas::prelude::*;
 use kas::theme::{MarkStyle, TextClass};
 use kas::WindowId;
 use std::fmt::Debug;
-use std::rc::Rc;
 
 #[derive(Clone, Debug)]
 struct IndexMsg(usize);
@@ -29,7 +28,6 @@ impl_scope! {
     /// this message is passed to the handler and not emitted.
     #[autoimpl(Debug ignore self.on_select)]
     #[impl_default]
-    #[derive(Clone)]
     #[widget {
         layout = button 'frame: row: [self.label, self.mark];
         navigable = true;
@@ -46,7 +44,7 @@ impl_scope! {
         active: usize,
         opening: bool,
         popup_id: Option<WindowId>,
-        on_select: Option<Rc<dyn Fn(&mut EventCx<()>, M)>>,
+        on_select: Option<Box<dyn Fn(&mut EventCx<()>, M)>>,
     }
 
     impl Widget for Self {
@@ -259,7 +257,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             active: self.active,
             opening: self.opening,
             popup_id: self.popup_id,
-            on_select: Some(Rc::new(f)),
+            on_select: Some(Box::new(f)),
         }
     }
 }

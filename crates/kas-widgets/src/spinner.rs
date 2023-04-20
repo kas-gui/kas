@@ -11,7 +11,6 @@ use kas::prelude::*;
 use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use std::cmp::Ord;
 use std::ops::RangeInclusive;
-use std::rc::Rc;
 
 /// Requirements on type used by [`Spinner`]
 ///
@@ -173,7 +172,7 @@ impl_scope! {
         #[widget]
         b_down: MarkButton<SpinBtn>,
         step: T,
-        on_change: Option<Rc<dyn Fn(&mut EventCx<()>, T)>>,
+        on_change: Option<Box<dyn Fn(&mut EventCx<()>, T)>>,
     }
 
     impl Self {
@@ -217,7 +216,7 @@ impl_scope! {
         where
             F: Fn(&mut EventCx<()>, T) + 'static,
         {
-            self.on_change = Some(Rc::new(f));
+            self.on_change = Some(Box::new(f));
             self
         }
 

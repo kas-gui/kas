@@ -53,7 +53,6 @@ impl_scope! {
     ///
     /// See also [`RadioButton`] which includes a label.
     #[autoimpl(Debug ignore self.on_select)]
-    #[derive(Clone)]
     #[widget {
         navigable = true;
         hover_highlight = true;
@@ -64,7 +63,7 @@ impl_scope! {
         state: bool,
         last_change: Option<Instant>,
         group: RadioGroup,
-        on_select: Option<Rc<dyn Fn(&mut EventCx<()>)>>,
+        on_select: Option<Box<dyn Fn(&mut EventCx<()>)>>,
     }
 
     impl Widget for Self {
@@ -141,7 +140,7 @@ impl_scope! {
                 state: self.state,
                 last_change: self.last_change,
                 group: self.group,
-                on_select: Some(Rc::new(f)),
+                on_select: Some(Box::new(f)),
             }
         }
 
@@ -221,7 +220,6 @@ impl_scope! {
     /// See also [`RadioBox`] which excludes the label.
     #[autoimpl(Debug)]
     #[autoimpl(HasBool using self.inner)]
-    #[derive(Clone)]
     #[widget{
         layout = list(self.direction()): [self.inner, non_navigable: self.label];
     }]
