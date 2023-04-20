@@ -10,7 +10,7 @@ use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{Command, CursorIcon, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
-use kas::text::{NotReady, SelectionHelper};
+use kas::text::{NotReady, SelectionHelper, Text};
 use kas::theme::{Background, FrameStyle, TextClass};
 use std::fmt::Debug;
 use std::ops::Range;

@@ -16,6 +16,7 @@ use std::time::{Duration, Instant};
 use kas::draw::color::Rgba;
 use kas::event::UpdateId;
 use kas::prelude::*;
+use kas::text::Text;
 use kas::theme::TextClass;
 
 fn main() -> kas::shell::Result<()> {

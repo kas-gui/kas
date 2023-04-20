@@ -11,7 +11,7 @@ use kas::event::{Command, CursorIcon, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
-use kas::text::SelectionHelper;
+use kas::text::{SelectionHelper, Text};
 use kas::theme::TextClass;
 
 impl_scope! {

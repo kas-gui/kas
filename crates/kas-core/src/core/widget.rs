@@ -485,6 +485,7 @@ pub enum NavAdvance {
 /// # extern crate kas_core as kas;
 /// use kas::event;
 /// use kas::prelude::*;
+/// use kas::text::Text;
 /// use kas::theme::TextClass;
 /// use std::fmt::Debug;
 ///

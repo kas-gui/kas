@@ -21,6 +21,7 @@ use kas::draw::{Draw, DrawRounded};
 use kas::geom::{Offset, Quad, Rect, Vec2};
 use kas::prelude::*;
 use kas::shell::ShellAssoc;
+use kas::text::Text;
 
 type Theme = kas::theme::FlatTheme;
 type Shell = kas::shell::DefaultShell<(), Theme>;
