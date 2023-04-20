@@ -74,6 +74,7 @@ mod spinner;
 mod splitter;
 mod stack;
 mod tab_stack;
+mod text;
 
 pub mod adapter;
 
@@ -102,3 +103,4 @@ pub use spinner::{Spinner, SpinnerValue};
 pub use splitter::*;
 pub use stack::{BoxStack, Stack};
 pub use tab_stack::{BoxTabStack, Tab, TabStack};
+pub use text::{StrText, StringText, Text};
