@@ -90,18 +90,26 @@ impl driver::Driver<Config, SharedRc<Config>> for EventConfig {
 
         EventConfigWidget {
             core: Default::default(),
-            menu_delay: Spinner::new(0..=5_000, 50).on_change(|mgr, v| mgr.push(Msg::MenuDelay(v))),
-            touch_select_delay: Spinner::new(0..=5_000, 50)
+            menu_delay: Spinner::new(0..=5_000)
+                .with_step(50)
+                .on_change(|mgr, v| mgr.push(Msg::MenuDelay(v))),
+            touch_select_delay: Spinner::new(0..=5_000)
+                .with_step(50)
                 .on_change(|mgr, v| mgr.push(Msg::TouchSelectDelay(v))),
-            scroll_flick_timeout: Spinner::new(0..=500, 5)
+            scroll_flick_timeout: Spinner::new(0..=500)
+                .with_step(5)
                 .on_change(|mgr, v| mgr.push(Msg::ScrollFlickTimeout(v))),
-            scroll_flick_mul: Spinner::new(0.0..=1.0, 0.03125)
+            scroll_flick_mul: Spinner::new(0.0..=1.0)
+                .with_step(0.03125)
                 .on_change(|mgr, v| mgr.push(Msg::ScrollFlickMul(v))),
-            scroll_flick_sub: Spinner::new(0.0..=1.0e4, 10.0)
+            scroll_flick_sub: Spinner::new(0.0..=1.0e4)
+                .with_step(10.0)
                 .on_change(|mgr, v| mgr.push(Msg::ScrollFlickSub(v))),
-            scroll_dist_em: Spinner::new(0.125..=125.0, 0.125)
+            scroll_dist_em: Spinner::new(0.125..=125.0)
+                .with_step(0.125)
                 .on_change(|mgr, v| mgr.push(Msg::ScrollDistEm(v))),
-            pan_dist_thresh: Spinner::new(0.25..=25.0, 0.25)
+            pan_dist_thresh: Spinner::new(0.25..=25.0)
+                .with_step(0.25)
                 .on_change(|mgr, v| mgr.push(Msg::PanDistThresh(v))),
             mouse_pan: ComboBox::from(pan_options).on_select(|mgr, v| mgr.push(Msg::MousePan(v))),
             mouse_text_pan: ComboBox::from(pan_options)

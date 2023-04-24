@@ -445,7 +445,7 @@ impl_scope! {
 
     impl MandlebrotWindow {
         fn new() -> MandlebrotWindow {
-            let slider = Slider::new(0..=256, 1)
+            let slider = Slider::new(0..=256)
                 .with_value(64)
                 .on_move(|mgr, iter| mgr.push(iter));
             let mbrot = Mandlebrot::new();

@@ -20,6 +20,9 @@ use kas::theme::Feature;
 pub trait SliderValue:
     Copy + Debug + PartialOrd + Add<Output = Self> + Sub<Output = Self> + 'static
 {
+    /// The default step size (usually 1)
+    fn default_step() -> Self;
+
     /// Divide self by another instance of this type, returning an `f64`
     ///
     /// Note: in practice, we always have `rhs >= self` and expect the result
@@ -38,6 +41,9 @@ pub trait SliderValue:
 }
 
 impl SliderValue for f64 {
+    fn default_step() -> Self {
+        1.0
+    }
     fn div_as_f64(self, rhs: Self) -> f64 {
         self / rhs
     }
@@ -47,6 +53,9 @@ impl SliderValue for f64 {
 }
 
 impl SliderValue for f32 {
+    fn default_step() -> Self {
+        1.0
+    }
     fn div_as_f64(self, rhs: Self) -> f64 {
         self as f64 / rhs as f64
     }
@@ -58,6 +67,9 @@ impl SliderValue for f32 {
 macro_rules! impl_slider_ty {
     ($ty:ty) => {
         impl SliderValue for $ty {
+            fn default_step() -> Self {
+                1
+            }
             fn div_as_f64(self, rhs: Self) -> f64 {
                 self as f64 / rhs as f64
             }
@@ -76,7 +88,13 @@ macro_rules! impl_slider_ty {
 impl_slider_ty!(i8, i16, i32, i64, i128, isize);
 impl_slider_ty!(u8, u16, u32, u64, u128, usize);
 
+/// Implement for [`Duration`]
+///
+/// The default step size is 1 second.
 impl SliderValue for Duration {
+    fn default_step() -> Self {
+        Duration::from_secs(1)
+    }
     fn div_as_f64(self, rhs: Self) -> f64 {
         self.as_secs_f64() / rhs.as_secs_f64()
     }
@@ -113,40 +131,38 @@ impl_scope! {
     {
         /// Construct a slider
         ///
-        /// Values vary within the given `range`. When keyboard navigation
-        /// is used, arrow keys will increment the value by `step` and page up/down
-        /// keys by `step * 16`.
+        /// Values vary within the given `range`. The default step size is
+        /// 1 for common types (see [`SliderValue::default_step`]).
         ///
         /// The initial value defaults to the range's
         /// lower bound but may be specified via [`Slider::with_value`].
         #[inline]
-        pub fn new(range: RangeInclusive<T>, step: T) -> Self {
-            Slider::new_with_direction(range, step, D::default())
+        pub fn new(range: RangeInclusive<T>) -> Self {
+            Slider::new_with_direction(range, D::default())
         }
 
         /// Construct a spinner with event handler `f`
         ///
         /// This closure is called when the slider is moved.
         #[inline]
-        pub fn new_on<F>(range: RangeInclusive<T>, step: T, f: F) -> Self
+        pub fn new_on<F>(range: RangeInclusive<T>, f: F) -> Self
         where
             F: Fn(&mut EventMgr, T) + 'static,
         {
-            Slider::new(range, step).on_move(f)
+            Slider::new(range).on_move(f)
         }
     }
 
     impl Self {
         /// Construct a slider with the given `direction`
         ///
-        /// Values vary within the given `range`. When keyboard navigation
-        /// is used, arrow keys will increment the value by `step` and page up/down
-        /// keys by `step * 16`.
+        /// Values vary within the given `range`. The default step size is
+        /// 1 for common types (see [`SliderValue::default_step`]).
         ///
         /// The initial value defaults to the range's
         /// lower bound but may be specified via [`Slider::with_value`].
         #[inline]
-        pub fn new_with_direction(range: RangeInclusive<T>, step: T, direction: D) -> Self {
+        pub fn new_with_direction(range: RangeInclusive<T>, direction: D) -> Self {
             assert!(!range.is_empty());
             let value = *range.start();
             Slider {
@@ -154,7 +170,7 @@ impl_scope! {
                 align: Default::default(),
                 direction,
                 range: range.into_inner(),
-                step,
+                step: T::default_step(),
                 value,
                 handle: GripPart::new(),
                 on_move: None,
@@ -178,6 +194,14 @@ impl_scope! {
         #[inline]
         pub fn direction(&self) -> Direction {
             self.direction.as_direction()
+        }
+
+        /// Set the step size
+        #[inline]
+        #[must_use]
+        pub fn with_step(mut self, step: T) -> Self {
+            self.step = step;
+            self
         }
 
         /// Set the initial value
