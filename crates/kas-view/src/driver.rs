@@ -460,8 +460,9 @@ where
     type Widget = kas_widgets::Slider<Data::Item, D>;
     fn make(&self) -> Self::Widget {
         let range = self.range.0..=self.range.1;
-        kas_widgets::Slider::new_with_direction(range, self.step, self.direction)
+        kas_widgets::Slider::new_with_direction(range, self.direction)
             .on_move(|mgr, value| mgr.push(value))
+            .with_step(self.step)
     }
     fn set_mo(
         &self,
@@ -500,7 +501,9 @@ where
     type Widget = kas_widgets::Spinner<Data::Item>;
     fn make(&self) -> Self::Widget {
         let range = self.range.0..=self.range.1;
-        kas_widgets::Spinner::new(range, self.step).on_change(|mgr, val| mgr.push(val))
+        kas_widgets::Spinner::new(range)
+            .on_change(|mgr, val| mgr.push(val))
+            .with_step(self.step)
     }
     fn set_mo(
         &self,

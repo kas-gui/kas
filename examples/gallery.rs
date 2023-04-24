@@ -167,9 +167,9 @@ fn widgets() -> Box<dyn SetDisabled> {
                 MenuEntry::new("T&wo", Item::Combo(2)),
                 MenuEntry::new("Th&ree", Item::Combo(3)),
             ]),
-            #[widget] spin: Spinner<i32> = Spinner::new(0..=10, 1)
+            #[widget] spin: Spinner<i32> = Spinner::new(0..=10)
                 .on_change(|mgr, value| mgr.push(Item::Spinner(value))),
-            #[widget] sd: Slider<i32, Right> = Slider::new(0..=10, 1)
+            #[widget] sd: Slider<i32, Right> = Slider::new(0..=10)
                 .on_move(|mgr, value| mgr.push(Item::Slider(value))),
             #[widget] sc: ScrollBar<Right> = ScrollBar::new().with_limits(100, 20),
             #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
