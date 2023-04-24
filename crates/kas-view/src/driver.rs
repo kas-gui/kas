@@ -237,7 +237,7 @@ impl_scope! {
 impl<G: EditGuard + Clone, Data: SharedDataMut<Item = String>> Driver<String, Data>
     for EditField<G>
 {
-    type Widget = kas_widgets::EditField<G>;
+    type Widget = kas_widgets::EditField<(), G>;
     fn make(&self) -> Self::Widget {
         kas_widgets::EditField::new("".to_string())
             .with_guard(self.guard.clone())
@@ -303,7 +303,7 @@ impl_scope! {
     }
 }
 impl<G: EditGuard + Clone, Data: SharedDataMut<Item = String>> Driver<String, Data> for EditBox<G> {
-    type Widget = kas_widgets::EditBox<G>;
+    type Widget = kas_widgets::EditBox<(), G>;
     fn make(&self) -> Self::Widget {
         kas_widgets::EditBox::new("".to_string()).with_guard(self.guard.clone())
     }

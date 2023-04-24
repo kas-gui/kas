@@ -156,7 +156,7 @@ impl_scope! {
         title: Cow<'static, str>,
         data: T,
         #[widget]
-        edit: EditBox,
+        edit: EditBox<()>,
     }
 
     impl Self {

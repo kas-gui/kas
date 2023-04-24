@@ -19,7 +19,7 @@ fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let panes = (0..2).map(|n| EditField::new(format!("Pane {}", n + 1)).with_multi_line(true));
-    let panes = RowSplitter::<EditField>::new(panes.collect());
+    let panes = RowSplitter::<EditField<()>>::new(panes.collect());
 
     let window = kas::singleton! {
         #[widget{
@@ -34,7 +34,7 @@ fn main() -> kas::shell::Result<()> {
         #[derive(Debug)]
         struct {
             core: widget_core!(),
-            #[widget] panes: RowSplitter<EditField> = panes,
+            #[widget] panes: RowSplitter<EditField<()>> = panes,
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {

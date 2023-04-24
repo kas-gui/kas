@@ -127,12 +127,12 @@ impl ListData for MySharedData {
 #[derive(Clone, Debug)]
 struct ListEntryGuard;
 impl EditGuard for ListEntryGuard {
-    fn activate(_edit: &mut EditField<Self>, mgr: &mut EventCx<Self::Data>) -> Response {
+    fn activate(_edit: &mut EditField<(), Self>, mgr: &mut EventCx<Self::Data>) -> Response {
         mgr.push(EntryMsg::Select);
         Response::Used
     }
 
-    fn edit(edit: &mut EditField<Self>, mgr: &mut EventCx<Self::Data>) {
+    fn edit(edit: &mut EditField<(), Self>, mgr: &mut EventCx<Self::Data>) {
         mgr.push(EntryMsg::Update(edit.get_string()));
     }
 }
@@ -153,7 +153,7 @@ impl_scope! {
         #[widget]
         radio: RadioButton,
         #[widget]
-        edit: EditBox<ListEntryGuard>,
+        edit: EditBox<(), ListEntryGuard>,
     }
 }
 
@@ -229,7 +229,7 @@ fn main() -> kas::shell::Result<()> {
         #[derive(Debug)]
         struct {
             core: widget_core!(),
-            #[widget] edit: EditBox<impl EditGuard> = EditBox::new("3")
+            #[widget] edit: EditBox<(), impl EditGuard> = EditBox::new("3")
                 .on_afl(|mgr, text| match text.parse::<usize>() {
                     Ok(n) => mgr.push(n),
                     Err(_) => (),
