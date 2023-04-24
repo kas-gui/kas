@@ -893,6 +893,8 @@ impl<'a> EventMgr<'a> {
 
     /// Configure a widget
     ///
+    /// Note that, when handling events, this method returns the *old* state.
+    ///
     /// This is a shortcut to [`ConfigMgr::configure`].
     pub fn configure(&mut self, widget: NodeMut<'_>, id: WidgetId) {
         self.config_mgr(|mgr| mgr.configure(widget, id));
