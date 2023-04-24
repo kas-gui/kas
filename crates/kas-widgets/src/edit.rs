@@ -35,9 +35,11 @@ enum EditAction {
 
 /// A *guard* around an [`EditField`]
 ///
-/// When an [`EditField`] receives input, it updates its contents as expected,
-/// then invokes a method of `EditGuard`. This method may update the
-/// [`EditField`] and may return a message via [`EventMgr::push`].
+/// When an [`EditField`] receives user input, it updates its contents then
+/// calls an `EditGuard` method which may validate and adjust the content, set
+/// or clear the error state, emit a message via [`EventCx::push`], etc.
+///
+/// [`EditGuard::update`] is called on data update.
 ///
 /// All methods on this trait are passed a reference to the [`EditField`] as
 /// parameter. The `EditGuard`'s state may be accessed via the
@@ -48,7 +50,7 @@ enum EditAction {
 /// Pre-built implementations:
 ///
 /// -   `()`: does nothing
-/// -   `GuardNotify`: clones text to a `String` and pushes as a message ([`EventMgr::push`])
+/// -   `GuardNotify`: clones text to a `String` and pushes as a message ([`EventCx::push`])
 ///     on `activate` and `focus_lost` events
 /// -   `GuardActivate: calls a closure on `activate`
 /// -   `GuardAFL`: calls a closure on `activate` and `focus_lost`
@@ -85,21 +87,16 @@ pub trait EditGuard<A>: Debug + Sized {
 
     /// Edit guard
     ///
-    /// This function is called when contents are updated by the user (but not
-    /// on programmatic updates — see also [`EditGuard::update`]).
-    ///
-    /// The default implementation calls [`EditGuard::update`].
+    /// This function is called when contents are updated by the user.
     fn edit(edit: &mut EditField<A, Self>, cx: &mut EventCx<A>) {
-        Self::update(edit);
-        let _ = cx;
+        let _ = (edit, cx);
     }
 
     /// Update guard
     ///
-    /// This function is called on any programmatic update to the contents
-    /// (and potentially also by [`EditGuard::edit`]).
-    fn update(edit: &mut EditField<A, Self>) {
-        let _ = edit;
+    /// This function is called when input data is updated.
+    fn update(edit: &mut EditField<A, Self>, cx: &mut ConfigCx<A>) {
+        let _ = (edit, cx);
     }
 }
 
@@ -107,7 +104,7 @@ impl<A> EditGuard<A> for () {}
 
 /// An [`EditGuard`] impl which notifies on activate and focus lost
 ///
-/// On activate and focus-lost actions, calls [`EventMgr::push`] with the
+/// On activate and focus-lost actions, calls [`EventCx::push`] with the
 /// edit's contents as a [`String`].
 ///
 /// `Self::activate` returns [`Response::Used`].
@@ -170,16 +167,6 @@ where
 {
     fn edit(edit: &mut EditField<A, Self>, cx: &mut EventCx<A>) {
         (edit.guard.0)(cx, edit.text.text());
-    }
-}
-
-/// An [`EditGuard`] impl which calls a closure when updated
-#[autoimpl(Debug ignore self.0)]
-#[derive(Clone)]
-pub struct GuardUpdate<A, F: FnMut(&str)>(F, PhantomData<A>);
-impl<A, F: FnMut(&str) + 'static> EditGuard<A> for GuardUpdate<A, F> {
-    fn update(edit: &mut EditField<A, Self>) {
-        (edit.guard.0)(edit.text.text());
     }
 }
 
@@ -339,9 +326,6 @@ impl<A> EditBox<A, ()> {
     ///
     /// Technically, this consumes `self` and reconstructs another `EditBox`
     /// with a different parameterisation.
-    ///
-    /// This method calls [`EditGuard::update`] after applying `guard` to `self`
-    /// and discards any message emitted.
     #[inline]
     #[must_use]
     pub fn with_guard<G: EditGuard<A>>(self, guard: G) -> EditBox<A, G> {
@@ -397,18 +381,6 @@ impl<A> EditBox<A, ()> {
         F: FnMut(&mut EventCx<A>, &str) + 'static,
     {
         self.with_guard(GuardEdit(f, PhantomData))
-    }
-
-    /// Set a guard function, called on update
-    ///
-    /// The closure `f` is called when the `EditBox` is updated (by the user or
-    /// programmatically). It is also called immediately by this method.
-    ///
-    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
-    /// previously assigned to the `EditBox` will be replaced.
-    #[must_use]
-    pub fn on_update<F: FnMut(&str) + 'static>(self, f: F) -> EditBox<A, GuardUpdate<A, F>> {
-        self.with_guard(GuardUpdate(f, PhantomData))
     }
 }
 
@@ -582,6 +554,10 @@ impl_scope! {
     }
 
     impl Widget for Self {
+        fn update(&mut self, cx: &mut ConfigCx<A>) {
+            G::update(self, cx);
+        }
+
         fn handle_event(&mut self, mgr: &mut EventCx<A>, event: Event) -> Response {
             fn request_focus<A, G>(s: &mut EditField<A, G>, mgr: &mut EventCx<A>)
             where
@@ -748,7 +724,6 @@ impl_scope! {
                 // We use SET_RECT just to set the outer scroll bar position:
                 action = Action::SET_RECT;
             }
-            G::update(self);
             action
         }
     }
@@ -779,13 +754,10 @@ impl<A> EditField<A, ()> {
     ///
     /// Technically, this consumes `self` and reconstructs another `EditField`
     /// with a different parameterisation.
-    ///
-    /// This method calls [`EditGuard::update`] after applying `guard` to `self`
-    /// and discards any message emitted.
     #[inline]
     #[must_use]
     pub fn with_guard<G: EditGuard<A>>(self, guard: G) -> EditField<A, G> {
-        let mut edit = EditField {
+        EditField {
             core: self.core,
             _data: PhantomData,
             view_offset: self.view_offset,
@@ -804,9 +776,7 @@ impl<A> EditField<A, ()> {
             error_state: self.error_state,
             input_handler: self.input_handler,
             guard,
-        };
-        G::update(&mut edit);
-        edit
+        }
     }
 
     /// Set a guard function, called on activation
@@ -851,18 +821,6 @@ impl<A> EditField<A, ()> {
         f: F,
     ) -> EditField<A, GuardEdit<A, F>> {
         self.with_guard(GuardEdit(f, PhantomData))
-    }
-
-    /// Set a guard function, called on update
-    ///
-    /// The closure `f` is called when the `EditField` is updated (by the user or
-    /// programmatically). It is also called immediately by this method.
-    ///
-    /// This method is a parametisation of [`EditField::with_guard`]. Any guard
-    /// previously assigned to the `EditField` will be replaced.
-    #[must_use]
-    pub fn on_update<F: FnMut(&str) + 'static>(self, f: F) -> EditField<A, GuardUpdate<A, F>> {
-        self.with_guard(GuardUpdate(f, PhantomData))
     }
 }
 

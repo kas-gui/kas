@@ -936,6 +936,8 @@ impl<'a, Data> EventCx<'a, Data> {
     }
 
     /// Access data
+    ///
+    /// Note that, when handling events, this method returns the *old* state.
     #[inline]
     pub fn data(&self) -> &'a Data {
         self.data

@@ -438,8 +438,11 @@ pub trait Widget: WidgetChildren {
     /// This method is called after input data is updated,
     /// before [`Layout::draw`] is called. Typically it is either called
     /// immediately after the data is updated or when the widget becomes
-    /// visible. It need not be called if [`Widget::configure`] has already been
-    /// called since the last data update.
+    /// visible.
+    ///
+    /// This method is called from the default implementation of
+    /// [`Widget::configure`]. If your widget implements both, you may need to
+    /// call `update` from `configure` explicitly.
     fn update(&mut self, cx: &mut ConfigCx<Self::Data>) {
         let _ = cx;
     }
