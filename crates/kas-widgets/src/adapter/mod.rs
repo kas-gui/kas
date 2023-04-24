@@ -6,11 +6,9 @@
 //! Adapter widgets (wrappers)
 
 mod adapt_widget;
-mod map;
 mod reserve;
 mod with_label;
 
 pub use adapt_widget::*;
-pub use map::MapMessage;
 pub use reserve::{FnSizeRules, Reserve, ReserveP};
 pub use with_label::WithLabel;

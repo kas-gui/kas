@@ -5,7 +5,7 @@
 
 //! Widget extension traits
 
-use super::{FnSizeRules, MapMessage, Reserve, WithLabel};
+use super::{FnSizeRules, Reserve, WithLabel};
 use kas::cast::{Cast, CastFloat};
 use kas::dir::Directional;
 use kas::geom::Vec2;
@@ -14,7 +14,6 @@ use kas::text::AccelString;
 use kas::theme::SizeMgr;
 #[allow(unused)] use kas::Layout;
 use kas::Widget;
-use std::fmt::Debug;
 
 /// Support type for [`AdaptWidget::with_min_size_px`]
 pub struct WithMinSizePx(Vec2);
@@ -36,16 +35,6 @@ impl FnSizeRules for WithMinSizeEm {
 
 /// Provides some convenience methods on widgets
 pub trait AdaptWidget: Widget {
-    /// Construct a wrapper widget which maps a message of the given type
-    #[must_use]
-    fn map_msg<M: Debug, N: Debug, F>(self, f: F) -> MapMessage<Self, M, N, F>
-    where
-        Self: Sized,
-        F: FnMut(M) -> N,
-    {
-        MapMessage::new(self, f)
-    }
-
     /// Construct a wrapper widget which reserves extra space
     ///
     /// The closure `reserve` should generate `SizeRules` on request, just like
