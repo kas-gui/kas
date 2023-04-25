@@ -293,7 +293,7 @@ impl_scope! {
         view_delta: DVec2,
         view_alpha: f64,
         rel_width: f32,
-        iter: i32,
+        iters: i32,
     }
 
     impl Mandlebrot {
@@ -305,7 +305,7 @@ impl_scope! {
                 view_delta: DVec2::ZERO,
                 view_alpha: 0.0,
                 rel_width: 0.0,
-                iter: 64,
+                iters: 64,
             }
         }
 
@@ -348,23 +348,27 @@ impl_scope! {
         fn draw(&mut self, mut draw: DrawMgr) {
             let draw = draw.draw_device();
             let draw = DrawIface::<DrawPipe<Pipe>>::downcast_from(draw).unwrap();
-            let p = (self.alpha, self.delta, self.rel_width, self.iter);
+            let p = (self.alpha, self.delta, self.rel_width, self.iters);
             draw.draw.custom(draw.get_pass(), self.core.rect, p);
         }
     }
 
     impl Events for Mandlebrot {
-        type Data = ();
+        type Data = i32;
 
-        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, _: &i32, mgr: &mut ConfigMgr) {
             mgr.register_nav_fallback(self.id());
+        }
+
+        fn update(&mut self, data: &i32, _: &mut ConfigMgr) {
+            self.iters = *data;
         }
 
         fn navigable(&self) -> bool {
             true
         }
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &i32, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd) => {
                     match cmd {
@@ -434,28 +438,28 @@ impl_scope! {
     }]
     struct MandlebrotUI {
         core: widget_core!(),
-        #[widget]
-        label: Label<String>,
+        #[widget(&self.mbrot)]
+        label: Text<Mandlebrot, String>,
         #[widget(&self.iters)]
         iters_label: ReserveP<Text<i32, String>>,
         #[widget(&self.iters)]
         slider: Slider<i32, i32, kas::dir::Up>,
         // extra col span allows use of Label's margin
-        #[widget]
+        #[widget(&self.iters)]
         mbrot: Mandlebrot,
         iters: i32,
     }
 
     impl MandlebrotUI {
         fn new() -> MandlebrotUI {
-            let mbrot = Mandlebrot::new();
             MandlebrotUI {
                 core: Default::default(),
-                label: Label::new(mbrot.loc()),
+                label: format_text!(mbrot: &Mandlebrot, "{}", mbrot.loc()),
                 iters_label: format_text!(iters, "{}", iters)
                     .with_reserve(|size_mgr, axis| Label::new("000").size_rules(size_mgr, axis)),
-                slider: Slider::new_msg(0..=256, |iters| *iters, |iters| iters),
-                mbrot,
+                slider: Slider::up(0..=256, |iters| *iters)
+                    .msg_on_move(|iters| iters),
+                mbrot: Mandlebrot::new(),
                 iters: 64,
             }
         }
@@ -463,15 +467,15 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
-            if let Some(iter) = mgr.try_pop() {
-                self.mbrot.iter = iter;
-                self.iters = iter;
-                mgr.update(self.as_node_mut(data));
+        fn handle_message(&mut self, data: &(), mgr: &mut EventMgr) {
+            if let Some(iters) = mgr.try_pop() {
+                self.iters = iters;
             } else if let Some(ViewUpdate) = mgr.try_pop() {
                 mgr.redraw(self.mbrot.id());
-                *mgr |= self.label.set_string(self.mbrot.loc());
+            } else {
+                return;
             }
+            mgr.update(self.as_node_mut(data));
         }
     }
 }
