@@ -10,6 +10,7 @@ use kas::event::{Command, ScrollDelta};
 use kas::prelude::*;
 use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use std::cmp::Ord;
+use std::marker::PhantomData;
 use std::ops::RangeInclusive;
 
 /// Requirements on type used by [`Spinner`]
@@ -89,66 +90,72 @@ enum SpinBtn {
 #[derive(Debug)]
 struct ValueMsg<T>(T);
 
-#[derive(Clone, Debug)]
-struct SpinnerGuard<T: SpinnerValue> {
-    value: T,
+#[autoimpl(Debug ignore self.state_fn where T: trait)]
+struct SpinnerGuard<A, T: SpinnerValue> {
+    _data: PhantomData<A>,
     start: T,
     end: T,
+    step: T,
+    parsed: Option<T>,
+    state_fn: Box<dyn Fn(&A) -> T>,
 }
 
-impl<T: SpinnerValue> SpinnerGuard<T> {
-    fn new(range: RangeInclusive<T>) -> Self {
+impl<A, T: SpinnerValue> SpinnerGuard<A, T> {
+    fn new(range: RangeInclusive<T>, state_fn: Box<dyn Fn(&A) -> T>) -> Self {
         let (start, end) = range.into_inner();
         SpinnerGuard {
-            value: start,
+            _data: PhantomData,
             start,
             end,
+            step: T::default_step(),
+            parsed: None,
+            state_fn,
         }
     }
 
-    #[allow(clippy::neg_cmp_op_on_partial_ord)]
-    fn set_value(&mut self, value: T) {
-        self.value = value.clamp(self.start, self.end);
-    }
+    /// Returns new value if different
+    fn handle_btn(&self, cx: &mut EventCx<A>, btn: SpinBtn) -> Option<T> {
+        let old_value = (self.state_fn)(cx.data());
+        let value = match btn {
+            SpinBtn::Down => old_value.sub_step(self.step, self.start),
+            SpinBtn::Up => old_value.add_step(self.step, self.end),
+        };
 
-    fn range(&self) -> RangeInclusive<T> {
-        self.start..=self.end
+        (value != old_value).then_some(value)
     }
 }
 
-impl<T: SpinnerValue> EditGuard<()> for SpinnerGuard<T> {
-    fn activate(edit: &mut EditField<(), Self>, mgr: &mut EventCx<()>) -> Response {
-        if edit.has_error() {
-            *mgr |= edit.set_string(edit.guard.value.to_string());
-            edit.set_error_state(false);
-        }
-        mgr.push(ValueMsg(edit.guard.value));
+impl<A, T: SpinnerValue> EditGuard<A> for SpinnerGuard<A, T> {
+    fn activate(edit: &mut EditField<A, Self>, cx: &mut EventCx<A>) -> Response {
+        Self::focus_lost(edit, cx);
         Response::Used
     }
 
-    fn focus_lost(edit: &mut EditField<(), Self>, mgr: &mut EventCx<()>) {
-        if edit.has_error() {
-            *mgr |= edit.set_string(edit.guard.value.to_string());
-            edit.set_error_state(false);
+    fn focus_lost(edit: &mut EditField<A, Self>, cx: &mut EventCx<A>) {
+        if let Some(value) = edit.guard.parsed.take() {
+            cx.push(ValueMsg(value));
+        } else {
+            let value = (edit.guard.state_fn)(cx.data());
+            *cx |= edit.set_string(value.to_string());
+            *cx |= edit.set_error_state(false);
         }
     }
 
-    fn edit(edit: &mut EditField<(), Self>, mgr: &mut EventCx<()>) {
-        let is_err = match edit.get_str().parse() {
-            Ok(value) if edit.guard.range().contains(&value) => {
-                if value != edit.guard.value {
-                    edit.guard.value = value;
-                    mgr.push(ValueMsg(value));
-                }
-                false
-            }
-            Ok(value) => {
-                edit.guard.set_value(value);
-                true
-            }
-            _ => true,
+    fn edit(edit: &mut EditField<A, Self>, cx: &mut EventCx<A>) {
+        let is_err;
+        if let Ok(value) = edit.get_str().parse::<T>() {
+            edit.guard.parsed = Some(value.clamp(edit.guard.start, edit.guard.end));
+            is_err = false;
+        } else {
+            is_err = true;
         };
-        edit.set_error_state(is_err);
+        *cx |= edit.set_error_state(is_err);
+    }
+
+    fn update(edit: &mut EditField<A, Self>, cx: &mut ConfigCx<A>) {
+        let value = (edit.guard.state_fn)(cx.data());
+        *cx |= edit.set_string(value.to_string());
+        *cx |= edit.set_error_state(false);
     }
 }
 
@@ -165,21 +172,22 @@ impl_scope! {
     ///     representable, e.g. an integer or a power of 2.
     #[autoimpl(Debug ignore self.on_change)]
     #[widget {
+        data = A;
         layout = frame(FrameStyle::EditBox): row: [
             self.edit,
             column: [self.b_up, self.b_down],
         ];
     }]
-    pub struct Spinner<T: SpinnerValue> {
+    pub struct Spinner<A, T: SpinnerValue> {
         core: widget_core!(),
         #[widget]
-        edit: EditField<(), SpinnerGuard<T>>,
-        #[widget]
+        edit: EditField<A, SpinnerGuard<A, T>>,
+        #[widget(&())]
         b_up: MarkButton<SpinBtn>,
-        #[widget]
+        #[widget(&())]
         b_down: MarkButton<SpinBtn>,
         step: T,
-        on_change: Option<Box<dyn Fn(&mut EventCx<()>, T)>>,
+        on_change: Option<Box<dyn Fn(&mut EventCx<A>, T)>>,
     }
 
     impl Self {
@@ -188,12 +196,12 @@ impl_scope! {
         /// Values vary within the given `range`. The default step size is
         /// 1 for common types (see [`SpinnerValue::default_step`]).
         #[inline]
-        pub fn new(range: RangeInclusive<T>) -> Self {
+        pub fn new(range: RangeInclusive<T>, state_fn: impl Fn(&A) -> T + 'static) -> Self {
             Spinner {
                 core: Default::default(),
                 edit: EditField::new("")
                     .with_width_em(3.0, 8.0)
-                    .with_guard(SpinnerGuard::new(range)),
+                    .with_guard(SpinnerGuard::new(range, Box::new(state_fn))),
                 b_up: MarkButton::new(MarkStyle::Point(Direction::Up), SpinBtn::Up),
                 b_down: MarkButton::new(MarkStyle::Point(Direction::Down), SpinBtn::Down),
                 step: T::default_step(),
@@ -201,18 +209,19 @@ impl_scope! {
             }
         }
 
-        /// Construct a spinner with event handler `f`
+        /// Construct a spinner
         ///
-        /// Values vary within the given `range`. The default step size is
-        /// 1 for common types (see [`SpinnerValue::default_step`]).
-        ///
-        /// This closure is called when the value is changed.
+        /// - Values vary within the given `range`
+        /// - The default step size is 1 for common types (see [`SpinnerValue::default_step`])
+        /// - `state_fn` extracts the current state from input data
+        /// - A message generated by `message_fn` is emitted when toggled
         #[inline]
-        pub fn new_on<F>(range: RangeInclusive<T>, f: F) -> Self
-        where
-            F: Fn(&mut EventCx<()>, T) + 'static,
-        {
-            Spinner::new(range).on_change(f)
+        pub fn new_msg<M: std::fmt::Debug + 'static>(
+            range: RangeInclusive<T>,
+            state_fn: impl Fn(&A) -> T + 'static,
+            message_fn: impl Fn(T) -> M + 'static,
+        ) -> Self {
+            Spinner::new(range, state_fn).on_change(move |cx, state| cx.push(message_fn(state)))
         }
 
         /// Set event handler `f`
@@ -227,7 +236,7 @@ impl_scope! {
         #[must_use]
         pub fn on_change<F>(mut self, f: F) -> Self
         where
-            F: Fn(&mut EventCx<()>, T) + 'static,
+            F: Fn(&mut EventCx<A>, T) + 'static,
         {
             self.on_change = Some(Box::new(f));
             self
@@ -270,51 +279,6 @@ impl_scope! {
             self.step = step;
             self
         }
-
-        /// Set the initial value
-        #[inline]
-        #[must_use]
-        pub fn with_value(mut self, value: T) -> Self {
-            self.edit.guard.set_value(value);
-            self
-        }
-
-        /// Get the current value
-        #[inline]
-        pub fn value(&self) -> T {
-            self.edit.guard.value
-        }
-
-        /// Set the value
-        ///
-        /// Returns [`Action::REDRAW`] if a redraw is required.
-        pub fn set_value(&mut self, value: T) -> Action {
-            self.edit.set_error_state(false);
-            let old_value = self.edit.guard.value;
-            self.edit.guard.set_value(value);
-            if self.edit.guard.value != old_value {
-                self.edit.set_string(self.edit.guard.value.to_string())
-            } else {
-                Action::empty()
-            }
-        }
-
-        fn handle_btn(&mut self, mgr: &mut EventCx<()>, btn: SpinBtn) {
-            let value = match btn {
-                SpinBtn::Down => self.value().sub_step(self.step, self.edit.guard.start),
-                SpinBtn::Up => self.value().add_step(self.step, self.edit.guard.end),
-            };
-
-            if value != self.edit.guard.value {
-                self.edit.guard.value = value;
-                if let Some(ref f) = self.on_change {
-                    f(mgr, value);
-                }
-            }
-
-            self.edit.set_error_state(false);
-            *mgr |= self.edit.set_string(value.to_string());
-        }
     }
 
     impl Layout for Self {
@@ -347,11 +311,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut ConfigCx<()>) {
-            *mgr |= self.edit.set_string(self.edit.guard.value.to_string());
-        }
-
-        fn steal_event(&mut self, mgr: &mut EventCx<()>, _: &WidgetId, event: &Event) -> Response {
+        fn steal_event(&mut self, mgr: &mut EventCx<A>, _: &WidgetId, event: &Event) -> Response {
             let btn = match event {
                 Event::Command(cmd) => match cmd {
                     Command::Down => SpinBtn::Down,
@@ -370,18 +330,27 @@ impl_scope! {
                 _ => return Response::Unused,
             };
 
-            self.handle_btn(mgr, btn);
-            Response::Used
-        }
-
-        fn handle_message(&mut self, mgr: &mut EventCx<()>) {
-            if let Some(ValueMsg(value)) = mgr.try_pop() {
+            if let Some(value) = self.edit.guard.handle_btn(mgr, btn) {
                 if let Some(ref f) = self.on_change {
                     f(mgr, value);
                 }
             }
-            if let Some(btn) = mgr.try_pop::<SpinBtn>() {
-                self.handle_btn(mgr, btn);
+            Response::Used
+        }
+
+        fn handle_message(&mut self, mgr: &mut EventCx<A>) {
+            let new_value = if let Some(ValueMsg(value)) = mgr.try_pop() {
+                Some(value)
+            } else if let Some(btn) = mgr.try_pop::<SpinBtn>() {
+                self.edit.guard.handle_btn(mgr, btn)
+            } else {
+                None
+            };
+
+            if let Some(value) = new_value {
+                if let Some(ref f) = self.on_change {
+                    f(mgr, value);
+                }
             }
         }
     }
