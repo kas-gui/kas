@@ -286,7 +286,9 @@ struct ViewUpdate;
 
 impl_scope! {
     #[derive(Clone, Debug)]
-    #[widget]
+    #[widget {
+        data = i32;
+    }]
     struct Mandlebrot {
         core: widget_core!(),
         alpha: DVec2,
@@ -359,6 +361,10 @@ impl_scope! {
             mgr.register_nav_fallback(self.id());
         }
 
+        fn update(&mut self, cx: &mut ConfigCx<Self::Data>) {
+            self.iter = *cx.data();
+        }
+
         fn navigable(&self) -> bool {
             true
         }
@@ -427,48 +433,46 @@ impl_scope! {
     #[widget{
         layout = grid: {
             1, 0: self.label;
-            0, 1: align(center): self.iters_label;
+            0, 1: align(center): self.iters;
             0, 2: self.slider;
             1..3, 1..4: self.mbrot;
         };
     }]
     struct MandlebrotWindow {
         core: widget_core!(),
-        #[widget]
-        label: Label<String>,
-        #[widget(&self.iters)]
-        iters_label: ReserveP<Text<i32, String>>,
-        #[widget(&self.iters)]
+        #[widget(&self.mbrot)]
+        label: Text<Mandlebrot, String>,
+        #[widget(&self.iter)]
+        iters: ReserveP<Text<i32, String>>,
+        #[widget(&self.iter)]
         slider: Slider<i32, i32, kas::dir::Up>,
         // extra col span allows use of Label's margin
-        #[widget]
+        #[widget(&self.iter)]
         mbrot: Mandlebrot,
-        iters: i32,
+        iter: i32,
     }
 
     impl MandlebrotWindow {
         fn new() -> MandlebrotWindow {
-            let mbrot = Mandlebrot::new();
             MandlebrotWindow {
                 core: Default::default(),
-                label: Label::new(mbrot.loc()),
-                iters_label: format_text!(iters, "{}", iters)
+                label: format_text!(mbrot: &Mandlebrot, "{}", mbrot.loc()),
+                iters: format_text!(iter, "{}", iter)
                     .with_reserve(|size_mgr, axis| Label::new("000").size_rules(size_mgr, axis)),
-                slider: Slider::new_msg(0..=256, |iters| *iters, |iters| iters),
-                mbrot,
-                iters: 64,
+                slider: Slider::new_msg(0..=256, |iter| *iter, |iter| iter),
+                mbrot: Mandlebrot::new(),
+                iter: 64,
             }
         }
     }
     impl Widget for Self {
         fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
             if let Some(iter) = mgr.try_pop() {
-                self.mbrot.iter = iter;
-                self.iters = iter;
+                self.iter = iter;
                 mgr.config_cx(|cx| cx.update(self));
             } else if let Some(ViewUpdate) = mgr.try_pop() {
                 mgr.redraw(self.mbrot.id());
-                *mgr |= self.label.set_string(self.mbrot.loc());
+                mgr.config_cx(|cx| cx.update(self));
             }
         }
     }
