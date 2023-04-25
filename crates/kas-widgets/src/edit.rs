@@ -782,8 +782,9 @@ impl<A, G: EditGuard<A>> EditField<A, G> {
     ///
     /// When true, the input field's background is drawn red.
     // TODO: possibly change type to Option<String> and display the error
-    pub fn set_error_state(&mut self, error_state: bool) {
+    pub fn set_error_state(&mut self, error_state: bool) -> Action {
         self.error_state = error_state;
+        Action::REDRAW
     }
 
     fn prepare_text(&mut self, mgr: &mut EventMgr) {

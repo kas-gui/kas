@@ -26,7 +26,7 @@
 use crate::MaybeOwned;
 use kas::model::{SharedData, SharedDataMut};
 use kas::prelude::*;
-use kas_widgets::{Label, NavFrame, RadioGroup, SliderValue, SpinnerValue};
+use kas_widgets::{Label, NavFrame, RadioGroup, SliderValue};
 use std::default::Default;
 use std::ops::RangeInclusive;
 
@@ -280,47 +280,6 @@ where
         let range = self.range.0..=self.range.1;
         kas_widgets::Slider::new_with_direction(range, self.direction)
             .on_move(|mgr, value| mgr.push(value))
-            .with_step(self.step)
-    }
-    fn set_mo(
-        &self,
-        widget: &mut Self::Widget,
-        _: &Data::Key,
-        item: MaybeOwned<Data::Item>,
-    ) -> Action {
-        widget.set_value(item.into_owned())
-    }
-    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
-        if let Some(state) = mgr.try_pop() {
-            data.set(mgr, key, state);
-        }
-    }
-}
-
-/// [`kas_widgets::Spinner`] view widget constructor
-#[derive(Clone, Copy, Debug)]
-pub struct Spinner<T: SpinnerValue> {
-    range: (T, T),
-    step: T,
-}
-impl<T: SpinnerValue + Default> Spinner<T> {
-    /// Construct, with given `range` (see [`kas_widgets::Spinner::new`])
-    pub fn new(range: RangeInclusive<T>) -> Self {
-        Spinner {
-            range: range.into_inner(),
-            step: T::default_step(),
-        }
-    }
-}
-impl<Data: SharedDataMut> Driver<Data::Item, Data> for Spinner<Data::Item>
-where
-    Data::Item: SpinnerValue,
-{
-    type Widget = kas_widgets::Spinner<Data::Item>;
-    fn make(&self) -> Self::Widget {
-        let range = self.range.0..=self.range.1;
-        kas_widgets::Spinner::new(range)
-            .on_change(|mgr, val| mgr.push(val))
             .with_step(self.step)
     }
     fn set_mo(
