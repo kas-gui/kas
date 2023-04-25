@@ -12,7 +12,7 @@ use kas::event::{self, Command};
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
 use kas::widget::adapter::ReserveP;
-use kas::widget::{Label, Slider};
+use kas::widget::{format_text, Label, Slider, Text};
 use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawPipe};
 use kas_wgpu::wgpu;
 use std::mem::size_of;
@@ -427,7 +427,7 @@ impl_scope! {
     #[widget{
         layout = grid! {
             (1, 0) => self.label,
-            (0, 1) => align!(center, self.iters),
+            (0, 1) => align!(center, self.iters_label),
             (0, 2) => self.slider,
             (1..3, 1..4) => self.mbrot,
         };
@@ -436,39 +436,38 @@ impl_scope! {
         core: widget_core!(),
         #[widget]
         label: Label<String>,
-        #[widget]
-        iters: ReserveP<Label<String>>,
-        #[widget]
-        slider: Slider<i32, kas::dir::Up>,
+        #[widget(&self.iters)]
+        iters_label: ReserveP<Text<i32, String>>,
+        #[widget(&self.iters)]
+        slider: Slider<i32, i32, kas::dir::Up>,
         // extra col span allows use of Label's margin
         #[widget]
         mbrot: Mandlebrot,
+        iters: i32,
     }
 
     impl MandlebrotUI {
         fn new() -> MandlebrotUI {
-            let slider = Slider::new(0..=256)
-                .with_value(64)
-                .on_move(|mgr, iter| mgr.push(iter));
             let mbrot = Mandlebrot::new();
             MandlebrotUI {
                 core: Default::default(),
                 label: Label::new(mbrot.loc()),
-                iters: ReserveP::new(Label::from("64"), |size_mgr, axis| {
-                    Label::new("000").size_rules(size_mgr, axis)
-                }),
-                slider,
+                iters_label: format_text!(iters, "{}", iters)
+                    .with_reserve(|size_mgr, axis| Label::new("000").size_rules(size_mgr, axis)),
+                slider: Slider::new_msg(0..=256, |iters| *iters, |iters| iters),
                 mbrot,
+                iters: 64,
             }
         }
     }
     impl Events for Self {
         type Data = ();
 
-        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
             if let Some(iter) = mgr.try_pop() {
                 self.mbrot.iter = iter;
-                *mgr |= self.iters.set_string(format!("{iter}"));
+                self.iters = iter;
+                mgr.update(self.as_node_mut(data));
             } else if let Some(ViewUpdate) = mgr.try_pop() {
                 mgr.redraw(self.mbrot.id());
                 *mgr |= self.label.set_string(self.mbrot.loc());
