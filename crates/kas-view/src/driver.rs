@@ -161,33 +161,6 @@ impl_via_to_string!(i8, i16, i32, i64, i128, isize);
 impl_via_to_string!(u8, u16, u32, u64, u128, usize);
 impl_via_to_string!(f32, f64);
 
-/// [`kas_widgets::ProgressBar`] view widget constructor
-#[derive(Clone, Copy, Debug, Default)]
-pub struct ProgressBar<D: Directional> {
-    direction: D,
-}
-impl<D: Directional + Default> ProgressBar<D> {
-    /// Construct
-    pub fn new() -> Self {
-        ProgressBar::new_with_direction(Default::default())
-    }
-}
-impl<D: Directional> ProgressBar<D> {
-    /// Construct with given `direction`
-    pub fn new_with_direction(direction: D) -> Self {
-        ProgressBar { direction }
-    }
-}
-impl<D: Directional, Data: SharedData<Item = f32>> Driver<f32, Data> for ProgressBar<D> {
-    type Widget = kas_widgets::ProgressBar<D>;
-    fn make(&self) -> Self::Widget {
-        kas_widgets::ProgressBar::new_with_direction(self.direction)
-    }
-    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<f32>) -> Action {
-        widget.set_value(item.into_owned())
-    }
-}
-
 /// [`kas_widgets::RadioBox`] view widget constructor
 #[derive(Clone, Debug)]
 pub struct RadioBox {
