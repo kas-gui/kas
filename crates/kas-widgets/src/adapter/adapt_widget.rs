@@ -6,6 +6,7 @@
 //! Widget extension traits
 
 use super::{FnSizeRules, OnUpdate, Reserve, WithLabel};
+use crate::Map;
 use kas::cast::{Cast, CastFloat};
 use kas::dir::Directional;
 use kas::event::ConfigMgr;
@@ -40,6 +41,18 @@ impl FnSizeRules for WithMinSizeEm {
 /// Problem: this must be limited to `where Self::Data == ()` but "equality
 /// constraints are not yet supported in `where` clauses" (Rust#20041).
 pub trait AdaptWidget: Widget {
+    /// Map data type via a function
+    ///
+    /// Returns a wrapper around the input widget.
+    #[must_use]
+    fn map<A, F>(self, f: F) -> Map<A, Self, F>
+    where
+        F: for<'a> Fn(&'a A) -> &'a Self::Data,
+        Self: Sized,
+    {
+        Map::new(self, f)
+    }
+
     /// Call the given closure on [`Widget::update`]
     ///
     /// Returns a wrapper around the input widget.

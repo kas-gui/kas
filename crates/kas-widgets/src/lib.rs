@@ -79,7 +79,7 @@ mod text;
 pub mod adapter;
 
 pub use crate::image::Image;
-pub use adapt::Adapt;
+pub use adapt::{Adapt, Map};
 pub use button::{Button, TextButton};
 pub use check_box::{CheckBox, CheckButton};
 pub use combobox::ComboBox;

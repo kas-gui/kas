@@ -12,8 +12,10 @@ use std::marker::PhantomData;
 impl_scope! {
     /// Data adaption node
     ///
-    /// This node adapts an input data type to some output type with additional
-    /// state. It may also handle messages to update its data.
+    /// Where [`Map`] allows mapping to a sub-set of input data, `Adapt` allows
+    /// mapping to a super-set (including internal storage). Further, `Adapt`
+    /// supports message handlers which mutate internal storage.
+    #[autoimpl(Deref, DerefMut using self.inner)]
     #[widget {
         layout = self.inner;
     }]
@@ -108,6 +110,42 @@ impl_scope! {
                     self.need_update = true;
                     mgr.update(self.as_node_mut(data));
                 }
+            }
+        }
+    }
+}
+
+impl_scope! {
+    /// Data mapping
+    ///
+    /// This is a generic data-mapping widget. See also [`Adapt`], [`WithAny`].
+    #[autoimpl(Deref, DerefMut using self.inner)]
+    #[widget {
+        Data = A;
+        layout = self.inner;
+    }]
+    pub struct Map<A, W: Widget, F>
+    where
+        F: for<'a> Fn(&'a A) -> &'a W::Data,
+    {
+        core: widget_core!(),
+        #[widget((self.map_fn)(data))]
+        inner: W,
+        map_fn: F,
+        _data: PhantomData<A>,
+    }
+
+    impl Self {
+        /// Construct
+        ///
+        /// -   Over an `inner` widget
+        /// -   And `map_fn` mapping to the inner widget's data type
+        pub fn new(inner: W, map_fn: F) -> Self {
+            Map {
+                core: Default::default(),
+                inner,
+                map_fn,
+                _data: PhantomData,
             }
         }
     }
