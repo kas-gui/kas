@@ -15,8 +15,37 @@ use crate::geom::Rect;
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::{Text, TextApi};
 use crate::theme::{DrawMgr, SizeMgr, TextClass};
-use crate::{Layout, WidgetCore};
-use kas_macros::impl_scope;
+use crate::{Layout, Widget, WidgetCore};
+use kas_macros::{autoimpl, impl_scope};
+use std::marker::PhantomData;
+
+impl_scope! {
+    /// Data adaptation: map to ()
+    #[widget {
+        data = A;
+        layout = self.inner;
+    }]
+    #[autoimpl(Debug)]
+    #[autoimpl(Deref, DerefMut using self.inner)]
+    #[doc(hidden)]
+    pub struct Discard<A, W: Widget<Data = ()>> {
+        core: widget_core!(),
+        #[widget(&())]
+        inner: W,
+        _data: PhantomData<A>,
+    }
+
+    impl Self {
+        /// Construct
+        pub fn new(inner: W) -> Self {
+            Discard {
+                core: Default::default(),
+                inner,
+                _data: PhantomData,
+            }
+        }
+    }
+}
 
 impl_scope! {
     /// A simple text label

@@ -93,35 +93,6 @@ impl_scope! {
 }
 
 impl_scope! {
-    /// Data adaptation: map to ()
-    ///
-    /// This is a specialized version of [`Map`] with inner data type fixed to `()`.
-    #[widget {
-        data = A;
-        layout = self.inner;
-    }]
-    #[autoimpl(Debug)]
-    #[autoimpl(Deref, DerefMut using self.inner)]
-    pub struct Discard<A, W: Widget<Data = ()>> {
-        core: widget_core!(),
-        #[widget(&())]
-        inner: W,
-        _data: PhantomData<A>,
-    }
-
-    impl Self {
-        /// Construct
-        pub fn new(inner: W) -> Self {
-            Discard {
-                core: Default::default(),
-                inner,
-                _data: PhantomData,
-            }
-        }
-    }
-}
-
-impl_scope! {
     /// Data mapping
     ///
     /// This is a generic data-mapping widget. See also [`Discard`], [`Adapt`].
