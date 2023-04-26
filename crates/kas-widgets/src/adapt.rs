@@ -4,6 +4,11 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Adapt widget
+//!
+//! TODO: add Hash widget which requires A: Hash, calculates the hash on each
+//! update, and does not recurse update calls if the hash matches.
+//! Maybe also Clone variant. And Discard never needs to recurse update.
+//! Not currently possible since there is no control over recursion of update.
 
 use kas::prelude::*;
 use std::fmt::Debug;
@@ -12,9 +17,11 @@ use std::marker::PhantomData;
 impl_scope! {
     /// Data adaption node
     ///
-    /// This node adapts an input data type to some output type with additional
-    /// state. It may also handle messages to update its data.
+    /// Where [`Map`] allows mapping to a sub-set of input data, `Adapt` allows
+    /// mapping to a super-set (including internal storage). Further, `Adapt`
+    /// supports message handlers which mutate internal storage.
     #[autoimpl(Debug ignore self.map_fn, self.message_handlers, self._data)]
+    #[autoimpl(Deref, DerefMut using self.inner)]
     #[widget {
         data = A;
         layout = self.inner;
@@ -87,12 +94,15 @@ impl_scope! {
 
 impl_scope! {
     /// Data adaptation: map to ()
+    ///
+    /// This is a specialized version of [`Map`] with inner data type fixed to `()`.
     #[widget {
         data = A;
         layout = self.inner;
     }]
     #[autoimpl(Debug)]
-    pub struct DiscardData<A, W: Widget<Data = ()>> {
+    #[autoimpl(Deref, DerefMut using self.inner)]
+    pub struct Discard<A, W: Widget<Data = ()>> {
         core: widget_core!(),
         #[widget(&())]
         inner: W,
@@ -102,9 +112,46 @@ impl_scope! {
     impl Self {
         /// Construct
         pub fn new(inner: W) -> Self {
-            DiscardData {
+            Discard {
                 core: Default::default(),
                 inner,
+                _data: PhantomData,
+            }
+        }
+    }
+}
+
+impl_scope! {
+    /// Data mapping
+    ///
+    /// This is a generic data-mapping widget. See also [`Discard`], [`Adapt`].
+    #[autoimpl(Debug ignore self.map_fn, self._data)]
+    #[autoimpl(Deref, DerefMut using self.inner)]
+    #[widget {
+        data = A;
+        layout = self.inner;
+    }]
+    pub struct Map<A, W: Widget, F>
+    where
+        F: for<'a> Fn(&'a A) -> &'a W::Data,
+    {
+        core: widget_core!(),
+        #[widget((self.map_fn)(data))]
+        inner: W,
+        map_fn: F,
+        _data: PhantomData<A>,
+    }
+
+    impl Self {
+        /// Construct
+        ///
+        /// -   Over an `inner` widget
+        /// -   And `map_fn` mapping to the inner widget's data type
+        pub fn new(inner: W, map_fn: F) -> Self {
+            Map {
+                core: Default::default(),
+                inner,
+                map_fn,
                 _data: PhantomData,
             }
         }
