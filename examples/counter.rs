@@ -7,23 +7,24 @@
 
 use kas::prelude::*;
 use kas::widget::dialog::Window;
-use kas::widget::{button, format_text, Adapt, BoxColumn, Row};
+use kas::widget::{button, column, format_text, row, Adapt};
 
 #[derive(Clone, Debug)]
 struct Increment(i32);
 
+#[rustfmt::skip]
 fn counter() -> impl Widget<Data = ()> {
     // TODO: column, row macros?
-    // TODO: auto-boxing? Generic Button?
-    let tree = BoxColumn::new_vec(vec![
-        Box::new(format_text!(count, "{}", count)),
-        Box::new(Row::new_vec(vec![
+    let tree = column((
+        format_text!(count, "{}", count),
+        row((
             button("−", Increment(-1)),
             button("+", Increment(1)),
-        ])),
-    ]);
+        )),
+    ));
 
-    Adapt::new(tree, 0, |_, count| count).on_message(|_, count, Increment(add)| *count += add)
+    Adapt::new(tree, 0, |_, count| count)
+        .on_message(|_, count, Increment(add)| *count += add)
 }
 
 fn main() -> kas::shell::Result<()> {
