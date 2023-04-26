@@ -764,8 +764,8 @@ impl Layout {
             }
             Layout::Label(stor, text) => {
                 children.push(stor.to_token_stream());
-                ty_toks.append_all(quote! { #stor: ::kas::label::StrLabel, });
-                def_toks.append_all(quote! { #stor: ::kas::label::StrLabel::new(#text), });
+                ty_toks.append_all(quote! { #stor: ::kas::hidden::StrLabel, });
+                def_toks.append_all(quote! { #stor: ::kas::hidden::StrLabel::new(#text), });
             }
         }
     }

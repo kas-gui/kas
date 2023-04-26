@@ -3,10 +3,11 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Simplified text label
+//! Hidden extras
 //!
-//! This module supports text strings in macros.
-//! Direct usage of this module from user code is not supported.
+//! It turns out that some widgets are needed in kas-core. This module is
+//! hidden by default and direct usage (outside of kas crates) is
+//! not supported (i.e. **changes are not considered breaking**).
 
 use crate::class::HasStr;
 use crate::event::ConfigMgr;
