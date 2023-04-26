@@ -82,7 +82,7 @@ pub use kas::hidden::Discard;
 
 pub use crate::image::Image;
 pub use adapt::{Adapt, Map};
-pub use button::{Button, TextButton};
+pub use button::{button, Button, TextButton};
 pub use check_box::{CheckBox, CheckButton};
 pub use combobox::ComboBox;
 pub use edit::{EditBox, EditField, EditGuard};

@@ -7,7 +7,7 @@
 
 use kas::prelude::*;
 use kas::widget::dialog::Window;
-use kas::widget::{format_text, Adapt, BoxColumn, BoxRow, Discard, TextButton};
+use kas::widget::{button, format_text, Adapt, BoxColumn, Row};
 
 #[derive(Clone, Debug)]
 struct Increment(i32);
@@ -15,13 +15,12 @@ struct Increment(i32);
 fn counter() -> impl Widget<Data = ()> {
     // TODO: column, row macros?
     // TODO: auto-boxing? Generic Button?
-    // TODO: avoid requiring Discard here
     let tree = BoxColumn::new_vec(vec![
         Box::new(format_text!(count, "{}", count)),
-        Box::new(Discard::new(BoxRow::new_vec(vec![
-            Box::new(TextButton::new_msg("−", Increment(-1))),
-            Box::new(TextButton::new_msg("+", Increment(1))),
-        ]))),
+        Box::new(Row::new_vec(vec![
+            button("−", Increment(-1)),
+            button("+", Increment(1)),
+        ])),
     ]);
 
     Adapt::new(tree, 0, |_, count| count).on_message(|_, count, Increment(add)| *count += add)

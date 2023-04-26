@@ -10,7 +10,20 @@ use kas::draw::color::Rgb;
 use kas::event::{VirtualKeyCode, VirtualKeyCodes};
 use kas::prelude::*;
 use kas::theme::TextClass;
+use kas::IntoWidget;
 use std::fmt::Debug;
+
+/// Construct a [`Button`] with given `inner` content
+///
+/// TODO: decide what type of construction API to support.
+#[inline]
+pub fn button<Data, W, M>(inner: W, msg: M) -> Button<W::Widget>
+where
+    W: IntoWidget<Data>,
+    M: Clone + Debug + 'static,
+{
+    Button::new_msg(inner.into_widget(), msg)
+}
 
 impl_scope! {
     /// A push-button with a generic label
