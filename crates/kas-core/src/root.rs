@@ -76,6 +76,7 @@ impl_scope! {
         restrictions: (bool, bool),
         drag_anywhere: bool,
         transparent: bool,
+        config_fn: Option<Box<dyn Fn(&Self, &Data, &mut ConfigMgr)>>,
         #[widget(&())]
         title_bar: TitleBar,
         #[widget]
@@ -171,12 +172,16 @@ impl_scope! {
     impl Events for Self {
         type Data = Data;
 
-        fn configure(&mut self, _: &Data, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, data: &Data, mgr: &mut ConfigMgr) {
             if mgr.platform().is_wayland() && self.decorations == Decorations::Server {
                 // Wayland's base protocol does not support server-side decorations
                 // TODO: Wayland has extensions for this; server-side is still
                 // usually preferred where supported (e.g. KDE).
                 self.decorations = Decorations::Toolkit;
+            }
+
+            if let Some(ref f) = self.config_fn {
+                f(self, data, mgr);
             }
         }
 
@@ -202,6 +207,7 @@ impl<Data: 'static> Window<Data> {
             restrictions: (true, false),
             drag_anywhere: true,
             transparent: false,
+            config_fn: None,
             title_bar: TitleBar::new(title),
             w: ui,
             bar_h: 0,
@@ -301,6 +307,18 @@ impl<Data: 'static> Window<Data> {
     /// Default: `false`.
     pub fn with_transparent(mut self, transparent: bool) -> Self {
         self.transparent = transparent;
+        self
+    }
+
+    /// Set a closure to be called on initialisation
+    ///
+    /// This closure is called before sizing, drawing and event handling.
+    /// It may be called more than once.
+    pub fn on_configure(
+        mut self,
+        config_fn: impl Fn(&Self, &Data, &mut ConfigMgr) + 'static,
+    ) -> Self {
+        self.config_fn = Some(Box::new(config_fn));
         self
     }
 
