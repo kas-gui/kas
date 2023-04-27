@@ -23,8 +23,7 @@ use std::borrow::Cow;
 
 impl_scope! {
     /// A simple window around a widget
-    #[autoimpl(Clone where W: Clone)]
-    #[autoimpl(Debug ignore self.icon)]
+    #[autoimpl(Debug ignore self.icon, self.config_fn)]
     #[widget(layout = self.inner;)]
     pub struct Window<W: Widget<Data = ()>> {
         core: widget_core!(),
@@ -33,9 +32,18 @@ impl_scope! {
         #[widget]
         inner: W,
         icon: Option<Icon>,
+        config_fn: Option<Box<dyn Fn(&Self, &mut ConfigCx<W::Data>)>>,
     }
 
-    impl<W: Widget<Data = ()>> kas::Window for Window<W> {
+    impl Widget for Self {
+        fn configure(&mut self, cx: &mut ConfigCx<W::Data>) {
+            if let Some(f) = self.config_fn.as_ref() {
+                f(self, cx);
+            }
+        }
+    }
+
+    impl kas::Window for Self {
         fn title(&self) -> &str {
             &self.title
         }
@@ -59,7 +67,20 @@ impl<W: Widget<Data = ()>> Window<W> {
             title: title.to_string(),
             inner,
             icon: None,
+            config_fn: None,
         }
+    }
+
+    /// Set a closure to be called on initialisation
+    ///
+    /// This closure is called before sizing, drawing and event handling.
+    /// It may be called more than once.
+    pub fn on_configure(
+        mut self,
+        config_fn: impl Fn(&Self, &mut ConfigCx<W::Data>) + 'static,
+    ) -> Self {
+        self.config_fn = Some(Box::new(config_fn));
+        self
     }
 
     /// Configure whether min/max dimensions are forced

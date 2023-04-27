@@ -170,6 +170,20 @@ where
     }
 }
 
+/// An [`EditGuard`] impl which sets content on update
+#[autoimpl(Debug ignore self.0)]
+#[derive(Clone)]
+pub struct GuardUpdate<A, F: FnMut(&A) -> String + 'static>(F, PhantomData<A>);
+impl<A, F> EditGuard<A> for GuardUpdate<A, F>
+where
+    F: FnMut(&A) -> String + 'static,
+{
+    fn update(edit: &mut EditField<A, Self>, cx: &mut ConfigCx<A>) {
+        let string = (edit.guard.0)(cx.data());
+        *cx |= edit.set_string(string);
+    }
+}
+
 impl_scope! {
     /// A text-edit box
     ///
@@ -381,6 +395,18 @@ impl<A> EditBox<A, ()> {
         F: FnMut(&mut EventCx<A>, &str) + 'static,
     {
         self.with_guard(GuardEdit(f, PhantomData))
+    }
+
+    /// Set a state-generation function, called on update
+    ///
+    /// The closure `f` is called when input data is updated and the result is
+    /// assigned to self ([`EditBox::set_string`]).
+    #[must_use]
+    pub fn on_update<F>(self, f: F) -> EditBox<A, GuardUpdate<A, F>>
+    where
+        F: FnMut(&A) -> String + 'static,
+    {
+        self.with_guard(GuardUpdate(f, PhantomData))
     }
 }
 
@@ -821,6 +847,18 @@ impl<A> EditField<A, ()> {
         f: F,
     ) -> EditField<A, GuardEdit<A, F>> {
         self.with_guard(GuardEdit(f, PhantomData))
+    }
+
+    /// Set a state-generation function, called on update
+    ///
+    /// The closure `f` is called when input data is updated and the result is
+    /// assigned to self ([`EditField::set_string`]).
+    #[must_use]
+    pub fn on_update<F>(self, f: F) -> EditField<A, GuardUpdate<A, F>>
+    where
+        F: FnMut(&A) -> String + 'static,
+    {
+        self.with_guard(GuardUpdate(f, PhantomData))
     }
 }
 
