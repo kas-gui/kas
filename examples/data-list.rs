@@ -19,10 +19,6 @@
 use kas::prelude::*;
 use kas::widget::*;
 
-thread_local! {
-    pub static RADIO: RadioGroup = RadioGroup::new();
-}
-
 #[derive(Clone, Debug)]
 enum Control {
     SetLen(usize),
@@ -55,7 +51,7 @@ impl EditGuard<()> for ListEntryGuard {
 impl_scope! {
     // The list entry
     #[widget{
-        Data = ();
+        Data = usize;
         layout = column! [
             row! [self.label, self.radio],
             self.edit,
@@ -63,25 +59,29 @@ impl_scope! {
     }]
     struct ListEntry {
         core: widget_core!(),
-        #[widget]
+        #[widget(&())]
         label: StringLabel,
         #[widget]
-        radio: RadioButton,
-        #[widget]
+        radio: RadioButton<usize>,
+        // We deliberately use these widgets to store state instead of passing.
+        // See examples/data-list-view.rs for a better option.
+        #[widget(&())]
         edit: EditBox<(), ListEntryGuard>,
     }
 }
 
 impl ListEntry {
-    fn new(n: usize, active: bool) -> Self {
+    fn new(n: usize) -> Self {
         // Note: we embed `n` into messages here. A possible alternative: use
         // List::on_message to pop the message and push `(usize, Control)`.
         ListEntry {
             core: Default::default(),
             label: Label::new(format!("Entry number {}", n + 1)),
-            radio: RadioButton::new("display this entry", RADIO.with(|g| g.clone()))
-                .with_state(active)
-                .on_select(move |mgr| mgr.push(Control::Select(n))),
+            radio: RadioButton::new_msg(
+                "display this entry",
+                move |active| *active == n,
+                move || Control::Select(n),
+            ),
             edit: EditBox::new(format!("Entry #{}", n + 1)).with_guard(ListEntryGuard(n)),
         }
     }
@@ -104,8 +104,8 @@ fn main() -> kas::shell::Result<()> {
         struct {
             core: widget_core!(),
             #[widget] edit: EditBox<(), impl EditGuard<()>> = EditBox::new("3")
-                .on_afl(|mgr, text| match text.parse::<usize>() {
-                    Ok(n) => mgr.push(n),
+                .on_afl(|cx, text| match text.parse::<usize>() {
+                    Ok(n) => cx.push(n),
                     Err(_) => (),
                 }),
             n: usize = 3,
@@ -113,33 +113,29 @@ fn main() -> kas::shell::Result<()> {
         impl Events for Self {
             type Data = ();
 
-            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
-                if mgr.last_child() == Some(widget_index![self.edit]) {
-                    if let Some(n) = mgr.try_pop::<usize>() {
+            fn handle_message(&mut self, _: &Self::Data, cx: &mut EventMgr) {
+                if cx.last_child() == Some(widget_index![self.edit]) {
+                    if let Some(n) = cx.try_pop::<usize>() {
                         if n != self.n {
                             self.n = n;
-                            mgr.push(Control::SetLen(n));
+                            cx.push(Control::SetLen(n));
                         }
                     }
-                } else if let Some(msg) = mgr.try_pop::<Button>() {
+                } else if let Some(msg) = cx.try_pop::<Button>() {
                     let n = match msg {
                         Button::Decr => self.n.saturating_sub(1),
                         Button::Incr => self.n.saturating_add(1),
                         Button::Set => self.n,
                     };
-                    *mgr |= self.edit.set_string(n.to_string());
+                    *cx |= self.edit.set_string(n.to_string());
                     self.n = n;
-                    mgr.push(Control::SetLen(n));
+                    cx.push(Control::SetLen(n));
                 }
             }
         }
     };
 
-    let entries = vec![
-        ListEntry::new(0, true),
-        ListEntry::new(1, false),
-        ListEntry::new(2, false),
-    ];
+    let entries = vec![ListEntry::new(0), ListEntry::new(1), ListEntry::new(2)];
     let list = List::new_dir_vec(Direction::Down, entries);
 
     let ui = singleton! {
@@ -157,37 +153,36 @@ fn main() -> kas::shell::Result<()> {
             core: widget_core!(),
             #[widget] controls: impl Widget<Data = ()> = controls,
             #[widget] display: StringLabel = Label::from("Entry #1"),
-            #[widget] list: ScrollBarRegion<List<Direction, ListEntry>> =
+            #[widget(&self.active)] list: ScrollBarRegion<List<Direction, ListEntry>> =
                 ScrollBarRegion::new(list).with_fixed_bars(false, true),
             active: usize = 0,
         }
         impl Events for Self {
             type Data = ();
 
-            fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
-                if let Some(control) = mgr.try_pop() {
+            fn handle_message(&mut self, _: &(), cx: &mut EventMgr) {
+                if let Some(control) = cx.try_pop() {
                     match control {
                         Control::SetLen(len) => {
-                            let active = self.active;
-                            mgr.config_mgr(|mgr| {
+                            cx.config_mgr(|mgr| {
                                 self.list.inner_mut()
-                                    .resize_with(data, mgr, len, |n| ListEntry::new(n, n == active))
+                                    .resize_with(&self.active, mgr, len, |n| ListEntry::new(n))
                             });
                         }
                         Control::Reverse => {
                             let dir = self.list.direction().reversed();
-                            *mgr |= self.list.set_direction(dir);
+                            *cx |= self.list.set_direction(dir);
                         }
                         Control::Select(n) => {
                             self.active = n;
                             let entry = &mut self.list[n];
-                            entry.radio.select(mgr);
                             let text = entry.edit.get_string();
-                            *mgr |= self.display.set_string(text);
+                            *cx |= self.display.set_string(text);
+                            cx.update(self.as_node_mut(&()));
                         }
                         Control::Update(n, text) => {
                             if n == self.active {
-                                *mgr |= self.display.set_string(text);
+                                *cx |= self.display.set_string(text);
                             }
                         }
                     }

@@ -24,9 +24,9 @@
 // pub use config::EventConfig;
 
 use crate::MaybeOwned;
-use kas::model::{SharedData, SharedDataMut};
+use kas::model::SharedData;
 use kas::prelude::*;
-use kas_widgets::{Label, NavFrame, RadioGroup};
+use kas_widgets::{Label, NavFrame};
 use std::default::Default;
 
 /// View widget driver/binder
@@ -160,58 +160,3 @@ impl_via_to_string!(String, &'static str);
 impl_via_to_string!(i8, i16, i32, i64, i128, isize);
 impl_via_to_string!(u8, u16, u32, u64, u128, usize);
 impl_via_to_string!(f32, f64);
-
-/// [`kas_widgets::RadioBox`] view widget constructor
-#[derive(Clone, Debug)]
-pub struct RadioBox {
-    group: RadioGroup,
-}
-impl RadioBox {
-    /// Construct, with given `group`
-    pub fn new(group: RadioGroup) -> Self {
-        RadioBox { group }
-    }
-}
-impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for RadioBox {
-    type Widget = kas_widgets::RadioBox;
-    fn make(&self) -> Self::Widget {
-        kas_widgets::RadioBox::new_on(self.group.clone(), |mgr| mgr.push(true))
-    }
-    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> Action {
-        widget.set_bool(item.into_owned())
-    }
-    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
-        if let Some(state) = mgr.try_pop() {
-            data.set(mgr, key, state);
-        }
-    }
-}
-
-/// [`kas_widgets::RadioButton`] view widget constructor
-#[derive(Clone, Debug)]
-pub struct RadioButton {
-    label: AccelString,
-    group: RadioGroup,
-}
-impl RadioButton {
-    /// Construct, with given `label` and `group`
-    pub fn new<T: Into<AccelString>>(label: T, group: RadioGroup) -> Self {
-        let label = label.into();
-        RadioButton { label, group }
-    }
-}
-impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for RadioButton {
-    type Widget = kas_widgets::RadioButton;
-    fn make(&self) -> Self::Widget {
-        kas_widgets::RadioButton::new(self.label.clone(), self.group.clone())
-            .on_select(|mgr| mgr.push(true))
-    }
-    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> Action {
-        widget.set_bool(item.into_owned())
-    }
-    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
-        if let Some(state) = mgr.try_pop() {
-            data.set(mgr, key, state);
-        }
-    }
-}

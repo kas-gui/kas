@@ -122,6 +122,7 @@ impl_scope! {
 
         fn toggle(&mut self, data: &A, mgr: &mut EventMgr) {
             self.last_change = Some(Instant::now());
+            mgr.redraw(self.id());
             if let Some(f) = self.on_toggle.as_ref() {
                 f(mgr, data, self.state);
             }
