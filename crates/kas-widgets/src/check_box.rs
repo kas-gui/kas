@@ -121,10 +121,11 @@ impl_scope! {
             self.editable = editable;
         }
 
-        fn toggle(&mut self, mgr: &mut EventCx<A>) {
+        fn toggle(&mut self, cx: &mut EventCx<A>) {
             self.last_change = Some(Instant::now());
+            cx.redraw(self.id());
             if let Some(f) = self.on_toggle.as_ref() {
-                f(mgr, self.state);
+                f(cx, self.state);
             }
         }
     }

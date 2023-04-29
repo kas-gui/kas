@@ -95,7 +95,7 @@ pub use list::*;
 pub use mark::{Mark, MarkButton};
 pub use nav_frame::NavFrame;
 pub use progress::ProgressBar;
-pub use radio_box::{RadioBox, RadioButton, RadioGroup};
+pub use radio_box::{RadioBox, RadioButton};
 pub use scroll::ScrollRegion;
 pub use scroll_bar::{ScrollBar, ScrollBarRegion, ScrollBars, ScrollMsg};
 pub use scroll_label::ScrollLabel;
