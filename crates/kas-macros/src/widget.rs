@@ -295,6 +295,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 if Some(&ident) == opt_derive.as_ref() {
                     emit_error!(attr, "#[widget] must not be used on widget derive target");
                 }
+                let span = attr.span();
                 let data = if attr.tokens.is_empty() {
                     None
                 } else {
@@ -305,7 +306,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     Some(paren.expr)
                 };
                 is_widget = true;
-                children.push((ident.clone(), data));
+                children.push((ident.clone(), span, data));
             } else {
                 other_attrs.push(attr);
             }
@@ -326,7 +327,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
     }
 
-    crate::widget_index::visit_impls(children.iter().map(|(ident, _)| ident), &mut scope.impls);
+    crate::widget_index::visit_impls(children.iter().map(|(ident, _, _)| ident), &mut scope.impls);
 
     for impl_ in scope.impls.iter() {
         if let Some((_, ref path, _)) = impl_.trait_ {
@@ -621,7 +622,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
             if count != 0 {
                 // let mut predicates = Punctuated::new();
-                for (i, (ident, opt_data)) in children.iter().enumerate() {
+                for (i, (ident, span, opt_data)) in children.iter().enumerate() {
                     // TODO: incorrect or unconstrained data type of child causes a poor error
                     // message here. Add a constaint like this (assuming no mapping fn):
                     // <#ty as WidgetNode::Data> == Self::Data
@@ -631,7 +632,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     get_mut_rules.append_all(if let Some(data) = opt_data {
                         quote! { #i => Some(self.#ident.as_node(#data)), }
                     } else {
-                        quote! { #i => Some(self.#ident.as_node(data)), }
+                        quote_spanned! {*span=> #i => Some(self.#ident.as_node(data)), }
                     });
                 }
 
@@ -673,7 +674,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         };
         if let Some((kw_span, layout)) = args.layout.take() {
             kw_layout = Some(kw_span);
-            fn_nav_next = match layout.nav_next(children.iter().map(|(ident, _)| ident)) {
+            fn_nav_next = match layout.nav_next(children.iter().map(|(ident, _, _)| ident)) {
                 NavNextResult::Err(msg) => {
                     fn_nav_next_err = Some(msg);
                     None
