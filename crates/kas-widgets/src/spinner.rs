@@ -137,7 +137,6 @@ impl<A, T: SpinnerValue> EditGuard<A> for SpinnerGuard<A, T> {
         } else {
             let value = (edit.guard.state_fn)(cx.data());
             *cx |= edit.set_string(value.to_string());
-            *cx |= edit.set_error_state(false);
         }
     }
 
@@ -155,7 +154,6 @@ impl<A, T: SpinnerValue> EditGuard<A> for SpinnerGuard<A, T> {
     fn update(edit: &mut EditField<A, Self>, cx: &mut ConfigCx<A>) {
         let value = (edit.guard.state_fn)(cx.data());
         *cx |= edit.set_string(value.to_string());
-        *cx |= edit.set_error_state(false);
     }
 }
 
