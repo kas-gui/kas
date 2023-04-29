@@ -383,7 +383,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     emit_error!(attr, "#[widget] must not be used on widget derive target");
                 }
                 is_widget = true;
-                children.push((ident.clone(), data));
+                let span = attr.span();
+                children.push((ident.clone(), span, data));
             } else {
                 other_attrs.push(attr);
             }
@@ -404,7 +405,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         }
     }
 
-    crate::widget_index::visit_impls(children.iter().map(|(ident, _)| ident), &mut scope.impls);
+    crate::widget_index::visit_impls(children.iter().map(|(ident, _, _)| ident), &mut scope.impls);
 
     if let Some(ref span) = num_children {
         if get_child.is_none() {
@@ -657,7 +658,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         };
         if let Some((_, layout)) = args.layout.take() {
             gen_layout = true;
-            fn_nav_next = match layout.nav_next(children.iter().map(|(ident, _)| ident)) {
+            fn_nav_next = match layout.nav_next(children.iter().map(|(ident, _, _)| ident)) {
                 Ok(toks) => Some(toks),
                 Err((span, msg)) => {
                     fn_nav_next_err = Some((span, msg));
@@ -895,7 +896,7 @@ pub fn impl_widget(
     impl_target: &Toks,
     data_ty: &Type,
     core_path: &Toks,
-    children: &Vec<(Member, Option<Expr>)>,
+    children: &Vec<(Member, Span, Option<Expr>)>,
     layout_children: Vec<Toks>,
     do_impl_widget_children: bool,
 ) -> Toks {
@@ -905,7 +906,7 @@ pub fn impl_widget(
         let count = children.len();
         let mut get_rules = quote! {};
         let mut get_mut_rules = quote! {};
-        for (i, (ident, opt_data)) in children.iter().enumerate() {
+        for (i, (ident, span, opt_data)) in children.iter().enumerate() {
             /*
             // TODO: incorrect or unconstrained data type of child causes a poor error
             // message here. Add a constaint like this (assuming no mapping fn):
@@ -916,7 +917,7 @@ pub fn impl_widget(
             get_mut_rules.append_all(if let Some(data) = opt_data {
                 quote! { #i => Some(self.#ident.as_node(#data)), }
             } else {
-                quote! { #i => Some(self.#ident.as_node(data)), }
+                quote_spanned! {*span=> #i => Some(self.#ident.as_node(data)), }
             });
             */
             get_rules.append_all(quote! { #i => Some(self.#ident.as_node()), });
