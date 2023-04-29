@@ -15,8 +15,62 @@ use std::cell::RefCell;
 use std::fmt::Debug;
 
 /// Bounds on the key type
-pub trait DataKey: Clone + Debug + PartialEq + Eq + 'static {}
-impl<Key: Clone + Debug + PartialEq + Eq + 'static> DataKey for Key {}
+pub trait DataKey: Clone + Debug + Default + PartialEq + Eq + 'static {
+    /// Make a [`WidgetId`] for a key
+    ///
+    /// The result must be distinct from `parent`.
+    /// Use [`WidgetId::make_child`].
+    fn make_id(&self, parent: &WidgetId) -> WidgetId;
+
+    /// Reconstruct a key from a [`WidgetId`]
+    ///
+    /// Where `child` is the output of [`Self::make_id`] for the same `parent`
+    /// *or any [`WidgetId`] descended from that*, this should return a copy of
+    /// the `key` passed to `make_id`.
+    ///
+    /// See: [`WidgetId::next_key_after`], [`WidgetId::iter_keys_after`]
+    fn reconstruct_key(parent: &WidgetId, child: &WidgetId) -> Option<Self>;
+}
+
+impl DataKey for () {
+    fn make_id(&self, parent: &WidgetId) -> WidgetId {
+        // We need a distinct child, so use index 0
+        parent.make_child(0)
+    }
+
+    fn reconstruct_key(parent: &WidgetId, child: &WidgetId) -> Option<Self> {
+        if child.next_key_after(parent) == Some(0) {
+            Some(())
+        } else {
+            None
+        }
+    }
+}
+
+// NOTE: we cannot use this blanket impl without specialisation / negative impls
+// impl<Key: Cast<usize> + Clone + Debug + PartialEq + Eq + 'static> DataKey for Key
+impl DataKey for usize {
+    fn make_id(&self, parent: &WidgetId) -> WidgetId {
+        parent.make_child(*self)
+    }
+
+    fn reconstruct_key(parent: &WidgetId, child: &WidgetId) -> Option<Self> {
+        child.next_key_after(parent)
+    }
+}
+
+impl DataKey for (usize, usize) {
+    fn make_id(&self, parent: &WidgetId) -> WidgetId {
+        parent.make_child(self.0).make_child(self.1)
+    }
+
+    fn reconstruct_key(parent: &WidgetId, child: &WidgetId) -> Option<Self> {
+        let mut iter = child.iter_keys_after(parent);
+        let col = iter.next();
+        let row = iter.next();
+        col.zip(row)
+    }
+}
 
 /// Trait for shared data
 ///
@@ -190,24 +244,6 @@ pub trait ListData: SharedData {
     /// Note: users may assume this is `O(1)`.
     fn len(&self) -> usize;
 
-    /// Make a [`WidgetId`] for a key
-    ///
-    /// Suggested impl, converting `key` as necessary:
-    ///
-    /// -   `parent.make_child(key)`
-    ///
-    /// See: [`WidgetId::make_child`]
-    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId;
-
-    /// Reconstruct a key from a [`WidgetId`]
-    ///
-    /// Where `child` is the output of [`Self::make_id`] for the same `parent`
-    /// *or any [`WidgetId`] descended from that*, this should return a copy of
-    /// the `key` passed to `make_id`.
-    ///
-    /// See: [`WidgetId::next_key_after`], [`WidgetId::iter_keys_after`]
-    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key>;
-
     /// Iterate over keys
     ///
     /// The result will be in deterministic implementation-defined order, with
@@ -248,25 +284,6 @@ pub trait MatrixData: SharedData {
     ///
     /// Note: users may assume this is `O(1)`.
     fn len(&self) -> (usize, usize);
-
-    /// Make a [`WidgetId`] for a key
-    ///
-    /// Suggested impls, converting keys as necessary:
-    ///
-    /// -   `parent.make_child(combined_key)`
-    /// -   `parent.make_child(col_key).make_child(row_key)`
-    ///
-    /// See: [`WidgetId::make_child`]
-    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId;
-
-    /// Reconstruct a key from a [`WidgetId`]
-    ///
-    /// Where `child` is the output of [`Self::make_id`] for the same `parent`
-    /// *or any [`WidgetId`] descended from that*, this should return a copy of
-    /// the `key` passed to `make_id`.
-    ///
-    /// See: [`WidgetId::next_key_after`], [`WidgetId::iter_keys_after`]
-    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key>;
 
     /// Iterate over column keys
     ///

@@ -37,16 +37,6 @@ impl MatrixData for TableData {
         (self.1, self.1)
     }
 
-    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
-        parent.make_child(key.0).make_child(key.1)
-    }
-    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
-        let mut iter = child.iter_keys_after(parent);
-        let col = iter.next();
-        let row = iter.next();
-        col.zip(row)
-    }
-
     fn col_iter_from(&self, start: usize, limit: usize) -> std::ops::Range<usize> {
         start..(start + limit)
     }

@@ -10,7 +10,7 @@ use kas::event::components::ScrollComponent;
 use kas::event::{Command, Scroll};
 use kas::layout::{solve_size_rules, AlignHints};
 #[allow(unused)] use kas::model::SharedData;
-use kas::model::{ListData, SharedDataMut};
+use kas::model::{DataKey, ListData, SharedDataMut};
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
 #[allow(unused)] // doc links
@@ -405,7 +405,7 @@ impl_scope! {
             for (i, key) in keys.enumerate() {
                 count += 1;
                 let i = solver.first_data + i;
-                let id = self.data.make_id(self.id_ref(), &key);
+                let id = key.make_id(self.id_ref());
                 let w = &mut self.widgets[i % solver.cur_len];
                 if w.key.as_ref() != Some(&key) {
                     // Reset widgets to ensure input state such as cursor
@@ -493,7 +493,7 @@ impl_scope! {
             })
         }
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
-            let key = self.data.reconstruct_key(self.id_ref(), id);
+            let key = T::Key::reconstruct_key(self.id_ref(), id);
             if key.is_some() {
                 self.widgets
                     .iter()
