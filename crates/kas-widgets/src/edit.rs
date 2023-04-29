@@ -12,9 +12,10 @@ use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::{NotReady, SelectionHelper, Text};
 use kas::theme::{Background, FrameStyle, TextClass};
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
 use std::ops::Range;
+use std::str::FromStr;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -113,6 +114,53 @@ where
     fn update(edit: &mut EditField<A, Self>, data: &A, cx: &mut ConfigMgr) {
         let string = (edit.guard.0)(data);
         *cx |= edit.set_string(string);
+    }
+}
+
+impl_scope! {
+    /// An [`EditGuard`] impl for simple parsable types (e.g. numbers)
+    #[autoimpl(Debug ignore self.value_fn, self.msg_fn)]
+    pub struct ParseGuard<A, T: Debug + Display + FromStr> {
+        parsed: Option<T>,
+        value_fn: Box<dyn Fn(&A) -> T>,
+        msg_fn: Box<dyn Fn(&mut EventMgr, T)>,
+    }
+
+    impl Self {
+        pub fn new<M: Debug + 'static>(
+            value_fn: impl Fn(&A) -> T + 'static,
+            msg_fn: impl Fn(T) -> M + 'static,
+        ) -> Self {
+            ParseGuard {
+                parsed: None,
+                value_fn: Box::new(value_fn),
+                msg_fn: Box::new(move |cx, value| cx.push(msg_fn(value))),
+            }
+        }
+    }
+
+    impl EditGuard<A> for Self {
+        fn activate(edit: &mut EditField<A, Self>, data: &A, cx: &mut EventMgr) -> Response {
+            Self::focus_lost(edit, data, cx);
+            Response::Used
+        }
+
+        fn focus_lost(edit: &mut EditField<A, Self>, _: &A, cx: &mut EventMgr) {
+            if let Some(value) = edit.guard.parsed.take() {
+                (edit.guard.msg_fn)(cx, value);
+            }
+        }
+
+        fn edit(edit: &mut EditField<A, Self>, _: &A, cx: &mut EventMgr) {
+            edit.guard.parsed = edit.get_str().parse().ok();
+            *cx |= edit.set_error_state(edit.guard.parsed.is_none());
+        }
+
+        fn update(edit: &mut EditField<A, Self>, data: &A, cx: &mut ConfigMgr) {
+            let value = (edit.guard.value_fn)(data);
+            *cx |= edit.set_string(format!("{}", value));
+            edit.guard.parsed = None;
+        }
     }
 }
 
@@ -268,6 +316,15 @@ impl<A> EditBox<A, ()> {
     #[inline]
     pub fn empty() -> Self {
         Self::new(String::new())
+    }
+
+    /// Construct an `EditBox` for a parsable value (e.g. a number)
+    #[inline]
+    pub fn parser<T: Debug + Display + FromStr, M: Debug + 'static>(
+        value_fn: impl Fn(&A) -> T + 'static,
+        msg_fn: impl Fn(T) -> M + 'static,
+    ) -> EditBox<A, ParseGuard<A, T>> {
+        EditBox::empty().with_guard(ParseGuard::new(value_fn, msg_fn))
     }
 
     /// Set an [`EditGuard`]
@@ -650,7 +707,7 @@ impl_scope! {
                 // We use SET_RECT just to set the outer scroll bar position:
                 action = Action::SET_RECT;
             }
-            action
+            action | self.set_error_state(false)
         }
     }
 }
@@ -674,6 +731,15 @@ impl<A> EditField<A, ()> {
     #[inline]
     pub fn empty() -> Self {
         Self::new(String::new())
+    }
+
+    /// Construct an `EditField` for a parsable value (e.g. a number)
+    #[inline]
+    pub fn parser<T: Debug + Display + FromStr, M: Debug + 'static>(
+        value_fn: impl Fn(&A) -> T + 'static,
+        msg_fn: impl Fn(T) -> M + 'static,
+    ) -> EditField<A, ParseGuard<A, T>> {
+        EditField::empty().with_guard(ParseGuard::new(value_fn, msg_fn))
     }
 
     /// Set an [`EditGuard`]
@@ -819,6 +885,7 @@ impl<A, G: EditGuard<A>> EditField<A, G> {
     /// Set the error state
     ///
     /// When true, the input field's background is drawn red.
+    /// This state is cleared by [`Self::set_string`].
     // TODO: possibly change type to Option<String> and display the error
     pub fn set_error_state(&mut self, error_state: bool) -> Action {
         self.error_state = error_state;

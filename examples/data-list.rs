@@ -17,25 +17,23 @@
 //! In a release build, 250k entries (1M widgets) is quite viable!
 
 use kas::prelude::*;
-use kas::widget::*;
+use kas::row;
+use kas::widget::adapter::WithAny;
+use kas::widget::edit::{EditBox, EditField, EditGuard};
+use kas::widget::{Label, List, RadioButton, ScrollBarRegion, Separator, StringLabel, TextButton};
 
 #[derive(Clone, Debug)]
 enum Control {
+    None,
     SetLen(usize),
+    DecrLen,
+    IncrLen,
     Reverse,
     Select(usize),
     Update(usize, String),
 }
 
 #[derive(Clone, Debug)]
-enum Button {
-    Set,
-    Decr,
-    Incr,
-}
-
-// TODO: it would be nicer to use EditBox::new(..).on_edit(..), but that produces
-// an object with unnamable type, which is a problem.
 struct ListEntryGuard(usize);
 impl EditGuard<()> for ListEntryGuard {
     fn activate(edit: &mut EditField<(), Self>, _: &(), mgr: &mut EventMgr) -> Response {
@@ -90,50 +88,17 @@ impl ListEntry {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let controls = singleton! {
-        #[widget{
-            layout = row! [
-                "Number of rows:",
-                self.edit,
-                TextButton::new_msg("Set", Button::Set),
-                TextButton::new_msg("−", Button::Decr),
-                TextButton::new_msg("+", Button::Incr),
-                TextButton::new_msg("↓↑", Control::Reverse),
-            ];
-        }]
-        struct {
-            core: widget_core!(),
-            #[widget] edit: EditBox<(), impl EditGuard<()>> = EditBox::new("3")
-                .on_afl(|cx, text| match text.parse::<usize>() {
-                    Ok(n) => cx.push(n),
-                    Err(_) => (),
-                }),
-            n: usize = 3,
-        }
-        impl Events for Self {
-            type Data = ();
-
-            fn handle_message(&mut self, _: &Self::Data, cx: &mut EventMgr) {
-                if cx.last_child() == Some(widget_index![self.edit]) {
-                    if let Some(n) = cx.try_pop::<usize>() {
-                        if n != self.n {
-                            self.n = n;
-                            cx.push(Control::SetLen(n));
-                        }
-                    }
-                } else if let Some(msg) = cx.try_pop::<Button>() {
-                    let n = match msg {
-                        Button::Decr => self.n.saturating_sub(1),
-                        Button::Incr => self.n.saturating_add(1),
-                        Button::Set => self.n,
-                    };
-                    *cx |= self.edit.set_string(n.to_string());
-                    self.n = n;
-                    cx.push(Control::SetLen(n));
-                }
-            }
-        }
-    };
+    let controls = row![
+        "Number of rows:",
+        EditBox::parser(|n| *n, Control::SetLen),
+        WithAny::new(row![
+            // This button is just a click target; it doesn't do anything!
+            TextButton::new_msg("Set", Control::None),
+            TextButton::new_msg("−", Control::DecrLen),
+            TextButton::new_msg("+", Control::IncrLen),
+            TextButton::new_msg("↓↑", Control::Reverse),
+        ]),
+    ];
 
     let entries = vec![ListEntry::new(0), ListEntry::new(1), ListEntry::new(2)];
     let list = List::new_dir_vec(Direction::Down, entries);
@@ -151,7 +116,8 @@ fn main() -> kas::shell::Result<()> {
         }]
         struct {
             core: widget_core!(),
-            #[widget] controls: impl Widget<Data = ()> = controls,
+            // FIXME: pass &self.list.len() here (requires removal of Widget::get_child):
+            #[widget(&3)] controls: impl Widget<Data = usize> = controls,
             #[widget] display: StringLabel = Label::from("Entry #1"),
             #[widget(&self.active)] list: ScrollBarRegion<List<Direction, ListEntry>> =
                 ScrollBarRegion::new(list).with_fixed_bars(false, true),
@@ -161,13 +127,19 @@ fn main() -> kas::shell::Result<()> {
             type Data = ();
 
             fn handle_message(&mut self, _: &(), cx: &mut EventMgr) {
+                let mut new_len = None;
+
                 if let Some(control) = cx.try_pop() {
                     match control {
+                        Control::None => (),
                         Control::SetLen(len) => {
-                            cx.config_mgr(|mgr| {
-                                self.list.inner_mut()
-                                    .resize_with(&self.active, mgr, len, |n| ListEntry::new(n))
-                            });
+                            new_len = Some(len);
+                        }
+                        Control::DecrLen => {
+                            new_len = self.list.len().checked_sub(1);
+                        }
+                        Control::IncrLen => {
+                            new_len = self.list.len().checked_add(1);
                         }
                         Control::Reverse => {
                             let dir = self.list.direction().reversed();
@@ -185,6 +157,13 @@ fn main() -> kas::shell::Result<()> {
                                 *cx |= self.display.set_string(text);
                             }
                         }
+                    }
+
+                    if let Some(len) = new_len {
+                        cx.config_mgr(|mgr| {
+                            self.list.inner_mut()
+                                .resize_with(&self.active, mgr, len, |n| ListEntry::new(n))
+                        });
                     }
                 }
             }
