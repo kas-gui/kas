@@ -31,7 +31,7 @@ fn make_window() -> Box<dyn kas::Window> {
         #[derive(Debug)]
         struct {
             core: widget_core!(),
-            #[widget] display: impl Widget + HasString = Frame::new(Label::new("0.000".to_string())),
+            #[widget] display: impl Widget<Data = ()> + HasString = Frame::new(Label::new("0.000".to_string())),
             saved: Duration,
             start: Option<Instant>,
         }

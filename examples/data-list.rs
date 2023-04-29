@@ -42,20 +42,20 @@ enum Button {
 // an object with unnamable type, which is a problem.
 #[derive(Clone, Debug)]
 struct ListEntryGuard(usize);
-impl EditGuard for ListEntryGuard {
-    fn activate(edit: &mut EditField<(), Self>, mgr: &mut EventCx<Self::Data>) -> Response {
+impl EditGuard<()> for ListEntryGuard {
+    fn activate(edit: &mut EditField<(), Self>, mgr: &mut EventCx<()>) -> Response {
         mgr.push(Control::Select(edit.guard.0));
         Response::Used
     }
 
-    fn edit(edit: &mut EditField<(), Self>, mgr: &mut EventCx<Self::Data>) {
+    fn edit(edit: &mut EditField<(), Self>, mgr: &mut EventCx<()>) {
         mgr.push(Control::Update(edit.guard.0, edit.get_string()));
     }
 }
 
 impl_scope! {
     // The list entry
-    #[derive(Clone, Debug)]
+    #[derive(Debug)]
     #[widget{
         layout = column: [
             row: [self.label, self.radio],
@@ -105,7 +105,7 @@ fn main() -> kas::shell::Result<()> {
         #[derive(Debug)]
         struct {
             core: widget_core!(),
-            #[widget] edit: EditBox<(), impl EditGuard> = EditBox::new("3")
+            #[widget] edit: EditBox<(), impl EditGuard<()>> = EditBox::new("3")
                 .on_afl(|mgr, text| match text.parse::<usize>() {
                     Ok(n) => mgr.push(n),
                     Err(_) => (),
@@ -156,7 +156,7 @@ fn main() -> kas::shell::Result<()> {
         #[derive(Debug)]
         struct {
             core: widget_core!(),
-            #[widget] controls = controls,
+            #[widget] controls: impl Widget<Data = ()> = controls,
             #[widget] display: StringLabel = Label::from("Entry #1"),
             #[widget] list: ScrollBarRegion<List<Direction, ListEntry>> =
                 ScrollBarRegion::new(list).with_fixed_bars(false, true),

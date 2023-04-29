@@ -12,8 +12,8 @@ extern crate proc_macro;
 use impl_tools_lib::{self as lib, autoimpl};
 use proc_macro::TokenStream;
 use proc_macro_error::{emit_call_site_error, proc_macro_error};
+use syn::parse_macro_input;
 use syn::spanned::Spanned;
-use syn::{parse_macro_input, parse_quote_spanned};
 
 mod class_traits;
 mod extends;
@@ -418,16 +418,10 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// -   **regular struct:** `ident: ty = value`
 /// -   **regular struct:** `ident: ty` (uses `Default` to construct value)
-/// -   **regular struct:** `ident = value` (type is generic without bounds)
 /// -   **tuple struct:** `ty = value`
 /// -   **tuple struct:** `ty` (uses `Default` to construct value)
 ///
 /// The field name, `ident`, may be `_` (anonymous field).
-///
-/// The field type, `ty`, may be or may contain inferred types (`_`) and/or
-/// `impl Trait` type expressions. These are substituted with generics on the
-/// type. In the special case that the field has attribute `#[widget]` and type
-/// `_`, the generic for this type has bound `::kas::Widget` applied.
 ///
 /// Refer to [examples](https://github.com/search?q=singleton+repo%3Akas-gui%2Fkas+path%3Aexamples&type=Code) for usage.
 #[proc_macro_error]
@@ -435,10 +429,18 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 pub fn singleton(input: TokenStream) -> TokenStream {
     let mut input = parse_macro_input!(input as lib::Singleton);
     for field in input.fields.iter_mut() {
-        if let syn::Type::Infer(token) = &field.ty {
-            field.ty = parse_quote_spanned! {token.span()=>
-                impl ::kas::Widget
+        if matches!(&field.ty, syn::Type::Infer(_)) {
+            let span = if let Some(ref ident) = field.ident {
+                ident.span()
+            } else if let Some((ref eq, _)) = field.assignment {
+                eq.span()
+            } else {
+                // This is always available and should be the first choice,
+                // but it may be synthesized (thus no useful span).
+                // We can't test since Span::eq is unstable!
+                field.ty.span()
             };
+            proc_macro_error::emit_error!(span, "expected `: TYPE`");
         }
     }
     let mut scope = input.into_scope();
