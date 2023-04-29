@@ -100,17 +100,6 @@ pub trait SharedData: Debug {
     where
         Self: 'b;
 
-    /// Get the data version
-    ///
-    /// The version is increased on change and may be used to detect when views
-    /// over the data need to be refreshed. The initial version number must be
-    /// at least 1 (allowing 0 to represent an uninitialized state).
-    ///
-    /// Whenever the data is updated, [`Event::Update`] must be sent via
-    /// [`EventMgr::update_all`] to notify other users of this data of the
-    /// update.
-    fn version(&self) -> u64;
-
     /// Check whether a key has data
     fn contains_key(&self, key: &Self::Key) -> bool;
 

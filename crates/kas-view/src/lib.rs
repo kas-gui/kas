@@ -33,13 +33,13 @@
 use thiserror::Error;
 
 mod list_view;
-mod matrix_view;
+// mod matrix_view;
 
 pub mod driver;
 
 pub use driver::Driver;
 pub use list_view::{ListView, ListViewGuard};
-pub use matrix_view::MatrixView;
+// pub use matrix_view::MatrixView;
 pub use maybe_owned::MaybeOwned;
 
 /// Used to notify selection and deselection of [`ListView`] and [`MatrixView`] children
