@@ -105,10 +105,6 @@ impl SharedData for ContainsString {
     type Item = String;
     type ItemRef<'b> = Ref<'b>;
 
-    fn version(&self) -> u64 {
-        self.0.borrow().1
-    }
-
     fn contains_key(&self, _: &Self::Key) -> bool {
         true
     }
@@ -161,10 +157,6 @@ impl SharedData for ContainsCaseInsensitive {
     type Key = ();
     type Item = String;
     type ItemRef<'b> = Ref<'b>;
-
-    fn version(&self) -> u64 {
-        self.0.borrow().2
-    }
 
     fn contains_key(&self, _: &Self::Key) -> bool {
         true

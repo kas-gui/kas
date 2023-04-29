@@ -88,10 +88,6 @@ impl SharedData for MySharedData {
     type Item = (bool, String);
     type ItemRef<'b> = Self::Item;
 
-    fn version(&self) -> u64 {
-        self.data.borrow().ver
-    }
-
     fn contains_key(&self, key: &Self::Key) -> bool {
         *key < self.len()
     }

@@ -70,14 +70,6 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> SharedData for FilteredList<T
     type Item = T::Item;
     type ItemRef<'b> = T::ItemRef<'b> where T: 'b;
 
-    fn version(&self) -> u64 {
-        let ver = self.data.version() + self.filter.version();
-        if ver > self.view.borrow().0 {
-            self.refresh(ver);
-        }
-        ver
-    }
-
     fn contains_key(&self, key: &Self::Key) -> bool {
         SharedData::borrow(self, key).is_some()
     }

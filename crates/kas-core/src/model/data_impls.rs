@@ -16,10 +16,6 @@ macro_rules! impl_list_data {
             type Item = T;
             type ItemRef<'b> = &'b T;
 
-            fn version(&self) -> u64 {
-                1
-            }
-
             fn contains_key(&self, key: &Self::Key) -> bool {
                 *key < self.len()
             }

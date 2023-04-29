@@ -82,19 +82,6 @@ impl<T: Debug> SharedArc<T> {
         (self.0).0
     }
 
-    /// Get the data version
-    ///
-    /// The version is increased on change and may be used to detect when views
-    /// over the data need to be refreshed. The initial version number must be
-    /// at least 1 (allowing 0 to represent an uninitialized state).
-    ///
-    /// Whenever the data is updated, [`Event::Update`] must be sent via
-    /// [`EventMgr::update_all`] to notify other users of this data of the
-    /// update.
-    pub fn version(&self) -> u64 {
-        (self.0).1.lock().unwrap().1
-    }
-
     /// Borrow an item
     ///
     /// May panic (see [`Mutex::lock`]).
@@ -137,11 +124,6 @@ impl<T: Clone + Debug + 'static> SharedData for SharedArc<T> {
     type Key = ();
     type Item = T;
     type ItemRef<'b> = SharedArcRef<'b, T>;
-
-    #[inline]
-    fn version(&self) -> u64 {
-        self.version()
-    }
 
     #[inline]
     fn contains_key(&self, _: &()) -> bool {

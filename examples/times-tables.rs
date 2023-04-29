@@ -12,10 +12,6 @@ impl SharedData for TableData {
     type Item = usize;
     type ItemRef<'b> = usize;
 
-    fn version(&self) -> u64 {
-        self.0
-    }
-
     fn contains_key(&self, key: &Self::Key) -> bool {
         key.0 < self.1 && key.1 < self.1
     }
