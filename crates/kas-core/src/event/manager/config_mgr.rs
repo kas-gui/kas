@@ -243,6 +243,19 @@ impl<'a, Data> ConfigCx<'a, Data> {
         }
     }
 
+    /// Replace data
+    pub fn with_data<'b, Data2>(&'b mut self, data: &'b Data2) -> ConfigCx<'b, Data2>
+    where
+        'a: 'b,
+    {
+        ConfigCx::<'b, Data2> {
+            sh: self.sh,
+            ds: self.ds,
+            ev: self.ev,
+            data,
+        }
+    }
+
     /// Access data
     #[inline]
     pub fn data(&self) -> &'a Data {

@@ -935,6 +935,19 @@ impl<'a, Data> EventCx<'a, Data> {
         }
     }
 
+    /// Add data to yield a new [`EventCx`]
+    pub fn with_data<'b, T>(&'b mut self, data: &'b T) -> EventCx<'b, T>
+    where
+        'a: 'b,
+    {
+        EventCx::<'b, T> {
+            state: self.state,
+            shell: self.shell,
+            mgr: self.mgr,
+            data,
+        }
+    }
+
     /// Access data
     ///
     /// Note that, when handling events, this method returns the *old* state.
