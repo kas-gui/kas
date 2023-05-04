@@ -15,7 +15,6 @@
 
 use crate::{EditBox, Filler, Label, TextButton};
 use kas::event::{Command, VirtualKeyCode};
-use kas::model::{SharedRc, SingleDataMut};
 use kas::prelude::*;
 use kas::text::format::FormattableText;
 use kas::{Icon, Widget};
@@ -156,6 +155,13 @@ impl_scope! {
     }
 }
 
+/// Message sent by [`TextEdit`] on closure.
+#[derive(Debug)]
+pub enum TextEditResult {
+    Cancel,
+    Ok(String),
+}
+
 #[derive(Clone, Debug)]
 struct MsgClose(bool);
 
@@ -169,34 +175,36 @@ impl_scope! {
             2, 1: TextButton::new_msg("&Save", MsgClose(true));
         };
     }]
-    /// An editor over a shared `String`
+    /// An editor over a `String`
     ///
-    /// The shared data is updated only when the "Save" button is pressed.
-    pub struct TextEdit<T: SingleDataMut<Item = String> = SharedRc<String>> {
+    /// Emits a [`TextEditResult`] message on closure.
+    pub struct TextEdit {
         core: widget_core!(),
         title: Cow<'static, str>,
-        data: T,
         #[widget]
         edit: EditBox<()>,
     }
 
     impl Self {
         /// Construct
-        pub fn new(title: impl Into<Cow<'static, str>>, multi_line: bool, data: T) -> Self {
-            let text = data.get_cloned(&()).unwrap();
+        pub fn new(
+            title: impl Into<Cow<'static, str>>,
+            text: impl ToString,
+            multi_line: bool,
+        ) -> Self {
             TextEdit {
                 core: Default::default(),
                 title: title.into(),
-                data,
                 edit: EditBox::new(text).with_multi_line(multi_line),
             }
         }
 
-        fn close(&mut self, mgr: &mut EventCx<()>, commit: bool) -> Response {
-            if commit {
-                self.data.set(&mut mgr.as_mgr(), &(), self.edit.get_string());
-            }
-            mgr.send_action(Action::CLOSE);
+        fn close(&mut self, cx: &mut EventCx<()>, commit: bool) -> Response {
+            cx.push(if commit {
+                TextEditResult::Ok(self.edit.get_string())
+            } else {
+                TextEditResult::Cancel
+            });
             Response::Used
         }
     }
