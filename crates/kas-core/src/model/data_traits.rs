@@ -83,7 +83,7 @@ pub trait SharedData: Debug {
     type Key: DataKey;
 
     /// Item type
-    type Item: Clone + Debug + 'static;
+    type Item: Clone;
 
     /// A borrow of the item type
     ///

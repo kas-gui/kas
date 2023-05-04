@@ -38,7 +38,7 @@ mod matrix_view;
 pub mod driver;
 
 pub use driver::Driver;
-pub use list_view::ListView;
+pub use list_view::{ListView, ListViewGuard};
 pub use matrix_view::MatrixView;
 pub use maybe_owned::MaybeOwned;
 
