@@ -118,6 +118,43 @@ where
 }
 
 impl_scope! {
+    /// An [`EditGuard`] impl for string input
+    #[autoimpl(Debug ignore self.value_fn, self.msg_fn)]
+    pub struct StringGuard<A> {
+        value_fn: Box<dyn Fn(&A) -> String>,
+        msg_fn: Box<dyn Fn(&mut EventMgr, &str)>,
+    }
+
+    impl Self {
+        pub fn new<M: Debug + 'static>(
+            value_fn: impl Fn(&A) -> String + 'static,
+            msg_fn: impl Fn(&str) -> M + 'static,
+        ) -> Self {
+            StringGuard {
+                value_fn: Box::new(value_fn),
+                msg_fn: Box::new(move |cx, value| cx.push(msg_fn(value))),
+            }
+        }
+    }
+
+    impl EditGuard<A> for Self {
+        fn activate(edit: &mut EditField<A, Self>, data: &A, cx: &mut EventMgr) -> Response {
+            Self::focus_lost(edit, data, cx);
+            Response::Used
+        }
+
+        fn focus_lost(edit: &mut EditField<A, Self>, _: &A, cx: &mut EventMgr) {
+            (edit.guard.msg_fn)(cx, edit.get_str());
+        }
+
+        fn update(edit: &mut EditField<A, Self>, data: &A, cx: &mut ConfigMgr) {
+            let string = (edit.guard.value_fn)(data);
+            *cx |= edit.set_string(string);
+        }
+    }
+}
+
+impl_scope! {
     /// An [`EditGuard`] impl for simple parsable types (e.g. numbers)
     #[autoimpl(Debug ignore self.value_fn, self.msg_fn)]
     pub struct ParseGuard<A, T: Debug + Display + FromStr> {
@@ -316,6 +353,15 @@ impl<A> EditBox<A, ()> {
     #[inline]
     pub fn empty() -> Self {
         Self::new(String::new())
+    }
+
+    /// Construct an `EditBox` for a string value
+    #[inline]
+    pub fn string<M: Debug + 'static>(
+        value_fn: impl Fn(&A) -> String + 'static,
+        msg_fn: impl Fn(&str) -> M + 'static,
+    ) -> EditBox<A, StringGuard<A>> {
+        EditBox::empty().with_guard(StringGuard::new(value_fn, msg_fn))
     }
 
     /// Construct an `EditBox` for a parsable value (e.g. a number)
@@ -731,6 +777,15 @@ impl<A> EditField<A, ()> {
     #[inline]
     pub fn empty() -> Self {
         Self::new(String::new())
+    }
+
+    /// Construct an `EditField` for a string value
+    #[inline]
+    pub fn string<M: Debug + 'static>(
+        value_fn: impl Fn(&A) -> String + 'static,
+        msg_fn: impl Fn(&str) -> M + 'static,
+    ) -> EditField<A, StringGuard<A>> {
+        EditField::empty().with_guard(StringGuard::new(value_fn, msg_fn))
     }
 
     /// Construct an `EditField` for a parsable value (e.g. a number)
