@@ -11,11 +11,12 @@ use std::task::Waker;
 use super::{PendingAction, Platform, WindowSurface};
 use kas::config::Options;
 use kas::event::UpdateId;
-use kas::model::SharedRc;
 use kas::shell::Error;
 use kas::theme::Theme;
 use kas::util::warn_about_error;
 use kas::{draw, AppData, ErasedStack, WindowId};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
@@ -35,7 +36,7 @@ pub(super) struct ShellShared<Data: AppData, S: kas::draw::DrawSharedImpl, T> {
 pub struct SharedState<Data: AppData, S: WindowSurface, T> {
     pub(super) shell: ShellShared<Data, S::Shared, T>,
     pub(super) data: Data,
-    pub(super) config: SharedRc<kas::event::Config>,
+    pub(super) config: Rc<RefCell<kas::event::Config>>,
     /// Estimated scale factor (from last window constructed or available screens)
     pub(super) scale_factor: f64,
     options: Options,
@@ -52,7 +53,7 @@ where
         draw_shared: S::Shared,
         mut theme: T,
         options: Options,
-        config: SharedRc<kas::event::Config>,
+        config: Rc<RefCell<kas::event::Config>>,
     ) -> Result<Self, Error> {
         let platform = pw.platform();
         let mut draw = kas::draw::SharedState::new(draw_shared, platform);

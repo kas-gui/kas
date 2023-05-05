@@ -11,9 +11,10 @@ pub use shortcuts::Shortcuts;
 use super::ModifiersState;
 use crate::cast::{Cast, CastFloat};
 use crate::geom::Offset;
-use crate::model::SharedRc;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::time::Duration;
 
 /// Event handling configuration
@@ -113,7 +114,7 @@ impl Config {
 /// Wrapper around [`Config`] to handle window-specific scaling
 #[derive(Clone, Debug)]
 pub struct WindowConfig {
-    pub(crate) config: SharedRc<Config>,
+    pub(crate) config: Rc<RefCell<Config>>,
     scroll_flick_sub: f32,
     scroll_dist: f32,
     pan_dist_thresh: f32,
@@ -125,7 +126,7 @@ impl WindowConfig {
     /// Construct
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(config: SharedRc<Config>, scale_factor: f32, dpem: f32) -> Self {
+    pub fn new(config: Rc<RefCell<Config>>, scale_factor: f32, dpem: f32) -> Self {
         let frame_dur = Duration::from_nanos(config.borrow().frame_dur_nanos.cast());
         let mut w = WindowConfig {
             config,
