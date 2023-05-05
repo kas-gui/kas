@@ -112,16 +112,6 @@ impl SharedData for ContainsString {
         Some(Ref(CellRef::map(self.0.borrow(), |tuple| &tuple.0)))
     }
 }
-impl SharedDataMut for ContainsString {
-    type ItemRefMut<'b> = RefMut<'b>;
-
-    fn borrow_mut(&self, mgr: &mut EventMgr, _: &Self::Key) -> Option<Self::ItemRefMut<'_>> {
-        let mut cell = self.0.borrow_mut();
-        cell.1 += 1;
-        mgr.update_all(0);
-        Some(RefMut(CellRefMut::map(cell, |tuple| &mut tuple.0)))
-    }
-}
 
 impl<'a> Filter<&'a str> for ContainsString {
     fn matches(&self, item: &&str) -> bool {
@@ -163,16 +153,6 @@ impl SharedData for ContainsCaseInsensitive {
     }
     fn borrow(&self, _: &Self::Key) -> Option<Self::ItemRef<'_>> {
         Some(Ref(CellRef::map(self.0.borrow(), |tuple| &tuple.0)))
-    }
-}
-impl SharedDataMut for ContainsCaseInsensitive {
-    type ItemRefMut<'b> = CaseInsensitiveRefMut<'b>;
-
-    fn borrow_mut(&self, mgr: &mut EventMgr, _: &Self::Key) -> Option<Self::ItemRefMut<'_>> {
-        let mut cell = self.0.borrow_mut();
-        cell.2 += 1;
-        mgr.update_all(0);
-        Some(CaseInsensitiveRefMut(cell))
     }
 }
 

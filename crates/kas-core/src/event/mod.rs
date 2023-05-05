@@ -62,7 +62,6 @@ pub mod config;
 mod events;
 mod manager;
 mod response;
-mod update;
 
 pub mod components;
 
@@ -79,7 +78,6 @@ pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
 pub use events::*;
 pub use manager::*;
 pub use response::{Response, Scroll};
-pub use update::UpdateId;
 
 /// A type supporting a small number of key bindings
 ///

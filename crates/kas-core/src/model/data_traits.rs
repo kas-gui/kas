@@ -5,11 +5,8 @@
 
 //! Traits for shared data objects
 
-#[allow(unused)] // doc links
-use crate::event::Event;
-use crate::event::EventMgr;
 use crate::{autoimpl, WidgetId};
-use std::borrow::{Borrow, BorrowMut};
+use std::borrow::Borrow;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -75,7 +72,7 @@ impl DataKey for (usize, usize) {
 /// Trait for shared data
 ///
 /// By design, all methods take only `&self` and only allow immutable access to
-/// data. See also [`SharedDataMut`].
+/// data.
 #[autoimpl(for<T: trait + ?Sized>
     &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait SharedData: Debug {
@@ -132,86 +129,6 @@ pub trait SharedData: Debug {
         self.borrow(key).map(|r| r.borrow().to_owned())
     }
 }
-
-/// Trait for shared mutable data
-///
-/// By design, all methods take only `&self`: since data is shared, an internal
-/// locking or synchronization mechanism is required (e.g. `RefCell` or `Mutex`).
-#[autoimpl(for<T: trait + ?Sized>
-    &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
-pub trait SharedDataMut: SharedData {
-    /// A mutable borrow of the item type
-    ///
-    /// This type must support [`BorrowMut`] over [`SharedData::Item`]. This is, for
-    /// example, supported by `&mut Self::Item`.
-    ///
-    /// It is also recommended (but not required) that the type support
-    /// [`std::ops::DerefMut`]: this allows easier usage of [`Self::borrow_mut`].
-    type ItemRefMut<'b>: BorrowMut<Self::Item>
-    where
-        Self: 'b;
-
-    /// Mutably borrow an item by `key` and notify of an update
-    ///
-    /// Returns `None` if the data is by design not mutable or if `key` has no
-    /// associated item. Otherwise, this notifies
-    /// users of a data update (by calling [`EventMgr::update_all`] *and*
-    /// incrementing the number returned by [`SharedData::version`]).
-    ///
-    /// Depending on the implementation, this may involve some form of lock
-    /// such as `RefCell::borrow_mut` or `Mutex::lock`. The implementation
-    /// should panic on lock failure, not return `None`.
-    ///
-    /// Note: implementations of the return type *might* rely on [`Drop`] for
-    /// synchronization. Failing to drop the return value may thus cause errors.
-    fn borrow_mut(&self, mgr: &mut EventMgr, key: &Self::Key) -> Option<Self::ItemRefMut<'_>>;
-
-    /// Access a mutable borrow of an item
-    ///
-    /// This is a convenience method over [`Self::borrow_mut`].
-    fn with_ref_mut<V>(
-        &self,
-        mgr: &mut EventMgr,
-        key: &Self::Key,
-        f: impl FnOnce(&mut Self::Item) -> V,
-    ) -> Option<V>
-    where
-        Self: Sized,
-    {
-        self.borrow_mut(mgr, key)
-            .map(|mut borrow| f(borrow.borrow_mut()))
-    }
-
-    /// Set an item
-    ///
-    /// This is a convenience method over [`Self::borrow_mut`].
-    #[inline]
-    fn set(&self, mgr: &mut EventMgr, key: &Self::Key, item: Self::Item) {
-        if let Some(mut borrow) = self.borrow_mut(mgr, key) {
-            *borrow.borrow_mut() = item;
-        }
-    }
-}
-
-/// Trait bound for viewable single data
-///
-/// This is automatically implemented for every type implementing `SharedData<()>`.
-///
-/// Provided implementations: [`SharedRc`](super::SharedRc),
-/// [`SharedArc`](super::SharedArc).
-// TODO(trait aliases): make this an actual trait alias
-pub trait SingleData: SharedData<Key = ()> {}
-impl<T: SharedData<Key = ()>> SingleData for T {}
-
-/// Trait bound for mutable single data
-///
-/// This is automatically implemented for every type implementing `SharedDataMut<()>`.
-///
-/// Provided implementations: [`SharedRc`](super::SharedRc),
-/// [`SharedArc`](super::SharedArc).
-// TODO(trait aliases): make this an actual trait alias
-pub trait SingleDataMut: SharedDataMut<Key = ()> {}
-impl<T: SharedDataMut<Key = ()>> SingleDataMut for T {}
 
 /// Trait for viewable data lists
 ///

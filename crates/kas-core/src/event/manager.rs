@@ -614,20 +614,6 @@ impl<'a> EventMgr<'a> {
         self.scroll = Scroll::None;
     }
 
-    // Traverse widget tree by recursive call, broadcasting
-    #[inline]
-    fn send_update(&mut self, mut widget: NodeMut<'_>, id: UpdateId, payload: u64) -> usize {
-        self.messages.set_base();
-        let mut count = 0;
-        let event = Event::Update { id, payload };
-        widget._broadcast(self, &mut count, event);
-        if self.messages.has_any() {
-            log::error!(target: "kas_core::event::manager", "message(s) sent when handling Event::Update");
-        }
-        self.scroll = Scroll::None;
-        count
-    }
-
     // Wrapper around Self::send; returns true when event is used
     #[inline]
     fn send_event(&mut self, widget: NodeMut<'_>, id: WidgetId, event: Event) -> bool {

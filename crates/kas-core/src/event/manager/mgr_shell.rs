@@ -300,17 +300,6 @@ impl<'a> EventMgr<'a> {
         self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
     }
 
-    /// Update widgets with an [`UpdateId`]
-    pub(crate) fn update_widgets(&mut self, widget: NodeMut<'_>, id: UpdateId, payload: u64) {
-        let start = Instant::now();
-        let count = self.send_update(widget, id, payload);
-        log::debug!(
-            target: "kas_core::event::manager",
-            "update_widgets: sent Event::Update ({id:?}) to {count} widgets in {}μs",
-            start.elapsed().as_micros()
-        );
-    }
-
     fn poll_futures(&mut self, mut widget: NodeMut<'_>) {
         let mut i = 0;
         while i < self.state.fut_messages.len() {

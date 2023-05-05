@@ -10,7 +10,6 @@ use std::task::Waker;
 
 use super::{PendingAction, Platform, WindowSurface};
 use kas::config::Options;
-use kas::event::UpdateId;
 use kas::shell::Error;
 use kas::theme::Theme;
 use kas::util::warn_about_error;
@@ -175,9 +174,5 @@ impl<Data: AppData, S: kas::draw::DrawSharedImpl, T> ShellShared<Data, S, T> {
                 Err(e) => warn_about_error("Failed to set clipboard contents", &e),
             }
         }
-    }
-
-    pub fn update_all(&mut self, id: UpdateId, payload: u64) {
-        self.pending.push(PendingAction::Update(id, payload));
     }
 }
