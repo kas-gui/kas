@@ -745,35 +745,6 @@ impl<'a> EventMgr<'a> {
         self.mgr.clear_state();
     }
 
-    // Traverse widget tree by recursive call, broadcasting
-    #[inline]
-    fn send_update(&mut self, widget: Node, id: UpdateId, payload: u64) -> usize {
-        fn inner(
-            mgr: &mut EventMgr,
-            mut widget: Node,
-            count: &mut usize,
-            id: UpdateId,
-            payload: u64,
-        ) {
-            widget.handle_event(mgr, Event::Update { id, payload });
-            *count += 1;
-            for index in 0..widget.num_children() {
-                if let Some(w) = widget.re().get_child(index) {
-                    inner(mgr, w, count, id, payload);
-                }
-            }
-        }
-
-        let mut count = 0;
-        inner(self, widget, &mut count, id, payload);
-        if !self.mgr.messages.is_empty() {
-            log::error!(target: "kas_core::event::manager", "message(s) sent when handling Event::Update");
-            self.mgr.drop_messages();
-        }
-        self.mgr.scroll = Scroll::None;
-        count
-    }
-
     // Wrapper around Self::send; returns true when event is used
     #[inline]
     fn send_event(&mut self, widget: Node, id: WidgetId, event: Event) -> bool {

@@ -8,7 +8,7 @@
 use super::{PendingAction, Platform, ProxyAction, SharedState, ShellWindow, WindowSurface};
 use kas::cast::Cast;
 use kas::draw::{color::Rgba, AnimationState, DrawShared};
-use kas::event::{ConfigMgr, CursorIcon, EventState, UpdateId};
+use kas::event::{ConfigMgr, CursorIcon, EventState};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
@@ -284,18 +284,6 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         self.next_resume()
     }
 
-    pub(super) fn update_widgets(
-        &mut self,
-        shared: &mut SharedState<S, T>,
-        id: UpdateId,
-        payload: u64,
-    ) {
-        let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-        let widget = self.widget.as_node();
-        self.ev_state
-            .with(&mut tkw, |mgr| mgr.update_widgets(widget, id, payload));
-    }
-
     pub(super) fn add_popup(
         &mut self,
         shared: &mut SharedState<S, T>,
@@ -494,10 +482,6 @@ where
 
     fn close_window(&mut self, id: WindowId) {
         self.shared.pending.push(PendingAction::CloseWindow(id));
-    }
-
-    fn update_all(&mut self, id: UpdateId, payload: u64) {
-        self.shared.update_all(id, payload);
     }
 
     fn drag_window(&self) {

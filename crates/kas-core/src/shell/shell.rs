@@ -8,7 +8,7 @@
 use super::{GraphicalShell, Platform, ProxyAction, Result, SharedState, Window};
 use crate::config::Options;
 use crate::draw::{DrawImpl, DrawShared, DrawSharedImpl};
-use crate::event::{self, UpdateId};
+use crate::event;
 use crate::theme::{self, Theme, ThemeConfig};
 use crate::util::warn_about_error;
 use crate::WindowId;
@@ -323,13 +323,6 @@ impl Proxy {
     pub fn close_all(&self) -> std::result::Result<(), ClosedError> {
         self.0
             .send_event(ProxyAction::CloseAll)
-            .map_err(|_| ClosedError)
-    }
-
-    /// Trigger an update
-    pub fn update_all(&self, id: UpdateId, payload: u64) -> std::result::Result<(), ClosedError> {
-        self.0
-            .send_event(ProxyAction::Update(id, payload))
             .map_err(|_| ClosedError)
     }
 

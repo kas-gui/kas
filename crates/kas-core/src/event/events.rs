@@ -8,7 +8,7 @@
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use super::{EventCx, Press, UpdateId, VirtualKeyCode};
+use super::{EventCx, Press, VirtualKeyCode};
 #[allow(unused)]
 use super::{EventMgr, EventState, GrabMode, Response}; // for doc-links
 use crate::geom::{DVec2, Offset};
@@ -17,7 +17,7 @@ use crate::{dir::Direction, WidgetId, WindowId};
 
 /// Events addressed to a widget
 ///
-/// Note regarding disabled widgets: [`Event::Update`], [`Event::PopupRemoved`]
+/// Note regarding disabled widgets: [`Event::PopupRemoved`]
 /// and `Lost..` events are received regardless of status; other events are not
 /// received by disabled widgets. See [`Event::pass_when_disabled`].
 #[non_exhaustive]
@@ -156,14 +156,6 @@ pub enum Event {
     ///
     /// The `u64` payload is copied from [`EventState::request_update`].
     TimerUpdate(u64),
-    /// Update triggerred via an [`UpdateId`]
-    ///
-    /// When [`EventMgr::update_all`] is called, this event is broadcast to all
-    /// widgets via depth-first traversal of the widget tree. As such,
-    /// [`Widget::steal_event`] and [`Widget::handle_unused`] are not called
-    /// with this `Event`, nor are [`Widget::handle_message`] or
-    /// [`Widget::handle_scroll`] called after a widget receives this `Event`.
-    Update { id: UpdateId, payload: u64 },
     /// Notification that a popup has been destroyed
     ///
     /// This is sent to the popup's parent after a popup has been removed.
@@ -266,7 +258,7 @@ impl Event {
             None | Command(_) => false,
             ReceivedCharacter(_) | Scroll(_) | Pan { .. } => false,
             PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
-            TimerUpdate(_) | Update { .. } | PopupRemoved(_) => true,
+            TimerUpdate(_) | PopupRemoved(_) => true,
             NavFocus(_) | MouseHover => false,
             LostNavFocus | LostMouseHover | LostCharFocus | LostSelFocus => true,
         }

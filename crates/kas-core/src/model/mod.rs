@@ -8,21 +8,14 @@
 //! Models of 0-, 1- and 2-dimensional data. These are used by "view widgets",
 //! enabling synchronized views over shared data.
 //!
-//! All shared data must implement [`SharedData`] (optionally also
-//! [`SharedDataMut`] for data supporting synchronized updates).
+//! All shared data must implement [`SharedData`].
 //! For 0-dimensional data this alone is enough; `()` is used as a key.
 //! For 1- or 2-dimensional data implement [`ListData`] or [`MatrixData`].
 //!
 //! Some implementations are provided, e.g. [`ListData`] is implemented for
-//! `[T]`, `Vec<T>`. The [`SharedRc`] type is a wrapper enabling sharing of
-//! 0-dimensional data via the `Rc<RefCell<T>>` pattern (with additions for
-//! synchronization).
+//! `[T]`, `Vec<T>`.
 mod data_impls;
 mod data_traits;
-pub mod filter;
-mod shared_arc;
-mod shared_rc;
+// pub mod filter;
 
 pub use data_traits::*;
-pub use shared_arc::*;
-pub use shared_rc::*;

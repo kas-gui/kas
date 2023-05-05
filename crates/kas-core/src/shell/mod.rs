@@ -27,7 +27,6 @@ enum PendingAction {
     AddPopup(winit::window::WindowId, kas::WindowId, kas::Popup),
     AddWindow(kas::WindowId, Box<dyn kas::Window>),
     CloseWindow(kas::WindowId),
-    Update(kas::event::UpdateId, u64),
     Action(kas::Action),
 }
 
@@ -36,6 +35,5 @@ enum PendingAction {
 enum ProxyAction {
     CloseAll,
     Close(kas::WindowId),
-    Update(kas::event::UpdateId, u64),
     WakeAsync,
 }

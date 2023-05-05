@@ -121,11 +121,6 @@ where
                         window.send_action(Action::CLOSE);
                     }
                 }
-                ProxyAction::Update(handle, payload) => {
-                    self.shared
-                        .pending
-                        .push(PendingAction::Update(handle, payload));
-                }
                 ProxyAction::WakeAsync => {
                     // We don't need to do anything: MainEventsCleared will
                     // automatically be called after, which automatically calls
@@ -182,11 +177,6 @@ where
                                 for (_, window) in self.windows.iter_mut() {
                                     window.handle_action(&mut self.shared, action);
                                 }
-                            }
-                        }
-                        PendingAction::Update(handle, payload) => {
-                            for window in self.windows.values_mut() {
-                                window.update_widgets(&mut self.shared, handle, payload);
                             }
                         }
                     }

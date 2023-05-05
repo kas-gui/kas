@@ -242,12 +242,6 @@ impl<'a> Node<'a> {
         self.0.pre_handle_event(&mut mgr.with_data(self.1), event)
     }
 
-    /// Handle an [`Event`] sent to this widget
-    #[inline]
-    pub(crate) fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
-        self.0.handle_event(&mut mgr.with_data(self.1), event)
-    }
-
     /// Potentially steal an event before it reaches a child
     #[inline]
     pub(crate) fn steal_event(

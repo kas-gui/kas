@@ -10,7 +10,6 @@
 //! no direct link between Model and Controller:
 //!
 //! 1.  [`kas::model`] traits describe data **models**:
-//!     [`SingleData`](kas::model::SingleData),
 //!     [`ListData`](kas::model::ListData),
 //!     [`MatrixData`](kas::model::MatrixData)
 //! 2.  [**Drivers**](`driver`) describe how to build a widget view over data
