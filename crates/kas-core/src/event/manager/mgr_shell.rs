@@ -12,9 +12,9 @@ use std::time::{Duration, Instant};
 use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
-use crate::model::SharedRc;
 use crate::shell::ShellWindow;
 use crate::{Action, RootWidget, WidgetId, Window};
+use std::rc::Rc;
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
@@ -27,7 +27,7 @@ const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 impl EventState {
     /// Construct an event manager per-window data struct
     #[inline]
-    pub(crate) fn new(config: SharedRc<Config>, scale_factor: f32, dpem: f32) -> Self {
+    pub(crate) fn new(config: Rc<Config>, scale_factor: f32, dpem: f32) -> Self {
         EventState {
             config: WindowConfig::new(config, scale_factor, dpem),
             disabled: vec![],
@@ -286,11 +286,6 @@ impl<'a> EventMgr<'a> {
 
     /// Update widgets with an [`UpdateId`]
     pub(crate) fn update_widgets(&mut self, widget: Node, id: UpdateId, payload: u64) {
-        if id == self.state.config.config.id() {
-            let (sf, dpem) = self.size_mgr(|size| (size.scale_factor(), size.dpem()));
-            self.state.config.update(sf, dpem);
-        }
-
         let start = Instant::now();
         let count = self.send_update(widget, id, payload);
         log::debug!(

@@ -11,11 +11,11 @@ use std::task::Waker;
 use super::{PendingAction, Platform, WindowSurface};
 use kas::config::Options;
 use kas::event::UpdateId;
-use kas::model::SharedRc;
 use kas::shell::Error;
 use kas::theme::Theme;
 use kas::util::warn_about_error;
 use kas::{draw, WindowId};
+use std::rc::Rc;
 
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
@@ -26,7 +26,7 @@ pub struct SharedState<S: WindowSurface, T> {
     clipboard: Option<Clipboard>,
     pub(super) draw: draw::SharedState<S::Shared>,
     pub(super) theme: T,
-    pub(super) config: SharedRc<kas::event::Config>,
+    pub(super) config: Rc<kas::event::Config>,
     pub(super) pending: Vec<PendingAction>,
     /// Estimated scale factor (from last window constructed or available screens)
     pub(super) scale_factor: f64,
@@ -45,7 +45,7 @@ where
         draw_shared: S::Shared,
         mut theme: T,
         options: Options,
-        config: SharedRc<kas::event::Config>,
+        config: Rc<kas::event::Config>,
     ) -> Result<Self, Error> {
         let platform = pw.platform();
         let mut draw = kas::draw::SharedState::new(draw_shared, platform);
@@ -151,10 +151,7 @@ where
     }
 
     pub fn on_exit(&self) {
-        match self
-            .options
-            .write_config(&self.config.borrow(), &self.theme)
-        {
+        match self.options.write_config(&self.config, &self.theme) {
             Ok(()) => (),
             Err(error) => warn_about_error("Failed to save config", &error),
         }

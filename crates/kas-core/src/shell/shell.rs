@@ -9,10 +9,10 @@ use super::{GraphicalShell, Platform, ProxyAction, Result, SharedState, Window};
 use crate::config::Options;
 use crate::draw::{DrawImpl, DrawShared, DrawSharedImpl};
 use crate::event::{self, UpdateId};
-use crate::model::SharedRc;
 use crate::theme::{self, Theme, ThemeConfig};
 use crate::util::warn_about_error;
 use crate::WindowId;
+use std::rc::Rc;
 use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 
 /// The KAS shell
@@ -90,7 +90,7 @@ where
                 Default::default()
             }
         };
-        let config = SharedRc::new(config);
+        let config = Rc::new(config);
 
         Self::new_custom_config(graphical_shell, theme, options, config)
     }
@@ -107,7 +107,7 @@ where
         graphical_shell: impl Into<G>,
         theme: T,
         options: Options,
-        config: SharedRc<event::Config>,
+        config: Rc<event::Config>,
     ) -> Result<Self> {
         let el = EventLoopBuilder::with_user_event().build();
         let windows = vec![];
@@ -132,7 +132,7 @@ where
 
     /// Access event configuration
     #[inline]
-    pub fn event_config(&self) -> &SharedRc<event::Config> {
+    pub fn event_config(&self) -> &Rc<event::Config> {
         &self.shared.config
     }
 
