@@ -114,12 +114,20 @@ impl_scope! {
         fn num_children(&self) -> usize {
             self.widgets.len() + self.handles.len()
         }
-        #[inline]
-        fn get_child<'s>(&'s mut self, data: &'s W::Data, index: usize) -> Option<Node<'s>> {
+        fn for_child_impl(
+            &mut self,
+            data: &Self::Data,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
             if (index & 1) != 0 {
-                self.handles.get_mut(index >> 1).map(|w| w.as_node(&()))
+                if let Some(w) = self.handles.get_mut(index >> 1) {
+                    closure(w.as_node(&()));
+                }
             } else {
-                self.widgets.get_mut(index >> 1).map(|w| w.as_node(data))
+                if let Some(w) = self.widgets.get_mut(index >> 1) {
+                    closure(w.as_node(data));
+                }
             }
         }
 

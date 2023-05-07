@@ -414,8 +414,13 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     self.#inner.num_children()
                 }
                 #[inline]
-                fn get_child<'s>(&'s mut self, data: &'s Self::Data, index: usize) -> Option<::kas::Node<'s>> {
-                    self.#inner.get_child(data, index)
+                fn for_child_impl(
+                    &mut self,
+                    data: &Self::Data,
+                    index: usize,
+                    closure: Box<dyn FnOnce(::kas::Node<'_>) + '_>,
+                ) {
+                    self.#inner.for_child_impl(data, index, closure)
                 }
                 #[inline]
                 fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
@@ -630,9 +635,9 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     // predicates.push(..);
 
                     get_mut_rules.append_all(if let Some(data) = opt_data {
-                        quote! { #i => Some(self.#ident.as_node(#data)), }
+                        quote! { #i => closure(self.#ident.as_node(#data)), }
                     } else {
-                        quote_spanned! {*span=> #i => Some(self.#ident.as_node(data)), }
+                        quote_spanned! {*span=> #i => closure(self.#ident.as_node(data)), }
                     });
                 }
 
@@ -644,8 +649,9 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
             for (i, path) in layout_children.iter().enumerate() {
                 let index = count + i;
-                get_mut_rules
-                    .append_all(quote! { #index => Some(self.#core.#path.as_node(data)), });
+                get_mut_rules.append_all(quote! {
+                    #index => closure(self.#core.#path.as_node(data)),
+                });
             }
             count += layout_children.len();
 
@@ -656,11 +662,16 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     fn num_children(&self) -> usize {
                         #count
                     }
-                    fn get_child<'s>(&'s mut self, data: &'s Self::Data, index: usize) -> Option<::kas::Node<'s>> {
+                    fn for_child_impl(
+                        &mut self,
+                        data: &Self::Data,
+                        index: usize,
+                        closure: Box<dyn FnOnce(::kas::Node<'_>) + '_>,
+                    ) {
                         use ::kas::{WidgetCore, WidgetNode};
                         match index {
                             #get_mut_rules
-                            _ => None
+                            _ => (),
                         }
                     }
                 }

@@ -256,8 +256,5 @@ fn print_widget_heirarchy(
     let size = widget.rect().size;
     write!(buf, "\n{trail}{identify:<len$} {pos:<plen$} {size:?}")?;
 
-    for i in 0..widget.num_children() {
-        print_widget_heirarchy(buf, widget.re().get_child(i).unwrap(), indent + 1)?;
-    }
-    Ok(())
+    widget.for_children_try(|w| print_widget_heirarchy(buf, w, indent + 1))
 }

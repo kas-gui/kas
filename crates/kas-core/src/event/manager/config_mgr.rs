@@ -109,9 +109,7 @@ impl<'a> ConfigMgr<'a> {
 
         for index in 0..widget.num_children() {
             let id = widget.make_child_id(index);
-            if let Some(widget) = widget.re().get_child(index) {
-                self.configure(id, widget);
-            }
+            widget.for_child(index, |w| self.configure(id, w));
         }
 
         widget.configure(self);
@@ -119,12 +117,7 @@ impl<'a> ConfigMgr<'a> {
 
     /// Update a widget
     pub fn update(&mut self, mut widget: Node) {
-        for index in 0..widget.num_children() {
-            if let Some(widget) = widget.re().get_child(index) {
-                self.update(widget);
-            }
-        }
-
+        widget.for_children(|w| self.update(w));
         widget.update(self);
     }
 

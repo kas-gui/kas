@@ -463,11 +463,11 @@ impl<'a> EventMgr<'a> {
                     if let Some(start_id) = self.hover.clone() {
                         // No mouse grab but have a hover target
                         if self.config.mouse_nav_focus() {
-                            if let Some(w) = widget.re().find_widget(&start_id) {
+                            widget.for_widget(&start_id, |w: Node| {
                                 if w.navigable() {
                                     self.set_nav_focus(w.id(), false);
                                 }
-                            }
+                            });
                         }
                     }
 
@@ -495,11 +495,11 @@ impl<'a> EventMgr<'a> {
                         let start_id = widget.find_id(coord);
                         if let Some(id) = start_id.as_ref() {
                             if self.config.touch_nav_focus() {
-                                if let Some(w) = widget.re().find_widget(id) {
+                                widget.for_widget(id, |w| {
                                     if w.navigable() {
                                         self.set_nav_focus(w.id(), false);
                                     }
-                                }
+                                });
                             }
 
                             let press = Press {

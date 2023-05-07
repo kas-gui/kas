@@ -445,16 +445,19 @@ impl_scope! {
         fn num_children(&self) -> usize {
             self.widgets.len()
         }
-        #[inline]
-        fn get_child<'s>(&'s mut self, data: &'s Self::Data, index: usize) -> Option<Node<'s>> {
-            todo!()
-            // FIXME: we cannot return an item due to data borrow
-            // self.widgets
-            //     .get_mut(index)
-            //     .and_then(|w| {
-            //         w.key.as_ref().and_then(|key| data.borrow(key))
-            //             .map(|item| w.widget.as_node(item))
-            //     })
+        fn for_child_impl(
+            &mut self,
+            data: &Self::Data,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
+            if let Some(w) = self.widgets.get_mut(index) {
+                if let Some(ref key) = w.key {
+                    if let Some(item) = data.borrow(key) {
+                        closure(w.widget.as_node(item.borrow()));
+                    }
+                }
+            }
         }
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
             let key = A::Key::reconstruct_key(self.id_ref(), id);

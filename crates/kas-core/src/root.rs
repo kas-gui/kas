@@ -82,10 +82,9 @@ impl_scope! {
                 return None;
             }
             for (_, popup, translation) in self.popups.iter_mut().rev() {
-                if let Some(id) = self
+                if let Some(Some(id)) = self
                     .w
-                    .find_widget(&self.data, &popup.id)
-                    .and_then(|mut w| w.find_id(coord + *translation))
+                    .for_widget(&self.data, &popup.id, |mut w| w.find_id(coord + *translation))
                 {
                     return Some(id);
                 }
@@ -104,12 +103,12 @@ impl_scope! {
             }
             draw.recurse(&mut self.w);
             for (_, popup, translation) in &self.popups {
-                if let Some(mut widget) = self.w.find_widget(&self.data, &popup.id) {
+                self.w.for_widget(&self.data, &popup.id, |mut widget| {
                     let clip_rect = widget.rect() - *translation;
                     draw.with_overlay(clip_rect, *translation, |mut draw| {
                         widget.draw(draw.re_id(widget.id()));
                     });
-                }
+                });
             }
         }
     }
@@ -228,27 +227,23 @@ impl RootWidget {
 
 // Search for a widget by `id`. On success, return that widget's [`Rect`] and
 // the translation of its children.
-fn find_rect(widget: Node, id: WidgetId) -> Option<(Rect, Offset)> {
-    fn inner(mut w: Node, id: WidgetId, t: Offset) -> Option<(Rect, Offset)> {
-        if let Some(i) = w.find_child_index(&id) {
-            let t = t + w.translation();
-            if let Some(w2) = w.re().get_child(i) {
-                return inner(w2, id, t);
-            }
-        }
-
-        return if w.eq_id(&id) {
+fn find_rect(mut widget: Node, id: WidgetId) -> Option<(Rect, Offset)> {
+    let mut result = None;
+    let out = &mut result;
+    let mut t = Offset::ZERO;
+    widget.for_path(&id, |w| {
+        if w.eq_id(&id) {
             if w.translation() != Offset::ZERO {
                 // Unvalidated: does this cause issues with the parent's event handlers?
                 log::warn!("Parent of pop-up {} has non-zero translation", w.identify());
             }
 
-            Some((w.rect(), t))
+            *out = Some((w.rect(), t));
         } else {
-            None
-        };
-    }
-    inner(widget, id, Offset::ZERO)
+            t += w.translation();
+        }
+    });
+    result
 }
 
 impl RootWidget {
@@ -262,8 +257,12 @@ impl RootWidget {
         let (c, t) = find_rect(self.w.as_node(data), popup.parent.clone()).unwrap();
         *translation = t;
         let r = r + t; // work in translated coordinate space
-        let mut widget = self.w.find_widget(data, &popup.id).unwrap();
-        let mut cache = layout::SolveCache::find_constraints(widget.re(), mgr.size_mgr());
+        let mut cache = self
+            .w
+            .for_widget(data, &popup.id, |widget| {
+                layout::SolveCache::find_constraints(widget, mgr.size_mgr())
+            })
+            .unwrap();
         let ideal = cache.ideal(false);
         let m = cache.margins();
 
@@ -303,7 +302,9 @@ impl RootWidget {
             Rect::new(Coord(x, y), Size::new(w, h))
         };
 
-        cache.apply_rect(widget.re(), mgr, rect, false);
-        cache.print_widget_heirarchy(widget);
+        self.w.for_widget(data, &popup.id, move |mut widget| {
+            cache.apply_rect(widget.re(), mgr, rect, false);
+            cache.print_widget_heirarchy(widget);
+        });
     }
 }

@@ -80,15 +80,16 @@ pub trait WidgetChildren: WidgetNode {
     /// index.
     fn num_children(&self) -> usize;
 
-    /// Get a child by index (if valid)
+    /// Call closure on child with given `index`, if `index < self.num_children()`.
     ///
-    /// Returns `Some(_)` exactly when `index < self.num_children()`.
-    ///
-    /// Warning: directly adjusting a widget without requiring reconfigure or
-    /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
-    /// be requested. This can be done via [`EventState::send_action`].
-    /// This method may be removed in the future.
-    fn get_child<'s>(&'s mut self, data: &'s Self::Data, index: usize) -> Option<Node<'s>>;
+    /// This is a dyn-safe implementation target. Prefer to call a method of
+    /// [`WidgetExt`] or [`Node`].
+    fn for_child_impl(
+        &mut self,
+        data: &Self::Data,
+        index: usize,
+        closure: Box<dyn FnOnce(Node<'_>) + '_>,
+    );
 
     /// Find the child which is an ancestor of this `id`, if any
     ///
@@ -478,10 +479,10 @@ pub trait Widget: WidgetChildren {
     /// -   Determine the next child after `from` (if provided) or the whole
     ///     range, optionally in `reverse` order
     /// -   Ensure that the selected widget is addressable through
-    ///     [`WidgetChildren::get_child`]
+    ///     [`WidgetChildren::for_child`]
     ///
     /// Both `from` and the return value use the widget index, as used by
-    /// [`WidgetChildren::get_child`].
+    /// [`WidgetChildren::for_child`].
     ///
     /// Default implementation:
     ///
@@ -648,10 +649,57 @@ pub trait WidgetExt: Widget {
         !self.eq_id(id) && self.id().is_ancestor_of(id)
     }
 
-    /// Find the descendant with this `id`, if any
+    /// Run a closure on some child by index (if valid)
+    ///
+    /// Calls the closure and returns `Some(result)` exactly when
+    /// `index < self.num_children()`.
     #[inline]
-    fn find_widget<'s>(&'s mut self, data: &'s Self::Data, id: &WidgetId) -> Option<Node<'s>> {
-        self.as_node(data).find_widget(id)
+    fn for_child<R>(
+        &mut self,
+        data: &Self::Data,
+        index: usize,
+        closure: impl FnOnce(Node<'_>) -> R,
+    ) -> Option<R> {
+        self.as_node(data).for_child(index, closure)
+    }
+
+    /// Run a closure on all children
+    #[inline]
+    fn for_children(&mut self, data: &Self::Data, closure: impl FnMut(Node<'_>)) {
+        self.as_node(data).for_children(closure);
+    }
+
+    /// Run a closure on all children, returning early in case of error
+    #[inline]
+    fn for_children_try<E>(
+        &mut self,
+        data: &Self::Data,
+        closure: impl FnMut(Node<'_>) -> Result<(), E>,
+    ) -> Result<(), E> {
+        self.as_node(data).for_children_try(closure)
+    }
+
+    /// Run `closure` on each node of the path from `self` to `id`
+    ///
+    /// Calls `closure` on `self`, then on the child of `self` which is an
+    /// ancestor of `id`, ..., then finally on the widget with `id`.
+    ///
+    /// In case no widget with `id` is found, this still calls `closure` on each
+    /// node which could be an ancestor (see [`WidgetId::is_ancestor_of`]).
+    #[inline]
+    fn for_path(&mut self, data: &Self::Data, id: &WidgetId, closure: impl FnMut(Node<'_>)) {
+        self.as_node(data).for_path(id, closure);
+    }
+
+    /// Find the descendant with this `id`, if any, and run `closure` on it
+    #[inline]
+    fn for_widget<R>(
+        &mut self,
+        data: &Self::Data,
+        id: &WidgetId,
+        closure: impl FnOnce(Node<'_>) -> R,
+    ) -> Option<R> {
+        self.as_node(data).for_widget(id, |node| closure(node))
     }
 }
 impl<W: Widget + ?Sized> WidgetExt for W {}

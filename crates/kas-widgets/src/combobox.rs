@@ -65,9 +65,9 @@ impl_scope! {
                     parent: s.id(),
                     direction: Direction::Down,
                 });
-                if let Some(w) = s.popup.inner.inner.get_child(mgr.data(), s.active) {
+                s.popup.inner.inner.for_child(mgr.data(), s.active, |w| {
                     mgr.next_nav_focus(w.id(), false, key_focus);
-                }
+                });
             };
 
             match event {

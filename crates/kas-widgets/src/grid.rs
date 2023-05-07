@@ -69,9 +69,15 @@ impl_scope! {
         fn num_children(&self) -> usize {
             self.widgets.len()
         }
-        #[inline]
-        fn get_child<'s>(&'s mut self, data: &'s W::Data, index: usize) -> Option<Node<'s>> {
-            self.widgets.get_mut(index).map(|c| c.1.as_node(data))
+        fn for_child_impl(
+            &mut self,
+            data: &Self::Data,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
+            if let Some(w) = self.widgets.get_mut(index) {
+                closure(w.1.as_node(data));
+            }
         }
     }
 

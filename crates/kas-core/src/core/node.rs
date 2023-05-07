@@ -83,18 +83,6 @@ impl<'a> Node<'a> {
         !self.eq_id(id) && self.id().is_ancestor_of(id)
     }
 
-    /// Find the descendant with this `id`, if any
-    pub fn find_widget(self, id: &WidgetId) -> Option<Node<'a>> {
-        if let Some(index) = self.find_child_index(id) {
-            self.get_child(index)
-                .and_then(|child| child.find_widget(id))
-        } else if self.eq_id(id) {
-            return Some(self);
-        } else {
-            None
-        }
-    }
-
     /// Get the widget's region, relative to its parent.
     #[inline]
     pub fn rect(&self) -> Rect {
@@ -122,17 +110,89 @@ impl<'a> Node<'a> {
         self.0.num_children()
     }
 
-    /// Get a child by index (if valid)
+    /// Run `closure` on some child by index and, if valid, return the result.
     ///
-    /// Returns `Some(_)` exactly when `index < self.num_children()`.
+    /// Calls the closure and returns `Some(result)` exactly when
+    /// `index < self.num_children()`.
+    pub fn for_child<R>(&mut self, index: usize, closure: impl FnOnce(Node<'_>) -> R) -> Option<R> {
+        let mut result = None;
+        let out = &mut result;
+        self.0.for_child_impl(
+            self.1,
+            index,
+            Box::new(|node| {
+                *out = Some(closure(node));
+            }),
+        );
+        result
+    }
+
+    /// Run a closure on all children
+    pub fn for_children(&mut self, mut closure: impl FnMut(Node<'_>)) {
+        for i in 0..self.0.num_children() {
+            // NOTE: for_child_impl takes FnOnce hence we must wrap the closure
+            let f = &mut closure;
+            self.0.for_child_impl(
+                self.1,
+                i,
+                Box::new(|node| {
+                    f(node);
+                }),
+            );
+        }
+    }
+
+    /// Run a closure on all children, returning early in case of error
+    pub fn for_children_try<E>(
+        &mut self,
+        mut closure: impl FnMut(Node<'_>) -> Result<(), E>,
+    ) -> Result<(), E> {
+        let mut result = Ok(());
+        for i in 0..self.0.num_children() {
+            let f = &mut closure;
+            let out = &mut result;
+            self.0.for_child_impl(
+                self.1,
+                i,
+                Box::new(|node| {
+                    *out = f(node);
+                }),
+            );
+            if result.is_err() {
+                break;
+            }
+        }
+        result
+    }
+
+    /// Run `closure` on each node of the path from `self` to `id`
     ///
-    /// Warning: directly adjusting a widget without requiring reconfigure or
-    /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
-    /// be requested. This can be done via [`EventState::send_action`].
-    /// This method may be removed in the future.
-    #[inline]
-    pub fn get_child(self, index: usize) -> Option<Node<'a>> {
-        self.0.get_child(self.1, index)
+    /// Calls `closure` on `self`, then on the child of `self` which is an
+    /// ancestor of `id`, ..., then finally on the widget with `id`.
+    ///
+    /// In case no widget with `id` is found, this still calls `closure` on each
+    /// node which could be an ancestor (see [`WidgetId::is_ancestor_of`]).
+    pub fn for_path(&mut self, id: &WidgetId, mut closure: impl FnMut(Node<'_>)) {
+        closure(self.re());
+        if let Some(index) = self.find_child_index(id) {
+            self.for_child(index, |mut node| node.for_path(id, closure));
+        }
+    }
+
+    /// Run `closure` on the descendant with this `id` and, if found, return the result.
+    pub fn for_widget<R>(
+        &mut self,
+        id: &WidgetId,
+        closure: impl FnOnce(Node<'_>) -> R,
+    ) -> Option<R> {
+        if let Some(index) = self.find_child_index(id) {
+            self.for_child(index, |mut node| node.for_widget(id, closure))
+                .unwrap()
+        } else if self.eq_id(id) {
+            Some(closure(self.re()))
+        } else {
+            None
+        }
     }
 
     /// Find the child which is an ancestor of this `id`, if any

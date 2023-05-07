@@ -587,9 +587,7 @@ impl<'a> EventMgr<'a> {
 
         if let Some(id) = target {
             if widget
-                .re()
-                .find_widget(&id)
-                .map(|w| w.navigable())
+                .for_widget(&id, |w: Node| w.navigable())
                 .unwrap_or(false)
             {
                 self.set_nav_focus(id.clone(), true);
@@ -675,8 +673,11 @@ impl<'a> EventMgr<'a> {
 
         if let Some(index) = widget.find_child_index(&id) {
             let translation = widget.translation();
-            if let Some(w) = widget.re().get_child(index) {
-                response = self.send_recurse(w, id, disabled, event.clone() + translation);
+            let id2 = id.clone();
+            if let Some(r) = widget.for_child(index, |w| {
+                self.send_recurse(w, id2, disabled, event.clone() + translation)
+            }) {
+                response = r;
                 self.mgr.last_child = Some(index);
                 if self.mgr.scroll != Scroll::None {
                     widget.handle_scroll(self, self.mgr.scroll);
@@ -707,8 +708,10 @@ impl<'a> EventMgr<'a> {
     // Traverse widget tree by recursive call to a specific target
     fn replay_recurse(&mut self, mut widget: Node, id: WidgetId, msg: Erased) {
         if let Some(index) = widget.find_child_index(&id) {
-            if let Some(w) = widget.re().get_child(index) {
-                self.replay_recurse(w, id, msg);
+            let id2 = id.clone();
+            if let Some(()) = widget.for_child(index, |w| {
+                self.replay_recurse(w, id2, msg);
+            }) {
                 self.mgr.last_child = Some(index);
                 if self.mgr.scroll != Scroll::None {
                     widget.handle_scroll(self, self.mgr.scroll);
@@ -811,8 +814,10 @@ impl<'a> EventMgr<'a> {
         if let Some(id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
             if id.is_ancestor_of(widget.id_ref()) {
                 // do nothing
-            } else if let Some(w) = widget.find_widget(&id) {
-                widget = w;
+            } else if let Some(()) = widget.for_widget(&id, |w| {
+                self.next_nav_focus_impl(w, target, reverse, key_focus);
+            }) {
+                return;
             } else {
                 log::warn!(
                     target: "kas_core::event::config_mgr",
@@ -841,11 +846,7 @@ impl<'a> EventMgr<'a> {
 
             if !rev {
                 if let Some(index) = child {
-                    if let Some(id) = widget
-                        .re()
-                        .get_child(index)
-                        .and_then(|w| nav(mgr, w, focus, rev))
-                    {
+                    if let Some(Some(id)) = widget.for_child(index, |w| nav(mgr, w, focus, rev)) {
                         return Some(id);
                     }
                 } else if !widget.eq_id(focus) && widget.navigable() {
@@ -854,10 +855,7 @@ impl<'a> EventMgr<'a> {
 
                 loop {
                     if let Some(index) = widget.nav_next(mgr, rev, child) {
-                        if let Some(id) = widget
-                            .re()
-                            .get_child(index)
-                            .and_then(|w| nav(mgr, w, focus, rev))
+                        if let Some(Some(id)) = widget.for_child(index, |w| nav(mgr, w, focus, rev))
                         {
                             return Some(id);
                         }
@@ -868,21 +866,14 @@ impl<'a> EventMgr<'a> {
                 }
             } else {
                 if let Some(index) = child {
-                    if let Some(id) = widget
-                        .re()
-                        .get_child(index)
-                        .and_then(|w| nav(mgr, w, focus, rev))
-                    {
+                    if let Some(Some(id)) = widget.for_child(index, |w| nav(mgr, w, focus, rev)) {
                         return Some(id);
                     }
                 }
 
                 loop {
                     if let Some(index) = widget.nav_next(mgr, rev, child) {
-                        if let Some(id) = widget
-                            .re()
-                            .get_child(index)
-                            .and_then(|w| nav(mgr, w, focus, rev))
+                        if let Some(Some(id)) = widget.for_child(index, |w| nav(mgr, w, focus, rev))
                         {
                             return Some(id);
                         }
@@ -901,9 +892,7 @@ impl<'a> EventMgr<'a> {
         let mut opt_id = None;
         if let Some(ref id) = target {
             if widget
-                .re()
-                .find_widget(id)
-                .map(|w| w.navigable())
+                .for_widget(id, |w: Node| w.navigable())
                 .unwrap_or(false)
             {
                 opt_id = Some(id.clone());
