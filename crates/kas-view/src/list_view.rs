@@ -761,24 +761,33 @@ impl_scope! {
     impl Widget for Self {
         type Data = A;
 
-        fn get_child<'a>(&'a self, data: &'a A, index: usize) -> Option<Node<'a>> {
-            todo!()
-            // self.widgets.get(index).and_then(|w| {
-            //     w.key.is_some().then(|| w.widget.as_node(data))
-            // })
+        fn for_child_impl(
+            &self,
+            data: &A,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
+            if let Some(w) = self.widgets.get(index) {
+                if let Some(ref key) = w.key {
+                    if let Some(item) = data.borrow(key) {
+                        closure(w.widget.as_node(item.borrow()));
+                    }
+                }
+            }
         }
-        fn get_child_mut<'a>(&'a mut self, data: &'a A, index: usize) -> Option<NodeMut<'a>> {
-            // self.widgets.get_mut(index).and_then(|w| {
-            //     w.key.is_some().then(|| w.widget.as_node_mut(data))
-            // })
-            todo!()
-            // FIXME: we cannot return an item due to data borrow
-            // self.widgets
-            //     .get_mut(index)
-            //     .and_then(|w| {
-            //         w.key.as_ref().and_then(|key| data.borrow(key))
-            //             .map(|item| w.widget.as_node(item))
-            //     })
+        fn for_child_mut_impl(
+            &mut self,
+            data: &A,
+            index: usize,
+            closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
+        ) {
+            if let Some(w) = self.widgets.get_mut(index) {
+                if let Some(ref key) = w.key {
+                    if let Some(item) = data.borrow(key) {
+                        closure(w.widget.as_node_mut(item.borrow()));
+                    }
+                }
+            }
         }
 
         // Non-standard behaviour: do not configure children
@@ -825,9 +834,8 @@ impl_scope! {
             let mut child = focus.and_then(|id| self.find_child_index(id));
 
             if let Some(index) = child {
-                if let Some(id) = self
-                    .get_child_mut(data, index)
-                    .and_then(|mut w| w._nav_next(cx, focus, advance))
+                if let Some(Some(id)) = self.as_node_mut(data)
+                    .for_child(index, |mut w| w._nav_next(cx, focus, advance))
                 {
                     return Some(id);
                 }
@@ -862,12 +870,12 @@ impl_scope! {
                 }
 
                 let index = data_index % usize::conv(self.cur_len);
-                if let Some(id) = self
-                    .get_child_mut(data, index)
-                    .and_then(|mut w| w._nav_next(cx, focus, advance))
+                if let Some(Some(id)) = self.as_node_mut(data)
+                    .for_child(index, |mut w| w._nav_next(cx, focus, advance))
                 {
                     return Some(id);
                 }
+
                 child = Some(index);
             }
         }

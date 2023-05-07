@@ -507,7 +507,7 @@ impl<'a> EventMgr<'a> {
 
             if matches!(cmd, Command::Debug) {
                 if let Some(ref id) = self.hover {
-                    widget.re_node().find(id, |node| {
+                    widget.re_node().for_id(id, |node| {
                         let hier = WidgetHierarchy::new(node.re());
                         log::debug!("Widget heirarchy (from mouse): {hier}");
                     });
@@ -687,7 +687,7 @@ impl<'a> EventMgr<'a> {
         if let Some(id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
             if id.is_ancestor_of(widget.id_ref()) {
                 // do nothing
-            } else if let Some(r) = widget.find(&id, |node| {
+            } else if let Some(r) = widget.for_id(&id, |node| {
                 self.next_nav_focus_impl(node, target, reverse, key_focus)
             }) {
                 return r;

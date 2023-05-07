@@ -21,9 +21,9 @@ pub fn _configure<W: Widget + Events<Data = <W as Widget>::Data>>(
     for index in 0..widget.num_children() {
         let id = widget.make_child_id(index);
         if id.is_valid() {
-            if let Some(mut node) = widget.get_child_mut(data, index) {
-                node._configure(cx, id);
-            }
+            widget
+                .as_node_mut(data)
+                .for_child(index, |mut node| node._configure(cx, id));
         }
     }
 
@@ -38,14 +38,10 @@ pub fn _update<W: Widget + Events<Data = <W as Widget>::Data>>(
     cx: &mut ConfigMgr,
 ) {
     widget.update(data, cx);
-    if !cx.recurse {
-        return;
-    }
-
-    for index in 0..widget.num_children() {
-        if let Some(mut node) = widget.get_child_mut(data, index) {
-            node._update(cx);
-        }
+    if cx.recurse {
+        widget
+            .as_node_mut(data)
+            .for_children(|mut node| node._update(cx));
     }
 }
 
@@ -59,11 +55,9 @@ pub fn _broadcast<W: Widget + Events<Data = <W as Widget>::Data>>(
 ) {
     widget.handle_event(data, cx, event.clone());
     *count += 1;
-    for index in 0..widget.num_children() {
-        if let Some(mut node) = widget.get_child_mut(data, index) {
-            node._broadcast(cx, count, event.clone());
-        }
-    }
+    widget
+        .as_node_mut(data)
+        .for_children(|mut node| node._broadcast(cx, count, event.clone()));
 }
 
 /// Generic implementation of [`Widget::_send`]
@@ -89,10 +83,10 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
         if let Some(index) = widget.find_child_index(&id) {
             let translation = widget.translation();
             let mut found = false;
-            if let Some(mut node) = widget.get_child_mut(data, index) {
+            widget.as_node_mut(data).for_child(index, |mut node| {
                 response = node._send(cx, id.clone(), disabled, event.clone() + translation);
                 found = true;
-            }
+            });
 
             if found {
                 if let Some(scroll) = cx.post_send(index) {
@@ -129,10 +123,10 @@ pub fn _replay<W: Widget + Events<Data = <W as Widget>::Data>>(
 ) {
     if let Some(index) = widget.find_child_index(&id) {
         let mut found = false;
-        if let Some(mut node) = widget.get_child_mut(data, index) {
+        widget.as_node_mut(data).for_child(index, |mut node| {
             node._replay(cx, id.clone(), msg);
             found = true;
-        }
+        });
 
         if found {
             if let Some(scroll) = cx.post_send(index) {
@@ -187,9 +181,8 @@ fn nav_next(
     let mut child = focus.and_then(|id| widget.find_child_index(id));
 
     if let Some(index) = child {
-        if let Some(id) = widget
-            .get_child(index)
-            .and_then(|mut node| node._nav_next(cx, focus, advance))
+        if let Some(Some(id)) =
+            widget.for_child(index, |mut node| node._nav_next(cx, focus, advance))
         {
             return Some(id);
         }
@@ -214,9 +207,8 @@ fn nav_next(
     };
 
     while let Some(index) = widget.nav_next(rev, child) {
-        if let Some(id) = widget
-            .get_child(index)
-            .and_then(|mut node| node._nav_next(cx, focus, advance))
+        if let Some(Some(id)) =
+            widget.for_child(index, |mut node| node._nav_next(cx, focus, advance))
         {
             return Some(id);
         }

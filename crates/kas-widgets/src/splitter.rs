@@ -91,20 +91,36 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        #[inline]
-        fn get_child<'a>(&'a self, data: &'a W::Data, index: usize) -> Option<Node<'a>> {
+        fn for_child_impl(
+            &self,
+            data: &W::Data,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
             if (index & 1) != 0 {
-                self.handles.get(index >> 1).map(|w| w.as_node(&()))
+                if let Some(w) = self.handles.get(index >> 1) {
+                    closure(w.as_node(&()));
+                }
             } else {
-                self.widgets.get(index >> 1).map(|w| w.as_node(data))
+                if let Some(w) = self.widgets.get(index >> 1) {
+                    closure(w.as_node(data));
+                }
             }
         }
-        #[inline]
-        fn get_child_mut<'a>(&'a mut self, data: &'a W::Data, index: usize) -> Option<NodeMut<'a>> {
+        fn for_child_mut_impl(
+            &mut self,
+            data: &W::Data,
+            index: usize,
+            closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
+        ) {
             if (index & 1) != 0 {
-                self.handles.get_mut(index >> 1).map(|w| w.as_node_mut(&()))
+                if let Some(w) = self.handles.get_mut(index >> 1) {
+                    closure(w.as_node_mut(&()));
+                }
             } else {
-                self.widgets.get_mut(index >> 1).map(|w| w.as_node_mut(data))
+                if let Some(w) = self.widgets.get_mut(index >> 1) {
+                    closure(w.as_node_mut(data));
+                }
             }
         }
     }

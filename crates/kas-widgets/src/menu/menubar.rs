@@ -60,13 +60,25 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        #[inline]
-        fn get_child<'a>(&'a self, data: &'a Self::Data, index: usize) -> Option<Node<'a>> {
-            self.widgets.get(index).map(|w| w.as_node(data))
+        fn for_child_impl(
+            &self,
+            data: &Data,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
+            if let Some(w) = self.widgets.get(index) {
+                closure(w.as_node(data));
+            }
         }
-        #[inline]
-        fn get_child_mut<'a>(&'a mut self, data: &'a Self::Data, index: usize) -> Option<NodeMut<'a>> {
-            self.widgets.get_mut(index).map(|w| w.as_node_mut(data))
+        fn for_child_mut_impl(
+            &mut self,
+            data: &Data,
+            index: usize,
+            closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
+        ) {
+            if let Some(w) = self.widgets.get_mut(index) {
+                closure(w.as_node_mut(data));
+            }
         }
     }
 

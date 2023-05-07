@@ -22,10 +22,10 @@ trait NodeT {
     fn widget_name(&self) -> &'static str;
 
     fn num_children(&self) -> usize;
-    fn get_child(&self, index: usize) -> Option<Node<'_>>;
-    fn find_child_index(&self, id: &WidgetId) -> Option<usize>;
-
     fn translation(&self) -> Offset;
+
+    fn for_child_impl(&self, index: usize, f: Box<dyn FnOnce(Node<'_>) + '_>);
+    fn find_child_index(&self, id: &WidgetId) -> Option<usize>;
 }
 #[cfg(not(feature = "unsafe_node"))]
 impl<'a, T> NodeT for (&'a dyn Widget<Data = T>, &'a T) {
@@ -46,17 +46,15 @@ impl<'a, T> NodeT for (&'a dyn Widget<Data = T>, &'a T) {
     fn num_children(&self) -> usize {
         self.0.num_children()
     }
+    fn translation(&self) -> Offset {
+        self.0.translation()
+    }
 
-    // NOTE: this cannot take `self` because that is unsized
-    fn get_child(&self, index: usize) -> Option<Node<'_>> {
-        self.0.get_child(self.1, index)
+    fn for_child_impl(&self, index: usize, f: Box<dyn FnOnce(Node<'_>) + '_>) {
+        self.0.for_child_impl(self.1, index, f);
     }
     fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
         id.next_key_after(self.id_ref())
-    }
-
-    fn translation(&self) -> Offset {
-        self.0.translation()
     }
 }
 #[cfg(not(feature = "unsafe_node"))]
@@ -78,15 +76,15 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
     fn num_children(&self) -> usize {
         self.0.num_children()
     }
-    fn get_child(&self, index: usize) -> Option<Node<'_>> {
-        self.0.get_child(self.1, index)
+    fn translation(&self) -> Offset {
+        self.0.translation()
+    }
+
+    fn for_child_impl(&self, index: usize, f: Box<dyn FnOnce(Node<'_>) + '_>) {
+        self.0.for_child_impl(self.1, index, f);
     }
     fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
         id.next_key_after(self.id_ref())
-    }
-
-    fn translation(&self) -> Offset {
-        self.0.translation()
     }
 }
 
@@ -203,17 +201,81 @@ impl<'a> Node<'a> {
         self.0.num_children()
     }
 
-    /// Get a child by index, if any
+    /// Run `f` on some child by index and, if valid, return the result.
     ///
-    /// Required: `index < self.num_children()`.
-    #[inline]
-    pub fn get_child(&self, index: usize) -> Option<Node<'_>> {
+    /// Calls the closure and returns `Some(result)` exactly when
+    /// `index < self.num_children()`.
+    pub fn for_child<R>(&self, index: usize, f: impl FnOnce(Node<'_>) -> R) -> Option<R> {
+        let mut result = None;
+        let out = &mut result;
+        let f: Box<dyn for<'b> FnOnce(Node<'b>)> = Box::new(|node| {
+            *out = Some(f(node));
+        });
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
-                self.0.get_child(self.1, index)
+                self.0.for_child_impl(self.1, index, f);
             } else {
-                self.0.get_child(index)
+                self.0.for_child_impl(index, f);
             }
+        }
+        result
+    }
+
+    /// Run a closure on all children
+    pub fn for_children(&self, mut f: impl FnMut(Node<'_>)) {
+        for index in 0..self.0.num_children() {
+            // NOTE: for_child_impl takes FnOnce hence we must wrap the closure
+            let f = &mut f;
+            let f: Box<dyn for<'b> FnOnce(Node<'b>)> = Box::new(|node| {
+                f(node);
+            });
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "unsafe_node")] {
+                    self.0.for_child_impl(self.1, index, f);
+                } else {
+                    self.0.for_child_impl(index, f);
+                }
+            }
+        }
+    }
+
+    /// Run a closure on all children, returning early in case of error
+    pub fn for_children_try<E>(
+        &self,
+        mut f: impl FnMut(Node<'_>) -> Result<(), E>,
+    ) -> Result<(), E> {
+        let mut result = Ok(());
+        for index in 0..self.0.num_children() {
+            let f = &mut f;
+            let out = &mut result;
+            let f: Box<dyn for<'b> FnOnce(Node<'b>)> = Box::new(|node| {
+                *out = f(node);
+            });
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "unsafe_node")] {
+                    self.0.for_child_impl(self.1, index, f);
+                } else {
+                    self.0.for_child_impl(index, f);
+                }
+            }
+            if result.is_err() {
+                break;
+            }
+        }
+        result
+    }
+
+    /// Run `f` on each node of the path from `self` to `id`
+    ///
+    /// Calls `f` on `self`, then on the child of `self` which is an
+    /// ancestor of `id`, ..., then finally on the widget with `id`.
+    ///
+    /// In case no widget with `id` is found, this still calls `f` on each
+    /// node which could be an ancestor (see [`WidgetId::is_ancestor_of`]).
+    pub fn for_path(&self, id: &WidgetId, mut f: impl FnMut(Node<'_>)) {
+        f(self.re());
+        if let Some(index) = self.find_child_index(id) {
+            self.for_child(index, |node| node.for_path(id, f));
         }
     }
 
@@ -229,28 +291,13 @@ impl<'a> Node<'a> {
     /// Find the descendant with this `id`, if any, and call `cb` on it
     ///
     /// Returns `Some(result)` if and only if node `id` was found.
-    pub fn find<F: FnOnce(Node<'_>) -> T, T>(&self, id: &WidgetId, cb: F) -> Option<T> {
-        let mut result = None;
-        let out = &mut result;
-        self._find(id, Box::new(|node| *out = Some(cb(node))));
-        result
-    }
-
-    fn _find(&self, id: &WidgetId, cb: Box<dyn FnOnce(Node<'_>) + '_>) {
+    pub fn for_id<F: FnOnce(Node<'_>) -> T, T>(&self, id: &WidgetId, cb: F) -> Option<T> {
         if let Some(index) = self.find_child_index(id) {
-            cfg_if::cfg_if! {
-                if #[cfg(feature = "unsafe_node")] {
-                    if let Some(child) = self.0.get_child(self.1, index) {
-                        child._find(id, cb);
-                    }
-                } else {
-                    if let Some(child) = self.0.get_child(index) {
-                        child._find(id, cb);
-                    }
-                }
-            }
+            self.for_child(index, |node| node.for_id(id, cb)).unwrap()
         } else if self.eq_id(id) {
-            cb(self.re());
+            Some(cb(self.re()))
+        } else {
+            None
         }
     }
 }
@@ -268,7 +315,7 @@ impl<'a> Node<'a> {
 trait NodeMutT: NodeT {
     fn clone_node_mut(&mut self) -> NodeMut<'_>;
 
-    fn get_child_mut(&mut self, index: usize) -> Option<NodeMut<'_>>;
+    fn for_child_mut_impl(&mut self, index: usize, f: Box<dyn FnOnce(NodeMut<'_>) + '_>);
 
     fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
     fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
@@ -296,8 +343,8 @@ impl<'a, T> NodeMutT for (&'a mut dyn Widget<Data = T>, &'a T) {
         NodeMut::new(self.0, self.1)
     }
 
-    fn get_child_mut(&mut self, index: usize) -> Option<NodeMut<'_>> {
-        self.0.get_child_mut(self.1, index)
+    fn for_child_mut_impl(&mut self, index: usize, f: Box<dyn FnOnce(NodeMut<'_>) + '_>) {
+        self.0.for_child_mut_impl(self.1, index, f);
     }
 
     fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
@@ -470,16 +517,40 @@ impl<'a> NodeMut<'a> {
         self.0.num_children()
     }
 
-    /// Get a child mutably by index, if any
+    /// Run `f` on some child by index and, if valid, return the result.
     ///
-    /// Required: `index < self.num_children()`.
-    #[inline]
-    pub fn get_child(&mut self, index: usize) -> Option<NodeMut<'_>> {
+    /// Calls the closure and returns `Some(result)` exactly when
+    /// `index < self.num_children()`.
+    pub fn for_child<R>(&mut self, index: usize, f: impl FnOnce(NodeMut<'_>) -> R) -> Option<R> {
+        let mut result = None;
+        let out = &mut result;
+        let f: Box<dyn for<'b> FnOnce(NodeMut<'b>)> = Box::new(|node| {
+            *out = Some(f(node));
+        });
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
-                self.0.get_child_mut(self.1, index)
+                self.0.for_child_mut_impl(self.1, index, f);
             } else {
-                self.0.get_child_mut(index)
+                self.0.for_child_mut_impl(index, f);
+            }
+        }
+        result
+    }
+
+    /// Run a `f` on all children
+    pub fn for_children(&mut self, mut f: impl FnMut(NodeMut<'_>)) {
+        for index in 0..self.0.num_children() {
+            // NOTE: for_child_impl takes FnOnce hence we must wrap the closure
+            let f = &mut f;
+            let f: Box<dyn for<'b> FnOnce(NodeMut<'b>)> = Box::new(|node| {
+                f(node);
+            });
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "unsafe_node")] {
+                    self.0.for_child_mut_impl(self.1, index, f);
+                } else {
+                    self.0.for_child_mut_impl(index, f);
+                }
             }
         }
     }
@@ -496,28 +567,14 @@ impl<'a> NodeMut<'a> {
     /// Find the descendant with this `id`, if any, and call `cb` on it
     ///
     /// Returns `Some(result)` if and only if node `id` was found.
-    pub fn find<F: FnOnce(NodeMut<'_>) -> T, T>(&mut self, id: &WidgetId, cb: F) -> Option<T> {
-        let mut result = None;
-        let out = &mut result;
-        self._find(id, Box::new(|node| *out = Some(cb(node))));
-        result
-    }
-
-    fn _find(&mut self, id: &WidgetId, cb: Box<dyn FnOnce(NodeMut<'_>) + '_>) {
+    pub fn for_id<F: FnOnce(NodeMut<'_>) -> T, T>(&mut self, id: &WidgetId, cb: F) -> Option<T> {
         if let Some(index) = self.find_child_index(id) {
-            cfg_if::cfg_if! {
-                if #[cfg(feature = "unsafe_node")] {
-                    if let Some(mut child) = self.0.get_child_mut(self.1, index) {
-                        child._find(id, cb);
-                    }
-                } else {
-                    if let Some(mut child) = self.0.get_child_mut(index) {
-                        child._find(id, cb);
-                    }
-                }
-            }
+            self.for_child(index, |mut node| node.for_id(id, cb))
+                .unwrap()
         } else if self.eq_id(id) {
-            cb(self.re());
+            Some(cb(self.re()))
+        } else {
+            None
         }
     }
 }

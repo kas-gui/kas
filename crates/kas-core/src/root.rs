@@ -140,7 +140,7 @@ impl_scope! {
                 return None;
             }
             for (_, popup, translation) in self.popups.iter_mut().rev() {
-                if let Some(Some(id)) = self.w.as_node_mut(data).find(&popup.id, |mut node| node.find_id(coord + *translation)) {
+                if let Some(Some(id)) = self.w.as_node_mut(data).for_id(&popup.id, |mut node| node.find_id(coord + *translation)) {
                     return Some(id);
                 }
             }
@@ -159,7 +159,7 @@ impl_scope! {
             }
             draw.recurse(&mut self.w);
             for (_, popup, translation) in &self.popups {
-                self.w.as_node_mut(data).find(&popup.id, |mut node| {
+                self.w.as_node_mut(data).for_id(&popup.id, |mut node| {
                     let clip_rect = node.rect() - *translation;
                     draw.with_overlay(clip_rect, *translation, |draw| {
                         node._draw(draw);
@@ -359,13 +359,6 @@ impl<Data: 'static> Window<Data> {
 // Search for a widget by `id`. On success, return that widget's [`Rect`] and
 // the translation of its children.
 fn find_rect(widget: Node<'_>, id: WidgetId, mut translation: Offset) -> Option<(Rect, Offset)> {
-    if let Some(i) = widget.find_child_index(&id) {
-        if let Some(w) = widget.re().get_child(i) {
-            translation += widget.translation();
-            return find_rect(w, id, translation);
-        }
-    }
-
     if widget.eq_id(&id) {
         if widget.translation() != Offset::ZERO {
             // Unvalidated: does this cause issues with the parent's event handlers?
@@ -376,10 +369,17 @@ fn find_rect(widget: Node<'_>, id: WidgetId, mut translation: Offset) -> Option<
         }
 
         let rect = widget.rect();
-        Some((rect, translation))
-    } else {
-        None
+        return Some((rect, translation));
+    } else if let Some(i) = widget.find_child_index(&id) {
+        if let Some(r) = widget.for_child(i, |w| {
+            translation += widget.translation();
+            find_rect(w, id, translation)
+        }) {
+            return r;
+        }
     }
+
+    None
 }
 
 impl<Data: 'static> Window<Data> {
@@ -418,7 +418,7 @@ impl<Data: 'static> Window<Data> {
         let (c, t) = find_rect(self.w.as_node(data), popup.parent.clone(), Offset::ZERO).unwrap();
         *translation = t;
         let r = r + t; // work in translated coordinate space
-        self.w.as_node_mut(data).find(&popup.id, |mut node| {
+        self.w.as_node_mut(data).for_id(&popup.id, |mut node| {
             let mut cache = layout::SolveCache::find_constraints(node.re(), mgr.size_mgr());
             let ideal = cache.ideal(false);
             let m = cache.margins();

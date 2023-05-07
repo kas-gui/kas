@@ -166,11 +166,18 @@ impl_scope! {
             self.inner.as_node_mut(&())
         }
 
-        fn get_child<'a>(&'a self, _: &'a A, index: usize) -> Option<Node<'a>> {
-            self.inner.get_child(&(), index)
+        #[inline]
+        fn for_child_impl(&self, _: &A, index: usize, closure: Box<dyn FnOnce(Node<'_>) + '_>) {
+            self.inner.for_child_impl(&(), index, closure)
         }
-        fn get_child_mut<'a>(&'a mut self, _: &'a A, index: usize) -> Option<NodeMut<'a>> {
-            self.inner.get_child_mut(&(), index)
+        #[inline]
+        fn for_child_mut_impl(
+            &mut self,
+            _: &A,
+            index: usize,
+            closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
+        ) {
+            self.inner.for_child_mut_impl(&(), index, closure)
         }
 
         fn _configure(&mut self, _: &A, cx: &mut ConfigMgr, id: WidgetId) {

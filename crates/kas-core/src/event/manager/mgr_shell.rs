@@ -215,7 +215,7 @@ impl EventState {
             match item {
                 Pending::Configure(id) => {
                     win.as_node_mut(data)
-                        .find(&id, |node| mgr.configure(node, id.clone()));
+                        .for_id(&id, |node| mgr.configure(node, id.clone()));
 
                     let hover = win.find_id(data, mgr.state.last_mouse_coord);
                     mgr.state.set_hover(hover);

@@ -162,8 +162,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let mut events_impl = None;
 
     let mut num_children = None;
-    let mut get_child = None;
-    let mut get_child_mut = None;
+    let mut for_child_impl = None;
+    let mut for_child_mut_impl = None;
     for (index, impl_) in scope.impls.iter().enumerate() {
         if let Some((_, ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::Widget }
@@ -174,10 +174,10 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
                 for item in &impl_.items {
                     if let ImplItem::Fn(ref item) = item {
-                        if item.sig.ident == "get_child" {
-                            get_child = Some(item.sig.ident.clone());
-                        } else if item.sig.ident == "get_child_mut" {
-                            get_child_mut = Some(item.sig.ident.clone());
+                        if item.sig.ident == "for_child_impl" {
+                            for_child_impl = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "for_child_mut_impl" {
+                            for_child_mut_impl = Some(item.sig.ident.clone());
                         }
                     } else if let ImplItem::Type(ref item) = item {
                         if item.ident == "Data" {
@@ -408,16 +408,16 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     crate::widget_index::visit_impls(children.iter().map(|(ident, _, _)| ident), &mut scope.impls);
 
     if let Some(ref span) = num_children {
-        if get_child.is_none() {
-            emit_warning!(span, "fn num_children without fn get_child");
+        if for_child_impl.is_none() {
+            emit_warning!(span, "fn num_children without fn for_child_impl");
         }
-        if get_child_mut.is_none() {
-            emit_warning!(span, "fn num_children without fn get_child_mut");
+        if for_child_mut_impl.is_none() {
+            emit_warning!(span, "fn num_children without fn for_child_mut_impl");
         }
     }
-    if let Some(span) = get_child.as_ref().or(get_child_mut.as_ref()) {
+    if let Some(span) = for_child_impl.as_ref().or(for_child_mut_impl.as_ref()) {
         if num_children.is_none() {
-            emit_warning!(span, "fn get_child[_mut] without fn num_children");
+            emit_warning!(span, "fn for_child[_mut]_impl without fn num_children");
         }
         if opt_derive.is_some() {
             emit_error!(span, "impl conflicts with use of #[widget(derive=FIELD)]");
@@ -425,16 +425,16 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         if !children.is_empty() {
             emit_error!(
                 span,
-                "custom `Widget::get_child` implementation when using `#[widget]` on fields"
+                "custom `Widget::for_child_impl` implementation when using `#[widget]` on fields"
             );
         } else if !layout_children.is_empty() {
             emit_error!(
                 span,
-                "custom `Widget::get_child` implementation when using layout-defined children"
+                "custom `Widget::for_child_impl` implementation when using layout-defined children"
             );
         }
     }
-    let do_impl_widget_children = get_child.is_none() && get_child_mut.is_none();
+    let do_impl_widget_children = for_child_impl.is_none() && for_child_mut_impl.is_none();
 
     let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
     let impl_generics = impl_generics.to_token_stream();
@@ -534,20 +534,22 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 #fns_as_node
 
                 #[inline]
-                fn get_child<'a>(
-                    &'a self,
-                    data: &'a Self::Data,
+                fn for_child_impl(
+                    &self,
+                    data: &Self::Data,
                     index: usize,
-                ) -> Option<::kas::Node<'a>> {
-                    self.#inner.get_child(data, index)
+                    closure: Box<dyn FnOnce(::kas::Node<'_>) + '_>,
+                ) {
+                    self.#inner.for_child_impl(data, index, closure)
                 }
                 #[inline]
-                fn get_child_mut<'a>(
-                    &'a mut self,
-                    data: &'a Self::Data,
+                fn for_child_mut_impl(
+                    &mut self,
+                    data: &Self::Data,
                     index: usize,
-                ) -> Option<::kas::NodeMut<'a>> {
-                    self.#inner.get_child_mut(data, index)
+                    closure: Box<dyn FnOnce(::kas::NodeMut<'_>) + '_>,
+                ) {
+                    self.#inner.for_child_mut_impl(data, index, closure)
                 }
 
                 fn _configure(
@@ -924,7 +926,7 @@ pub fn impl_widget(
 ) -> Toks {
     let fns_as_node = widget_as_node_methods();
 
-    let fns_get_child = if do_impl_widget_children {
+    let fns_for_child = if do_impl_widget_children {
         let count = children.len();
         let mut get_rules = quote! {};
         let mut get_mut_rules = quote! {};
@@ -936,40 +938,49 @@ pub fn impl_widget(
             // predicates.push(..);
 
             get_rules.append_all(if let Some(data) = opt_data {
-                quote! { #i => Some(self.#ident.as_node(#data)), }
+                quote! { #i => closure(self.#ident.as_node(#data)), }
             } else {
-                quote_spanned! {*span=> #i => Some(self.#ident.as_node(data)), }
+                quote_spanned! {*span=> #i => closure(self.#ident.as_node(data)), }
             });
             get_mut_rules.append_all(if let Some(data) = opt_data {
-                quote! { #i => Some(self.#ident.as_node_mut(#data)), }
+                quote! { #i => closure(self.#ident.as_node_mut(#data)), }
             } else {
-                quote_spanned! {*span=> #i => Some(self.#ident.as_node_mut(data)), }
+                quote_spanned! {*span=> #i => closure(self.#ident.as_node_mut(data)), }
             });
         }
         for (i, path) in layout_children.iter().enumerate() {
             let index = count + i;
-            get_rules.append_all(quote! { #index => Some(#core_path.#path.as_node(data)), });
-            get_mut_rules
-                .append_all(quote! { #index => Some(#core_path.#path.as_node_mut(data)), });
+            get_rules.append_all(quote! {
+                #index => closure(#core_path.#path.as_node(data)),
+            });
+            get_mut_rules.append_all(quote! {
+                #index => closure(#core_path.#path.as_node_mut(data)),
+            });
         }
 
         quote! {
-            fn get_child<'a>(&'a self, data: &'a Self::Data, index: usize) -> Option<::kas::Node<'a>> {
+            fn for_child_impl(
+                &self,
+                data: &Self::Data,
+                index: usize,
+                closure: Box<dyn FnOnce(::kas::Node<'_>) + '_>,
+            ) {
                 use ::kas::WidgetCore;
                 match index {
                     #get_rules
-                    _ => None
+                    _ => (),
                 }
             }
-            fn get_child_mut<'a>(
-                &'a mut self,
-                data: &'a Self::Data,
+            fn for_child_mut_impl(
+                &mut self,
+                data: &Self::Data,
                 index: usize,
-            ) -> Option<::kas::NodeMut<'a>> {
+                closure: Box<dyn FnOnce(::kas::NodeMut<'_>) + '_>,
+            ) {
                 use ::kas::WidgetCore;
                 match index {
                     #get_mut_rules
-                    _ => None
+                    _ => (),
                 }
             }
         }
@@ -983,7 +994,7 @@ pub fn impl_widget(
         impl #impl_generics ::kas::Widget for #impl_target {
             type Data = #data_ty;
             #fns_as_node
-            #fns_get_child
+            #fns_for_child
             #fns_recurse
         }
     }

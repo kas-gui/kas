@@ -165,10 +165,10 @@ pub trait Layout: WidgetCore {
     /// -   Determine the next child after `from` (if provided) or the whole
     ///     range, optionally in `reverse` order
     /// -   Ensure that the selected widget is addressable through
-    ///     [`Widget::get_child`]
+    ///     [`Widget::for_child`]
     ///
     /// Both `from` and the return value use the widget index, as used by
-    /// [`Widget::get_child`].
+    /// [`Widget::for_child`].
     ///
     /// Default implementation:
     ///
@@ -600,15 +600,35 @@ pub trait Widget: Layout {
     /// Erase type
     fn as_node_mut<'a>(&'a mut self, data: &'a Self::Data) -> NodeMut<'a>;
 
-    /// Get a reference to a child widget by index, if any
+    /// Call closure on child with given `index`, if `index < self.num_children()`.
     ///
-    /// Required: `index < self.num_children()`.
-    fn get_child<'a>(&'a self, data: &'a Self::Data, index: usize) -> Option<Node<'a>>;
+    /// Widgets with no children or using the `#[widget]` attribute on fields do
+    /// not need to implement this. Widgets with an explicit implementation of
+    /// [`Layout::num_children`] also need to implement this.
+    ///
+    /// It is recommended to use the methods on [`Node`] or [`WidgetExt`]
+    /// instead of calling this method.
+    fn for_child_impl(
+        &self,
+        data: &Self::Data,
+        index: usize,
+        closure: Box<dyn FnOnce(Node<'_>) + '_>,
+    );
 
-    /// Mutable variant of get
+    /// Call closure on child with given `index`, if `index < self.num_children()`.
     ///
-    /// Required: `index < self.num_children()`.
-    fn get_child_mut<'a>(&'a mut self, data: &'a Self::Data, index: usize) -> Option<NodeMut<'a>>;
+    /// Widgets with no children or using the `#[widget]` attribute on fields do
+    /// not need to implement this. Widgets with an explicit implementation of
+    /// [`Layout::num_children`] also need to implement this.
+    ///
+    /// It is recommended to use the methods on [`NodeMut`] or [`WidgetExt`]
+    /// instead of calling this method.
+    fn for_child_mut_impl(
+        &mut self,
+        data: &Self::Data,
+        index: usize,
+        closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
+    );
 
     /// Internal method: configure recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -706,15 +726,5 @@ pub trait WidgetExt: Widget {
     fn is_strict_ancestor_of(&self, id: &WidgetId) -> bool {
         !self.eq_id(id) && self.id().is_ancestor_of(id)
     }
-
-    // /// Find the descendant with this `id`, if any
-    // fn find_node<'a>(&'a self, data: &'a Self::Data, id: &WidgetId) -> Option<Node<'a>> {
-    //     self.as_node(data).find_node(id)
-    // }
-
-    // /// Find the descendant with this `id`, if any
-    // fn find_node_mut<'a>(&'a mut self, data: &'a Self::Data, id: &WidgetId) -> Option<NodeMut<'a>> {
-    //     self.as_node_mut(data).find_node(id)
-    // }
 }
 impl<W: Widget + ?Sized> WidgetExt for W {}
