@@ -193,7 +193,7 @@ impl EventState {
     /// Widget updates may be used for animation and timed responses. See also
     /// [`Draw::animate`](crate::draw::Draw::animate) for animation.
     ///
-    /// Widget `w_id` will receive [`Event::TimerUpdate`] with this `payload` at
+    /// Widget `id` will receive [`Event::TimerUpdate`] with this `payload` at
     /// approximately `time = now + delay` (or possibly a little later due to
     /// frame-rate limiters and processing time).
     ///
@@ -560,7 +560,7 @@ impl EventState {
 
     /// Request configure of the given path
     pub fn request_configure(&mut self, id: WidgetId) {
-        self.pending_configures.push(id);
+        self.pending.push_back(Pending::Configure(id));
     }
 
     /// Request set_rect of the given path
