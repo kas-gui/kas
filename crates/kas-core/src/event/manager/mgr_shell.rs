@@ -52,7 +52,6 @@ impl EventState {
             popup_removed: Default::default(),
             time_updates: vec![],
             fut_messages: vec![],
-            pending_configures: vec![],
             pending: Default::default(),
             action: Action::empty(),
         }
@@ -201,24 +200,19 @@ impl EventState {
             }
         }
 
-        if !mgr.pending_configures.is_empty() {
-            if !mgr.state.action.contains(Action::RECONFIGURE) {
-                mgr.pending_configures.sort();
-
-                // TODO(opt): walk tree; only configure contents of pending_configures
-                mgr.config_mgr(|mgr| mgr.configure(WidgetId::ROOT, widget));
-
-                let hover = widget.find_id(mgr.state.last_mouse_coord);
-                mgr.state.set_hover(hover);
-            }
-            mgr.pending_configures.clear();
-        }
-
         // Warning: infinite loops are possible here if widgets always queue a
         // new pending event when evaluating one of these:
         while let Some(item) = mgr.pending.pop_front() {
             log::trace!(target: "kas_core::event::manager", "update: handling Pending::{item:?}");
             match item {
+                Pending::Configure(_id) => {
+                    // TODO(opt): walk tree; only configure id
+                    // BUT: id is sometimes an unconfigured widget!
+                    mgr.config_mgr(|mgr| mgr.configure(WidgetId::ROOT, widget));
+
+                    let hover = widget.find_id(mgr.state.last_mouse_coord);
+                    mgr.state.set_hover(hover);
+                }
                 Pending::Send(id, event) => {
                     if matches!(&event, &Event::LostMouseHover) {
                         mgr.hover_icon = Default::default();
