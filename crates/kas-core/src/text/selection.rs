@@ -35,6 +35,8 @@ impl SelectionHelper {
     }
 
     /// Reset to the default state
+    ///
+    /// All positions are set to 0.
     pub fn clear(&mut self) {
         *self = Self::default();
     }
@@ -43,7 +45,7 @@ impl SelectionHelper {
     pub fn is_empty(&self) -> bool {
         self.edit_pos == self.sel_pos
     }
-    /// Set the selection pos to the edit pos
+    /// Clear selection without changing edit pos
     pub fn set_empty(&mut self) {
         self.sel_pos = self.edit_pos;
     }

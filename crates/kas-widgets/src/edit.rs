@@ -702,9 +702,21 @@ impl_scope! {
             match event {
                 Event::NavFocus(true) => {
                     request_focus(self, mgr);
+                    if !self.class.multi_line() {
+                        self.selection.clear();
+                        self.selection.set_edit_pos(self.text.str_len());
+                        mgr.redraw(self.id());
+                    }
                     Response::Used
                 }
                 Event::NavFocus(false) => Response::Used,
+                Event::LostNavFocus => {
+                    if !self.class.multi_line() {
+                        self.selection.set_empty();
+                        mgr.redraw(self.id());
+                    }
+                    Response::Used
+                }
                 Event::LostCharFocus => {
                     self.has_key_focus = false;
                     mgr.redraw(self.id());
@@ -1187,6 +1199,7 @@ impl<A, G: EditGuard<A>> EditField<A, G> {
             // NOTE: we might choose to optionally handle Tab in the future,
             // but without some workaround it prevents keyboard navigation.
             // Command::Tab => Action::Insert('\t'.encode_utf8(&mut buf), LastEdit::Insert),
+            Command::Left if have_sel => Action::Move(selection.start, None),
             Command::Left if pos > 0 => {
                 let mut cursor = GraphemeCursor::new(pos, len, true);
                 cursor
@@ -1195,6 +1208,7 @@ impl<A, G: EditGuard<A>> EditField<A, G> {
                     .map(|pos| Action::Move(pos, None))
                     .unwrap_or(Action::None)
             }
+            Command::Right if have_sel => Action::Move(selection.end, None),
             Command::Right if pos < len => {
                 let mut cursor = GraphemeCursor::new(pos, len, true);
                 cursor
