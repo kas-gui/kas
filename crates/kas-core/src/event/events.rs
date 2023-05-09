@@ -435,6 +435,8 @@ pub enum Command {
     Rename,
     /// Refresh
     Refresh,
+    /// Debug
+    Debug,
     /// Spell-check tool
     Spelling,
     /// Open the menu / activate the menubar
