@@ -317,9 +317,9 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     //
     // TODO(opt): these methods cause full-window resize. They don't need to
     // resize at all if the menu is closed!
-    pub fn push<T: Into<AccelString>>(&mut self, mgr: &mut EventState, label: T, msg: M) -> usize {
+    pub fn push<T: Into<AccelString>>(&mut self, cx: &mut ConfigCx<()>, label: T, msg: M) -> usize {
         let column = &mut self.popup.inner;
-        column.push(mgr, MenuEntry::new(label, msg))
+        column.push(cx, MenuEntry::new(label, msg))
     }
 
     /// Pops the last choice from the combobox
@@ -332,13 +332,13 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Panics if `index > len`.
     pub fn insert<T: Into<AccelString>>(
         &mut self,
-        mgr: &mut EventState,
+        cx: &mut ConfigCx<()>,
         index: usize,
         label: T,
         msg: M,
     ) {
         let column = &mut self.popup.inner;
-        column.insert(mgr, index, MenuEntry::new(label, msg));
+        column.insert(cx, index, MenuEntry::new(label, msg));
     }
 
     /// Removes the choice at position `index`
@@ -353,14 +353,14 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Panics if `index` is out of bounds.
     pub fn replace<T: Into<AccelString>>(
         &mut self,
-        mgr: &mut EventState,
+        cx: &mut ConfigCx<()>,
         index: usize,
         label: T,
         msg: M,
     ) {
         self.popup
             .inner
-            .replace(mgr, index, MenuEntry::new(label, msg));
+            .replace(cx, index, MenuEntry::new(label, msg));
     }
 }
 

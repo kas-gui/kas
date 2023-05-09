@@ -154,10 +154,8 @@ fn main() -> kas::shell::Result<()> {
                     }
 
                     if let Some(len) = new_len {
-                        cx.config_mgr(|mgr| {
-                            self.list.inner_mut()
-                                .resize_with(mgr, len, |n| ListEntry::new(n))
-                        });
+                        cx.config_mgr(|mgr| self.list.inner_mut()
+                            .resize_with(&mut mgr.with_data(&self.active), len, |n| ListEntry::new(n)));
                     }
                 }
             }

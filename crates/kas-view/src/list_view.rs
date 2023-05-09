@@ -568,7 +568,7 @@ impl_scope! {
             }
 
             // Widgets need configuring and updating: do so by re-configuring self.
-            mgr.request_configure(self.id());
+            mgr.request_reconfigure(self.id());
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {

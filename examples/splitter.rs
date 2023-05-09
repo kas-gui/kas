@@ -37,16 +37,16 @@ fn main() -> kas::shell::Result<()> {
             #[widget] panes: RowSplitter<EditField<()>> = panes,
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
-                if let Some(msg) = mgr.try_pop::<Message>() {
+            fn handle_message(&mut self, cx: &mut EventCx<Self::Data>) {
+                if let Some(msg) = cx.try_pop::<Message>() {
                     match msg {
                         Message::Decr => {
-                            mgr.config_mgr(|mgr| self.panes.pop(mgr));
+                            self.panes.pop(cx);
                         }
                         Message::Incr => {
                             let n = self.panes.len() + 1;
-                            mgr.config_mgr(|mgr| self.panes.push(
-                                mgr,
+                            cx.config_cx(|cx| self.panes.push(
+                                cx,
                                 EditField::new(format!("Pane {n}")).with_multi_line(true)
                             ));
                         }

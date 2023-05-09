@@ -198,9 +198,10 @@ impl EventState {
             log::trace!(target: "kas_core::event::manager", "update: handling Pending::{item:?}");
             match item {
                 Pending::Configure(id) => {
-                    // TODO(opt): walk tree; only configure id
-                    // BUT: id is sometimes an unconfigured widget!
-                    mgr.config_mgr(|mgr| mgr.configure(WidgetId::ROOT, widget.re()));
+                    mgr.config_mgr(|mgr| {
+                        let id2 = id.clone();
+                        widget.for_widget(&id, |w| mgr.configure(id2, w));
+                    });
 
                     let hover = widget.find_id(mgr.state.last_mouse_coord);
                     mgr.state.set_hover(hover);

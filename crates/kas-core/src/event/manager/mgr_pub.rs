@@ -558,8 +558,14 @@ impl EventState {
         self.push_async(id, async_global_executor::spawn(fut.into_future()));
     }
 
-    /// Request configure of the given path
-    pub fn request_configure(&mut self, id: WidgetId) {
+    /// Request re-configure widget `id`
+    ///
+    /// This method requires that `id` is a valid path to an already-configured
+    /// widget. E.g. if widget `w` adds a new child, it may call
+    /// `request_reconfigure(self.id())` but not
+    /// `request_reconfigure(child_id)` (which would cause a panic:
+    /// `'WidgetId::next_key_after: invalid'`).
+    pub fn request_reconfigure(&mut self, id: WidgetId) {
         self.pending.push_back(Pending::Configure(id));
     }
 

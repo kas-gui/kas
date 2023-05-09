@@ -213,9 +213,9 @@ impl<W: Widget> TabStack<W> {
     /// and then [`Action::RESIZE`] will be triggered.
     ///
     /// Returns the new page's index.
-    pub fn push(&mut self, mgr: &mut EventState, tab: Tab, widget: W) -> usize {
-        let ti = self.tabs.push(mgr, tab);
-        let si = self.stack.push(mgr, widget);
+    pub fn push(&mut self, cx: &mut ConfigCx<W::Data>, tab: Tab, widget: W) -> usize {
+        let ti = self.tabs.push(&mut cx.with_data(&()), tab);
+        let si = self.stack.push(cx, widget);
         debug_assert_eq!(ti, si);
         si
     }
@@ -236,9 +236,9 @@ impl<W: Widget> TabStack<W> {
     ///
     /// The new child is configured immediately. The active page does not
     /// change.
-    pub fn insert(&mut self, mgr: &mut EventState, index: usize, tab: Tab, widget: W) {
-        self.tabs.insert(mgr, index, tab);
-        self.stack.insert(mgr, index, widget);
+    pub fn insert(&mut self, cx: &mut ConfigCx<W::Data>, index: usize, tab: Tab, widget: W) {
+        self.tabs.insert(&mut cx.with_data(&()), index, tab);
+        self.stack.insert(cx, index, widget);
     }
 
     /// Removes the child widget at position `index`
@@ -259,7 +259,7 @@ impl<W: Widget> TabStack<W> {
     ///
     /// The new child is configured immediately. If it replaces the active page,
     /// then [`Action::RESIZE`] is triggered.
-    pub fn replace(&mut self, mgr: &mut EventState, index: usize, w: W) -> W {
+    pub fn replace(&mut self, mgr: &mut ConfigCx<W::Data>, index: usize, w: W) -> W {
         self.stack.replace(mgr, index, w)
     }
 
@@ -267,14 +267,18 @@ impl<W: Widget> TabStack<W> {
     ///
     /// New children are configured immediately. If a new page becomes active,
     /// then [`Action::RESIZE`] is triggered.
-    pub fn extend<T: IntoIterator<Item = (Tab, W)>>(&mut self, mgr: &mut EventState, iter: T) {
+    pub fn extend<T: IntoIterator<Item = (Tab, W)>>(
+        &mut self,
+        cx: &mut ConfigCx<W::Data>,
+        iter: T,
+    ) {
         let iter = iter.into_iter();
         // let min_len = iter.size_hint().0;
         // self.tabs.reserve(min_len);
         // self.stack.reserve(min_len);
         for (tab, w) in iter {
-            self.tabs.push(mgr, tab);
-            self.stack.push(mgr, w);
+            self.tabs.push(&mut cx.with_data(&()), tab);
+            self.stack.push(cx, w);
         }
     }
 }
