@@ -57,6 +57,7 @@ impl Shortcuts {
                 (VK::F3, Command::FindNext),
                 (VK::F5, Command::Refresh),
                 (VK::F7, Command::Spelling),
+                (VK::F8, Command::Debug),
                 (VK::F10, Command::Menu),
                 (VK::F11, Command::Fullscreen),
             ];

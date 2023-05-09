@@ -5,7 +5,9 @@
 
 //! Utilities
 
-use crate::WidgetId;
+use crate::geom::Coord;
+use crate::{Node, WidgetId};
+use std::cell::RefCell;
 use std::fmt;
 
 /// Helper to display widget identification (e.g. `MyWidget#01`)
@@ -15,6 +17,46 @@ pub struct IdentifyWidget(pub(crate) &'static str, pub(crate) WidgetId);
 impl fmt::Display for IdentifyWidget {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{}{}", self.0, self.1)
+    }
+}
+
+/// Helper to print widget heirarchy
+///
+/// Note: output starts with a new line.
+pub struct WidgetHierarchy<'a> {
+    // We use RefCell since Display takes &self but Node API requires &mut self.
+    node: RefCell<Node<'a>>,
+    indent: usize,
+}
+impl<'a> WidgetHierarchy<'a> {
+    pub fn new(node: Node<'a>) -> Self {
+        WidgetHierarchy {
+            node: RefCell::new(node),
+            indent: 0,
+        }
+    }
+}
+impl<'a> fmt::Display for WidgetHierarchy<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        let len = 43 - 2 * self.indent;
+        let trail = "| ".repeat(self.indent);
+        let mut widget = self.node.borrow_mut();
+        // Note: pre-format some items to ensure correct alignment
+        let identify = format!("{}", widget.identify());
+        let r = widget.rect();
+        let Coord(x1, y1) = r.pos;
+        let Coord(x2, y2) = r.pos + r.size;
+        let xr = format!("x={x1}..{x2}");
+        let xrlen = xr.len().max(12);
+        write!(f, "\n{trail}{identify:<len$} {xr:<xrlen$} y={y1}..{y2}")?;
+
+        let indent = self.indent + 1;
+        widget.for_children_try(|node| {
+            write!(f, "{}", WidgetHierarchy {
+                node: RefCell::new(node),
+                indent
+            })
+        })
     }
 }
 
