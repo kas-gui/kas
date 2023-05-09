@@ -199,21 +199,15 @@ impl<'a> Node<'a> {
     ///
     /// If `Some(index)` is returned, this is *probably* but not guaranteed
     /// to be a valid child index.
-    ///
-    /// The default implementation simply uses [`WidgetId::next_key_after`].
-    /// Widgets may choose to assign children custom keys by overriding this
-    /// method and [`Self::make_child_id`].
     #[inline]
     pub fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
-        id.next_key_after(self.id_ref())
+        self.0.find_child_index(id)
     }
 
     /// Make an identifier for a child
-    ///
-    /// Default impl: `self.id_ref().make_child(index)`
     #[inline]
     pub fn make_child_id(&mut self, index: usize) -> WidgetId {
-        self.id_ref().make_child(index)
+        self.0.make_child_id(index)
     }
 
     /// Translate a coordinate to a [`WidgetId`]

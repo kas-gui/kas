@@ -113,8 +113,7 @@ fn main() -> kas::shell::Result<()> {
         #[derive(Debug)]
         struct {
             core: widget_core!(),
-            // FIXME: pass &self.list.len() here (requires removal of Widget::get_child):
-            #[widget(&3)] controls: impl Widget<Data = usize> = controls,
+            #[widget(&self.list.len())] controls: impl Widget<Data = usize> = controls,
             #[widget] display: StringLabel = Label::from("Entry #1"),
             #[widget(&self.active)] list: ScrollBarRegion<List<Direction, ListEntry>> =
                 ScrollBarRegion::new(list).with_fixed_bars(false, true),
@@ -154,8 +153,12 @@ fn main() -> kas::shell::Result<()> {
                     }
 
                     if let Some(len) = new_len {
-                        cx.config_mgr(|mgr| self.list.inner_mut()
-                            .resize_with(&mut mgr.with_data(&self.active), len, |n| ListEntry::new(n)));
+                        cx.config_cx(|cx| {
+                            self.list
+                                .inner_mut()
+                                .resize_with(&mut cx.with_data(&self.active), len, ListEntry::new);
+                            cx.update(self);
+                        });
                     }
                 }
             }

@@ -113,13 +113,16 @@ impl_scope! {
                 .and_then(|k| self.id_map.get(&k).cloned())
         }
 
+        /// Make a fresh id based on `self.next` then insert into `self.id_map`
         fn make_child_id(&mut self, index: usize) -> WidgetId {
             if let Some(child) = self.widgets.get(index) {
                 // Use the widget's existing identifier, if any
                 if child.id_ref().is_valid() {
                     if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
-                        self.id_map.insert(key, index);
-                        return child.id();
+                        if let Entry::Vacant(entry) = self.id_map.entry(key) {
+                            entry.insert(index);
+                            return child.id();
+                        }
                     }
                 }
             }
