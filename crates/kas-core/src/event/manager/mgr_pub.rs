@@ -564,7 +564,7 @@ impl EventState {
         self.push_async(id, async_global_executor::spawn(fut.into_future()));
     }
 
-    /// Request re-configure widget `id`
+    /// Request re-configure of widget `id`
     ///
     /// This method requires that `id` is a valid path to an already-configured
     /// widget. E.g. if widget `w` adds a new child, it may call
@@ -573,6 +573,13 @@ impl EventState {
     /// `'WidgetId::next_key_after: invalid'`).
     pub fn request_reconfigure(&mut self, id: WidgetId) {
         self.pending.push_back(Pending::Configure(id));
+    }
+
+    /// Request update to widget `id`
+    ///
+    /// Schedules a call to [`Widget::update`] on widget `id`.
+    pub fn request_update(&mut self, id: WidgetId) {
+        self.pending.push_back(Pending::Update(id));
     }
 
     /// Request set_rect of the given path

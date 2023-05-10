@@ -206,6 +206,11 @@ impl EventState {
                     let hover = widget.find_id(mgr.state.last_mouse_coord);
                     mgr.state.set_hover(hover);
                 }
+                Pending::Update(id) => {
+                    mgr.config_mgr(|mgr| {
+                        widget.for_widget(&id, |w| mgr.update(w));
+                    });
+                }
                 Pending::Send(id, event) => {
                     if matches!(&event, &Event::LostMouseHover) {
                         mgr.hover_icon = Default::default();
