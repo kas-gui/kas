@@ -122,7 +122,7 @@ impl_scope! {
 
     impl Widget for Clock {
         fn configure(&mut self, mgr: &mut ConfigCx<Self::Data>) {
-            mgr.request_update(self.id(), 0, Duration::new(0, 0), true);
+            mgr.request_timer_update(self.id(), 0, Duration::new(0, 0), true);
         }
 
         fn handle_event(&mut self, mgr: &mut EventCx<Self::Data>, event: Event) -> Response {
@@ -139,7 +139,7 @@ impl_scope! {
                         .expect("invalid font_id");
                     let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                     log::info!("Requesting update in {}ns", ns);
-                    mgr.request_update(self.id(), 0, Duration::new(0, ns), true);
+                    mgr.request_timer_update(self.id(), 0, Duration::new(0, ns), true);
                     *mgr |= Action::REDRAW;
                     Response::Used
                 }

@@ -185,7 +185,7 @@ impl_scope! {
                         } else if id != self.delayed_open {
                             mgr.set_nav_focus(id.clone(), false);
                             let delay = mgr.config().menu_delay();
-                            mgr.request_update(self.id(), id.as_u64(), delay, true);
+                            mgr.request_timer_update(self.id(), id.as_u64(), delay, true);
                             self.delayed_open = Some(id);
                         }
                     } else {

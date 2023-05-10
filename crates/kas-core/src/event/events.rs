@@ -152,9 +152,9 @@ pub enum Event {
     /// Update from a timer
     ///
     /// This event is received after requesting timed wake-up(s)
-    /// (see [`EventState::request_update`]).
+    /// (see [`EventState::request_timer_update`]).
     ///
-    /// The `u64` payload is copied from [`EventState::request_update`].
+    /// The `u64` payload is copied from [`EventState::request_timer_update`].
     TimerUpdate(u64),
     /// Notification that a popup has been destroyed
     ///

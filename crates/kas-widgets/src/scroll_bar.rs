@@ -184,7 +184,7 @@ impl_scope! {
         fn force_visible(&mut self, mgr: &mut EventState) {
             self.force_visible = true;
             let delay = mgr.config().touch_select_delay();
-            mgr.request_update(self.id(), 0, delay, false);
+            mgr.request_timer_update(self.id(), 0, delay, false);
         }
 
         #[inline]
