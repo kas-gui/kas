@@ -150,19 +150,18 @@ pub trait ListData: SharedData {
     /// Note: users may assume this is `O(1)`.
     fn len(&self) -> usize;
 
-    /// Iterate over keys
+    /// Iterate over up to `limit` keys from `start`
     ///
-    /// The result will be in deterministic implementation-defined order, with
-    /// a length of `max(limit, data_len)` where `data_len` is the number of
-    /// items available.
-    #[inline]
-    fn iter_limit(&self, limit: usize) -> Self::KeyIter<'_> {
-        self.iter_from(0, limit)
-    }
-
-    /// Iterate over keys from an arbitrary start-point
+    /// An example where `type Key = usize`:
+    /// ```
+    /// type KeyIter<'b> = std::ops::Range<usize>;
     ///
-    /// The result is the same as `self.iter_limit(start + limit).skip(start)`.
+    /// fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_> {
+    ///     start.min(self.len)..(start + limit).min(self.len)
+    /// }
+    /// ```
+    ///
+    /// This method is called on every update so should be reasonably fast.
     fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_>;
 }
 
