@@ -558,7 +558,7 @@ impl EventState {
         self.push_async(id, async_global_executor::spawn(fut.into_future()));
     }
 
-    /// Request re-configure widget `id`
+    /// Request re-configure of widget `id`
     ///
     /// This method requires that `id` is a valid path to an already-configured
     /// widget. E.g. if widget `w` adds a new child, it may call
@@ -569,6 +569,13 @@ impl EventState {
         self.pending.push_back(Pending::Configure(id));
     }
 
+    /// Request update to widget `id`
+    ///
+    /// Schedules a call to [`Widget::update`] on widget `id`.
+    pub fn request_update(&mut self, id: WidgetId) {
+        self.pending.push_back(Pending::Update(id));
+    }
+
     /// Request set_rect of the given path
     pub fn request_set_rect(&mut self, id: WidgetId) {
         self.pending.push_back(Pending::SetRect(id));
@@ -577,6 +584,16 @@ impl EventState {
 
 /// Public API
 impl<'a> EventMgr<'a> {
+    /// Configure a widget
+    ///
+    /// Note that, when handling events, this method returns the *old* state.
+    ///
+    /// This is a shortcut to [`ConfigMgr::configure`].
+    #[inline]
+    pub fn configure(&mut self, mut widget: NodeMut<'_>, id: WidgetId) {
+        self.config_mgr(|mgr| widget._configure(mgr, id));
+    }
+
     /// Update a widget
     ///
     /// [`Events::update`] will be called recursively on each child and finally
@@ -862,14 +879,5 @@ impl<'a> EventMgr<'a> {
                 self.shell.set_cursor_icon(icon);
             }
         }
-    }
-
-    /// Configure a widget
-    ///
-    /// Note that, when handling events, this method returns the *old* state.
-    ///
-    /// This is a shortcut to [`ConfigMgr::configure`].
-    pub fn configure(&mut self, widget: NodeMut<'_>, id: WidgetId) {
-        self.config_mgr(|mgr| mgr.configure(widget, id));
     }
 }

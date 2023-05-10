@@ -220,6 +220,9 @@ impl EventState {
                     let hover = win.find_id(data, mgr.state.last_mouse_coord);
                     mgr.state.set_hover(hover);
                 }
+                Pending::Update(id) => {
+                    win.as_node_mut(data).for_id(&id, |node| mgr.update(node));
+                }
                 Pending::Send(id, event) => {
                     if matches!(&event, &Event::LostMouseHover) {
                         mgr.hover_icon = Default::default();

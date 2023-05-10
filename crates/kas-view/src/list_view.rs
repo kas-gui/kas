@@ -552,8 +552,8 @@ impl_scope! {
                 self.widgets.truncate(req_widgets);
             }
 
-            // Widgets need configuring and updating: do so by re-configuring self.
-            mgr.request_reconfigure(self.id());
+            // Widgets need configuring and updating: do so by updating self.
+            mgr.request_update(self.id());
         }
 
         #[inline]
@@ -617,7 +617,10 @@ impl_scope! {
             let data_len: i32 = self.data_len.cast();
             let view_size = self.rect().size - self.frame_size;
             let mut content_size = view_size;
-            content_size.set_component(self.direction, (self.skip * data_len - self.child_inter_margin).max(0));
+            content_size.set_component(
+                self.direction,
+                (self.skip * data_len - self.child_inter_margin).max(0),
+            );
             *cx |= self.scroll.set_sizes(view_size, content_size);
 
             for w in &mut self.widgets {

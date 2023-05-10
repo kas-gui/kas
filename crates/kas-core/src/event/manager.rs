@@ -172,6 +172,7 @@ struct PanGrab {
 #[allow(clippy::enum_variant_names)] // they all happen to be about Focus
 enum Pending {
     Configure(WidgetId),
+    Update(WidgetId),
     Send(WidgetId, Event),
     SetRect(WidgetId),
     NextNavFocus {
