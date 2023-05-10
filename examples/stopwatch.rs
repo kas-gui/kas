@@ -45,7 +45,7 @@ fn make_window() -> Box<dyn kas::Window> {
                             let dur = self.saved + (Instant::now() - start);
                             let text = format!("{}.{:03}", dur.as_secs(), dur.subsec_millis());
                             *mgr |= self.display.set_string(text);
-                            mgr.request_update(self.id(), 0, Duration::new(0, 1), true);
+                            mgr.request_timer_update(self.id(), 0, Duration::new(0, 1), true);
                         }
                         Response::Used
                     }
@@ -63,7 +63,7 @@ fn make_window() -> Box<dyn kas::Window> {
                         self.start = None;
                     } else {
                         self.start = Some(Instant::now());
-                        mgr.request_update(self.id(), 0, Duration::new(0, 0), true);
+                        mgr.request_timer_update(self.id(), 0, Duration::new(0, 0), true);
                     }
                 }
             }

@@ -196,7 +196,13 @@ impl EventState {
     ///
     /// If multiple updates with the same `id` and `payload` are requested,
     /// these are merged (using the earliest time if `first` is true).
-    pub fn request_update(&mut self, id: WidgetId, payload: u64, delay: Duration, first: bool) {
+    pub fn request_timer_update(
+        &mut self,
+        id: WidgetId,
+        payload: u64,
+        delay: Duration,
+        first: bool,
+    ) {
         let time = Instant::now() + delay;
         if let Some(row) = self
             .time_updates
@@ -210,7 +216,7 @@ impl EventState {
             row.0 = time;
             log::trace!(
                 target: "kas_core::event::manager",
-                "request_update: update {id} at now+{}ms",
+                "request_timer_update: update {id} at now+{}ms",
                 delay.as_millis()
             );
         } else {
