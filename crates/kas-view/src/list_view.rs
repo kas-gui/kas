@@ -89,23 +89,33 @@ impl_scope! {
     /// View controller for 1D indexable data (list)
     ///
     /// This widget generates a view over a list of data items, generating or
-    /// remapping "view widgets" for data items. View widgets are only
-    /// guaranteed to maintain state while visible.
+    /// remapping "view widgets" for data items as required to cover the view
+    /// area. View widgets are only guaranteed to maintain state while visible.
     ///
-    /// Input data must support [`ListData`].
-    /// A "guard" controls behaviour via [`ListViewGuard`].
+    /// [`ListData::iter_from`] is used to generate a list of data items which
+    /// are then geneverated via [`ListViewGuard::make`].
+    ///
+    /// When the view is scrolled and when [`Widget::update`] is called on the
+    /// `ListView`, for any key which differs from the cached view widget that
+    /// view widget is re-assigned via [`ListViewGuard::set_key`], otherwise (on
+    /// update) the view widget receives [`Widget::update`].
     ///
     /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
     /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
     ///
-    /// Optionally, data items may be selected; see [`Self::set_selection_mode`].
+    /// View widgets handle events like normal. To associate a returned message
+    /// with a data key, either embed that key in the message while constructing
+    /// the widget with [`ListViewGuard::make`] or intercept the message in
+    /// [`ListViewGuard::on_message`].
     ///
-    /// # Messages
+    /// # Selection
     ///
-    /// When a view widget pushes a message, [`ListViewGuard::on_message`] is called.
+    /// Item selection must be enabled explicitly via
+    /// [`Self::set_selection_mode`] or [`Self::with_selection_mode`].
     ///
-    /// When selection is enabled and an item is selected or deselected, this
-    /// widget emits a [`SelectionMsg`].
+    /// If enabled, a view widget may emit [`kas::message::Select`]
+    /// to cause itself to be selected. All changes to selection are reported
+    /// by this widget emitting a [`SelectionMsg`].
     #[derive(Clone, Debug)]
     #[widget {
         data = A;
@@ -637,13 +647,7 @@ impl_scope! {
             );
             *cx |= self.scroll.set_sizes(view_size, content_size);
 
-            for w in &mut self.widgets {
-                w.key = None;
-            }
             self.update_widgets(cx);
-
-            // Force SET_RECT so that scroll-bar wrappers get updated
-            *cx |= Action::SET_RECT;
         }
 
         fn nav_next(
