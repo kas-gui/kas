@@ -360,7 +360,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let mut fn_size_rules = None;
     let (fn_set_rect, fn_find_id);
     let mut fn_draw = None;
-    let mut kw_layout = None;
+    let mut gen_layout = false;
 
     let fn_pre_configure;
     let fn_pre_handle_event;
@@ -683,11 +683,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             use ::kas::{WidgetCore, WidgetExt};
             self.rect().contains(coord).then(|| self.id())
         };
-        if let Some((kw_span, layout)) = args.layout.take() {
-            kw_layout = Some(kw_span);
+        if let Some((_, layout)) = args.layout.take() {
+            gen_layout = true;
             fn_nav_next = match layout.nav_next(children.iter().map(|(ident, _, _)| ident)) {
-                NavNextResult::Err(msg) => {
-                    fn_nav_next_err = Some(msg);
+                NavNextResult::Err(span, msg) => {
+                    fn_nav_next_err = Some((span, msg));
                     None
                 }
                 NavNextResult::Slice(dir) => Some(quote! {
@@ -912,12 +912,10 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         if !has_method("nav_next") {
             if let Some(method) = fn_nav_next {
                 widget_impl.items.push(parse2(method)?);
-            } else if let Some(span) = kw_layout {
-                emit_warning!(
-                    span,
-                    "unable to generate method `Widget::nav_next` for this layout: {}",
-                    fn_nav_next_err.unwrap(),
-                );
+            } else if gen_layout {
+                // We emit a warning here only if nav_next is not explicitly defined
+                let (span, msg) = fn_nav_next_err.unwrap();
+                emit_warning!(span, "unable to generate `fn Widget::nav_next`: {}", msg,);
             }
         }
 
