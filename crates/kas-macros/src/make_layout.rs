@@ -67,7 +67,7 @@ impl Tree {
                 let mut index = children.len();
                 match layout.nav_next(children, &mut v, &mut index) {
                     Ok(()) => NavNextResult::List(v),
-                    Err(msg) => NavNextResult::Err(msg),
+                    Err((span, msg)) => NavNextResult::Err(span, msg),
                 }
             }
         }
@@ -81,7 +81,7 @@ impl Tree {
 
 #[derive(Debug)]
 pub enum NavNextResult {
-    Err(&'static str),
+    Err(Span, &'static str),
     Slice(Toks),
     List(Vec<usize>),
 }
@@ -868,7 +868,7 @@ impl Layout {
         children: &[Member],
         output: &mut Vec<usize>,
         index: &mut usize,
-    ) -> std::result::Result<(), &'static str> {
+    ) -> std::result::Result<(), (Span, &'static str)> {
         match self {
             Layout::Align(layout, _)
             | Layout::Pack(_, layout, _)
@@ -888,7 +888,7 @@ impl Layout {
                         return Ok(());
                     }
                 }
-                Err("child not found")
+                Err((m.member.span(), "child not found"))
             }
             Layout::Widget(_, _) => {
                 output.push(*index);
@@ -904,10 +904,12 @@ impl Layout {
                     _ if output.len() <= start + 1 => Ok(()),
                     Direction::Right | Direction::Down => Ok(()),
                     Direction::Left | Direction::Up => Ok(output[start..].reverse()),
-                    Direction::Expr(_) => Err("`list(dir)` with non-static `dir`"),
+                    Direction::Expr(_) => Err((dir.span(), "`list(dir)` with non-static `dir`")),
                 }
             }
-            Layout::Slice(_, _, _) => Err("`slice` combined with other layout components"),
+            Layout::Slice(_, _, expr) => {
+                Err((expr.span(), "`slice` combined with other layout components"))
+            }
             Layout::Grid(_, _, cells) => {
                 // TODO: sort using CellInfo?
                 for (_, item) in cells {
