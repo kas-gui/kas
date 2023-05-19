@@ -165,11 +165,18 @@ pub type StringText<A> = Text<A, String>;
 // TODO: a more fancy macro could determine the data fields used and wrap with
 // a node testing for changes to these fields before calling update().
 #[macro_export]
-macro_rules! format_text {
+macro_rules! format_data {
     ($data:ident, $($arg:tt)*) => {
         $crate::Text::new(move |$data| format!($($arg)*))
     };
     ($data:ident : $data_ty:ty , $($arg:tt)*) => {
         $crate::Text::new(move |$data : $data_ty| format!($($arg)*))
+    };
+}
+
+#[macro_export]
+macro_rules! format_value {
+    ($($arg:tt)*) => {
+        $crate::Text::new(move |data| format!($($arg)*, data))
     };
 }

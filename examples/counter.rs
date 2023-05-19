@@ -7,7 +7,7 @@
 
 use kas::prelude::*;
 use kas::widget::dialog::Window;
-use kas::widget::{button, column, format_text, row, Adapt};
+use kas::widget::{button, column, format_value, row, Adapt};
 
 #[derive(Clone, Debug)]
 struct Increment(i32);
@@ -16,7 +16,7 @@ struct Increment(i32);
 fn counter() -> impl Widget<Data = ()> {
     // TODO: column, row macros?
     let tree = column((
-        format_text!(count, "{}", count),
+        format_value!("{}"),
         row((
             button("−", Increment(-1)),
             button("+", Increment(1)),
