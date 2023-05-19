@@ -12,7 +12,7 @@ use kas::event::{self, Command};
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
 use kas::widget::adapter::ReserveP;
-use kas::widget::{format_text, Label, Slider, Text};
+use kas::widget::{format_data, format_value, Label, Slider, Text};
 use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawPipe};
 use kas_wgpu::wgpu;
 use std::mem::size_of;
@@ -454,8 +454,8 @@ impl_scope! {
         fn new() -> MandlebrotUI {
             MandlebrotUI {
                 core: Default::default(),
-                label: format_text!(mbrot: &Mandlebrot, "{}", mbrot.loc()),
-                iters_label: format_text!(iters, "{}", iters)
+                label: format_data!(mbrot: &Mandlebrot, "{}", mbrot.loc()),
+                iters_label: format_value!("{}")
                     .with_reserve(|size_mgr, axis| Label::new("000").size_rules(size_mgr, axis)),
                 slider: Slider::up(0..=256, |iters| *iters)
                     .msg_on_move(|iters| iters),

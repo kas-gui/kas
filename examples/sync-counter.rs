@@ -7,7 +7,7 @@
 //!
 //! Each window shares the counter, but has its own increment step.
 
-use kas::widget::{format_text, label, Adapt, Button, Slider};
+use kas::widget::{format_data, label, Adapt, Button, Slider};
 use kas::{Action, ErasedStack, Window};
 
 #[derive(Clone, Debug)]
@@ -42,8 +42,8 @@ fn counter(title: &str) -> Window<Count> {
     // let slider = Slider::<_, _>::new_msg(1..=10, |data: &Data| data.1, SetValue);
     let slider = Slider::right(1..=10, |data: &Data| data.1).msg_on_move(SetValue);
     let ui = kas::column![
-        format_text!(data: &Data, "Count: {}", data.0.0),
-        row![slider, format_text!(data: &Data, "{}", data.1)],
+        format_data!(data: &Data, "Count: {}", data.0.0),
+        row![slider, format_data!(data: &Data, "{}", data.1)],
         row![
             Button::new_on(label("Sub"), |cx, data: &Data| cx.push(Increment(-data.1))),
             Button::new_on(label("Add"), |cx, data: &Data| cx.push(Increment(data.1))),
