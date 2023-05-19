@@ -5,11 +5,11 @@
 
 //! Widget extension traits
 
-use super::{FnSizeRules, Reserve, WithLabel};
+use super::{FnSizeRules, Reserve, WithAlign, WithLabel};
 use kas::cast::{Cast, CastFloat};
 use kas::dir::Directional;
 use kas::geom::Vec2;
-use kas::layout::{AxisInfo, SizeRules};
+use kas::layout::{Align, AxisInfo, SizeRules};
 use kas::text::AccelString;
 use kas::theme::SizeMgr;
 #[allow(unused)] use kas::Layout;
@@ -102,6 +102,45 @@ pub trait AdaptWidget: Widget {
         Self: Sized,
     {
         WithLabel::new_with_direction(direction, self, label)
+    }
+
+    /// Apply alignment to self
+    ///
+    /// Returns a wrapper with a specified alignment hint. The hint is
+    /// inherited by all descendants.
+    #[must_use]
+    fn with_align(self, horiz: Align, vert: Align) -> WithAlign<Self>
+    where
+        Self: Sized,
+    {
+        WithAlign::new(self, Some(horiz), Some(vert))
+    }
+
+    /// Apply horizontal alignment to self
+    #[must_use]
+    fn with_align_horiz(self, horiz: Align) -> WithAlign<Self>
+    where
+        Self: Sized,
+    {
+        WithAlign::new(self, Some(horiz), None)
+    }
+
+    /// Apply vertical alignment to self
+    #[must_use]
+    fn with_align_vert(self, vert: Align) -> WithAlign<Self>
+    where
+        Self: Sized,
+    {
+        WithAlign::new(self, None, Some(vert))
+    }
+
+    /// Apply center-alignment to self
+    #[must_use]
+    fn with_align_center(self) -> WithAlign<Self>
+    where
+        Self: Sized,
+    {
+        WithAlign::new(self, Some(Align::Center), Some(Align::Center))
     }
 }
 impl<W: Widget + ?Sized> AdaptWidget for W {}

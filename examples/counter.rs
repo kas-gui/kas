@@ -16,7 +16,7 @@ struct Increment(i32);
 fn counter() -> impl Widget<Data = ()> {
     // TODO: column, row macros?
     let tree = column((
-        format_value!("{}"),
+        format_value!("{}").with_align_center(),
         row((
             button("−", Increment(-1)),
             button("+", Increment(1)),
