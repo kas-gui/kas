@@ -24,7 +24,7 @@ impl_scope! {
     #[widget{
         data = W::Data;
         navigable = true;
-        layout = frame(kas::theme::FrameStyle::NavFocus): self.inner;
+        layout = frame!(self.inner, style = kas::theme::FrameStyle::NavFocus);
     }]
     pub struct NavFrame<W: Widget> {
         core: widget_core!(),

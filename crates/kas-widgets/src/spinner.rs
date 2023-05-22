@@ -171,10 +171,10 @@ impl_scope! {
     #[autoimpl(Debug ignore self.on_change)]
     #[widget {
         data = A;
-        layout = frame(FrameStyle::EditBox): row! [
+        layout = frame!(row! [
             self.edit,
             column! [self.b_up, self.b_down],
-        ];
+        ], style = FrameStyle::EditBox);
     }]
     pub struct Spinner<A, T: SpinnerValue> {
         core: widget_core!(),

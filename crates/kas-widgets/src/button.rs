@@ -33,7 +33,7 @@ impl_scope! {
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[widget {
         data = W::Data;
-        layout = button(self.color): self.inner;
+        layout = button!(self.inner, color = self.color);
         navigable = true;
         hover_highlight = true;
     }]
@@ -154,7 +154,7 @@ impl_scope! {
     /// Default alignment of content is centered.
     #[autoimpl(Debug ignore self.on_press)]
     #[widget {
-        layout = button(self.color): self.label;
+        layout = button!(self.label, color = self.color);
         navigable = true;
         hover_highlight = true;
     }]
