@@ -138,11 +138,11 @@ struct MsgClose(bool);
 
 impl_scope! {
     #[widget{
-        layout = grid: {
-            0..3, 0: self.edit;
-            0, 1: Filler::maximize();
-            1, 1: TextButton::new_msg("&Cancel", MsgClose(false));
-            2, 1: TextButton::new_msg("&Save", MsgClose(true));
+        layout = grid! {
+            (0..3, 0) => self.edit,
+            (0, 1) => Filler::maximize(),
+            (1, 1) => TextButton::new_msg("&Cancel", MsgClose(false)),
+            (2, 1) => TextButton::new_msg("&Save", MsgClose(true)),
         };
     }]
     /// An editor over a shared `String`

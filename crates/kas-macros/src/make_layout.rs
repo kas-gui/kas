@@ -195,29 +195,41 @@ impl CellInfo {
 
 fn parse_cell_info(input: ParseStream) -> Result<CellInfo> {
     fn parse_end(input: ParseStream, start: u32) -> Result<u32> {
-        if input.parse::<Token![..]>().is_ok() {
-            if input.parse::<Token![+]>().is_ok() {
-                return Ok(start + input.parse::<LitInt>()?.base10_parse::<u32>()?);
-            }
-
+        if input.parse::<Token![..=]>().is_ok() {
             let lit = input.parse::<LitInt>()?;
-            let end = lit.base10_parse()?;
-            if start >= end {
-                return Err(Error::new(lit.span(), format!("expected value > {start}")));
+            let n: u32 = lit.base10_parse()?;
+            if n >= start {
+                Ok(n + 1)
+            } else {
+                Err(Error::new(lit.span(), format!("expected value >= {start}")))
             }
-            Ok(end)
+        } else if input.parse::<Token![..]>().is_ok() {
+            let plus = input.parse::<Token![+]>();
+            let lit = input.parse::<LitInt>()?;
+            let n: u32 = lit.base10_parse()?;
+
+            if let Ok(_) = plus {
+                Ok(start + n)
+            } else if n > start {
+                Ok(n)
+            } else {
+                Err(Error::new(lit.span(), format!("expected value > {start}")))
+            }
         } else {
             Ok(start + 1)
         }
     }
 
-    let col = input.parse::<LitInt>()?.base10_parse()?;
-    let col_end = parse_end(input, col)?;
+    let inner;
+    let _ = parenthesized!(inner in input);
 
-    let _ = input.parse::<Token![,]>()?;
+    let col = inner.parse::<LitInt>()?.base10_parse()?;
+    let col_end = parse_end(&inner, col)?;
 
-    let row = input.parse::<LitInt>()?.base10_parse()?;
-    let row_end = parse_end(input, row)?;
+    let _ = inner.parse::<Token![,]>()?;
+
+    let row = inner.parse::<LitInt>()?.base10_parse()?;
+    let row_end = parse_end(&inner, row)?;
 
     Ok(CellInfo {
         row,
@@ -424,8 +436,8 @@ impl Layout {
             }
         } else if lookahead.peek(kw::grid) {
             let _: kw::grid = input.parse()?;
+            let _: Token![!] = input.parse()?;
             let stor = gen.parse_or_next(input)?;
-            let _: Token![:] = input.parse()?;
             Ok(parse_grid(stor, input, gen)?)
         } else if lookahead.peek(kw::non_navigable) {
             let _: kw::non_navigable = input.parse()?;
@@ -595,15 +607,30 @@ fn parse_grid(stor: StorIdent, input: ParseStream, gen: &mut NameGenerator) -> R
     while !inner.is_empty() {
         let info = parse_cell_info(&inner)?;
         dim.update(&info);
-        let _: Token![:] = inner.parse()?;
-        let layout = Layout::parse(&inner, gen)?;
+        let _: Token![=>] = inner.parse()?;
+
+        let layout;
+        let require_comma;
+        if inner.peek(syn::token::Brace) {
+            let inner2;
+            let _ = braced!(inner2 in inner);
+            layout = Layout::parse(&inner2, gen)?;
+            require_comma = false;
+        } else {
+            layout = Layout::parse(&inner, gen)?;
+            require_comma = true;
+        }
         cells.push((info, layout));
 
         if inner.is_empty() {
             break;
         }
 
-        let _: Token![;] = inner.parse()?;
+        if let Err(e) = inner.parse::<Token![,]>() {
+            if require_comma {
+                return Err(e);
+            }
+        }
     }
 
     Ok(Layout::Grid(stor, dim, cells))

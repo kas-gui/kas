@@ -15,13 +15,13 @@ fn main() -> kas::shell::Result<()> {
 
     let window = kas::singleton! {
         #[widget{
-            layout = grid: {
-                1, 0: "Layout demo";
-                2, 0: self.check;
-                0..3, 1: ScrollLabel::new(LIPSUM);
-                0, 2: align(center): "abc אבג def";
-                1..3, 3: align(stretch): ScrollLabel::new(CRASIT);
-                0, 3: self.edit;
+            layout = grid! {
+                (1, 0) => "Layout demo",
+                (2, 0) => self.check,
+                (0..3, 1) => ScrollLabel::new(LIPSUM),
+                (0, 2) => align(center): "abc אבג def",
+                (1..3, 3) => align(stretch): ScrollLabel::new(CRASIT),
+                (0, 3) => self.edit,
             };
         }]
         struct {
