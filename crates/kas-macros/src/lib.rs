@@ -274,7 +274,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; Replaces margins of a layout item.
 /// >
 /// > _NonNavigable_ :\
-/// > &nbsp;&nbsp; `non_navigable` `:` _Layout_ \
+/// > &nbsp;&nbsp; `non_navigable!` `(` _Layout_ `)` \
 /// > &nbsp;&nbsp; Does not affect layout. Specifies that the content is excluded from tab-navigation order.
 ///
 /// Additional syntax rules (not layout items):

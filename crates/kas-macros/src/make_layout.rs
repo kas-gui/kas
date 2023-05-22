@@ -489,8 +489,10 @@ impl Layout {
             let _: kw::slice = input.parse()?;
             let _: Token![!] = input.parse()?;
             let stor = gen.parse_or_next(input)?;
+
             let inner;
             let _ = parenthesized!(inner in input);
+
             let dir: Direction = inner.parse()?;
             let _: Token![,] = inner.parse()?;
             if inner.peek(Token![self]) {
@@ -505,8 +507,11 @@ impl Layout {
             Ok(parse_grid(stor, input, gen)?)
         } else if lookahead.peek(kw::non_navigable) {
             let _: kw::non_navigable = input.parse()?;
-            let _: Token![:] = input.parse()?;
-            let layout = Layout::parse(input, gen)?;
+            let _: Token![!] = input.parse()?;
+
+            let inner;
+            let _ = parenthesized!(inner in input);
+            let layout = Layout::parse(&inner, gen)?;
             Ok(Layout::NonNavigable(Box::new(layout)))
         } else if lookahead.peek(LitStr) {
             let stor = gen.next();
