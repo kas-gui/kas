@@ -67,7 +67,7 @@ fn main() -> kas::shell::Result<()> {
         #[widget{
             layout = column! [
                 row! ["From 1 to", self.max],
-                align(right): self.table,
+                align!(right, self.table),
             ];
         }]
         #[derive(Debug)]

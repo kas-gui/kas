@@ -250,11 +250,11 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; A stack of overlapping elements, top-most first.
 ///
 /// > _Align_ :\
-/// > &nbsp;&nbsp; `align` `(` _AlignType_ ( `,` _AlignType_ )? `)` `:` _Layout_\
-/// > &nbsp;&nbsp; Applies some alignment to a sub-layout, e.g. `align(top): self.foo`. Two-dimensional alignment is possible but must be horizontal first, e.g. `align(left, top): ..`. Note: this does not constrain the size of the widget but merely adjusts content alignment; see also _Pack_.
+/// > &nbsp;&nbsp; `align!` `(` _AlignType_ _AlignType_? `,` _Layout_ `)`\
+/// > &nbsp;&nbsp; Applies some alignment to a sub-layout, e.g. `align!(top, self.foo)`. Two-dimensional alignment is possible but must be horizontal first, e.g. `align!(left top, "content")`. Note: this does not constrain the size of the widget but merely adjusts content alignment; see also _Pack_.
 /// >
 /// > _Pack_ :\
-/// > &nbsp;&nbsp; `pack` `(` _AlignType_ ( `,` _AlignType_ )? `)` _Storage_? `:` _Layout_\
+/// > &nbsp;&nbsp; `pack!` _Storage_? `(` _AlignType_ _AlignType_ ? `,` _Layout_ `)`\
 /// > &nbsp;&nbsp; As `align`, this applies some alignment to content, but also restricts the size of that content to its ideal size (i.e. no stretching).
 /// >
 /// > _Frame_ :\
