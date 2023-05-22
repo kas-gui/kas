@@ -274,7 +274,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; A string literal generates a label widget, e.g. "Hello world". This is an internal type without text wrapping.
 /// >
 /// > _Margins:\
-/// > &nbsp;&nbsp; `margins` `(` ( _MarginDirection_ `=` )? _MarginSpec_ `)` `:` _Layout_\
+/// > &nbsp;&nbsp; `margins!` `(` ( _MarginDirection_ `=` )? _MarginSpec_ `,` _Layout_ `)`\
 /// > &nbsp;&nbsp; Replaces margins of a layout item.
 /// >
 /// > _NonNavigable_ :\

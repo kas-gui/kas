@@ -346,6 +346,8 @@ impl Layout {
             Ok(Layout::Pack(stor, Box::new(layout), align))
         } else if lookahead.peek(kw::margins) {
             let _ = input.parse::<kw::margins>()?;
+            let _: Token![!] = input.parse()?;
+
             let inner;
             let _ = parenthesized!(inner in input);
 
@@ -393,8 +395,9 @@ impl Layout {
                 return Err(lookahead.error());
             };
 
-            let _ = input.parse::<Token![:]>()?;
-            let layout = Layout::parse(input, gen)?;
+            let _ = inner.parse::<Token![,]>()?;
+            let layout = Layout::parse(&inner, gen)?;
+
             Ok(Layout::Margins(Box::new(layout), dirs, margins))
         } else if lookahead.peek(Token![self]) {
             Ok(Layout::Single(input.parse()?))
