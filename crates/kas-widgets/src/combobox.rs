@@ -29,7 +29,7 @@ impl_scope! {
     #[autoimpl(Debug ignore self.on_select)]
     #[impl_default]
     #[widget {
-        layout = button 'frame: row: [self.label, self.mark];
+        layout = button 'frame: row! [self.label, self.mark];
         navigable = true;
         hover_highlight = true;
     }]

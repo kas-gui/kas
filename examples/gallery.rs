@@ -89,7 +89,7 @@ fn widgets() -> Box<dyn SetDisabled> {
 
     let popup_edit_box = singleton! {
         #[widget{
-            layout = row: [
+            layout = row! [
                 self.label,
                 TextButton::new_msg("&Edit", MsgEdit),
             ];
@@ -120,21 +120,21 @@ fn widgets() -> Box<dyn SetDisabled> {
 
     let widgets = singleton! {
         #[widget{
-            layout = aligned_column: [
-                row: ["ScrollLabel", self.sl],
-                row: ["EditBox", self.eb],
-                row: ["TextButton", self.tb],
-                row: ["Button<Image>", pack(center): self.bi],
-                row: ["CheckButton", self.cb],
-                row: ["RadioButton", self.rb],
-                row: ["RadioButton", self.rb2],
-                row: ["ComboBox", self.cbb],
-                row: ["Spinner", self.spin],
-                row: ["Slider", self.sd],
-                row: ["ScrollBar", self.sc],
-                row: ["ProgressBar", self.pg],
-                row: ["SVG", self.sv],
-                row: ["Child window", self.pu],
+            layout = aligned_column! [
+                row! ["ScrollLabel", self.sl],
+                row! ["EditBox", self.eb],
+                row! ["TextButton", self.tb],
+                row! ["Button<Image>", pack(center): self.bi],
+                row! ["CheckButton", self.cb],
+                row! ["RadioButton", self.rb],
+                row! ["RadioButton", self.rb2],
+                row! ["ComboBox", self.cbb],
+                row! ["Spinner", self.spin],
+                row! ["Slider", self.sd],
+                row! ["ScrollBar", self.sc],
+                row! ["ProgressBar", self.pg],
+                row! ["SVG", self.sv],
+                row! ["Child window", self.pu],
             ];
         }]
         #[derive(Debug)]
@@ -240,7 +240,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 
     Box::new(singleton! {
         #[widget{
-            layout = float: [
+            layout = float! [
                 pack(right, top): TextButton::new_msg("↻", MsgDirection),
                 list(self.dir): [self.editor, non_navigable: self.label],
             ];
@@ -311,9 +311,9 @@ fn filter_list() -> Box<dyn SetDisabled> {
 
     Box::new(singleton! {
         #[widget{
-            layout = column: [
-                row: ["Selection:", self.r0, self.r1, self.r2],
-                row: ["Filter:", self.filter],
+            layout = column! [
+                row! ["Selection:", self.r0, self.r1, self.r2],
+                row! ["Filter:", self.filter],
                 self.list,
             ];
         }]
@@ -421,7 +421,7 @@ fn canvas() -> Box<dyn SetDisabled> {
 
     Box::new(singleton! {
         #[widget{
-            layout = column: [
+            layout = column! [
                 Label::new("Animated canvas demo (CPU-rendered, async). Note: scheduling is broken on X11."),
                 self.canvas,
             ];
@@ -455,7 +455,7 @@ KAS_CONFIG_MODE=readwrite
 
     Box::new(ScrollBarRegion::new(singleton! {
         #[widget{
-            layout = column: [
+            layout = column! [
                 ScrollLabel::new(Markdown::new(DESC).unwrap()),
                 Separator::new(),
                 self.view,
@@ -538,7 +538,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let window = singleton! {
         #[widget{
-            layout = column: [
+            layout = column! [
                 self.menubar,
                 Separator::new(),
                 self.stack,

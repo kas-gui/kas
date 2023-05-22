@@ -48,8 +48,8 @@ impl_scope! {
     #[derive(Debug)]
     #[widget{
         data = usize;
-        layout = column: [
-            row: [self.label, self.radio],
+        layout = column! [
+            row! [self.label, self.radio],
             self.edit,
         ];
     }]
@@ -101,7 +101,7 @@ fn main() -> kas::shell::Result<()> {
 
     let window = singleton! {
         #[widget{
-            layout = column: [
+            layout = column! [
                 "Demonstration of dynamic widget creation / deletion",
                 self.controls,
                 "Contents of selected entry:",

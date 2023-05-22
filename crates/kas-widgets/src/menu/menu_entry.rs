@@ -107,7 +107,7 @@ impl_scope! {
     #[autoimpl(Debug)]
     #[widget {
         data = A;
-        layout = row: [self.checkbox, self.label];
+        layout = row! [self.checkbox, self.label];
     }]
     pub struct MenuToggle<A> {
         core: widget_core!(),

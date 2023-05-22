@@ -150,7 +150,7 @@ fn main() -> kas::shell::Result<()> {
 
     let ui = singleton! {
         #[widget{
-            layout = column: [
+            layout = column! [
                 "Demonstration of dynamic widget creation / deletion",
                 self.controls,
                 "Contents of selected entry:",

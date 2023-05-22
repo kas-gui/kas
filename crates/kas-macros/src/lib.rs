@@ -225,13 +225,17 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; `self` `.` _Member_\
 /// > &nbsp;&nbsp; A named child: `self.foo` (more precisely, this matches any expression starting `self`, and uses `&mut (#expr)`)
 /// >
+/// > _SimpleList_ :\
+/// > &nbsp;&nbsp; ( `column!` | `row!` ) _Storage_? `[` ( _Layout_ `,`? ) * `]`\
+/// > &nbsp;&nbsp; A list of children, e.g. `row! ["Foo", self.foo]`.
+/// >
 /// > _List_ :\
-/// > &nbsp;&nbsp; ( `column` | `row` | `list` `(` _Direction_ `)` ) _Storage_? `:` `[` ( _Layout_ `,`? ) * `]`\
-/// > &nbsp;&nbsp; A list of children, e.g. `row: ["Foo", self.foo]` or `list(up): ..` or `list(self.direction()): ..`
+/// > &nbsp;&nbsp; `list` `(` _Direction_ `)` _Storage_? `:` `[` ( _Layout_ `,`? ) * `]`\
+/// > &nbsp;&nbsp; A list of children, e.g. ``list(up): ..` or `list(self.direction()): ..`
 /// >
 /// > _AlignedList_ :\
-/// > &nbsp;&nbsp; ( `aligned_column` | `aligned_row` ) _Storage_? `:` `[` ( _Layout_ `,`? ) * `]`\
-/// > &nbsp;&nbsp; Inner component must be `row` or `column`, e.g.: `aligned_column: [row: ["One", "Two"], row: ["Three", "Four"]]`. This is syntactic sugar for a grid layout.
+/// > &nbsp;&nbsp; ( `aligned_column!` | `aligned_row!` ) _Storage_? `[` ( _Layout_ `,`? ) * `]`\
+/// > &nbsp;&nbsp; Inner component must be `row` or `column`, e.g.: `aligned_column! [row! ["One", "Two"], row! ["Three", "Four"]]`. This is syntactic sugar for a grid layout.
 /// >
 /// > _Slice_ :\
 /// > &nbsp;&nbsp; `slice` `(` _Direction_ `)` _Storage_? `:` `self` `.` _Member_\
@@ -242,7 +246,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; A two-dimensional layout, supporting cell spans, defined via a list of cells (see _GridCell_ below).
 ///
 /// > _Float_ :\
-/// > &nbsp;&nbsp; `float` `:` `[` ( _Layout_ `,`? ) * `]`\
+/// > &nbsp;&nbsp; `float!` `[` ( _Layout_ `,`? ) * `]`\
 /// > &nbsp;&nbsp; A stack of overlapping elements, top-most first.
 ///
 /// > _Align_ :\
@@ -342,7 +346,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
-/// A simple row layout: `layout = row: [self.a, self.b];`
+/// A simple row layout: `layout = row! [self.a, self.b];`
 ///
 /// Grid cells are defined by `row, column` ranges, where the ranges are either
 /// a half-open range or a single number (who's end is implicitly `start + 1`).
