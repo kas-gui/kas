@@ -3,6 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
+use crate::widget;
 use proc_macro2::{Span, TokenStream as Toks};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
@@ -116,6 +117,90 @@ impl Tree {
     /// If field `ident` is included in the layout, return Span of usage
     pub fn span_in_layout(&self, ident: &Member) -> Option<Span> {
         self.0.span_in_layout(ident)
+    }
+
+    /// Synthesize an entire widget from the layout
+    pub fn expand_as_widget(self, widget_name: &str) -> Result<Toks> {
+        let name = Ident::new(widget_name, Span::call_site());
+        let impl_generics = quote! { < _Data > };
+        let impl_target = quote! { #name < _Data > };
+
+        let core_path = quote! { self };
+        let data_ty: syn::Type = syn::parse_quote! { _Data };
+
+        let mut layout_children = Vec::new();
+        let (stor_ty, stor_def) = self
+            .storage_fields(&mut layout_children, &data_ty.to_token_stream())
+            .unwrap_or_default();
+
+        let core_impl = widget::impl_core(
+            &impl_generics,
+            &impl_target,
+            &widget_name,
+            &data_ty,
+            &core_path,
+        );
+        let children_impl = widget::impl_widget_children(
+            &impl_generics,
+            &impl_target,
+            &core_path,
+            &vec![],
+            layout_children,
+        );
+
+        let layout_methods = self.layout_methods(&core_path)?;
+
+        let toks = quote! {{
+            #[autoimpl(Debug)]
+            struct #name #impl_generics {
+                rect: ::kas::geom::Rect,
+                id: ::kas::WidgetId,
+                _pd: ::std::marker::PhantomData<_Data>,
+                #stor_ty
+            }
+
+            #core_impl
+            #children_impl
+
+            impl #impl_generics ::kas::Layout for #impl_target {
+                #layout_methods
+            }
+
+            impl #impl_generics ::kas::Widget for #impl_target {
+                fn pre_configure(
+                    &mut self,
+                    _: &mut ::kas::event::ConfigCx<#data_ty>,
+                    id: ::kas::WidgetId,
+                ) {
+                    self.id = id;
+                }
+
+                fn pre_handle_event(
+                    &mut self,
+                    cx: &mut ::kas::event::EventCx<Self::Data>,
+                    event: ::kas::event::Event,
+                ) -> ::kas::event::Response {
+                    self.handle_event(cx, event)
+                }
+            }
+
+            #name {
+                rect: Default::default(),
+                id: Default::default(),
+                _pd: ::std::marker::PhantomData,
+                #stor_def
+            }
+        }};
+        // println!("{}", toks);
+        Ok(toks)
+    }
+
+    /// Parse a column (contents only)
+    pub fn column(input: ParseStream) -> Result<Self> {
+        let mut gen = NameGenerator::default();
+        let stor = gen.next();
+        let list = parse_layout_items(input, &mut gen)?;
+        Ok(Tree(Layout::List(stor, Direction::Down, list)))
     }
 }
 
@@ -460,9 +545,8 @@ impl Layout {
             let _: kw::column = input.parse()?;
             let _: Token![!] = input.parse()?;
             let stor = gen.parse_or_next(input)?;
-            let dir = Direction::Down;
             let list = parse_layout_list(input, gen)?;
-            Ok(Layout::List(stor, dir, list))
+            Ok(Layout::List(stor, Direction::Down, list))
         } else if lookahead.peek(kw::row) {
             let _: kw::row = input.parse()?;
             let _: Token![!] = input.parse()?;
@@ -591,7 +675,10 @@ fn parse_align(inner: ParseStream) -> Result<AlignHints> {
 fn parse_layout_list(input: ParseStream, gen: &mut NameGenerator) -> Result<Vec<Layout>> {
     let inner;
     let _ = bracketed!(inner in input);
+    parse_layout_items(&inner, gen)
+}
 
+fn parse_layout_items(inner: ParseStream, gen: &mut NameGenerator) -> Result<Vec<Layout>> {
     let mut list = vec![];
     while !inner.is_empty() {
         list.push(Layout::parse(&inner, gen)?);

@@ -837,7 +837,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     Ok(())
 }
 
-fn impl_core(
+pub fn impl_core(
     impl_generics: &Toks,
     impl_target: &Toks,
     name: &str,
@@ -873,7 +873,7 @@ fn impl_core(
     }
 }
 
-fn impl_widget_children(
+pub fn impl_widget_children(
     impl_generics: &Toks,
     impl_target: &Toks,
     core_path: &Toks,
