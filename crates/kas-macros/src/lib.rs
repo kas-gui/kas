@@ -262,8 +262,8 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; Adds a button frame (optionally with color _Expr_) around content.
 /// >
 /// > _Widget_ :\
-/// > &nbsp;&nbsp; _ExprStartingUpperCase_\
-/// > &nbsp;&nbsp; An expression yielding a widget, e.g. `Label::new("Hello world")`. The result must be an object of some type `W: Widget`. Since the expression must start with an upper case letter it is necessary to bring the type into scope first, e.g. `use kas::widget::Label;`.
+/// > &nbsp;&nbsp; _Expr_\
+/// > &nbsp;&nbsp; An expression yielding a widget, e.g. `Label::new("Hello world")`. The result must be an object of some type `W: Widget`.
 /// >
 /// > _Label_ :\
 /// > &nbsp;&nbsp; _StrLit_\
