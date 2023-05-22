@@ -316,6 +316,21 @@ impl Parse for Tree {
 
 impl Layout {
     fn parse(input: ParseStream, gen: &mut NameGenerator) -> Result<Self> {
+        if input.peek2(Token![!]) {
+            Self::parse_macro_like(input, gen)
+        } else if input.peek(Token![self]) {
+            Ok(Layout::Single(input.parse()?))
+        } else if input.peek(LitStr) {
+            let stor = gen.next();
+            Ok(Layout::Label(stor, input.parse()?))
+        } else {
+            let stor = gen.next();
+            let expr = input.parse()?;
+            Ok(Layout::Widget(stor, expr))
+        }
+    }
+
+    fn parse_macro_like(input: ParseStream, gen: &mut NameGenerator) -> Result<Self> {
         let lookahead = input.lookahead1();
         if lookahead.peek(kw::align) {
             let _: kw::align = input.parse()?;
@@ -401,8 +416,6 @@ impl Layout {
             let layout = Layout::parse(&inner, gen)?;
 
             Ok(Layout::Margins(Box::new(layout), dirs, margins))
-        } else if lookahead.peek(Token![self]) {
-            Ok(Layout::Single(input.parse()?))
         } else if lookahead.peek(kw::frame) {
             let _: kw::frame = input.parse()?;
             let _: Token![!] = input.parse()?;
@@ -514,24 +527,10 @@ impl Layout {
             let _ = parenthesized!(inner in input);
             let layout = Layout::parse(&inner, gen)?;
             Ok(Layout::NonNavigable(Box::new(layout)))
-        } else if lookahead.peek(LitStr) {
-            let stor = gen.next();
-            Ok(Layout::Label(stor, input.parse()?))
         } else {
-            if let Ok(ident) = input.fork().parse::<Ident>() {
-                if ident
-                    .to_string()
-                    .chars()
-                    .next()
-                    .map(|c| c.is_ascii_uppercase())
-                    .unwrap_or(false)
-                {
-                    let stor = gen.next();
-                    let expr = input.parse()?;
-                    return Ok(Layout::Widget(stor, expr));
-                }
-            }
-            Err(lookahead.error())
+            let stor = gen.next();
+            let expr = input.parse()?;
+            Ok(Layout::Widget(stor, expr))
         }
     }
 }
