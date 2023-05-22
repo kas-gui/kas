@@ -463,6 +463,31 @@ pub fn widget_index(input: TokenStream) -> TokenStream {
     input
 }
 
+/// Make a column widget
+///
+/// Items support [widget layout syntax](macro@widget#layout-1).
+///
+/// # Example
+///
+/// ```
+/// let my_widget = column! [
+///     "one",
+///     "two",
+/// ];
+/// ```
+#[proc_macro_error]
+#[proc_macro]
+pub fn column(input: TokenStream) -> TokenStream {
+    let layout = parse_macro_input!(input with make_layout::Tree::column);
+    match layout.expand_as_widget("_Column") {
+        Ok(toks) => toks.into(),
+        Err(err) => {
+            emit_call_site_error!(err);
+            TokenStream::default()
+        }
+    }
+}
+
 /// A trait implementation is an extension over some base
 ///
 /// Usage as follows:

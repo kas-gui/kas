@@ -796,7 +796,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     Ok(())
 }
 
-fn impl_core(impl_generics: &Toks, impl_target: &Toks, name: &str, core_path: &Toks) -> Toks {
+pub fn impl_core(impl_generics: &Toks, impl_target: &Toks, name: &str, core_path: &Toks) -> Toks {
     quote! {
         impl #impl_generics ::kas::WidgetCore for #impl_target {
             #[inline]
@@ -821,7 +821,7 @@ fn impl_core(impl_generics: &Toks, impl_target: &Toks, name: &str, core_path: &T
     }
 }
 
-fn impl_widget_children(
+pub fn impl_widget_children(
     impl_generics: &Toks,
     impl_target: &Toks,
     core_path: &Toks,
