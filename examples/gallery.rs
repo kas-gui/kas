@@ -122,7 +122,7 @@ fn widgets() -> Box<dyn SetDisabled> {
                 row! ["ScrollLabel", self.sl],
                 row! ["EditBox", self.eb],
                 row! ["TextButton", self.tb],
-                row! ["Button<Image>", pack(center): self.bi],
+                row! ["Button<Image>", pack!(center, self.bi)],
                 row! ["CheckButton", self.cb],
                 row! ["RadioButton", self.rb],
                 row! ["RadioButton", self.rb2],
@@ -237,7 +237,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
     Box::new(singleton! {
         #[widget{
             layout = float! [
-                pack(right, top): TextButton::new_msg("↻", MsgDirection),
+                pack!(right top, TextButton::new_msg("↻", MsgDirection)),
                 list!(self.dir, [self.editor, non_navigable: self.label]),
             ];
         }]

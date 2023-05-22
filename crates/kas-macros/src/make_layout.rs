@@ -316,22 +316,32 @@ impl Layout {
         let lookahead = input.lookahead1();
         if lookahead.peek(kw::align) {
             let _: kw::align = input.parse()?;
-            let align = parse_align(input)?;
-            let _: Token![:] = input.parse()?;
+            let _: Token![!] = input.parse()?;
 
-            if input.peek(Token![self]) {
-                Ok(Layout::AlignSingle(input.parse()?, align))
+            let inner;
+            let _ = parenthesized!(inner in input);
+
+            let align = parse_align(&inner)?;
+            let _: Token![,] = inner.parse()?;
+
+            if inner.peek(Token![self]) {
+                Ok(Layout::AlignSingle(inner.parse()?, align))
             } else {
-                let layout = Layout::parse(input, gen)?;
+                let layout = Layout::parse(&inner, gen)?;
                 Ok(Layout::Align(Box::new(layout), align))
             }
         } else if lookahead.peek(kw::pack) {
             let _: kw::pack = input.parse()?;
-            let align = parse_align(input)?;
+            let _: Token![!] = input.parse()?;
             let stor = gen.parse_or_next(input)?;
-            let _: Token![:] = input.parse()?;
 
-            let layout = Layout::parse(input, gen)?;
+            let inner;
+            let _ = parenthesized!(inner in input);
+
+            let align = parse_align(&inner)?;
+            let _: Token![,] = inner.parse()?;
+
+            let layout = Layout::parse(&inner, gen)?;
             Ok(Layout::Pack(stor, Box::new(layout), align))
         } else if lookahead.peek(kw::margins) {
             let _ = input.parse::<kw::margins>()?;
@@ -536,27 +546,21 @@ impl Align {
     }
 }
 
-fn parse_align(input: ParseStream) -> Result<AlignHints> {
-    let inner;
-    let _ = parenthesized!(inner in input);
-
-    match Align::parse(&inner, true)? {
-        None => {
-            let first = Align::None;
-            let second = Align::parse(&inner, false)?.unwrap();
-            Ok(AlignHints(first, second))
-        }
-        Some(first) => {
-            let second = if inner.parse::<Token![,]>().is_ok() {
-                Align::parse(&inner, false)?.unwrap()
-            } else if matches!(first, Align::TL | Align::BR) {
-                Align::None
-            } else {
-                first
-            };
-            Ok(AlignHints(first, second))
-        }
+fn parse_align(inner: ParseStream) -> Result<AlignHints> {
+    if let Some(first) = Align::parse(&inner, true)? {
+        let second = if !inner.is_empty() && !inner.peek(Token![,]) {
+            Align::parse(&inner, false)?.unwrap()
+        } else if matches!(first, Align::TL | Align::BR) {
+            Align::None
+        } else {
+            first
+        };
+        return Ok(AlignHints(first, second));
     }
+
+    let first = Align::None;
+    let second = Align::parse(&inner, false)?.unwrap();
+    Ok(AlignHints(first, second))
 }
 
 fn parse_layout_list(input: ParseStream, gen: &mut NameGenerator) -> Result<Vec<Layout>> {
