@@ -56,8 +56,42 @@ impl Tree {
         }
     }
 
-    pub fn generate(&self, core: &Member) -> Result<Toks> {
-        self.0.generate(core)
+    pub fn layout_methods(&self, core_path: &Toks) -> Result<Toks> {
+        let layout = self.0.generate(core_path)?;
+        Ok(quote! {
+            fn size_rules(
+                &mut self,
+                size_mgr: ::kas::theme::SizeMgr,
+                axis: ::kas::layout::AxisInfo,
+            ) -> ::kas::layout::SizeRules {
+                use ::kas::{WidgetCore, layout};
+                (#layout).size_rules(size_mgr, axis)
+            }
+
+            fn set_rect(
+                &mut self,
+                mgr: &mut ::kas::event::ConfigMgr,
+                rect: ::kas::geom::Rect,
+            ) {
+                use ::kas::{WidgetCore, layout};
+                #core_path.rect = rect;
+                (#layout).set_rect(mgr, rect);
+            }
+
+            fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+                use ::kas::{layout, Widget, WidgetCore, WidgetExt};
+                if !self.rect().contains(coord) {
+                    return None;
+                }
+                let coord = coord + self.translation();
+                (#layout).find_id(coord).or_else(|| Some(self.id()))
+            }
+
+            fn draw(&mut self, draw: ::kas::theme::DrawMgr) {
+                use ::kas::{WidgetCore, layout};
+                (#layout).draw(draw);
+            }
+        })
     }
 
     pub fn nav_next<'a, I: Clone + ExactSizeIterator<Item = &'a Member>>(
@@ -803,21 +837,21 @@ impl Layout {
     // multi-element layout (list/slice/grid).
     //
     // Required: `::kas::layout` must be in scope.
-    fn generate(&self, core: &Member) -> Result<Toks> {
+    fn generate(&self, core_path: &Toks) -> Result<Toks> {
         Ok(match self {
             Layout::Align(layout, align) => {
-                let inner = layout.generate(core)?;
+                let inner = layout.generate(core_path)?;
                 quote! { layout::Visitor::align(#inner, #align) }
             }
             Layout::AlignSingle(expr, align) => {
                 quote! { layout::Visitor::align_single(&mut #expr, #align) }
             }
             Layout::Pack(stor, layout, align) => {
-                let inner = layout.generate(core)?;
-                quote! { layout::Visitor::pack(&mut self.#core.#stor, #inner, #align) }
+                let inner = layout.generate(core_path)?;
+                quote! { layout::Visitor::pack(&mut #core_path.#stor, #inner, #align) }
             }
             Layout::Margins(layout, dirs, selector) => {
-                let inner = layout.generate(core)?;
+                let inner = layout.generate(core_path)?;
                 quote! { layout::Visitor::margins(
                     #inner,
                     ::kas::dir::Directions::from_bits(#dirs).unwrap(),
@@ -828,36 +862,36 @@ impl Layout {
                 layout::Visitor::single(&mut #expr)
             },
             Layout::Widget(stor, _) => quote! {
-                layout::Visitor::single(&mut self.#core.#stor)
+                layout::Visitor::single(&mut #core_path.#stor)
             },
             Layout::Frame(stor, layout, style) => {
-                let inner = layout.generate(core)?;
+                let inner = layout.generate(core_path)?;
                 quote! {
-                    layout::Visitor::frame(&mut self.#core.#stor, #inner, #style)
+                    layout::Visitor::frame(&mut #core_path.#stor, #inner, #style)
                 }
             }
             Layout::Button(stor, layout, color) => {
-                let inner = layout.generate(core)?;
+                let inner = layout.generate(core_path)?;
                 quote! {
-                    layout::Visitor::button(&mut self.#core.#stor, #inner, #color)
+                    layout::Visitor::button(&mut #core_path.#stor, #inner, #color)
                 }
             }
             Layout::List(stor, dir, list) => {
                 let mut items = Toks::new();
                 for item in list {
-                    let item = item.generate(core)?;
+                    let item = item.generate(core_path)?;
                     items.append_all(quote! {{ #item },});
                 }
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
                 quote! {{
                     let dir = #dir;
-                    layout::Visitor::list(#iter, dir, &mut self.#core.#stor)
+                    layout::Visitor::list(#iter, dir, &mut #core_path.#stor)
                 }}
             }
             Layout::Slice(stor, dir, expr) => {
                 quote! {{
                     let dir = #dir;
-                    layout::Visitor::slice(&mut #expr, dir, &mut self.#core.#stor)
+                    layout::Visitor::slice(&mut #expr, dir, &mut #core_path.#stor)
                 }}
             }
             Layout::Grid(stor, dim, cells) => {
@@ -865,7 +899,7 @@ impl Layout {
                 for item in cells {
                     let (col, col_end) = (item.0.col, item.0.col_end);
                     let (row, row_end) = (item.0.row, item.0.row_end);
-                    let layout = item.1.generate(core)?;
+                    let layout = item.1.generate(core_path)?;
                     items.append_all(quote! {
                         (
                             layout::GridChildInfo {
@@ -880,21 +914,21 @@ impl Layout {
                 }
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
 
-                quote! { layout::Visitor::grid(#iter, #dim, &mut self.#core.#stor) }
+                quote! { layout::Visitor::grid(#iter, #dim, &mut #core_path.#stor) }
             }
             Layout::Float(list) => {
                 let mut items = Toks::new();
                 for item in list {
-                    let item = item.generate(core)?;
+                    let item = item.generate(core_path)?;
                     items.append_all(quote! {{ #item },});
                 }
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
                 quote! { layout::Visitor::float(#iter) }
             }
             Layout::Label(stor, _) => {
-                quote! { layout::Visitor::component(&mut self.#core.#stor) }
+                quote! { layout::Visitor::component(&mut #core_path.#stor) }
             }
-            Layout::NonNavigable(layout) => return layout.generate(core),
+            Layout::NonNavigable(layout) => return layout.generate(core_path),
         })
     }
 

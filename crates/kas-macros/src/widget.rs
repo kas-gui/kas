@@ -6,12 +6,14 @@
 use crate::make_layout::{self, NavNextResult};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::{Span, TokenStream as Toks};
 use proc_macro_error::{emit_error, emit_warning};
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::{parse2, parse_quote, token::Eq, Ident, ImplItem, Index, ItemImpl, Member, Token, Type};
+use syn::{
+    parse2, parse_quote, token::Eq, Expr, Ident, ImplItem, Index, ItemImpl, Member, Token, Type,
+};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -42,7 +44,7 @@ pub struct ExprToken {
 #[derive(Debug, Default)]
 pub struct WidgetArgs {
     pub data: Option<(Span, Type)>,
-    pub navigable: Option<TokenStream>,
+    pub navigable: Option<Toks>,
     pub hover_highlight: Option<BoolToken>,
     pub cursor_icon: Option<ExprToken>,
     pub derive: Option<Member>,
@@ -155,7 +157,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let opt_derive = &args.derive;
     let mut derive_ty = None;
 
-    let mut impl_widget_children = true;
+    let mut do_impl_widget_children = true;
     let mut layout_impl = None;
     let mut widget_impl = None;
 
@@ -349,12 +351,14 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                         "custom `WidgetChildren` implementation when using layout-defined children"
                     );
                 }
-                impl_widget_children = false;
+                do_impl_widget_children = false;
             }
         }
     }
 
     let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
+    let impl_generics = impl_generics.to_token_stream();
+    let impl_target = quote! { #name #ty_generics #where_clause };
     let widget_name = name.to_string();
 
     let mut fn_size_rules = None;
@@ -376,8 +380,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         };
 
         scope.generated.push(quote! {
-            impl #impl_generics ::kas::WidgetCore
-                for #name #ty_generics #where_clause
+            impl #impl_generics ::kas::WidgetCore for #impl_target
             {
                 #[inline]
                 fn id_ref(&self) -> &::kas::WidgetId {
@@ -395,9 +398,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
             }
 
-            impl #impl_generics ::kas::WidgetNode
-                for #name #ty_generics #where_clause
-            {
+            impl #impl_generics ::kas::WidgetNode for #impl_target {
                 type Data = <#derive_ty as ::kas::WidgetNode>::Data;
 
                 #[inline]
@@ -406,9 +407,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 }
             }
 
-            impl #impl_generics ::kas::WidgetChildren
-                for #name #ty_generics #where_clause
-            {
+            impl #impl_generics ::kas::WidgetChildren for #impl_target {
                 #[inline]
                 fn num_children(&self) -> usize {
                     self.#inner.num_children()
@@ -587,95 +586,24 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 "expected: a field with type `widget_core!()`",
             ));
         };
+        let core_path = quote! { self.#core };
 
-        scope.generated.push(quote! {
-            impl #impl_generics ::kas::WidgetCore
-                for #name #ty_generics #where_clause
-            {
-                #[inline]
-                fn id_ref(&self) -> &::kas::WidgetId {
-                    &self.#core.id
-                }
-                #[inline]
-                fn rect(&self) -> ::kas::geom::Rect {
-                    self.#core.rect
-                }
+        scope.generated.push(impl_core(
+            &impl_generics,
+            &impl_target,
+            &widget_name,
+            &data_ty,
+            &core_path,
+        ));
 
-                #[inline]
-                fn widget_name(&self) -> &'static str {
-                    #widget_name
-                }
-
-            }
-
-            impl #impl_generics ::kas::WidgetNode
-                for #name #ty_generics #where_clause
-            {
-                type Data = #data_ty;
-
-                #[inline]
-                fn as_node<'s>(&'s mut self, data: &'s Self::Data) -> ::kas::Node<'s> {
-                    ::kas::Node::new(self, data)
-                }
-            }
-        });
-
-        if impl_widget_children {
-            let mut count = children.len();
-            // let mut where_clause: Option<WhereClause> = where_clause.clone().unwrap_or(None);
-            let mut get_mut_rules = quote! {};
-
-            if count != 0 {
-                // let mut predicates = Punctuated::new();
-                for (i, (ident, span, opt_data)) in children.iter().enumerate() {
-                    // TODO: incorrect or unconstrained data type of child causes a poor error
-                    // message here. Add a constaint like this (assuming no mapping fn):
-                    // <#ty as WidgetNode::Data> == Self::Data
-                    // But this is unsupported: rust#20041
-                    // predicates.push(..);
-
-                    get_mut_rules.append_all(if let Some(data) = opt_data {
-                        quote! { #i => closure(self.#ident.as_node(#data)), }
-                    } else {
-                        quote_spanned! {*span=> #i => closure(self.#ident.as_node(data)), }
-                    });
-                }
-
-                // where_clause = Some(WhereClause {
-                //     where_token: Default::default(),
-                //     predicates,
-                // });
-            }
-
-            for (i, path) in layout_children.iter().enumerate() {
-                let index = count + i;
-                get_mut_rules.append_all(quote! {
-                    #index => closure(self.#core.#path.as_node(data)),
-                });
-            }
-            count += layout_children.len();
-
-            scope.generated.push(quote! {
-                impl #impl_generics ::kas::WidgetChildren
-                    for #name #ty_generics #where_clause
-                {
-                    fn num_children(&self) -> usize {
-                        #count
-                    }
-                    fn for_child_impl(
-                        &mut self,
-                        data: &Self::Data,
-                        index: usize,
-                        closure: Box<dyn FnOnce(::kas::Node<'_>) + '_>,
-                    ) {
-                        use ::kas::{WidgetCore, WidgetNode};
-                        match index {
-                            #get_mut_rules
-                            _ => (),
-                        }
-                    }
-                }
-            });
+        if do_impl_widget_children {
+            scope.generated.push(impl_widget_children(
+                &impl_generics,
+                &impl_target,
+                &core_path,
+                &children,
+                layout_children,
+            ));
         }
 
         let mut set_rect = quote! { self.#core.rect = rect; };
@@ -725,43 +653,10 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 }),
             };
 
-            let layout = layout.generate(&core)?;
+            let layout_methods = layout.layout_methods(&quote! { self.#core })?;
             scope.generated.push(quote! {
-                impl #impl_generics ::kas::layout::AutoLayout
-                        for #name #ty_generics #where_clause
-                {
-                    fn size_rules(
-                        &mut self,
-                        size_mgr: ::kas::theme::SizeMgr,
-                        axis: ::kas::layout::AxisInfo,
-                    ) -> ::kas::layout::SizeRules {
-                        use ::kas::{WidgetCore, layout};
-                        (#layout).size_rules(size_mgr, axis)
-                    }
-
-                    fn set_rect(
-                        &mut self,
-                        mgr: &mut ::kas::event::ConfigMgr,
-                        rect: ::kas::geom::Rect,
-                    ) {
-                        use ::kas::{WidgetCore, layout};
-                        self.#core.rect = rect;
-                        (#layout).set_rect(mgr, rect);
-                    }
-
-                    fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-                        use ::kas::{layout, Widget, WidgetCore, WidgetExt};
-                        if !self.rect().contains(coord) {
-                            return None;
-                        }
-                        let coord = coord + self.translation();
-                        (#layout).find_id(coord).or_else(|| Some(self.id()))
-                    }
-
-                    fn draw(&mut self, draw: ::kas::theme::DrawMgr) {
-                        use ::kas::{WidgetCore, layout};
-                        (#layout).draw(draw);
-                    }
+                impl #impl_generics ::kas::layout::AutoLayout for #impl_target {
+                    #layout_methods
                 }
             });
 
@@ -884,7 +779,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
     } else if let Some(fn_size_rules) = fn_size_rules {
         scope.generated.push(quote! {
-            impl #impl_generics ::kas::Layout for #name #ty_generics #where_clause {
+            impl #impl_generics ::kas::Layout for #impl_target {
                 #fn_size_rules
                 #fn_set_rect
                 #fn_find_id
@@ -927,9 +822,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     } else {
         let other_methods = widget_methods.into_iter().map(|pair| pair.1);
         scope.generated.push(quote! {
-            impl #impl_generics ::kas::Widget
-                    for #name #ty_generics #where_clause
-            {
+            impl #impl_generics ::kas::Widget for #impl_target {
                 #fn_pre_configure
                 #fn_navigable
                 #fn_pre_handle_event
@@ -942,4 +835,103 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     // println!("{}\n", scope.to_token_stream());
 
     Ok(())
+}
+
+fn impl_core(
+    impl_generics: &Toks,
+    impl_target: &Toks,
+    name: &str,
+    data_ty: &Type,
+    core_path: &Toks,
+) -> Toks {
+    quote! {
+        impl #impl_generics ::kas::WidgetCore for #impl_target {
+            #[inline]
+            fn id_ref(&self) -> &::kas::WidgetId {
+                &#core_path.id
+            }
+            #[inline]
+            fn rect(&self) -> ::kas::geom::Rect {
+                #core_path.rect
+            }
+
+            #[inline]
+            fn widget_name(&self) -> &'static str {
+                #name
+            }
+
+        }
+
+        impl #impl_generics ::kas::WidgetNode for #impl_target {
+            type Data = #data_ty;
+
+            #[inline]
+            fn as_node<'s>(&'s mut self, data: &'s Self::Data) -> ::kas::Node<'s> {
+                ::kas::Node::new(self, data)
+            }
+        }
+    }
+}
+
+fn impl_widget_children(
+    impl_generics: &Toks,
+    impl_target: &Toks,
+    core_path: &Toks,
+    children: &Vec<(Member, Span, Option<Box<Expr>>)>,
+    layout_children: Vec<Toks>,
+) -> Toks {
+    let mut count = children.len();
+    // let mut where_clause: Option<WhereClause> = where_clause.clone().unwrap_or(None);
+    let mut get_mut_rules = quote! {};
+
+    if count != 0 {
+        // let mut predicates = Punctuated::new();
+        for (i, (ident, span, opt_data)) in children.iter().enumerate() {
+            // TODO: incorrect or unconstrained data type of child causes a poor error
+            // message here. Add a constaint like this (assuming no mapping fn):
+            // <#ty as WidgetNode::Data> == Self::Data
+            // But this is unsupported: rust#20041
+            // predicates.push(..);
+
+            get_mut_rules.append_all(if let Some(data) = opt_data {
+                quote! { #i => closure(self.#ident.as_node(#data)), }
+            } else {
+                quote_spanned! {*span=> #i => closure(self.#ident.as_node(data)), }
+            });
+        }
+
+        // NOTE: must unpack #impl_target to use this
+        // where_clause = Some(WhereClause {
+        //     where_token: Default::default(),
+        //     predicates,
+        // });
+    }
+
+    for (i, path) in layout_children.iter().enumerate() {
+        let index = count + i;
+        get_mut_rules.append_all(quote! {
+            #index => closure(#core_path.#path.as_node(data)),
+        });
+    }
+    count += layout_children.len();
+
+    quote! {
+        impl #impl_generics ::kas::WidgetChildren for #impl_target {
+            fn num_children(&self) -> usize {
+                #count
+            }
+            fn for_child_impl(
+                &mut self,
+                data: &Self::Data,
+                index: usize,
+                closure: Box<dyn FnOnce(::kas::Node<'_>) + '_>,
+            ) {
+                use ::kas::{WidgetCore, WidgetNode};
+                match index {
+                    #get_mut_rules
+                    _ => (),
+                }
+            }
+        }
+    }
 }
