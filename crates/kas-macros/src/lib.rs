@@ -242,7 +242,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; A field with type `[W]` for some `W: Widget`
 /// >
 /// > _Grid_ :\
-/// > &nbsp;&nbsp; `grid` _Storage_? `:` `{` _GridCell_* `}`\
+/// > &nbsp;&nbsp; `grid!` _Storage_? `{` _GridCell_* `}`\
 /// > &nbsp;&nbsp; A two-dimensional layout, supporting cell spans, defined via a list of cells (see _GridCell_ below).
 ///
 /// > _Float_ :\
@@ -299,8 +299,8 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; Margin size in pixels (scaled) or Em (font unit) or a set size (see `MarginStyle`).
 /// >
 /// > _GridCell_ :\
-/// > &nbsp;&nbsp; _CellRange_ `,` _CellRange_ `:` _Layout_\
-/// > &nbsp;&nbsp; Cell location in the order `(col, row)`, e.g.: `1, 0: self.foo`. Spans are specified via range syntax, e.g. `0..2, 1: self.bar`.
+/// > &nbsp;&nbsp; `(` _CellRange_ `,` _CellRange_ `)` `=>` ( _Layout_ | `{` _Layout_ `}` )\
+/// > &nbsp;&nbsp; Cells are specified using `match`-like syntax from `(col_spec, row_spec)` to a layout, e.g.: `(1, 0) => self.foo`. Spans are specified via range syntax, e.g. `(0..2, 1) => self.bar`.
 /// >
 /// > _CellRange_ :\
 /// > &nbsp;&nbsp; _LitInt_ ( `..` `+`? _LitInt_ )?
@@ -352,11 +352,11 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// a half-open range or a single number (who's end is implicitly `start + 1`).
 ///
 /// ```ignore
-/// layout = grid: {
-///     0..2, 0: self.merged_title;
-///     0, 1: self.a;
-///     1, 1: self.b;
-///     1, 2: self.c;
+/// layout = grid! {
+///     (0..2, 0) => self.merged_title,
+///     (0, 1) => self.a,
+///     (1, 1) => self.b,
+///     (1, 2) => self.c,
 /// };
 /// ```
 ///

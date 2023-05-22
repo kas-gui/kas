@@ -31,19 +31,43 @@ enum Msg {
 impl_scope! {
     /// A widget for viewing event config
     #[widget{
-        layout = grid: {
-            0, 0: "Menu delay:"; 1, 0: self.menu_delay; 2, 0: "ms";
-            0, 1: "Touch-selection delay:"; 1, 1: self.touch_select_delay; 2, 1: "ms";
-            0, 2: "Scroll flick timeout:"; 1, 2: self.scroll_flick_timeout; 2, 2: "ms";
-            0, 3: "Scroll flick multiply:"; 1, 3: self.scroll_flick_mul;
-            0, 4: "Scroll flick subtract:"; 1, 4: self.scroll_flick_sub;
-            0, 5: "Scroll wheel distance:"; 1, 5: self.scroll_dist_em; 2, 5: "em";
-            0, 6: "Pan distance threshold:"; 1, 6: self.pan_dist_thresh;
-            0, 7: "Mouse pan:"; 1..3, 7: self.mouse_pan;
-            0, 8: "Mouse text pan:"; 1..3, 8: self.mouse_text_pan;
-            1..3, 9: self.mouse_nav_focus;
-            1..3, 10: self.touch_nav_focus;
-            0, 11: "Restore default values:"; 1..3, 11: TextButton::new_msg("&Reset", Msg::Reset);
+        layout = grid! {
+            (0, 0) => "Menu delay:",
+            (1, 0) => self.menu_delay,
+            (2, 0) => "ms",
+
+            (0, 1) => "Touch-selection delay:",
+            (1, 1) => self.touch_select_delay,
+            (2, 1) => "ms",
+
+            (0, 2) => "Scroll flick timeout:",
+            (1, 2) => self.scroll_flick_timeout,
+            (2, 2) => "ms",
+
+            (0, 3) => "Scroll flick multiply:",
+            (1, 3) => self.scroll_flick_mul,
+
+            (0, 4) => "Scroll flick subtract:",
+            (1, 4) => self.scroll_flick_sub,
+
+            (0, 5) => "Scroll wheel distance:",
+            (1, 5) => self.scroll_dist_em, (2, 5) => "em",
+
+            (0, 6) => "Pan distance threshold:",
+            (1, 6) => self.pan_dist_thresh,
+
+            (0, 7) => "Mouse pan:",
+            (1..3, 7) => self.mouse_pan,
+
+            (0, 8) => "Mouse text pan:",
+            (1..3, 8) => self.mouse_text_pan,
+
+            (1..3, 9) => self.mouse_nav_focus,
+
+            (1..3, 10) => self.touch_nav_focus,
+
+            (0, 11) => "Restore default values:",
+            (1..3, 11) => TextButton::new_msg("&Reset", Msg::Reset),
         };
     }]
     #[derive(Debug)]
