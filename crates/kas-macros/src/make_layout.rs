@@ -141,7 +141,7 @@ enum Direction {
     Right,
     Up,
     Down,
-    Expr(Toks),
+    Expr(Expr),
 }
 
 bitflags::bitflags! {
@@ -370,25 +370,26 @@ impl Layout {
         } else if lookahead.peek(kw::column) {
             let _: kw::column = input.parse()?;
             let _: Token![!] = input.parse()?;
-            let dir = Direction::Down;
             let stor = gen.parse_or_next(input)?;
+            let dir = Direction::Down;
             let list = parse_layout_list(input, gen)?;
             Ok(Layout::List(stor, dir, list))
         } else if lookahead.peek(kw::row) {
             let _: kw::row = input.parse()?;
             let _: Token![!] = input.parse()?;
-            let dir = Direction::Right;
             let stor = gen.parse_or_next(input)?;
+            let dir = Direction::Right;
             let list = parse_layout_list(input, gen)?;
             Ok(Layout::List(stor, dir, list))
         } else if lookahead.peek(kw::list) {
             let _: kw::list = input.parse()?;
+            let _: Token![!] = input.parse()?;
+            let stor = gen.parse_or_next(input)?;
             let inner;
             let _ = parenthesized!(inner in input);
             let dir: Direction = inner.parse()?;
-            let stor = gen.parse_or_next(input)?;
-            let _: Token![:] = input.parse()?;
-            let list = parse_layout_list(input, gen)?;
+            let _: Token![,] = inner.parse()?;
+            let list = parse_layout_list(&inner, gen)?;
             Ok(Layout::List(stor, dir, list))
         } else if lookahead.peek(kw::float) {
             let _: kw::float = input.parse()?;
@@ -411,15 +412,16 @@ impl Layout {
             )?)
         } else if lookahead.peek(kw::slice) {
             let _: kw::slice = input.parse()?;
+            let _: Token![!] = input.parse()?;
+            let stor = gen.parse_or_next(input)?;
             let inner;
             let _ = parenthesized!(inner in input);
             let dir: Direction = inner.parse()?;
-            let stor = gen.parse_or_next(input)?;
-            let _: Token![:] = input.parse()?;
-            if input.peek(Token![self]) {
-                Ok(Layout::Slice(stor, dir, input.parse()?))
+            let _: Token![,] = inner.parse()?;
+            if inner.peek(Token![self]) {
+                Ok(Layout::Slice(stor, dir, inner.parse()?))
             } else {
-                Err(Error::new(input.span(), "expected `self`"))
+                Err(Error::new(inner.span(), "expected `self`"))
             }
         } else if lookahead.peek(kw::grid) {
             let _: kw::grid = input.parse()?;

@@ -45,10 +45,10 @@ impl_scope! {
     #[derive(Debug)]
     #[widget {
         data = W::Data;
-        layout = list(self.direction): [
+        layout = list!(self.direction, [
             self.stack,
             self.tabs,
-        ];
+        ]);
     }]
     pub struct TabStack<W: Widget> {
         core: widget_core!(),

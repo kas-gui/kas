@@ -81,7 +81,7 @@ impl_scope! {
     #[autoimpl(Default where D: Default)]
     #[widget {
         data = W::Data;
-        layout = slice(self.direction) 'layout: self.widgets;
+        layout = slice! 'layout (self.direction, self.widgets);
     }]
     pub struct List<D: Directional, W: Widget> {
         core: widget_core!(),

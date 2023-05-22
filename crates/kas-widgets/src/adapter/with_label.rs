@@ -19,7 +19,7 @@ impl_scope! {
     #[derive(Clone, Default, Debug)]
     #[widget {
         data = W::Data;
-        layout = list(self.dir) 'row: [self.inner, non_navigable: self.label];
+        layout = list! 'row (self.dir, [self.inner, non_navigable: self.label]);
     }]
     pub struct WithLabel<W: Widget, D: Directional> {
         core: widget_core!(),

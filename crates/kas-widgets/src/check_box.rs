@@ -178,7 +178,7 @@ impl_scope! {
     #[autoimpl(Debug)]
     #[widget{
         data = A;
-        layout = list(self.direction()): [self.inner, non_navigable: self.label];
+        layout = list!(self.direction(), [self.inner, non_navigable: self.label]);
     }]
     pub struct CheckButton<A> {
         core: widget_core!(),
