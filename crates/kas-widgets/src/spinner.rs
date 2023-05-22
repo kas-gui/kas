@@ -164,10 +164,10 @@ impl_scope! {
     /// -   With floating-point types, ensure that `step` is exactly
     ///     representable, e.g. an integer or a power of 2.
     #[widget {
-        layout = frame(FrameStyle::EditBox): row! [
+        layout = frame!(row! [
             self.edit,
             column! [self.b_up, self.b_down],
-        ];
+        ], style = FrameStyle::EditBox);
     }]
     pub struct Spinner<T: SpinnerValue> {
         core: widget_core!(),

@@ -28,7 +28,7 @@ impl_scope! {
     /// this message is passed to the handler and not emitted.
     #[impl_default]
     #[widget {
-        layout = button 'frame: row! [self.label, self.mark];
+        layout = button! 'frame(row! [self.label, self.mark]);
         navigable = true;
         hover_highlight = true;
     }]

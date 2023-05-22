@@ -38,6 +38,8 @@ mod kw {
     custom_keyword!(non_navigable);
     custom_keyword!(px);
     custom_keyword!(em);
+    custom_keyword!(style);
+    custom_keyword!(color);
 }
 
 #[derive(Debug)]
@@ -402,28 +404,43 @@ impl Layout {
             Ok(Layout::Single(input.parse()?))
         } else if lookahead.peek(kw::frame) {
             let _: kw::frame = input.parse()?;
-            let style: Expr = if input.peek(syn::token::Paren) {
-                let inner;
-                let _ = parenthesized!(inner in input);
-                inner.parse()?
-            } else {
-                syn::parse_quote! { ::kas::theme::FrameStyle::Frame }
-            };
+            let _: Token![!] = input.parse()?;
             let stor = gen.parse_or_next(input)?;
-            let _: Token![:] = input.parse()?;
-            let layout = Layout::parse(input, gen)?;
+
+            let inner;
+            let _ = parenthesized!(inner in input);
+            let layout = Layout::parse(&inner, gen)?;
+
+            let style: Expr;
+            if !inner.is_empty() {
+                let _: Token![,] = inner.parse()?;
+                let _: kw::style = inner.parse()?;
+                let _: Token![=] = inner.parse()?;
+                style = inner.parse()?;
+            } else {
+                style = syn::parse_quote! { ::kas::theme::FrameStyle::Frame };
+            }
+
             Ok(Layout::Frame(stor, Box::new(layout), style))
         } else if lookahead.peek(kw::button) {
             let _: kw::button = input.parse()?;
-            let mut color: Expr = syn::parse_quote! { None };
-            if input.peek(syn::token::Paren) {
-                let inner;
-                let _ = parenthesized!(inner in input);
-                color = inner.parse()?;
-            }
+            let _: Token![!] = input.parse()?;
             let stor = gen.parse_or_next(input)?;
-            let _: Token![:] = input.parse()?;
-            let layout = Layout::parse(input, gen)?;
+
+            let inner;
+            let _ = parenthesized!(inner in input);
+            let layout = Layout::parse(&inner, gen)?;
+
+            let color: Expr;
+            if !inner.is_empty() {
+                let _: Token![,] = inner.parse()?;
+                let _: kw::color = inner.parse()?;
+                let _: Token![=] = inner.parse()?;
+                color = inner.parse()?;
+            } else {
+                color = syn::parse_quote! { None };
+            }
+
             Ok(Layout::Button(stor, Box::new(layout), color))
         } else if lookahead.peek(kw::column) {
             let _: kw::column = input.parse()?;

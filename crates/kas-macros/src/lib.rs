@@ -254,11 +254,11 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; As `align`, this applies some alignment to content, but also restricts the size of that content to its ideal size (i.e. no stretching).
 /// >
 /// > _Frame_ :\
-/// > &nbsp;&nbsp; `frame` ( `(` _Expr_ `)` )? _Storage_? `:` _Layout_\
+/// > &nbsp;&nbsp; `frame!` _Storage_? `(` _Layout_ ( `,` `style` `=` _Expr_ )? `)`\
 /// > &nbsp;&nbsp; Adds a frame of type _Expr_ around content, defaulting to `FrameStyle::Frame`.
 /// >
 /// > _Button_ :\
-/// > &nbsp;&nbsp; `button` ( `(` _Expr_ `)` )? _Storage_? `:` _Layout_\
+/// > &nbsp;&nbsp; `button!` _Storage_? `(` _Layout_ ( `,` `color` `=` _Expr_ )? `)`\
 /// > &nbsp;&nbsp; Adds a button frame (optionally with color _Expr_) around content.
 /// >
 /// > _Widget_ :\
@@ -320,7 +320,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///     #[autoimpl(class_traits using self.inner where W: trait)]
 ///     #[derive(Clone, Default)]
 ///     #[widget{
-///         layout = frame(kas::theme::FrameStyle::Frame): self.inner;
+///         layout = frame!(self.inner, style = kas::theme::FrameStyle::Frame);
 ///     }]
 ///     pub struct Frame<W: Widget> {
 ///         core: widget_core!(),
