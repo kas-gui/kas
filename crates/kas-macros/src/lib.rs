@@ -226,15 +226,15 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; A list of children, e.g. `row! ["Foo", self.foo]`.
 /// >
 /// > _List_ :\
-/// > &nbsp;&nbsp; `list` `(` _Direction_ `)` _Storage_? `:` `[` ( _Layout_ `,`? ) * `]`\
-/// > &nbsp;&nbsp; A list of children, e.g. ``list(up): ..` or `list(self.direction()): ..`
+/// > &nbsp;&nbsp; `list!` _Storage_? `(` _Direction_ `,` `[` ( _Layout_ `,`? ) * `]` `)`\
+/// > &nbsp;&nbsp; A list of children, e.g. `list!(up, [..])` or `list!(self.direction(), [..])`
 /// >
 /// > _AlignedList_ :\
 /// > &nbsp;&nbsp; ( `aligned_column!` | `aligned_row!` ) _Storage_? `[` ( _Layout_ `,`? ) * `]`\
 /// > &nbsp;&nbsp; Inner component must be `row` or `column`, e.g.: `aligned_column! [row! ["One", "Two"], row! ["Three", "Four"]]`. This is syntactic sugar for a grid layout.
 /// >
 /// > _Slice_ :\
-/// > &nbsp;&nbsp; `slice` `(` _Direction_ `)` _Storage_? `:` `self` `.` _Member_\
+/// > &nbsp;&nbsp; `slice!` _Storage_? `(` _Direction_ `,` `self` `.` _Member_ `)`\
 /// > &nbsp;&nbsp; A field with type `[W]` for some `W: Widget`
 /// >
 /// > _Grid_ :\

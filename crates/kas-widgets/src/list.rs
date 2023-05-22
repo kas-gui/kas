@@ -67,7 +67,7 @@ impl_scope! {
     #[autoimpl(Clone where W: Clone)]
     #[autoimpl(Default where D: Default)]
     #[widget {
-        layout = slice(self.direction) 'layout: self.widgets;
+        layout = slice! 'layout (self.direction, self.widgets);
     }]
     pub struct List<D: Directional, W: Widget> {
         core: widget_core!(),

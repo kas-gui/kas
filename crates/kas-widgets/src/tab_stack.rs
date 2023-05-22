@@ -43,10 +43,10 @@ impl_scope! {
     /// See also the main implementing widget: [`Stack`].
     #[impl_default]
     #[widget {
-        layout = list(self.direction): [
+        layout = list!(self.direction, [
             self.stack,
             self.tabs,
-        ];
+        ]);
     }]
     pub struct TabStack<W: Widget> {
         core: widget_core!(),

@@ -182,7 +182,7 @@ impl_scope! {
     #[autoimpl(HasBool using self.inner)]
     #[derive(Default)]
     #[widget{
-        layout = list(self.direction()): [self.inner, non_navigable: self.label];
+        layout = list!(self.direction(), [self.inner, non_navigable: self.label]);
     }]
     pub struct CheckButton {
         core: widget_core!(),
