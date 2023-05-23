@@ -463,6 +463,21 @@ pub fn widget_index(input: TokenStream) -> TokenStream {
     input
 }
 
+trait ExpandLayout {
+    fn expand_layout(self, name: &str) -> TokenStream;
+}
+impl ExpandLayout for make_layout::Tree {
+    fn expand_layout(self, name: &str) -> TokenStream {
+        match self.expand_as_widget(name) {
+            Ok(toks) => toks.into(),
+            Err(err) => {
+                emit_call_site_error!(err);
+                TokenStream::default()
+            }
+        }
+    }
+}
+
 /// Make a column widget
 ///
 /// Items support [widget layout syntax](macro@widget#layout-1).
@@ -478,14 +493,39 @@ pub fn widget_index(input: TokenStream) -> TokenStream {
 #[proc_macro_error]
 #[proc_macro]
 pub fn column(input: TokenStream) -> TokenStream {
-    let layout = parse_macro_input!(input with make_layout::Tree::column);
-    match layout.expand_as_widget("_Column") {
-        Ok(toks) => toks.into(),
-        Err(err) => {
-            emit_call_site_error!(err);
-            TokenStream::default()
-        }
-    }
+    parse_macro_input!(input with make_layout::Tree::column).expand_layout("_Column")
+}
+
+/// Make a row widget
+///
+/// Items support [widget layout syntax](macro@widget#layout-1).
+///
+/// # Example
+///
+/// ```
+/// let my_widget = row! ["one", "two"];
+/// ```
+#[proc_macro_error]
+#[proc_macro]
+pub fn row(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input with make_layout::Tree::row).expand_layout("_Row")
+}
+
+/// Make a list widget
+///
+/// This is a more generic variant of [`column`] and [`row`].
+///
+/// Items support [widget layout syntax](macro@widget#layout-1).
+///
+/// # Example
+///
+/// ```
+/// let my_widget = list!(kas::Direction::Left, ["one", "two"]);
+/// ```
+#[proc_macro_error]
+#[proc_macro]
+pub fn list(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input with make_layout::Tree::list).expand_layout("_List")
 }
 
 /// A trait implementation is an extension over some base
