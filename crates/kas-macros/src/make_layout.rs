@@ -217,6 +217,13 @@ impl Tree {
         Ok(Tree(Layout::Float(list)))
     }
 
+    /// Parse a grid (contents only)
+    pub fn grid(input: ParseStream) -> Result<Self> {
+        let mut gen = NameGenerator::default();
+        let stor = gen.next();
+        Ok(Tree(parse_grid(stor, input, &mut gen)?))
+    }
+
     /// Parse align (contents only)
     // TODO: use WithAlign adapter?
     pub fn align(inner: ParseStream) -> Result<Self> {
@@ -643,7 +650,10 @@ impl Layout {
             let _: kw::grid = input.parse()?;
             let _: Token![!] = input.parse()?;
             let stor = gen.parse_or_next(input)?;
-            Ok(parse_grid(stor, input, gen)?)
+
+            let inner;
+            let _ = braced!(inner in input);
+            Ok(parse_grid(stor, &inner, gen)?)
         } else if lookahead.peek(kw::non_navigable) {
             let _: kw::non_navigable = input.parse()?;
             let _: Token![!] = input.parse()?;
@@ -789,10 +799,7 @@ fn parse_grid_as_list_of_lists<KW: Parse>(
     Ok(Layout::Grid(stor, dim, cells))
 }
 
-fn parse_grid(stor: StorIdent, input: ParseStream, gen: &mut NameGenerator) -> Result<Layout> {
-    let inner;
-    let _ = braced!(inner in input);
-
+fn parse_grid(stor: StorIdent, inner: ParseStream, gen: &mut NameGenerator) -> Result<Layout> {
     let mut dim = GridDimensions::default();
     let mut cells = vec![];
     while !inner.is_empty() {
