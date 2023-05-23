@@ -209,6 +209,41 @@ impl Tree {
         let list = parse_layout_list(&input, &mut gen)?;
         Ok(Tree(Layout::List(stor, dir, list)))
     }
+
+    /// Parse a float (contents only)
+    pub fn float(input: ParseStream) -> Result<Self> {
+        let mut gen = NameGenerator::default();
+        let list = parse_layout_items(input, &mut gen)?;
+        Ok(Tree(Layout::Float(list)))
+    }
+
+    /// Parse align (contents only)
+    // TODO: use WithAlign adapter?
+    pub fn align(inner: ParseStream) -> Result<Self> {
+        let mut gen = NameGenerator::default();
+
+        let align = parse_align(&inner)?;
+        let _: Token![,] = inner.parse()?;
+
+        Ok(Tree(if inner.peek(Token![self]) {
+            Layout::AlignSingle(inner.parse()?, align)
+        } else {
+            let layout = Layout::parse(&inner, &mut gen)?;
+            Layout::Align(Box::new(layout), align)
+        }))
+    }
+
+    /// Parse pack (contents only)
+    pub fn pack(inner: ParseStream) -> Result<Self> {
+        let mut gen = NameGenerator::default();
+        let stor = gen.next();
+
+        let align = parse_align(&inner)?;
+        let _: Token![,] = inner.parse()?;
+
+        let layout = Layout::parse(&inner, &mut gen)?;
+        Ok(Tree(Layout::Pack(stor, Box::new(layout), align)))
+    }
 }
 
 #[derive(Debug)]
