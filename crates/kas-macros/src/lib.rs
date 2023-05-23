@@ -522,6 +522,8 @@ pub fn row(input: TokenStream) -> TokenStream {
 ///
 /// This is a more generic variant of [`column`] and [`row`].
 ///
+/// Children are navigated in visual order.
+///
 /// Items support [widget layout syntax](macro@widget#layout-1).
 ///
 /// # Example
@@ -537,9 +539,16 @@ pub fn list(input: TokenStream) -> TokenStream {
 
 /// Make a float widget
 ///
-/// Widgets overlap with the first being on top. Most widgets stretch to fill
-/// all available space by default which will hide those below; to counteract
-/// this use [`pack`].
+/// All children occupy the same space with the first child on top.
+///
+/// Size is determined as the maximum required by any child for each axis.
+/// All children are assigned this size. It is usually necessary to use [`pack`]
+/// or a similar mechanism to constrain a child to avoid it hiding the content
+/// underneath (note that even if an unconstrained child does not *visually*
+/// hide everything beneath, it may still "occupy" the assigned area, preventing
+/// mouse clicks from reaching the widget beneath).
+///
+/// Children are navigated in order of declaration.
 ///
 /// Items support [widget layout syntax](macro@widget#layout-1).
 ///
@@ -547,14 +556,45 @@ pub fn list(input: TokenStream) -> TokenStream {
 ///
 /// ```
 /// let my_widget = float! [
-///     pack!(top, button("one")),
-///     "two"
+///     pack!(left top, "one"),
+///     pack!(right bottom, "two"),
+///     "some text\nin the\nbackground"
 /// ];
 /// ```
 #[proc_macro_error]
 #[proc_macro]
 pub fn float(input: TokenStream) -> TokenStream {
     parse_macro_input!(input with make_layout::Tree::float).expand_layout("_Float")
+}
+
+/// Make a grid widget
+///
+/// Constructs a table with auto-determined number of rows and columns.
+/// Each child is assigned a cell using match-like syntax.
+///
+/// A child may be stretched across multiple cells using range-like syntax:
+/// `3..5`, `3..=4` and `3..+2` are all equivalent.
+///
+/// Behaviour of overlapping widgets is identical to [`float`]: the first
+/// declared item is on top.
+///
+/// Children are navigated in order of declaration.
+///
+/// Items support [widget layout syntax](macro@widget#layout-1).
+///
+/// # Example
+///
+/// ```
+/// let my_widget = grid! {
+///     (0, 0) => "top left",
+///     (1, 0) => "top right",
+///     (0..2, 1) => "bottom row (merged)",
+/// };
+/// ```
+#[proc_macro_error]
+#[proc_macro]
+pub fn grid(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input with make_layout::Tree::grid).expand_layout("_Grid")
 }
 
 /// Make an align widget
