@@ -202,6 +202,24 @@ impl Tree {
         let list = parse_layout_items(input, &mut gen)?;
         Ok(Tree(Layout::List(stor, Direction::Down, list)))
     }
+
+    /// Parse a row (contents only)
+    pub fn row(input: ParseStream) -> Result<Self> {
+        let mut gen = NameGenerator::default();
+        let stor = gen.next();
+        let list = parse_layout_items(input, &mut gen)?;
+        Ok(Tree(Layout::List(stor, Direction::Right, list)))
+    }
+
+    /// Parse direction, list
+    pub fn list(input: ParseStream) -> Result<Self> {
+        let mut gen = NameGenerator::default();
+        let stor = gen.next();
+        let dir: Direction = input.parse()?;
+        let _: Token![,] = input.parse()?;
+        let list = parse_layout_list(&input, &mut gen)?;
+        Ok(Tree(Layout::List(stor, dir, list)))
+    }
 }
 
 #[derive(Debug)]
@@ -551,9 +569,8 @@ impl Layout {
             let _: kw::row = input.parse()?;
             let _: Token![!] = input.parse()?;
             let stor = gen.parse_or_next(input)?;
-            let dir = Direction::Right;
             let list = parse_layout_list(input, gen)?;
-            Ok(Layout::List(stor, dir, list))
+            Ok(Layout::List(stor, Direction::Right, list))
         } else if lookahead.peek(kw::list) {
             let _: kw::list = input.parse()?;
             let _: Token![!] = input.parse()?;
