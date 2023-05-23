@@ -535,6 +535,68 @@ pub fn list(input: TokenStream) -> TokenStream {
     parse_macro_input!(input with make_layout::Tree::list).expand_layout("_List")
 }
 
+/// Make a float widget
+///
+/// Widgets overlap with the first being on top. Most widgets stretch to fill
+/// all available space by default which will hide those below; to counteract
+/// this use [`pack`].
+///
+/// Items support [widget layout syntax](macro@widget#layout-1).
+///
+/// # Example
+///
+/// ```
+/// let my_widget = float! [
+///     pack!(top, button("one")),
+///     "two"
+/// ];
+/// ```
+#[proc_macro_error]
+#[proc_macro]
+pub fn float(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input with make_layout::Tree::float).expand_layout("_Float")
+}
+
+/// Make an align widget
+///
+/// This is a small wrapper which adjusts the alignment of its contents.
+///
+/// The alignment specifier may be one or two keywords (space-separated,
+/// horizontal component first): `default`, `center`, `stretch`, `left`,
+/// `right`, `top`, `bottom`.
+///
+/// # Example
+///
+/// ```
+/// let a = align!(right, "132");
+/// let b = align!(left top, "abc");
+/// ```
+#[proc_macro_error]
+#[proc_macro]
+pub fn align(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input with make_layout::Tree::align).expand_layout("_Align")
+}
+
+/// Make a pack widget
+///
+/// This is a small wrapper which adjusts the alignment of its contents and
+/// prevents its contents from stretching.
+///
+/// The alignment specifier may be one or two keywords (space-separated,
+/// horizontal component first): `default`, `center`, `stretch`, `left`,
+/// `right`, `top`, `bottom`.
+///
+/// # Example
+///
+/// ```
+/// let my_widget = pack!(right top, "132");
+/// ```
+#[proc_macro_error]
+#[proc_macro]
+pub fn pack(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input with make_layout::Tree::pack).expand_layout("_Pack")
+}
+
 /// A trait implementation is an extension over some base
 ///
 /// Usage as follows:
