@@ -262,6 +262,12 @@ impl Tree {
         let layout = Layout::parse(&inner, &mut gen)?;
         Ok(Tree(Layout::Pack(stor, Box::new(layout), align)))
     }
+
+    /// Parse margins (contents only)
+    pub fn margins(inner: ParseStream) -> Result<Self> {
+        let mut gen = NameGenerator::default();
+        Layout::margins_inner(inner, &mut gen).map(Tree)
+    }
 }
 
 #[derive(Debug)]
@@ -512,55 +518,7 @@ impl Layout {
 
             let inner;
             let _ = parenthesized!(inner in input);
-
-            let mut dirs = Directions::all();
-            if inner.peek2(Token![=]) {
-                let ident = inner.parse::<Ident>()?;
-                dirs = match ident {
-                    id if id == "horiz" || id == "horizontal" => Directions::LEFT | Directions::RIGHT,
-                    id if id == "vert" || id == "vertical" => Directions::UP | Directions::DOWN,
-                    id if id == "left" => Directions::LEFT,
-                    id if id == "right" => Directions::RIGHT,
-                    id if id == "top" => Directions::UP,
-                    id if id == "bottom" => Directions::DOWN,
-                    _ => return Err(Error::new(ident.span(), "expected one of: horiz, horizontal, vert, vertical, left, right, top, bottom")),
-                };
-                let _ = inner.parse::<Token![=]>()?;
-            }
-
-            let lookahead = inner.lookahead1();
-            let margins = if lookahead.peek(syn::LitFloat) {
-                let val = inner.parse::<syn::LitFloat>()?;
-                let digits = val.base10_digits();
-                match val.suffix() {
-                    "px" => quote! { Px(#digits) },
-                    "em" => quote! { Em(#digits) },
-                    _ => return Err(Error::new(val.span(), "expected suffix `px` or `em`")),
-                }
-            } else if lookahead.peek(Ident) {
-                let ident = inner.parse::<Ident>()?;
-                match ident {
-                    id if id == "none" => quote! { None },
-                    id if id == "inner" => quote! { Inner },
-                    id if id == "tiny" => quote! { Tiny },
-                    id if id == "small" => quote! { Small },
-                    id if id == "large" => quote! { Large },
-                    id if id == "text" => quote! { Text },
-                    _ => {
-                        return Err(Error::new(
-                            ident.span(),
-                            "expected one of: `none`, `inner`, `tiny`, `small`, `large`, `text` or a numeric value",
-                        ))
-                    }
-                }
-            } else {
-                return Err(lookahead.error());
-            };
-
-            let _ = inner.parse::<Token![,]>()?;
-            let layout = Layout::parse(&inner, gen)?;
-
-            Ok(Layout::Margins(Box::new(layout), dirs, margins))
+            Self::margins_inner(&inner, gen)
         } else if lookahead.peek(kw::frame) {
             let _: kw::frame = input.parse()?;
             let _: Token![!] = input.parse()?;
@@ -678,6 +636,64 @@ impl Layout {
             let expr = input.parse()?;
             Ok(Layout::Widget(stor, expr))
         }
+    }
+
+    fn margins_inner(inner: ParseStream, gen: &mut NameGenerator) -> Result<Self> {
+        let mut dirs = Directions::all();
+        if inner.peek2(Token![=]) {
+            let ident = inner.parse::<Ident>()?;
+            dirs = match ident {
+                id if id == "horiz" || id == "horizontal" => Directions::LEFT | Directions::RIGHT,
+                id if id == "vert" || id == "vertical" => Directions::UP | Directions::DOWN,
+                id if id == "left" => Directions::LEFT,
+                id if id == "right" => Directions::RIGHT,
+                id if id == "top" => Directions::UP,
+                id if id == "bottom" => Directions::DOWN,
+                _ => return Err(Error::new(
+                    ident.span(),
+                    "expected one of: horiz, horizontal, vert, vertical, left, right, top, bottom",
+                )),
+            };
+            let _ = inner.parse::<Token![=]>()?;
+        }
+
+        let lookahead = inner.lookahead1();
+        let margins = if lookahead.peek(syn::LitFloat) {
+            let val = inner.parse::<syn::LitFloat>()?;
+            let lookahead = inner.lookahead1();
+            if lookahead.peek(kw::px) {
+                let _ = inner.parse::<kw::px>()?;
+                quote! { Px(#val) }
+            } else if lookahead.peek(kw::em) {
+                let _ = inner.parse::<kw::em>()?;
+                quote! { Em(#val) }
+            } else {
+                return Err(lookahead.error());
+            }
+        } else if lookahead.peek(Ident) {
+            let ident = inner.parse::<Ident>()?;
+            match ident {
+                id if id == "none" => quote! { None },
+                id if id == "inner" => quote! { Inner },
+                id if id == "tiny" => quote! { Tiny },
+                id if id == "small" => quote! { Small },
+                id if id == "large" => quote! { Large },
+                id if id == "text" => quote! { Text },
+                _ => {
+                    return Err(Error::new(
+                        ident.span(),
+                        "expected one of: `none`, `inner`, `tiny`, `small`, `large`, `text` or a numeric value",
+                    ))
+                }
+            }
+        } else {
+            return Err(lookahead.error());
+        };
+
+        let _ = inner.parse::<Token![,]>()?;
+        let layout = Layout::parse(&inner, gen)?;
+
+        Ok(Layout::Margins(Box::new(layout), dirs, margins))
     }
 }
 
@@ -948,10 +964,12 @@ impl Layout {
         data_ty: &Toks,
     ) {
         match self {
-            Layout::Align(layout, _) | Layout::NonNavigable(layout) => {
+            Layout::Align(layout, _)
+            | Layout::Margins(layout, ..)
+            | Layout::NonNavigable(layout) => {
                 layout.append_fields(ty_toks, def_toks, children, data_ty);
             }
-            Layout::AlignSingle(..) | Layout::Margins(..) | Layout::Single(_) => (),
+            Layout::AlignSingle(..) | Layout::Single(_) => (),
             Layout::Pack(stor, layout, _) => {
                 ty_toks.append_all(quote! { #stor: ::kas::layout::PackStorage, });
                 def_toks.append_all(quote! { #stor: Default::default(), });
