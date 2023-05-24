@@ -211,6 +211,24 @@ impl Tree {
         Ok(Tree(Layout::List(stor, Direction::Right, list)))
     }
 
+    /// Parse an aligned column (contents only)
+    pub fn aligned_column(input: ParseStream) -> Result<Self> {
+        let mut gen = NameGenerator::default();
+        let stor = gen.next();
+        Ok(Tree(parse_grid_as_list_of_lists::<kw::row>(
+            stor, input, &mut gen, true,
+        )?))
+    }
+
+    /// Parse an aligned row (contents only)
+    pub fn aligned_row(input: ParseStream) -> Result<Self> {
+        let mut gen = NameGenerator::default();
+        let stor = gen.next();
+        Ok(Tree(parse_grid_as_list_of_lists::<kw::column>(
+            stor, input, &mut gen, false,
+        )?))
+    }
+
     /// Parse direction, list
     pub fn list(input: ParseStream) -> Result<Self> {
         let mut gen = NameGenerator::default();
