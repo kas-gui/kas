@@ -590,6 +590,42 @@ pub fn grid(input: TokenStream) -> TokenStream {
     parse_macro_input!(input with make_layout::Tree::grid).expand_layout("_Grid")
 }
 
+/// Make an aligned column widget
+///
+/// Items support [widget layout syntax](macro@widget#layout-1).
+///
+/// # Example
+///
+/// ```
+/// let my_widget = aligned_column! [
+///     row!["one", "two"],
+///     row!["three", "four"],
+/// ];
+/// ```
+#[proc_macro_error]
+#[proc_macro]
+pub fn aligned_column(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input with make_layout::Tree::aligned_column).expand_layout("_AlignedColumn")
+}
+
+/// Make an aligned row widget
+///
+/// Items support [widget layout syntax](macro@widget#layout-1).
+///
+/// # Example
+///
+/// ```
+/// let my_widget = aligned_row! [
+///     row!["one", "two"],
+///     row!["three", "four"],
+/// ];
+/// ```
+#[proc_macro_error]
+#[proc_macro]
+pub fn aligned_row(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input with make_layout::Tree::aligned_row).expand_layout("_AlignedRow")
+}
+
 /// Make an align widget
 ///
 /// This is a small wrapper which adjusts the alignment of its contents.
