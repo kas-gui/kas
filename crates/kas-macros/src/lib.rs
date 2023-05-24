@@ -221,41 +221,18 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// implementation of `Widget::nav_next`, with a couple of exceptions
 /// (where macro-time analysis is insufficient to implement this method).
 ///
+/// > [_Column_](macro@column), [_Row_](macro@row), [_List_](macro@list), [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_](macro@float), [_Align_](macro@align), [_Pack_](macro@pack), [_Margins_](macro@margins) :\
+/// > &nbsp;&nbsp; These stand-alone macros are explicitly supported in this position.\
+/// > &nbsp;&nbsp; Optionally, a _Storage_ specifier is supported immediately after the macro name, e.g.\
+/// > &nbsp;&nbsp; `column! 'storage_name ["one", "two"]`
+///
 /// > _Single_ :\
 /// > &nbsp;&nbsp; `self` `.` _Member_\
 /// > &nbsp;&nbsp; A named child: `self.foo` (more precisely, this matches any expression starting `self`, and uses `&mut (#expr)`)
 /// >
-/// > _SimpleList_ :\
-/// > &nbsp;&nbsp; ( `column!` | `row!` ) _Storage_? `[` ( _Layout_ `,`? ) * `]`\
-/// > &nbsp;&nbsp; A list of children, e.g. `row! ["Foo", self.foo]`.
-/// >
-/// > _List_ :\
-/// > &nbsp;&nbsp; `list!` _Storage_? `(` _Direction_ `,` `[` ( _Layout_ `,`? ) * `]` `)`\
-/// > &nbsp;&nbsp; A list of children, e.g. `list!(up, [..])` or `list!(self.direction(), [..])`
-/// >
-/// > _AlignedList_ :\
-/// > &nbsp;&nbsp; ( `aligned_column!` | `aligned_row!` ) _Storage_? `[` ( _Layout_ `,`? ) * `]`\
-/// > &nbsp;&nbsp; Inner component must be `row` or `column`, e.g.: `aligned_column! [row! ["One", "Two"], row! ["Three", "Four"]]`. This is syntactic sugar for a grid layout.
-/// >
 /// > _Slice_ :\
 /// > &nbsp;&nbsp; `slice!` _Storage_? `(` _Direction_ `,` `self` `.` _Member_ `)`\
 /// > &nbsp;&nbsp; A field with type `[W]` for some `W: Widget`
-/// >
-/// > _Grid_ :\
-/// > &nbsp;&nbsp; `grid!` _Storage_? `{` _GridCell_* `}`\
-/// > &nbsp;&nbsp; A two-dimensional layout, supporting cell spans, defined via a list of cells (see _GridCell_ below).
-///
-/// > _Float_ :\
-/// > &nbsp;&nbsp; `float!` `[` ( _Layout_ `,`? ) * `]`\
-/// > &nbsp;&nbsp; A stack of overlapping elements, top-most first.
-///
-/// > _Align_ :\
-/// > &nbsp;&nbsp; `align!` `(` _AlignType_ _AlignType_? `,` _Layout_ `)`\
-/// > &nbsp;&nbsp; Applies some alignment to a sub-layout, e.g. `align!(top, self.foo)`. Two-dimensional alignment is possible but must be horizontal first, e.g. `align!(left top, "content")`. Note: this does not constrain the size of the widget but merely adjusts content alignment; see also _Pack_.
-/// >
-/// > _Pack_ :\
-/// > &nbsp;&nbsp; `pack!` _Storage_? `(` _AlignType_ _AlignType_ ? `,` _Layout_ `)`\
-/// > &nbsp;&nbsp; As `align`, this applies some alignment to content, but also restricts the size of that content to its ideal size (i.e. no stretching).
 /// >
 /// > _Frame_ :\
 /// > &nbsp;&nbsp; `frame!` _Storage_? `(` _Layout_ ( `,` `style` `=` _Expr_ )? `)`\
@@ -272,10 +249,6 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > _Label_ :\
 /// > &nbsp;&nbsp; _StrLit_\
 /// > &nbsp;&nbsp; A string literal generates a label widget, e.g. "Hello world". This is an internal type without text wrapping.
-/// >
-/// > _Margins:\
-/// > &nbsp;&nbsp; `margins!` `(` ( _MarginDirection_ `=` )? _MarginSpec_ `,` _Layout_ `)`\
-/// > &nbsp;&nbsp; Replaces margins of a layout item.
 /// >
 /// > _NonNavigable_ :\
 /// > &nbsp;&nbsp; `non_navigable!` `(` _Layout_ `)` \
