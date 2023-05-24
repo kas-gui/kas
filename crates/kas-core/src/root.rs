@@ -30,7 +30,6 @@ impl_scope! {
         title_bar: TitleBar,
         #[widget]
         w: Box<dyn Window>,
-        data: (),
         bar_h: i32,
         dec_offset: Offset,
         dec_size: Size,
@@ -84,7 +83,7 @@ impl_scope! {
             for (_, popup, translation) in self.popups.iter_mut().rev() {
                 if let Some(Some(id)) = self
                     .w
-                    .for_widget(&self.data, &popup.id, |mut w| w.find_id(coord + *translation))
+                    .for_widget(&(), &popup.id, |mut w| w.find_id(coord + *translation))
                 {
                     return Some(id);
                 }
@@ -103,7 +102,7 @@ impl_scope! {
             }
             draw.recurse(&mut self.w);
             for (_, popup, translation) in &self.popups {
-                self.w.for_widget(&self.data, &popup.id, |mut widget| {
+                self.w.for_widget(&(), &popup.id, |mut widget| {
                     let clip_rect = widget.rect() - *translation;
                     draw.with_overlay(clip_rect, *translation, |mut draw| {
                         widget.draw(draw.re_id(widget.id()));
@@ -178,7 +177,6 @@ impl RootWidget {
             decorations: Decorations::None,
             title_bar: TitleBar::new(w.title().to_string()),
             w,
-            data: (),
             bar_h: 0,
             dec_offset: Default::default(),
             dec_size: Default::default(),
@@ -188,7 +186,7 @@ impl RootWidget {
 
     /// Access as a [`Node`]
     pub fn as_node(&mut self) -> Node {
-        self.w.as_node(&self.data)
+        Node::new(self, &())
     }
 
     /// Add a pop-up as a layer in the current window
@@ -252,14 +250,13 @@ impl RootWidget {
         // r=window/root rect, c=anchor rect
         let r = self.core.rect;
         let (_, ref mut popup, ref mut translation) = self.popups[index];
-        let data = &self.data;
 
-        let (c, t) = find_rect(self.w.as_node(data), popup.parent.clone()).unwrap();
+        let (c, t) = find_rect(self.w.as_node(&()), popup.parent.clone()).unwrap();
         *translation = t;
         let r = r + t; // work in translated coordinate space
         let mut cache = self
             .w
-            .for_widget(data, &popup.id, |widget| {
+            .for_widget(&(), &popup.id, |widget| {
                 layout::SolveCache::find_constraints(widget, mgr.size_mgr())
             })
             .unwrap();
@@ -302,7 +299,7 @@ impl RootWidget {
             Rect::new(Coord(x, y), Size::new(w, h))
         };
 
-        self.w.for_widget(data, &popup.id, move |mut widget| {
+        self.w.for_widget(&(), &popup.id, move |mut widget| {
             cache.apply_rect(widget.re(), mgr, rect, false);
             cache.print_widget_heirarchy(widget);
         });
