@@ -47,6 +47,12 @@ impl_scope! {
     }
 }
 
+impl<A, W: Widget<Data = ()>> From<W> for Discard<A, W> {
+    fn from(widget: W) -> Self {
+        Discard::new(widget)
+    }
+}
+
 impl_scope! {
     /// A simple text label
     ///

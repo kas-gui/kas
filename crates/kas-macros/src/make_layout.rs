@@ -151,7 +151,7 @@ impl Tree {
         let layout_methods = self.layout_methods(&core_path)?;
 
         let toks = quote! {{
-            #[autoimpl(Debug)]
+            #[::kas::autoimpl(Debug)]
             struct #name #impl_generics {
                 rect: ::kas::geom::Rect,
                 id: ::kas::WidgetId,
@@ -1037,8 +1037,17 @@ impl Layout {
             }
             Layout::Label(stor, text) => {
                 children.push(stor.to_token_stream());
-                ty_toks.append_all(quote! { #stor: ::kas::hidden::StrLabel, });
-                def_toks.append_all(quote! { #stor: ::kas::hidden::StrLabel::new(#text), });
+                if format!("{}", data_ty) == "()" {
+                    ty_toks.append_all(quote! { #stor: ::kas::hidden::StrLabel, });
+                    def_toks.append_all(quote! { #stor: ::kas::hidden::StrLabel::new(#text), });
+                } else {
+                    ty_toks.append_all(quote! {
+                        #stor: ::kas::hidden::Discard<#data_ty, ::kas::hidden::StrLabel>,
+                    });
+                    def_toks.append_all(quote! {
+                        #stor: ::kas::hidden::StrLabel::new(#text).into(),
+                    });
+                }
             }
         }
     }
