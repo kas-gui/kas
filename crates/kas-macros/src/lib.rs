@@ -630,6 +630,51 @@ pub fn pack(input: TokenStream) -> TokenStream {
     parse_macro_input!(input with make_layout::Tree::pack).expand_layout("_Pack")
 }
 
+/// Make a margin-adjustment widget wrapper
+///
+/// This is a small wrapper which adjusts the margins of its contents.
+///
+/// The alignment specifier may be one or two keywords (space-separated,
+/// horizontal component first): `default`, `center`, `stretch`, `left`,
+/// `right`, `top`, `bottom`.
+///
+/// # Example
+///
+/// ```
+/// let a = margins!(1em, "abc");
+/// let b = margins!(vert = none, "abc");
+/// ```
+///
+/// # Syntax
+///
+/// The macro takes one of two forms:
+///
+/// > _Margins_:\
+/// > &nbsp;&nbsp; `margins!` `(` _MarginSpec_ `,` _Layout_ `)`\
+/// > &nbsp;&nbsp; `margins!` `(` _MarginDirection_ `=` _MarginSpec_ `,` _Layout_ `)`\
+/// >
+/// > _MarginDirection_ :\
+/// > &nbsp;&nbsp; `horiz` | `horizontal` | `vert` | `vertical` | `left` | `right` | `top` | `bottom`
+/// >
+/// > _MarginSpec_ :\
+/// > &nbsp;&nbsp; ( _LitFloat_ `px` ) | ( _LitFloat_ `em` ) | `none` | `inner` | `tiny` | `small` | `large` | `text`
+///
+/// | _MarginSpec_ | Description (guide size; theme-specified sizes may vary and may not scale linearly) |
+/// | --- | --- |
+/// | `none` | No margin (`0px`) |
+/// | `inner` | A very tiny theme-specified margin sometimes used to draw selection outlines (`1px`) |
+/// | `tiny` | A very small theme-specified margin (`2px`) |
+/// | `small` | A small theme-specified margin (`4px`) |
+/// | `large`| A large theme-specified margin (`7px`) |
+/// | `text` | Text-specific margins; often asymmetric |
+/// | _LitFloat_ `em` (e.g. `1.2 em`) | Using the typographic unit Em (`1Em` is the text height, excluding ascender and descender) |
+/// | _LitFloat_ `px` (e.g. `5.0 px`) | Using virtual pixels (affected by the scale factor) |
+#[proc_macro_error]
+#[proc_macro]
+pub fn margins(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input with make_layout::Tree::margins).expand_layout("_Margins")
+}
+
 /// A trait implementation is an extension over some base
 ///
 /// Usage as follows:
