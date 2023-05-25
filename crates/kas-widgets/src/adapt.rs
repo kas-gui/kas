@@ -82,7 +82,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_message(&mut self, cx: &mut EventCx<Self::Data>) {
+        fn handle_messages(&mut self, cx: &mut EventCx<Self::Data>) {
             for mh in self.message_handlers.iter() {
                 mh(cx, &mut self.state);
             }

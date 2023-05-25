@@ -120,7 +120,7 @@ fn main() -> kas::shell::Result<()> {
             active: usize = 0,
         }
         impl Widget for Self {
-            fn handle_message(&mut self, cx: &mut EventCx<Self::Data>) {
+            fn handle_messages(&mut self, cx: &mut EventCx<Self::Data>) {
                 let mut new_len = None;
                 if let Some(control) = cx.try_pop() {
                     match control {

@@ -573,7 +573,7 @@ pub trait Widget: WidgetChildren {
     ///
     /// The default implementation does nothing.
     #[inline]
-    fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
+    fn handle_messages(&mut self, mgr: &mut EventCx<Self::Data>) {
         let _ = mgr;
     }
 

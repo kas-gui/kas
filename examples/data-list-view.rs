@@ -170,7 +170,7 @@ fn main() -> kas::shell::Result<()> {
             data: MyData = MyData::new(3),
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
+            fn handle_messages(&mut self, mgr: &mut EventCx<Self::Data>) {
                 if let Some(control) = mgr.try_pop() {
                     self.data.handle(control);
                     mgr.config_cx(|cx| cx.update(self));

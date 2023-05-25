@@ -28,7 +28,7 @@
 //!         skip to step 5.
 //! 4.  In the normal case (when the target is not disabled and the event is
 //!     not stolen), [`Widget::handle_event`] is called on the target.
-//! 5.  If the message stack is not empty, call [`Widget::handle_message`] on
+//! 5.  If the message stack is not empty, call [`Widget::handle_messages`] on
 //!     the current node.
 //! 6.  Unwind, traversing back *up* the widget tree (towards the root).
 //!     On each node (excluding the target),
@@ -38,7 +38,7 @@
 //!     -   If the event has not yet been [used](Response::Used),
 //!         call [`Widget::handle_unused`]
 //!     -   If the message stack is non-empty (see [`EventMgr::push`]),
-//!         call [`Widget::handle_message`].
+//!         call [`Widget::handle_messages`].
 //! 7.  Clear any messages still on the message stack, printing a warning to the
 //!     log. Messages *should* be handled during unwinding, though not doing so
 //!     is safe (and possibly useful during development).

@@ -201,7 +201,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_message(&mut self, mgr: &mut EventCx<A>) {
+        fn handle_messages(&mut self, mgr: &mut EventCx<A>) {
             if let Some(kas::message::Activate) = mgr.try_pop() {
                 self.inner.toggle(mgr);
             }

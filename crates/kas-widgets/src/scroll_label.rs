@@ -271,7 +271,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventCx<()>) {
+        fn handle_messages(&mut self, mgr: &mut EventCx<()>) {
             if let Some(ScrollMsg(y)) = mgr.try_pop() {
                 let y = y.clamp(0, self.max_scroll_offset().1);
                 self.view_offset.1 = y;

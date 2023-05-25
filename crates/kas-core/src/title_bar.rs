@@ -145,7 +145,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
+        fn handle_messages(&mut self, mgr: &mut EventCx<Self::Data>) {
             if let Some(msg) = mgr.try_pop() {
                 match msg {
                     TitleBarButton::Minimize => {

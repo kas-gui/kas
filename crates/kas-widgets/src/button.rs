@@ -94,7 +94,7 @@ impl_scope! {
         ///
         /// When the button is activated, a clone of `msg` is sent to the
         /// parent widget. The parent (or an ancestor) should handle this using
-        /// [`Widget::handle_message`].
+        /// [`Widget::handle_messages`].
         #[inline]
         pub fn new_msg<M: Clone + Debug + 'static>(inner: W, msg: M) -> Self {
             Self::new_on(inner, move |mgr| mgr.push(msg.clone()))
@@ -135,7 +135,7 @@ impl_scope! {
             })
         }
 
-        fn handle_message(&mut self, mgr: &mut EventCx<W::Data>) {
+        fn handle_messages(&mut self, mgr: &mut EventCx<W::Data>) {
             if let Some(kas::message::Activate) = mgr.try_pop() {
                 if let Some(f) = self.on_press.as_ref() {
                     f(mgr);
@@ -213,7 +213,7 @@ impl_scope! {
         ///
         /// When the button is activated, a clone of `msg` is sent to the
         /// parent widget. The parent (or an ancestor) should handle this using
-        /// [`Widget::handle_message`].
+        /// [`Widget::handle_messages`].
         #[inline]
         pub fn new_msg<S: Into<AccelString>, M: Clone + Debug + 'static>(label: S, msg: M) -> Self {
             Self::new_on(label, move |mgr| mgr.push(msg.clone()))
@@ -269,7 +269,7 @@ impl_scope! {
             })
         }
 
-        fn handle_message(&mut self, mgr: &mut EventCx<()>) {
+        fn handle_messages(&mut self, mgr: &mut EventCx<()>) {
             if let Some(kas::message::Activate) = mgr.try_pop() {
                 if let Some(f) = self.on_press.as_ref() {
                     f(mgr);

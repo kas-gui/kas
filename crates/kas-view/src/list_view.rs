@@ -779,7 +779,7 @@ impl_scope! {
             self.handle_event(cx, event)
         }
 
-        fn handle_message(&mut self, cx: &mut EventCx<Self::Data>) {
+        fn handle_messages(&mut self, cx: &mut EventCx<Self::Data>) {
             let key;
             if let Some(index) = cx.last_child() {
                 let w = &mut self.widgets[index];

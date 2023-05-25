@@ -315,8 +315,8 @@ impl<'a> Node<'a> {
 
     /// Handler for messages from children/descendants
     #[inline]
-    pub(crate) fn handle_message(&mut self, mgr: &mut EventMgr) {
-        self.0.handle_message(&mut mgr.with_data(self.1));
+    pub(crate) fn handle_messages(&mut self, mgr: &mut EventMgr) {
+        self.0.handle_messages(&mut mgr.with_data(self.1));
     }
 
     /// Handler for scrolling

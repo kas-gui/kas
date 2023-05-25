@@ -165,7 +165,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
+        fn handle_messages(&mut self, mgr: &mut EventCx<Self::Data>) {
             if let Some(IndexMsg(index)) = mgr.try_pop() {
                 *mgr |= self.set_active(index);
                 if let Some(id) = self.popup_id {

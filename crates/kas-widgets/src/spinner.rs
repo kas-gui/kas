@@ -336,7 +336,7 @@ impl_scope! {
             Response::Used
         }
 
-        fn handle_message(&mut self, mgr: &mut EventCx<A>) {
+        fn handle_messages(&mut self, mgr: &mut EventCx<A>) {
             let new_value = if let Some(ValueMsg(value)) = mgr.try_pop() {
                 Some(value)
             } else if let Some(btn) = mgr.try_pop::<SpinBtn>() {

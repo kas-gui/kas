@@ -357,7 +357,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_message(&mut self, mgr: &mut EventCx<'_, A>) {
+        fn handle_messages(&mut self, mgr: &mut EventCx<'_, A>) {
             if let Some(ScrollMsg(y)) = mgr.try_pop() {
                 self.inner
                     .set_scroll_offset(mgr, Offset(self.inner.view_offset.0, y));

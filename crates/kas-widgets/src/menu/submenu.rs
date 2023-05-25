@@ -183,7 +183,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventCx<()>) {
+        fn handle_messages(&mut self, mgr: &mut EventCx<()>) {
             if let Some(kas::message::Activate) = mgr.try_pop() {
                 if self.popup_id.is_none() {
                     self.open_menu(mgr, true);

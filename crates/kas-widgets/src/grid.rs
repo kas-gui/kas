@@ -118,7 +118,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_message(&mut self, mgr: &mut EventCx<W::Data>) {
+        fn handle_messages(&mut self, mgr: &mut EventCx<W::Data>) {
             if let Some(f) = self.on_message {
                 let index = mgr.last_child().expect("message not sent from self");
                 f(mgr, index);

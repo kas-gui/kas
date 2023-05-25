@@ -521,7 +521,7 @@ impl EventState {
     /// The future must resolve to a message on completion. This message is
     /// pushed to the message stack as if it were pushed with [`EventMgr::push`]
     /// from widget `id`, allowing this widget or any ancestor to handle it in
-    /// [`Widget::handle_message`].
+    /// [`Widget::handle_messages`].
     //
     // TODO: Can we identify the calling widget `id` via the context (EventMgr)?
     pub fn push_async<Fut, M>(&mut self, id: WidgetId, fut: Fut)
@@ -607,7 +607,7 @@ impl<'a> EventMgr<'a> {
     ///
     /// This is only used when unwinding (traversing back up the widget tree),
     /// and returns the index of the child last visited. E.g. when
-    /// [`Widget::handle_message`] is called, this method returns the index of
+    /// [`Widget::handle_messages`] is called, this method returns the index of
     /// the child which submitted the message (or whose descendant did).
     /// Otherwise this returns `None` (including when the widget itself is the
     /// submitter of the message).
@@ -667,7 +667,7 @@ impl<'a> EventMgr<'a> {
     /// then pushed to the stack.
     ///
     /// The message may be [popped](EventMgr::try_pop) or
-    /// [observed](EventMgr::try_observe) from [`Widget::handle_message`]
+    /// [observed](EventMgr::try_observe) from [`Widget::handle_messages`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn push<M: Debug + 'static>(&mut self, msg: M) {
         self.push_erased(Erased::new(msg));
@@ -678,7 +678,7 @@ impl<'a> EventMgr<'a> {
     /// This is a lower-level variant of [`Self::push`].
     ///
     /// The message may be [popped](EventMgr::try_pop) or
-    /// [observed](EventMgr::try_observe) from [`Widget::handle_message`]
+    /// [observed](EventMgr::try_observe) from [`Widget::handle_messages`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn push_erased(&mut self, msg: Erased) {
         self.mgr.messages.push(msg);
@@ -691,7 +691,7 @@ impl<'a> EventMgr<'a> {
 
     /// Try popping the last message from the stack with the given type
     ///
-    /// This method may be called from [`Widget::handle_message`].
+    /// This method may be called from [`Widget::handle_messages`].
     pub fn try_pop<M: Debug + 'static>(&mut self) -> Option<M> {
         let messages = &mut self.mgr.messages;
         if messages.last().map(|m| m.is::<M>()).unwrap_or(false) {
@@ -703,7 +703,7 @@ impl<'a> EventMgr<'a> {
 
     /// Try observing the last message on the stack without popping
     ///
-    /// This method may be called from [`Widget::handle_message`].
+    /// This method may be called from [`Widget::handle_messages`].
     pub fn try_observe<M: Debug + 'static>(&self) -> Option<&M> {
         self.mgr.messages.last().and_then(|m| m.downcast_ref::<M>())
     }
@@ -961,7 +961,7 @@ impl<'a, Data> EventCx<'a, Data> {
     ///
     /// This is only used when unwinding (traversing back up the widget tree),
     /// and returns the index of the child last visited. E.g. when
-    /// [`Widget::handle_message`] is called, this method returns the index of
+    /// [`Widget::handle_messages`] is called, this method returns the index of
     /// the child which submitted the message (or whose descendant did).
     /// Otherwise this returns `None` (including when the widget itself is the
     /// submitter of the message).
@@ -1002,7 +1002,7 @@ impl<'a, Data> EventCx<'a, Data> {
     /// then pushed to the stack.
     ///
     /// The message may be [popped](EventMgr::try_pop) or
-    /// [observed](EventMgr::try_observe) from [`Widget::handle_message`]
+    /// [observed](EventMgr::try_observe) from [`Widget::handle_messages`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn push<M: Debug + 'static>(&mut self, msg: M) {
         self.push_erased(Erased::new(msg));
@@ -1013,7 +1013,7 @@ impl<'a, Data> EventCx<'a, Data> {
     /// This is a lower-level variant of [`Self::push`].
     ///
     /// The message may be [popped](EventMgr::try_pop) or
-    /// [observed](EventMgr::try_observe) from [`Widget::handle_message`]
+    /// [observed](EventMgr::try_observe) from [`Widget::handle_messages`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn push_erased(&mut self, msg: Erased) {
         self.mgr.messages.push(msg);
@@ -1026,14 +1026,14 @@ impl<'a, Data> EventCx<'a, Data> {
 
     /// Try popping the last message from the stack with the given type
     ///
-    /// This method may be called from [`Widget::handle_message`].
+    /// This method may be called from [`Widget::handle_messages`].
     pub fn try_pop<M: Debug + 'static>(&mut self) -> Option<M> {
         self.as_mgr().try_pop()
     }
 
     /// Try observing the last message on the stack without popping
     ///
-    /// This method may be called from [`Widget::handle_message`].
+    /// This method may be called from [`Widget::handle_messages`].
     pub fn try_observe<M: Debug + 'static>(&self) -> Option<&M> {
         self.mgr.messages.last().and_then(|m| m.downcast_ref::<M>())
     }

@@ -466,7 +466,7 @@ impl_scope! {
         }
     }
     impl Widget for Self {
-        fn handle_message(&mut self, mgr: &mut EventCx<Self::Data>) {
+        fn handle_messages(&mut self, mgr: &mut EventCx<Self::Data>) {
             if let Some(iter) = mgr.try_pop() {
                 self.iter = iter;
                 mgr.config_cx(|cx| cx.update(self));

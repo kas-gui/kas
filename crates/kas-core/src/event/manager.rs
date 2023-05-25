@@ -669,7 +669,7 @@ impl<'a> EventMgr<'a> {
                 response |= widget.pre_handle_event(self, event);
 
                 if self.has_msg() {
-                    widget.handle_message(self);
+                    widget.handle_messages(self);
                 }
             }
 
@@ -677,7 +677,7 @@ impl<'a> EventMgr<'a> {
         } else {
             response = widget.steal_event(self, &id, &event);
             if self.has_msg() {
-                widget.handle_message(self);
+                widget.handle_messages(self);
             }
             if response.is_used() {
                 return response;
@@ -708,7 +708,7 @@ impl<'a> EventMgr<'a> {
                 response = widget.handle_unused(self, event);
             }
             if self.has_msg() {
-                widget.handle_message(self);
+                widget.handle_messages(self);
             }
         } else {
             log::warn!(
@@ -739,11 +739,11 @@ impl<'a> EventMgr<'a> {
             }
 
             if self.has_msg() {
-                widget.handle_message(self);
+                widget.handle_messages(self);
             }
         } else if id == widget.id_ref() {
             self.mgr.messages.push(msg);
-            widget.handle_message(self);
+            widget.handle_messages(self);
         } else {
             log::warn!(
                 "replay_recurse: Widget {} cannot find path to {id}",
