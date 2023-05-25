@@ -7,7 +7,7 @@
 
 use kas::event::CursorIcon;
 use kas::prelude::*;
-use kas::widget::{dialog::Window, Column, Label, StrLabel};
+use kas::widget::{dialog::Window, Label, StrLabel};
 
 impl_scope! {
     #[derive(Clone, Debug)]
@@ -44,7 +44,7 @@ fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     // These are winit::window::CursorIcon enum variants
-    let column = Column::new_vec(vec![
+    let column = kas::column![
         cursor!(Default),
         cursor!(Crosshair),
         cursor!(Hand),
@@ -80,7 +80,7 @@ fn main() -> kas::shell::Result<()> {
         cursor!(NwseResize),
         cursor!(ColResize),
         cursor!(RowResize),
-    ]);
+    ];
 
     let window = Window::new("Cursor gallery", column);
     let theme = kas::theme::FlatTheme::new();
