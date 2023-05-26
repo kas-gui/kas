@@ -5,11 +5,13 @@
 
 //! Adapter widgets (wrappers)
 
+mod adapt_events;
 mod adapt_widget;
 mod reserve;
 mod with_align;
 mod with_label;
 
+pub use adapt_events::OnUpdate;
 pub use adapt_widget::*;
 pub use reserve::{FnSizeRules, Reserve, ReserveP};
 pub use with_align::WithAlign;
