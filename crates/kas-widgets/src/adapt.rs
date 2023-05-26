@@ -20,7 +20,7 @@ impl_scope! {
     /// Where [`Map`] allows mapping to a sub-set of input data, `Adapt` allows
     /// mapping to a super-set (including internal storage). Further, `Adapt`
     /// supports message handlers which mutate internal storage.
-    #[autoimpl(Debug ignore self.map_fn, self.message_handlers, self._data)]
+    #[autoimpl(Debug ignore self.map_fn, self.on_messages, self.on_update, self._data)]
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[widget {
         data = A;
@@ -36,7 +36,8 @@ impl_scope! {
         #[widget((self.map_fn)(data, &self.state))]
         inner: W,
         map_fn: F,
-        message_handlers: Vec<Box<dyn Fn(&mut EventCx<A>, &mut S)>>,
+        on_messages: Option<Box<dyn Fn(&mut EventCx<A>, &mut S)>>,
+        on_update: Option<Box<dyn Fn(&mut ConfigCx<A>, &mut S)>>,
         _data: PhantomData<A>,
     }
 
@@ -46,48 +47,78 @@ impl_scope! {
         /// -   Over an `inner` widget
         /// -   With additional `state`
         /// -   And `map_fn` mapping to the inner widget's data type
+        #[inline]
         pub fn new(inner: W, state: S, map_fn: F) -> Self {
             Adapt {
                 core: Default::default(),
                 state,
                 inner,
                 map_fn,
-                message_handlers: vec![],
+                on_messages: None,
+                on_update: None,
                 _data: PhantomData,
             }
         }
 
-        /// Add a generic message handler
-        pub fn with_handler<H>(mut self, message_handler: H) -> Self
-        where
-            H: Fn(&mut EventCx<A>, &mut S) + 'static,
-        {
-            self.message_handlers.push(Box::new(message_handler));
-            self
-        }
-
-        /// Add a handler on message of type `M`
-        pub fn on_message<M, H>(mut self, message_handler: H) -> Self
+        /// Assign a handler for a message of type `M`
+        ///
+        /// This is a variant of [`Self::on_messages`] for ease of use.
+        /// Parameters: `(data, state, message)` where `data` is input from the
+        /// parent (read-only) while `state` is stored locally (read-write).
+        pub fn on_message<M, H>(self, f: H) -> Self
         where
             M: Debug + 'static,
             H: Fn(&A, &mut S, M) + 'static,
         {
-            self.message_handlers.push(Box::new(move |cx, data| {
+            self.on_messages(move |cx, data| {
                 if let Some(m) = cx.try_pop() {
-                    message_handler(cx.data(), data, m);
+                    f(cx.data(), data, m);
                 }
-            }));
+            })
+        }
+
+        /// Assign a generic message handler
+        ///
+        /// `f` will be called whenever any message is available (see
+        /// [`Widget::handle_messages`].
+        pub fn on_messages<H>(mut self, f: H) -> Self
+        where
+            H: Fn(&mut EventCx<A>, &mut S) + 'static,
+        {
+            // While we could support multiple handlers there appears little reason.
+            debug_assert!(self.on_messages.is_none(), "multiple message handlers assigned");
+
+            self.on_messages = Some(Box::new(f));
+            self
+        }
+
+        /// Assign an update handler
+        ///
+        /// This is called whenever the input data changes (and potentially
+        /// more often); see [`Widget::update`].
+        pub fn on_update<H>(mut self, f: H) -> Self
+        where
+            H: Fn(&mut ConfigCx<A>, &mut S) + 'static,
+        {
+            debug_assert!(self.on_update.is_none(), "multiple update handlers assigned");
+
+            self.on_update = Some(Box::new(f));
             self
         }
     }
 
     impl Widget for Self {
-        fn handle_messages(&mut self, cx: &mut EventCx<Self::Data>) {
-            for mh in self.message_handlers.iter() {
-                mh(cx, &mut self.state);
+        fn update(&mut self, cx: &mut ConfigCx<Self::Data>) {
+            if let Some(ref h) = self.on_update {
+                h(cx, &mut self.state);
             }
+        }
 
-            cx.config_cx(|cx| cx.update(self));
+        fn handle_messages(&mut self, cx: &mut EventCx<Self::Data>) {
+            if let Some(ref mh) = self.on_messages {
+                mh(cx, &mut self.state);
+                cx.config_cx(|cx| cx.update(self));
+            }
         }
     }
 }
