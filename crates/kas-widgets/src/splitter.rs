@@ -509,4 +509,87 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
 
         w
     }
+
+    /// Append child widgets from an iterator
+    ///
+    /// New children are configured immediately. Triggers [`Action::RESIZE`].
+    pub fn extend<T: IntoIterator<Item = W>>(&mut self, mgr: &mut ConfigMgr, iter: T) {
+        let iter = iter.into_iter();
+        if let Some(ub) = iter.size_hint().1 {
+            self.handles.reserve(ub);
+            self.widgets.reserve(ub);
+        }
+
+        for mut widget in iter {
+            let index = self.widgets.len();
+            if index > 0 {
+                let id = self.make_next_id(true, self.handles.len());
+                let mut w = GripPart::new();
+                mgr.configure(id, &mut w);
+                self.handles.push(w);
+            }
+
+            let id = self.make_next_id(false, index);
+            mgr.configure(id, &mut widget);
+            self.widgets.push(widget);
+        }
+
+        self.size_solved = false;
+        *mgr |= Action::RESIZE;
+    }
+
+    /// Resize, using the given closure to construct new widgets
+    ///
+    /// New children are configured immediately. Triggers [`Action::RESIZE`].
+    pub fn resize_with<F: Fn(usize) -> W>(&mut self, mgr: &mut ConfigMgr, len: usize, f: F) {
+        let old_len = self.widgets.len();
+
+        if len < old_len {
+            *mgr |= Action::RESIZE;
+            loop {
+                let result = self.widgets.pop();
+                if let Some(w) = result.as_ref() {
+                    *mgr |= Action::RESIZE;
+
+                    if w.id_ref().is_valid() {
+                        if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
+                            self.id_map.remove(&key);
+                        }
+                    }
+
+                    if let Some(w) = self.handles.pop() {
+                        if w.id_ref().is_valid() {
+                            if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
+                                self.id_map.remove(&key);
+                            }
+                        }
+                    }
+                }
+
+                if len == self.widgets.len() {
+                    return;
+                }
+            }
+        }
+
+        if len > old_len {
+            self.widgets.reserve(len - old_len);
+            for index in old_len..len {
+                if index > 0 {
+                    let id = self.make_next_id(true, self.handles.len());
+                    let mut w = GripPart::new();
+                    mgr.configure(id, &mut w);
+                    self.handles.push(w);
+                }
+
+                let id = self.make_next_id(false, index);
+                let mut widget = f(index);
+                mgr.configure(id, &mut widget);
+                self.widgets.push(widget);
+            }
+
+            self.size_solved = false;
+            *mgr |= Action::RESIZE;
+        }
+    }
 }
