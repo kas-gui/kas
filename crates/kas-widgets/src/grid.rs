@@ -48,11 +48,10 @@ impl_scope! {
     ///
     /// # Messages
     ///
-    /// If a handler is specified via [`Self::on_message`] then this handler is
+    /// If a handler is specified via [`Self::on_messages`] then this handler is
     /// called when a child pushes a message.
     #[autoimpl(Default)]
-    #[autoimpl(Debug ignore self.on_message)]
-    #[derive(Clone)]
+    #[autoimpl(Debug ignore self.on_messages)]
     #[widget{
         data = W::Data;
     }]
@@ -61,7 +60,7 @@ impl_scope! {
         widgets: Vec<(GridChildInfo, W)>,
         data: DynGridStorage,
         dim: GridDimensions,
-        on_message: Option<fn(&mut EventCx<W::Data>, usize)>,
+        on_messages: Option<Box<dyn Fn(&mut Self, &mut EventCx<W::Data>, usize)>>,
     }
 
     impl WidgetChildren for Self {
@@ -118,10 +117,11 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_messages(&mut self, mgr: &mut EventCx<W::Data>) {
-            if let Some(f) = self.on_message {
-                let index = mgr.last_child().expect("message not sent from self");
-                f(mgr, index);
+        fn handle_messages(&mut self, cx: &mut EventCx<W::Data>) {
+            if let Some(f) = self.on_messages.take() {
+                let index = cx.last_child().expect("message not sent from self");
+                f(self, cx, index);
+                self.on_messages = Some(f);
             }
         }
     }
@@ -147,20 +147,13 @@ impl<W: Widget> Grid<W> {
 
     /// Assign a child message handler
     ///
-    /// This handler (if any) is called when a child pushes a message:
-    /// `f(mgr, index)`, where `index` is the child's index.
-    #[inline]
-    pub fn set_on_message(&mut self, f: Option<fn(&mut EventCx<W::Data>, usize)>) {
-        self.on_message = f;
-    }
-
-    /// Assign a child message handler (inline style)
-    ///
-    /// This handler is called when a child pushes a message:
-    /// `f(mgr, index)`, where `index` is the child's index.
-    #[inline]
-    pub fn on_message(mut self, f: fn(&mut EventCx<W::Data>, usize)) -> Self {
-        self.on_message = Some(f);
+    /// This handler is called when a child pushes a message. Parameters
+    /// are `grid, cx, index` where `index` is the child's index.
+    pub fn on_messages<H>(mut self, f: H) -> Self
+    where
+        H: Fn(&mut Self, &mut EventCx<W::Data>, usize) + 'static,
+    {
+        self.on_messages = Some(Box::new(f));
         self
     }
 

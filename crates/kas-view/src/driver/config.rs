@@ -167,7 +167,7 @@ impl driver::Driver<Config, SharedRc<Config>> for EventConfig {
             | widget.touch_nav_focus.set_bool(data.touch_nav_focus)
     }
 
-    fn on_message(
+    fn on_messages(
         &self,
         mgr: &mut EventMgr,
         _: &mut Self::Widget,

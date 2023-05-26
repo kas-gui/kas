@@ -42,7 +42,7 @@ impl_scope! {
     ///
     /// See also the main implementing widget: [`Stack`].
     #[impl_default]
-    #[derive(Debug)]
+    #[autoimpl(Debug ignore self.on_messages)]
     #[widget {
         data = W::Data;
         layout = list!(self.direction, [
@@ -57,6 +57,7 @@ impl_scope! {
         tabs: Row<Tab>, // TODO: want a TabBar widget for scrolling support?
         #[widget]
         stack: Stack<W>,
+        on_messages: Option<Box<dyn Fn(&mut Self, &mut EventCx<W::Data>, usize)>>,
     }
 
     impl Self {
@@ -66,12 +67,25 @@ impl_scope! {
                 core: Default::default(),
                 direction: Direction::Up,
                 stack: Stack::new(),
-                tabs: Row::new().on_message(|mgr, index| {
-                    if let Some(MsgSelect) = mgr.try_pop() {
-                        mgr.push(MsgSelectIndex(index));
+                tabs: Row::new().on_messages(|_, cx, index| {
+                    if let Some(MsgSelect) = cx.try_pop() {
+                        cx.push(MsgSelectIndex(index));
                     }
                 }),
+                on_messages: None,
             }
+        }
+
+        /// Assign a child message handler
+        ///
+        /// This handler is called when a child pushes a message. Parameters
+        /// are `list, cx, index` where `index` is the child's index.
+        pub fn on_messages<H>(mut self, f: H) -> Self
+        where
+            H: Fn(&mut Self, &mut EventCx<W::Data>, usize) + 'static,
+        {
+            self.on_messages = Some(Box::new(f));
+            self
         }
 
         /// Set the position of tabs relative to content
@@ -94,9 +108,13 @@ impl_scope! {
             kas::util::nav_next(reverse, from, self.num_children())
         }
 
-        fn handle_messages(&mut self, mgr: &mut EventCx<W::Data>) {
-            if let Some(MsgSelectIndex(index)) = mgr.try_pop() {
-                mgr.config_mgr(|mgr| self.set_active(mgr, index));
+        fn handle_messages(&mut self, cx: &mut EventCx<W::Data>) {
+            if let Some(MsgSelectIndex(index)) = cx.try_pop() {
+                cx.config_mgr(|mgr| self.set_active(mgr, index));
+            } else if let Some(f) = self.on_messages.take() {
+                let index = cx.last_child().expect("message not sent from self");
+                f(self, cx, index);
+                self.on_messages = Some(f);
             }
         }
     }

@@ -26,7 +26,7 @@ use std::time::Instant;
 ///
 /// -   construct (empty) widgets with [`Self::make`]
 /// -   assign data to an existing widget with [`Self::set`]
-/// -   (optional) handle messages from a widget with [`Self::on_message`]
+/// -   (optional) handle messages from a widget with [`Self::on_messages`]
 pub trait ListViewGuard<A: ListData>: Debug {
     /// Type of the widget used to view data
     ///
@@ -70,11 +70,11 @@ pub trait ListViewGuard<A: ListData>: Debug {
     ///     message and updates `data` using values read from `widget`.
     ///
     /// See, for example, the implementation for [`CheckButton`]: the `make`
-    /// method assigns a state-change handler which `on_message` uses to update
+    /// method assigns a state-change handler which `on_messages` uses to update
     /// the shared data.
     ///
     /// Default implementation: do nothing.
-    fn on_message(&mut self, key: &A::Key, widget: &mut Self::Widget, cx: &mut EventCx<A>) {
+    fn on_messages(&mut self, widget: &mut Self::Widget, cx: &mut EventCx<A>, key: &A::Key) {
         let _ = (key, widget, cx);
     }
 }
@@ -106,7 +106,7 @@ impl_scope! {
     /// View widgets handle events like normal. To associate a returned message
     /// with a data key, either embed that key in the message while constructing
     /// the widget with [`ListViewGuard::make`] or intercept the message in
-    /// [`ListViewGuard::on_message`].
+    /// [`ListViewGuard::on_messages`].
     ///
     /// # Selection
     ///
@@ -207,10 +207,10 @@ impl_scope! {
         /// [`Select`].
         ///
         /// On selection and deselection, a [`SelectionMsg`] message is emitted.
-        /// This is not sent to [`ListViewGuard::on_message`].
+        /// This is not sent to [`ListViewGuard::on_messages`].
         ///
         /// The guard may trigger selection by emitting [`Select`] from
-        /// [`ListViewGuard::on_message`]. The guard is not notified of selection
+        /// [`ListViewGuard::on_messages`]. The guard is not notified of selection
         /// except via [`Select`] from view widgets. (TODO: reconsider this.)
         ///
         /// [`Select`]: kas::message::Select
@@ -788,7 +788,7 @@ impl_scope! {
                     None => return,
                 };
 
-                self.guard.on_message(&key, &mut w.widget, cx);
+                self.guard.on_messages(&mut w.widget, cx, &key);
             } else {
                 // Message is from self
                 key = match self.press_target.clone() {

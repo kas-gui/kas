@@ -73,12 +73,11 @@ impl_scope! {
     ///
     /// # Messages
     ///
-    /// If a handler is specified via [`Self::on_message`] then this handler is
+    /// If a handler is specified via [`Self::on_messages`] then this handler is
     /// called when a child pushes a message. This allows associating the
     /// child's index with a message.
-    #[autoimpl(Clone where W: Clone)]
-    #[autoimpl(Debug ignore self.on_message)]
     #[autoimpl(Default where D: Default)]
+    #[autoimpl(Debug ignore self.on_messages)]
     #[widget {
         data = W::Data;
         layout = slice! 'layout (self.direction, self.widgets);
@@ -89,7 +88,7 @@ impl_scope! {
         direction: D,
         next: usize,
         id_map: HashMap<usize, usize>, // map key of WidgetId to index
-        on_message: Option<fn(&mut EventCx<W::Data>, usize)>,
+        on_messages: Option<Box<dyn Fn(&mut Self, &mut EventCx<W::Data>, usize)>>,
     }
 
     impl WidgetChildren for Self {
@@ -144,10 +143,11 @@ impl_scope! {
             self.id_map.clear();
         }
 
-        fn handle_messages(&mut self, mgr: &mut EventCx<W::Data>) {
-            if let Some(f) = self.on_message {
-                let index = mgr.last_child().expect("message not sent from self");
-                f(mgr, index);
+        fn handle_messages(&mut self, cx: &mut EventCx<W::Data>) {
+            if let Some(f) = self.on_messages.take() {
+                let index = cx.last_child().expect("message not sent from self");
+                f(self, cx, index);
+                self.on_messages = Some(f);
             }
         }
     }
@@ -202,26 +202,19 @@ impl_scope! {
                 direction,
                 next: 0,
                 id_map: Default::default(),
-                on_message: None,
+                on_messages: None,
             }
         }
 
         /// Assign a child message handler
         ///
-        /// This handler (if any) is called when a child pushes a message:
-        /// `f(mgr, index)`, where `index` is the child's index.
-        #[inline]
-        pub fn set_on_message(&mut self, f: Option<fn(&mut EventCx<W::Data>, usize)>) {
-            self.on_message = f;
-        }
-
-        /// Assign a child message handler (inline style)
-        ///
-        /// This handler is called when a child pushes a message:
-        /// `f(mgr, index)`, where `index` is the child's index.
-        #[inline]
-        pub fn on_message(mut self, f: fn(&mut EventCx<W::Data>, usize)) -> Self {
-            self.on_message = Some(f);
+        /// This handler is called when a child pushes a message. Parameters
+        /// are `list, cx, index` where `index` is the child's index.
+        pub fn on_messages<H>(mut self, f: H) -> Self
+        where
+            H: Fn(&mut Self, &mut EventCx<W::Data>, usize) + 'static,
+        {
+            self.on_messages = Some(Box::new(f));
             self
         }
 

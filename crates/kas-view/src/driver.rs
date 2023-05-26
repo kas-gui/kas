@@ -39,7 +39,7 @@ use std::ops::RangeInclusive;
 ///
 /// -   construct (empty) widgets with [`Self::make`]
 /// -   assign data to an existing widget with [`Self::set`]
-/// -   (optional) handle messages from a widget with [`Self::on_message`]
+/// -   (optional) handle messages from a widget with [`Self::on_messages`]
 ///
 /// NOTE: `Item` is a direct type parameter (in addition to an assoc. type
 /// param. of `SharedData`) only to avoid "conflicting implementations" errors.
@@ -99,11 +99,11 @@ pub trait Driver<Item, Data: SharedData<Item = Item>>: Debug {
     ///     message and updates `data` using values read from `widget`.
     ///
     /// See, for example, the implementation for [`CheckButton`]: the `make`
-    /// method assigns a state-change handler which `on_message` uses to update
+    /// method assigns a state-change handler which `on_messages` uses to update
     /// the shared data.
     ///
     /// Default implementation: do nothing.
-    fn on_message(
+    fn on_messages(
         &self,
         mgr: &mut EventMgr,
         widget: &mut Self::Widget,
@@ -246,7 +246,7 @@ impl<G: EditGuard + Clone, Data: SharedDataMut<Item = String>> Driver<String, Da
     fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<String>) -> Action {
         widget.set_string(item.into_owned())
     }
-    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
+    fn on_messages(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(item) = mgr.try_pop() {
             data.set(mgr, key, item);
         }
@@ -310,7 +310,7 @@ impl<G: EditGuard + Clone, Data: SharedDataMut<Item = String>> Driver<String, Da
     fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<String>) -> Action {
         widget.set_string(item.into_owned())
     }
-    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
+    fn on_messages(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(item) = mgr.try_pop() {
             data.set(mgr, key, item);
         }
@@ -364,7 +364,7 @@ impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for CheckButton {
     fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> Action {
         widget.set_bool(item.into_owned())
     }
-    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
+    fn on_messages(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop() {
             data.set(mgr, key, state);
         }
@@ -390,7 +390,7 @@ impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for RadioBox {
     fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> Action {
         widget.set_bool(item.into_owned())
     }
-    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
+    fn on_messages(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop() {
             data.set(mgr, key, state);
         }
@@ -419,7 +419,7 @@ impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for RadioButton {
     fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> Action {
         widget.set_bool(item.into_owned())
     }
-    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
+    fn on_messages(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop() {
             data.set(mgr, key, state);
         }
@@ -472,7 +472,7 @@ where
     ) -> Action {
         widget.set_value(item.into_owned())
     }
-    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
+    fn on_messages(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop() {
             data.set(mgr, key, state);
         }
@@ -513,7 +513,7 @@ where
     ) -> Action {
         widget.set_value(item.into_owned())
     }
-    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
+    fn on_messages(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop() {
             data.set(mgr, key, state);
         }

@@ -67,7 +67,8 @@ impl_scope! {
     ///
     /// Similar to [`crate::List`] but with draggable handles between items.
     // TODO: better doc
-    #[derive(Clone, Default, Debug)]
+    #[autoimpl(Default where D: Default)]
+    #[autoimpl(Debug ignore self.on_messages)]
     #[widget {
         data = W::Data;
     }]
@@ -80,6 +81,7 @@ impl_scope! {
         size_solved: bool,
         next: usize,
         id_map: HashMap<usize, usize>, // map key of WidgetId to index
+        on_messages: Option<Box<dyn Fn(&mut Self, &mut EventCx<W::Data>, usize)>>,
     }
 
     impl Self {
@@ -248,14 +250,19 @@ impl_scope! {
             self.id_map.clear();
         }
 
-        fn handle_messages(&mut self, mgr: &mut EventCx<W::Data>) {
-            let index = mgr.last_child().expect("message not sent from self");
-            if (index & 1) == 1 {
-                if let Some(GripMsg::PressMove(offset)) = mgr.try_pop() {
+        fn handle_messages(&mut self, cx: &mut EventCx<W::Data>) {
+            let index = cx.last_child().expect("message not sent from self");
+            if (index & 1) == 0 {
+                if let Some(f) = self.on_messages.take() {
+                    f(self, cx, index);
+                    self.on_messages = Some(f);
+                }
+            } else {
+                if let Some(GripMsg::PressMove(offset)) = cx.try_pop() {
                     let n = index >> 1;
                     assert!(n < self.handles.len());
-                    *mgr |= self.handles[n].set_offset(offset).1;
-                    mgr.config_mgr(|mgr| self.adjust_size(mgr, n));
+                    *cx |= self.handles[n].set_offset(offset).1;
+                    cx.config_mgr(|mgr| self.adjust_size(mgr, n));
                 }
             }
         }
@@ -302,7 +309,20 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
             size_solved: false,
             next: 0,
             id_map: Default::default(),
+            on_messages: None,
         }
+    }
+
+    /// Assign a child message handler
+    ///
+    /// This handler is called when a child pushes a message. Parameters
+    /// are `list, cx, index` where `index` is the child's index.
+    pub fn on_messages<H>(mut self, f: H) -> Self
+    where
+        H: Fn(&mut Self, &mut EventCx<W::Data>, usize) + 'static,
+    {
+        self.on_messages = Some(Box::new(f));
+        self
     }
 
     /// Edit the list of children directly

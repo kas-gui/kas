@@ -232,7 +232,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             popup: ComboPopup {
                 core: Default::default(),
                 inner: PopupFrame::new(
-                    Column::new_vec(entries).on_message(|mgr, index| mgr.push(IndexMsg(index))),
+                    Column::new_vec(entries).on_messages(|_, cx, index| cx.push(IndexMsg(index))),
                 ),
             },
             ..Default::default()
@@ -366,7 +366,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
 
 impl_scope! {
     #[autoimpl(Default)]
-    #[derive(Clone, Debug)]
+    #[derive(Debug)]
     #[widget{
         layout = self.inner;
     }]

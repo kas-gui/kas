@@ -7,7 +7,6 @@
 
 use kas::prelude::*;
 use std::collections::hash_map::{Entry, HashMap};
-use std::fmt::Debug;
 use std::ops::{Index, IndexMut, Range};
 
 /// A stack of boxed widgets
@@ -34,7 +33,7 @@ impl_scope! {
     /// or may be limited: see [`Self::set_size_limit`]. Drawing is `O(1)`, and
     /// so is event handling in the expected case.
     #[autoimpl(Default)]
-    #[derive(Clone, Debug)]
+    #[autoimpl(Debug ignore self.on_messages)]
     #[widget{
         data = W::Data;
     }]
@@ -46,6 +45,7 @@ impl_scope! {
         size_limit: usize,
         next: usize,
         id_map: HashMap<usize, usize>, // map key of WidgetId to index
+        on_messages: Option<Box<dyn Fn(&mut Self, &mut EventCx<W::Data>, usize)>>,
     }
 
     impl WidgetChildren for Self {
@@ -142,6 +142,14 @@ impl_scope! {
                 _ => None,
             }
         }
+
+        fn handle_messages(&mut self, cx: &mut EventCx<W::Data>) {
+            if let Some(f) = self.on_messages.take() {
+                let index = cx.last_child().expect("message not sent from self");
+                f(self, cx, index);
+                self.on_messages = Some(f);
+            }
+        }
     }
 
     impl Index<usize> for Self {
@@ -180,7 +188,20 @@ impl<W: Widget> Stack<W> {
             size_limit: usize::MAX,
             next: 0,
             id_map: Default::default(),
+            on_messages: None,
         }
+    }
+
+    /// Assign a child message handler
+    ///
+    /// This handler is called when a child pushes a message. Parameters
+    /// are `list, cx, index` where `index` is the child's index.
+    pub fn on_messages<H>(mut self, f: H) -> Self
+    where
+        H: Fn(&mut Self, &mut EventCx<W::Data>, usize) + 'static,
+    {
+        self.on_messages = Some(Box::new(f));
+        self
     }
 
     /// Edit the list of children directly
