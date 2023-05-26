@@ -5,21 +5,21 @@
 
 //! A separator
 
-use std::fmt::Debug;
-
 use crate::menu::Menu;
 use kas::prelude::*;
+use std::marker::PhantomData;
 
 impl_scope! {
     /// A separator
     ///
     /// This widget draws a bar when in a list.
-    #[derive(Clone, Debug, Default)]
+    #[autoimpl(Clone, Debug, Default)]
     #[widget {
-        Data = ();
+        Data = A;
     }]
-    pub struct Separator {
+    pub struct Separator<A> {
         core: widget_core!(),
+        _pd: PhantomData<A>,
     }
 
     impl Self {
@@ -28,6 +28,7 @@ impl_scope! {
         pub fn new() -> Self {
             Separator {
                 core: Default::default(),
+                _pd: PhantomData,
             }
         }
     }
