@@ -14,7 +14,7 @@ mod widget_id;
 mod window;
 
 pub use data::*;
-pub use into_widget::{IntoVecWidget, IntoWidget};
+pub use into_widget::IntoWidget;
 pub use node::Node;
 pub use scroll_traits::*;
 pub use widget::*;

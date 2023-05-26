@@ -196,9 +196,6 @@ pub trait Layout {
     /// -   For a widget without `layout` property, set `rect` field of `widget_core!()`
     /// -   For a widget with the `layout` property, call [`AutoLayout::set_rect`]
     ///
-    /// Default: set `rect` of `widget_core!()` field. If `layout = ..` property
-    /// is used, also calls `<Self as AutoLayout>::set_rect`.
-    ///
     /// [`Stretch`]: crate::layout::Stretch
     fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
 

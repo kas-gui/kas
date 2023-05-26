@@ -6,7 +6,7 @@
 //! A row or column with run-time adjustable contents
 
 use kas::dir::{Down, Right};
-use kas::{layout, prelude::*, IntoVecWidget};
+use kas::{layout, prelude::*};
 use std::collections::hash_map::{Entry, HashMap};
 use std::ops::{Index, IndexMut};
 
@@ -36,18 +36,6 @@ pub type BoxColumn<T> = BoxList<T, Down>;
 ///
 /// See documentation of [`List`] type.
 pub type BoxList<T, D> = List<D, Box<dyn Widget<Data = T>>>;
-
-/// Construct a row
-#[inline]
-pub fn row<A>(items: impl IntoVecWidget<A>) -> BoxRow<A> {
-    BoxRow::new_vec(items.into_vec_widget())
-}
-
-/// Construct a column
-#[inline]
-pub fn column<A>(items: impl IntoVecWidget<A>) -> BoxColumn<A> {
-    BoxColumn::new_vec(items.into_vec_widget())
-}
 
 impl_scope! {
     /// A generic row/column widget

@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 use kas::event::VirtualKeyCode as VK;
 use kas::prelude::*;
-use kas::widget::{column, dialog, Adapt, Discard, EditBox, TextButton};
+use kas::widget::{dialog, Adapt, Discard, EditBox, TextButton};
 
 #[derive(Clone, Debug)]
 enum Key {
@@ -61,7 +61,7 @@ fn calc_ui() -> impl Window<Data = ()> {
         (2, 4) => TextButton::new_msg("&.", Key::Char('.')),
     });
 
-    let ui = column((display, buttons));
+    let ui = kas::column![display, buttons];
     let ui = Adapt::new(ui, Calculator::new(), |_, calc| calc)
         .on_message(|_, calc, key| calc.handle(key));
 

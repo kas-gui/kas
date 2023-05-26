@@ -122,20 +122,22 @@ impl ListViewGuard<MyData> for MyDriver {
             |data: &Data| data.0,
             move || Control::Select(index),
         );
-        column((
-            row((Discard::new(label), radio)),
-            EditBox::string(
+        //TODO(rust): use kas::column! when RPITIT or TAIT lets us avoid having
+        // to specify the return type! (Then we don't need `Box::new(..)`.)
+        BoxColumn::new_vec(vec![
+            Box::new(kas::row![Discard::new(label), radio]),
+            Box::new(EditBox::string(
                 |data: &Data| data.1.clone(),
                 move |string| Control::Update(index, string.to_string()),
-            ),
-        ))
+            )),
+        ])
     }
 }
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let controls = row((
+    let controls = kas::row![
         "Number of rows:",
         EditBox::parser(|n| *n, Control::SetLen),
         // This button is just a click target; it doesn't do anything!
@@ -143,7 +145,7 @@ fn main() -> kas::shell::Result<()> {
         button("−", Control::DecrLen),
         button("+", Control::IncrLen),
         button("↓↑", ReverseList),
-    ));
+    ];
 
     type MyList = ListView<MyData, MyDriver, Direction>;
     let list = ListView::new_with_direction(Direction::Down, MyDriver);
