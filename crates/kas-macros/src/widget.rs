@@ -228,6 +228,13 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     events_impl = Some(index);
                 }
 
+                if let Some(mem) = opt_derive {
+                    emit_error!(
+                        mem, "derive is incompatible with Events impl";
+                        note = path.span() => "this Events impl";
+                    );
+                }
+
                 for item in &impl_.items {
                     if let ImplItem::Type(ref item) = item {
                         if item.ident == "Data" {
