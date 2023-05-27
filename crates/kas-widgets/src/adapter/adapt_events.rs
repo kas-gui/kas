@@ -5,9 +5,9 @@
 
 //! Event adapters
 
-use kas::event::ConfigCx;
-use kas::Widget;
-use kas::{autoimpl, impl_scope};
+use kas::event::{ConfigCx, EventCx};
+use kas::geom::{Offset, Size};
+use kas::{autoimpl, impl_scope, Scrollable, Widget};
 
 impl_scope! {
     /// Wrapper to call a closure on update
@@ -30,6 +30,27 @@ impl_scope! {
     impl Widget for Self {
         fn update(&mut self, cx: &mut ConfigCx<W::Data>) {
             (self.f)(&mut self.inner, cx);
+            self.inner.update(cx);
+        }
+    }
+
+    // TODO: make derivable
+    impl Scrollable for Self where W: Scrollable {
+        #[inline]
+        fn scroll_axes(&self, size: Size) -> (bool, bool) {
+            self.inner.scroll_axes(size)
+        }
+        #[inline]
+        fn max_scroll_offset(&self) -> Offset {
+            self.inner.max_scroll_offset()
+        }
+        #[inline]
+        fn scroll_offset(&self) -> Offset {
+            self.inner.scroll_offset()
+        }
+        #[inline]
+        fn set_scroll_offset(&mut self, cx: &mut EventCx<Self::Data>, offset: Offset) -> Offset {
+            self.inner.set_scroll_offset(cx, offset)
         }
     }
 }
