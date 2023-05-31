@@ -6,7 +6,7 @@
 use crate::widget;
 use proc_macro2::{Span, TokenStream as Toks};
 use proc_macro_error::emit_error;
-use quote::{quote, ToTokens, TokenStreamExt};
+use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::{braced, bracketed, parenthesized, parse_quote, token};
@@ -1050,7 +1050,8 @@ impl Layout {
             Layout::Widget(stor, expr) => {
                 children.push(stor.to_token_stream());
                 ty_toks.append_all(quote! { #stor: Box<dyn ::kas::Widget<Data = #data_ty>>, });
-                def_toks.append_all(quote! { #stor: Box::new(#expr), });
+                let span = expr.span();
+                def_toks.append_all(quote_spanned! {span=> #stor: Box::new(#expr), });
             }
             Layout::Frame(stor, layout, _) | Layout::Button(stor, layout, _) => {
                 ty_toks.append_all(quote! { #stor: ::kas::layout::FrameStorage, });
@@ -1091,14 +1092,17 @@ impl Layout {
             }
             Layout::Label(stor, text) => {
                 children.push(stor.to_token_stream());
+                let span = text.span();
                 if matches!(data_ty, Type::Tuple(ty) if ty.elems.is_empty()) {
                     ty_toks.append_all(quote! { #stor: ::kas::hidden::StrLabel, });
-                    def_toks.append_all(quote! { #stor: ::kas::hidden::StrLabel::new(#text), });
+                    def_toks.append_all(
+                        quote_spanned! {span=> #stor: ::kas::hidden::StrLabel::new(#text), },
+                    );
                 } else {
                     ty_toks.append_all(quote! {
                         #stor: ::kas::hidden::Discard<#data_ty, ::kas::hidden::StrLabel>,
                     });
-                    def_toks.append_all(quote! {
+                    def_toks.append_all(quote_spanned! {span=>
                         #stor: ::kas::hidden::StrLabel::new(#text).into(),
                     });
                 }
