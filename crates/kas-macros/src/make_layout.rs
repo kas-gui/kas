@@ -4,7 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use proc_macro2::{Span, TokenStream as Toks};
-use quote::{quote, ToTokens, TokenStreamExt};
+use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::{braced, bracketed, parenthesized, Expr, Ident, Lifetime, LitInt, LitStr, Member, Token};
@@ -713,7 +713,8 @@ impl Layout {
             Layout::Widget(stor, expr) => {
                 children.push(stor.to_token_stream());
                 ty_toks.append_all(quote! { #stor: Box<dyn ::kas::Widget>, });
-                def_toks.append_all(quote! { #stor: Box::new(#expr), });
+                let span = expr.span();
+                def_toks.append_all(quote_spanned! {span=> #stor: Box::new(#expr), });
             }
             Layout::Frame(stor, layout, _) | Layout::Button(stor, layout, _) => {
                 ty_toks.append_all(quote! { #stor: ::kas::layout::FrameStorage, });
@@ -754,8 +755,11 @@ impl Layout {
             }
             Layout::Label(stor, text) => {
                 children.push(stor.to_token_stream());
+                let span = text.span();
                 ty_toks.append_all(quote! { #stor: ::kas::hidden::StrLabel, });
-                def_toks.append_all(quote! { #stor: ::kas::hidden::StrLabel::new(#text), });
+                def_toks.append_all(
+                    quote_spanned! {span=> #stor: ::kas::hidden::StrLabel::new(#text), },
+                );
             }
         }
     }
