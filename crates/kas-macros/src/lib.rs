@@ -462,6 +462,9 @@ impl ExpandLayout for make_layout::Tree {
 ///
 /// Items support [widget layout syntax](macro@widget#layout-1).
 ///
+/// Optionally, content may start with an inner attribute to specify the input
+/// data type, e.g. `#![widget(data = i32)]`.
+///
 /// # Example
 ///
 /// ```

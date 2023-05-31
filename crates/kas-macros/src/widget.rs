@@ -241,8 +241,9 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
             core_data = Some(ident.clone());
 
-            if let Some((stor_ty, stor_def)) = args.layout.as_ref().and_then(|(_, l)| {
-                l.storage_fields(&mut layout_children, &data_ty.to_token_stream())
+            if let Some((stor_ty, stor_def)) = args.layout.as_mut().and_then(|(_, l)| {
+                l.set_data_type(data_ty.clone());
+                l.storage_fields(&mut layout_children)
             }) {
                 let name = format!("_{name}CoreTy");
                 let core_type = Ident::new(&name, Span::call_site());
