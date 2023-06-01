@@ -26,7 +26,7 @@ fn main() -> kas::shell::Result<()> {
             len,
             cx,
             *len,
-            |n| EditField::new(format!("Pane {}", n + 1)).with_multi_line(true)
+            |n| EditField::text(format!("Pane {}", n + 1)).with_multi_line(true)
         )),
     ];
 

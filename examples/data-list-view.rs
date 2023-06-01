@@ -90,13 +90,14 @@ type Item = (usize, String); // (active index, entry's text)
 
 #[derive(Debug)]
 struct ListEntryGuard(usize);
-impl EditGuard<Item> for ListEntryGuard {
-    fn activate(edit: &mut EditField<Item, Self>, _: &Item, cx: &mut EventMgr) -> Response {
+impl EditGuard for ListEntryGuard {
+    type Data = Item;
+    fn activate(edit: &mut EditField<Self>, _: &Item, cx: &mut EventMgr) -> Response {
         cx.push(SelectEntry(edit.guard.0));
         Response::Used
     }
 
-    fn edit(edit: &mut EditField<Item, Self>, data: &Item, cx: &mut EventMgr) {
+    fn edit(edit: &mut EditField<Self>, data: &Item, cx: &mut EventMgr) {
         if data.0 == edit.guard.0 {
             cx.push(Control::UpdateCurrent(edit.get_string()));
         }
@@ -118,7 +119,7 @@ impl_scope! {
         #[widget]
         radio: RadioButton<Item>,
         #[widget]
-        edit: EditBox<Item, ListEntryGuard>,
+        edit: EditBox<ListEntryGuard>,
     }
 
     impl Events for Self {
@@ -172,7 +173,7 @@ impl ListViewGuard<Data> for MyDriver {
                 move |data: &Item| data.0 == n,
                 move || SelectEntry(n),
             ),
-            edit: EditBox::new(format!("Entry #{}", n + 1)).with_guard(ListEntryGuard(n)),
+            edit: EditBox::new(ListEntryGuard(n)),
         }
     }
 }

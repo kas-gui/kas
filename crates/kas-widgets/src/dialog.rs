@@ -97,7 +97,7 @@ impl_scope! {
     pub struct TextEdit {
         core: widget_core!(),
         #[widget]
-        edit: EditBox<()>,
+        edit: EditBox,
     }
 
     impl Self {
@@ -105,7 +105,7 @@ impl_scope! {
         pub fn new(text: impl ToString, multi_line: bool) -> Self {
             TextEdit {
                 core: Default::default(),
-                edit: EditBox::new(text).with_multi_line(multi_line),
+                edit: EditBox::text(text).with_multi_line(multi_line),
             }
         }
 

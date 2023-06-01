@@ -197,7 +197,7 @@ impl_scope! {
 
         fn update_widgets(&mut self) -> Action {
             let len = self.bar_len();
-            let total = i64::from(self.max_value) + i64::from(self.handle_value);
+            let total = 1i64.max(i64::from(self.max_value) + i64::from(self.handle_value));
             let handle_len = i64::from(self.handle_value) * i64::conv(len) / total;
             self.handle_len = i32::conv(handle_len).max(self.min_handle_len).min(len);
             let mut size = self.core.rect.size;

@@ -26,12 +26,10 @@ enum Key {
 
 fn calc_ui() -> Window<()> {
     // We could use kas::widget::Text, but EditBox looks better.
-    let display = EditBox::new("0")
-        .with_editable(false)
+    let display = EditBox::ro(|calc: &Calculator| calc.display())
         .with_multi_line(true)
         .with_lines(3, 3)
-        .with_width_em(5.0, 10.0)
-        .on_update(|calc: &Calculator| calc.display());
+        .with_width_em(5.0, 10.0);
 
     // We use WithAny to avoid passing input data (not wanted by buttons):
     let buttons = WithAny::new(kas::grid! {

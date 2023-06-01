@@ -20,8 +20,7 @@ fn main() -> kas::shell::Result<()> {
         (0..3, 1) => ScrollLabel::new(LIPSUM),
         (0, 2) => align!(center, "abc אבג def"),
         (1..3, 3) => align!(stretch, ScrollLabel::new(CRASIT)),
-        (0, 3) => EditBox::new("A small\nsample\nof text")
-            .with_multi_line(true),
+        (0, 3) => EditBox::text("A small\nsample\nof text").with_multi_line(true),
     };
     let window = Window::new(ui, "Layout demo");
 

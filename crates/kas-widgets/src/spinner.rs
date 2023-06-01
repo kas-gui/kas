@@ -125,13 +125,15 @@ impl<A, T: SpinnerValue> SpinnerGuard<A, T> {
     }
 }
 
-impl<A, T: SpinnerValue> EditGuard<A> for SpinnerGuard<A, T> {
-    fn activate(edit: &mut EditField<A, Self>, data: &A, mgr: &mut EventMgr) -> Response {
+impl<A, T: SpinnerValue> EditGuard for SpinnerGuard<A, T> {
+    type Data = A;
+
+    fn activate(edit: &mut EditField<Self>, data: &A, mgr: &mut EventMgr) -> Response {
         Self::focus_lost(edit, data, mgr);
         Response::Used
     }
 
-    fn focus_lost(edit: &mut EditField<A, Self>, data: &A, cx: &mut EventMgr) {
+    fn focus_lost(edit: &mut EditField<Self>, data: &A, cx: &mut EventMgr) {
         if let Some(value) = edit.guard.parsed.take() {
             cx.push(ValueMsg(value));
         } else {
@@ -140,7 +142,7 @@ impl<A, T: SpinnerValue> EditGuard<A> for SpinnerGuard<A, T> {
         }
     }
 
-    fn edit(edit: &mut EditField<A, Self>, _: &A, cx: &mut EventMgr) {
+    fn edit(edit: &mut EditField<Self>, _: &A, cx: &mut EventMgr) {
         let is_err;
         if let Ok(value) = edit.get_str().parse::<T>() {
             edit.guard.parsed = Some(value.clamp(edit.guard.start, edit.guard.end));
@@ -151,7 +153,7 @@ impl<A, T: SpinnerValue> EditGuard<A> for SpinnerGuard<A, T> {
         *cx |= edit.set_error_state(is_err);
     }
 
-    fn update(edit: &mut EditField<A, Self>, data: &A, cx: &mut ConfigMgr) {
+    fn update(edit: &mut EditField<Self>, data: &A, cx: &mut ConfigMgr) {
         let value = (edit.guard.state_fn)(data);
         *cx |= edit.set_string(value.to_string());
     }
@@ -177,7 +179,7 @@ impl_scope! {
     pub struct Spinner<A, T: SpinnerValue> {
         core: widget_core!(),
         #[widget]
-        edit: EditField<A, SpinnerGuard<A, T>>,
+        edit: EditField<SpinnerGuard<A, T>>,
         #[widget(&())]
         b_up: MarkButton<SpinBtn>,
         #[widget(&())]
@@ -194,9 +196,8 @@ impl_scope! {
         pub fn new(range: RangeInclusive<T>, state_fn: impl Fn(&A) -> T + 'static) -> Self {
             Spinner {
                 core: Default::default(),
-                edit: EditField::new("")
-                    .with_width_em(3.0, 8.0)
-                    .with_guard(SpinnerGuard::new(range, Box::new(state_fn))),
+                edit: EditField::new(SpinnerGuard::new(range, Box::new(state_fn)))
+                    .with_width_em(3.0, 8.0),
                 b_up: MarkButton::new(MarkStyle::Point(Direction::Up), SpinBtn::Up),
                 b_down: MarkButton::new(MarkStyle::Point(Direction::Down), SpinBtn::Down),
                 on_change: None,
