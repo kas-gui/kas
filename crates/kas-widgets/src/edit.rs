@@ -436,6 +436,16 @@ impl<A: 'static> EditBox<DefaultGuard<A>> {
 }
 
 impl<G: EditGuard> EditBox<G> {
+    /// Set the initial text (inline)
+    ///
+    /// This method should only be used on a new `EditBox`.
+    #[inline]
+    #[must_use]
+    pub fn with_text(mut self, text: impl ToString) -> Self {
+        self.inner = self.inner.with_text(text);
+        self
+    }
+
     /// Set whether this widget is editable (inline)
     #[inline]
     #[must_use]
@@ -858,6 +868,19 @@ impl<A: 'static> EditField<DefaultGuard<A>> {
 }
 
 impl<G: EditGuard> EditField<G> {
+    /// Set the initial text (inline)
+    ///
+    /// This method should only be used on a new `EditBox`.
+    #[inline]
+    #[must_use]
+    pub fn with_text(mut self, text: impl ToString) -> Self {
+        let text = text.to_string();
+        let len = text.len();
+        self.text.set_string(text);
+        self.selection.set_pos(len);
+        self
+    }
+
     /// Set whether this `EditField` is editable (inline)
     #[inline]
     #[must_use]
