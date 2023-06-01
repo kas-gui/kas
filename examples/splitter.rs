@@ -6,7 +6,7 @@
 //! Counter example (simple button)
 
 use kas::prelude::*;
-use kas::widget::{button, dialog, Adapt, EditField, RowSplitter};
+use kas::widget::{button, dialog, edit::DefaultGuard, Adapt, EditField, RowSplitter};
 
 #[derive(Clone, Debug)]
 enum Message {
@@ -17,8 +17,8 @@ enum Message {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    fn make_pane(n: usize) -> EditField<usize> {
-        EditField::new(format!("Pane {}", n + 1)).with_multi_line(true)
+    fn make_pane(n: usize) -> EditField<DefaultGuard<usize>> {
+        EditField::text(format!("Pane {}", n + 1)).with_multi_line(true)
     }
 
     // TODO: add on_init method and use to construct initial panes

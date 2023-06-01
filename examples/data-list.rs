@@ -76,13 +76,15 @@ impl MyData {
 
 #[derive(Debug)]
 struct ListEntryGuard(usize);
-impl EditGuard<MyData> for ListEntryGuard {
-    fn activate(edit: &mut EditField<MyData, Self>, cx: &mut EventCx<MyData>) -> Response {
+impl EditGuard for ListEntryGuard {
+    type Data = MyData;
+
+    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx<MyData>) -> Response {
         cx.push(SelectEntry(edit.guard.0));
         Response::Used
     }
 
-    fn edit(edit: &mut EditField<MyData, Self>, cx: &mut EventCx<MyData>) {
+    fn edit(edit: &mut EditField<Self>, cx: &mut EventCx<MyData>) {
         if cx.data().active == edit.guard.0 {
             cx.push(Control::UpdateCurrent(edit.get_string()));
         }
@@ -106,7 +108,7 @@ impl_scope! {
         #[widget(&data.active)]
         radio: RadioButton<usize>,
         #[widget]
-        edit: EditBox<MyData, ListEntryGuard>,
+        edit: EditBox<ListEntryGuard>,
     }
     impl Self {
         fn new(n: usize) -> Self {
@@ -118,7 +120,7 @@ impl_scope! {
                     move |active| *active == n,
                     move || SelectEntry(n),
                 ),
-                edit: EditBox::new(format!("Entry #{}", n + 1)).with_guard(ListEntryGuard(n)),
+                edit: EditBox::new(ListEntryGuard(n)),
             }
         }
     }

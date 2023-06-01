@@ -182,7 +182,7 @@ impl_scope! {
         core: widget_core!(),
         title: Cow<'static, str>,
         #[widget]
-        edit: EditBox<()>,
+        edit: EditBox,
     }
 
     impl Self {
@@ -195,7 +195,7 @@ impl_scope! {
             TextEdit {
                 core: Default::default(),
                 title: title.into(),
-                edit: EditBox::new(text).with_multi_line(multi_line),
+                edit: EditBox::text(text).with_multi_line(multi_line),
             }
         }
 
