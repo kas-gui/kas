@@ -28,6 +28,11 @@ impl_scope! {
     }
 
     impl Widget for Self {
+        fn configure(&mut self, cx: &mut ConfigCx<W::Data>) {
+            self.inner.configure(cx);
+            self.update(cx);
+        }
+
         fn update(&mut self, cx: &mut ConfigCx<W::Data>) {
             (self.f)(&mut self.inner, cx);
             self.inner.update(cx);

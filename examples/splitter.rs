@@ -6,7 +6,7 @@
 //! Counter example (simple button)
 
 use kas::prelude::*;
-use kas::widget::{button, dialog, edit::DefaultGuard, Adapt, EditField, RowSplitter};
+use kas::widget::{button, dialog, Adapt, EditField, RowSplitter};
 
 #[derive(Clone, Debug)]
 enum Message {
@@ -17,24 +17,14 @@ enum Message {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    fn make_pane(n: usize) -> EditField<DefaultGuard<usize>> {
-        EditField::text(format!("Pane {}", n + 1)).with_multi_line(true)
-    }
-
-    // TODO: add on_init method and use to construct initial panes
-    let panes = (0..2).map(make_pane);
-    let len = panes.len();
-
     let ui = kas::column![
         row![button("−", Message::Decr), button("+", Message::Incr),],
-        RowSplitter::new(panes.collect()).on_update(|panes, cx| panes.resize_with(
-            cx,
-            *cx.data(),
-            make_pane
-        )),
+        RowSplitter::new(vec![]).on_update(|panes, cx| panes.resize_with(cx, *cx.data(), |n| {
+            EditField::text(format!("Pane {}", n + 1)).with_multi_line(true)
+        })),
     ];
 
-    let adapt = Adapt::new(ui, len, |_, len| len).on_message(|_, len, msg| {
+    let adapt = Adapt::new(ui, 3, |_, len| len).on_message(|_, len, msg| {
         *len = match msg {
             Message::Decr => len.saturating_sub(1),
             Message::Incr => len.saturating_add(1),
