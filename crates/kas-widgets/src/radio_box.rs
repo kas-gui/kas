@@ -9,7 +9,6 @@ use super::AccelLabel;
 use kas::prelude::*;
 use kas::theme::Feature;
 use std::fmt::Debug;
-use std::marker::PhantomData;
 use std::time::Instant;
 
 impl_scope! {
@@ -28,7 +27,6 @@ impl_scope! {
         last_change: Option<Instant>,
         state_fn: Box<dyn Fn(&A) -> bool>,
         on_select: Option<Box<dyn Fn(&mut EventMgr, &A)>>,
-        _data: PhantomData<A>,
     }
 
     impl Events for Self {
@@ -82,7 +80,6 @@ impl_scope! {
                 last_change: None,
                 state_fn: Box::new(state_fn),
                 on_select: None,
-                _data: PhantomData,
             }
         }
 

@@ -7,7 +7,6 @@
 
 use kas::prelude::*;
 use kas::theme::Feature;
-use std::marker::PhantomData;
 
 impl_scope! {
     /// A progress bar
@@ -17,7 +16,6 @@ impl_scope! {
     #[widget]
     pub struct ProgressBar<A, D: Directional> {
         core: widget_core!(),
-        _data: PhantomData<A>,
         align: AlignPair,
         direction: D,
         value: f32,
@@ -47,7 +45,6 @@ impl_scope! {
         pub fn new_with_direction(value_fn: impl Fn(&A) -> f32 + 'static, direction: D) -> Self {
             ProgressBar {
                 core: Default::default(),
-                _data: PhantomData,
                 align: Default::default(),
                 direction,
                 value: 0.0,

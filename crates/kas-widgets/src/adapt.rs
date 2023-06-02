@@ -27,7 +27,6 @@ impl_scope! {
         need_update: bool,
         message_handler: Option<Box<dyn Fn(&mut EventMgr, &A, &mut S) -> bool>>,
         update_handler: Option<Box<dyn Fn(&mut ConfigMgr, &A, &mut S)>>,
-        _data: PhantomData<A>,
     }
 
     impl Self {
@@ -41,7 +40,6 @@ impl_scope! {
                 need_update: false,
                 message_handler: None,
                 update_handler: None,
-                _data: PhantomData,
             }
         }
 
