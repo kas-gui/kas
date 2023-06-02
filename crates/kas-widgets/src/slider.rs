@@ -10,7 +10,6 @@ use kas::event::Command;
 use kas::prelude::*;
 use kas::theme::Feature;
 use std::fmt::Debug;
-use std::marker::PhantomData;
 use std::ops::{Add, RangeInclusive, Sub};
 use std::time::Duration;
 
@@ -115,7 +114,6 @@ impl_scope! {
     }]
     pub struct Slider<A, T: SliderValue, D: Directional> {
         core: widget_core!(),
-        _data: PhantomData<A>,
         align: AlignPair,
         direction: D,
         // Terminology assumes vertical orientation:
@@ -174,7 +172,6 @@ impl_scope! {
             let value = *range.start();
             Slider {
                 core: Default::default(),
-                _data: PhantomData,
                 align: Default::default(),
                 direction,
                 range: range.into_inner(),

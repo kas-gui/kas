@@ -20,7 +20,7 @@ impl_scope! {
     /// Where [`Map`] allows mapping to a sub-set of input data, `Adapt` allows
     /// mapping to a super-set (including internal storage). Further, `Adapt`
     /// supports message handlers which mutate internal storage.
-    #[autoimpl(Debug ignore self.map_fn, self.on_messages, self.on_update, self._data)]
+    #[autoimpl(Debug ignore self.map_fn, self.on_messages, self.on_update)]
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[widget {
         data = A;
@@ -38,7 +38,6 @@ impl_scope! {
         map_fn: F,
         on_messages: Option<Box<dyn Fn(&mut EventCx<A>, &mut S)>>,
         on_update: Option<Box<dyn Fn(&mut ConfigCx<A>, &mut S)>>,
-        _data: PhantomData<A>,
     }
 
     impl Self {
@@ -56,7 +55,6 @@ impl_scope! {
                 map_fn,
                 on_messages: None,
                 on_update: None,
-                _data: PhantomData,
             }
         }
 

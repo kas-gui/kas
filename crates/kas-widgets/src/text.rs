@@ -9,7 +9,6 @@ use kas::prelude::*;
 use kas::text;
 use kas::text::format::FormattableText;
 use kas::theme::TextClass;
-use std::marker::PhantomData;
 
 impl_scope! {
     /// A text label (derived from data)
@@ -23,7 +22,7 @@ impl_scope! {
     ///
     /// This type is generic over the text type.
     /// See also: [`StrText`], [`StringText`], [`AccelText`].
-    #[autoimpl(Debug ignore self.label_fn, self._data)]
+    #[autoimpl(Debug ignore self.label_fn)]
     #[widget {
         data = A;
     }]
@@ -32,7 +31,6 @@ impl_scope! {
         class: TextClass,
         label: text::Text<T>,
         label_fn: Box<dyn Fn(&A) -> T>,
-        _data: PhantomData<A>,
     }
 
     impl Self {
@@ -44,7 +42,6 @@ impl_scope! {
                 class: TextClass::Label(true),
                 label: text::Text::new(T::default()),
                 label_fn: Box::new(label_fn),
-                _data: PhantomData,
             }
         }
 

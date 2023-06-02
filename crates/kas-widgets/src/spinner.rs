@@ -10,7 +10,6 @@ use kas::event::{Command, ScrollDelta};
 use kas::prelude::*;
 use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use std::cmp::Ord;
-use std::marker::PhantomData;
 use std::ops::RangeInclusive;
 
 /// Requirements on type used by [`Spinner`]
@@ -92,7 +91,6 @@ struct ValueMsg<T>(T);
 
 #[autoimpl(Debug ignore self.state_fn where T: trait)]
 struct SpinnerGuard<A, T: SpinnerValue> {
-    _data: PhantomData<A>,
     start: T,
     end: T,
     step: T,
@@ -104,7 +102,6 @@ impl<A, T: SpinnerValue> SpinnerGuard<A, T> {
     fn new(range: RangeInclusive<T>, state_fn: Box<dyn Fn(&A) -> T>) -> Self {
         let (start, end) = range.into_inner();
         SpinnerGuard {
-            _data: PhantomData,
             start,
             end,
             step: T::default_step(),
