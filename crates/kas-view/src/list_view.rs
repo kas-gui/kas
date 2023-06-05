@@ -742,7 +742,6 @@ impl_scope! {
                     // this). Either way we can select on PressEnd.
                     press.grab(self.id()).with_cx(cx)
                 }
-                Event::PressMove { .. } => Response::Used,
                 Event::PressEnd { ref press, success } if press.is_primary() => {
                     if let Some((index, ref key)) = self.press_target {
                         let w = &mut self.widgets[index];

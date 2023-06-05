@@ -155,7 +155,6 @@ impl_scope! {
                     }
                     Response::Used
                 }
-                Event::PressEnd { .. } => Response::Used,
                 Event::PopupRemoved(id) => {
                     debug_assert_eq!(Some(id), self.popup_id);
                     self.popup_id = None;
