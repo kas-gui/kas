@@ -136,7 +136,7 @@ impl_scope! {
                     move |active| *active == n,
                     move || SelectEntry(n),
                 ),
-                edit: EditBox::new(ListEntryGuard(n)),
+                edit: EditBox::new(ListEntryGuard(n)).with_text(format!("Entry #{}", n + 1)),
             }
         }
     }
