@@ -27,7 +27,7 @@ enum Control {
     IncrLen,
     Reverse,
     Select(usize, String),
-    UpdateCurrent(String),
+    Update(usize, String),
 }
 
 #[derive(Debug)]
@@ -69,9 +69,11 @@ impl MyData {
                 self.active_string = text;
                 return;
             }
-            Control::UpdateCurrent(text) => {
-                self.active_string = text.clone();
-                self.strings.insert(self.active, text);
+            Control::Update(index, text) => {
+                if index == self.active {
+                    self.active_string = text.clone();
+                }
+                self.strings.insert(index, text);
                 return;
             }
         };
@@ -91,15 +93,19 @@ struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
     type Data = Item;
 
+    fn configure(edit: &mut EditField<Self>, cx: &mut ConfigCx<Item>) {
+        // We set contents only during configure since no external process can
+        // affect contents; in other cases EditGuard::update should be used.
+        *cx |= edit.set_string(cx.data().1.clone());
+    }
+
     fn activate(edit: &mut EditField<Self>, cx: &mut EventCx<Item>) -> Response {
         cx.push(SelectEntry(edit.guard.0));
         Response::Used
     }
 
     fn edit(edit: &mut EditField<Self>, cx: &mut EventCx<Item>) {
-        if cx.data().0 == edit.guard.0 {
-            cx.push(Control::UpdateCurrent(edit.get_string()));
-        }
+        cx.push(Control::Update(edit.guard.0, edit.get_string()));
     }
 }
 

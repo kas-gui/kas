@@ -47,6 +47,25 @@ pub trait EditGuard: Debug + Sized {
     /// Data type
     type Data;
 
+    /// Configure guard
+    ///
+    /// This function is called when the attached widget is configured.
+    fn configure(edit: &mut EditField<Self>, cx: &mut ConfigCx<Self::Data>) {
+        let _ = (edit, cx);
+    }
+
+    /// Update guard
+    ///
+    /// This function is called when input data is updated.
+    ///
+    /// Note that this method may be called during editing as a result of a
+    /// message sent by [`Self::edit`] or another cause, thus usually this
+    /// method should do nothing if [`EditField::has_key_focus`]. Instead, it
+    /// may be desirable to update content on [`Self::focus_lost`].
+    fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx<Self::Data>) {
+        let _ = (edit, cx);
+    }
+
     /// Activation guard
     ///
     /// This function is called when the widget is "activated", for example by
@@ -69,8 +88,6 @@ pub trait EditGuard: Debug + Sized {
     /// Focus-lost guard
     ///
     /// This function is called when the widget loses keyboard input focus.
-    ///
-    /// The default implementation does nothing.
     fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx<Self::Data>) {
         let _ = (edit, cx);
     }
@@ -79,13 +96,6 @@ pub trait EditGuard: Debug + Sized {
     ///
     /// This function is called when contents are updated by the user.
     fn edit(edit: &mut EditField<Self>, cx: &mut EventCx<Self::Data>) {
-        let _ = (edit, cx);
-    }
-
-    /// Update guard
-    ///
-    /// This function is called when input data is updated.
-    fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx<Self::Data>) {
         let _ = (edit, cx);
     }
 }
@@ -174,6 +184,12 @@ impl_scope! {
         fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx<A>) {
             if let Some(ref msg_fn) = edit.guard.msg_fn {
                 msg_fn(cx, edit.get_str());
+            } else {
+                // Reset data on focus loss (update is inhibited with focus).
+                // We do not do this given a msg_fn since that is expected
+                // to adjust data, thus triggering update with new data.
+                let string = (edit.guard.value_fn)(cx.data());
+                *cx |= edit.set_string(string);
             }
         }
 
@@ -235,6 +251,12 @@ impl_scope! {
         fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx<A>) {
             if let Some(value) = edit.guard.parsed.take() {
                 (edit.guard.msg_fn)(cx, value);
+            } else {
+                // Reset data on focus loss (update is inhibited with focus).
+                // We do not do this given parsed value since msg_fn is expected
+                // to adjust data, thus triggering update with new data.
+                let value = (edit.guard.value_fn)(cx.data());
+                *cx |= edit.set_string(format!("{}", value));
             }
         }
 
@@ -614,6 +636,10 @@ impl_scope! {
     }
 
     impl Widget for Self {
+        fn configure(&mut self, cx: &mut ConfigCx<G::Data>) {
+            G::configure(self, cx);
+        }
+
         fn update(&mut self, cx: &mut ConfigCx<G::Data>) {
             G::update(self, cx);
         }
