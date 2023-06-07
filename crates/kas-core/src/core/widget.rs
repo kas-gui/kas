@@ -426,21 +426,19 @@ pub trait Widget: WidgetChildren {
     /// future. Changes to the scale factor result in recalculation of
     /// [`Layout::size_rules`] but not repeated configuration.
     ///
-    /// The default implementation calls [`Widget::update`] on self.
+    /// The default implementation does nothing.
     fn configure(&mut self, cx: &mut ConfigCx<Self::Data>) {
-        self.update(cx);
+        let _ = cx;
     }
 
     /// Update data
     ///
-    /// This method is called after input data is updated,
-    /// before [`Layout::draw`] is called. Typically it is either called
-    /// immediately after the data is updated or when the widget becomes
-    /// visible.
+    /// This method is called immediately after [`Self::configure`] and after
+    /// any input data is updated, before [`Layout::draw`] is called.
+    /// Typically this method is called immediately after the data is updated
+    /// but the call may be delayed until when the widget becomes visible.
     ///
-    /// This method is called from the default implementation of
-    /// [`Widget::configure`]. If your widget implements both, you may need to
-    /// call `update` from `configure` explicitly.
+    /// The default implementation does nothing.
     fn update(&mut self, cx: &mut ConfigCx<Self::Data>) {
         let _ = cx;
     }

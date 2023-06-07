@@ -628,8 +628,6 @@ impl_scope! {
             }
 
             cx.register_nav_fallback(self.id());
-
-            self.update(cx);
         }
 
         fn update(&mut self, cx: &mut ConfigCx<Self::Data>) {

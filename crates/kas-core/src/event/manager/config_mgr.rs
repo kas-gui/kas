@@ -113,6 +113,7 @@ impl<'a> ConfigMgr<'a> {
         }
 
         widget.configure(self);
+        widget.update(self);
     }
 
     /// Update a widget
