@@ -316,7 +316,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     //
     // TODO(opt): these methods cause full-window resize. They don't need to
     // resize at all if the menu is closed!
-    pub fn push<T: Into<AccelString>>(&mut self, mgr: &mut EventState, label: T, msg: M) -> usize {
+    pub fn push<T: Into<AccelString>>(&mut self, mgr: &mut ConfigMgr, label: T, msg: M) -> usize {
         let column = &mut self.popup.inner;
         column.push(mgr, MenuEntry::new(label, msg))
     }
@@ -331,7 +331,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Panics if `index > len`.
     pub fn insert<T: Into<AccelString>>(
         &mut self,
-        mgr: &mut EventState,
+        mgr: &mut ConfigMgr,
         index: usize,
         label: T,
         msg: M,
@@ -352,7 +352,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Panics if `index` is out of bounds.
     pub fn replace<T: Into<AccelString>>(
         &mut self,
-        mgr: &mut EventState,
+        mgr: &mut ConfigMgr,
         index: usize,
         label: T,
         msg: M,
