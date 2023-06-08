@@ -453,17 +453,19 @@ impl_scope! {
     impl WidgetChildren for Self {
         #[inline]
         fn num_children(&self) -> usize {
-            self.widgets.len()
+            self.cur_len.cast()
         }
         #[inline]
         fn get_child(&self, index: usize) -> Option<&dyn Widget> {
-            self.widgets.get(index).map(|w| w.widget.as_widget())
+            self.widgets.get(index).and_then(|w| {
+                w.key.is_some().then(|| w.widget.as_widget())
+            })
         }
         #[inline]
         fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
-            self.widgets
-                .get_mut(index)
-                .map(|w| w.widget.as_widget_mut())
+            self.widgets.get_mut(index).and_then(|w| {
+                w.key.is_some().then(|| w.widget.as_widget_mut())
+            })
         }
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
             let key = self.data.reconstruct_key(self.id_ref(), id);
@@ -476,6 +478,11 @@ impl_scope! {
             } else {
                 None
             }
+        }
+        #[inline]
+        fn make_child_id(&mut self, _: usize) -> WidgetId {
+            // We configure children in update_widgets and do not want this method to be called
+            WidgetId::default()
         }
     }
 

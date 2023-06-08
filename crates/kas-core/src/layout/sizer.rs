@@ -257,7 +257,9 @@ fn print_widget_heirarchy(
     write!(buf, "\n{trail}{identify:<len$} {pos:<plen$} {size:?}")?;
 
     for i in 0..widget.num_children() {
-        print_widget_heirarchy(buf, widget.get_child(i).unwrap(), indent + 1)?;
+        if let Some(w) = widget.get_child(i) {
+            print_widget_heirarchy(buf, w, indent + 1)?;
+        }
     }
     Ok(())
 }

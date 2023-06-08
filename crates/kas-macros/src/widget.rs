@@ -288,6 +288,46 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     );
                 }
                 impl_widget_children = false;
+
+                let mut num_children = None;
+                let mut get_child = None;
+                let mut get_child_mut = None;
+                let mut find_child_index = None;
+                let mut make_child_id = None;
+                for item in &impl_.items {
+                    if let ImplItem::Method(ref item) = item {
+                        if item.sig.ident == "num_children" {
+                            num_children = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "get_child" {
+                            get_child = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "get_child_mut" {
+                            get_child_mut = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "find_child_index" {
+                            find_child_index = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "make_child_id" {
+                            make_child_id = Some(item.sig.ident.clone());
+                        }
+                    }
+                }
+                if let Some(ref span) = num_children {
+                    if get_child.is_none() {
+                        emit_warning!(span, "fn num_children without fn get_child");
+                    }
+                    if get_child_mut.is_none() {
+                        emit_warning!(span, "fn num_children without fn get_child_mut");
+                    }
+                } else if let Some(ref span) = get_child {
+                    emit_warning!(span, "fn get_child without fn num_children");
+                } else if let Some(ref span) = get_child_mut {
+                    emit_warning!(span, "fn get_child_mut without fn num_children");
+                }
+                if let Some(ref span) = find_child_index {
+                    if make_child_id.is_none() {
+                        emit_warning!(span, "fn find_child_index without fn make_child_id");
+                    }
+                } else if let Some(ref span) = make_child_id {
+                    emit_warning!(span, "fn make_child_id without fn find_child_index");
+                }
             } else if *path == parse_quote! { ::kas::Layout }
                 || *path == parse_quote! { kas::Layout }
                 || *path == parse_quote! { Layout }

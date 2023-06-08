@@ -96,8 +96,10 @@ impl<'a> ConfigMgr<'a> {
 
         for index in 0..widget.num_children() {
             let id = widget.make_child_id(index);
-            if let Some(widget) = widget.get_child_mut(index) {
-                self.configure(id, widget);
+            if id.is_valid() {
+                if let Some(widget) = widget.get_child_mut(index) {
+                    self.configure(id, widget);
+                }
             }
         }
 

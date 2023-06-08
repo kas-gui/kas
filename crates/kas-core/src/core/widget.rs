@@ -74,10 +74,7 @@ pub trait WidgetChildren: WidgetCore {
     /// index.
     fn num_children(&self) -> usize;
 
-    /// Get a reference to a child widget by index, or `None` if the index is
-    /// out of bounds.
-    ///
-    /// For convenience, `Index<usize>` is implemented via this method.
+    /// Get a reference to a child widget by index, if any
     ///
     /// Required: `index < self.len()`.
     fn get_child(&self, index: usize) -> Option<&dyn Widget>;
@@ -104,6 +101,10 @@ pub trait WidgetChildren: WidgetCore {
     }
 
     /// Make an identifier for a child
+    ///
+    /// This is used to configure children. It may return [`WidgetId::default`]
+    /// in order to avoid configuring the child, but in this case the widget
+    /// must configure via another means.
     ///
     /// Default impl: `self.id_ref().make_child(index)`
     #[inline]
