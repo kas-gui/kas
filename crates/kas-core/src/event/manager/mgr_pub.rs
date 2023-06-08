@@ -5,6 +5,7 @@
 
 //! Event manager — public API
 
+use std::fmt::Debug;
 use std::future::IntoFuture;
 use std::time::{Duration, Instant};
 

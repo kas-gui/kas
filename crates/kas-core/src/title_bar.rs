@@ -117,7 +117,7 @@ enum TitleBarButton {
 
 impl_scope! {
     /// A window's title bar (part of decoration)
-    #[derive(Clone, Debug, Default)]
+    #[derive(Clone, Default)]
     #[widget{
         layout = row: [
             // self.icon,

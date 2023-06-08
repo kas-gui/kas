@@ -157,7 +157,6 @@ impl_scope! {
     /// -   Ensure that range end points are a multiple of `step`
     /// -   With floating-point types, ensure that `step` is exactly
     ///     representable, e.g. an integer or a power of 2.
-    #[autoimpl(Debug ignore self.on_change)]
     #[widget {
         layout = frame(FrameStyle::EditBox): row: [
             self.edit,

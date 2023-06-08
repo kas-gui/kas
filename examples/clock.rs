@@ -26,7 +26,7 @@ type Theme = kas::theme::FlatTheme;
 type Shell = kas::shell::DefaultShell<Theme>;
 
 impl_scope! {
-    #[derive(Clone, Debug)]
+    #[derive(Clone)]
     #[widget]
     struct Clock {
         core: widget_core!(),

@@ -42,7 +42,7 @@ impl_scope! {
     ///
     /// See also the main implementing widget: [`Stack`].
     #[impl_default]
-    #[derive(Clone, Debug)]
+    #[derive(Clone)]
     #[widget {
         layout = list(self.direction): [
             self.stack,

@@ -30,7 +30,6 @@ use kas::theme::TextClass;
 use kas_widgets::edit::{EditGuard, GuardNotify};
 use kas_widgets::{CheckBox, Label, NavFrame, RadioGroup, SliderValue, SpinnerValue};
 use std::default::Default;
-use std::fmt::Debug;
 use std::ops::RangeInclusive;
 
 /// View widget driver/binder
@@ -45,7 +44,7 @@ use std::ops::RangeInclusive;
 /// param. of `SharedData`) only to avoid "conflicting implementations" errors.
 /// Similar to: rust#20400, rust#92894. Given fixes, we may remove the param.
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, Box<T>, std::rc::Rc<T>, std::sync::Arc<T>)]
-pub trait Driver<Item, Data: SharedData<Item = Item>>: Debug {
+pub trait Driver<Item, Data: SharedData<Item = Item>> {
     /// Type of the widget used to view data
     type Widget: kas::Widget;
 

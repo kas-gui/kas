@@ -180,7 +180,6 @@ impl_scope! {
     /// A check button with label
     ///
     /// See also [`CheckBox`] which excludes the label.
-    #[autoimpl(Debug)]
     #[autoimpl(HasBool using self.inner)]
     #[derive(Clone, Default)]
     #[widget{

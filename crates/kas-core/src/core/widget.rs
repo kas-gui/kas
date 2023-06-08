@@ -5,8 +5,6 @@
 
 //! Widget traits
 
-use std::fmt;
-
 use crate::event::{ConfigMgr, Event, EventMgr, Response, Scroll};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{AxisInfo, SizeRules};
@@ -29,7 +27,7 @@ use crate::layout::{self, AlignPair, AutoLayout};
 /// **Directly implementing this trait is not supported**.
 /// See [`Widget`] trait documentation.
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait WidgetCore: Layout + fmt::Debug {
+pub trait WidgetCore: Layout {
     /// Get the widget's identifier
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
@@ -313,7 +311,6 @@ pub trait Layout {
 ///
 /// impl_scope! {
 ///     /// A text label
-///     #[derive(Clone, Debug)]
 ///     #[widget]
 ///     pub struct AccelLabel {
 ///         core: widget_core!(),
@@ -362,7 +359,6 @@ pub trait Layout {
 ///
 /// impl_scope! {
 ///     /// A push-button with a text label
-///     #[derive(Debug)]
 ///     #[widget {
 ///         layout = button: self.label;
 ///         navigable = true;

@@ -219,7 +219,6 @@ impl_scope! {
     /// A radio button with label
     ///
     /// See also [`RadioBox`] which excludes the label.
-    #[autoimpl(Debug)]
     #[autoimpl(HasBool using self.inner)]
     #[derive(Clone)]
     #[widget{

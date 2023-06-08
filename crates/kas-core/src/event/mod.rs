@@ -66,7 +66,6 @@ mod update;
 pub mod components;
 
 use smallvec::SmallVec;
-use std::fmt::Debug;
 
 #[cfg(feature = "winit")]
 pub use winit::event::{ModifiersState, MouseButton, VirtualKeyCode};

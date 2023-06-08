@@ -70,7 +70,6 @@ fn widgets() -> Box<dyn SetDisabled> {
         }
     };
 
-    #[derive(Debug)]
     struct Guard;
     impl EditGuard for Guard {
         fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
@@ -94,7 +93,6 @@ fn widgets() -> Box<dyn SetDisabled> {
                 TextButton::new_msg("&Edit", MsgEdit),
             ];
         }]
-        #[derive(Debug)]
         struct {
             core: widget_core!(),
             #[widget] label: SingleView<SharedRc<String>> =
@@ -137,7 +135,6 @@ fn widgets() -> Box<dyn SetDisabled> {
                 row: ["Child window", self.pu],
             ];
         }]
-        #[derive(Debug)]
         struct {
             core: widget_core!(),
             #[widget] sl = ScrollLabel::new(text),
@@ -210,7 +207,6 @@ fn editor() -> Box<dyn SetDisabled> {
     #[derive(Clone, Debug)]
     struct MsgDirection;
 
-    #[derive(Debug)]
     struct Guard;
     impl EditGuard for Guard {
         fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
@@ -245,7 +241,6 @@ Demonstration of *as-you-type* formatting from **Markdown**.
                 list(self.dir): [self.editor, non_navigable: self.label],
             ];
         }]
-        #[derive(Debug)]
         struct {
             core: widget_core!(),
             dir: Direction = Direction::Up,
@@ -317,7 +312,6 @@ fn filter_list() -> Box<dyn SetDisabled> {
                 self.list,
             ];
         }]
-        #[derive(Debug)]
         struct {
             core: widget_core!(),
             #[widget] r0 = RadioButton::new_msg("&n&one", r.clone(), SelectionMode::None).with_state(true),
@@ -426,7 +420,6 @@ fn canvas() -> Box<dyn SetDisabled> {
                 self.canvas,
             ];
         }]
-        #[derive(Debug)]
         struct {
             core: widget_core!(),
             #[widget] canvas = Canvas::new(Program(Instant::now())),
@@ -461,7 +454,6 @@ KAS_CONFIG_MODE=readwrite
                 self.view,
             ];
         }]
-        #[derive(Debug)]
         struct {
             core: widget_core!(),
             #[widget] view: SingleView<SharedRc<Config>, driver::EventConfig> =
@@ -544,7 +536,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 self.stack,
             ];
         }]
-        #[derive(Debug)]
         struct {
             core: widget_core!(),
             #[widget] menubar = menubar,

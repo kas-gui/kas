@@ -16,7 +16,6 @@ impl_scope! {
     ///
     /// This widget houses a sequence of menu buttons, allowing input actions across
     /// menus.
-    #[autoimpl(Debug where D: trait)]
     #[widget]
     pub struct MenuBar<D: Directional = kas::dir::Right> {
         core: widget_core!(),

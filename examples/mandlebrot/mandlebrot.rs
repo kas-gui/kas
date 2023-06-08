@@ -285,7 +285,6 @@ impl PipeWindow {
 struct ViewUpdate;
 
 impl_scope! {
-    #[derive(Clone, Debug)]
     #[widget]
     struct Mandlebrot {
         core: widget_core!(),
@@ -423,7 +422,6 @@ impl_scope! {
 }
 
 impl_scope! {
-    #[derive(Debug)]
     #[widget{
         layout = grid: {
             1, 0: self.label;

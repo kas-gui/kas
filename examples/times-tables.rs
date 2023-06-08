@@ -74,7 +74,6 @@ fn main() -> kas::shell::Result<()> {
                 align(right): self.table,
             ];
         }]
-        #[derive(Debug)]
         struct {
             core: widget_core!(),
             #[widget] max: impl Widget + HasString = EditBox::new("12")

@@ -24,7 +24,6 @@ use std::borrow::Cow;
 impl_scope! {
     /// A simple window around a widget
     #[autoimpl(Clone where W: Clone)]
-    #[autoimpl(Debug ignore self.icon)]
     #[widget(layout = self.inner;)]
     pub struct Window<W: Widget> {
         core: widget_core!(),
@@ -80,7 +79,7 @@ struct MessageBoxOk;
 
 impl_scope! {
     /// A simple message box.
-    #[derive(Clone, Debug)]
+    #[derive(Clone)]
     #[widget{
         layout = column: [self.label, self.button];
     }]
@@ -139,7 +138,6 @@ impl_scope! {
 struct MsgClose(bool);
 
 impl_scope! {
-    #[derive(Debug)]
     #[widget{
         layout = grid: {
             0..3, 0: self.edit;

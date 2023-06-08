@@ -21,7 +21,6 @@ impl_scope! {
             ],
         ];
     }]
-    #[derive(Debug)]
     struct Counter {
         core: widget_core!(),
         #[widget]

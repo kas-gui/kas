@@ -17,7 +17,6 @@ impl_scope! {
     /// A push-button with a generic label
     ///
     /// Default alignment of content is centered.
-    #[autoimpl(Debug ignore self.on_press)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone)]
     #[widget {
@@ -140,7 +139,6 @@ impl_scope! {
     /// [`AccelString`] label and using a custom text class (and thus theme colour).
     ///
     /// Default alignment of content is centered.
-    #[autoimpl(Debug ignore self.on_press)]
     #[derive(Clone)]
     #[widget {
         layout = button(self.color): self.label;

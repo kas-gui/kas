@@ -27,7 +27,6 @@ impl_scope! {
     /// If no selection handler exists, then the choice's message is emitted
     /// when selected. If a handler is specified via [`Self::on_select`], then
     /// this message is passed to the handler and not emitted.
-    #[autoimpl(Debug ignore self.on_select)]
     #[impl_default]
     #[derive(Clone)]
     #[widget {
@@ -368,7 +367,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
 
 impl_scope! {
     #[autoimpl(Default)]
-    #[derive(Clone, Debug)]
+    #[derive(Clone)]
     #[widget{
         layout = self.inner;
     }]

@@ -53,7 +53,7 @@ enum EditAction {
 /// -   `GuardAFL`: calls a closure on `activate` and `focus_lost`
 /// -   `GuardEdit`: calls a closure on `edit`
 /// -   `GuardUpdate`: calls a closure on `update`
-pub trait EditGuard: Debug + Sized + 'static {
+pub trait EditGuard: Sized + 'static {
     /// Activation guard
     ///
     /// This function is called when the widget is "activated", for example by

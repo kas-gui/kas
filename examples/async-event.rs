@@ -43,7 +43,6 @@ fn main() -> kas::shell::Result<()> {
 }
 
 impl_scope! {
-    #[derive(Debug)]
     #[widget]
     struct ColourSquare {
         core: widget_core!(),

@@ -197,7 +197,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 let name = format!("_{name}CoreTy");
                 let core_type = Ident::new(&name, Span::call_site());
                 scope.generated.push(quote! {
-                    #[derive(Debug)]
                     struct #core_type {
                         rect: ::kas::geom::Rect,
                         id: ::kas::WidgetId,

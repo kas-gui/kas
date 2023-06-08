@@ -20,7 +20,7 @@ impl_scope! {
     /// [`Select`]: kas::message::Select
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
-    #[derive(Clone, Debug, Default)]
+    #[derive(Clone, Default)]
     #[widget{
         navigable = true;
         layout = frame(kas::theme::FrameStyle::NavFocus): self.inner;

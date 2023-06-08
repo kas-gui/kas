@@ -104,7 +104,6 @@ impl_scope! {
 
 impl_scope! {
     /// A menu entry which can be toggled
-    #[autoimpl(Debug)]
     #[autoimpl(HasBool using self.checkbox)]
     #[derive(Clone, Default)]
     #[widget {

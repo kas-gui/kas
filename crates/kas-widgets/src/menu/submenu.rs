@@ -15,7 +15,6 @@ use kas::WindowId;
 
 impl_scope! {
     /// A sub-menu
-    #[autoimpl(Debug where D: trait)]
     #[widget {
         layout = self.label;
     }]
@@ -255,7 +254,6 @@ const fn menu_view_row_info(row: u32) -> layout::GridChildInfo {
 
 impl_scope! {
     /// A menu view
-    #[autoimpl(Debug)]
     #[widget]
     struct MenuView<W: Menu> {
         core: widget_core!(),

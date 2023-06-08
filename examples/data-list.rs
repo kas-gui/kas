@@ -40,7 +40,6 @@ enum Button {
 
 // TODO: it would be nicer to use EditBox::new(..).on_edit(..), but that produces
 // an object with unnamable type, which is a problem.
-#[derive(Clone, Debug)]
 struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
     fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
@@ -55,7 +54,6 @@ impl EditGuard for ListEntryGuard {
 
 impl_scope! {
     // The list entry
-    #[derive(Clone, Debug)]
     #[widget{
         layout = column: [
             row: [self.label, self.radio],
@@ -102,7 +100,6 @@ fn main() -> kas::shell::Result<()> {
                 TextButton::new_msg("↓↑", Control::Reverse),
             ];
         }]
-        #[derive(Debug)]
         struct {
             core: widget_core!(),
             #[widget] edit: EditBox<impl EditGuard> = EditBox::new("3")
@@ -153,7 +150,6 @@ fn main() -> kas::shell::Result<()> {
                 self.list,
             ];
         }]
-        #[derive(Debug)]
         struct {
             core: widget_core!(),
             #[widget] controls = controls,

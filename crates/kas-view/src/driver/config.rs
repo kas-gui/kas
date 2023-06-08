@@ -46,7 +46,6 @@ impl_scope! {
             0, 11: "Restore default values:"; 1..3, 11: TextButton::new_msg("&Reset", Msg::Reset);
         };
     }]
-    #[derive(Debug)]
     pub struct EventConfigWidget {
         core: widget_core!(),
         #[widget]

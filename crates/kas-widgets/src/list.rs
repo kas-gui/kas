@@ -65,7 +65,6 @@ impl_scope! {
     /// called when a child pushes a message. This allows associating the
     /// child's index with a message.
     #[autoimpl(Clone where W: Clone)]
-    #[autoimpl(Debug ignore self.on_message)]
     #[autoimpl(Default where D: Default)]
     #[widget {
         layout = slice(self.direction) 'layout: self.widgets;
