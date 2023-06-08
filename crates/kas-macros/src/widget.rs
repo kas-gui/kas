@@ -545,16 +545,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 self.#inner.handle_event(mgr, event)
             }
         });
-        let handle_unused = quote! {
-            #[inline]
-            fn handle_unused(
-                &mut self,
-                mgr: &mut ::kas::event::EventMgr,
-                event: ::kas::event::Event,
-            ) -> ::kas::event::Response {
-                self.#inner.handle_unused(mgr, event)
-            }
-        };
         let handle_message = quote! {
             #[inline]
             fn handle_message(&mut self, mgr: &mut ::kas::event::EventMgr) {
@@ -574,7 +564,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         widget_methods = vec![
             ("configure", configure),
             ("translation", translation),
-            ("handle_unused", handle_unused),
             ("handle_message", handle_message),
             ("handle_scroll", handle_scroll),
         ];

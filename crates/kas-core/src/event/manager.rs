@@ -652,7 +652,7 @@ impl<'a> EventMgr<'a> {
             }
 
             if response.is_unused() && event.is_reusable() {
-                response = widget.handle_unused(self, event);
+                response = widget.handle_event(self, event);
             }
         }
 

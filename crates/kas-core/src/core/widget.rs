@@ -209,7 +209,7 @@ pub trait Layout {
     /// handling by the target, and potentially also event handling by other
     /// widgets (e.g. a `Label` widget will not handle touch events, but if it
     /// is contained by a `ScrollRegion`, that widget may capture these via
-    /// [`Widget::handle_unused`] to implement touch scrolling).
+    /// [`Widget::handle_event`] to implement touch scrolling).
     ///
     /// The result is usually the widget which draws at the given `coord`, but
     /// does not have to be. For example, a `Button` widget will return its own
@@ -488,9 +488,18 @@ pub trait Widget: WidgetChildren {
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn pre_handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response;
 
-    /// Handle an [`Event`] sent to this widget
+    /// Handle an [`Event`]
     ///
     /// This is the primary event handler (see [documentation](crate::event)).
+    ///
+    /// This method is called on the primary event target. In this case,
+    /// [`EventMgr::last_child`] returns `None`.
+    ///
+    /// This method may also be called on ancestors during unwinding (if the
+    /// event remains [unused](Response::Unused) and the event
+    /// [is reusable](Event::is_reusable)). In this case,
+    /// [`EventMgr::last_child`] returns `Some(index)` with the index of the
+    /// child being unwound from.
     ///
     /// Default implementation of `handle_event`: do nothing; return
     /// [`Response::Unused`].
@@ -521,19 +530,6 @@ pub trait Widget: WidgetChildren {
     fn steal_event(&mut self, mgr: &mut EventMgr, id: &WidgetId, event: &Event) -> Response {
         let _ = (mgr, id, event);
         Response::Unused
-    }
-
-    /// Handle an event sent to child `index` but left unhandled
-    ///
-    /// This is an optional event handler (see [documentation](crate::event)).
-    ///
-    /// [`EventMgr::last_child`] may be called to find the original target,
-    /// and should never return [`None`] (when called from this method).
-    ///
-    /// Default implementation: call [`Self::handle_event`] with `event`.
-    #[inline]
-    fn handle_unused(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
-        self.handle_event(mgr, event)
     }
 
     /// Handler for messages from children/descendants

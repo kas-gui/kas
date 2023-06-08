@@ -160,8 +160,8 @@ pub enum Event {
     ///
     /// When [`EventMgr::update_all`] is called, this event is broadcast to all
     /// widgets via depth-first traversal of the widget tree. As such,
-    /// [`Widget::steal_event`] and [`Widget::handle_unused`] are not called
-    /// with this `Event`, nor are [`Widget::handle_message`] or
+    /// [`Widget::steal_event`] is not called with this `Event`,
+    /// nor are [`Widget::handle_message`] or
     /// [`Widget::handle_scroll`] called after a widget receives this `Event`.
     Update { id: UpdateId, payload: u64 },
     /// Notification that a popup has been destroyed
@@ -272,7 +272,7 @@ impl Event {
         }
     }
 
-    /// Can the event be received by [`Widget::handle_unused`]?
+    /// Can the event be received by [`Widget::handle_event`] during unwinding?
     ///
     /// Events which may be sent to the widget under the mouse or to the
     /// keyboard navigation target may be acted on by an ancestor if unused.

@@ -749,6 +749,9 @@ impl_scope! {
                     };
                 }
                 Event::PressStart { ref press } if press.is_primary() && mgr.config().mouse_nav_focus() => {
+                    if let Some(index) = mgr.last_child() {
+                        self.press_target = self.widgets[index].key.clone().map(|k| (index, k));
+                    }
                     if let Some((index, ref key)) = self.press_target {
                         let w = &mut self.widgets[index];
                         if w.key.as_ref().map(|k| k == key).unwrap_or(false) {
@@ -784,16 +787,6 @@ impl_scope! {
                 mgr.config_mgr(|mgr| self.update_widgets(mgr));
             }
             response | sber_response
-        }
-
-        fn handle_unused(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
-            if matches!(&event, Event::PressStart { .. }) {
-                if let Some(index) = mgr.last_child() {
-                    self.press_target = self.widgets[index].key.clone().map(|k| (index, k));
-                }
-            }
-
-            self.handle_event(mgr, event)
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr) {

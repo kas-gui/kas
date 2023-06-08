@@ -19,8 +19,8 @@
 //!     from mouse/touch coordinates by calling [`find_id`](crate::Layout::find_id).
 //! 2.  If the target is [disabled](EventState::is_disabled), then find the
 //!     top-most ancestor which is disabled and make that the target, but
-//!     inhibit calling of [`Widget::handle_event`] (thus
-//!     [`Widget::handle_unused`] is still called on all non-disabled ancestors).
+//!     inhibit calling of [`Widget::handle_event`] on this widget (but still
+//!     unwind, calling [`Widget::handle_event`] on ancestors)).
 //! 3.  Traverse *down* the widget tree from its root to the target according to
 //!     the [`WidgetId`]. On each node (excluding the target),
 //!
@@ -36,7 +36,7 @@
 //!     -   If a non-empty scroll action is [set](EventMgr::set_scroll),
 //!         call [`Widget::handle_scroll`]
 //!     -   If the event has not yet been [used](Response::Used),
-//!         call [`Widget::handle_unused`]
+//!         call [`Widget::handle_event`]
 //!     -   If the message stack is non-empty (see [`EventMgr::push`]),
 //!         call [`Widget::handle_message`].
 //! 7.  Clear any messages still on the message stack, printing a warning to the
