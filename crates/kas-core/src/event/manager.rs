@@ -617,31 +617,26 @@ impl<'a> EventMgr<'a> {
         if id == widget.id_ref() {
             if event == Event::NavFocus(true) {
                 self.set_scroll(Scroll::Rect(widget.rect()));
-                response = Response::Used;
             }
 
-            if !disabled {
-                response |= widget.pre_handle_event(self, event);
-
-                if self.has_msg() {
-                    widget.handle_message(self);
-                }
-            }
-
-            return response;
-        } else {
-            response = widget.steal_event(self, &id, &event);
-            if self.has_msg() {
-                widget.handle_message(self);
-            }
-            if response.is_used() {
+            if disabled {
                 return response;
-            } else if self.scroll != Scroll::None || !self.messages.is_empty() {
-                panic!("steal_event affected EventMgr and returned Unused");
             }
-        }
 
-        if let Some(index) = widget.find_child_index(&id) {
+            response |= widget.pre_handle_event(self, event);
+        } else if widget.steal_event(self, &id, &event).is_used() {
+            response = Response::Used;
+        } else if self.scroll != Scroll::None || !self.messages.is_empty() {
+            panic!("steal_event affected EventMgr and returned Unused");
+        } else {
+            let Some(index) = widget.find_child_index(&id) else {
+                log::warn!(
+                    "send_recurse: Widget {} cannot find path to {id}",
+                    widget.identify()
+                );
+                return response;
+            };
+
             let translation = widget.translation();
             if let Some(w) = widget.get_child_mut(index) {
                 response = self.send_recurse(w, id, disabled, event.clone() + translation);
@@ -656,17 +651,13 @@ impl<'a> EventMgr<'a> {
                 );
             }
 
-            if matches!(response, Response::Unused) {
+            if response.is_unused() && event.is_reusable() {
                 response = widget.handle_unused(self, event);
             }
-            if self.has_msg() {
-                widget.handle_message(self);
-            }
-        } else {
-            log::warn!(
-                "send_recurse: Widget {} cannot find path to {id}",
-                widget.identify()
-            );
+        }
+
+        if self.has_msg() {
+            widget.handle_message(self);
         }
 
         response

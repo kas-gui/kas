@@ -271,6 +271,26 @@ impl Event {
             LostNavFocus | LostMouseHover | LostCharFocus | LostSelFocus => true,
         }
     }
+
+    /// Can the event be received by [`Widget::handle_unused`]?
+    ///
+    /// Events which may be sent to the widget under the mouse or to the
+    /// keyboard navigation target may be acted on by an ancestor if unused.
+    /// Other events may not be; e.g. [`Event::PressMove`] and
+    /// [`Event::PressEnd`] are only received by the widget requesting them
+    /// while [`Event::LostCharFocus`] (and similar events) are only sent to a
+    /// specific widget.
+    pub fn is_reusable(&self) -> bool {
+        use Event::*;
+        match self {
+            None => false,
+            Command(_) | ReceivedCharacter(_) | Scroll(_) | Pan { .. } | PressStart { .. } => true,
+            PressMove { .. } | PressEnd { .. } => false,
+            TimerUpdate(_) | Update { .. } | PopupRemoved(_) => false,
+            NavFocus(_) | MouseHover | LostNavFocus | LostMouseHover => false,
+            LostCharFocus | LostSelFocus => false,
+        }
+    }
 }
 
 /// Command input ([`Event::Command`])
