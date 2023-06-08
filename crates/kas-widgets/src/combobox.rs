@@ -123,7 +123,7 @@ impl_scope! {
                         Response::Unused
                     }
                 }
-                Event::PressMove { press, .. } => {
+                Event::CursorMove { press } | Event::PressMove { press, .. } => {
                     if self.popup_id.is_none() {
                         open_popup(self, mgr, false);
                     }

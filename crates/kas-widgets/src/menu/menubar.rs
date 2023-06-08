@@ -164,7 +164,7 @@ impl_scope! {
                         Response::Unused
                     }
                 }
-                Event::PressMove { press, .. } => {
+                Event::CursorMove { press } | Event::PressMove { press, .. } => {
                     mgr.set_grab_depress(*press, press.id.clone());
 
                     let id = match press.id {

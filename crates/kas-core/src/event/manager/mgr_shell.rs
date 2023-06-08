@@ -419,7 +419,7 @@ impl<'a> EventMgr<'a> {
                         id: cur_id,
                         coord,
                     };
-                    let event = Event::PressMove { press, delta };
+                    let event = Event::CursorMove { press };
                     self.send_event(widget, id, event);
                 } else {
                     // We don't forward move events without a grab

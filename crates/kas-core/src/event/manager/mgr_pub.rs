@@ -705,7 +705,7 @@ impl<'a> EventMgr<'a> {
     /// drawn in an existing window.
     ///
     /// The parent of a popup automatically receives mouse-motion events
-    /// ([`Event::PressMove`]) which may be used to navigate menus.
+    /// ([`Event::CursorMove`]) which may be used to navigate menus.
     /// The parent automatically receives the "depressed" visual state.
     ///
     /// It is recommended to call [`EventState::set_nav_focus`] or

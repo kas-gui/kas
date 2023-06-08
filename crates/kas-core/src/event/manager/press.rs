@@ -24,7 +24,7 @@ pub enum PressSource {
     ///
     /// For `PressMove` and `PressEnd` events delivered with a mouse-grab,
     /// both arguments are copied from the initiating `PressStart` event.
-    /// For a `PressMove` delivered without a grab (only possible with pop-ups)
+    /// For `CursorMove` delivered without a grab (only possible with pop-ups)
     /// a fake `button` value is used and `repeats == 0`.
     Mouse(MouseButton, u32),
     /// A touch event (with given `id`)
@@ -62,7 +62,7 @@ impl PressSource {
     /// The `repetitions` value
     ///
     /// This is 1 for a single-click and all touch events, 2 for a double-click,
-    /// 3 for a triple-click, etc. For `PressMove` without a grab this is 0.
+    /// 3 for a triple-click, etc. For `CursorMove` without a grab this is 0.
     #[inline]
     pub fn repetitions(self) -> u32 {
         match self {
