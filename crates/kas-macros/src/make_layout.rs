@@ -368,16 +368,16 @@ impl Layout {
             Ok(Layout::Button(stor, Box::new(layout), color))
         } else if lookahead.peek(kw::column) {
             let _: kw::column = input.parse()?;
+            let _: Token![!] = input.parse()?;
             let dir = Direction::Down;
             let stor = gen.parse_or_next(input)?;
-            let _: Token![:] = input.parse()?;
             let list = parse_layout_list(input, gen)?;
             Ok(Layout::List(stor, dir, list))
         } else if lookahead.peek(kw::row) {
             let _: kw::row = input.parse()?;
+            let _: Token![!] = input.parse()?;
             let dir = Direction::Right;
             let stor = gen.parse_or_next(input)?;
-            let _: Token![:] = input.parse()?;
             let list = parse_layout_list(input, gen)?;
             Ok(Layout::List(stor, dir, list))
         } else if lookahead.peek(kw::list) {
@@ -391,20 +391,20 @@ impl Layout {
             Ok(Layout::List(stor, dir, list))
         } else if lookahead.peek(kw::float) {
             let _: kw::float = input.parse()?;
-            let _: Token![:] = input.parse()?;
+            let _: Token![!] = input.parse()?;
             let list = parse_layout_list(input, gen)?;
             Ok(Layout::Float(list))
         } else if lookahead.peek(kw::aligned_column) {
             let _: kw::aligned_column = input.parse()?;
+            let _: Token![!] = input.parse()?;
             let stor = gen.parse_or_next(input)?;
-            let _: Token![:] = input.parse()?;
             Ok(parse_grid_as_list_of_lists::<kw::row>(
                 stor, input, gen, true,
             )?)
         } else if lookahead.peek(kw::aligned_row) {
             let _: kw::aligned_row = input.parse()?;
+            let _: Token![!] = input.parse()?;
             let stor = gen.parse_or_next(input)?;
-            let _: Token![:] = input.parse()?;
             Ok(parse_grid_as_list_of_lists::<kw::column>(
                 stor, input, gen, false,
             )?)
@@ -544,7 +544,7 @@ fn parse_grid_as_list_of_lists<KW: Parse>(
 
     while !inner.is_empty() {
         let _ = inner.parse::<KW>()?;
-        let _ = inner.parse::<Token![:]>()?;
+        let _ = inner.parse::<Token![!]>()?;
 
         let inner2;
         let _ = bracketed!(inner2 in inner);

@@ -22,7 +22,7 @@ struct MsgStart;
 fn make_window() -> Box<dyn kas::Window> {
     Box::new(kas::singleton! {
         #[widget{
-            layout = row: [
+            layout = row! [
                 self.display,
                 TextButton::new_msg("&reset", MsgReset),
                 TextButton::new_msg("&start / &stop", MsgStart),

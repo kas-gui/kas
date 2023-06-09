@@ -56,7 +56,7 @@ impl_scope! {
 impl_scope! {
     #[impl_default]
     #[widget{
-        layout = column: [
+        layout = column! [
             self.display,
             Buttons::default(),
         ];

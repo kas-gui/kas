@@ -80,7 +80,7 @@ struct MessageBoxOk;
 impl_scope! {
     /// A simple message box.
     #[widget{
-        layout = column: [self.label, self.button];
+        layout = column! [self.label, self.button];
     }]
     pub struct MessageBox<T: FormattableText + 'static> {
         core: widget_core!(),

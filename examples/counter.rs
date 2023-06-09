@@ -13,9 +13,9 @@ struct Increment(i32);
 
 impl_scope! {
     #[widget{
-        layout = column: [
+        layout = column! [
             align(center): self.display,
-            row: [
+            row! [
                 TextButton::new_msg("−", Increment(-1)),
                 TextButton::new_msg("+", Increment(1)),
             ],

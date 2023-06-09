@@ -59,8 +59,8 @@ fn main() -> kas::shell::Result<()> {
 
     let window = singleton! {
         #[widget{
-            layout = column: [
-                row: ["From 1 to", self.max],
+            layout = column! [
+                row! ["From 1 to", self.max],
                 align(right): self.table,
             ];
         }]

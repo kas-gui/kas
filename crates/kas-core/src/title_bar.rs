@@ -119,7 +119,7 @@ impl_scope! {
     /// A window's title bar (part of decoration)
     #[derive(Clone, Default)]
     #[widget{
-        layout = row: [
+        layout = row! [
             // self.icon,
             self.title,
             MarkButton::new(MarkStyle::Point(Direction::Down), TitleBarButton::Minimize),
