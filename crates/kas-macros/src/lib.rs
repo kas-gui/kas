@@ -257,7 +257,8 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; The name of a struct field or an index into a tuple struct.
 /// >
 /// > _Direction_ :\
-/// > &nbsp;&nbsp; `left` | `right` | `up` | `down` | _Expr_
+/// > &nbsp;&nbsp; `left` | `right` | `up` | `down` | _Expr_:\
+/// > &nbsp;&nbsp; Note that an _Expr_ must start with `self`
 /// >
 /// > _Storage_ :\
 /// > &nbsp;&nbsp; `'` _Ident_\
@@ -337,10 +338,11 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// Example:
 /// ```
+/// # use kas_macros as kas;
 /// use std::fmt;
 /// fn main() {
 ///     let world = "world";
-///     let says_hello_world = kas_macros::singleton! {
+///     let says_hello_world = kas::singleton! {
 ///         struct(&'static str = world);
 ///         impl fmt::Display for Self {
 ///             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -427,8 +429,8 @@ impl ExpandLayout for make_layout::Tree {
 ///
 /// # Example
 ///
-/// ```
-/// let my_widget = column! [
+/// ```ignore
+/// let my_widget = kas::column! [
 ///     "one",
 ///     "two",
 /// ];
@@ -445,8 +447,8 @@ pub fn column(input: TokenStream) -> TokenStream {
 ///
 /// # Example
 ///
-/// ```
-/// let my_widget = row! ["one", "two"];
+/// ```ignore
+/// let my_widget = kas::row! ["one", "two"];
 /// ```
 #[proc_macro_error]
 #[proc_macro]
@@ -464,9 +466,18 @@ pub fn row(input: TokenStream) -> TokenStream {
 ///
 /// # Example
 ///
+/// ```ignore
+/// let my_widget = kas::list!(left, ["one", "two"]);
 /// ```
-/// let my_widget = list!(kas::Direction::Left, ["one", "two"]);
-/// ```
+///
+/// # Syntax
+///
+/// > _List_ :\
+/// > &nbsp;&nbsp; `list!` `(` _Direction_ `,` `[` ( _Layout_ `,` )* ( _Layout_ `,`? )? `]` `}`
+/// >
+/// > _Direction_ :\
+/// > &nbsp;&nbsp; `left` | `right` | `up` | `down`
+
 #[proc_macro_error]
 #[proc_macro]
 pub fn list(input: TokenStream) -> TokenStream {
@@ -490,8 +501,8 @@ pub fn list(input: TokenStream) -> TokenStream {
 ///
 /// # Example
 ///
-/// ```
-/// let my_widget = float! [
+/// ```ignore
+/// let my_widget = kas::float! [
 ///     pack!(left top, "one"),
 ///     pack!(right bottom, "two"),
 ///     "some text\nin the\nbackground"
@@ -520,8 +531,8 @@ pub fn float(input: TokenStream) -> TokenStream {
 ///
 /// # Example
 ///
-/// ```
-/// let my_widget = grid! {
+/// ```ignore
+/// let my_widget = kas::grid! {
 ///     (0, 0) => "top left",
 ///     (1, 0) => "top right",
 ///     (0..2, 1) => "bottom row (merged)",
@@ -554,8 +565,8 @@ pub fn grid(input: TokenStream) -> TokenStream {
 ///
 /// # Example
 ///
-/// ```
-/// let my_widget = aligned_column! [
+/// ```ignore
+/// let my_widget = kas::aligned_column! [
 ///     row!["one", "two"],
 ///     row!["three", "four"],
 /// ];
@@ -572,10 +583,10 @@ pub fn aligned_column(input: TokenStream) -> TokenStream {
 ///
 /// # Example
 ///
-/// ```
-/// let my_widget = aligned_row! [
-///     row!["one", "two"],
-///     row!["three", "four"],
+/// ```ignore
+/// let my_widget = kas::aligned_row! [
+///     column!["one", "two"],
+///     column!["three", "four"],
 /// ];
 /// ```
 #[proc_macro_error]
@@ -594,9 +605,9 @@ pub fn aligned_row(input: TokenStream) -> TokenStream {
 ///
 /// # Example
 ///
-/// ```
-/// let a = align!(right, "132");
-/// let b = align!(left top, "abc");
+/// ```ignore
+/// let a = kas::align!(right, "132");
+/// let b = kas::align!(left top, "abc");
 /// ```
 #[proc_macro_error]
 #[proc_macro]
@@ -615,8 +626,8 @@ pub fn align(input: TokenStream) -> TokenStream {
 ///
 /// # Example
 ///
-/// ```
-/// let my_widget = pack!(right top, "132");
+/// ```ignore
+/// let my_widget = kas::pack!(right top, "132");
 /// ```
 #[proc_macro_error]
 #[proc_macro]
@@ -631,8 +642,8 @@ pub fn pack(input: TokenStream) -> TokenStream {
 /// # Example
 ///
 /// ```ignore
-/// let a = margins!(1.0 em, "abc");
-/// let b = margins!(vert = none, "abc");
+/// let a = kas::margins!(1.0 em, "abc");
+/// let b = kas::margins!(vert = none, "abc");
 /// ```
 ///
 /// # Syntax
