@@ -238,11 +238,11 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; `button!` _Storage_? `(` _Layout_ ( `,` `color` `=` _Expr_ )? `)`\
 /// > &nbsp;&nbsp; Adds a button frame (optionally with color _Expr_) around content.
 /// >
-/// > _Widget_ :\
+/// > _WidgetConstructor_ :\
 /// > &nbsp;&nbsp; _Expr_\
 /// > &nbsp;&nbsp; An expression yielding a widget, e.g. `Label::new("Hello world")`. The result must be an object of some type `W: Widget`.
 /// >
-/// > _Label_ :\
+/// > _LabelLit_ :\
 /// > &nbsp;&nbsp; _StrLit_\
 /// > &nbsp;&nbsp; A string literal generates a label widget, e.g. "Hello world". This is an internal type without text wrapping.
 /// >
@@ -258,24 +258,6 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// >
 /// > _Direction_ :\
 /// > &nbsp;&nbsp; `left` | `right` | `up` | `down` | _Expr_
-/// >
-/// > _MarginDirection_ :\
-/// > &nbsp;&nbsp; `horiz` | `horizontal` | `vert` | `vertical` | `left` | `right` | `top` | `bottom`\
-/// > &nbsp;&nbsp; Restricts margin replacement to this axis / side.
-/// >
-/// > _MarginSpec_ :\
-/// > &nbsp;&nbsp; ( _LitFloat_ `px` ) | ( _LitFloat_ `em` ) | `none` | `inner` | `tiny` | `small` | `large` | `text`\
-/// > &nbsp;&nbsp; Margin size in pixels (scaled) or Em (font unit) or a set size (see `MarginStyle`).
-/// >
-/// > _GridCell_ :\
-/// > &nbsp;&nbsp; `(` _CellRange_ `,` _CellRange_ `)` `=>` ( _Layout_ | `{` _Layout_ `}` )\
-/// > &nbsp;&nbsp; Cells are specified using `match`-like syntax from `(col_spec, row_spec)` to a layout, e.g.: `(1, 0) => self.foo`. Spans are specified via range syntax, e.g. `(0..2, 1) => self.bar`.
-/// >
-/// > _CellRange_ :\
-/// > &nbsp;&nbsp; _LitInt_ ( `..` `+`? _LitInt_ )?
-/// >
-/// > _AlignType_ :\
-/// > &nbsp;&nbsp; `default` | `center` | `stretch` | `top` | `bottom` | `left` | `right`
 /// >
 /// > _Storage_ :\
 /// > &nbsp;&nbsp; `'` _Ident_\
@@ -315,18 +297,6 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// ```
 ///
 /// A simple row layout: `layout = row! [self.a, self.b];`
-///
-/// Grid cells are defined by `row, column` ranges, where the ranges are either
-/// a half-open range or a single number (who's end is implicitly `start + 1`).
-///
-/// ```ignore
-/// layout = grid! {
-///     (0..2, 0) => self.merged_title,
-///     (0, 1) => self.a,
-///     (1, 1) => self.b,
-///     (1, 2) => self.c,
-/// };
-/// ```
 ///
 /// ## Derive
 ///
@@ -486,7 +456,7 @@ pub fn row(input: TokenStream) -> TokenStream {
 
 /// Make a list widget
 ///
-/// This is a more generic variant of [`column`] and [`row`].
+/// This is a more generic variant of [`column!`] and [`row!`].
 ///
 /// Children are navigated in visual order.
 ///
@@ -508,7 +478,7 @@ pub fn list(input: TokenStream) -> TokenStream {
 /// All children occupy the same space with the first child on top.
 ///
 /// Size is determined as the maximum required by any child for each axis.
-/// All children are assigned this size. It is usually necessary to use [`pack`]
+/// All children are assigned this size. It is usually necessary to use [`pack!`]
 /// or a similar mechanism to constrain a child to avoid it hiding the content
 /// underneath (note that even if an unconstrained child does not *visually*
 /// hide everything beneath, it may still "occupy" the assigned area, preventing
@@ -541,7 +511,7 @@ pub fn float(input: TokenStream) -> TokenStream {
 /// A child may be stretched across multiple cells using range-like syntax:
 /// `3..5`, `3..=4` and `3..+2` are all equivalent.
 ///
-/// Behaviour of overlapping widgets is identical to [`float`]: the first
+/// Behaviour of overlapping widgets is identical to [`float!`]: the first
 /// declared item is on top.
 ///
 /// Children are navigated in order of declaration.
@@ -557,6 +527,21 @@ pub fn float(input: TokenStream) -> TokenStream {
 ///     (0..2, 1) => "bottom row (merged)",
 /// };
 /// ```
+///
+/// # Syntax
+///
+/// > _Grid_ :\
+/// > &nbsp;&nbsp; `grid!` `{` _GridCell_* `}`
+/// >
+/// > _GridCell_ :\
+/// > &nbsp;&nbsp; `(` _CellRange_ `,` _CellRange_ `)` `=>` ( _Layout_ | `{` _Layout_ `}` )
+/// >
+/// > _CellRange_ :\
+/// > &nbsp;&nbsp; _LitInt_ ( `..` `+`? _LitInt_ )?
+///
+/// Cells are specified using `match`-like syntax from `(col_spec, row_spec)` to
+/// a layout, e.g.: `(1, 0) => self.foo`. Spans are specified via range syntax,
+/// e.g. `(0..2, 1) => self.bar`.
 #[proc_macro_error]
 #[proc_macro]
 pub fn grid(input: TokenStream) -> TokenStream {
@@ -643,14 +628,10 @@ pub fn pack(input: TokenStream) -> TokenStream {
 ///
 /// This is a small wrapper which adjusts the margins of its contents.
 ///
-/// The alignment specifier may be one or two keywords (space-separated,
-/// horizontal component first): `default`, `center`, `stretch`, `left`,
-/// `right`, `top`, `bottom`.
-///
 /// # Example
 ///
-/// ```
-/// let a = margins!(1em, "abc");
+/// ```ignore
+/// let a = margins!(1.0 em, "abc");
 /// let b = margins!(vert = none, "abc");
 /// ```
 ///
