@@ -131,7 +131,7 @@ impl Tree {
             .storage_fields(&mut layout_children)
             .unwrap_or_default();
 
-        let core_impl = widget::impl_core(&impl_generics, &impl_target, &widget_name, &core_path);
+        let core_impl = widget::impl_core(&impl_generics, &impl_target, widget_name, &core_path);
         let children_impl = widget::impl_widget_children(
             &impl_generics,
             &impl_target,
@@ -224,7 +224,7 @@ impl Tree {
         let stor = gen.next();
         let dir: Direction = inner.parse()?;
         let _: Token![,] = inner.parse()?;
-        let list = parse_layout_list(&inner, &mut gen)?;
+        let list = parse_layout_list(inner, &mut gen)?;
         Ok(Tree(Layout::List(stor, dir, list)))
     }
 
@@ -247,13 +247,13 @@ impl Tree {
     pub fn align(inner: ParseStream) -> Result<Self> {
         let mut gen = NameGenerator::default();
 
-        let align = parse_align(&inner)?;
+        let align = parse_align(inner)?;
         let _: Token![,] = inner.parse()?;
 
         Ok(Tree(if inner.peek(Token![self]) {
             Layout::AlignSingle(inner.parse()?, align)
         } else {
-            let layout = Layout::parse(&inner, &mut gen)?;
+            let layout = Layout::parse(inner, &mut gen)?;
             Layout::Align(Box::new(layout), align)
         }))
     }
@@ -263,10 +263,10 @@ impl Tree {
         let mut gen = NameGenerator::default();
         let stor = gen.next();
 
-        let align = parse_align(&inner)?;
+        let align = parse_align(inner)?;
         let _: Token![,] = inner.parse()?;
 
-        let layout = Layout::parse(&inner, &mut gen)?;
+        let layout = Layout::parse(inner, &mut gen)?;
         Ok(Tree(Layout::Pack(stor, Box::new(layout), align)))
     }
 
@@ -535,15 +535,14 @@ impl Layout {
             let _ = parenthesized!(inner in input);
             let layout = Layout::parse(&inner, gen)?;
 
-            let style: Expr;
-            if !inner.is_empty() {
+            let style: Expr = if !inner.is_empty() {
                 let _: Token![,] = inner.parse()?;
                 let _: kw::style = inner.parse()?;
                 let _: Token![=] = inner.parse()?;
-                style = inner.parse()?;
+                inner.parse()?
             } else {
-                style = syn::parse_quote! { ::kas::theme::FrameStyle::Frame };
-            }
+                syn::parse_quote! { ::kas::theme::FrameStyle::Frame }
+            };
 
             Ok(Layout::Frame(stor, Box::new(layout), style))
         } else if lookahead.peek(kw::button) {
@@ -555,15 +554,14 @@ impl Layout {
             let _ = parenthesized!(inner in input);
             let layout = Layout::parse(&inner, gen)?;
 
-            let color: Expr;
-            if !inner.is_empty() {
+            let color: Expr = if !inner.is_empty() {
                 let _: Token![,] = inner.parse()?;
                 let _: kw::color = inner.parse()?;
                 let _: Token![=] = inner.parse()?;
-                color = inner.parse()?;
+                inner.parse()?
             } else {
-                color = syn::parse_quote! { None };
-            }
+                syn::parse_quote! { None }
+            };
 
             Ok(Layout::Button(stor, Box::new(layout), color))
         } else if lookahead.peek(kw::column) {
@@ -704,7 +702,7 @@ impl Layout {
         };
 
         let _ = inner.parse::<Token![,]>()?;
-        let layout = Layout::parse(&inner, gen)?;
+        let layout = Layout::parse(inner, gen)?;
 
         Ok(Layout::Margins(Box::new(layout), dirs, margins))
     }
@@ -747,9 +745,9 @@ impl Align {
 }
 
 fn parse_align(inner: ParseStream) -> Result<AlignHints> {
-    if let Some(first) = Align::parse(&inner, true)? {
+    if let Some(first) = Align::parse(inner, true)? {
         let second = if !inner.is_empty() && !inner.peek(Token![,]) {
-            Align::parse(&inner, false)?.unwrap()
+            Align::parse(inner, false)?.unwrap()
         } else if matches!(first, Align::TL | Align::BR) {
             Align::None
         } else {
@@ -759,7 +757,7 @@ fn parse_align(inner: ParseStream) -> Result<AlignHints> {
     }
 
     let first = Align::None;
-    let second = Align::parse(&inner, false)?.unwrap();
+    let second = Align::parse(inner, false)?.unwrap();
     Ok(AlignHints(first, second))
 }
 
@@ -772,7 +770,7 @@ fn parse_layout_list(input: ParseStream, gen: &mut NameGenerator) -> Result<Vec<
 fn parse_layout_items(inner: ParseStream, gen: &mut NameGenerator) -> Result<Vec<Layout>> {
     let mut list = vec![];
     while !inner.is_empty() {
-        list.push(Layout::parse(&inner, gen)?);
+        list.push(Layout::parse(inner, gen)?);
 
         if inner.is_empty() {
             break;
@@ -840,7 +838,7 @@ fn parse_grid(stor: StorIdent, inner: ParseStream, gen: &mut NameGenerator) -> R
     let mut dim = GridDimensions::default();
     let mut cells = vec![];
     while !inner.is_empty() {
-        let info = parse_cell_info(&inner)?;
+        let info = parse_cell_info(inner)?;
         dim.update(&info);
         let _: Token![=>] = inner.parse()?;
 
@@ -852,7 +850,7 @@ fn parse_grid(stor: StorIdent, inner: ParseStream, gen: &mut NameGenerator) -> R
             layout = Layout::parse(&inner2, gen)?;
             require_comma = false;
         } else {
-            layout = Layout::parse(&inner, gen)?;
+            layout = Layout::parse(inner, gen)?;
             require_comma = true;
         }
         cells.push((info, layout));
