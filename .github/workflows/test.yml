@@ -68,6 +68,7 @@ jobs:
           -A clippy::module-inception \
           -A clippy::too-many-arguments \
           -A clippy::comparison_chain \
+          -A clippy::redundant_pattern_matching \
           -A clippy::unit_arg
 
   test:
@@ -120,4 +121,5 @@ jobs:
           -A clippy::module-inception \
           -A clippy::too-many-arguments \
           -A clippy::comparison_chain \
+          -A clippy::redundant_pattern_matching \
           -A clippy::unit_arg

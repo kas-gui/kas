@@ -217,60 +217,37 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// implementation of `Widget::nav_next`, with a couple of exceptions
 /// (where macro-time analysis is insufficient to implement this method).
 ///
+/// > [_Column_](macro@column), [_Row_](macro@row), [_List_](macro@list), [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_](macro@float), [_Align_](macro@align), [_Pack_](macro@pack), [_Margins_](macro@margins) :\
+/// > &nbsp;&nbsp; These stand-alone macros are explicitly supported in this position.\
+/// > &nbsp;&nbsp; Optionally, a _Storage_ specifier is supported immediately after the macro name, e.g.\
+/// > &nbsp;&nbsp; `column! 'storage_name ["one", "two"]`
+///
 /// > _Single_ :\
 /// > &nbsp;&nbsp; `self` `.` _Member_\
 /// > &nbsp;&nbsp; A named child: `self.foo` (more precisely, this matches any expression starting `self`, and uses `&mut (#expr)`)
 /// >
-/// > _List_ :\
-/// > &nbsp;&nbsp; ( `column` | `row` | `list` `(` _Direction_ `)` ) _Storage_? `:` `[` ( _Layout_ `,`? ) * `]`\
-/// > &nbsp;&nbsp; A list of children, e.g. `row: ["Foo", self.foo]` or `list(up): ..` or `list(self.direction()): ..`
-/// >
-/// > _AlignedList_ :\
-/// > &nbsp;&nbsp; ( `aligned_column` | `aligned_row` ) _Storage_? `:` `[` ( _Layout_ `,`? ) * `]`\
-/// > &nbsp;&nbsp; Inner component must be `row` or `column`, e.g.: `aligned_column: [row: ["One", "Two"], row: ["Three", "Four"]]`. This is syntactic sugar for a grid layout.
-/// >
 /// > _Slice_ :\
-/// > &nbsp;&nbsp; `slice` `(` _Direction_ `)` _Storage_? `:` `self` `.` _Member_\
+/// > &nbsp;&nbsp; `slice!` _Storage_? `(` _Direction_ `,` `self` `.` _Member_ `)`\
 /// > &nbsp;&nbsp; A field with type `[W]` for some `W: Widget`
 /// >
-/// > _Grid_ :\
-/// > &nbsp;&nbsp; `grid` _Storage_? `:` `{` _GridCell_* `}`\
-/// > &nbsp;&nbsp; A two-dimensional layout, supporting cell spans, defined via a list of cells (see _GridCell_ below).
-///
-/// > _Float_ :\
-/// > &nbsp;&nbsp; `float` `:` `[` ( _Layout_ `,`? ) * `]`\
-/// > &nbsp;&nbsp; A stack of overlapping elements, top-most first.
-///
-/// > _Align_ :\
-/// > &nbsp;&nbsp; `align` `(` _AlignType_ ( `,` _AlignType_ )? `)` `:` _Layout_\
-/// > &nbsp;&nbsp; Applies some alignment to a sub-layout, e.g. `align(top): self.foo`. Two-dimensional alignment is possible but must be horizontal first, e.g. `align(left, top): ..`. Note: this does not constrain the size of the widget but merely adjusts content alignment; see also _Pack_.
-/// >
-/// > _Pack_ :\
-/// > &nbsp;&nbsp; `pack` `(` _AlignType_ ( `,` _AlignType_ )? `)` _Storage_? `:` _Layout_\
-/// > &nbsp;&nbsp; As `align`, this applies some alignment to content, but also restricts the size of that content to its ideal size (i.e. no stretching).
-/// >
 /// > _Frame_ :\
-/// > &nbsp;&nbsp; `frame` ( `(` _Expr_ `)` )? _Storage_? `:` _Layout_\
+/// > &nbsp;&nbsp; `frame!` _Storage_? `(` _Layout_ ( `,` `style` `=` _Expr_ )? `)`\
 /// > &nbsp;&nbsp; Adds a frame of type _Expr_ around content, defaulting to `FrameStyle::Frame`.
 /// >
 /// > _Button_ :\
-/// > &nbsp;&nbsp; `button` ( `(` _Expr_ `)` )? _Storage_? `:` _Layout_\
+/// > &nbsp;&nbsp; `button!` _Storage_? `(` _Layout_ ( `,` `color` `=` _Expr_ )? `)`\
 /// > &nbsp;&nbsp; Adds a button frame (optionally with color _Expr_) around content.
 /// >
-/// > _Widget_ :\
-/// > &nbsp;&nbsp; _ExprStartingUpperCase_\
-/// > &nbsp;&nbsp; An expression yielding a widget, e.g. `Label::new("Hello world")`. The result must be an object of some type `W: Widget`. Since the expression must start with an upper case letter it is necessary to bring the type into scope first, e.g. `use kas::widget::Label;`.
+/// > _WidgetConstructor_ :\
+/// > &nbsp;&nbsp; _Expr_\
+/// > &nbsp;&nbsp; An expression yielding a widget, e.g. `Label::new("Hello world")`. The result must be an object of some type `W: Widget`.
 /// >
-/// > _Label_ :\
+/// > _LabelLit_ :\
 /// > &nbsp;&nbsp; _StrLit_\
 /// > &nbsp;&nbsp; A string literal generates a label widget, e.g. "Hello world". This is an internal type without text wrapping.
 /// >
-/// > _Margins:\
-/// > &nbsp;&nbsp; `margins` `(` ( _MarginDirection_ `=` )? _MarginSpec_ `)` `:` _Layout_\
-/// > &nbsp;&nbsp; Replaces margins of a layout item.
-/// >
 /// > _NonNavigable_ :\
-/// > &nbsp;&nbsp; `non_navigable` `:` _Layout_ \
+/// > &nbsp;&nbsp; `non_navigable!` `(` _Layout_ `)` \
 /// > &nbsp;&nbsp; Does not affect layout. Specifies that the content is excluded from tab-navigation order.
 ///
 /// Additional syntax rules (not layout items):
@@ -280,25 +257,8 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; The name of a struct field or an index into a tuple struct.
 /// >
 /// > _Direction_ :\
-/// > &nbsp;&nbsp; `left` | `right` | `up` | `down` | _Expr_
-/// >
-/// > _MarginDirection_ :\
-/// > &nbsp;&nbsp; `horiz` | `horizontal` | `vert` | `vertical` | `left` | `right` | `top` | `bottom`\
-/// > &nbsp;&nbsp; Restricts margin replacement to this axis / side.
-/// >
-/// > _MarginSpec_ :\
-/// > &nbsp;&nbsp; ( _LitFloat_ `px` ) | ( _LitFloat_ `em` ) | `none` | `inner` | `tiny` | `small` | `large` | `text`\
-/// > &nbsp;&nbsp; Margin size in pixels (scaled) or Em (font unit) or a set size (see `MarginStyle`).
-/// >
-/// > _GridCell_ :\
-/// > &nbsp;&nbsp; _CellRange_ `,` _CellRange_ `:` _Layout_\
-/// > &nbsp;&nbsp; Cell location in the order `(col, row)`, e.g.: `1, 0: self.foo`. Spans are specified via range syntax, e.g. `0..2, 1: self.bar`.
-/// >
-/// > _CellRange_ :\
-/// > &nbsp;&nbsp; _LitInt_ ( `..` `+`? _LitInt_ )?
-/// >
-/// > _AlignType_ :\
-/// > &nbsp;&nbsp; `default` | `center` | `stretch` | `top` | `bottom` | `left` | `right`
+/// > &nbsp;&nbsp; `left` | `right` | `up` | `down` | _Expr_:\
+/// > &nbsp;&nbsp; Note that an _Expr_ must start with `self`
 /// >
 /// > _Storage_ :\
 /// > &nbsp;&nbsp; `'` _Ident_\
@@ -316,7 +276,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///     #[autoimpl(class_traits using self.inner where W: trait)]
 ///     #[derive(Clone, Default)]
 ///     #[widget{
-///         layout = frame(kas::theme::FrameStyle::Frame): self.inner;
+///         layout = frame!(self.inner, style = kas::theme::FrameStyle::Frame);
 ///     }]
 ///     pub struct Frame<W: Widget> {
 ///         core: widget_core!(),
@@ -337,19 +297,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
-/// A simple row layout: `layout = row: [self.a, self.b];`
-///
-/// Grid cells are defined by `row, column` ranges, where the ranges are either
-/// a half-open range or a single number (who's end is implicitly `start + 1`).
-///
-/// ```ignore
-/// layout = grid: {
-///     0..2, 0: self.merged_title;
-///     0, 1: self.a;
-///     1, 1: self.b;
-///     1, 2: self.c;
-/// };
-/// ```
+/// A simple row layout: `layout = row! [self.a, self.b];`
 ///
 /// ## Derive
 ///
@@ -390,10 +338,11 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// Example:
 /// ```
+/// # use kas_macros as kas;
 /// use std::fmt;
 /// fn main() {
 ///     let world = "world";
-///     let says_hello_world = kas_macros::singleton! {
+///     let says_hello_world = kas::singleton! {
 ///         struct(&'static str = world);
 ///         impl fmt::Display for Self {
 ///             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -457,6 +406,274 @@ pub fn widget_index(input: TokenStream) -> TokenStream {
     let input2 = input.clone();
     let _ = parse_macro_input!(input2 as widget_index::BaseInput);
     input
+}
+
+trait ExpandLayout {
+    fn expand_layout(self, name: &str) -> TokenStream;
+}
+impl ExpandLayout for make_layout::Tree {
+    fn expand_layout(self, name: &str) -> TokenStream {
+        match self.expand_as_widget(name) {
+            Ok(toks) => toks.into(),
+            Err(err) => {
+                emit_call_site_error!(err);
+                TokenStream::default()
+            }
+        }
+    }
+}
+
+/// Make a column widget
+///
+/// Items support [widget layout syntax](macro@widget#layout-1).
+///
+/// # Example
+///
+/// ```ignore
+/// let my_widget = kas::column! [
+///     "one",
+///     "two",
+/// ];
+/// ```
+#[proc_macro_error]
+#[proc_macro]
+pub fn column(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input with make_layout::Tree::column).expand_layout("_Column")
+}
+
+/// Make a row widget
+///
+/// Items support [widget layout syntax](macro@widget#layout-1).
+///
+/// # Example
+///
+/// ```ignore
+/// let my_widget = kas::row! ["one", "two"];
+/// ```
+#[proc_macro_error]
+#[proc_macro]
+pub fn row(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input with make_layout::Tree::row).expand_layout("_Row")
+}
+
+/// Make a list widget
+///
+/// This is a more generic variant of [`column!`] and [`row!`].
+///
+/// Children are navigated in visual order.
+///
+/// Items support [widget layout syntax](macro@widget#layout-1).
+///
+/// # Example
+///
+/// ```ignore
+/// let my_widget = kas::list!(left, ["one", "two"]);
+/// ```
+///
+/// # Syntax
+///
+/// > _List_ :\
+/// > &nbsp;&nbsp; `list!` `(` _Direction_ `,` `[` ( _Layout_ `,` )* ( _Layout_ `,`? )? `]` `}`
+/// >
+/// > _Direction_ :\
+/// > &nbsp;&nbsp; `left` | `right` | `up` | `down`
+
+#[proc_macro_error]
+#[proc_macro]
+pub fn list(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input with make_layout::Tree::list).expand_layout("_List")
+}
+
+/// Make a float widget
+///
+/// All children occupy the same space with the first child on top.
+///
+/// Size is determined as the maximum required by any child for each axis.
+/// All children are assigned this size. It is usually necessary to use [`pack!`]
+/// or a similar mechanism to constrain a child to avoid it hiding the content
+/// underneath (note that even if an unconstrained child does not *visually*
+/// hide everything beneath, it may still "occupy" the assigned area, preventing
+/// mouse clicks from reaching the widget beneath).
+///
+/// Children are navigated in order of declaration.
+///
+/// Items support [widget layout syntax](macro@widget#layout-1).
+///
+/// # Example
+///
+/// ```ignore
+/// let my_widget = kas::float! [
+///     pack!(left top, "one"),
+///     pack!(right bottom, "two"),
+///     "some text\nin the\nbackground"
+/// ];
+/// ```
+#[proc_macro_error]
+#[proc_macro]
+pub fn float(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input with make_layout::Tree::float).expand_layout("_Float")
+}
+
+/// Make a grid widget
+///
+/// Constructs a table with auto-determined number of rows and columns.
+/// Each child is assigned a cell using match-like syntax.
+///
+/// A child may be stretched across multiple cells using range-like syntax:
+/// `3..5`, `3..=4` and `3..+2` are all equivalent.
+///
+/// Behaviour of overlapping widgets is identical to [`float!`]: the first
+/// declared item is on top.
+///
+/// Children are navigated in order of declaration.
+///
+/// Items support [widget layout syntax](macro@widget#layout-1).
+///
+/// # Example
+///
+/// ```ignore
+/// let my_widget = kas::grid! {
+///     (0, 0) => "top left",
+///     (1, 0) => "top right",
+///     (0..2, 1) => "bottom row (merged)",
+/// };
+/// ```
+///
+/// # Syntax
+///
+/// > _Grid_ :\
+/// > &nbsp;&nbsp; `grid!` `{` _GridCell_* `}`
+/// >
+/// > _GridCell_ :\
+/// > &nbsp;&nbsp; `(` _CellRange_ `,` _CellRange_ `)` `=>` ( _Layout_ | `{` _Layout_ `}` )
+/// >
+/// > _CellRange_ :\
+/// > &nbsp;&nbsp; _LitInt_ ( `..` `+`? _LitInt_ )?
+///
+/// Cells are specified using `match`-like syntax from `(col_spec, row_spec)` to
+/// a layout, e.g.: `(1, 0) => self.foo`. Spans are specified via range syntax,
+/// e.g. `(0..2, 1) => self.bar`.
+#[proc_macro_error]
+#[proc_macro]
+pub fn grid(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input with make_layout::Tree::grid).expand_layout("_Grid")
+}
+
+/// Make an aligned column widget
+///
+/// Items support [widget layout syntax](macro@widget#layout-1).
+///
+/// # Example
+///
+/// ```ignore
+/// let my_widget = kas::aligned_column! [
+///     row!["one", "two"],
+///     row!["three", "four"],
+/// ];
+/// ```
+#[proc_macro_error]
+#[proc_macro]
+pub fn aligned_column(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input with make_layout::Tree::aligned_column).expand_layout("_AlignedColumn")
+}
+
+/// Make an aligned row widget
+///
+/// Items support [widget layout syntax](macro@widget#layout-1).
+///
+/// # Example
+///
+/// ```ignore
+/// let my_widget = kas::aligned_row! [
+///     column!["one", "two"],
+///     column!["three", "four"],
+/// ];
+/// ```
+#[proc_macro_error]
+#[proc_macro]
+pub fn aligned_row(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input with make_layout::Tree::aligned_row).expand_layout("_AlignedRow")
+}
+
+/// Make an align widget
+///
+/// This is a small wrapper which adjusts the alignment of its contents.
+///
+/// The alignment specifier may be one or two keywords (space-separated,
+/// horizontal component first): `default`, `center`, `stretch`, `left`,
+/// `right`, `top`, `bottom`.
+///
+/// # Example
+///
+/// ```ignore
+/// let a = kas::align!(right, "132");
+/// let b = kas::align!(left top, "abc");
+/// ```
+#[proc_macro_error]
+#[proc_macro]
+pub fn align(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input with make_layout::Tree::align).expand_layout("_Align")
+}
+
+/// Make a pack widget
+///
+/// This is a small wrapper which adjusts the alignment of its contents and
+/// prevents its contents from stretching.
+///
+/// The alignment specifier may be one or two keywords (space-separated,
+/// horizontal component first): `default`, `center`, `stretch`, `left`,
+/// `right`, `top`, `bottom`.
+///
+/// # Example
+///
+/// ```ignore
+/// let my_widget = kas::pack!(right top, "132");
+/// ```
+#[proc_macro_error]
+#[proc_macro]
+pub fn pack(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input with make_layout::Tree::pack).expand_layout("_Pack")
+}
+
+/// Make a margin-adjustment widget wrapper
+///
+/// This is a small wrapper which adjusts the margins of its contents.
+///
+/// # Example
+///
+/// ```ignore
+/// let a = kas::margins!(1.0 em, "abc");
+/// let b = kas::margins!(vert = none, "abc");
+/// ```
+///
+/// # Syntax
+///
+/// The macro takes one of two forms:
+///
+/// > _Margins_:\
+/// > &nbsp;&nbsp; `margins!` `(` _MarginSpec_ `,` _Layout_ `)`\
+/// > &nbsp;&nbsp; `margins!` `(` _MarginDirection_ `=` _MarginSpec_ `,` _Layout_ `)`\
+/// >
+/// > _MarginDirection_ :\
+/// > &nbsp;&nbsp; `horiz` | `horizontal` | `vert` | `vertical` | `left` | `right` | `top` | `bottom`
+/// >
+/// > _MarginSpec_ :\
+/// > &nbsp;&nbsp; ( _LitFloat_ `px` ) | ( _LitFloat_ `em` ) | `none` | `inner` | `tiny` | `small` | `large` | `text`
+///
+/// | _MarginSpec_ | Description (guide size; theme-specified sizes may vary and may not scale linearly) |
+/// | --- | --- |
+/// | `none` | No margin (`0px`) |
+/// | `inner` | A very tiny theme-specified margin sometimes used to draw selection outlines (`1px`) |
+/// | `tiny` | A very small theme-specified margin (`2px`) |
+/// | `small` | A small theme-specified margin (`4px`) |
+/// | `large`| A large theme-specified margin (`7px`) |
+/// | `text` | Text-specific margins; often asymmetric |
+/// | _LitFloat_ `em` (e.g. `1.2 em`) | Using the typographic unit Em (`1Em` is the text height, excluding ascender and descender) |
+/// | _LitFloat_ `px` (e.g. `5.0 px`) | Using virtual pixels (affected by the scale factor) |
+#[proc_macro_error]
+#[proc_macro]
+pub fn margins(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input with make_layout::Tree::margins).expand_layout("_Margins")
 }
 
 /// A trait implementation is an extension over some base

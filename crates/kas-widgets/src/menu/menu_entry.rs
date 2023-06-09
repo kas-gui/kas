@@ -107,7 +107,7 @@ impl_scope! {
     #[autoimpl(HasBool using self.checkbox)]
     #[derive(Default)]
     #[widget {
-        layout = row: [self.checkbox, self.label];
+        layout = row! [self.checkbox, self.label];
     }]
     pub struct MenuToggle {
         core: widget_core!(),

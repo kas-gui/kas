@@ -55,8 +55,8 @@ impl EditGuard for ListEntryGuard {
 impl_scope! {
     // The list entry
     #[widget{
-        layout = column: [
-            row: [self.label, self.radio],
+        layout = column! [
+            row! [self.label, self.radio],
             self.edit,
         ];
     }]
@@ -91,7 +91,7 @@ fn main() -> kas::shell::Result<()> {
 
     let controls = singleton! {
         #[widget{
-            layout = row: [
+            layout = row! [
                 "Number of rows:",
                 self.edit,
                 TextButton::new_msg("Set", Button::Set),
@@ -141,7 +141,7 @@ fn main() -> kas::shell::Result<()> {
 
     let window = singleton! {
         #[widget{
-            layout = column: [
+            layout = column! [
                 "Demonstration of dynamic widget creation / deletion",
                 self.controls,
                 "Contents of selected entry:",

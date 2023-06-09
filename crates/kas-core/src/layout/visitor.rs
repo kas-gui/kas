@@ -177,7 +177,7 @@ impl<'a> Visitor<'a> {
     /// Construct a grid layout over an iterator of `(cell, layout)` items
     pub fn grid<I, S>(iter: I, dim: GridDimensions, data: &'a mut S) -> Self
     where
-        I: Iterator<Item = (GridChildInfo, Visitor<'a>)> + 'a,
+        I: DoubleEndedIterator<Item = (GridChildInfo, Visitor<'a>)> + 'a,
         S: GridStorage,
     {
         let layout = LayoutType::BoxComponent(Box::new(Grid {
@@ -457,7 +457,7 @@ struct Grid<'a, S, I> {
 
 impl<'a, S: GridStorage, I> Layout for Grid<'a, S, I>
 where
-    I: Iterator<Item = (GridChildInfo, Visitor<'a>)>,
+    I: DoubleEndedIterator<Item = (GridChildInfo, Visitor<'a>)>,
 {
     fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, self.data);
@@ -480,7 +480,7 @@ where
     }
 
     fn draw(&mut self, mut draw: DrawMgr) {
-        for (_, child) in &mut self.children {
+        for (_, child) in (&mut self.children).rev() {
             child.draw(draw.re_clone());
         }
     }

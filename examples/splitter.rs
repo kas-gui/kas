@@ -23,8 +23,8 @@ fn main() -> kas::shell::Result<()> {
 
     let window = kas::singleton! {
         #[widget{
-            layout = column: [
-                row: [
+            layout = column! [
+                row! [
                     TextButton::new_msg("−", Message::Decr),
                     TextButton::new_msg("+", Message::Incr),
                 ],
