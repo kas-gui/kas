@@ -5,6 +5,7 @@
 
 //! Event manager — public API
 
+use std::fmt::Debug;
 use std::future::IntoFuture;
 use std::time::{Duration, Instant};
 
@@ -186,7 +187,7 @@ impl EventState {
     /// Widget updates may be used for animation and timed responses. See also
     /// [`Draw::animate`](crate::draw::Draw::animate) for animation.
     ///
-    /// Widget `w_id` will receive [`Event::TimerUpdate`] with this `payload` at
+    /// Widget `id` will receive [`Event::TimerUpdate`] with this `payload` at
     /// approximately `time = now + delay` (or possibly a little later due to
     /// frame-rate limiters and processing time).
     ///
@@ -195,7 +196,13 @@ impl EventState {
     ///
     /// If multiple updates with the same `id` and `payload` are requested,
     /// these are merged (using the earliest time if `first` is true).
-    pub fn request_update(&mut self, id: WidgetId, payload: u64, delay: Duration, first: bool) {
+    pub fn request_timer_update(
+        &mut self,
+        id: WidgetId,
+        payload: u64,
+        delay: Duration,
+        first: bool,
+    ) {
         let time = Instant::now() + delay;
         if let Some(row) = self
             .time_updates
@@ -209,7 +216,7 @@ impl EventState {
             row.0 = time;
             log::trace!(
                 target: "kas_core::event::manager",
-                "request_update: update {id} at now+{}ms",
+                "request_timer_update: update {id} at now+{}ms",
                 delay.as_millis()
             );
         } else {
@@ -551,9 +558,15 @@ impl EventState {
         self.push_async(id, async_global_executor::spawn(fut.into_future()));
     }
 
-    /// Request configure of the given path
-    pub fn request_configure(&mut self, id: WidgetId) {
-        self.pending_configures.push(id);
+    /// Request re-configure widget `id`
+    ///
+    /// This method requires that `id` is a valid path to an already-configured
+    /// widget. E.g. if widget `w` adds a new child, it may call
+    /// `request_reconfigure(self.id())` but not
+    /// `request_reconfigure(child_id)` (which would cause a panic:
+    /// `'WidgetId::next_key_after: invalid'`).
+    pub fn request_reconfigure(&mut self, id: WidgetId) {
+        self.pending.push_back(Pending::Configure(id));
     }
 
     /// Request set_rect of the given path
@@ -692,7 +705,7 @@ impl<'a> EventMgr<'a> {
     /// drawn in an existing window.
     ///
     /// The parent of a popup automatically receives mouse-motion events
-    /// ([`Event::PressMove`]) which may be used to navigate menus.
+    /// ([`Event::CursorMove`]) which may be used to navigate menus.
     /// The parent automatically receives the "depressed" visual state.
     ///
     /// It is recommended to call [`EventState::set_nav_focus`] or

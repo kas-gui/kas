@@ -103,6 +103,15 @@ pub enum Event {
         /// Translation component
         delta: DVec2,
     },
+    /// Movement of mouse cursor without press
+    ///
+    /// This event is sent only when:
+    ///
+    /// 1.  No [`Press::grab`] is active
+    /// 2.  When a pop-up layer is active ([`EventMgr::add_popup`]), the owner
+    ///     of the top-most layer will receive this event. If the event is not
+    ///     used, then the pop-up will be closed and the event sent again.
+    CursorMove { press: Press },
     /// A mouse button was pressed or touch event started
     ///
     /// Call [`Press::grab`] in order to "grab" corresponding motion
@@ -121,13 +130,8 @@ pub enum Event {
     PressStart { press: Press },
     /// Movement of mouse or a touch press
     ///
-    /// This event is sent in exactly two cases, in this order:
-    ///
-    /// 1.  Given a grab ([`Press::grab`]), motion events for the
-    ///     grabbed mouse pointer or touched finger will be sent.
-    /// 2.  When a pop-up layer is active ([`EventMgr::add_popup`]), the owner
-    ///     of the top-most layer will receive this event. If the event is not
-    ///     used, then the pop-up will be closed and the event sent again.
+    /// This event is only sent when a ([`Press::grab`]) is active.
+    /// Motion events for the grabbed mouse pointer or touched finger are sent.
     ///
     /// If `cur_id` is `None`, no widget was found at the coordinate (either
     /// outside the window or [`crate::Layout::find_id`] failed).
@@ -141,10 +145,9 @@ pub enum Event {
     /// when cancelling: the panned item or slider should be released as is, or
     /// the menu should remain open.
     ///
-    /// This event is sent in exactly one case:
-    ///
-    /// 1.  Given a grab ([`Press::grab`]), release/cancel events
-    ///     for the same mouse button or touched finger will be sent.
+    /// This event is only sent when a ([`Press::grab`]) is active.
+    /// Release/cancel events for the same mouse button or touched finger are
+    /// sent.
     ///
     /// If `cur_id` is `None`, no widget was found at the coordinate (either
     /// outside the window or [`crate::Layout::find_id`] failed).
@@ -152,16 +155,16 @@ pub enum Event {
     /// Update from a timer
     ///
     /// This event is received after requesting timed wake-up(s)
-    /// (see [`EventState::request_update`]).
+    /// (see [`EventState::request_timer_update`]).
     ///
-    /// The `u64` payload is copied from [`EventState::request_update`].
+    /// The `u64` payload is copied from [`EventState::request_timer_update`].
     TimerUpdate(u64),
     /// Update triggerred via an [`UpdateId`]
     ///
     /// When [`EventMgr::update_all`] is called, this event is broadcast to all
     /// widgets via depth-first traversal of the widget tree. As such,
-    /// [`Widget::steal_event`] and [`Widget::handle_unused`] are not called
-    /// with this `Event`, nor are [`Widget::handle_message`] or
+    /// [`Widget::steal_event`] is not called with this `Event`,
+    /// nor are [`Widget::handle_message`] or
     /// [`Widget::handle_scroll`] called after a widget receives this `Event`.
     Update { id: UpdateId, payload: u64 },
     /// Notification that a popup has been destroyed
@@ -214,6 +217,9 @@ impl std::ops::Add<Offset> for Event {
 impl std::ops::AddAssign<Offset> for Event {
     fn add_assign(&mut self, offset: Offset) {
         match self {
+            Event::CursorMove { ref mut press } => {
+                press.coord += offset;
+            }
             Event::PressStart { ref mut press, .. } => {
                 press.coord += offset;
             }
@@ -265,10 +271,31 @@ impl Event {
         match self {
             None | Command(_) => false,
             ReceivedCharacter(_) | Scroll(_) | Pan { .. } => false,
-            PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
+            CursorMove { .. } | PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | Update { .. } | PopupRemoved(_) => true,
             NavFocus(_) | MouseHover => false,
             LostNavFocus | LostMouseHover | LostCharFocus | LostSelFocus => true,
+        }
+    }
+
+    /// Can the event be received by [`Widget::handle_event`] during unwinding?
+    ///
+    /// Events which may be sent to the widget under the mouse or to the
+    /// keyboard navigation target may be acted on by an ancestor if unused.
+    /// Other events may not be; e.g. [`Event::PressMove`] and
+    /// [`Event::PressEnd`] are only received by the widget requesting them
+    /// while [`Event::LostCharFocus`] (and similar events) are only sent to a
+    /// specific widget.
+    pub fn is_reusable(&self) -> bool {
+        use Event::*;
+        match self {
+            None => false,
+            Command(_) | ReceivedCharacter(_) | Scroll(_) | Pan { .. } => true,
+            CursorMove { .. } | PressStart { .. } => true,
+            PressMove { .. } | PressEnd { .. } => false,
+            TimerUpdate(_) | Update { .. } | PopupRemoved(_) => false,
+            NavFocus(_) | MouseHover | LostNavFocus | LostMouseHover => false,
+            LostCharFocus | LostSelFocus => false,
         }
     }
 }
@@ -435,6 +462,8 @@ pub enum Command {
     Rename,
     /// Refresh
     Refresh,
+    /// Debug
+    Debug,
     /// Spell-check tool
     Spelling,
     /// Open the menu / activate the menubar

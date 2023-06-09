@@ -197,7 +197,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 let name = format!("_{name}CoreTy");
                 let core_type = Ident::new(&name, Span::call_site());
                 scope.generated.push(quote! {
-                    #[derive(Debug)]
                     struct #core_type {
                         rect: ::kas::geom::Rect,
                         id: ::kas::WidgetId,
@@ -289,6 +288,46 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     );
                 }
                 impl_widget_children = false;
+
+                let mut num_children = None;
+                let mut get_child = None;
+                let mut get_child_mut = None;
+                let mut find_child_index = None;
+                let mut make_child_id = None;
+                for item in &impl_.items {
+                    if let ImplItem::Method(ref item) = item {
+                        if item.sig.ident == "num_children" {
+                            num_children = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "get_child" {
+                            get_child = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "get_child_mut" {
+                            get_child_mut = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "find_child_index" {
+                            find_child_index = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "make_child_id" {
+                            make_child_id = Some(item.sig.ident.clone());
+                        }
+                    }
+                }
+                if let Some(ref span) = num_children {
+                    if get_child.is_none() {
+                        emit_warning!(span, "fn num_children without fn get_child");
+                    }
+                    if get_child_mut.is_none() {
+                        emit_warning!(span, "fn num_children without fn get_child_mut");
+                    }
+                } else if let Some(ref span) = get_child {
+                    emit_warning!(span, "fn get_child without fn num_children");
+                } else if let Some(ref span) = get_child_mut {
+                    emit_warning!(span, "fn get_child_mut without fn num_children");
+                }
+                if let Some(ref span) = find_child_index {
+                    if make_child_id.is_none() {
+                        emit_warning!(span, "fn find_child_index without fn make_child_id");
+                    }
+                } else if let Some(ref span) = make_child_id {
+                    emit_warning!(span, "fn make_child_id without fn find_child_index");
+                }
             } else if *path == parse_quote! { ::kas::Layout }
                 || *path == parse_quote! { kas::Layout }
                 || *path == parse_quote! { Layout }
@@ -372,7 +411,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let mut fn_size_rules = None;
     let (fn_set_rect, fn_find_id);
     let mut fn_draw = None;
-    let mut kw_layout = None;
+    let mut gen_layout = false;
 
     let fn_pre_configure;
     let fn_pre_handle_event;
@@ -506,16 +545,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 self.#inner.handle_event(mgr, event)
             }
         });
-        let handle_unused = quote! {
-            #[inline]
-            fn handle_unused(
-                &mut self,
-                mgr: &mut ::kas::event::EventMgr,
-                event: ::kas::event::Event,
-            ) -> ::kas::event::Response {
-                self.#inner.handle_unused(mgr, event)
-            }
-        };
         let handle_message = quote! {
             #[inline]
             fn handle_message(&mut self, mgr: &mut ::kas::event::EventMgr) {
@@ -535,7 +564,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         widget_methods = vec![
             ("configure", configure),
             ("translation", translation),
-            ("handle_unused", handle_unused),
             ("handle_message", handle_message),
             ("handle_scroll", handle_scroll),
         ];
@@ -588,11 +616,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             use ::kas::{WidgetCore, WidgetExt};
             self.rect().contains(coord).then(|| self.id())
         };
-        if let Some((kw_span, layout)) = args.layout.take() {
-            kw_layout = Some(kw_span);
+        if let Some((_, layout)) = args.layout.take() {
+            gen_layout = true;
             fn_nav_next = match layout.nav_next(&children) {
-                NavNextResult::Err(msg) => {
-                    fn_nav_next_err = Some(msg);
+                NavNextResult::Err(span, msg) => {
+                    fn_nav_next_err = Some((span, msg));
                     None
                 }
                 NavNextResult::Slice(dir) => Some(quote! {
@@ -815,12 +843,10 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         if !has_method("nav_next") {
             if let Some(method) = fn_nav_next {
                 widget_impl.items.push(parse2(method)?);
-            } else if let Some(span) = kw_layout {
-                emit_warning!(
-                    span,
-                    "unable to generate method `Widget::nav_next` for this layout: {}",
-                    fn_nav_next_err.unwrap(),
-                );
+            } else if gen_layout {
+                // We emit a warning here only if nav_next is not explicitly defined
+                let (span, msg) = fn_nav_next_err.unwrap();
+                emit_warning!(span, "unable to generate `fn Widget::nav_next`: {}", msg,);
             }
         }
 

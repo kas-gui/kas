@@ -19,7 +19,6 @@ impl_scope! {
     /// A support layer around a window
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    #[derive(Debug)]
     #[widget]
     pub struct RootWidget {
         core: widget_core!(),

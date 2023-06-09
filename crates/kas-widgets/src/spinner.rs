@@ -11,7 +11,6 @@ use kas::prelude::*;
 use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use std::cmp::Ord;
 use std::ops::RangeInclusive;
-use std::rc::Rc;
 
 /// Requirements on type used by [`Spinner`]
 ///
@@ -19,6 +18,9 @@ use std::rc::Rc;
 pub trait SpinnerValue:
     Copy + PartialOrd + std::fmt::Debug + std::str::FromStr + ToString + 'static
 {
+    /// The default step size (usually 1)
+    fn default_step() -> Self;
+
     /// Clamp `self` to the range `l_bound..=u_bound`
     fn clamp(self, l_bound: Self, u_bound: Self) -> Self;
 
@@ -32,6 +34,9 @@ pub trait SpinnerValue:
 macro_rules! impl_float {
     ($t:ty) => {
         impl SpinnerValue for $t {
+            fn default_step() -> Self {
+                1.0
+            }
             fn clamp(self, l_bound: Self, u_bound: Self) -> Self {
                 <$t>::clamp(self, l_bound, u_bound)
             }
@@ -39,7 +44,6 @@ macro_rules! impl_float {
             fn add_step(self, step: Self, u_bound: Self) -> Self {
                 ((self / step + 1.0).round() * step).min(u_bound)
             }
-
             fn sub_step(self, step: Self, l_bound: Self) -> Self {
                 ((self / step - 1.0).round() * step).max(l_bound)
             }
@@ -53,6 +57,9 @@ impl_float!(f64);
 macro_rules! impl_int {
     ($t:ty) => {
         impl SpinnerValue for $t {
+            fn default_step() -> Self {
+                1
+            }
             fn clamp(self, l_bound: Self, u_bound: Self) -> Self {
                 Ord::clamp(self, l_bound, u_bound)
             }
@@ -60,7 +67,6 @@ macro_rules! impl_int {
             fn add_step(self, step: Self, u_bound: Self) -> Self {
                 ((self / step).saturating_add(1)).saturating_mul(step).min(u_bound)
             }
-
             fn sub_step(self, step: Self, l_bound: Self) -> Self {
                 (((self + step - 1) / step).saturating_sub(1)).saturating_mul(step).max(l_bound)
             }
@@ -157,7 +163,6 @@ impl_scope! {
     /// -   Ensure that range end points are a multiple of `step`
     /// -   With floating-point types, ensure that `step` is exactly
     ///     representable, e.g. an integer or a power of 2.
-    #[autoimpl(Debug ignore self.on_change)]
     #[widget {
         layout = frame(FrameStyle::EditBox): row: [
             self.edit,
@@ -173,13 +178,16 @@ impl_scope! {
         #[widget]
         b_down: MarkButton<SpinBtn>,
         step: T,
-        on_change: Option<Rc<dyn Fn(&mut EventMgr, T)>>,
+        on_change: Option<Box<dyn Fn(&mut EventMgr, T)>>,
     }
 
     impl Self {
-        /// Construct a spinner with given `range` and `step`
+        /// Construct a spinner
+        ///
+        /// Values vary within the given `range`. The default step size is
+        /// 1 for common types (see [`SpinnerValue::default_step`]).
         #[inline]
-        pub fn new(range: RangeInclusive<T>, step: T) -> Self {
+        pub fn new(range: RangeInclusive<T>) -> Self {
             Spinner {
                 core: Default::default(),
                 edit: EditField::new("")
@@ -187,20 +195,23 @@ impl_scope! {
                     .with_guard(SpinnerGuard::new(range)),
                 b_up: MarkButton::new(MarkStyle::Point(Direction::Up), SpinBtn::Up),
                 b_down: MarkButton::new(MarkStyle::Point(Direction::Down), SpinBtn::Down),
-                step,
+                step: T::default_step(),
                 on_change: None,
             }
         }
 
         /// Construct a spinner with event handler `f`
         ///
+        /// Values vary within the given `range`. The default step size is
+        /// 1 for common types (see [`SpinnerValue::default_step`]).
+        ///
         /// This closure is called when the value is changed.
         #[inline]
-        pub fn new_on<F>(range: RangeInclusive<T>, step: T, f: F) -> Self
+        pub fn new_on<F>(range: RangeInclusive<T>, f: F) -> Self
         where
             F: Fn(&mut EventMgr, T) + 'static,
         {
-            Spinner::new(range, step).on_change(f)
+            Spinner::new(range).on_change(f)
         }
 
         /// Set event handler `f`
@@ -217,7 +228,7 @@ impl_scope! {
         where
             F: Fn(&mut EventMgr, T) + 'static,
         {
-            self.on_change = Some(Rc::new(f));
+            self.on_change = Some(Box::new(f));
             self
         }
 
@@ -248,6 +259,14 @@ impl_scope! {
         #[must_use]
         pub fn with_width_em(mut self, min_em: f32, ideal_em: f32) -> Self {
             self.set_width_em(min_em, ideal_em);
+            self
+        }
+
+        /// Set the step size
+        #[inline]
+        #[must_use]
+        pub fn with_step(mut self, step: T) -> Self {
+            self.step = step;
             self
         }
 

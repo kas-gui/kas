@@ -12,7 +12,7 @@ use kas::widget::dialog::Window;
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let driver = driver::Spinner::new(i32::MIN..=i32::MAX, 1);
+    let driver = driver::Spinner::new(i32::MIN..=i32::MAX);
     let c1 = SingleView::new_with_driver(driver, SharedRc::new(0));
     let c2 = SingleView::new_with_driver(driver, c1.data().clone());
 

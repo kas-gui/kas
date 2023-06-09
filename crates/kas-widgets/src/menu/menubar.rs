@@ -16,7 +16,6 @@ impl_scope! {
     ///
     /// This widget houses a sequence of menu buttons, allowing input actions across
     /// menus.
-    #[autoimpl(Debug where D: trait)]
     #[widget]
     pub struct MenuBar<D: Directional = kas::dir::Right> {
         core: widget_core!(),
@@ -165,7 +164,7 @@ impl_scope! {
                         Response::Unused
                     }
                 }
-                Event::PressMove { press, .. } => {
+                Event::CursorMove { press } | Event::PressMove { press, .. } => {
                     mgr.set_grab_depress(*press, press.id.clone());
 
                     let id = match press.id {
@@ -183,7 +182,7 @@ impl_scope! {
                         } else if id != self.delayed_open {
                             mgr.set_nav_focus(id.clone(), false);
                             let delay = mgr.config().menu_delay();
-                            mgr.request_update(self.id(), id.as_u64(), delay, true);
+                            mgr.request_timer_update(self.id(), id.as_u64(), delay, true);
                             self.delayed_open = Some(id);
                         }
                     } else {
@@ -208,7 +207,6 @@ impl_scope! {
                     }
                     Response::Used
                 }
-                Event::PressEnd { .. } => Response::Used,
                 Event::Command(cmd) => {
                     // Arrow keys can switch to the next / previous menu
                     // as well as to the first / last item of an open menu.

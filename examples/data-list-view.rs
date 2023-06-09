@@ -109,12 +109,6 @@ impl ListData for MySharedData {
     fn len(&self) -> usize {
         self.data.borrow().len
     }
-    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
-        parent.make_child(*key)
-    }
-    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
-        child.next_key_after(parent)
-    }
 
     fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_> {
         let len = self.len();
@@ -124,7 +118,6 @@ impl ListData for MySharedData {
 
 // TODO: it would be nicer to use EditBox::new(..).on_edit(..), but that produces
 // an object with unnamable type, which is a problem.
-#[derive(Clone, Debug)]
 struct ListEntryGuard;
 impl EditGuard for ListEntryGuard {
     fn activate(_edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
@@ -139,7 +132,6 @@ impl EditGuard for ListEntryGuard {
 
 impl_scope! {
     // The list entry
-    #[derive(Clone, Debug)]
     #[widget{
         layout = column: [
             row: [self.label, self.radio],
@@ -157,7 +149,6 @@ impl_scope! {
     }
 }
 
-#[derive(Debug)]
 struct MyDriver {
     radio_group: RadioGroup,
 }
@@ -226,7 +217,6 @@ fn main() -> kas::shell::Result<()> {
                 TextButton::new_msg("↓↑", Control::Reverse),
             ];
         }]
-        #[derive(Debug)]
         struct {
             core: widget_core!(),
             #[widget] edit: EditBox<impl EditGuard> = EditBox::new("3")
@@ -277,7 +267,6 @@ fn main() -> kas::shell::Result<()> {
                 self.list,
             ];
         }]
-        #[derive(Debug)]
         struct {
             core: widget_core!(),
             #[widget] controls = controls,

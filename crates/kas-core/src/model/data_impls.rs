@@ -6,7 +6,6 @@
 //! Impls for data traits
 
 use super::*;
-use crate::WidgetId;
 use std::fmt::Debug;
 
 macro_rules! impl_list_data {
@@ -39,13 +38,6 @@ macro_rules! impl_list_data {
 
             fn len(&self) -> usize {
                 (*self).len()
-            }
-
-            fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
-                parent.make_child(*key)
-            }
-            fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
-                child.next_key_after(parent)
             }
 
             fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_> {

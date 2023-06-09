@@ -51,7 +51,6 @@ impl_scope! {
     /// If a handler is specified via [`Self::on_message`] then this handler is
     /// called when a child pushes a message.
     #[autoimpl(Default)]
-    #[autoimpl(Debug ignore self.on_message)]
     #[derive(Clone)]
     #[widget]
     pub struct Grid<W: Widget> {

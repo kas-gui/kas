@@ -49,7 +49,7 @@ impl_scope! {
             2, 4: TextButton::new_msg("&.", Key::Char('.'));
         };
     }]
-    #[derive(Debug, Default)]
+    #[derive(Default)]
     struct Buttons(widget_core!());
 }
 
@@ -61,7 +61,6 @@ impl_scope! {
             Buttons::default(),
         ];
     }]
-    #[derive(Debug)]
     struct CalcUI {
         core: widget_core!(),
         #[widget] display: EditBox = EditBox::new("0")

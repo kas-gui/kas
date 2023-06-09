@@ -30,7 +30,6 @@ use kas::theme::TextClass;
 use kas_widgets::edit::{EditGuard, GuardNotify};
 use kas_widgets::{CheckBox, Label, NavFrame, RadioGroup, SliderValue, SpinnerValue};
 use std::default::Default;
-use std::fmt::Debug;
 use std::ops::RangeInclusive;
 
 /// View widget driver/binder
@@ -45,7 +44,7 @@ use std::ops::RangeInclusive;
 /// param. of `SharedData`) only to avoid "conflicting implementations" errors.
 /// Similar to: rust#20400, rust#92894. Given fixes, we may remove the param.
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, Box<T>, std::rc::Rc<T>, std::sync::Arc<T>)]
-pub trait Driver<Item, Data: SharedData<Item = Item>>: Debug {
+pub trait Driver<Item, Data: SharedData<Item = Item>> {
     /// Type of the widget used to view data
     type Widget: kas::Widget;
 
@@ -460,8 +459,9 @@ where
     type Widget = kas_widgets::Slider<Data::Item, D>;
     fn make(&self) -> Self::Widget {
         let range = self.range.0..=self.range.1;
-        kas_widgets::Slider::new_with_direction(range, self.step, self.direction)
+        kas_widgets::Slider::new_with_direction(range, self.direction)
             .on_move(|mgr, value| mgr.push(value))
+            .with_step(self.step)
     }
     fn set_mo(
         &self,
@@ -485,11 +485,11 @@ pub struct Spinner<T: SpinnerValue> {
     step: T,
 }
 impl<T: SpinnerValue + Default> Spinner<T> {
-    /// Construct, with given `range` and `step` (see [`kas_widgets::Spinner::new`])
-    pub fn new(range: RangeInclusive<T>, step: T) -> Self {
+    /// Construct, with given `range` (see [`kas_widgets::Spinner::new`])
+    pub fn new(range: RangeInclusive<T>) -> Self {
         Spinner {
             range: range.into_inner(),
-            step,
+            step: T::default_step(),
         }
     }
 }
@@ -500,7 +500,9 @@ where
     type Widget = kas_widgets::Spinner<Data::Item>;
     fn make(&self) -> Self::Widget {
         let range = self.range.0..=self.range.1;
-        kas_widgets::Spinner::new(range, self.step).on_change(|mgr, val| mgr.push(val))
+        kas_widgets::Spinner::new(range)
+            .on_change(|mgr, val| mgr.push(val))
+            .with_step(self.step)
     }
     fn set_mo(
         &self,

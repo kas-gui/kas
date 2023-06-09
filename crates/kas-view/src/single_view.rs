@@ -27,7 +27,6 @@ impl_scope! {
     /// # Messages
     ///
     /// When a view widget pushes a message, [`Driver::on_message`] is called.
-    #[autoimpl(Debug ignore self.driver)]
     #[derive(Clone)]
     #[widget{
         layout = self.child;

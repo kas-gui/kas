@@ -10,7 +10,7 @@ use kas::event::components::ScrollComponent;
 use kas::event::{Command, Scroll};
 use kas::layout::{solve_size_rules, AlignHints};
 #[allow(unused)] use kas::model::SharedData;
-use kas::model::{ListData, SharedDataMut};
+use kas::model::{DataKey, ListData, SharedDataMut};
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
 #[allow(unused)] // doc links
@@ -405,7 +405,7 @@ impl_scope! {
             for (i, key) in keys.enumerate() {
                 count += 1;
                 let i = solver.first_data + i;
-                let id = self.data.make_id(self.id_ref(), &key);
+                let id = key.make_id(self.id_ref());
                 let w = &mut self.widgets[i % solver.cur_len];
                 if w.key.as_ref() != Some(&key) {
                     // Reset widgets to ensure input state such as cursor
@@ -478,20 +478,22 @@ impl_scope! {
     impl WidgetChildren for Self {
         #[inline]
         fn num_children(&self) -> usize {
-            self.widgets.len()
+            self.cur_len.cast()
         }
         #[inline]
         fn get_child(&self, index: usize) -> Option<&dyn Widget> {
-            self.widgets.get(index).map(|w| w.widget.as_widget())
+            self.widgets.get(index).and_then(|w| {
+                w.key.is_some().then(|| w.widget.as_widget())
+            })
         }
         #[inline]
         fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
-            self.widgets
-                .get_mut(index)
-                .map(|w| w.widget.as_widget_mut())
+            self.widgets.get_mut(index).and_then(|w| {
+                w.key.is_some().then(|| w.widget.as_widget_mut())
+            })
         }
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
-            let key = self.data.reconstruct_key(self.id_ref(), id);
+            let key = T::Key::reconstruct_key(self.id_ref(), id);
             if key.is_some() {
                 self.widgets
                     .iter()
@@ -501,6 +503,11 @@ impl_scope! {
             } else {
                 None
             }
+        }
+        #[inline]
+        fn make_child_id(&mut self, _: usize) -> WidgetId {
+            // We configure children in update_widgets and do not want this method to be called
+            WidgetId::default()
         }
     }
 
@@ -598,7 +605,7 @@ impl_scope! {
             }
 
             // Widgets need configuring and updating: do so by re-configuring self.
-            mgr.request_configure(self.id());
+            mgr.request_reconfigure(self.id());
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
@@ -742,6 +749,9 @@ impl_scope! {
                     };
                 }
                 Event::PressStart { ref press } if press.is_primary() && mgr.config().mouse_nav_focus() => {
+                    if let Some(index) = mgr.last_child() {
+                        self.press_target = self.widgets[index].key.clone().map(|k| (index, k));
+                    }
                     if let Some((index, ref key)) = self.press_target {
                         let w = &mut self.widgets[index];
                         if w.key.as_ref().map(|k| k == key).unwrap_or(false) {
@@ -753,7 +763,6 @@ impl_scope! {
                     // this). Either way we can select on PressEnd.
                     press.grab(self.id()).with_mgr(mgr)
                 }
-                Event::PressMove { .. } => Response::Used,
                 Event::PressEnd { ref press, success } if press.is_primary() => {
                     if let Some((index, ref key)) = self.press_target {
                         let w = &mut self.widgets[index];
@@ -778,16 +787,6 @@ impl_scope! {
                 mgr.config_mgr(|mgr| self.update_widgets(mgr));
             }
             response | sber_response
-        }
-
-        fn handle_unused(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
-            if matches!(&event, Event::PressStart { .. }) {
-                if let Some(index) = mgr.last_child() {
-                    self.press_target = self.widgets[index].key.clone().map(|k| (index, k));
-                }
-            }
-
-            self.handle_event(mgr, event)
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr) {

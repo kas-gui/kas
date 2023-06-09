@@ -10,7 +10,6 @@ use kas::prelude::*;
 use kas::widget::{dialog::Window, Column, Label, StrLabel};
 
 impl_scope! {
-    #[derive(Clone, Debug)]
     #[widget{
         layout = self.label;
         cursor_icon = self.cursor;

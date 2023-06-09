@@ -5,14 +5,13 @@
 
 //! Layout solver
 
-use std::fmt;
-
 use super::{Align, AxisInfo, Margins, SizeRules};
 use crate::cast::Conv;
 use crate::event::ConfigMgr;
 use crate::geom::{Rect, Size};
 use crate::theme::SizeMgr;
-use crate::{Widget, WidgetExt};
+use crate::util::WidgetHierarchy;
+use crate::Widget;
 
 /// A [`SizeRules`] solver for layouts
 ///
@@ -231,33 +230,10 @@ impl SolveCache {
     /// This is sometimes called after [`Self::apply_rect`].
     pub fn print_widget_heirarchy(&mut self, widget: &mut dyn Widget) {
         let rect = widget.rect();
-        let mut buf = String::new();
-        print_widget_heirarchy(&mut buf, widget, 0).expect("print_widget_heirarchy failed");
+        let hier = WidgetHierarchy::new(widget);
         log::trace!(
             target: "kas_core::layout::hierarchy",
-            "apply_rect: rect={rect:?}:{buf}",
+            "apply_rect: rect={rect:?}:{hier}",
         );
     }
-}
-
-fn print_widget_heirarchy(
-    buf: &mut String,
-    widget: &dyn Widget,
-    indent: usize,
-) -> Result<(), fmt::Error> {
-    use std::fmt::Write;
-
-    let len = 43 - 2 * indent;
-    let trail = "| ".repeat(indent);
-    // Note: pre-format some items to ensure correct alignment
-    let identify = format!("{}", widget.identify());
-    let pos = format!("{:?}", widget.rect().pos);
-    let plen = 17usize.saturating_sub(identify.len().saturating_sub(len));
-    let size = widget.rect().size;
-    write!(buf, "\n{trail}{identify:<len$} {pos:<plen$} {size:?}")?;
-
-    for i in 0..widget.num_children() {
-        print_widget_heirarchy(buf, widget.get_child(i).unwrap(), indent + 1)?;
-    }
-    Ok(())
 }

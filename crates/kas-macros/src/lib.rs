@@ -197,7 +197,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// type; either way it has fields `id: WidgetId` (assigned by
 /// `Widget::pre_configure`) and `rect: Rect` (usually assigned by
 /// `Widget::set_rect`). It may contain additional fields for layout data. The
-/// type supports `Debug`, `Default` and `Clone` (although `Clone` actually
+/// type supports `Default` and `Clone` (although `Clone` actually
 /// default-initializes all fields other than `rect` since clones of widgets
 /// must themselves be configured).
 ///
@@ -314,7 +314,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///     /// A frame around content
 ///     #[autoimpl(Deref, DerefMut using self.inner)]
 ///     #[autoimpl(class_traits using self.inner where W: trait)]
-///     #[derive(Clone, Debug, Default)]
+///     #[derive(Clone, Default)]
 ///     #[widget{
 ///         layout = frame(kas::theme::FrameStyle::Frame): self.inner;
 ///     }]
@@ -357,7 +357,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// ```ignore
 /// impl_scope! {
 ///     #[autoimpl(Deref, DerefMut using self.0)]
-///     #[derive(Clone, Debug, Default)]
+///     #[derive(Clone, Default)]
 ///     #[widget{ derive = self.0; }]
 ///     pub struct ScrollBarRegion<W: Widget>(ScrollBars<ScrollRegion<W>>);
 /// }

@@ -11,7 +11,6 @@ use kas::prelude::*;
 use kas::theme::{MarkStyle, TextClass};
 use kas::WindowId;
 use std::fmt::Debug;
-use std::rc::Rc;
 
 #[derive(Clone, Debug)]
 struct IndexMsg(usize);
@@ -27,9 +26,7 @@ impl_scope! {
     /// If no selection handler exists, then the choice's message is emitted
     /// when selected. If a handler is specified via [`Self::on_select`], then
     /// this message is passed to the handler and not emitted.
-    #[autoimpl(Debug ignore self.on_select)]
     #[impl_default]
-    #[derive(Clone)]
     #[widget {
         layout = button 'frame: row: [self.label, self.mark];
         navigable = true;
@@ -46,7 +43,7 @@ impl_scope! {
         active: usize,
         opening: bool,
         popup_id: Option<WindowId>,
-        on_select: Option<Rc<dyn Fn(&mut EventMgr, M)>>,
+        on_select: Option<Box<dyn Fn(&mut EventMgr, M)>>,
     }
 
     impl Widget for Self {
@@ -126,7 +123,7 @@ impl_scope! {
                         Response::Unused
                     }
                 }
-                Event::PressMove { press, .. } => {
+                Event::CursorMove { press } | Event::PressMove { press, .. } => {
                     if self.popup_id.is_none() {
                         open_popup(self, mgr, false);
                     }
@@ -157,7 +154,6 @@ impl_scope! {
                     }
                     Response::Used
                 }
-                Event::PressEnd { .. } => Response::Used,
                 Event::PopupRemoved(id) => {
                     debug_assert_eq!(Some(id), self.popup_id);
                     self.popup_id = None;
@@ -259,7 +255,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             active: self.active,
             opening: self.opening,
             popup_id: self.popup_id,
-            on_select: Some(Rc::new(f)),
+            on_select: Some(Box::new(f)),
         }
     }
 }
@@ -319,7 +315,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     //
     // TODO(opt): these methods cause full-window resize. They don't need to
     // resize at all if the menu is closed!
-    pub fn push<T: Into<AccelString>>(&mut self, mgr: &mut EventState, label: T, msg: M) -> usize {
+    pub fn push<T: Into<AccelString>>(&mut self, mgr: &mut ConfigMgr, label: T, msg: M) -> usize {
         let column = &mut self.popup.inner;
         column.push(mgr, MenuEntry::new(label, msg))
     }
@@ -334,7 +330,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Panics if `index > len`.
     pub fn insert<T: Into<AccelString>>(
         &mut self,
-        mgr: &mut EventState,
+        mgr: &mut ConfigMgr,
         index: usize,
         label: T,
         msg: M,
@@ -355,7 +351,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Panics if `index` is out of bounds.
     pub fn replace<T: Into<AccelString>>(
         &mut self,
-        mgr: &mut EventState,
+        mgr: &mut ConfigMgr,
         index: usize,
         label: T,
         msg: M,
@@ -368,7 +364,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
 
 impl_scope! {
     #[autoimpl(Default)]
-    #[derive(Clone, Debug)]
+    #[derive(Clone)]
     #[widget{
         layout = self.inner;
     }]

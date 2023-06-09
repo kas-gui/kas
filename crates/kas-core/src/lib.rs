@@ -46,7 +46,7 @@ pub mod event;
 pub mod geom;
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-pub mod label;
+pub mod hidden;
 pub mod layout;
 pub mod message;
 pub mod model;

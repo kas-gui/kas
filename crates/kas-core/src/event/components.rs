@@ -330,7 +330,7 @@ impl ScrollComponent {
                 let timeout = mgr.config().scroll_flick_timeout();
                 let pan_dist_thresh = mgr.config().pan_dist_thresh();
                 if self.glide.press_end(timeout, pan_dist_thresh) {
-                    mgr.request_update(id, PAYLOAD_GLIDE, Duration::new(0, 0), true);
+                    mgr.request_timer_update(id, PAYLOAD_GLIDE, Duration::new(0, 0), true);
                 }
             }
             Event::TimerUpdate(pl) if pl == PAYLOAD_GLIDE => {
@@ -342,7 +342,7 @@ impl ScrollComponent {
 
                     if self.glide.vel != Vec2::ZERO {
                         let dur = Duration::from_millis(GLIDE_POLL_MS);
-                        mgr.request_update(id, PAYLOAD_GLIDE, dur, true);
+                        mgr.request_timer_update(id, PAYLOAD_GLIDE, dur, true);
                         mgr.set_scroll(Scroll::Scrolled);
                     }
                 }
@@ -414,7 +414,7 @@ impl TextInput {
                     PressSource::Touch(touch_id) => {
                         self.touch_phase = TouchPhase::Start(touch_id, press.coord);
                         let delay = mgr.config().touch_select_delay();
-                        mgr.request_update(w_id.clone(), PAYLOAD_SELECT, delay, false);
+                        mgr.request_timer_update(w_id.clone(), PAYLOAD_SELECT, delay, false);
                         (Action::Focus, None)
                     }
                     PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan() => {
@@ -461,7 +461,7 @@ impl TextInput {
                         || matches!(press.source, PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan()))
                 {
                     self.touch_phase = TouchPhase::None;
-                    mgr.request_update(w_id, PAYLOAD_GLIDE, Duration::new(0, 0), true);
+                    mgr.request_timer_update(w_id, PAYLOAD_GLIDE, Duration::new(0, 0), true);
                 }
                 Action::None
             }
@@ -483,7 +483,7 @@ impl TextInput {
                 let decay = mgr.config().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(timeout, decay) {
                     let dur = Duration::from_millis(GLIDE_POLL_MS);
-                    mgr.request_update(w_id, PAYLOAD_GLIDE, dur, true);
+                    mgr.request_timer_update(w_id, PAYLOAD_GLIDE, dur, true);
                     Action::Pan(delta)
                 } else {
                     Action::None

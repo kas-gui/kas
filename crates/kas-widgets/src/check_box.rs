@@ -8,7 +8,6 @@
 use super::AccelLabel;
 use kas::prelude::*;
 use kas::theme::Feature;
-use std::rc::Rc;
 use std::time::Instant;
 
 impl_scope! {
@@ -16,7 +15,7 @@ impl_scope! {
     ///
     /// See also [`CheckButton`] which includes a label.
     #[autoimpl(Debug ignore self.on_toggle)]
-    #[derive(Clone, Default)]
+    #[derive(Default)]
     #[widget{
         navigable = true;
         hover_highlight = true;
@@ -27,7 +26,7 @@ impl_scope! {
         state: bool,
         editable: bool,
         last_change: Option<Instant>,
-        on_toggle: Option<Rc<dyn Fn(&mut EventMgr, bool)>>,
+        on_toggle: Option<Box<dyn Fn(&mut EventMgr, bool)>>,
     }
 
     impl Layout for Self {
@@ -75,7 +74,7 @@ impl_scope! {
                 state: self.state,
                 editable: self.editable,
                 last_change: self.last_change,
-                on_toggle: Some(Rc::new(f)),
+                on_toggle: Some(Box::new(f)),
             }
         }
 
@@ -180,9 +179,8 @@ impl_scope! {
     /// A check button with label
     ///
     /// See also [`CheckBox`] which excludes the label.
-    #[autoimpl(Debug)]
     #[autoimpl(HasBool using self.inner)]
-    #[derive(Clone, Default)]
+    #[derive(Default)]
     #[widget{
         layout = list(self.direction()): [self.inner, non_navigable: self.label];
     }]

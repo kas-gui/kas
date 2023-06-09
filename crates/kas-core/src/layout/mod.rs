@@ -231,7 +231,6 @@ impl From<AxisInfo> for Directions {
 /// use kas::prelude::*;
 ///
 /// impl_scope! {
-///     #[derive(Debug)]
 ///     #[widget {
 ///         layout = "Example";
 ///     }]

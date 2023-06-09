@@ -22,6 +22,7 @@ use super::*;
 use crate::cast::Cast;
 use crate::geom::{Coord, Offset};
 use crate::shell::ShellWindow;
+use crate::util::WidgetHierarchy;
 use crate::{Action, Erased, Widget, WidgetExt, WidgetId, WindowId};
 
 mod config_mgr;
@@ -170,6 +171,7 @@ struct PanGrab {
 #[derive(Clone, Debug)]
 #[allow(clippy::enum_variant_names)] // they all happen to be about Focus
 enum Pending {
+    Configure(WidgetId),
     Send(WidgetId, Event),
     SetRect(WidgetId),
     NextNavFocus {
@@ -225,7 +227,6 @@ pub struct EventState {
     time_updates: Vec<(Instant, WidgetId, u64)>,
     // Set of futures of messages together with id of sending widget
     fut_messages: Vec<(WidgetId, Pin<Box<dyn Future<Output = Erased>>>)>,
-    pending_configures: Vec<WidgetId>,
     // FIFO queue of events pending handling
     pending: VecDeque<Pending>,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -501,6 +502,19 @@ impl<'a> EventMgr<'a> {
                     return;
                 }
             }
+
+            if matches!(cmd, Command::Debug) {
+                if let Some(ref id) = self.hover {
+                    if let Some(w) = widget.find_widget(id) {
+                        let hier = WidgetHierarchy::new(w);
+                        log::debug!("Widget heirarchy (from mouse): {hier}");
+                    }
+                } else {
+                    let hier = WidgetHierarchy::new(widget);
+                    log::debug!("Widget heirarchy (whole window): {hier}");
+                }
+                return;
+            }
         }
 
         // Next priority goes to accelerator keys when Alt is held or alt_bypass is true
@@ -603,31 +617,26 @@ impl<'a> EventMgr<'a> {
         if id == widget.id_ref() {
             if event == Event::NavFocus(true) {
                 self.set_scroll(Scroll::Rect(widget.rect()));
-                response = Response::Used;
             }
 
-            if !disabled {
-                response |= widget.pre_handle_event(self, event);
-
-                if self.has_msg() {
-                    widget.handle_message(self);
-                }
-            }
-
-            return response;
-        } else {
-            response = widget.steal_event(self, &id, &event);
-            if self.has_msg() {
-                widget.handle_message(self);
-            }
-            if response.is_used() {
+            if disabled {
                 return response;
-            } else if self.scroll != Scroll::None || !self.messages.is_empty() {
-                panic!("steal_event affected EventMgr and returned Unused");
             }
-        }
 
-        if let Some(index) = widget.find_child_index(&id) {
+            response |= widget.pre_handle_event(self, event);
+        } else if widget.steal_event(self, &id, &event).is_used() {
+            response = Response::Used;
+        } else if self.scroll != Scroll::None || !self.messages.is_empty() {
+            panic!("steal_event affected EventMgr and returned Unused");
+        } else {
+            let Some(index) = widget.find_child_index(&id) else {
+                log::warn!(
+                    "send_recurse: Widget {} cannot find path to {id}",
+                    widget.identify()
+                );
+                return response;
+            };
+
             let translation = widget.translation();
             if let Some(w) = widget.get_child_mut(index) {
                 response = self.send_recurse(w, id, disabled, event.clone() + translation);
@@ -642,17 +651,13 @@ impl<'a> EventMgr<'a> {
                 );
             }
 
-            if matches!(response, Response::Unused) {
-                response = widget.handle_unused(self, event);
+            if response.is_unused() && event.is_reusable() {
+                response = widget.handle_event(self, event);
             }
-            if self.has_msg() {
-                widget.handle_message(self);
-            }
-        } else {
-            log::warn!(
-                "send_recurse: Widget {} cannot find path to {id}",
-                widget.identify()
-            );
+        }
+
+        if self.has_msg() {
+            widget.handle_message(self);
         }
 
         response

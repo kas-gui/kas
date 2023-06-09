@@ -24,7 +24,6 @@ fn main() -> kas::shell::Result<()> {
                 0, 3: self.edit;
             };
         }]
-        #[derive(Debug)]
         struct {
             core: widget_core!(),
             #[widget] edit = EditBox::new("A small\nsample\nof text")

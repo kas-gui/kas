@@ -52,7 +52,6 @@ impl EventState {
             popup_removed: Default::default(),
             time_updates: vec![],
             fut_messages: vec![],
-            pending_configures: vec![],
             pending: Default::default(),
             action: Action::empty(),
         }
@@ -201,24 +200,21 @@ impl EventState {
             }
         }
 
-        if !mgr.pending_configures.is_empty() {
-            if !mgr.state.action.contains(Action::RECONFIGURE) {
-                mgr.pending_configures.sort();
-
-                // TODO(opt): walk tree; only configure contents of pending_configures
-                mgr.config_mgr(|mgr| mgr.configure(WidgetId::ROOT, widget));
-
-                let hover = widget.find_id(mgr.state.last_mouse_coord);
-                mgr.state.set_hover(hover);
-            }
-            mgr.pending_configures.clear();
-        }
-
         // Warning: infinite loops are possible here if widgets always queue a
         // new pending event when evaluating one of these:
         while let Some(item) = mgr.pending.pop_front() {
             log::trace!(target: "kas_core::event::manager", "update: handling Pending::{item:?}");
             match item {
+                Pending::Configure(id) => {
+                    mgr.config_mgr(|mgr| {
+                        if let Some(w) = widget.find_widget_mut(&id) {
+                            mgr.configure(id, w);
+                        }
+                    });
+
+                    let hover = widget.find_id(mgr.state.last_mouse_coord);
+                    mgr.state.set_hover(hover);
+                }
                 Pending::Send(id, event) => {
                     if matches!(&event, &Event::LostMouseHover) {
                         mgr.hover_icon = Default::default();
@@ -418,13 +414,12 @@ impl<'a> EventMgr<'a> {
                         pan.coords[usize::conv(grab.pan_grab.1)].1 = coord;
                     }
                 } else if let Some(id) = self.popups.last().map(|(_, p, _)| p.parent.clone()) {
-                    let source = PressSource::Mouse(FAKE_MOUSE_BUTTON, 0);
                     let press = Press {
-                        source,
+                        source: PressSource::Mouse(FAKE_MOUSE_BUTTON, 0),
                         id: cur_id,
                         coord,
                     };
-                    let event = Event::PressMove { press, delta };
+                    let event = Event::CursorMove { press };
                     self.send_event(widget, id, event);
                 } else {
                     // We don't forward move events without a grab

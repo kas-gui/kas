@@ -4,7 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use proc_macro2::{Span, TokenStream as Toks};
-use quote::{quote, ToTokens, TokenStreamExt};
+use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::{braced, bracketed, parenthesized, Expr, Ident, Lifetime, LitInt, LitStr, Member, Token};
@@ -67,7 +67,7 @@ impl Tree {
                 let mut index = children.len();
                 match layout.nav_next(children, &mut v, &mut index) {
                     Ok(()) => NavNextResult::List(v),
-                    Err(msg) => NavNextResult::Err(msg),
+                    Err((span, msg)) => NavNextResult::Err(span, msg),
                 }
             }
         }
@@ -81,7 +81,7 @@ impl Tree {
 
 #[derive(Debug)]
 pub enum NavNextResult {
-    Err(&'static str),
+    Err(Span, &'static str),
     Slice(Toks),
     List(Vec<usize>),
 }
@@ -713,7 +713,8 @@ impl Layout {
             Layout::Widget(stor, expr) => {
                 children.push(stor.to_token_stream());
                 ty_toks.append_all(quote! { #stor: Box<dyn ::kas::Widget>, });
-                def_toks.append_all(quote! { #stor: Box::new(#expr), });
+                let span = expr.span();
+                def_toks.append_all(quote_spanned! {span=> #stor: Box::new(#expr), });
             }
             Layout::Frame(stor, layout, _) | Layout::Button(stor, layout, _) => {
                 ty_toks.append_all(quote! { #stor: ::kas::layout::FrameStorage, });
@@ -754,8 +755,11 @@ impl Layout {
             }
             Layout::Label(stor, text) => {
                 children.push(stor.to_token_stream());
-                ty_toks.append_all(quote! { #stor: ::kas::label::StrLabel, });
-                def_toks.append_all(quote! { #stor: ::kas::label::StrLabel::new(#text), });
+                let span = text.span();
+                ty_toks.append_all(quote! { #stor: ::kas::hidden::StrLabel, });
+                def_toks.append_all(
+                    quote_spanned! {span=> #stor: ::kas::hidden::StrLabel::new(#text), },
+                );
             }
         }
     }
@@ -868,7 +872,7 @@ impl Layout {
         children: &[Member],
         output: &mut Vec<usize>,
         index: &mut usize,
-    ) -> std::result::Result<(), &'static str> {
+    ) -> std::result::Result<(), (Span, &'static str)> {
         match self {
             Layout::Align(layout, _)
             | Layout::Pack(_, layout, _)
@@ -888,7 +892,7 @@ impl Layout {
                         return Ok(());
                     }
                 }
-                Err("child not found")
+                Err((m.member.span(), "child not found"))
             }
             Layout::Widget(_, _) => {
                 output.push(*index);
@@ -904,10 +908,12 @@ impl Layout {
                     _ if output.len() <= start + 1 => Ok(()),
                     Direction::Right | Direction::Down => Ok(()),
                     Direction::Left | Direction::Up => Ok(output[start..].reverse()),
-                    Direction::Expr(_) => Err("`list(dir)` with non-static `dir`"),
+                    Direction::Expr(_) => Err((dir.span(), "`list(dir)` with non-static `dir`")),
                 }
             }
-            Layout::Slice(_, _, _) => Err("`slice` combined with other layout components"),
+            Layout::Slice(_, _, expr) => {
+                Err((expr.span(), "`slice` combined with other layout components"))
+            }
             Layout::Grid(_, _, cells) => {
                 // TODO: sort using CellInfo?
                 for (_, item) in cells {

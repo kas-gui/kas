@@ -16,7 +16,7 @@ impl_scope! {
     ///
     /// Mouse/touch input on the label sends events to the inner widget.
     #[autoimpl(Deref, DerefMut using self.inner)]
-    #[derive(Clone, Default, Debug)]
+    #[derive(Clone, Default)]
     #[widget {
         layout = list(self.dir) 'row: [self.inner, non_navigable: self.label];
     }]
