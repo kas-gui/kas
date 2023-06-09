@@ -60,6 +60,12 @@ impl DataKey for usize {
 ///
 /// By design, all methods take only `&self` and only allow immutable access to
 /// data.
+///
+/// Views over data may assume that `(Key, Item)` pairs are constant. For
+/// example, `ListView` will not update a widget if the `Key` matches, even if
+/// the corresponding `Item` has changed. To get around this, insert a version
+/// number in `Key` or issue a fresh key when iterating with
+/// [`ListData::iter_from`] or in [`MatrixData::make_key`].
 #[autoimpl(for<T: trait + ?Sized>
     &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait SharedData: Debug {
@@ -208,5 +214,5 @@ pub trait MatrixData: SharedData {
     fn row_iter_from(&self, start: usize, limit: usize) -> Self::RowKeyIter<'_>;
 
     /// Make a key from parts
-    fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key;
+    fn make_key(&self, col: &Self::ColKey, row: &Self::RowKey) -> Self::Key;
 }
