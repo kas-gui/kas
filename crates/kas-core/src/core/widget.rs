@@ -361,7 +361,7 @@ pub trait Layout {
 /// impl_scope! {
 ///     /// A push-button with a text label
 ///     #[widget {
-///         layout = button: self.label;
+///         layout = button!(self.label);
 ///         navigable = true;
 ///         hover_highlight = true;
 ///     }]
