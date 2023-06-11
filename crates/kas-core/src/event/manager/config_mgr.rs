@@ -92,18 +92,7 @@ impl<'a> ConfigMgr<'a> {
     /// Pass the `id` to assign to the widget: this should be constructed from
     /// the parent's id via [`WidgetId::make_child`].
     pub fn configure(&mut self, id: WidgetId, widget: &mut dyn Node) {
-        widget.pre_configure(self, id);
-
-        for index in 0..widget.num_children() {
-            let id = widget.make_child_id(index);
-            if id.is_valid() {
-                if let Some(widget) = widget.get_child_mut(index) {
-                    self.configure(id, widget);
-                }
-            }
-        }
-
-        widget.configure(self);
+        widget._configure(self, id);
     }
 
     /// Align a feature's rect

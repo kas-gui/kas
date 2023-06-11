@@ -576,8 +576,28 @@ pub trait Widget: WidgetChildren {
 }
 
 /// Node: dyn-safe widget
-pub trait Node: Widget {}
-impl<W: Widget> Node for W {}
+pub trait Node: Widget {
+    /// Internal method: configure recursively
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId);
+}
+impl<W: Widget> Node for W {
+    fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId) {
+        self.pre_configure(cx, id);
+
+        for index in 0..self.num_children() {
+            let id = self.make_child_id(index);
+            if id.is_valid() {
+                if let Some(widget) = self.get_child_mut(index) {
+                    widget._configure(cx, id);
+                }
+            }
+        }
+
+        self.configure(cx);
+    }
+}
 
 /// Extension trait over widgets
 pub trait WidgetExt: Widget {
