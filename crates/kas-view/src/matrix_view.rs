@@ -456,15 +456,15 @@ impl_scope! {
             self.cur_len.cast()
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
+        fn get_child(&self, index: usize) -> Option<&dyn Node> {
             self.widgets.get(index).and_then(|w| {
-                w.key.is_some().then(|| w.widget.as_widget())
+                w.key.is_some().then(|| w.widget.as_node())
             })
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Node> {
             self.widgets.get_mut(index).and_then(|w| {
-                w.key.is_some().then(|| w.widget.as_widget_mut())
+                w.key.is_some().then(|| w.widget.as_node_mut())
             })
         }
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {

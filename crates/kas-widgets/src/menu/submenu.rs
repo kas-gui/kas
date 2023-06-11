@@ -268,12 +268,12 @@ impl_scope! {
             self.list.len()
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
-            self.list.get(index).map(|w| w.as_widget())
+        fn get_child(&self, index: usize) -> Option<&dyn Node> {
+            self.list.get(index).map(|w| w.as_node())
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
-            self.list.get_mut(index).map(|w| w.as_widget_mut())
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Node> {
+            self.list.get_mut(index).map(|w| w.as_node_mut())
         }
     }
 

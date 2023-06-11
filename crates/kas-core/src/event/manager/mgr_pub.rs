@@ -611,7 +611,7 @@ impl<'a> EventMgr<'a> {
     ///     (TODO: do we need another method to find this target?)
     /// -   Some events such as [`Event::PressMove`] contain embedded widget
     ///     identifiers which may affect handling of the event.
-    pub fn send(&mut self, widget: &mut dyn Widget, id: WidgetId, event: Event) {
+    pub fn send(&mut self, widget: &mut dyn Node, id: WidgetId, event: Event) {
         if matches!(self.scroll, Scroll::None | Scroll::Scrolled) && self.messages.is_empty() {
             // Safe to send immediately, except from steal_event when responding
             // Unused (hence noted possible panic in that method)!

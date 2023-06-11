@@ -23,7 +23,7 @@ pub type Tab = TextButton;
 /// A tabbed stack of boxed widgets
 ///
 /// This is a parametrisation of [`TabStack`].
-pub type BoxTabStack = TabStack<Box<dyn Widget>>;
+pub type BoxTabStack = TabStack<Box<dyn Node>>;
 
 impl_scope! {
     /// A tabbed stack of widgets

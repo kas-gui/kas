@@ -35,7 +35,7 @@ pub type BoxColumn = BoxList<Down>;
 /// This is parameterised over directionality.
 ///
 /// See documentation of [`List`] type.
-pub type BoxList<D> = List<D, Box<dyn Widget>>;
+pub type BoxList<D> = List<D, Box<dyn Node>>;
 
 impl_scope! {
     /// A generic row/column widget
@@ -50,7 +50,7 @@ impl_scope! {
     /// Some more specific type-defs are available:
     ///
     /// -   [`Row`] and [`Column`] fix the direction `D`
-    /// -   [`BoxList`] fixes the widget type to `Box<dyn Widget>`
+    /// -   [`BoxList`] fixes the widget type to `Box<dyn Node>`
     /// -   [`BoxRow`] and [`BoxColumn`] fix both type parameters
     ///
     /// ## Performance
@@ -84,12 +84,12 @@ impl_scope! {
             self.widgets.len()
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
-            self.widgets.get(index).map(|w| w.as_widget())
+        fn get_child(&self, index: usize) -> Option<&dyn Node> {
+            self.widgets.get(index).map(|w| w.as_node())
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
-            self.widgets.get_mut(index).map(|w| w.as_widget_mut())
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Node> {
+            self.widgets.get_mut(index).map(|w| w.as_node_mut())
         }
 
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {

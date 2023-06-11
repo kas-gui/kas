@@ -42,9 +42,9 @@ pub trait WidgetCore: Layout {
     fn widget_name(&self) -> &'static str;
 
     /// Erase type
-    fn as_widget(&self) -> &dyn Widget;
+    fn as_node(&self) -> &dyn Node;
     /// Erase type
-    fn as_widget_mut(&mut self) -> &mut dyn Widget;
+    fn as_node_mut(&mut self) -> &mut dyn Node;
 }
 
 /// Listing of a [`Widget`]'s children
@@ -77,7 +77,7 @@ pub trait WidgetChildren: WidgetCore {
     /// Get a reference to a child widget by index, if any
     ///
     /// Required: `index < self.len()`.
-    fn get_child(&self, index: usize) -> Option<&dyn Widget>;
+    fn get_child(&self, index: usize) -> Option<&dyn Node>;
 
     /// Mutable variant of get
     ///
@@ -85,7 +85,7 @@ pub trait WidgetChildren: WidgetCore {
     /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
     /// be requested. This can be done via [`EventState::send_action`].
     /// This method may be removed in the future.
-    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget>;
+    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Node>;
 
     /// Find the child which is an ancestor of this `id`, if any
     ///
@@ -575,6 +575,10 @@ pub trait Widget: WidgetChildren {
     }
 }
 
+/// Node: dyn-safe widget
+pub trait Node: Widget {}
+impl<W: Widget> Node for W {}
+
 /// Extension trait over widgets
 pub trait WidgetExt: Widget {
     /// Get the widget's identifier
@@ -622,24 +626,23 @@ pub trait WidgetExt: Widget {
     }
 
     /// Find the descendant with this `id`, if any
-    fn find_widget(&self, id: &WidgetId) -> Option<&dyn Widget> {
+    fn find_node(&self, id: &WidgetId) -> Option<&dyn Node> {
         if let Some(index) = self.find_child_index(id) {
-            self.get_child(index)
-                .and_then(|child| child.find_widget(id))
+            self.get_child(index).and_then(|child| child.find_node(id))
         } else if self.eq_id(id) {
-            return Some(self.as_widget());
+            return Some(self.as_node());
         } else {
             None
         }
     }
 
     /// Find the descendant with this `id`, if any
-    fn find_widget_mut(&mut self, id: &WidgetId) -> Option<&mut dyn Widget> {
+    fn find_node_mut(&mut self, id: &WidgetId) -> Option<&mut dyn Node> {
         if let Some(index) = self.find_child_index(id) {
             self.get_child_mut(index)
-                .and_then(|child| child.find_widget_mut(id))
+                .and_then(|child| child.find_node_mut(id))
         } else if self.eq_id(id) {
-            return Some(self.as_widget_mut());
+            return Some(self.as_node_mut());
         } else {
             None
         }

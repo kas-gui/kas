@@ -43,7 +43,7 @@ pub type BoxColumnSplitter = BoxSplitter<Down>;
 /// This is parameterised over directionality.
 ///
 /// See documentation of [`Splitter`] type.
-pub type BoxSplitter<D> = Splitter<D, Box<dyn Widget>>;
+pub type BoxSplitter<D> = Splitter<D, Box<dyn Node>>;
 
 /// A row of widget references
 ///
@@ -60,7 +60,7 @@ pub type RefColumnSplitter<'a> = RefSplitter<'a, Down>;
 /// This is parameterised over directionality.
 ///
 /// See documentation of [`Splitter`] type.
-pub type RefSplitter<'a, D> = Splitter<D, &'a mut dyn Widget>;
+pub type RefSplitter<'a, D> = Splitter<D, &'a mut dyn Node>;
 
 impl_scope! {
     /// A resizable row/column widget
@@ -113,19 +113,19 @@ impl_scope! {
             self.widgets.len() + self.handles.len()
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
+        fn get_child(&self, index: usize) -> Option<&dyn Node> {
             if (index & 1) != 0 {
-                self.handles.get(index >> 1).map(|w| w.as_widget())
+                self.handles.get(index >> 1).map(|w| w.as_node())
             } else {
-                self.widgets.get(index >> 1).map(|w| w.as_widget())
+                self.widgets.get(index >> 1).map(|w| w.as_node())
             }
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Node> {
             if (index & 1) != 0 {
-                self.handles.get_mut(index >> 1).map(|w| w.as_widget_mut())
+                self.handles.get_mut(index >> 1).map(|w| w.as_node_mut())
             } else {
-                self.widgets.get_mut(index >> 1).map(|w| w.as_widget_mut())
+                self.widgets.get_mut(index >> 1).map(|w| w.as_node_mut())
             }
         }
 

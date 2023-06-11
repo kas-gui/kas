@@ -14,7 +14,7 @@ use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
 use crate::model::SharedRc;
 use crate::shell::ShellWindow;
-use crate::{Action, Layout, RootWidget, Widget, WidgetId, Window};
+use crate::{Action, Layout, RootWidget, WidgetId, Window};
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
@@ -71,7 +71,7 @@ impl EventState {
     /// [`WidgetId`] identifiers and call widgets' [`Widget::configure`]
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
-    pub(crate) fn full_configure(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
+    pub(crate) fn full_configure(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Node) {
         log::debug!(target: "kas_core::event::manager", "full_configure");
         self.action.remove(Action::RECONFIGURE);
 
@@ -91,7 +91,7 @@ impl EventState {
     }
 
     /// Update the widgets under the cursor and touch events
-    pub(crate) fn region_moved(&mut self, widget: &mut dyn Widget) {
+    pub(crate) fn region_moved(&mut self, widget: &mut dyn Node) {
         log::trace!(target: "kas_core::event::manager", "region_moved");
         // Note: redraw is already implied.
 
@@ -129,11 +129,7 @@ impl EventState {
 
     /// Update, after receiving all events
     #[inline]
-    pub(crate) fn update(
-        &mut self,
-        shell: &mut dyn ShellWindow,
-        widget: &mut dyn Widget,
-    ) -> Action {
+    pub(crate) fn update(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Node) -> Action {
         let old_hover_icon = self.hover_icon;
 
         let mut mgr = EventMgr {
@@ -207,7 +203,7 @@ impl EventState {
             match item {
                 Pending::Configure(id) => {
                     mgr.config_mgr(|mgr| {
-                        if let Some(w) = widget.find_widget_mut(&id) {
+                        if let Some(w) = widget.find_node_mut(&id) {
                             mgr.configure(id, w);
                         }
                     });
@@ -252,11 +248,7 @@ impl EventState {
     ///
     /// Returns true if action is non-empty
     #[inline]
-    pub(crate) fn post_draw(
-        &mut self,
-        shell: &mut dyn ShellWindow,
-        widget: &mut dyn Widget,
-    ) -> bool {
+    pub(crate) fn post_draw(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Node) -> bool {
         let mut mgr = EventMgr {
             state: self,
             shell,
@@ -278,7 +270,7 @@ impl EventState {
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl<'a> EventMgr<'a> {
     /// Update widgets due to timer
-    pub(crate) fn update_timer(&mut self, widget: &mut dyn Widget) {
+    pub(crate) fn update_timer(&mut self, widget: &mut dyn Node) {
         let now = Instant::now();
 
         // assumption: time_updates are sorted in reverse order
@@ -295,7 +287,7 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Update widgets with an [`UpdateId`]
-    pub(crate) fn update_widgets(&mut self, widget: &mut dyn Widget, id: UpdateId, payload: u64) {
+    pub(crate) fn update_widgets(&mut self, widget: &mut dyn Node, id: UpdateId, payload: u64) {
         if id == self.state.config.config.id() {
             let (sf, dpem) = self.size_mgr(|size| (size.scale_factor(), size.dpem()));
             self.state.config.update(sf, dpem);
@@ -310,7 +302,7 @@ impl<'a> EventMgr<'a> {
         );
     }
 
-    fn poll_futures(&mut self, widget: &mut dyn Widget) {
+    fn poll_futures(&mut self, widget: &mut dyn Node) {
         let mut i = 0;
         while i < self.state.fut_messages.len() {
             let (_, fut) = &mut self.state.fut_messages[i];
@@ -486,7 +478,7 @@ impl<'a> EventMgr<'a> {
                     if let Some(start_id) = self.hover.clone() {
                         // No mouse grab but have a hover target
                         if self.config.mouse_nav_focus() {
-                            if let Some(w) = widget.find_widget(&start_id) {
+                            if let Some(w) = widget.find_node(&start_id) {
                                 if w.navigable() {
                                     self.set_nav_focus(w.id(), false);
                                 }
@@ -518,7 +510,7 @@ impl<'a> EventMgr<'a> {
                         let start_id = widget.find_id(coord);
                         if let Some(id) = start_id.as_ref() {
                             if self.config.touch_nav_focus() {
-                                if let Some(w) = widget.find_widget(id) {
+                                if let Some(w) = widget.find_node(id) {
                                     if w.navigable() {
                                         self.set_nav_focus(w.id(), false);
                                     }

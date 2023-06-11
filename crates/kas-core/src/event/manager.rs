@@ -23,7 +23,7 @@ use crate::cast::Cast;
 use crate::geom::{Coord, Offset};
 use crate::shell::ShellWindow;
 use crate::util::WidgetHierarchy;
-use crate::{Action, Erased, Widget, WidgetExt, WidgetId, WindowId};
+use crate::{Action, Erased, Node, Widget, WidgetExt, WidgetId, WindowId};
 
 mod config_mgr;
 mod mgr_pub;
@@ -70,7 +70,7 @@ struct MouseGrab {
 }
 
 impl<'a> EventMgr<'a> {
-    fn flush_mouse_grab_motion(&mut self, widget: &mut dyn Widget) {
+    fn flush_mouse_grab_motion(&mut self, widget: &mut dyn Node) {
         if let Some(grab) = self.mouse_grab.as_mut() {
             let delta = grab.delta;
             if delta == Offset::ZERO {
@@ -450,7 +450,7 @@ impl<'a> Drop for EventMgr<'a> {
 
 /// Internal methods
 impl<'a> EventMgr<'a> {
-    fn start_key_event(&mut self, widget: &mut dyn Widget, vkey: VirtualKeyCode, scancode: u32) {
+    fn start_key_event(&mut self, widget: &mut dyn Node, vkey: VirtualKeyCode, scancode: u32) {
         log::trace!(
             "start_key_event: widget={}, vkey={vkey:?}, scancode={scancode}",
             widget.id()
@@ -505,7 +505,7 @@ impl<'a> EventMgr<'a> {
 
             if matches!(cmd, Command::Debug) {
                 if let Some(ref id) = self.hover {
-                    if let Some(w) = widget.find_widget(id) {
+                    if let Some(w) = widget.find_node(id) {
                         let hier = WidgetHierarchy::new(w);
                         log::debug!("Widget heirarchy (from mouse): {hier}");
                     }
@@ -550,7 +550,7 @@ impl<'a> EventMgr<'a> {
 
         if let Some(id) = target {
             if widget
-                .find_widget(&id)
+                .find_node(&id)
                 .map(|w| w.navigable())
                 .unwrap_or(false)
             {
@@ -608,7 +608,7 @@ impl<'a> EventMgr<'a> {
     // Note: cannot use internal stack of mutable references due to borrow checker
     fn send_recurse(
         &mut self,
-        widget: &mut dyn Widget,
+        widget: &mut dyn Node,
         id: WidgetId,
         disabled: bool,
         event: Event,
@@ -664,7 +664,7 @@ impl<'a> EventMgr<'a> {
     }
 
     // Traverse widget tree by recursive call to a specific target
-    fn replay_recurse(&mut self, widget: &mut dyn Widget, id: WidgetId, msg: Erased) {
+    fn replay_recurse(&mut self, widget: &mut dyn Node, id: WidgetId, msg: Erased) {
         if let Some(index) = widget.find_child_index(&id) {
             if let Some(w) = widget.get_child_mut(index) {
                 self.replay_recurse(w, id, msg);
@@ -694,7 +694,7 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Replay a message as if it was pushed by `id`
-    fn replay(&mut self, widget: &mut dyn Widget, id: WidgetId, msg: Erased) {
+    fn replay(&mut self, widget: &mut dyn Node, id: WidgetId, msg: Erased) {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         debug_assert!(self.messages.is_empty());
@@ -708,10 +708,10 @@ impl<'a> EventMgr<'a> {
 
     // Traverse widget tree by recursive call, broadcasting
     #[inline]
-    fn send_update(&mut self, widget: &mut dyn Widget, id: UpdateId, payload: u64) -> usize {
+    fn send_update(&mut self, widget: &mut dyn Node, id: UpdateId, payload: u64) -> usize {
         fn inner(
             mgr: &mut EventMgr,
-            widget: &mut dyn Widget,
+            widget: &mut dyn Node,
             count: &mut usize,
             id: UpdateId,
             payload: u64,
@@ -737,7 +737,7 @@ impl<'a> EventMgr<'a> {
 
     // Wrapper around Self::send; returns true when event is used
     #[inline]
-    fn send_event(&mut self, widget: &mut dyn Widget, id: WidgetId, event: Event) -> bool {
+    fn send_event(&mut self, widget: &mut dyn Node, id: WidgetId, event: Event) -> bool {
         let used = self.send_event_impl(widget, id, event);
         self.drop_messages();
         self.last_child = None;
@@ -746,7 +746,7 @@ impl<'a> EventMgr<'a> {
     }
 
     // Send an event; possibly leave messages on the stack
-    fn send_event_impl(&mut self, widget: &mut dyn Widget, mut id: WidgetId, event: Event) -> bool {
+    fn send_event_impl(&mut self, widget: &mut dyn Node, mut id: WidgetId, event: Event) -> bool {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         debug_assert!(self.messages.is_empty());
@@ -772,7 +772,7 @@ impl<'a> EventMgr<'a> {
     // Returns true if event is used
     fn send_popup_first(
         &mut self,
-        widget: &mut dyn Widget,
+        widget: &mut dyn Node,
         id: Option<WidgetId>,
         event: Event,
     ) -> bool {
@@ -796,7 +796,7 @@ impl<'a> EventMgr<'a> {
     /// Advance the keyboard navigation focus
     pub fn next_nav_focus_impl(
         &mut self,
-        mut widget: &mut dyn Widget,
+        mut widget: &mut dyn Node,
         mut target: Option<WidgetId>,
         reverse: bool,
         key_focus: bool,
@@ -808,7 +808,7 @@ impl<'a> EventMgr<'a> {
         if let Some(id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
             if id.is_ancestor_of(widget.id_ref()) {
                 // do nothing
-            } else if let Some(w) = widget.find_widget_mut(&id) {
+            } else if let Some(w) = widget.find_node_mut(&id) {
                 widget = w;
             } else {
                 log::warn!(
@@ -826,7 +826,7 @@ impl<'a> EventMgr<'a> {
 
         fn nav(
             mgr: &mut EventMgr,
-            widget: &mut dyn Widget,
+            widget: &mut dyn Node,
             focus: Option<&WidgetId>,
             rev: bool,
         ) -> Option<WidgetId> {
@@ -893,11 +893,7 @@ impl<'a> EventMgr<'a> {
 
         let mut opt_id = None;
         if let Some(ref id) = target {
-            if widget
-                .find_widget(id)
-                .map(|w| w.navigable())
-                .unwrap_or(false)
-            {
+            if widget.find_node(id).map(|w| w.navigable()).unwrap_or(false) {
                 opt_id = Some(id.clone());
             }
         } else {

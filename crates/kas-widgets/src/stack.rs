@@ -13,12 +13,12 @@ use std::ops::{Index, IndexMut, Range};
 /// A stack of boxed widgets
 ///
 /// This is a parametrisation of [`Stack`].
-pub type BoxStack = Stack<Box<dyn Widget>>;
+pub type BoxStack = Stack<Box<dyn Node>>;
 
 /// A stack of widget references
 ///
 /// This is a parametrisation of [`Stack`].
-pub type RefStack<'a> = Stack<&'a mut dyn Widget>;
+pub type RefStack<'a> = Stack<&'a mut dyn Node>;
 
 impl_scope! {
     /// A stack of widgets
@@ -52,12 +52,12 @@ impl_scope! {
             self.widgets.len()
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
-            self.widgets.get(index).map(|w| w.as_widget())
+        fn get_child(&self, index: usize) -> Option<&dyn Node> {
+            self.widgets.get(index).map(|w| w.as_node())
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
-            self.widgets.get_mut(index).map(|w| w.as_widget_mut())
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Node> {
+            self.widgets.get_mut(index).map(|w| w.as_node_mut())
         }
 
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
