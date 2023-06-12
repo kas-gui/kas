@@ -10,7 +10,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::util::IdentifyWidget;
-use crate::WidgetId;
+use crate::{Erased, WidgetId};
 use kas_macros::autoimpl;
 
 #[allow(unused)] use crate::event::EventState;
@@ -597,6 +597,14 @@ pub trait Node: Widget {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn _send(&mut self, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response;
+
+    /// Internal method: replay recursively
+    ///
+    /// Behaves as if an event had been sent to `id`, then the widget had pushed
+    /// `msg` to the message stack. Widget `id` or any ancestor may handle.
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: Erased);
 }
 
 impl<W: Widget> Node for W {
@@ -633,7 +641,7 @@ impl<W: Widget> Node for W {
             cx.assert_post_steal_unused();
             let Some(index) = self.find_child_index(&id) else {
                 log::warn!(
-                    "Node::_send: Widget {} cannot find path to {id}",
+                    "Node: Widget {} cannot find path to {id}",
                     self.identify()
                 );
                 return response;
@@ -647,7 +655,7 @@ impl<W: Widget> Node for W {
                 }
             } else {
                 log::warn!(
-                    "Node::_send: {} found index {index} for {id} but not child",
+                    "Node: {} found index {index} for {id} but not child",
                     self.identify()
                 );
             }
@@ -662,6 +670,31 @@ impl<W: Widget> Node for W {
         }
 
         response
+    }
+
+    fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: Erased) {
+        if let Some(index) = self.find_child_index(&id) {
+            if let Some(w) = self.get_child_mut(index) {
+                w._replay(cx, id, msg);
+                if let Some(scroll) = cx.post_send(index) {
+                    self.handle_scroll(cx, scroll);
+                }
+            } else {
+                log::warn!(
+                    "Node: {} found index {index} for {id} but not child",
+                    self.identify()
+                );
+            }
+
+            if cx.has_msg() {
+                self.handle_message(cx);
+            }
+        } else if id == self.id_ref() {
+            cx.push_erased(msg);
+            self.handle_message(cx);
+        } else {
+            log::warn!("Node: Widget {} cannot find path to {id}", self.identify());
+        }
     }
 }
 

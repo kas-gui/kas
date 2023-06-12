@@ -610,36 +610,6 @@ impl<'a> EventMgr<'a> {
         (self.scroll != Scroll::None).then_some(self.scroll)
     }
 
-    // Traverse widget tree by recursive call to a specific target
-    fn replay_recurse(&mut self, widget: &mut dyn Node, id: WidgetId, msg: Erased) {
-        if let Some(index) = widget.find_child_index(&id) {
-            if let Some(w) = widget.get_child_mut(index) {
-                self.replay_recurse(w, id, msg);
-                self.last_child = Some(index);
-                if self.scroll != Scroll::None {
-                    widget.handle_scroll(self, self.scroll);
-                }
-            } else {
-                log::warn!(
-                    "replay_recurse: {} found index {index} for {id} but not child",
-                    widget.identify()
-                );
-            }
-
-            if self.has_msg() {
-                widget.handle_message(self);
-            }
-        } else if id == widget.id_ref() {
-            self.messages.push(msg);
-            widget.handle_message(self);
-        } else {
-            log::warn!(
-                "replay_recurse: Widget {} cannot find path to {id}",
-                widget.identify()
-            );
-        }
-    }
-
     /// Replay a message as if it was pushed by `id`
     fn replay(&mut self, widget: &mut dyn Node, id: WidgetId, msg: Erased) {
         debug_assert!(self.scroll == Scroll::None);
@@ -647,7 +617,7 @@ impl<'a> EventMgr<'a> {
         debug_assert!(self.messages.is_empty());
         log::trace!(target: "kas_core::event::manager", "replay: id={id}: {msg:?}");
 
-        self.replay_recurse(widget, id, msg);
+        widget._replay(self, id, msg);
         self.drop_messages();
         self.last_child = None;
         self.scroll = Scroll::None;
