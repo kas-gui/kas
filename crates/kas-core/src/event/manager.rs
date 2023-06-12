@@ -599,68 +599,15 @@ impl<'a> EventMgr<'a> {
         }
     }
 
-    // Traverse widget tree by recursive call to a specific target
-    //
-    // If `disabled`, widget `id` does not receive the `event`. Widget `id` is
-    // the first disabled widget (may be an ancestor of the original target);
-    // ancestors of `id` are not disabled.
-    //
-    // Note: cannot use internal stack of mutable references due to borrow checker
-    fn send_recurse(
-        &mut self,
-        widget: &mut dyn Node,
-        id: WidgetId,
-        disabled: bool,
-        event: Event,
-    ) -> Response {
-        let mut response = Response::Unused;
-        if id == widget.id_ref() {
-            if event == Event::NavFocus(true) {
-                self.set_scroll(Scroll::Rect(widget.rect()));
-            }
-
-            if disabled {
-                return response;
-            }
-
-            response |= widget.pre_handle_event(self, event);
-        } else if widget.steal_event(self, &id, &event).is_used() {
-            response = Response::Used;
-        } else if self.scroll != Scroll::None || !self.messages.is_empty() {
+    pub(crate) fn assert_post_steal_unused(&self) {
+        if self.scroll != Scroll::None || !self.messages.is_empty() {
             panic!("steal_event affected EventMgr and returned Unused");
-        } else {
-            let Some(index) = widget.find_child_index(&id) else {
-                log::warn!(
-                    "send_recurse: Widget {} cannot find path to {id}",
-                    widget.identify()
-                );
-                return response;
-            };
-
-            let translation = widget.translation();
-            if let Some(w) = widget.get_child_mut(index) {
-                response = self.send_recurse(w, id, disabled, event.clone() + translation);
-                self.last_child = Some(index);
-                if self.scroll != Scroll::None {
-                    widget.handle_scroll(self, self.scroll);
-                }
-            } else {
-                log::warn!(
-                    "send_recurse: {} found index {index} for {id} but not child",
-                    widget.identify()
-                );
-            }
-
-            if response.is_unused() && event.is_reusable() {
-                response = widget.handle_event(self, event);
-            }
         }
+    }
 
-        if self.has_msg() {
-            widget.handle_message(self);
-        }
-
-        response
+    pub(crate) fn post_send(&mut self, index: usize) -> Option<Scroll> {
+        self.last_child = Some(index);
+        (self.scroll != Scroll::None).then_some(self.scroll)
     }
 
     // Traverse widget tree by recursive call to a specific target
@@ -766,7 +713,7 @@ impl<'a> EventMgr<'a> {
             }
         }
 
-        self.send_recurse(widget, id, disabled, event) == Response::Used
+        widget._send(self, id, disabled, event) == Response::Used
     }
 
     // Returns true if event is used

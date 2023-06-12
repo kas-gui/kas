@@ -588,7 +588,17 @@ pub trait Node: Widget {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId);
+
+    /// Internal method: send recursively
+    ///
+    /// If `disabled`, widget `id` does not receive the `event`. Widget `id` is
+    /// the first disabled widget (may be an ancestor of the original target);
+    /// ancestors of `id` are not disabled.
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    fn _send(&mut self, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response;
 }
+
 impl<W: Widget> Node for W {
     fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId) {
         self.pre_configure(cx, id);
@@ -603,6 +613,55 @@ impl<W: Widget> Node for W {
         }
 
         self.configure(cx);
+    }
+
+    fn _send(&mut self, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response {
+        let mut response = Response::Unused;
+        if id == self.id_ref() {
+            if event == Event::NavFocus(true) {
+                cx.set_scroll(Scroll::Rect(self.rect()));
+            }
+
+            if disabled {
+                return response;
+            }
+
+            response |= self.pre_handle_event(cx, event);
+        } else if self.steal_event(cx, &id, &event).is_used() {
+            response = Response::Used;
+        } else {
+            cx.assert_post_steal_unused();
+            let Some(index) = self.find_child_index(&id) else {
+                log::warn!(
+                    "Node::_send: Widget {} cannot find path to {id}",
+                    self.identify()
+                );
+                return response;
+            };
+
+            let translation = self.translation();
+            if let Some(w) = self.get_child_mut(index) {
+                response = w._send(cx, id, disabled, event.clone() + translation);
+                if let Some(scroll) = cx.post_send(index) {
+                    self.handle_scroll(cx, scroll);
+                }
+            } else {
+                log::warn!(
+                    "Node::_send: {} found index {index} for {id} but not child",
+                    self.identify()
+                );
+            }
+
+            if response.is_unused() && event.is_reusable() {
+                response = self.handle_event(cx, event);
+            }
+        }
+
+        if cx.has_msg() {
+            self.handle_message(cx);
+        }
+
+        response
     }
 }
 
