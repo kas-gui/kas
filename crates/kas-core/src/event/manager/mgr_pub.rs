@@ -898,4 +898,11 @@ impl<'a> EventMgr<'a> {
             }
         }
     }
+
+    /// Configure a widget
+    ///
+    /// This is a shortcut to [`ConfigMgr::configure`].
+    pub fn configure(&mut self, widget: &mut dyn Node, id: WidgetId) {
+        self.config_mgr(|mgr| mgr.configure(widget, id));
+    }
 }

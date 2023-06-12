@@ -576,6 +576,13 @@ pub trait Widget: WidgetChildren {
 }
 
 /// Node: dyn-safe widget
+///
+/// This trait is automatically implemented for every [`Widget`].
+/// Directly implementing this trait is not supported.
+///
+/// All methods are hidden and direct usage is not supported. Instead, use:
+///
+/// -   [`ConfigMgr::configure`] or [`EventMgr::configure`]
 pub trait Node: Widget {
     /// Internal method: configure recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]

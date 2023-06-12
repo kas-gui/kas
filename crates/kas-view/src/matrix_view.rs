@@ -384,7 +384,7 @@ impl_scope! {
                         // Reset widgets to ensure input state such as cursor
                         // position does not bleed over to next data entry
                         w.widget = self.driver.make();
-                        mgr.configure(id, &mut w.widget);
+                        mgr.configure(&mut w.widget, id);
 
                         if let Some(item) = self.data.borrow(&key) {
                             *mgr |= self.driver.set(&mut w.widget, &key, item.borrow());

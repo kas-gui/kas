@@ -298,7 +298,7 @@ impl<W: Widget> Stack<W> {
     pub fn push(&mut self, mgr: &mut ConfigMgr, mut widget: W) -> usize {
         let index = self.widgets.len();
         let id = self.make_child_id(index);
-        mgr.configure(id, &mut widget);
+        mgr.configure(&mut widget, id);
 
         self.widgets.push(widget);
 
@@ -350,7 +350,7 @@ impl<W: Widget> Stack<W> {
         }
 
         let id = self.make_child_id(index);
-        mgr.configure(id, &mut widget);
+        mgr.configure(&mut widget, id);
 
         self.widgets.insert(index, widget);
 
@@ -406,7 +406,7 @@ impl<W: Widget> Stack<W> {
     /// then [`Action::RESIZE`] is triggered.
     pub fn replace(&mut self, mgr: &mut ConfigMgr, index: usize, mut w: W) -> W {
         let id = self.make_child_id(index);
-        mgr.configure(id, &mut w);
+        mgr.configure(&mut w, id);
         std::mem::swap(&mut w, &mut self.widgets[index]);
 
         if w.id_ref().is_valid() {
@@ -440,7 +440,7 @@ impl<W: Widget> Stack<W> {
         }
         for mut w in iter {
             let id = self.make_child_id(self.widgets.len());
-            mgr.configure(id, &mut w);
+            mgr.configure(&mut w, id);
             self.widgets.push(w);
         }
 
@@ -476,7 +476,7 @@ impl<W: Widget> Stack<W> {
             for index in old_len..len {
                 let id = self.make_child_id(index);
                 let mut w = f(index);
-                mgr.configure(id, &mut w);
+                mgr.configure(&mut w, id);
                 self.widgets.push(w);
             }
 

@@ -83,7 +83,7 @@ impl EventState {
 
         shell.size_and_draw_shared(Box::new(|size, draw_shared| {
             let mut mgr = ConfigMgr::new(size, draw_shared, self);
-            mgr.configure(WidgetId::ROOT, widget);
+            mgr.configure(widget, WidgetId::ROOT);
         }));
 
         let hover = widget.find_id(self.last_mouse_coord);
@@ -202,11 +202,9 @@ impl EventState {
             log::trace!(target: "kas_core::event::manager", "update: handling Pending::{item:?}");
             match item {
                 Pending::Configure(id) => {
-                    mgr.config_mgr(|mgr| {
-                        if let Some(w) = widget.find_node_mut(&id) {
-                            mgr.configure(id, w);
-                        }
-                    });
+                    if let Some(w) = widget.find_node_mut(&id) {
+                        mgr.configure(w, id);
+                    }
 
                     let hover = widget.find_id(mgr.state.last_mouse_coord);
                     mgr.state.set_hover(hover);

@@ -91,7 +91,7 @@ impl<'a> ConfigMgr<'a> {
     ///
     /// Pass the `id` to assign to the widget: this should be constructed from
     /// the parent's id via [`WidgetId::make_child`].
-    pub fn configure(&mut self, id: WidgetId, widget: &mut dyn Node) {
+    pub fn configure(&mut self, widget: &mut dyn Node, id: WidgetId) {
         widget._configure(self, id);
     }
 

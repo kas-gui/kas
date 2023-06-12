@@ -268,7 +268,7 @@ impl_scope! {
         pub fn push(&mut self, mgr: &mut ConfigMgr, mut widget: W) -> usize {
             let index = self.widgets.len();
             let id = self.make_child_id(index);
-            mgr.configure(id, &mut widget);
+            mgr.configure(&mut widget, id);
             self.widgets.push(widget);
 
             *mgr |= Action::RESIZE;
@@ -305,7 +305,7 @@ impl_scope! {
             }
 
             let id = self.make_child_id(index);
-            mgr.configure(id, &mut widget);
+            mgr.configure(&mut widget, id);
             self.widgets.insert(index, widget);
             *mgr |= Action::RESIZE;
         }
@@ -340,7 +340,7 @@ impl_scope! {
         /// The new child is configured immediately. Triggers [`Action::RESIZE`].
         pub fn replace(&mut self, mgr: &mut ConfigMgr, index: usize, mut w: W) -> W {
             let id = self.make_child_id(index);
-            mgr.configure(id, &mut w);
+            mgr.configure(&mut w, id);
             std::mem::swap(&mut w, &mut self.widgets[index]);
 
             if w.id_ref().is_valid() {
@@ -364,7 +364,7 @@ impl_scope! {
             }
             for mut w in iter {
                 let id = self.make_child_id(self.widgets.len());
-                mgr.configure(id, &mut w);
+                mgr.configure(&mut w, id);
                 self.widgets.push(w);
             }
 
@@ -397,7 +397,7 @@ impl_scope! {
                 for index in old_len..len {
                     let id = self.make_child_id(index);
                     let mut w = f(index);
-                    mgr.configure(id, &mut w);
+                    mgr.configure(&mut w, id);
                     self.widgets.push(w);
                 }
                 *mgr |= Action::RESIZE;
