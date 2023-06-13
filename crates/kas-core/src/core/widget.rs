@@ -606,6 +606,11 @@ pub trait Node: Widget {
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId);
 
+    /// Internal method: broadcast recursively
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    fn _broadcast(&mut self, cx: &mut EventMgr, count: &mut usize, event: Event);
+
     /// Internal method: send recursively
     ///
     /// If `disabled`, widget `id` does not receive the `event`. Widget `id` is
@@ -648,6 +653,16 @@ impl<W: Widget> Node for W {
         }
 
         self.configure(cx);
+    }
+
+    fn _broadcast(&mut self, cx: &mut EventMgr, count: &mut usize, event: Event) {
+        self.handle_event(cx, event.clone());
+        *count += 1;
+        for index in 0..self.num_children() {
+            if let Some(w) = self.get_child_mut(index) {
+                w._broadcast(cx, count, event.clone());
+            }
+        }
     }
 
     fn _send(&mut self, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response {
