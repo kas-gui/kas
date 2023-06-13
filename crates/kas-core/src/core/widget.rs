@@ -605,6 +605,17 @@ pub trait Node: Widget {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: Erased);
+
+    /// Internal method: search for the previous/next navigation target
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    fn _nav_next(
+        &mut self,
+        cx: &mut EventMgr,
+        focus: Option<&WidgetId>,
+        rev: bool,
+        allow_focus: bool,
+    ) -> Option<WidgetId>;
 }
 
 impl<W: Widget> Node for W {
@@ -694,6 +705,74 @@ impl<W: Widget> Node for W {
             self.handle_message(cx);
         } else {
             log::warn!("Node: Widget {} cannot find path to {id}", self.identify());
+        }
+    }
+
+    fn _nav_next(
+        &mut self,
+        cx: &mut EventMgr,
+        focus: Option<&WidgetId>,
+        rev: bool,
+        allow_focus: bool,
+    ) -> Option<WidgetId> {
+        if cx.is_disabled(self.id_ref()) {
+            return None;
+        }
+
+        let mut child = focus.and_then(|id| self.find_child_index(id));
+
+        if !rev {
+            if let Some(index) = child {
+                if let Some(id) = self
+                    .get_child_mut(index)
+                    .and_then(|w| w._nav_next(cx, focus, rev, allow_focus))
+                {
+                    return Some(id);
+                }
+            } else if (allow_focus || !self.eq_id(focus)) && self.navigable() {
+                return Some(self.id());
+            }
+
+            loop {
+                if let Some(index) = self.nav_next(cx, rev, child) {
+                    if let Some(id) = self
+                        .get_child_mut(index)
+                        .and_then(|w| w._nav_next(cx, focus, rev, allow_focus))
+                    {
+                        return Some(id);
+                    }
+                    child = Some(index);
+                } else {
+                    return None;
+                }
+            }
+        } else {
+            if let Some(index) = child {
+                if let Some(id) = self
+                    .get_child_mut(index)
+                    .and_then(|w| w._nav_next(cx, focus, rev, allow_focus))
+                {
+                    return Some(id);
+                }
+            }
+
+            loop {
+                if let Some(index) = self.nav_next(cx, rev, child) {
+                    if let Some(id) = self
+                        .get_child_mut(index)
+                        .and_then(|w| w._nav_next(cx, focus, rev, allow_focus))
+                    {
+                        return Some(id);
+                    }
+                    child = Some(index);
+                } else {
+                    return if (allow_focus || !self.eq_id(focus)) && self.navigable() {
+                        Some(self.id())
+                    } else {
+                        None
+                    };
+                }
+            }
         }
     }
 }

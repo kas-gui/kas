@@ -23,7 +23,7 @@ use crate::cast::Cast;
 use crate::geom::{Coord, Offset};
 use crate::shell::ShellWindow;
 use crate::util::WidgetHierarchy;
-use crate::{Action, Erased, Node, Widget, WidgetExt, WidgetId, WindowId};
+use crate::{Action, Erased, Node, WidgetExt, WidgetId, WindowId};
 
 mod config_mgr;
 mod mgr_pub;
@@ -714,7 +714,7 @@ impl<'a> EventMgr<'a> {
     pub fn next_nav_focus_impl(
         &mut self,
         mut widget: &mut dyn Node,
-        mut target: Option<WidgetId>,
+        target: Option<WidgetId>,
         reverse: bool,
         key_focus: bool,
     ) {
@@ -739,112 +739,35 @@ impl<'a> EventMgr<'a> {
         // We redraw in all cases. Since this is not part of widget event
         // processing, we can push directly to self.action.
         self.send_action(Action::REDRAW);
-        let old_nav_focus = self.nav_focus.take();
 
-        fn nav(
-            mgr: &mut EventMgr,
-            widget: &mut dyn Node,
-            focus: Option<&WidgetId>,
-            rev: bool,
-        ) -> Option<WidgetId> {
-            if mgr.is_disabled(widget.id_ref()) {
-                return None;
-            }
-
-            let mut child = focus.and_then(|id| widget.find_child_index(id));
-
-            if !rev {
-                if let Some(index) = child {
-                    if let Some(id) = widget
-                        .get_child_mut(index)
-                        .and_then(|w| nav(mgr, w, focus, rev))
-                    {
-                        return Some(id);
-                    }
-                } else if !widget.eq_id(focus) && widget.navigable() {
-                    return Some(widget.id());
-                }
-
-                loop {
-                    if let Some(index) = widget.nav_next(mgr, rev, child) {
-                        if let Some(id) = widget
-                            .get_child_mut(index)
-                            .and_then(|w| nav(mgr, w, focus, rev))
-                        {
-                            return Some(id);
-                        }
-                        child = Some(index);
-                    } else {
-                        return None;
-                    }
-                }
-            } else {
-                if let Some(index) = child {
-                    if let Some(id) = widget
-                        .get_child_mut(index)
-                        .and_then(|w| nav(mgr, w, focus, rev))
-                    {
-                        return Some(id);
-                    }
-                }
-
-                loop {
-                    if let Some(index) = widget.nav_next(mgr, rev, child) {
-                        if let Some(id) = widget
-                            .get_child_mut(index)
-                            .and_then(|w| nav(mgr, w, focus, rev))
-                        {
-                            return Some(id);
-                        }
-                        child = Some(index);
-                    } else {
-                        return if !widget.eq_id(focus) && widget.navigable() {
-                            Some(widget.id())
-                        } else {
-                            None
-                        };
-                    }
-                }
-            }
-        }
-
-        let mut opt_id = None;
-        if let Some(ref id) = target {
-            if widget.find_node(id).map(|w| w.navigable()).unwrap_or(false) {
-                opt_id = Some(id.clone());
-            }
-        } else {
-            target = old_nav_focus.clone();
-        }
+        let allow_focus = target.is_some();
+        let focus = target.or_else(|| self.nav_focus.clone());
 
         // Whether to restart from the beginning on failure
-        let restart = target.is_some();
+        let restart = focus.is_some();
 
-        if opt_id.is_none() {
-            opt_id = nav(self, widget, target.as_ref(), reverse);
-        }
+        let mut opt_id = widget._nav_next(self, focus.as_ref(), reverse, allow_focus);
         if restart && opt_id.is_none() {
-            opt_id = nav(self, widget, None, reverse);
+            opt_id = widget._nav_next(self, None, reverse, false);
         }
 
         log::trace!(
             target: "kas_core::event::config_mgr",
             "next_nav_focus: nav_focus={opt_id:?}",
         );
-        self.nav_focus = opt_id.clone();
-
-        if opt_id == target {
+        if opt_id == self.nav_focus {
             return;
         }
 
-        if let Some(id) = old_nav_focus {
+        if let Some(id) = self.nav_focus.clone() {
             self.pending
                 .push_back(Pending::Send(id, Event::LostNavFocus));
         }
-
         if self.sel_focus != opt_id {
             self.clear_char_focus();
         }
+
+        self.nav_focus = opt_id.clone();
         if let Some(id) = opt_id {
             self.pending
                 .push_back(Pending::Send(id, Event::NavFocus(key_focus)));
