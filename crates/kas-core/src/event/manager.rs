@@ -23,7 +23,7 @@ use crate::cast::Cast;
 use crate::geom::{Coord, Offset};
 use crate::shell::ShellWindow;
 use crate::util::WidgetHierarchy;
-use crate::{Action, Erased, Node, WidgetExt, WidgetId, WindowId};
+use crate::{Action, Erased, NavAdvance, Node, WidgetExt, WidgetId, WindowId};
 
 mod config_mgr;
 mod mgr_pub;
@@ -549,12 +549,8 @@ impl<'a> EventMgr<'a> {
         }
 
         if let Some(id) = target {
-            if widget
-                .find_node(&id)
-                .map(|w| w.navigable())
-                .unwrap_or(false)
-            {
-                self.set_nav_focus(id.clone(), true);
+            if let Some(id) = widget._nav_next(self, Some(&id), NavAdvance::None) {
+                self.set_nav_focus(id, true);
             }
             self.add_key_depress(scancode, id.clone());
             self.send_event(widget, id, Event::Command(Command::Activate));
@@ -740,15 +736,19 @@ impl<'a> EventMgr<'a> {
         // processing, we can push directly to self.action.
         self.send_action(Action::REDRAW);
 
-        let allow_focus = target.is_some();
+        let advance = if !reverse {
+            NavAdvance::Forward(target.is_some())
+        } else {
+            NavAdvance::Reverse(target.is_some())
+        };
         let focus = target.or_else(|| self.nav_focus.clone());
 
         // Whether to restart from the beginning on failure
         let restart = focus.is_some();
 
-        let mut opt_id = widget._nav_next(self, focus.as_ref(), reverse, allow_focus);
+        let mut opt_id = widget._nav_next(self, focus.as_ref(), advance);
         if restart && opt_id.is_none() {
-            opt_id = widget._nav_next(self, None, reverse, false);
+            opt_id = widget._nav_next(self, None, advance);
         }
 
         log::trace!(

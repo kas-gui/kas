@@ -575,6 +575,23 @@ pub trait Widget: WidgetChildren {
     }
 }
 
+/// Action of Node::_nav_next
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum NavAdvance {
+    /// Match only `focus` if navigable
+    None,
+    /// Walk children forwards, self first
+    ///
+    /// May match `focus` only if `allow_focus: bool`.
+    Forward(bool),
+    /// Walk children backwards, self last
+    ///
+    /// May match `focus` only if `allow_focus: bool`.
+    Reverse(bool),
+}
+
 /// Node: dyn-safe widget
 ///
 /// This trait is automatically implemented for every [`Widget`].
@@ -613,8 +630,7 @@ pub trait Node: Widget {
         &mut self,
         cx: &mut EventMgr,
         focus: Option<&WidgetId>,
-        rev: bool,
-        allow_focus: bool,
+        advance: NavAdvance,
     ) -> Option<WidgetId>;
 }
 
@@ -712,8 +728,7 @@ impl<W: Widget> Node for W {
         &mut self,
         cx: &mut EventMgr,
         focus: Option<&WidgetId>,
-        rev: bool,
-        allow_focus: bool,
+        advance: NavAdvance,
     ) -> Option<WidgetId> {
         if cx.is_disabled(self.id_ref()) {
             return None;
@@ -721,59 +736,55 @@ impl<W: Widget> Node for W {
 
         let mut child = focus.and_then(|id| self.find_child_index(id));
 
-        if !rev {
-            if let Some(index) = child {
-                if let Some(id) = self
-                    .get_child_mut(index)
-                    .and_then(|w| w._nav_next(cx, focus, rev, allow_focus))
-                {
-                    return Some(id);
-                }
-            } else if (allow_focus || !self.eq_id(focus)) && self.navigable() {
-                return Some(self.id());
-            }
-
-            loop {
-                if let Some(index) = self.nav_next(cx, rev, child) {
-                    if let Some(id) = self
-                        .get_child_mut(index)
-                        .and_then(|w| w._nav_next(cx, focus, rev, allow_focus))
-                    {
-                        return Some(id);
-                    }
-                    child = Some(index);
-                } else {
-                    return None;
-                }
-            }
-        } else {
-            if let Some(index) = child {
-                if let Some(id) = self
-                    .get_child_mut(index)
-                    .and_then(|w| w._nav_next(cx, focus, rev, allow_focus))
-                {
-                    return Some(id);
-                }
-            }
-
-            loop {
-                if let Some(index) = self.nav_next(cx, rev, child) {
-                    if let Some(id) = self
-                        .get_child_mut(index)
-                        .and_then(|w| w._nav_next(cx, focus, rev, allow_focus))
-                    {
-                        return Some(id);
-                    }
-                    child = Some(index);
-                } else {
-                    return if (allow_focus || !self.eq_id(focus)) && self.navigable() {
-                        Some(self.id())
-                    } else {
-                        None
-                    };
-                }
+        if let Some(index) = child {
+            if let Some(id) = self
+                .get_child_mut(index)
+                .and_then(|w| w._nav_next(cx, focus, advance))
+            {
+                return Some(id);
             }
         }
+
+        let can_match_self = match advance {
+            NavAdvance::None => true,
+            NavAdvance::Forward(true) => true,
+            NavAdvance::Forward(false) => !self.eq_id(focus),
+            _ => false,
+        };
+        if can_match_self && self.navigable() {
+            return Some(self.id());
+        }
+
+        let rev = match advance {
+            NavAdvance::None => return None,
+            NavAdvance::Forward(_) => false,
+            NavAdvance::Reverse(_) => true,
+        };
+
+        loop {
+            if let Some(index) = self.nav_next(cx, rev, child) {
+                if let Some(id) = self
+                    .get_child_mut(index)
+                    .and_then(|w| w._nav_next(cx, focus, advance))
+                {
+                    return Some(id);
+                }
+                child = Some(index);
+            } else {
+                break;
+            }
+        }
+
+        let can_match_self = match advance {
+            NavAdvance::Reverse(true) => true,
+            NavAdvance::Reverse(false) => !self.eq_id(focus),
+            _ => false,
+        };
+        if can_match_self && self.navigable() {
+            return Some(self.id());
+        }
+
+        None
     }
 }
 
