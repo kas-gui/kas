@@ -203,7 +203,7 @@ impl_scope! {
                     if !self.rect().contains(press.coord) {
                         // not on the menubar
                         self.delayed_open = None;
-                        mgr.send(self, id, Event::Command(Command::Activate));
+                        mgr.send(id, Event::Command(Command::Activate));
                     }
                     Response::Used
                 }
