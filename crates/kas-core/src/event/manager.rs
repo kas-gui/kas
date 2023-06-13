@@ -23,7 +23,7 @@ use crate::cast::Cast;
 use crate::geom::{Coord, Offset};
 use crate::shell::ShellWindow;
 use crate::util::WidgetHierarchy;
-use crate::{Action, Erased, NavAdvance, Node, WidgetExt, WidgetId, WindowId};
+use crate::{Action, Erased, NavAdvance, Node, NodeExt, WidgetId, WindowId};
 
 mod config_mgr;
 mod mgr_pub;

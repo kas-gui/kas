@@ -569,7 +569,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
         let mut set_rect = quote! { self.#core.rect = rect; };
         let mut find_id = quote! {
-            use ::kas::{WidgetCore, WidgetExt};
+            use ::kas::{WidgetCore, NodeExt};
             self.rect().contains(coord).then(|| self.id())
         };
         if let Some((_, layout)) = args.layout.take() {
@@ -696,7 +696,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 mgr: &mut ::kas::event::EventMgr,
                 event: ::kas::event::Event,
             ) -> ::kas::event::Response {
-                use ::kas::{event::{Event, Response}, WidgetExt};
+                use ::kas::{event::{Event, Response}, NodeExt};
                 #pre_handle_event
                 self.handle_event(mgr, event)
             }

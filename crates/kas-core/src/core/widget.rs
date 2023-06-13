@@ -789,12 +789,12 @@ impl<W: Widget> Node for W {
 }
 
 /// Extension trait over widgets
-pub trait WidgetExt: Widget {
+pub trait NodeExt: Node {
     /// Get the widget's identifier
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
     /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned by [`Widget::pre_configure`].
+    /// assigned during configure.
     #[inline]
     fn id(&self) -> WidgetId {
         self.id_ref().clone()
@@ -857,4 +857,4 @@ pub trait WidgetExt: Widget {
         }
     }
 }
-impl<W: Widget + ?Sized> WidgetExt for W {}
+impl<W: Node + ?Sized> NodeExt for W {}

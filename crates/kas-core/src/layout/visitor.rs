@@ -59,7 +59,7 @@ enum LayoutType<'a> {
 /* unused utility method:
 impl<'a> LayoutType<'a> {
     fn id(&self) -> Option<WidgetId> {
-        use crate::WidgetExt;
+        use crate::NodeExt;
         match self {
             LayoutType::None => None,
             LayoutType::Component(_) => None,
