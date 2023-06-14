@@ -577,6 +577,11 @@ impl_scope! {
             mgr.request_reconfigure(self.id());
         }
 
+        #[inline]
+        fn translation(&self) -> Offset {
+            self.scroll_offset()
+        }
+
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
@@ -680,11 +685,6 @@ impl_scope! {
             }
 
             Some(solver.data_to_child(ci, ri))
-        }
-
-        #[inline]
-        fn translation(&self) -> Offset {
-            self.scroll_offset()
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {

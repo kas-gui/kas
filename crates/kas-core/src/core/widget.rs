@@ -188,6 +188,22 @@ pub trait Layout: WidgetChildren {
     /// [`Stretch`]: crate::layout::Stretch
     fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
 
+    /// Get translation of children relative to this widget
+    ///
+    /// Usually this is zero; only widgets with scrollable or offset content
+    /// *and* child widgets need to implement this.
+    /// Such widgets must also implement [`Widget::handle_scroll`].
+    ///
+    /// Affects event handling via [`Layout::find_id`] and affects the positioning
+    /// of pop-up menus. [`Layout::draw`] must be implemented directly using
+    /// [`DrawMgr::with_clip_region`] to offset contents.
+    ///
+    /// Default implementation: return [`Offset::ZERO`]
+    #[inline]
+    fn translation(&self) -> Offset {
+        Offset::ZERO
+    }
+
     /// Translate a coordinate to a [`WidgetId`]
     ///
     /// This method is used to determine which widget reacts to the mouse cursor
@@ -261,7 +277,7 @@ pub trait Layout: WidgetChildren {
 /// -   [`WidgetCore`] — base functionality
 /// -   [`WidgetChildren`] — enumerates children
 /// -   [`Layout`] — handles sizing and positioning for self and children
-/// -   [`Widget`] — configuration, some aspects of layout, event handling
+/// -   [`Widget`] — configuration, event handling
 ///
 /// # Implementing Widget
 ///
@@ -416,20 +432,6 @@ pub trait Widget: Layout {
     #[inline]
     fn navigable(&self) -> bool {
         false
-    }
-
-    /// Get translation of children relative to this widget
-    ///
-    /// Usually this is zero; only widgets with scrollable or offset content
-    /// *and* child widgets need to implement this.
-    /// Such widgets must also implement [`Widget::handle_scroll`].
-    ///
-    /// Affects event handling via [`Layout::find_id`] and affects the positioning
-    /// of pop-up menus. [`Layout::draw`] must be implemented directly using
-    /// [`DrawMgr::with_clip_region`] to offset contents.
-    #[inline]
-    fn translation(&self) -> Offset {
-        Offset::ZERO
     }
 
     /// Navigation in spatial order

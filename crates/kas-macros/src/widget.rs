@@ -352,6 +352,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let widget_name = name.to_string();
 
     let mut fn_size_rules = None;
+    let mut fn_translation = None;
     let (fn_set_rect, fn_find_id);
     let mut fn_draw = None;
     let mut gen_layout = false;
@@ -431,6 +432,12 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 self.#inner.set_rect(mgr, rect);
             }
         };
+        fn_translation = Some(quote! {
+            #[inline]
+            fn translation(&self) -> ::kas::geom::Offset {
+                self.#inner.translation()
+            }
+        });
         fn_find_id = quote! {
             #[inline]
             fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
@@ -463,12 +470,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             #[inline]
             fn configure(&mut self, mgr: &mut ::kas::event::ConfigMgr) {
                 self.#inner.configure(mgr);
-            }
-        };
-        let translation = quote! {
-            #[inline]
-            fn translation(&self) -> ::kas::geom::Offset {
-                self.#inner.translation()
             }
         };
         fn_nav_next = Some(quote! {
@@ -526,7 +527,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         };
         widget_methods = vec![
             ("configure", configure),
-            ("translation", translation),
             ("handle_message", handle_message),
             ("handle_scroll", handle_scroll),
         ];
@@ -729,6 +729,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
         if !has_method("set_rect") {
             layout_impl.items.push(parse2(fn_set_rect)?);
+        }
+        if let Some(method) = fn_translation {
+            if !has_method("translation") {
+                layout_impl.items.push(parse2(method)?);
+            }
         }
         if !has_method("find_id") {
             layout_impl.items.push(parse2(fn_find_id)?);
