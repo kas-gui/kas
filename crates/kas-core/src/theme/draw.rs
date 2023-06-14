@@ -12,7 +12,7 @@ use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType
 use crate::event::{ConfigMgr, EventState};
 use crate::geom::{Offset, Rect};
 use crate::text::{TextApi, TextDisplay};
-use crate::{autoimpl, Action, Widget, WidgetCore, WidgetId};
+use crate::{autoimpl, Action, Layout, Widget, WidgetId};
 use std::convert::AsRef;
 use std::ops::{Bound, Range, RangeBounds};
 use std::time::Instant;
@@ -76,7 +76,7 @@ impl<'a> DrawMgr<'a> {
 
     /// Recurse drawing to a child
     #[inline]
-    pub fn recurse(&mut self, child: &mut (impl WidgetCore + ?Sized)) {
+    pub fn recurse(&mut self, child: &mut (impl Layout + ?Sized)) {
         child.draw(self.re_id(child.id_ref().clone()));
     }
 

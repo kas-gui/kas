@@ -27,7 +27,7 @@ use crate::layout::{self, AlignPair, AutoLayout};
 /// **Directly implementing this trait is not supported**.
 /// See [`Widget`] trait documentation.
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait WidgetCore: Layout {
+pub trait WidgetCore {
     /// Get the widget's identifier
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
@@ -141,7 +141,7 @@ pub trait WidgetChildren: WidgetCore {
 /// solve layout for a single widget/layout object, it may be useful to use
 /// [`layout::solve_size_rules`] or [`layout::SolveCache`].
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait Layout {
+pub trait Layout: WidgetChildren {
     /// Get size rules for the given axis
     ///
     /// Typically, this method is called twice: first for the horizontal axis,
@@ -378,7 +378,7 @@ pub trait Layout {
 /// }
 /// ```
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait Widget: WidgetChildren {
+pub trait Widget: Layout {
     /// Pre-configuration
     ///
     /// This method is called before children are configured to assign a

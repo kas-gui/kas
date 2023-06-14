@@ -17,7 +17,7 @@ use crate::event::ConfigMgr;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::theme::{Background, DrawMgr, FrameStyle, MarginStyle, SizeMgr};
 use crate::WidgetId;
-use crate::{dir::Directional, dir::Directions, Layout, Widget, WidgetCore};
+use crate::{dir::Directional, dir::Directions, Layout, Widget};
 use std::iter::ExactSizeIterator;
 
 /// A sub-set of [`Layout`] used by [`Visitor`].
@@ -65,9 +65,9 @@ enum LayoutType<'a> {
     /// A boxed component
     BoxComponent(Box<dyn Visitable + 'a>),
     /// A single child widget
-    Single(&'a mut dyn WidgetCore),
+    Single(&'a mut dyn Layout),
     /// A single child widget with alignment
-    AlignSingle(&'a mut dyn WidgetCore, AlignHints),
+    AlignSingle(&'a mut dyn Layout, AlignHints),
     /// Apply alignment hints to some sub-layout
     Align(Box<Visitor<'a>>, AlignHints),
     /// Apply alignment and pack some sub-layout
@@ -82,13 +82,13 @@ enum LayoutType<'a> {
 
 impl<'a> Visitor<'a> {
     /// Construct a single-item layout
-    pub fn single(widget: &'a mut dyn WidgetCore) -> Self {
+    pub fn single(widget: &'a mut dyn Layout) -> Self {
         let layout = LayoutType::Single(widget);
         Visitor { layout }
     }
 
     /// Construct a single-item layout with alignment hints
-    pub fn align_single(widget: &'a mut dyn WidgetCore, hints: AlignHints) -> Self {
+    pub fn align_single(widget: &'a mut dyn Layout, hints: AlignHints) -> Self {
         let layout = LayoutType::AlignSingle(widget, hints);
         Visitor { layout }
     }
