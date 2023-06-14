@@ -20,6 +20,34 @@ use crate::WidgetId;
 use crate::{dir::Directional, dir::Directions, Layout, Widget, WidgetCore};
 use std::iter::ExactSizeIterator;
 
+/// A sub-set of [`Layout`] used by [`Visitor`].
+///
+/// Unlike when implementing a widget, all methods of this trait must be
+/// implemented directly.
+pub trait Visitable {
+    /// Get size rules for the given axis
+    ///
+    /// This method is identical to [`Layout::size_rules`].
+    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
+
+    /// Set size and position
+    ///
+    /// This method is identical to [`Layout::set_rect`].
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
+
+    /// Translate a coordinate to a [`WidgetId`]
+    ///
+    /// Implementations should recursively call `find_id` on children, returning
+    /// `None` if no child returns a `WidgetId`.
+    /// This method is simplified relative to [`Layout::find_id`].
+    fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
+
+    /// Draw a widget and its children
+    ///
+    /// This method is identical to [`Layout::draw`].
+    fn draw(&mut self, draw: DrawMgr);
+}
+
 /// A layout visitor
 ///
 /// This constitutes a "visitor" which iterates over each child widget. Layout
@@ -37,9 +65,9 @@ enum LayoutType<'a> {
     /// No layout
     None,
     /// A component
-    Component(&'a mut dyn Layout),
+    Component(&'a mut dyn Visitable),
     /// A boxed component
-    BoxComponent(Box<dyn Layout + 'a>),
+    BoxComponent(Box<dyn Visitable + 'a>),
     /// A single child widget
     Single(&'a mut dyn WidgetCore),
     /// A single child widget with alignment
@@ -334,7 +362,7 @@ struct List<'a, S, D, I> {
     children: I,
 }
 
-impl<'a, S: RowStorage, D: Directional, I> Layout for List<'a, S, D, I>
+impl<'a, S: RowStorage, D: Directional, I> Visitable for List<'a, S, D, I>
 where
     I: ExactSizeIterator<Item = Visitor<'a>>,
 {
@@ -376,7 +404,7 @@ where
     children: I,
 }
 
-impl<'a, I> Layout for Float<'a, I>
+impl<'a, I> Visitable for Float<'a, I>
 where
     I: DoubleEndedIterator<Item = Visitor<'a>>,
 {
@@ -416,7 +444,7 @@ struct Slice<'a, W: Widget, D: Directional> {
     children: &'a mut [W],
 }
 
-impl<'a, W: Widget, D: Directional> Layout for Slice<'a, W, D> {
+impl<'a, W: Widget, D: Directional> Visitable for Slice<'a, W, D> {
     fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         let dim = (self.direction, self.children.len());
         let mut solver = RowSolver::new(axis, dim, self.data);
@@ -455,7 +483,7 @@ struct Grid<'a, S, I> {
     children: I,
 }
 
-impl<'a, S: GridStorage, I> Layout for Grid<'a, S, I>
+impl<'a, S: GridStorage, I> Visitable for Grid<'a, S, I>
 where
     I: DoubleEndedIterator<Item = (GridChildInfo, Visitor<'a>)>,
 {

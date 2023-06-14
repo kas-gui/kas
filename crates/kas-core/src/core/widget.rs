@@ -119,16 +119,13 @@ pub trait WidgetChildren: WidgetCore {
 ///
 /// # Implementing Layout
 ///
-/// There are three cases:
+/// The [`#[widget]` macro](macros::widget) supports an optional property,
+/// `layout`. If this is used then the `Layout` trait is implemented
+/// automatically (although a custom implementation may still be used, which
+/// may refer to the implementation of [`AutoLayout`] for `Self`).
 ///
-/// -   For a non-widget, all methods must be implemented directly.
-/// -   For a [`Widget`] without using the `layout` macro property,
-///     the [`Self::set_rect`] and [`Self::find_id`] methods gain default
-///     implementations (generated via macro).
-/// -   For a [`Widget`] where the `#[widget{ layout = .. }]` property
-///     is set (see [`macros::widget`] documentation), all methods have a
-///     default implementation. Custom implementations may use [`AutoLayout`] to
-///     access these default implementations.
+/// If the `layout` property is not used then at least [`Self::size_rules`] and
+/// [`Self::draw`] must be defined directly.
 ///
 /// # Solving layout
 ///
@@ -161,11 +158,6 @@ pub trait Layout {
     ///
     /// For row/column/grid layouts, a [`crate::layout::RulesSolver`] engine
     /// may be useful.
-    ///
-    /// Default implementation:
-    ///
-    /// -   No default implementation, except,
-    /// -   For a widget with the `layout` property, call [`AutoLayout::size_rules`]
     fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
 
     /// Set size and position
@@ -190,14 +182,8 @@ pub trait Layout {
     /// Another example: `Label` uses a `Text` object which handles alignment
     /// internally.
     ///
-    /// Default implementation:
-    ///
-    /// -   Independent usage: no default
-    /// -   For a widget without `layout` property, set `rect` field of `widget_core!()`
-    /// -   For a widget with the `layout` property, call [`AutoLayout::set_rect`]
-    ///
-    /// Default: set `rect` of `widget_core!()` field. If `layout = ..` property
-    /// is used, also calls `<Self as AutoLayout>::set_rect`.
+    /// Default implementation when not using the `layout` property: set `rect`
+    /// field of `widget_core!()` to the input `rect`.
     ///
     /// [`Stretch`]: crate::layout::Stretch
     fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
@@ -228,28 +214,28 @@ pub trait Layout {
     /// -   Event stealing or donation is desired (but note that
     ///     `layout = button: ..;` does this already)
     ///
-    /// The implementation is slightly different for widgets and non-widget
-    /// components:
+    /// When writing a custom implementation:
     ///
     /// -   Widgets should test `self.rect().contains(coord)`, returning `None`
     ///     if this test is `false`; otherwise, they should always return *some*
     ///     [`WidgetId`], either a childs or their own.
-    /// -   Widgets *may* use a translated coordinate space: recursion uses
-    ///     `child.find_id(coord + self.translation())`.
+    /// -   If the Widget uses a translated coordinate space (i.e.
+    ///     `self.translation() != Offset::ZERO`) then pass
+    ///     `coord + self.translation()` to children.
     ///
-    /// Default implementation:
-    ///
-    /// -   Non-widgets: no default implementation.
-    /// -   For a widget without the `layout` property,
-    ///     `self.rect().contains(coord).then(|| self.id())`.
-    /// -   For a widget with the `layout` property, the following snippet:
-    ///     ```ignore
-    ///     if !self.rect().contains(coord) {
-    ///         return None;
+    /// The default implementation is non-trivial:
+    /// ```ignore
+    /// if !self.rect().contains(coord) {
+    ///     return None;
+    /// }
+    /// let coord = coord + self.translation();
+    /// for child in ITER_OVER_CHILDREN {
+    ///     if let Some(id) = child.find_id(coord) {
+    ///         return Some(id);
     ///     }
-    ///     let coord = coord + self.translation();
-    ///     (#layout).find_id(coord).or_else(|| Some(self.id()))
-    ///     ```
+    /// }
+    /// Some(self.id())
+    /// ```
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
 
     /// Draw a widget and its children
@@ -264,11 +250,6 @@ pub trait Layout {
     /// [`WidgetId`], allowing drawn components to react to input state. This
     /// implies that when calling `draw` on children, the child's `id` must be
     /// supplied via [`DrawMgr::re_id`] or [`DrawMgr::recurse`].
-    ///
-    /// Default implementation:
-    ///
-    /// -   No default implementation, except,
-    /// -   For a widget with the `layout` property, call [`AutoLayout::draw`]
     fn draw(&mut self, draw: DrawMgr);
 }
 
