@@ -508,8 +508,7 @@ impl<'a> EventMgr<'a> {
                         let start_id = widget.find_id(coord);
                         if let Some(id) = start_id.as_ref() {
                             if self.config.touch_nav_focus() {
-                                if let Some(id) =
-                                    widget._nav_next(self, Some(&id), NavAdvance::None)
+                                if let Some(id) = widget._nav_next(self, Some(id), NavAdvance::None)
                                 {
                                     self.set_nav_focus(id, false);
                                 }

@@ -583,9 +583,8 @@ pub enum NavAdvance {
 /// This trait is automatically implemented for every [`Widget`].
 /// Directly implementing this trait is not supported.
 ///
-/// All methods are hidden and direct usage is not supported. Instead, use:
-///
-/// -   [`ConfigMgr::configure`] or [`EventMgr::configure`]
+/// All methods are hidden and direct usage is not supported; instead use the
+/// [`ConfigMgr`] and [`EventMgr`] types which use these methods internally.
 pub trait Node: Layout {
     /// Internal method: configure recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -762,18 +761,14 @@ impl<W: Widget> Node for W {
             NavAdvance::Reverse(_) => true,
         };
 
-        loop {
-            if let Some(index) = self.nav_next(cx, rev, child) {
-                if let Some(id) = self
-                    .get_child_mut(index)
-                    .and_then(|w| w._nav_next(cx, focus, advance))
-                {
-                    return Some(id);
-                }
-                child = Some(index);
-            } else {
-                break;
+        while let Some(index) = self.nav_next(cx, rev, child) {
+            if let Some(id) = self
+                .get_child_mut(index)
+                .and_then(|w| w._nav_next(cx, focus, advance))
+            {
+                return Some(id);
             }
+            child = Some(index);
         }
 
         let can_match_self = match advance {
