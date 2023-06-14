@@ -108,7 +108,10 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// Default impl: `self.id_ref().make_child(index)`
     #[inline]
-    fn make_child_id(&mut self, index: usize) -> WidgetId {
+    fn make_child_id(&mut self, index: usize) -> WidgetId
+    where
+        Self: Sized,
+    {
         self.id_ref().make_child(index)
     }
 }
@@ -583,7 +586,7 @@ pub enum NavAdvance {
 /// All methods are hidden and direct usage is not supported. Instead, use:
 ///
 /// -   [`ConfigMgr::configure`] or [`EventMgr::configure`]
-pub trait Node: Widget {
+pub trait Node: Layout {
     /// Internal method: configure recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]

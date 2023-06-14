@@ -261,7 +261,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
             self.ev_state.region_moved(&mut *self.widget);
         } else*/
         if action.contains(Action::REGION_MOVED) {
-            self.ev_state.region_moved(&mut self.widget.as_node_mut());
+            self.ev_state.region_moved(self.widget.as_node_mut());
         }
         if !action.is_empty() {
             self.queued_frame_time = Some(self.next_avail_frame_time);
