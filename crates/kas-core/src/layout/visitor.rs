@@ -62,10 +62,6 @@ pub struct Visitor<'a> {
 
 /// Items which can be placed in a layout
 enum LayoutType<'a> {
-    /// No layout
-    None,
-    /// A component
-    Component(&'a mut dyn Visitable),
     /// A boxed component
     BoxComponent(Box<dyn Visitable + 'a>),
     /// A single child widget
@@ -84,37 +80,7 @@ enum LayoutType<'a> {
     Button(Box<Visitor<'a>>, &'a mut FrameStorage, Option<Rgb>),
 }
 
-/* unused utility method:
-impl<'a> LayoutType<'a> {
-    fn id(&self) -> Option<WidgetId> {
-        use crate::NodeExt;
-        match self {
-            LayoutType::None => None,
-            LayoutType::Component(_) => None,
-            LayoutType::BoxComponent(_) => None,
-            LayoutType::Single(w) => Some(w.id()),
-            LayoutType::AlignSingle(w, _) => Some(w.id()),
-            LayoutType::Align(l, _) => l.layout.id(),
-            LayoutType::Margins(l, _, _) => l.layout.id(),
-            LayoutType::Frame(l, _, _) => l.layout.id(),
-            LayoutType::Button(l, _, _) => l.layout.id(),
-        }
-    }
-}*/
-
-impl<'a> Default for Visitor<'a> {
-    fn default() -> Self {
-        Visitor::none()
-    }
-}
-
 impl<'a> Visitor<'a> {
-    /// Construct an empty layout
-    pub fn none() -> Self {
-        let layout = LayoutType::None;
-        Visitor { layout }
-    }
-
     /// Construct a single-item layout
     pub fn single(widget: &'a mut dyn WidgetCore) -> Self {
         let layout = LayoutType::Single(widget);
@@ -159,12 +125,6 @@ impl<'a> Visitor<'a> {
     /// on the button reports input to `self`, not to the child node.
     pub fn button(data: &'a mut FrameStorage, child: Self, color: Option<Rgb>) -> Self {
         let layout = LayoutType::Button(Box::new(child), data, color);
-        Visitor { layout }
-    }
-
-    /// Place a component in the layout
-    pub fn component(component: &'a mut dyn Layout) -> Self {
-        let layout = LayoutType::Component(component);
         Visitor { layout }
     }
 
@@ -235,8 +195,6 @@ impl<'a> Visitor<'a> {
     }
     fn size_rules_(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         match &mut self.layout {
-            LayoutType::None => SizeRules::EMPTY,
-            LayoutType::Component(component) => component.size_rules(mgr, axis),
             LayoutType::BoxComponent(component) => component.size_rules(mgr, axis),
             LayoutType::Single(child) => child.size_rules(mgr, axis),
             LayoutType::AlignSingle(child, hints) => {
@@ -283,8 +241,6 @@ impl<'a> Visitor<'a> {
     }
     fn set_rect_(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
         match &mut self.layout {
-            LayoutType::None => (),
-            LayoutType::Component(component) => component.set_rect(mgr, rect),
             LayoutType::BoxComponent(layout) => layout.set_rect(mgr, rect),
             LayoutType::Single(child) => child.set_rect(mgr, rect),
             LayoutType::Align(layout, _) => layout.set_rect_(mgr, rect),
@@ -312,8 +268,6 @@ impl<'a> Visitor<'a> {
     }
     fn find_id_(&mut self, coord: Coord) -> Option<WidgetId> {
         match &mut self.layout {
-            LayoutType::None => None,
-            LayoutType::Component(component) => component.find_id(coord),
             LayoutType::BoxComponent(layout) => layout.find_id(coord),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.find_id(coord),
             LayoutType::Align(layout, _) => layout.find_id_(coord),
@@ -332,8 +286,6 @@ impl<'a> Visitor<'a> {
     }
     fn draw_(&mut self, mut draw: DrawMgr) {
         match &mut self.layout {
-            LayoutType::None => (),
-            LayoutType::Component(component) => component.draw(draw),
             LayoutType::BoxComponent(layout) => layout.draw(draw),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => draw.recurse(*child),
             LayoutType::Align(layout, _) => layout.draw_(draw),
