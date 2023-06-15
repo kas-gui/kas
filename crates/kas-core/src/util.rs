@@ -12,8 +12,8 @@ use std::fmt;
 /// Helper to display widget identification (e.g. `MyWidget#01`)
 ///
 /// Constructed by [`crate::NodeExt::identify`].
-pub struct IdentifyWidget(pub(crate) &'static str, pub(crate) WidgetId);
-impl fmt::Display for IdentifyWidget {
+pub struct IdentifyWidget<'a>(pub(crate) &'static str, pub(crate) &'a WidgetId);
+impl<'a> fmt::Display for IdentifyWidget<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{}{}", self.0, self.1)
     }

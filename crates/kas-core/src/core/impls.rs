@@ -6,7 +6,8 @@
 //! Widget method implementations
 
 use crate::event::{ConfigMgr, Event, EventMgr, Response};
-use crate::{Erased, NavAdvance, NodeExt, Widget, WidgetId};
+use crate::util::IdentifyWidget;
+use crate::{Erased, NavAdvance, Widget, WidgetId};
 
 /// Generic implementation of [`Node::_configure`]
 pub fn _configure<W: Widget>(widget: &mut W, cx: &mut ConfigMgr, id: WidgetId) {
@@ -65,7 +66,7 @@ pub fn _send<W: Widget>(
                 #[cfg(debug_assertions)]
                 log::warn!(
                     "_send: {} found index {index} for {id} but not child",
-                    widget.identify()
+                    IdentifyWidget(widget.widget_name(), widget.id_ref())
                 );
             }
         }
@@ -94,7 +95,7 @@ pub fn _replay<W: Widget>(widget: &mut W, cx: &mut EventMgr, id: WidgetId, msg: 
             #[cfg(debug_assertions)]
             log::warn!(
                 "_replay: {} found index {index} for {id} but not child",
-                widget.identify()
+                IdentifyWidget(widget.widget_name(), widget.id_ref())
             );
         }
 
@@ -106,7 +107,10 @@ pub fn _replay<W: Widget>(widget: &mut W, cx: &mut EventMgr, id: WidgetId, msg: 
         widget.handle_message(cx);
     } else {
         #[cfg(debug_assertions)]
-        log::debug!("_replay: {} cannot find path to {id}", widget.identify());
+        log::debug!(
+            "_replay: {} cannot find path to {id}",
+            IdentifyWidget(widget.widget_name(), widget.id_ref())
+        );
     }
 }
 
@@ -135,11 +139,11 @@ pub fn _nav_next<W: Widget>(
     let can_match_self = match advance {
         NavAdvance::None => true,
         NavAdvance::Forward(true) => true,
-        NavAdvance::Forward(false) => !widget.eq_id(focus),
+        NavAdvance::Forward(false) => *widget.id_ref() != focus,
         _ => false,
     };
     if can_match_self && widget.navigable() {
-        return Some(widget.id());
+        return Some(widget.id_ref().clone());
     }
 
     let rev = match advance {
@@ -160,11 +164,11 @@ pub fn _nav_next<W: Widget>(
 
     let can_match_self = match advance {
         NavAdvance::Reverse(true) => true,
-        NavAdvance::Reverse(false) => !widget.eq_id(focus),
+        NavAdvance::Reverse(false) => *widget.id_ref() != focus,
         _ => false,
     };
     if can_match_self && widget.navigable() {
-        return Some(widget.id());
+        return Some(widget.id_ref().clone());
     }
 
     None

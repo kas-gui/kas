@@ -675,7 +675,7 @@ pub trait NodeExt: Node {
     /// Display as "StructName#WidgetId"
     #[inline]
     fn identify(&self) -> IdentifyWidget {
-        IdentifyWidget(self.widget_name(), self.id())
+        IdentifyWidget(self.widget_name(), self.id_ref())
     }
 
     /// Check whether `id` is self or a descendant
