@@ -119,7 +119,7 @@ impl_scope! {
         }
     }
 
-    impl Widget for Clock {
+    impl Events for Clock {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.request_timer_update(self.id(), 0, Duration::new(0, 0), true);
         }

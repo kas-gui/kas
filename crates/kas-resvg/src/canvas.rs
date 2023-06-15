@@ -184,7 +184,7 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
+    impl Events for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr) {
             if let Some((program, mut pixmap)) = mgr.try_pop::<(P, Pixmap)>() {
                 debug_assert!(matches!(self.inner, State::Rendering));

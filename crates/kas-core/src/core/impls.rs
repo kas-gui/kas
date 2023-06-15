@@ -7,10 +7,10 @@
 
 use crate::event::{ConfigMgr, Event, EventMgr, Response};
 use crate::util::IdentifyWidget;
-use crate::{Erased, NavAdvance, Widget, WidgetId};
+use crate::{Erased, Events, Layout, NavAdvance, WidgetId};
 
-/// Generic implementation of [`Node::_configure`]
-pub fn _configure<W: Widget>(widget: &mut W, cx: &mut ConfigMgr, id: WidgetId) {
+/// Generic implementation of [`Widget::_configure`]
+pub fn _configure<W: Layout + Events>(widget: &mut W, cx: &mut ConfigMgr, id: WidgetId) {
     widget.pre_configure(cx, id);
 
     for index in 0..widget.num_children() {
@@ -25,8 +25,13 @@ pub fn _configure<W: Widget>(widget: &mut W, cx: &mut ConfigMgr, id: WidgetId) {
     widget.configure(cx);
 }
 
-/// Generic implementation of [`Node::_broadcast`]
-pub fn _broadcast<W: Widget>(widget: &mut W, cx: &mut EventMgr, count: &mut usize, event: Event) {
+/// Generic implementation of [`Widget::_broadcast`]
+pub fn _broadcast<W: Layout + Events>(
+    widget: &mut W,
+    cx: &mut EventMgr,
+    count: &mut usize,
+    event: Event,
+) {
     widget.handle_event(cx, event.clone());
     *count += 1;
     for index in 0..widget.num_children() {
@@ -36,8 +41,8 @@ pub fn _broadcast<W: Widget>(widget: &mut W, cx: &mut EventMgr, count: &mut usiz
     }
 }
 
-/// Generic implementation of [`Node::_send`]
-pub fn _send<W: Widget>(
+/// Generic implementation of [`Widget::_send`]
+pub fn _send<W: Layout + Events>(
     widget: &mut W,
     cx: &mut EventMgr,
     id: WidgetId,
@@ -83,8 +88,8 @@ pub fn _send<W: Widget>(
     response
 }
 
-/// Generic implementation of [`Node::_replay`]
-pub fn _replay<W: Widget>(widget: &mut W, cx: &mut EventMgr, id: WidgetId, msg: Erased) {
+/// Generic implementation of [`Widget::_replay`]
+pub fn _replay<W: Layout + Events>(widget: &mut W, cx: &mut EventMgr, id: WidgetId, msg: Erased) {
     if let Some(index) = widget.find_child_index(&id) {
         if let Some(w) = widget.get_child_mut(index) {
             w._replay(cx, id, msg);
@@ -114,8 +119,8 @@ pub fn _replay<W: Widget>(widget: &mut W, cx: &mut EventMgr, id: WidgetId, msg: 
     }
 }
 
-/// Generic implementation of [`Node::_nav_next`]
-pub fn _nav_next<W: Widget>(
+/// Generic implementation of [`Widget::_nav_next`]
+pub fn _nav_next<W: Layout + Events>(
     widget: &mut W,
     cx: &mut EventMgr,
     focus: Option<&WidgetId>,

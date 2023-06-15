@@ -65,11 +65,11 @@ impl_scope! {
             self.widgets.len()
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Node> {
+        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
             self.widgets.get(index).map(|w| w.as_node())
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Node> {
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
             self.widgets.get_mut(index).map(|w| w.as_node_mut())
         }
     }
@@ -119,7 +119,7 @@ impl_scope! {
         }
     }
 
-    impl<D: Directional> Widget for MenuBar<D> {
+    impl<D: Directional> Events for MenuBar<D> {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(id_code) => {

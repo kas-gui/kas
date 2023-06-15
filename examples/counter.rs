@@ -36,7 +36,7 @@ impl_scope! {
             }
         }
     }
-    impl Widget for Self {
+    impl Events for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr) {
             if let Some(Increment(incr)) = mgr.try_pop() {
                 self.count += incr;

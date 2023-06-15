@@ -23,7 +23,7 @@ use crate::cast::Cast;
 use crate::geom::{Coord, Offset};
 use crate::shell::ShellWindow;
 use crate::util::WidgetHierarchy;
-use crate::{Action, Erased, NavAdvance, Node, NodeExt, WidgetId, WindowId};
+use crate::{Action, Erased, NavAdvance, Widget, WidgetExt, WidgetId, WindowId};
 
 mod config_mgr;
 mod mgr_pub;
@@ -70,7 +70,7 @@ struct MouseGrab {
 }
 
 impl<'a> EventMgr<'a> {
-    fn flush_mouse_grab_motion(&mut self, widget: &mut dyn Node) {
+    fn flush_mouse_grab_motion(&mut self, widget: &mut dyn Widget) {
         if let Some(grab) = self.mouse_grab.as_mut() {
             let delta = grab.delta;
             if delta == Offset::ZERO {
@@ -450,7 +450,7 @@ impl<'a> Drop for EventMgr<'a> {
 
 /// Internal methods
 impl<'a> EventMgr<'a> {
-    fn start_key_event(&mut self, widget: &mut dyn Node, vkey: VirtualKeyCode, scancode: u32) {
+    fn start_key_event(&mut self, widget: &mut dyn Widget, vkey: VirtualKeyCode, scancode: u32) {
         log::trace!(
             "start_key_event: widget={}, vkey={vkey:?}, scancode={scancode}",
             widget.id()
@@ -607,7 +607,7 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Replay a message as if it was pushed by `id`
-    fn replay(&mut self, widget: &mut dyn Node, id: WidgetId, msg: Erased) {
+    fn replay(&mut self, widget: &mut dyn Widget, id: WidgetId, msg: Erased) {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         debug_assert!(self.messages.is_empty());
@@ -621,7 +621,7 @@ impl<'a> EventMgr<'a> {
 
     // Traverse widget tree by recursive call, broadcasting
     #[inline]
-    fn send_update(&mut self, widget: &mut dyn Node, id: UpdateId, payload: u64) -> usize {
+    fn send_update(&mut self, widget: &mut dyn Widget, id: UpdateId, payload: u64) -> usize {
         let mut count = 0;
         let event = Event::Update { id, payload };
         widget._broadcast(self, &mut count, event);
@@ -635,7 +635,7 @@ impl<'a> EventMgr<'a> {
 
     // Wrapper around Self::send; returns true when event is used
     #[inline]
-    fn send_event(&mut self, widget: &mut dyn Node, id: WidgetId, event: Event) -> bool {
+    fn send_event(&mut self, widget: &mut dyn Widget, id: WidgetId, event: Event) -> bool {
         let used = self.send_event_impl(widget, id, event);
         self.drop_messages();
         self.last_child = None;
@@ -644,7 +644,7 @@ impl<'a> EventMgr<'a> {
     }
 
     // Send an event; possibly leave messages on the stack
-    fn send_event_impl(&mut self, widget: &mut dyn Node, mut id: WidgetId, event: Event) -> bool {
+    fn send_event_impl(&mut self, widget: &mut dyn Widget, mut id: WidgetId, event: Event) -> bool {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         debug_assert!(self.messages.is_empty());
@@ -670,7 +670,7 @@ impl<'a> EventMgr<'a> {
     // Returns true if event is used
     fn send_popup_first(
         &mut self,
-        widget: &mut dyn Node,
+        widget: &mut dyn Widget,
         id: Option<WidgetId>,
         event: Event,
     ) -> bool {
@@ -694,7 +694,7 @@ impl<'a> EventMgr<'a> {
     /// Advance the keyboard navigation focus
     pub fn next_nav_focus_impl(
         &mut self,
-        mut widget: &mut dyn Node,
+        mut widget: &mut dyn Widget,
         target: Option<WidgetId>,
         reverse: bool,
         key_focus: bool,

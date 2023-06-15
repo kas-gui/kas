@@ -353,7 +353,7 @@ impl_scope! {
         }
     }
 
-    impl Widget for Mandlebrot {
+    impl Events for Mandlebrot {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.register_nav_fallback(self.id());
         }
@@ -460,7 +460,7 @@ impl_scope! {
             }
         }
     }
-    impl Widget for Self {
+    impl Events for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr) {
             if let Some(iter) = mgr.try_pop() {
                 self.mbrot.iter = iter;

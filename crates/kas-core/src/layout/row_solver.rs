@@ -242,7 +242,7 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, 
 /// layout representation.
 ///
 /// This is only applicable where child widgets are contained in a slice of type
-/// `W: Layout` (which may be `Box<dyn Node>`). In other cases, the naive
+/// `W: Layout` (which may be `Box<dyn Widget>`). In other cases, the naive
 /// implementation (test all items) must be used.
 #[derive(Clone, Copy, Debug)]
 pub struct RowPositionSolver<D: Directional> {

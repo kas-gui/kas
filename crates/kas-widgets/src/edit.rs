@@ -267,7 +267,7 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
+    impl Events for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr<'_>) {
             if let Some(ScrollMsg(y)) = mgr.try_pop() {
                 self.inner
@@ -576,7 +576,7 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
+    impl Events for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             fn request_focus<G: EditGuard + 'static>(s: &mut EditField<G>, mgr: &mut EventMgr) {
                 if !s.has_key_focus && mgr.request_char_focus(s.id()) {

@@ -89,7 +89,7 @@ impl_scope! {
         fn draw(&mut self, _: DrawMgr) {}
     }
 
-    impl Widget for GripPart {
+    impl Events for GripPart {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::PressStart { press, .. } => {

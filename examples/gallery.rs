@@ -98,7 +98,7 @@ fn widgets() -> Box<dyn SetDisabled> {
             #[widget] label: SingleView<SharedRc<String>> =
                 SingleView::new(SharedRc::new("Use button to edit →".to_string())),
         }
-        impl Widget for Self {
+        impl Events for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if let Some(MsgEdit) = mgr.try_pop() {
                     let text = self.label.data().clone();
@@ -177,7 +177,7 @@ fn widgets() -> Box<dyn SetDisabled> {
             }),
             #[widget] pu = popup_edit_box,
         }
-        impl Widget for Self {
+        impl Events for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if let Some(ScrollMsg(value)) = mgr.try_pop() {
                     if mgr.last_child() == Some(widget_index![self.sc]) {
@@ -252,7 +252,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
             #[widget] label: ScrollLabel<Markdown> =
                 ScrollLabel::new(Markdown::new(doc).unwrap()),
         }
-        impl Widget for Self {
+        impl Events for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if let Some(MsgDirection) = mgr.try_pop() {
                     self.dir = match self.dir {
@@ -322,7 +322,7 @@ fn filter_list() -> Box<dyn SetDisabled> {
             #[widget] list: ScrollBars<MyListView> =
                 ScrollBars::new(MyListView::new(filtered))
         }
-        impl Widget for Self {
+        impl Events for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if let Some(mode) = mgr.try_pop() {
                     *mgr |= self.list.set_selection_mode(mode);
@@ -546,7 +546,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .with_title("Can&vas", canvas())
                 .with_title("Confi&g", config(shell.event_config().clone())),
         }
-        impl Widget for Self {
+        impl Events for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if let Some(msg) = mgr.try_pop::<Menu>() {
                     match msg {

@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use super::{EventMgr, EventState, GrabMode, Response}; // for doc-links
 use super::{Press, UpdateId, VirtualKeyCode};
 use crate::geom::{DVec2, Offset};
-#[allow(unused)] use crate::Widget;
+#[allow(unused)] use crate::Events;
 use crate::{dir::Direction, WidgetId, WindowId};
 
 /// Events addressed to a widget
@@ -163,9 +163,9 @@ pub enum Event {
     ///
     /// When [`EventMgr::update_all`] is called, this event is broadcast to all
     /// widgets via depth-first traversal of the widget tree. As such,
-    /// [`Widget::steal_event`] is not called with this `Event`,
-    /// nor are [`Widget::handle_message`] or
-    /// [`Widget::handle_scroll`] called after a widget receives this `Event`.
+    /// [`Events::steal_event`] is not called with this `Event`,
+    /// nor are [`Events::handle_message`] or
+    /// [`Events::handle_scroll`] called after a widget receives this `Event`.
     Update { id: UpdateId, payload: u64 },
     /// Notification that a popup has been destroyed
     ///
@@ -278,7 +278,7 @@ impl Event {
         }
     }
 
-    /// Can the event be received by [`Widget::handle_event`] during unwinding?
+    /// Can the event be received by [`Events::handle_event`] during unwinding?
     ///
     /// Events which may be sent to the widget under the mouse or to the
     /// keyboard navigation target may be acted on by an ancestor if unused.

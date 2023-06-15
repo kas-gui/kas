@@ -106,7 +106,7 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
+    impl Events for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr) {
             if let Some(MessageBoxOk) = mgr.try_pop() {
                 mgr.send_action(Action::CLOSE);
@@ -177,7 +177,7 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
+    impl Events for Self {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.register_nav_fallback(self.id());
 

@@ -81,7 +81,7 @@ impl Tree {
             }
 
             fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-                use ::kas::{layout, Layout, WidgetCore, NodeExt};
+                use ::kas::{layout, Layout, WidgetCore, WidgetExt};
                 if !self.rect().contains(coord) {
                     return None;
                 }
@@ -139,6 +139,7 @@ impl Tree {
             &vec![],
             layout_children,
         );
+        let widget_impl = widget::impl_widget(&impl_generics, &impl_target);
 
         let layout_methods = self.layout_methods(&core_path)?;
 
@@ -156,7 +157,7 @@ impl Tree {
                 #layout_methods
             }
 
-            impl #impl_generics ::kas::Widget for #impl_target {
+            impl #impl_generics ::kas::Events for #impl_target {
                 fn pre_configure(
                     &mut self,
                     _: &mut ::kas::event::ConfigMgr,
@@ -173,6 +174,8 @@ impl Tree {
                     self.handle_event(cx, event)
                 }
             }
+
+            #widget_impl
 
             #name {
                 rect: Default::default(),

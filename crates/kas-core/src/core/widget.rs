@@ -32,7 +32,7 @@ pub trait WidgetCore {
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
     /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned by [`Widget::pre_configure`].
+    /// assigned by [`Events::pre_configure`].
     fn id_ref(&self) -> &WidgetId;
 
     /// Get the widget's region, relative to its parent.
@@ -42,9 +42,9 @@ pub trait WidgetCore {
     fn widget_name(&self) -> &'static str;
 
     /// Erase type
-    fn as_node(&self) -> &dyn Node;
+    fn as_node(&self) -> &dyn Widget;
     /// Erase type
-    fn as_node_mut(&mut self) -> &mut dyn Node;
+    fn as_node_mut(&mut self) -> &mut dyn Widget;
 }
 
 /// Listing of a [`Widget`]'s children
@@ -53,7 +53,7 @@ pub trait WidgetCore {
 /// are themselves widgets).
 ///
 /// Enumerated widgets are automatically configured, via recursion, when their
-/// parent is. See [`Widget::configure`].
+/// parent is. See [`Events::configure`].
 ///
 /// # Implementing WidgetChildren
 ///
@@ -77,7 +77,7 @@ pub trait WidgetChildren: WidgetCore {
     /// Get a reference to a child widget by index, if any
     ///
     /// Required: `index < self.len()`.
-    fn get_child(&self, index: usize) -> Option<&dyn Node>;
+    fn get_child(&self, index: usize) -> Option<&dyn Widget>;
 
     /// Mutable variant of get
     ///
@@ -85,7 +85,7 @@ pub trait WidgetChildren: WidgetCore {
     /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
     /// be requested. This can be done via [`EventState::send_action`].
     /// This method may be removed in the future.
-    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Node>;
+    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget>;
 
     /// Find the child which is an ancestor of this `id`, if any
     ///
@@ -131,7 +131,7 @@ pub trait WidgetChildren: WidgetCore {
 ///
 /// Layout is resolved as follows:
 ///
-/// 1.  [`Widget::configure`] is called (widgets only), and may be used to load assets
+/// 1.  [`Events::configure`] is called (widgets only), and may be used to load assets
 /// 2.  [`Self::size_rules`] is called at least once for each axis
 /// 3.  [`Self::set_rect`] is called to position elements. This may use data cached by `size_rules`.
 /// 4.  [`Self::find_id`] may be used to find the widget under the mouse and [`Self::draw`] to draw
@@ -192,7 +192,7 @@ pub trait Layout: WidgetChildren {
     ///
     /// Usually this is zero; only widgets with scrollable or offset content
     /// *and* child widgets need to implement this.
-    /// Such widgets must also implement [`Widget::handle_scroll`].
+    /// Such widgets must also implement [`Events::handle_scroll`].
     ///
     /// Affects event handling via [`Layout::find_id`] and affects the positioning
     /// of pop-up menus. [`Layout::draw`] must be implemented directly using
@@ -211,7 +211,7 @@ pub trait Layout: WidgetChildren {
     /// handling by the target, and potentially also event handling by other
     /// widgets (e.g. a `Label` widget will not handle touch events, but if it
     /// is contained by a `ScrollRegion`, that widget may capture these via
-    /// [`Widget::handle_event`] to implement touch scrolling).
+    /// [`Events::handle_event`] to implement touch scrolling).
     ///
     /// The result is usually the widget which draws at the given `coord`, but
     /// does not have to be. For example, a `Button` widget will return its own
@@ -269,132 +269,15 @@ pub trait Layout: WidgetChildren {
     fn draw(&mut self, draw: DrawMgr);
 }
 
-/// The Widget trait
+/// Widget event-handling
 ///
-/// Widgets implement a family of traits, of which this trait is the final
-/// member:
+/// This trait is automatically implemented if not explicitly included in a
+/// widget implemention. All methods have default implementations.
 ///
-/// -   [`WidgetCore`] — base functionality
-/// -   [`WidgetChildren`] — enumerates children
-/// -   [`Layout`] — handles sizing and positioning for self and children
-/// -   [`Widget`] — configuration, event handling
-///
-/// # Implementing Widget
-///
-/// To implement a widget, use the [`macros::widget`] macro. **This is the
-/// only supported method of implementing `Widget`.**
-///
-/// The [`macros::widget`] macro only works within [`macros::impl_scope`].
-/// Other trait implementations can be detected within this scope:
-///
-/// -   [`WidgetCore`] is always generated
-/// -   [`WidgetChildren`] is generated if no direct implementation is present
-/// -   [`Layout`] is generated if the `layout` attribute property is set, and
-///     no direct implementation is found. In other cases where a direct
-///     implementation of the trait is found, (default) method implementations
-///     may be injected where not already present.
-/// -   [`Widget`] is generated if no direct implementation is present,
-///     otherwise some (default) method implementations are injected where
-///     these methods are not directly implemented.
-///
-/// Some simple examples follow. See also
-/// [examples apps](https://github.com/kas-gui/kas/tree/master/examples)
-/// and [`kas_widgets` code](https://github.com/kas-gui/kas/tree/master/crates/kas-widgets).
-/// ```
-/// # extern crate kas_core as kas;
-/// use kas::event;
-/// use kas::prelude::*;
-/// use kas::theme::TextClass;
-/// use std::fmt::Debug;
-///
-/// impl_scope! {
-///     /// A text label
-///     #[widget]
-///     pub struct AccelLabel {
-///         core: widget_core!(),
-///         class: TextClass,
-///         label: Text<AccelString>,
-///     }
-///
-///     impl Self {
-///         /// Construct from `label`
-///         pub fn new(label: impl Into<AccelString>) -> Self {
-///             AccelLabel {
-///                 core: Default::default(),
-///                 class: TextClass::AccelLabel(true),
-///                 label: Text::new(label.into()),
-///             }
-///         }
-///
-///         /// Set text class (inline)
-///         pub fn with_class(mut self, class: TextClass) -> Self {
-///             self.class = class;
-///             self
-///         }
-///
-///         /// Get the accelerator keys
-///         pub fn keys(&self) -> &[event::VirtualKeyCode] {
-///             self.label.text().keys()
-///         }
-///     }
-///
-///     impl Layout for Self {
-///         fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
-///             axis.set_default_align_hv(Align::Default, Align::Center);
-///             size_mgr.text_rules(&mut self.label, self.class, axis)
-///         }
-///
-///         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
-///             self.core.rect = rect;
-///             mgr.text_set_size(&mut self.label, self.class, rect.size, None);
-///         }
-///
-///         fn draw(&mut self, mut draw: DrawMgr) {
-///             draw.text_effects(self.rect(), &self.label, self.class);
-///         }
-///     }
-/// }
-///
-/// impl_scope! {
-///     /// A push-button with a text label
-///     #[widget {
-///         layout = button!(self.label);
-///         navigable = true;
-///         hover_highlight = true;
-///     }]
-///     pub struct TextButton<M: Clone + Debug + 'static> {
-///         core: widget_core!(),
-///         #[widget]
-///         label: AccelLabel,
-///         message: M,
-///     }
-///
-///     impl Self {
-///         /// Construct a button with given `label`
-///         pub fn new(label: impl Into<AccelString>, message: M) -> Self {
-///             TextButton {
-///                 core: Default::default(),
-///                 label: AccelLabel::new(label).with_class(TextClass::Button),
-///                 message,
-///             }
-///         }
-///     }
-///     impl Widget for Self {
-///         fn configure(&mut self, mgr: &mut ConfigMgr) {
-///             mgr.add_accel_keys(self.id_ref(), self.label.keys());
-///         }
-///
-///         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
-///             event.on_activate(mgr, self.id(), |mgr| {
-///                 mgr.push(self.message.clone());
-///                 Response::Used
-///             })
-///         }
-///     }
-/// }
-/// ```
-#[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait Widget: Layout {
+/// Although this [`Widget`] is not a sub-trait of `Events`, all widgets must
+/// implement this trait (though an empty implementation may be generated).
+/// See the [`Widget`] trait documentation.
+pub trait Events: Layout + Sized {
     /// Pre-configuration
     ///
     /// This method is called before children are configured to assign a
@@ -558,7 +441,7 @@ pub trait Widget: Layout {
     }
 }
 
-/// Action of Node::_nav_next
+/// Action of Widget::_nav_next
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -575,14 +458,139 @@ pub enum NavAdvance {
     Reverse(bool),
 }
 
-/// Node: dyn-safe widget
+/// The Widget trait
+///
+/// Widgets implement a family of traits, of which this trait is the final
+/// member:
+///
+/// -   [`WidgetCore`] — base functionality
+/// -   [`WidgetChildren`] — enumerates children
+/// -   [`Layout`] — handles sizing and positioning for self and children
+/// -   [`Events`] — configuration, event handling
+/// -   [`Widget`] — introspection, dyn-safe API
 ///
 /// This trait is automatically implemented for every [`Widget`].
 /// Directly implementing this trait is not supported.
 ///
 /// All methods are hidden and direct usage is not supported; instead use the
 /// [`ConfigMgr`] and [`EventMgr`] types which use these methods internally.
-pub trait Node: Layout {
+///
+/// # Implementing Widget
+///
+/// To implement a widget, use the [`macros::widget`] macro. **This is the
+/// only supported method of implementing `Widget`.**
+///
+/// The [`macros::widget`] macro only works within [`macros::impl_scope`].
+/// Other trait implementations can be detected within this scope:
+///
+/// -   [`WidgetCore`] is always generated
+/// -   [`WidgetChildren`] is generated if no direct implementation is present
+/// -   [`Layout`] is generated if the `layout` attribute property is set, and
+///     no direct implementation is found. In other cases where a direct
+///     implementation of the trait is found, (default) method implementations
+///     may be injected where not already present.
+/// -   [`Events`] is generated if no direct implementation is present
+/// -   [`Widget`] is generated if no direct implementation is present,
+///     otherwise missing method implementations are injected into the impl.
+///
+/// Some simple examples follow. See also
+/// [examples apps](https://github.com/kas-gui/kas/tree/master/examples)
+/// and [`kas_widgets` code](https://github.com/kas-gui/kas/tree/master/crates/kas-widgets).
+/// ```
+/// # extern crate kas_core as kas;
+/// use kas::event;
+/// use kas::prelude::*;
+/// use kas::theme::TextClass;
+/// use std::fmt::Debug;
+///
+/// impl_scope! {
+///     /// A text label
+///     #[widget]
+///     pub struct AccelLabel {
+///         core: widget_core!(),
+///         class: TextClass,
+///         label: Text<AccelString>,
+///     }
+///
+///     impl Self {
+///         /// Construct from `label`
+///         pub fn new(label: impl Into<AccelString>) -> Self {
+///             AccelLabel {
+///                 core: Default::default(),
+///                 class: TextClass::AccelLabel(true),
+///                 label: Text::new(label.into()),
+///             }
+///         }
+///
+///         /// Set text class (inline)
+///         pub fn with_class(mut self, class: TextClass) -> Self {
+///             self.class = class;
+///             self
+///         }
+///
+///         /// Get the accelerator keys
+///         pub fn keys(&self) -> &[event::VirtualKeyCode] {
+///             self.label.text().keys()
+///         }
+///     }
+///
+///     impl Layout for Self {
+///         fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
+///             axis.set_default_align_hv(Align::Default, Align::Center);
+///             size_mgr.text_rules(&mut self.label, self.class, axis)
+///         }
+///
+///         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+///             self.core.rect = rect;
+///             mgr.text_set_size(&mut self.label, self.class, rect.size, None);
+///         }
+///
+///         fn draw(&mut self, mut draw: DrawMgr) {
+///             draw.text_effects(self.rect(), &self.label, self.class);
+///         }
+///     }
+/// }
+///
+/// impl_scope! {
+///     /// A push-button with a text label
+///     #[widget {
+///         layout = button!(self.label);
+///         navigable = true;
+///         hover_highlight = true;
+///     }]
+///     pub struct TextButton<M: Clone + Debug + 'static> {
+///         core: widget_core!(),
+///         #[widget]
+///         label: AccelLabel,
+///         message: M,
+///     }
+///
+///     impl Self {
+///         /// Construct a button with given `label`
+///         pub fn new(label: impl Into<AccelString>, message: M) -> Self {
+///             TextButton {
+///                 core: Default::default(),
+///                 label: AccelLabel::new(label).with_class(TextClass::Button),
+///                 message,
+///             }
+///         }
+///     }
+///     impl Events for Self {
+///         fn configure(&mut self, mgr: &mut ConfigMgr) {
+///             mgr.add_accel_keys(self.id_ref(), self.label.keys());
+///         }
+///
+///         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+///             event.on_activate(mgr, self.id(), |mgr| {
+///                 mgr.push(self.message.clone());
+///                 Response::Used
+///             })
+///         }
+///     }
+/// }
+/// ```
+#[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
+pub trait Widget: Layout {
     /// Internal method: configure recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
@@ -621,35 +629,8 @@ pub trait Node: Layout {
     ) -> Option<WidgetId>;
 }
 
-impl<W: Widget> Node for W {
-    fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId) {
-        crate::impls::_configure(self, cx, id);
-    }
-
-    fn _broadcast(&mut self, cx: &mut EventMgr, count: &mut usize, event: Event) {
-        crate::impls::_broadcast(self, cx, count, event);
-    }
-
-    fn _send(&mut self, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response {
-        crate::impls::_send(self, cx, id, disabled, event)
-    }
-
-    fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: Erased) {
-        crate::impls::_replay(self, cx, id, msg);
-    }
-
-    fn _nav_next(
-        &mut self,
-        cx: &mut EventMgr,
-        focus: Option<&WidgetId>,
-        advance: NavAdvance,
-    ) -> Option<WidgetId> {
-        crate::impls::_nav_next(self, cx, focus, advance)
-    }
-}
-
 /// Extension trait over widgets
-pub trait NodeExt: Node {
+pub trait WidgetExt: Widget {
     /// Get the widget's identifier
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
@@ -695,7 +676,7 @@ pub trait NodeExt: Node {
     }
 
     /// Find the descendant with this `id`, if any
-    fn find_node(&self, id: &WidgetId) -> Option<&dyn Node> {
+    fn find_node(&self, id: &WidgetId) -> Option<&dyn Widget> {
         if let Some(index) = self.find_child_index(id) {
             self.get_child(index).and_then(|child| child.find_node(id))
         } else if self.eq_id(id) {
@@ -706,7 +687,7 @@ pub trait NodeExt: Node {
     }
 
     /// Find the descendant with this `id`, if any
-    fn find_node_mut(&mut self, id: &WidgetId) -> Option<&mut dyn Node> {
+    fn find_node_mut(&mut self, id: &WidgetId) -> Option<&mut dyn Widget> {
         if let Some(index) = self.find_child_index(id) {
             self.get_child_mut(index)
                 .and_then(|child| child.find_node_mut(id))
@@ -717,4 +698,4 @@ pub trait NodeExt: Node {
         }
     }
 }
-impl<W: Node + ?Sized> NodeExt for W {}
+impl<W: Widget + ?Sized> WidgetExt for W {}

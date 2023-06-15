@@ -72,7 +72,7 @@ impl_scope! {
             .with_width_em(5.0, 10.0),
         calc: Calculator = Calculator::new(),
     }
-    impl Widget for Self {
+    impl Events for Self {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.disable_nav_focus(true);
 

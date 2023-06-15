@@ -301,7 +301,7 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
+    impl Events for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(_) => {
@@ -341,7 +341,7 @@ impl_scope! {
     #[impl_default(where W: trait)]
     #[derive(Clone, Debug)]
     #[widget]
-    pub struct ScrollBars<W: Scrollable + Node> {
+    pub struct ScrollBars<W: Scrollable + Widget> {
         core: widget_core!(),
         mode: ScrollBarMode,
         show_bars: (bool, bool), // set by user (or set_rect when mode == Auto)
@@ -527,7 +527,7 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
+    impl Events for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr) {
             let index = mgr.last_child().expect("message not sent from self");
             if index == widget_index![self.horiz_bar] {

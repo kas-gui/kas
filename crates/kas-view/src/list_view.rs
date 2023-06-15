@@ -481,13 +481,13 @@ impl_scope! {
             self.cur_len.cast()
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Node> {
+        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
             self.widgets.get(index).and_then(|w| {
                 w.key.is_some().then(|| w.widget.as_node())
             })
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Node> {
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
             self.widgets.get_mut(index).and_then(|w| {
                 w.key.is_some().then(|| w.widget.as_node_mut())
             })
@@ -642,7 +642,7 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
+    impl Events for Self {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             if self.widgets.is_empty() {
                 // Initial configure: ensure some widgets are loaded to allow

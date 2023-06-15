@@ -68,10 +68,10 @@ impl EventState {
     /// is created (before or after resizing).
     ///
     /// This method calls [`ConfigMgr::configure`] in order to assign
-    /// [`WidgetId`] identifiers and call widgets' [`Widget::configure`]
+    /// [`WidgetId`] identifiers and call widgets' [`Events::configure`]
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
-    pub(crate) fn full_configure(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Node) {
+    pub(crate) fn full_configure(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
         log::debug!(target: "kas_core::event::manager", "full_configure");
         self.action.remove(Action::RECONFIGURE);
 
@@ -91,7 +91,7 @@ impl EventState {
     }
 
     /// Update the widgets under the cursor and touch events
-    pub(crate) fn region_moved(&mut self, widget: &mut dyn Node) {
+    pub(crate) fn region_moved(&mut self, widget: &mut dyn Widget) {
         log::trace!(target: "kas_core::event::manager", "region_moved");
         // Note: redraw is already implied.
 
@@ -129,7 +129,11 @@ impl EventState {
 
     /// Update, after receiving all events
     #[inline]
-    pub(crate) fn update(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Node) -> Action {
+    pub(crate) fn update(
+        &mut self,
+        shell: &mut dyn ShellWindow,
+        widget: &mut dyn Widget,
+    ) -> Action {
         let old_hover_icon = self.hover_icon;
 
         let mut mgr = EventMgr {
@@ -246,7 +250,11 @@ impl EventState {
     ///
     /// Returns true if action is non-empty
     #[inline]
-    pub(crate) fn post_draw(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Node) -> bool {
+    pub(crate) fn post_draw(
+        &mut self,
+        shell: &mut dyn ShellWindow,
+        widget: &mut dyn Widget,
+    ) -> bool {
         let mut mgr = EventMgr {
             state: self,
             shell,
@@ -268,7 +276,7 @@ impl EventState {
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl<'a> EventMgr<'a> {
     /// Update widgets due to timer
-    pub(crate) fn update_timer(&mut self, widget: &mut dyn Node) {
+    pub(crate) fn update_timer(&mut self, widget: &mut dyn Widget) {
         let now = Instant::now();
 
         // assumption: time_updates are sorted in reverse order
@@ -285,7 +293,7 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Update widgets with an [`UpdateId`]
-    pub(crate) fn update_widgets(&mut self, widget: &mut dyn Node, id: UpdateId, payload: u64) {
+    pub(crate) fn update_widgets(&mut self, widget: &mut dyn Widget, id: UpdateId, payload: u64) {
         if id == self.state.config.config.id() {
             let (sf, dpem) = self.size_mgr(|size| (size.scale_factor(), size.dpem()));
             self.state.config.update(sf, dpem);
@@ -300,7 +308,7 @@ impl<'a> EventMgr<'a> {
         );
     }
 
-    fn poll_futures(&mut self, widget: &mut dyn Node) {
+    fn poll_futures(&mut self, widget: &mut dyn Widget) {
         let mut i = 0;
         while i < self.state.fut_messages.len() {
             let (_, fut) = &mut self.state.fut_messages[i];
