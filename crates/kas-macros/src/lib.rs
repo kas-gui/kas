@@ -228,7 +228,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// >
 /// > _Slice_ :\
 /// > &nbsp;&nbsp; `slice!` _Storage_? `(` _Direction_ `,` `self` `.` _Member_ `)`\
-/// > &nbsp;&nbsp; A field with type `[W]` for some `W: Widget`
+/// > &nbsp;&nbsp; A field with type `[W]` for some `W: Layout`. (Note: this does not automatically register the slice widgets as children for the purpose of configuration and event-handling. An explicit implementation of `WidgetChildren` will be required.)
 /// >
 /// > _Frame_ :\
 /// > &nbsp;&nbsp; `frame!` _Storage_? `(` _Layout_ ( `,` `style` `=` _Expr_ )? `)`\

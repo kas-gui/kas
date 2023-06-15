@@ -64,7 +64,7 @@ impl_scope! {
                     parent: s.id(),
                     direction: Direction::Down,
                 });
-                if let Some(w) = s.popup.inner.inner.get_child_mut(s.active) {
+                if let Some(w) = s.popup.inner.inner.get_child(s.active) {
                     mgr.next_nav_focus(w.id(), false, key_focus);
                 }
             };

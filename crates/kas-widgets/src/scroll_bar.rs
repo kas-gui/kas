@@ -341,7 +341,7 @@ impl_scope! {
     #[impl_default(where W: trait)]
     #[derive(Clone, Debug)]
     #[widget]
-    pub struct ScrollBars<W: Scrollable> {
+    pub struct ScrollBars<W: Scrollable + Node> {
         core: widget_core!(),
         mode: ScrollBarMode,
         show_bars: (bool, bool), // set by user (or set_rect when mode == Auto)

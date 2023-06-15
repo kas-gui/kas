@@ -11,7 +11,7 @@ use crate::event::ConfigMgr;
 use crate::geom::{Rect, Size};
 use crate::theme::SizeMgr;
 use crate::util::WidgetHierarchy;
-use crate::{Node, Widget};
+use crate::{Layout, Node};
 
 /// A [`SizeRules`] solver for layouts
 ///
@@ -71,7 +71,7 @@ pub trait RulesSetter {
 ///
 /// Parameters `x_size` and `y_size` should be passed where this dimension is
 /// fixed and are used e.g. for text wrapping.
-pub fn solve_size_rules<W: Widget + ?Sized>(
+pub fn solve_size_rules<W: Layout + ?Sized>(
     widget: &mut W,
     size_mgr: SizeMgr,
     x_size: Option<i32>,
