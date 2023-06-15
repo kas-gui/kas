@@ -623,102 +623,19 @@ pub trait Node: Layout {
 
 impl<W: Widget> Node for W {
     fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId) {
-        self.pre_configure(cx, id);
-
-        for index in 0..self.num_children() {
-            let id = self.make_child_id(index);
-            if id.is_valid() {
-                if let Some(widget) = self.get_child_mut(index) {
-                    widget._configure(cx, id);
-                }
-            }
-        }
-
-        self.configure(cx);
+        crate::impls::_configure(self, cx, id);
     }
 
     fn _broadcast(&mut self, cx: &mut EventMgr, count: &mut usize, event: Event) {
-        self.handle_event(cx, event.clone());
-        *count += 1;
-        for index in 0..self.num_children() {
-            if let Some(w) = self.get_child_mut(index) {
-                w._broadcast(cx, count, event.clone());
-            }
-        }
+        crate::impls::_broadcast(self, cx, count, event);
     }
 
     fn _send(&mut self, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response {
-        let mut response = Response::Unused;
-        if id == self.id_ref() {
-            if event == Event::NavFocus(true) {
-                cx.set_scroll(Scroll::Rect(self.rect()));
-            }
-
-            if disabled {
-                return response;
-            }
-
-            response |= self.pre_handle_event(cx, event);
-        } else if self.steal_event(cx, &id, &event).is_used() {
-            response = Response::Used;
-        } else {
-            cx.assert_post_steal_unused();
-            let Some(index) = self.find_child_index(&id) else {
-                log::warn!(
-                    "Node: Widget {} cannot find path to {id}",
-                    self.identify()
-                );
-                return response;
-            };
-
-            let translation = self.translation();
-            if let Some(w) = self.get_child_mut(index) {
-                response = w._send(cx, id, disabled, event.clone() + translation);
-                if let Some(scroll) = cx.post_send(index) {
-                    self.handle_scroll(cx, scroll);
-                }
-            } else {
-                log::warn!(
-                    "Node: {} found index {index} for {id} but not child",
-                    self.identify()
-                );
-            }
-
-            if response.is_unused() && event.is_reusable() {
-                response = self.handle_event(cx, event);
-            }
-        }
-
-        if cx.has_msg() {
-            self.handle_message(cx);
-        }
-
-        response
+        crate::impls::_send(self, cx, id, disabled, event)
     }
 
     fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: Erased) {
-        if let Some(index) = self.find_child_index(&id) {
-            if let Some(w) = self.get_child_mut(index) {
-                w._replay(cx, id, msg);
-                if let Some(scroll) = cx.post_send(index) {
-                    self.handle_scroll(cx, scroll);
-                }
-            } else {
-                log::warn!(
-                    "Node: {} found index {index} for {id} but not child",
-                    self.identify()
-                );
-            }
-
-            if cx.has_msg() {
-                self.handle_message(cx);
-            }
-        } else if id == self.id_ref() {
-            cx.push_erased(msg);
-            self.handle_message(cx);
-        } else {
-            log::warn!("Node: Widget {} cannot find path to {id}", self.identify());
-        }
+        crate::impls::_replay(self, cx, id, msg);
     }
 
     fn _nav_next(
@@ -727,57 +644,7 @@ impl<W: Widget> Node for W {
         focus: Option<&WidgetId>,
         advance: NavAdvance,
     ) -> Option<WidgetId> {
-        if cx.is_disabled(self.id_ref()) {
-            return None;
-        }
-
-        let mut child = focus.and_then(|id| self.find_child_index(id));
-
-        if let Some(index) = child {
-            if let Some(id) = self
-                .get_child_mut(index)
-                .and_then(|w| w._nav_next(cx, focus, advance))
-            {
-                return Some(id);
-            }
-        }
-
-        let can_match_self = match advance {
-            NavAdvance::None => true,
-            NavAdvance::Forward(true) => true,
-            NavAdvance::Forward(false) => !self.eq_id(focus),
-            _ => false,
-        };
-        if can_match_self && self.navigable() {
-            return Some(self.id());
-        }
-
-        let rev = match advance {
-            NavAdvance::None => return None,
-            NavAdvance::Forward(_) => false,
-            NavAdvance::Reverse(_) => true,
-        };
-
-        while let Some(index) = self.nav_next(cx, rev, child) {
-            if let Some(id) = self
-                .get_child_mut(index)
-                .and_then(|w| w._nav_next(cx, focus, advance))
-            {
-                return Some(id);
-            }
-            child = Some(index);
-        }
-
-        let can_match_self = match advance {
-            NavAdvance::Reverse(true) => true,
-            NavAdvance::Reverse(false) => !self.eq_id(focus),
-            _ => false,
-        };
-        if can_match_self && self.navigable() {
-            return Some(self.id());
-        }
-
-        None
+        crate::impls::_nav_next(self, cx, focus, advance)
     }
 }
 

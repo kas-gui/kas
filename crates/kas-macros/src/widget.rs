@@ -696,7 +696,10 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 mgr: &mut ::kas::event::EventMgr,
                 event: ::kas::event::Event,
             ) -> ::kas::event::Response {
-                use ::kas::{event::{Event, Response}, NodeExt};
+                use ::kas::{event::{Event, Response, Scroll}, NodeExt, WidgetCore};
+                if event == Event::NavFocus(true) {
+                    mgr.set_scroll(Scroll::Rect(self.rect()));
+                }
                 #pre_handle_event
                 self.handle_event(mgr, event)
             }
@@ -797,7 +800,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
         });
     }
-
+    // println!("{}", scope.to_token_stream());
     Ok(())
 }
 
