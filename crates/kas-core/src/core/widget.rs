@@ -10,7 +10,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::util::IdentifyWidget;
-use crate::WidgetId;
+use crate::{Erased, WidgetId};
 use kas_macros::autoimpl;
 
 #[allow(unused)] use crate::event::EventState;
@@ -27,7 +27,7 @@ use crate::layout::{self, AlignPair, AutoLayout};
 /// **Directly implementing this trait is not supported**.
 /// See [`Widget`] trait documentation.
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait WidgetCore: Layout {
+pub trait WidgetCore {
     /// Get the widget's identifier
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
@@ -42,9 +42,9 @@ pub trait WidgetCore: Layout {
     fn widget_name(&self) -> &'static str;
 
     /// Erase type
-    fn as_widget(&self) -> &dyn Widget;
+    fn as_node(&self) -> &dyn Node;
     /// Erase type
-    fn as_widget_mut(&mut self) -> &mut dyn Widget;
+    fn as_node_mut(&mut self) -> &mut dyn Node;
 }
 
 /// Listing of a [`Widget`]'s children
@@ -77,7 +77,7 @@ pub trait WidgetChildren: WidgetCore {
     /// Get a reference to a child widget by index, if any
     ///
     /// Required: `index < self.len()`.
-    fn get_child(&self, index: usize) -> Option<&dyn Widget>;
+    fn get_child(&self, index: usize) -> Option<&dyn Node>;
 
     /// Mutable variant of get
     ///
@@ -85,7 +85,7 @@ pub trait WidgetChildren: WidgetCore {
     /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
     /// be requested. This can be done via [`EventState::send_action`].
     /// This method may be removed in the future.
-    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget>;
+    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Node>;
 
     /// Find the child which is an ancestor of this `id`, if any
     ///
@@ -119,16 +119,13 @@ pub trait WidgetChildren: WidgetCore {
 ///
 /// # Implementing Layout
 ///
-/// There are three cases:
+/// The [`#[widget]` macro](macros::widget) supports an optional property,
+/// `layout`. If this is used then the `Layout` trait is implemented
+/// automatically (although a custom implementation may still be used, which
+/// may refer to the implementation of [`AutoLayout`] for `Self`).
 ///
-/// -   For a non-widget, all methods must be implemented directly.
-/// -   For a [`Widget`] without using the `layout` macro property,
-///     the [`Self::set_rect`] and [`Self::find_id`] methods gain default
-///     implementations (generated via macro).
-/// -   For a [`Widget`] where the `#[widget{ layout = .. }]` property
-///     is set (see [`macros::widget`] documentation), all methods have a
-///     default implementation. Custom implementations may use [`AutoLayout`] to
-///     access these default implementations.
+/// If the `layout` property is not used then at least [`Self::size_rules`] and
+/// [`Self::draw`] must be defined directly.
 ///
 /// # Solving layout
 ///
@@ -144,7 +141,7 @@ pub trait WidgetChildren: WidgetCore {
 /// solve layout for a single widget/layout object, it may be useful to use
 /// [`layout::solve_size_rules`] or [`layout::SolveCache`].
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait Layout {
+pub trait Layout: WidgetChildren {
     /// Get size rules for the given axis
     ///
     /// Typically, this method is called twice: first for the horizontal axis,
@@ -161,11 +158,6 @@ pub trait Layout {
     ///
     /// For row/column/grid layouts, a [`crate::layout::RulesSolver`] engine
     /// may be useful.
-    ///
-    /// Default implementation:
-    ///
-    /// -   No default implementation, except,
-    /// -   For a widget with the `layout` property, call [`AutoLayout::size_rules`]
     fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
 
     /// Set size and position
@@ -190,17 +182,27 @@ pub trait Layout {
     /// Another example: `Label` uses a `Text` object which handles alignment
     /// internally.
     ///
-    /// Default implementation:
-    ///
-    /// -   Independent usage: no default
-    /// -   For a widget without `layout` property, set `rect` field of `widget_core!()`
-    /// -   For a widget with the `layout` property, call [`AutoLayout::set_rect`]
-    ///
-    /// Default: set `rect` of `widget_core!()` field. If `layout = ..` property
-    /// is used, also calls `<Self as AutoLayout>::set_rect`.
+    /// Default implementation when not using the `layout` property: set `rect`
+    /// field of `widget_core!()` to the input `rect`.
     ///
     /// [`Stretch`]: crate::layout::Stretch
     fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
+
+    /// Get translation of children relative to this widget
+    ///
+    /// Usually this is zero; only widgets with scrollable or offset content
+    /// *and* child widgets need to implement this.
+    /// Such widgets must also implement [`Widget::handle_scroll`].
+    ///
+    /// Affects event handling via [`Layout::find_id`] and affects the positioning
+    /// of pop-up menus. [`Layout::draw`] must be implemented directly using
+    /// [`DrawMgr::with_clip_region`] to offset contents.
+    ///
+    /// Default implementation: return [`Offset::ZERO`]
+    #[inline]
+    fn translation(&self) -> Offset {
+        Offset::ZERO
+    }
 
     /// Translate a coordinate to a [`WidgetId`]
     ///
@@ -228,28 +230,28 @@ pub trait Layout {
     /// -   Event stealing or donation is desired (but note that
     ///     `layout = button: ..;` does this already)
     ///
-    /// The implementation is slightly different for widgets and non-widget
-    /// components:
+    /// When writing a custom implementation:
     ///
     /// -   Widgets should test `self.rect().contains(coord)`, returning `None`
     ///     if this test is `false`; otherwise, they should always return *some*
     ///     [`WidgetId`], either a childs or their own.
-    /// -   Widgets *may* use a translated coordinate space: recursion uses
-    ///     `child.find_id(coord + self.translation())`.
+    /// -   If the Widget uses a translated coordinate space (i.e.
+    ///     `self.translation() != Offset::ZERO`) then pass
+    ///     `coord + self.translation()` to children.
     ///
-    /// Default implementation:
-    ///
-    /// -   Non-widgets: no default implementation.
-    /// -   For a widget without the `layout` property,
-    ///     `self.rect().contains(coord).then(|| self.id())`.
-    /// -   For a widget with the `layout` property, the following snippet:
-    ///     ```ignore
-    ///     if !self.rect().contains(coord) {
-    ///         return None;
+    /// The default implementation is non-trivial:
+    /// ```ignore
+    /// if !self.rect().contains(coord) {
+    ///     return None;
+    /// }
+    /// let coord = coord + self.translation();
+    /// for child in ITER_OVER_CHILDREN {
+    ///     if let Some(id) = child.find_id(coord) {
+    ///         return Some(id);
     ///     }
-    ///     let coord = coord + self.translation();
-    ///     (#layout).find_id(coord).or_else(|| Some(self.id()))
-    ///     ```
+    /// }
+    /// Some(self.id())
+    /// ```
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
 
     /// Draw a widget and its children
@@ -264,11 +266,6 @@ pub trait Layout {
     /// [`WidgetId`], allowing drawn components to react to input state. This
     /// implies that when calling `draw` on children, the child's `id` must be
     /// supplied via [`DrawMgr::re_id`] or [`DrawMgr::recurse`].
-    ///
-    /// Default implementation:
-    ///
-    /// -   No default implementation, except,
-    /// -   For a widget with the `layout` property, call [`AutoLayout::draw`]
     fn draw(&mut self, draw: DrawMgr);
 }
 
@@ -280,7 +277,7 @@ pub trait Layout {
 /// -   [`WidgetCore`] — base functionality
 /// -   [`WidgetChildren`] — enumerates children
 /// -   [`Layout`] — handles sizing and positioning for self and children
-/// -   [`Widget`] — configuration, some aspects of layout, event handling
+/// -   [`Widget`] — configuration, event handling
 ///
 /// # Implementing Widget
 ///
@@ -397,7 +394,7 @@ pub trait Layout {
 /// }
 /// ```
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait Widget: WidgetChildren {
+pub trait Widget: Layout {
     /// Pre-configuration
     ///
     /// This method is called before children are configured to assign a
@@ -435,20 +432,6 @@ pub trait Widget: WidgetChildren {
     #[inline]
     fn navigable(&self) -> bool {
         false
-    }
-
-    /// Get translation of children relative to this widget
-    ///
-    /// Usually this is zero; only widgets with scrollable or offset content
-    /// *and* child widgets need to implement this.
-    /// Such widgets must also implement [`Widget::handle_scroll`].
-    ///
-    /// Affects event handling via [`Layout::find_id`] and affects the positioning
-    /// of pop-up menus. [`Layout::draw`] must be implemented directly using
-    /// [`DrawMgr::with_clip_region`] to offset contents.
-    #[inline]
-    fn translation(&self) -> Offset {
-        Offset::ZERO
     }
 
     /// Navigation in spatial order
@@ -575,13 +558,236 @@ pub trait Widget: WidgetChildren {
     }
 }
 
+/// Action of Node::_nav_next
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum NavAdvance {
+    /// Match only `focus` if navigable
+    None,
+    /// Walk children forwards, self first
+    ///
+    /// May match `focus` only if `allow_focus: bool`.
+    Forward(bool),
+    /// Walk children backwards, self last
+    ///
+    /// May match `focus` only if `allow_focus: bool`.
+    Reverse(bool),
+}
+
+/// Node: dyn-safe widget
+///
+/// This trait is automatically implemented for every [`Widget`].
+/// Directly implementing this trait is not supported.
+///
+/// All methods are hidden and direct usage is not supported; instead use the
+/// [`ConfigMgr`] and [`EventMgr`] types which use these methods internally.
+pub trait Node: Layout {
+    /// Internal method: configure recursively
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId);
+
+    /// Internal method: broadcast recursively
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    fn _broadcast(&mut self, cx: &mut EventMgr, count: &mut usize, event: Event);
+
+    /// Internal method: send recursively
+    ///
+    /// If `disabled`, widget `id` does not receive the `event`. Widget `id` is
+    /// the first disabled widget (may be an ancestor of the original target);
+    /// ancestors of `id` are not disabled.
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    fn _send(&mut self, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response;
+
+    /// Internal method: replay recursively
+    ///
+    /// Behaves as if an event had been sent to `id`, then the widget had pushed
+    /// `msg` to the message stack. Widget `id` or any ancestor may handle.
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: Erased);
+
+    /// Internal method: search for the previous/next navigation target
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    fn _nav_next(
+        &mut self,
+        cx: &mut EventMgr,
+        focus: Option<&WidgetId>,
+        advance: NavAdvance,
+    ) -> Option<WidgetId>;
+}
+
+impl<W: Widget> Node for W {
+    fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId) {
+        self.pre_configure(cx, id);
+
+        for index in 0..self.num_children() {
+            let id = self.make_child_id(index);
+            if id.is_valid() {
+                if let Some(widget) = self.get_child_mut(index) {
+                    widget._configure(cx, id);
+                }
+            }
+        }
+
+        self.configure(cx);
+    }
+
+    fn _broadcast(&mut self, cx: &mut EventMgr, count: &mut usize, event: Event) {
+        self.handle_event(cx, event.clone());
+        *count += 1;
+        for index in 0..self.num_children() {
+            if let Some(w) = self.get_child_mut(index) {
+                w._broadcast(cx, count, event.clone());
+            }
+        }
+    }
+
+    fn _send(&mut self, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response {
+        let mut response = Response::Unused;
+        if id == self.id_ref() {
+            if event == Event::NavFocus(true) {
+                cx.set_scroll(Scroll::Rect(self.rect()));
+            }
+
+            if disabled {
+                return response;
+            }
+
+            response |= self.pre_handle_event(cx, event);
+        } else if self.steal_event(cx, &id, &event).is_used() {
+            response = Response::Used;
+        } else {
+            cx.assert_post_steal_unused();
+            let Some(index) = self.find_child_index(&id) else {
+                log::warn!(
+                    "Node: Widget {} cannot find path to {id}",
+                    self.identify()
+                );
+                return response;
+            };
+
+            let translation = self.translation();
+            if let Some(w) = self.get_child_mut(index) {
+                response = w._send(cx, id, disabled, event.clone() + translation);
+                if let Some(scroll) = cx.post_send(index) {
+                    self.handle_scroll(cx, scroll);
+                }
+            } else {
+                log::warn!(
+                    "Node: {} found index {index} for {id} but not child",
+                    self.identify()
+                );
+            }
+
+            if response.is_unused() && event.is_reusable() {
+                response = self.handle_event(cx, event);
+            }
+        }
+
+        if cx.has_msg() {
+            self.handle_message(cx);
+        }
+
+        response
+    }
+
+    fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: Erased) {
+        if let Some(index) = self.find_child_index(&id) {
+            if let Some(w) = self.get_child_mut(index) {
+                w._replay(cx, id, msg);
+                if let Some(scroll) = cx.post_send(index) {
+                    self.handle_scroll(cx, scroll);
+                }
+            } else {
+                log::warn!(
+                    "Node: {} found index {index} for {id} but not child",
+                    self.identify()
+                );
+            }
+
+            if cx.has_msg() {
+                self.handle_message(cx);
+            }
+        } else if id == self.id_ref() {
+            cx.push_erased(msg);
+            self.handle_message(cx);
+        } else {
+            log::warn!("Node: Widget {} cannot find path to {id}", self.identify());
+        }
+    }
+
+    fn _nav_next(
+        &mut self,
+        cx: &mut EventMgr,
+        focus: Option<&WidgetId>,
+        advance: NavAdvance,
+    ) -> Option<WidgetId> {
+        if cx.is_disabled(self.id_ref()) {
+            return None;
+        }
+
+        let mut child = focus.and_then(|id| self.find_child_index(id));
+
+        if let Some(index) = child {
+            if let Some(id) = self
+                .get_child_mut(index)
+                .and_then(|w| w._nav_next(cx, focus, advance))
+            {
+                return Some(id);
+            }
+        }
+
+        let can_match_self = match advance {
+            NavAdvance::None => true,
+            NavAdvance::Forward(true) => true,
+            NavAdvance::Forward(false) => !self.eq_id(focus),
+            _ => false,
+        };
+        if can_match_self && self.navigable() {
+            return Some(self.id());
+        }
+
+        let rev = match advance {
+            NavAdvance::None => return None,
+            NavAdvance::Forward(_) => false,
+            NavAdvance::Reverse(_) => true,
+        };
+
+        while let Some(index) = self.nav_next(cx, rev, child) {
+            if let Some(id) = self
+                .get_child_mut(index)
+                .and_then(|w| w._nav_next(cx, focus, advance))
+            {
+                return Some(id);
+            }
+            child = Some(index);
+        }
+
+        let can_match_self = match advance {
+            NavAdvance::Reverse(true) => true,
+            NavAdvance::Reverse(false) => !self.eq_id(focus),
+            _ => false,
+        };
+        if can_match_self && self.navigable() {
+            return Some(self.id());
+        }
+
+        None
+    }
+}
+
 /// Extension trait over widgets
-pub trait WidgetExt: Widget {
+pub trait NodeExt: Node {
     /// Get the widget's identifier
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
     /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned by [`Widget::pre_configure`].
+    /// assigned during configure.
     #[inline]
     fn id(&self) -> WidgetId {
         self.id_ref().clone()
@@ -622,27 +828,26 @@ pub trait WidgetExt: Widget {
     }
 
     /// Find the descendant with this `id`, if any
-    fn find_widget(&self, id: &WidgetId) -> Option<&dyn Widget> {
+    fn find_node(&self, id: &WidgetId) -> Option<&dyn Node> {
         if let Some(index) = self.find_child_index(id) {
-            self.get_child(index)
-                .and_then(|child| child.find_widget(id))
+            self.get_child(index).and_then(|child| child.find_node(id))
         } else if self.eq_id(id) {
-            return Some(self.as_widget());
+            return Some(self.as_node());
         } else {
             None
         }
     }
 
     /// Find the descendant with this `id`, if any
-    fn find_widget_mut(&mut self, id: &WidgetId) -> Option<&mut dyn Widget> {
+    fn find_node_mut(&mut self, id: &WidgetId) -> Option<&mut dyn Node> {
         if let Some(index) = self.find_child_index(id) {
             self.get_child_mut(index)
-                .and_then(|child| child.find_widget_mut(id))
+                .and_then(|child| child.find_node_mut(id))
         } else if self.eq_id(id) {
-            return Some(self.as_widget_mut());
+            return Some(self.as_node_mut());
         } else {
             None
         }
     }
 }
-impl<W: Widget + ?Sized> WidgetExt for W {}
+impl<W: Node + ?Sized> NodeExt for W {}

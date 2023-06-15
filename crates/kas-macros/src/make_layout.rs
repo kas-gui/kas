@@ -81,7 +81,7 @@ impl Tree {
             }
 
             fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-                use ::kas::{layout, Widget, WidgetCore, WidgetExt};
+                use ::kas::{layout, Layout, WidgetCore, NodeExt};
                 if !self.rect().contains(coord) {
                     return None;
                 }
@@ -1124,7 +1124,7 @@ impl Layout {
                 quote! { layout::Visitor::float(#iter) }
             }
             Layout::Label(stor, _) => {
-                quote! { layout::Visitor::component(&mut #core_path.#stor) }
+                quote! { layout::Visitor::single(&mut #core_path.#stor) }
             }
             Layout::NonNavigable(layout) => return layout.generate(core_path),
         })

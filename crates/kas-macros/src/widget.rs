@@ -352,6 +352,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let widget_name = name.to_string();
 
     let mut fn_size_rules = None;
+    let mut fn_translation = None;
     let (fn_set_rect, fn_find_id);
     let mut fn_draw = None;
     let mut gen_layout = false;
@@ -383,9 +384,9 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 }
 
                 #[inline]
-                fn as_widget(&self) -> &dyn ::kas::Widget { self }
+                fn as_node(&self) -> &dyn ::kas::Node { self }
                 #[inline]
-                fn as_widget_mut(&mut self) -> &mut dyn ::kas::Widget { self }
+                fn as_node_mut(&mut self) -> &mut dyn ::kas::Node { self }
             }
 
             impl #impl_generics ::kas::WidgetChildren for #impl_target {
@@ -394,11 +395,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     self.#inner.num_children()
                 }
                 #[inline]
-                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Widget> {
+                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Node> {
                     self.#inner.get_child(index)
                 }
                 #[inline]
-                fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::Widget> {
+                fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::Node> {
                     self.#inner.get_child_mut(index)
                 }
                 #[inline]
@@ -431,6 +432,12 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 self.#inner.set_rect(mgr, rect);
             }
         };
+        fn_translation = Some(quote! {
+            #[inline]
+            fn translation(&self) -> ::kas::geom::Offset {
+                self.#inner.translation()
+            }
+        });
         fn_find_id = quote! {
             #[inline]
             fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
@@ -463,12 +470,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             #[inline]
             fn configure(&mut self, mgr: &mut ::kas::event::ConfigMgr) {
                 self.#inner.configure(mgr);
-            }
-        };
-        let translation = quote! {
-            #[inline]
-            fn translation(&self) -> ::kas::geom::Offset {
-                self.#inner.translation()
             }
         };
         fn_nav_next = Some(quote! {
@@ -526,7 +527,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         };
         widget_methods = vec![
             ("configure", configure),
-            ("translation", translation),
             ("handle_message", handle_message),
             ("handle_scroll", handle_scroll),
         ];
@@ -569,7 +569,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
         let mut set_rect = quote! { self.#core.rect = rect; };
         let mut find_id = quote! {
-            use ::kas::{WidgetCore, WidgetExt};
+            use ::kas::{WidgetCore, NodeExt};
             self.rect().contains(coord).then(|| self.id())
         };
         if let Some((_, layout)) = args.layout.take() {
@@ -696,7 +696,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 mgr: &mut ::kas::event::EventMgr,
                 event: ::kas::event::Event,
             ) -> ::kas::event::Response {
-                use ::kas::{event::{Event, Response}, WidgetExt};
+                use ::kas::{event::{Event, Response}, NodeExt};
                 #pre_handle_event
                 self.handle_event(mgr, event)
             }
@@ -729,6 +729,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
         if !has_method("set_rect") {
             layout_impl.items.push(parse2(fn_set_rect)?);
+        }
+        if let Some(method) = fn_translation {
+            if !has_method("translation") {
+                layout_impl.items.push(parse2(method)?);
+            }
         }
         if !has_method("find_id") {
             layout_impl.items.push(parse2(fn_find_id)?);
@@ -814,9 +819,9 @@ pub fn impl_core(impl_generics: &Toks, impl_target: &Toks, name: &str, core_path
             }
 
             #[inline]
-            fn as_widget(&self) -> &dyn ::kas::Widget { self }
+            fn as_node(&self) -> &dyn ::kas::Node { self }
             #[inline]
-            fn as_widget_mut(&mut self) -> &mut dyn ::kas::Widget { self }
+            fn as_node_mut(&mut self) -> &mut dyn ::kas::Node { self }
         }
     }
 }
@@ -849,13 +854,13 @@ pub fn impl_widget_children(
             fn num_children(&self) -> usize {
                 #count
             }
-            fn get_child(&self, _index: usize) -> Option<&dyn ::kas::Widget> {
+            fn get_child(&self, _index: usize) -> Option<&dyn ::kas::Node> {
                 match _index {
                     #get_rules
                     _ => None
                 }
             }
-            fn get_child_mut(&mut self, _index: usize) -> Option<&mut dyn ::kas::Widget> {
+            fn get_child_mut(&mut self, _index: usize) -> Option<&mut dyn ::kas::Node> {
                 match _index {
                     #get_mut_rules
                     _ => None

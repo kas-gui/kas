@@ -13,12 +13,12 @@ use std::ops::{Index, IndexMut, Range};
 /// A stack of boxed widgets
 ///
 /// This is a parametrisation of [`Stack`].
-pub type BoxStack = Stack<Box<dyn Widget>>;
+pub type BoxStack = Stack<Box<dyn Node>>;
 
 /// A stack of widget references
 ///
 /// This is a parametrisation of [`Stack`].
-pub type RefStack<'a> = Stack<&'a mut dyn Widget>;
+pub type RefStack<'a> = Stack<&'a mut dyn Node>;
 
 impl_scope! {
     /// A stack of widgets
@@ -52,12 +52,12 @@ impl_scope! {
             self.widgets.len()
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
-            self.widgets.get(index).map(|w| w.as_widget())
+        fn get_child(&self, index: usize) -> Option<&dyn Node> {
+            self.widgets.get(index).map(|w| w.as_node())
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
-            self.widgets.get_mut(index).map(|w| w.as_widget_mut())
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Node> {
+            self.widgets.get_mut(index).map(|w| w.as_node_mut())
         }
 
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
@@ -298,7 +298,7 @@ impl<W: Widget> Stack<W> {
     pub fn push(&mut self, mgr: &mut ConfigMgr, mut widget: W) -> usize {
         let index = self.widgets.len();
         let id = self.make_child_id(index);
-        mgr.configure(id, &mut widget);
+        mgr.configure(&mut widget, id);
 
         self.widgets.push(widget);
 
@@ -350,7 +350,7 @@ impl<W: Widget> Stack<W> {
         }
 
         let id = self.make_child_id(index);
-        mgr.configure(id, &mut widget);
+        mgr.configure(&mut widget, id);
 
         self.widgets.insert(index, widget);
 
@@ -406,7 +406,7 @@ impl<W: Widget> Stack<W> {
     /// then [`Action::RESIZE`] is triggered.
     pub fn replace(&mut self, mgr: &mut ConfigMgr, index: usize, mut w: W) -> W {
         let id = self.make_child_id(index);
-        mgr.configure(id, &mut w);
+        mgr.configure(&mut w, id);
         std::mem::swap(&mut w, &mut self.widgets[index]);
 
         if w.id_ref().is_valid() {
@@ -440,7 +440,7 @@ impl<W: Widget> Stack<W> {
         }
         for mut w in iter {
             let id = self.make_child_id(self.widgets.len());
-            mgr.configure(id, &mut w);
+            mgr.configure(&mut w, id);
             self.widgets.push(w);
         }
 
@@ -476,7 +476,7 @@ impl<W: Widget> Stack<W> {
             for index in old_len..len {
                 let id = self.make_child_id(index);
                 let mut w = f(index);
-                mgr.configure(id, &mut w);
+                mgr.configure(&mut w, id);
                 self.widgets.push(w);
             }
 

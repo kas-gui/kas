@@ -11,7 +11,7 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, FrameStyle, SizeMgr};
 use crate::title_bar::TitleBar;
-use crate::{Action, Decorations, Layout, Widget, WidgetExt, WidgetId, Window, WindowId};
+use crate::{Action, Decorations, Layout, Node, NodeExt, Widget, WidgetId, Window, WindowId};
 use kas_macros::impl_scope;
 use smallvec::SmallVec;
 
@@ -80,7 +80,7 @@ impl_scope! {
             for (_, popup, translation) in self.popups.iter_mut().rev() {
                 if let Some(id) = self
                     .w
-                    .find_widget_mut(&popup.id)
+                    .find_node_mut(&popup.id)
                     .and_then(|w| w.find_id(coord + *translation))
                 {
                     return Some(id);
@@ -100,7 +100,7 @@ impl_scope! {
             }
             draw.recurse(&mut self.w);
             for (_, popup, translation) in &self.popups {
-                if let Some(widget) = self.w.find_widget_mut(&popup.id) {
+                if let Some(widget) = self.w.find_node_mut(&popup.id) {
                     let clip_rect = widget.rect() - *translation;
                     draw.with_overlay(clip_rect, *translation, |mut draw| {
                         draw.recurse(widget);
@@ -218,7 +218,7 @@ impl RootWidget {
 
 // Search for a widget by `id`. On success, return that widget's [`Rect`] and
 // the translation of its children.
-fn find_rect(mut widget: &dyn Widget, id: WidgetId) -> Option<(Rect, Offset)> {
+fn find_rect(mut widget: &dyn Node, id: WidgetId) -> Option<(Rect, Offset)> {
     let mut translation = Offset::ZERO;
     loop {
         if let Some(i) = widget.find_child_index(&id) {
@@ -256,7 +256,7 @@ impl RootWidget {
         let (c, t) = find_rect(&self.w, popup.parent.clone()).unwrap();
         *translation = t;
         let r = r + t; // work in translated coordinate space
-        let widget = self.w.find_widget_mut(&popup.id).unwrap();
+        let widget = self.w.find_node_mut(&popup.id).unwrap();
         let mut cache = layout::SolveCache::find_constraints(widget, mgr.size_mgr());
         let ideal = cache.ideal(false);
         let m = cache.margins();

@@ -115,6 +115,11 @@ impl_scope! {
                 .set_sizes(rect.size, child_size + self.frame_size);
         }
 
+        #[inline]
+        fn translation(&self) -> Offset {
+            self.scroll_offset()
+        }
+
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
@@ -132,11 +137,6 @@ impl_scope! {
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.register_nav_fallback(self.id());
-        }
-
-        #[inline]
-        fn translation(&self) -> Offset {
-            self.scroll_offset()
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {

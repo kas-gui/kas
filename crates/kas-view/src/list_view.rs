@@ -411,7 +411,7 @@ impl_scope! {
                     // Reset widgets to ensure input state such as cursor
                     // position does not bleed over to next data entry
                     w.widget = self.driver.make();
-                    mgr.configure(id, &mut w.widget);
+                    mgr.configure(&mut w.widget, id);
 
                     if let Some(item) = self.data.borrow(&key) {
                         *mgr |= self.driver.set(&mut w.widget, &key, item.borrow());
@@ -481,15 +481,15 @@ impl_scope! {
             self.cur_len.cast()
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
+        fn get_child(&self, index: usize) -> Option<&dyn Node> {
             self.widgets.get(index).and_then(|w| {
-                w.key.is_some().then(|| w.widget.as_widget())
+                w.key.is_some().then(|| w.widget.as_node())
             })
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Node> {
             self.widgets.get_mut(index).and_then(|w| {
-                w.key.is_some().then(|| w.widget.as_widget_mut())
+                w.key.is_some().then(|| w.widget.as_node_mut())
             })
         }
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
@@ -608,6 +608,11 @@ impl_scope! {
             mgr.request_reconfigure(self.id());
         }
 
+        #[inline]
+        fn translation(&self) -> Offset {
+            self.scroll_offset()
+        }
+
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
@@ -692,11 +697,6 @@ impl_scope! {
             }
 
             Some(data % usize::conv(self.cur_len))
-        }
-
-        #[inline]
-        fn translation(&self) -> Offset {
-            self.scroll_offset()
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {

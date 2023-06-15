@@ -591,16 +591,9 @@ impl<'a> EventMgr<'a> {
 
     /// Send an event to a widget
     ///
-    /// Sends `event` to widget `id`, where `widget` is either the target `id`
-    /// or any ancestor.
-    /// Ancestors of `id` up to and including `widget` have the usual
-    /// event-handling interactions: the ability to steal events and handle
-    /// unused events, to handle messages and to react to scroll actions.
-    ///
-    /// This method may be called from event handlers. It is implementation
-    /// defined whether the event is sent immediately or later, thus it may
-    /// or may not be observed by the caller that messages are left on the stack
-    /// and scroll state is adjusted.
+    /// Sends `event` to widget `id`. The event is queued to send later, thus
+    /// any actions by the receiving widget will not be immediately visible to
+    /// the caller of this method.
     ///
     /// When calling this method, be aware that:
     ///
@@ -611,26 +604,8 @@ impl<'a> EventMgr<'a> {
     ///     (TODO: do we need another method to find this target?)
     /// -   Some events such as [`Event::PressMove`] contain embedded widget
     ///     identifiers which may affect handling of the event.
-    pub fn send(&mut self, widget: &mut dyn Widget, id: WidgetId, event: Event) {
-        if matches!(self.scroll, Scroll::None | Scroll::Scrolled) && self.messages.is_empty() {
-            // Safe to send immediately, except from steal_event when responding
-            // Unused (hence noted possible panic in that method)!
-            let last_child = std::mem::take(&mut self.last_child);
-            let scroll = std::mem::take(&mut self.scroll);
-            self.send_event_impl(widget, id, event);
-            self.last_child = last_child;
-            if self.scroll == Scroll::None {
-                self.scroll = scroll;
-            } else {
-                // send_recurse does not call handle_scroll on its target, which
-                // is *presumably* the widget calling this method
-                widget.handle_scroll(self, self.scroll);
-            }
-        } else {
-            // Possibly not safe: send later.
-            log::debug!("queing event for later sending");
-            self.pending.push_back(Pending::Send(id, event));
-        }
+    pub fn send(&mut self, id: WidgetId, event: Event) {
+        self.pending.push_back(Pending::Send(id, event));
     }
 
     /// Push a message to the stack
@@ -897,5 +872,12 @@ impl<'a> EventMgr<'a> {
                 self.shell.set_cursor_icon(icon);
             }
         }
+    }
+
+    /// Configure a widget
+    ///
+    /// This is a shortcut to [`ConfigMgr::configure`].
+    pub fn configure(&mut self, widget: &mut dyn Node, id: WidgetId) {
+        self.config_mgr(|mgr| mgr.configure(widget, id));
     }
 }

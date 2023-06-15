@@ -23,7 +23,7 @@ use crate::cast::Cast;
 use crate::geom::{Coord, Offset};
 use crate::shell::ShellWindow;
 use crate::util::WidgetHierarchy;
-use crate::{Action, Erased, Widget, WidgetExt, WidgetId, WindowId};
+use crate::{Action, Erased, NavAdvance, Node, NodeExt, WidgetId, WindowId};
 
 mod config_mgr;
 mod mgr_pub;
@@ -70,7 +70,7 @@ struct MouseGrab {
 }
 
 impl<'a> EventMgr<'a> {
-    fn flush_mouse_grab_motion(&mut self, widget: &mut dyn Widget) {
+    fn flush_mouse_grab_motion(&mut self, widget: &mut dyn Node) {
         if let Some(grab) = self.mouse_grab.as_mut() {
             let delta = grab.delta;
             if delta == Offset::ZERO {
@@ -450,7 +450,7 @@ impl<'a> Drop for EventMgr<'a> {
 
 /// Internal methods
 impl<'a> EventMgr<'a> {
-    fn start_key_event(&mut self, widget: &mut dyn Widget, vkey: VirtualKeyCode, scancode: u32) {
+    fn start_key_event(&mut self, widget: &mut dyn Node, vkey: VirtualKeyCode, scancode: u32) {
         log::trace!(
             "start_key_event: widget={}, vkey={vkey:?}, scancode={scancode}",
             widget.id()
@@ -505,7 +505,7 @@ impl<'a> EventMgr<'a> {
 
             if matches!(cmd, Command::Debug) {
                 if let Some(ref id) = self.hover {
-                    if let Some(w) = widget.find_widget(id) {
+                    if let Some(w) = widget.find_node(id) {
                         let hier = WidgetHierarchy::new(w);
                         log::debug!("Widget heirarchy (from mouse): {hier}");
                     }
@@ -549,12 +549,8 @@ impl<'a> EventMgr<'a> {
         }
 
         if let Some(id) = target {
-            if widget
-                .find_widget(&id)
-                .map(|w| w.navigable())
-                .unwrap_or(false)
-            {
-                self.set_nav_focus(id.clone(), true);
+            if let Some(id) = widget._nav_next(self, Some(&id), NavAdvance::None) {
+                self.set_nav_focus(id, true);
             }
             self.add_key_depress(scancode, id.clone());
             self.send_event(widget, id, Event::Command(Command::Activate));
@@ -599,108 +595,25 @@ impl<'a> EventMgr<'a> {
         }
     }
 
-    // Traverse widget tree by recursive call to a specific target
-    //
-    // If `disabled`, widget `id` does not receive the `event`. Widget `id` is
-    // the first disabled widget (may be an ancestor of the original target);
-    // ancestors of `id` are not disabled.
-    //
-    // Note: cannot use internal stack of mutable references due to borrow checker
-    fn send_recurse(
-        &mut self,
-        widget: &mut dyn Widget,
-        id: WidgetId,
-        disabled: bool,
-        event: Event,
-    ) -> Response {
-        let mut response = Response::Unused;
-        if id == widget.id_ref() {
-            if event == Event::NavFocus(true) {
-                self.set_scroll(Scroll::Rect(widget.rect()));
-            }
-
-            if disabled {
-                return response;
-            }
-
-            response |= widget.pre_handle_event(self, event);
-        } else if widget.steal_event(self, &id, &event).is_used() {
-            response = Response::Used;
-        } else if self.scroll != Scroll::None || !self.messages.is_empty() {
+    pub(crate) fn assert_post_steal_unused(&self) {
+        if self.scroll != Scroll::None || !self.messages.is_empty() {
             panic!("steal_event affected EventMgr and returned Unused");
-        } else {
-            let Some(index) = widget.find_child_index(&id) else {
-                log::warn!(
-                    "send_recurse: Widget {} cannot find path to {id}",
-                    widget.identify()
-                );
-                return response;
-            };
-
-            let translation = widget.translation();
-            if let Some(w) = widget.get_child_mut(index) {
-                response = self.send_recurse(w, id, disabled, event.clone() + translation);
-                self.last_child = Some(index);
-                if self.scroll != Scroll::None {
-                    widget.handle_scroll(self, self.scroll);
-                }
-            } else {
-                log::warn!(
-                    "send_recurse: {} found index {index} for {id} but not child",
-                    widget.identify()
-                );
-            }
-
-            if response.is_unused() && event.is_reusable() {
-                response = widget.handle_event(self, event);
-            }
         }
-
-        if self.has_msg() {
-            widget.handle_message(self);
-        }
-
-        response
     }
 
-    // Traverse widget tree by recursive call to a specific target
-    fn replay_recurse(&mut self, widget: &mut dyn Widget, id: WidgetId, msg: Erased) {
-        if let Some(index) = widget.find_child_index(&id) {
-            if let Some(w) = widget.get_child_mut(index) {
-                self.replay_recurse(w, id, msg);
-                self.last_child = Some(index);
-                if self.scroll != Scroll::None {
-                    widget.handle_scroll(self, self.scroll);
-                }
-            } else {
-                log::warn!(
-                    "replay_recurse: {} found index {index} for {id} but not child",
-                    widget.identify()
-                );
-            }
-
-            if self.has_msg() {
-                widget.handle_message(self);
-            }
-        } else if id == widget.id_ref() {
-            self.messages.push(msg);
-            widget.handle_message(self);
-        } else {
-            log::warn!(
-                "replay_recurse: Widget {} cannot find path to {id}",
-                widget.identify()
-            );
-        }
+    pub(crate) fn post_send(&mut self, index: usize) -> Option<Scroll> {
+        self.last_child = Some(index);
+        (self.scroll != Scroll::None).then_some(self.scroll)
     }
 
     /// Replay a message as if it was pushed by `id`
-    fn replay(&mut self, widget: &mut dyn Widget, id: WidgetId, msg: Erased) {
+    fn replay(&mut self, widget: &mut dyn Node, id: WidgetId, msg: Erased) {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         debug_assert!(self.messages.is_empty());
         log::trace!(target: "kas_core::event::manager", "replay: id={id}: {msg:?}");
 
-        self.replay_recurse(widget, id, msg);
+        widget._replay(self, id, msg);
         self.drop_messages();
         self.last_child = None;
         self.scroll = Scroll::None;
@@ -708,25 +621,10 @@ impl<'a> EventMgr<'a> {
 
     // Traverse widget tree by recursive call, broadcasting
     #[inline]
-    fn send_update(&mut self, widget: &mut dyn Widget, id: UpdateId, payload: u64) -> usize {
-        fn inner(
-            mgr: &mut EventMgr,
-            widget: &mut dyn Widget,
-            count: &mut usize,
-            id: UpdateId,
-            payload: u64,
-        ) {
-            widget.handle_event(mgr, Event::Update { id, payload });
-            *count += 1;
-            for index in 0..widget.num_children() {
-                if let Some(w) = widget.get_child_mut(index) {
-                    inner(mgr, w, count, id, payload);
-                }
-            }
-        }
-
+    fn send_update(&mut self, widget: &mut dyn Node, id: UpdateId, payload: u64) -> usize {
         let mut count = 0;
-        inner(self, widget, &mut count, id, payload);
+        let event = Event::Update { id, payload };
+        widget._broadcast(self, &mut count, event);
         if !self.messages.is_empty() {
             log::error!(target: "kas_core::event::manager", "message(s) sent when handling Event::Update");
             self.drop_messages();
@@ -737,7 +635,7 @@ impl<'a> EventMgr<'a> {
 
     // Wrapper around Self::send; returns true when event is used
     #[inline]
-    fn send_event(&mut self, widget: &mut dyn Widget, id: WidgetId, event: Event) -> bool {
+    fn send_event(&mut self, widget: &mut dyn Node, id: WidgetId, event: Event) -> bool {
         let used = self.send_event_impl(widget, id, event);
         self.drop_messages();
         self.last_child = None;
@@ -746,7 +644,7 @@ impl<'a> EventMgr<'a> {
     }
 
     // Send an event; possibly leave messages on the stack
-    fn send_event_impl(&mut self, widget: &mut dyn Widget, mut id: WidgetId, event: Event) -> bool {
+    fn send_event_impl(&mut self, widget: &mut dyn Node, mut id: WidgetId, event: Event) -> bool {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         debug_assert!(self.messages.is_empty());
@@ -766,13 +664,13 @@ impl<'a> EventMgr<'a> {
             }
         }
 
-        self.send_recurse(widget, id, disabled, event) == Response::Used
+        widget._send(self, id, disabled, event) == Response::Used
     }
 
     // Returns true if event is used
     fn send_popup_first(
         &mut self,
-        widget: &mut dyn Widget,
+        widget: &mut dyn Node,
         id: Option<WidgetId>,
         event: Event,
     ) -> bool {
@@ -796,8 +694,8 @@ impl<'a> EventMgr<'a> {
     /// Advance the keyboard navigation focus
     pub fn next_nav_focus_impl(
         &mut self,
-        mut widget: &mut dyn Widget,
-        mut target: Option<WidgetId>,
+        mut widget: &mut dyn Node,
+        target: Option<WidgetId>,
         reverse: bool,
         key_focus: bool,
     ) {
@@ -808,7 +706,7 @@ impl<'a> EventMgr<'a> {
         if let Some(id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
             if id.is_ancestor_of(widget.id_ref()) {
                 // do nothing
-            } else if let Some(w) = widget.find_widget_mut(&id) {
+            } else if let Some(w) = widget.find_node_mut(&id) {
                 widget = w;
             } else {
                 log::warn!(
@@ -822,116 +720,39 @@ impl<'a> EventMgr<'a> {
         // We redraw in all cases. Since this is not part of widget event
         // processing, we can push directly to self.action.
         self.send_action(Action::REDRAW);
-        let old_nav_focus = self.nav_focus.take();
 
-        fn nav(
-            mgr: &mut EventMgr,
-            widget: &mut dyn Widget,
-            focus: Option<&WidgetId>,
-            rev: bool,
-        ) -> Option<WidgetId> {
-            if mgr.is_disabled(widget.id_ref()) {
-                return None;
-            }
-
-            let mut child = focus.and_then(|id| widget.find_child_index(id));
-
-            if !rev {
-                if let Some(index) = child {
-                    if let Some(id) = widget
-                        .get_child_mut(index)
-                        .and_then(|w| nav(mgr, w, focus, rev))
-                    {
-                        return Some(id);
-                    }
-                } else if !widget.eq_id(focus) && widget.navigable() {
-                    return Some(widget.id());
-                }
-
-                loop {
-                    if let Some(index) = widget.nav_next(mgr, rev, child) {
-                        if let Some(id) = widget
-                            .get_child_mut(index)
-                            .and_then(|w| nav(mgr, w, focus, rev))
-                        {
-                            return Some(id);
-                        }
-                        child = Some(index);
-                    } else {
-                        return None;
-                    }
-                }
-            } else {
-                if let Some(index) = child {
-                    if let Some(id) = widget
-                        .get_child_mut(index)
-                        .and_then(|w| nav(mgr, w, focus, rev))
-                    {
-                        return Some(id);
-                    }
-                }
-
-                loop {
-                    if let Some(index) = widget.nav_next(mgr, rev, child) {
-                        if let Some(id) = widget
-                            .get_child_mut(index)
-                            .and_then(|w| nav(mgr, w, focus, rev))
-                        {
-                            return Some(id);
-                        }
-                        child = Some(index);
-                    } else {
-                        return if !widget.eq_id(focus) && widget.navigable() {
-                            Some(widget.id())
-                        } else {
-                            None
-                        };
-                    }
-                }
-            }
-        }
-
-        let mut opt_id = None;
-        if let Some(ref id) = target {
-            if widget
-                .find_widget(id)
-                .map(|w| w.navigable())
-                .unwrap_or(false)
-            {
-                opt_id = Some(id.clone());
-            }
+        let advance = if !reverse {
+            NavAdvance::Forward(target.is_some())
         } else {
-            target = old_nav_focus.clone();
-        }
+            NavAdvance::Reverse(target.is_some())
+        };
+        let focus = target.or_else(|| self.nav_focus.clone());
 
         // Whether to restart from the beginning on failure
-        let restart = target.is_some();
+        let restart = focus.is_some();
 
-        if opt_id.is_none() {
-            opt_id = nav(self, widget, target.as_ref(), reverse);
-        }
+        let mut opt_id = widget._nav_next(self, focus.as_ref(), advance);
         if restart && opt_id.is_none() {
-            opt_id = nav(self, widget, None, reverse);
+            opt_id = widget._nav_next(self, None, advance);
         }
 
         log::trace!(
             target: "kas_core::event::config_mgr",
             "next_nav_focus: nav_focus={opt_id:?}",
         );
-        self.nav_focus = opt_id.clone();
-
-        if opt_id == target {
+        if opt_id == self.nav_focus {
             return;
         }
 
-        if let Some(id) = old_nav_focus {
+        if let Some(id) = self.nav_focus.clone() {
             self.pending
                 .push_back(Pending::Send(id, Event::LostNavFocus));
         }
-
         if self.sel_focus != opt_id {
             self.clear_char_focus();
         }
+
+        self.nav_focus = opt_id.clone();
         if let Some(id) = opt_id {
             self.pending
                 .push_back(Pending::Send(id, Event::NavFocus(key_focus)));

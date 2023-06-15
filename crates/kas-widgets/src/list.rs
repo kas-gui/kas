@@ -35,7 +35,7 @@ pub type BoxColumn = BoxList<Down>;
 /// This is parameterised over directionality.
 ///
 /// See documentation of [`List`] type.
-pub type BoxList<D> = List<D, Box<dyn Widget>>;
+pub type BoxList<D> = List<D, Box<dyn Node>>;
 
 impl_scope! {
     /// A generic row/column widget
@@ -50,7 +50,7 @@ impl_scope! {
     /// Some more specific type-defs are available:
     ///
     /// -   [`Row`] and [`Column`] fix the direction `D`
-    /// -   [`BoxList`] fixes the widget type to `Box<dyn Widget>`
+    /// -   [`BoxList`] fixes the widget type to `Box<dyn Node>`
     /// -   [`BoxRow`] and [`BoxColumn`] fix both type parameters
     ///
     /// ## Performance
@@ -84,12 +84,12 @@ impl_scope! {
             self.widgets.len()
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
-            self.widgets.get(index).map(|w| w.as_widget())
+        fn get_child(&self, index: usize) -> Option<&dyn Node> {
+            self.widgets.get(index).map(|w| w.as_node())
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
-            self.widgets.get_mut(index).map(|w| w.as_widget_mut())
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Node> {
+            self.widgets.get_mut(index).map(|w| w.as_node_mut())
         }
 
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
@@ -268,7 +268,7 @@ impl_scope! {
         pub fn push(&mut self, mgr: &mut ConfigMgr, mut widget: W) -> usize {
             let index = self.widgets.len();
             let id = self.make_child_id(index);
-            mgr.configure(id, &mut widget);
+            mgr.configure(&mut widget, id);
             self.widgets.push(widget);
 
             *mgr |= Action::RESIZE;
@@ -305,7 +305,7 @@ impl_scope! {
             }
 
             let id = self.make_child_id(index);
-            mgr.configure(id, &mut widget);
+            mgr.configure(&mut widget, id);
             self.widgets.insert(index, widget);
             *mgr |= Action::RESIZE;
         }
@@ -340,7 +340,7 @@ impl_scope! {
         /// The new child is configured immediately. Triggers [`Action::RESIZE`].
         pub fn replace(&mut self, mgr: &mut ConfigMgr, index: usize, mut w: W) -> W {
             let id = self.make_child_id(index);
-            mgr.configure(id, &mut w);
+            mgr.configure(&mut w, id);
             std::mem::swap(&mut w, &mut self.widgets[index]);
 
             if w.id_ref().is_valid() {
@@ -364,7 +364,7 @@ impl_scope! {
             }
             for mut w in iter {
                 let id = self.make_child_id(self.widgets.len());
-                mgr.configure(id, &mut w);
+                mgr.configure(&mut w, id);
                 self.widgets.push(w);
             }
 
@@ -397,7 +397,7 @@ impl_scope! {
                 for index in old_len..len {
                     let id = self.make_child_id(index);
                     let mut w = f(index);
-                    mgr.configure(id, &mut w);
+                    mgr.configure(&mut w, id);
                     self.widgets.push(w);
                 }
                 *mgr |= Action::RESIZE;

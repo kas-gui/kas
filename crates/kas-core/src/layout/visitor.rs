@@ -17,8 +17,36 @@ use crate::event::ConfigMgr;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::theme::{Background, DrawMgr, FrameStyle, MarginStyle, SizeMgr};
 use crate::WidgetId;
-use crate::{dir::Directional, dir::Directions, Layout, Widget, WidgetCore};
+use crate::{dir::Directional, dir::Directions, Layout, Widget};
 use std::iter::ExactSizeIterator;
+
+/// A sub-set of [`Layout`] used by [`Visitor`].
+///
+/// Unlike when implementing a widget, all methods of this trait must be
+/// implemented directly.
+pub trait Visitable {
+    /// Get size rules for the given axis
+    ///
+    /// This method is identical to [`Layout::size_rules`].
+    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
+
+    /// Set size and position
+    ///
+    /// This method is identical to [`Layout::set_rect`].
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
+
+    /// Translate a coordinate to a [`WidgetId`]
+    ///
+    /// Implementations should recursively call `find_id` on children, returning
+    /// `None` if no child returns a `WidgetId`.
+    /// This method is simplified relative to [`Layout::find_id`].
+    fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
+
+    /// Draw a widget and its children
+    ///
+    /// This method is identical to [`Layout::draw`].
+    fn draw(&mut self, draw: DrawMgr);
+}
 
 /// A layout visitor
 ///
@@ -34,16 +62,12 @@ pub struct Visitor<'a> {
 
 /// Items which can be placed in a layout
 enum LayoutType<'a> {
-    /// No layout
-    None,
-    /// A component
-    Component(&'a mut dyn Layout),
     /// A boxed component
-    BoxComponent(Box<dyn Layout + 'a>),
+    BoxComponent(Box<dyn Visitable + 'a>),
     /// A single child widget
-    Single(&'a mut dyn WidgetCore),
+    Single(&'a mut dyn Layout),
     /// A single child widget with alignment
-    AlignSingle(&'a mut dyn WidgetCore, AlignHints),
+    AlignSingle(&'a mut dyn Layout, AlignHints),
     /// Apply alignment hints to some sub-layout
     Align(Box<Visitor<'a>>, AlignHints),
     /// Apply alignment and pack some sub-layout
@@ -56,45 +80,15 @@ enum LayoutType<'a> {
     Button(Box<Visitor<'a>>, &'a mut FrameStorage, Option<Rgb>),
 }
 
-/* unused utility method:
-impl<'a> LayoutType<'a> {
-    fn id(&self) -> Option<WidgetId> {
-        use crate::WidgetExt;
-        match self {
-            LayoutType::None => None,
-            LayoutType::Component(_) => None,
-            LayoutType::BoxComponent(_) => None,
-            LayoutType::Single(w) => Some(w.id()),
-            LayoutType::AlignSingle(w, _) => Some(w.id()),
-            LayoutType::Align(l, _) => l.layout.id(),
-            LayoutType::Margins(l, _, _) => l.layout.id(),
-            LayoutType::Frame(l, _, _) => l.layout.id(),
-            LayoutType::Button(l, _, _) => l.layout.id(),
-        }
-    }
-}*/
-
-impl<'a> Default for Visitor<'a> {
-    fn default() -> Self {
-        Visitor::none()
-    }
-}
-
 impl<'a> Visitor<'a> {
-    /// Construct an empty layout
-    pub fn none() -> Self {
-        let layout = LayoutType::None;
-        Visitor { layout }
-    }
-
     /// Construct a single-item layout
-    pub fn single(widget: &'a mut dyn WidgetCore) -> Self {
+    pub fn single(widget: &'a mut dyn Layout) -> Self {
         let layout = LayoutType::Single(widget);
         Visitor { layout }
     }
 
     /// Construct a single-item layout with alignment hints
-    pub fn align_single(widget: &'a mut dyn WidgetCore, hints: AlignHints) -> Self {
+    pub fn align_single(widget: &'a mut dyn Layout, hints: AlignHints) -> Self {
         let layout = LayoutType::AlignSingle(widget, hints);
         Visitor { layout }
     }
@@ -131,12 +125,6 @@ impl<'a> Visitor<'a> {
     /// on the button reports input to `self`, not to the child node.
     pub fn button(data: &'a mut FrameStorage, child: Self, color: Option<Rgb>) -> Self {
         let layout = LayoutType::Button(Box::new(child), data, color);
-        Visitor { layout }
-    }
-
-    /// Place a component in the layout
-    pub fn component(component: &'a mut dyn Layout) -> Self {
-        let layout = LayoutType::Component(component);
         Visitor { layout }
     }
 
@@ -207,8 +195,6 @@ impl<'a> Visitor<'a> {
     }
     fn size_rules_(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         match &mut self.layout {
-            LayoutType::None => SizeRules::EMPTY,
-            LayoutType::Component(component) => component.size_rules(mgr, axis),
             LayoutType::BoxComponent(component) => component.size_rules(mgr, axis),
             LayoutType::Single(child) => child.size_rules(mgr, axis),
             LayoutType::AlignSingle(child, hints) => {
@@ -255,8 +241,6 @@ impl<'a> Visitor<'a> {
     }
     fn set_rect_(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
         match &mut self.layout {
-            LayoutType::None => (),
-            LayoutType::Component(component) => component.set_rect(mgr, rect),
             LayoutType::BoxComponent(layout) => layout.set_rect(mgr, rect),
             LayoutType::Single(child) => child.set_rect(mgr, rect),
             LayoutType::Align(layout, _) => layout.set_rect_(mgr, rect),
@@ -284,8 +268,6 @@ impl<'a> Visitor<'a> {
     }
     fn find_id_(&mut self, coord: Coord) -> Option<WidgetId> {
         match &mut self.layout {
-            LayoutType::None => None,
-            LayoutType::Component(component) => component.find_id(coord),
             LayoutType::BoxComponent(layout) => layout.find_id(coord),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.find_id(coord),
             LayoutType::Align(layout, _) => layout.find_id_(coord),
@@ -304,8 +286,6 @@ impl<'a> Visitor<'a> {
     }
     fn draw_(&mut self, mut draw: DrawMgr) {
         match &mut self.layout {
-            LayoutType::None => (),
-            LayoutType::Component(component) => component.draw(draw),
             LayoutType::BoxComponent(layout) => layout.draw(draw),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => draw.recurse(*child),
             LayoutType::Align(layout, _) => layout.draw_(draw),
@@ -334,7 +314,7 @@ struct List<'a, S, D, I> {
     children: I,
 }
 
-impl<'a, S: RowStorage, D: Directional, I> Layout for List<'a, S, D, I>
+impl<'a, S: RowStorage, D: Directional, I> Visitable for List<'a, S, D, I>
 where
     I: ExactSizeIterator<Item = Visitor<'a>>,
 {
@@ -376,7 +356,7 @@ where
     children: I,
 }
 
-impl<'a, I> Layout for Float<'a, I>
+impl<'a, I> Visitable for Float<'a, I>
 where
     I: DoubleEndedIterator<Item = Visitor<'a>>,
 {
@@ -416,7 +396,7 @@ struct Slice<'a, W: Widget, D: Directional> {
     children: &'a mut [W],
 }
 
-impl<'a, W: Widget, D: Directional> Layout for Slice<'a, W, D> {
+impl<'a, W: Widget, D: Directional> Visitable for Slice<'a, W, D> {
     fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         let dim = (self.direction, self.children.len());
         let mut solver = RowSolver::new(axis, dim, self.data);
@@ -455,7 +435,7 @@ struct Grid<'a, S, I> {
     children: I,
 }
 
-impl<'a, S: GridStorage, I> Layout for Grid<'a, S, I>
+impl<'a, S: GridStorage, I> Visitable for Grid<'a, S, I>
 where
     I: DoubleEndedIterator<Item = (GridChildInfo, Visitor<'a>)>,
 {

@@ -37,7 +37,7 @@ impl RadioGroup {
     /// Get the active [`RadioBox`], if any
     ///
     /// Note: this is never equal to a [`RadioButton`]'s [`WidgetId`], but may
-    /// be a descendant (test with [`WidgetExt::is_ancestor_of`]).
+    /// be a descendant (test with [`NodeExt::is_ancestor_of`]).
     pub fn get(&self) -> Option<WidgetId> {
         (self.0).1.borrow().clone()
     }
