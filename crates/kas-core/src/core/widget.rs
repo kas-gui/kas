@@ -108,10 +108,7 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// Default impl: `self.id_ref().make_child(index)`
     #[inline]
-    fn make_child_id(&mut self, index: usize) -> WidgetId
-    where
-        Self: Sized,
-    {
+    fn make_child_id(&mut self, index: usize) -> WidgetId {
         self.id_ref().make_child(index)
     }
 }
