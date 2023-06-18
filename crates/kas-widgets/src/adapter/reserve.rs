@@ -48,8 +48,10 @@ impl_scope! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Default)]
-    #[widget{ derive = self.inner; }]
+    #[widget{ layout = self.inner; }]
     pub struct Reserve<W: Widget, R: FnSizeRules> {
+        core: widget_core!(),
+        #[widget]
         pub inner: W,
         reserve: R,
     }
@@ -84,7 +86,8 @@ impl_scope! {
         /// and the result of the `reserve` closure.
         #[inline]
         pub fn new(inner: W, reserve: R) -> Self {
-            Reserve { inner, reserve }
+            let core = Default::default();
+            Reserve { core, inner, reserve }
         }
     }
 
