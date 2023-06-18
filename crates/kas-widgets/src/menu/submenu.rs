@@ -144,7 +144,7 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
+    impl Events for Self {
         fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
             // FIXME: new layer should apply to self.list but not to self.label.
@@ -268,11 +268,11 @@ impl_scope! {
             self.list.len()
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Node> {
+        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
             self.list.get(index).map(|w| w.as_node())
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Node> {
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
             self.list.get_mut(index).map(|w| w.as_node_mut())
         }
     }

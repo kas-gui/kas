@@ -156,11 +156,11 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// This may *only* be used within the [`impl_scope!`] macro.
 ///
 /// Implements the [`WidgetCore`] and [`Widget`] traits for the deriving type.
-/// Implements the [`WidgetChildren`] and [`Layout`]
+/// Implements the [`WidgetChildren`], [`Events`] and [`Layout`]
 /// traits only if not implemented explicitly within the
 /// defining [`impl_scope!`].
 ///
-/// This macro may inject methods into existing [`Layout`] / [`Widget`] implementations.
+/// This macro may inject methods into existing [`Layout`] / [`Events`] / [`Widget`] implementations.
 /// This is used both to provide default implementations which could not be
 /// written on the trait and to implement properties like `navigable`.
 /// (In the case of multiple implementations of the same trait, as used for
@@ -180,7 +180,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///     <code><em>field</em></code> is the name (or number) of a field:
 ///     enables "derive mode" ([see below](#derive)) over the given field
 /// -   <code>navigable = <em>bool</em></code> — a quick implementation of
-///     `Widget::navigable`: whether this widget supports keyboard focus via
+///     `Events::navigable`: whether this widget supports keyboard focus via
 ///     the <kbd>Tab</kbd> key (default is `false`)
 /// -   <code>hover_highlight = <em>bool</em></code> — if true, then match
 ///     `Event::MouseHover` and `Event::LostMouseHover`, requesting redraw and
@@ -195,8 +195,8 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// `#[widget]` and used to identify the field used (name may be anything).
 /// This field *may* have type [`CoreData`] or may be a generated
 /// type; either way it has fields `id: WidgetId` (assigned by
-/// `Widget::pre_configure`) and `rect: Rect` (usually assigned by
-/// `Widget::set_rect`). It may contain additional fields for layout data. The
+/// `Events::pre_configure`) and `rect: Rect` (usually assigned by
+/// `Layout::set_rect`). It may contain additional fields for layout data. The
 /// type supports `Default` and `Clone` (although `Clone` actually
 /// default-initializes all fields other than `rect` since clones of widgets
 /// must themselves be configured).
@@ -214,7 +214,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// syntax, where _Layout_ is any of the below.
 ///
 /// Using the `layout = ...;` property will also generate a corresponding
-/// implementation of `Widget::nav_next`, with a couple of exceptions
+/// implementation of `Events::nav_next`, with a couple of exceptions
 /// (where macro-time analysis is insufficient to implement this method).
 ///
 /// > [_Column_](macro@column), [_Row_](macro@row), [_List_](macro@list), [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_](macro@float), [_Align_](macro@align), [_Pack_](macro@pack), [_Margins_](macro@margins) :\
@@ -228,7 +228,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// >
 /// > _Slice_ :\
 /// > &nbsp;&nbsp; `slice!` _Storage_? `(` _Direction_ `,` `self` `.` _Member_ `)`\
-/// > &nbsp;&nbsp; A field with type `[W]` for some `W: Widget`
+/// > &nbsp;&nbsp; A field with type `[W]` for some `W: Layout`. (Note: this does not automatically register the slice widgets as children for the purpose of configuration and event-handling. An explicit implementation of `WidgetChildren` will be required.)
 /// >
 /// > _Frame_ :\
 /// > &nbsp;&nbsp; `frame!` _Storage_? `(` _Layout_ ( `,` `style` `=` _Expr_ )? `)`\
@@ -314,13 +314,14 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// This is a special mode where most features of `#[widget]` are not
 /// available. A few may still be used: `navigable`, `hover_highlight`,
 /// `cursor_icon`. Additionally, it is currently permitted to implement
-/// [`WidgetChildren`], [`Layout`] and [`Widget`] traits manually (this option
+/// [`WidgetChildren`], [`Layout`], [`Events`] and [`Widget`] traits manually (this option
 /// may be removed in the future if not deemed useful).
 ///
 /// [`Widget`]: https://docs.rs/kas/0.11/kas/trait.Widget.html
 /// [`WidgetCore`]: https://docs.rs/kas/0.11/kas/trait.WidgetCore.html
 /// [`WidgetChildren`]: https://docs.rs/kas/0.11/kas/trait.WidgetChildren.html
 /// [`Layout`]: https://docs.rs/kas/0.11/kas/trait.Layout.html
+/// [`Events`]: https://docs.rs/kas/0.11/kas/trait.Events.html
 /// [`CursorIcon`]: https://docs.rs/kas/0.11/kas/event/enum.CursorIcon.html
 /// [`Response`]: https://docs.rs/kas/0.11/kas/event/enum.Response.html
 /// [`CoreData`]: https://docs.rs/kas/0.11/kas/struct.CoreData.html

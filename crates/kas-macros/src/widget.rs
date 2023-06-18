@@ -144,7 +144,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
     let mut do_impl_widget_children = true;
     let mut layout_impl = None;
-    let mut widget_impl = None;
+    let mut events_impl = None;
 
     let fields = match &mut scope.item {
         ScopeItem::Struct { token, fields } => match fields {
@@ -335,12 +335,12 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 if layout_impl.is_none() {
                     layout_impl = Some(index);
                 }
-            } else if *path == parse_quote! { ::kas::Widget }
-                || *path == parse_quote! { kas::Widget }
-                || *path == parse_quote! { Widget }
+            } else if *path == parse_quote! { ::kas::Events }
+                || *path == parse_quote! { kas::Events }
+                || *path == parse_quote! { Events }
             {
-                if widget_impl.is_none() {
-                    widget_impl = Some(index);
+                if events_impl.is_none() {
+                    events_impl = Some(index);
                 }
             }
         }
@@ -384,9 +384,9 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 }
 
                 #[inline]
-                fn as_node(&self) -> &dyn ::kas::Node { self }
+                fn as_node(&self) -> &dyn ::kas::Widget { self }
                 #[inline]
-                fn as_node_mut(&mut self) -> &mut dyn ::kas::Node { self }
+                fn as_node_mut(&mut self) -> &mut dyn ::kas::Widget { self }
             }
 
             impl #impl_generics ::kas::WidgetChildren for #impl_target {
@@ -395,11 +395,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     self.#inner.num_children()
                 }
                 #[inline]
-                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Node> {
+                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Widget> {
                     self.#inner.get_child(index)
                 }
                 #[inline]
-                fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::Node> {
+                fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::Widget> {
                     self.#inner.get_child_mut(index)
                 }
                 #[inline]
@@ -569,7 +569,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
         let mut set_rect = quote! { self.#core.rect = rect; };
         let mut find_id = quote! {
-            use ::kas::{WidgetCore, NodeExt};
+            use ::kas::{WidgetCore, WidgetExt};
             self.rect().contains(coord).then(|| self.id())
         };
         if let Some((_, layout)) = args.layout.take() {
@@ -696,7 +696,10 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 mgr: &mut ::kas::event::EventMgr,
                 event: ::kas::event::Event,
             ) -> ::kas::event::Response {
-                use ::kas::{event::{Event, Response}, NodeExt};
+                use ::kas::{event::{Event, Response, Scroll}, WidgetExt, WidgetCore};
+                if event == Event::NavFocus(true) {
+                    mgr.set_scroll(Scroll::Rect(self.rect()));
+                }
                 #pre_handle_event
                 self.handle_event(mgr, event)
             }
@@ -754,41 +757,41 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         });
     }
 
-    if let Some(index) = widget_impl {
-        let widget_impl = &mut scope.impls[index];
-        let method_idents = collect_idents(widget_impl);
+    if let Some(index) = events_impl {
+        let events_impl = &mut scope.impls[index];
+        let method_idents = collect_idents(events_impl);
         let has_method = |name| method_idents.iter().any(|ident| ident == name);
 
         if opt_derive.is_some() || !has_method("pre_configure") {
-            widget_impl.items.push(parse2(fn_pre_configure)?);
+            events_impl.items.push(parse2(fn_pre_configure)?);
         }
         if let Some(method) = fn_navigable {
-            widget_impl.items.push(parse2(method)?);
+            events_impl.items.push(parse2(method)?);
         }
-        widget_impl.items.push(parse2(fn_pre_handle_event)?);
+        events_impl.items.push(parse2(fn_pre_handle_event)?);
         if let Some(item) = fn_handle_event {
-            widget_impl.items.push(parse2(item)?);
+            events_impl.items.push(parse2(item)?);
         }
 
         if !has_method("nav_next") {
             if let Some(method) = fn_nav_next {
-                widget_impl.items.push(parse2(method)?);
+                events_impl.items.push(parse2(method)?);
             } else if gen_layout {
                 // We emit a warning here only if nav_next is not explicitly defined
                 let (span, msg) = fn_nav_next_err.unwrap();
-                emit_warning!(span, "unable to generate `fn Widget::nav_next`: {}", msg,);
+                emit_warning!(span, "unable to generate `fn Events::nav_next`: {}", msg,);
             }
         }
 
         for (name, method) in widget_methods {
             if !has_method(name) {
-                widget_impl.items.push(parse2(method)?);
+                events_impl.items.push(parse2(method)?);
             }
         }
     } else {
         let other_methods = widget_methods.into_iter().map(|pair| pair.1);
         scope.generated.push(quote! {
-            impl #impl_generics ::kas::Widget for #impl_target {
+            impl #impl_generics ::kas::Events for #impl_target {
                 #fn_pre_configure
                 #fn_navigable
                 #fn_pre_handle_event
@@ -798,6 +801,12 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         });
     }
 
+    // Note that hidden widget methods are never derived
+    scope
+        .generated
+        .push(impl_widget(&impl_generics, &impl_target));
+
+    // println!("{}", scope.to_token_stream());
     Ok(())
 }
 
@@ -819,9 +828,9 @@ pub fn impl_core(impl_generics: &Toks, impl_target: &Toks, name: &str, core_path
             }
 
             #[inline]
-            fn as_node(&self) -> &dyn ::kas::Node { self }
+            fn as_node(&self) -> &dyn ::kas::Widget { self }
             #[inline]
-            fn as_node_mut(&mut self) -> &mut dyn ::kas::Node { self }
+            fn as_node_mut(&mut self) -> &mut dyn ::kas::Widget { self }
         }
     }
 }
@@ -854,17 +863,68 @@ pub fn impl_widget_children(
             fn num_children(&self) -> usize {
                 #count
             }
-            fn get_child(&self, _index: usize) -> Option<&dyn ::kas::Node> {
+            fn get_child(&self, _index: usize) -> Option<&dyn ::kas::Widget> {
                 match _index {
                     #get_rules
                     _ => None
                 }
             }
-            fn get_child_mut(&mut self, _index: usize) -> Option<&mut dyn ::kas::Node> {
+            fn get_child_mut(&mut self, _index: usize) -> Option<&mut dyn ::kas::Widget> {
                 match _index {
                     #get_mut_rules
                     _ => None
                 }
+            }
+        }
+    }
+}
+
+pub fn impl_widget(impl_generics: &Toks, impl_target: &Toks) -> Toks {
+    quote! {
+        impl #impl_generics ::kas::Widget for #impl_target {
+            fn _configure(
+                &mut self,
+                cx: &mut ::kas::event::ConfigMgr,
+                id: ::kas::WidgetId,
+            ) {
+                ::kas::impls::_configure(self, cx, id);
+            }
+
+            fn _broadcast(
+                &mut self,
+                cx: &mut ::kas::event::EventMgr,
+                count: &mut usize,
+                event: ::kas::event::Event,
+            ) {
+                ::kas::impls::_broadcast(self, cx, count, event);
+            }
+
+            fn _send(
+                &mut self,
+                cx: &mut ::kas::event::EventMgr,
+                id: ::kas::WidgetId,
+                disabled: bool,
+                event: ::kas::event::Event,
+            ) -> ::kas::event::Response {
+                ::kas::impls::_send(self, cx, id, disabled, event)
+            }
+
+            fn _replay(
+                &mut self,
+                cx: &mut ::kas::event::EventMgr,
+                id: ::kas::WidgetId,
+                msg: ::kas::Erased,
+            ) {
+                ::kas::impls::_replay(self, cx, id, msg);
+            }
+
+            fn _nav_next(
+                &mut self,
+                cx: &mut ::kas::event::EventMgr,
+                focus: Option<&::kas::WidgetId>,
+                advance: ::kas::NavAdvance,
+            ) -> Option<::kas::WidgetId> {
+                ::kas::impls::_nav_next(self, cx, focus, advance)
             }
         }
     }

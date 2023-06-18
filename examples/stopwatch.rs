@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use kas::class::HasString;
 use kas::event::{ConfigMgr, Event, EventMgr, Response};
 use kas::widget::{Frame, Label, TextButton};
-use kas::{Decorations, NodeExt, Widget, WidgetCore, Window};
+use kas::{Decorations, Events, Widget, WidgetCore, WidgetExt, Window};
 
 #[derive(Clone, Debug)]
 struct MsgReset;
@@ -34,7 +34,7 @@ fn make_window() -> Box<dyn kas::Window> {
             saved: Duration,
             start: Option<Instant>,
         }
-        impl Widget for Self {
+        impl Events for Self {
             fn configure(&mut self, mgr: &mut ConfigMgr) {
                 mgr.enable_alt_bypass(self.id_ref(), true);
             }

@@ -15,7 +15,7 @@ use crate::draw::DrawShared;
 use crate::geom::{Offset, Vec2};
 use crate::theme::{SizeMgr, ThemeControl};
 use crate::{Action, Erased, WidgetId, WindowId};
-#[allow(unused)] use crate::{Layout, Widget}; // for doc-links
+#[allow(unused)] use crate::{Events, Layout}; // for doc-links
 
 impl<'a> std::ops::BitOrAssign<Action> for EventMgr<'a> {
     #[inline]
@@ -320,7 +320,7 @@ impl EventState {
     /// pop-up, the key is only active when that pop-up is open.
     /// See [`EventState::new_accel_layer`].
     ///
-    /// This should only be called from [`Widget::configure`].
+    /// This should only be called from [`Events::configure`].
     #[inline]
     pub fn add_accel_keys(&mut self, id: &WidgetId, keys: &[VirtualKeyCode]) {
         if let Some(layer) = self.accel_layer_for_id(id) {
@@ -440,7 +440,7 @@ impl EventState {
 
     /// Set the keyboard navigation focus directly
     ///
-    /// Normally, [`Widget::navigable`] will be true for the specified
+    /// Normally, [`Events::navigable`] will be true for the specified
     /// widget, but this is not required, e.g. a `ScrollLabel` can receive focus
     /// on text selection with the mouse. (Currently such widgets will receive
     /// events like any other with nav focus, but this may change.)
@@ -471,7 +471,7 @@ impl EventState {
     /// Advance the keyboard navigation focus
     ///
     /// If `target == Some(id)`, this looks for the next widget from `id`
-    /// (inclusive) which is navigable ([`Widget::navigable`]). Otherwise where
+    /// (inclusive) which is navigable ([`Events::navigable`]). Otherwise where
     /// some widget `id` has [`nav_focus`](Self::nav_focus) this looks for the
     /// next navigable widget *excluding* `id`. If no reference is available,
     /// this instead looks for the first navigable widget.
@@ -515,7 +515,7 @@ impl EventState {
     /// The future must resolve to a message on completion. This message is
     /// pushed to the message stack as if it were pushed with [`EventMgr::push`]
     /// from widget `id`, allowing this widget or any ancestor to handle it in
-    /// [`Widget::handle_message`].
+    /// [`Events::handle_message`].
     //
     // TODO: Can we identify the calling widget `id` via the context (EventMgr)?
     pub fn push_async<Fut, M>(&mut self, id: WidgetId, fut: Fut)
@@ -581,7 +581,7 @@ impl<'a> EventMgr<'a> {
     ///
     /// This is only used when unwinding (traversing back up the widget tree),
     /// and returns the index of the child last visited. E.g. when
-    /// [`Widget::handle_message`] is called, this method returns the index of
+    /// [`Events::handle_message`] is called, this method returns the index of
     /// the child which submitted the message (or whose descendant did).
     /// Otherwise this returns `None` (including when the widget itself is the
     /// submitter of the message).
@@ -614,7 +614,7 @@ impl<'a> EventMgr<'a> {
     /// then pushed to the stack.
     ///
     /// The message may be [popped](EventMgr::try_pop) or
-    /// [observed](EventMgr::try_observe) from [`Widget::handle_message`]
+    /// [observed](EventMgr::try_observe) from [`Events::handle_message`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn push<M: Debug + 'static>(&mut self, msg: M) {
         self.push_erased(Erased::new(msg));
@@ -625,7 +625,7 @@ impl<'a> EventMgr<'a> {
     /// This is a lower-level variant of [`Self::push`].
     ///
     /// The message may be [popped](EventMgr::try_pop) or
-    /// [observed](EventMgr::try_observe) from [`Widget::handle_message`]
+    /// [observed](EventMgr::try_observe) from [`Events::handle_message`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn push_erased(&mut self, msg: Erased) {
         self.messages.push(msg);
@@ -638,7 +638,7 @@ impl<'a> EventMgr<'a> {
 
     /// Try popping the last message from the stack with the given type
     ///
-    /// This method may be called from [`Widget::handle_message`].
+    /// This method may be called from [`Events::handle_message`].
     pub fn try_pop<M: Debug + 'static>(&mut self) -> Option<M> {
         if self.messages.last().map(|m| m.is::<M>()).unwrap_or(false) {
             self.messages
@@ -654,7 +654,7 @@ impl<'a> EventMgr<'a> {
 
     /// Try observing the last message on the stack without popping
     ///
-    /// This method may be called from [`Widget::handle_message`].
+    /// This method may be called from [`Events::handle_message`].
     pub fn try_observe<M: Debug + 'static>(&self) -> Option<&M> {
         self.messages.last().and_then(|m| m.downcast_ref::<M>())
     }
@@ -664,7 +664,7 @@ impl<'a> EventMgr<'a> {
     /// When setting [`Scroll::Rect`], use the widget's own coordinate space.
     ///
     /// Note that calling this method has no effect on the widget itself, but
-    /// affects parents via their [`Widget::handle_scroll`] method.
+    /// affects parents via their [`Events::handle_scroll`] method.
     #[inline]
     pub fn set_scroll(&mut self, scroll: Scroll) {
         self.scroll = scroll;
@@ -824,7 +824,7 @@ impl<'a> EventMgr<'a> {
     /// Warning: sizes are calculated using the window's current scale factor.
     /// This may change, even without user action, since some platforms
     /// always initialize windows with scale factor 1.
-    /// See also notes on [`Widget::configure`].
+    /// See also notes on [`Events::configure`].
     pub fn size_mgr<F: FnOnce(SizeMgr) -> T, T>(&mut self, f: F) -> T {
         let mut result = None;
         self.shell.size_and_draw_shared(Box::new(|size, _| {
@@ -877,7 +877,7 @@ impl<'a> EventMgr<'a> {
     /// Configure a widget
     ///
     /// This is a shortcut to [`ConfigMgr::configure`].
-    pub fn configure(&mut self, widget: &mut dyn Node, id: WidgetId) {
+    pub fn configure(&mut self, widget: &mut dyn Widget, id: WidgetId) {
         self.config_mgr(|mgr| mgr.configure(widget, id));
     }
 }

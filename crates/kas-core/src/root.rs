@@ -11,7 +11,7 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, FrameStyle, SizeMgr};
 use crate::title_bar::TitleBar;
-use crate::{Action, Decorations, Layout, Node, NodeExt, Widget, WidgetId, Window, WindowId};
+use crate::{Action, Decorations, Events, Layout, Widget, WidgetExt, WidgetId, Window, WindowId};
 use kas_macros::impl_scope;
 use smallvec::SmallVec;
 
@@ -110,7 +110,7 @@ impl_scope! {
         }
     }
 
-    impl Widget for RootWidget {
+    impl Events for RootWidget {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             self.decorations = self.w.decorations();
             if mgr.platform().is_wayland() && self.decorations == Decorations::Server {
@@ -218,7 +218,7 @@ impl RootWidget {
 
 // Search for a widget by `id`. On success, return that widget's [`Rect`] and
 // the translation of its children.
-fn find_rect(mut widget: &dyn Node, id: WidgetId) -> Option<(Rect, Offset)> {
+fn find_rect(mut widget: &dyn Widget, id: WidgetId) -> Option<(Rect, Offset)> {
     let mut translation = Offset::ZERO;
     loop {
         if let Some(i) = widget.find_child_index(&id) {

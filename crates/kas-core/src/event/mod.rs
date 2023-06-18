@@ -19,26 +19,26 @@
 //!     from mouse/touch coordinates by calling [`find_id`](crate::Layout::find_id).
 //! 2.  If the target is [disabled](EventState::is_disabled), then find the
 //!     top-most ancestor which is disabled and make that the target, but
-//!     inhibit calling of [`Widget::handle_event`] on this widget (but still
-//!     unwind, calling [`Widget::handle_event`] on ancestors)).
+//!     inhibit calling of [`Events::handle_event`] on this widget (but still
+//!     unwind, calling [`Events::handle_event`] on ancestors)).
 //! 3.  Traverse *down* the widget tree from its root to the target according to
 //!     the [`WidgetId`]. On each node (excluding the target),
 //!
-//!     -   Call [`Widget::steal_event`]; if this method "steals" the event,
+//!     -   Call [`Events::steal_event`]; if this method "steals" the event,
 //!         skip to step 5.
 //! 4.  In the normal case (when the target is not disabled and the event is
-//!     not stolen), [`Widget::handle_event`] is called on the target.
-//! 5.  If the message stack is not empty, call [`Widget::handle_message`] on
+//!     not stolen), [`Events::handle_event`] is called on the target.
+//! 5.  If the message stack is not empty, call [`Events::handle_message`] on
 //!     the current node.
 //! 6.  Unwind, traversing back *up* the widget tree (towards the root).
 //!     On each node (excluding the target),
 //!
 //!     -   If a non-empty scroll action is [set](EventMgr::set_scroll),
-//!         call [`Widget::handle_scroll`]
+//!         call [`Events::handle_scroll`]
 //!     -   If the event has not yet been [used](Response::Used),
-//!         call [`Widget::handle_event`]
+//!         call [`Events::handle_event`]
 //!     -   If the message stack is non-empty (see [`EventMgr::push`]),
-//!         call [`Widget::handle_message`].
+//!         call [`Events::handle_message`].
 //! 7.  Clear any messages still on the message stack, printing a warning to the
 //!     log. Messages *should* be handled during unwinding, though not doing so
 //!     is safe (and possibly useful during development).
@@ -71,7 +71,7 @@ use smallvec::SmallVec;
 pub use winit::event::{ModifiersState, MouseButton, VirtualKeyCode};
 #[cfg(feature = "winit")] pub use winit::window::CursorIcon;
 
-#[allow(unused)] use crate::Widget;
+#[allow(unused)] use crate::{Events, Widget};
 #[doc(no_inline)] pub use config::Config;
 #[cfg(not(feature = "winit"))]
 pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};

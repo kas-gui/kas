@@ -6,14 +6,14 @@
 //! Utilities
 
 use crate::geom::Coord;
-use crate::{Node, NodeExt, WidgetId};
+use crate::{Widget, WidgetExt, WidgetId};
 use std::fmt;
 
 /// Helper to display widget identification (e.g. `MyWidget#01`)
 ///
-/// Constructed by [`crate::NodeExt::identify`].
-pub struct IdentifyWidget(pub(crate) &'static str, pub(crate) WidgetId);
-impl fmt::Display for IdentifyWidget {
+/// Constructed by [`crate::WidgetExt::identify`].
+pub struct IdentifyWidget<'a>(pub(crate) &'static str, pub(crate) &'a WidgetId);
+impl<'a> fmt::Display for IdentifyWidget<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{}{}", self.0, self.1)
     }
@@ -23,11 +23,11 @@ impl fmt::Display for IdentifyWidget {
 ///
 /// Note: output starts with a new line.
 pub struct WidgetHierarchy<'a> {
-    widget: &'a dyn Node,
+    widget: &'a dyn Widget,
     indent: usize,
 }
 impl<'a> WidgetHierarchy<'a> {
-    pub fn new(widget: &'a dyn Node) -> Self {
+    pub fn new(widget: &'a dyn Widget) -> Self {
         WidgetHierarchy { widget, indent: 0 }
     }
 }
@@ -80,7 +80,7 @@ impl<'a, T: fmt::Debug + ?Sized> fmt::Debug for TryFormat<'a, T> {
     }
 }
 
-/// Generic implementation of [`crate::Widget::nav_next`]
+/// Generic implementation of [`crate::Events::nav_next`]
 pub fn nav_next(reverse: bool, from: Option<usize>, len: usize) -> Option<usize> {
     let last = len.wrapping_sub(1);
     if last == usize::MAX {

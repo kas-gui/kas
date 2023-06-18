@@ -88,7 +88,7 @@ impl_scope! {
             }
         }
     }
-    impl Widget for ColourSquare {
+    impl Events for ColourSquare {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Update { id, .. } if id == self.update_id => {

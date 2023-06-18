@@ -11,7 +11,7 @@ use crate::event::ConfigMgr;
 use crate::geom::{Rect, Size};
 use crate::theme::SizeMgr;
 use crate::util::WidgetHierarchy;
-use crate::{Node, Widget};
+use crate::{Layout, Widget};
 
 /// A [`SizeRules`] solver for layouts
 ///
@@ -71,7 +71,7 @@ pub trait RulesSetter {
 ///
 /// Parameters `x_size` and `y_size` should be passed where this dimension is
 /// fixed and are used e.g. for text wrapping.
-pub fn solve_size_rules<W: Widget + ?Sized>(
+pub fn solve_size_rules<W: Layout + ?Sized>(
     widget: &mut W,
     size_mgr: SizeMgr,
     x_size: Option<i32>,
@@ -134,7 +134,7 @@ impl SolveCache {
     /// Calculate required size of widget
     ///
     /// Assumes no explicit alignment.
-    pub fn find_constraints(widget: &mut dyn Node, size_mgr: SizeMgr) -> Self {
+    pub fn find_constraints(widget: &mut dyn Widget, size_mgr: SizeMgr) -> Self {
         let start = std::time::Instant::now();
 
         let w = widget.size_rules(size_mgr.re(), AxisInfo::new(false, None, None));
@@ -184,7 +184,7 @@ impl SolveCache {
     /// last used).
     pub fn apply_rect(
         &mut self,
-        widget: &mut dyn Node,
+        widget: &mut dyn Widget,
         mgr: &mut ConfigMgr,
         mut rect: Rect,
         inner_margin: bool,
@@ -228,7 +228,7 @@ impl SolveCache {
     /// Print widget heirarchy in the trace log
     ///
     /// This is sometimes called after [`Self::apply_rect`].
-    pub fn print_widget_heirarchy(&mut self, widget: &mut dyn Node) {
+    pub fn print_widget_heirarchy(&mut self, widget: &mut dyn Widget) {
         let rect = widget.rect();
         let hier = WidgetHierarchy::new(widget);
         log::trace!(

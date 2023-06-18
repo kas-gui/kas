@@ -199,7 +199,7 @@ impl_scope! {
     /// Accelerator keys are not useful on plain labels. To be useful, a parent
     /// widget must do something like:
     /// ```no_test
-    /// impl Widget for Self {
+    /// impl Events for Self {
     ///     fn configure(&mut self, mgr: &mut EventMgr) {
     ///         let target = self.id(); // widget receiving Event::Activate
     ///         mgr.add_accel_keys(target, self.label.keys());
@@ -311,7 +311,7 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
+    impl Events for Self {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.add_accel_keys(self.id_ref(), self.label.text().keys());
         }

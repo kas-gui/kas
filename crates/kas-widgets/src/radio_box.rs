@@ -37,7 +37,7 @@ impl RadioGroup {
     /// Get the active [`RadioBox`], if any
     ///
     /// Note: this is never equal to a [`RadioButton`]'s [`WidgetId`], but may
-    /// be a descendant (test with [`NodeExt::is_ancestor_of`]).
+    /// be a descendant (test with [`WidgetExt::is_ancestor_of`]).
     pub fn get(&self) -> Option<WidgetId> {
         (self.0).1.borrow().clone()
     }
@@ -66,7 +66,7 @@ impl_scope! {
         on_select: Option<Box<dyn Fn(&mut EventMgr)>>,
     }
 
-    impl Widget for Self {
+    impl Events for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Update { id, .. } if id == self.group.id() => {
@@ -242,7 +242,7 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
+    impl Events for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr) {
             if let Some(kas::message::Activate) = mgr.try_pop() {
                 self.inner.select(mgr);

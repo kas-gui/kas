@@ -79,7 +79,7 @@ impl_scope! {
         ///
         /// When the button is activated, a clone of `msg` is sent to the
         /// parent widget. The parent (or an ancestor) should handle this using
-        /// [`Widget::handle_message`].
+        /// [`Events::handle_message`].
         #[inline]
         pub fn new_msg<M: Clone + Debug + 'static>(inner: W, msg: M) -> Self {
             Self::new_on(inner, move |mgr| mgr.push(msg.clone()))
@@ -106,7 +106,7 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
+    impl Events for Self {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.add_accel_keys(self.id_ref(), &self.keys1);
         }
@@ -197,7 +197,7 @@ impl_scope! {
         ///
         /// When the button is activated, a clone of `msg` is sent to the
         /// parent widget. The parent (or an ancestor) should handle this using
-        /// [`Widget::handle_message`].
+        /// [`Events::handle_message`].
         #[inline]
         pub fn new_msg<S: Into<AccelString>, M: Clone + Debug + 'static>(label: S, msg: M) -> Self {
             Self::new_on(label, move |mgr| mgr.push(msg.clone()))
@@ -239,7 +239,7 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
+    impl Events for Self {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.add_accel_keys(self.id_ref(), &self.keys1);
         }

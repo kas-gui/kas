@@ -7,7 +7,7 @@
 
 use kas::event::EventMgr;
 use kas::widget::{EditField, RowSplitter, TextButton};
-use kas::{Widget, Window};
+use kas::{Events, Window};
 
 #[derive(Clone, Debug)]
 enum Message {
@@ -35,7 +35,7 @@ fn main() -> kas::shell::Result<()> {
             core: widget_core!(),
             #[widget] panes: RowSplitter<EditField> = panes,
         }
-        impl Widget for Self {
+        impl Events for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if let Some(msg) = mgr.try_pop::<Message>() {
                     match msg {

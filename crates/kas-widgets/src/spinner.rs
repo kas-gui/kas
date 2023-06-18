@@ -345,7 +345,7 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
+    impl Events for Self {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             *mgr |= self.edit.set_string(self.edit.guard.value.to_string());
         }

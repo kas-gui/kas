@@ -46,7 +46,7 @@ impl_scope! {
         on_select: Option<Box<dyn Fn(&mut EventMgr, M)>>,
     }
 
-    impl Widget for Self {
+    impl Events for Self {
         fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
             mgr.new_accel_layer(self.id(), true);
@@ -64,7 +64,7 @@ impl_scope! {
                     parent: s.id(),
                     direction: Direction::Down,
                 });
-                if let Some(w) = s.popup.inner.inner.get_child_mut(s.active) {
+                if let Some(w) = s.popup.inner.inner.get_child(s.active) {
                     mgr.next_nav_focus(w.id(), false, key_focus);
                 }
             };

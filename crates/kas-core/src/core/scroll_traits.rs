@@ -5,7 +5,6 @@
 
 //! Scroll bar traits
 
-use super::Widget;
 use crate::event::EventMgr;
 use crate::geom::{Offset, Size};
 use crate::Action;
@@ -16,7 +15,7 @@ use crate::Action;
 /// a parent to control scrolling.
 ///
 /// If the widget scrolls itself it should set a scroll action via [`EventMgr::set_scroll`].
-pub trait Scrollable: Widget {
+pub trait Scrollable {
     /// Given size `size`, returns whether `(horiz, vert)` scrolling is required
     fn scroll_axes(&self, size: Size) -> (bool, bool);
 

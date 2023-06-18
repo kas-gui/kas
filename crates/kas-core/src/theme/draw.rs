@@ -12,7 +12,7 @@ use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType
 use crate::event::{ConfigMgr, EventState};
 use crate::geom::{Offset, Rect};
 use crate::text::{TextApi, TextDisplay};
-use crate::{autoimpl, Action, Layout, Widget, WidgetId};
+use crate::{autoimpl, Action, Layout, WidgetId};
 use std::convert::AsRef;
 use std::ops::{Bound, Range, RangeBounds};
 use std::time::Instant;
@@ -304,13 +304,13 @@ impl<'a> DrawMgr<'a> {
     }
 
     /// Draw UI element: scroll bar
-    pub fn scroll_bar<W: Widget>(&mut self, track_rect: Rect, handle: &W, dir: Direction) {
+    pub fn scroll_bar<W: Layout>(&mut self, track_rect: Rect, handle: &W, dir: Direction) {
         self.h
             .scroll_bar(&self.id, handle.id_ref(), track_rect, handle.rect(), dir);
     }
 
     /// Draw UI element: slider
-    pub fn slider<W: Widget>(&mut self, track_rect: Rect, handle: &W, dir: Direction) {
+    pub fn slider<W: Layout>(&mut self, track_rect: Rect, handle: &W, dir: Direction) {
         self.h
             .slider(&self.id, handle.id_ref(), track_rect, handle.rect(), dir);
     }

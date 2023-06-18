@@ -7,9 +7,9 @@
 
 use crate::geom::{Offset, Rect};
 
-/// Response from [`Widget::handle_event`]
+/// Response from [`Events::handle_event`]
 ///
-/// [`Widget::handle_event`]: crate::Widget::handle_event
+/// [`Events::handle_event`]: crate::Events::handle_event
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Response {
     /// Event was unused

@@ -16,7 +16,7 @@ use std::ops::{Index, IndexMut};
 /// This is parameterised over the handler message type.
 ///
 /// See documentation of [`Grid`] type.
-pub type BoxGrid = Grid<Box<dyn Node>>;
+pub type BoxGrid = Grid<Box<dyn Widget>>;
 
 impl_scope! {
     /// A generic grid widget
@@ -67,11 +67,11 @@ impl_scope! {
             self.widgets.len()
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Node> {
+        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
             self.widgets.get(index).map(|c| c.1.as_node())
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Node> {
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
             self.widgets.get_mut(index).map(|c| c.1.as_node_mut())
         }
     }
@@ -112,7 +112,7 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
+    impl Events for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr) {
             if let Some(f) = self.on_message {
                 let index = mgr.last_child().expect("message not sent from self");

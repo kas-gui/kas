@@ -52,7 +52,7 @@ bitflags! {
         /// Reconfigure all widgets of the window
         ///
         /// *Configuring* widgets assigns [`WidgetId`] identifiers and calls
-        /// [`crate::Widget::configure`].
+        /// [`crate::Events::configure`].
         ///
         /// [`WidgetId`]: crate::WidgetId
         const RECONFIGURE = 1 << 16;

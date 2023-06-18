@@ -109,7 +109,7 @@ fn main() -> kas::shell::Result<()> {
                 }),
             n: usize = 3,
         }
-        impl Widget for Self {
+        impl Events for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if mgr.last_child() == Some(widget_index![self.edit]) {
                     if let Some(n) = mgr.try_pop::<usize>() {
@@ -158,7 +158,7 @@ fn main() -> kas::shell::Result<()> {
                 ScrollBarRegion::new(list).with_fixed_bars(false, true),
             active: usize = 0,
         }
-        impl Widget for Self {
+        impl Events for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if let Some(control) = mgr.try_pop() {
                     match control {

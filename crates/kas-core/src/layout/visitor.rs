@@ -17,7 +17,7 @@ use crate::event::ConfigMgr;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::theme::{Background, DrawMgr, FrameStyle, MarginStyle, SizeMgr};
 use crate::WidgetId;
-use crate::{dir::Directional, dir::Directions, Layout, Widget};
+use crate::{dir::Directional, dir::Directions, Layout};
 use std::iter::ExactSizeIterator;
 
 /// A sub-set of [`Layout`] used by [`Visitor`].
@@ -151,7 +151,7 @@ impl<'a> Visitor<'a> {
     /// the optimisations are not (currently) so useful.
     pub fn slice<W, D>(slice: &'a mut [W], direction: D, data: &'a mut DynRowStorage) -> Self
     where
-        W: Widget,
+        W: Layout,
         D: Directional,
     {
         let layout = LayoutType::BoxComponent(Box::new(Slice {
@@ -390,13 +390,13 @@ where
 }
 
 /// A row/column over a slice
-struct Slice<'a, W: Widget, D: Directional> {
+struct Slice<'a, W: Layout, D: Directional> {
     data: &'a mut DynRowStorage,
     direction: D,
     children: &'a mut [W],
 }
 
-impl<'a, W: Widget, D: Directional> Visitable for Slice<'a, W, D> {
+impl<'a, W: Layout, D: Directional> Visitable for Slice<'a, W, D> {
     fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         let dim = (self.direction, self.children.len());
         let mut solver = RowSolver::new(axis, dim, self.data);
