@@ -80,6 +80,11 @@ impl Tree {
                 (#layout).set_rect(mgr, rect);
             }
 
+            fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+                use ::kas::WidgetChildren;
+                ::kas::util::nav_next(reverse, from, self.num_children())
+            }
+
             fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
                 use ::kas::{layout, Layout, WidgetCore, WidgetExt};
                 if !self.rect().contains(coord) {

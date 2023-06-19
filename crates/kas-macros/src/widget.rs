@@ -359,8 +359,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
     let mut fn_size_rules = None;
     let mut fn_translation = None;
-    let (fn_set_rect, fn_find_id);
-    let mut fn_nav_next = None;
+    let (fn_set_rect, fn_nav_next, fn_find_id);
     let mut fn_nav_next_err = None;
     let mut fn_draw = None;
     let mut gen_layout = false;
@@ -432,6 +431,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 self.#inner.set_rect(mgr, rect);
             }
         };
+        fn_nav_next = Some(quote! {
+            fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+                self.#inner.nav_next(reverse, from)
+            }
+        });
         fn_translation = Some(quote! {
             #[inline]
             fn translation(&self) -> ::kas::geom::Offset {
@@ -599,6 +603,13 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     <Self as ::kas::layout::AutoLayout>::draw(self, draw);
                 }
             });
+        } else {
+            fn_nav_next = Some(quote! {
+                fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+                    use ::kas::WidgetChildren;
+                    ::kas::util::nav_next(reverse, from, self.num_children())
+                }
+            });
         }
         fn_set_rect = quote! {
             fn set_rect(
@@ -720,7 +731,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             } else if gen_layout {
                 // We emit a warning here only if nav_next is not explicitly defined
                 let (span, msg) = fn_nav_next_err.unwrap();
-                emit_warning!(span, "unable to generate `fn Events::nav_next`: {}", msg,);
+                emit_warning!(span, "unable to generate `fn Layout::nav_next`: {}", msg,);
             }
         }
 
@@ -745,6 +756,8 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             impl #impl_generics ::kas::Layout for #impl_target {
                 #fn_size_rules
                 #fn_set_rect
+                #fn_nav_next
+                #fn_translation
                 #fn_find_id
                 #fn_draw
             }

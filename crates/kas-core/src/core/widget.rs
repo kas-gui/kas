@@ -67,7 +67,7 @@ pub trait WidgetCore {
 /// get configured, either by sending [`Action::RECONFIGURE`] by calling
 /// [`ConfigMgr::configure`].
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait WidgetChildren: WidgetCore {
+pub trait WidgetChildren: Layout {
     /// Get the number of child widgets
     ///
     /// Every value in the range `0..self.num_children()` is a valid child
@@ -141,7 +141,7 @@ pub trait WidgetChildren: WidgetCore {
 /// solve layout for a single widget/layout object, it may be useful to use
 /// [`layout::solve_size_rules`] or [`layout::SolveCache`].
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait Layout: WidgetChildren {
+pub trait Layout: WidgetCore {
     /// Get size rules for the given axis
     ///
     /// Typically, this method is called twice: first for the horizontal axis,
@@ -204,12 +204,9 @@ pub trait Layout: WidgetChildren {
     ///
     /// Default implementation:
     ///
-    /// -   Generated from `#[widget]`'s layout property, if used
+    /// -   Generated from `#[widget]`'s layout property, if used (not always possible!)
     /// -   Otherwise, iterate through children in order of definition
-    #[inline]
-    fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-        crate::util::nav_next(reverse, from, self.num_children())
-    }
+    fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize>;
 
     /// Get translation of children relative to this widget
     ///
@@ -300,7 +297,7 @@ pub trait Layout: WidgetChildren {
 /// Although this [`Widget`] is not a sub-trait of `Events`, all widgets must
 /// implement this trait (though an empty implementation may be generated).
 /// See the [`Widget`] trait documentation.
-pub trait Events: Layout + Sized {
+pub trait Events: Sized {
     /// Pre-configuration
     ///
     /// This method is called before children are configured to assign a
@@ -584,7 +581,7 @@ pub enum NavAdvance {
 /// }
 /// ```
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait Widget: Layout {
+pub trait Widget: WidgetChildren {
     /// Internal method: configure recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
