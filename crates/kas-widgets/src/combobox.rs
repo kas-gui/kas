@@ -46,15 +46,17 @@ impl_scope! {
         on_select: Option<Box<dyn Fn(&mut EventMgr, M)>>,
     }
 
+    impl Layout for Self {
+        fn nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {
+            // We have no child within our rect
+            None
+        }
+    }
+
     impl Events for Self {
         fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
             mgr.new_accel_layer(self.id(), true);
-        }
-
-        fn nav_next(&mut self, _: &mut EventMgr, _: bool, _: Option<usize>) -> Option<usize> {
-            // We have no child within our rect
-            None
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {

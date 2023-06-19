@@ -188,6 +188,29 @@ pub trait Layout: WidgetChildren {
     /// [`Stretch`]: crate::layout::Stretch
     fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
 
+    /// Navigation in spatial order
+    ///
+    /// Controls <kbd>Tab</kbd> navigation order of children.
+    /// This method should:
+    ///
+    /// -   Return `None` if there is no next child
+    /// -   Determine the next child after `from` (if provided) or the whole
+    ///     range, optionally in `reverse` order
+    /// -   Ensure that the selected widget is addressable through
+    ///     [`WidgetChildren::get_child`]
+    ///
+    /// Both `from` and the return value use the widget index, as used by
+    /// [`WidgetChildren::get_child`].
+    ///
+    /// Default implementation:
+    ///
+    /// -   Generated from `#[widget]`'s layout property, if used
+    /// -   Otherwise, iterate through children in order of definition
+    #[inline]
+    fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+        crate::util::nav_next(reverse, from, self.num_children())
+    }
+
     /// Get translation of children relative to this widget
     ///
     /// Usually this is zero; only widgets with scrollable or offset content
@@ -315,35 +338,6 @@ pub trait Events: Layout + Sized {
     #[inline]
     fn navigable(&self) -> bool {
         false
-    }
-
-    /// Navigation in spatial order
-    ///
-    /// Controls <kbd>Tab</kbd> navigation order of children.
-    /// This method should:
-    ///
-    /// -   Return `None` if there is no next child
-    /// -   Determine the next child after `from` (if provided) or the whole
-    ///     range, optionally in `reverse` order
-    /// -   Ensure that the selected widget is addressable through
-    ///     [`WidgetChildren::get_child`]
-    ///
-    /// Both `from` and the return value use the widget index, as used by
-    /// [`WidgetChildren::get_child`].
-    ///
-    /// Default implementation:
-    ///
-    /// -   Generated from `#[widget]`'s layout property, if used
-    /// -   Otherwise, iterate through children in order of definition
-    #[inline]
-    fn nav_next(
-        &mut self,
-        mgr: &mut EventMgr,
-        reverse: bool,
-        from: Option<usize>,
-    ) -> Option<usize> {
-        let _ = mgr;
-        crate::util::nav_next(reverse, from, self.num_children())
     }
 
     /// Pre-event-handler

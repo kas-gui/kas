@@ -360,6 +360,8 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let mut fn_size_rules = None;
     let mut fn_translation = None;
     let (fn_set_rect, fn_find_id);
+    let mut fn_nav_next = None;
+    let mut fn_nav_next_err = None;
     let mut fn_draw = None;
     let mut gen_layout = false;
 
@@ -540,8 +542,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             use ::kas::{WidgetCore, WidgetExt};
             self.rect().contains(coord).then(|| self.id())
         };
-        let mut fn_nav_next = None;
-        let mut fn_nav_next_err = None;
         if let Some((_, layout)) = args.layout.take() {
             gen_layout = true;
             fn_nav_next = match layout.nav_next(children.iter()) {
@@ -550,23 +550,13 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     None
                 }
                 NavNextResult::Slice(dir) => Some(quote! {
-                    fn nav_next(
-                        &mut self,
-                        _: &mut ::kas::event::EventMgr,
-                        reverse: bool,
-                        from: Option<usize>,
-                    ) -> Option<usize> {
+                    fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
                         let reverse = reverse ^ (#dir).is_reversed();
                         kas::util::nav_next(reverse, from, self.num_children())
                     }
                 }),
                 NavNextResult::List(order) => Some(quote! {
-                    fn nav_next(
-                        &mut self,
-                        _: &mut ::kas::event::EventMgr,
-                        reverse: bool,
-                        from: Option<usize>,
-                    ) -> Option<usize> {
+                    fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
                         let mut iter = [#(#order),*].into_iter();
                         if !reverse {
                             if let Some(wi) = from {
@@ -692,16 +682,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             if let Some(item) = fn_handle_event {
                 events_impl.items.push(parse2(item)?);
             }
-
-            if !has_method("nav_next") {
-                if let Some(method) = fn_nav_next {
-                    events_impl.items.push(parse2(method)?);
-                } else if gen_layout {
-                    // We emit a warning here only if nav_next is not explicitly defined
-                    let (span, msg) = fn_nav_next_err.unwrap();
-                    emit_warning!(span, "unable to generate `fn Events::nav_next`: {}", msg,);
-                }
-            }
         } else {
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::Events for #impl_target {
@@ -732,6 +712,16 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
         if !has_method("set_rect") {
             layout_impl.items.push(parse2(fn_set_rect)?);
+        }
+
+        if !has_method("nav_next") {
+            if let Some(method) = fn_nav_next {
+                layout_impl.items.push(parse2(method)?);
+            } else if gen_layout {
+                // We emit a warning here only if nav_next is not explicitly defined
+                let (span, msg) = fn_nav_next_err.unwrap();
+                emit_warning!(span, "unable to generate `fn Events::nav_next`: {}", msg,);
+            }
         }
 
         if let Some(ident) = method_idents.iter().find(|ident| *ident == "translation") {

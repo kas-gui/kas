@@ -131,6 +131,11 @@ impl_scope! {
     }
 
     impl kas::Layout for Self {
+        fn nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {
+            // We have no child within our rect
+            None
+        }
+
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             self.rect().contains(coord).then(|| self.id())
         }
@@ -157,11 +162,6 @@ impl_scope! {
 
         fn navigable(&self) -> bool {
             self.navigable
-        }
-
-        fn nav_next(&mut self, _: &mut EventMgr, _: bool, _: Option<usize>) -> Option<usize> {
-            // We have no child within our rect
-            None
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {

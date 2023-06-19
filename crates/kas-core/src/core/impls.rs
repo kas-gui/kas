@@ -159,7 +159,7 @@ pub fn _nav_next<W: Layout + Events>(
         NavAdvance::Reverse(_) => true,
     };
 
-    while let Some(index) = widget.nav_next(cx, rev, child) {
+    while let Some(index) = widget.nav_next(rev, child) {
         if let Some(id) = widget
             .get_child_mut(index)
             .and_then(|w| w._nav_next(cx, focus, advance))
