@@ -142,6 +142,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let name = &scope.ident;
     let opt_derive = &args.derive;
 
+    let mut do_impl_widget = true;
     let mut do_impl_widget_children = true;
     let mut layout_impl = None;
     let mut events_impl = None;
@@ -342,6 +343,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 if events_impl.is_none() {
                     events_impl = Some(index);
                 }
+            } else if *path == parse_quote! { ::kas::Widget }
+                || *path == parse_quote! { kas::Widget }
+                || *path == parse_quote! { Widget }
+            {
+                do_impl_widget = false;
             }
         }
     }
@@ -707,9 +713,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             });
         }
 
-        scope
-            .generated
-            .push(impl_widget(&impl_generics, &impl_target));
+        if do_impl_widget {
+            scope
+                .generated
+                .push(impl_widget(&impl_generics, &impl_target));
+        }
     }
 
     if let Some(index) = layout_impl {

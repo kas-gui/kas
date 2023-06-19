@@ -490,8 +490,8 @@ pub enum NavAdvance {
 ///     implementation of the trait is found, (default) method implementations
 ///     may be injected where not already present.
 /// -   [`Events`] is generated if no direct implementation is present
-/// -   [`Widget`] is generated if no direct implementation is present,
-///     otherwise missing method implementations are injected into the impl.
+/// -   [`Widget`] is generated if no direct implementation is present.
+///     (Direct implementation is not supported outside of Kas libraries!)
 ///
 /// Some simple examples follow. See also
 /// [examples apps](https://github.com/kas-gui/kas/tree/master/examples)

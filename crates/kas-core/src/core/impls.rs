@@ -141,14 +141,16 @@ pub fn _nav_next<W: Layout + Events>(
         }
     }
 
-    let can_match_self = match advance {
-        NavAdvance::None => true,
-        NavAdvance::Forward(true) => true,
-        NavAdvance::Forward(false) => *widget.id_ref() != focus,
-        _ => false,
-    };
-    if can_match_self && widget.navigable() {
-        return Some(widget.id_ref().clone());
+    if widget.navigable() {
+        let can_match_self = match advance {
+            NavAdvance::None => true,
+            NavAdvance::Forward(true) => true,
+            NavAdvance::Forward(false) => *widget.id_ref() != focus,
+            _ => false,
+        };
+        if can_match_self {
+            return Some(widget.id_ref().clone());
+        }
     }
 
     let rev = match advance {
@@ -167,13 +169,15 @@ pub fn _nav_next<W: Layout + Events>(
         child = Some(index);
     }
 
-    let can_match_self = match advance {
-        NavAdvance::Reverse(true) => true,
-        NavAdvance::Reverse(false) => *widget.id_ref() != focus,
-        _ => false,
-    };
-    if can_match_self && widget.navigable() {
-        return Some(widget.id_ref().clone());
+    if widget.navigable() {
+        let can_match_self = match advance {
+            NavAdvance::Reverse(true) => true,
+            NavAdvance::Reverse(false) => *widget.id_ref() != focus,
+            _ => false,
+        };
+        if can_match_self {
+            return Some(widget.id_ref().clone());
+        }
     }
 
     None

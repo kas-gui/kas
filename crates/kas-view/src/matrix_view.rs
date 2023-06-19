@@ -13,6 +13,7 @@ use kas::layout::{solve_size_rules, AlignHints};
 use kas::model::{DataKey, MatrixData, SharedDataMut};
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
+use kas::NavAdvance;
 #[allow(unused)] // doc links
 use kas_widgets::ScrollBars;
 use linear_map::set::LinearSet;
@@ -482,7 +483,7 @@ impl_scope! {
         #[inline]
         fn make_child_id(&mut self, _: usize) -> WidgetId {
             // We configure children in update_widgets and do not want this method to be called
-            WidgetId::default()
+            unimplemented!()
         }
     }
 
@@ -643,50 +644,6 @@ impl_scope! {
             mgr.register_nav_fallback(self.id());
         }
 
-        fn nav_next(
-            &mut self,
-            mgr: &mut EventMgr,
-            reverse: bool,
-            from: Option<usize>,
-        ) -> Option<usize> {
-            if self.cur_len == 0 {
-                return None;
-            }
-
-            let mut solver = self.position_solver();
-            let (d_cols, d_rows) = self.data.len();
-            let (ci, ri) = if let Some(index) = from {
-                let (ci, ri) = solver.child_to_data(index);
-                if !reverse {
-                    if ci + 1 < d_cols {
-                        (ci + 1, ri)
-                    } else if ri + 1 < d_rows {
-                        (0, ri + 1)
-                    } else {
-                        return None;
-                    }
-                } else {
-                    if ci > 0 {
-                        (ci - 1, ri)
-                    } else if ri > 0 {
-                        (d_cols - 1, ri - 1)
-                    } else {
-                        return None;
-                    }
-                }
-            } else if !reverse {
-                (0, 0)
-            } else {
-                (d_cols - 1, d_rows - 1)
-            };
-
-            if self.scroll.focus_rect(mgr, solver.rect(ci, ri), self.core.rect) {
-                solver = mgr.config_mgr(|mgr| self.update_widgets(mgr));
-            }
-
-            Some(solver.data_to_child(ci, ri))
-        }
-
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             let response = match event {
                 Event::Update { .. } => {
@@ -843,6 +800,104 @@ impl_scope! {
         fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) {
             self.scroll.scroll(mgr, self.rect(), scroll);
             mgr.config_mgr(|mgr| self.update_widgets(mgr));
+        }
+    }
+
+    // Direct implementation of this trait outside of Kas code is not supported!
+    impl Widget for Self {
+        // Non-standard behaviour: do not configure children
+        fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId) {
+            self.pre_configure(cx, id);
+            self.configure(cx);
+        }
+
+        fn _broadcast(&mut self, cx: &mut EventMgr, count: &mut usize, event: Event) {
+            kas::impls::_broadcast(self, cx, count, event);
+        }
+
+        fn _send(
+            &mut self,
+            cx: &mut EventMgr,
+            id: WidgetId,
+            disabled: bool,
+            event: Event,
+        ) -> Response {
+            kas::impls::_send(self, cx, id, disabled, event)
+        }
+
+        fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: kas::Erased) {
+            kas::impls::_replay(self, cx, id, msg);
+        }
+
+        // Non-standard implementation to allow mapping new children
+        fn _nav_next(
+            &mut self,
+            cx: &mut EventMgr,
+            focus: Option<&WidgetId>,
+            advance: NavAdvance,
+        ) -> Option<WidgetId> {
+            if cx.is_disabled(self.id_ref()) || self.cur_len == 0 {
+                return None;
+            }
+
+            let mut child = focus.and_then(|id| self.find_child_index(id));
+
+            if let Some(index) = child {
+                if let Some(id) = self
+                    .get_child_mut(index)
+                    .and_then(|w| w._nav_next(cx, focus, advance))
+                {
+                    return Some(id);
+                }
+            }
+
+            let reverse = match advance {
+                NavAdvance::None => return None,
+                NavAdvance::Forward(_) => false,
+                NavAdvance::Reverse(_) => true,
+            };
+
+            loop {
+                let mut solver = self.position_solver();
+                let (d_cols, d_rows) = self.data.len();
+                let (ci, ri) = if let Some(index) = child {
+                    let (ci, ri) = solver.child_to_data(index);
+                    if !reverse {
+                        if ci + 1 < d_cols {
+                            (ci + 1, ri)
+                        } else if ri + 1 < d_rows {
+                            (0, ri + 1)
+                        } else {
+                            return None;
+                        }
+                    } else {
+                        if ci > 0 {
+                            (ci - 1, ri)
+                        } else if ri > 0 {
+                            (d_cols - 1, ri - 1)
+                        } else {
+                            return None;
+                        }
+                    }
+                } else if !reverse {
+                    (0, 0)
+                } else {
+                    (d_cols - 1, d_rows - 1)
+                };
+
+                if self.scroll.focus_rect(cx, solver.rect(ci, ri), self.core.rect) {
+                    solver = cx.config_mgr(|mgr| self.update_widgets(mgr));
+                }
+
+                let index = solver.data_to_child(ci, ri);
+                if let Some(id) = self
+                    .get_child_mut(index)
+                    .and_then(|w| w._nav_next(cx, focus, advance))
+                {
+                    return Some(id);
+                }
+                child = Some(index);
+            }
         }
     }
 }
