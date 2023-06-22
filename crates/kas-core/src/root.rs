@@ -11,12 +11,61 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, FrameStyle, SizeMgr};
 use crate::title_bar::TitleBar;
-use crate::{Action, Decorations, Events, Icon, Layout, Widget, WidgetExt, WidgetId, WindowId};
+use crate::{Action, Events, Icon, Layout, Widget, WidgetExt, WidgetId};
 use kas_macros::impl_scope;
 use smallvec::SmallVec;
+use std::num::NonZeroU32;
+
+/// Identifier for a window or pop-up
+///
+/// Identifiers should always be unique.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct WindowId(NonZeroU32);
+
+impl WindowId {
+    /// Construct a [`WindowId`]
+    ///
+    /// Only for use by the shell!
+    #[allow(unused)]
+    pub(crate) fn new(n: NonZeroU32) -> WindowId {
+        WindowId(n)
+    }
+}
+
+/// Available decoration modes
+///
+/// See [`Window::decorations`].
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum Decorations {
+    /// No decorations
+    ///
+    /// The root widget is drawn as a simple rectangle with no borders.
+    None,
+    /// Add a simple themed border to the widget
+    ///
+    /// Probably looks better if [`Window::transparent`] is true.
+    Border,
+    /// Toolkit-drawn decorations
+    ///
+    /// Decorations will match the toolkit theme, not the platform theme.
+    /// These decorations may not have all the same capabilities.
+    ///
+    /// Probably looks better if [`Window::transparent`] is true.
+    Toolkit,
+    /// Server-side decorations
+    ///
+    /// Decorations are drawn by the window manager, if available.
+    Server,
+}
 
 impl_scope! {
     /// A support layer around a window
+    ///
+    /// TODO: there is currently no mechanism for adjusting window properties at
+    /// run-time. The intention is to support sending a message like:
+    /// `mgr.push(WindowCommand::SetTitle("New Title"));`. The problem is that
+    /// this window representation is disconnected from winit::Window and has no
+    /// mechanism for updating that. This may be easier to implement later.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     #[widget]
