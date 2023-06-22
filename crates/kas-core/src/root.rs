@@ -159,11 +159,6 @@ impl_scope! {
         fn transparent(&self) -> bool {
             self.w.transparent()
         }
-
-        #[inline]
-        fn handle_closure(&mut self, mgr: &mut EventMgr) {
-            self.w.handle_closure(mgr);
-        }
     }
 }
 

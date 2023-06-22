@@ -268,15 +268,6 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         }
     }
 
-    pub(super) fn handle_closure(mut self, shared: &mut SharedState<S, T>) -> Action {
-        let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-        let widget = &mut self.widget;
-        self.ev_state.with(&mut tkw, |mgr| {
-            widget.handle_closure(mgr);
-        });
-        self.ev_state.update(&mut tkw, self.widget.as_node_mut())
-    }
-
     pub(super) fn update_timer(&mut self, shared: &mut SharedState<S, T>) -> Option<Instant> {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = self.widget.as_node_mut();

@@ -174,9 +174,7 @@ where
                         }
                         PendingAction::Action(action) => {
                             if action.contains(Action::CLOSE | Action::EXIT) {
-                                for (_, window) in self.windows.drain() {
-                                    let _ = window.handle_closure(&mut self.shared);
-                                }
+                                self.windows.clear();
                                 *control_flow = ControlFlow::Poll;
                             } else {
                                 for (_, window) in self.windows.iter_mut() {
@@ -210,20 +208,10 @@ where
                 for window_id in &to_close {
                     if let Some(window) = self.windows.remove(window_id) {
                         self.id_map.remove(&window.window_id);
-                        if window
-                            .handle_closure(&mut self.shared)
-                            .contains(Action::EXIT)
-                        {
-                            close_all = true;
-                        }
-                        // Wake immediately in order to close remaining windows:
-                        *control_flow = ControlFlow::Poll;
                     }
                 }
                 if close_all {
-                    for (_, window) in self.windows.drain() {
-                        let _ = window.handle_closure(&mut self.shared);
-                    }
+                    self.windows.clear();
                 }
 
                 self.resumes.sort_by_key(|item| item.0);
