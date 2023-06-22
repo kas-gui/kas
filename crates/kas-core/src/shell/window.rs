@@ -15,7 +15,7 @@ use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
 use kas::theme::{Theme, Window as _};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use kas::util::warn_about_error;
-use kas::{Action, Layout, WidgetCore, WidgetExt, Window as _, WindowId};
+use kas::{Action, Layout, WidgetCore, WidgetExt, WindowId};
 use std::mem::take;
 use std::time::Instant;
 use winit::event::WindowEvent;
@@ -50,7 +50,7 @@ impl WindowData {
 
 /// Per-window data
 pub struct Window<S: WindowSurface, T: Theme<S::Shared>> {
-    pub(super) widget: kas::RootWidget,
+    pub(super) widget: kas::Window,
     pub(super) window_id: WindowId,
     ev_state: EventState,
     solve_cache: SolveCache,
@@ -68,11 +68,9 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         shared: &mut SharedState<S, T>,
         elwt: &EventLoopWindowTarget<ProxyAction>,
         window_id: WindowId,
-        widget: Box<dyn kas::Window>,
+        mut widget: kas::Window,
     ) -> super::Result<Self> {
         let time = Instant::now();
-
-        let mut widget = kas::RootWidget::new(widget);
 
         // Wayland only supports windows constructed via logical size
         let use_logical_size = shared.platform.is_wayland();
@@ -101,8 +99,8 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         };
 
         let mut builder = WindowBuilder::new().with_inner_size(ideal);
-        let restrict_dimensions = widget.restrict_dimensions();
-        if restrict_dimensions.0 {
+        let (restrict_min, restrict_max) = widget.restrictions();
+        if restrict_min {
             let min = solve_cache.min(true);
             let min = match use_logical_size {
                 false => min.as_physical(),
@@ -110,12 +108,12 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
             };
             builder = builder.with_min_inner_size(min);
         }
-        if restrict_dimensions.1 {
+        if restrict_max {
             builder = builder.with_max_inner_size(ideal);
         }
         let window = builder
             .with_title(widget.title())
-            .with_window_icon(widget.icon())
+            .with_window_icon(widget.icon().cloned())
             .with_decorations(widget.decorations() == kas::Decorations::Server)
             .with_transparent(widget.transparent())
             .build(elwt)?;
@@ -348,12 +346,12 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         }
         widget.resize_popups(&mut mgr);
 
-        let restrict_dimensions = self.widget.restrict_dimensions();
-        if restrict_dimensions.0 {
+        let (restrict_min, restrict_max) = self.widget.restrictions();
+        if restrict_min {
             let min = self.solve_cache.min(true).as_physical();
             self.window.set_min_inner_size(Some(min));
         };
-        if restrict_dimensions.1 {
+        if restrict_max {
             let ideal = self.solve_cache.ideal(true).as_physical();
             self.window.set_max_inner_size(Some(ideal));
         };
@@ -468,7 +466,7 @@ where
         })
     }
 
-    fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId {
+    fn add_window(&mut self, widget: kas::Window) -> WindowId {
         // By far the simplest way to implement this is to let our call
         // anscestor, event::Loop::handle, do the work.
         //

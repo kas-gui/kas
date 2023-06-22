@@ -14,7 +14,7 @@ use crate::cast::Conv;
 use crate::draw::DrawShared;
 use crate::geom::{Offset, Vec2};
 use crate::theme::{SizeMgr, ThemeControl};
-use crate::{Action, Erased, WidgetId, WindowId};
+use crate::{Action, Erased, WidgetId, Window, WindowId};
 #[allow(unused)] use crate::{Events, Layout}; // for doc-links
 
 impl<'a> std::ops::BitOrAssign<Action> for EventMgr<'a> {
@@ -722,8 +722,8 @@ impl<'a> EventMgr<'a> {
     /// Caveat: if an error occurs opening the new window it will not be
     /// reported (except via log messages).
     #[inline]
-    pub fn add_window(&mut self, widget: Box<dyn crate::Window>) -> WindowId {
-        self.shell.add_window(widget)
+    pub fn add_window(&mut self, window: Window) -> WindowId {
+        self.shell.add_window(window)
     }
 
     /// Close a window or pop-up

@@ -35,7 +35,7 @@ pub use crate::core::*;
 pub use action::Action;
 pub use erased::Erased;
 pub use kas_macros::*;
-pub use root::RootWidget;
+pub use root::Window;
 
 // public implementations:
 pub mod class;

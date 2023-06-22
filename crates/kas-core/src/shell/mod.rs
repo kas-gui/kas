@@ -25,7 +25,7 @@ pub extern crate raw_window_handle;
 #[cfg(feature = "winit")]
 enum PendingAction {
     AddPopup(winit::window::WindowId, kas::WindowId, kas::Popup),
-    AddWindow(kas::WindowId, Box<dyn kas::Window>),
+    AddWindow(kas::WindowId, kas::Window),
     CloseWindow(kas::WindowId),
     Update(kas::event::UpdateId, u64),
     Action(kas::Action),

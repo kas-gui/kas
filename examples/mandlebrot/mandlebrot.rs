@@ -430,7 +430,7 @@ impl_scope! {
             (1..3, 1..4) => self.mbrot,
         };
     }]
-    struct MandlebrotWindow {
+    struct MandlebrotUI {
         core: widget_core!(),
         #[widget]
         label: Label<String>,
@@ -443,13 +443,13 @@ impl_scope! {
         mbrot: Mandlebrot,
     }
 
-    impl MandlebrotWindow {
-        fn new() -> MandlebrotWindow {
+    impl MandlebrotUI {
+        fn new() -> MandlebrotUI {
             let slider = Slider::new(0..=256)
                 .with_value(64)
                 .on_move(|mgr, iter| mgr.push(iter));
             let mbrot = Mandlebrot::new();
-            MandlebrotWindow {
+            MandlebrotUI {
                 core: Default::default(),
                 label: Label::new(mbrot.loc()),
                 iters: ReserveP::new(Label::from("64"), |size_mgr, axis| {
@@ -471,24 +471,15 @@ impl_scope! {
             }
         }
     }
-    impl Window for Self {
-        fn title(&self) -> &str {
-            "Mandlebrot"
-        }
-
-        fn drag_anywhere(&self) -> bool {
-            false
-        }
-    }
 }
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
+    let window = Window::new(MandlebrotUI::new(), "Mandlebrot").with_drag_anywhere(false);
     let theme = kas::theme::FlatTheme::new().with_colours("dark");
-
     let options = kas::config::Options::from_env();
     kas::shell::WgpuShell::new_custom(PipeBuilder, theme, options)?
-        .with(MandlebrotWindow::new())?
+        .with(window)?
         .run()
 }

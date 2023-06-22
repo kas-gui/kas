@@ -10,7 +10,7 @@ use crate::draw::{DrawImpl, DrawShared, DrawSharedImpl};
 use crate::event::{CursorIcon, UpdateId};
 use crate::geom::Size;
 use crate::theme::{ThemeControl, ThemeSize};
-use crate::{Action, WindowId};
+use crate::{Action, Window, WindowId};
 use raw_window_handle as raw;
 use thiserror::Error;
 #[cfg(feature = "winit")] use winit::error::OsError;
@@ -248,7 +248,7 @@ pub(crate) trait ShellWindow {
     ///
     /// This method is an alternative allowing a window to be added from an
     /// event handler, albeit without error handling.
-    fn add_window(&mut self, widget: Box<dyn crate::Window>) -> WindowId;
+    fn add_window(&mut self, window: Window) -> WindowId;
 
     /// Close a window
     fn close_window(&mut self, id: WindowId);

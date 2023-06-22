@@ -256,7 +256,7 @@ fn main() -> kas::shell::Result<()> {
     type MyList = ListView<Direction, MySharedData, MyDriver>;
     let list = ListView::new_with_dir_driver(Direction::Down, driver, data);
 
-    let window = singleton! {
+    let ui = singleton! {
         #[widget{
             layout = column! [
                 "Demonstration of dynamic widget creation / deletion",
@@ -295,10 +295,8 @@ fn main() -> kas::shell::Result<()> {
                 }
             }
         }
-        impl Window for Self {
-            fn title(&self) -> &str { "Dynamic widget demo" }
-        }
     };
+    let window = Window::new(ui, "Dynamic widget demo");
 
     let theme = kas::theme::FlatTheme::new();
     kas::shell::DefaultShell::new(theme)?.with(window)?.run()

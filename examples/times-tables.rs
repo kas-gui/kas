@@ -57,7 +57,7 @@ fn main() -> kas::shell::Result<()> {
         .with_selection_mode(SelectionMode::Single);
     let table = ScrollBars::new(table);
 
-    let window = singleton! {
+    let ui = singleton! {
         #[widget{
             layout = column! [
                 row! ["From 1 to", self.max],
@@ -87,10 +87,8 @@ fn main() -> kas::shell::Result<()> {
                 }
             }
         }
-        impl Window for Self {
-            fn title(&self) -> &str { "Times-Tables" }
-        }
     };
+    let window = Window::new(ui, "Times-Tables");
 
     let theme = kas::theme::SimpleTheme::new().with_font_size(16.0);
     kas::shell::DefaultShell::new(theme)?.with(window)?.run()

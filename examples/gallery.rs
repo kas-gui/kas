@@ -102,8 +102,8 @@ fn widgets() -> Box<dyn SetDisabled> {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if let Some(MsgEdit) = mgr.try_pop() {
                     let text = self.label.data().clone();
-                    let window = dialog::TextEdit::new("Edit text", true, text);
-                    mgr.add_window(Box::new(window));
+                    let ed = dialog::TextEdit::new(true, text);
+                    mgr.add_window(ed.into_window("Edit text"));
                 }
             }
         }
@@ -528,7 +528,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .build();
 
-    let window = singleton! {
+    let ui = singleton! {
         #[widget{
             layout = column! [
                 self.menubar,
@@ -574,13 +574,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
-        impl Window for Self {
-            fn title(&self) -> &str {
-                "Widget Gallery"
-            }
-        }
     };
 
-    shell.add(window)?;
+    shell.add(Window::new(ui, "Widget Gallery"))?;
     shell.run()
 }

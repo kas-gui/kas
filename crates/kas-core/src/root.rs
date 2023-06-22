@@ -11,7 +11,7 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, FrameStyle, SizeMgr};
 use crate::title_bar::TitleBar;
-use crate::{Action, Decorations, Events, Layout, Widget, WidgetExt, WidgetId, Window, WindowId};
+use crate::{Action, Decorations, Events, Icon, Layout, Widget, WidgetExt, WidgetId, WindowId};
 use kas_macros::impl_scope;
 use smallvec::SmallVec;
 
@@ -20,20 +20,24 @@ impl_scope! {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     #[widget]
-    pub struct RootWidget {
+    pub struct Window {
         core: widget_core!(),
+        icon: Option<Icon>,
         decorations: Decorations,
+        restrictions: (bool, bool),
+        drag_anywhere: bool,
+        transparent: bool,
         #[widget]
         title_bar: TitleBar,
         #[widget]
-        w: Box<dyn Window>,
+        w: Box<dyn Widget>,
         bar_h: i32,
         dec_offset: Offset,
         dec_size: Size,
         popups: SmallVec<[(WindowId, kas::Popup, Offset); 16]>,
     }
 
-    impl Layout for RootWidget {
+    impl Layout for Self {
         #[inline]
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let mut inner = self.w.size_rules(size_mgr.re(), axis);
@@ -110,9 +114,8 @@ impl_scope! {
         }
     }
 
-    impl Events for RootWidget {
+    impl Events for Self {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
-            self.decorations = self.w.decorations();
             if mgr.platform().is_wayland() && self.decorations == Decorations::Server {
                 // Wayland's base protocol does not support server-side decorations
                 // TODO: Wayland has extensions for this; server-side is still
@@ -126,55 +129,123 @@ impl_scope! {
             mgr.config_mgr(|mgr| self.resize_popups(mgr));
         }
     }
-
-    // Note: we do not simply Deref to self.w; that allows skipping our Layout
-    // and Widget methods.
-    impl Window for Self {
-        #[inline]
-        fn title(&self) -> &str {
-            self.w.title()
-        }
-
-        #[inline]
-        fn icon(&self) -> Option<crate::Icon> {
-            self.w.icon()
-        }
-
-        #[inline]
-        fn decorations(&self) -> crate::Decorations {
-            self.w.decorations()
-        }
-
-        #[inline]
-        fn restrict_dimensions(&self) -> (bool, bool) {
-            self.w.restrict_dimensions()
-        }
-
-        #[inline]
-        fn drag_anywhere(&self) -> bool {
-            self.w.drag_anywhere()
-        }
-
-        #[inline]
-        fn transparent(&self) -> bool {
-            self.w.transparent()
-        }
-    }
 }
 
-impl RootWidget {
-    /// Construct
-    pub fn new(w: Box<dyn Window>) -> RootWidget {
-        RootWidget {
+impl Window {
+    /// Construct a window with a `W: Widget` and a title
+    pub fn new(ui: impl Widget + 'static, title: impl ToString) -> Self {
+        Self::new_boxed(Box::new(ui), title)
+    }
+
+    /// Construct a window with a `Box<dyn Widget>` and a `title`
+    pub fn new_boxed(ui: Box<dyn Widget>, title: impl ToString) -> Self {
+        Window {
             core: Default::default(),
-            decorations: Decorations::None,
-            title_bar: TitleBar::new(w.title().to_string()),
-            w,
+            icon: None,
+            decorations: Decorations::Server,
+            restrictions: (true, false),
+            drag_anywhere: true,
+            transparent: false,
+            title_bar: TitleBar::new(title),
+            w: ui,
             bar_h: 0,
             dec_offset: Default::default(),
             dec_size: Default::default(),
             popups: Default::default(),
         }
+    }
+
+    /// Get the window's title
+    pub fn title(&self) -> &str {
+        self.title_bar.title()
+    }
+
+    /// Get the window's icon, if any
+    pub fn icon(&self) -> Option<&Icon> {
+        self.icon.as_ref()
+    }
+
+    /// Set the window's icon (inline)
+    ///
+    /// Default: `None`
+    pub fn with_icon(mut self, icon: impl Into<Option<Icon>>) -> Self {
+        self.icon = icon.into();
+        self
+    }
+
+    /// Get the preference for window decorations
+    pub fn decorations(&self) -> crate::Decorations {
+        self.decorations
+    }
+
+    /// Set the preference for window decorations
+    ///
+    /// "Windowing" platforms (i.e. not mobile or web) usually include a
+    /// title-bar, icons and potentially side borders. These are known as
+    /// **decorations**.
+    ///
+    /// This controls the *preferred* type of decorations. The resulting
+    /// behaviour is platform-dependent.
+    ///
+    /// Default: [`Decorations::Server`].
+    pub fn with_decorations(mut self, decorations: Decorations) -> Self {
+        self.decorations = decorations;
+        self
+    }
+
+    /// Get window resizing restrictions: `(restrict_min, restrict_max)`
+    pub fn restrictions(&self) -> (bool, bool) {
+        self.restrictions
+    }
+
+    /// Whether to limit the maximum size of a window
+    ///
+    /// All widgets' size rules allow calculation of two sizes: the minimum
+    /// size and the ideal size. Windows are initially sized to the ideal size.
+    ///
+    /// If `restrict_min`, the window may not be sized below the minimum size.
+    /// Default value: `true`.
+    ///
+    /// If `restrict_max`, the window may not be sized above the ideal size.
+    /// Default value: `false`.
+    pub fn with_restrictions(mut self, restrict_min: bool, restrict_max: bool) -> Self {
+        self.restrictions = (restrict_min, restrict_max);
+        self
+    }
+
+    /// Get "drag anywhere" state
+    pub fn drag_anywhere(&self) -> bool {
+        self.drag_anywhere
+    }
+
+    /// Whether to allow dragging the window from the background
+    ///
+    /// If true, then any unhandled click+drag in the window may be used to
+    /// drag the window on supported platforms. Default value: `true`.
+    pub fn with_drag_anywhere(mut self, drag_anywhere: bool) -> Self {
+        self.drag_anywhere = drag_anywhere;
+        self
+    }
+
+    /// Get whether this window should use transparent rendering
+    pub fn transparent(&self) -> bool {
+        self.transparent
+    }
+
+    /// Whether the window supports transparency
+    ///
+    /// If true, painting with `alpha < 1.0` makes the background visible.
+    /// Additionally, window draw targets are cleared to transparent. This does
+    /// not stop theme elements from drawing a solid background.
+    ///
+    /// Note: results may vary by platform. Current output does *not* use
+    /// pre-multiplied alpha which *some* platforms expect, thus pixels with
+    /// partial transparency may have incorrect appearance.
+    ///
+    /// Default: `false`.
+    pub fn with_transparent(mut self, transparent: bool) -> Self {
+        self.transparent = transparent;
+        self
     }
 
     /// Add a pop-up as a layer in the current window
@@ -241,7 +312,7 @@ fn find_rect(mut widget: &dyn Widget, id: WidgetId) -> Option<(Rect, Offset)> {
     }
 }
 
-impl RootWidget {
+impl Window {
     fn resize_popup(&mut self, mgr: &mut ConfigMgr, index: usize) {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
