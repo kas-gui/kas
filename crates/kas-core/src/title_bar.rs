@@ -30,10 +30,10 @@ impl_scope! {
     impl Self {
         /// Construct from `label`
         #[inline]
-        fn new(label: String) -> Self {
+        fn new(label: impl ToString) -> Self {
             Label {
                 core: Default::default(),
-                label: Text::new(label),
+                label: Text::new(label.to_string()),
             }
         }
 
@@ -136,11 +136,16 @@ impl_scope! {
     impl Self {
         /// Construct a title bar
         #[inline]
-        pub fn new(title: String) -> Self {
+        pub fn new(title: impl ToString) -> Self {
             TitleBar {
                 core: Default::default(),
                 title: Label::new(title),
             }
+        }
+
+        /// Get the title
+        pub fn title(&self) -> &str {
+            self.title.label.as_str()
         }
     }
 

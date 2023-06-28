@@ -7,7 +7,7 @@
 
 use kas::event::CursorIcon;
 use kas::prelude::*;
-use kas::widget::{dialog::Window, Column, Label, StrLabel};
+use kas::widget::{Column, Label, StrLabel};
 
 impl_scope! {
     #[widget{
@@ -81,7 +81,7 @@ fn main() -> kas::shell::Result<()> {
         cursor!(RowResize),
     ]);
 
-    let window = Window::new("Cursor gallery", column);
+    let window = Window::new(column, "Cursor gallery");
     let theme = kas::theme::FlatTheme::new();
     kas::shell::DefaultShell::new(theme)?.with(window)?.run()
 }

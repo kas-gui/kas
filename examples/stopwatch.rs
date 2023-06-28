@@ -19,7 +19,7 @@ struct MsgStart;
 
 // Unlike most examples, we encapsulate the GUI configuration into a function.
 // There's no reason for this, but it demonstrates usage of Toolkit::add_boxed
-fn make_window() -> Box<dyn kas::Window> {
+fn make_window() -> Box<dyn kas::Widget> {
     Box::new(kas::singleton! {
         #[widget{
             layout = row! [
@@ -68,28 +68,19 @@ fn make_window() -> Box<dyn kas::Window> {
                 }
             }
         }
-        impl Window for Self {
-            fn title(&self) -> &str { "Stopwatch" }
-            fn decorations(&self) -> Decorations {
-                Decorations::Border
-            }
-            fn transparent(&self) -> bool {
-                true
-            }
-            fn restrict_dimensions(&self) -> (bool, bool) {
-                (true, true)
-            }
-        }
     })
 }
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
+    let window = Window::new_boxed(make_window(), "Stopwatch")
+        .with_decorations(Decorations::Border)
+        .with_transparent(true)
+        .with_restrictions(true, true);
+
     let theme = kas_wgpu::ShadedTheme::new()
         .with_colours("dark")
         .with_font_size(18.0);
-    kas::shell::DefaultShell::new(theme)?
-        .with_boxed(make_window())?
-        .run()
+    kas::shell::DefaultShell::new(theme)?.with(window)?.run()
 }

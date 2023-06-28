@@ -7,10 +7,10 @@
 
 use crate::event::{ConfigMgr, Event, EventMgr, Response};
 use crate::util::IdentifyWidget;
-use crate::{Erased, Events, Layout, NavAdvance, WidgetId};
+use crate::{Erased, Events, Layout, NavAdvance, WidgetChildren, WidgetId};
 
 /// Generic implementation of [`Widget::_configure`]
-pub fn _configure<W: Layout + Events>(widget: &mut W, cx: &mut ConfigMgr, id: WidgetId) {
+pub fn _configure<W: WidgetChildren + Events>(widget: &mut W, cx: &mut ConfigMgr, id: WidgetId) {
     widget.pre_configure(cx, id);
 
     for index in 0..widget.num_children() {
@@ -26,7 +26,7 @@ pub fn _configure<W: Layout + Events>(widget: &mut W, cx: &mut ConfigMgr, id: Wi
 }
 
 /// Generic implementation of [`Widget::_broadcast`]
-pub fn _broadcast<W: Layout + Events>(
+pub fn _broadcast<W: WidgetChildren + Events>(
     widget: &mut W,
     cx: &mut EventMgr,
     count: &mut usize,
@@ -42,7 +42,7 @@ pub fn _broadcast<W: Layout + Events>(
 }
 
 /// Generic implementation of [`Widget::_send`]
-pub fn _send<W: Layout + Events>(
+pub fn _send<W: WidgetChildren + Events>(
     widget: &mut W,
     cx: &mut EventMgr,
     id: WidgetId,
@@ -89,7 +89,12 @@ pub fn _send<W: Layout + Events>(
 }
 
 /// Generic implementation of [`Widget::_replay`]
-pub fn _replay<W: Layout + Events>(widget: &mut W, cx: &mut EventMgr, id: WidgetId, msg: Erased) {
+pub fn _replay<W: WidgetChildren + Events>(
+    widget: &mut W,
+    cx: &mut EventMgr,
+    id: WidgetId,
+    msg: Erased,
+) {
     if let Some(index) = widget.find_child_index(&id) {
         if let Some(w) = widget.get_child_mut(index) {
             w._replay(cx, id, msg);
@@ -120,7 +125,7 @@ pub fn _replay<W: Layout + Events>(widget: &mut W, cx: &mut EventMgr, id: Widget
 }
 
 /// Generic implementation of [`Widget::_nav_next`]
-pub fn _nav_next<W: Layout + Events>(
+pub fn _nav_next<W: WidgetChildren + Events>(
     widget: &mut W,
     cx: &mut EventMgr,
     focus: Option<&WidgetId>,
@@ -141,14 +146,16 @@ pub fn _nav_next<W: Layout + Events>(
         }
     }
 
-    let can_match_self = match advance {
-        NavAdvance::None => true,
-        NavAdvance::Forward(true) => true,
-        NavAdvance::Forward(false) => *widget.id_ref() != focus,
-        _ => false,
-    };
-    if can_match_self && widget.navigable() {
-        return Some(widget.id_ref().clone());
+    if widget.navigable() {
+        let can_match_self = match advance {
+            NavAdvance::None => true,
+            NavAdvance::Forward(true) => true,
+            NavAdvance::Forward(false) => *widget.id_ref() != focus,
+            _ => false,
+        };
+        if can_match_self {
+            return Some(widget.id_ref().clone());
+        }
     }
 
     let rev = match advance {
@@ -157,7 +164,7 @@ pub fn _nav_next<W: Layout + Events>(
         NavAdvance::Reverse(_) => true,
     };
 
-    while let Some(index) = widget.nav_next(cx, rev, child) {
+    while let Some(index) = widget.nav_next(rev, child) {
         if let Some(id) = widget
             .get_child_mut(index)
             .and_then(|w| w._nav_next(cx, focus, advance))
@@ -167,13 +174,15 @@ pub fn _nav_next<W: Layout + Events>(
         child = Some(index);
     }
 
-    let can_match_self = match advance {
-        NavAdvance::Reverse(true) => true,
-        NavAdvance::Reverse(false) => *widget.id_ref() != focus,
-        _ => false,
-    };
-    if can_match_self && widget.navigable() {
-        return Some(widget.id_ref().clone());
+    if widget.navigable() {
+        let can_match_self = match advance {
+            NavAdvance::Reverse(true) => true,
+            NavAdvance::Reverse(false) => *widget.id_ref() != focus,
+            _ => false,
+        };
+        if can_match_self {
+            return Some(widget.id_ref().clone());
+        }
     }
 
     None

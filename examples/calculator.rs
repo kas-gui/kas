@@ -100,18 +100,14 @@ impl_scope! {
             }
         }
     }
-    impl Window for Self {
-        fn title(&self) -> &str { "Calculator" }
-    }
 }
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let theme = kas_wgpu::ShadedTheme::new().with_font_size(16.0);
-    kas::shell::DefaultShell::new(theme)?
-        .with(CalcUI::default())?
-        .run()
+    let window = Window::new(CalcUI::default(), "Calculator");
+    kas::shell::DefaultShell::new(theme)?.with(window)?.run()
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

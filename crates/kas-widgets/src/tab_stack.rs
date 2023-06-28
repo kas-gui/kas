@@ -82,16 +82,14 @@ impl_scope! {
         }
     }
 
-    impl Events for Self {
-        fn nav_next(&mut self,
-            _: &mut EventMgr,
-            reverse: bool,
-            from: Option<usize>,
-        ) -> Option<usize> {
+    impl Layout for Self {
+        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
             let reverse = reverse ^ !self.direction.is_reversed();
             kas::util::nav_next(reverse, from, self.num_children())
         }
+    }
 
+    impl Events for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr) {
             if let Some(MsgSelectIndex(index)) = mgr.try_pop() {
                 mgr.config_mgr(|mgr| self.set_active(mgr, index));

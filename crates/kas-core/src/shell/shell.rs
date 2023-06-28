@@ -5,14 +5,14 @@
 
 //! [`Shell`] and supporting elements
 
-use super::{GraphicalShell, Platform, ProxyAction, Result, SharedState, Window};
+use super::{GraphicalShell, Platform, ProxyAction, Result, SharedState};
 use crate::config::Options;
 use crate::draw::{DrawImpl, DrawShared, DrawSharedImpl};
 use crate::event::{self, UpdateId};
 use crate::model::SharedRc;
 use crate::theme::{self, Theme, ThemeConfig};
 use crate::util::warn_about_error;
-use crate::WindowId;
+use crate::{Window, WindowId};
 use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 
 /// The KAS shell
@@ -26,7 +26,7 @@ use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 /// been initialised first.
 pub struct Shell<G: GraphicalShell, T: Theme<G::Shared>> {
     el: EventLoop<ProxyAction>,
-    windows: Vec<Window<G::Surface, T>>,
+    windows: Vec<super::Window<G::Surface, T>>,
     shared: SharedState<G::Surface, T>,
 }
 
@@ -149,38 +149,18 @@ where
     }
 
     /// Assume ownership of and display a window
-    ///
-    /// This is a convenience wrapper around [`Shell::add_boxed`].
-    ///
-    /// Note: typically, one should have `W: Clone`, enabling multiple usage.
     #[inline]
-    pub fn add<W: crate::Window + 'static>(&mut self, window: W) -> Result<WindowId> {
-        self.add_boxed(Box::new(window))
-    }
-
-    /// Assume ownership of and display a window, inline
-    ///
-    /// This is a convenience wrapper around [`Shell::add_boxed`].
-    ///
-    /// Note: typically, one should have `W: Clone`, enabling multiple usage.
-    #[inline]
-    pub fn with<W: crate::Window + 'static>(mut self, window: W) -> Result<Self> {
-        self.add_boxed(Box::new(window))?;
-        Ok(self)
-    }
-
-    /// Add a boxed window directly
-    pub fn add_boxed(&mut self, widget: Box<dyn crate::Window>) -> Result<WindowId> {
+    pub fn add(&mut self, window: Window) -> Result<WindowId> {
         let id = self.shared.next_window_id();
-        let win = Window::new(&mut self.shared, &self.el, id, widget)?;
+        let win = super::Window::new(&mut self.shared, &self.el, id, window)?;
         self.windows.push(win);
         Ok(id)
     }
 
-    /// Add a boxed window directly, inline
+    /// Assume ownership of and display a window, inline
     #[inline]
-    pub fn with_boxed(mut self, widget: Box<dyn crate::Window>) -> Result<Self> {
-        self.add_boxed(widget)?;
+    pub fn with(mut self, window: Window) -> Result<Self> {
+        let _ = self.add(window)?;
         Ok(self)
     }
 

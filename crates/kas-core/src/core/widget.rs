@@ -67,7 +67,7 @@ pub trait WidgetCore {
 /// get configured, either by sending [`Action::RECONFIGURE`] by calling
 /// [`ConfigMgr::configure`].
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait WidgetChildren: WidgetCore {
+pub trait WidgetChildren: Layout {
     /// Get the number of child widgets
     ///
     /// Every value in the range `0..self.num_children()` is a valid child
@@ -141,7 +141,7 @@ pub trait WidgetChildren: WidgetCore {
 /// solve layout for a single widget/layout object, it may be useful to use
 /// [`layout::solve_size_rules`] or [`layout::SolveCache`].
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait Layout: WidgetChildren {
+pub trait Layout: WidgetCore {
     /// Get size rules for the given axis
     ///
     /// Typically, this method is called twice: first for the horizontal axis,
@@ -187,6 +187,26 @@ pub trait Layout: WidgetChildren {
     ///
     /// [`Stretch`]: crate::layout::Stretch
     fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
+
+    /// Navigation in spatial order
+    ///
+    /// Controls <kbd>Tab</kbd> navigation order of children.
+    /// This method should:
+    ///
+    /// -   Return `None` if there is no next child
+    /// -   Determine the next child after `from` (if provided) or the whole
+    ///     range, optionally in `reverse` order
+    /// -   Ensure that the selected widget is addressable through
+    ///     [`WidgetChildren::get_child`]
+    ///
+    /// Both `from` and the return value use the widget index, as used by
+    /// [`WidgetChildren::get_child`].
+    ///
+    /// Default implementation:
+    ///
+    /// -   Generated from `#[widget]`'s layout property, if used (not always possible!)
+    /// -   Otherwise, iterate through children in order of definition
+    fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize>;
 
     /// Get translation of children relative to this widget
     ///
@@ -277,7 +297,7 @@ pub trait Layout: WidgetChildren {
 /// Although this [`Widget`] is not a sub-trait of `Events`, all widgets must
 /// implement this trait (though an empty implementation may be generated).
 /// See the [`Widget`] trait documentation.
-pub trait Events: Layout + Sized {
+pub trait Events: Sized {
     /// Pre-configuration
     ///
     /// This method is called before children are configured to assign a
@@ -315,35 +335,6 @@ pub trait Events: Layout + Sized {
     #[inline]
     fn navigable(&self) -> bool {
         false
-    }
-
-    /// Navigation in spatial order
-    ///
-    /// Controls <kbd>Tab</kbd> navigation order of children.
-    /// This method should:
-    ///
-    /// -   Return `None` if there is no next child
-    /// -   Determine the next child after `from` (if provided) or the whole
-    ///     range, optionally in `reverse` order
-    /// -   Ensure that the selected widget is addressable through
-    ///     [`WidgetChildren::get_child`]
-    ///
-    /// Both `from` and the return value use the widget index, as used by
-    /// [`WidgetChildren::get_child`].
-    ///
-    /// Default implementation:
-    ///
-    /// -   Generated from `#[widget]`'s layout property, if used
-    /// -   Otherwise, iterate through children in order of definition
-    #[inline]
-    fn nav_next(
-        &mut self,
-        mgr: &mut EventMgr,
-        reverse: bool,
-        from: Option<usize>,
-    ) -> Option<usize> {
-        let _ = mgr;
-        crate::util::nav_next(reverse, from, self.num_children())
     }
 
     /// Pre-event-handler
@@ -490,8 +481,8 @@ pub enum NavAdvance {
 ///     implementation of the trait is found, (default) method implementations
 ///     may be injected where not already present.
 /// -   [`Events`] is generated if no direct implementation is present
-/// -   [`Widget`] is generated if no direct implementation is present,
-///     otherwise missing method implementations are injected into the impl.
+/// -   [`Widget`] is generated if no direct implementation is present.
+///     (Direct implementation is not supported outside of Kas libraries!)
 ///
 /// Some simple examples follow. See also
 /// [examples apps](https://github.com/kas-gui/kas/tree/master/examples)
@@ -590,7 +581,7 @@ pub enum NavAdvance {
 /// }
 /// ```
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait Widget: Layout {
+pub trait Widget: WidgetChildren {
     /// Internal method: configure recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]

@@ -44,11 +44,6 @@ impl_scope! {
             }
         }
     }
-    impl Window for Self {
-        fn title(&self) -> &str {
-            "Counter"
-        }
-    }
 }
 
 fn main() -> kas::shell::Result<()> {
@@ -56,6 +51,6 @@ fn main() -> kas::shell::Result<()> {
 
     let theme = kas::theme::SimpleTheme::new().with_font_size(24.0);
     kas::shell::DefaultShell::new(theme)?
-        .with(Counter::new(0))?
+        .with(Window::new(Counter::new(0), "Counter"))?
         .run()
 }

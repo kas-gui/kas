@@ -110,6 +110,14 @@ impl_scope! {
             }
         }
 
+        fn nav_next(&self, _: bool, from: Option<usize>) -> Option<usize> {
+            match from {
+                None => Some(self.active),
+                Some(active) if active != self.active => Some(self.active),
+                _ => None,
+            }
+        }
+
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             // Latter condition is implied, but compiler doesn't know this:
             if self.sized_range.contains(&self.active) && self.active < self.widgets.len() {
@@ -129,14 +137,6 @@ impl_scope! {
         fn pre_configure(&mut self, _: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();
-        }
-
-        fn nav_next(&mut self, _: &mut EventMgr, _: bool, from: Option<usize>) -> Option<usize> {
-            match from {
-                None => Some(self.active),
-                Some(active) if active != self.active => Some(self.active),
-                _ => None,
-            }
         }
     }
 

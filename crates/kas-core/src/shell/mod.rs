@@ -22,10 +22,13 @@ pub use common::{Error, GraphicalShell, Platform, Result, WindowSurface};
 pub use shell::{ClosedError, Proxy, Shell, ShellAssoc};
 pub extern crate raw_window_handle;
 
+// TODO(opt): Clippy is probably right that we shouldn't copy a large value
+// around (also applies when constructing a shell::Window).
+#[allow(clippy::large_enum_variant)]
 #[cfg(feature = "winit")]
 enum PendingAction {
     AddPopup(winit::window::WindowId, kas::WindowId, kas::Popup),
-    AddWindow(kas::WindowId, Box<dyn kas::Window>),
+    AddWindow(kas::WindowId, kas::Window),
     CloseWindow(kas::WindowId),
     Update(kas::event::UpdateId, u64),
     Action(kas::Action),

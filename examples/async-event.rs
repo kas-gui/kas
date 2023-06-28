@@ -38,8 +38,9 @@ fn main() -> kas::shell::Result<()> {
     thread::spawn(move || generate_colors(proxy, update_id, colour2));
 
     let widget = ColourSquare::new(colour, update_id);
+    let window = Window::new(widget, "Async event demo");
 
-    shell.with(widget)?.run()
+    shell.with(window)?.run()
 }
 
 impl_scope! {
@@ -98,11 +99,6 @@ impl_scope! {
                 }
                 _ => Response::Unused,
             }
-        }
-    }
-    impl Window for Self {
-        fn title(&self) -> &str {
-            "Async event demo"
         }
     }
 }

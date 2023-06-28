@@ -7,7 +7,7 @@
 
 use kas::model::SharedRc;
 use kas::view::{driver, SingleView};
-use kas::widget::dialog::Window;
+use kas::Window;
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
@@ -18,7 +18,7 @@ fn main() -> kas::shell::Result<()> {
 
     let theme = kas_wgpu::ShadedTheme::new().with_font_size(24.0);
     kas::shell::DefaultShell::new(theme)?
-        .with(Window::new("Counter 1", c1))?
-        .with(Window::new("Counter 2", c2))?
+        .with(Window::new(c1, "Counter 1"))?
+        .with(Window::new(c2, "Counter 2"))?
         .run()
 }

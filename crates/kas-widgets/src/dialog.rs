@@ -18,61 +18,6 @@ use kas::event::{Command, VirtualKeyCode};
 use kas::model::{SharedRc, SingleDataMut};
 use kas::prelude::*;
 use kas::text::format::FormattableText;
-use kas::{Icon, Widget};
-use std::borrow::Cow;
-
-impl_scope! {
-    /// A simple window around a widget
-    #[autoimpl(Clone where W: Clone)]
-    #[widget(layout = self.inner;)]
-    pub struct Window<W: Widget> {
-        core: widget_core!(),
-        restrict_dimensions: (bool, bool),
-        title: String,
-        #[widget]
-        inner: W,
-        icon: Option<Icon>,
-    }
-
-    impl<W: Widget> kas::Window for Window<W> {
-        fn title(&self) -> &str {
-            &self.title
-        }
-
-        fn icon(&self) -> Option<Icon> {
-            self.icon.clone()
-        }
-
-        fn restrict_dimensions(&self) -> (bool, bool) {
-            self.restrict_dimensions
-        }
-    }
-}
-
-impl<W: Widget> Window<W> {
-    /// Construct
-    pub fn new<T: ToString>(title: T, inner: W) -> Window<W> {
-        Window {
-            core: Default::default(),
-            restrict_dimensions: (true, false),
-            title: title.to_string(),
-            inner,
-            icon: None,
-        }
-    }
-
-    /// Configure whether min/max dimensions are forced
-    ///
-    /// By default, the min size is enforced but not the max.
-    pub fn set_restrict_dimensions(&mut self, min: bool, max: bool) {
-        self.restrict_dimensions = (min, max);
-    }
-
-    /// Set the window icon
-    pub fn set_icon(&mut self, icon: Option<Icon>) {
-        self.icon = icon;
-    }
-}
 
 #[derive(Copy, Clone, Debug)]
 struct MessageBoxOk;
@@ -84,7 +29,6 @@ impl_scope! {
     }]
     pub struct MessageBox<T: FormattableText + 'static> {
         core: widget_core!(),
-        title: String,
         #[widget]
         label: Label<T>,
         #[widget]
@@ -92,10 +36,10 @@ impl_scope! {
     }
 
     impl Self {
-        pub fn new<A: ToString>(title: A, message: T) -> Self {
+        /// Construct
+        pub fn new(message: T) -> Self {
             MessageBox {
                 core: Default::default(),
-                title: title.to_string(),
                 label: Label::new(message),
                 button: TextButton::new_msg("Ok", MessageBoxOk).with_keys(&[
                     VirtualKeyCode::Return,
@@ -104,6 +48,13 @@ impl_scope! {
                 ]),
             }
         }
+
+        /// Build a [`Window`]
+        pub fn into_window(self, title: impl ToString) -> Window {
+            Window::new(self, title)
+                .with_restrictions(true, true)
+        }
+
     }
 
     impl Events for Self {
@@ -115,20 +66,6 @@ impl_scope! {
 
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.enable_alt_bypass(self.id_ref(), true);
-        }
-    }
-
-    impl kas::Window for Self {
-        fn title(&self) -> &str {
-            &self.title
-        }
-
-        fn icon(&self) -> Option<kas::Icon> {
-            None // TODO
-        }
-
-        fn restrict_dimensions(&self) -> (bool, bool) {
-            (true, true)
         }
     }
 }
@@ -148,9 +85,8 @@ impl_scope! {
     /// An editor over a shared `String`
     ///
     /// The shared data is updated only when the "Save" button is pressed.
-    pub struct TextEdit<T: SingleDataMut<Item = String> = SharedRc<String>> {
+    pub struct TextEdit<T: SingleDataMut<Item = String> + 'static = SharedRc<String>> {
         core: widget_core!(),
-        title: Cow<'static, str>,
         data: T,
         #[widget]
         edit: EditBox,
@@ -158,14 +94,18 @@ impl_scope! {
 
     impl Self {
         /// Construct
-        pub fn new(title: impl Into<Cow<'static, str>>, multi_line: bool, data: T) -> Self {
+        pub fn new(multi_line: bool, data: T) -> Self {
             let text = data.get_cloned(&()).unwrap();
             TextEdit {
                 core: Default::default(),
-                title: title.into(),
                 data,
                 edit: EditBox::new(text).with_multi_line(multi_line),
             }
+        }
+
+        /// Build a [`Window`]
+        pub fn into_window(self, title: impl ToString) -> Window {
+            Window::new(self, title)
         }
 
         fn close(&mut self, mgr: &mut EventMgr, commit: bool) -> Response {
@@ -199,12 +139,6 @@ impl_scope! {
             if let Some(MsgClose(commit)) = mgr.try_pop() {
                 let _ = self.close(mgr, commit);
             }
-        }
-    }
-
-    impl kas::Window for Self {
-        fn title(&self) -> &str {
-            &self.title
         }
     }
 }

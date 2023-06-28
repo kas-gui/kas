@@ -9,7 +9,6 @@ mod data;
 mod scroll_traits;
 mod widget;
 mod widget_id;
-mod window;
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
@@ -19,4 +18,3 @@ pub use data::*;
 pub use scroll_traits::*;
 pub use widget::*;
 pub use widget_id::*;
-pub use window::*;

@@ -312,10 +312,8 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// ```
 ///
 /// This is a special mode where most features of `#[widget]` are not
-/// available. A few may still be used: `navigable`, `hover_highlight`,
-/// `cursor_icon`. Additionally, it is currently permitted to implement
-/// [`WidgetChildren`], [`Layout`], [`Events`] and [`Widget`] traits manually (this option
-/// may be removed in the future if not deemed useful).
+/// available. Only [`Layout`] methods may be specified (overriding those from
+/// the derived widget); everything else is derived.
 ///
 /// [`Widget`]: https://docs.rs/kas/0.11/kas/trait.Widget.html
 /// [`WidgetCore`]: https://docs.rs/kas/0.11/kas/trait.WidgetCore.html

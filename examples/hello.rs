@@ -8,7 +8,7 @@
 use kas::widget::dialog::MessageBox;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let window = MessageBox::new("Message", "Hello world");
+    let window = MessageBox::new("Message").into_window("Hello world");
 
     let theme = kas::theme::FlatTheme::new();
     kas::shell::DefaultShell::new(theme)?.with(window)?.run()

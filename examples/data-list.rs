@@ -139,7 +139,7 @@ fn main() -> kas::shell::Result<()> {
     ];
     let list = List::new_dir_vec(Direction::Down, entries);
 
-    let window = singleton! {
+    let ui = singleton! {
         #[widget{
             layout = column! [
                 "Demonstration of dynamic widget creation / deletion",
@@ -189,10 +189,8 @@ fn main() -> kas::shell::Result<()> {
                 }
             }
         }
-        impl Window for Self {
-            fn title(&self) -> &str { "Dynamic widget demo" }
-        }
     };
+    let window = Window::new(ui, "Dynamic widget demo");
 
     let theme = kas::theme::FlatTheme::new();
     kas::shell::DefaultShell::new(theme)?.with(window)?.run()

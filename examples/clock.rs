@@ -165,25 +165,14 @@ impl_scope! {
             }
         }
     }
-
-    impl Window for Self {
-        fn title(&self) -> &str {
-            "Clock"
-        }
-
-        fn decorations(&self) -> kas::Decorations {
-            kas::Decorations::None
-        }
-
-        fn transparent(&self) -> bool {
-            true
-        }
-    }
 }
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let theme = Theme::new();
-    Shell::new(theme)?.with(Clock::new())?.run()
+    let window = Window::new(Clock::new(), "Clock")
+        .with_decorations(kas::Decorations::None)
+        .with_transparent(true);
+
+    Shell::new(Theme::new())?.with(window)?.run()
 }

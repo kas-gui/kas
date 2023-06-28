@@ -21,7 +21,7 @@ fn main() -> kas::shell::Result<()> {
     let panes = (0..2).map(|n| EditField::new(format!("Pane {}", n + 1)).with_multi_line(true));
     let panes = RowSplitter::<EditField>::new(panes.collect());
 
-    let window = kas::singleton! {
+    let ui = kas::singleton! {
         #[widget{
             layout = column! [
                 row! [
@@ -53,10 +53,8 @@ fn main() -> kas::shell::Result<()> {
                 }
             }
         }
-        impl Window for Self {
-            fn title(&self) -> &str { "Slitter panes" }
-        }
     };
+    let window = Window::new(ui, "Slitter panes");
 
     let theme = kas_wgpu::ShadedTheme::new();
     kas::shell::DefaultShell::new(theme)?.with(window)?.run()
