@@ -11,7 +11,8 @@ use proc_macro_error::{emit_error, emit_warning};
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::{parse2, parse_quote, token::Eq, Ident, ImplItem, Index, ItemImpl, Member, Token, Type};
+use syn::token::Eq;
+use syn::{parse2, parse_quote, Ident, ImplItem, Index, ItemImpl, Member, Meta, Token, Type};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -128,10 +129,9 @@ impl ScopeAttr for AttrImplWidget {
     }
 
     fn apply(&self, attr: syn::Attribute, scope: &mut Scope) -> Result<()> {
-        let args = if attr.tokens.is_empty() {
-            WidgetArgs::default()
-        } else {
-            attr.parse_args()?
+        let args = match &attr.meta {
+            Meta::Path(_) => WidgetArgs::default(),
+            _ => attr.parse_args()?,
         };
         widget(args, scope)
     }
@@ -237,9 +237,13 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         let mut is_widget = false;
         let mut other_attrs = Vec::with_capacity(field.attrs.len());
         for attr in field.attrs.drain(..) {
-            if attr.path == parse_quote! { widget } {
-                if !attr.tokens.is_empty() {
-                    emit_error!(attr.tokens, "unexpected token");
+            if *attr.path() == parse_quote! { widget } {
+                if let Some(span) = match &attr.meta {
+                    Meta::Path(_) => None,
+                    Meta::List(list) => Some(list.delimiter.span().join()),
+                    Meta::NameValue(nv) => nv.eq_token.span().join(nv.value.span()),
+                } {
+                    emit_error!(span, "unexpected");
                 }
                 if Some(&ident) == opt_derive.as_ref() {
                     emit_error!(attr, "#[widget] must not be used on widget derive target");
@@ -296,7 +300,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 let mut find_child_index = None;
                 let mut make_child_id = None;
                 for item in &impl_.items {
-                    if let ImplItem::Method(ref item) = item {
+                    if let ImplItem::Fn(ref item) = item {
                         if item.sig.ident == "num_children" {
                             num_children = Some(item.sig.ident.clone());
                         } else if item.sig.ident == "get_child" {
@@ -518,7 +522,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 _ => unreachable!(),
             };
             return Err(Error::new(
-                span,
+                span.join(),
                 "expected: a field with type `widget_core!()`",
             ));
         };
@@ -773,7 +777,7 @@ fn collect_idents(item_impl: &ItemImpl) -> Vec<Ident> {
         .items
         .iter()
         .filter_map(|item| match item {
-            ImplItem::Method(m) => Some(m.sig.ident.clone()),
+            ImplItem::Fn(m) => Some(m.sig.ident.clone()),
             _ => None,
         })
         .collect()
