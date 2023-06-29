@@ -23,6 +23,7 @@ mod kw {
     custom_keyword!(hover_highlight);
     custom_keyword!(cursor_icon);
     custom_keyword!(derive);
+    custom_keyword!(Data);
 }
 
 #[derive(Debug)]
@@ -41,15 +42,18 @@ pub struct ExprToken {
 
 #[derive(Debug, Default)]
 pub struct WidgetArgs {
+    data_ty: Option<Type>,
     pub navigable: Option<Toks>,
     pub hover_highlight: Option<BoolToken>,
     pub cursor_icon: Option<ExprToken>,
     pub derive: Option<Member>,
-    pub layout: Option<(Span, make_layout::Tree)>,
+    pub layout: Option<(kw::layout, make_layout::Tree)>,
+    span_end: Option<Span>, // None if and only if #[widget] has no brackets
 }
 
 impl Parse for WidgetArgs {
     fn parse(content: ParseStream) -> Result<Self> {
+        let mut data_ty = None;
         let mut navigable = None;
         let mut hover_highlight = None;
         let mut cursor_icon = None;
@@ -59,7 +63,11 @@ impl Parse for WidgetArgs {
 
         while !content.is_empty() {
             let lookahead = content.lookahead1();
-            if lookahead.peek(kw::navigable) && navigable.is_none() {
+            if lookahead.peek(kw::Data) && data_ty.is_none() {
+                let _ = content.parse::<kw::Data>()?;
+                let _: Eq = content.parse()?;
+                data_ty = Some(content.parse()?);
+            } else if lookahead.peek(kw::navigable) && navigable.is_none() {
                 let span = content.parse::<kw::navigable>()?.span();
                 let _: Eq = content.parse()?;
                 let value = content.parse::<syn::LitBool>()?;
@@ -87,7 +95,7 @@ impl Parse for WidgetArgs {
             } else if lookahead.peek(kw::layout) && layout.is_none() {
                 let kw = content.parse::<kw::layout>()?;
                 let _: Eq = content.parse()?;
-                layout = Some((kw.span, content.parse()?));
+                layout = Some((kw, content.parse()?));
             } else {
                 return Err(lookahead.error());
             }
@@ -96,18 +104,20 @@ impl Parse for WidgetArgs {
         }
 
         if let Some(_derive) = kw_derive {
-            if let Some((span, _)) = layout {
-                return Err(Error::new(span, "incompatible with widget derive"));
+            if let Some((kw, _)) = layout {
+                return Err(Error::new(kw.span, "incompatible with widget derive"));
                 // note = derive.span() => "this derive"
             }
         }
 
         Ok(WidgetArgs {
+            data_ty,
             navigable,
             hover_highlight,
             cursor_icon,
             derive,
             layout,
+            span_end: Some(content.span()),
         })
     }
 }
@@ -190,13 +200,23 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
             core_data = Some(ident.clone());
 
-            if let Some((stor_ty, stor_def)) = args
-                .layout
-                .as_ref()
-                .and_then(|(_, l)| l.storage_fields(&mut layout_children))
-            {
+            let mut stor_defs = Default::default();
+            if let Some((kw, ref layout)) = args.layout {
+                let missing_data_ty = parse_quote! { MissingData };
+                let data_ty = args.data_ty.as_ref().unwrap_or(&missing_data_ty);
+                stor_defs = layout.storage_fields(&mut layout_children, data_ty);
+                if args.data_ty.is_none() && stor_defs.used_data_ty {
+                    emit_error!(
+                        args.span_end.unwrap(), "expected: `Data = TYPE;`";
+                        note = kw.span => "required by this layout";
+                    );
+                }
+            }
+            if !stor_defs.ty_toks.is_empty() {
                 let name = format!("_{name}CoreTy");
                 let core_type = Ident::new(&name, Span::call_site());
+                let stor_ty = &stor_defs.ty_toks;
+                let stor_def = &stor_defs.def_toks;
                 scope.generated.push(quote! {
                     struct #core_type {
                         rect: ::kas::geom::Rect,
