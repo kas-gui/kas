@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::make_layout::{self, NavNextResult};
+use crate::make_layout;
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
 use proc_macro2::{Span, TokenStream as Toks};
@@ -553,33 +553,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         if let Some((_, layout)) = args.layout.take() {
             gen_layout = true;
             fn_nav_next = match layout.nav_next(children.iter()) {
-                NavNextResult::Err(span, msg) => {
+                Ok(toks) => Some(toks),
+                Err((span, msg)) => {
                     fn_nav_next_err = Some((span, msg));
                     None
                 }
-                NavNextResult::Slice(dir) => Some(quote! {
-                    fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-                        let reverse = reverse ^ (#dir).is_reversed();
-                        kas::util::nav_next(reverse, from, self.num_children())
-                    }
-                }),
-                NavNextResult::List(order) => Some(quote! {
-                    fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-                        let mut iter = [#(#order),*].into_iter();
-                        if !reverse {
-                            if let Some(wi) = from {
-                                let _ = iter.find(|x| *x == wi);
-                            }
-                            iter.next()
-                        } else {
-                            let mut iter = iter.rev();
-                            if let Some(wi) = from {
-                                let _ = iter.find(|x| *x == wi);
-                            }
-                            iter.next()
-                        }
-                    }
-                }),
             };
 
             let layout_methods = layout.layout_methods(&quote! { self.#core })?;

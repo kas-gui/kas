@@ -5,6 +5,7 @@
 
 use crate::widget;
 use proc_macro2::{Span, TokenStream as Toks};
+use proc_macro_error::emit_error;
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
@@ -58,6 +59,7 @@ impl Tree {
         }
     }
 
+    // Excludes: fn nav_next
     pub fn layout_methods(&self, core_path: &Toks) -> Result<Toks> {
         let layout = self.0.generate(core_path)?;
         Ok(quote! {
@@ -80,11 +82,6 @@ impl Tree {
                 (#layout).set_rect(mgr, rect);
             }
 
-            fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-                use ::kas::WidgetChildren;
-                ::kas::util::nav_next(reverse, from, self.num_children())
-            }
-
             fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
                 use ::kas::{layout, Layout, WidgetCore, WidgetExt};
                 if !self.rect().contains(coord) {
@@ -104,16 +101,36 @@ impl Tree {
     pub fn nav_next<'a, I: Clone + ExactSizeIterator<Item = &'a Member>>(
         &self,
         children: I,
-    ) -> NavNextResult {
+    ) -> std::result::Result<Toks, (Span, &'static str)> {
         match &self.0 {
-            Layout::Slice(_, dir, _) => NavNextResult::Slice(dir.to_token_stream()),
+            Layout::Slice(_, dir, _) => Ok(quote! {
+                fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+                    let reverse = reverse ^ (#dir).is_reversed();
+                    kas::util::nav_next(reverse, from, self.num_children())
+                }
+            }),
             layout => {
                 let mut v = Vec::new();
                 let mut index = children.len();
-                match layout.nav_next(children, &mut v, &mut index) {
-                    Ok(()) => NavNextResult::List(v),
-                    Err((span, msg)) => NavNextResult::Err(span, msg),
-                }
+                layout.nav_next(children, &mut v, &mut index).map(|()| {
+                    quote! {
+                        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+                            let mut iter = [#(#v),*].into_iter();
+                            if !reverse {
+                                if let Some(wi) = from {
+                                    let _ = iter.find(|x| *x == wi);
+                                }
+                                iter.next()
+                            } else {
+                                let mut iter = iter.rev();
+                                if let Some(wi) = from {
+                                    let _ = iter.find(|x| *x == wi);
+                                }
+                                iter.next()
+                            }
+                        }
+                    }
+                })
             }
         }
     }
@@ -147,6 +164,13 @@ impl Tree {
         let widget_impl = widget::impl_widget(&impl_generics, &impl_target);
 
         let layout_methods = self.layout_methods(&core_path)?;
+        let nav_next = match self.nav_next(std::iter::empty()) {
+            Ok(result) => Some(result),
+            Err((span, msg)) => {
+                emit_error!(span, "unable to generate `fn Layout::nav_next`: {}", msg);
+                None
+            }
+        };
 
         let toks = quote! {{
             struct #name #impl_generics {
@@ -160,6 +184,7 @@ impl Tree {
 
             impl #impl_generics ::kas::Layout for #impl_target {
                 #layout_methods
+                #nav_next
             }
 
             impl #impl_generics ::kas::Events for #impl_target {
@@ -283,13 +308,6 @@ impl Tree {
         let mut gen = NameGenerator::default();
         Layout::margins_inner(inner, &mut gen).map(Tree)
     }
-}
-
-#[derive(Debug)]
-pub enum NavNextResult {
-    Err(Span, &'static str),
-    Slice(Toks),
-    List(Vec<usize>),
 }
 
 #[derive(Debug)]
