@@ -61,10 +61,6 @@ impl_scope! {
 
     impl WidgetChildren for Self {
         #[inline]
-        fn num_children(&self) -> usize {
-            self.widgets.len()
-        }
-        #[inline]
         fn get_child(&self, index: usize) -> Option<&dyn Widget> {
             self.widgets.get(index).map(|w| w.as_node())
         }
@@ -75,6 +71,11 @@ impl_scope! {
     }
 
     impl Layout for Self {
+        #[inline]
+        fn num_children(&self) -> usize {
+            self.widgets.len()
+        }
+
         fn size_rules(&mut self, mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
             // Unusual behaviour: children's SizeRules are padded with a frame,
             // but the frame does not adjust the children's rects.

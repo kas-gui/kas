@@ -264,10 +264,6 @@ impl_scope! {
 
     impl kas::WidgetChildren for Self {
         #[inline]
-        fn num_children(&self) -> usize {
-            self.list.len()
-        }
-        #[inline]
         fn get_child(&self, index: usize) -> Option<&dyn Widget> {
             self.list.get(index).map(|w| w.as_node())
         }
@@ -278,6 +274,11 @@ impl_scope! {
     }
 
     impl kas::Layout for Self {
+        #[inline]
+        fn num_children(&self) -> usize {
+            self.list.len()
+        }
+
         fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             self.dim = layout::GridDimensions {
                 cols: MENU_VIEW_COLS,

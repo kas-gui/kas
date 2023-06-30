@@ -48,16 +48,19 @@ impl_scope! {
 
     impl WidgetChildren for Self {
         #[inline]
-        fn num_children(&self) -> usize {
-            self.widgets.len()
-        }
-        #[inline]
         fn get_child(&self, index: usize) -> Option<&dyn Widget> {
             self.widgets.get(index).map(|w| w.as_node())
         }
         #[inline]
         fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
             self.widgets.get_mut(index).map(|w| w.as_node_mut())
+        }
+    }
+
+    impl Layout for Self {
+        #[inline]
+        fn num_children(&self) -> usize {
+            self.widgets.len()
         }
 
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
@@ -85,9 +88,7 @@ impl_scope! {
                 }
             }
         }
-    }
 
-    impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let mut rules = SizeRules::EMPTY;
             let end = self

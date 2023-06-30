@@ -478,10 +478,6 @@ impl_scope! {
 
     impl WidgetChildren for Self {
         #[inline]
-        fn num_children(&self) -> usize {
-            self.cur_len.cast()
-        }
-        #[inline]
         fn get_child(&self, index: usize) -> Option<&dyn Widget> {
             self.widgets.get(index).and_then(|w| {
                 w.key.is_some().then(|| w.widget.as_node())
@@ -492,6 +488,14 @@ impl_scope! {
             self.widgets.get_mut(index).and_then(|w| {
                 w.key.is_some().then(|| w.widget.as_node_mut())
             })
+        }
+    }
+
+    #[allow(clippy::manual_clamp)]
+    impl Layout for Self {
+        #[inline]
+        fn num_children(&self) -> usize {
+            self.cur_len.cast()
         }
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
             let key = T::Key::reconstruct_key(self.id_ref(), id);
@@ -510,10 +514,7 @@ impl_scope! {
             // We configure children in update_widgets and do not want this method to be called
             unimplemented!()
         }
-    }
 
-    #[allow(clippy::manual_clamp)]
-    impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
             let inner_margin = if self.sel_style.is_external() {

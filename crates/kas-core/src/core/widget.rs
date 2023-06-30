@@ -61,19 +61,14 @@ pub trait WidgetCore {
 /// See [`Widget`] trait documentation.
 ///
 /// In a few cases, namely widgets which may add/remove children dynamically,
-/// this trait should be implemented directly.
+/// this trait should be implemented directly. In this case,
+/// [`Layout::num_children`] must also be implemented explicitly.
 ///
 /// Note that parents are responsible for ensuring that newly added children
 /// get configured, either by sending [`Action::RECONFIGURE`] by calling
 /// [`ConfigMgr::configure`].
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait WidgetChildren: Layout {
-    /// Get the number of child widgets
-    ///
-    /// Every value in the range `0..self.num_children()` is a valid child
-    /// index.
-    fn num_children(&self) -> usize;
-
     /// Get a reference to a child widget by index, if any
     ///
     /// Required: `index < self.len()`.
@@ -86,31 +81,6 @@ pub trait WidgetChildren: Layout {
     /// be requested. This can be done via [`EventState::send_action`].
     /// This method may be removed in the future.
     fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget>;
-
-    /// Find the child which is an ancestor of this `id`, if any
-    ///
-    /// If `Some(index)` is returned, this is *probably* but not guaranteed
-    /// to be a valid child index.
-    ///
-    /// The default implementation simply uses [`WidgetId::next_key_after`].
-    /// Widgets may choose to assign children custom keys by overriding this
-    /// method and [`Self::make_child_id`].
-    #[inline]
-    fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
-        id.next_key_after(self.id_ref())
-    }
-
-    /// Make an identifier for a child
-    ///
-    /// This is used to configure children. It may return [`WidgetId::default`]
-    /// in order to avoid configuring the child, but in this case the widget
-    /// must configure via another means.
-    ///
-    /// Default impl: `self.id_ref().make_child(index)`
-    #[inline]
-    fn make_child_id(&mut self, index: usize) -> WidgetId {
-        self.id_ref().make_child(index)
-    }
 }
 
 /// Positioning and drawing routines for [`Widget`]s
@@ -142,6 +112,44 @@ pub trait WidgetChildren: Layout {
 /// [`layout::solve_size_rules`] or [`layout::SolveCache`].
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait Layout: WidgetCore {
+    /// Get the number of child widgets
+    ///
+    /// Every value in the range `0..self.num_children()` is a valid child
+    /// index.
+    ///
+    /// This method is usually implemented automatically by the `#[widget]`
+    /// macro. It should be implemented directly if and only if
+    /// [`WidgetChildren`] is also implemented directly.
+    ///
+    /// Aside: this method is here to avoid dependence on the `Input` type
+    /// parameter of [`WidgetChildren`].
+    fn num_children(&self) -> usize;
+
+    /// Find the child which is an ancestor of this `id`, if any
+    ///
+    /// If `Some(index)` is returned, this is *probably* but not guaranteed
+    /// to be a valid child index.
+    ///
+    /// The default implementation simply uses [`WidgetId::next_key_after`].
+    /// Widgets may choose to assign children custom keys by overriding this
+    /// method and [`Self::make_child_id`].
+    #[inline]
+    fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+        id.next_key_after(self.id_ref())
+    }
+
+    /// Make an identifier for a child
+    ///
+    /// This is used to configure children. It may return [`WidgetId::default`]
+    /// in order to avoid configuring the child, but in this case the widget
+    /// must configure via another means.
+    ///
+    /// Default impl: `self.id_ref().make_child(index)`
+    #[inline]
+    fn make_child_id(&mut self, index: usize) -> WidgetId {
+        self.id_ref().make_child(index)
+    }
+
     /// Get size rules for the given axis
     ///
     /// Typically, this method is called twice: first for the horizontal axis,

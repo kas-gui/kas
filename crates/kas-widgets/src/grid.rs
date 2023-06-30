@@ -63,10 +63,6 @@ impl_scope! {
 
     impl WidgetChildren for Self {
         #[inline]
-        fn num_children(&self) -> usize {
-            self.widgets.len()
-        }
-        #[inline]
         fn get_child(&self, index: usize) -> Option<&dyn Widget> {
             self.widgets.get(index).map(|c| c.1.as_node())
         }
@@ -77,6 +73,10 @@ impl_scope! {
     }
 
     impl Layout for Self {
+        #[inline]
+        fn num_children(&self) -> usize {
+            self.widgets.len()
+        }
         fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, &mut self.data);
             for (info, child) in &mut self.widgets {

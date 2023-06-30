@@ -153,6 +153,13 @@ impl Tree {
             .storage_fields(&mut layout_children)
             .unwrap_or_default();
 
+        let count = layout_children.len();
+        let num_children = quote! {
+            fn num_children(&self) -> usize {
+                #count
+            }
+        };
+
         let core_impl = widget::impl_core(&impl_generics, &impl_target, widget_name, &core_path);
         let children_impl = widget::impl_widget_children(
             &impl_generics,
@@ -183,6 +190,7 @@ impl Tree {
             #children_impl
 
             impl #impl_generics ::kas::Layout for #impl_target {
+                #num_children
                 #layout_methods
                 #nav_next
             }
