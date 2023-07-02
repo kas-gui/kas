@@ -367,7 +367,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let impl_target = quote! { #name #ty_generics #where_clause };
     let widget_name = name.to_string();
 
-    let mut required_layout_methods = vec![];
+    let mut required_layout_methods = quote! {};
     let mut fn_size_rules = None;
     let mut fn_translation = None;
     let (fn_set_rect, fn_nav_next, fn_find_id);
@@ -400,25 +400,19 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
         });
 
-        required_layout_methods.extend([
-            quote! {
-                fn num_children(&self) -> usize {
-                    self.#inner.num_children()
-                }
-            },
-            quote! {
-                #[inline]
-                fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
-                    self.#inner.find_child_index(id)
-                }
-            },
-            quote! {
-                #[inline]
-                fn make_child_id(&mut self, index: usize) -> ::kas::WidgetId {
-                    self.#inner.make_child_id(index)
-                }
-            },
-        ]);
+        required_layout_methods = quote! {
+            fn num_children(&self) -> usize {
+                self.#inner.num_children()
+            }
+            #[inline]
+            fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
+                self.#inner.find_child_index(id)
+            }
+            #[inline]
+            fn make_child_id(&mut self, index: usize) -> ::kas::WidgetId {
+                self.#inner.make_child_id(index)
+            }
+        };
 
         fn_size_rules = Some(quote! {
             #[inline]
@@ -550,11 +544,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
         if do_impl_widget_children {
             let count = children.len() + layout_children.len();
-            required_layout_methods.push(quote! {
+            required_layout_methods = quote! {
                 fn num_children(&self) -> usize {
                     #count
                 }
-            });
+            };
         }
 
         if let Some(index) = widget_impl {
@@ -718,26 +712,26 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     }
 
     if let Some(index) = layout_impl {
+        use syn::ImplItem::Verbatim;
+
         let layout_impl = &mut scope.impls[index];
         let method_idents = collect_idents(layout_impl);
         let has_method = |name| method_idents.iter().any(|ident| ident == name);
 
-        for toks in required_layout_methods {
-            layout_impl.items.push(parse2(toks)?);
-        }
+        layout_impl.items.push(Verbatim(required_layout_methods));
 
         if let Some(method) = fn_size_rules {
             if !has_method("size_rules") {
-                layout_impl.items.push(parse2(method)?);
+                layout_impl.items.push(Verbatim(method));
             }
         }
         if !has_method("set_rect") {
-            layout_impl.items.push(parse2(fn_set_rect)?);
+            layout_impl.items.push(Verbatim(fn_set_rect));
         }
 
         if !has_method("nav_next") {
             if let Some(method) = fn_nav_next {
-                layout_impl.items.push(parse2(method)?);
+                layout_impl.items.push(Verbatim(method));
             } else if gen_layout {
                 // We emit a warning here only if nav_next is not explicitly defined
                 let (span, msg) = fn_nav_next_err.unwrap();
@@ -750,21 +744,21 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 emit_error!(ident, "method not supported in derive mode");
             }
         } else if let Some(method) = fn_translation {
-            layout_impl.items.push(parse2(method)?);
+            layout_impl.items.push(Verbatim(method));
         }
 
         if !has_method("find_id") {
-            layout_impl.items.push(parse2(fn_find_id)?);
+            layout_impl.items.push(Verbatim(fn_find_id));
         }
         if let Some(method) = fn_draw {
             if !has_method("draw") {
-                layout_impl.items.push(parse2(method)?);
+                layout_impl.items.push(Verbatim(method));
             }
         }
     } else if let Some(fn_size_rules) = fn_size_rules {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Layout for #impl_target {
-                #(#required_layout_methods)*
+                #required_layout_methods
                 #fn_size_rules
                 #fn_set_rect
                 #fn_nav_next
