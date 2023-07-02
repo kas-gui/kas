@@ -107,7 +107,7 @@ impl_scope! {
         }
     }
 
-    impl WidgetChildren for Self {
+    impl Widget for Self {
         #[inline]
         fn get_child(&self, index: usize) -> Option<&dyn Widget> {
             if (index & 1) != 0 {

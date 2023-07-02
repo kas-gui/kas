@@ -155,8 +155,8 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///
 /// This may *only* be used within the [`impl_scope!`] macro.
 ///
-/// Implements the [`WidgetCore`] and [`Widget`] traits for the deriving type.
-/// Implements the [`WidgetChildren`], [`Events`] and [`Layout`]
+/// Implements the [`WidgetCore`] trait for the deriving type.
+/// Implements the [`Widget`], [`Events`] and [`Layout`]
 /// traits only if not implemented explicitly within the
 /// defining [`impl_scope!`].
 ///
@@ -205,7 +205,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// the following attributes:
 ///
 /// -   `#[widget]`: marks the field as a [`Widget`] to be configured, enumerated by
-///     [`WidgetChildren`] and included by glob layouts
+///     [`Widget::get_child`] and included by glob layouts
 ///
 /// ## Layout
 ///
@@ -228,7 +228,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// >
 /// > _Slice_ :\
 /// > &nbsp;&nbsp; `slice!` _Storage_? `(` _Direction_ `,` `self` `.` _Member_ `)`\
-/// > &nbsp;&nbsp; A field with type `[W]` for some `W: Layout`. (Note: this does not automatically register the slice widgets as children for the purpose of configuration and event-handling. An explicit implementation of `WidgetChildren` will be required.)
+/// > &nbsp;&nbsp; A field with type `[W]` for some `W: Layout`. (Note: this does not automatically register the slice widgets as children for the purpose of configuration and event-handling. An explicit implementation of `Widget::get_child` will be required.)
 /// >
 /// > _Frame_ :\
 /// > &nbsp;&nbsp; `frame!` _Storage_? `(` _Layout_ ( `,` `style` `=` _Expr_ )? `)`\
@@ -317,7 +317,6 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///
 /// [`Widget`]: https://docs.rs/kas/0.11/kas/trait.Widget.html
 /// [`WidgetCore`]: https://docs.rs/kas/0.11/kas/trait.WidgetCore.html
-/// [`WidgetChildren`]: https://docs.rs/kas/0.11/kas/trait.WidgetChildren.html
 /// [`Layout`]: https://docs.rs/kas/0.11/kas/trait.Layout.html
 /// [`Events`]: https://docs.rs/kas/0.11/kas/trait.Events.html
 /// [`CursorIcon`]: https://docs.rs/kas/0.11/kas/event/enum.CursorIcon.html
@@ -396,9 +395,7 @@ pub fn singleton(input: TokenStream) -> TokenStream {
 ///
 /// Example usage: `widget_index![self.a]`. If `a` is a child widget (a field
 /// marked with the `#[widget]` attribute), then this expands to the child
-/// widget's index (as used by [`WidgetChildren`]). Otherwise, this is an error.
-///
-/// [`WidgetChildren`]: https://docs.rs/kas/0.11/kas/trait.WidgetChildren.html
+/// widget's index (as used by [`Widget::get_child`]). Otherwise, this is an error.
 #[proc_macro_error]
 #[proc_macro]
 pub fn widget_index(input: TokenStream) -> TokenStream {

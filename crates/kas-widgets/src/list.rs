@@ -114,7 +114,7 @@ impl_scope! {
         }
     }
 
-    impl WidgetChildren for Self {
+    impl Widget for Self {
         #[inline]
         fn get_child(&self, index: usize) -> Option<&dyn Widget> {
             self.widgets.get(index).map(|w| w.as_node())

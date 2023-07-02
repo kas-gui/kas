@@ -262,7 +262,7 @@ impl_scope! {
         list: Vec<W>,
     }
 
-    impl kas::WidgetChildren for Self {
+    impl kas::Widget for Self {
         #[inline]
         fn get_child(&self, index: usize) -> Option<&dyn Widget> {
             self.list.get(index).map(|w| w.as_node())

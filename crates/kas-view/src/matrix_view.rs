@@ -451,21 +451,6 @@ impl_scope! {
         }
     }
 
-    impl WidgetChildren for Self {
-        #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
-            self.widgets.get(index).and_then(|w| {
-                w.key.is_some().then(|| w.widget.as_node())
-            })
-        }
-        #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
-            self.widgets.get_mut(index).and_then(|w| {
-                w.key.is_some().then(|| w.widget.as_node_mut())
-            })
-        }
-    }
-
     #[allow(clippy::manual_clamp)]
     impl Layout for Self {
         #[inline]
@@ -806,6 +791,19 @@ impl_scope! {
 
     // Direct implementation of this trait outside of Kas code is not supported!
     impl Widget for Self {
+        #[inline]
+        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
+            self.widgets.get(index).and_then(|w| {
+                w.key.is_some().then(|| w.widget.as_node())
+            })
+        }
+        #[inline]
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
+            self.widgets.get_mut(index).and_then(|w| {
+                w.key.is_some().then(|| w.widget.as_node_mut())
+            })
+        }
+
         // Non-standard behaviour: do not configure children
         fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId) {
             self.pre_configure(cx, id);

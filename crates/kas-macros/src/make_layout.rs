@@ -161,14 +161,15 @@ impl Tree {
         };
 
         let core_impl = widget::impl_core(&impl_generics, &impl_target, widget_name, &core_path);
-        let children_impl = widget::impl_widget_children(
+        let widget_impl = widget::impl_widget(
             &impl_generics,
             &impl_target,
             &core_path,
             &vec![],
             layout_children,
+            true,
+            true,
         );
-        let widget_impl = widget::impl_widget(&impl_generics, &impl_target);
 
         let layout_methods = self.layout_methods(&core_path)?;
         let nav_next = match self.nav_next(std::iter::empty()) {
@@ -187,7 +188,6 @@ impl Tree {
             }
 
             #core_impl
-            #children_impl
 
             impl #impl_generics ::kas::Layout for #impl_target {
                 #num_children

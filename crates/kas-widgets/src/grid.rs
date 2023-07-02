@@ -61,7 +61,7 @@ impl_scope! {
         on_message: Option<fn(&mut EventMgr, usize)>,
     }
 
-    impl WidgetChildren for Self {
+    impl Widget for Self {
         #[inline]
         fn get_child(&self, index: usize) -> Option<&dyn Widget> {
             self.widgets.get(index).map(|c| c.1.as_node())

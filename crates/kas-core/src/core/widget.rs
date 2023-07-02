@@ -47,42 +47,6 @@ pub trait WidgetCore {
     fn as_node_mut(&mut self) -> &mut dyn Widget;
 }
 
-/// Listing of a [`Widget`]'s children
-///
-/// This trait enumerates child widgets (that is, components of the widget which
-/// are themselves widgets).
-///
-/// Enumerated widgets are automatically configured, via recursion, when their
-/// parent is. See [`Events::configure`].
-///
-/// # Implementing WidgetChildren
-///
-/// Implementations of this trait are usually generated via macro.
-/// See [`Widget`] trait documentation.
-///
-/// In a few cases, namely widgets which may add/remove children dynamically,
-/// this trait should be implemented directly. In this case,
-/// [`Layout::num_children`] must also be implemented explicitly.
-///
-/// Note that parents are responsible for ensuring that newly added children
-/// get configured, either by sending [`Action::RECONFIGURE`] by calling
-/// [`ConfigMgr::configure`].
-#[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait WidgetChildren: Layout {
-    /// Get a reference to a child widget by index, if any
-    ///
-    /// Required: `index < self.len()`.
-    fn get_child(&self, index: usize) -> Option<&dyn Widget>;
-
-    /// Mutable variant of get
-    ///
-    /// Warning: directly adjusting a widget without requiring reconfigure or
-    /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
-    /// be requested. This can be done via [`EventState::send_action`].
-    /// This method may be removed in the future.
-    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget>;
-}
-
 /// Positioning and drawing routines for [`Widget`]s
 ///
 /// This trait is related to [`Widget`], but may be used independently.
@@ -119,10 +83,10 @@ pub trait Layout: WidgetCore {
     ///
     /// This method is usually implemented automatically by the `#[widget]`
     /// macro. It should be implemented directly if and only if
-    /// [`WidgetChildren`] is also implemented directly.
+    /// [`Widget::get_child`] is also implemented directly.
     ///
-    /// Aside: this method is here to avoid dependence on the `Input` type
-    /// parameter of [`WidgetChildren`].
+    /// Aside: this method is here to avoid dependence on the `Data` type
+    /// parameter of [`Widget`].
     fn num_children(&self) -> usize;
 
     /// Find the child which is an ancestor of this `id`, if any
@@ -205,10 +169,10 @@ pub trait Layout: WidgetCore {
     /// -   Determine the next child after `from` (if provided) or the whole
     ///     range, optionally in `reverse` order
     /// -   Ensure that the selected widget is addressable through
-    ///     [`WidgetChildren::get_child`]
+    ///     [`Widget::get_child`]
     ///
     /// Both `from` and the return value use the widget index, as used by
-    /// [`WidgetChildren::get_child`].
+    /// [`Widget::get_child`].
     ///
     /// Default implementation:
     ///
@@ -463,7 +427,6 @@ pub enum NavAdvance {
 /// member:
 ///
 /// -   [`WidgetCore`] — base functionality
-/// -   [`WidgetChildren`] — enumerates children
 /// -   [`Layout`] — handles sizing and positioning for self and children
 /// -   [`Events`] — configuration, event handling
 /// -   [`Widget`] — introspection, dyn-safe API
@@ -483,7 +446,6 @@ pub enum NavAdvance {
 /// Other trait implementations can be detected within this scope:
 ///
 /// -   [`WidgetCore`] is always generated
-/// -   [`WidgetChildren`] is generated if no direct implementation is present
 /// -   [`Layout`] is generated if the `layout` attribute property is set, and
 ///     no direct implementation is found. In other cases where a direct
 ///     implementation of the trait is found, (default) method implementations
@@ -589,7 +551,20 @@ pub enum NavAdvance {
 /// }
 /// ```
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait Widget: WidgetChildren {
+pub trait Widget: Layout {
+    /// Get a reference to a child widget by index, if any
+    ///
+    /// Required: `index < self.len()`.
+    fn get_child(&self, index: usize) -> Option<&dyn Widget>;
+
+    /// Mutable variant of get
+    ///
+    /// Warning: directly adjusting a widget without requiring reconfigure or
+    /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
+    /// be requested. This can be done via [`EventState::send_action`].
+    /// This method may be removed in the future.
+    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget>;
+
     /// Internal method: configure recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
