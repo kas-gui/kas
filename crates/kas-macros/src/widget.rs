@@ -157,6 +157,67 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let mut layout_impl = None;
     let mut events_impl = None;
 
+    let mut num_children = None;
+    let mut get_child = None;
+    let mut get_child_mut = None;
+    for (index, impl_) in scope.impls.iter().enumerate() {
+        if let Some((_, ref path, _)) = impl_.trait_ {
+            if *path == parse_quote! { ::kas::Widget }
+                || *path == parse_quote! { kas::Widget }
+                || *path == parse_quote! { Widget }
+            {
+                widget_impl = Some(index);
+
+                for item in &impl_.items {
+                    if let ImplItem::Fn(ref item) = item {
+                        if item.sig.ident == "get_child" {
+                            get_child = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "get_child_mut" {
+                            get_child_mut = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "_send" {
+                            do_recursive_methods = false;
+                        }
+                    }
+                }
+            } else if *path == parse_quote! { ::kas::Layout }
+                || *path == parse_quote! { kas::Layout }
+                || *path == parse_quote! { Layout }
+            {
+                if layout_impl.is_none() {
+                    layout_impl = Some(index);
+                }
+
+                let mut find_child_index = None;
+                let mut make_child_id = None;
+                for item in &impl_.items {
+                    if let ImplItem::Fn(ref item) = item {
+                        if item.sig.ident == "num_children" {
+                            num_children = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "find_child_index" {
+                            find_child_index = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "make_child_id" {
+                            make_child_id = Some(item.sig.ident.clone());
+                        }
+                    }
+                }
+                if let Some(ref span) = find_child_index {
+                    if make_child_id.is_none() {
+                        emit_warning!(span, "fn find_child_index without fn make_child_id");
+                    }
+                } else if let Some(ref span) = make_child_id {
+                    emit_warning!(span, "fn make_child_id without fn find_child_index");
+                }
+            } else if *path == parse_quote! { ::kas::Events }
+                || *path == parse_quote! { kas::Events }
+                || *path == parse_quote! { Events }
+            {
+                if events_impl.is_none() {
+                    events_impl = Some(index);
+                }
+            }
+        }
+    }
+
     let fields = match &mut scope.item {
         ScopeItem::Struct { token, fields } => match fields {
             Fields::Named(FieldsNamed { fields, .. }) => fields,
@@ -291,67 +352,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     }
 
     crate::widget_index::visit_impls(children.iter(), &mut scope.impls);
-
-    let mut num_children = None;
-    let mut get_child = None;
-    let mut get_child_mut = None;
-    for (index, impl_) in scope.impls.iter().enumerate() {
-        if let Some((_, ref path, _)) = impl_.trait_ {
-            if *path == parse_quote! { ::kas::Widget }
-                || *path == parse_quote! { kas::Widget }
-                || *path == parse_quote! { Widget }
-            {
-                widget_impl = Some(index);
-
-                for item in &impl_.items {
-                    if let ImplItem::Fn(ref item) = item {
-                        if item.sig.ident == "get_child" {
-                            get_child = Some(item.sig.ident.clone());
-                        } else if item.sig.ident == "get_child_mut" {
-                            get_child_mut = Some(item.sig.ident.clone());
-                        } else if item.sig.ident == "_send" {
-                            do_recursive_methods = false;
-                        }
-                    }
-                }
-            } else if *path == parse_quote! { ::kas::Layout }
-                || *path == parse_quote! { kas::Layout }
-                || *path == parse_quote! { Layout }
-            {
-                if layout_impl.is_none() {
-                    layout_impl = Some(index);
-                }
-
-                let mut find_child_index = None;
-                let mut make_child_id = None;
-                for item in &impl_.items {
-                    if let ImplItem::Fn(ref item) = item {
-                        if item.sig.ident == "num_children" {
-                            num_children = Some(item.sig.ident.clone());
-                        } else if item.sig.ident == "find_child_index" {
-                            find_child_index = Some(item.sig.ident.clone());
-                        } else if item.sig.ident == "make_child_id" {
-                            make_child_id = Some(item.sig.ident.clone());
-                        }
-                    }
-                }
-                if let Some(ref span) = find_child_index {
-                    if make_child_id.is_none() {
-                        emit_warning!(span, "fn find_child_index without fn make_child_id");
-                    }
-                } else if let Some(ref span) = make_child_id {
-                    emit_warning!(span, "fn make_child_id without fn find_child_index");
-                }
-            } else if *path == parse_quote! { ::kas::Events }
-                || *path == parse_quote! { kas::Events }
-                || *path == parse_quote! { Events }
-            {
-                if events_impl.is_none() {
-                    events_impl = Some(index);
-                }
-            }
-        }
-    }
 
     if let Some(ref span) = num_children {
         if get_child.is_none() {
