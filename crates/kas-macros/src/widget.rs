@@ -412,11 +412,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 fn widget_name(&self) -> &'static str {
                     #widget_name
                 }
-
-                #[inline]
-                fn as_node(&self) -> &dyn ::kas::Widget { self }
-                #[inline]
-                fn as_node_mut(&mut self) -> &mut dyn ::kas::Widget { self }
             }
         });
 
@@ -478,8 +473,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         });
 
         // Widget methods are derived. Cost: cannot override any Events methods or translation().
+        let fns_as_node = widget_as_node_methods();
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Widget for #impl_target {
+                #fns_as_node
+
                 #[inline]
                 fn get_child(&self, index: usize) -> Option<&dyn ::kas::Widget> {
                     self.#inner.get_child(index)
@@ -572,11 +570,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
 
         if let Some(index) = widget_impl {
+            use syn::ImplItem::Verbatim;
             let widget_impl = &mut scope.impls[index];
+            widget_impl.items.push(Verbatim(widget_as_node_methods()));
             if do_recursive_methods {
-                widget_impl
-                    .items
-                    .push(syn::ImplItem::Verbatim(widget_recursive_methods()));
+                widget_impl.items.push(Verbatim(widget_recursive_methods()));
             }
         } else {
             scope.generated.push(impl_widget(
@@ -821,11 +819,6 @@ pub fn impl_core(impl_generics: &Toks, impl_target: &Toks, name: &str, core_path
             fn widget_name(&self) -> &'static str {
                 #name
             }
-
-            #[inline]
-            fn as_node(&self) -> &dyn ::kas::Widget { self }
-            #[inline]
-            fn as_node_mut(&mut self) -> &mut dyn ::kas::Widget { self }
         }
     }
 }
@@ -839,6 +832,8 @@ pub fn impl_widget(
     do_impl_widget_children: bool,
     do_recursive_methods: bool,
 ) -> Toks {
+    let fns_as_node = widget_as_node_methods();
+
     let fns_get_child = if do_impl_widget_children {
         let count = children.len();
         let mut get_rules = quote! {};
@@ -880,9 +875,19 @@ pub fn impl_widget(
 
     quote! {
         impl #impl_generics ::kas::Widget for #impl_target {
+            #fns_as_node
             #fns_get_child
             #fns_recurse
         }
+    }
+}
+
+fn widget_as_node_methods() -> Toks {
+    quote! {
+        #[inline]
+        fn as_node(&self) -> &dyn ::kas::Widget { self }
+        #[inline]
+        fn as_node_mut(&mut self) -> &mut dyn ::kas::Widget { self }
     }
 }
 

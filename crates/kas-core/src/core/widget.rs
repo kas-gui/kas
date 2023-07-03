@@ -40,11 +40,6 @@ pub trait WidgetCore {
 
     /// Get the name of the widget struct
     fn widget_name(&self) -> &'static str;
-
-    /// Erase type
-    fn as_node(&self) -> &dyn Widget;
-    /// Erase type
-    fn as_node_mut(&mut self) -> &mut dyn Widget;
 }
 
 /// Positioning and drawing routines for [`Widget`]s
@@ -559,6 +554,11 @@ pub enum NavAdvance {
 /// ```
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait Widget: Layout {
+    /// Erase type
+    fn as_node(&self) -> &dyn Widget;
+    /// Erase type
+    fn as_node_mut(&mut self) -> &mut dyn Widget;
+
     /// Get a reference to a child widget by index, if any
     ///
     /// Required: `index < self.len()`.
