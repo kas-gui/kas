@@ -26,5 +26,7 @@ fn main() -> kas::shell::Result<()> {
     let window = Window::new(ui, "Layout demo");
 
     let theme = kas::theme::FlatTheme::new();
-    kas::shell::DefaultShell::new(theme)?.with(window)?.run()
+    kas::shell::DefaultShell::new((), theme)?
+        .with(window)?
+        .run()
 }

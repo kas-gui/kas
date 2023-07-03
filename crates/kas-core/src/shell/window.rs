@@ -49,7 +49,8 @@ impl WindowData {
 }
 
 /// Per-window data
-pub struct Window<S: WindowSurface, T: Theme<S::Shared>> {
+pub struct Window<A: 'static, S: WindowSurface, T: Theme<S::Shared>> {
+    _data: std::marker::PhantomData<A>,
     pub(super) widget: kas::Window,
     pub(super) window_id: WindowId,
     ev_state: EventState,
@@ -62,10 +63,10 @@ pub struct Window<S: WindowSurface, T: Theme<S::Shared>> {
 }
 
 // Public functions, for use by the toolkit
-impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
+impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     /// Construct a window
     pub(super) fn new(
-        shared: &mut SharedState<S, T>,
+        shared: &mut SharedState<A, S, T>,
         elwt: &EventLoopWindowTarget<ProxyAction>,
         window_id: WindowId,
         mut widget: kas::Window,
@@ -139,6 +140,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         let surface = S::new(&mut shared.draw.draw, size, &window)?;
 
         let mut r = Window {
+            _data: std::marker::PhantomData,
             widget,
             window_id,
             ev_state,
@@ -156,7 +158,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
     }
 
     /// Handle an event
-    pub(super) fn handle_event(&mut self, shared: &mut SharedState<S, T>, event: WindowEvent) {
+    pub(super) fn handle_event(&mut self, shared: &mut SharedState<A, S, T>, event: WindowEvent) {
         // Note: resize must be handled here to re-configure self.surface.
         match event {
             WindowEvent::Destroyed => (),
@@ -199,7 +201,10 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
     }
 
     /// Update, after receiving all events
-    pub(super) fn update(&mut self, shared: &mut SharedState<S, T>) -> (Action, Option<Instant>) {
+    pub(super) fn update(
+        &mut self,
+        shared: &mut SharedState<A, S, T>,
+    ) -> (Action, Option<Instant>) {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let action = self.ev_state.update(&mut tkw, self.widget.as_node_mut());
 
@@ -225,7 +230,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
     /// Post-draw updates
     ///
     /// Returns: time of next scheduled resume.
-    pub(super) fn post_draw(&mut self, shared: &mut SharedState<S, T>) -> Option<Instant> {
+    pub(super) fn post_draw(&mut self, shared: &mut SharedState<A, S, T>) -> Option<Instant> {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let has_action = self.ev_state.post_draw(&mut tkw, self.widget.as_node_mut());
 
@@ -237,7 +242,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
     }
 
     /// Handle an action (excludes handling of CLOSE and EXIT)
-    pub(super) fn handle_action(&mut self, shared: &mut SharedState<S, T>, action: Action) {
+    pub(super) fn handle_action(&mut self, shared: &mut SharedState<A, S, T>, action: Action) {
         if action.contains(Action::RECONFIGURE) {
             self.reconfigure(shared);
         }
@@ -266,7 +271,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         }
     }
 
-    pub(super) fn update_timer(&mut self, shared: &mut SharedState<S, T>) -> Option<Instant> {
+    pub(super) fn update_timer(&mut self, shared: &mut SharedState<A, S, T>) -> Option<Instant> {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = self.widget.as_node_mut();
         self.ev_state.with(&mut tkw, |mgr| mgr.update_timer(widget));
@@ -275,7 +280,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
 
     pub(super) fn update_widgets(
         &mut self,
-        shared: &mut SharedState<S, T>,
+        shared: &mut SharedState<A, S, T>,
         id: UpdateId,
         payload: u64,
     ) {
@@ -287,7 +292,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
 
     pub(super) fn add_popup(
         &mut self,
-        shared: &mut SharedState<S, T>,
+        shared: &mut SharedState<A, S, T>,
         id: WindowId,
         popup: kas::Popup,
     ) {
@@ -301,7 +306,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         self.ev_state.send_action(action);
     }
 
-    pub(super) fn send_close(&mut self, shared: &mut SharedState<S, T>, id: WindowId) {
+    pub(super) fn send_close(&mut self, shared: &mut SharedState<A, S, T>, id: WindowId) {
         if id == self.window_id {
             self.ev_state.send_action(Action::CLOSE);
         } else {
@@ -314,8 +319,8 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
 }
 
 // Internal functions
-impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
-    fn reconfigure(&mut self, shared: &mut SharedState<S, T>) {
+impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
+    fn reconfigure(&mut self, shared: &mut SharedState<A, S, T>) {
         let time = Instant::now();
         log::debug!("reconfigure");
 
@@ -328,7 +333,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         log::trace!(target: "kas_perf::wgpu::window", "reconfigure: {}µs", time.elapsed().as_micros());
     }
 
-    fn apply_size(&mut self, shared: &mut SharedState<S, T>, first: bool) {
+    fn apply_size(&mut self, shared: &mut SharedState<A, S, T>, first: bool) {
         let time = Instant::now();
         let rect = Rect::new(Coord::ZERO, self.surface.size());
         log::debug!("apply_size: rect={rect:?}");
@@ -366,7 +371,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
     ///
     /// Returns an error when drawing is aborted and further event handling may
     /// be needed before a redraw.
-    pub(super) fn do_draw(&mut self, shared: &mut SharedState<S, T>) -> Result<(), ()> {
+    pub(super) fn do_draw(&mut self, shared: &mut SharedState<A, S, T>) -> Result<(), ()> {
         let start = Instant::now();
         self.next_avail_frame_time = start + self.ev_state.config().frame_dur();
 
@@ -423,21 +428,21 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
     }
 }
 
-struct TkWindow<'a, S: WindowSurface, T: Theme<S::Shared>>
+struct TkWindow<'a, A: 'static, S: WindowSurface, T: Theme<S::Shared>>
 where
     T::Window: kas::theme::Window,
 {
-    shared: &'a mut SharedState<S, T>,
+    shared: &'a mut SharedState<A, S, T>,
     window: Option<&'a WindowData>,
     theme_window: &'a mut T::Window,
 }
 
-impl<'a, S: WindowSurface, T: Theme<S::Shared>> TkWindow<'a, S, T>
+impl<'a, A: 'static, S: WindowSurface, T: Theme<S::Shared>> TkWindow<'a, A, S, T>
 where
     T::Window: kas::theme::Window,
 {
     fn new(
-        shared: &'a mut SharedState<S, T>,
+        shared: &'a mut SharedState<A, S, T>,
         window: Option<&'a WindowData>,
         theme_window: &'a mut T::Window,
     ) -> Self {
@@ -449,7 +454,7 @@ where
     }
 }
 
-impl<'a, S, T> ShellWindow for TkWindow<'a, S, T>
+impl<'a, A, S, T> ShellWindow for TkWindow<'a, A, S, T>
 where
     S: WindowSurface,
     T: Theme<S::Shared>,

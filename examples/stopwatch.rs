@@ -84,5 +84,7 @@ fn main() -> kas::shell::Result<()> {
     let theme = kas_wgpu::ShadedTheme::new()
         .with_colours("dark")
         .with_font_size(18.0);
-    kas::shell::DefaultShell::new(theme)?.with(window)?.run()
+    kas::shell::DefaultShell::new((), theme)?
+        .with(window)?
+        .run()
 }

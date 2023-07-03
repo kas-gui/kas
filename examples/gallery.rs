@@ -486,7 +486,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add("simple", kas::theme::SimpleTheme::new())
         .add("shaded", kas_wgpu::ShadedTheme::new())
         .build();
-    let mut shell = kas::shell::DefaultShell::new(theme)?;
+    let mut shell = kas::shell::DefaultShell::new((), theme)?;
 
     // TODO: use as logo of tab
     // let img_gallery = Svg::new(include_bytes!("../res/gallery-line.svg"));

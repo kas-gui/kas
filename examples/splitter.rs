@@ -59,5 +59,7 @@ fn main() -> kas::shell::Result<()> {
     let window = Window::new(ui, "Slitter panes");
 
     let theme = kas_wgpu::ShadedTheme::new();
-    kas::shell::DefaultShell::new(theme)?.with(window)?.run()
+    kas::shell::DefaultShell::new((), theme)?
+        .with(window)?
+        .run()
 }

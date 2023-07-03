@@ -110,7 +110,9 @@ fn main() -> kas::shell::Result<()> {
 
     let theme = kas_wgpu::ShadedTheme::new().with_font_size(16.0);
     let window = Window::new(CalcUI::default(), "Calculator");
-    kas::shell::DefaultShell::new(theme)?.with(window)?.run()
+    kas::shell::DefaultShell::new((), theme)?
+        .with(window)?
+        .run()
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

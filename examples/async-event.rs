@@ -21,7 +21,7 @@ use kas::theme::TextClass;
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
     let theme = kas::theme::FlatTheme::new();
-    let shell = kas::shell::DefaultShell::new(theme)?;
+    let shell = kas::shell::DefaultShell::new((), theme)?;
 
     // We construct a proxy from the shell to enable cross-thread communication.
     let proxy = shell.create_proxy();

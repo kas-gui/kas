@@ -19,27 +19,27 @@ use kas::theme::Theme;
 use kas::{Action, WindowId};
 
 /// Event-loop data structure (i.e. all run-time state)
-pub(super) struct Loop<S: WindowSurface, T: Theme<S::Shared>>
+pub(super) struct Loop<A: 'static, S: WindowSurface, T: Theme<S::Shared>>
 where
     T::Window: kas::theme::Window,
 {
     /// Window states
-    windows: HashMap<ww::WindowId, Window<S, T>>,
+    windows: HashMap<ww::WindowId, Window<A, S, T>>,
     /// Translates our WindowId to winit's
     id_map: HashMap<WindowId, ww::WindowId>,
     /// Shared data passed from Toolkit
-    shared: SharedState<S, T>,
+    shared: SharedState<A, S, T>,
     /// Timer resumes: (time, window index)
     resumes: Vec<(Instant, ww::WindowId)>,
     /// Frame rate counter
     frame_count: (Instant, u32),
 }
 
-impl<S: WindowSurface, T: Theme<S::Shared>> Loop<S, T>
+impl<A, S: WindowSurface, T: Theme<S::Shared>> Loop<A, S, T>
 where
     T::Window: kas::theme::Window,
 {
-    pub(super) fn new(mut windows: Vec<Window<S, T>>, shared: SharedState<S, T>) -> Self {
+    pub(super) fn new(mut windows: Vec<Window<A, S, T>>, shared: SharedState<A, S, T>) -> Self {
         let id_map = windows
             .iter()
             .map(|w| (w.window_id, w.window.id()))

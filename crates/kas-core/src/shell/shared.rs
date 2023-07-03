@@ -20,7 +20,8 @@ use kas::{draw, WindowId};
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
 /// State shared between windows
-pub struct SharedState<S: WindowSurface, T> {
+pub struct SharedState<Data: 'static, S: WindowSurface, T> {
+    pub(super) data: Data,
     pub(super) platform: Platform,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Clipboard>,
@@ -35,12 +36,13 @@ pub struct SharedState<S: WindowSurface, T> {
     options: Options,
 }
 
-impl<S: WindowSurface, T: Theme<S::Shared>> SharedState<S, T>
+impl<Data: 'static, S: WindowSurface, T: Theme<S::Shared>> SharedState<Data, S, T>
 where
     T::Window: kas::theme::Window,
 {
     /// Construct
     pub(super) fn new(
+        data: Data,
         pw: super::PlatformWrapper,
         draw_shared: S::Shared,
         mut theme: T,
@@ -61,6 +63,7 @@ where
         };
 
         Ok(SharedState {
+            data,
             platform,
             #[cfg(feature = "clipboard")]
             clipboard,
