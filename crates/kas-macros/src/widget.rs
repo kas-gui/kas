@@ -479,11 +479,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 #fns_as_node
 
                 #[inline]
-                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Widget> {
+                fn get_child(&self, index: usize) -> Option<::kas::Node<'_>> {
                     self.#inner.get_child(index)
                 }
                 #[inline]
-                fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::Widget> {
+                fn get_child_mut(&mut self, index: usize) -> Option<::kas::NodeMut<'_>> {
                     self.#inner.get_child_mut(index)
                 }
 
@@ -840,23 +840,25 @@ pub fn impl_widget(
         let mut get_mut_rules = quote! {};
         for (i, child) in children.iter().enumerate() {
             let ident = child;
-            get_rules.append_all(quote! { #i => Some(&self.#ident), });
-            get_mut_rules.append_all(quote! { #i => Some(&mut self.#ident), });
+            get_rules.append_all(quote! { #i => Some(self.#ident.as_node()), });
+            get_mut_rules.append_all(quote! { #i => Some(self.#ident.as_node_mut()), });
         }
         for (i, path) in layout_children.iter().enumerate() {
             let index = count + i;
-            get_rules.append_all(quote! { #index => Some(&#core_path.#path), });
-            get_mut_rules.append_all(quote! { #index => Some(&mut #core_path.#path), });
+            get_rules.append_all(quote! { #index => Some(#core_path.#path.as_node()), });
+            get_mut_rules.append_all(quote! { #index => Some(#core_path.#path.as_node_mut()), });
         }
 
         quote! {
-            fn get_child(&self, _index: usize) -> Option<&dyn ::kas::Widget> {
+            fn get_child(&self, _index: usize) -> Option<::kas::Node<'_>> {
+                use ::kas::WidgetCore;
                 match _index {
                     #get_rules
                     _ => None
                 }
             }
-            fn get_child_mut(&mut self, _index: usize) -> Option<&mut dyn ::kas::Widget> {
+            fn get_child_mut(&mut self, _index: usize) -> Option<::kas::NodeMut<'_>> {
+                use ::kas::WidgetCore;
                 match _index {
                     #get_mut_rules
                     _ => None
@@ -884,10 +886,12 @@ pub fn impl_widget(
 
 fn widget_as_node_methods() -> Toks {
     quote! {
-        #[inline]
-        fn as_node(&self) -> &dyn ::kas::Widget { self }
-        #[inline]
-        fn as_node_mut(&mut self) -> &mut dyn ::kas::Widget { self }
+                #[inline]
+                fn as_node(&self) -> ::kas::Node<'_> { ::kas::Node::new(self) }
+                #[inline]
+                fn as_node_mut(&mut self) -> ::kas::NodeMut<'_> {
+                    ::kas::NodeMut::new(self)
+                }
     }
 }
 

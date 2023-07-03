@@ -266,11 +266,11 @@ impl_scope! {
 
     impl kas::Widget for Self {
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
+        fn get_child(&self, index: usize) -> Option<Node> {
             self.list.get(index).map(|w| w.as_node())
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
+        fn get_child_mut(&mut self, index: usize) -> Option<NodeMut> {
             self.list.get_mut(index).map(|w| w.as_node_mut())
         }
     }

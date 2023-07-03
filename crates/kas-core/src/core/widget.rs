@@ -5,6 +5,7 @@
 
 //! Widget traits
 
+use super::{Node, NodeMut};
 use crate::event::{ConfigMgr, Event, EventMgr, Response, Scroll};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{AxisInfo, SizeRules};
@@ -555,22 +556,19 @@ pub enum NavAdvance {
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait Widget: Layout {
     /// Erase type
-    fn as_node(&self) -> &dyn Widget;
+    fn as_node(&self) -> Node<'_>;
     /// Erase type
-    fn as_node_mut(&mut self) -> &mut dyn Widget;
+    fn as_node_mut(&mut self) -> NodeMut<'_>;
 
     /// Get a reference to a child widget by index, if any
     ///
-    /// Required: `index < self.len()`.
-    fn get_child(&self, index: usize) -> Option<&dyn Widget>;
+    /// Required: `index < self.num_children()`.
+    fn get_child(&self, index: usize) -> Option<Node<'_>>;
 
     /// Mutable variant of get
     ///
-    /// Warning: directly adjusting a widget without requiring reconfigure or
-    /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
-    /// be requested. This can be done via [`EventState::send_action`].
-    /// This method may be removed in the future.
-    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget>;
+    /// Required: `index < self.num_children()`.
+    fn get_child_mut(&mut self, index: usize) -> Option<NodeMut<'_>>;
 
     /// Internal method: configure recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -657,26 +655,13 @@ pub trait WidgetExt: Widget {
     }
 
     /// Find the descendant with this `id`, if any
-    fn find_node(&self, id: &WidgetId) -> Option<&dyn Widget> {
-        if let Some(index) = self.find_child_index(id) {
-            self.get_child(index).and_then(|child| child.find_node(id))
-        } else if self.eq_id(id) {
-            return Some(self.as_node());
-        } else {
-            None
-        }
+    fn find_node(&self, id: &WidgetId) -> Option<Node<'_>> {
+        self.as_node().find_node(id)
     }
 
     /// Find the descendant with this `id`, if any
-    fn find_node_mut(&mut self, id: &WidgetId) -> Option<&mut dyn Widget> {
-        if let Some(index) = self.find_child_index(id) {
-            self.get_child_mut(index)
-                .and_then(|child| child.find_node_mut(id))
-        } else if self.eq_id(id) {
-            return Some(self.as_node_mut());
-        } else {
-            None
-        }
+    fn find_node_mut(&mut self, id: &WidgetId) -> Option<NodeMut<'_>> {
+        self.as_node_mut().find_node(id)
     }
 }
 impl<W: Widget + ?Sized> WidgetExt for W {}

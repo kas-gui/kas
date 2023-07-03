@@ -29,4 +29,4 @@ pub use crate::{autoimpl, impl_default, impl_scope, singleton, widget, widget_in
 #[doc(no_inline)]
 pub use crate::{Events, Layout, Widget, WidgetCore, WidgetExt, Window};
 #[doc(no_inline)]
-pub use crate::{HasScrollBars, ScrollBarMode, Scrollable};
+pub use crate::{HasScrollBars, Node, NodeMut, ScrollBarMode, Scrollable};

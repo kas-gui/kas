@@ -16,7 +16,7 @@ pub fn _configure<W: Widget + Events>(widget: &mut W, cx: &mut ConfigMgr, id: Wi
     for index in 0..widget.num_children() {
         let id = widget.make_child_id(index);
         if id.is_valid() {
-            if let Some(widget) = widget.get_child_mut(index) {
+            if let Some(mut widget) = widget.get_child_mut(index) {
                 widget._configure(cx, id);
             }
         }
@@ -35,7 +35,7 @@ pub fn _broadcast<W: Widget + Events>(
     widget.handle_event(cx, event.clone());
     *count += 1;
     for index in 0..widget.num_children() {
-        if let Some(w) = widget.get_child_mut(index) {
+        if let Some(mut w) = widget.get_child_mut(index) {
             w._broadcast(cx, count, event.clone());
         }
     }
@@ -62,7 +62,7 @@ pub fn _send<W: Widget + Events>(
         cx.assert_post_steal_unused();
         if let Some(index) = widget.find_child_index(&id) {
             let translation = widget.translation();
-            if let Some(w) = widget.get_child_mut(index) {
+            if let Some(mut w) = widget.get_child_mut(index) {
                 response = w._send(cx, id, disabled, event.clone() + translation);
                 if let Some(scroll) = cx.post_send(index) {
                     widget.handle_scroll(cx, scroll);
@@ -91,7 +91,7 @@ pub fn _send<W: Widget + Events>(
 /// Generic implementation of [`Widget::_replay`]
 pub fn _replay<W: Widget + Events>(widget: &mut W, cx: &mut EventMgr, id: WidgetId, msg: Erased) {
     if let Some(index) = widget.find_child_index(&id) {
-        if let Some(w) = widget.get_child_mut(index) {
+        if let Some(mut w) = widget.get_child_mut(index) {
             w._replay(cx, id, msg);
             if let Some(scroll) = cx.post_send(index) {
                 widget.handle_scroll(cx, scroll);
@@ -135,7 +135,7 @@ pub fn _nav_next<W: Widget + Events>(
     if let Some(index) = child {
         if let Some(id) = widget
             .get_child_mut(index)
-            .and_then(|w| w._nav_next(cx, focus, advance))
+            .and_then(|mut w| w._nav_next(cx, focus, advance))
         {
             return Some(id);
         }
@@ -162,7 +162,7 @@ pub fn _nav_next<W: Widget + Events>(
     while let Some(index) = widget.nav_next(rev, child) {
         if let Some(id) = widget
             .get_child_mut(index)
-            .and_then(|w| w._nav_next(cx, focus, advance))
+            .and_then(|mut w| w._nav_next(cx, focus, advance))
         {
             return Some(id);
         }

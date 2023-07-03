@@ -334,17 +334,16 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         log::debug!("apply_size: rect={rect:?}");
 
         let solve_cache = &mut self.solve_cache;
-        let widget = &mut self.widget;
         let mut mgr = ConfigMgr::new(
             self.theme_window.size(),
             &mut shared.draw,
             &mut self.ev_state,
         );
-        solve_cache.apply_rect(widget.as_node_mut(), &mut mgr, rect, true);
+        solve_cache.apply_rect(self.widget.as_node_mut(), &mut mgr, rect, true);
         if first {
-            solve_cache.print_widget_heirarchy(widget.as_node_mut());
+            solve_cache.print_widget_heirarchy(self.widget.as_node());
         }
-        widget.resize_popups(&mut mgr);
+        self.widget.resize_popups(&mut mgr);
 
         let (restrict_min, restrict_max) = self.widget.restrictions();
         if restrict_min {

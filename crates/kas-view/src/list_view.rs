@@ -412,7 +412,7 @@ impl_scope! {
                     // Reset widgets to ensure input state such as cursor
                     // position does not bleed over to next data entry
                     w.widget = self.driver.make();
-                    mgr.configure(&mut w.widget, id);
+                    mgr.configure(w.widget.as_node_mut(), id);
 
                     if let Some(item) = self.data.borrow(&key) {
                         *mgr |= self.driver.set(&mut w.widget, &key, item.borrow());
@@ -793,13 +793,13 @@ impl_scope! {
     // Direct implementation of this trait outside of Kas code is not supported!
     impl Widget for Self {
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
+        fn get_child(&self, index: usize) -> Option<Node<'_>> {
             self.widgets.get(index).and_then(|w| {
                 w.key.is_some().then(|| w.widget.as_node())
             })
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
+        fn get_child_mut(&mut self, index: usize) -> Option<NodeMut<'_>> {
             self.widgets.get_mut(index).and_then(|w| {
                 w.key.is_some().then(|| w.widget.as_node_mut())
             })
@@ -845,7 +845,7 @@ impl_scope! {
             if let Some(index) = child {
                 if let Some(id) = self
                     .get_child_mut(index)
-                    .and_then(|w| w._nav_next(cx, focus, advance))
+                    .and_then(|mut w| w._nav_next(cx, focus, advance))
                 {
                     return Some(id);
                 }
@@ -882,7 +882,7 @@ impl_scope! {
                 let index = data % usize::conv(self.cur_len);
                 if let Some(id) = self
                     .get_child_mut(index)
-                    .and_then(|w| w._nav_next(cx, focus, advance))
+                    .and_then(|mut w| w._nav_next(cx, focus, advance))
                 {
                     return Some(id);
                 }

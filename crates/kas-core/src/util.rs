@@ -6,7 +6,7 @@
 //! Utilities
 
 use crate::geom::Coord;
-use crate::{Widget, WidgetExt, WidgetId};
+use crate::{Node, WidgetId};
 use std::fmt;
 
 /// Helper to display widget identification (e.g. `MyWidget#01`)
@@ -23,11 +23,11 @@ impl<'a> fmt::Display for IdentifyWidget<'a> {
 ///
 /// Note: output starts with a new line.
 pub struct WidgetHierarchy<'a> {
-    widget: &'a dyn Widget,
+    widget: Node<'a>,
     indent: usize,
 }
 impl<'a> WidgetHierarchy<'a> {
-    pub fn new(widget: &'a dyn Widget) -> Self {
+    pub fn new(widget: Node<'a>) -> Self {
         WidgetHierarchy { widget, indent: 0 }
     }
 }

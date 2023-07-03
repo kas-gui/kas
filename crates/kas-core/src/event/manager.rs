@@ -23,7 +23,7 @@ use crate::cast::Cast;
 use crate::geom::{Coord, Offset};
 use crate::shell::ShellWindow;
 use crate::util::WidgetHierarchy;
-use crate::{Action, Erased, NavAdvance, Widget, WidgetExt, WidgetId, WindowId};
+use crate::{Action, Erased, NavAdvance, NodeMut, Widget, WidgetId, WindowId};
 
 mod config_mgr;
 mod mgr_pub;
@@ -70,7 +70,7 @@ struct MouseGrab {
 }
 
 impl<'a> EventMgr<'a> {
-    fn flush_mouse_grab_motion(&mut self, widget: &mut dyn Widget) {
+    fn flush_mouse_grab_motion(&mut self, widget: NodeMut<'_>) {
         if let Some(grab) = self.mouse_grab.as_mut() {
             let delta = grab.delta;
             if delta == Offset::ZERO {
@@ -450,7 +450,7 @@ impl<'a> Drop for EventMgr<'a> {
 
 /// Internal methods
 impl<'a> EventMgr<'a> {
-    fn start_key_event(&mut self, widget: &mut dyn Widget, vkey: VirtualKeyCode, scancode: u32) {
+    fn start_key_event(&mut self, mut widget: NodeMut<'_>, vkey: VirtualKeyCode, scancode: u32) {
         log::trace!(
             "start_key_event: widget={}, vkey={vkey:?}, scancode={scancode}",
             widget.id()
@@ -464,7 +464,7 @@ impl<'a> EventMgr<'a> {
             let mut targets = vec![];
             let mut send = |_self: &mut Self, id: WidgetId, cmd| -> bool {
                 if !targets.contains(&id) {
-                    let used = _self.send_event(widget, id.clone(), Event::Command(cmd));
+                    let used = _self.send_event(widget.re(), id.clone(), Event::Command(cmd));
                     if used {
                         _self.add_key_depress(scancode, id.clone());
                     }
@@ -505,12 +505,12 @@ impl<'a> EventMgr<'a> {
 
             if matches!(cmd, Command::Debug) {
                 if let Some(ref id) = self.hover {
-                    if let Some(w) = widget.find_node(id) {
+                    if let Some(w) = widget.as_node().find_node(id) {
                         let hier = WidgetHierarchy::new(w);
                         log::debug!("Widget heirarchy (from mouse): {hier}");
                     }
                 } else {
-                    let hier = WidgetHierarchy::new(widget);
+                    let hier = WidgetHierarchy::new(widget.as_node());
                     log::debug!("Widget heirarchy (whole window): {hier}");
                 }
                 return;
@@ -557,7 +557,7 @@ impl<'a> EventMgr<'a> {
         } else if self.config.nav_focus && vkey == VK::Tab {
             self.clear_char_focus();
             let shift = self.modifiers.shift();
-            self.next_nav_focus_impl(widget, None, shift, true);
+            self.next_nav_focus_impl(widget.re(), None, shift, true);
         } else if vkey == VK::Escape {
             if let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
                 self.close_window(id, true);
@@ -607,7 +607,7 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Replay a message as if it was pushed by `id`
-    fn replay(&mut self, widget: &mut dyn Widget, id: WidgetId, msg: Erased) {
+    fn replay(&mut self, mut widget: NodeMut<'_>, id: WidgetId, msg: Erased) {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         debug_assert!(self.messages.is_empty());
@@ -621,7 +621,7 @@ impl<'a> EventMgr<'a> {
 
     // Traverse widget tree by recursive call, broadcasting
     #[inline]
-    fn send_update(&mut self, widget: &mut dyn Widget, id: UpdateId, payload: u64) -> usize {
+    fn send_update(&mut self, mut widget: NodeMut<'_>, id: UpdateId, payload: u64) -> usize {
         let mut count = 0;
         let event = Event::Update { id, payload };
         widget._broadcast(self, &mut count, event);
@@ -635,7 +635,7 @@ impl<'a> EventMgr<'a> {
 
     // Wrapper around Self::send; returns true when event is used
     #[inline]
-    fn send_event(&mut self, widget: &mut dyn Widget, id: WidgetId, event: Event) -> bool {
+    fn send_event(&mut self, widget: NodeMut<'_>, id: WidgetId, event: Event) -> bool {
         let used = self.send_event_impl(widget, id, event);
         self.drop_messages();
         self.last_child = None;
@@ -644,7 +644,7 @@ impl<'a> EventMgr<'a> {
     }
 
     // Send an event; possibly leave messages on the stack
-    fn send_event_impl(&mut self, widget: &mut dyn Widget, mut id: WidgetId, event: Event) -> bool {
+    fn send_event_impl(&mut self, mut widget: NodeMut<'_>, mut id: WidgetId, event: Event) -> bool {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         debug_assert!(self.messages.is_empty());
@@ -670,7 +670,7 @@ impl<'a> EventMgr<'a> {
     // Returns true if event is used
     fn send_popup_first(
         &mut self,
-        widget: &mut dyn Widget,
+        mut widget: NodeMut<'_>,
         id: Option<WidgetId>,
         event: Event,
     ) -> bool {
@@ -680,7 +680,7 @@ impl<'a> EventMgr<'a> {
             .map(|(wid, p, _)| (*wid, p.parent.clone()))
         {
             log::trace!("send_popup_first: parent={parent}: {event:?}");
-            if self.send_event(widget, parent, event.clone()) {
+            if self.send_event(widget.re(), parent, event.clone()) {
                 return true;
             }
             self.close_window(wid, false);
@@ -694,7 +694,7 @@ impl<'a> EventMgr<'a> {
     /// Advance the keyboard navigation focus
     pub fn next_nav_focus_impl(
         &mut self,
-        mut widget: &mut dyn Widget,
+        mut widget: NodeMut,
         target: Option<WidgetId>,
         reverse: bool,
         key_focus: bool,
@@ -706,8 +706,8 @@ impl<'a> EventMgr<'a> {
         if let Some(id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
             if id.is_ancestor_of(widget.id_ref()) {
                 // do nothing
-            } else if let Some(w) = widget.find_node_mut(&id) {
-                widget = w;
+            } else if let Some(w) = widget.find_node(&id) {
+                return self.next_nav_focus_impl(w, target, reverse, key_focus);
             } else {
                 log::warn!(
                     target: "kas_core::event::config_mgr",

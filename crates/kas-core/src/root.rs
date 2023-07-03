@@ -11,7 +11,7 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, FrameStyle, SizeMgr};
 use crate::title_bar::TitleBar;
-use crate::{Action, Events, Icon, Layout, Widget, WidgetExt, WidgetId};
+use crate::{Action, Events, Icon, Layout, Node, Widget, WidgetExt, WidgetId};
 use kas_macros::impl_scope;
 use smallvec::SmallVec;
 use std::num::NonZeroU32;
@@ -134,7 +134,7 @@ impl_scope! {
                 if let Some(id) = self
                     .w
                     .find_node_mut(&popup.id)
-                    .and_then(|w| w.find_id(coord + *translation))
+                    .and_then(|mut w| w.find_id(coord + *translation))
                 {
                     return Some(id);
                 }
@@ -153,10 +153,10 @@ impl_scope! {
             }
             draw.recurse(&mut self.w);
             for (_, popup, translation) in &self.popups {
-                if let Some(widget) = self.w.find_node_mut(&popup.id) {
+                if let Some(mut widget) = self.w.find_node_mut(&popup.id) {
                     let clip_rect = widget.rect() - *translation;
-                    draw.with_overlay(clip_rect, *translation, |mut draw| {
-                        draw.recurse(widget);
+                    draw.with_overlay(clip_rect, *translation, |draw| {
+                        widget._draw(draw);
                     });
                 }
             }
@@ -335,31 +335,27 @@ impl Window {
 
 // Search for a widget by `id`. On success, return that widget's [`Rect`] and
 // the translation of its children.
-fn find_rect(mut widget: &dyn Widget, id: WidgetId) -> Option<(Rect, Offset)> {
-    let mut translation = Offset::ZERO;
-    loop {
-        if let Some(i) = widget.find_child_index(&id) {
-            if let Some(w) = widget.get_child(i) {
-                translation += widget.translation();
-                widget = w;
-                continue;
-            }
+fn find_rect(widget: Node<'_>, id: WidgetId, mut translation: Offset) -> Option<(Rect, Offset)> {
+    if let Some(i) = widget.find_child_index(&id) {
+        if let Some(w) = widget.re().get_child(i) {
+            translation += widget.translation();
+            return find_rect(w, id, translation);
+        }
+    }
+
+    if widget.eq_id(&id) {
+        if widget.translation() != Offset::ZERO {
+            // Unvalidated: does this cause issues with the parent's event handlers?
+            log::warn!(
+                "Parent of pop-up {} has non-zero translation",
+                widget.identify()
+            );
         }
 
-        return if widget.eq_id(&id) {
-            if widget.translation() != Offset::ZERO {
-                // Unvalidated: does this cause issues with the parent's event handlers?
-                log::warn!(
-                    "Parent of pop-up {} has non-zero translation",
-                    widget.identify()
-                );
-            }
-
-            let rect = widget.rect();
-            Some((rect, translation))
-        } else {
-            None
-        };
+        let rect = widget.rect();
+        Some((rect, translation))
+    } else {
+        None
     }
 }
 
@@ -370,11 +366,11 @@ impl Window {
         let r = self.core.rect;
         let (_, ref mut popup, ref mut translation) = self.popups[index];
 
-        let (c, t) = find_rect(&self.w, popup.parent.clone()).unwrap();
+        let (c, t) = find_rect(self.w.as_node(), popup.parent.clone(), Offset::ZERO).unwrap();
         *translation = t;
         let r = r + t; // work in translated coordinate space
-        let widget = self.w.find_node_mut(&popup.id).unwrap();
-        let mut cache = layout::SolveCache::find_constraints(widget, mgr.size_mgr());
+        let mut widget = self.w.find_node_mut(&popup.id).unwrap();
+        let mut cache = layout::SolveCache::find_constraints(widget.re(), mgr.size_mgr());
         let ideal = cache.ideal(false);
         let m = cache.margins();
 
@@ -414,7 +410,7 @@ impl Window {
             Rect::new(Coord(x, y), Size::new(w, h))
         };
 
-        cache.apply_rect(widget, mgr, rect, false);
-        cache.print_widget_heirarchy(widget);
+        cache.apply_rect(widget.re(), mgr, rect, false);
+        cache.print_widget_heirarchy(widget.as_node());
     }
 }
