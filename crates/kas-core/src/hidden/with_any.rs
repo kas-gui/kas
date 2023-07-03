@@ -3,13 +3,4 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Adapter widgets (wrappers)
-
-mod adapt_widget;
-mod reserve;
-mod with_label;
-
-pub use adapt_widget::*;
-#[doc(inline)] pub use kas::hidden::WithAny;
-pub use reserve::{FnSizeRules, Reserve, ReserveP};
-pub use with_label::WithLabel;
+//! Input data: map any to `()`
