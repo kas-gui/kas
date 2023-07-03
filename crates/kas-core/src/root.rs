@@ -69,7 +69,7 @@ impl_scope! {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     #[widget]
-    pub struct Window {
+    pub struct Window<Data: 'static> {
         core: widget_core!(),
         icon: Option<Icon>,
         decorations: Decorations,
@@ -79,7 +79,7 @@ impl_scope! {
         #[widget]
         title_bar: TitleBar,
         #[widget]
-        w: Box<dyn Widget<Data = ()>>,
+        w: Box<dyn Widget<Data = Data>>,
         bar_h: i32,
         dec_offset: Offset,
         dec_size: Size,
@@ -182,14 +182,14 @@ impl_scope! {
     }
 }
 
-impl Window {
+impl<Data: 'static> Window<Data> {
     /// Construct a window with a `W: Widget` and a title
-    pub fn new(ui: impl Widget<Data = ()> + 'static, title: impl ToString) -> Self {
+    pub fn new(ui: impl Widget<Data = Data> + 'static, title: impl ToString) -> Self {
         Self::new_boxed(Box::new(ui), title)
     }
 
     /// Construct a window from a boxed `ui` widget and a `title`
-    pub fn new_boxed(ui: Box<dyn Widget<Data = ()>>, title: impl ToString) -> Self {
+    pub fn new_boxed(ui: Box<dyn Widget<Data = Data>>, title: impl ToString) -> Self {
         Window {
             core: Default::default(),
             icon: None,
@@ -359,7 +359,7 @@ fn find_rect(widget: Node<'_>, id: WidgetId, mut translation: Offset) -> Option<
     }
 }
 
-impl Window {
+impl<Data: 'static> Window<Data> {
     fn resize_popup(&mut self, mgr: &mut ConfigMgr, index: usize) {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect

@@ -16,6 +16,7 @@ use kas::theme::{Theme, Window as _};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use kas::util::warn_about_error;
 use kas::{Action, Layout, Widget, WidgetExt, WindowId};
+use std::any::TypeId;
 use std::mem::take;
 use std::time::Instant;
 use winit::event::WindowEvent;
@@ -51,7 +52,7 @@ impl WindowData {
 /// Per-window data
 pub struct Window<A: 'static, S: WindowSurface, T: Theme<S::Shared>> {
     _data: std::marker::PhantomData<A>,
-    pub(super) widget: kas::Window,
+    pub(super) widget: kas::Window<A>,
     pub(super) window_id: WindowId,
     ev_state: EventState,
     solve_cache: SolveCache,
@@ -69,7 +70,7 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         shared: &mut SharedState<A, S, T>,
         elwt: &EventLoopWindowTarget<ProxyAction>,
         window_id: WindowId,
-        mut widget: kas::Window,
+        mut widget: kas::Window<A>,
     ) -> super::Result<Self> {
         let time = Instant::now();
 
@@ -470,7 +471,14 @@ where
         })
     }
 
-    fn add_window(&mut self, widget: kas::Window) -> WindowId {
+    unsafe fn add_window(&mut self, window: kas::Window<()>, data_type_id: TypeId) -> WindowId {
+        // Safety: the window should be `Window<A>`. We cast to that.
+        if data_type_id != TypeId::of::<A>() {
+            // If this fails it is not safe to add the window (though we could just return).
+            panic!("add_window: window has wrong Data type!");
+        }
+        let window: kas::Window<A> = std::mem::transmute(window);
+
         // By far the simplest way to implement this is to let our call
         // anscestor, event::Loop::handle, do the work.
         //
@@ -480,7 +488,7 @@ where
         let id = self.shared.next_window_id();
         self.shared
             .pending
-            .push(PendingAction::AddWindow(id, widget));
+            .push(PendingAction::AddWindow(id, window));
         id
     }
 

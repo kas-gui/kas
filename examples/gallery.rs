@@ -105,7 +105,7 @@ fn widgets() -> Box<dyn SetDisabled> {
                 if let Some(MsgEdit) = mgr.try_pop() {
                     let text = self.label.data().clone();
                     let ed = dialog::TextEdit::new(true, text);
-                    mgr.add_window(ed.into_window("Edit text"));
+                    mgr.add_window::<()>(ed.into_window("Edit text"));
                 }
             }
         }

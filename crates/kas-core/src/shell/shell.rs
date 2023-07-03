@@ -159,7 +159,7 @@ where
 
     /// Assume ownership of and display a window
     #[inline]
-    pub fn add(&mut self, window: Window) -> Result<WindowId> {
+    pub fn add(&mut self, window: Window<Data>) -> Result<WindowId> {
         let id = self.shared.next_window_id();
         let win = super::Window::new(&mut self.shared, &self.el, id, window)?;
         self.windows.push(win);
@@ -168,7 +168,7 @@ where
 
     /// Assume ownership of and display a window, inline
     #[inline]
-    pub fn with(mut self, window: Window) -> Result<Self> {
+    pub fn with(mut self, window: Window<Data>) -> Result<Self> {
         let _ = self.add(window)?;
         Ok(self)
     }

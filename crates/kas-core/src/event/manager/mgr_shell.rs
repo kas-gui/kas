@@ -331,7 +331,11 @@ impl<'a> EventMgr<'a> {
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
     #[cfg(feature = "winit")]
     #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
-    pub(crate) fn handle_winit(&mut self, window: &mut Window, event: winit::event::WindowEvent) {
+    pub(crate) fn handle_winit<A>(
+        &mut self,
+        window: &mut Window<A>,
+        event: winit::event::WindowEvent,
+    ) {
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
         let drag_anywhere = window.drag_anywhere();
         let mut widget = window.as_node_mut();

@@ -28,7 +28,7 @@ pub struct SharedState<Data: 'static, S: WindowSurface, T> {
     pub(super) draw: draw::SharedState<S::Shared>,
     pub(super) theme: T,
     pub(super) config: SharedRc<kas::event::Config>,
-    pub(super) pending: Vec<PendingAction>,
+    pub(super) pending: Vec<PendingAction<Data>>,
     /// Estimated scale factor (from last window constructed or available screens)
     pub(super) scale_factor: f64,
     pub(super) waker: Waker,

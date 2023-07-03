@@ -26,9 +26,9 @@ pub extern crate raw_window_handle;
 // around (also applies when constructing a shell::Window).
 #[allow(clippy::large_enum_variant)]
 #[cfg(feature = "winit")]
-enum PendingAction {
+enum PendingAction<A: 'static> {
     AddPopup(winit::window::WindowId, kas::WindowId, kas::Popup),
-    AddWindow(kas::WindowId, kas::Window),
+    AddWindow(kas::WindowId, kas::Window<A>),
     CloseWindow(kas::WindowId),
     Update(kas::event::UpdateId, u64),
     Action(kas::Action),
