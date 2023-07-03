@@ -555,6 +555,14 @@ pub enum NavAdvance {
 /// ```
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait Widget: Layout {
+    /// Input data type
+    ///
+    /// Widget expects data of this type to be provided by reference when
+    /// calling any event-handling operation on this widget.
+    ///
+    /// TODO: temporarily this defaults to `()`.
+    type Data: 'static;
+
     /// Erase type
     fn as_node(&self) -> Node<'_>;
     /// Erase type

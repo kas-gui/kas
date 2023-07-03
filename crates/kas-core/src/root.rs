@@ -79,7 +79,7 @@ impl_scope! {
         #[widget]
         title_bar: TitleBar,
         #[widget]
-        w: Box<dyn Widget>,
+        w: Box<dyn Widget<Data = ()>>,
         bar_h: i32,
         dec_offset: Offset,
         dec_size: Size,
@@ -184,12 +184,12 @@ impl_scope! {
 
 impl Window {
     /// Construct a window with a `W: Widget` and a title
-    pub fn new(ui: impl Widget + 'static, title: impl ToString) -> Self {
+    pub fn new(ui: impl Widget<Data = ()> + 'static, title: impl ToString) -> Self {
         Self::new_boxed(Box::new(ui), title)
     }
 
-    /// Construct a window with a `Box<dyn Widget>` and a `title`
-    pub fn new_boxed(ui: Box<dyn Widget>, title: impl ToString) -> Self {
+    /// Construct a window from a boxed `ui` widget and a `title`
+    pub fn new_boxed(ui: Box<dyn Widget<Data = ()>>, title: impl ToString) -> Self {
         Window {
             core: Default::default(),
             icon: None,

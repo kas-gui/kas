@@ -29,38 +29,21 @@ pub type ColumnSplitter<W> = Splitter<Down, W>;
 /// This is parameterised over handler message type.
 ///
 /// See documentation of [`Splitter`] type.
-pub type BoxRowSplitter = BoxSplitter<Right>;
+pub type BoxRowSplitter<Data> = BoxSplitter<Right, Data>;
 
 /// A column of boxed widgets
 ///
 /// This is parameterised over handler message type.
 ///
 /// See documentation of [`Splitter`] type.
-pub type BoxColumnSplitter = BoxSplitter<Down>;
+pub type BoxColumnSplitter<Data> = BoxSplitter<Down, Data>;
 
 /// A row/column of boxed widgets
 ///
 /// This is parameterised over directionality.
 ///
 /// See documentation of [`Splitter`] type.
-pub type BoxSplitter<D> = Splitter<D, Box<dyn Widget>>;
-
-/// A row of widget references
-///
-/// See documentation of [`Splitter`] type.
-pub type RefRowSplitter<'a> = RefSplitter<'a, Right>;
-
-/// A column of widget references
-///
-/// See documentation of [`Splitter`] type.
-pub type RefColumnSplitter<'a> = RefSplitter<'a, Down>;
-
-/// A row/column of widget references
-///
-/// This is parameterised over directionality.
-///
-/// See documentation of [`Splitter`] type.
-pub type RefSplitter<'a, D> = Splitter<D, &'a mut dyn Widget>;
+pub type BoxSplitter<D, Data> = Splitter<D, Box<dyn Widget<Data = Data>>>;
 
 impl_scope! {
     /// A resizable row/column widget

@@ -52,7 +52,7 @@ pub struct SubItems<'a> {
 /// which should be focussed, and that this widget has
 /// [`Events::navigable`] return true.
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
-pub trait Menu: Widget {
+pub trait Menu: Widget<Data = ()> {
     /// Access row items for aligned layout
     ///
     /// If this returns sub-items, then these items are aligned in the menu view. This involves

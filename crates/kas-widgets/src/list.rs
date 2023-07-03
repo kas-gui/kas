@@ -23,19 +23,19 @@ pub type Column<W> = List<Down, W>;
 /// A row of boxed widgets
 ///
 /// See documentation of [`List`] type.
-pub type BoxRow = BoxList<Right>;
+pub type BoxRow<Data> = BoxList<Right, Data>;
 
 /// A column of boxed widgets
 ///
 /// See documentation of [`List`] type.
-pub type BoxColumn = BoxList<Down>;
+pub type BoxColumn<Data> = BoxList<Down, Data>;
 
 /// A row/column of boxed widgets
 ///
 /// This is parameterised over directionality.
 ///
 /// See documentation of [`List`] type.
-pub type BoxList<D> = List<D, Box<dyn Widget>>;
+pub type BoxList<D, Data> = List<D, Box<dyn Widget<Data = Data>>>;
 
 impl_scope! {
     /// A generic row/column widget

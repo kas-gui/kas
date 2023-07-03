@@ -34,7 +34,7 @@ enum Item {
 //
 // We do not wish to disable navigation, but do with to disable controls.
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
-trait SetDisabled: Widget {
+trait SetDisabled: Widget<Data = ()> {
     fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool);
 }
 impl<T: SetDisabled> SetDisabled for ScrollBarRegion<T> {

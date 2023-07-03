@@ -14,13 +14,17 @@ use crate::util::IdentifyWidget;
 use crate::{Erased, NavAdvance, WidgetId};
 
 /// Public API over a mutable widget
-pub struct Node<'a>(&'a dyn Widget, &'a ());
+pub struct Node<'a>(&'a dyn Widget<Data = ()>, &'a ());
 
 impl<'a> Node<'a> {
     /// Construct
     #[inline(always)]
-    pub fn new(widget: &'a dyn Widget) -> Self {
-        Node(widget, &())
+    pub fn new<T: 'static>(widget: &'a dyn Widget<Data = T>) -> Self {
+        // Safety: since the vtable for dyn Widget<Data = T> does not use T,
+        // it should be equivalent for all T.
+        // NOTE: This makes assumptions beyond Rust's specification.
+        use std::mem::transmute;
+        unsafe { Node(transmute(widget), &()) }
     }
 
     /// Reborrow with a new lifetime
@@ -149,13 +153,17 @@ impl<'a> Node<'a> {
 ///
 /// Note: this type has no publically supported utility over [`Node`].
 /// It is, however, required for Kas's internals.
-pub struct NodeMut<'a>(&'a mut dyn Widget, &'a ());
+pub struct NodeMut<'a>(&'a mut dyn Widget<Data = ()>, &'a ());
 
 impl<'a> NodeMut<'a> {
     /// Construct
     #[inline(always)]
-    pub fn new(widget: &'a mut dyn Widget) -> Self {
-        NodeMut(widget, &())
+    pub fn new<T: 'static>(widget: &'a mut dyn Widget<Data = T>) -> Self {
+        // Safety: since the vtable for dyn Widget<Data = T> does not use T,
+        // it should be equivalent for all T.
+        // NOTE: This makes assumptions beyond Rust's specification.
+        use std::mem::transmute;
+        unsafe { NodeMut(transmute(widget), &()) }
     }
 
     /// Reborrow with a new lifetime

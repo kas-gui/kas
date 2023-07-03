@@ -98,5 +98,5 @@ pub use separator::Separator;
 pub use slider::{Slider, SliderValue};
 pub use spinner::{Spinner, SpinnerValue};
 pub use splitter::*;
-pub use stack::{BoxStack, RefStack, Stack};
+pub use stack::{BoxStack, Stack};
 pub use tab_stack::{BoxTabStack, Tab, TabStack};

@@ -13,12 +13,7 @@ use std::ops::{Index, IndexMut, Range};
 /// A stack of boxed widgets
 ///
 /// This is a parametrisation of [`Stack`].
-pub type BoxStack = Stack<Box<dyn Widget>>;
-
-/// A stack of widget references
-///
-/// This is a parametrisation of [`Stack`].
-pub type RefStack<'a> = Stack<&'a mut dyn Widget>;
+pub type BoxStack<Data> = Stack<Box<dyn Widget<Data = Data>>>;
 
 impl_scope! {
     /// A stack of widgets

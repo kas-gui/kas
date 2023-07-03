@@ -64,9 +64,9 @@ impl Parse for WidgetArgs {
         while !content.is_empty() {
             let lookahead = content.lookahead1();
             if lookahead.peek(kw::Data) && data_ty.is_none() {
-                let _ = content.parse::<kw::Data>()?;
+                let kw = content.parse::<kw::Data>()?;
                 let _: Eq = content.parse()?;
-                data_ty = Some(content.parse()?);
+                data_ty = Some((kw, content.parse()?));
             } else if lookahead.peek(kw::navigable) && navigable.is_none() {
                 let span = content.parse::<kw::navigable>()?.span();
                 let _: Eq = content.parse()?;
@@ -108,10 +108,13 @@ impl Parse for WidgetArgs {
                 return Err(Error::new(kw.span, "incompatible with widget derive"));
                 // note = derive.span() => "this derive"
             }
+            if let Some((kw, _)) = data_ty {
+                return Err(Error::new(kw.span, "incompatible with widget derive"));
+            }
         }
 
         Ok(WidgetArgs {
-            data_ty,
+            data_ty: data_ty.map(|(_, ty)| ty),
             navigable,
             hover_highlight,
             cursor_icon,
@@ -151,8 +154,10 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     scope.expand_impl_self();
     let name = &scope.ident;
     let opt_derive = &args.derive;
+    let mut data_ty = args.data_ty;
 
     let mut widget_impl = None;
+    let mut do_data_ty_impl = true;
     let mut do_recursive_methods = true;
     let mut layout_impl = None;
     let mut events_impl = None;
@@ -176,6 +181,18 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                             get_child_mut = Some(item.sig.ident.clone());
                         } else if item.sig.ident == "_send" {
                             do_recursive_methods = false;
+                        }
+                    } else if let ImplItem::Type(ref item) = item {
+                        if item.ident == "Data" {
+                            if let Some(ref ty) = data_ty {
+                                emit_error!(
+                                    ty, "depulicate definition";
+                                    note = item.ty.span() => "also defined here";
+                                );
+                            } else {
+                                data_ty = Some(item.ty.clone());
+                            }
+                            do_data_ty_impl = false;
                         }
                     }
                 }
@@ -218,6 +235,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
     }
 
+    // TODO: as a temporary measure, we default to Data = ()
+    if data_ty.is_none() {
+        data_ty = Some(parse_quote! { () });
+    }
+
     let fields = match &mut scope.item {
         ScopeItem::Struct { token, fields } => match fields {
             Fields::Named(FieldsNamed { fields, .. }) => fields,
@@ -236,6 +258,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
     };
 
+    let mut derive_ty_def = None;
     let mut core_data: Option<Member> = None;
     let mut children = Vec::with_capacity(fields.len());
     let mut layout_children = Vec::new();
@@ -264,9 +287,9 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             let mut stor_defs = Default::default();
             if let Some((kw, ref layout)) = args.layout {
                 let missing_data_ty = parse_quote! { MissingData };
-                let data_ty = args.data_ty.as_ref().unwrap_or(&missing_data_ty);
-                stor_defs = layout.storage_fields(&mut layout_children, data_ty);
-                if args.data_ty.is_none() && stor_defs.used_data_ty {
+                let dty = data_ty.as_ref().unwrap_or(&missing_data_ty);
+                stor_defs = layout.storage_fields(&mut layout_children, dty);
+                if data_ty.is_none() && stor_defs.used_data_ty {
                     emit_error!(
                         args.span_end.unwrap(), "expected: `Data = TYPE;`";
                         note = kw.span => "required by this layout";
@@ -313,6 +336,9 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
 
             continue;
+        } else if Some(&ident) == opt_derive.as_ref() {
+            let ty = &field.ty;
+            derive_ty_def = Some(quote! { type Data = <#ty as ::kas::Widget>::Data; });
         }
 
         let mut is_widget = false;
@@ -476,6 +502,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         let fns_as_node = widget_as_node_methods();
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Widget for #impl_target {
+                #derive_ty_def
                 #fns_as_node
 
                 #[inline]
@@ -572,6 +599,12 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         if let Some(index) = widget_impl {
             use syn::ImplItem::Verbatim;
             let widget_impl = &mut scope.impls[index];
+            if do_data_ty_impl {
+                let data_ty = data_ty.as_ref().unwrap();
+                widget_impl.items.push(Verbatim(quote! {
+                    type Data = #data_ty;
+                }));
+            }
             widget_impl.items.push(Verbatim(widget_as_node_methods()));
             if do_recursive_methods {
                 widget_impl.items.push(Verbatim(widget_recursive_methods()));
@@ -580,6 +613,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             scope.generated.push(impl_widget(
                 &impl_generics,
                 &impl_target,
+                &data_ty.expect("has data_ty"),
                 &core_path,
                 &children,
                 layout_children,
@@ -826,6 +860,7 @@ pub fn impl_core(impl_generics: &Toks, impl_target: &Toks, name: &str, core_path
 pub fn impl_widget(
     impl_generics: &Toks,
     impl_target: &Toks,
+    data_ty: &Type,
     core_path: &Toks,
     children: &Vec<Member>,
     layout_children: Vec<Toks>,
@@ -877,6 +912,7 @@ pub fn impl_widget(
 
     quote! {
         impl #impl_generics ::kas::Widget for #impl_target {
+            type Data = #data_ty;
             #fns_as_node
             #fns_get_child
             #fns_recurse
@@ -886,12 +922,12 @@ pub fn impl_widget(
 
 fn widget_as_node_methods() -> Toks {
     quote! {
-                #[inline]
-                fn as_node(&self) -> ::kas::Node<'_> { ::kas::Node::new(self) }
-                #[inline]
-                fn as_node_mut(&mut self) -> ::kas::NodeMut<'_> {
-                    ::kas::NodeMut::new(self)
-                }
+        #[inline]
+        fn as_node(&self) -> ::kas::Node<'_> { ::kas::Node::new(self) }
+        #[inline]
+        fn as_node_mut(&mut self) -> ::kas::NodeMut<'_> {
+            ::kas::NodeMut::new(self)
+        }
     }
 }
 

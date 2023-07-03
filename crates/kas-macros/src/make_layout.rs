@@ -159,7 +159,7 @@ impl Tree {
         let name = Ident::new(widget_name, Span::call_site());
         let core_path = quote! { self };
         let (impl_generics, impl_target) = if stor_defs.used_data_ty {
-            (quote! { < _Data >}, quote! { #name < _Data > })
+            (quote! { <_Data: 'static> }, quote! { #name <_Data> })
         } else {
             (quote! {}, quote! { #name })
         };
@@ -175,6 +175,7 @@ impl Tree {
         let widget_impl = widget::impl_widget(
             &impl_generics,
             &impl_target,
+            &data_ty,
             &core_path,
             &vec![],
             layout_children,
@@ -1032,10 +1033,10 @@ impl Layout {
             }
             Layout::Widget(stor, expr) => {
                 children.push(stor.to_token_stream());
-                ty_toks.append_all(quote! { #stor: Box<dyn ::kas::Widget>, });
+                ty_toks.append_all(quote! { #stor: Box<dyn ::kas::Widget<Data = #data_ty>>, });
                 let span = expr.span();
                 def_toks.append_all(quote_spanned! {span=> #stor: Box::new(#expr), });
-                false
+                true
             }
             Layout::Frame(stor, layout, _) | Layout::Button(stor, layout, _) => {
                 ty_toks.append_all(quote! { #stor: ::kas::layout::FrameStorage, });
