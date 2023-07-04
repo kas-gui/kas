@@ -16,7 +16,7 @@ use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
 use kas::theme::{Theme, Window as _};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use kas::util::warn_about_error;
-use kas::{Action, Layout, Widget, WidgetExt, WindowId};
+use kas::{Action, Widget, WidgetExt, WindowId};
 use std::any::TypeId;
 use std::mem::take;
 use std::time::Instant;
@@ -89,7 +89,7 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
 
         let mut ev_state = EventState::new(shared.config.clone(), scale_factor, dpem);
         let mut tkw = TkWindow::new(&mut shared.shell, None, &mut theme_window);
-        ev_state.full_configure(&mut tkw, widget.as_node_mut());
+        ev_state.full_configure(&mut tkw, &mut widget);
 
         let size_mgr = SizeMgr::new(theme_window.size());
         let mut solve_cache = SolveCache::find_constraints(widget.as_node_mut(), size_mgr);
@@ -223,7 +223,7 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             Some(&self.window),
             &mut self.theme_window,
         );
-        let action = self.ev_state.update(&mut tkw, self.widget.as_node_mut());
+        let action = self.ev_state.update(&mut tkw, &mut self.widget);
 
         if action.contains(Action::CLOSE | Action::EXIT) {
             return (action, None);
@@ -286,7 +286,7 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             self.ev_state.region_moved(&mut *self.widget);
         } else*/
         if action.contains(Action::REGION_MOVED) {
-            self.ev_state.region_moved(self.widget.as_node_mut());
+            self.ev_state.region_moved(&mut self.widget);
         }
         if !action.is_empty() {
             self.queued_frame_time = Some(self.next_avail_frame_time);
@@ -367,8 +367,7 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             Some(&self.window),
             &mut self.theme_window,
         );
-        self.ev_state
-            .full_configure(&mut tkw, self.widget.as_node_mut());
+        self.ev_state.full_configure(&mut tkw, &mut self.widget);
 
         self.solve_cache.invalidate_rule_cache();
         self.apply_size(shared, false);

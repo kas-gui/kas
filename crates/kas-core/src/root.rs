@@ -87,7 +87,6 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        #[inline]
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let mut inner = self.w.size_rules(size_mgr.re(), axis);
 
@@ -112,7 +111,6 @@ impl_scope! {
             }
         }
 
-        #[inline]
         fn set_rect(&mut self, mgr: &mut ConfigMgr, mut rect: Rect) {
             self.core.rect = rect;
             rect.pos += self.dec_offset;
@@ -126,7 +124,17 @@ impl_scope! {
             self.w.set_rect(mgr, rect);
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, _: Coord) -> Option<WidgetId> {
+            unimplemented!()
+        }
+
+        fn draw(&mut self, _: DrawMgr) {
+            unimplemented!()
+        }
+    }
+
+    impl Self {
+        pub(crate) fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.core.rect.contains(coord) {
                 return None;
             }
@@ -144,7 +152,7 @@ impl_scope! {
                 .or_else(|| Some(self.id()))
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        pub(crate) fn draw(&mut self, mut draw: DrawMgr) {
             if self.dec_size != Size::ZERO {
                 draw.frame(self.core.rect, FrameStyle::Window, Default::default());
                 if self.bar_h > 0 {
