@@ -702,6 +702,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         } else {
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::Events for #impl_target {
+                    type Data = ();
                     #fn_pre_configure
                     #fn_navigable
                     #fn_pre_handle_event

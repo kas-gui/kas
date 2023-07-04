@@ -90,6 +90,8 @@ impl_scope! {
     }
 
     impl Events for GripPart {
+        type Data = ();
+
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::PressStart { press, .. } => {

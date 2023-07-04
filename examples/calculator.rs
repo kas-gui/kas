@@ -73,6 +73,8 @@ impl_scope! {
         calc: Calculator = Calculator::new(),
     }
     impl Events for Self {
+        type Data = ();
+
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.disable_nav_focus(true);
 

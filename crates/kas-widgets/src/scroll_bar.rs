@@ -302,6 +302,8 @@ impl_scope! {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(_) => {
@@ -528,6 +530,8 @@ impl_scope! {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn handle_message(&mut self, mgr: &mut EventMgr) {
             let index = mgr.last_child().expect("message not sent from self");
             if index == widget_index![self.horiz_bar] {

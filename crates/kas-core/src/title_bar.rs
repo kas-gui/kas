@@ -99,6 +99,8 @@ impl_scope! {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             event.on_activate(mgr, self.id(), |mgr| {
                 mgr.push(self.msg.clone());
@@ -150,6 +152,8 @@ impl_scope! {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn handle_message(&mut self, mgr: &mut EventMgr) {
             if let Some(msg) = mgr.try_pop() {
                 match msg {

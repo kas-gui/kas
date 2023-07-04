@@ -150,6 +150,8 @@ impl_scope! {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
             // FIXME: new layer should apply to self.list but not to self.label.

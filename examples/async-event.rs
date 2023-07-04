@@ -90,6 +90,8 @@ impl_scope! {
         }
     }
     impl Events for ColourSquare {
+        type Data = ();
+
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Update { id, .. } if id == self.update_id => {

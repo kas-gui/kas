@@ -164,6 +164,8 @@ impl_scope! {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             if mgr.platform().is_wayland() && self.decorations == Decorations::Server {
                 // Wayland's base protocol does not support server-side decorations

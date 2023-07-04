@@ -121,6 +121,8 @@ impl_scope! {
     }
 
     impl<D: Directional> Events for MenuBar<D> {
+        type Data = ();
+
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(id_code) => {

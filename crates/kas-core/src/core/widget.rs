@@ -270,6 +270,13 @@ pub trait Layout: WidgetCore {
 /// implement this trait (though an empty implementation may be generated).
 /// See the [`Widget`] trait documentation.
 pub trait Events: Sized {
+    /// Input data type
+    ///
+    /// If no `Events` impl is given, the `#[widget]` macro will auto-implement
+    /// the trait with `type Data = ();`. If `Events` is implemented
+    /// explicitly then this type must be specified.
+    type Data;
+
     /// Pre-configuration
     ///
     /// This method is called before children are configured to assign a

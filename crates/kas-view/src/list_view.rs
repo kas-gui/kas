@@ -630,6 +630,8 @@ impl_scope! {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             if self.widgets.is_empty() {
                 // Initial configure: ensure some widgets are loaded to allow

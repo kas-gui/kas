@@ -242,6 +242,8 @@ impl_scope! {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn pre_configure(&mut self, _: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();

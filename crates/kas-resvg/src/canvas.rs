@@ -185,6 +185,8 @@ impl_scope! {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn handle_message(&mut self, mgr: &mut EventMgr) {
             if let Some((program, mut pixmap)) = mgr.try_pop::<(P, Pixmap)>() {
                 debug_assert!(matches!(self.inner, State::Rendering));

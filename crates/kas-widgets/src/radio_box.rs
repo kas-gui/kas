@@ -67,6 +67,8 @@ impl_scope! {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Update { id, .. } if id == self.group.id() => {
@@ -243,6 +245,8 @@ impl_scope! {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn handle_message(&mut self, mgr: &mut EventMgr) {
             if let Some(kas::message::Activate) = mgr.try_pop() {
                 self.inner.select(mgr);

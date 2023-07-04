@@ -90,6 +90,8 @@ impl_scope! {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn handle_message(&mut self, mgr: &mut EventMgr) {
             if let Some(MsgSelectIndex(index)) = mgr.try_pop() {
                 mgr.config_mgr(|mgr| self.set_active(mgr, index));

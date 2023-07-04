@@ -35,6 +35,8 @@ fn make_window() -> Box<dyn kas::Widget> {
             start: Option<Instant>,
         }
         impl Events for Self {
+            type Data = ();
+
             fn configure(&mut self, mgr: &mut ConfigMgr) {
                 mgr.enable_alt_bypass(self.id_ref(), true);
             }

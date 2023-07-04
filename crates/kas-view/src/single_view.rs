@@ -130,6 +130,8 @@ impl_scope! {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             // We set data now, after child is configured
             let item = self.data.borrow(&()).unwrap();

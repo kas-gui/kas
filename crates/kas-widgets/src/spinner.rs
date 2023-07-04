@@ -346,6 +346,8 @@ impl_scope! {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             *mgr |= self.edit.set_string(self.edit.guard.value.to_string());
         }
