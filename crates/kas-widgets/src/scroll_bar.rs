@@ -347,9 +347,9 @@ impl_scope! {
         core: widget_core!(),
         mode: ScrollBarMode,
         show_bars: (bool, bool), // set by user (or set_rect when mode == Auto)
-        #[widget]
+        #[widget(&())]
         horiz_bar: ScrollBar<kas::dir::Right>,
-        #[widget]
+        #[widget(&())]
         vert_bar: ScrollBar<kas::dir::Down>,
         #[widget]
         inner: W,

@@ -206,6 +206,10 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///
 /// -   `#[widget]`: marks the field as a [`Widget`] to be configured, enumerated by
 ///     [`Widget::get_child`] and included by glob layouts
+/// -   `#[widget(expr)]`: the same, but maps the data reference type; `expr` is
+///     an expression returning a reference to the child widget's input data;
+///     available inputs are `self`, `data` (own input data) and `index`
+///     (of the child).
 ///
 /// ## Layout
 ///

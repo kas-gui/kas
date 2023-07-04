@@ -26,7 +26,7 @@ impl_scope! {
         dir: D,
         #[widget]
         inner: W,
-        #[widget]
+        #[widget(&())]
         label: AccelLabel,
     }
 

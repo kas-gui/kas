@@ -13,7 +13,8 @@ use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::token::Eq;
 use syn::ImplItem::{self, Verbatim};
-use syn::{parse_quote, Ident, Index, ItemImpl, Member, Meta, Token, Type};
+use syn::{parse2, parse_quote};
+use syn::{Expr, Ident, Index, ItemImpl, MacroDelimiter, Member, Meta, Token, Type};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -364,18 +365,25 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         let mut other_attrs = Vec::with_capacity(field.attrs.len());
         for attr in field.attrs.drain(..) {
             if *attr.path() == parse_quote! { widget } {
-                if let Some(span) = match &attr.meta {
+                let data: Option<Expr> = match &attr.meta {
                     Meta::Path(_) => None,
-                    Meta::List(list) => Some(list.delimiter.span().join()),
-                    Meta::NameValue(nv) => nv.eq_token.span().join(nv.value.span()),
-                } {
-                    emit_error!(span, "unexpected");
-                }
+                    Meta::List(list) if matches!(&list.delimiter, MacroDelimiter::Paren(_)) => {
+                        Some(parse2(list.tokens.clone())?)
+                    }
+                    Meta::List(list) => {
+                        let span = list.delimiter.span().join();
+                        return Err(Error::new(span, "expected `#[widget]` or `#[widget(..)]`"));
+                    }
+                    Meta::NameValue(nv) => {
+                        let span = nv.eq_token.span();
+                        return Err(Error::new(span, "unexpected"));
+                    }
+                };
                 if Some(&ident) == opt_derive.as_ref() {
                     emit_error!(attr, "#[widget] must not be used on widget derive target");
                 }
                 is_widget = true;
-                children.push(ident.clone());
+                children.push((ident.clone(), data));
             } else {
                 other_attrs.push(attr);
             }
@@ -396,7 +404,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         }
     }
 
-    crate::widget_index::visit_impls(children.iter(), &mut scope.impls);
+    crate::widget_index::visit_impls(children.iter().map(|(ident, _)| ident), &mut scope.impls);
 
     if let Some(ref span) = num_children {
         if get_child.is_none() {
@@ -649,7 +657,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         };
         if let Some((_, layout)) = args.layout.take() {
             gen_layout = true;
-            fn_nav_next = match layout.nav_next(children.iter()) {
+            fn_nav_next = match layout.nav_next(children.iter().map(|(ident, _)| ident)) {
                 Ok(toks) => Some(toks),
                 Err((span, msg)) => {
                     fn_nav_next_err = Some((span, msg));
@@ -887,7 +895,7 @@ pub fn impl_widget(
     impl_target: &Toks,
     data_ty: &Type,
     core_path: &Toks,
-    children: &Vec<Member>,
+    children: &Vec<(Member, Option<Expr>)>,
     layout_children: Vec<Toks>,
     do_impl_widget_children: bool,
 ) -> Toks {
@@ -897,8 +905,20 @@ pub fn impl_widget(
         let count = children.len();
         let mut get_rules = quote! {};
         let mut get_mut_rules = quote! {};
-        for (i, child) in children.iter().enumerate() {
-            let ident = child;
+        for (i, (ident, opt_data)) in children.iter().enumerate() {
+            /*
+            // TODO: incorrect or unconstrained data type of child causes a poor error
+            // message here. Add a constaint like this (assuming no mapping fn):
+            // <#ty as WidgetNode::Data> == Self::Data
+            // But this is unsupported: rust#20041
+            // predicates.push(..);
+
+            get_mut_rules.append_all(if let Some(data) = opt_data {
+                quote! { #i => Some(self.#ident.as_node(#data)), }
+            } else {
+                quote! { #i => Some(self.#ident.as_node(data)), }
+            });
+            */
             get_rules.append_all(quote! { #i => Some(self.#ident.as_node()), });
             get_mut_rules.append_all(quote! { #i => Some(self.#ident.as_node_mut()), });
         }
@@ -909,16 +929,16 @@ pub fn impl_widget(
         }
 
         quote! {
-            fn get_child(&self, _index: usize) -> Option<::kas::Node<'_>> {
+            fn get_child(&self, index: usize) -> Option<::kas::Node<'_>> {
                 use ::kas::WidgetCore;
-                match _index {
+                match index {
                     #get_rules
                     _ => None
                 }
             }
-            fn get_child_mut(&mut self, _index: usize) -> Option<::kas::NodeMut<'_>> {
+            fn get_child_mut(&mut self, index: usize) -> Option<::kas::NodeMut<'_>> {
                 use ::kas::WidgetCore;
-                match _index {
+                match index {
                     #get_mut_rules
                     _ => None
                 }

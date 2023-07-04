@@ -76,7 +76,7 @@ impl_scope! {
         restrictions: (bool, bool),
         drag_anywhere: bool,
         transparent: bool,
-        #[widget]
+        #[widget(&())]
         title_bar: TitleBar,
         #[widget]
         w: Box<dyn Widget<Data = Data>>,
