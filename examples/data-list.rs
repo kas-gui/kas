@@ -155,7 +155,7 @@ fn main() -> kas::shell::Result<()> {
         }]
         struct {
             core: widget_core!(),
-            #[widget] controls = controls,
+            #[widget] controls: impl Widget<Data = ()> = controls,
             #[widget] display: StringLabel = Label::from("Entry #1"),
             #[widget] list: ScrollBarRegion<List<Direction, ListEntry>> =
                 ScrollBarRegion::new(list).with_fixed_bars(false, true),
