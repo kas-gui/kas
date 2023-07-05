@@ -1085,13 +1085,21 @@ impl Layout {
             Layout::Label(stor, text) => {
                 children.push(stor.to_token_stream());
                 let span = text.span();
-                ty_toks.append_all(
-                    quote! { #stor: ::kas::hidden::WithAny<#data_ty, ::kas::hidden::StrLabel>, },
-                );
-                def_toks.append_all(
-                    quote_spanned! {span=> #stor: ::kas::hidden::WithAny::new(::kas::hidden::StrLabel::new(#text)), },
-                );
-                false
+                if *data_ty == syn::parse_quote! { () } {
+                    ty_toks.append_all(quote! { #stor: ::kas::hidden::StrLabel, });
+                    def_toks.append_all(
+                        quote_spanned! {span=> #stor: ::kas::hidden::StrLabel::new(#text), },
+                    );
+                    false
+                } else {
+                    ty_toks.append_all(
+                        quote! { #stor: ::kas::hidden::WithAny<#data_ty, ::kas::hidden::StrLabel>, },
+                    );
+                    def_toks.append_all(
+                        quote_spanned! {span=> #stor: ::kas::hidden::WithAny::new(::kas::hidden::StrLabel::new(#text)), },
+                    );
+                    true
+                }
             }
         }
     }
