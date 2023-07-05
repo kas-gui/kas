@@ -18,6 +18,7 @@ impl_scope! {
     /// Default alignment of content is centered.
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[widget {
+        Data = W::Data;
         layout = button!(self.inner, color = self.color);
         navigable = true;
         hover_highlight = true;
@@ -107,13 +108,11 @@ impl_scope! {
     }
 
     impl Events for Self {
-        type Data = ();
-
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
             mgr.add_accel_keys(self.id_ref(), &self.keys1);
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             event.on_activate(mgr, self.id(), |mgr| {
                 if let Some(f) = self.on_press.as_ref() {
                     f(mgr);
@@ -122,7 +121,7 @@ impl_scope! {
             })
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(kas::message::Activate) = mgr.try_pop() {
                 if let Some(f) = self.on_press.as_ref() {
                     f(mgr);
@@ -244,11 +243,11 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
             mgr.add_accel_keys(self.id_ref(), &self.keys1);
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             event.on_activate(mgr, self.id(), |mgr| {
                 if let Some(f) = self.on_press.as_ref() {
                     f(mgr);
@@ -257,7 +256,7 @@ impl_scope! {
             })
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(kas::message::Activate) = mgr.try_pop() {
                 if let Some(f) = self.on_press.as_ref() {
                     f(mgr);

@@ -39,7 +39,7 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(Increment(incr)) = mgr.try_pop() {
                 self.count += incr;
                 *mgr |= self.display.set_string(self.count.to_string());

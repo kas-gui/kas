@@ -316,11 +316,11 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
             mgr.add_accel_keys(self.id_ref(), self.label.text().keys());
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd) if cmd.is_activate() => {
                     mgr.push(kas::message::Activate);

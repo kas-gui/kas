@@ -19,12 +19,13 @@ pub struct Node<'a>(&'a dyn Widget<Data = ()>, &'a ());
 impl<'a> Node<'a> {
     /// Construct
     #[inline(always)]
-    pub fn new<T: 'static>(widget: &'a dyn Widget<Data = T>) -> Self {
-        // Safety: since the vtable for dyn Widget<Data = T> does not use T,
-        // it should be equivalent for all T.
+    pub fn new<T: 'static>(widget: &'a dyn Widget<Data = T>, data: &T) -> Self {
+        // Safety: since the vtable for dyn Widget<Data = T> only uses T as &T
+        // and T: Sized, the vtable should be equivalent for all T.
+        // We ensure here that the type of `data` matches that used by `widget`.
         // NOTE: This makes assumptions beyond Rust's specification.
         use std::mem::transmute;
-        unsafe { Node(transmute(widget), &()) }
+        unsafe { Node(transmute(widget), transmute(data)) }
     }
 
     /// Reborrow with a new lifetime
@@ -112,7 +113,7 @@ impl<'a> Node<'a> {
     /// Required: `index < self.num_children()`.
     #[inline]
     pub fn get_child(&self, index: usize) -> Option<Node<'_>> {
-        self.0.get_child(index)
+        self.0.get_child(self.1, index)
     }
 
     /// Find the child which is an ancestor of this `id`, if any
@@ -130,7 +131,7 @@ impl<'a> Node<'a> {
     pub fn find_node(self, id: &WidgetId) -> Option<Node<'a>> {
         if let Some(index) = self.find_child_index(id) {
             self.0
-                .get_child(index)
+                .get_child(self.1, index)
                 .and_then(|child| child.find_node(id))
         } else if self.eq_id(id) {
             Some(self)
@@ -158,12 +159,13 @@ pub struct NodeMut<'a>(&'a mut dyn Widget<Data = ()>, &'a ());
 impl<'a> NodeMut<'a> {
     /// Construct
     #[inline(always)]
-    pub fn new<T: 'static>(widget: &'a mut dyn Widget<Data = T>) -> Self {
-        // Safety: since the vtable for dyn Widget<Data = T> does not use T,
-        // it should be equivalent for all T.
+    pub fn new<T: 'static>(widget: &'a mut dyn Widget<Data = T>, data: &T) -> Self {
+        // Safety: since the vtable for dyn Widget<Data = T> only uses T as &T
+        // and T: Sized, the vtable should be equivalent for all T.
+        // We ensure here that the type of `data` matches that used by `widget`.
         // NOTE: This makes assumptions beyond Rust's specification.
         use std::mem::transmute;
-        unsafe { NodeMut(transmute(widget), &()) }
+        unsafe { NodeMut(transmute(widget), transmute(data)) }
     }
 
     /// Reborrow with a new lifetime
@@ -256,7 +258,7 @@ impl<'a> NodeMut<'a> {
     /// Required: `index < self.num_children()`.
     #[inline]
     pub fn get_child(&mut self, index: usize) -> Option<NodeMut<'_>> {
-        self.0.get_child_mut(index)
+        self.0.get_child_mut(self.1, index)
     }
 
     /// Find the child which is an ancestor of this `id`, if any
@@ -274,7 +276,7 @@ impl<'a> NodeMut<'a> {
     pub fn find_node(self, id: &WidgetId) -> Option<NodeMut<'a>> {
         if let Some(index) = self.find_child_index(id) {
             self.0
-                .get_child_mut(index)
+                .get_child_mut(self.1, index)
                 .and_then(|child| child.find_node(id))
         } else if self.eq_id(id) {
             Some(self)
@@ -309,12 +311,12 @@ impl<'a> NodeMut<'a> {
 
     /// Internal method: configure recursively
     pub(crate) fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId) {
-        self.0._configure(cx, id);
+        self.0._configure(self.1, cx, id);
     }
 
     /// Internal method: broadcast recursively
     pub(crate) fn _broadcast(&mut self, cx: &mut EventMgr, count: &mut usize, event: Event) {
-        self.0._broadcast(cx, count, event);
+        self.0._broadcast(self.1, cx, count, event);
     }
 
     /// Internal method: send recursively
@@ -325,12 +327,12 @@ impl<'a> NodeMut<'a> {
         disabled: bool,
         event: Event,
     ) -> Response {
-        self.0._send(cx, id, disabled, event)
+        self.0._send(self.1, cx, id, disabled, event)
     }
 
     /// Internal method: replay recursively
     pub(crate) fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: Erased) {
-        self.0._replay(cx, id, msg);
+        self.0._replay(self.1, cx, id, msg);
     }
 
     /// Internal method: search for the previous/next navigation target
@@ -341,6 +343,6 @@ impl<'a> NodeMut<'a> {
         focus: Option<&WidgetId>,
         advance: NavAdvance,
     ) -> Option<WidgetId> {
-        self.0._nav_next(cx, focus, advance)
+        self.0._nav_next(self.1, cx, focus, advance)
     }
 }

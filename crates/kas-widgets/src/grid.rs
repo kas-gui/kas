@@ -62,13 +62,15 @@ impl_scope! {
     }
 
     impl Widget for Self {
+        type Data = W::Data;
+
         #[inline]
-        fn get_child(&self, index: usize) -> Option<Node> {
-            self.widgets.get(index).map(|c| c.1.as_node())
+        fn get_child(&self, data: &Self::Data, index: usize) -> Option<Node> {
+            self.widgets.get(index).map(|c| c.1.as_node(data))
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<NodeMut> {
-            self.widgets.get_mut(index).map(|c| c.1.as_node_mut())
+        fn get_child_mut(&mut self, data: &Self::Data, index: usize) -> Option<NodeMut> {
+            self.widgets.get_mut(index).map(|c| c.1.as_node_mut(data))
         }
     }
 
@@ -113,9 +115,7 @@ impl_scope! {
     }
 
     impl Events for Self {
-        type Data = ();
-
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(f) = self.on_message {
                 let index = mgr.last_child().expect("message not sent from self");
                 f(mgr, index);

@@ -61,13 +61,13 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(MessageBoxOk) = mgr.try_pop() {
                 mgr.send_action(Action::CLOSE);
             }
         }
 
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
             mgr.enable_alt_bypass(self.id_ref(), true);
         }
     }
@@ -123,7 +123,7 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
             mgr.register_nav_fallback(self.id());
 
             // Focus first item initially:
@@ -132,7 +132,7 @@ impl_scope! {
             }
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(Command::Escape) => self.close(mgr, false),
                 Event::Command(Command::Enter) => self.close(mgr, true),
@@ -140,7 +140,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(MsgClose(commit)) = mgr.try_pop() {
                 let _ = self.close(mgr, commit);
             }

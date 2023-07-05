@@ -134,14 +134,14 @@ impl_scope! {
     }
 
     impl Self {
-        pub(crate) fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        pub(crate) fn find_id(&mut self, data: &Data, coord: Coord) -> Option<WidgetId> {
             if !self.core.rect.contains(coord) {
                 return None;
             }
             for (_, popup, translation) in self.popups.iter_mut().rev() {
                 if let Some(id) = self
                     .w
-                    .find_node_mut(&popup.id)
+                    .find_node_mut(data, &popup.id)
                     .and_then(|mut w| w.find_id(coord + *translation))
                 {
                     return Some(id);
@@ -152,7 +152,7 @@ impl_scope! {
                 .or_else(|| Some(self.id()))
         }
 
-        pub(crate) fn draw(&mut self, mut draw: DrawMgr) {
+        pub(crate) fn draw(&mut self, data: &Data, mut draw: DrawMgr) {
             if self.dec_size != Size::ZERO {
                 draw.frame(self.core.rect, FrameStyle::Window, Default::default());
                 if self.bar_h > 0 {
@@ -161,7 +161,7 @@ impl_scope! {
             }
             draw.recurse(&mut self.w);
             for (_, popup, translation) in &self.popups {
-                if let Some(mut widget) = self.w.find_node_mut(&popup.id) {
+                if let Some(mut widget) = self.w.find_node_mut(data, &popup.id) {
                     let clip_rect = widget.rect() - *translation;
                     draw.with_overlay(clip_rect, *translation, |draw| {
                         widget._draw(draw);
@@ -172,9 +172,9 @@ impl_scope! {
     }
 
     impl Events for Self {
-        type Data = ();
+        type Data = Data;
 
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, _: &Data, mgr: &mut ConfigMgr) {
             if mgr.platform().is_wayland() && self.decorations == Decorations::Server {
                 // Wayland's base protocol does not support server-side decorations
                 // TODO: Wayland has extensions for this; server-side is still
@@ -183,9 +183,9 @@ impl_scope! {
             }
         }
 
-        fn handle_scroll(&mut self, mgr: &mut EventMgr, _: Scroll) {
+        fn handle_scroll(&mut self, data: &Data, mgr: &mut EventMgr, _: Scroll) {
             // Something was scrolled; update pop-up translations
-            mgr.config_mgr(|mgr| self.resize_popups(mgr));
+            mgr.config_mgr(|mgr| self.resize_popups(data, mgr));
         }
     }
 }
@@ -310,10 +310,10 @@ impl<Data: 'static> Window<Data> {
     /// Add a pop-up as a layer in the current window
     ///
     /// Each [`crate::Popup`] is assigned a [`WindowId`]; both are passed.
-    pub fn add_popup(&mut self, mgr: &mut EventMgr, id: WindowId, popup: kas::Popup) {
+    pub fn add_popup(&mut self, data: &Data, mgr: &mut EventMgr, id: WindowId, popup: kas::Popup) {
         let index = self.popups.len();
         self.popups.push((id, popup, Offset::ZERO));
-        mgr.config_mgr(|mgr| self.resize_popup(mgr, index));
+        mgr.config_mgr(|mgr| self.resize_popup(data, mgr, index));
         mgr.send_action(Action::REDRAW);
     }
 
@@ -334,9 +334,9 @@ impl<Data: 'static> Window<Data> {
     ///
     /// This is called immediately after [`Layout::set_rect`] to resize
     /// existing pop-ups.
-    pub fn resize_popups(&mut self, mgr: &mut ConfigMgr) {
+    pub fn resize_popups(&mut self, data: &Data, mgr: &mut ConfigMgr) {
         for i in 0..self.popups.len() {
-            self.resize_popup(mgr, i);
+            self.resize_popup(data, mgr, i);
         }
     }
 }
@@ -368,16 +368,16 @@ fn find_rect(widget: Node<'_>, id: WidgetId, mut translation: Offset) -> Option<
 }
 
 impl<Data: 'static> Window<Data> {
-    fn resize_popup(&mut self, mgr: &mut ConfigMgr, index: usize) {
+    fn resize_popup(&mut self, data: &Data, mgr: &mut ConfigMgr, index: usize) {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
         let r = self.core.rect;
         let (_, ref mut popup, ref mut translation) = self.popups[index];
 
-        let (c, t) = find_rect(self.w.as_node(), popup.parent.clone(), Offset::ZERO).unwrap();
+        let (c, t) = find_rect(self.w.as_node(data), popup.parent.clone(), Offset::ZERO).unwrap();
         *translation = t;
         let r = r + t; // work in translated coordinate space
-        let mut widget = self.w.find_node_mut(&popup.id).unwrap();
+        let mut widget = self.w.find_node_mut(data, &popup.id).unwrap();
         let mut cache = layout::SolveCache::find_constraints(widget.re(), mgr.size_mgr());
         let ideal = cache.ideal(false);
         let m = cache.margins();

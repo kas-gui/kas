@@ -37,10 +37,10 @@ fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
         impl Events for Self {
             type Data = ();
 
-            fn configure(&mut self, mgr: &mut ConfigMgr) {
+            fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
                 mgr.enable_alt_bypass(self.id_ref(), true);
             }
-            fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+            fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
                 match event {
                     Event::TimerUpdate(0) => {
                         if let Some(start) = self.start {
@@ -54,7 +54,7 @@ fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
                     _ => Response::Unused,
                 }
             }
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
                 if let Some(MsgReset) = mgr.try_pop() {
                     self.saved = Duration::default();
                     self.start = None;

@@ -348,11 +348,11 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
             *mgr |= self.edit.set_string(self.edit.guard.value.to_string());
         }
 
-        fn steal_event(&mut self, mgr: &mut EventMgr, _: &WidgetId, event: &Event) -> Response {
+        fn steal_event(&mut self, _: &(), mgr: &mut EventMgr, _: &WidgetId, event: &Event) -> Response {
             let btn = match event {
                 Event::Command(cmd) => match cmd {
                     Command::Down => SpinBtn::Down,
@@ -375,7 +375,7 @@ impl_scope! {
             Response::Used
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(ValueMsg(value)) = mgr.try_pop() {
                 if let Some(ref f) = self.on_change {
                     f(mgr, value);

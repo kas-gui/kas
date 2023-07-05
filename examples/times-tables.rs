@@ -66,7 +66,7 @@ fn main() -> kas::shell::Result<()> {
         }]
         struct {
             core: widget_core!(),
-            #[widget] max: impl Widget + HasString = EditBox::new("12")
+            #[widget] max: impl Widget<Data = ()> + HasString = EditBox::new("12")
                 .on_afl(|mgr, text| match text.parse::<usize>() {
                     Ok(n) => mgr.push(n),
                     Err(_) => (),
@@ -76,7 +76,7 @@ fn main() -> kas::shell::Result<()> {
         impl Events for Self {
             type Data = ();
 
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
                 if mgr.last_child() == Some(widget_index![self.max]) {
                     if let Some(max) = mgr.try_pop::<usize>() {
                         let data = self.table.data_mut();

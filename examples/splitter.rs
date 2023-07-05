@@ -38,7 +38,7 @@ fn main() -> kas::shell::Result<()> {
         impl Events for Self {
             type Data = ();
 
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
                 if let Some(msg) = mgr.try_pop::<Message>() {
                     match msg {
                         Message::Decr => {
@@ -47,6 +47,7 @@ fn main() -> kas::shell::Result<()> {
                         Message::Incr => {
                             let n = self.panes.len() + 1;
                             mgr.config_mgr(|mgr| self.panes.push(
+                                data,
                                 mgr,
                                 EditField::new(format!("Pane {n}")).with_multi_line(true)
                             ));

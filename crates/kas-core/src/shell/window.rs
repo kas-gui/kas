@@ -89,10 +89,11 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
 
         let mut ev_state = EventState::new(shared.config.clone(), scale_factor, dpem);
         let mut tkw = TkWindow::new(&mut shared.shell, None, &mut theme_window);
-        ev_state.full_configure(&mut tkw, &mut widget);
+        ev_state.full_configure(&mut tkw, &mut widget, &shared.data);
 
         let size_mgr = SizeMgr::new(theme_window.size());
-        let mut solve_cache = SolveCache::find_constraints(widget.as_node_mut(), size_mgr);
+        let mut solve_cache =
+            SolveCache::find_constraints(widget.as_node_mut(&shared.data), size_mgr);
 
         // Opening a zero-size window causes a crash, so force at least 1x1:
         let ideal = solve_cache.ideal(true).max(Size(1, 1));
@@ -201,7 +202,7 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                     &mut self.theme_window,
                 );
                 self.ev_state.with(&mut tkw, |mgr| {
-                    mgr.handle_winit(&mut self.widget, event);
+                    mgr.handle_winit(&shared.data, &mut self.widget, event);
                 });
 
                 if self.ev_state.action.contains(Action::RECONFIGURE) {
@@ -223,7 +224,9 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             Some(&self.window),
             &mut self.theme_window,
         );
-        let action = self.ev_state.update(&mut tkw, &mut self.widget);
+        let action = self
+            .ev_state
+            .update(&mut tkw, &mut self.widget, &shared.data);
 
         if action.contains(Action::CLOSE | Action::EXIT) {
             return (action, None);
@@ -253,7 +256,9 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             Some(&self.window),
             &mut self.theme_window,
         );
-        let has_action = self.ev_state.post_draw(&mut tkw, self.widget.as_node_mut());
+        let has_action = self
+            .ev_state
+            .post_draw(&mut tkw, self.widget.as_node_mut(&shared.data));
 
         if has_action {
             self.queued_frame_time = Some(self.next_avail_frame_time);
@@ -286,7 +291,7 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             self.ev_state.region_moved(&mut *self.widget);
         } else*/
         if action.contains(Action::REGION_MOVED) {
-            self.ev_state.region_moved(&mut self.widget);
+            self.ev_state.region_moved(&mut self.widget, &shared.data);
         }
         if !action.is_empty() {
             self.queued_frame_time = Some(self.next_avail_frame_time);
@@ -299,7 +304,7 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             Some(&self.window),
             &mut self.theme_window,
         );
-        let widget = self.widget.as_node_mut();
+        let widget = self.widget.as_node_mut(&shared.data);
         self.ev_state.with(&mut tkw, |mgr| mgr.update_timer(widget));
         self.next_resume()
     }
@@ -315,7 +320,7 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             Some(&self.window),
             &mut self.theme_window,
         );
-        let widget = self.widget.as_node_mut();
+        let widget = self.widget.as_node_mut(&shared.data);
         self.ev_state
             .with(&mut tkw, |mgr| mgr.update_widgets(widget, id, payload));
     }
@@ -332,8 +337,9 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             Some(&self.window),
             &mut self.theme_window,
         );
-        self.ev_state
-            .with(&mut tkw, |mgr| widget.add_popup(mgr, id, popup));
+        self.ev_state.with(&mut tkw, |mgr| {
+            widget.add_popup(&shared.data, mgr, id, popup)
+        });
     }
 
     pub(super) fn send_action(&mut self, action: Action) {
@@ -367,7 +373,8 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             Some(&self.window),
             &mut self.theme_window,
         );
-        self.ev_state.full_configure(&mut tkw, &mut self.widget);
+        self.ev_state
+            .full_configure(&mut tkw, &mut self.widget, &shared.data);
 
         self.solve_cache.invalidate_rule_cache();
         self.apply_size(shared, false);
@@ -385,11 +392,11 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             &mut shared.shell.draw,
             &mut self.ev_state,
         );
-        solve_cache.apply_rect(self.widget.as_node_mut(), &mut mgr, rect, true);
+        solve_cache.apply_rect(self.widget.as_node_mut(&shared.data), &mut mgr, rect, true);
         if first {
-            solve_cache.print_widget_heirarchy(self.widget.as_node());
+            solve_cache.print_widget_heirarchy(self.widget.as_node(&shared.data));
         }
-        self.widget.resize_popups(&mut mgr);
+        self.widget.resize_popups(&shared.data, &mut mgr);
 
         let (restrict_min, restrict_max) = self.widget.restrictions();
         if restrict_min {
@@ -425,7 +432,7 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                     .theme
                     .draw(draw, &mut self.ev_state, &mut self.theme_window);
             let draw_mgr = DrawMgr::new(&mut draw, self.widget.id());
-            self.widget.draw(draw_mgr);
+            self.widget.draw(&shared.data, draw_mgr);
         }
         let time2 = Instant::now();
 

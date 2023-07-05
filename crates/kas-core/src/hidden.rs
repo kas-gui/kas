@@ -159,43 +159,44 @@ impl_scope! {
     impl Widget for Self {
         type Data = A;
 
-        fn as_node(&self) -> Node<'_> {
-            self.inner.as_node()
+        fn as_node(&self, _: &A) -> Node<'_> {
+            self.inner.as_node(&())
         }
-        fn as_node_mut(&mut self) -> NodeMut<'_> {
-            self.inner.as_node_mut()
-        }
-
-        fn get_child(&self, index: usize) -> Option<Node<'_>> {
-            self.inner.get_child(index)
-        }
-        fn get_child_mut(&mut self, index: usize) -> Option<NodeMut<'_>> {
-            self.inner.get_child_mut(index)
+        fn as_node_mut(&mut self, _: &A) -> NodeMut<'_> {
+            self.inner.as_node_mut(&())
         }
 
-        fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId) {
-            self.inner._configure(cx, id);
+        fn get_child(&self, _: &A, index: usize) -> Option<Node<'_>> {
+            self.inner.get_child(&(), index)
+        }
+        fn get_child_mut(&mut self, _: &A, index: usize) -> Option<NodeMut<'_>> {
+            self.inner.get_child_mut(&(), index)
         }
 
-        fn _broadcast(&mut self, cx: &mut EventMgr, count: &mut usize, event: Event) {
-            self.inner._broadcast(cx, count, event);
+        fn _configure(&mut self, _: &A, cx: &mut ConfigMgr, id: WidgetId) {
+            self.inner._configure(&(), cx, id);
         }
 
-        fn _send(&mut self, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response {
-            self.inner._send(cx, id, disabled, event)
+        fn _broadcast(&mut self, _: &A, cx: &mut EventMgr, count: &mut usize, event: Event) {
+            self.inner._broadcast(&(), cx, count, event);
         }
 
-        fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: Erased) {
-            self.inner._replay(cx, id, msg);
+        fn _send(&mut self, _: &A, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response {
+            self.inner._send(&(), cx, id, disabled, event)
+        }
+
+        fn _replay(&mut self, _: &A, cx: &mut EventMgr, id: WidgetId, msg: Erased) {
+            self.inner._replay(&(), cx, id, msg);
         }
 
         fn _nav_next(
             &mut self,
+            _: &A,
             cx: &mut EventMgr,
             focus: Option<&WidgetId>,
             advance: NavAdvance,
         ) -> Option<WidgetId> {
-            self.inner._nav_next(cx, focus, advance)
+            self.inner._nav_next(&(), cx, focus, advance)
         }
     }
 }

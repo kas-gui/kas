@@ -122,11 +122,11 @@ impl_scope! {
     impl Events for Clock {
         type Data = ();
 
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
             mgr.request_timer_update(self.id(), 0, Duration::new(0, 0), true);
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(0) => {
                     self.now = Local::now();

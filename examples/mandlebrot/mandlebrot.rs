@@ -354,7 +354,7 @@ impl_scope! {
     }
 
     impl Events for Mandlebrot {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
             mgr.register_nav_fallback(self.id());
         }
 
@@ -362,7 +362,7 @@ impl_scope! {
             true
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd) => {
                     match cmd {
@@ -461,7 +461,7 @@ impl_scope! {
         }
     }
     impl Events for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(iter) = mgr.try_pop() {
                 self.mbrot.iter = iter;
                 *mgr |= self.iters.set_string(format!("{iter}"));

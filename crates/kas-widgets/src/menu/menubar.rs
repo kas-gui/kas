@@ -61,12 +61,12 @@ impl_scope! {
 
     impl Widget for Self {
         #[inline]
-        fn get_child(&self, index: usize) -> Option<Node> {
-            self.widgets.get(index).map(|w| w.as_node())
+        fn get_child(&self, data: &Self::Data, index: usize) -> Option<Node> {
+            self.widgets.get(index).map(|w| w.as_node(data))
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<NodeMut> {
-            self.widgets.get_mut(index).map(|w| w.as_node_mut())
+        fn get_child_mut(&mut self, data: &Self::Data, index: usize) -> Option<NodeMut> {
+            self.widgets.get_mut(index).map(|w| w.as_node_mut(data))
         }
     }
 
@@ -123,7 +123,7 @@ impl_scope! {
     impl<D: Directional> Events for MenuBar<D> {
         type Data = ();
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(id_code) => {
                     if let Some(id) = self.delayed_open.clone() {

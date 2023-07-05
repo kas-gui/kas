@@ -166,7 +166,7 @@ impl_scope! {
             self.navigable
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd) if cmd.is_activate() => {
                     if self.popup_id.is_none() {
@@ -184,7 +184,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(kas::message::Activate) = mgr.try_pop() {
                 if self.popup_id.is_none() {
                     self.open_menu(mgr, true);
@@ -194,7 +194,7 @@ impl_scope! {
             }
         }
 
-        fn handle_scroll(&mut self, mgr: &mut EventMgr, _: Scroll) {
+        fn handle_scroll(&mut self, _: &Self::Data, mgr: &mut EventMgr, _: Scroll) {
             mgr.set_scroll(Scroll::None);
         }
     }
@@ -268,12 +268,12 @@ impl_scope! {
         type Data = ();
 
         #[inline]
-        fn get_child(&self, index: usize) -> Option<Node> {
-            self.list.get(index).map(|w| w.as_node())
+        fn get_child(&self, data: &Self::Data, index: usize) -> Option<Node> {
+            self.list.get(index).map(|w| w.as_node(data))
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<NodeMut> {
-            self.list.get_mut(index).map(|w| w.as_node_mut())
+        fn get_child_mut(&mut self, data: &Self::Data, index: usize) -> Option<NodeMut> {
+            self.list.get_mut(index).map(|w| w.as_node_mut(data))
         }
     }
 

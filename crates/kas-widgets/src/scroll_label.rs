@@ -214,7 +214,7 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd) => match cmd {
                     Command::Escape | Command::Deselect if !self.selection.is_empty() => {
@@ -273,7 +273,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(ScrollMsg(y)) = mgr.try_pop() {
                 let y = y.clamp(0, self.max_scroll_offset().1);
                 self.view_offset.1 = y;
@@ -298,7 +298,7 @@ impl_scope! {
             self.view_offset
         }
 
-        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, _: &Self::Data, mgr: &mut EventMgr, offset: Offset) -> Offset {
             let new_offset = offset.min(self.max_scroll_offset()).max(Offset::ZERO);
             if new_offset != self.view_offset {
                 self.set_offset(mgr, new_offset);

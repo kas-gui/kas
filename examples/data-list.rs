@@ -113,7 +113,7 @@ fn main() -> kas::shell::Result<()> {
         impl Events for Self {
             type Data = ();
 
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
                 if mgr.last_child() == Some(widget_index![self.edit]) {
                     if let Some(n) = mgr.try_pop::<usize>() {
                         if n != self.n {
@@ -164,14 +164,14 @@ fn main() -> kas::shell::Result<()> {
         impl Events for Self {
             type Data = ();
 
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
                 if let Some(control) = mgr.try_pop() {
                     match control {
                         Control::SetLen(len) => {
                             let active = self.active;
                             mgr.config_mgr(|mgr| {
                                 self.list.inner_mut()
-                                    .resize_with(mgr, len, |n| ListEntry::new(n, n == active))
+                                    .resize_with(data, mgr, len, |n| ListEntry::new(n, n == active))
                             });
                         }
                         Control::Reverse => {

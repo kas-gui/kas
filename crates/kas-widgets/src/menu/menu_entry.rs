@@ -77,7 +77,7 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd) if cmd.is_activate() => {
                     mgr.push(self.msg.clone());
@@ -87,7 +87,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(kas::message::Activate) = mgr.try_pop() {
                 mgr.push(self.msg.clone());
             }

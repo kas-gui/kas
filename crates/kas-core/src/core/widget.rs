@@ -300,8 +300,8 @@ pub trait Events: Sized {
     /// construct all windows using scale factor 1) and/or may change in the
     /// future. Changes to the scale factor result in recalculation of
     /// [`Layout::size_rules`] but not repeated configuration.
-    fn configure(&mut self, mgr: &mut ConfigMgr) {
-        let _ = mgr;
+    fn configure(&mut self, data: &Self::Data, mgr: &mut ConfigMgr) {
+        let _ = (data, mgr);
     }
 
     /// Is this widget navigable via <kbd>Tab</kbd> key?
@@ -318,7 +318,8 @@ pub trait Events: Sized {
     /// part of the stable API. Do not implement or call this method directly.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn pre_handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response;
+    fn pre_handle_event(&mut self, data: &Self::Data, mgr: &mut EventMgr, event: Event)
+        -> Response;
 
     /// Handle an [`Event`]
     ///
@@ -343,8 +344,8 @@ pub trait Events: Sized {
     /// effects and calling other event-handling methods on parents.
     /// Instead, one should call [`EventMgr::send`] with the target's `id`.
     #[inline]
-    fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
-        let _ = (mgr, event);
+    fn handle_event(&mut self, data: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+        let _ = (data, mgr, event);
         Response::Unused
     }
 
@@ -359,8 +360,14 @@ pub trait Events: Sized {
     ///
     /// Default implementation: return [`Response::Unused`].
     #[inline]
-    fn steal_event(&mut self, mgr: &mut EventMgr, id: &WidgetId, event: &Event) -> Response {
-        let _ = (mgr, id, event);
+    fn steal_event(
+        &mut self,
+        data: &Self::Data,
+        mgr: &mut EventMgr,
+        id: &WidgetId,
+        event: &Event,
+    ) -> Response {
+        let _ = (data, mgr, id, event);
         Response::Unused
     }
 
@@ -377,8 +384,8 @@ pub trait Events: Sized {
     ///
     /// The default implementation does nothing.
     #[inline]
-    fn handle_message(&mut self, mgr: &mut EventMgr) {
-        let _ = mgr;
+    fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
+        let _ = (data, mgr);
     }
 
     /// Handler for scrolling
@@ -402,8 +409,8 @@ pub trait Events: Sized {
     ///
     /// The default implementation does nothing.
     #[inline]
-    fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) {
-        let _ = (mgr, scroll);
+    fn handle_scroll(&mut self, data: &Self::Data, mgr: &mut EventMgr, scroll: Scroll) {
+        let _ = (data, mgr, scroll);
     }
 }
 
@@ -540,11 +547,11 @@ pub enum NavAdvance {
 ///         }
 ///     }
 ///     impl Events for Self {
-///         fn configure(&mut self, mgr: &mut ConfigMgr) {
+///         fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
 ///             mgr.add_accel_keys(self.id_ref(), self.label.keys());
 ///         }
 ///
-///         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+///         fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
 ///             event.on_activate(mgr, self.id(), |mgr| {
 ///                 mgr.push(self.message.clone());
 ///                 Response::Used
@@ -566,29 +573,29 @@ pub trait Widget: Layout {
     type Data: 'static;
 
     /// Erase type
-    fn as_node(&self) -> Node<'_>;
+    fn as_node(&self, data: &Self::Data) -> Node<'_>;
     /// Erase type
-    fn as_node_mut(&mut self) -> NodeMut<'_>;
+    fn as_node_mut(&mut self, data: &Self::Data) -> NodeMut<'_>;
 
     /// Get a reference to a child widget by index, if any
     ///
     /// Required: `index < self.num_children()`.
-    fn get_child(&self, index: usize) -> Option<Node<'_>>;
+    fn get_child(&self, data: &Self::Data, index: usize) -> Option<Node<'_>>;
 
     /// Mutable variant of get
     ///
     /// Required: `index < self.num_children()`.
-    fn get_child_mut(&mut self, index: usize) -> Option<NodeMut<'_>>;
+    fn get_child_mut(&mut self, data: &Self::Data, index: usize) -> Option<NodeMut<'_>>;
 
     /// Internal method: configure recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId);
+    fn _configure(&mut self, data: &Self::Data, cx: &mut ConfigMgr, id: WidgetId);
 
     /// Internal method: broadcast recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn _broadcast(&mut self, cx: &mut EventMgr, count: &mut usize, event: Event);
+    fn _broadcast(&mut self, data: &Self::Data, cx: &mut EventMgr, count: &mut usize, event: Event);
 
     /// Internal method: send recursively
     ///
@@ -597,7 +604,14 @@ pub trait Widget: Layout {
     /// ancestors of `id` are not disabled.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn _send(&mut self, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response;
+    fn _send(
+        &mut self,
+        data: &Self::Data,
+        cx: &mut EventMgr,
+        id: WidgetId,
+        disabled: bool,
+        event: Event,
+    ) -> Response;
 
     /// Internal method: replay recursively
     ///
@@ -605,13 +619,14 @@ pub trait Widget: Layout {
     /// `msg` to the message stack. Widget `id` or any ancestor may handle.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: Erased);
+    fn _replay(&mut self, data: &Self::Data, cx: &mut EventMgr, id: WidgetId, msg: Erased);
 
     /// Internal method: search for the previous/next navigation target
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn _nav_next(
         &mut self,
+        data: &Self::Data,
         cx: &mut EventMgr,
         focus: Option<&WidgetId>,
         advance: NavAdvance,
@@ -665,13 +680,13 @@ pub trait WidgetExt: Widget {
     }
 
     /// Find the descendant with this `id`, if any
-    fn find_node(&self, id: &WidgetId) -> Option<Node<'_>> {
-        self.as_node().find_node(id)
+    fn find_node(&self, data: &Self::Data, id: &WidgetId) -> Option<Node<'_>> {
+        self.as_node(data).find_node(id)
     }
 
     /// Find the descendant with this `id`, if any
-    fn find_node_mut(&mut self, id: &WidgetId) -> Option<NodeMut<'_>> {
-        self.as_node_mut().find_node(id)
+    fn find_node_mut(&mut self, data: &Self::Data, id: &WidgetId) -> Option<NodeMut<'_>> {
+        self.as_node_mut(data).find_node(id)
     }
 }
 impl<W: Widget + ?Sized> WidgetExt for W {}

@@ -26,7 +26,9 @@ impl_scope! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
-    #[widget]
+    #[widget {
+        Data = W::Data;
+    }]
     pub struct ScrollRegion<W: Widget> {
         core: widget_core!(),
         min_child_size: Size,
@@ -83,7 +85,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, _: &Self::Data, mgr: &mut EventMgr, offset: Offset) -> Offset {
             *mgr |= self.scroll.set_offset(offset);
             self.scroll.offset()
         }
@@ -135,19 +137,17 @@ impl_scope! {
     }
 
     impl Events for Self {
-        type Data = ();
-
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
             mgr.register_nav_fallback(self.id());
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             self.scroll
                 .scroll_by_event(mgr, event, self.id(), self.core.rect)
                 .1
         }
 
-        fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) {
+        fn handle_scroll(&mut self, _: &Self::Data, mgr: &mut EventMgr, scroll: Scroll) {
             self.scroll.scroll(mgr, self.rect(), scroll);
         }
     }

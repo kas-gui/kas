@@ -29,6 +29,7 @@ impl_scope! {
     /// When a view widget pushes a message, [`Driver::on_message`] is called.
     #[derive(Clone)]
     #[widget{
+        Data = <V::Widget as Widget>::Data;
         layout = self.child;
     }]
     pub struct SingleView<T: SingleData, V: Driver<T::Item, T> = driver::View> {
@@ -130,15 +131,13 @@ impl_scope! {
     }
 
     impl Events for Self {
-        type Data = ();
-
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
             // We set data now, after child is configured
             let item = self.data.borrow(&()).unwrap();
             *mgr |= self.driver.set(&mut self.child, &(), item.borrow());
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Update { .. } => {
                     let data_ver = self.data.version();
@@ -153,7 +152,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             self.driver
                 .on_message(mgr, &mut self.child, &self.data, &());
         }

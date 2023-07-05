@@ -207,7 +207,7 @@ impl Tree {
             }
 
             impl #impl_generics ::kas::Events for #impl_target {
-                type Data = ();
+                type Data = #data_ty;
 
                 fn pre_configure(
                     &mut self,
@@ -219,10 +219,11 @@ impl Tree {
 
                 fn pre_handle_event(
                     &mut self,
+                    data: &Self::Data,
                     cx: &mut ::kas::event::EventMgr,
                     event: ::kas::event::Event,
                 ) -> ::kas::event::Response {
-                    self.handle_event(cx, event)
+                    self.handle_event(data, cx, event)
                 }
             }
 
@@ -1084,9 +1085,11 @@ impl Layout {
             Layout::Label(stor, text) => {
                 children.push(stor.to_token_stream());
                 let span = text.span();
-                ty_toks.append_all(quote! { #stor: ::kas::hidden::StrLabel, });
+                ty_toks.append_all(
+                    quote! { #stor: ::kas::hidden::WithAny<#data_ty, ::kas::hidden::StrLabel>, },
+                );
                 def_toks.append_all(
-                    quote_spanned! {span=> #stor: ::kas::hidden::StrLabel::new(#text), },
+                    quote_spanned! {span=> #stor: ::kas::hidden::WithAny::new(::kas::hidden::StrLabel::new(#text)), },
                 );
                 false
             }

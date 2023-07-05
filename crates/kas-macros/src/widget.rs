@@ -534,57 +534,66 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 #fns_as_node
 
                 #[inline]
-                fn get_child(&self, index: usize) -> Option<::kas::Node<'_>> {
-                    self.#inner.get_child(index)
+                fn get_child(&self, data: &Self::Data, index: usize) -> Option<::kas::Node<'_>> {
+                    self.#inner.get_child(data, index)
                 }
                 #[inline]
-                fn get_child_mut(&mut self, index: usize) -> Option<::kas::NodeMut<'_>> {
-                    self.#inner.get_child_mut(index)
+                fn get_child_mut(
+                    &mut self,
+                    data: &Self::Data,
+                    index: usize,
+                ) -> Option<::kas::NodeMut<'_>> {
+                    self.#inner.get_child_mut(data, index)
                 }
 
                 fn _configure(
                     &mut self,
+                    data: &Self::Data,
                     cx: &mut ::kas::event::ConfigMgr,
                     id: ::kas::WidgetId,
                 ) {
-                    self.#inner._configure(cx, id);
+                    self.#inner._configure(data, cx, id);
                 }
 
                 fn _broadcast(
                     &mut self,
+                    data: &Self::Data,
                     cx: &mut ::kas::event::EventMgr,
                     count: &mut usize,
                     event: ::kas::event::Event,
                 ) {
-                    self.#inner._broadcast(cx, count, event);
+                    self.#inner._broadcast(data, cx, count, event);
                 }
 
                 fn _send(
                     &mut self,
+                    data: &Self::Data,
                     cx: &mut ::kas::event::EventMgr,
                     id: ::kas::WidgetId,
                     disabled: bool,
                     event: ::kas::event::Event,
                 ) -> ::kas::event::Response {
-                    self.#inner._send(cx, id, disabled, event)
+                    self.#inner._send(data, cx, id, disabled, event)
                 }
 
                 fn _replay(
                     &mut self,
+                    data: &Self::Data,
                     cx: &mut ::kas::event::EventMgr,
                     id: ::kas::WidgetId,
                     msg: ::kas::Erased,
                 ) {
-                    self.#inner._replay(cx, id, msg);
+                    self.#inner._replay(data, cx, id, msg);
                 }
 
                 fn _nav_next(
                     &mut self,
+                    data: &Self::Data,
                     cx: &mut ::kas::event::EventMgr,
                     focus: Option<&::kas::WidgetId>,
                     advance: ::kas::NavAdvance,
                 ) -> Option<::kas::WidgetId> {
-                    self.#inner._nav_next(cx, focus, advance)
+                    self.#inner._nav_next(data, cx, focus, advance)
                 }
             }
         });
@@ -752,6 +761,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         let fn_pre_handle_event = quote! {
             fn pre_handle_event(
                 &mut self,
+                data: &Self::Data,
                 mgr: &mut ::kas::event::EventMgr,
                 event: ::kas::event::Event,
             ) -> ::kas::event::Response {
@@ -760,7 +770,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     mgr.set_scroll(Scroll::Rect(self.rect()));
                 }
                 #pre_handle_event
-                self.handle_event(mgr, event)
+                self.handle_event(data, mgr, event)
             }
         };
         let fn_handle_event = None;
@@ -907,37 +917,43 @@ pub fn impl_widget(
         let mut get_rules = quote! {};
         let mut get_mut_rules = quote! {};
         for (i, (ident, span, opt_data)) in children.iter().enumerate() {
-            /*
             // TODO: incorrect or unconstrained data type of child causes a poor error
             // message here. Add a constaint like this (assuming no mapping fn):
             // <#ty as WidgetNode::Data> == Self::Data
             // But this is unsupported: rust#20041
             // predicates.push(..);
 
-            get_mut_rules.append_all(if let Some(data) = opt_data {
+            get_rules.append_all(if let Some(data) = opt_data {
                 quote! { #i => Some(self.#ident.as_node(#data)), }
             } else {
                 quote_spanned! {*span=> #i => Some(self.#ident.as_node(data)), }
             });
-            */
-            get_rules.append_all(quote! { #i => Some(self.#ident.as_node()), });
-            get_mut_rules.append_all(quote! { #i => Some(self.#ident.as_node_mut()), });
+            get_mut_rules.append_all(if let Some(data) = opt_data {
+                quote! { #i => Some(self.#ident.as_node_mut(#data)), }
+            } else {
+                quote_spanned! {*span=> #i => Some(self.#ident.as_node_mut(data)), }
+            });
         }
         for (i, path) in layout_children.iter().enumerate() {
             let index = count + i;
-            get_rules.append_all(quote! { #index => Some(#core_path.#path.as_node()), });
-            get_mut_rules.append_all(quote! { #index => Some(#core_path.#path.as_node_mut()), });
+            get_rules.append_all(quote! { #index => Some(#core_path.#path.as_node(data)), });
+            get_mut_rules
+                .append_all(quote! { #index => Some(#core_path.#path.as_node_mut(data)), });
         }
 
         quote! {
-            fn get_child(&self, index: usize) -> Option<::kas::Node<'_>> {
+            fn get_child(&self, data: &Self::Data, index: usize) -> Option<::kas::Node<'_>> {
                 use ::kas::WidgetCore;
                 match index {
                     #get_rules
                     _ => None
                 }
             }
-            fn get_child_mut(&mut self, index: usize) -> Option<::kas::NodeMut<'_>> {
+            fn get_child_mut(
+                &mut self,
+                data: &Self::Data,
+                index: usize,
+            ) -> Option<::kas::NodeMut<'_>> {
                 use ::kas::WidgetCore;
                 match index {
                     #get_mut_rules
@@ -964,10 +980,10 @@ pub fn impl_widget(
 fn widget_as_node_methods() -> Toks {
     quote! {
         #[inline]
-        fn as_node(&self) -> ::kas::Node<'_> { ::kas::Node::new(self) }
+        fn as_node(&self, data: &Self::Data) -> ::kas::Node<'_> { ::kas::Node::new(self, data) }
         #[inline]
-        fn as_node_mut(&mut self) -> ::kas::NodeMut<'_> {
-            ::kas::NodeMut::new(self)
+        fn as_node_mut(&mut self, data: &Self::Data) -> ::kas::NodeMut<'_> {
+            ::kas::NodeMut::new(self, data)
         }
     }
 }
@@ -976,47 +992,52 @@ fn widget_recursive_methods() -> Toks {
     quote! {
         fn _configure(
             &mut self,
+            data: &Self::Data,
             cx: &mut ::kas::event::ConfigMgr,
             id: ::kas::WidgetId,
         ) {
-            ::kas::impls::_configure(self, cx, id);
+            ::kas::impls::_configure(self, data, cx, id);
         }
 
         fn _broadcast(
             &mut self,
+            data: &Self::Data,
             cx: &mut ::kas::event::EventMgr,
             count: &mut usize,
             event: ::kas::event::Event,
         ) {
-            ::kas::impls::_broadcast(self, cx, count, event);
+            ::kas::impls::_broadcast(self, data, cx, count, event);
         }
 
         fn _send(
             &mut self,
+            data: &Self::Data,
             cx: &mut ::kas::event::EventMgr,
             id: ::kas::WidgetId,
             disabled: bool,
             event: ::kas::event::Event,
         ) -> ::kas::event::Response {
-            ::kas::impls::_send(self, cx, id, disabled, event)
+            ::kas::impls::_send(self, data, cx, id, disabled, event)
         }
 
         fn _replay(
             &mut self,
+            data: &Self::Data,
             cx: &mut ::kas::event::EventMgr,
             id: ::kas::WidgetId,
             msg: ::kas::Erased,
         ) {
-            ::kas::impls::_replay(self, cx, id, msg);
+            ::kas::impls::_replay(self, data, cx, id, msg);
         }
 
         fn _nav_next(
             &mut self,
+            data: &Self::Data,
             cx: &mut ::kas::event::EventMgr,
             focus: Option<&::kas::WidgetId>,
             advance: ::kas::NavAdvance,
         ) -> Option<::kas::WidgetId> {
-            ::kas::impls::_nav_next(self, cx, focus, advance)
+            ::kas::impls::_nav_next(self, data, cx, focus, advance)
         }
     }
 }
