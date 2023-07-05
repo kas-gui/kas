@@ -265,7 +265,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     };
 
     let data_ty = if let Some(ident) = opt_derive.as_ref() {
-        'outer: loop {
+        'outer: {
             for (i, field) in fields.iter_mut().enumerate() {
                 if *ident == member(i, field.ident.clone()) {
                     let ty = &field.ty;
@@ -415,7 +415,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             emit_warning!(span, "fn num_children without fn get_child_mut");
         }
     }
-    if let Some(span) = get_child.as_ref().or_else(|| get_child_mut.as_ref()) {
+    if let Some(span) = get_child.as_ref().or(get_child_mut.as_ref()) {
         if num_children.is_none() {
             emit_warning!(span, "fn get_child[_mut] without fn num_children");
         }
