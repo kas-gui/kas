@@ -152,6 +152,7 @@ impl_scope! {
                 .or_else(|| Some(self.id()))
         }
 
+        #[cfg(feature = "winit")]
         pub(crate) fn draw(&mut self, data: &Data, mut draw: DrawMgr) {
             if self.dec_size != Size::ZERO {
                 draw.frame(self.core.rect, FrameStyle::Window, Default::default());

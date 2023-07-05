@@ -48,7 +48,7 @@ jobs:
       - name: Test kas-wgpu
         run: |
           cargo test --manifest-path crates/kas-wgpu/Cargo.toml
-          cargo test --manifest-path crates/kas-wgpu/Cargo.toml --no-default-features --features raster,kas/x11
+          cargo test --manifest-path crates/kas-wgpu/Cargo.toml --no-default-features --features raster,kas/wayland
           cargo test --manifest-path crates/kas-wgpu/Cargo.toml --all-features --features kas/x11
       - name: Test kas-dylib
         run: |

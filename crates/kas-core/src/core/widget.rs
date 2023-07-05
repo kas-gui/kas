@@ -476,7 +476,9 @@ pub enum NavAdvance {
 ///
 /// impl_scope! {
 ///     /// A text label
-///     #[widget]
+///     #[widget {
+///         Data = ();
+///     }]
 ///     pub struct AccelLabel {
 ///         core: widget_core!(),
 ///         class: TextClass,
@@ -547,6 +549,8 @@ pub enum NavAdvance {
 ///         }
 ///     }
 ///     impl Events for Self {
+///         type Data = ();
+///
 ///         fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
 ///             mgr.add_accel_keys(self.id_ref(), self.label.keys());
 ///         }

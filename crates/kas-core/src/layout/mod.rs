@@ -232,6 +232,7 @@ impl From<AxisInfo> for Directions {
 ///
 /// impl_scope! {
 ///     #[widget {
+///         Data = ();
 ///         layout = "Example";
 ///     }]
 ///     struct Example {
