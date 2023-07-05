@@ -370,6 +370,7 @@ impl_scope! {
     #[autoimpl(Default)]
     #[derive(Clone)]
     #[widget{
+        Data = ();
         layout = self.inner;
     }]
     struct ComboPopup<M: Clone + Debug + 'static> {

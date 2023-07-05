@@ -55,6 +55,7 @@ impl EditGuard for ListEntryGuard {
 impl_scope! {
     // The list entry
     #[widget{
+        Data = ();
         layout = column! [
             row! [self.label, self.radio],
             self.edit,

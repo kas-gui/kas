@@ -11,6 +11,7 @@ use kas::widget::{Column, Label, StrLabel};
 
 impl_scope! {
     #[widget{
+        Data = ();
         layout = self.label;
         cursor_icon = self.cursor;
     }]

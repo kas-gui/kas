@@ -265,6 +265,8 @@ impl_scope! {
     }
 
     impl kas::Widget for Self {
+        type Data = ();
+
         #[inline]
         fn get_child(&self, index: usize) -> Option<Node> {
             self.list.get(index).map(|w| w.as_node())

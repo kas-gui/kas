@@ -423,6 +423,7 @@ fn canvas() -> Box<dyn SetDisabled> {
 
     Box::new(singleton! {
         #[widget{
+            Data = ();
             layout = column! [
                 Label::new("Animated canvas demo (CPU-rendered, async). Note: scheduling is broken on X11."),
                 self.canvas,
@@ -456,6 +457,7 @@ KAS_CONFIG_MODE=readwrite
 
     Box::new(ScrollBarRegion::new(singleton! {
         #[widget{
+            Data = ();
             layout = column! [
                 ScrollLabel::new(Markdown::new(DESC).unwrap()),
                 Separator::new(),

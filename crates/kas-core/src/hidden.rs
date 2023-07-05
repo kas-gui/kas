@@ -25,7 +25,9 @@ impl_scope! {
     /// alignment depends on the script direction if not specified.
     /// Line-wrapping is enabled.
     #[derive(Clone, Debug, Default)]
-    #[widget]
+    #[widget {
+        Data = ();
+    }]
     pub struct StrLabel {
         core: widget_core!(),
         label: Text<&'static str>,

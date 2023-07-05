@@ -180,7 +180,6 @@ impl Tree {
             &vec![],
             layout_children,
             true,
-            true,
         );
 
         let layout_methods = self.layout_methods(&core_path)?;

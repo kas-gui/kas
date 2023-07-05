@@ -21,7 +21,9 @@ use std::fmt::Debug;
 impl_scope! {
     /// A simple label
     #[derive(Clone, Debug, Default)]
-    #[widget]
+    #[widget {
+        Data = ();
+    }]
     pub struct Label {
         core: widget_core!(),
         label: Text<String>,

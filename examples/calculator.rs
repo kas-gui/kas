@@ -28,6 +28,7 @@ impl_scope! {
     // Buttons get keyboard bindings through the "&" item (e.g. "&1"
     // binds both main and numpad 1 key) and via `with_keys`.
     #[widget{
+        Data = ();
         layout = grid! {
             (0, 0) => TextButton::new_msg("&clear", Key::Clear).with_keys(&[VK::Delete]),
             (1, 0) => TextButton::new_msg("&÷", Key::Divide).with_keys(&[VK::Slash]),

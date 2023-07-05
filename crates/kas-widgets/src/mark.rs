@@ -12,7 +12,9 @@ use std::fmt::Debug;
 impl_scope! {
     /// A mark
     #[derive(Clone, Debug)]
-    #[widget]
+    #[widget {
+        Data = ();
+    }]
     pub struct Mark {
         core: widget_core!(),
         style: MarkStyle,

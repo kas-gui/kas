@@ -20,7 +20,9 @@ impl_scope! {
     /// See also: [`StrLabel`], [`StringLabel`], [`AccelLabel`].
     #[impl_default(where T: Default)]
     #[derive(Clone, Debug)]
-    #[widget]
+    #[widget {
+        Data = ();
+    }]
     pub struct Label<T: FormattableText + 'static> {
         core: widget_core!(),
         class: TextClass = TextClass::Label(true),

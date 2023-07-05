@@ -268,9 +268,9 @@ pub trait Layout: WidgetCore {
 pub trait Events: Sized {
     /// Input data type
     ///
-    /// If no `Events` impl is given, the `#[widget]` macro will auto-implement
-    /// the trait with `type Data = ();`. If `Events` is implemented
-    /// explicitly then this type must be specified.
+    /// This type must match [`Widget::Data`]. When using the `#[widget]` macro,
+    /// the type only needs to be specified once, here, in the implementation of
+    /// [`Widget`], or via the `Data` property.
     type Data;
 
     /// Pre-configuration
@@ -560,7 +560,9 @@ pub trait Widget: Layout {
     /// Widget expects data of this type to be provided by reference when
     /// calling any event-handling operation on this widget.
     ///
-    /// TODO: temporarily this defaults to `()`.
+    /// This type must match [`Events::Data`] if `Events` is implemented when
+    /// using the `#[widget]` macro. The type only needs to be specified once,
+    /// here, in the implementation of [`Events`], or via the `Data` property.
     type Data: 'static;
 
     /// Erase type

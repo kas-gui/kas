@@ -12,7 +12,8 @@ use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::token::Eq;
-use syn::{parse2, parse_quote, Ident, ImplItem, Index, ItemImpl, Member, Meta, Token, Type};
+use syn::ImplItem::{self, Verbatim};
+use syn::{parse_quote, Ident, Index, ItemImpl, Member, Meta, Token, Type};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -48,7 +49,6 @@ pub struct WidgetArgs {
     pub cursor_icon: Option<ExprToken>,
     pub derive: Option<Member>,
     pub layout: Option<(kw::layout, make_layout::Tree)>,
-    span_end: Option<Span>, // None if and only if #[widget] has no brackets
 }
 
 impl Parse for WidgetArgs {
@@ -120,7 +120,6 @@ impl Parse for WidgetArgs {
             cursor_icon,
             derive,
             layout,
-            span_end: Some(content.span()),
         })
     }
 }
@@ -142,23 +141,22 @@ impl ScopeAttr for AttrImplWidget {
     }
 
     fn apply(&self, attr: syn::Attribute, scope: &mut Scope) -> Result<()> {
+        let span = attr.span();
         let args = match &attr.meta {
             Meta::Path(_) => WidgetArgs::default(),
             _ => attr.parse_args()?,
         };
-        widget(args, scope)
+        widget(span, args, scope)
     }
 }
 
-pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
+pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     scope.expand_impl_self();
     let name = &scope.ident;
     let opt_derive = &args.derive;
     let mut data_ty = args.data_ty;
 
     let mut widget_impl = None;
-    let mut do_data_ty_impl = true;
-    let mut do_recursive_methods = true;
     let mut layout_impl = None;
     let mut events_impl = None;
 
@@ -179,8 +177,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                             get_child = Some(item.sig.ident.clone());
                         } else if item.sig.ident == "get_child_mut" {
                             get_child_mut = Some(item.sig.ident.clone());
-                        } else if item.sig.ident == "_send" {
-                            do_recursive_methods = false;
                         }
                     } else if let ImplItem::Type(ref item) = item {
                         if item.ident == "Data" {
@@ -192,7 +188,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                             } else {
                                 data_ty = Some(item.ty.clone());
                             }
-                            do_data_ty_impl = false;
                         }
                     }
                 }
@@ -231,13 +226,23 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 if events_impl.is_none() {
                     events_impl = Some(index);
                 }
+
+                for item in &impl_.items {
+                    if let ImplItem::Type(ref item) = item {
+                        if item.ident == "Data" {
+                            if let Some(ref ty) = data_ty {
+                                emit_error!(
+                                    ty, "depulicate definition";
+                                    note = item.ty.span() => "also defined here";
+                                );
+                            } else {
+                                data_ty = Some(item.ty.clone());
+                            }
+                        }
+                    }
+                }
             }
         }
-    }
-
-    // TODO: as a temporary measure, we default to Data = ()
-    if data_ty.is_none() {
-        data_ty = Some(parse_quote! { () });
     }
 
     let fields = match &mut scope.item {
@@ -258,7 +263,32 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
     };
 
-    let mut derive_ty_def = None;
+    let data_ty = if let Some(ident) = opt_derive.as_ref() {
+        'outer: loop {
+            for (i, field) in fields.iter_mut().enumerate() {
+                if *ident == member(i, field.ident.clone()) {
+                    let ty = &field.ty;
+                    break 'outer parse_quote! { <#ty as ::kas::Widget>::Data };
+                }
+            }
+            return Err(Error::new(ident.span(), "field not found"));
+        }
+    } else if let Some(ty) = data_ty {
+        ty
+    } else {
+        let span = if let Some(index) = widget_impl {
+            scope.impls[index].brace_token.span.open()
+        } else if let Some(index) = events_impl {
+            scope.impls[index].brace_token.span.open()
+        } else {
+            attr_span
+        };
+        return Err(Error::new(
+            span,
+            "expected a definition of Data in Events, Widget or via #[widget] property",
+        ));
+    };
+
     let mut core_data: Option<Member> = None;
     let mut children = Vec::with_capacity(fields.len());
     let mut layout_children = Vec::new();
@@ -285,16 +315,8 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             core_data = Some(ident.clone());
 
             let mut stor_defs = Default::default();
-            if let Some((kw, ref layout)) = args.layout {
-                let missing_data_ty = parse_quote! { MissingData };
-                let dty = data_ty.as_ref().unwrap_or(&missing_data_ty);
-                stor_defs = layout.storage_fields(&mut layout_children, dty);
-                if data_ty.is_none() && stor_defs.used_data_ty {
-                    emit_error!(
-                        args.span_end.unwrap(), "expected: `Data = TYPE;`";
-                        note = kw.span => "required by this layout";
-                    );
-                }
+            if let Some((_, ref layout)) = args.layout {
+                stor_defs = layout.storage_fields(&mut layout_children, &data_ty);
             }
             if !stor_defs.ty_toks.is_empty() {
                 let name = format!("_{name}CoreTy");
@@ -336,9 +358,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
 
             continue;
-        } else if Some(&ident) == opt_derive.as_ref() {
-            let ty = &field.ty;
-            derive_ty_def = Some(quote! { type Data = <#ty as ::kas::Widget>::Data; });
         }
 
         let mut is_widget = false;
@@ -502,7 +521,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         let fns_as_node = widget_as_node_methods();
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Widget for #impl_target {
-                #derive_ty_def
+                type Data = #data_ty;
                 #fns_as_node
 
                 #[inline]
@@ -597,28 +616,29 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
 
         if let Some(index) = widget_impl {
-            use syn::ImplItem::Verbatim;
             let widget_impl = &mut scope.impls[index];
-            if do_data_ty_impl {
-                let data_ty = data_ty.as_ref().unwrap();
+            let item_idents = collect_idents(widget_impl);
+            let has_item = |name| item_idents.iter().any(|ident| ident == name);
+
+            let widget_impl = &mut scope.impls[index];
+            if !has_item("Data") {
                 widget_impl.items.push(Verbatim(quote! {
                     type Data = #data_ty;
                 }));
             }
             widget_impl.items.push(Verbatim(widget_as_node_methods()));
-            if do_recursive_methods {
+            if !has_item("_send") {
                 widget_impl.items.push(Verbatim(widget_recursive_methods()));
             }
         } else {
             scope.generated.push(impl_widget(
                 &impl_generics,
                 &impl_target,
-                &data_ty.expect("has data_ty"),
+                &data_ty,
                 &core_path,
                 &children,
                 layout_children,
                 do_impl_widget_children,
-                do_recursive_methods,
             ));
         }
 
@@ -738,23 +758,29 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
         if let Some(index) = events_impl {
             let events_impl = &mut scope.impls[index];
-            let method_idents = collect_idents(events_impl);
-            let has_method = |name| method_idents.iter().any(|ident| ident == name);
+            let item_idents = collect_idents(events_impl);
+            let has_item = |name| item_idents.iter().any(|ident| ident == name);
 
-            if opt_derive.is_some() || !has_method("pre_configure") {
-                events_impl.items.push(parse2(fn_pre_configure)?);
+            if !has_item("Data") {
+                events_impl
+                    .items
+                    .push(Verbatim(quote! { type Data = #data_ty; }));
+            }
+
+            if opt_derive.is_some() || !has_item("pre_configure") {
+                events_impl.items.push(Verbatim(fn_pre_configure));
             }
             if let Some(method) = fn_navigable {
-                events_impl.items.push(parse2(method)?);
+                events_impl.items.push(Verbatim(method));
             }
-            events_impl.items.push(parse2(fn_pre_handle_event)?);
+            events_impl.items.push(Verbatim(fn_pre_handle_event));
             if let Some(item) = fn_handle_event {
-                events_impl.items.push(parse2(item)?);
+                events_impl.items.push(Verbatim(item));
             }
         } else {
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::Events for #impl_target {
-                    type Data = ();
+                    type Data = #data_ty;
                     #fn_pre_configure
                     #fn_navigable
                     #fn_pre_handle_event
@@ -765,24 +791,22 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     }
 
     if let Some(index) = layout_impl {
-        use syn::ImplItem::Verbatim;
-
         let layout_impl = &mut scope.impls[index];
-        let method_idents = collect_idents(layout_impl);
-        let has_method = |name| method_idents.iter().any(|ident| ident == name);
+        let item_idents = collect_idents(layout_impl);
+        let has_item = |name| item_idents.iter().any(|ident| ident == name);
 
         layout_impl.items.push(Verbatim(required_layout_methods));
 
         if let Some(method) = fn_size_rules {
-            if !has_method("size_rules") {
+            if !has_item("size_rules") {
                 layout_impl.items.push(Verbatim(method));
             }
         }
-        if !has_method("set_rect") {
+        if !has_item("set_rect") {
             layout_impl.items.push(Verbatim(fn_set_rect));
         }
 
-        if !has_method("nav_next") {
+        if !has_item("nav_next") {
             if let Some(method) = fn_nav_next {
                 layout_impl.items.push(Verbatim(method));
             } else if gen_layout {
@@ -792,7 +816,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
         }
 
-        if let Some(ident) = method_idents.iter().find(|ident| *ident == "translation") {
+        if let Some(ident) = item_idents.iter().find(|ident| *ident == "translation") {
             if opt_derive.is_some() {
                 emit_error!(ident, "method not supported in derive mode");
             }
@@ -800,11 +824,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             layout_impl.items.push(Verbatim(method));
         }
 
-        if !has_method("find_id") {
+        if !has_item("find_id") {
             layout_impl.items.push(Verbatim(fn_find_id));
         }
         if let Some(method) = fn_draw {
-            if !has_method("draw") {
+            if !has_item("draw") {
                 layout_impl.items.push(Verbatim(method));
             }
         }
@@ -832,6 +856,7 @@ fn collect_idents(item_impl: &ItemImpl) -> Vec<Ident> {
         .iter()
         .filter_map(|item| match item {
             ImplItem::Fn(m) => Some(m.sig.ident.clone()),
+            ImplItem::Type(t) => Some(t.ident.clone()),
             _ => None,
         })
         .collect()
@@ -865,7 +890,6 @@ pub fn impl_widget(
     children: &Vec<Member>,
     layout_children: Vec<Toks>,
     do_impl_widget_children: bool,
-    do_recursive_methods: bool,
 ) -> Toks {
     let fns_as_node = widget_as_node_methods();
 
@@ -904,11 +928,7 @@ pub fn impl_widget(
         quote! {}
     };
 
-    let fns_recurse = if do_recursive_methods {
-        widget_recursive_methods()
-    } else {
-        quote! {}
-    };
+    let fns_recurse = widget_recursive_methods();
 
     quote! {
         impl #impl_generics ::kas::Widget for #impl_target {
