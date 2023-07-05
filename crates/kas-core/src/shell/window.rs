@@ -653,10 +653,10 @@ where
         self.shared.platform
     }
 
-    #[cfg(features = "winit")]
+    #[cfg(feature = "winit")]
     #[inline]
     fn winit_window(&self) -> Option<&winit::window::Window> {
-        self.window
+        self.window.map(|w| &w.window)
     }
 
     #[inline]

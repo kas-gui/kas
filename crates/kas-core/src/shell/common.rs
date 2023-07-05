@@ -320,7 +320,7 @@ pub(crate) trait ShellWindow {
     /// Directly access Winit Window
     ///
     /// This is a temporary API, allowing e.g. to minimize the window.
-    #[cfg(features = "winit")]
+    #[cfg(feature = "winit")]
     fn winit_window(&self) -> Option<&winit::window::Window>;
 
     /// Access a Waker
