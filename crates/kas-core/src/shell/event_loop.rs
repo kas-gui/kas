@@ -123,6 +123,7 @@ where
                 }
                 ProxyAction::Update(handle, payload) => {
                     self.shared
+                        .shell
                         .pending
                         .push(PendingAction::Update(handle, payload));
                 }
@@ -139,7 +140,7 @@ where
             Resumed => (),
 
             MainEventsCleared => {
-                while let Some(pending) = self.shared.pending.pop() {
+                while let Some(pending) = self.shared.shell.pending.pop() {
                     match pending {
                         PendingAction::AddPopup(parent_id, id, popup) => {
                             log::debug!("Pending: adding overlay");

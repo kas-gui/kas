@@ -136,7 +136,7 @@ where
     /// Access shared draw state
     #[inline]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
-        &mut self.shared.draw
+        &mut self.shared.shell.draw
     }
 
     /// Access event configuration
@@ -148,19 +148,19 @@ where
     /// Access the theme by ref
     #[inline]
     pub fn theme(&self) -> &T {
-        &self.shared.theme
+        &self.shared.shell.theme
     }
 
     /// Access the theme by ref mut
     #[inline]
     pub fn theme_mut(&mut self) -> &mut T {
-        &mut self.shared.theme
+        &mut self.shared.shell.theme
     }
 
     /// Assume ownership of and display a window
     #[inline]
     pub fn add(&mut self, window: Window<Data>) -> Result<WindowId> {
-        let id = self.shared.next_window_id();
+        let id = self.shared.shell.next_window_id();
         let win = super::Window::new(&mut self.shared, &self.el, id, window)?;
         self.windows.push(win);
         Ok(id)

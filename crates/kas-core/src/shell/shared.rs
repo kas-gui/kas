@@ -19,20 +19,25 @@ use kas::{draw, WindowId};
 
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
-/// State shared between windows
-pub struct SharedState<Data: 'static, S: WindowSurface, T> {
-    pub(super) data: Data,
+/// Shell interface state
+pub(super) struct ShellShared<Data: 'static, S: kas::draw::DrawSharedImpl, T> {
     pub(super) platform: Platform,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Clipboard>,
-    pub(super) draw: draw::SharedState<S::Shared>,
+    pub(super) draw: draw::SharedState<S>,
     pub(super) theme: T,
-    pub(super) config: SharedRc<kas::event::Config>,
     pub(super) pending: Vec<PendingAction<Data>>,
-    /// Estimated scale factor (from last window constructed or available screens)
-    pub(super) scale_factor: f64,
     pub(super) waker: Waker,
     window_id: u32,
+}
+
+/// State shared between windows
+pub struct SharedState<Data: 'static, S: WindowSurface, T> {
+    pub(super) shell: ShellShared<Data, S::Shared, T>,
+    pub(super) data: Data,
+    pub(super) config: SharedRc<kas::event::Config>,
+    /// Estimated scale factor (from last window constructed or available screens)
+    pub(super) scale_factor: f64,
     options: Options,
 }
 
@@ -63,21 +68,35 @@ where
         };
 
         Ok(SharedState {
+            shell: ShellShared {
+                platform,
+                #[cfg(feature = "clipboard")]
+                clipboard,
+                draw,
+                theme,
+                pending: vec![],
+                waker: pw.create_waker(),
+                window_id: 0,
+            },
             data,
-            platform,
-            #[cfg(feature = "clipboard")]
-            clipboard,
-            draw,
-            theme,
             config,
-            pending: vec![],
             scale_factor: pw.guess_scale_factor(),
-            waker: pw.create_waker(),
-            window_id: 0,
             options,
         })
     }
 
+    pub fn on_exit(&self) {
+        match self
+            .options
+            .write_config(&self.config.borrow(), &self.shell.theme)
+        {
+            Ok(()) => (),
+            Err(error) => warn_about_error("Failed to save config", &error),
+        }
+    }
+}
+
+impl<Data: 'static, S: kas::draw::DrawSharedImpl, T> ShellShared<Data, S, T> {
     pub fn next_window_id(&mut self) -> WindowId {
         self.window_id += 1;
         WindowId::new(NonZeroU32::new(self.window_id).unwrap())
@@ -151,15 +170,5 @@ where
 
     pub fn update_all(&mut self, id: UpdateId, payload: u64) {
         self.pending.push(PendingAction::Update(id, payload));
-    }
-
-    pub fn on_exit(&self) {
-        match self
-            .options
-            .write_config(&self.config.borrow(), &self.theme)
-        {
-            Ok(()) => (),
-            Err(error) => warn_about_error("Failed to save config", &error),
-        }
     }
 }
