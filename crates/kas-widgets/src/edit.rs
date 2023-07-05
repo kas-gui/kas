@@ -1190,8 +1190,7 @@ impl<G: EditGuard> EditField<G> {
                 // We always delete one code-point, not one grapheme cluster:
                 let prev = self.text.text()[0..pos]
                     .char_indices()
-                    .rev()
-                    .next()
+                    .next_back()
                     .map(|(i, _)| i)
                     .unwrap_or(0);
                 Action::Delete(prev..pos)
