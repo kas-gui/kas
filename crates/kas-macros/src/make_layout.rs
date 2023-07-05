@@ -388,6 +388,7 @@ enum Direction {
 
 bitflags::bitflags! {
     // NOTE: this must match kas::dir::Directions!
+    #[derive(Debug)]
     struct Directions: u8 {
         const LEFT = 0b0001;
         const RIGHT = 0b0010;

@@ -20,7 +20,7 @@ bitflags! {
     /// (`toolkit.run()`) or if the widget in question is not part of a UI these
     /// values can be ignored.
     #[must_use]
-    #[derive(Default)]
+    #[derive(Copy, Clone, Default)]
     pub struct Action: u32 {
         /// No flags
         ///

@@ -145,7 +145,7 @@ impl<DS> ThemeControl for MultiTheme<DS> {
         // (Otherwise we would have to call set_scheme in set_theme too.)
         let mut action = Action::empty();
         for theme in &mut self.themes {
-            action = action.max(theme.set_font_size(size));
+            action |= theme.set_font_size(size);
         }
         action
     }
