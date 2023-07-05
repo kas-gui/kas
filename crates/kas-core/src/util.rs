@@ -80,7 +80,7 @@ impl<'a, T: fmt::Debug + ?Sized> fmt::Debug for TryFormat<'a, T> {
     }
 }
 
-/// Generic implementation of [`crate::Events::nav_next`]
+/// Generic implementation of [`Layout::nav_next`](crate::Layout::nav_next)
 pub fn nav_next(reverse: bool, from: Option<usize>, len: usize) -> Option<usize> {
     let last = len.wrapping_sub(1);
     if last == usize::MAX {

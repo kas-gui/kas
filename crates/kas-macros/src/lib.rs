@@ -319,13 +319,14 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// available. Only [`Layout`] methods may be specified (overriding those from
 /// the derived widget); everything else is derived.
 ///
-/// [`Widget`]: https://docs.rs/kas/0.11/kas/trait.Widget.html
-/// [`WidgetCore`]: https://docs.rs/kas/0.11/kas/trait.WidgetCore.html
-/// [`Layout`]: https://docs.rs/kas/0.11/kas/trait.Layout.html
-/// [`Events`]: https://docs.rs/kas/0.11/kas/trait.Events.html
-/// [`CursorIcon`]: https://docs.rs/kas/0.11/kas/event/enum.CursorIcon.html
-/// [`Response`]: https://docs.rs/kas/0.11/kas/event/enum.Response.html
-/// [`CoreData`]: https://docs.rs/kas/0.11/kas/struct.CoreData.html
+/// [`Widget`]: https://docs.rs/kas/latest/kas/trait.Widget.html
+/// [`Widget::get_child`]: https://docs.rs/kas/latest/kas/trait.Widget.html#method.get_child
+/// [`WidgetCore`]: https://docs.rs/kas/latest/kas/trait.WidgetCore.html
+/// [`Layout`]: https://docs.rs/kas/latest/kas/trait.Layout.html
+/// [`Events`]: https://docs.rs/kas/latest/kas/trait.Events.html
+/// [`CursorIcon`]: https://docs.rs/kas/latest/kas/event/enum.CursorIcon.html
+/// [`Response`]: https://docs.rs/kas/latest/kas/event/enum.Response.html
+/// [`CoreData`]: https://docs.rs/kas/latest/kas/struct.CoreData.html
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
@@ -402,6 +403,8 @@ pub fn singleton(input: TokenStream) -> TokenStream {
 /// Example usage: `widget_index![self.a]`. If `a` is a child widget (a field
 /// marked with the `#[widget]` attribute), then this expands to the child
 /// widget's index (as used by [`Widget::get_child`]). Otherwise, this is an error.
+///
+/// [`Widget::get_child`]: https://docs.rs/kas/latest/kas/trait.Widget.html#method.get_child
 #[proc_macro_error]
 #[proc_macro]
 pub fn widget_index(input: TokenStream) -> TokenStream {
