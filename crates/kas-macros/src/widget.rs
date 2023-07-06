@@ -555,6 +555,14 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     self.#inner._configure(data, cx, id);
                 }
 
+                fn _update(
+                    &mut self,
+                    data: &Self::Data,
+                    cx: &mut ::kas::event::ConfigMgr,
+                ) {
+                    self.#inner._update(data, cx);
+                }
+
                 fn _broadcast(
                     &mut self,
                     data: &Self::Data,
@@ -997,6 +1005,14 @@ fn widget_recursive_methods() -> Toks {
             id: ::kas::WidgetId,
         ) {
             ::kas::impls::_configure(self, data, cx, id);
+        }
+
+        fn _update(
+            &mut self,
+            data: &Self::Data,
+            cx: &mut ::kas::event::ConfigMgr,
+        ) {
+            ::kas::impls::_update(self, data, cx);
         }
 
         fn _broadcast(

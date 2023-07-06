@@ -810,6 +810,10 @@ impl_scope! {
             self.configure(data, cx);
         }
 
+        fn _update(&mut self, data: &Self::Data, cx: &mut ConfigMgr) {
+            let _ = (data, cx); // For now, do nothing
+        }
+
         fn _broadcast(&mut self, data: &Self::Data, cx: &mut EventMgr, count: &mut usize, event: Event) {
             kas::impls::_broadcast(self, data, cx, count, event);
         }

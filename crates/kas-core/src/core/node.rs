@@ -314,6 +314,11 @@ impl<'a> NodeMut<'a> {
         self.0._configure(self.1, cx, id);
     }
 
+    /// Internal method: update recursively
+    pub(crate) fn _update(&mut self, cx: &mut ConfigMgr) {
+        self.0._update(self.1, cx);
+    }
+
     /// Internal method: broadcast recursively
     pub(crate) fn _broadcast(&mut self, cx: &mut EventMgr, count: &mut usize, event: Event) {
         self.0._broadcast(self.1, cx, count, event);

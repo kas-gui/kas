@@ -610,6 +610,11 @@ pub trait Widget: Layout {
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn _configure(&mut self, data: &Self::Data, cx: &mut ConfigMgr, id: WidgetId);
 
+    /// Internal method: update recursively
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    fn _update(&mut self, data: &Self::Data, cx: &mut ConfigMgr);
+
     /// Internal method: broadcast recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]

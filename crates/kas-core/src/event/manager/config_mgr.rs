@@ -86,8 +86,19 @@ impl<'a> ConfigMgr<'a> {
     ///
     /// Pass the `id` to assign to the widget: this should be constructed from
     /// the parent's id via [`WidgetId::make_child`].
+    #[inline]
     pub fn configure(&mut self, mut widget: NodeMut<'_>, id: WidgetId) {
         widget._configure(self, id);
+    }
+
+    /// Update a widget
+    ///
+    /// [`Events::update`] will be called recursively on each child and finally
+    /// `self`. If a widget stores state which it passes to children as input
+    /// data, it should call this after mutating the state.
+    #[inline]
+    pub fn update(&mut self, mut widget: NodeMut<'_>) {
+        widget._update(self);
     }
 
     /// Align a feature's rect

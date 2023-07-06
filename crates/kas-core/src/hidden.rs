@@ -177,6 +177,10 @@ impl_scope! {
             self.inner._configure(&(), cx, id);
         }
 
+        fn _update(&mut self, _: &A, cx: &mut ConfigMgr) {
+            self.inner._update(&(), cx);
+        }
+
         fn _broadcast(&mut self, _: &A, cx: &mut EventMgr, count: &mut usize, event: Event) {
             self.inner._broadcast(&(), cx, count, event);
         }

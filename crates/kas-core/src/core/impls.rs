@@ -31,6 +31,21 @@ pub fn _configure<W: Widget + Events<Data = <W as Widget>::Data>>(
     widget.update(data, cx);
 }
 
+/// Generic implementation of [`Widget::_update`]
+pub fn _update<W: Widget + Events<Data = <W as Widget>::Data>>(
+    widget: &mut W,
+    data: &<W as Widget>::Data,
+    cx: &mut ConfigMgr,
+) {
+    for index in 0..widget.num_children() {
+        if let Some(mut node) = widget.get_child_mut(data, index) {
+            node._update(cx);
+        }
+    }
+
+    widget.update(data, cx);
+}
+
 /// Generic implementation of [`Widget::_broadcast`]
 pub fn _broadcast<W: Widget + Events<Data = <W as Widget>::Data>>(
     widget: &mut W,
