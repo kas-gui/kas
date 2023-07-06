@@ -21,8 +21,8 @@ pub fn _configure<W: Widget + Events<Data = <W as Widget>::Data>>(
     for index in 0..widget.num_children() {
         let id = widget.make_child_id(index);
         if id.is_valid() {
-            if let Some(mut widget) = widget.get_child_mut(data, index) {
-                widget._configure(cx, id);
+            if let Some(mut node) = widget.get_child_mut(data, index) {
+                node._configure(cx, id);
             }
         }
     }
@@ -41,8 +41,8 @@ pub fn _broadcast<W: Widget + Events<Data = <W as Widget>::Data>>(
     widget.handle_event(data, cx, event.clone());
     *count += 1;
     for index in 0..widget.num_children() {
-        if let Some(mut w) = widget.get_child_mut(data, index) {
-            w._broadcast(cx, count, event.clone());
+        if let Some(mut node) = widget.get_child_mut(data, index) {
+            node._broadcast(cx, count, event.clone());
         }
     }
 }
@@ -69,8 +69,8 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
         cx.assert_post_steal_unused();
         if let Some(index) = widget.find_child_index(&id) {
             let translation = widget.translation();
-            if let Some(mut w) = widget.get_child_mut(data, index) {
-                response = w._send(cx, id, disabled, event.clone() + translation);
+            if let Some(mut node) = widget.get_child_mut(data, index) {
+                response = node._send(cx, id, disabled, event.clone() + translation);
                 if let Some(scroll) = cx.post_send(index) {
                     widget.handle_scroll(data, cx, scroll);
                 }
@@ -104,8 +104,8 @@ pub fn _replay<W: Widget + Events<Data = <W as Widget>::Data>>(
     msg: Erased,
 ) {
     if let Some(index) = widget.find_child_index(&id) {
-        if let Some(mut w) = widget.get_child_mut(data, index) {
-            w._replay(cx, id, msg);
+        if let Some(mut node) = widget.get_child_mut(data, index) {
+            node._replay(cx, id, msg);
             if let Some(scroll) = cx.post_send(index) {
                 widget.handle_scroll(data, cx, scroll);
             }
@@ -149,7 +149,7 @@ pub fn _nav_next<W: Widget + Events<Data = <W as Widget>::Data>>(
     if let Some(index) = child {
         if let Some(id) = widget
             .get_child_mut(data, index)
-            .and_then(|mut w| w._nav_next(cx, focus, advance))
+            .and_then(|mut node| node._nav_next(cx, focus, advance))
         {
             return Some(id);
         }
@@ -176,7 +176,7 @@ pub fn _nav_next<W: Widget + Events<Data = <W as Widget>::Data>>(
     while let Some(index) = widget.nav_next(rev, child) {
         if let Some(id) = widget
             .get_child_mut(data, index)
-            .and_then(|mut w| w._nav_next(cx, focus, advance))
+            .and_then(|mut node| node._nav_next(cx, focus, advance))
         {
             return Some(id);
         }
