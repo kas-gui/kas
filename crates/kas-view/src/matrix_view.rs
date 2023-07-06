@@ -451,7 +451,6 @@ impl_scope! {
         }
     }
 
-    #[allow(clippy::manual_clamp)]
     impl Layout for Self {
         #[inline]
         fn num_children(&self) -> usize {

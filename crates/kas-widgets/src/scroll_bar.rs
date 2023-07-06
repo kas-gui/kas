@@ -195,7 +195,6 @@ impl_scope! {
             }
         }
 
-        #[allow(clippy::manual_clamp)]
         fn update_widgets(&mut self) -> Action {
             let len = self.bar_len();
             let total = i64::from(self.max_value) + i64::from(self.handle_value);
