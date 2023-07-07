@@ -17,6 +17,7 @@
 //! -   [`MenuToggle`]
 //! -   [`Separator`]
 
+use crate::adapter::WithAny;
 use crate::Separator;
 use kas::dir::Right;
 use kas::prelude::*;
@@ -52,7 +53,7 @@ pub struct SubItems<'a> {
 /// which should be focussed, and that this widget has
 /// [`Events::navigable`] return true.
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
-pub trait Menu: Widget<Data = ()> {
+pub trait Menu: Widget {
     /// Access row items for aligned layout
     ///
     /// If this returns sub-items, then these items are aligned in the menu view. This involves
@@ -103,36 +104,53 @@ pub trait Menu: Widget<Data = ()> {
     }
 }
 
+impl<A, W: Menu<Data = ()>> Menu for WithAny<A, W> {
+    fn sub_items(&mut self) -> Option<SubItems> {
+        self.inner.sub_items()
+    }
+
+    fn menu_is_open(&self) -> bool {
+        self.inner.menu_is_open()
+    }
+
+    fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
+        self.inner.set_menu_path(mgr, target, set_focus);
+    }
+}
+
 /// A boxed menu
-pub type BoxedMenu = Box<dyn Menu>;
+pub type BoxedMenu<Data> = Box<dyn Menu<Data = Data>>;
 
 /// Builder for a [`SubMenu`]
 ///
 /// Access through [`MenuBar::builder`].
-pub struct SubMenuBuilder<'a> {
-    menu: &'a mut Vec<BoxedMenu>,
+pub struct SubMenuBuilder<'a, Data> {
+    menu: &'a mut Vec<BoxedMenu<Data>>,
 }
 
-impl<'a> SubMenuBuilder<'a> {
+impl<'a, Data> SubMenuBuilder<'a, Data> {
     /// Append an item
     #[inline]
-    pub fn push_item(&mut self, item: BoxedMenu) {
+    pub fn push_item(&mut self, item: BoxedMenu<Data>) {
         self.menu.push(item);
     }
 
     /// Append an item, chain style
     #[inline]
-    pub fn item(mut self, item: BoxedMenu) -> Self {
+    pub fn item(mut self, item: BoxedMenu<Data>) -> Self {
         self.push_item(item);
         self
     }
+}
 
+impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
     /// Append a [`MenuEntry`]
     pub fn push_entry<S: Into<AccelString>, M>(&mut self, label: S, msg: M)
     where
         M: Clone + Debug + 'static,
     {
-        self.menu.push(Box::new(MenuEntry::new(label, msg)));
+        self.menu
+            .push(Box::new(WithAny::new(MenuEntry::new(label, msg))));
     }
 
     /// Append a [`MenuEntry`], chain style
@@ -151,7 +169,7 @@ impl<'a> SubMenuBuilder<'a> {
         F: Fn(&mut EventMgr, bool) + 'static,
     {
         self.menu
-            .push(Box::new(MenuToggle::new(label).on_toggle(f)));
+            .push(Box::new(WithAny::new(MenuToggle::new(label).on_toggle(f))));
     }
 
     /// Append a [`MenuToggle`], chain style
@@ -166,7 +184,7 @@ impl<'a> SubMenuBuilder<'a> {
 
     /// Append a [`Separator`]
     pub fn push_separator(&mut self) {
-        self.menu.push(Box::new(Separator::new()));
+        self.menu.push(Box::new(WithAny::new(Separator::new())));
     }
 
     /// Append a [`Separator`], chain style
@@ -182,7 +200,7 @@ impl<'a> SubMenuBuilder<'a> {
     #[inline]
     pub fn push_submenu<F>(&mut self, label: impl Into<AccelString>, f: F)
     where
-        F: FnOnce(SubMenuBuilder),
+        F: FnOnce(SubMenuBuilder<Data>),
     {
         self.push_submenu_with_dir(Right, label, f);
     }
@@ -193,7 +211,7 @@ impl<'a> SubMenuBuilder<'a> {
     #[inline]
     pub fn submenu<F>(mut self, label: impl Into<AccelString>, f: F) -> Self
     where
-        F: FnOnce(SubMenuBuilder),
+        F: FnOnce(SubMenuBuilder<Data>),
     {
         self.push_submenu_with_dir(Right, label, f);
         self
@@ -205,7 +223,7 @@ impl<'a> SubMenuBuilder<'a> {
     pub fn push_submenu_with_dir<D, F>(&mut self, dir: D, label: impl Into<AccelString>, f: F)
     where
         D: Directional,
-        F: FnOnce(SubMenuBuilder),
+        F: FnOnce(SubMenuBuilder<Data>),
     {
         let mut menu = Vec::new();
         f(SubMenuBuilder { menu: &mut menu });
@@ -220,7 +238,7 @@ impl<'a> SubMenuBuilder<'a> {
     pub fn submenu_with_dir<D, F>(mut self, dir: D, label: impl Into<AccelString>, f: F) -> Self
     where
         D: Directional,
-        F: FnOnce(SubMenuBuilder),
+        F: FnOnce(SubMenuBuilder<Data>),
     {
         self.push_submenu_with_dir(dir, label, f);
         self

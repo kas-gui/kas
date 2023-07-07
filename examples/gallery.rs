@@ -499,7 +499,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Quit,
     }
 
-    let menubar = menu::MenuBar::<Right>::builder()
+    let menubar = menu::MenuBar::<(), Right>::builder()
         .menu("&App", |menu| {
             menu.entry("&Quit", Menu::Quit);
         })
