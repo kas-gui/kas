@@ -574,7 +574,7 @@ pub trait Widget: Layout {
     /// This type must match [`Events::Data`] if `Events` is implemented when
     /// using the `#[widget]` macro. The type only needs to be specified once,
     /// here, in the implementation of [`Events`], or via the `Data` property.
-    type Data: 'static;
+    type Data;
 
     /// Erase type
     fn as_node(&self, data: &Self::Data) -> Node<'_>;

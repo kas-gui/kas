@@ -76,7 +76,7 @@ impl_scope! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Default)]
-    pub struct WithAny<A: 'static, W: Widget<Data = ()>> {
+    pub struct WithAny<A, W: Widget<Data = ()>> {
         _a: std::marker::PhantomData<A>,
         pub inner: W,
     }

@@ -725,7 +725,7 @@ impl<'a> EventMgr<'a> {
     /// Caveat: if an error occurs opening the new window it will not be
     /// reported (except via log messages).
     #[inline]
-    pub fn add_window<Data>(&mut self, window: Window<Data>) -> WindowId {
+    pub fn add_window<Data: 'static>(&mut self, window: Window<Data>) -> WindowId {
         let data_type_id = std::any::TypeId::of::<Data>();
         unsafe {
             let window: Window<()> = std::mem::transmute(window);
