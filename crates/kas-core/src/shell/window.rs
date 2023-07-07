@@ -215,7 +215,7 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     }
 
     /// Update, after receiving all events
-    pub(super) fn update(
+    pub(super) fn post_events(
         &mut self,
         shared: &mut SharedState<A, S, T>,
     ) -> (Action, Option<Instant>) {
@@ -226,7 +226,7 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         );
         let action = self
             .ev_state
-            .update(&mut tkw, &mut self.widget, &shared.data);
+            .post_events(&mut tkw, &mut self.widget, &shared.data);
 
         if action.contains(Action::CLOSE | Action::EXIT) {
             return (action, None);

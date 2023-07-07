@@ -134,7 +134,7 @@ impl EventState {
 
     /// Update, after receiving all events
     #[inline]
-    pub(crate) fn update<A>(
+    pub(crate) fn post_events<A>(
         &mut self,
         shell: &mut dyn ShellWindow,
         win: &mut Window<A>,

@@ -195,7 +195,7 @@ where
                 let mut to_close = SmallVec::<[ww::WindowId; 4]>::new();
                 self.resumes.clear();
                 for (window_id, window) in self.windows.iter_mut() {
-                    let (action, resume) = window.update(&mut self.shared);
+                    let (action, resume) = window.post_events(&mut self.shared);
                     if action.contains(Action::EXIT) {
                         close_all = true;
                     } else if action.contains(Action::CLOSE) {

@@ -577,6 +577,16 @@ impl EventState {
 
 /// Public API
 impl<'a> EventMgr<'a> {
+    /// Update a widget
+    ///
+    /// [`Events::update`] will be called recursively on each child and finally
+    /// `self`. If a widget stores state which it passes to children as input
+    /// data, it should call this (or [`ConfigMgr::update`]) after mutating the state.
+    #[inline]
+    pub fn update(&mut self, mut widget: NodeMut<'_>) {
+        self.config_mgr(|mgr| widget._update(mgr));
+    }
+
     /// Get the index of the last child visited
     ///
     /// This is only used when unwinding (traversing back up the widget tree),

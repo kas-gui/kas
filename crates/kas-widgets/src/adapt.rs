@@ -79,6 +79,7 @@ impl_scope! {
         fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
             if let Some(handler) = self.message_handler.as_ref() {
                 handler(mgr, data, &mut self.state);
+                mgr.update(self.as_node_mut(data));
             }
         }
     }
