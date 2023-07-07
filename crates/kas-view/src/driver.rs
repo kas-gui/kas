@@ -28,7 +28,7 @@ use kas::model::{SharedData, SharedDataMut};
 use kas::prelude::*;
 use kas::theme::TextClass;
 use kas_widgets::edit::{EditGuard, GuardNotify};
-use kas_widgets::{CheckBox, Label, NavFrame, RadioGroup, SliderValue, SpinnerValue};
+use kas_widgets::{Label, NavFrame, RadioGroup, SliderValue, SpinnerValue};
 use std::default::Default;
 use std::ops::RangeInclusive;
 
@@ -163,26 +163,6 @@ impl_via_to_string!(String, &'static str);
 impl_via_to_string!(i8, i16, i32, i64, i128, isize);
 impl_via_to_string!(u8, u16, u32, u64, u128, usize);
 impl_via_to_string!(f32, f64);
-
-impl<Data: SharedData<Item = bool>> Driver<bool, Data> for View {
-    type Widget = CheckBox;
-    fn make(&self) -> Self::Widget {
-        CheckBox::new_on(|mgr, state| mgr.push(state)).with_editable(false)
-    }
-    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> Action {
-        widget.set_bool(item.into_owned())
-    }
-}
-
-impl<Data: SharedData<Item = bool>> Driver<bool, Data> for NavView {
-    type Widget = CheckBox;
-    fn make(&self) -> Self::Widget {
-        CheckBox::new_on(|mgr, state| mgr.push(state)).with_editable(false)
-    }
-    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> Action {
-        widget.set_bool(item.into_owned())
-    }
-}
 
 impl_scope! {
     /// [`kas_widgets::EditField`] view widget constructor
@@ -340,33 +320,6 @@ impl<D: Directional, Data: SharedData<Item = f32>> Driver<f32, Data> for Progres
     }
     fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<f32>) -> Action {
         widget.set_value(item.into_owned())
-    }
-}
-
-/// [`kas_widgets::CheckButton`] view widget constructor
-#[derive(Clone, Debug, Default)]
-pub struct CheckButton {
-    label: AccelString,
-}
-impl CheckButton {
-    /// Construct, with given `label`
-    pub fn new<T: Into<AccelString>>(label: T) -> Self {
-        let label = label.into();
-        CheckButton { label }
-    }
-}
-impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for CheckButton {
-    type Widget = kas_widgets::CheckButton;
-    fn make(&self) -> Self::Widget {
-        kas_widgets::CheckButton::new_on(self.label.clone(), |mgr, state| mgr.push(state))
-    }
-    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> Action {
-        widget.set_bool(item.into_owned())
-    }
-    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
-        if let Some(state) = mgr.try_pop() {
-            data.set(mgr, key, state);
-        }
     }
 }
 

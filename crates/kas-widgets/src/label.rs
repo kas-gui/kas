@@ -4,8 +4,6 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Fixed text widgets
-//!
-//! TODO: *should* these be wrappers around `Text` variants?
 
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};

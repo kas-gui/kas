@@ -16,7 +16,7 @@ fn main() -> kas::shell::Result<()> {
 
     let ui = kas::grid! {
         (1, 0) => "Layout demo",
-        (2, 0) => CheckBox::default(),
+        (2, 0) => CheckBox::new(|_| true),
         (0..3, 1) => ScrollLabel::new(LIPSUM),
         (0, 2) => align!(center, "abc אבג def"),
         (1..3, 3) => align!(stretch, ScrollLabel::new(CRASIT)),

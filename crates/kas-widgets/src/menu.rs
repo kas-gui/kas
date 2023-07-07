@@ -163,24 +163,28 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
         self
     }
 
+    /* TODO: should we continue to construct menus this way?
     /// Append a [`MenuToggle`]
-    pub fn push_toggle<S: Into<AccelString>, F>(&mut self, label: S, f: F)
-    where
-        F: Fn(&mut EventMgr, bool) + 'static,
-    {
+    pub fn push_toggle<M: Debug + 'static>(
+        &mut self,
+        label: impl Into<AccelString>,
+        state_fn: impl Fn(&A) -> bool + 'static,
+        message_fn: impl Fn(bool) -> M + 'static,
+    ) {
         self.menu
-            .push(Box::new(WithAny::new(MenuToggle::new(label).on_toggle(f))));
+            .push(Box::new(MenuToggle::new_msg(label, state_fn, message_fn)));
     }
 
     /// Append a [`MenuToggle`], chain style
-    #[inline]
-    pub fn toggle<S: Into<AccelString>, F>(mut self, label: S, f: F) -> Self
-    where
-        F: Fn(&mut EventMgr, bool) + 'static,
-    {
-        self.push_toggle(label, f);
+    pub fn toggle<M: Debug + 'static>(
+        &mut self,
+        label: impl Into<AccelString>,
+        state_fn: impl Fn(&A) -> bool + 'static,
+        message_fn: impl Fn(bool) -> M + 'static,
+    ) -> Self {
+        self.push_toggle(label, state_fn, message_fn);
         self
-    }
+    } */
 
     /// Append a [`Separator`]
     pub fn push_separator(&mut self) {
