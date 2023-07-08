@@ -13,6 +13,7 @@ use kas::prelude::*;
 use kas::text::{NotReady, SelectionHelper, Text};
 use kas::theme::{Background, FrameStyle, TextClass};
 use std::fmt::Debug;
+use std::marker::PhantomData;
 use std::ops::Range;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
@@ -53,7 +54,7 @@ enum EditAction {
 /// -   `GuardAFL`: calls a closure on `activate` and `focus_lost`
 /// -   `GuardEdit`: calls a closure on `edit`
 /// -   `GuardUpdate`: calls a closure on `update`
-pub trait EditGuard: Sized + 'static {
+pub trait EditGuard<A>: Sized {
     /// Activation guard
     ///
     /// This function is called when the widget is "activated", for example by
@@ -61,16 +62,16 @@ pub trait EditGuard: Sized + 'static {
     /// from `handle_event`.
     ///
     /// The default implementation returns [`Response::Unused`].
-    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
-        let _ = (edit, mgr);
+    fn activate(edit: &mut EditField<A, Self>, data: &A, cx: &mut EventMgr) -> Response {
+        let _ = (edit, data, cx);
         Response::Unused
     }
 
     /// Focus-gained guard
     ///
     /// This function is called when the widget gains keyboard input focus.
-    fn focus_gained(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        let _ = (edit, mgr);
+    fn focus_gained(edit: &mut EditField<A, Self>, data: &A, cx: &mut EventMgr) {
+        let _ = (edit, data, cx);
     }
 
     /// Focus-lost guard
@@ -78,8 +79,8 @@ pub trait EditGuard: Sized + 'static {
     /// This function is called when the widget loses keyboard input focus.
     ///
     /// The default implementation does nothing.
-    fn focus_lost(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        let _ = (edit, mgr);
+    fn focus_lost(edit: &mut EditField<A, Self>, data: &A, cx: &mut EventMgr) {
+        let _ = (edit, data, cx);
     }
 
     /// Edit guard
@@ -88,21 +89,21 @@ pub trait EditGuard: Sized + 'static {
     /// on programmatic updates — see also [`EditGuard::update`]).
     ///
     /// The default implementation calls [`EditGuard::update`].
-    fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+    fn edit(edit: &mut EditField<A, Self>, data: &A, cx: &mut EventMgr) {
         Self::update(edit);
-        let _ = mgr;
+        let _ = (data, cx);
     }
 
     /// Update guard
     ///
     /// This function is called on any programmatic update to the contents
     /// (and potentially also by [`EditGuard::edit`]).
-    fn update(edit: &mut EditField<Self>) {
+    fn update(edit: &mut EditField<A, Self>) {
         let _ = edit;
     }
 }
 
-impl EditGuard for () {}
+impl<A> EditGuard<A> for () {}
 
 impl_scope! {
     /// A text-edit box
@@ -113,13 +114,13 @@ impl_scope! {
     /// By default, the editor supports a single-line only;
     /// [`Self::with_multi_line`] and [`Self::with_class`] can be used to change this.
     #[autoimpl(Deref, DerefMut, HasStr, HasString using self.inner)]
-    #[derive(Clone, Default, Debug)]
+    #[autoimpl(Clone, Default, Debug where G: trait)]
     #[widget]
-    pub struct EditBox<G: EditGuard = ()> {
+    pub struct EditBox<A, G: EditGuard<A> = ()> {
         core: widget_core!(),
         #[widget]
-        inner: EditField<G>,
-        #[widget]
+        inner: EditField<A, G>,
+        #[widget(&())]
         bar: ScrollBar<kas::dir::Down>,
         frame_offset: Offset,
         frame_size: Size,
@@ -192,16 +193,16 @@ impl_scope! {
     }
 
     impl Events for Self {
-        type Data = ();
+        type Data = A;
 
-        fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr<'_>) {
+        fn handle_message(&mut self, data: &A, mgr: &mut EventMgr<'_>) {
             if let Some(ScrollMsg(y)) = mgr.try_pop() {
                 self.inner
                     .set_scroll_offset(data, mgr, Offset(self.inner.view_offset.0, y));
             }
         }
 
-        fn handle_scroll(&mut self, _: &Self::Data, mgr: &mut EventMgr<'_>, _: Scroll) {
+        fn handle_scroll(&mut self, _: &A, mgr: &mut EventMgr<'_>, _: Scroll) {
             self.update_scroll_bar(mgr);
         }
     }
@@ -222,7 +223,7 @@ impl_scope! {
             self.inner.scroll_offset()
         }
 
-        fn set_scroll_offset(&mut self, data: &Self::Data, mgr: &mut EventMgr, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, data: &A, mgr: &mut EventMgr, offset: Offset) -> Offset {
             let offset = self.inner.set_scroll_offset(data, mgr, offset);
             self.update_scroll_bar(mgr);
             offset
@@ -238,7 +239,7 @@ impl_scope! {
     }
 }
 
-impl EditBox<()> {
+impl<A> EditBox<A, ()> {
     /// Construct an `EditBox` with the given inital `text`
     #[inline]
     pub fn new<S: ToString>(text: S) -> Self {
@@ -267,7 +268,7 @@ impl EditBox<()> {
     /// and discards any message emitted.
     #[inline]
     #[must_use]
-    pub fn with_guard<G: EditGuard>(self, guard: G) -> EditBox<G> {
+    pub fn with_guard<G: EditGuard<A>>(self, guard: G) -> EditBox<A, G> {
         EditBox {
             core: self.core,
             inner: self.inner.with_guard(guard),
@@ -279,7 +280,7 @@ impl EditBox<()> {
     }
 }
 
-impl<G: EditGuard> EditBox<G> {
+impl<A, G: EditGuard<A>> EditBox<A, G> {
     /// Set whether this widget is editable (inline)
     #[inline]
     #[must_use]
@@ -364,14 +365,15 @@ impl_scope! {
     /// scratch on each key stroke). Regardless, this approach is not designed
     /// to scale to handle large documents via a single `EditField` widget.
     #[impl_default(where G: Default)]
-    #[derive(Clone, Debug)]
+    #[autoimpl(Clone, Debug where G: trait)]
     #[widget{
         navigable = true;
         hover_highlight = true;
         cursor_icon = CursorIcon::Text;
     }]
-    pub struct EditField<G: EditGuard = ()> {
+    pub struct EditField<A, G: EditGuard<A> = ()> {
         core: widget_core!(),
+        _data: PhantomData<A>,
         view_offset: Offset,
         editable: bool,
         class: TextClass = TextClass::Edit(false),
@@ -447,19 +449,20 @@ impl_scope! {
     }
 
     impl Events for Self {
-        type Data = ();
+        type Data = A;
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
-            fn request_focus<G: EditGuard + 'static>(s: &mut EditField<G>, mgr: &mut EventMgr) {
+        fn handle_event(&mut self, data: &A, mgr: &mut EventMgr, event: Event) -> Response {
+            fn request_focus<A, G: EditGuard<A>>(s: &mut EditField<A, G>, data: &A, mgr: &mut EventMgr) {
                 if !s.has_key_focus && mgr.request_char_focus(s.id()) {
                     s.has_key_focus = true;
                     mgr.set_scroll(Scroll::Rect(s.rect()));
-                    G::focus_gained(s, mgr);
+                    G::focus_gained(s, data, mgr);
                 }
             }
+
             match event {
                 Event::NavFocus(true) => {
-                    request_focus(self, mgr);
+                    request_focus(self, data, mgr);
                     if !self.class.multi_line() {
                         self.selection.clear();
                         self.selection.set_edit_pos(self.text.str_len());
@@ -478,7 +481,7 @@ impl_scope! {
                 Event::LostCharFocus => {
                     self.has_key_focus = false;
                     mgr.redraw(self.id());
-                    G::focus_lost(self, mgr);
+                    G::focus_lost(self, data, mgr);
                     Response::Used
                 }
                 Event::LostSelFocus => {
@@ -489,14 +492,14 @@ impl_scope! {
                 Event::Command(cmd) => {
                     // Note: we can receive a Command without char focus, but should
                     // ensure we have focus before acting on it.
-                    request_focus(self, mgr);
+                    request_focus(self, data, mgr);
                     if self.has_key_focus {
                         match self.control_key(mgr, cmd) {
                             Ok(EditAction::None) => Response::Used,
                             Ok(EditAction::Unused) => Response::Unused,
-                            Ok(EditAction::Activate) => G::activate(self, mgr),
+                            Ok(EditAction::Activate) => G::activate(self, data, mgr),
                             Ok(EditAction::Edit) => {
-                                G::edit(self, mgr);
+                                G::edit(self, data, mgr);
                                 Response::Used
                             }
                             Err(NotReady) => Response::Used,
@@ -508,7 +511,7 @@ impl_scope! {
                 Event::ReceivedCharacter(c) => match self.received_char(mgr, c) {
                     false => Response::Unused,
                     true => {
-                        G::edit(self, mgr);
+                        G::edit(self, data, mgr);
                         Response::Used
                     }
                 },
@@ -540,7 +543,7 @@ impl_scope! {
                         self.edit_x_coord = None;
                         self.prepare_text(mgr);
 
-                        G::edit(self, mgr);
+                        G::edit(self, data, mgr);
                     }
                     Response::Used
                 }
@@ -549,11 +552,11 @@ impl_scope! {
                     TextInputAction::Unused => Response::Unused,
                     TextInputAction::Pan(delta) => self.pan_delta(mgr, delta),
                     TextInputAction::Focus => {
-                        request_focus(self, mgr);
+                        request_focus(self, data, mgr);
                         Response::Used
                     }
                     TextInputAction::Cursor(coord, anchor, clear, repeats) => {
-                        request_focus(self, mgr);
+                        request_focus(self, data, mgr);
                         if self.has_key_focus {
                             self.set_edit_pos_from_coord(mgr, coord);
                             if anchor {
@@ -590,7 +593,7 @@ impl_scope! {
             self.view_offset
         }
 
-        fn set_scroll_offset(&mut self, _: &Self::Data, mgr: &mut EventMgr, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, _: &A, mgr: &mut EventMgr, offset: Offset) -> Offset {
             let new_offset = offset.min(self.max_scroll_offset()).max(Offset::ZERO);
             if new_offset != self.view_offset {
                 self.view_offset = new_offset;
@@ -629,7 +632,7 @@ impl_scope! {
     }
 }
 
-impl EditField<()> {
+impl<A> EditField<A, ()> {
     /// Construct an `EditField` with the given inital `text`
     #[inline]
     pub fn new<S: ToString>(text: S) -> Self {
@@ -659,9 +662,10 @@ impl EditField<()> {
     /// and discards any message emitted.
     #[inline]
     #[must_use]
-    pub fn with_guard<G: EditGuard>(self, guard: G) -> EditField<G> {
+    pub fn with_guard<G: EditGuard<A>>(self, guard: G) -> EditField<A, G> {
         let mut edit = EditField {
             core: self.core,
+            _data: PhantomData,
             view_offset: self.view_offset,
             editable: self.editable,
             class: self.class,
@@ -684,7 +688,7 @@ impl EditField<()> {
     }
 }
 
-impl<G: EditGuard> EditField<G> {
+impl<A, G: EditGuard<A>> EditField<A, G> {
     /// Set whether this `EditField` is editable (inline)
     #[inline]
     #[must_use]

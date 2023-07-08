@@ -92,7 +92,7 @@ impl_scope! {
         core: widget_core!(),
         data: T,
         #[widget]
-        edit: EditBox,
+        edit: EditBox<()>,
     }
 
     impl Self {

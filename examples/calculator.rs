@@ -66,7 +66,7 @@ impl_scope! {
     }]
     struct CalcUI {
         core: widget_core!(),
-        #[widget] display: EditBox = EditBox::new("0")
+        #[widget] display: EditBox<()> = EditBox::new("0")
             .with_editable(false)
             .with_multi_line(true)
             .with_lines(3, 3)

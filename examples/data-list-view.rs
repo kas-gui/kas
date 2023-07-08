@@ -119,13 +119,13 @@ impl ListData for MySharedData {
 // TODO: it would be nicer to use EditBox::new(..).on_edit(..), but that produces
 // an object with unnamable type, which is a problem.
 struct ListEntryGuard;
-impl EditGuard for ListEntryGuard {
-    fn activate(_edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
+impl EditGuard<()> for ListEntryGuard {
+    fn activate(_edit: &mut EditField<(), Self>, _: &(), mgr: &mut EventMgr) -> Response {
         mgr.push(EntryMsg::Select);
         Response::Used
     }
 
-    fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+    fn edit(edit: &mut EditField<(), Self>, _: &(), mgr: &mut EventMgr) {
         mgr.push(EntryMsg::Update(edit.get_string()));
     }
 }
@@ -146,7 +146,7 @@ impl_scope! {
         #[widget]
         radio: RadioButton,
         #[widget]
-        edit: EditBox<ListEntryGuard>,
+        edit: EditBox<(), ListEntryGuard>,
     }
 }
 
@@ -220,7 +220,7 @@ fn main() -> kas::shell::Result<()> {
         }]
         struct {
             core: widget_core!(),
-            #[widget] edit: EditBox<impl EditGuard> = EditBox::new("3")
+            #[widget] edit: EditBox<(), impl EditGuard<()>> = EditBox::new("3")
                 .on_afl(|mgr, text| match text.parse::<usize>() {
                     Ok(n) => mgr.push(n),
                     Err(_) => (),

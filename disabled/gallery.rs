@@ -72,12 +72,12 @@ fn widgets() -> Box<dyn SetDisabled> {
 
     struct Guard;
     impl EditGuard for Guard {
-        fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
+        fn activate(edit: &mut EditField<(), Self>, mgr: &mut EventCx<Self::Data>) -> Response {
             mgr.push(Item::Edit(edit.get_string()));
             Response::Used
         }
 
-        fn edit(edit: &mut EditField<Self>, _: &mut EventMgr) {
+        fn edit(edit: &mut EditField<(), Self>, _: &mut EventCx<Self::Data>) {
             // 7a is the colour of *magic*!
             edit.set_error_state(edit.get_str().len() % (7 + 1) == 0);
         }
@@ -213,7 +213,7 @@ fn editor() -> Box<dyn SetDisabled> {
 
     struct Guard;
     impl EditGuard for Guard {
-        fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+        fn edit(edit: &mut EditField<(), Self>, mgr: &mut EventCx<Self::Data>) {
             let result = Markdown::new(edit.get_str());
             edit.set_error_state(result.is_err());
             mgr.push(result.unwrap_or_else(|err| Markdown::new(&format!("{err}")).unwrap()));
@@ -248,7 +248,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
         struct {
             core: widget_core!(),
             dir: Direction = Direction::Up,
-            #[widget] editor: EditBox<Guard> =
+            #[widget] editor: EditBox<(), Guard> =
                 EditBox::new(doc)
                     .with_multi_line(true)
                     .with_lines(4, 12)

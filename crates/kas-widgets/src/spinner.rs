@@ -116,8 +116,8 @@ impl<T: SpinnerValue> SpinnerGuard<T> {
     }
 }
 
-impl<T: SpinnerValue> EditGuard for SpinnerGuard<T> {
-    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
+impl<T: SpinnerValue> EditGuard<()> for SpinnerGuard<T> {
+    fn activate(edit: &mut EditField<(), Self>, _: &(), mgr: &mut EventMgr) -> Response {
         if edit.has_error() {
             *mgr |= edit.set_string(edit.guard.value.to_string());
             edit.set_error_state(false);
@@ -126,14 +126,14 @@ impl<T: SpinnerValue> EditGuard for SpinnerGuard<T> {
         Response::Used
     }
 
-    fn focus_lost(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+    fn focus_lost(edit: &mut EditField<(), Self>, _: &(), mgr: &mut EventMgr) {
         if edit.has_error() {
             *mgr |= edit.set_string(edit.guard.value.to_string());
             edit.set_error_state(false);
         }
     }
 
-    fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+    fn edit(edit: &mut EditField<(), Self>, _: &(), mgr: &mut EventMgr) {
         let is_err = match edit.get_str().parse() {
             Ok(value) if edit.guard.range().contains(&value) => {
                 if value != edit.guard.value {
@@ -172,7 +172,7 @@ impl_scope! {
     pub struct Spinner<T: SpinnerValue> {
         core: widget_core!(),
         #[widget]
-        edit: EditField<SpinnerGuard<T>>,
+        edit: EditField<(), SpinnerGuard<T>>,
         #[widget]
         b_up: MarkButton<SpinBtn>,
         #[widget]
