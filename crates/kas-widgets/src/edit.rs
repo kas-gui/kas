@@ -104,82 +104,6 @@ pub trait EditGuard: Sized + 'static {
 
 impl EditGuard for () {}
 
-/// An [`EditGuard`] impl which notifies on activate and focus lost
-///
-/// On activate and focus-lost actions, calls [`EventMgr::push`] with the
-/// edit's contents as a [`String`].
-///
-/// `Self::activate` returns [`Response::Used`].
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash)]
-pub struct GuardNotify;
-impl EditGuard for GuardNotify {
-    #[inline]
-    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
-        Self::focus_lost(edit, mgr);
-        Response::Used
-    }
-
-    #[inline]
-    fn focus_lost(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        mgr.push(edit.get_string());
-    }
-}
-
-/// An [`EditGuard`] impl which calls a closure when activated
-#[autoimpl(Debug ignore self.0)]
-#[derive(Clone)]
-pub struct GuardActivate<F: FnMut(&mut EventMgr, &str) -> Response>(pub F);
-impl<F> EditGuard for GuardActivate<F>
-where
-    F: FnMut(&mut EventMgr, &str) -> Response + 'static,
-{
-    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
-        (edit.guard.0)(mgr, edit.text.text())
-    }
-}
-
-/// An [`EditGuard`] impl which calls a closure when activated or focus is lost
-///
-/// `Self::activate` returns [`Response::Used`].
-#[autoimpl(Debug ignore self.0)]
-#[derive(Clone)]
-pub struct GuardAFL<F: FnMut(&mut EventMgr, &str)>(pub F);
-impl<F> EditGuard for GuardAFL<F>
-where
-    F: FnMut(&mut EventMgr, &str) + 'static,
-{
-    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
-        (edit.guard.0)(mgr, edit.text.text());
-        Response::Used
-    }
-    fn focus_lost(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        (edit.guard.0)(mgr, edit.text.text());
-    }
-}
-
-/// An [`EditGuard`] impl which calls a closure when edited
-#[autoimpl(Debug ignore self.0)]
-#[derive(Clone)]
-pub struct GuardEdit<F: FnMut(&mut EventMgr, &str)>(pub F);
-impl<F> EditGuard for GuardEdit<F>
-where
-    F: FnMut(&mut EventMgr, &str) + 'static,
-{
-    fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        (edit.guard.0)(mgr, edit.text.text());
-    }
-}
-
-/// An [`EditGuard`] impl which calls a closure when updated
-#[autoimpl(Debug ignore self.0)]
-#[derive(Clone)]
-pub struct GuardUpdate<F: FnMut(&str)>(pub F);
-impl<F: FnMut(&str) + 'static> EditGuard for GuardUpdate<F> {
-    fn update(edit: &mut EditField<Self>) {
-        (edit.guard.0)(edit.text.text());
-    }
-}
-
 impl_scope! {
     /// A text-edit box
     ///
@@ -352,62 +276,6 @@ impl EditBox<()> {
             frame_size: self.frame_size,
             inner_margin: self.inner_margin,
         }
-    }
-
-    /// Set a guard function, called on activation
-    ///
-    /// The closure `f` is called when the `EditBox` is activated (when the
-    /// "enter" key is pressed).
-    ///
-    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
-    /// previously assigned to the `EditBox` will be replaced.
-    #[must_use]
-    pub fn on_activate<F>(self, f: F) -> EditBox<GuardActivate<F>>
-    where
-        F: FnMut(&mut EventMgr, &str) -> Response + 'static,
-    {
-        self.with_guard(GuardActivate(f))
-    }
-
-    /// Set a guard function, called on activation and input-focus lost
-    ///
-    /// The closure `f` is called when the `EditBox` is activated (when the
-    /// "enter" key is pressed) and when keyboard focus is lost.
-    ///
-    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
-    /// previously assigned to the `EditBox` will be replaced.
-    #[must_use]
-    pub fn on_afl<F>(self, f: F) -> EditBox<GuardAFL<F>>
-    where
-        F: FnMut(&mut EventMgr, &str) + 'static,
-    {
-        self.with_guard(GuardAFL(f))
-    }
-
-    /// Set a guard function, called on edit
-    ///
-    /// The closure `f` is called when the `EditBox` is edited by the user.
-    ///
-    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
-    /// previously assigned to the `EditBox` will be replaced.
-    #[must_use]
-    pub fn on_edit<F>(self, f: F) -> EditBox<GuardEdit<F>>
-    where
-        F: FnMut(&mut EventMgr, &str) + 'static,
-    {
-        self.with_guard(GuardEdit(f))
-    }
-
-    /// Set a guard function, called on update
-    ///
-    /// The closure `f` is called when the `EditBox` is updated (by the user or
-    /// programmatically). It is also called immediately by this method.
-    ///
-    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
-    /// previously assigned to the `EditBox` will be replaced.
-    #[must_use]
-    pub fn on_update<F: FnMut(&str) + 'static>(self, f: F) -> EditBox<GuardUpdate<F>> {
-        self.with_guard(GuardUpdate(f))
     }
 }
 
@@ -813,56 +681,6 @@ impl EditField<()> {
         };
         G::update(&mut edit);
         edit
-    }
-
-    /// Set a guard function, called on activation
-    ///
-    /// The closure `f` is called when the `EditField` is activated (when the
-    /// "enter" key is pressed).
-    ///
-    /// This method is a parametisation of [`EditField::with_guard`]. Any guard
-    /// previously assigned to the `EditField` will be replaced.
-    #[must_use]
-    pub fn on_activate<F: FnMut(&mut EventMgr, &str) -> Response + 'static>(
-        self,
-        f: F,
-    ) -> EditField<GuardActivate<F>> {
-        self.with_guard(GuardActivate(f))
-    }
-
-    /// Set a guard function, called on activation and input-focus lost
-    ///
-    /// The closure `f` is called when the `EditField` is activated (when the
-    /// "enter" key is pressed) and when keyboard focus is lost.
-    ///
-    /// This method is a parametisation of [`EditField::with_guard`]. Any guard
-    /// previously assigned to the `EditField` will be replaced.
-    #[must_use]
-    pub fn on_afl<F: FnMut(&mut EventMgr, &str) + 'static>(self, f: F) -> EditField<GuardAFL<F>> {
-        self.with_guard(GuardAFL(f))
-    }
-
-    /// Set a guard function, called on edit
-    ///
-    /// The closure `f` is called when the `EditField` is edited by the user.
-    ///
-    /// This method is a parametisation of [`EditField::with_guard`]. Any guard
-    /// previously assigned to the `EditField` will be replaced.
-    #[must_use]
-    pub fn on_edit<F: FnMut(&mut EventMgr, &str) + 'static>(self, f: F) -> EditField<GuardEdit<F>> {
-        self.with_guard(GuardEdit(f))
-    }
-
-    /// Set a guard function, called on update
-    ///
-    /// The closure `f` is called when the `EditField` is updated (by the user or
-    /// programmatically). It is also called immediately by this method.
-    ///
-    /// This method is a parametisation of [`EditField::with_guard`]. Any guard
-    /// previously assigned to the `EditField` will be replaced.
-    #[must_use]
-    pub fn on_update<F: FnMut(&str) + 'static>(self, f: F) -> EditField<GuardUpdate<F>> {
-        self.with_guard(GuardUpdate(f))
     }
 }
 
