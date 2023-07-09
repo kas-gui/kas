@@ -16,7 +16,7 @@ use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
 use kas::theme::{Theme, Window as _};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use kas::util::warn_about_error;
-use kas::{Action, Widget, WidgetExt, WindowId};
+use kas::{Action, AppData, ErasedStack, Widget, WidgetExt, WindowId};
 use std::any::TypeId;
 use std::mem::take;
 use std::time::Instant;
@@ -51,7 +51,7 @@ impl WindowData {
 }
 
 /// Per-window data
-pub struct Window<A: 'static, S: WindowSurface, T: Theme<S::Shared>> {
+pub struct Window<A: AppData, S: WindowSurface, T: Theme<S::Shared>> {
     _data: std::marker::PhantomData<A>,
     pub(super) widget: kas::Window<A>,
     pub(super) window_id: WindowId,
@@ -65,7 +65,7 @@ pub struct Window<A: 'static, S: WindowSurface, T: Theme<S::Shared>> {
 }
 
 // Public functions, for use by the toolkit
-impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
+impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     /// Construct a window
     pub(super) fn new(
         shared: &mut SharedState<A, S, T>,
@@ -201,9 +201,11 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                     Some(&self.window),
                     &mut self.theme_window,
                 );
-                self.ev_state.with(&mut tkw, |mgr| {
+                let mut messages = ErasedStack::new();
+                self.ev_state.with(&mut tkw, &mut messages, |mgr| {
                     mgr.handle_winit(&shared.data, &mut self.widget, event);
                 });
+                shared.handle_messages(&mut messages);
 
                 if self.ev_state.action.contains(Action::RECONFIGURE) {
                     // Reconfigure must happen before further event handling
@@ -224,9 +226,11 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             Some(&self.window),
             &mut self.theme_window,
         );
-        let action = self
-            .ev_state
-            .post_events(&mut tkw, &mut self.widget, &shared.data);
+        let mut messages = ErasedStack::new();
+        let action =
+            self.ev_state
+                .post_events(&mut tkw, &mut messages, &mut self.widget, &shared.data);
+        shared.handle_messages(&mut messages);
 
         if action.contains(Action::CLOSE | Action::EXIT) {
             return (action, None);
@@ -256,9 +260,13 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             Some(&self.window),
             &mut self.theme_window,
         );
-        let has_action = self
-            .ev_state
-            .post_draw(&mut tkw, self.widget.as_node_mut(&shared.data));
+        let mut messages = ErasedStack::new();
+        let has_action = self.ev_state.post_draw(
+            &mut tkw,
+            &mut messages,
+            self.widget.as_node_mut(&shared.data),
+        );
+        shared.handle_messages(&mut messages);
 
         if has_action {
             self.queued_frame_time = Some(self.next_avail_frame_time);
@@ -271,6 +279,8 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     pub(super) fn handle_action(&mut self, shared: &mut SharedState<A, S, T>, action: Action) {
         if action.contains(Action::RECONFIGURE) {
             self.reconfigure(shared);
+        } else if action.contains(Action::UPDATE) {
+            self.update(shared);
         }
         if action.contains(Action::THEME_UPDATE) {
             let scale_factor = self.window.scale_factor() as f32;
@@ -305,7 +315,10 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             &mut self.theme_window,
         );
         let widget = self.widget.as_node_mut(&shared.data);
-        self.ev_state.with(&mut tkw, |mgr| mgr.update_timer(widget));
+        let mut messages = ErasedStack::new();
+        self.ev_state
+            .with(&mut tkw, &mut messages, |mgr| mgr.update_timer(widget));
+        shared.handle_messages(&mut messages);
         self.next_resume()
     }
 
@@ -321,8 +334,11 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             &mut self.theme_window,
         );
         let widget = self.widget.as_node_mut(&shared.data);
-        self.ev_state
-            .with(&mut tkw, |mgr| mgr.update_widgets(widget, id, payload));
+        let mut messages = ErasedStack::new();
+        self.ev_state.with(&mut tkw, &mut messages, |mgr| {
+            mgr.update_widgets(widget, id, payload)
+        });
+        shared.handle_messages(&mut messages);
     }
 
     pub(super) fn add_popup(
@@ -337,9 +353,11 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             Some(&self.window),
             &mut self.theme_window,
         );
-        self.ev_state.with(&mut tkw, |mgr| {
+        let mut messages = ErasedStack::new();
+        self.ev_state.with(&mut tkw, &mut messages, |mgr| {
             widget.add_popup(&shared.data, mgr, id, popup)
         });
+        shared.handle_messages(&mut messages);
     }
 
     pub(super) fn send_action(&mut self, action: Action) {
@@ -356,17 +374,18 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                 &mut self.theme_window,
             );
             let widget = &mut self.widget;
+            let mut messages = ErasedStack::new();
             self.ev_state
-                .with(&mut tkw, |mgr| widget.remove_popup(mgr, id));
+                .with(&mut tkw, &mut messages, |mgr| widget.remove_popup(mgr, id));
+            shared.handle_messages(&mut messages);
         }
     }
 }
 
 // Internal functions
-impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
+impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     fn reconfigure(&mut self, shared: &mut SharedState<A, S, T>) {
         let time = Instant::now();
-        log::debug!("reconfigure");
 
         let mut tkw = TkWindow::new(
             &mut shared.shell,
@@ -379,6 +398,17 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         self.solve_cache.invalidate_rule_cache();
         self.apply_size(shared, false);
         log::trace!(target: "kas_perf::wgpu::window", "reconfigure: {}µs", time.elapsed().as_micros());
+    }
+
+    fn update(&mut self, shared: &mut SharedState<A, S, T>) {
+        use kas::theme::Window;
+        let time = Instant::now();
+
+        let mut size = self.theme_window.size();
+        let mut mgr = ConfigMgr::new(&mut size, &mut shared.shell.draw, &mut self.ev_state);
+        mgr.update(self.widget.as_node_mut(&shared.data));
+
+        log::trace!(target: "kas_perf::wgpu::window", "update: {}µs", time.elapsed().as_micros());
     }
 
     fn apply_size(&mut self, shared: &mut SharedState<A, S, T>, first: bool) {
@@ -479,7 +509,7 @@ impl<A: 'static, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     }
 }
 
-struct TkWindow<'a, A: 'static, S, T: Theme<S>>
+struct TkWindow<'a, A: AppData, S, T: Theme<S>>
 where
     S: kas::draw::DrawSharedImpl,
     T::Window: kas::theme::Window,
@@ -489,7 +519,7 @@ where
     theme_window: &'a mut T::Window,
 }
 
-impl<'a, A: 'static, S, T: Theme<S>> TkWindow<'a, A, S, T>
+impl<'a, A: AppData, S, T: Theme<S>> TkWindow<'a, A, S, T>
 where
     S: kas::draw::DrawSharedImpl,
     T::Window: kas::theme::Window,
@@ -507,7 +537,7 @@ where
     }
 }
 
-impl<'a, A, S, T> ShellWindow for TkWindow<'a, A, S, T>
+impl<'a, A: AppData, S, T> ShellWindow for TkWindow<'a, A, S, T>
 where
     S: kas::draw::DrawSharedImpl,
     T: Theme<S>,

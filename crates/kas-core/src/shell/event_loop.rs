@@ -16,10 +16,10 @@ use winit::window as ww;
 use super::{PendingAction, SharedState};
 use super::{ProxyAction, Window, WindowSurface};
 use kas::theme::Theme;
-use kas::{Action, WindowId};
+use kas::{Action, AppData, WindowId};
 
 /// Event-loop data structure (i.e. all run-time state)
-pub(super) struct Loop<A: 'static, S: WindowSurface, T: Theme<S::Shared>>
+pub(super) struct Loop<A: AppData, S: WindowSurface, T: Theme<S::Shared>>
 where
     T::Window: kas::theme::Window,
 {
@@ -35,7 +35,7 @@ where
     frame_count: (Instant, u32),
 }
 
-impl<A, S: WindowSurface, T: Theme<S::Shared>> Loop<A, S, T>
+impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Loop<A, S, T>
 where
     T::Window: kas::theme::Window,
 {

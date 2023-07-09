@@ -33,7 +33,7 @@ mod title_bar;
 
 pub use crate::core::*;
 pub use action::Action;
-pub use erased::Erased;
+pub use erased::{AppData, Erased, ErasedStack};
 pub use kas_macros::*;
 pub use root::{Decorations, Window, WindowId};
 

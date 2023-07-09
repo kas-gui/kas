@@ -12,7 +12,7 @@ use crate::event::{self, UpdateId};
 use crate::model::SharedRc;
 use crate::theme::{self, Theme, ThemeConfig};
 use crate::util::warn_about_error;
-use crate::{Window, WindowId};
+use crate::{AppData, Window, WindowId};
 use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 
 /// The KAS shell
@@ -24,7 +24,7 @@ use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 /// and initialises the font database. Note that this database is a global
 /// singleton and some widgets and other library code may expect fonts to have
 /// been initialised first.
-pub struct Shell<Data: 'static, G: GraphicalShell, T: Theme<G::Shared>> {
+pub struct Shell<Data: AppData, G: GraphicalShell, T: Theme<G::Shared>> {
     el: EventLoop<ProxyAction>,
     windows: Vec<super::Window<Data, G::Surface, T>>,
     shared: SharedState<Data, G::Surface, T>,
@@ -41,7 +41,7 @@ pub trait ShellAssoc {
     type Draw: DrawImpl;
 }
 
-impl<A: 'static, G: GraphicalShell, T> ShellAssoc for Shell<A, G, T>
+impl<A: AppData, G: GraphicalShell, T> ShellAssoc for Shell<A, G, T>
 where
     T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,
@@ -51,7 +51,7 @@ where
     type Draw = G::Window;
 }
 
-impl<Data: 'static, G, T> Shell<Data, G, T>
+impl<Data: AppData, G, T> Shell<Data, G, T>
 where
     G: GraphicalShell + Default,
     T: Theme<G::Shared> + 'static,
@@ -71,7 +71,7 @@ where
     }
 }
 
-impl<Data: 'static, G: GraphicalShell, T> Shell<Data, G, T>
+impl<Data: AppData, G: GraphicalShell, T> Shell<Data, G, T>
 where
     T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,

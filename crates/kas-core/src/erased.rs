@@ -5,6 +5,7 @@
 
 //! Erased type
 
+use crate::Action;
 use std::any::Any;
 use std::fmt::Debug;
 
@@ -59,5 +60,109 @@ impl std::fmt::Debug for Erased {
         #[cfg(not(debug_assertions))]
         let r = f.write_str("[use debug build to see value]");
         r
+    }
+}
+
+/// A type-erased message stack
+///
+/// This is a stack over [`Erased`], with some downcasting methods.
+/// It is a component of [`EventMgr`](crate::events::EventMgr) and usually only
+/// used through that, thus the interface here is incomplete.
+#[must_use]
+#[derive(Debug)]
+pub struct ErasedStack {
+    base: usize,
+    stack: Vec<Erased>,
+}
+
+impl ErasedStack {
+    /// Construct an empty stack
+    #[inline]
+    pub fn new() -> Self {
+        ErasedStack {
+            base: 0,
+            stack: vec![],
+        }
+    }
+
+    /// Set the "stack base" to the current length
+    ///
+    /// Any messages on the stack before this method is called cannot be removed
+    /// until the base has been reset. This allows multiple widget tree
+    /// traversals with a single stack.
+    #[inline]
+    pub(crate) fn set_base(&mut self) {
+        self.base = self.stack.len();
+    }
+
+    /// Reset the base; return true if messages are available after reset
+    #[inline]
+    pub(crate) fn reset_and_has_any(&mut self) -> bool {
+        self.base = 0;
+        !self.stack.is_empty()
+    }
+
+    /// True if the stack has messages available
+    #[inline]
+    pub fn has_any(&self) -> bool {
+        self.stack.len() > self.base
+    }
+
+    /// Push a type-erased message to the stack
+    #[inline]
+    pub(crate) fn push_erased(&mut self, msg: Erased) {
+        self.stack.push(msg);
+    }
+
+    /// Try popping the last message from the stack with the given type
+    ///
+    /// This method may be called from [`Events::handle_message`].
+    pub fn try_pop<M: Debug + 'static>(&mut self) -> Option<M> {
+        if self.has_any() && self.stack.last().map(|m| m.is::<M>()).unwrap_or(false) {
+            self.stack.pop().unwrap().downcast::<M>().ok().map(|m| *m)
+        } else {
+            None
+        }
+    }
+
+    /// Try observing the last message on the stack without popping
+    ///
+    /// This method may be called from [`Events::handle_message`].
+    pub fn try_observe<M: Debug + 'static>(&self) -> Option<&M> {
+        if self.has_any() {
+            self.stack.last().and_then(|m| m.downcast_ref::<M>())
+        } else {
+            None
+        }
+    }
+}
+
+impl Drop for ErasedStack {
+    fn drop(&mut self) {
+        for msg in self.stack.drain(..) {
+            log::warn!(target: "kas_core::event::manager", "unhandled: {msg:?}");
+        }
+    }
+}
+
+/// User application state
+///
+/// Note: `()` implements this trait; this impl does nothing (i.e. all messages
+/// should be handled before finishing widget tree traversal).
+pub trait AppData: 'static {
+    /// Handle messages
+    ///
+    /// This method is called when, after traversing the widget tree (see
+    /// [kas::events] module doc), a message is left on the stack.
+    /// Unhandled messages will result in warnings in the log.
+    ///
+    /// This method should usually return [`Action::EMPTY`] for no change or
+    /// [`Action::UPDATE`] when state (i.e. widget input data) has changed.
+    fn handle_messages(&mut self, messages: &mut ErasedStack) -> Action;
+}
+
+impl AppData for () {
+    fn handle_messages(&mut self, _: &mut ErasedStack) -> Action {
+        Action::EMPTY
     }
 }

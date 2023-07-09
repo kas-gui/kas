@@ -23,7 +23,7 @@ use crate::cast::Cast;
 use crate::geom::{Coord, Offset};
 use crate::shell::ShellWindow;
 use crate::util::WidgetHierarchy;
-use crate::{Action, Erased, NavAdvance, NodeMut, Widget, WidgetId, WindowId};
+use crate::{Action, Erased, ErasedStack, NavAdvance, NodeMut, Widget, WidgetId, WindowId};
 
 mod config_mgr;
 mod mgr_pub;
@@ -425,7 +425,7 @@ impl EventState {
 pub struct EventMgr<'a> {
     state: &'a mut EventState,
     shell: &'a mut dyn ShellWindow,
-    messages: Vec<Erased>,
+    messages: &'a mut ErasedStack,
     last_child: Option<usize>,
     scroll: Scroll,
 }
@@ -439,12 +439,6 @@ impl<'a> Deref for EventMgr<'a> {
 impl<'a> DerefMut for EventMgr<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.state
-    }
-}
-
-impl<'a> Drop for EventMgr<'a> {
-    fn drop(&mut self) {
-        self.drop_messages();
     }
 }
 
@@ -589,14 +583,8 @@ impl<'a> EventMgr<'a> {
         }
     }
 
-    fn drop_messages(&mut self) {
-        for msg in self.messages.drain(..) {
-            log::warn!(target: "kas_core::event::manager", "unhandled: {msg:?}");
-        }
-    }
-
     pub(crate) fn assert_post_steal_unused(&self) {
-        if self.scroll != Scroll::None || !self.messages.is_empty() {
+        if self.scroll != Scroll::None || self.messages.has_any() {
             panic!("steal_event affected EventMgr and returned Unused");
         }
     }
@@ -610,11 +598,10 @@ impl<'a> EventMgr<'a> {
     fn replay(&mut self, mut widget: NodeMut<'_>, id: WidgetId, msg: Erased) {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
-        debug_assert!(self.messages.is_empty());
+        self.messages.set_base();
         log::trace!(target: "kas_core::event::manager", "replay: id={id}: {msg:?}");
 
         widget._replay(self, id, msg);
-        self.drop_messages();
         self.last_child = None;
         self.scroll = Scroll::None;
     }
@@ -622,12 +609,12 @@ impl<'a> EventMgr<'a> {
     // Traverse widget tree by recursive call, broadcasting
     #[inline]
     fn send_update(&mut self, mut widget: NodeMut<'_>, id: UpdateId, payload: u64) -> usize {
+        self.messages.set_base();
         let mut count = 0;
         let event = Event::Update { id, payload };
         widget._broadcast(self, &mut count, event);
-        if !self.messages.is_empty() {
+        if self.messages.has_any() {
             log::error!(target: "kas_core::event::manager", "message(s) sent when handling Event::Update");
-            self.drop_messages();
         }
         self.scroll = Scroll::None;
         count
@@ -636,8 +623,8 @@ impl<'a> EventMgr<'a> {
     // Wrapper around Self::send; returns true when event is used
     #[inline]
     fn send_event(&mut self, widget: NodeMut<'_>, id: WidgetId, event: Event) -> bool {
+        self.messages.set_base();
         let used = self.send_event_impl(widget, id, event);
-        self.drop_messages();
         self.last_child = None;
         self.scroll = Scroll::None;
         used
@@ -647,7 +634,7 @@ impl<'a> EventMgr<'a> {
     fn send_event_impl(&mut self, mut widget: NodeMut<'_>, mut id: WidgetId, event: Event) -> bool {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
-        debug_assert!(self.messages.is_empty());
+        self.messages.set_base();
         log::trace!(target: "kas_core::event::manager", "send_event: id={id}: {event:?}");
 
         // TODO(opt): we should be able to use binary search here

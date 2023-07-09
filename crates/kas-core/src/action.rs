@@ -56,6 +56,10 @@ bitflags! {
         ///
         /// [`WidgetId`]: crate::WidgetId
         const RECONFIGURE = 1 << 16;
+        /// Update all widgets
+        ///
+        /// This is a notification that input data has changed.
+        const UPDATE = 1 << 17;
         /// The current window should be closed
         const CLOSE = 1 << 30;
         /// Close all windows and exit

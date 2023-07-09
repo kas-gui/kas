@@ -638,35 +638,26 @@ impl<'a> EventMgr<'a> {
     /// [observed](EventMgr::try_observe) from [`Events::handle_message`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn push_erased(&mut self, msg: Erased) {
-        self.messages.push(msg);
+        self.messages.push_erased(msg);
     }
 
     /// True if the message stack is non-empty
     pub fn has_msg(&self) -> bool {
-        !self.messages.is_empty()
+        self.messages.has_any()
     }
 
     /// Try popping the last message from the stack with the given type
     ///
     /// This method may be called from [`Events::handle_message`].
     pub fn try_pop<M: Debug + 'static>(&mut self) -> Option<M> {
-        if self.messages.last().map(|m| m.is::<M>()).unwrap_or(false) {
-            self.messages
-                .pop()
-                .unwrap()
-                .downcast::<M>()
-                .ok()
-                .map(|m| *m)
-        } else {
-            None
-        }
+        self.messages.try_pop()
     }
 
     /// Try observing the last message on the stack without popping
     ///
     /// This method may be called from [`Events::handle_message`].
     pub fn try_observe<M: Debug + 'static>(&self) -> Option<&M> {
-        self.messages.last().and_then(|m| m.downcast_ref::<M>())
+        self.messages.try_observe()
     }
 
     /// Set a scroll action

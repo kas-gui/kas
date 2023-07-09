@@ -118,14 +118,14 @@ impl EventState {
     ///
     /// Invokes the given closure on this [`EventMgr`].
     #[inline]
-    pub(crate) fn with<F>(&mut self, shell: &mut dyn ShellWindow, f: F)
+    pub(crate) fn with<F>(&mut self, shell: &mut dyn ShellWindow, messages: &mut ErasedStack, f: F)
     where
         F: FnOnce(&mut EventMgr),
     {
         let mut mgr = EventMgr {
             state: self,
             shell,
-            messages: vec![],
+            messages,
             last_child: None,
             scroll: Scroll::None,
         };
@@ -137,6 +137,7 @@ impl EventState {
     pub(crate) fn post_events<A>(
         &mut self,
         shell: &mut dyn ShellWindow,
+        messages: &mut ErasedStack,
         win: &mut Window<A>,
         data: &A,
     ) -> Action {
@@ -145,7 +146,7 @@ impl EventState {
         let mut mgr = EventMgr {
             state: self,
             shell,
-            messages: vec![],
+            messages,
             last_child: None,
             scroll: Scroll::None,
         };
@@ -256,11 +257,16 @@ impl EventState {
     ///
     /// Returns true if action is non-empty
     #[inline]
-    pub(crate) fn post_draw(&mut self, shell: &mut dyn ShellWindow, widget: NodeMut<'_>) -> bool {
+    pub(crate) fn post_draw(
+        &mut self,
+        shell: &mut dyn ShellWindow,
+        messages: &mut ErasedStack,
+        widget: NodeMut<'_>,
+    ) -> bool {
         let mut mgr = EventMgr {
             state: self,
             shell,
-            messages: vec![],
+            messages,
             last_child: None,
             scroll: Scroll::None,
         };
