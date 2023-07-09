@@ -5,20 +5,40 @@
 
 //! A counter synchronised between multiple windows
 
-use kas::model::SharedRc;
-use kas::view::{driver, SingleView};
-use kas::Window;
+use kas::widget::Spinner;
+use kas::{Action, ErasedStack, Window};
+
+#[derive(Clone, Debug)]
+struct Set(i32);
+
+struct Data {
+    count: i32,
+}
+impl kas::AppData for Data {
+    fn handle_messages(&mut self, messages: &mut ErasedStack) -> Action {
+        if let Some(Set(count)) = messages.try_pop() {
+            self.count = count;
+            println!("count: {}", self.count);
+            Action::UPDATE
+        } else {
+            Action::EMPTY
+        }
+    }
+}
+
+fn counter(title: &str) -> Window<Data> {
+    let s = Spinner::new_msg(i32::MIN..=i32::MAX, |data: &Data| data.count, Set);
+    Window::new(s, title)
+}
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let driver = driver::Spinner::new(i32::MIN..=i32::MAX);
-    let c1 = SingleView::new_with_driver(driver, SharedRc::new(0));
-    let c2 = SingleView::new_with_driver(driver, c1.data().clone());
-
+    let data = Data { count: 0 };
     let theme = kas_wgpu::ShadedTheme::new().with_font_size(24.0);
-    kas::shell::DefaultShell::new((), theme)?
-        .with(Window::new(c1, "Counter 1"))?
-        .with(Window::new(c2, "Counter 2"))?
+
+    kas::shell::DefaultShell::new(data, theme)?
+        .with(counter("Counter 1"))?
+        .with(counter("Counter 2"))?
         .run()
 }
