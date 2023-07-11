@@ -19,7 +19,7 @@ pub struct Node<'a>(&'a dyn Widget<Data = ()>, &'a ());
 impl<'a> Node<'a> {
     /// Construct
     #[inline(always)]
-    pub fn new<T: 'a>(widget: &'a dyn Widget<Data = T>, data: &T) -> Self {
+    pub fn new<T: 'a>(widget: &'a dyn Widget<Data = T>, data: &'a T) -> Self {
         // Safety: since the vtable for dyn Widget<Data = T> only uses T as &T
         // and T: Sized, the vtable should be equivalent for all T.
         // We ensure here that the type of `data` matches that used by `widget`.
@@ -159,7 +159,7 @@ pub struct NodeMut<'a>(&'a mut dyn Widget<Data = ()>, &'a ());
 impl<'a> NodeMut<'a> {
     /// Construct
     #[inline(always)]
-    pub fn new<T: 'a>(widget: &'a mut dyn Widget<Data = T>, data: &T) -> Self {
+    pub fn new<T: 'a>(widget: &'a mut dyn Widget<Data = T>, data: &'a T) -> Self {
         // Safety: since the vtable for dyn Widget<Data = T> only uses T as &T
         // and T: Sized, the vtable should be equivalent for all T.
         // We ensure here that the type of `data` matches that used by `widget`.

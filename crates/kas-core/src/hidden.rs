@@ -159,17 +159,17 @@ impl_scope! {
     impl Widget for Self {
         type Data = A;
 
-        fn as_node(&self, _: &A) -> Node<'_> {
+        fn as_node<'a>(&'a self, _: &'a A) -> Node<'a> {
             self.inner.as_node(&())
         }
-        fn as_node_mut(&mut self, _: &A) -> NodeMut<'_> {
+        fn as_node_mut<'a>(&'a mut self, _: &'a A) -> NodeMut<'a> {
             self.inner.as_node_mut(&())
         }
 
-        fn get_child(&self, _: &A, index: usize) -> Option<Node<'_>> {
+        fn get_child<'a>(&'a self, _: &'a A, index: usize) -> Option<Node<'a>> {
             self.inner.get_child(&(), index)
         }
-        fn get_child_mut(&mut self, _: &A, index: usize) -> Option<NodeMut<'_>> {
+        fn get_child_mut<'a>(&'a mut self, _: &'a A, index: usize) -> Option<NodeMut<'a>> {
             self.inner.get_child_mut(&(), index)
         }
 

@@ -534,15 +534,19 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 #fns_as_node
 
                 #[inline]
-                fn get_child(&self, data: &Self::Data, index: usize) -> Option<::kas::Node<'_>> {
+                fn get_child<'a>(
+                    &'a self,
+                    data: &'a Self::Data,
+                    index: usize,
+                ) -> Option<::kas::Node<'a>> {
                     self.#inner.get_child(data, index)
                 }
                 #[inline]
-                fn get_child_mut(
-                    &mut self,
-                    data: &Self::Data,
+                fn get_child_mut<'a>(
+                    &'a mut self,
+                    data: &'a Self::Data,
                     index: usize,
-                ) -> Option<::kas::NodeMut<'_>> {
+                ) -> Option<::kas::NodeMut<'a>> {
                     self.#inner.get_child_mut(data, index)
                 }
 
@@ -950,18 +954,18 @@ pub fn impl_widget(
         }
 
         quote! {
-            fn get_child(&self, data: &Self::Data, index: usize) -> Option<::kas::Node<'_>> {
+            fn get_child<'a>(&'a self, data: &'a Self::Data, index: usize) -> Option<::kas::Node<'a>> {
                 use ::kas::WidgetCore;
                 match index {
                     #get_rules
                     _ => None
                 }
             }
-            fn get_child_mut(
-                &mut self,
-                data: &Self::Data,
+            fn get_child_mut<'a>(
+                &'a mut self,
+                data: &'a Self::Data,
                 index: usize,
-            ) -> Option<::kas::NodeMut<'_>> {
+            ) -> Option<::kas::NodeMut<'a>> {
                 use ::kas::WidgetCore;
                 match index {
                     #get_mut_rules
@@ -988,9 +992,11 @@ pub fn impl_widget(
 fn widget_as_node_methods() -> Toks {
     quote! {
         #[inline]
-        fn as_node(&self, data: &Self::Data) -> ::kas::Node<'_> { ::kas::Node::new(self, data) }
+        fn as_node<'a>(&'a self, data: &'a Self::Data) -> ::kas::Node<'a> {
+            ::kas::Node::new(self, data)
+        }
         #[inline]
-        fn as_node_mut(&mut self, data: &Self::Data) -> ::kas::NodeMut<'_> {
+        fn as_node_mut<'a>(&'a mut self, data: &'a Self::Data) -> ::kas::NodeMut<'a> {
             ::kas::NodeMut::new(self, data)
         }
     }

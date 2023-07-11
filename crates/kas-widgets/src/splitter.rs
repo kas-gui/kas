@@ -92,7 +92,7 @@ impl_scope! {
 
     impl Widget for Self {
         #[inline]
-        fn get_child(&self, data: &W::Data, index: usize) -> Option<Node> {
+        fn get_child<'a>(&'a self, data: &'a W::Data, index: usize) -> Option<Node<'a>> {
             if (index & 1) != 0 {
                 self.handles.get(index >> 1).map(|w| w.as_node(&()))
             } else {
@@ -100,7 +100,7 @@ impl_scope! {
             }
         }
         #[inline]
-        fn get_child_mut(&mut self, data: &W::Data, index: usize) -> Option<NodeMut> {
+        fn get_child_mut<'a>(&'a mut self, data: &'a W::Data, index: usize) -> Option<NodeMut<'a>> {
             if (index & 1) != 0 {
                 self.handles.get_mut(index >> 1).map(|w| w.as_node_mut(&()))
             } else {

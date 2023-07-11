@@ -592,19 +592,19 @@ pub trait Widget: Layout {
     type Data;
 
     /// Erase type
-    fn as_node(&self, data: &Self::Data) -> Node<'_>;
+    fn as_node<'a>(&'a self, data: &'a Self::Data) -> Node<'a>;
     /// Erase type
-    fn as_node_mut(&mut self, data: &Self::Data) -> NodeMut<'_>;
+    fn as_node_mut<'a>(&'a mut self, data: &'a Self::Data) -> NodeMut<'a>;
 
     /// Get a reference to a child widget by index, if any
     ///
     /// Required: `index < self.num_children()`.
-    fn get_child(&self, data: &Self::Data, index: usize) -> Option<Node<'_>>;
+    fn get_child<'a>(&'a self, data: &'a Self::Data, index: usize) -> Option<Node<'a>>;
 
     /// Mutable variant of get
     ///
     /// Required: `index < self.num_children()`.
-    fn get_child_mut(&mut self, data: &Self::Data, index: usize) -> Option<NodeMut<'_>>;
+    fn get_child_mut<'a>(&'a mut self, data: &'a Self::Data, index: usize) -> Option<NodeMut<'a>>;
 
     /// Internal method: configure recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -704,12 +704,12 @@ pub trait WidgetExt: Widget {
     }
 
     /// Find the descendant with this `id`, if any
-    fn find_node(&self, data: &Self::Data, id: &WidgetId) -> Option<Node<'_>> {
+    fn find_node<'a>(&'a self, data: &'a Self::Data, id: &WidgetId) -> Option<Node<'a>> {
         self.as_node(data).find_node(id)
     }
 
     /// Find the descendant with this `id`, if any
-    fn find_node_mut(&mut self, data: &Self::Data, id: &WidgetId) -> Option<NodeMut<'_>> {
+    fn find_node_mut<'a>(&'a mut self, data: &'a Self::Data, id: &WidgetId) -> Option<NodeMut<'a>> {
         self.as_node_mut(data).find_node(id)
     }
 }

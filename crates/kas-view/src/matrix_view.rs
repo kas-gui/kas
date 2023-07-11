@@ -793,13 +793,13 @@ impl_scope! {
         type Data = <V::Widget as Widget>::Data;
 
         #[inline]
-        fn get_child(&self, data: &Self::Data, index: usize) -> Option<Node<'_>> {
+        fn get_child<'a>(&'a self, data: &'a Self::Data, index: usize) -> Option<Node<'a>> {
             self.widgets.get(index).and_then(|w| {
                 w.key.is_some().then(|| w.widget.as_node(data))
             })
         }
         #[inline]
-        fn get_child_mut(&mut self, data: &Self::Data, index: usize) -> Option<NodeMut<'_>> {
+        fn get_child_mut<'a>(&'a mut self, data: &'a Self::Data, index: usize) -> Option<NodeMut<'a>> {
             self.widgets.get_mut(index).and_then(|w| {
                 w.key.is_some().then(|| w.widget.as_node_mut(data))
             })

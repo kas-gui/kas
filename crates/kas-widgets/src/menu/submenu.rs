@@ -268,11 +268,11 @@ impl_scope! {
         type Data = W::Data;
 
         #[inline]
-        fn get_child(&self, data: &Self::Data, index: usize) -> Option<Node> {
+        fn get_child<'a>(&'a self, data: &'a Self::Data, index: usize) -> Option<Node<'a>> {
             self.list.get(index).map(|w| w.as_node(data))
         }
         #[inline]
-        fn get_child_mut(&mut self, data: &Self::Data, index: usize) -> Option<NodeMut> {
+        fn get_child_mut<'a>(&'a mut self, data: &'a Self::Data, index: usize) -> Option<NodeMut<'a>> {
             self.list.get_mut(index).map(|w| w.as_node_mut(data))
         }
     }
