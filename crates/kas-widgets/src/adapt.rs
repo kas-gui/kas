@@ -22,7 +22,8 @@ impl_scope! {
         state: S,
         #[widget(&self.state)]
         inner: W,
-        message_handler: Option<Box<dyn Fn(&mut EventMgr, &A, &mut S)>>,
+        message_handler: Option<Box<dyn Fn(&mut EventMgr, &A, &mut S) -> bool>>,
+        update_handler: Option<Box<dyn Fn(&mut ConfigMgr, &A, &mut S)>>,
         _data: PhantomData<A>,
     }
 
@@ -34,32 +35,51 @@ impl_scope! {
                 state,
                 inner,
                 message_handler: None,
+                update_handler: None,
                 _data: PhantomData,
             }
         }
 
-        /// Add a generic message handler
-        pub fn with_handler<H>(mut self, message_handler: H) -> Self
+        /// Add a handler on message of type `M`
+        ///
+        /// Children will be updated whenever this handler is invoked.
+        ///
+        /// Where multiple message types must be handled or access to the
+        /// [`EventMgr`] is required, use [`Self::on_messages`] instead.
+        pub fn on_message<M, H>(self, message_handler: H) -> Self
         where
-            H: Fn(&mut EventMgr, &A, &mut S) + 'static,
+            M: Debug + 'static,
+            H: Fn(&A, &mut S, M) + 'static,
+        {
+            self.on_messages(move |mgr, data, state| {
+                if let Some(m) = mgr.try_pop() {
+                    message_handler(data, state, m);
+                    true
+                } else {
+                    false
+                }
+            })
+        }
+
+        /// Add a generic message handler
+        ///
+        /// Children will be updated if this handler returns `true`.
+        pub fn on_messages<H>(mut self, message_handler: H) -> Self
+        where
+            H: Fn(&mut EventMgr, &A, &mut S) -> bool + 'static,
         {
             debug_assert!(self.message_handler.is_none());
             self.message_handler = Some(Box::new(message_handler));
             self
         }
 
-        /// Add a handler on message of type `M`
-        pub fn on_message<M, H>(mut self, message_handler: H) -> Self
+        /// Add a handler to be called on update of input data
+        pub fn on_update<F>(mut self, update_handler: F) -> Self
         where
-            M: Debug + 'static,
-            H: Fn(&A, &mut S, M) + 'static,
+            F: Fn(&mut ConfigMgr, &A, &mut S) + 'static,
         {
-            debug_assert!(self.message_handler.is_none());
-            self.message_handler = Some(Box::new(move |mgr, data, state| {
-                if let Some(m) = mgr.try_pop() {
-                    message_handler(data, state, m);
-                }
-            }));
+            debug_assert!(self.update_handler.is_none());
+            self.update_handler = Some(Box::new(update_handler));
             self
         }
     }
@@ -67,10 +87,18 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
+        fn update(&mut self, data: &A, mgr: &mut ConfigMgr) {
+            if let Some(handler) = self.update_handler.as_ref() {
+                handler(mgr, data, &mut self.state);
+            }
+            // TODO: recurse update to children only if handler was called
+        }
+
         fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
             if let Some(handler) = self.message_handler.as_ref() {
-                handler(mgr, data, &mut self.state);
-                mgr.update(self.as_node_mut(data));
+                if handler(mgr, data, &mut self.state) {
+                    mgr.update(self.as_node_mut(data));
+                }
             }
         }
     }
