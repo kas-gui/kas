@@ -17,31 +17,22 @@ impl_scope! {
     #[widget {
         layout = self.inner;
     }]
-    pub struct Adapt<A, W: Widget, S: Debug, F>
-    where
-        F: for<'a> Fn(&'a A, &'a S) -> &'a W::Data,
-    {
+    pub struct Adapt<A, W: Widget<Data = S>, S: Debug> {
         core: widget_core!(),
         state: S,
-        #[widget((self.map_fn)(data, &self.state))]
+        #[widget(&self.state)]
         inner: W,
-        map_fn: F,
         message_handler: Option<Box<dyn Fn(&mut EventMgr, &A, &mut S)>>,
         _data: PhantomData<A>,
     }
 
     impl Self {
-        /// Construct
-        ///
-        /// -   Over an `inner` widget
-        /// -   With additional `state`
-        /// -   And `map_fn` mapping to the inner widget's data type
-        pub fn new(inner: W, state: S, map_fn: F) -> Self {
+        /// Construct over `inner` with additional `state`
+        pub fn new(inner: W, state: S) -> Self {
             Adapt {
                 core: Default::default(),
                 state,
                 inner,
-                map_fn,
                 message_handler: None,
                 _data: PhantomData,
             }

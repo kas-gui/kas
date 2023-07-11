@@ -20,7 +20,7 @@ fn counter() -> impl Widget<Data = ()> {
         ]),
     ];
 
-    Adapt::new(tree, 0, |_, count| count).on_message(|_, count, Increment(add)| *count += add)
+    Adapt::new(tree, 0).on_message(|_, count, Increment(add)| *count += add)
 }
 
 fn main() -> kas::shell::Result<()> {
