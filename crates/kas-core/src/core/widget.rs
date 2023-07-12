@@ -703,14 +703,14 @@ pub trait WidgetExt: Widget {
         !self.eq_id(id) && self.id().is_ancestor_of(id)
     }
 
-    /// Find the descendant with this `id`, if any
-    fn find_node<'a>(&'a self, data: &'a Self::Data, id: &WidgetId) -> Option<Node<'a>> {
-        self.as_node(data).find_node(id)
-    }
+    // /// Find the descendant with this `id`, if any
+    // fn find_node<'a>(&'a self, data: &'a Self::Data, id: &WidgetId) -> Option<Node<'a>> {
+    //     self.as_node(data).find_node(id)
+    // }
 
-    /// Find the descendant with this `id`, if any
-    fn find_node_mut<'a>(&'a mut self, data: &'a Self::Data, id: &WidgetId) -> Option<NodeMut<'a>> {
-        self.as_node_mut(data).find_node(id)
-    }
+    // /// Find the descendant with this `id`, if any
+    // fn find_node_mut<'a>(&'a mut self, data: &'a Self::Data, id: &WidgetId) -> Option<NodeMut<'a>> {
+    //     self.as_node_mut(data).find_node(id)
+    // }
 }
 impl<W: Widget + ?Sized> WidgetExt for W {}

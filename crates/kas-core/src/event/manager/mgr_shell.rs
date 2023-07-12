@@ -14,7 +14,7 @@ use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
 use crate::model::SharedRc;
 use crate::shell::ShellWindow;
-use crate::{Action, NavAdvance, WidgetExt, WidgetId, Window};
+use crate::{Action, NavAdvance, WidgetId, Window};
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
@@ -213,9 +213,8 @@ impl EventState {
             log::trace!(target: "kas_core::event::manager", "update: handling Pending::{item:?}");
             match item {
                 Pending::Configure(id) => {
-                    if let Some(w) = win.find_node_mut(data, &id) {
-                        mgr.configure(w, id);
-                    }
+                    win.as_node_mut(data)
+                        .find(&id, |node| mgr.configure(node, id.clone()));
 
                     let hover = win.find_id(data, mgr.state.last_mouse_coord);
                     mgr.state.set_hover(hover);

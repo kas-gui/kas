@@ -499,10 +499,10 @@ impl<'a> EventMgr<'a> {
 
             if matches!(cmd, Command::Debug) {
                 if let Some(ref id) = self.hover {
-                    if let Some(w) = widget.as_node().find_node(id) {
-                        let hier = WidgetHierarchy::new(w);
+                    widget.as_node().find(id, |node| {
+                        let hier = WidgetHierarchy::new(node.re());
                         log::debug!("Widget heirarchy (from mouse): {hier}");
-                    }
+                    });
                 } else {
                     let hier = WidgetHierarchy::new(widget.as_node());
                     log::debug!("Widget heirarchy (whole window): {hier}");
@@ -693,8 +693,10 @@ impl<'a> EventMgr<'a> {
         if let Some(id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
             if id.is_ancestor_of(widget.id_ref()) {
                 // do nothing
-            } else if let Some(w) = widget.find_node(&id) {
-                return self.next_nav_focus_impl(w, target, reverse, key_focus);
+            } else if let Some(r) = widget.find(&id, |node| {
+                self.next_nav_focus_impl(node, target, reverse, key_focus)
+            }) {
+                return r;
             } else {
                 log::warn!(
                     target: "kas_core::event::config_mgr",

@@ -139,11 +139,7 @@ impl_scope! {
                 return None;
             }
             for (_, popup, translation) in self.popups.iter_mut().rev() {
-                if let Some(id) = self
-                    .w
-                    .find_node_mut(data, &popup.id)
-                    .and_then(|mut w| w.find_id(coord + *translation))
-                {
+                if let Some(Some(id)) = self.w.as_node_mut(data).find(&popup.id, |mut node| node.find_id(coord + *translation)) {
                     return Some(id);
                 }
             }
@@ -162,12 +158,12 @@ impl_scope! {
             }
             draw.recurse(&mut self.w);
             for (_, popup, translation) in &self.popups {
-                if let Some(mut widget) = self.w.find_node_mut(data, &popup.id) {
-                    let clip_rect = widget.rect() - *translation;
+                self.w.as_node_mut(data).find(&popup.id, |mut node| {
+                    let clip_rect = node.rect() - *translation;
                     draw.with_overlay(clip_rect, *translation, |draw| {
-                        widget._draw(draw);
+                        node._draw(draw);
                     });
-                }
+                });
             }
         }
     }
@@ -375,14 +371,6 @@ impl<Data: 'static> Window<Data> {
         let r = self.core.rect;
         let (_, ref mut popup, ref mut translation) = self.popups[index];
 
-        let (c, t) = find_rect(self.w.as_node(data), popup.parent.clone(), Offset::ZERO).unwrap();
-        *translation = t;
-        let r = r + t; // work in translated coordinate space
-        let mut widget = self.w.find_node_mut(data, &popup.id).unwrap();
-        let mut cache = layout::SolveCache::find_constraints(widget.re(), mgr.size_mgr());
-        let ideal = cache.ideal(false);
-        let m = cache.margins();
-
         let is_reversed = popup.direction.is_reversed();
         let place_in = |rp, rs: i32, cp: i32, cs: i32, ideal, m: (u16, u16)| -> (i32, i32) {
             let m: (i32, i32) = (m.0.into(), m.1.into());
@@ -408,17 +396,27 @@ impl<Data: 'static> Window<Data> {
             let size = ideal.max(cs).min(rs);
             (pos, size)
         };
-        let rect = if popup.direction.is_horizontal() {
-            let (x, w) = place_in(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0, m.horiz);
-            let (y, h) = place_out(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1);
-            Rect::new(Coord(x, y), Size::new(w, h))
-        } else {
-            let (x, w) = place_out(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0);
-            let (y, h) = place_in(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1, m.vert);
-            Rect::new(Coord(x, y), Size::new(w, h))
-        };
 
-        cache.apply_rect(widget.re(), mgr, rect, false);
-        cache.print_widget_heirarchy(widget.as_node());
+        let (c, t) = find_rect(self.w.as_node(data), popup.parent.clone(), Offset::ZERO).unwrap();
+        *translation = t;
+        let r = r + t; // work in translated coordinate space
+        self.w.as_node_mut(data).find(&popup.id, |mut node| {
+            let mut cache = layout::SolveCache::find_constraints(node.re(), mgr.size_mgr());
+            let ideal = cache.ideal(false);
+            let m = cache.margins();
+
+            let rect = if popup.direction.is_horizontal() {
+                let (x, w) = place_in(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0, m.horiz);
+                let (y, h) = place_out(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1);
+                Rect::new(Coord(x, y), Size::new(w, h))
+            } else {
+                let (x, w) = place_out(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0);
+                let (y, h) = place_in(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1, m.vert);
+                Rect::new(Coord(x, y), Size::new(w, h))
+            };
+
+            cache.apply_rect(node.re(), mgr, rect, false);
+            cache.print_widget_heirarchy(node.as_node());
+        });
     }
 }

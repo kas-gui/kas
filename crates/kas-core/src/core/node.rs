@@ -125,18 +125,23 @@ impl<'a> Node<'a> {
         id.next_key_after(self.id_ref())
     }
 
-    /// Find the descendant with this `id`, if any
+    /// Find the descendant with this `id`, if any, and call `cb` on it
     ///
-    /// Note: method consumes `self`, so in some cases you will need `node.re().find_node(id)`.
-    pub fn find_node(self, id: &WidgetId) -> Option<Node<'a>> {
+    /// Returns `Some(result)` if and only if node `id` was found.
+    pub fn find<F: FnOnce(Node<'_>) -> T, T>(&self, id: &WidgetId, cb: F) -> Option<T> {
+        let mut result = None;
+        let out = &mut result;
+        self._find(id, Box::new(|node| *out = Some(cb(node))));
+        result
+    }
+
+    fn _find(&self, id: &WidgetId, cb: Box<dyn FnOnce(Node<'_>) + '_>) {
         if let Some(index) = self.find_child_index(id) {
-            self.0
-                .get_child(self.1, index)
-                .and_then(|child| child.find_node(id))
+            if let Some(child) = self.0.get_child(self.1, index) {
+                child._find(id, cb);
+            }
         } else if self.eq_id(id) {
-            Some(self)
-        } else {
-            None
+            cb(self.re());
         }
     }
 }
@@ -270,18 +275,23 @@ impl<'a> NodeMut<'a> {
         id.next_key_after(self.id_ref())
     }
 
-    /// Find the descendant with this `id`, if any
+    /// Find the descendant with this `id`, if any, and call `cb` on it
     ///
-    /// Note: method consumes `self`, so in some cases you will need `node.re().find_node(id)`.
-    pub fn find_node(self, id: &WidgetId) -> Option<NodeMut<'a>> {
+    /// Returns `Some(result)` if and only if node `id` was found.
+    pub fn find<F: FnOnce(NodeMut<'_>) -> T, T>(&mut self, id: &WidgetId, cb: F) -> Option<T> {
+        let mut result = None;
+        let out = &mut result;
+        self._find(id, Box::new(|node| *out = Some(cb(node))));
+        result
+    }
+
+    fn _find(&mut self, id: &WidgetId, cb: Box<dyn FnOnce(NodeMut<'_>) + '_>) {
         if let Some(index) = self.find_child_index(id) {
-            self.0
-                .get_child_mut(self.1, index)
-                .and_then(|child| child.find_node(id))
+            if let Some(mut child) = self.0.get_child_mut(self.1, index) {
+                child._find(id, cb);
+            }
         } else if self.eq_id(id) {
-            Some(self)
-        } else {
-            None
+            cb(self.re());
         }
     }
 }
