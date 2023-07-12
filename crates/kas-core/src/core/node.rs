@@ -13,19 +13,108 @@ use crate::theme::{DrawMgr, SizeMgr};
 use crate::util::IdentifyWidget;
 use crate::{Erased, NavAdvance, WidgetId};
 
+#[cfg(not(feature = "unsafe_node"))]
+trait NodeT {
+    fn clone_node(&self) -> Node<'_>;
+
+    fn id_ref(&self) -> &WidgetId;
+    fn rect(&self) -> Rect;
+    fn widget_name(&self) -> &'static str;
+
+    fn num_children(&self) -> usize;
+    fn get_child(&self, index: usize) -> Option<Node<'_>>;
+    fn find_child_index(&self, id: &WidgetId) -> Option<usize>;
+
+    fn translation(&self) -> Offset;
+}
+#[cfg(not(feature = "unsafe_node"))]
+impl<'a, T> NodeT for (&'a dyn Widget<Data = T>, &'a T) {
+    fn clone_node(&self) -> Node<'_> {
+        Node::new(self.0, self.1)
+    }
+
+    fn id_ref(&self) -> &WidgetId {
+        self.0.id_ref()
+    }
+    fn rect(&self) -> Rect {
+        self.0.rect()
+    }
+    fn widget_name(&self) -> &'static str {
+        self.0.widget_name()
+    }
+
+    fn num_children(&self) -> usize {
+        self.0.num_children()
+    }
+
+    // NOTE: this cannot take `self` because that is unsized
+    fn get_child(&self, index: usize) -> Option<Node<'_>> {
+        self.0.get_child(self.1, index)
+    }
+    fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+        id.next_key_after(self.id_ref())
+    }
+
+    fn translation(&self) -> Offset {
+        self.0.translation()
+    }
+}
+#[cfg(not(feature = "unsafe_node"))]
+impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
+    fn clone_node(&self) -> Node<'_> {
+        Node::new(self.0, self.1)
+    }
+
+    fn id_ref(&self) -> &WidgetId {
+        self.0.id_ref()
+    }
+    fn rect(&self) -> Rect {
+        self.0.rect()
+    }
+    fn widget_name(&self) -> &'static str {
+        self.0.widget_name()
+    }
+
+    fn num_children(&self) -> usize {
+        self.0.num_children()
+    }
+    fn get_child(&self, index: usize) -> Option<Node<'_>> {
+        self.0.get_child(self.1, index)
+    }
+    fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+        id.next_key_after(self.id_ref())
+    }
+
+    fn translation(&self) -> Offset {
+        self.0.translation()
+    }
+}
+
 /// Public API over a mutable widget
+#[cfg(feature = "unsafe_node")]
 pub struct Node<'a>(&'a dyn Widget<Data = ()>, &'a ());
+#[cfg(not(feature = "unsafe_node"))]
+pub struct Node<'a>(Box<dyn NodeT + 'a>);
 
 impl<'a> Node<'a> {
     /// Construct
     #[inline(always)]
     pub fn new<T: 'a>(widget: &'a dyn Widget<Data = T>, data: &'a T) -> Self {
-        // Safety: since the vtable for dyn Widget<Data = T> only uses T as &T
-        // and T: Sized, the vtable should be equivalent for all T.
-        // We ensure here that the type of `data` matches that used by `widget`.
-        // NOTE: This makes assumptions beyond Rust's specification.
-        use std::mem::transmute;
-        unsafe { Node(transmute(widget), transmute(data)) }
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "unsafe_node")] {
+                // Safety: since the vtable for dyn Widget<Data = T> only uses T as &T
+                // and T: Sized, the vtable should be equivalent for all T.
+                // We ensure here that the type of `data` matches that used by `widget`.
+                // NOTE: This makes assumptions beyond Rust's specification.
+                use std::mem::transmute;
+                unsafe { Node(transmute(widget), transmute(data)) }
+            } else {
+                // NOTE: we want to store the type behind (unsized)
+                // `dyn NodeT + 'a`. We know the size so could use StackDST, but
+                // the only safe option is to use an allocator like Box.
+                Node(Box::new((widget, data)))
+            }
+        }
     }
 
     /// Reborrow with a new lifetime
@@ -38,7 +127,13 @@ impl<'a> Node<'a> {
     where
         'a: 'b,
     {
-        Node(self.0, self.1)
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "unsafe_node")] {
+                Node(self.0, self.1)
+            } else {
+                self.0.clone_node()
+            }
+        }
     }
 
     /// Get the widget's identifier
@@ -113,7 +208,13 @@ impl<'a> Node<'a> {
     /// Required: `index < self.num_children()`.
     #[inline]
     pub fn get_child(&self, index: usize) -> Option<Node<'_>> {
-        self.0.get_child(self.1, index)
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "unsafe_node")] {
+                self.0.get_child(self.1, index)
+            } else {
+                self.0.get_child(index)
+            }
+        }
     }
 
     /// Find the child which is an ancestor of this `id`, if any
@@ -137,8 +238,16 @@ impl<'a> Node<'a> {
 
     fn _find(&self, id: &WidgetId, cb: Box<dyn FnOnce(Node<'_>) + '_>) {
         if let Some(index) = self.find_child_index(id) {
-            if let Some(child) = self.0.get_child(self.1, index) {
-                child._find(id, cb);
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "unsafe_node")] {
+                    if let Some(child) = self.0.get_child(self.1, index) {
+                        child._find(id, cb);
+                    }
+                } else {
+                    if let Some(child) = self.0.get_child(index) {
+                        child._find(id, cb);
+                    }
+                }
             }
         } else if self.eq_id(id) {
             cb(self.re());
@@ -155,22 +264,106 @@ impl<'a> Node<'a> {
     }
 }
 
+#[cfg(not(feature = "unsafe_node"))]
+trait NodeMutT: NodeT {
+    fn clone_node_mut(&mut self) -> NodeMut<'_>;
+
+    fn get_child_mut(&mut self, index: usize) -> Option<NodeMut<'_>>;
+
+    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
+
+    fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
+    fn _draw(&mut self, draw: DrawMgr);
+
+    fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId);
+    fn _update(&mut self, cx: &mut ConfigMgr);
+
+    fn _broadcast(&mut self, cx: &mut EventMgr, count: &mut usize, event: Event);
+    fn _send(&mut self, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response;
+    fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: Erased);
+    fn _nav_next(
+        &mut self,
+        cx: &mut EventMgr,
+        focus: Option<&WidgetId>,
+        advance: NavAdvance,
+    ) -> Option<WidgetId>;
+}
+#[cfg(not(feature = "unsafe_node"))]
+impl<'a, T> NodeMutT for (&'a mut dyn Widget<Data = T>, &'a T) {
+    fn clone_node_mut(&mut self) -> NodeMut<'_> {
+        NodeMut::new(self.0, self.1)
+    }
+
+    fn get_child_mut(&mut self, index: usize) -> Option<NodeMut<'_>> {
+        self.0.get_child_mut(self.1, index)
+    }
+
+    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        self.0.size_rules(size_mgr, axis)
+    }
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        self.0.set_rect(mgr, rect);
+    }
+
+    fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        self.0.find_id(coord)
+    }
+    fn _draw(&mut self, mut draw: DrawMgr) {
+        draw.recurse(&mut self.0);
+    }
+
+    fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId) {
+        self.0._configure(self.1, cx, id);
+    }
+    fn _update(&mut self, cx: &mut ConfigMgr) {
+        self.0._update(self.1, cx);
+    }
+
+    fn _broadcast(&mut self, cx: &mut EventMgr, count: &mut usize, event: Event) {
+        self.0._broadcast(self.1, cx, count, event);
+    }
+    fn _send(&mut self, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response {
+        self.0._send(self.1, cx, id, disabled, event)
+    }
+    fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: Erased) {
+        self.0._replay(self.1, cx, id, msg);
+    }
+    fn _nav_next(
+        &mut self,
+        cx: &mut EventMgr,
+        focus: Option<&WidgetId>,
+        advance: NavAdvance,
+    ) -> Option<WidgetId> {
+        self.0._nav_next(self.1, cx, focus, advance)
+    }
+}
+
 /// Public API over a contextualized mutable widget
 ///
 /// Note: this type has no publically supported utility over [`Node`].
 /// It is, however, required for Kas's internals.
+#[cfg(feature = "unsafe_node")]
 pub struct NodeMut<'a>(&'a mut dyn Widget<Data = ()>, &'a ());
+#[cfg(not(feature = "unsafe_node"))]
+pub struct NodeMut<'a>(Box<dyn NodeMutT + 'a>);
 
 impl<'a> NodeMut<'a> {
     /// Construct
     #[inline(always)]
     pub fn new<T: 'a>(widget: &'a mut dyn Widget<Data = T>, data: &'a T) -> Self {
-        // Safety: since the vtable for dyn Widget<Data = T> only uses T as &T
-        // and T: Sized, the vtable should be equivalent for all T.
-        // We ensure here that the type of `data` matches that used by `widget`.
-        // NOTE: This makes assumptions beyond Rust's specification.
-        use std::mem::transmute;
-        unsafe { NodeMut(transmute(widget), transmute(data)) }
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "unsafe_node")] {
+                // Safety: since the vtable for dyn Widget<Data = T> only uses T as &T
+                // and T: Sized, the vtable should be equivalent for all T.
+                // We ensure here that the type of `data` matches that used by `widget`.
+                // NOTE: This makes assumptions beyond Rust's specification.
+                use std::mem::transmute;
+                unsafe { NodeMut(transmute(widget), transmute(data)) }
+            } else {
+                NodeMut(Box::new((widget, data)))
+            }
+        }
     }
 
     /// Reborrow with a new lifetime
@@ -183,12 +376,27 @@ impl<'a> NodeMut<'a> {
     where
         'a: 'b,
     {
-        NodeMut(self.0, self.1)
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "unsafe_node")] {
+                NodeMut(self.0, self.1)
+            } else {
+                self.0.clone_node_mut()
+            }
+        }
     }
 
-    /// Convert to non-mutable [`Node`]
-    pub fn as_node(self) -> Node<'a> {
-        Node(self.0, self.1)
+    /// Reborrow as a non-mutable [`Node`]
+    pub fn re_node<'b>(&'b self) -> Node<'b>
+    where
+        'a: 'b,
+    {
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "unsafe_node")] {
+                Node(self.0, self.1)
+            } else {
+                self.0.clone_node()
+            }
+        }
     }
 
     /// Get the widget's identifier
@@ -263,7 +471,13 @@ impl<'a> NodeMut<'a> {
     /// Required: `index < self.num_children()`.
     #[inline]
     pub fn get_child(&mut self, index: usize) -> Option<NodeMut<'_>> {
-        self.0.get_child_mut(self.1, index)
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "unsafe_node")] {
+                self.0.get_child_mut(self.1, index)
+            } else {
+                self.0.get_child_mut(index)
+            }
+        }
     }
 
     /// Find the child which is an ancestor of this `id`, if any
@@ -287,8 +501,16 @@ impl<'a> NodeMut<'a> {
 
     fn _find(&mut self, id: &WidgetId, cb: Box<dyn FnOnce(NodeMut<'_>) + '_>) {
         if let Some(index) = self.find_child_index(id) {
-            if let Some(mut child) = self.0.get_child_mut(self.1, index) {
-                child._find(id, cb);
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "unsafe_node")] {
+                    if let Some(mut child) = self.0.get_child_mut(self.1, index) {
+                        child._find(id, cb);
+                    }
+                } else {
+                    if let Some(mut child) = self.0.get_child_mut(index) {
+                        child._find(id, cb);
+                    }
+                }
             }
         } else if self.eq_id(id) {
             cb(self.re());
@@ -314,24 +536,51 @@ impl<'a> NodeMut<'a> {
         self.0.find_id(coord)
     }
 
-    /// Draw a widget and its children
-    pub(crate) fn _draw(&mut self, mut draw: DrawMgr) {
-        draw.recurse(&mut self.0);
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "unsafe_node")] {
+            /// Draw a widget and its children
+            pub(crate) fn _draw(&mut self, mut draw: DrawMgr) {
+                draw.recurse(&mut self.0);
+            }
+        } else {
+            /// Draw a widget and its children
+            pub(crate) fn _draw(&mut self, draw: DrawMgr) {
+                self.0._draw(draw);
+            }
+        }
     }
 
     /// Internal method: configure recursively
     pub(crate) fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId) {
-        self.0._configure(self.1, cx, id);
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "unsafe_node")] {
+                self.0._configure(self.1, cx, id);
+            } else {
+                self.0._configure(cx, id);
+            }
+        }
     }
 
     /// Internal method: update recursively
     pub(crate) fn _update(&mut self, cx: &mut ConfigMgr) {
-        self.0._update(self.1, cx);
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "unsafe_node")] {
+                self.0._update(self.1, cx);
+            } else {
+                self.0._update(cx);
+            }
+        }
     }
 
     /// Internal method: broadcast recursively
     pub(crate) fn _broadcast(&mut self, cx: &mut EventMgr, count: &mut usize, event: Event) {
-        self.0._broadcast(self.1, cx, count, event);
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "unsafe_node")] {
+                self.0._broadcast(self.1, cx, count, event);
+            } else {
+                self.0._broadcast(cx, count, event);
+            }
+        }
     }
 
     /// Internal method: send recursively
@@ -342,12 +591,24 @@ impl<'a> NodeMut<'a> {
         disabled: bool,
         event: Event,
     ) -> Response {
-        self.0._send(self.1, cx, id, disabled, event)
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "unsafe_node")] {
+                self.0._send(self.1, cx, id, disabled, event)
+            } else {
+                self.0._send(cx, id, disabled, event)
+            }
+        }
     }
 
     /// Internal method: replay recursively
     pub(crate) fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: Erased) {
-        self.0._replay(self.1, cx, id, msg);
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "unsafe_node")] {
+                self.0._replay(self.1, cx, id, msg);
+            } else {
+                self.0._replay(cx, id, msg);
+            }
+        }
     }
 
     /// Internal method: search for the previous/next navigation target
@@ -358,6 +619,12 @@ impl<'a> NodeMut<'a> {
         focus: Option<&WidgetId>,
         advance: NavAdvance,
     ) -> Option<WidgetId> {
-        self.0._nav_next(self.1, cx, focus, advance)
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "unsafe_node")] {
+                self.0._nav_next(self.1, cx, focus, advance)
+            } else {
+                self.0._nav_next(cx, focus, advance)
+            }
+        }
     }
 }

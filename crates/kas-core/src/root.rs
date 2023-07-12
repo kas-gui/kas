@@ -416,7 +416,7 @@ impl<Data: 'static> Window<Data> {
             };
 
             cache.apply_rect(node.re(), mgr, rect, false);
-            cache.print_widget_heirarchy(node.as_node());
+            cache.print_widget_heirarchy(node.re_node());
         });
     }
 }

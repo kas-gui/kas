@@ -499,12 +499,12 @@ impl<'a> EventMgr<'a> {
 
             if matches!(cmd, Command::Debug) {
                 if let Some(ref id) = self.hover {
-                    widget.as_node().find(id, |node| {
+                    widget.re_node().find(id, |node| {
                         let hier = WidgetHierarchy::new(node.re());
                         log::debug!("Widget heirarchy (from mouse): {hier}");
                     });
                 } else {
-                    let hier = WidgetHierarchy::new(widget.as_node());
+                    let hier = WidgetHierarchy::new(widget.re_node());
                     log::debug!("Widget heirarchy (whole window): {hier}");
                 }
                 return;
