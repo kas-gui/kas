@@ -85,8 +85,13 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
         cx.assert_post_steal_unused();
         if let Some(index) = widget.find_child_index(&id) {
             let translation = widget.translation();
+            let mut found = false;
             if let Some(mut node) = widget.get_child_mut(data, index) {
-                response = node._send(cx, id, disabled, event.clone() + translation);
+                response = node._send(cx, id.clone(), disabled, event.clone() + translation);
+                found = true;
+            }
+
+            if found {
                 if let Some(scroll) = cx.post_send(index) {
                     widget.handle_scroll(data, cx, scroll);
                 }
@@ -120,10 +125,19 @@ pub fn _replay<W: Widget + Events<Data = <W as Widget>::Data>>(
     msg: Erased,
 ) {
     if let Some(index) = widget.find_child_index(&id) {
+        let mut found = false;
         if let Some(mut node) = widget.get_child_mut(data, index) {
-            node._replay(cx, id, msg);
+            node._replay(cx, id.clone(), msg);
+            found = true;
+        }
+
+        if found {
             if let Some(scroll) = cx.post_send(index) {
                 widget.handle_scroll(data, cx, scroll);
+            }
+
+            if cx.has_msg() {
+                widget.handle_message(data, cx);
             }
         } else {
             #[cfg(debug_assertions)]
@@ -131,10 +145,6 @@ pub fn _replay<W: Widget + Events<Data = <W as Widget>::Data>>(
                 "_replay: {} found index {index} for {id} but not child",
                 IdentifyWidget(widget.widget_name(), widget.id_ref())
             );
-        }
-
-        if cx.has_msg() {
-            widget.handle_message(data, cx);
         }
     } else if id == widget.id_ref() {
         cx.push_erased(msg);
