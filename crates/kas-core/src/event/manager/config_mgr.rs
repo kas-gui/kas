@@ -28,6 +28,7 @@ pub struct ConfigMgr<'a> {
     sh: &'a dyn ThemeSize,
     ds: &'a mut dyn DrawShared,
     pub(crate) ev: &'a mut EventState,
+    pub(crate) recurse: bool,
 }
 
 impl<'a> ConfigMgr<'a> {
@@ -35,7 +36,12 @@ impl<'a> ConfigMgr<'a> {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn new(sh: &'a dyn ThemeSize, ds: &'a mut dyn DrawShared, ev: &'a mut EventState) -> Self {
-        ConfigMgr { sh, ds, ev }
+        ConfigMgr {
+            sh,
+            ds,
+            ev,
+            recurse: true,
+        }
     }
 
     /// Get the platform
@@ -89,6 +95,16 @@ impl<'a> ConfigMgr<'a> {
     #[inline]
     pub fn configure(&mut self, mut widget: NodeMut<'_>, id: WidgetId) {
         widget._configure(self, id);
+    }
+
+    /// Inhibit update of children
+    ///
+    /// Usually on update, all child widgets are updated recursively. This
+    /// method may be called to prevent children from being updated when their
+    /// input data has not changed.
+    #[inline]
+    pub fn inhibit_recursion(&mut self) {
+        self.recurse = false;
     }
 
     /// Update a widget

@@ -22,6 +22,7 @@ impl_scope! {
         state: S,
         #[widget(&self.state)]
         inner: W,
+        need_update: bool,
         message_handler: Option<Box<dyn Fn(&mut EventMgr, &A, &mut S) -> bool>>,
         update_handler: Option<Box<dyn Fn(&mut ConfigMgr, &A, &mut S)>>,
         _data: PhantomData<A>,
@@ -34,6 +35,7 @@ impl_scope! {
                 core: Default::default(),
                 state,
                 inner,
+                need_update: false,
                 message_handler: None,
                 update_handler: None,
                 _data: PhantomData,
@@ -74,6 +76,8 @@ impl_scope! {
         }
 
         /// Add a handler to be called on update of input data
+        ///
+        /// Children will be updated after the handler is called.
         pub fn on_update<F>(mut self, update_handler: F) -> Self
         where
             F: Fn(&mut ConfigMgr, &A, &mut S) + 'static,
@@ -87,16 +91,20 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn update(&mut self, data: &A, mgr: &mut ConfigMgr) {
+        fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
             if let Some(handler) = self.update_handler.as_ref() {
-                handler(mgr, data, &mut self.state);
+                handler(cx, data, &mut self.state);
+            } else if self.need_update {
+                self.need_update = false;
+            } else {
+                cx.inhibit_recursion();
             }
-            // TODO: recurse update to children only if handler was called
         }
 
-        fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, data: &A, mgr: &mut EventMgr) {
             if let Some(handler) = self.message_handler.as_ref() {
                 if handler(mgr, data, &mut self.state) {
+                    self.need_update = true;
                     mgr.update(self.as_node_mut(data));
                 }
             }

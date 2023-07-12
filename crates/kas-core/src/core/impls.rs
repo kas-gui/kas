@@ -37,13 +37,16 @@ pub fn _update<W: Widget + Events<Data = <W as Widget>::Data>>(
     data: &<W as Widget>::Data,
     cx: &mut ConfigMgr,
 ) {
+    widget.update(data, cx);
+    if !cx.recurse {
+        return;
+    }
+
     for index in 0..widget.num_children() {
         if let Some(mut node) = widget.get_child_mut(data, index) {
             node._update(cx);
         }
     }
-
-    widget.update(data, cx);
 }
 
 /// Generic implementation of [`Widget::_broadcast`]

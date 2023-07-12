@@ -313,6 +313,10 @@ pub trait Events: Sized {
     /// Typically this method is called immediately after the data is updated
     /// but the call may be delayed until when the widget becomes visible.
     ///
+    /// This method is called on the parent widget before children get updated.
+    /// If children should *not* be updated (because their input data has not
+    /// changed), call [`ConfigMgr::inhibit_recursion`].
+    ///
     /// The default implementation does nothing.
     fn update(&mut self, data: &Self::Data, mgr: &mut ConfigMgr) {
         let _ = (data, mgr);
