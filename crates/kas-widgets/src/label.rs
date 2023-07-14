@@ -5,10 +5,17 @@
 
 //! Fixed text widgets
 
+use super::adapter::WithAny;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
 use kas::text::Text;
 use kas::theme::TextClass;
+
+/// Construct a [`Label`] which accepts any data
+#[inline]
+pub fn label<A, T: FormattableText + 'static>(label: T) -> WithAny<A, Label<T>> {
+    WithAny::new(Label::new(label))
+}
 
 impl_scope! {
     /// A text label

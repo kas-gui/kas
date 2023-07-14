@@ -88,7 +88,7 @@ pub use filler::Filler;
 pub use frame::{Frame, PopupFrame};
 pub use grid::{BoxGrid, Grid};
 pub use grip::{GripMsg, GripPart};
-pub use label::{AccelLabel, Label, StrLabel, StringLabel};
+pub use label::{label, AccelLabel, Label, StrLabel, StringLabel};
 pub use list::*;
 pub use mark::{Mark, MarkButton};
 pub use nav_frame::NavFrame;
