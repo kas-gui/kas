@@ -19,7 +19,6 @@
 //!
 //! Three controllers are provided by this crate:
 //!
-//! -   [`SingleView`] constructs a single view over a simple data model
 //! -   [`ListView`] constructs a row or column of views over indexable data
 //! -   [`MatrixView`] constructs a table/sheet of views over two-dimensional
 //!     indexable data
@@ -35,7 +34,6 @@ use thiserror::Error;
 
 mod list_view;
 mod matrix_view;
-mod single_view;
 
 pub mod driver;
 
@@ -43,7 +41,6 @@ pub use driver::Driver;
 pub use list_view::ListView;
 pub use matrix_view::MatrixView;
 pub use maybe_owned::MaybeOwned;
-pub use single_view::SingleView;
 
 /// Used to notify selection and deselection of [`ListView`] and [`MatrixView`] children
 #[derive(Clone, Debug)]
