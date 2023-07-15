@@ -35,9 +35,9 @@ enum PendingAction<A: 'static> {
 }
 
 #[cfg(feature = "winit")]
-#[derive(Debug)]
 enum ProxyAction {
     CloseAll,
     Close(kas::WindowId),
+    Message(kas::erased::SendErased),
     WakeAsync,
 }

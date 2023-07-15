@@ -63,6 +63,35 @@ impl std::fmt::Debug for Erased {
     }
 }
 
+/// Like Erased, but supporting Send
+pub(crate) struct SendErased {
+    any: Box<dyn Any + Send>,
+    #[cfg(debug_assertions)]
+    fmt: String,
+}
+
+impl SendErased {
+    /// Construct
+    pub fn new<V: Any + Send + Debug>(v: V) -> Self {
+        #[cfg(debug_assertions)]
+        let fmt = format!("{}::{:?}", std::any::type_name::<V>(), &v);
+        let any = Box::new(v);
+        SendErased {
+            #[cfg(debug_assertions)]
+            fmt,
+            any,
+        }
+    }
+
+    /// Convert to [`Erased`]
+    pub fn into_erased(self) -> Erased {
+        Erased {
+            any: self.any,
+            fmt: self.fmt,
+        }
+    }
+}
+
 /// A type-erased message stack
 ///
 /// This is a stack over [`Erased`], with some downcasting methods.
@@ -145,19 +174,24 @@ impl Drop for ErasedStack {
     }
 }
 
-/// User application state
+/// Application state
 ///
-/// Note: `()` implements this trait; this impl does nothing (i.e. all messages
-/// should be handled before finishing widget tree traversal).
+/// Kas allows state to be stored in `Adapt` and user-defined widgets within
+/// windows, but sometimes you want top-level application state too (especially
+/// for data shared between windows). Such state implements this trait and is
+/// passed to the shell/runner's constructor.
+///
+/// When no top-level data is required, use `()` which implements this trait.
 pub trait AppData: 'static {
     /// Handle messages
     ///
-    /// This method is called when, after traversing the widget tree (see
-    /// [kas::events] module doc), a message is left on the stack.
-    /// Unhandled messages will result in warnings in the log.
+    /// This is the last message handler: it is called when, after traversing
+    /// the widget tree (see [kas::events] module doc), a message is left on the
+    /// stack. Unhandled messages will result in warnings in the log.
     ///
-    /// This method should usually return [`Action::EMPTY`] for no change or
-    /// [`Action::UPDATE`] when state (i.e. widget input data) has changed.
+    /// The method returns an [`Action`], usually either [`Action::EMPTY`]
+    /// (nothing to do) or [`Action::UPDATE`] (to update widgets).
+    /// This action affects all windows.
     fn handle_messages(&mut self, messages: &mut ErasedStack) -> Action;
 }
 

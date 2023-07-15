@@ -310,6 +310,19 @@ impl Proxy {
             .map_err(|_| ClosedError)
     }
 
+    /// Send a message to [`AppData`]
+    ///
+    /// This is similar to [`EventMgr::push`](crate::events::EventMgr::push),
+    /// but can only be handled by top-level [`AppData`].
+    pub fn push<M: std::fmt::Debug + Send + 'static>(
+        &mut self,
+        msg: M,
+    ) -> std::result::Result<(), ClosedError> {
+        self.0
+            .send_event(ProxyAction::Message(kas::erased::SendErased::new(msg)))
+            .map_err(|_| ClosedError)
+    }
+
     /// Wake async methods
     fn wake_async(&self) {
         // ignore error: if the loop closed the future has been dropped

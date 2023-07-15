@@ -121,6 +121,11 @@ where
                         window.send_action(Action::CLOSE);
                     }
                 }
+                ProxyAction::Message(msg) => {
+                    let mut stack = crate::ErasedStack::new();
+                    stack.push_erased(msg.into_erased());
+                    self.shared.handle_messages(&mut stack);
+                }
                 ProxyAction::WakeAsync => {
                     // We don't need to do anything: MainEventsCleared will
                     // automatically be called after, which automatically calls
