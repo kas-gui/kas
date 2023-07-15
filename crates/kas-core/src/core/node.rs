@@ -11,7 +11,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::util::IdentifyWidget;
-use crate::{Erased, NavAdvance, WidgetId};
+use crate::{Erased, Layout, NavAdvance, WidgetId};
 
 #[cfg(not(feature = "unsafe_node"))]
 trait NodeT {
@@ -273,6 +273,7 @@ trait NodeMutT: NodeT {
     fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
     fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
 
+    fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize>;
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
     fn _draw(&mut self, draw: DrawMgr);
 
@@ -306,6 +307,9 @@ impl<'a, T> NodeMutT for (&'a mut dyn Widget<Data = T>, &'a T) {
         self.0.set_rect(mgr, rect);
     }
 
+    fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+        self.0.nav_next(reverse, from)
+    }
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
         self.0.find_id(coord)
     }
@@ -529,6 +533,11 @@ impl<'a> NodeMut<'a> {
     /// Set size and position
     pub(crate) fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
         self.0.set_rect(mgr, rect);
+    }
+
+    /// Navigation in spatial order
+    pub(crate) fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+        self.0.nav_next(reverse, from)
     }
 
     /// Translate a coordinate to a [`WidgetId`]

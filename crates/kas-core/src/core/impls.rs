@@ -7,7 +7,7 @@
 
 use crate::event::{ConfigMgr, Event, EventMgr, Response};
 use crate::util::IdentifyWidget;
-use crate::{Erased, Events, Layout, NavAdvance, Widget, WidgetId};
+use crate::{Erased, Events, Layout, NavAdvance, NodeMut, Widget, WidgetId};
 
 /// Generic implementation of [`Widget::_configure`]
 pub fn _configure<W: Widget + Events<Data = <W as Widget>::Data>>(
@@ -169,6 +169,17 @@ pub fn _nav_next<W: Widget + Events<Data = <W as Widget>::Data>>(
     focus: Option<&WidgetId>,
     advance: NavAdvance,
 ) -> Option<WidgetId> {
+    let navigable = widget.navigable();
+    nav_next(widget.as_node_mut(data), cx, focus, advance, navigable)
+}
+
+fn nav_next(
+    mut widget: NodeMut<'_>,
+    cx: &mut EventMgr,
+    focus: Option<&WidgetId>,
+    advance: NavAdvance,
+    navigable: bool,
+) -> Option<WidgetId> {
     if cx.is_disabled(widget.id_ref()) {
         return None;
     }
@@ -177,14 +188,14 @@ pub fn _nav_next<W: Widget + Events<Data = <W as Widget>::Data>>(
 
     if let Some(index) = child {
         if let Some(id) = widget
-            .get_child_mut(data, index)
+            .get_child(index)
             .and_then(|mut node| node._nav_next(cx, focus, advance))
         {
             return Some(id);
         }
     }
 
-    if widget.navigable() {
+    if navigable {
         let can_match_self = match advance {
             NavAdvance::None => true,
             NavAdvance::Forward(true) => true,
@@ -204,7 +215,7 @@ pub fn _nav_next<W: Widget + Events<Data = <W as Widget>::Data>>(
 
     while let Some(index) = widget.nav_next(rev, child) {
         if let Some(id) = widget
-            .get_child_mut(data, index)
+            .get_child(index)
             .and_then(|mut node| node._nav_next(cx, focus, advance))
         {
             return Some(id);
@@ -212,7 +223,7 @@ pub fn _nav_next<W: Widget + Events<Data = <W as Widget>::Data>>(
         child = Some(index);
     }
 
-    if widget.navigable() {
+    if navigable {
         let can_match_self = match advance {
             NavAdvance::Reverse(true) => true,
             NavAdvance::Reverse(false) => *widget.id_ref() != focus,
