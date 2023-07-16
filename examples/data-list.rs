@@ -116,8 +116,7 @@ fn main() -> kas::shell::Result<()> {
         }]
         struct {
             core: widget_core!(),
-            // FIXME: pass &self.list.len() here (requires removal of Widget::get_child):
-            #[widget(&3)] controls: impl Widget<Data = usize> = controls,
+            #[widget(&self.list.len())] controls: impl Widget<Data = usize> = controls,
             #[widget] display: StringLabel = Label::from("Entry #1"),
             #[widget(&self.active)] list: ScrollBarRegion<List<Direction, ListEntry>> =
                 ScrollBarRegion::new(list).with_fixed_bars(false, true),
@@ -126,7 +125,7 @@ fn main() -> kas::shell::Result<()> {
         impl Events for Self {
             type Data = ();
 
-            fn handle_message(&mut self, _: &(), cx: &mut EventMgr) {
+            fn handle_message(&mut self, data: &(), cx: &mut EventMgr) {
                 let mut new_len = None;
 
                 if let Some(control) = cx.try_pop() {
@@ -162,7 +161,8 @@ fn main() -> kas::shell::Result<()> {
                     if let Some(len) = new_len {
                         cx.config_mgr(|mgr| {
                             self.list.inner_mut()
-                                .resize_with(&self.active, mgr, len, |n| ListEntry::new(n))
+                                .resize_with(&self.active, mgr, len, ListEntry::new);
+                            mgr.update(self.as_node_mut(data));
                         });
                     }
                 }

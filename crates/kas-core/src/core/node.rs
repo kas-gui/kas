@@ -54,7 +54,7 @@ impl<'a, T> NodeT for (&'a dyn Widget<Data = T>, &'a T) {
         self.0.for_child_impl(self.1, index, f);
     }
     fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
-        id.next_key_after(self.id_ref())
+        self.0.find_child_index(id)
     }
 }
 #[cfg(not(feature = "unsafe_node"))]
@@ -84,7 +84,7 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
         self.0.for_child_impl(self.1, index, f);
     }
     fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
-        id.next_key_after(self.id_ref())
+        self.0.find_child_index(id)
     }
 }
 
@@ -285,7 +285,7 @@ impl<'a> Node<'a> {
     /// to be a valid child index.
     #[inline]
     pub fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
-        id.next_key_after(self.id_ref())
+        self.0.find_child_index(id)
     }
 
     /// Find the descendant with this `id`, if any, and call `cb` on it
@@ -561,7 +561,7 @@ impl<'a> NodeMut<'a> {
     /// to be a valid child index.
     #[inline]
     pub fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
-        id.next_key_after(self.id_ref())
+        self.0.find_child_index(id)
     }
 
     /// Find the descendant with this `id`, if any, and call `cb` on it
