@@ -35,7 +35,7 @@ use std::default::Default;
 ///
 /// -   construct (empty) widgets with [`Self::make`]
 /// -   assign data to an existing widget with [`Self::set`]
-/// -   (optional) handle messages from a widget with [`Self::on_message`]
+/// -   (optional) handle messages from a widget with [`Self::on_messages`]
 ///
 /// NOTE: `Item` is a direct type parameter (in addition to an assoc. type
 /// param. of `SharedData`) only to avoid "conflicting implementations" errors.
@@ -95,11 +95,11 @@ pub trait Driver<Item, Data: SharedData<Item = Item>> {
     ///     message and updates `data` using values read from `widget`.
     ///
     /// See, for example, the implementation for [`CheckButton`]: the `make`
-    /// method assigns a state-change handler which `on_message` uses to update
+    /// method assigns a state-change handler which `on_messages` uses to update
     /// the shared data.
     ///
     /// Default implementation: do nothing.
-    fn on_message(
+    fn on_messages(
         &self,
         mgr: &mut EventMgr,
         widget: &mut Self::Widget,

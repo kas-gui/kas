@@ -51,7 +51,7 @@ impl_scope! {
     ///
     /// # Messages
     ///
-    /// When a view widget pushes a message, [`Driver::on_message`] is called.
+    /// When a view widget pushes a message, [`Driver::on_messages`] is called.
     ///
     /// When selection is enabled and an item is selected or deselected, this
     /// widget emits a [`SelectionMsg`].
@@ -187,10 +187,10 @@ impl_scope! {
         /// [`Select`].
         ///
         /// On selection and deselection, a [`SelectionMsg`] message is emitted.
-        /// This is not sent to [`Driver::on_message`].
+        /// This is not sent to [`Driver::on_messages`].
         ///
         /// The driver may trigger selection by emitting [`Select`] from
-        /// [`Driver::on_message`]. The driver is not notified of selection
+        /// [`Driver::on_messages`]. The driver is not notified of selection
         /// except via [`Select`] from view widgets. (TODO: reconsider this.)
         ///
         /// [`Select`]: kas::message::Select
@@ -751,7 +751,7 @@ impl_scope! {
                     None => return,
                 };
 
-                self.driver.on_message(mgr, &mut w.widget, &self.data, &key);
+                self.driver.on_messages(mgr, &mut w.widget, &self.data, &key);
             } else {
                 // Message is from self
                 key = match self.press_target.clone() {

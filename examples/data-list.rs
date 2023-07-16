@@ -71,7 +71,7 @@ impl_scope! {
 impl ListEntry {
     fn new(n: usize) -> Self {
         // Note: we embed `n` into messages here. A possible alternative: use
-        // List::on_message to pop the message and push `(usize, Control)`.
+        // List::on_messages to pop the message and push `(usize, Control)`.
         ListEntry {
             core: Default::default(),
             label: Label::new(format!("Entry number {}", n + 1)),

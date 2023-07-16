@@ -64,7 +64,7 @@ impl_scope! {
                 core: Default::default(),
                 direction: Direction::Up,
                 stack: Stack::new(),
-                tabs: Row::new().on_message(|mgr, index| {
+                tabs: Row::new().on_messages(|mgr, index| {
                     if let Some(MsgSelect) = mgr.try_pop() {
                         mgr.push(MsgSelectIndex(index));
                     }

@@ -48,7 +48,7 @@ impl_scope! {
     ///
     /// # Messages
     ///
-    /// If a handler is specified via [`Self::on_message`] then this handler is
+    /// If a handler is specified via [`Self::on_messages`] then this handler is
     /// called when a child pushes a message.
     #[autoimpl(Default)]
     #[derive(Clone)]
@@ -58,7 +58,7 @@ impl_scope! {
         widgets: Vec<(GridChildInfo, W)>,
         data: DynGridStorage,
         dim: GridDimensions,
-        on_message: Option<fn(&mut EventMgr, usize)>,
+        on_messages: Option<fn(&mut EventMgr, usize)>,
     }
 
     impl Widget for Self {
@@ -128,7 +128,7 @@ impl_scope! {
 
     impl Events for Self {
         fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
-            if let Some(f) = self.on_message {
+            if let Some(f) = self.on_messages {
                 let index = mgr.last_child().expect("message not sent from self");
                 f(mgr, index);
             }
@@ -154,22 +154,13 @@ impl<W: Widget> Grid<W> {
         grid
     }
 
-    /// Assign a child message handler
-    ///
-    /// This handler (if any) is called when a child pushes a message:
-    /// `f(mgr, index)`, where `index` is the child's index.
-    #[inline]
-    pub fn set_on_message(&mut self, f: Option<fn(&mut EventMgr, usize)>) {
-        self.on_message = f;
-    }
-
     /// Assign a child message handler (inline style)
     ///
     /// This handler is called when a child pushes a message:
     /// `f(mgr, index)`, where `index` is the child's index.
     #[inline]
-    pub fn on_message(mut self, f: fn(&mut EventMgr, usize)) -> Self {
-        self.on_message = Some(f);
+    pub fn on_messages(mut self, f: fn(&mut EventMgr, usize)) -> Self {
+        self.on_messages = Some(f);
         self
     }
 

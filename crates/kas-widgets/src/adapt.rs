@@ -30,6 +30,7 @@ impl_scope! {
 
     impl Self {
         /// Construct over `inner` with additional `state`
+        #[inline]
         pub fn new(inner: W, state: S) -> Self {
             Adapt {
                 core: Default::default(),
