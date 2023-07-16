@@ -125,7 +125,7 @@ fn main() -> kas::shell::Result<()> {
         impl Events for Self {
             type Data = ();
 
-            fn handle_message(&mut self, data: &(), cx: &mut EventMgr) {
+            fn handle_messages(&mut self, data: &(), cx: &mut EventMgr) {
                 let mut new_len = None;
 
                 if let Some(control) = cx.try_pop() {

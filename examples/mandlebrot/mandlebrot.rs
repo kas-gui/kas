@@ -467,7 +467,7 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_message(&mut self, data: &(), mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, data: &(), mgr: &mut EventMgr) {
             if let Some(iters) = mgr.try_pop() {
                 self.iters = iters;
             } else if let Some(ViewUpdate) = mgr.try_pop() {

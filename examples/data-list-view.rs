@@ -174,7 +174,7 @@ fn main() -> kas::shell::Result<()> {
         impl Events for Self {
             type Data = ();
 
-            fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
+            fn handle_messages(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
                 if let Some(control) = mgr.try_pop() {
                     self.data.handle(control);
                     mgr.update(self.as_node_mut(data));

@@ -319,7 +319,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(GripMsg::PressMove(offset)) = mgr.try_pop() {
                 self.apply_grip_offset(mgr, offset);
             }
@@ -531,7 +531,7 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
             let index = mgr.last_child().expect("message not sent from self");
             if index == widget_index![self.horiz_bar] {
                 if let Some(ScrollMsg(x)) = mgr.try_pop() {

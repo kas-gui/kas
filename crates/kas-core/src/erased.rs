@@ -145,7 +145,7 @@ impl ErasedStack {
 
     /// Try popping the last message from the stack with the given type
     ///
-    /// This method may be called from [`Events::handle_message`].
+    /// This method may be called from [`Events::handle_messages`].
     pub fn try_pop<M: Debug + 'static>(&mut self) -> Option<M> {
         if self.has_any() && self.stack.last().map(|m| m.is::<M>()).unwrap_or(false) {
             self.stack.pop().unwrap().downcast::<M>().ok().map(|m| *m)
@@ -156,7 +156,7 @@ impl ErasedStack {
 
     /// Try observing the last message on the stack without popping
     ///
-    /// This method may be called from [`Events::handle_message`].
+    /// This method may be called from [`Events::handle_messages`].
     pub fn try_observe<M: Debug + 'static>(&self) -> Option<&M> {
         if self.has_any() {
             self.stack.last().and_then(|m| m.downcast_ref::<M>())

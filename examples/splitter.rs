@@ -38,7 +38,7 @@ fn main() -> kas::shell::Result<()> {
         impl Events for Self {
             type Data = ();
 
-            fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
+            fn handle_messages(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
                 if let Some(msg) = mgr.try_pop::<Message>() {
                     match msg {
                         Message::Decr => {

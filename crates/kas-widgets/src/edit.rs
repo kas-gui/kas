@@ -291,7 +291,7 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn handle_message(&mut self, data: &A, mgr: &mut EventMgr<'_>) {
+        fn handle_messages(&mut self, data: &A, mgr: &mut EventMgr<'_>) {
             if let Some(ScrollMsg(y)) = mgr.try_pop() {
                 self.inner
                     .set_scroll_offset(data, mgr, Offset(self.inner.view_offset.0, y));

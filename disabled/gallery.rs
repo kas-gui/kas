@@ -101,7 +101,7 @@ fn widgets() -> Box<dyn SetDisabled> {
         impl Events for Self {
             type Data = ();
 
-            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
+            fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
                 if let Some(MsgEdit) = mgr.try_pop() {
                     let text = self.label.data().clone();
                     let ed = dialog::TextEdit::new(true, text);
@@ -182,7 +182,7 @@ fn widgets() -> Box<dyn SetDisabled> {
         impl Events for Self {
             type Data = ();
 
-            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
+            fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
                 if let Some(ScrollMsg(value)) = mgr.try_pop() {
                     if mgr.last_child() == Some(widget_index![self.sc]) {
                         let ratio = value as f32 / self.sc.max_value() as f32;
@@ -259,7 +259,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
         impl Events for Self {
             type Data = ();
 
-            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
+            fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
                 if let Some(MsgDirection) = mgr.try_pop() {
                     self.dir = match self.dir {
                         Direction::Up => Direction::Right,
@@ -331,7 +331,7 @@ fn filter_list() -> Box<dyn SetDisabled> {
         impl Events for Self {
             type Data = ();
 
-            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
+            fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
                 if let Some(mode) = mgr.try_pop() {
                     *mgr |= self.list.set_selection_mode(mode);
                 } else if let Some(msg) = mgr.try_pop::<SelectionMsg<usize>>() {
@@ -559,7 +559,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         impl Events for Self {
             type Data = ();
 
-            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
+            fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
                 if let Some(msg) = mgr.try_pop::<Menu>() {
                     match msg {
                         Menu::Theme(name) => {

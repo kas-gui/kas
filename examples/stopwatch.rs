@@ -53,7 +53,7 @@ fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
                     _ => Response::Unused,
                 }
             }
-            fn handle_message(&mut self, data: &(), cx: &mut EventMgr) {
+            fn handle_messages(&mut self, data: &(), cx: &mut EventMgr) {
                 if let Some(MsgReset) = cx.try_pop() {
                     self.elapsed = Duration::default();
                     self.last = None;

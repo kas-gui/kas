@@ -107,7 +107,7 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
     }
 
     if cx.has_msg() {
-        widget.handle_message(data, cx);
+        widget.handle_messages(data, cx);
     }
 
     response
@@ -134,7 +134,7 @@ pub fn _replay<W: Widget + Events<Data = <W as Widget>::Data>>(
             }
 
             if cx.has_msg() {
-                widget.handle_message(data, cx);
+                widget.handle_messages(data, cx);
             }
         } else {
             #[cfg(debug_assertions)]
@@ -145,7 +145,7 @@ pub fn _replay<W: Widget + Events<Data = <W as Widget>::Data>>(
         }
     } else if id == widget.id_ref() {
         cx.push_erased(msg);
-        widget.handle_message(data, cx);
+        widget.handle_messages(data, cx);
     } else {
         #[cfg(debug_assertions)]
         log::debug!(

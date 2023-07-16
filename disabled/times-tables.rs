@@ -72,7 +72,7 @@ fn main() -> kas::shell::Result<()> {
         impl Events for Self {
             type Data = ();
 
-            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
+            fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
                 if mgr.last_child() == Some(widget_index![self.max]) {
                     if let Some(max) = mgr.try_pop::<usize>() {
                         let data = self.table.data_mut();

@@ -202,7 +202,7 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
             if let Some(kas::message::Activate) = mgr.try_pop() {
                 self.inner.toggle(data, mgr);
             }

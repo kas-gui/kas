@@ -402,7 +402,7 @@ pub trait Events: Sized {
     ///
     /// The default implementation does nothing.
     #[inline]
-    fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
+    fn handle_messages(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
         let _ = (data, mgr);
     }
 

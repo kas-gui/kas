@@ -101,7 +101,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, data: &A, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, data: &A, mgr: &mut EventMgr) {
             if let Some(handler) = self.message_handler.as_ref() {
                 if handler(mgr, data, &mut self.state) {
                     self.need_update = true;

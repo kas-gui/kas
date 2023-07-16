@@ -718,7 +718,7 @@ impl_scope! {
             response | sber_response
         }
 
-        fn handle_message(&mut self, data: &A, cx: &mut EventMgr) {
+        fn handle_messages(&mut self, data: &A, cx: &mut EventMgr) {
             let key;
             if let Some(index) = cx.last_child() {
                 let w = &mut self.widgets[index];

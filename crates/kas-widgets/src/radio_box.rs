@@ -151,7 +151,7 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn handle_message(&mut self, data: &Self::Data, cx: &mut EventMgr) {
+        fn handle_messages(&mut self, data: &Self::Data, cx: &mut EventMgr) {
             if let Some(kas::message::Activate) = cx.try_pop() {
                 self.inner.select(cx, data);
             }

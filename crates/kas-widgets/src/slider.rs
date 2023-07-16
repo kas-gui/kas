@@ -387,7 +387,7 @@ impl_scope! {
             Response::Used
         }
 
-        fn handle_message(&mut self, data: &A, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, data: &A, mgr: &mut EventMgr) {
             if self.on_move.is_none() {
                 return;
             }
