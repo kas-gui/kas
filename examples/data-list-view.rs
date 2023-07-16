@@ -18,31 +18,34 @@ use kas::widget::adapter::WithAny;
 use kas::widget::*;
 use std::collections::HashMap;
 
+#[derive(Debug)]
+struct SelectEntry(usize);
+
 #[derive(Clone, Debug)]
 enum Control {
     None,
     SetLen(usize),
     DecrLen,
     IncrLen,
-    Select(usize),
-    Update(usize, String),
+    Reverse,
+    Select(usize, String),
+    UpdateCurrent(String),
 }
 
-#[derive(Clone, Debug)]
-struct ReverseList;
-
 #[derive(Debug)]
-struct MyData {
+struct Data {
     len: usize,
     active: usize,
+    dir: Direction,
     active_string: String,
     strings: HashMap<usize, String>,
 }
-impl MyData {
+impl Data {
     fn new(len: usize) -> Self {
-        MyData {
+        Data {
             len,
             active: 0,
+            dir: Direction::Down,
             active_string: String::from("Entry 1"),
             strings: HashMap::new(),
         }
@@ -59,18 +62,18 @@ impl MyData {
             Control::SetLen(len) => len,
             Control::DecrLen => self.len.saturating_sub(1),
             Control::IncrLen => self.len.saturating_add(1),
-            Control::Select(index) => {
-                if index != self.active {
-                    self.active = index;
-                    self.active_string = self.get(index);
-                }
+            Control::Reverse => {
+                self.dir = self.dir.reversed();
                 return;
             }
-            Control::Update(index, text) => {
-                if index == self.active {
-                    self.active_string = text.clone();
-                }
-                self.strings.insert(index, text);
+            Control::Select(index, text) => {
+                self.active = index;
+                self.active_string = text;
+                return;
+            }
+            Control::UpdateCurrent(text) => {
+                self.active_string = text.clone();
+                self.strings.insert(self.active, text);
                 return;
             }
         };
@@ -82,22 +85,68 @@ impl MyData {
         }
     }
 }
-impl SharedData for MyData {
+
+type Item = (usize, String); // (active index, entry's text)
+
+#[derive(Debug)]
+struct ListEntryGuard(usize);
+impl EditGuard<Item> for ListEntryGuard {
+    fn activate(edit: &mut EditField<Item, Self>, _: &Item, cx: &mut EventMgr) -> Response {
+        cx.push(SelectEntry(edit.guard.0));
+        Response::Used
+    }
+
+    fn edit(edit: &mut EditField<Item, Self>, data: &Item, cx: &mut EventMgr) {
+        if data.0 == edit.guard.0 {
+            cx.push(Control::UpdateCurrent(edit.get_string()));
+        }
+    }
+}
+
+impl_scope! {
+    // The list entry
+    #[widget{
+        layout = column! [
+            row! [self.label, self.radio],
+            self.edit,
+        ];
+    }]
+    struct ListEntry {
+        core: widget_core!(),
+        #[widget(&())]
+        label: StringLabel,
+        #[widget]
+        radio: RadioButton<Item>,
+        #[widget]
+        edit: EditBox<Item, ListEntryGuard>,
+    }
+
+    impl Events for Self {
+        type Data = Item;
+
+        fn handle_messages(&mut self, data: &Item, cx: &mut EventMgr) {
+            if let Some(SelectEntry(n)) = cx.try_pop() {
+                if data.0 != n {
+                    cx.push(Control::Select(n, self.edit.get_string()));
+                }
+            }
+        }
+    }
+}
+
+impl SharedData for Data {
     type Key = usize;
-    type Item = (bool, String);
-    type ItemRef<'b> = Self::Item;
+    type Item = Item;
+    type ItemRef<'b> = Item;
 
     fn contains_key(&self, key: &Self::Key) -> bool {
         *key < self.len()
     }
-    fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>> {
-        let index = *key;
-        let is_active = self.active == index;
-        let text = self.get(index);
-        Some((is_active, text))
+    fn borrow(&self, key: &Self::Key) -> Option<Item> {
+        Some((self.active, self.get(*key)))
     }
 }
-impl ListData for MyData {
+impl ListData for Data {
     type KeyIter<'b> = std::ops::Range<usize>;
 
     fn len(&self) -> usize {
@@ -109,27 +158,22 @@ impl ListData for MyData {
     }
 }
 
-type Data = (bool, String);
-
 struct MyDriver;
-impl ListViewGuard<MyData> for MyDriver {
-    type Widget = Box<dyn Widget<Data = Data>>;
+impl ListViewGuard<Data> for MyDriver {
+    type Widget = ListEntry;
 
     fn make(&mut self, key: &usize) -> Self::Widget {
-        let index = *key;
-        let label = label(format!("Entry number {}", index + 1));
-        let radio = RadioButton::new_msg(
-            "display this entry",
-            |data: &Data| data.0,
-            move || Control::Select(index),
-        );
-        Box::new(kas::column![
-            row![WithAny::new(label), radio],
-            EditBox::string(
-                |data: &Data| data.1.clone(),
-                move |string| Control::Update(index, string.to_string()),
+        let n = *key;
+        ListEntry {
+            core: Default::default(),
+            label: Label::new(format!("Entry number {}", n + 1)),
+            radio: RadioButton::new_msg(
+                "display this entry",
+                move |data: &Item| data.0 == n,
+                move || SelectEntry(n),
             ),
-        ])
+            edit: EditBox::new(format!("Entry #{}", n + 1)).with_guard(ListEntryGuard(n)),
+        }
     }
 }
 
@@ -144,47 +188,26 @@ fn main() -> kas::shell::Result<()> {
             TextButton::new_msg("Set", Control::None),
             TextButton::new_msg("−", Control::DecrLen),
             TextButton::new_msg("+", Control::IncrLen),
-            TextButton::new_msg("↓↑", ReverseList),
+            TextButton::new_msg("↓↑", Control::Reverse),
         ]),
     ];
 
-    type MyList = ListView<MyData, MyDriver, Direction>;
-    let list = ListView::new_with_direction(Direction::Down, MyDriver);
+    let data = Data::new(3);
 
-    let ui = singleton! {
-        #[widget{
-            layout = column! [
-                "Demonstration of dynamic widget creation / deletion",
-                self.controls,
-                "Contents of selected entry:",
-                self.display,
-                Separator::new(),
-                self.list,
-            ];
-        }]
-        struct {
-            core: widget_core!(),
-            #[widget(&self.num)] controls: impl Widget<Data = usize> = controls,
-            #[widget(&self.data)] display: impl Widget<Data = MyData> = Text::new(|data: &MyData| data.active_string.to_string()),
-            #[widget(&self.data)] list: ScrollBars<MyList> =
-                ScrollBars::new(list).with_fixed_bars(false, true),
-            num: usize = 3,
-            data: MyData = MyData::new(3),
-        }
-        impl Events for Self {
-            type Data = ();
+    let list = ListView::new_with_direction(data.dir, MyDriver).on_update(|cx, list, data| {
+        *cx |= list.set_direction(data.dir);
+    });
+    let tree = kas::column![
+        "Demonstration of dynamic widget creation / deletion",
+        controls.map(|data: &Data| &data.len),
+        "Contents of selected entry:",
+        Text::new(|data: &Data| data.active_string.clone()),
+        Separator::new(),
+        ScrollBars::new(list).with_fixed_bars(false, true),
+    ];
 
-            fn handle_messages(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
-                if let Some(control) = mgr.try_pop() {
-                    self.data.handle(control);
-                    mgr.update(self.as_node_mut(data));
-                } else if let Some(_) = mgr.try_pop::<ReverseList>() {
-                    let dir = self.list.direction().reversed();
-                    *mgr |= self.list.set_direction(dir);
-                }
-            }
-        }
-    };
+    let ui = Adapt::new(tree, data).on_message(|_, data, control| data.handle(control));
+
     let window = Window::new(ui, "Dynamic widget demo");
 
     let theme = kas::theme::FlatTheme::new();

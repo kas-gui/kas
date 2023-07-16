@@ -5,9 +5,9 @@
 
 //! Event adapters
 
-use kas::event::ConfigMgr;
-use kas::{autoimpl, impl_scope};
-use kas::{Events, Widget};
+use kas::event::{ConfigMgr, EventMgr};
+use kas::geom::{Offset, Size};
+use kas::{autoimpl, impl_scope, Events, Scrollable, Widget};
 
 impl_scope! {
     /// Wrapper to call a closure on update
@@ -35,6 +35,26 @@ impl_scope! {
 
         fn update(&mut self, data: &W::Data, cx: &mut ConfigMgr) {
             (self.f)(cx, &mut self.inner, data);
+        }
+    }
+
+    // TODO: make derivable
+    impl Scrollable for Self where W: Scrollable {
+        #[inline]
+        fn scroll_axes(&self, size: Size) -> (bool, bool) {
+            self.inner.scroll_axes(size)
+        }
+        #[inline]
+        fn max_scroll_offset(&self) -> Offset {
+            self.inner.max_scroll_offset()
+        }
+        #[inline]
+        fn scroll_offset(&self) -> Offset {
+            self.inner.scroll_offset()
+        }
+        #[inline]
+        fn set_scroll_offset(&mut self, data: &W::Data, cx: &mut EventMgr, offset: Offset) -> Offset {
+            self.inner.set_scroll_offset(data, cx, offset)
         }
     }
 }

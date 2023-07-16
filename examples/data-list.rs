@@ -28,7 +28,7 @@ use kas::widget::{
 };
 
 #[derive(Debug)]
-struct SelectEntry;
+struct SelectEntry(usize);
 
 #[derive(Clone, Debug)]
 enum Control {
@@ -46,14 +46,44 @@ struct Data {
     len: usize,
     active: usize,
     dir: Direction,
-    current: String,
+    active_string: String,
+}
+impl Data {
+    fn handle(&mut self, control: Control) {
+        let len = match control {
+            Control::None => return,
+            Control::SetLen(len) => len,
+            Control::DecrLen => self.len.saturating_sub(1),
+            Control::IncrLen => self.len.saturating_add(1),
+            Control::Reverse => {
+                self.dir = self.dir.reversed();
+                return;
+            }
+            Control::Select(index, text) => {
+                self.active = index;
+                self.active_string = text;
+                return;
+            }
+            Control::UpdateCurrent(text) => {
+                self.active_string = text.clone();
+                return;
+            }
+        };
+
+        self.len = len;
+        if self.active >= len && len > 0 {
+            self.active = len - 1;
+            // NOTE: We should update self.active_string here but we cannot
+            // access the newly active widget's data from here.
+        }
+    }
 }
 
 #[derive(Debug)]
 struct ListEntryGuard(usize);
 impl EditGuard<Data> for ListEntryGuard {
-    fn activate(_: &mut EditField<Data, Self>, _: &Data, mgr: &mut EventMgr) -> Response {
-        mgr.push(SelectEntry);
+    fn activate(edit: &mut EditField<Data, Self>, _: &Data, cx: &mut EventMgr) -> Response {
+        cx.push(SelectEntry(edit.guard.0));
         Response::Used
     }
 
@@ -67,7 +97,6 @@ impl EditGuard<Data> for ListEntryGuard {
 impl_scope! {
     // The list entry
     #[widget{
-        Data = Data;
         layout = column! [
             row! [self.label, self.radio],
             self.edit,
@@ -75,22 +104,21 @@ impl_scope! {
     }]
     struct ListEntry {
         core: widget_core!(),
-        n: usize,
         #[widget(&())]
         label: StringLabel,
         #[widget(&data.active)]
         radio: RadioButton<usize>,
-        // We deliberately use these widgets to store state instead of passing.
-        // See examples/data-list-view.rs for a better option.
         #[widget]
         edit: EditBox<Data, ListEntryGuard>,
     }
 
     impl Events for Self {
+        type Data = Data;
+
         fn handle_messages(&mut self, data: &Data, cx: &mut EventMgr) {
-            if let Some(SelectEntry) = cx.try_pop() {
-                if data.active != self.n {
-                    cx.push(Control::Select(self.n, self.edit.get_string()));
+            if let Some(SelectEntry(n)) = cx.try_pop() {
+                if data.active != n {
+                    cx.push(Control::Select(n, self.edit.get_string()));
                 }
             }
         }
@@ -100,12 +128,11 @@ impl_scope! {
         fn new(n: usize) -> Self {
             ListEntry {
                 core: Default::default(),
-                n,
                 label: Label::new(format!("Entry number {}", n + 1)),
                 radio: RadioButton::new_msg(
                     "display this entry",
                     move |active| *active == n,
-                    move || SelectEntry,
+                    move || SelectEntry(n),
                 ),
                 edit: EditBox::new(format!("Entry #{}", n + 1)).with_guard(ListEntryGuard(n)),
             }
@@ -133,7 +160,7 @@ fn main() -> kas::shell::Result<()> {
         len: entries.len(),
         active: 0,
         dir: Direction::Down,
-        current: entries[0].label.get_string(), //"Entry #1".to_string(),
+        active_string: entries[0].label.get_string(),
     };
 
     let list = List::new_dir_vec(data.dir, entries).on_update(|cx, list, data| {
@@ -147,33 +174,12 @@ fn main() -> kas::shell::Result<()> {
         "Demonstration of dynamic widget creation / deletion",
         controls.map(|data: &Data| &data.len),
         "Contents of selected entry:",
-        Text::new(|data: &Data| data.current.to_string()),
+        Text::new(|data: &Data| data.active_string.to_string()),
         Separator::new(),
         ScrollBarRegion::new(list).with_fixed_bars(false, true),
     ];
 
-    let ui = Adapt::new(tree, data).on_message(|_, data, control| match control {
-        Control::None => return,
-        Control::SetLen(len) => {
-            data.len = len;
-        }
-        Control::DecrLen => {
-            data.len = data.len.saturating_sub(1);
-        }
-        Control::IncrLen => {
-            data.len = data.len.saturating_add(1);
-        }
-        Control::Reverse => {
-            data.dir = data.dir.reversed();
-        }
-        Control::Select(n, text) => {
-            data.active = n;
-            data.current = text;
-        }
-        Control::UpdateCurrent(text) => {
-            data.current = text;
-        }
-    });
+    let ui = Adapt::new(tree, data).on_message(|_, data, control| data.handle(control));
 
     let window = Window::new(ui, "Dynamic widget demo");
 
