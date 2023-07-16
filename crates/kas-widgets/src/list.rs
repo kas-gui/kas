@@ -64,7 +64,6 @@ impl_scope! {
     /// If a handler is specified via [`Self::on_messages`] then this handler is
     /// called when a child pushes a message. This allows associating the
     /// child's index with a message.
-    #[autoimpl(Clone where W: Clone)]
     #[autoimpl(Default where D: Default)]
     #[widget {
         layout = slice! 'layout (self.direction, self.widgets);
@@ -75,7 +74,7 @@ impl_scope! {
         direction: D,
         next: usize,
         id_map: HashMap<usize, usize>, // map key of WidgetId to index
-        on_messages: Option<fn(&mut EventMgr, usize)>,
+        on_messages: Option<Box<dyn Fn(&mut EventMgr, usize)>>,
     }
 
     impl Layout for Self {
@@ -146,7 +145,7 @@ impl_scope! {
         }
 
         fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
-            if let Some(f) = self.on_messages {
+            if let Some(ref f) = self.on_messages {
                 let index = mgr.last_child().expect("message not sent from self");
                 f(mgr, index);
             }
@@ -212,8 +211,8 @@ impl_scope! {
         /// This handler is called when a child pushes a message:
         /// `f(mgr, index)`, where `index` is the child's index.
         #[inline]
-        pub fn on_messages(mut self, f: fn(&mut EventMgr, usize)) -> Self {
-            self.on_messages = Some(f);
+        pub fn on_messages(mut self, f: impl Fn(&mut EventMgr, usize) + 'static) -> Self {
+        self.on_messages = Some(Box::new(f));
             self
         }
 

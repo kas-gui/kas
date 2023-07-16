@@ -368,7 +368,6 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
 
 impl_scope! {
     #[autoimpl(Default)]
-    #[derive(Clone)]
     #[widget{
         Data = ();
         layout = self.inner;
