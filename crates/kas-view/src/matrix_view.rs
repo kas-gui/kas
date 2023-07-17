@@ -812,7 +812,7 @@ impl_scope! {
         }
 
         fn _update(&mut self, data: &Self::Data, cx: &mut ConfigMgr) {
-            let _ = (data, cx); // For now, do nothing
+            self.update(data, cx);
         }
 
         fn _broadcast(&mut self,
