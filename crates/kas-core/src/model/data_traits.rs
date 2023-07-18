@@ -79,6 +79,19 @@ pub trait SharedData: Debug {
     /// Key type
     type Key: DataKey;
 
+    /// Item version type
+    ///
+    /// This is used to test the freshness of data associated with a key.
+    /// Some suggestions:
+    ///
+    /// -   `()` for immutable data
+    /// -   `()` may also be used for load-on-demand immutable data if a
+    ///     different ("null") key is used for not-yet-available items
+    /// -   `u64` with a version number associated with the data as a whole; in
+    ///     this case all entries must be reloaded whenever data changes
+    /// -   `u64` with per-item version numbers
+    type Version: Clone + Debug + PartialEq;
+
     /// Item type
     type Item: Clone;
 
@@ -136,7 +149,7 @@ pub trait SharedData: Debug {
 #[allow(clippy::len_without_is_empty)]
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait ListData: SharedData {
-    type KeyIter<'b>: Iterator<Item = Self::Key>
+    type KeyIter<'b>: Iterator<Item = (Self::Key, Self::Version)>
     where
         Self: 'b;
 
@@ -221,5 +234,5 @@ pub trait MatrixData: SharedData {
     fn row_iter_from(&self, start: usize, limit: usize) -> Self::RowKeyIter<'_>;
 
     /// Make a key from parts
-    fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key;
+    fn make_key(&self, col: &Self::ColKey, row: &Self::RowKey) -> (Self::Key, Self::Version);
 }

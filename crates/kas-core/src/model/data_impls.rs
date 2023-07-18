@@ -8,10 +8,32 @@
 use super::*;
 use std::fmt::Debug;
 
+// Once RPITIT is stable we can replace this with range + map
+pub struct KeyIter {
+    pub start: usize,
+    pub end: usize,
+}
+impl Iterator for KeyIter {
+    type Item = (usize, ());
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut item = None;
+        if self.start < self.end {
+            item = Some((self.start, ()));
+            self.start += 1;
+        }
+        item
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.end.saturating_sub(self.start);
+        (len, Some(len))
+    }
+}
+
 macro_rules! impl_list_data {
     ($ty:ty) => {
         impl<T: Clone + Debug + 'static> SharedData for $ty {
             type Key = usize;
+            type Version = ();
             type Item = T;
             type ItemRef<'b> = &'b T;
 
@@ -26,7 +48,7 @@ macro_rules! impl_list_data {
             }
         }
         impl<T: Clone + Debug + 'static> ListData for $ty {
-            type KeyIter<'b> = std::ops::Range<usize>;
+            type KeyIter<'b> = KeyIter;
 
             fn is_empty(&self) -> bool {
                 (*self).is_empty()
@@ -38,11 +60,13 @@ macro_rules! impl_list_data {
 
             fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_> {
                 let len = (*self).len();
-                start.min(len)..(start + limit).min(len)
+                KeyIter {
+                    start: start.min(len),
+                    end: (start + limit).min(len),
+                }
             }
         }
     };
 }
 
 impl_list_data!([T]);
-impl_list_data!(Vec<T>);

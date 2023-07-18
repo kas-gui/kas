@@ -29,23 +29,27 @@ use std::time::Instant;
 /// -   assign data to an existing widget with [`Self::set`]
 /// -   (optional) handle messages from a widget with [`Self::on_messages`]
 pub trait ListViewGuard<A: ListData> {
-    /// Type of the widget used to view data
+    /// Type of the "view widget" used for each data item
     ///
     /// NOTE: with RPITIT this should become an alias to `Self::make()`.
     type Widget: kas::Widget<Data = A::Item>;
 
-    /// Construct a new widget with no data
-    ///
-    /// Such instances are used for sizing and cached widgets, but not shown.
-    /// The controller may later call [`ListViewGuard::set`] on the widget then show it.
+    /// Construct a new view widget
     fn make(&mut self, key: &A::Key) -> Self::Widget;
 
-    /// Called to bind an existing widget to a new key
+    // /// Reset and reassign a widget
+    // ///
+    // /// This method is called when a view widget is assigned a different key.
+    // fn reset(&mut self, widget: &mut Self::Widget, key: &A::Key);
+
+    /// Called to bind an existing view widget to a new key
     ///
-    /// The default implementation simply replaces widget with `self.make(key)`
-    /// which is sufficient, if not always optimal. Be warned that failing to
-    /// fully reset `widget` may have observable side-effects such as retaining
-    /// text cursor position despite the new text.
+    /// This should reset widget metadata, for example so that when a view
+    /// widget with a text selection is assigned to a new key it does not
+    /// attempt to apply the old selection to the new text.
+    ///
+    /// The default implementation simply replaces widget with `self.make(key)`,
+    /// which is sufficient, if not always optimal.
     ///
     /// This does not need to set data; [`Widget::update`] does that.
     fn set_key(&mut self, widget: &mut Self::Widget, key: &A::Key) {
@@ -87,8 +91,8 @@ pub trait ListViewGuard<A: ListData> {
 }
 
 #[derive(Clone, Debug, Default)]
-struct WidgetData<K, W> {
-    key: Option<K>,
+struct WidgetData<K, V, W> {
+    key: Option<(K, V)>,
     widget: W,
 }
 
@@ -133,7 +137,7 @@ impl_scope! {
         /// Empty widget used for sizing; this must be stored between horiz and vert size rule
         /// calculations for correct line wrapping/layout.
         default_widget: G::Widget,
-        widgets: Vec<WidgetData<A::Key, G::Widget>>,
+        widgets: Vec<WidgetData<A::Key, A::Version, G::Widget>>,
         data_len: u32,
         /// The number of widgets in use (cur_len ≤ widgets.len())
         cur_len: u32,
@@ -382,15 +386,19 @@ impl_scope! {
             let keys = data.iter_from(solver.first_data, solver.cur_len);
 
             let mut count = 0;
-            for (i, key) in keys.enumerate() {
+            for (i, key_ver) in keys.enumerate() {
                 count += 1;
                 let i = solver.first_data + i;
-                let id = key.make_id(self.id_ref());
+                let id = key_ver.0.make_id(self.id_ref());
                 let w = &mut self.widgets[i % solver.cur_len];
-                if w.key.as_ref() != Some(&key) {
-                    self.guard.set_key(&mut w.widget, &key);
+                if w.key.as_ref() != Some(&key_ver) {
+                    // Key and/or version changed
+                    if w.key.as_ref().map(|kv| &kv.0) != Some(&key_ver.0) {
+                        // Key part changed
+                        self.guard.set_key(&mut w.widget, &key_ver.0);
+                    }
 
-                    if let Some(item) = data.borrow(&key) {
+                    if let Some(item) = data.borrow(&key_ver.0) {
                         cx.configure(w.widget.as_node_mut(item.borrow()), id);
 
                         solve_size_rules(
@@ -401,7 +409,7 @@ impl_scope! {
                             self.align_hints.horiz,
                             self.align_hints.vert,
                         );
-                        w.key = Some(key);
+                        w.key = Some(key_ver);
                     } else {
                         w.key = None; // disables drawing and clicking
                     }
@@ -464,7 +472,7 @@ impl_scope! {
                 self.widgets
                     .iter()
                     .enumerate()
-                    .filter_map(|(i, w)| (key == w.key).then_some(i))
+                    .filter_map(|(i, w)| (key.as_ref() == w.key.as_ref().map(|(k, _)| k)).then_some(i))
                     .next()
             } else {
                 None
@@ -595,7 +603,7 @@ impl_scope! {
             let offset = self.scroll_offset();
             draw.with_clip_region(self.core.rect, offset, |mut draw| {
                 for child in &mut self.widgets[..self.cur_len.cast()] {
-                    if let Some(ref key) = child.key {
+                    if let Some((ref key, _)) = child.key {
                         if self.selection.contains(key) {
                             draw.selection(child.widget.rect(), self.sel_style);
                         }
@@ -685,11 +693,11 @@ impl_scope! {
                 }
                 Event::PressStart { ref press } if press.is_primary() && cx.config().mouse_nav_focus() => {
                     if let Some(index) = cx.last_child() {
-                        self.press_target = self.widgets[index].key.clone().map(|k| (index, k));
+                        self.press_target = self.widgets[index].key.clone().map(|(k, _)| (index, k));
                     }
                     if let Some((index, ref key)) = self.press_target {
                         let w = &mut self.widgets[index];
-                        if w.key.as_ref().map(|k| k == key).unwrap_or(false) {
+                        if w.key.as_ref().map(|(k, _)| k == key).unwrap_or(false) {
                             cx.next_nav_focus(w.widget.id(), false, false);
                         }
                     }
@@ -704,7 +712,7 @@ impl_scope! {
                         if success
                             && !matches!(self.sel_mode, SelectionMode::None)
                             && !self.scroll.is_gliding()
-                            && w.key.as_ref().map(|k| k == key).unwrap_or(false)
+                            && w.key.as_ref().map(|(k, _)| k == key).unwrap_or(false)
                             && w.widget.rect().contains(press.coord + self.scroll.offset())
                         {
                             cx.push(kas::message::Select);
@@ -729,7 +737,7 @@ impl_scope! {
             if let Some(index) = cx.last_child() {
                 let w = &mut self.widgets[index];
                 key = match w.key.clone() {
-                    Some(k) => k,
+                    Some((k, _)) => k,
                     None => return,
                 };
 
@@ -781,7 +789,7 @@ impl_scope! {
             closure: Box<dyn FnOnce(Node<'_>) + '_>,
         ) {
             if let Some(w) = self.widgets.get(index) {
-                if let Some(ref key) = w.key {
+                if let Some((ref key, _)) = w.key {
                     if let Some(item) = data.borrow(key) {
                         closure(w.widget.as_node(item.borrow()));
                     }
@@ -795,7 +803,7 @@ impl_scope! {
             closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
         ) {
             if let Some(w) = self.widgets.get_mut(index) {
-                if let Some(ref key) = w.key {
+                if let Some((ref key, _)) = w.key {
                     if let Some(item) = data.borrow(key) {
                         closure(w.widget.as_node_mut(item.borrow()));
                     }

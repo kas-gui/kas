@@ -378,7 +378,7 @@ impl_scope! {
                 for (cn, col) in cols.iter().enumerate() {
                     let ci = first_col + cn;
                     let i = solver.data_to_child(ci, ri);
-                    let key = T::make_key(col, &row);
+                    let (key, ver) = T::make_key(col, &row);
                     let id = key.make_id(self.id_ref());
                     let w = &mut self.widgets[i];
                     if w.key.as_ref() != Some(&key) {
@@ -688,7 +688,7 @@ impl_scope! {
                                 .col_iter_from(ci, 1)
                                 .next()
                                 .expect("data col len > data.col_iter_vec len");
-                            let key = T::make_key(&ck, &rk);
+                            let (key, _ver) = T::make_key(&ck, &rk);
                             assert_eq!(
                                 self.widgets[index].widget.id(),
                                 key.make_id(self.id_ref()),
