@@ -1085,7 +1085,9 @@ impl<G: EditGuard> EditField<G> {
             // NOTE: we might choose to optionally handle Tab in the future,
             // but without some workaround it prevents keyboard navigation.
             // Command::Tab => Action::Insert('\t'.encode_utf8(&mut buf), LastEdit::Insert),
-            Command::Left if !shift && have_sel => Action::Move(selection.start, None),
+            Command::Left | Command::Home if !shift && have_sel => {
+                Action::Move(selection.start, None)
+            }
             Command::Left if pos > 0 => {
                 let mut cursor = GraphemeCursor::new(pos, len, true);
                 cursor
@@ -1094,7 +1096,9 @@ impl<G: EditGuard> EditField<G> {
                     .map(|pos| Action::Move(pos, None))
                     .unwrap_or(Action::None)
             }
-            Command::Right if !shift && have_sel => Action::Move(selection.end, None),
+            Command::Right | Command::End if !shift && have_sel => {
+                Action::Move(selection.end, None)
+            }
             Command::Right if pos < len => {
                 let mut cursor = GraphemeCursor::new(pos, len, true);
                 cursor
