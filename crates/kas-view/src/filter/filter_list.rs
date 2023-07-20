@@ -7,106 +7,174 @@
 
 use super::Filter;
 use crate::{ListData, SharedData};
-use kas::impl_scope;
-use std::borrow::Borrow;
-use std::cell::{Ref, RefCell};
+use kas::event::{ConfigMgr, EventMgr};
+use kas::geom::{Offset, Size};
+use kas::Scrollable;
+use kas::{impl_scope, Widget};
 use std::fmt::Debug;
 
+#[derive(Debug)]
+pub struct SetFilter<T: Debug>(pub T);
+
 impl_scope! {
-    /// Filter accessor over another accessor
+    /// A widget adding a filter over some [`ListData`]
     ///
-    /// This is an abstraction over a [`ListData`], applying a filter to items when
-    /// iterating and accessing.
+    /// Why is this a widget? Widgets can access and pass on data, which is
+    /// what we need to filter a list.
     ///
-    /// When updating, the filter applies to the old value: if the old is included,
-    /// it is replaced by the new, otherwise no replacement occurs.
+    /// Warning: this implementation is at least `O(n)` where `n = data.len()`.
+    /// Large collections may need to be filtered through another means.
+    /// This design may be re-evaluated for performance in the future.
     ///
-    /// Note: the key and item types are the same as those in the underlying list,
-    /// thus one can also retrieve values from the underlying list directly.
-    ///
-    /// Warning: this implementation is `O(n)` where `n = data.len()` and not well
-    /// optimised, thus is expected to be slow on large data lists.
-    #[derive(Clone, Debug)]
-    pub struct FilteredList<T: ListData, F: Filter<T::Item> + Debug> {
-        /// Direct access to unfiltered data
-        ///
-        /// If adjusting this, one should call [`FilteredList::refresh`] after.
-        data: T,
-        /// Direct access to the filter
-        ///
-        /// If adjusting this, one should call [`FilteredList::refresh`] after.
+    /// To set the filter call [`Self::set_filter`] or pass a message of type
+    /// `SetFilter<F::Value>`.
+    #[widget {
+        layout = self.inner;
+    }]
+    pub struct FilterList<A: ListData + 'static, F: Filter<A::Item>, W: Widget<Data = UnsafeFilteredList<A>>> {
+        core: widget_core!(),
+        #[widget(unsafe { &UnsafeFilteredList::new(data, &self.view) })]
+        pub inner: W,
         filter: F,
-        view: RefCell<(u64, Vec<(T::Key, T::Version)>)>,
+        view: Vec<(A::Key, A::Version)>,
     }
 
     impl Self {
-        /// Construct from `data` and a `filter`
-        #[inline]
-        pub fn new(data: T, filter: F) -> Self {
-            let len = data.len();
-            let view = RefCell::new((0, Vec::with_capacity(len)));
-            FilteredList { data, filter, view }
+        /// Construct around `inner` widget with the given `filter`
+        pub fn new(inner: W) -> Self {
+            FilterList {
+                core: Default::default(),
+                inner,
+                filter: Default::default(),
+                view: vec![],
+            }
         }
 
-        /// Refresh the view
-        ///
-        /// Re-applies the filter (`O(n)` where `n` is the number of data elements).
-        /// Calling this directly may be useful in case the data is modified.
-        fn refresh(&self, ver: u64) {
-            let mut view = self.view.borrow_mut();
-            view.0 = ver;
-            view.1.clear();
-            for (key, version) in self.data.iter_from(0, usize::MAX) {
-                if let Some(item) = self.data.borrow(&key) {
-                    if self.filter.matches(item.borrow()) {
-                        view.1.push((key, version));
+        /// Set filter value
+        pub fn set_filter(&mut self, data: &A, mgr: &mut ConfigMgr, filter: F::Value) {
+            self.filter.set_filter(filter);
+            mgr.update(self.as_node_mut(data));
+        }
+    }
+
+    impl kas::Events for Self {
+        type Data = A;
+
+        fn update(&mut self, data: &A, _: &mut kas::event::ConfigMgr) {
+            self.view.clear();
+            self.view.reserve(data.len());
+            for (key, version) in data.iter_from(0, usize::MAX) {
+                if let Some(item) = data.borrow(&key) {
+                    if self.filter.matches(std::borrow::Borrow::borrow(&item)) {
+                        self.view.push((key, version));
                     }
                 }
+            }
+        }
+
+        fn handle_messages(&mut self, data: &A, mgr: &mut EventMgr) {
+            if let Some(SetFilter(value)) = mgr.try_pop() {
+                mgr.config_mgr(|mgr| self.set_filter(data, mgr, value));
+            }
+        }
+    }
+
+    // TODO: make derivable
+    impl Scrollable for Self where W: Scrollable {
+        #[inline]
+        fn scroll_axes(&self, size: Size) -> (bool, bool) {
+            self.inner.scroll_axes(size)
+        }
+        #[inline]
+        fn max_scroll_offset(&self) -> Offset {
+            self.inner.max_scroll_offset()
+        }
+        #[inline]
+        fn scroll_offset(&self) -> Offset {
+            self.inner.scroll_offset()
+        }
+        #[inline]
+        fn set_scroll_offset(&mut self, data: &A, cx: &mut EventMgr, offset: Offset) -> Offset {
+            let data = unsafe { &UnsafeFilteredList::new(data, &self.view) };
+            self.inner.set_scroll_offset(data, cx, offset)
+        }
+    }
+}
+
+impl_scope! {
+    /// Filtered view over a list
+    ///
+    /// WARNING: this struct is `unsafe` because it contains lifetime-bound
+    /// references cast to `'static`. Instances or copies of this struct must
+    /// not outlive functions they are passed into.
+    /// (This is a poor design since it does not properly capsulate unsafety,
+    /// used for compatibility with other components. It does at least
+    /// encapsulate unsafety since this struct is only accessible behind a
+    /// non-`mut` reference, cannot be copied, and none of its methods return
+    /// references which don't have their own lifetime bound. Eventually the
+    /// plan is to make `Widget::Data` a GAT (once Rust supports object-safe
+    /// GAT traits), after which this struct may have a lifetime bound.)
+    ///
+    /// This is an abstraction over a [`ListData`]. Items and associated keys
+    /// and versions are not adjusted in any way.
+    ///
+    /// The filter applies to [`SharedData::contains_key`] and [`ListData`]
+    /// methods, but not to [`SharedData::borrow`] (the latter can thus access
+    /// items excluded by the filter).
+    #[derive(Debug)]
+    pub struct UnsafeFilteredList<A: ListData + 'static> {
+        data: &'static A,
+        view: &'static [(A::Key, A::Version)],
+    }
+
+    impl Self {
+        unsafe fn new<'a>(data: &'a A, view: &'a [(A::Key, A::Version)]) -> Self {
+            UnsafeFilteredList {
+                data: std::mem::transmute(data),
+                view: std::mem::transmute(view),
             }
         }
     }
 
     impl SharedData for Self {
-        type Key = T::Key;
-        type Version = T::Version;
-        type Item = T::Item;
-        type ItemRef<'b> = T::ItemRef<'b> where T: 'b;
+        type Key = A::Key;
+        type Version = A::Version;
+        type Item = A::Item;
+        type ItemRef<'b> = A::ItemRef<'b> where A: 'b;
 
         fn contains_key(&self, key: &Self::Key) -> bool {
-            SharedData::borrow(self, key).is_some()
+            // TODO(opt): note that this is O(n*n). For large lists it would be
+            // faster to re-evaluate the filter. Alternatively we could use a
+            // HashSet or BTreeSet to test membership.
+            self.view.iter().any(|item| item.0 == *key)
         }
+        #[inline]
         fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>> {
-            // Check the item against our filter (probably O(1)) instead of using
-            // our filtered list (O(n) where n=self.len()).
-            self.data
-                .borrow(key)
-                .filter(|item| self.filter.matches(item.borrow()))
+            self.data.borrow(key)
         }
     }
 
     impl ListData for Self {
-        type KeyIter<'b> = KeyIter<'b, (T::Key, T::Version)>
+        type KeyIter<'b> = KeyIter<'b, (A::Key, A::Version)>
         where Self: 'b;
 
         fn is_empty(&self) -> bool {
-            self.view.borrow().1.is_empty()
+            self.view.is_empty()
         }
         fn len(&self) -> usize {
-            self.view.borrow().1.len()
+            self.view.len()
         }
 
         fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_> {
             let end = self.len().min(start + limit);
-            let borrow = Ref::map(self.view.borrow(), |tuple| &tuple.1[start..end]);
-            let index = 0;
-            KeyIter { borrow, index }
+            KeyIter { list: &self.view[start..end], index: 0 }
         }
     }
 }
 
 /// Key iterator used by [`FilteredList`]
 pub struct KeyIter<'b, Item: Clone> {
-    borrow: Ref<'b, [Item]>,
+    list: &'b [Item],
     index: usize,
 }
 
@@ -114,7 +182,7 @@ impl<'b, Item: Clone> Iterator for KeyIter<'b, Item> {
     type Item = Item;
 
     fn next(&mut self) -> Option<Item> {
-        let key = self.borrow.get(self.index).cloned();
+        let key = self.list.get(self.index).cloned();
         if key.is_some() {
             self.index += 1;
         }
@@ -122,7 +190,7 @@ impl<'b, Item: Clone> Iterator for KeyIter<'b, Item> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.borrow.len() - self.index;
+        let len = self.list.len() - self.index;
         (len, Some(len))
     }
 }

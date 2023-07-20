@@ -8,8 +8,14 @@
 mod filter_list;
 pub use filter_list::*;
 
+/// Ability to set filter
+pub trait FilterValue: Default + 'static {
+    type Value: std::fmt::Debug;
+    fn set_filter(&mut self, value: Self::Value);
+}
+
 /// Types usable as a filter
-pub trait Filter<T>: 'static {
+pub trait Filter<T>: FilterValue {
     /// Returns true if the given item matches this filter
     fn matches(&self, item: &T) -> bool;
 }
@@ -19,9 +25,16 @@ pub trait Filter<T>: 'static {
 pub struct ContainsString(String);
 
 impl ContainsString {
-    /// Construct with given string
-    pub fn new<S: ToString>(s: S) -> Self {
-        ContainsString(s.to_string())
+    /// Construct with empty text
+    pub fn new() -> Self {
+        ContainsString(String::new())
+    }
+}
+
+impl FilterValue for ContainsString {
+    type Value = String;
+    fn set_filter(&mut self, value: String) {
+        self.0 = value;
     }
 }
 
@@ -47,9 +60,16 @@ impl Filter<String> for ContainsString {
 pub struct ContainsCaseInsensitive(String);
 
 impl ContainsCaseInsensitive {
-    /// Construct with given string
-    pub fn new(s: &str) -> Self {
-        ContainsCaseInsensitive(s.to_uppercase())
+    /// Construct with empty text
+    pub fn new() -> Self {
+        ContainsCaseInsensitive(String::new())
+    }
+}
+
+impl FilterValue for ContainsCaseInsensitive {
+    type Value = String;
+    fn set_filter(&mut self, value: String) {
+        self.0 = value.to_uppercase();
     }
 }
 
