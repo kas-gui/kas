@@ -117,11 +117,16 @@ impl_scope! {
         }
 
         fn toggle(&mut self, data: &A, mgr: &mut EventMgr) {
-            self.last_change = Some(Instant::now());
-            mgr.redraw(self.id());
+            // Note: do not update self.state; that is the responsibility of update.
+            self.state = !self.state;
             if let Some(f) = self.on_toggle.as_ref() {
+                // Pass what should be the new value of state here:
                 f(mgr, data, self.state);
             }
+
+            // Do animate (even if state never changes):
+            self.last_change = Some(Instant::now());
+            mgr.redraw(self.id());
         }
     }
 

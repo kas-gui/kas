@@ -66,7 +66,7 @@ impl_scope! {
 
         /// Add a generic message handler
         ///
-        /// Children will be updated if this handler returns `true`.
+        /// The closure should return `true` if state was updated.
         pub fn on_messages<H>(mut self, message_handler: H) -> Self
         where
             H: Fn(&mut EventMgr, &A, &mut S) -> bool + 'static,

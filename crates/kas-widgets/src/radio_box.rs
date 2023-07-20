@@ -109,11 +109,13 @@ impl_scope! {
         }
 
         fn select(&mut self, cx: &mut EventMgr, data: &A) {
-            self.last_change = Some(Instant::now());
-            cx.redraw(self.id());
+            self.state = true;
             if let Some(ref f) = self.on_select {
                 f(cx, data);
             }
+
+            self.last_change = Some(Instant::now());
+            cx.redraw(self.id());
         }
     }
 }
