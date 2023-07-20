@@ -5,12 +5,10 @@
 
 //! List view controller
 
-use super::{SelectionMode, SelectionMsg};
+use crate::{DataKey, ListData, SelectionMode, SelectionMsg};
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, Scroll};
 use kas::layout::{solve_size_rules, AlignHints};
-#[allow(unused)] use kas::model::SharedData;
-use kas::model::{DataKey, ListData};
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
 use kas::NavAdvance;

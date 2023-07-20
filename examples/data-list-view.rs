@@ -10,10 +10,9 @@
 //! thus only limited by the data types used (specifically the `i32` type used
 //! to calculate the maximum scroll offset).
 
-use kas::model::*;
 use kas::prelude::*;
 use kas::row;
-use kas::view::{ListView, ListViewGuard};
+use kas::view::{ListData, ListView, ListViewGuard, SharedData};
 use kas::widget::adapter::WithAny;
 use kas::widget::*;
 use std::collections::HashMap;

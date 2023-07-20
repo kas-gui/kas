@@ -49,7 +49,6 @@ pub mod geom;
 pub mod hidden;
 pub mod layout;
 pub mod message;
-pub mod model;
 pub mod prelude;
 pub mod shell;
 pub mod text;

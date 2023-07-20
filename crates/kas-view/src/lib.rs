@@ -9,9 +9,7 @@
 //! Model-View-Controller pattern or Elm's Model-View-Update design, but with
 //! no direct link between Model and Controller:
 //!
-//! 1.  [`kas::model`] traits describe data **models**:
-//!     [`ListData`](kas::model::ListData),
-//!     [`MatrixData`](kas::model::MatrixData)
+//! 1.  Model traits describe data **models**: [`ListData`], [`MatrixData`]
 //! 2.  [**Drivers**](`driver`) describe how to build a widget view over data
 //!     and (optionally) how to handle **messages** from view widgets
 //! 3.  **Controllers** are special widgets which manage views over data
@@ -31,15 +29,21 @@
 
 use thiserror::Error;
 
-mod list_view;
-// mod matrix_view;
+mod data_impls;
+mod data_traits;
+pub use data_traits::*;
+
+pub mod filter;
 
 pub mod driver;
-
 pub use driver::Driver;
-pub use list_view::{ListView, ListViewGuard};
-// pub use matrix_view::MatrixView;
 pub use maybe_owned::MaybeOwned;
+
+mod list_view;
+pub use list_view::{ListView, ListViewGuard};
+
+// mod matrix_view;
+// pub use matrix_view::MatrixView;
 
 /// Used to notify selection and deselection of [`ListView`] and [`MatrixView`] children
 #[derive(Clone, Debug)]

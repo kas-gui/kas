@@ -23,8 +23,7 @@
 // mod config;
 // pub use config::EventConfig;
 
-use crate::MaybeOwned;
-use kas::model::SharedData;
+use crate::{MaybeOwned, SharedData};
 use kas::prelude::*;
 use kas_widgets::{Label, NavFrame};
 use std::default::Default;

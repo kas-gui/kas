@@ -5,8 +5,8 @@
 
 //! Filter-list adapter
 
-use kas::model::filter::Filter;
-use kas::model::{ListData, SharedData};
+use super::Filter;
+use crate::{ListData, SharedData};
 use std::borrow::Borrow;
 use std::cell::{Ref, RefCell};
 use std::fmt::Debug;

@@ -5,7 +5,7 @@
 
 //! Impls for data traits
 
-use super::*;
+use crate::{ListData, SharedData};
 use std::fmt::Debug;
 
 // Once RPITIT is stable we can replace this with range + map
@@ -70,3 +70,4 @@ macro_rules! impl_list_data {
 }
 
 impl_list_data!([T]);
+impl_list_data!(Vec<T>);

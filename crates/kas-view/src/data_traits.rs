@@ -5,7 +5,7 @@
 
 //! Traits for shared data objects
 
-use crate::{autoimpl, WidgetId};
+use kas::{autoimpl, WidgetId};
 use std::borrow::Borrow;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
@@ -146,6 +146,8 @@ pub trait SharedData: Debug {
 /// Trait for viewable data lists
 ///
 /// Provided implementations: `[T]`, `Vec<T>`.
+/// Warning: these implementations do not communicate changes to data.
+/// Non-static lists should use a custom type and trait implementation.
 #[allow(clippy::len_without_is_empty)]
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait ListData: SharedData {
