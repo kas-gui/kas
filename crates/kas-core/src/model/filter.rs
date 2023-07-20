@@ -8,114 +8,26 @@
 mod filter_list;
 pub use filter_list::*;
 
-use crate::event::EventMgr;
-use crate::model::*;
-use std::cell::{Ref as CellRef, RefCell, RefMut as CellRefMut};
-use std::fmt::Debug;
-use std::rc::Rc;
-
 /// Types usable as a filter
 pub trait Filter<T>: 'static {
     /// Returns true if the given item matches this filter
     fn matches(&self, item: &T) -> bool;
 }
 
-/// Type of a data borrow
-// TODO(libstd): replace usage with std::cell::Ref when that supports Borrow
-pub struct Ref<'b>(CellRef<'b, String>);
-impl<'b> std::borrow::Borrow<String> for Ref<'b> {
-    fn borrow(&self) -> &String {
-        &self.0
-    }
-}
-impl<'b> std::ops::Deref for Ref<'b> {
-    type Target = String;
-    fn deref(&self) -> &String {
-        &self.0
-    }
-}
-
-/// Type of a data borrow
-// TODO(libstd): replace usage with std::cell::RefMut when that supports BorrowMut
-pub struct RefMut<'b>(CellRefMut<'b, String>);
-impl<'b> std::borrow::Borrow<String> for RefMut<'b> {
-    fn borrow(&self) -> &String {
-        &self.0
-    }
-}
-impl<'b> std::borrow::BorrowMut<String> for RefMut<'b> {
-    fn borrow_mut(&mut self) -> &mut String {
-        &mut self.0
-    }
-}
-impl<'b> std::ops::Deref for RefMut<'b> {
-    type Target = String;
-    fn deref(&self) -> &String {
-        &self.0
-    }
-}
-impl<'b> std::ops::DerefMut for RefMut<'b> {
-    fn deref_mut(&mut self) -> &mut String {
-        &mut self.0
-    }
-}
-
-/// Type of a data borrow by [`ContainsCaseInsensitive`]
-pub struct CaseInsensitiveRefMut<'b>(CellRefMut<'b, (String, String, u64)>);
-impl<'b> std::borrow::Borrow<String> for CaseInsensitiveRefMut<'b> {
-    fn borrow(&self) -> &String {
-        &(self.0).0
-    }
-}
-impl<'b> std::borrow::BorrowMut<String> for CaseInsensitiveRefMut<'b> {
-    fn borrow_mut(&mut self) -> &mut String {
-        &mut (self.0).0
-    }
-}
-impl<'b> std::ops::Deref for CaseInsensitiveRefMut<'b> {
-    type Target = String;
-    fn deref(&self) -> &String {
-        &(self.0).0
-    }
-}
-impl<'b> std::ops::DerefMut for CaseInsensitiveRefMut<'b> {
-    fn deref_mut(&mut self) -> &mut String {
-        &mut (self.0).0
-    }
-}
-impl<'b> Drop for CaseInsensitiveRefMut<'b> {
-    fn drop(&mut self) {
-        (self.0).1 = (self.0).0.to_uppercase();
-    }
-}
-
 /// Filter: target contains self (case-sensitive string match)
 #[derive(Debug, Default, Clone)]
-pub struct ContainsString(Rc<RefCell<(String, u64)>>);
+pub struct ContainsString(String);
 
 impl ContainsString {
     /// Construct with given string
     pub fn new<S: ToString>(s: S) -> Self {
-        let data = RefCell::new((s.to_string(), 1));
-        ContainsString(Rc::new(data))
-    }
-}
-impl SharedData for ContainsString {
-    type Key = ();
-    type Item = String;
-    type ItemRef<'b> = Ref<'b>;
-
-    fn contains_key(&self, _: &Self::Key) -> bool {
-        true
-    }
-    fn borrow(&self, _: &Self::Key) -> Option<Self::ItemRef<'_>> {
-        Some(Ref(CellRef::map(self.0.borrow(), |tuple| &tuple.0)))
+        ContainsString(s.to_string())
     }
 }
 
 impl<'a> Filter<&'a str> for ContainsString {
     fn matches(&self, item: &&str) -> bool {
-        item.contains(&self.0.borrow().0)
+        item.contains(&self.0)
     }
 }
 impl Filter<String> for ContainsString {
@@ -132,33 +44,18 @@ impl Filter<String> for ContainsString {
 //
 // [question on StackOverflow]: https://stackoverflow.com/questions/47298336/case-insensitive-string-matching-in-rust
 #[derive(Debug, Default, Clone)]
-pub struct ContainsCaseInsensitive(Rc<RefCell<(String, String, u64)>>);
+pub struct ContainsCaseInsensitive(String);
 
 impl ContainsCaseInsensitive {
     /// Construct with given string
-    pub fn new<S: ToString>(s: S) -> Self {
-        let s = s.to_string();
-        let u = s.to_uppercase();
-        let data = RefCell::new((s, u, 1));
-        ContainsCaseInsensitive(Rc::new(data))
-    }
-}
-impl SharedData for ContainsCaseInsensitive {
-    type Key = ();
-    type Item = String;
-    type ItemRef<'b> = Ref<'b>;
-
-    fn contains_key(&self, _: &Self::Key) -> bool {
-        true
-    }
-    fn borrow(&self, _: &Self::Key) -> Option<Self::ItemRef<'_>> {
-        Some(Ref(CellRef::map(self.0.borrow(), |tuple| &tuple.0)))
+    pub fn new(s: &str) -> Self {
+        ContainsCaseInsensitive(s.to_uppercase())
     }
 }
 
 impl<'a> Filter<&'a str> for ContainsCaseInsensitive {
     fn matches(&self, item: &&str) -> bool {
-        item.to_string().to_uppercase().contains(&self.0.borrow().1)
+        item.to_string().to_uppercase().contains(&self.0)
     }
 }
 impl Filter<String> for ContainsCaseInsensitive {

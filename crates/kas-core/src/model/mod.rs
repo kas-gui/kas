@@ -16,6 +16,6 @@
 //! `[T]`, `Vec<T>`.
 mod data_impls;
 mod data_traits;
-// pub mod filter;
+pub mod filter;
 
 pub use data_traits::*;

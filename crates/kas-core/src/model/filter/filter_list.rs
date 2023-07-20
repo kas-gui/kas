@@ -6,8 +6,7 @@
 //! Filter-list adapter
 
 use kas::model::filter::Filter;
-use kas::model::{ListData, SharedData, SharedDataMut, SingleData};
-use kas::prelude::*;
+use kas::model::{ListData, SharedData};
 use std::borrow::Borrow;
 use std::cell::{Ref, RefCell};
 use std::fmt::Debug;
@@ -26,7 +25,7 @@ use std::fmt::Debug;
 /// Warning: this implementation is `O(n)` where `n = data.len()` and not well
 /// optimised, thus is expected to be slow on large data lists.
 #[derive(Clone, Debug)]
-pub struct FilteredList<T: ListData, F: Filter<T::Item> + SingleData> {
+pub struct FilteredList<T: ListData, F: Filter<T::Item> + Debug> {
     /// Direct access to unfiltered data
     ///
     /// If adjusting this, one should call [`FilteredList::refresh`] after.
@@ -35,10 +34,10 @@ pub struct FilteredList<T: ListData, F: Filter<T::Item> + SingleData> {
     ///
     /// If adjusting this, one should call [`FilteredList::refresh`] after.
     filter: F,
-    view: RefCell<(u64, Vec<T::Key>)>,
+    view: RefCell<(u64, Vec<(T::Key, T::Version)>)>,
 }
 
-impl<T: ListData, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
+impl<T: ListData, F: Filter<T::Item> + Debug> FilteredList<T, F> {
     /// Construct from `data` and a `filter`
     #[inline]
     pub fn new(data: T, filter: F) -> Self {
@@ -55,18 +54,19 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
         let mut view = self.view.borrow_mut();
         view.0 = ver;
         view.1.clear();
-        for key in self.data.iter_limit(usize::MAX) {
+        for (key, version) in self.data.iter_from(0, usize::MAX) {
             if let Some(item) = self.data.borrow(&key) {
                 if self.filter.matches(item.borrow()) {
-                    view.1.push(key);
+                    view.1.push((key, version));
                 }
             }
         }
     }
 }
 
-impl<T: ListData, F: Filter<T::Item> + SingleData> SharedData for FilteredList<T, F> {
+impl<T: ListData, F: Filter<T::Item> + Debug> SharedData for FilteredList<T, F> {
     type Key = T::Key;
+    type Version = T::Version;
     type Item = T::Item;
     type ItemRef<'b> = T::ItemRef<'b> where T: 'b;
 
@@ -82,29 +82,8 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> SharedData for FilteredList<T
     }
 }
 
-impl<T: ListData + SharedDataMut, F: Filter<T::Item> + SingleData> SharedDataMut
-    for FilteredList<T, F>
-{
-    type ItemRefMut<'b> = T::ItemRefMut<'b> where T: 'b;
-
-    fn borrow_mut(&self, mgr: &mut EventMgr, key: &Self::Key) -> Option<Self::ItemRefMut<'_>> {
-        // Filtering does not affect result, but does affect the view
-        if self
-            .data
-            .borrow(key)
-            .map(|item| !self.filter.matches(item.borrow()))
-            .unwrap_or(true)
-        {
-            // Not previously visible: no update occurs
-            return None;
-        }
-
-        self.data.borrow_mut(mgr, key)
-    }
-}
-
-impl<T: ListData, F: Filter<T::Item> + SingleData> ListData for FilteredList<T, F> {
-    type KeyIter<'b> = KeyIter<'b, T::Key>
+impl<T: ListData, F: Filter<T::Item> + Debug> ListData for FilteredList<T, F> {
+    type KeyIter<'b> = KeyIter<'b, (T::Key, T::Version)>
     where Self: 'b;
 
     fn is_empty(&self) -> bool {
@@ -123,15 +102,15 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> ListData for FilteredList<T, 
 }
 
 /// Key iterator used by [`FilteredList`]
-pub struct KeyIter<'b, K: Clone> {
-    borrow: Ref<'b, [K]>,
+pub struct KeyIter<'b, Item: Clone> {
+    borrow: Ref<'b, [Item]>,
     index: usize,
 }
 
-impl<'b, K: Clone> Iterator for KeyIter<'b, K> {
-    type Item = K;
+impl<'b, Item: Clone> Iterator for KeyIter<'b, Item> {
+    type Item = Item;
 
-    fn next(&mut self) -> Option<K> {
+    fn next(&mut self) -> Option<Item> {
         let key = self.borrow.get(self.index).cloned();
         if key.is_some() {
             self.index += 1;
@@ -144,5 +123,5 @@ impl<'b, K: Clone> Iterator for KeyIter<'b, K> {
         (len, Some(len))
     }
 }
-impl<'b, K: Clone> ExactSizeIterator for KeyIter<'b, K> {}
-impl<'b, K: Clone> std::iter::FusedIterator for KeyIter<'b, K> {}
+impl<'b, Item: Clone> ExactSizeIterator for KeyIter<'b, Item> {}
+impl<'b, Item: Clone> std::iter::FusedIterator for KeyIter<'b, Item> {}
