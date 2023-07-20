@@ -58,6 +58,24 @@ impl_scope! {
         }
     }
 
+    impl ScrollBar<kas::dir::Down> {
+        /// Construct a scroll bar (vertical)
+        ///
+        /// Default values are assumed for all parameters.
+        pub fn down() -> Self {
+            ScrollBar::new()
+        }
+    }
+
+    impl ScrollBar<kas::dir::Right> {
+        /// Construct a scroll bar (horizontal)
+        ///
+        /// Default values are assumed for all parameters.
+        pub fn right() -> Self {
+            ScrollBar::new()
+        }
+    }
+
     impl Self {
         /// Construct a scroll bar with the given direction
         ///

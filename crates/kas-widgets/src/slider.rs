@@ -126,7 +126,7 @@ impl_scope! {
     }
 
     impl<A, T: SliderValue> Slider<A, T, kas::dir::Left> {
-        /// Construct a slider (increasing to the right)
+        /// Construct with fixed direction
         ///
         /// This constructor fixes the slider direction but is otherwise
         /// identical to [`Self::new`].
@@ -137,7 +137,7 @@ impl_scope! {
     }
 
     impl<A, T: SliderValue> Slider<A, T, kas::dir::Right> {
-        /// Construct a slider (increasing to the right)
+        /// Construct with fixed direction
         ///
         /// This constructor fixes the slider direction but is otherwise
         /// identical to [`Self::new`].
@@ -148,7 +148,7 @@ impl_scope! {
     }
 
     impl<A, T: SliderValue> Slider<A, T, kas::dir::Up> {
-        /// Construct a slider (increasing to the right)
+        /// Construct with fixed direction
         ///
         /// This constructor fixes the slider direction but is otherwise
         /// identical to [`Self::new`].
@@ -159,7 +159,7 @@ impl_scope! {
     }
 
     impl<A, T: SliderValue> Slider<A, T, kas::dir::Down> {
-        /// Construct a slider (increasing to the right)
+        /// Construct with fixed direction
         ///
         /// This constructor fixes the slider direction but is otherwise
         /// identical to [`Self::new`].

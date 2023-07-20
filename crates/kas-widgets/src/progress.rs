@@ -36,6 +36,17 @@ impl_scope! {
         }
     }
 
+    impl<A>  ProgressBar<A, kas::dir::Right> {
+        /// Construct a progress bar (horizontal)
+        ///
+        /// Closure `value_fn` returns the current progress as a value between
+        /// 0.0 and 1.0.
+        #[inline]
+        pub fn right(value_fn: impl Fn(&A) -> f32 + 'static) -> Self {
+            ProgressBar::new(value_fn)
+        }
+    }
+
     impl Self {
         /// Construct a slider with the given `direction`
         ///
