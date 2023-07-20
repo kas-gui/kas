@@ -56,7 +56,7 @@ pub enum SelectionMsg<K> {
 }
 
 /// Selection mode used by [`ListView`]
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SelectionMode {
     /// Disable selection
     #[default]

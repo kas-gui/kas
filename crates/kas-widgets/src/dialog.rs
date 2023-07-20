@@ -109,6 +109,11 @@ impl_scope! {
             }
         }
 
+        /// Set text
+        pub fn set_text(&mut self, text: impl ToString) -> Action {
+            self.edit.set_string(text.to_string())
+        }
+
         /// Build a [`Window`]
         pub fn into_window<A: 'static>(self, title: impl ToString) -> Window<A> {
             Window::new(WithAny::new(self), title)
@@ -120,6 +125,7 @@ impl_scope! {
             } else {
                 TextEditResult::Cancel
             });
+            *cx |= Action::CLOSE;
             Response::Used
         }
     }

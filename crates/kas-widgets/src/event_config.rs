@@ -109,7 +109,7 @@ impl_scope! {
                     .with_step(5)
                     .on_change(|mgr, v| mgr.push(ChangeConfig::ScrollFlickTimeout(v))),
                 scroll_flick_mul: Spinner::new(0.0..=1.0, |cx: &ConfigMgr, _| cx.config().borrow().scroll_flick_mul)
-                    .with_step(0.03125)
+                    .with_step(0.0625)
                     .on_change(|mgr, v| mgr.push(ChangeConfig::ScrollFlickMul(v))),
                 scroll_flick_sub: Spinner::new(0.0..=1.0e4, |cx: &ConfigMgr, _| cx.config().borrow().scroll_flick_sub)
                     .with_step(10.0)

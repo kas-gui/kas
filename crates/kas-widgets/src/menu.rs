@@ -163,12 +163,11 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
         self
     }
 
-    /* TODO: should we continue to construct menus this way?
     /// Append a [`MenuToggle`]
     pub fn push_toggle<M: Debug + 'static>(
         &mut self,
         label: impl Into<AccelString>,
-        state_fn: impl Fn(&A) -> bool + 'static,
+        state_fn: impl Fn(&ConfigMgr, &Data) -> bool + 'static,
         message_fn: impl Fn(bool) -> M + 'static,
     ) {
         self.menu
@@ -177,14 +176,14 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
 
     /// Append a [`MenuToggle`], chain style
     pub fn toggle<M: Debug + 'static>(
-        &mut self,
+        mut self,
         label: impl Into<AccelString>,
-        state_fn: impl Fn(&A) -> bool + 'static,
+        state_fn: impl Fn(&ConfigMgr, &Data) -> bool + 'static,
         message_fn: impl Fn(bool) -> M + 'static,
     ) -> Self {
         self.push_toggle(label, state_fn, message_fn);
         self
-    } */
+    }
 
     /// Append a [`Separator`]
     pub fn push_separator(&mut self) {
