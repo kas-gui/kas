@@ -108,6 +108,21 @@ impl_scope! {
                 .on_select(move |cx, _| cx.push(message_fn()))
         }
 
+        /// Construct a radio box
+        ///
+        /// This radio box expects data of type `A` and will appear set when
+        /// input `data == value`. Additionally, on selection, it will emit a
+        /// copy of `value` as a message.
+        #[inline]
+        pub fn new_value(value: A) -> Self
+        where
+            A: Clone + Debug + Eq + 'static,
+        {
+            let v2 = value.clone();
+            Self::new(move |data| *data == value)
+                .on_select(move |mgr, _| mgr.push(v2.clone()))
+        }
+
         fn select(&mut self, cx: &mut EventMgr, data: &A) {
             self.state = true;
             if let Some(ref f) = self.on_select {
@@ -192,7 +207,7 @@ impl_scope! {
             }
         }
 
-        /// Construct a radio box
+        /// Construct a radio button
         ///
         /// - `label` is displayed to the left or right (according to text direction)
         /// - `state_fn` extracts the current state from input data
@@ -205,6 +220,21 @@ impl_scope! {
         ) -> Self {
             RadioButton::new(label, state_fn)
                 .on_select(move |cx, _| cx.push(message_fn()))
+        }
+
+        /// Construct a radio button
+        ///
+        /// This radio button expects data of type `A` and will appear set when
+        /// input `data == value`. Additionally, on selection, it will emit a
+        /// copy of `value` as a message.
+        #[inline]
+        pub fn new_value(label: impl Into<AccelString>, value: A) -> Self
+        where
+            A: Clone + Debug + Eq + 'static,
+        {
+            let v2 = value.clone();
+            Self::new(label, move |data| *data == value)
+                .on_select(move |mgr, _| mgr.push(v2.clone()))
         }
 
         fn direction(&self) -> Direction {
