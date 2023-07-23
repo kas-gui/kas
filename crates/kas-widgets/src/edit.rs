@@ -382,6 +382,12 @@ impl_scope! {
             self.bar.set_value(mgr, self.inner.view_offset.1);
         }
     }
+
+    impl ToString for Self {
+        fn to_string(&self) -> String {
+            self.inner.to_string()
+        }
+    }
 }
 
 impl<G: EditGuard> EditBox<G> {
@@ -798,6 +804,12 @@ impl_scope! {
                 action = Action::SET_RECT;
             }
             action | self.set_error_state(false)
+        }
+    }
+
+    impl ToString for Self {
+        fn to_string(&self) -> String {
+            self.text.text().clone()
         }
     }
 }

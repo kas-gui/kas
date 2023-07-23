@@ -30,6 +30,17 @@ impl_scope! {
         label_fn: Box<dyn Fn(&A) -> T>,
     }
 
+    impl Default for Self where for<'a> &'a A: Into<T> {
+        fn default() -> Self {
+            Text {
+                core: Default::default(),
+                class: TextClass::Label(true),
+                label: text::Text::new(T::default()),
+                label_fn: Box::new(|data| data.into()),
+            }
+        }
+    }
+
     impl Self {
         /// Construct with a data binding
         #[inline]
@@ -158,6 +169,13 @@ pub type StrText<A> = Text<A, &'static str>;
 /// Text with `String` as backing type
 pub type StringText<A> = Text<A, String>;
 
+/// A [`Text`] widget which formats a value from input
+///
+/// Examples:
+/// ```
+/// let _ = kas_widgets::format_data!(data, "Data value: {data}");
+/// let _ = kas_widgets::format_data!(data: i32, "Data value: {data}");
+/// ```
 // TODO: a more fancy macro could determine the data fields used and wrap with
 // a node testing for changes to these fields before calling update().
 #[macro_export]
@@ -170,6 +188,12 @@ macro_rules! format_data {
     };
 }
 
+/// A [`Text`] widget which formats a value from input
+///
+/// Example:
+/// ```
+/// let _ = kas_widgets::format_value!("Data value: {}");
+/// ```
 #[macro_export]
 macro_rules! format_value {
     ($($arg:tt)*) => {
