@@ -5,7 +5,7 @@
 
 //! List view controller
 
-use crate::{DataKey, ListData, SelectionMode, SelectionMsg};
+use crate::{DataKey, Driver, ListData, SelectionMode, SelectionMsg};
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, Scroll};
 use kas::layout::{solve_size_rules, AlignHints};
@@ -18,75 +18,6 @@ use linear_map::set::LinearSet;
 use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::time::Instant;
-
-/// View widget guard
-///
-/// The guard can:
-///
-/// -   construct (empty) widgets with [`Self::make`]
-/// -   assign data to an existing widget with [`Self::set`]
-/// -   (optional) handle messages from a widget with [`Self::on_messages`]
-pub trait ListViewGuard<A: ListData> {
-    /// Type of the "view widget" used for each data item
-    ///
-    /// NOTE: with RPITIT this should become an alias to `Self::make()`.
-    type Widget: kas::Widget<Data = A::Item>;
-
-    /// Construct a new view widget
-    fn make(&mut self, key: &A::Key) -> Self::Widget;
-
-    // /// Reset and reassign a widget
-    // ///
-    // /// This method is called when a view widget is assigned a different key.
-    // fn reset(&mut self, widget: &mut Self::Widget, key: &A::Key);
-
-    /// Called to bind an existing view widget to a new key
-    ///
-    /// This should reset widget metadata, for example so that when a view
-    /// widget with a text selection is assigned to a new key it does not
-    /// attempt to apply the old selection to the new text.
-    ///
-    /// The default implementation simply replaces widget with `self.make(key)`,
-    /// which is sufficient, if not always optimal.
-    ///
-    /// This does not need to set data; [`Widget::update`] does that.
-    fn set_key(&mut self, widget: &mut Self::Widget, key: &A::Key) {
-        *widget = self.make(key);
-    }
-
-    /// Handle a message from a widget
-    ///
-    /// This method is called when a view widget returns with a message; it
-    /// may retrieve this message with [`EventMgr::try_pop`].
-    ///
-    /// There are three main ways of implementing this method:
-    ///
-    /// 1.  Do nothing. This is always safe, though may result in unhandled
-    ///     message warnings when the view widget is interactive.
-    /// 2.  On user input actions, view widgets send a message including their
-    ///     content (potentially wrapped with a user-defined enum or struct
-    ///     type). The implementation of this method retrieves this message and
-    ///     updates `data` given this content. In this case, the `widget`
-    ///     parameter is not used.
-    /// 3.  On user input actions, view widgets send a "trigger" message (likely
-    ///     a unit struct). The implementation of this method retrieves this
-    ///     message and updates `data` using values read from `widget`.
-    ///
-    /// See, for example, the implementation for [`CheckButton`]: the `make`
-    /// method assigns a state-change handler which `on_messages` uses to update
-    /// the shared data.
-    ///
-    /// Default implementation: do nothing.
-    fn on_messages(
-        &mut self,
-        cx: &mut EventMgr,
-        widget: &mut Self::Widget,
-        data: &A,
-        key: &A::Key,
-    ) {
-        let _ = (widget, data, key, cx);
-    }
-}
 
 #[derive(Clone, Debug, Default)]
 struct WidgetData<K, V, W> {
@@ -102,11 +33,11 @@ impl_scope! {
     /// area. View widgets are only guaranteed to maintain state while visible.
     ///
     /// [`ListData::iter_from`] is used to generate a list of data items which
-    /// are then geneverated via [`ListViewGuard::make`].
+    /// are then geneverated via [`Driver::make`].
     ///
     /// When the view is scrolled and when [`Widget::update`] is called on the
     /// `ListView`, for any key which differs from the cached view widget that
-    /// view widget is re-assigned via [`ListViewGuard::set_key`], otherwise (on
+    /// view widget is re-assigned via [`Driver::set_key`], otherwise (on
     /// update) the view widget receives [`Widget::update`].
     ///
     /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
@@ -114,8 +45,8 @@ impl_scope! {
     ///
     /// View widgets handle events like normal. To associate a returned message
     /// with a data key, either embed that key in the message while constructing
-    /// the widget with [`ListViewGuard::make`] or intercept the message in
-    /// [`ListViewGuard::on_messages`].
+    /// the widget with [`Driver::make`] or intercept the message in
+    /// [`Driver::on_messages`].
     ///
     /// # Selection
     ///
@@ -127,7 +58,7 @@ impl_scope! {
     /// by this widget emitting a [`SelectionMsg`].
     #[derive(Clone, Debug)]
     #[widget]
-    pub struct ListView<A: ListData, G: ListViewGuard<A>, D: Directional> {
+    pub struct ListView<A: ListData, G: Driver<A::Item, A>, D: Directional> {
         core: widget_core!(),
         frame_offset: Offset,
         frame_size: Size,
@@ -166,7 +97,7 @@ impl_scope! {
             Self::new_with_direction(D::default(), guard)
         }
     }
-    impl<A: ListData, G: ListViewGuard<A>> ListView<A, G, Direction> {
+    impl<A: ListData, G: Driver<A::Item, A>> ListView<A, G, Direction> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, direction: Direction) -> Action {
             self.direction = direction;
@@ -214,10 +145,10 @@ impl_scope! {
         /// [`Select`].
         ///
         /// On selection and deselection, a [`SelectionMsg`] message is emitted.
-        /// This is not sent to [`ListViewGuard::on_messages`].
+        /// This is not sent to [`Driver::on_messages`].
         ///
         /// The guard may trigger selection by emitting [`Select`] from
-        /// [`ListViewGuard::on_messages`]. The guard is not notified of selection
+        /// [`Driver::on_messages`]. The guard is not notified of selection
         /// except via [`Select`] from view widgets. (TODO: reconsider this.)
         ///
         /// [`Select`]: kas::message::Select
@@ -734,15 +665,15 @@ impl_scope! {
             let key;
             if let Some(index) = cx.last_child() {
                 let w = &mut self.widgets[index];
-                key = match w.key.clone() {
+                key = match w.key.as_ref() {
                     Some((k, _)) => k,
                     None => return,
                 };
 
-                self.guard.on_messages(cx, &mut w.widget, data, &key);
+                self.guard.on_messages(cx, data, key, &mut w.widget);
             } else {
                 // Message is from self
-                key = match self.press_target.clone() {
+                key = match self.press_target.as_ref() {
                     Some((_, k)) => k,
                     None => return,
                 };
@@ -752,18 +683,18 @@ impl_scope! {
                 match self.sel_mode {
                     SelectionMode::None => (),
                     SelectionMode::Single => {
-                        cx.redraw(self.id());
+                        cx.redraw(self.core.id.clone());
                         self.selection.clear();
                         self.selection.insert(key.clone());
-                        cx.push(SelectionMsg::Select(key));
+                        cx.push(SelectionMsg::Select(key.clone()));
                     }
                     SelectionMode::Multiple => {
-                        cx.redraw(self.id());
+                        cx.redraw(self.core.id.clone());
                         if self.selection.remove(&key) {
-                            cx.push(SelectionMsg::Deselect(key));
+                            cx.push(SelectionMsg::Deselect(key.clone()));
                         } else {
                             self.selection.insert(key.clone());
-                            cx.push(SelectionMsg::Select(key));
+                            cx.push(SelectionMsg::Select(key.clone()));
                         }
                     }
                 }

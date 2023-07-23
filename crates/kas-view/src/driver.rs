@@ -23,89 +23,57 @@
 // mod config;
 // pub use config::EventConfig;
 
-use crate::{MaybeOwned, SharedData};
+use crate::SharedData;
 use kas::prelude::*;
-use kas_widgets::{Label, NavFrame};
+use kas_widgets::{CheckBox, NavFrame, Text};
 use std::default::Default;
 
 /// View widget driver/binder
 ///
-/// The driver can:
-///
-/// -   construct (empty) widgets with [`Self::make`]
-/// -   assign data to an existing widget with [`Self::set`]
-/// -   (optional) handle messages from a widget with [`Self::on_messages`]
+/// The driver is responsible for constructing widgets and handling messages
+/// from widgets. The widgets will receive data items via
+/// [`Events::update`](crate::Events::update).
 ///
 /// NOTE: `Item` is a direct type parameter (in addition to an assoc. type
 /// param. of `SharedData`) only to avoid "conflicting implementations" errors.
 /// Similar to: rust#20400, rust#92894. Given fixes, we may remove the param.
-#[autoimpl(for<T: trait + ?Sized> &T, &mut T, Box<T>, std::rc::Rc<T>, std::sync::Arc<T>)]
+#[autoimpl(for<T: trait + ?Sized> &mut T, Box<T>)]
 pub trait Driver<Item, Data: SharedData<Item = Item>> {
     /// Type of the widget used to view data
-    type Widget: kas::Widget;
+    type Widget: kas::Widget<Data = Item>;
 
-    /// Construct a new widget with no data
-    ///
-    /// Such instances are used for sizing and cached widgets, but not shown.
-    /// The controller may later call [`Driver::set`] on the widget then show it.
-    fn make(&self) -> Self::Widget;
+    /// Construct a new view widget
+    fn make(&mut self, key: &Data::Key) -> Self::Widget;
 
-    /// Set the viewed data
+    /// Called to bind an existing view widget to a new key
     ///
-    /// The widget may expect `configure` to be called at least once before data
-    /// is set and to have `set_rect` called after each time data is set.
+    /// This should reset widget metadata, for example so that when a view
+    /// widget with a text selection is assigned to a new key it does not
+    /// attempt to apply the old selection to the new text.
     ///
-    /// This method is a convenience wrapper around [`Self::set_mo`].
-    fn set<'b>(
-        &self,
-        widget: &mut Self::Widget,
-        key: &Data::Key,
-        item: impl Into<MaybeOwned<'b, Item>>,
-    ) -> Action
-    where
-        Self: Sized,
-        Item: 'b,
-    {
-        self.set_mo(widget, key, item.into())
+    /// This does not need to set data; [`Widget::update`] does that.
+    ///
+    /// The default implementation simply replaces widget with `self.make(key)`,
+    /// which is sufficient, if not always optimal.
+    fn set_key(&mut self, widget: &mut Self::Widget, key: &Data::Key) {
+        *widget = self.make(key);
     }
-
-    /// Set the viewed data ([`MaybeOwned`])
-    ///
-    /// The widget may expect `configure` to be called at least once before data
-    /// is set and to have `set_rect` called after each time data is set.
-    fn set_mo(&self, widget: &mut Self::Widget, key: &Data::Key, item: MaybeOwned<Item>) -> Action;
 
     /// Handle a message from a widget
     ///
-    /// This method is called when a view widget returns with a message; it
-    /// may retrieve this message with [`EventMgr::try_pop`].
-    ///
-    /// There are three main ways of implementing this method:
-    ///
-    /// 1.  Do nothing. This is always safe, though may result in unhandled
-    ///     message warnings when the view widget is interactive.
-    /// 2.  On user input actions, view widgets send a message including their
-    ///     content (potentially wrapped with a user-defined enum or struct
-    ///     type). The implementation of this method retrieves this message and
-    ///     updates `data` given this content. In this case, the `widget`
-    ///     parameter is not used.
-    /// 3.  On user input actions, view widgets send a "trigger" message (likely
-    ///     a unit struct). The implementation of this method retrieves this
-    ///     message and updates `data` using values read from `widget`.
-    ///
-    /// See, for example, the implementation for [`CheckButton`]: the `make`
-    /// method assigns a state-change handler which `on_messages` uses to update
-    /// the shared data.
+    /// This method is called when a view widget returns a message. Often
+    /// it won't be used, but it may, for example, [pop](EventMgr::try_pop) a
+    /// message then [push](EventMgr::push) a new one with the associated `key`.
     ///
     /// Default implementation: do nothing.
     fn on_messages(
-        &self,
+        &mut self,
         mgr: &mut EventMgr,
-        widget: &mut Self::Widget,
         data: &Data,
         key: &Data::Key,
+        widget: &mut Self::Widget,
     ) {
-        let _ = (mgr, widget, data, key);
+        let _ = (mgr, data, key, widget);
     }
 }
 
@@ -113,8 +81,8 @@ pub trait Driver<Item, Data: SharedData<Item = Item>> {
 ///
 /// This struct implements [`Driver`], using a default widget for the data type:
 ///
-/// -   [`kas_widgets::Label`] for `String`, `&str`, integer and float types
-/// -   [`kas_widgets::CheckBox`] (read-only) for the bool type
+/// -   [`kas_widgets::Text`] for `String`, `&str`, integer and float types
+/// -   [`kas_widgets::CheckBox`] (read-only) for the bool type TODO
 #[derive(Clone, Copy, Debug, Default)]
 pub struct View;
 
@@ -123,7 +91,7 @@ pub struct View;
 /// This struct implements [`Driver`], using a default widget for the data type
 /// which also supports keyboard navigation:
 ///
-/// -   [`kas_widgets::NavFrame`] around a [`kas_widgets::Label`] for `String`, `&str`,
+/// -   [`kas_widgets::NavFrame`] around a [`kas_widgets::Text`] for `String`, `&str`,
 ///     integer and float types
 /// -   [`kas_widgets::CheckBox`] (read-only) for the bool type
 #[derive(Clone, Copy, Debug, Default)]
@@ -132,21 +100,21 @@ pub struct NavView;
 macro_rules! impl_via_to_string {
     ($t:ty) => {
         impl<Data: SharedData<Item = $t>> Driver<$t, Data> for View {
-            type Widget = Label<String>;
-            fn make(&self) -> Self::Widget {
-                Label::new("".to_string())
+            type Widget = Text<$t, String>;
+            fn make(&mut self, _: &Data::Key) -> Self::Widget {
+                Text::new(|data: &$t| data.to_string())
             }
-            fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<$t>) -> Action {
-                widget.set_string(item.to_string())
+            fn set_key(&mut self, _: &mut Self::Widget, _: &Data::Key) {
+                // Text has no metadata that needs to be reset
             }
         }
         impl<Data: SharedData<Item = $t>> Driver<$t, Data> for NavView {
-            type Widget = NavFrame<Label<String>>;
-            fn make(&self) -> Self::Widget {
-                NavFrame::new(Label::new("".to_string()))
+            type Widget = NavFrame<Text<$t, String>>;
+            fn make(&mut self, _: &Data::Key) -> Self::Widget {
+                NavFrame::new(Text::new(|data: &$t| data.to_string()))
             }
-            fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<$t>) -> Action {
-                widget.set_string(item.to_string())
+            fn set_key(&mut self, _: &mut Self::Widget, _: &Data::Key) {
+                // NavFrame and Text have no metadata that needs to be reset
             }
         }
     };
@@ -159,3 +127,22 @@ impl_via_to_string!(String, &'static str);
 impl_via_to_string!(i8, i16, i32, i64, i128, isize);
 impl_via_to_string!(u8, u16, u32, u64, u128, usize);
 impl_via_to_string!(f32, f64);
+
+impl<Data: SharedData<Item = bool>> Driver<bool, Data> for View {
+    type Widget = CheckBox<bool>;
+    fn make(&mut self, _: &Data::Key) -> Self::Widget {
+        CheckBox::new(|data: &bool| *data).with_editable(false)
+    }
+    fn set_key(&mut self, _: &mut Self::Widget, _: &Data::Key) {
+        // CheckBox has no metadata that needs to be reset
+    }
+}
+impl<Data: SharedData<Item = bool>> Driver<bool, Data> for NavView {
+    type Widget = CheckBox<bool>;
+    fn make(&mut self, _: &Data::Key) -> Self::Widget {
+        CheckBox::new(|data: &bool| *data).with_editable(false)
+    }
+    fn set_key(&mut self, _: &mut Self::Widget, _: &Data::Key) {
+        // CheckBox has no metadata that needs to be reset
+    }
+}

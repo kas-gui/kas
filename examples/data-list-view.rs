@@ -12,7 +12,7 @@
 
 use kas::prelude::*;
 use kas::row;
-use kas::view::{ListData, ListView, ListViewGuard, SharedData};
+use kas::view::{Driver, ListData, ListView, SharedData};
 use kas::widget::adapter::WithAny;
 use kas::widget::*;
 use std::collections::HashMap;
@@ -198,7 +198,7 @@ impl ListData for Data {
 }
 
 struct MyDriver;
-impl ListViewGuard<Data> for MyDriver {
+impl Driver<Item, Data> for MyDriver {
     type Widget = ListEntry;
 
     fn make(&mut self, key: &usize) -> Self::Widget {
