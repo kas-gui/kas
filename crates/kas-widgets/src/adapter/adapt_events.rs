@@ -53,8 +53,8 @@ impl_scope! {
             self.inner.scroll_offset()
         }
         #[inline]
-        fn set_scroll_offset(&mut self, data: &W::Data, cx: &mut EventMgr, offset: Offset) -> Offset {
-            self.inner.set_scroll_offset(data, cx, offset)
+        fn set_scroll_offset(&mut self, cx: &mut EventMgr, offset: Offset) -> Offset {
+            self.inner.set_scroll_offset(cx, offset)
         }
     }
 }

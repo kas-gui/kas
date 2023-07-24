@@ -444,9 +444,9 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_scroll_offset(&mut self, data: &Self::Data, mgr: &mut EventMgr, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             *mgr |= self.scroll.set_offset(offset);
-            mgr.config_mgr(|mgr| self.update_widgets(data, mgr));
+            cx.request_update(self.id());
             self.scroll.offset()
         }
     }

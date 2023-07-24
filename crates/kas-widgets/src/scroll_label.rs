@@ -298,7 +298,7 @@ impl_scope! {
             self.view_offset
         }
 
-        fn set_scroll_offset(&mut self, _: &Self::Data, mgr: &mut EventMgr, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             let new_offset = offset.min(self.max_scroll_offset()).max(Offset::ZERO);
             if new_offset != self.view_offset {
                 self.set_offset(mgr, new_offset);

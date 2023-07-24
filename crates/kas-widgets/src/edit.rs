@@ -340,10 +340,10 @@ impl_scope! {
     impl Events for Self {
         type Data = G::Data;
 
-        fn handle_messages(&mut self, data: &G::Data, mgr: &mut EventMgr<'_>) {
+        fn handle_messages(&mut self, _: &G::Data, mgr: &mut EventMgr<'_>) {
             if let Some(ScrollMsg(y)) = mgr.try_pop() {
                 self.inner
-                    .set_scroll_offset(data, mgr, Offset(self.inner.view_offset.0, y));
+                    .set_scroll_offset(mgr, Offset(self.inner.view_offset.0, y));
             }
         }
 
@@ -368,8 +368,8 @@ impl_scope! {
             self.inner.scroll_offset()
         }
 
-        fn set_scroll_offset(&mut self, data: &G::Data, mgr: &mut EventMgr, offset: Offset) -> Offset {
-            let offset = self.inner.set_scroll_offset(data, mgr, offset);
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
+            let offset = self.inner.set_scroll_offset(mgr, offset);
             self.update_scroll_bar(mgr);
             offset
         }
@@ -770,7 +770,7 @@ impl_scope! {
             self.view_offset
         }
 
-        fn set_scroll_offset(&mut self, _: &G::Data, mgr: &mut EventMgr, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             let new_offset = offset.min(self.max_scroll_offset()).max(Offset::ZERO);
             if new_offset != self.view_offset {
                 self.view_offset = new_offset;
