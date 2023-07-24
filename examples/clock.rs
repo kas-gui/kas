@@ -123,7 +123,7 @@ impl_scope! {
     impl Events for Clock {
         type Data = ();
 
-        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.request_timer_update(self.id(), 0, Duration::new(0, 0), true);
         }
 

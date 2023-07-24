@@ -356,7 +356,7 @@ impl_scope! {
     impl Events for Mandlebrot {
         type Data = i32;
 
-        fn configure(&mut self, _: &i32, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.register_nav_fallback(self.id());
         }
 

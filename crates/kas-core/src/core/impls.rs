@@ -27,7 +27,7 @@ pub fn _configure<W: Widget + Events<Data = <W as Widget>::Data>>(
         }
     }
 
-    widget.configure(data, cx);
+    widget.configure(cx);
     widget.update(data, cx);
 }
 

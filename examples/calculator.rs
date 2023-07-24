@@ -62,7 +62,7 @@ fn calc_ui() -> Window<()> {
     let ui = Adapt::new(kas::column![display, buttons], Calculator::new())
         .on_message(|_, calc, key| calc.handle(key));
 
-    Window::new(ui, "Calculator").on_configure(|window, _, cx| {
+    Window::new(ui, "Calculator").on_configure(|window, cx| {
         cx.disable_nav_focus(true);
 
         // Enable key bindings without Alt held:

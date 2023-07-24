@@ -50,8 +50,8 @@ pub trait EditGuard: Sized {
     /// Configure guard
     ///
     /// This function is called when the attached widget is configured.
-    fn configure(edit: &mut EditField<Self>, data: &Self::Data, cx: &mut ConfigMgr) {
-        let _ = (edit, data, cx);
+    fn configure(edit: &mut EditField<Self>, cx: &mut ConfigMgr) {
+        let _ = (edit, cx);
     }
 
     /// Update guard
@@ -620,8 +620,8 @@ impl_scope! {
     impl Events for Self {
         type Data = G::Data;
 
-        fn configure(&mut self, data: &G::Data, mgr: &mut ConfigMgr) {
-            G::configure(self, data, mgr);
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
+            G::configure(self, mgr);
         }
 
         fn update(&mut self, data: &G::Data, mgr: &mut ConfigMgr) {

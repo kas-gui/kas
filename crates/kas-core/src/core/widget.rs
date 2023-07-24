@@ -302,8 +302,8 @@ pub trait Events: Sized {
     /// [`Layout::size_rules`] but not repeated configuration.
     ///
     /// The default implementation does nothing.
-    fn configure(&mut self, data: &Self::Data, mgr: &mut ConfigMgr) {
-        let _ = (data, mgr);
+    fn configure(&mut self, mgr: &mut ConfigMgr) {
+        let _ = mgr;
     }
 
     /// Update data
@@ -570,7 +570,7 @@ pub enum NavAdvance {
 ///     impl Events for Self {
 ///         type Data = ();
 ///
-///         fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
+///         fn configure(&mut self, mgr: &mut ConfigMgr) {
 ///             mgr.add_accel_keys(self.id_ref(), self.label.keys());
 ///         }
 ///

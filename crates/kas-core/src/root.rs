@@ -76,7 +76,7 @@ impl_scope! {
         restrictions: (bool, bool),
         drag_anywhere: bool,
         transparent: bool,
-        config_fn: Option<Box<dyn Fn(&Self, &Data, &mut ConfigMgr)>>,
+        config_fn: Option<Box<dyn Fn(&Self, &mut ConfigMgr)>>,
         #[widget(&())]
         title_bar: TitleBar,
         #[widget]
@@ -172,7 +172,7 @@ impl_scope! {
     impl Events for Self {
         type Data = Data;
 
-        fn configure(&mut self, data: &Data, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             if mgr.platform().is_wayland() && self.decorations == Decorations::Server {
                 // Wayland's base protocol does not support server-side decorations
                 // TODO: Wayland has extensions for this; server-side is still
@@ -181,7 +181,7 @@ impl_scope! {
             }
 
             if let Some(ref f) = self.config_fn {
-                f(self, data, mgr);
+                f(self, mgr);
             }
         }
 
@@ -314,10 +314,7 @@ impl<Data: 'static> Window<Data> {
     ///
     /// This closure is called before sizing, drawing and event handling.
     /// It may be called more than once.
-    pub fn on_configure(
-        mut self,
-        config_fn: impl Fn(&Self, &Data, &mut ConfigMgr) + 'static,
-    ) -> Self {
+    pub fn on_configure(mut self, config_fn: impl Fn(&Self, &mut ConfigMgr) + 'static) -> Self {
         self.config_fn = Some(Box::new(config_fn));
         self
     }

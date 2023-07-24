@@ -137,7 +137,7 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.register_nav_fallback(self.id());
         }
 

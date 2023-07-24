@@ -544,7 +544,7 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn configure(&mut self, _: &A, cx: &mut ConfigMgr) {
+        fn configure(&mut self, cx: &mut ConfigMgr) {
             if self.widgets.is_empty() {
                 // Initial configure: ensure some widgets are loaded to allow
                 // better sizing of self.
@@ -743,7 +743,8 @@ impl_scope! {
         // Non-standard behaviour: do not configure children
         fn _configure(&mut self, data: &A, cx: &mut ConfigMgr, id: WidgetId) {
             self.pre_configure(cx, id);
-            self.configure(data, cx);
+            self.configure(cx);
+            self.update(data, cx);
         }
 
         fn _update(&mut self, data: &A, cx: &mut ConfigMgr) {

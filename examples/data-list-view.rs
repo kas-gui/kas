@@ -99,10 +99,10 @@ struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
     type Data = Item;
 
-    fn configure(edit: &mut EditField<Self>, data: &Item, cx: &mut ConfigMgr) {
-        // We set contents only during configure since no external process can
-        // affect contents; in other cases EditGuard::update should be used.
-        *cx |= edit.set_string(data.1.clone());
+    fn update(edit: &mut EditField<Self>, data: &Item, cx: &mut ConfigMgr) {
+        if !edit.has_key_focus() {
+            *cx |= edit.set_string(data.1.clone());
+        }
     }
 
     fn activate(edit: &mut EditField<Self>, _: &Item, cx: &mut EventMgr) -> Response {

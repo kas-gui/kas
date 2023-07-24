@@ -327,7 +327,7 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.add_accel_keys(self.id_ref(), self.label.text().keys());
         }
 

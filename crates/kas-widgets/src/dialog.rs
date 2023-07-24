@@ -66,7 +66,7 @@ impl_scope! {
             }
         }
 
-        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.enable_alt_bypass(self.id_ref(), true);
         }
     }
@@ -127,7 +127,7 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.register_nav_fallback(self.id());
 
             // Focus first item initially:
