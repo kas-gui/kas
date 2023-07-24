@@ -87,6 +87,7 @@ impl SendErased {
     pub fn into_erased(self) -> Erased {
         Erased {
             any: self.any,
+            #[cfg(debug_assertions)]
             fmt: self.fmt,
         }
     }

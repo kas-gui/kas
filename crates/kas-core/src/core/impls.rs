@@ -6,7 +6,7 @@
 //! Widget method implementations
 
 use crate::event::{ConfigMgr, Event, EventMgr, Response};
-use crate::util::IdentifyWidget;
+#[cfg(debug_assertions)] use crate::util::IdentifyWidget;
 use crate::{Erased, Events, Layout, NavAdvance, NodeMut, Widget, WidgetId};
 
 /// Generic implementation of [`Widget::_configure`]
@@ -43,21 +43,6 @@ pub fn _update<W: Widget + Events<Data = <W as Widget>::Data>>(
             .as_node_mut(data)
             .for_children(|mut node| node._update(cx));
     }
-}
-
-/// Generic implementation of [`Widget::_broadcast`]
-pub fn _broadcast<W: Widget + Events<Data = <W as Widget>::Data>>(
-    widget: &mut W,
-    data: &<W as Widget>::Data,
-    cx: &mut EventMgr,
-    count: &mut usize,
-    event: Event,
-) {
-    widget.handle_event(data, cx, event.clone());
-    *count += 1;
-    widget
-        .as_node_mut(data)
-        .for_children(|mut node| node._broadcast(cx, count, event.clone()));
 }
 
 /// Generic implementation of [`Widget::_send`]

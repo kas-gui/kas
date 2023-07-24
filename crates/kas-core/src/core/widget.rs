@@ -640,11 +640,6 @@ pub trait Widget: Layout {
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn _update(&mut self, data: &Self::Data, cx: &mut ConfigMgr);
 
-    /// Internal method: broadcast recursively
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn _broadcast(&mut self, data: &Self::Data, cx: &mut EventMgr, count: &mut usize, event: Event);
-
     /// Internal method: send recursively
     ///
     /// If `disabled`, widget `id` does not receive the `event`. Widget `id` is

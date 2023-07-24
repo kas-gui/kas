@@ -327,7 +327,6 @@ trait NodeMutT: NodeT {
     fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId);
     fn _update(&mut self, cx: &mut ConfigMgr);
 
-    fn _broadcast(&mut self, cx: &mut EventMgr, count: &mut usize, event: Event);
     fn _send(&mut self, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response;
     fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: Erased);
     fn _nav_next(
@@ -371,9 +370,6 @@ impl<'a, T> NodeMutT for (&'a mut dyn Widget<Data = T>, &'a T) {
         self.0._update(self.1, cx);
     }
 
-    fn _broadcast(&mut self, cx: &mut EventMgr, count: &mut usize, event: Event) {
-        self.0._broadcast(self.1, cx, count, event);
-    }
     fn _send(&mut self, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response {
         self.0._send(self.1, cx, id, disabled, event)
     }
@@ -634,17 +630,6 @@ impl<'a> NodeMut<'a> {
                 self.0._update(self.1, cx);
             } else {
                 self.0._update(cx);
-            }
-        }
-    }
-
-    /// Internal method: broadcast recursively
-    pub(crate) fn _broadcast(&mut self, cx: &mut EventMgr, count: &mut usize, event: Event) {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "unsafe_node")] {
-                self.0._broadcast(self.1, cx, count, event);
-            } else {
-                self.0._broadcast(cx, count, event);
             }
         }
     }

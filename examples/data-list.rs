@@ -16,8 +16,8 @@
 //!
 //! Results (release build): 1k entries is fast, 10k has some noticable lag
 //! (changing the list length and resizing).
-//! 250k entries (1M widgets) has very slow init and resize but most interaction
-//! is still fast; Widget::update (broadcast) causes barely noticable lag.
+//! 50k entries (200k widgets) has slow init and resize but most interaction
+//! is still fast.
 
 use kas::prelude::*;
 use kas::row;

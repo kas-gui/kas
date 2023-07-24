@@ -186,10 +186,6 @@ impl_scope! {
 
         fn _update(&mut self, _: &A, _: &mut ConfigMgr) {}
 
-        fn _broadcast(&mut self, _: &A, cx: &mut EventMgr, count: &mut usize, event: Event) {
-            self.inner._broadcast(&(), cx, count, event);
-        }
-
         fn _send(&mut self, _: &A, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response {
             self.inner._send(&(), cx, id, disabled, event)
         }
