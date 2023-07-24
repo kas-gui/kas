@@ -127,20 +127,19 @@ impl WindowConfig {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn new(config: Rc<RefCell<Config>>, scale_factor: f32, dpem: f32) -> Self {
-        let frame_dur = Duration::from_nanos(config.borrow().frame_dur_nanos.cast());
         let mut w = WindowConfig {
             config,
             scroll_flick_sub: f32::NAN,
             scroll_dist: f32::NAN,
             pan_dist_thresh: f32::NAN,
             nav_focus: true,
-            frame_dur,
+            frame_dur: Default::default(),
         };
         w.update(scale_factor, dpem);
         w
     }
 
-    /// Update
+    /// Update window-specific/cached values
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn update(&mut self, scale_factor: f32, dpem: f32) {
@@ -148,6 +147,7 @@ impl WindowConfig {
         self.scroll_flick_sub = base.scroll_flick_sub * scale_factor;
         self.scroll_dist = base.scroll_dist_em * dpem;
         self.pan_dist_thresh = base.pan_dist_thresh * scale_factor;
+        self.frame_dur = Duration::from_nanos(base.frame_dur_nanos.cast());
     }
 }
 

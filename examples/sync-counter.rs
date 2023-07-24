@@ -21,7 +21,7 @@ impl kas::AppData for Count {
             self.0 += add;
             Action::UPDATE
         } else {
-            Action::EMPTY
+            Action::empty()
         }
     }
 }

@@ -190,7 +190,7 @@ pub trait AppData: 'static {
     /// the widget tree (see [kas::events] module doc), a message is left on the
     /// stack. Unhandled messages will result in warnings in the log.
     ///
-    /// The method returns an [`Action`], usually either [`Action::EMPTY`]
+    /// The method returns an [`Action`], usually either [`Action::empty`]
     /// (nothing to do) or [`Action::UPDATE`] (to update widgets).
     /// This action affects all windows.
     fn handle_messages(&mut self, messages: &mut ErasedStack) -> Action;
@@ -198,6 +198,6 @@ pub trait AppData: 'static {
 
 impl AppData for () {
     fn handle_messages(&mut self, _: &mut ErasedStack) -> Action {
-        Action::EMPTY
+        Action::empty()
     }
 }

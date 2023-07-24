@@ -30,7 +30,7 @@ impl kas::AppData for AppData {
             self.color = Some(color);
             Action::UPDATE
         } else {
-            Action::EMPTY
+            Action::empty()
         }
     }
 }

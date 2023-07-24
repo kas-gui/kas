@@ -139,7 +139,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                 .theme
                 .update_window(&mut theme_window, scale_factor);
             let dpem = theme_window.size().dpem();
-            ev_state.set_scale_factor(scale_factor, dpem);
+            ev_state.update_config(scale_factor, dpem);
             solve_cache.invalidate_rule_cache();
         }
 
@@ -188,7 +188,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                     .theme
                     .update_window(&mut self.theme_window, scale_factor);
                 let dpem = self.theme_window.size().dpem();
-                self.ev_state.set_scale_factor(scale_factor, dpem);
+                self.ev_state.update_config(scale_factor, dpem);
                 self.solve_cache.invalidate_rule_cache();
                 let size = (*new_inner_size).cast();
                 if self.surface.do_resize(&mut shared.shell.draw.draw, size) {
@@ -276,7 +276,13 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     }
 
     /// Handle an action (excludes handling of CLOSE and EXIT)
-    pub(super) fn handle_action(&mut self, shared: &mut SharedState<A, S, T>, action: Action) {
+    pub(super) fn handle_action(&mut self, shared: &mut SharedState<A, S, T>, mut action: Action) {
+        if action.contains(Action::EVENT_CONFIG) {
+            let scale_factor = self.window.scale_factor() as f32;
+            let dpem = self.theme_window.size().dpem();
+            self.ev_state.update_config(scale_factor, dpem);
+            action |= Action::UPDATE;
+        }
         if action.contains(Action::RECONFIGURE) {
             self.reconfigure(shared);
         } else if action.contains(Action::UPDATE) {

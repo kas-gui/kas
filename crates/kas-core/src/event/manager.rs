@@ -416,14 +416,6 @@ impl EventState {
             }
         }
     }
-
-    /* TODO: add a handler for toolkit messages
-    fn .. {
-        if update_event_config {
-            let (sf, dpem) = self.size_mgr(|size| (size.scale_factor(), size.dpem()));
-            self.state.config.update(sf, dpem);
-        }
-    } */
 }
 
 /// Manager of event-handling and toolkit actions
