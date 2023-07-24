@@ -208,7 +208,7 @@ impl Driver<Item, Data> for MyDriver {
             label: Label::new(format!("Entry number {}", n + 1)),
             radio: RadioButton::new_msg(
                 "display this entry",
-                move |data: &Item| data.0 == n,
+                move |_, data: &Item| data.0 == n,
                 move || SelectEntry(n),
             ),
             edit: EditBox::new(ListEntryGuard(n)),
@@ -240,7 +240,7 @@ fn main() -> kas::shell::Result<()> {
         "Demonstration of dynamic widget creation / deletion",
         controls.map(|data: &Data| &data.len),
         "Contents of selected entry:",
-        Text::new(|data: &Data| data.active_string.clone()),
+        Text::new(|_, data: &Data| data.active_string.clone()),
         Separator::new(),
         ScrollBars::new(list).with_fixed_bars(false, true),
     ];

@@ -155,7 +155,7 @@ impl_scope! {
         #[inline]
         pub fn new(
             label: impl Into<AccelString>,
-            state_fn: impl Fn(&A) -> bool + 'static,
+            state_fn: impl Fn(&ConfigMgr, &A) -> bool + 'static,
         ) -> Self {
             MenuToggle {
                 core: Default::default(),
@@ -188,7 +188,7 @@ impl_scope! {
         #[inline]
         pub fn new_msg<M: Debug + 'static>(
             label: impl Into<AccelString>,
-            state_fn: impl Fn(&A) -> bool + 'static,
+            state_fn: impl Fn(&ConfigMgr, &A) -> bool + 'static,
             message_fn: impl Fn(bool) -> M + 'static,
         ) -> Self {
             MenuToggle::new(label, state_fn)

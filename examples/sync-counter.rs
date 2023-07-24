@@ -40,7 +40,7 @@ fn counter(title: &str) -> Window<Count> {
     struct SetValue(i32);
 
     // let slider = Slider::<_, _>::new_msg(1..=10, |data: &Data| data.1, SetValue);
-    let slider = Slider::right(1..=10, |data: &Data| data.1).msg_on_move(SetValue);
+    let slider = Slider::right(1..=10, |_, data: &Data| data.1).msg_on_move(SetValue);
     let ui = kas::column![
         format_data!(data: &Data, "Count: {}", data.0.0),
         row![slider, format_data!(data: &Data, "{}", data.1)],

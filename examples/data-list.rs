@@ -133,7 +133,7 @@ impl_scope! {
                 label: Label::new(format!("Entry number {}", n + 1)),
                 radio: RadioButton::new_msg(
                     "display this entry",
-                    move |active| *active == n,
+                    move |_, active| *active == n,
                     move || SelectEntry(n),
                 ),
                 edit: EditBox::new(ListEntryGuard(n)).with_text(format!("Entry #{}", n + 1)),
@@ -176,7 +176,7 @@ fn main() -> kas::shell::Result<()> {
         "Demonstration of dynamic widget creation / deletion",
         controls.map(|data: &Data| &data.len),
         "Contents of selected entry:",
-        Text::new(|data: &Data| data.active_string.to_string()),
+        Text::new(|_, data: &Data| data.active_string.to_string()),
         Separator::new(),
         ScrollBarRegion::new(list).with_fixed_bars(false, true),
     ];

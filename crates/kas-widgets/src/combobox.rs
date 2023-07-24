@@ -42,7 +42,7 @@ impl_scope! {
         active: usize,
         opening: bool,
         popup_id: Option<WindowId>,
-        state_fn: Box<dyn Fn(&A) -> M>,
+        state_fn: Box<dyn Fn(&ConfigMgr, &A) -> M>,
         on_select: Option<Box<dyn Fn(&mut EventMgr, M)>>,
     }
 
@@ -61,8 +61,8 @@ impl_scope! {
             mgr.new_accel_layer(self.id(), true);
         }
 
-        fn update(&mut self, data: &A, mgr: &mut ConfigMgr) {
-            let msg = (self.state_fn)(data);
+        fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
+            let msg = (self.state_fn)(cx, data);
             let index = 'outer: {
                 for (i, w) in self.popup.inner.iter().enumerate() {
                     if *w == msg {
@@ -75,7 +75,7 @@ impl_scope! {
             };
             if index != self.active {
                 self.active = index;
-                *mgr |= Action::REDRAW;
+                *cx |= Action::REDRAW;
             }
         }
 
@@ -217,7 +217,7 @@ impl<A, M: Clone + Debug + Eq + 'static> ComboBox<A, M> {
     ///
     /// The closure `state_fn` selects the active entry from input data.
     #[inline]
-    pub fn new<T, I>(iter: I, state_fn: impl Fn(&A) -> M + 'static) -> Self
+    pub fn new<T, I>(iter: I, state_fn: impl Fn(&ConfigMgr, &A) -> M + 'static) -> Self
     where
         T: Into<AccelString>,
         I: IntoIterator<Item = (T, M)>,
@@ -235,7 +235,10 @@ impl<A, M: Clone + Debug + Eq + 'static> ComboBox<A, M> {
     ///
     /// The closure `state_fn` selects the active entry from input data.
     #[inline]
-    pub fn new_vec(entries: Vec<MenuEntry<M>>, state_fn: impl Fn(&A) -> M + 'static) -> Self {
+    pub fn new_vec(
+        entries: Vec<MenuEntry<M>>,
+        state_fn: impl Fn(&ConfigMgr, &A) -> M + 'static,
+    ) -> Self {
         let label = entries.get(0).map(|entry| entry.get_string());
         let label = StringLabel::new(label.unwrap_or_default()).with_class(TextClass::Button);
         ComboBox {

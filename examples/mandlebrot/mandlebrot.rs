@@ -457,7 +457,7 @@ impl_scope! {
                 label: format_data!(mbrot: &Mandlebrot, "{}", mbrot.loc()),
                 iters_label: format_value!("{}")
                     .with_reserve(|size_mgr, axis| Label::new("000").size_rules(size_mgr, axis)),
-                slider: Slider::up(0..=256, |iters| *iters)
+                slider: Slider::up(0..=256, |_, iters| *iters)
                     .msg_on_move(|iters| iters),
                 mbrot: Mandlebrot::new(),
                 iters: 64,

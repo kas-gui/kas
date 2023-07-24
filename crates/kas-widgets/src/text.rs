@@ -27,7 +27,7 @@ impl_scope! {
         core: widget_core!(),
         class: TextClass,
         label: text::Text<T>,
-        label_fn: Box<dyn Fn(&A) -> T>,
+        label_fn: Box<dyn Fn(&ConfigMgr, &A) -> T>,
     }
 
     impl Default for Self where for<'a> &'a A: Into<T> {
@@ -36,7 +36,7 @@ impl_scope! {
                 core: Default::default(),
                 class: TextClass::Label(true),
                 label: text::Text::new(T::default()),
-                label_fn: Box::new(|data| data.into()),
+                label_fn: Box::new(|_, data| data.into()),
             }
         }
     }
@@ -44,7 +44,7 @@ impl_scope! {
     impl Self {
         /// Construct with a data binding
         #[inline]
-        pub fn new(label_fn: impl Fn(&A) -> T + 'static) -> Self {
+        pub fn new(label_fn: impl Fn(&ConfigMgr, &A) -> T + 'static) -> Self {
             Text {
                 core: Default::default(),
                 class: TextClass::Label(true),
@@ -132,7 +132,7 @@ impl_scope! {
         type Data = A;
 
         fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
-            let text = (self.label_fn)(data);
+            let text = (self.label_fn)(cx, data);
             match self.label.set_and_try_prepare(text) {
                 Ok(true) => *cx |= Action::RESIZE,
                 _ => cx.redraw(self.id()),
@@ -181,10 +181,10 @@ pub type StringText<A> = Text<A, String>;
 #[macro_export]
 macro_rules! format_data {
     ($data:ident, $($arg:tt)*) => {
-        $crate::Text::new(move |$data| format!($($arg)*))
+        $crate::Text::new(move |_, $data| format!($($arg)*))
     };
     ($data:ident : $data_ty:ty , $($arg:tt)*) => {
-        $crate::Text::new(move |$data : $data_ty| format!($($arg)*))
+        $crate::Text::new(move |_, $data : $data_ty| format!($($arg)*))
     };
 }
 
@@ -197,6 +197,6 @@ macro_rules! format_data {
 #[macro_export]
 macro_rules! format_value {
     ($($arg:tt)*) => {
-        $crate::Text::new(move |data| format!($($arg)*, data))
+        $crate::Text::new(move |_, data| format!($($arg)*, data))
     };
 }

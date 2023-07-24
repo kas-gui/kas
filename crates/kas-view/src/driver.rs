@@ -102,7 +102,7 @@ macro_rules! impl_via_to_string {
         impl<Data: SharedData<Item = $t>> Driver<$t, Data> for View {
             type Widget = Text<$t, String>;
             fn make(&mut self, _: &Data::Key) -> Self::Widget {
-                Text::new(|data: &$t| data.to_string())
+                Text::new(|_, data: &$t| data.to_string())
             }
             fn set_key(&mut self, _: &mut Self::Widget, _: &Data::Key) {
                 // Text has no metadata that needs to be reset
@@ -111,7 +111,7 @@ macro_rules! impl_via_to_string {
         impl<Data: SharedData<Item = $t>> Driver<$t, Data> for NavView {
             type Widget = NavFrame<Text<$t, String>>;
             fn make(&mut self, _: &Data::Key) -> Self::Widget {
-                NavFrame::new(Text::new(|data: &$t| data.to_string()))
+                NavFrame::new(Text::new(|_, data: &$t| data.to_string()))
             }
             fn set_key(&mut self, _: &mut Self::Widget, _: &Data::Key) {
                 // NavFrame and Text have no metadata that needs to be reset
@@ -131,7 +131,7 @@ impl_via_to_string!(f32, f64);
 impl<Data: SharedData<Item = bool>> Driver<bool, Data> for View {
     type Widget = CheckBox<bool>;
     fn make(&mut self, _: &Data::Key) -> Self::Widget {
-        CheckBox::new(|data: &bool| *data).with_editable(false)
+        CheckBox::new(|_, data: &bool| *data).with_editable(false)
     }
     fn set_key(&mut self, _: &mut Self::Widget, _: &Data::Key) {
         // CheckBox has no metadata that needs to be reset
@@ -140,7 +140,7 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for View {
 impl<Data: SharedData<Item = bool>> Driver<bool, Data> for NavView {
     type Widget = CheckBox<bool>;
     fn make(&mut self, _: &Data::Key) -> Self::Widget {
-        CheckBox::new(|data: &bool| *data).with_editable(false)
+        CheckBox::new(|_, data: &bool| *data).with_editable(false)
     }
     fn set_key(&mut self, _: &mut Self::Widget, _: &Data::Key) {
         // CheckBox has no metadata that needs to be reset

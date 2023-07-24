@@ -95,11 +95,11 @@ struct SpinnerGuard<A, T: SpinnerValue> {
     end: T,
     step: T,
     parsed: Option<T>,
-    state_fn: Box<dyn Fn(&A) -> T>,
+    state_fn: Box<dyn Fn(&ConfigMgr, &A) -> T>,
 }
 
 impl<A, T: SpinnerValue> SpinnerGuard<A, T> {
-    fn new(range: RangeInclusive<T>, state_fn: Box<dyn Fn(&A) -> T>) -> Self {
+    fn new(range: RangeInclusive<T>, state_fn: Box<dyn Fn(&ConfigMgr, &A) -> T>) -> Self {
         let (start, end) = range.into_inner();
         SpinnerGuard {
             start,
@@ -111,8 +111,8 @@ impl<A, T: SpinnerValue> SpinnerGuard<A, T> {
     }
 
     /// Returns new value if different
-    fn handle_btn(&self, data: &A, _: &mut EventMgr, btn: SpinBtn) -> Option<T> {
-        let old_value = (self.state_fn)(data);
+    fn handle_btn(&self, data: &A, cx: &mut EventMgr, btn: SpinBtn) -> Option<T> {
+        let old_value = cx.config_mgr(|cx| (self.state_fn)(cx, data));
         let value = match btn {
             SpinBtn::Down => old_value.sub_step(self.step, self.start),
             SpinBtn::Up => old_value.add_step(self.step, self.end),
@@ -125,6 +125,11 @@ impl<A, T: SpinnerValue> SpinnerGuard<A, T> {
 impl<A, T: SpinnerValue> EditGuard for SpinnerGuard<A, T> {
     type Data = A;
 
+    fn update(edit: &mut EditField<Self>, data: &A, cx: &mut ConfigMgr) {
+        let value = (edit.guard.state_fn)(cx, data);
+        *cx |= edit.set_string(value.to_string());
+    }
+
     fn activate(edit: &mut EditField<Self>, data: &A, mgr: &mut EventMgr) -> Response {
         Self::focus_lost(edit, data, mgr);
         Response::Used
@@ -134,7 +139,7 @@ impl<A, T: SpinnerValue> EditGuard for SpinnerGuard<A, T> {
         if let Some(value) = edit.guard.parsed.take() {
             cx.push(ValueMsg(value));
         } else {
-            let value = (edit.guard.state_fn)(data);
+            let value = cx.config_mgr(|cx| (edit.guard.state_fn)(cx, data));
             *cx |= edit.set_string(value.to_string());
         }
     }
@@ -148,11 +153,6 @@ impl<A, T: SpinnerValue> EditGuard for SpinnerGuard<A, T> {
             is_err = true;
         };
         *cx |= edit.set_error_state(is_err);
-    }
-
-    fn update(edit: &mut EditField<Self>, data: &A, cx: &mut ConfigMgr) {
-        let value = (edit.guard.state_fn)(data);
-        *cx |= edit.set_string(value.to_string());
     }
 }
 
@@ -190,7 +190,7 @@ impl_scope! {
         /// Values vary within the given `range`. The default step size is
         /// 1 for common types (see [`SpinnerValue::default_step`]).
         #[inline]
-        pub fn new(range: RangeInclusive<T>, state_fn: impl Fn(&A) -> T + 'static) -> Self {
+        pub fn new(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigMgr, &A) -> T + 'static) -> Self {
             Spinner {
                 core: Default::default(),
                 edit: EditField::new(SpinnerGuard::new(range, Box::new(state_fn)))
@@ -210,7 +210,7 @@ impl_scope! {
         #[inline]
         pub fn new_msg<M: std::fmt::Debug + 'static>(
             range: RangeInclusive<T>,
-            state_fn: impl Fn(&A) -> T + 'static,
+            state_fn: impl Fn(&ConfigMgr, &A) -> T + 'static,
             message_fn: impl Fn(T) -> M + 'static,
         ) -> Self {
             Spinner::new(range, state_fn).on_change(move |cx, state| cx.push(message_fn(state)))
