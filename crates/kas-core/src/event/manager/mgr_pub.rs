@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 use super::*;
 use crate::cast::Conv;
 use crate::draw::DrawShared;
+use crate::event::config::ChangeConfig;
 use crate::geom::{Offset, Vec2};
 use crate::theme::{SizeMgr, ThemeControl};
 use crate::{Action, Erased, WidgetId, Window, WindowId};
@@ -159,6 +160,18 @@ impl EventState {
     #[inline]
     pub fn config_test_pan_thresh(&self, dist: Offset) -> bool {
         Vec2::conv(dist).abs().max_comp() >= self.config.pan_dist_thresh()
+    }
+
+    /// Update event configuration
+    #[inline]
+    pub fn change_config(&mut self, msg: ChangeConfig) {
+        match self.config.config.try_borrow_mut() {
+            Ok(mut config) => {
+                config.change_config(msg);
+                self.action |= Action::EVENT_CONFIG;
+            }
+            Err(_) => log::error!("EventState::change_config: failed to mutably borrow config"),
+        }
     }
 
     /// Set/unset a widget as disabled

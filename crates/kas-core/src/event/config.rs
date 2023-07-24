@@ -13,9 +13,27 @@ use crate::cast::{Cast, CastFloat};
 use crate::geom::Offset;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
+
+/// Configuration message used to update [`Config`]
+#[derive(Clone, Debug)]
+pub enum ChangeConfig {
+    MenuDelay(u32),
+    TouchSelectDelay(u32),
+    ScrollFlickTimeout(u32),
+    ScrollFlickMul(f32),
+    ScrollFlickSub(f32),
+    ScrollDistEm(f32),
+    PanDistThresh(f32),
+    MousePan(MousePan),
+    MouseTextPan(MousePan),
+    MouseNavFocus(bool),
+    TouchNavFocus(bool),
+    /// Reset all config values to default (not saved) values
+    ResetToDefault,
+}
 
 /// Event handling configuration
 ///
@@ -109,6 +127,24 @@ impl Config {
     pub fn is_dirty(&self) -> bool {
         self.is_dirty
     }
+
+    pub(crate) fn change_config(&mut self, msg: ChangeConfig) {
+        match msg {
+            ChangeConfig::MenuDelay(v) => self.menu_delay_ms = v,
+            ChangeConfig::TouchSelectDelay(v) => self.touch_select_delay_ms = v,
+            ChangeConfig::ScrollFlickTimeout(v) => self.scroll_flick_timeout_ms = v,
+            ChangeConfig::ScrollFlickMul(v) => self.scroll_flick_mul = v,
+            ChangeConfig::ScrollFlickSub(v) => self.scroll_flick_sub = v,
+            ChangeConfig::ScrollDistEm(v) => self.scroll_dist_em = v,
+            ChangeConfig::PanDistThresh(v) => self.pan_dist_thresh = v,
+            ChangeConfig::MousePan(v) => self.mouse_pan = v,
+            ChangeConfig::MouseTextPan(v) => self.mouse_text_pan = v,
+            ChangeConfig::MouseNavFocus(v) => self.mouse_nav_focus = v,
+            ChangeConfig::TouchNavFocus(v) => self.touch_nav_focus = v,
+            ChangeConfig::ResetToDefault => *self = Config::default(),
+        }
+        self.is_dirty = true;
+    }
 }
 
 /// Wrapper around [`Config`] to handle window-specific scaling
@@ -148,6 +184,11 @@ impl WindowConfig {
         self.scroll_dist = base.scroll_dist_em * dpem;
         self.pan_dist_thresh = base.pan_dist_thresh * scale_factor;
         self.frame_dur = Duration::from_nanos(base.frame_dur_nanos.cast());
+    }
+
+    /// Borrow access to the [`Config`]
+    pub fn borrow(&self) -> Ref<Config> {
+        self.config.borrow()
     }
 }
 

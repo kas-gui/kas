@@ -5,28 +5,9 @@
 
 //! Drivers for configuration types
 
-use crate::driver;
-use crate::MaybeOwned;
-use kas::event::config::{Config, MousePan};
-use kas::model::SharedRc;
+use kas::event::config::{ChangeConfig, MousePan};
 use kas::prelude::*;
-use kas_widgets::{CheckButton, ComboBox, Spinner, TextButton};
-
-#[derive(Clone, Debug)]
-enum Msg {
-    MenuDelay(u32),
-    TouchSelectDelay(u32),
-    ScrollFlickTimeout(u32),
-    ScrollFlickMul(f32),
-    ScrollFlickSub(f32),
-    ScrollDistEm(f32),
-    PanDistThresh(f32),
-    MousePan(MousePan),
-    MouseTextPan(MousePan),
-    MouseNavFocus(bool),
-    TouchNavFocus(bool),
-    Reset,
-}
+use kas_widgets::{adapter::WithAny, CheckButton, ComboBox, Spinner, TextButton};
 
 impl_scope! {
     /// A widget for viewing event config
@@ -68,128 +49,86 @@ impl_scope! {
             (1..3, 10) => self.touch_nav_focus,
 
             (0, 11) => "Restore default values:",
-            (1..3, 11) => TextButton::new_msg("&Reset", Msg::Reset),
+            (1..3, 11) => WithAny::new(TextButton::new_msg("&Reset", ChangeConfig::ResetToDefault)),
         };
     }]
-    pub struct EventConfigWidget {
+    #[impl_default(EventConfig::new())]
+    pub struct EventConfig {
         core: widget_core!(),
         #[widget]
-        menu_delay: Spinner<u32>,
+        menu_delay: Spinner<(), u32>,
         #[widget]
-        touch_select_delay: Spinner<u32>,
+        touch_select_delay: Spinner<(), u32>,
         #[widget]
-        scroll_flick_timeout: Spinner<u32>,
+        scroll_flick_timeout: Spinner<(), u32>,
         #[widget]
-        scroll_flick_mul: Spinner<f32>,
+        scroll_flick_mul: Spinner<(), f32>,
         #[widget]
-        scroll_flick_sub: Spinner<f32>,
+        scroll_flick_sub: Spinner<(), f32>,
         #[widget]
-        scroll_dist_em: Spinner<f32>,
+        scroll_dist_em: Spinner<(), f32>,
         #[widget]
-        pan_dist_thresh: Spinner<f32>,
+        pan_dist_thresh: Spinner<(), f32>,
         #[widget]
-        mouse_pan: ComboBox<MousePan>,
+        mouse_pan: ComboBox<(), MousePan>,
         #[widget]
-        mouse_text_pan: ComboBox<MousePan>,
+        mouse_text_pan: ComboBox<(), MousePan>,
         #[widget]
-        mouse_nav_focus: CheckButton,
+        mouse_nav_focus: CheckButton<()>,
         #[widget]
-        touch_nav_focus: CheckButton,
+        touch_nav_focus: CheckButton<()>,
     }
-}
 
-/// Editor for [`kas::event::Config`](Config)
-#[derive(Clone, Copy, Debug, Default)]
-pub struct EventConfig;
-
-impl driver::Driver<Config, SharedRc<Config>> for EventConfig {
-    type Widget = EventConfigWidget;
-
-    fn make(&self) -> Self::Widget {
-        let pan_options = [
-            ("&Never", MousePan::Never),
-            ("With &Alt key", MousePan::WithAlt),
-            ("With &Ctrl key", MousePan::WithCtrl),
-            ("Alwa&ys", MousePan::Always),
-        ];
-
-        EventConfigWidget {
-            core: Default::default(),
-            menu_delay: Spinner::new(0..=5_000)
-                .with_step(50)
-                .on_change(|mgr, v| mgr.push(Msg::MenuDelay(v))),
-            touch_select_delay: Spinner::new(0..=5_000)
-                .with_step(50)
-                .on_change(|mgr, v| mgr.push(Msg::TouchSelectDelay(v))),
-            scroll_flick_timeout: Spinner::new(0..=500)
-                .with_step(5)
-                .on_change(|mgr, v| mgr.push(Msg::ScrollFlickTimeout(v))),
-            scroll_flick_mul: Spinner::new(0.0..=1.0)
-                .with_step(0.03125)
-                .on_change(|mgr, v| mgr.push(Msg::ScrollFlickMul(v))),
-            scroll_flick_sub: Spinner::new(0.0..=1.0e4)
-                .with_step(10.0)
-                .on_change(|mgr, v| mgr.push(Msg::ScrollFlickSub(v))),
-            scroll_dist_em: Spinner::new(0.125..=125.0)
-                .with_step(0.125)
-                .on_change(|mgr, v| mgr.push(Msg::ScrollDistEm(v))),
-            pan_dist_thresh: Spinner::new(0.25..=25.0)
-                .with_step(0.25)
-                .on_change(|mgr, v| mgr.push(Msg::PanDistThresh(v))),
-            mouse_pan: ComboBox::from(pan_options).on_select(|mgr, v| mgr.push(Msg::MousePan(v))),
-            mouse_text_pan: ComboBox::from(pan_options)
-                .on_select(|mgr, v| mgr.push(Msg::MouseTextPan(v))),
-            mouse_nav_focus: CheckButton::new("&Mouse navigation focus")
-                .on_toggle(|mgr, v| mgr.push(Msg::MouseNavFocus(v))),
-            touch_nav_focus: CheckButton::new("&Touchscreen navigation focus")
-                .on_toggle(|mgr, v| mgr.push(Msg::TouchNavFocus(v))),
+    impl Events for Self {
+        fn handle_messages(&mut self, _: &(), mgr: &mut EventMgr) {
+            if let Some(msg) = mgr.try_pop() {
+                mgr.change_config(msg);
+            }
         }
     }
 
-    fn set_mo(&self, widget: &mut Self::Widget, _: &(), data: MaybeOwned<Config>) -> Action {
-        widget.menu_delay.set_value(data.menu_delay_ms)
-            | widget
-                .touch_select_delay
-                .set_value(data.touch_select_delay_ms)
-            | widget
-                .scroll_flick_timeout
-                .set_value(data.scroll_flick_timeout_ms)
-            | widget.scroll_flick_mul.set_value(data.scroll_flick_mul)
-            | widget.scroll_flick_sub.set_value(data.scroll_flick_sub)
-            | widget.scroll_dist_em.set_value(data.scroll_dist_em)
-            | widget.pan_dist_thresh.set_value(data.pan_dist_thresh)
-            | widget.mouse_pan.set_active(data.mouse_pan as usize)
-            | widget
-                .mouse_text_pan
-                .set_active(data.mouse_text_pan as usize)
-            | widget.mouse_nav_focus.set_bool(data.mouse_nav_focus)
-            | widget.touch_nav_focus.set_bool(data.touch_nav_focus)
-    }
+    impl Self {
+        /// Construct an instance of the widget
+        pub fn new() -> Self {
+            let pan_options = [
+                ("&Never", MousePan::Never),
+                ("With &Alt key", MousePan::WithAlt),
+                ("With &Ctrl key", MousePan::WithCtrl),
+                ("Alwa&ys", MousePan::Always),
+            ];
 
-    fn on_messages(
-        &self,
-        mgr: &mut EventMgr,
-        _: &mut Self::Widget,
-        data: &SharedRc<Config>,
-        _: &(),
-    ) {
-        if let Some(msg) = mgr.try_pop() {
-            let mut data = data.borrow_mut(mgr);
-            match msg {
-                Msg::MenuDelay(v) => data.menu_delay_ms = v,
-                Msg::TouchSelectDelay(v) => data.touch_select_delay_ms = v,
-                Msg::ScrollFlickTimeout(v) => data.scroll_flick_timeout_ms = v,
-                Msg::ScrollFlickMul(v) => data.scroll_flick_mul = v,
-                Msg::ScrollFlickSub(v) => data.scroll_flick_sub = v,
-                Msg::ScrollDistEm(v) => data.scroll_dist_em = v,
-                Msg::PanDistThresh(v) => data.pan_dist_thresh = v,
-                Msg::MousePan(v) => data.mouse_pan = v,
-                Msg::MouseTextPan(v) => data.mouse_text_pan = v,
-                Msg::MouseNavFocus(v) => data.mouse_nav_focus = v,
-                Msg::TouchNavFocus(v) => data.touch_nav_focus = v,
-                Msg::Reset => *data = Config::default(),
+            EventConfig {
+                core: Default::default(),
+                menu_delay: Spinner::new(0..=5_000, |cx, _| cx.config().borrow().menu_delay_ms)
+                    .with_step(50)
+                    .on_change(|mgr, v| mgr.push(ChangeConfig::MenuDelay(v))),
+                touch_select_delay: Spinner::new(0..=5_000, |cx: &ConfigMgr, _| cx.config().borrow().touch_select_delay_ms)
+                    .with_step(50)
+                    .on_change(|mgr, v| mgr.push(ChangeConfig::TouchSelectDelay(v))),
+                scroll_flick_timeout: Spinner::new(0..=500, |cx: &ConfigMgr, _| cx.config().borrow().scroll_flick_timeout_ms)
+                    .with_step(5)
+                    .on_change(|mgr, v| mgr.push(ChangeConfig::ScrollFlickTimeout(v))),
+                scroll_flick_mul: Spinner::new(0.0..=1.0, |cx: &ConfigMgr, _| cx.config().borrow().scroll_flick_mul)
+                    .with_step(0.03125)
+                    .on_change(|mgr, v| mgr.push(ChangeConfig::ScrollFlickMul(v))),
+                scroll_flick_sub: Spinner::new(0.0..=1.0e4, |cx: &ConfigMgr, _| cx.config().borrow().scroll_flick_sub)
+                    .with_step(10.0)
+                    .on_change(|mgr, v| mgr.push(ChangeConfig::ScrollFlickSub(v))),
+                scroll_dist_em: Spinner::new(0.125..=125.0, |cx: &ConfigMgr, _| cx.config().borrow().scroll_dist_em)
+                    .with_step(0.125)
+                    .on_change(|mgr, v| mgr.push(ChangeConfig::ScrollDistEm(v))),
+                pan_dist_thresh: Spinner::new(0.25..=25.0, |cx: &ConfigMgr, _| cx.config().borrow().pan_dist_thresh)
+                    .with_step(0.25)
+                    .on_change(|mgr, v| mgr.push(ChangeConfig::PanDistThresh(v))),
+                mouse_pan: ComboBox::new(pan_options, |cx: &ConfigMgr, _| cx.config().borrow().mouse_pan)
+                    .on_select(|mgr, v| mgr.push(ChangeConfig::MousePan(v))),
+                mouse_text_pan: ComboBox::new(pan_options, |cx: &ConfigMgr, _| cx.config().borrow().mouse_text_pan)
+                    .on_select(|mgr, v| mgr.push(ChangeConfig::MouseTextPan(v))),
+                mouse_nav_focus: CheckButton::new("&Mouse navigation focus", |cx: &ConfigMgr, _| cx.config().borrow().mouse_nav_focus)
+                    .on_toggle(|mgr, _, v| mgr.push(ChangeConfig::MouseNavFocus(v))),
+                touch_nav_focus: CheckButton::new("&Touchscreen navigation focus", |cx: &ConfigMgr, _| cx.config().borrow().touch_nav_focus)
+                    .on_toggle(|mgr, _, v| mgr.push(ChangeConfig::TouchNavFocus(v))),
             }
-            data.is_dirty = true;
         }
     }
 }
