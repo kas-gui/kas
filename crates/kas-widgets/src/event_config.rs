@@ -5,9 +5,9 @@
 
 //! Drivers for configuration types
 
+use crate::{adapter::WithAny, CheckButton, ComboBox, Spinner, TextButton};
 use kas::event::config::{ChangeConfig, MousePan};
 use kas::prelude::*;
-use kas_widgets::{adapter::WithAny, CheckButton, ComboBox, Spinner, TextButton};
 
 impl_scope! {
     /// A widget for viewing event config

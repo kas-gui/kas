@@ -20,9 +20,6 @@
 //! Intended usage is to import the module name rather than its contents, thus
 //! allowing referal to e.g. `driver::View`.
 
-mod config;
-pub use config::EventConfig;
-
 use crate::SharedData;
 use kas::prelude::*;
 use kas_widgets::{CheckBox, NavFrame, Text};
