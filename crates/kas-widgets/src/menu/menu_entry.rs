@@ -102,6 +102,13 @@ impl_scope! {
             })
         }
     }
+
+    impl PartialEq<M> for Self where M: PartialEq {
+        #[inline]
+        fn eq(&self, rhs: &M) -> bool {
+            self.msg == *rhs
+        }
+    }
 }
 
 impl_scope! {
