@@ -20,8 +20,8 @@ use std::fmt::Debug;
 use std::time::Instant;
 
 #[derive(Clone, Debug, Default)]
-struct WidgetData<K, V, W> {
-    key: Option<(K, V)>,
+struct WidgetData<K, W> {
+    key: Option<K>,
     widget: W,
 }
 
@@ -66,7 +66,7 @@ impl_scope! {
         /// Empty widget used for sizing; this must be stored between horiz and vert size rule
         /// calculations for correct line wrapping/layout.
         default_widget: G::Widget,
-        widgets: Vec<WidgetData<A::Key, A::Version, G::Widget>>,
+        widgets: Vec<WidgetData<A::Key, G::Widget>>,
         data_len: u32,
         /// The number of widgets in use (cur_len ≤ widgets.len())
         cur_len: u32,
@@ -315,19 +315,15 @@ impl_scope! {
             let keys = data.iter_from(solver.first_data, solver.cur_len);
 
             let mut count = 0;
-            for (i, key_ver) in keys.enumerate() {
+            for (i, key) in keys.enumerate() {
                 count += 1;
                 let i = solver.first_data + i;
-                let id = key_ver.0.make_id(self.id_ref());
+                let id = key.make_id(self.id_ref());
                 let w = &mut self.widgets[i % solver.cur_len];
-                if w.key.as_ref() != Some(&key_ver) {
-                    // Key and/or version changed
-                    if w.key.as_ref().map(|kv| &kv.0) != Some(&key_ver.0) {
-                        // Key part changed
-                        self.guard.set_key(&mut w.widget, &key_ver.0);
-                    }
+                if w.key.as_ref() != Some(&key) {
+                    self.guard.set_key(&mut w.widget, &key);
 
-                    if let Some(item) = data.borrow(&key_ver.0) {
+                    if let Some(item) = data.borrow(&key) {
                         cx.configure(w.widget.as_node_mut(item.borrow()), id);
 
                         solve_size_rules(
@@ -338,10 +334,12 @@ impl_scope! {
                             self.align_hints.horiz,
                             self.align_hints.vert,
                         );
-                        w.key = Some(key_ver);
+                        w.key = Some(key);
                     } else {
                         w.key = None; // disables drawing and clicking
                     }
+                } else if let Some(item) = data.borrow(&key) {
+                    cx.update(w.widget.as_node_mut(item.borrow()));
                 }
                 w.widget.set_rect(cx, solver.rect(i));
             }
@@ -401,7 +399,7 @@ impl_scope! {
                 self.widgets
                     .iter()
                     .enumerate()
-                    .filter_map(|(i, w)| (key.as_ref() == w.key.as_ref().map(|(k, _)| k)).then_some(i))
+                    .filter_map(|(i, w)| (key == w.key).then_some(i))
                     .next()
             } else {
                 None
@@ -532,7 +530,7 @@ impl_scope! {
             let offset = self.scroll_offset();
             draw.with_clip_region(self.core.rect, offset, |mut draw| {
                 for child in &mut self.widgets[..self.cur_len.cast()] {
-                    if let Some((ref key, _)) = child.key {
+                    if let Some(ref key) = child.key {
                         if self.selection.contains(key) {
                             draw.selection(child.widget.rect(), self.sel_style);
                         }
@@ -622,11 +620,11 @@ impl_scope! {
                 }
                 Event::PressStart { ref press } if press.is_primary() && cx.config().mouse_nav_focus() => {
                     if let Some(index) = cx.last_child() {
-                        self.press_target = self.widgets[index].key.clone().map(|(k, _)| (index, k));
+                        self.press_target = self.widgets[index].key.clone().map(|k| (index, k));
                     }
                     if let Some((index, ref key)) = self.press_target {
                         let w = &mut self.widgets[index];
-                        if w.key.as_ref().map(|(k, _)| k == key).unwrap_or(false) {
+                        if w.key.as_ref().map(|k| k == key).unwrap_or(false) {
                             cx.next_nav_focus(w.widget.id(), false, false);
                         }
                     }
@@ -641,7 +639,7 @@ impl_scope! {
                         if success
                             && !matches!(self.sel_mode, SelectionMode::None)
                             && !self.scroll.is_gliding()
-                            && w.key.as_ref().map(|(k, _)| k == key).unwrap_or(false)
+                            && w.key.as_ref().map(|k| k == key).unwrap_or(false)
                             && w.widget.rect().contains(press.coord + self.scroll.offset())
                         {
                             cx.push(kas::message::Select);
@@ -666,7 +664,7 @@ impl_scope! {
             if let Some(index) = cx.last_child() {
                 let w = &mut self.widgets[index];
                 key = match w.key.as_ref() {
-                    Some((k, _)) => k,
+                    Some(k) => k,
                     None => return,
                 };
 
@@ -718,7 +716,7 @@ impl_scope! {
             closure: Box<dyn FnOnce(Node<'_>) + '_>,
         ) {
             if let Some(w) = self.widgets.get(index) {
-                if let Some((ref key, _)) = w.key {
+                if let Some(ref key) = w.key {
                     if let Some(item) = data.borrow(key) {
                         closure(w.widget.as_node(item.borrow()));
                     }
@@ -732,7 +730,7 @@ impl_scope! {
             closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
         ) {
             if let Some(w) = self.widgets.get_mut(index) {
-                if let Some((ref key, _)) = w.key {
+                if let Some(ref key) = w.key {
                     if let Some(item) = data.borrow(key) {
                         closure(w.widget.as_node_mut(item.borrow()));
                     }

@@ -33,9 +33,6 @@ enum Control {
 
 #[derive(Debug)]
 struct Data {
-    // Using one verson for the whole data structure forces reloading all items
-    // whenever the version changes, but this is fine in our example.
-    ver: u64,
     len: usize,
     active: usize,
     dir: Direction,
@@ -45,7 +42,6 @@ struct Data {
 impl Data {
     fn new(len: usize) -> Self {
         Data {
-            ver: 0,
             len,
             active: 0,
             dir: Direction::Down,
@@ -60,7 +56,6 @@ impl Data {
             .unwrap_or_else(|| format!("Entry #{}", index + 1))
     }
     fn handle(&mut self, control: Control) {
-        self.ver += 1;
         let len = match control {
             Control::None => return,
             Control::SetLen(len) => len,
@@ -150,14 +145,13 @@ impl_scope! {
 struct KeyIter {
     start: usize,
     end: usize,
-    ver: u64,
 }
 impl Iterator for KeyIter {
-    type Item = (usize, u64);
+    type Item = usize;
     fn next(&mut self) -> Option<Self::Item> {
         let mut item = None;
         if self.start < self.end {
-            item = Some((self.start, self.ver));
+            item = Some(self.start);
             self.start += 1;
         }
         item
@@ -170,7 +164,6 @@ impl Iterator for KeyIter {
 
 impl SharedData for Data {
     type Key = usize;
-    type Version = u64;
     type Item = Item;
     type ItemRef<'b> = Item;
 
@@ -192,7 +185,6 @@ impl ListData for Data {
         KeyIter {
             start: start.min(self.len),
             end: (start + limit).min(self.len),
-            ver: self.ver,
         }
     }
 }

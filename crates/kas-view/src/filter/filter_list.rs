@@ -36,7 +36,7 @@ impl_scope! {
         #[widget(unsafe { &UnsafeFilteredList::new(data, &self.view) })]
         pub inner: W,
         filter: F,
-        view: Vec<(A::Key, A::Version)>,
+        view: Vec<A::Key>,
     }
 
     impl Self {
@@ -63,10 +63,10 @@ impl_scope! {
         fn update(&mut self, data: &A, _: &mut kas::event::ConfigMgr) {
             self.view.clear();
             self.view.reserve(data.len());
-            for (key, version) in data.iter_from(0, usize::MAX) {
+            for key in data.iter_from(0, usize::MAX) {
                 if let Some(item) = data.borrow(&key) {
                     if self.filter.matches(std::borrow::Borrow::borrow(&item)) {
-                        self.view.push((key, version));
+                        self.view.push(key);
                     }
                 }
             }
@@ -115,7 +115,7 @@ impl_scope! {
     /// GAT traits), after which this struct may have a lifetime bound.)
     ///
     /// This is an abstraction over a [`ListData`]. Items and associated keys
-    /// and versions are not adjusted in any way.
+    /// are not adjusted in any way.
     ///
     /// The filter applies to [`SharedData::contains_key`] and [`ListData`]
     /// methods, but not to [`SharedData::borrow`] (the latter can thus access
@@ -123,11 +123,11 @@ impl_scope! {
     #[derive(Debug)]
     pub struct UnsafeFilteredList<A: ListData + 'static> {
         data: &'static A,
-        view: &'static [(A::Key, A::Version)],
+        view: &'static [A::Key],
     }
 
     impl Self {
-        unsafe fn new<'a>(data: &'a A, view: &'a [(A::Key, A::Version)]) -> Self {
+        unsafe fn new<'a>(data: &'a A, view: &'a [A::Key]) -> Self {
             UnsafeFilteredList {
                 data: std::mem::transmute(data),
                 view: std::mem::transmute(view),
@@ -137,7 +137,6 @@ impl_scope! {
 
     impl SharedData for Self {
         type Key = A::Key;
-        type Version = A::Version;
         type Item = A::Item;
         type ItemRef<'b> = A::ItemRef<'b> where A: 'b;
 
@@ -145,7 +144,7 @@ impl_scope! {
             // TODO(opt): note that this is O(n*n). For large lists it would be
             // faster to re-evaluate the filter. Alternatively we could use a
             // HashSet or BTreeSet to test membership.
-            self.view.iter().any(|item| item.0 == *key)
+            self.view.iter().any(|item| *item == *key)
         }
         #[inline]
         fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>> {
@@ -154,7 +153,7 @@ impl_scope! {
     }
 
     impl ListData for Self {
-        type KeyIter<'b> = KeyIter<'b, (A::Key, A::Version)>
+        type KeyIter<'b> = KeyIter<'b, A::Key>
         where Self: 'b;
 
         fn is_empty(&self) -> bool {
