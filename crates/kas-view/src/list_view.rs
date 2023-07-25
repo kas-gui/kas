@@ -564,8 +564,12 @@ impl_scope! {
         fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
             self.selection.retain(|key| data.contains_key(key));
 
-            self.data_len = data.len().cast();
-            let data_len: i32 = self.data_len.cast();
+            let data_len = data.len().cast();
+            if data_len != self.data_len {
+                self.data_len = data_len;
+                *cx |= Action::SET_RECT; // update scrollable region
+            }
+            let data_len: i32 = data_len.cast();
             let view_size = self.rect().size - self.frame_size;
             let mut content_size = view_size;
             content_size.set_component(

@@ -276,11 +276,11 @@ pub trait Events: Sized {
     /// Pre-configuration
     ///
     /// This method is called before children are configured to assign a
-    /// [`WidgetId`]. Usually it does nothing else, but a custom implementation
-    /// may be used to affect child configuration, e.g. via
-    /// [`EventState::new_accel_layer`].
+    /// [`WidgetId`], therefore implementations should not access child state
+    /// (`child.id()` will be invalid the first time this method is called).
     ///
-    /// Default impl: assign `id` to self
+    /// This method must set `self.core.id = id`.
+    /// The default (macro-provided) impl does so.
     fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId);
 
     /// Configure widget
@@ -289,8 +289,7 @@ pub trait Events: Sized {
     /// parent calling [`ConfigMgr::configure`]. Parent widgets are responsible
     /// for ensuring that children are configured before calling
     /// [`Layout::size_rules`] or [`Layout::set_rect`]. Configuration may be
-    /// repeated and may be used as a mechanism to change a child's [`WidgetId`],
-    /// but this may be expensive.
+    /// repeated and may be used as a mechanism to change a child's [`WidgetId`].
     ///
     /// This method may be used to configure event handling and to load
     /// resources, including resources affecting [`Layout::size_rules`].

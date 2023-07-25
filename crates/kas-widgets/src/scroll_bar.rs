@@ -351,7 +351,7 @@ impl_scope! {
     /// This is a wrapper adding scroll bar controls around a child. Note that this
     /// widget does not enable scrolling; see [`ScrollBarRegion`] for that.
     ///
-    /// Scroll bar positioning does not respect the inner widgets margins, since
+    /// Scroll bar positioning does not respect the inner widget's margins, since
     /// the result looks poor when content is scrolled. Instead the content should
     /// force internal margins by wrapping contents with a (zero-sized) frame.
     /// [`ScrollRegion`] already does this.
