@@ -155,7 +155,7 @@ pub trait ListData: SharedData {
     /// Iterate over up to `limit` keys from `start`
     ///
     /// An example where `type Key = usize`:
-    /// ```
+    /// ```ignore
     /// type KeyIter<'b> = std::ops::Range<usize>;
     ///
     /// fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_> {

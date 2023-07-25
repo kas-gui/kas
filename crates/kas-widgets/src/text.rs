@@ -173,8 +173,9 @@ pub type StringText<A> = Text<A, String>;
 ///
 /// Examples:
 /// ```
-/// let _ = kas_widgets::format_data!(data, "Data value: {data}");
-/// let _ = kas_widgets::format_data!(data: i32, "Data value: {data}");
+/// use kas_widgets::Text;
+/// let _: Text<i32, _> = kas_widgets::format_data!(data, "Data value: {data}");
+/// let _ = kas_widgets::format_data!(data: &i32, "Data value: {data}");
 /// ```
 // TODO: a more fancy macro could determine the data fields used and wrap with
 // a node testing for changes to these fields before calling update().
@@ -192,7 +193,8 @@ macro_rules! format_data {
 ///
 /// Example:
 /// ```
-/// let _ = kas_widgets::format_value!("Data value: {}");
+/// use kas_widgets::Text;
+/// let _: Text<i32, String> = kas_widgets::format_value!("Data value: {}");
 /// ```
 #[macro_export]
 macro_rules! format_value {

@@ -212,7 +212,13 @@ impl<A, M: Clone + Debug + Eq + 'static> ComboBox<A, M> {
     /// types. For example:
     /// ```
     /// # use kas_widgets::ComboBox;
-    /// let combobox = ComboBox::from([("zero", 0), ("one", 1), ("two", 2)]);
+    /// #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    /// enum Select { A, B, C }
+    ///
+    /// let combobox = ComboBox::new(
+    ///     [("A", Select::A), ("B", Select::B), ("C", Select::C)],
+    ///     |_, selection| *selection,
+    /// );
     /// ```
     ///
     /// The closure `state_fn` selects the active entry from input data.

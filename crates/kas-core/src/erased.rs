@@ -5,6 +5,8 @@
 
 //! Erased type
 
+#![cfg_attr(not(feature = "winit"), allow(unused))]
+
 use crate::Action;
 use std::any::Any;
 use std::fmt::Debug;
