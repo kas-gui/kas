@@ -42,12 +42,10 @@ impl_scope! {
         }
 
         fn handle_event(&mut self, data: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
-            match event {
-                event => event.on_activate(mgr, self.id(), |mgr| {
-                    self.select(mgr, data);
-                    Response::Used
-                }),
-            }
+            event.on_activate(mgr, self.id(), |mgr| {
+                self.select(mgr, data);
+                Response::Used
+            })
         }
     }
 

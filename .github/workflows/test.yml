@@ -112,4 +112,5 @@ jobs:
           -A clippy::too-many-arguments \
           -A clippy::comparison_chain \
           -A clippy::redundant_pattern_matching \
+          -A clippy::type_complexity \
           -A clippy::unit_arg

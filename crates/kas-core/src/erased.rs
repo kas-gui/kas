@@ -99,7 +99,7 @@ impl SendErased {
 /// It is a component of [`EventMgr`](crate::events::EventMgr) and usually only
 /// used through that, thus the interface here is incomplete.
 #[must_use]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ErasedStack {
     base: usize,
     stack: Vec<Erased>,
@@ -109,10 +109,7 @@ impl ErasedStack {
     /// Construct an empty stack
     #[inline]
     pub fn new() -> Self {
-        ErasedStack {
-            base: 0,
-            stack: vec![],
-        }
+        ErasedStack::default()
     }
 
     /// Set the "stack base" to the current length

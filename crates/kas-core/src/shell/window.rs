@@ -391,8 +391,8 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         use kas::theme::Window;
         let time = Instant::now();
 
-        let mut size = self.theme_window.size();
-        let mut mgr = ConfigMgr::new(&mut size, &mut shared.shell.draw, &mut self.ev_state);
+        let size = self.theme_window.size();
+        let mut mgr = ConfigMgr::new(&size, &mut shared.shell.draw, &mut self.ev_state);
         mgr.update(self.widget.as_node_mut(&shared.data));
 
         log::trace!(target: "kas_perf::wgpu::window", "update: {}µs", time.elapsed().as_micros());

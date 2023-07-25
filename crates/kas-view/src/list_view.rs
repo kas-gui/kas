@@ -692,7 +692,7 @@ impl_scope! {
                     }
                     SelectionMode::Multiple => {
                         cx.redraw(self.core.id.clone());
-                        if self.selection.remove(&key) {
+                        if self.selection.remove(key) {
                             cx.push(SelectionMsg::Deselect(key.clone()));
                         } else {
                             self.selection.insert(key.clone());
