@@ -24,7 +24,6 @@ impl_scope! {
         state: S,
         #[widget(&self.state)]
         inner: W,
-        need_update: bool,
         message_handler: Option<Box<dyn Fn(&mut EventMgr, &A, &mut S) -> bool>>,
         update_handler: Option<Box<dyn Fn(&mut ConfigMgr, &A, &mut S)>>,
     }
@@ -37,7 +36,6 @@ impl_scope! {
                 core: Default::default(),
                 state,
                 inner,
-                need_update: false,
                 message_handler: None,
                 update_handler: None,
             }
@@ -95,17 +93,12 @@ impl_scope! {
         fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
             if let Some(handler) = self.update_handler.as_ref() {
                 handler(cx, data, &mut self.state);
-            } else if self.need_update {
-                self.need_update = false;
-            } else {
-                cx.inhibit_recursion();
             }
         }
 
         fn handle_messages(&mut self, data: &A, mgr: &mut EventMgr) {
             if let Some(handler) = self.message_handler.as_ref() {
                 if handler(mgr, data, &mut self.state) {
-                    self.need_update = true;
                     mgr.update(self.as_node_mut(data));
                 }
             }

@@ -38,10 +38,11 @@ pub fn _update<W: Widget + Events<Data = <W as Widget>::Data>>(
     cx: &mut ConfigMgr,
 ) {
     widget.update(data, cx);
-    if cx.recurse {
-        widget
-            .as_node_mut(data)
-            .for_children(|mut node| node._update(cx));
+    let start = cx.recurse_start.take().unwrap_or(0);
+    let end = cx.recurse_end.take().unwrap_or(widget.num_children());
+    let mut node = widget.as_node_mut(data);
+    for index in start..end {
+        node.for_child(index, |mut node| node._update(cx));
     }
 }
 

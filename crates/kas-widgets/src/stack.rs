@@ -148,6 +148,10 @@ impl_scope! {
             self.core.id = id;
             self.id_map.clear();
         }
+
+        fn update(&mut self, _: &W::Data, mgr: &mut ConfigMgr) {
+            mgr.restrict_recursion_to(self.active..=self.active);
+        }
     }
 
     impl Index<usize> for Self {
@@ -242,7 +246,7 @@ impl<W: Widget> Stack<W> {
     /// -   `SizeRules` were solved: set layout ([`Layout::set_rect`]) and
     ///     update mouse-cursor target ([`Action::REGION_MOVED`])
     /// -   Otherwise: resize the whole window ([`Action::RESIZE`])
-    pub fn set_active(&mut self, mgr: &mut ConfigMgr, index: usize) {
+    pub fn set_active(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize) {
         let old_index = self.active;
         self.active = index;
         if index >= self.widgets.len() {
@@ -260,6 +264,8 @@ impl<W: Widget> Stack<W> {
         } else {
             *mgr |= Action::RESIZE;
         }
+
+        mgr.update(self.widgets[index].as_node_mut(data));
     }
 
     /// Get a direct reference to the active child widget, if any
