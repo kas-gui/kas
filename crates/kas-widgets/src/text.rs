@@ -133,6 +133,11 @@ impl_scope! {
 
         fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
             let text = (self.label_fn)(cx, data);
+            if text.as_str() == self.label.as_str() {
+                // NOTE(opt): avoiding re-preparation of text is a *huge*
+                // optimisation. Move into kas-text?
+                return;
+            }
             self.label.set_text(text);
             if self.label.env().bounds.1.is_finite() {
                 // NOTE: bounds are initially infinite. Alignment results in
