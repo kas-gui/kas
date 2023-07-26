@@ -5,12 +5,10 @@
 
 //! Matrix view controller
 
-use super::{driver, Driver, SelectionError, SelectionMode, SelectionMsg};
+use super::*;
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, Scroll};
 use kas::layout::{solve_size_rules, AlignHints};
-#[allow(unused)] use kas::model::SharedData;
-use kas::model::{DataKey, MatrixData, SharedDataMut};
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
 use kas::NavAdvance;
@@ -35,29 +33,25 @@ struct WidgetData<K, W> {
 impl_scope! {
     /// View controller for 2D indexable data (matrix)
     ///
-    /// This widget supports a view over a matrix of shared data items.
+    /// This widget generates a view over a list of data items via the
+    /// [`MatrixData`] trait. "View widgets" are constructed via a [`Driver`] to
+    /// represent visible data items. These view widgets are reassigned as
+    /// required when the matrix is scrolled, keeping the number of widgets in
+    /// use roughly proportional to the number of data items within the view.
     ///
-    /// The shared data type `T` must support [`MatrixData`].
-    /// One must use a custom shared data type.
-    ///
-    /// The driver `V` must implement [`Driver`] over `T`.
-    /// The default driver is [`driver::View`]; others are available in the
-    /// [`driver`] module or [`Driver`] may be implemented directly.
+    /// Each view widget has a [`WidgetId`] corresponding to its current data
+    /// item, and may handle events and emit messages like other widegts.
+    /// See [`Driver`] documentation for more on event handling.
     ///
     /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
     /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
     ///
     /// Optionally, data items may be selected; see [`Self::set_selection_mode`].
-    ///
-    /// # Messages
-    ///
-    /// When a view widget pushes a message, [`Driver::on_messages`] is called.
-    ///
-    /// When selection is enabled and an item is selected or deselected, this
-    /// widget emits a [`SelectionMsg`].
+    /// If enabled, [`SelectionMsg`] messages are reported; view widgets may
+    /// emit [`kas::message::Select`] to have themselves be selected.
     #[derive(Clone, Debug)]
     #[widget]
-    pub struct MatrixView<T: MatrixData, V: Driver<T::Item, T> = driver::View> {
+    pub struct MatrixView<A: MatrixData, V: Driver<A::Item, A>> {
         core: widget_core!(),
         frame_offset: Offset,
         frame_size: Size,
@@ -65,14 +59,13 @@ impl_scope! {
         /// Empty widget used for sizing; this must be stored between horiz and vert size rule
         /// calculations for correct line wrapping/layout.
         default_widget: V::Widget,
-        data: T,
-        data_ver: u64,
-        widgets: Vec<WidgetData<T::Key, V::Widget>>,
+        widgets: Vec<WidgetData<A::Key, V::Widget>>,
         align_hints: AlignHints,
         ideal_len: Dim,
         alloc_len: Dim,
-        /// The number of widgets in use (cur_len ≤ widgets.len())
-        cur_len: u32,
+        data_len: Size,
+        /// The number of (cols, rows) in use
+        cur_len: (u32, u32),
         first_data: (u32, u32),
         child_size_min: Size,
         child_size_ideal: Size,
@@ -82,36 +75,26 @@ impl_scope! {
         sel_mode: SelectionMode,
         sel_style: SelectionStyle,
         // TODO(opt): replace selection list with RangeOrSet type?
-        selection: LinearSet<T::Key>,
-        press_target: Option<(usize, T::Key)>,
+        selection: LinearSet<A::Key>,
+        press_target: Option<(usize, A::Key)>,
     }
 
-    impl Self
-    where
-        V: Default,
-    {
-        /// Construct a new instance
-        pub fn new(data: T) -> Self {
-            Self::new_with_driver(<V as Default>::default(), data)
-        }
-    }
     impl Self {
-        /// Construct a new instance with explicit driver
-        pub fn new_with_driver(driver: V, data: T) -> Self {
-            let default_widget = driver.make();
+        /// Construct a new instance
+        pub fn new(mut driver: V) -> Self {
+            let default_widget = driver.make(&A::Key::default());
             MatrixView {
                 core: Default::default(),
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
                 driver,
                 default_widget,
-                data,
-                data_ver: 0,
                 widgets: Default::default(),
                 align_hints: Default::default(),
                 ideal_len: Dim { cols: 3, rows: 5 },
                 alloc_len: Dim::default(),
-                cur_len: 0,
+                data_len: Size::ZERO,
+                cur_len: (0, 0),
                 first_data: (0, 0),
                 child_size_min: Size::ZERO,
                 child_size_ideal: Size::ZERO,
@@ -123,57 +106,6 @@ impl_scope! {
                 selection: Default::default(),
                 press_target: None,
             }
-        }
-
-        /// Access the stored data
-        pub fn data(&self) -> &T {
-            &self.data
-        }
-
-        /// Mutably access the stored data
-        ///
-        /// It may be necessary to use [`MatrixView::update_view`] to update the view of this data.
-        pub fn data_mut(&mut self) -> &mut T {
-            &mut self.data
-        }
-
-        /// Borrow a reference to the shared value at `key`
-        pub fn borrow_value(&self, key: &T::Key) -> Option<impl Borrow<T::Item> + '_> {
-            self.data.borrow(key)
-        }
-
-        /// Get a copy of the shared value at `key`
-        pub fn get_value(&self, key: &T::Key) -> Option<T::Item> {
-            self.data.get_cloned(key)
-        }
-
-        /// Set shared data
-        ///
-        /// This method updates the shared data, if supported (see
-        /// [`SharedDataMut::borrow_mut`]). Other widgets sharing this data
-        /// are notified of the update, if data is changed.
-        pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item)
-        where
-            T: SharedDataMut,
-        {
-            self.data.set(mgr, key, data);
-        }
-
-        /// Update shared data
-        ///
-        /// This method updates the shared data, if supported (see
-        /// [`SharedDataMut::with_ref_mut`]). Other widgets sharing this data
-        /// are notified of the update, if data is changed.
-        pub fn update_value<U>(
-            &self,
-            mgr: &mut EventMgr,
-            key: &T::Key,
-            f: impl FnOnce(&mut T::Item) -> U,
-        ) -> Option<U>
-        where
-            T: SharedDataMut,
-        {
-            self.data.with_ref_mut(mgr, key, f)
         }
 
         /// Get the current selection mode
@@ -249,12 +181,12 @@ impl_scope! {
         ///
         /// With mode [`SelectionMode::Single`] this may contain zero or one entry;
         /// use `selected_iter().next()` to extract only the first (optional) entry.
-        pub fn selected_iter(&'_ self) -> impl Iterator<Item = &'_ T::Key> + '_ {
+        pub fn selected_iter(&'_ self) -> impl Iterator<Item = &'_ A::Key> + '_ {
             self.selection.iter()
         }
 
         /// Check whether an entry is selected
-        pub fn is_selected(&self, key: &T::Key) -> bool {
+        pub fn is_selected(&self, key: &A::Key) -> bool {
             self.selection.contains(key)
         }
 
@@ -270,21 +202,22 @@ impl_scope! {
 
         /// Directly select an item
         ///
+        /// Does nothing if [`Self::selection_mode`] is [`SelectionMode::None`].
+        /// Does not verify the validity of `key`.
+        /// Does not send [`SelectionMsg`] messages.
+        ///
         /// Returns `Action::REDRAW` if newly selected, `Action::empty()` if
         /// already selected. Fails if selection mode does not permit selection
         /// or if the key is invalid.
-        pub fn select(&mut self, key: T::Key) -> Result<Action, SelectionError> {
+        pub fn select(&mut self, key: A::Key) -> Action {
             match self.sel_mode {
-                SelectionMode::None => return Err(SelectionError::Disabled),
+                SelectionMode::None => return Action::empty(),
                 SelectionMode::Single => self.selection.clear(),
                 _ => (),
             }
-            if !self.data.contains_key(&key) {
-                return Err(SelectionError::Key);
-            }
             match self.selection.insert(key) {
-                true => Ok(Action::REDRAW),
-                false => Ok(Action::empty()),
+                true => Action::REDRAW,
+                false => Action::empty(),
             }
         }
 
@@ -292,35 +225,11 @@ impl_scope! {
         ///
         /// Returns `Action::REDRAW` if deselected, `Action::empty()` if not
         /// previously selected or if the key is invalid.
-        pub fn deselect(&mut self, key: &T::Key) -> Action {
+        pub fn deselect(&mut self, key: &A::Key) -> Action {
             match self.selection.remove(key) {
                 true => Action::REDRAW,
                 false => Action::empty(),
             }
-        }
-
-        /// Manually trigger an update to handle changed data
-        pub fn update_view(&mut self, in_data: &<V::Widget as Widget>::Data, mgr: &mut ConfigMgr) {
-            let data = &self.data;
-            self.data_ver = data.version();
-
-            self.selection.retain(|key| data.contains_key(key));
-
-            let (d_cols, d_rows) = data.len();
-            let data_len = Size(d_cols.cast(), d_rows.cast());
-
-            let view_size = self.rect().size - self.frame_size;
-            let skip = self.child_size + self.child_inter_margin;
-            let content_size = (skip.cwise_mul(data_len) - self.child_inter_margin).max(Size::ZERO);
-            *mgr |= self.scroll.set_sizes(view_size, content_size);
-
-            for w in &mut self.widgets {
-                w.key = None;
-            }
-            self.update_widgets(in_data, mgr);
-
-            // Force SET_RECT so that scroll-bar wrappers get updated
-            *mgr |= Action::SET_RECT;
         }
 
         /// Set the preferred number of items visible (inline)
@@ -339,26 +248,28 @@ impl_scope! {
                 skip: self.child_size + self.child_inter_margin,
                 size: self.child_size,
                 first_data: self.first_data,
-                alloc_len: self.alloc_len,
+                cur_len: self.cur_len,
             }
         }
 
-        fn update_widgets(&mut self, data: &<V::Widget as Widget>::Data, mgr: &mut ConfigMgr) -> PositionSolver {
+        fn update_widgets(&mut self, data: &A, mgr: &mut ConfigMgr) -> PositionSolver {
             let time = Instant::now();
 
             let offset = self.scroll_offset();
             let skip = self.child_size + self.child_inter_margin;
-            let first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
-            let first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
-            let col_len = self.alloc_len.cols.cast();
-            let row_len = self.alloc_len.rows.cast();
-            self.cur_len = u32::conv(col_len * row_len);
+            let mut first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
+            let mut first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
+            let data_len = data.len();
+            let col_len = (data_len.0 - first_col).min(self.alloc_len.cols.cast());
+            let row_len = (data_len.1 - first_row).min(self.alloc_len.rows.cast());
+            first_col = first_col.min(data_len.0 - col_len);
+            first_row = first_row.min(data_len.1 - row_len);
+            self.cur_len = (u32::conv(col_len), row_len.cast());
             self.first_data = (first_row.cast(), first_col.cast());
 
             let solver = self.position_solver();
 
-            let cols: Vec<_> = self
-                .data
+            let cols: Vec<_> = data
                 .col_iter_from(first_col, col_len)
                 .collect();
             if cols.len() < col_len {
@@ -369,7 +280,7 @@ impl_scope! {
                 );
             }
 
-            let row_iter = self.data.row_iter_from(first_row, row_len);
+            let row_iter = data.row_iter_from(first_row, row_len);
 
             let mut row_count = 0;
             for (rn, row) in row_iter.enumerate() {
@@ -378,17 +289,15 @@ impl_scope! {
                 for (cn, col) in cols.iter().enumerate() {
                     let ci = first_col + cn;
                     let i = solver.data_to_child(ci, ri);
-                    let (key, ver) = T::make_key(col, &row);
+                    let key = data.make_key(col, &row);
                     let id = key.make_id(self.id_ref());
                     let w = &mut self.widgets[i];
                     if w.key.as_ref() != Some(&key) {
-                        // Reset widgets to ensure input state such as cursor
-                        // position does not bleed over to next data entry
-                        w.widget = self.driver.make();
-                        mgr.configure(w.widget.as_node_mut(data), id);
+                        self.driver.set_key(&mut w.widget, &key);
 
-                        if let Some(item) = self.data.borrow(&key) {
-                            *mgr |= self.driver.set(&mut w.widget, &key, item.borrow());
+                        if let Some(item) = data.borrow(&key) {
+                            mgr.configure(w.widget.as_node_mut(item.borrow()), id);
+
                             w.key = Some(key);
                             solve_size_rules(
                                 &mut w.widget,
@@ -401,6 +310,8 @@ impl_scope! {
                         } else {
                             w.key = None; // disables drawing and clicking
                         }
+                    } else if let Some(item) = data.borrow(&key) {
+                        mgr.update(w.widget.as_node_mut(item.borrow()));
                     }
                     w.widget.set_rect(mgr, solver.rect(ci, ri));
                 }
@@ -422,14 +333,9 @@ impl_scope! {
 
     impl Scrollable for Self {
         fn scroll_axes(&self, size: Size) -> (bool, bool) {
-            let avail = size - self.frame_size;
             let m = self.child_inter_margin;
-            let child_size = Size(avail.0 / self.ideal_len.cols, avail.1 / self.ideal_len.rows)
-                .min(self.child_size_ideal)
-                .max(self.child_size_min);
-            let (d_cols, d_rows) = self.data.len();
-            let data_len = Size(d_cols.cast(), d_rows.cast());
-            let content_size = ((child_size + m).cwise_mul(data_len) - m).max(Size::ZERO);
+            let step = self.child_size_min + m;
+            let content_size = (step.cwise_mul(self.data_len) - m).max(Size::ZERO);
             (content_size.0 > size.0, content_size.1 > size.1)
         }
 
@@ -446,7 +352,7 @@ impl_scope! {
         #[inline]
         fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             *mgr |= self.scroll.set_offset(offset);
-            cx.request_update(self.id());
+            mgr.request_update(self.id());
             self.scroll.offset()
         }
     }
@@ -454,12 +360,13 @@ impl_scope! {
     impl Layout for Self {
         #[inline]
         fn num_children(&self) -> usize {
-            self.cur_len.cast()
+            usize::conv(self.cur_len.0) * usize::conv(self.cur_len.1)
         }
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
-            let key = T::Key::reconstruct_key(self.id_ref(), id);
+            let num = self.num_children();
+            let key = A::Key::reconstruct_key(self.id_ref(), id);
             if key.is_some() {
-                self.widgets
+                self.widgets[0..num]
                     .iter()
                     .enumerate()
                     .filter_map(|(i, w)| (key == w.key).then_some(i))
@@ -551,16 +458,18 @@ impl_scope! {
                     req_widgets
                 );
                 self.widgets.resize_with(req_widgets, || {
-                    let widget = self.driver.make();
-                    WidgetData { key: None, widget }
+                    WidgetData {
+                        key: None,
+                        widget: self.driver.make(&A::Key::default()),
+                    }
                 });
             } else if req_widgets + 64 <= avail_widgets {
                 // Free memory (rarely useful?)
                 self.widgets.truncate(req_widgets);
             }
 
-            // Widgets need configuring and updating: do so by re-configuring self.
-            mgr.request_reconfigure(self.id());
+            // Widgets need configuring and updating: do so by updating self.
+            mgr.request_update(self.id());
         }
 
         #[inline]
@@ -573,8 +482,8 @@ impl_scope! {
                 return None;
             }
 
+            let num = self.num_children();
             let coord = coord + self.scroll.offset();
-            let num = self.cur_len.cast();
             for child in &mut self.widgets[..num] {
                 if child.key.is_some() {
                     if let Some(id) = child.widget.find_id(coord) {
@@ -588,13 +497,13 @@ impl_scope! {
         fn draw(&mut self, mut draw: DrawMgr) {
             let offset = self.scroll_offset();
             let rect = self.rect() + offset;
-            let num = self.cur_len.cast();
+            let num = self.num_children();
             draw.with_clip_region(self.core.rect, offset, |mut draw| {
                 for child in &mut self.widgets[..num] {
-                    // Note: we don't know which widgets within 0..num are
-                    // visible, so check intersection before drawing:
-                    if rect.intersection(&child.widget.rect()).is_some() {
-                        if let Some(ref key) = child.key {
+                    if let Some(ref key) = child.key {
+                        // Note: we don't know which widgets within 0..num are
+                        // visible, so check intersection before drawing:
+                        if rect.intersection(&child.widget.rect()).is_some() {
                             if self.selection.contains(key) {
                                 draw.selection(child.widget.rect(), self.sel_style);
                             }
@@ -607,7 +516,7 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn configure(&mut self, data: &Self::Data, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             if self.widgets.is_empty() {
                 // Initial configure: ensure some widgets are loaded to allow
                 // better sizing of self.
@@ -615,37 +524,45 @@ impl_scope! {
 
                 let len = self.ideal_len.cols * self.ideal_len.rows;
                 self.widgets.resize_with(len.cast(), || {
-                    let key = None;
-                    let widget = self.driver.make();
-                    WidgetData { key, widget }
+                    WidgetData {
+                        key: None,
+                        widget: self.driver.make(&A::Key::default()),
+                    }
                 });
                 self.alloc_len = self.ideal_len;
-                self.update_view(data, mgr);
-            } else {
-                // This method is invoked from set_rect to update widgets
-                self.update_widgets(data, mgr);
             }
 
             mgr.register_nav_fallback(self.id());
         }
 
-        fn handle_event(&mut self, data: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+        fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
+            self.selection.retain(|key| data.contains_key(key));
+
+            let (d_cols, d_rows) = data.len();
+            let data_len = Size(d_cols.cast(), d_rows.cast());
+            if data_len != self.data_len {
+                self.data_len = data_len;
+                *cx |= Action::SET_RECT; // update scrollable region
+            }
+
+            let view_size = self.rect().size - self.frame_size;
+            let skip = self.child_size + self.child_inter_margin;
+            let content_size = (skip.cwise_mul(data_len) - self.child_inter_margin).max(Size::ZERO);
+            *cx |= self.scroll.set_sizes(view_size, content_size);
+
+            self.update_widgets(data, cx);
+        }
+
+        fn handle_event(&mut self, data: &A, mgr: &mut EventMgr, event: Event) -> Response {
             let response = match event {
-                Event::Update { .. } => {
-                    let data_ver = self.data.version();
-                    if data_ver > self.data_ver {
-                        mgr.config_mgr(|mgr| self.update_view(data, mgr));
-                    }
-                    return Response::Used;
-                }
                 Event::Command(cmd) => {
-                    if self.data.is_empty() {
+                    if data.is_empty() {
                         return Response::Unused;
                     }
-                    let (d_cols, d_rows) = self.data.len();
+                    let (d_cols, d_rows) = data.len();
                     let (last_col, last_row) = (d_cols.wrapping_sub(1), d_rows.wrapping_sub(1));
 
-                    let row_len: usize = self.alloc_len.rows.cast();
+                    let row_len: usize = self.cur_len.1.cast();
                     let mut solver = self.position_solver();
                     let (ci, ri) = match mgr.nav_focus().and_then(|id| self.find_child_index(id)) {
                         Some(index) => solver.child_to_data(index),
@@ -678,17 +595,15 @@ impl_scope! {
                         let index = solver.data_to_child(ci, ri);
                         #[cfg(debug_assertions)]
                         {
-                            let rk = self
-                                .data
+                            let rk = data
                                 .row_iter_from(ri, 1)
                                 .next()
                                 .expect("data row len > data.row_iter_vec len");
-                            let ck = self
-                                .data
+                            let ck = data
                                 .col_iter_from(ci, 1)
                                 .next()
                                 .expect("data col len > data.col_iter_vec len");
-                            let (key, _ver) = T::make_key(&ck, &rk);
+                            let key = data.make_key(&ck, &rk);
                             assert_eq!(
                                 self.widgets[index].widget.id(),
                                 key.make_id(self.id_ref()),
@@ -742,7 +657,7 @@ impl_scope! {
             response | sber_response
         }
 
-        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, data: &A, mgr: &mut EventMgr) {
             let key;
             if let Some(index) = mgr.last_child() {
                 let w = &mut self.widgets[index];
@@ -751,7 +666,7 @@ impl_scope! {
                     None => return,
                 };
 
-                self.driver.on_messages(mgr, &mut w.widget, &self.data, &key);
+                self.driver.on_messages(mgr, &data, &key, &mut w.widget);
             } else {
                 // Message is from self
                 key = match self.press_target.clone() {
@@ -782,7 +697,7 @@ impl_scope! {
             }
         }
 
-        fn handle_scroll(&mut self, data: &Self::Data, mgr: &mut EventMgr, scroll: Scroll) {
+        fn handle_scroll(&mut self, data: &A, mgr: &mut EventMgr, scroll: Scroll) {
             self.scroll.scroll(mgr, self.rect(), scroll);
             mgr.config_mgr(|mgr| self.update_widgets(data, mgr));
         }
@@ -790,34 +705,51 @@ impl_scope! {
 
     // Direct implementation of this trait outside of Kas code is not supported!
     impl Widget for Self {
-        type Data = <V::Widget as Widget>::Data;
+        type Data = A;
 
-        #[inline]
-        fn get_child<'a>(&'a self, data: &'a Self::Data, index: usize) -> Option<Node<'a>> {
-            self.widgets.get(index).and_then(|w| {
-                w.key.is_some().then(|| w.widget.as_node(data))
-            })
+        fn for_child_impl(
+            &self,
+            data: &A,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
+            if let Some(w) = self.widgets.get(index) {
+                if let Some(ref key) = w.key {
+                    if let Some(item) = data.borrow(key) {
+                        closure(w.widget.as_node(item.borrow()));
+                    }
+                }
+            }
         }
-        #[inline]
-        fn get_child_mut<'a>(&'a mut self, data: &'a Self::Data, index: usize) -> Option<NodeMut<'a>> {
-            self.widgets.get_mut(index).and_then(|w| {
-                w.key.is_some().then(|| w.widget.as_node_mut(data))
-            })
+        fn for_child_mut_impl(
+            &mut self,
+            data: &A,
+            index: usize,
+            closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
+        ) {
+            if let Some(w) = self.widgets.get_mut(index) {
+                if let Some(ref key) = w.key {
+                    if let Some(item) = data.borrow(key) {
+                        closure(w.widget.as_node_mut(item.borrow()));
+                    }
+                }
+            }
         }
 
         // Non-standard behaviour: do not configure children
-        fn _configure(&mut self, data: &Self::Data, cx: &mut ConfigMgr, id: WidgetId) {
+        fn _configure(&mut self, data: &A, cx: &mut ConfigMgr, id: WidgetId) {
             self.pre_configure(cx, id);
-            self.configure(data, cx);
+            self.configure(cx);
+            self.update(data, cx);
         }
 
-        fn _update(&mut self, data: &Self::Data, cx: &mut ConfigMgr) {
+        fn _update(&mut self, data: &A, cx: &mut ConfigMgr) {
             self.update(data, cx);
         }
 
         fn _send(
             &mut self,
-            data: &Self::Data,
+            data: &A,
             cx: &mut EventMgr,
             id: WidgetId,
             disabled: bool,
@@ -826,29 +758,27 @@ impl_scope! {
             kas::impls::_send(self, data, cx, id, disabled, event)
         }
 
-        fn _replay(&mut self,
-            data: &Self::Data, cx: &mut EventMgr, id: WidgetId, msg: kas::Erased) {
+        fn _replay(&mut self, data: &A, cx: &mut EventMgr, id: WidgetId, msg: kas::Erased) {
             kas::impls::_replay(self, data, cx, id, msg);
         }
 
         // Non-standard implementation to allow mapping new children
         fn _nav_next(
             &mut self,
-            data: &Self::Data,
+            data: &A,
             cx: &mut EventMgr,
             focus: Option<&WidgetId>,
             advance: NavAdvance,
         ) -> Option<WidgetId> {
-            if cx.is_disabled(self.id_ref()) || self.cur_len == 0 {
+            if cx.is_disabled(self.id_ref()) || self.cur_len == (0, 0) {
                 return None;
             }
 
             let mut child = focus.and_then(|id| self.find_child_index(id));
 
             if let Some(index) = child {
-                if let Some(id) = self
-                    .get_child_mut(data, index)
-                    .and_then(|mut w| w._nav_next(cx, focus, advance))
+                if let Some(Some(id)) = self.as_node_mut(data)
+                    .for_child(index, |mut w| w._nav_next(cx, focus, advance))
                 {
                     return Some(id);
                 }
@@ -862,7 +792,7 @@ impl_scope! {
 
             loop {
                 let mut solver = self.position_solver();
-                let (d_cols, d_rows) = self.data.len();
+                let (d_cols, d_rows) = data.len();
                 let (ci, ri) = if let Some(index) = child {
                     let (ci, ri) = solver.child_to_data(index);
                     if !reverse {
@@ -893,9 +823,8 @@ impl_scope! {
                 }
 
                 let index = solver.data_to_child(ci, ri);
-                if let Some(id) = self
-                    .get_child_mut(data, index)
-                    .and_then(|mut w| w._nav_next(cx, focus, advance))
+                if let Some(Some(id)) = self.as_node_mut(data)
+                    .for_child(index, |mut w| w._nav_next(cx, focus, advance))
                 {
                     return Some(id);
                 }
@@ -910,21 +839,21 @@ struct PositionSolver {
     skip: Size,
     size: Size,
     first_data: (u32, u32),
-    alloc_len: Dim,
+    cur_len: (u32, u32),
 }
 
 impl PositionSolver {
     /// Map a data index to child index
     fn data_to_child(&self, ci: usize, ri: usize) -> usize {
-        let col_len: usize = self.alloc_len.cols.cast();
-        let row_len: usize = self.alloc_len.rows.cast();
+        let col_len: usize = self.cur_len.0.cast();
+        let row_len: usize = self.cur_len.1.cast();
         (ci % col_len) + (ri % row_len) * col_len
     }
 
     /// Map a child index to `(col_index, row_index)`
     fn child_to_data(&self, index: usize) -> (usize, usize) {
-        let col_len: usize = self.alloc_len.cols.cast();
-        let row_len: usize = self.alloc_len.rows.cast();
+        let col_len: usize = self.cur_len.0.cast();
+        let row_len: usize = self.cur_len.1.cast();
         let first_col: usize = self.first_data.0.cast();
         let first_row: usize = self.first_data.1.cast();
         let col_start = (first_col / col_len) * col_len;

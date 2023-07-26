@@ -27,8 +27,6 @@
 
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 
-use thiserror::Error;
-
 mod data_impls;
 mod data_traits;
 pub use data_traits::*;
@@ -41,8 +39,8 @@ pub use driver::Driver;
 mod list_view;
 pub use list_view::ListView;
 
-// mod matrix_view;
-// pub use matrix_view::MatrixView;
+mod matrix_view;
+pub use matrix_view::MatrixView;
 
 /// Used to notify selection and deselection of [`ListView`] and [`MatrixView`] children
 #[derive(Clone, Debug)]
@@ -66,13 +64,4 @@ pub enum SelectionMode {
     Single,
     /// Support multi-item selection.
     Multiple,
-}
-
-/// Selection errors
-#[derive(Error, Debug)]
-pub enum SelectionError {
-    #[error("selection disabled")]
-    Disabled,
-    #[error("invalid key or index")]
-    Key,
 }

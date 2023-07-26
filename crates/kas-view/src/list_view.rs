@@ -28,34 +28,22 @@ struct WidgetData<K, W> {
 impl_scope! {
     /// View controller for 1D indexable data (list)
     ///
-    /// This widget generates a view over a list of data items, generating or
-    /// remapping "view widgets" for data items as required to cover the view
-    /// area. View widgets are only guaranteed to maintain state while visible.
+    /// This widget generates a view over a list of data items via the
+    /// [`ListData`] trait. "View widgets" are constructed via a [`Driver`] to
+    /// represent visible data items. These view widgets are reassigned as
+    /// required when the list is scrolled, keeping the number of widgets in
+    /// use roughly proportional to the number of data items within the view.
     ///
-    /// [`ListData::iter_from`] is used to generate a list of data items which
-    /// are then geneverated via [`Driver::make`].
-    ///
-    /// When the view is scrolled and when [`Widget::update`] is called on the
-    /// `ListView`, for any key which differs from the cached view widget that
-    /// view widget is re-assigned via [`Driver::set_key`], otherwise (on
-    /// update) the view widget receives [`Widget::update`].
+    /// Each view widget has a [`WidgetId`] corresponding to its current data
+    /// item, and may handle events and emit messages like other widegts.
+    /// See [`Driver`] documentation for more on event handling.
     ///
     /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
     /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
     ///
-    /// View widgets handle events like normal. To associate a returned message
-    /// with a data key, either embed that key in the message while constructing
-    /// the widget with [`Driver::make`] or intercept the message in
-    /// [`Driver::on_messages`].
-    ///
-    /// # Selection
-    ///
-    /// Item selection must be enabled explicitly via
-    /// [`Self::set_selection_mode`] or [`Self::with_selection_mode`].
-    ///
-    /// If enabled, a view widget may emit [`kas::message::Select`]
-    /// to cause itself to be selected. All changes to selection are reported
-    /// by this widget emitting a [`SelectionMsg`].
+    /// Optionally, data items may be selected; see [`Self::set_selection_mode`].
+    /// If enabled, [`SelectionMsg`] messages are reported; view widgets may
+    /// emit [`kas::message::Select`] to have themselves be selected.
     #[derive(Clone, Debug)]
     #[widget]
     pub struct ListView<A: ListData, G: Driver<A::Item, A>, D: Directional> {
@@ -304,10 +292,8 @@ impl_scope! {
 
             let data_len: usize = self.data_len.cast();
             let mut cur_len: usize = self.widgets.len();
-            if data_len - first_data < cur_len {
-                cur_len = cur_len.min(data_len);
-                first_data = data_len - cur_len;
-            }
+            cur_len = cur_len.min(data_len - first_data);
+            first_data = first_data.min(data_len - cur_len);
             self.cur_len = cur_len.cast();
             self.first_data = first_data.cast();
 
@@ -519,8 +505,10 @@ impl_scope! {
 
             let coord = coord + self.scroll.offset();
             for child in &mut self.widgets[..self.cur_len.cast()] {
-                if let Some(id) = child.widget.find_id(coord) {
-                    return Some(id);
+                if child.key.is_some() {
+                    if let Some(id) = child.widget.find_id(coord) {
+                        return Some(id);
+                    }
                 }
             }
             Some(self.id())

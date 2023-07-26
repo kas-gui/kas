@@ -20,16 +20,23 @@
 //! Intended usage is to import the module name rather than its contents, thus
 //! allowing referal to e.g. `driver::View`.
 
-use crate::SharedData;
+use super::*;
 use kas::prelude::*;
 use kas_widgets::{CheckBox, NavFrame, Text};
 use std::default::Default;
 
-/// View widget driver/binder
+/// View widget driver
 ///
-/// The driver is responsible for constructing widgets and handling messages
-/// from widgets. The widgets will receive data items via
-/// [`Events::update`](crate::Events::update).
+/// This trait is implemented to "drive" a [`ListView`] or [`MatrixView`],
+/// constructing, updating, and optionally intercepting messages from so called
+/// "view widgets".
+/// A few simple implementations are provided: [`View`], [`NavView`].
+///
+/// Each view widget has a [`WidgetId`] corresponding to its data item, and
+/// handles events like any other widget. In order to associate a returned
+/// message with a [`SharedData::Key`], either embed that key while constructing
+/// the widget with [`Driver::make`] or intercept the message in
+/// [`Driver::on_messages`].
 ///
 /// NOTE: `Item` is a direct type parameter (in addition to an assoc. type
 /// param. of `SharedData`) only to avoid "conflicting implementations" errors.
