@@ -133,9 +133,14 @@ impl_scope! {
 
         fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
             let text = (self.label_fn)(cx, data);
-            match self.label.set_and_try_prepare(text) {
-                Ok(true) => *cx |= Action::RESIZE,
-                _ => cx.redraw(self.id()),
+            self.label.set_text(text);
+            if self.label.env().bounds.1.is_finite() {
+                // NOTE: bounds are initially infinite. Alignment results in
+                // infinite offset and thus infinite measured height.
+                match self.label.try_prepare() {
+                    Ok(true) => *cx |= Action::RESIZE,
+                    _ => cx.redraw(self.id()),
+                }
             }
         }
     }
