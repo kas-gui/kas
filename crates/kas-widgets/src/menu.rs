@@ -17,7 +17,7 @@
 //! -   [`MenuToggle`]
 //! -   [`Separator`]
 
-use crate::adapter::WithAny;
+use crate::adapter::MapAny;
 use crate::Separator;
 use kas::dir::Right;
 use kas::prelude::*;
@@ -104,7 +104,7 @@ pub trait Menu: Widget {
     }
 }
 
-impl<A, W: Menu<Data = ()>> Menu for WithAny<A, W> {
+impl<A, W: Menu<Data = ()>> Menu for MapAny<A, W> {
     fn sub_items(&mut self) -> Option<SubItems> {
         self.inner.sub_items()
     }
@@ -150,7 +150,7 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
         M: Clone + Debug + 'static,
     {
         self.menu
-            .push(Box::new(WithAny::new(MenuEntry::new(label, msg))));
+            .push(Box::new(MapAny::new(MenuEntry::new(label, msg))));
     }
 
     /// Append a [`MenuEntry`], chain style
@@ -187,7 +187,7 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
 
     /// Append a [`Separator`]
     pub fn push_separator(&mut self) {
-        self.menu.push(Box::new(WithAny::new(Separator::new())));
+        self.menu.push(Box::new(MapAny::new(Separator::new())));
     }
 
     /// Append a [`Separator`], chain style

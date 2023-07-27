@@ -12,6 +12,6 @@ mod with_label;
 
 pub use adapt_events::OnUpdate;
 pub use adapt_widget::*;
-#[doc(inline)] pub use kas::hidden::WithAny;
+#[doc(inline)] pub use kas::hidden::MapAny;
 pub use reserve::{FnSizeRules, Reserve, ReserveP};
 pub use with_label::WithLabel;

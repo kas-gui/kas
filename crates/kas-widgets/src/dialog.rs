@@ -13,8 +13,7 @@
 //! At the current time, only a minimal selection of dialog boxes are provided
 //! and their design is likely to change.
 
-use crate::adapter::WithAny;
-use crate::{EditBox, Filler, Label, TextButton};
+use crate::{adapter::AdaptWidgetAny, EditBox, Filler, Label, TextButton};
 use kas::event::{Command, VirtualKeyCode};
 use kas::prelude::*;
 use kas::text::format::FormattableText;
@@ -51,7 +50,7 @@ impl_scope! {
 
         /// Build a [`Window`]
         pub fn into_window<A: 'static>(self, title: impl ToString) -> Window<A> {
-            Window::new(WithAny::new(self), title)
+            Window::new(self.map_any(), title)
                 .with_restrictions(true, true)
         }
 
@@ -116,7 +115,7 @@ impl_scope! {
 
         /// Build a [`Window`]
         pub fn into_window<A: 'static>(self, title: impl ToString) -> Window<A> {
-            Window::new(WithAny::new(self), title)
+            Window::new(self.map_any(), title)
         }
 
         fn close(&mut self, cx: &mut EventMgr, commit: bool) -> Response {

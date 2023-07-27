@@ -13,7 +13,7 @@ use kas::event::VirtualKeyCode as VK;
 use kas::prelude::*;
 use kas::resvg::Svg;
 use kas::theme::{MarginStyle, ThemeControl};
-use kas::widget::{adapter::WithAny, *};
+use kas::widget::*;
 
 // Using a trait allows control of content
 //
@@ -124,7 +124,7 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
         #[widget{
             layout = row! [
                 format_data!(data: &Data, "{}", &data.text),
-                WithAny::new(TextButton::new_msg("&Edit", MsgEdit)),
+                TextButton::new_msg("&Edit", MsgEdit).map_any(),
             ];
         }]
         struct {
@@ -167,7 +167,7 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
 טקסט לדוגמא במספר שפות.";
 
     let widgets = kas::aligned_column![
-        row!["ScrollLabel", WithAny::new(ScrollLabel::new(text))],
+        row!["ScrollLabel", ScrollLabel::new(text).map_any()],
         row![
             "EditBox",
             EditBox::rw(
@@ -183,7 +183,7 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
             "Button (image)",
             pack!(
                 center,
-                WithAny::new(kas::row![
+                kas::row![
                     Button::new_msg(img_light.clone(), Item::Theme("light"))
                         .with_color("#B38DF9".parse().unwrap())
                         .with_keys(&[VK::H]),
@@ -193,7 +193,8 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
                     Button::new_msg(img_dark, Item::Theme("dark"))
                         .with_color("#E77346".parse().unwrap())
                         .with_keys(&[VK::K]),
-                ])
+                ]
+                .map_any()
             )
         ],
         row![
@@ -239,7 +240,7 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
         ],
         row![
             "ScrollBar",
-            WithAny::new(ScrollBar::right().with_limits(100, 20))
+            ScrollBar::right().with_limits(100, 20).map_any()
         ],
         row![
             "ProgressBar",
@@ -247,11 +248,13 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
         ],
         row![
             "SVG",
-            WithAny::new(img_rustacean.with_scaling(|s| {
-                s.min_factor = 0.1;
-                s.ideal_factor = 0.2;
-                s.stretch = kas::layout::Stretch::High;
-            }))
+            img_rustacean
+                .with_scaling(|s| {
+                    s.min_factor = 0.1;
+                    s.ideal_factor = 0.2;
+                    s.stretch = kas::layout::Stretch::High;
+                })
+                .map_any()
         ],
         row!["Child window", popup_edit_box],
     ];

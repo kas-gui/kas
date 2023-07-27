@@ -43,7 +43,7 @@ pub mod prelude {
     // - doc_cfg annotations appear to be attached to the wrong items
 
     pub use kas_core::prelude::*;
-    pub use kas_widgets::adapter::AdaptWidget;
+    pub use kas_widgets::adapter::{AdaptWidget, AdaptWidgetAny};
 }
 
 pub use kas_core::*;

@@ -13,7 +13,6 @@
 use kas::prelude::*;
 use kas::row;
 use kas::view::{Driver, ListData, ListView, SharedData};
-use kas::widget::adapter::WithAny;
 use kas::widget::*;
 use std::collections::HashMap;
 
@@ -214,13 +213,14 @@ fn main() -> kas::shell::Result<()> {
     let controls = row![
         "Number of rows:",
         EditBox::parser(|n| *n, Control::SetLen),
-        WithAny::new(row![
+        kas::row![
             // This button is just a click target; it doesn't do anything!
             TextButton::new_msg("Set", Control::None),
             TextButton::new_msg("−", Control::DecrLen),
             TextButton::new_msg("+", Control::IncrLen),
             TextButton::new_msg("↓↑", Control::Reverse),
-        ]),
+        ]
+        .map_any(),
     ];
 
     let data = Data::new(3);

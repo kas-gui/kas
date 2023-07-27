@@ -130,7 +130,7 @@ impl_scope! {
 impl_scope! {
     /// Data mapping
     ///
-    /// This is a generic data-mapping widget. See also [`Adapt`], [`WithAny`].
+    /// This is a generic data-mapping widget. See also [`Adapt`], [`MapAny`].
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[widget {
         Data = A;

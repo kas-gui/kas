@@ -5,7 +5,7 @@
 
 //! Widget extension traits
 
-use super::{FnSizeRules, OnUpdate, Reserve, WithLabel};
+use super::{FnSizeRules, MapAny, OnUpdate, Reserve, WithLabel};
 use crate::Map;
 use kas::cast::{Cast, CastFloat};
 use kas::dir::Directional;
@@ -35,11 +35,22 @@ impl FnSizeRules for WithMinSizeEm {
     }
 }
 
-/// Provides some convenience methods on widgets
+/// Provides `.map_any()`
 ///
-/// TODO: add `fn with_any<A>(self) -> WithAny<A, Self>`
-/// Problem: this must be limited to `where Self::Data == ()` but "equality
-/// constraints are not yet supported in `where` clauses" (Rust#20041).
+/// TODO: move to `AdaptWidget` with `where Self::Data == ()` constraint
+/// once supported (Rust#20041).
+pub trait AdaptWidgetAny: Widget<Data = ()> + Sized {
+    /// Map any input data to `()`
+    ///
+    /// Returns a wrapper around the input widget.
+    #[must_use]
+    fn map_any<A>(self) -> MapAny<A, Self> {
+        MapAny::new(self)
+    }
+}
+impl<W: Widget<Data = ()>> AdaptWidgetAny for W {}
+
+/// Provides some convenience methods on widgets
 pub trait AdaptWidget: Widget {
     /// Map data type via a function
     ///
