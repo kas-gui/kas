@@ -17,7 +17,7 @@
 //! -   [`MenuToggle`]
 //! -   [`Separator`]
 
-use crate::adapter::MapAny;
+use crate::adapt::MapAny;
 use crate::Separator;
 use kas::dir::Right;
 use kas::prelude::*;

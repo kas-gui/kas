@@ -423,15 +423,13 @@ fn filter_list() -> Box<dyn SetDisabled<()>> {
         });
 
     let ui = kas::column![
-        Map::new(
-            kas::row![
-                "Selection:",
-                RadioButton::new_value("&n&one", SelectionMode::None),
-                RadioButton::new_value("s&ingle", SelectionMode::Single),
-                RadioButton::new_value("&multiple", SelectionMode::Multiple),
-            ],
-            |data: &Data| &data.mode
-        ),
+        kas::row![
+            "Selection:",
+            RadioButton::new_value("&n&one", SelectionMode::None),
+            RadioButton::new_value("s&ingle", SelectionMode::Single),
+            RadioButton::new_value("&multiple", SelectionMode::Multiple),
+        ]
+        .map(|data: &Data| &data.mode),
         row!["Filter:", EditBox::new(FilterGuard)],
         ScrollBars::new(list_view),
     ];

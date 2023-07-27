@@ -5,8 +5,7 @@
 
 //! Widget extension traits
 
-use super::{FnSizeRules, MapAny, OnUpdate, Reserve, WithLabel};
-use crate::Map;
+use super::{FnSizeRules, Map, MapAny, OnUpdate, Reserve, WithLabel};
 use kas::cast::{Cast, CastFloat};
 use kas::dir::Directional;
 use kas::event::ConfigMgr;

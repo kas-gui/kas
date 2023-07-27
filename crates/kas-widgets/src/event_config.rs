@@ -5,7 +5,7 @@
 
 //! Drivers for configuration types
 
-use crate::{adapter::AdaptWidgetAny, CheckButton, ComboBox, Spinner, TextButton};
+use crate::{adapt::AdaptWidgetAny, CheckButton, ComboBox, Spinner, TextButton};
 use kas::event::config::{ChangeConfig, MousePan};
 use kas::prelude::*;
 

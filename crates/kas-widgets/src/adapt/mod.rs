@@ -5,11 +5,13 @@
 
 //! Adapter widgets (wrappers)
 
+mod adapt;
 mod adapt_events;
 mod adapt_widget;
 mod reserve;
 mod with_label;
 
+pub use adapt::{Adapt, Map};
 pub use adapt_events::OnUpdate;
 pub use adapt_widget::*;
 #[doc(inline)] pub use kas::hidden::MapAny;

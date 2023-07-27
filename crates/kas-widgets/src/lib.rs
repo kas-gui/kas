@@ -7,7 +7,7 @@
 //!
 //! ## Sub-modules
 //!
-//! -   [`adapter`] provides the [`AdaptWidget`] trait with `with_reserve` and `with_label` methods
+//! -   [`adapt`] provides the [`AdaptWidget`] trait with `with_reserve` and `with_label` methods
 //! -   [`dialog`] provides [`MessageBox`](dialog::MessageBox), ...
 //! -   [`edit`] provides [`EditBox`], [`EditField`] widgets, [`EditGuard`] trait and some impls
 //! -   [`menu`] provides a [`MenuBar`](menu::MenuBar), [`SubMenu`](menu::SubMenu), ...
@@ -47,7 +47,9 @@
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "min_spec", feature(min_specialization))]
 
-mod adapt;
+pub mod adapt;
+pub use adapt::Adapt;
+
 mod button;
 mod check_box;
 mod combobox;
@@ -77,10 +79,7 @@ mod stack;
 mod tab_stack;
 mod text;
 
-pub mod adapter;
-
 pub use crate::image::Image;
-pub use adapt::{Adapt, Map};
 pub use button::{Button, TextButton};
 pub use check_box::{CheckBox, CheckButton};
 pub use combobox::ComboBox;

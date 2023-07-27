@@ -5,7 +5,7 @@
 
 //! Fixed text widgets
 
-use super::adapter::MapAny;
+use super::adapt::MapAny;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
 use kas::text::Text;
