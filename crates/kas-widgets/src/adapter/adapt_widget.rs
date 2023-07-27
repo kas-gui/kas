@@ -51,7 +51,7 @@ pub trait AdaptWidgetAny: Widget<Data = ()> + Sized {
 impl<W: Widget<Data = ()>> AdaptWidgetAny for W {}
 
 /// Provides some convenience methods on widgets
-pub trait AdaptWidget: Widget {
+pub trait AdaptWidget: Widget + Sized {
     /// Map data type via a function
     ///
     /// Returns a wrapper around the input widget.
@@ -59,7 +59,6 @@ pub trait AdaptWidget: Widget {
     fn map<A, F>(self, f: F) -> Map<A, Self, F>
     where
         F: for<'a> Fn(&'a A) -> &'a Self::Data,
-        Self: Sized,
     {
         Map::new(self, f)
     }
@@ -71,7 +70,6 @@ pub trait AdaptWidget: Widget {
     fn on_update<F>(self, f: F) -> OnUpdate<Self>
     where
         F: Fn(&mut ConfigMgr, &mut Self, &Self::Data) + 'static,
-        Self: Sized,
     {
         OnUpdate::new(self, f)
     }
@@ -107,7 +105,6 @@ pub trait AdaptWidget: Widget {
     fn with_reserve<R>(self, r: R) -> Reserve<Self, R>
     where
         R: FnMut(SizeMgr, AxisInfo) -> SizeRules,
-        Self: Sized,
     {
         Reserve::new(self, r)
     }
@@ -118,10 +115,7 @@ pub trait AdaptWidget: Widget {
     ///
     /// Returns a wrapper around the input widget.
     #[must_use]
-    fn with_min_size_px(self, w: i32, h: i32) -> Reserve<Self, WithMinSizePx>
-    where
-        Self: Sized,
-    {
+    fn with_min_size_px(self, w: i32, h: i32) -> Reserve<Self, WithMinSizePx> {
         let size = Vec2(w.cast(), h.cast());
         Reserve::new(self, WithMinSizePx(size))
     }
@@ -132,10 +126,7 @@ pub trait AdaptWidget: Widget {
     ///
     /// Returns a wrapper around the input widget.
     #[must_use]
-    fn with_min_size_em(self, w: f32, h: f32) -> Reserve<Self, WithMinSizeEm>
-    where
-        Self: Sized,
-    {
+    fn with_min_size_em(self, w: f32, h: f32) -> Reserve<Self, WithMinSizeEm> {
         let size = Vec2(w, h);
         Reserve::new(self, WithMinSizeEm(size))
     }
@@ -148,9 +139,8 @@ pub trait AdaptWidget: Widget {
     where
         D: Directional,
         T: Into<AccelString>,
-        Self: Sized,
     {
         WithLabel::new_with_direction(direction, self, label)
     }
 }
-impl<W: Widget + ?Sized> AdaptWidget for W {}
+impl<W: Widget> AdaptWidget for W {}
