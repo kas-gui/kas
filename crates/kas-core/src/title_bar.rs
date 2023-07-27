@@ -21,7 +21,9 @@ use std::fmt::Debug;
 impl_scope! {
     /// A simple label
     #[derive(Clone, Debug, Default)]
-    #[widget]
+    #[widget {
+        Data = ();
+    }]
     pub struct Label {
         core: widget_core!(),
         label: Text<String>,
@@ -99,7 +101,9 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        type Data = ();
+
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             event.on_activate(mgr, self.id(), |mgr| {
                 mgr.push(self.msg.clone());
                 Response::Used
@@ -150,7 +154,9 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        type Data = ();
+
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(msg) = mgr.try_pop() {
                 match msg {
                     TitleBarButton::Minimize => {

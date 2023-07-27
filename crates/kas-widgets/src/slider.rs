@@ -316,7 +316,9 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        type Data = ();
+
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd) => {
                     let rev = self.direction.is_reversed();
@@ -361,7 +363,7 @@ impl_scope! {
             Response::Used
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             match mgr.try_pop() {
                 Some(GripMsg::PressStart) => mgr.set_nav_focus(self.id(), false),
                 Some(GripMsg::PressMove(pos)) => {

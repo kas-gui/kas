@@ -54,19 +54,21 @@ impl_scope! {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
             mgr.new_accel_layer(self.id(), true);
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, data: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             let open_popup = |s: &mut Self, mgr: &mut EventMgr, key_focus: bool| {
                 s.popup_id = mgr.add_popup(kas::Popup {
                     id: s.popup.id(),
                     parent: s.id(),
                     direction: Direction::Down,
                 });
-                if let Some(w) = s.popup.inner.inner.get_child(s.active) {
+                if let Some(w) = s.popup.inner.inner.get_child(data, s.active) {
                     mgr.next_nav_focus(w.id(), false, key_focus);
                 }
             };
@@ -165,7 +167,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(IndexMsg(index)) = mgr.try_pop() {
                 *mgr |= self.set_active(index);
                 if let Some(id) = self.popup_id {
@@ -179,7 +181,7 @@ impl_scope! {
             }
         }
 
-        fn handle_scroll(&mut self, mgr: &mut EventMgr, _: Scroll) {
+        fn handle_scroll(&mut self, _: &Self::Data, mgr: &mut EventMgr, _: Scroll) {
             mgr.set_scroll(Scroll::None);
         }
     }
@@ -319,7 +321,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     // resize at all if the menu is closed!
     pub fn push<T: Into<AccelString>>(&mut self, mgr: &mut ConfigMgr, label: T, msg: M) -> usize {
         let column = &mut self.popup.inner;
-        column.push(mgr, MenuEntry::new(label, msg))
+        column.push(&(), mgr, MenuEntry::new(label, msg))
     }
 
     /// Pops the last choice from the combobox
@@ -338,7 +340,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
         msg: M,
     ) {
         let column = &mut self.popup.inner;
-        column.insert(mgr, index, MenuEntry::new(label, msg));
+        column.insert(&(), mgr, index, MenuEntry::new(label, msg));
     }
 
     /// Removes the choice at position `index`
@@ -360,7 +362,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     ) {
         self.popup
             .inner
-            .replace(mgr, index, MenuEntry::new(label, msg));
+            .replace(&(), mgr, index, MenuEntry::new(label, msg));
     }
 }
 
@@ -368,6 +370,7 @@ impl_scope! {
     #[autoimpl(Default)]
     #[derive(Clone)]
     #[widget{
+        Data = ();
         layout = self.inner;
     }]
     struct ComboPopup<M: Clone + Debug + 'static> {

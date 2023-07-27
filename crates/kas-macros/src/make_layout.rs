@@ -5,10 +5,12 @@
 
 use crate::widget;
 use proc_macro2::{Span, TokenStream as Toks};
+use proc_macro_error::emit_error;
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::{braced, bracketed, parenthesized, Expr, Ident, Lifetime, LitInt, LitStr, Member, Token};
+use syn::{braced, bracketed, parenthesized};
+use syn::{Expr, Ident, Lifetime, LitInt, LitStr, Member, Token, Type};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -43,21 +45,29 @@ mod kw {
     custom_keyword!(color);
 }
 
+#[derive(Default)]
+pub struct StorageFields {
+    pub ty_toks: Toks,
+    pub def_toks: Toks,
+    pub used_data_ty: bool,
+}
+
 #[derive(Debug)]
 pub struct Tree(Layout);
 impl Tree {
-    /// If extra fields are needed for storage, return these: `(fields_ty, fields_init)`
-    /// (e.g. `({ layout_frame: FrameStorage, }, { layout_frame: Default::default()), }`).
-    pub fn storage_fields(&self, children: &mut Vec<Toks>) -> Option<(Toks, Toks)> {
+    pub fn storage_fields(&self, children: &mut Vec<Toks>, data_ty: &Type) -> StorageFields {
         let (mut ty_toks, mut def_toks) = (Toks::new(), Toks::new());
-        self.0.append_fields(&mut ty_toks, &mut def_toks, children);
-        if ty_toks.is_empty() && def_toks.is_empty() {
-            None
-        } else {
-            Some((ty_toks, def_toks))
+        let used_data_ty = self
+            .0
+            .append_fields(&mut ty_toks, &mut def_toks, children, data_ty);
+        StorageFields {
+            ty_toks,
+            def_toks,
+            used_data_ty,
         }
     }
 
+    // Excludes: fn nav_next
     pub fn layout_methods(&self, core_path: &Toks) -> Result<Toks> {
         let layout = self.0.generate(core_path)?;
         Ok(quote! {
@@ -80,11 +90,6 @@ impl Tree {
                 (#layout).set_rect(mgr, rect);
             }
 
-            fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-                use ::kas::WidgetChildren;
-                ::kas::util::nav_next(reverse, from, self.num_children())
-            }
-
             fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
                 use ::kas::{layout, Layout, WidgetCore, WidgetExt};
                 if !self.rect().contains(coord) {
@@ -104,16 +109,36 @@ impl Tree {
     pub fn nav_next<'a, I: Clone + ExactSizeIterator<Item = &'a Member>>(
         &self,
         children: I,
-    ) -> NavNextResult {
+    ) -> std::result::Result<Toks, (Span, &'static str)> {
         match &self.0 {
-            Layout::Slice(_, dir, _) => NavNextResult::Slice(dir.to_token_stream()),
+            Layout::Slice(_, dir, _) => Ok(quote! {
+                fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+                    let reverse = reverse ^ (#dir).is_reversed();
+                    kas::util::nav_next(reverse, from, self.num_children())
+                }
+            }),
             layout => {
                 let mut v = Vec::new();
                 let mut index = children.len();
-                match layout.nav_next(children, &mut v, &mut index) {
-                    Ok(()) => NavNextResult::List(v),
-                    Err((span, msg)) => NavNextResult::Err(span, msg),
-                }
+                layout.nav_next(children, &mut v, &mut index).map(|()| {
+                    quote! {
+                        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+                            let mut iter = [#(#v),*].into_iter();
+                            if !reverse {
+                                if let Some(wi) = from {
+                                    let _ = iter.find(|x| *x == wi);
+                                }
+                                iter.next()
+                            } else {
+                                let mut iter = iter.rev();
+                                if let Some(wi) = from {
+                                    let _ = iter.find(|x| *x == wi);
+                                }
+                                iter.next()
+                            }
+                        }
+                    }
+                })
             }
         }
     }
@@ -125,28 +150,46 @@ impl Tree {
 
     /// Synthesize an entire widget from the layout
     pub fn expand_as_widget(self, widget_name: &str) -> Result<Toks> {
-        let name = Ident::new(widget_name, Span::call_site());
-        let impl_generics = quote! {};
-        let impl_target = quote! { #name };
-
-        let core_path = quote! { self };
-
         let mut layout_children = Vec::new();
-        let (stor_ty, stor_def) = self
-            .storage_fields(&mut layout_children)
-            .unwrap_or_default();
+        let data_ty: syn::Type = syn::parse_quote! { _Data };
+        let stor_defs = self.storage_fields(&mut layout_children, &data_ty);
+        let stor_ty = &stor_defs.ty_toks;
+        let stor_def = &stor_defs.def_toks;
+
+        let name = Ident::new(widget_name, Span::call_site());
+        let core_path = quote! { self };
+        let (impl_generics, impl_target) = if stor_defs.used_data_ty {
+            (quote! { <_Data: 'static> }, quote! { #name <_Data> })
+        } else {
+            (quote! {}, quote! { #name })
+        };
+
+        let count = layout_children.len();
+        let num_children = quote! {
+            fn num_children(&self) -> usize {
+                #count
+            }
+        };
 
         let core_impl = widget::impl_core(&impl_generics, &impl_target, widget_name, &core_path);
-        let children_impl = widget::impl_widget_children(
+        let widget_impl = widget::impl_widget(
             &impl_generics,
             &impl_target,
+            &data_ty,
             &core_path,
             &vec![],
             layout_children,
+            true,
         );
-        let widget_impl = widget::impl_widget(&impl_generics, &impl_target);
 
         let layout_methods = self.layout_methods(&core_path)?;
+        let nav_next = match self.nav_next(std::iter::empty()) {
+            Ok(result) => Some(result),
+            Err((span, msg)) => {
+                emit_error!(span, "unable to generate `fn Layout::nav_next`: {}", msg);
+                None
+            }
+        };
 
         let toks = quote! {{
             struct #name #impl_generics {
@@ -156,13 +199,16 @@ impl Tree {
             }
 
             #core_impl
-            #children_impl
 
             impl #impl_generics ::kas::Layout for #impl_target {
+                #num_children
                 #layout_methods
+                #nav_next
             }
 
             impl #impl_generics ::kas::Events for #impl_target {
+                type Data = #data_ty;
+
                 fn pre_configure(
                     &mut self,
                     _: &mut ::kas::event::ConfigMgr,
@@ -173,10 +219,11 @@ impl Tree {
 
                 fn pre_handle_event(
                     &mut self,
+                    data: &Self::Data,
                     cx: &mut ::kas::event::EventMgr,
                     event: ::kas::event::Event,
                 ) -> ::kas::event::Response {
-                    self.handle_event(cx, event)
+                    self.handle_event(data, cx, event)
                 }
             }
 
@@ -286,13 +333,6 @@ impl Tree {
 }
 
 #[derive(Debug)]
-pub enum NavNextResult {
-    Err(Span, &'static str),
-    Slice(Toks),
-    List(Vec<usize>),
-}
-
-#[derive(Debug)]
 enum StorIdent {
     Named(Ident, Span),
     Generated(String, Span),
@@ -348,6 +388,7 @@ enum Direction {
 
 bitflags::bitflags! {
     // NOTE: this must match kas::dir::Directions!
+    #[derive(Debug)]
     struct Directions: u8 {
         const LEFT = 0b0001;
         const RIGHT = 0b0010;
@@ -972,29 +1013,36 @@ impl ToTokens for GridDimensions {
 }
 
 impl Layout {
-    fn append_fields(&self, ty_toks: &mut Toks, def_toks: &mut Toks, children: &mut Vec<Toks>) {
+    fn append_fields(
+        &self,
+        ty_toks: &mut Toks,
+        def_toks: &mut Toks,
+        children: &mut Vec<Toks>,
+        data_ty: &Type,
+    ) -> bool {
         match self {
             Layout::Align(layout, _)
             | Layout::Margins(layout, ..)
             | Layout::NonNavigable(layout) => {
-                layout.append_fields(ty_toks, def_toks, children);
+                layout.append_fields(ty_toks, def_toks, children, data_ty)
             }
-            Layout::AlignSingle(..) | Layout::Single(_) => (),
+            Layout::AlignSingle(..) | Layout::Single(_) => false,
             Layout::Pack(stor, layout, _) => {
                 ty_toks.append_all(quote! { #stor: ::kas::layout::PackStorage, });
                 def_toks.append_all(quote! { #stor: Default::default(), });
-                layout.append_fields(ty_toks, def_toks, children);
+                layout.append_fields(ty_toks, def_toks, children, data_ty)
             }
             Layout::Widget(stor, expr) => {
                 children.push(stor.to_token_stream());
-                ty_toks.append_all(quote! { #stor: Box<dyn ::kas::Widget>, });
+                ty_toks.append_all(quote! { #stor: Box<dyn ::kas::Widget<Data = #data_ty>>, });
                 let span = expr.span();
                 def_toks.append_all(quote_spanned! {span=> #stor: Box::new(#expr), });
+                true
             }
             Layout::Frame(stor, layout, _) | Layout::Button(stor, layout, _) => {
                 ty_toks.append_all(quote! { #stor: ::kas::layout::FrameStorage, });
                 def_toks.append_all(quote! { #stor: Default::default(), });
-                layout.append_fields(ty_toks, def_toks, children);
+                layout.append_fields(ty_toks, def_toks, children, data_ty)
             }
             Layout::List(stor, _, vec) => {
                 def_toks.append_all(quote! { #stor: Default::default(), });
@@ -1005,18 +1053,23 @@ impl Layout {
                 } else {
                     quote! { #stor: ::kas::layout::FixedRowStorage<#len>, }
                 });
+                let mut used_data_ty = false;
                 for item in vec {
-                    item.append_fields(ty_toks, def_toks, children);
+                    used_data_ty |= item.append_fields(ty_toks, def_toks, children, data_ty);
                 }
+                used_data_ty
             }
             Layout::Float(vec) => {
+                let mut used_data_ty = false;
                 for item in vec {
-                    item.append_fields(ty_toks, def_toks, children);
+                    used_data_ty |= item.append_fields(ty_toks, def_toks, children, data_ty);
                 }
+                used_data_ty
             }
             Layout::Slice(stor, _, _) => {
                 ty_toks.append_all(quote! { #stor: ::kas::layout::DynRowStorage, });
                 def_toks.append_all(quote! { #stor: Default::default(), });
+                false
             }
             Layout::Grid(stor, dim, cells) => {
                 let (cols, rows) = (dim.cols as usize, dim.rows as usize);
@@ -1024,17 +1077,30 @@ impl Layout {
                     .append_all(quote! { #stor: ::kas::layout::FixedGridStorage<#cols, #rows>, });
                 def_toks.append_all(quote! { #stor: Default::default(), });
 
+                let mut used_data_ty = false;
                 for (_info, layout) in cells {
-                    layout.append_fields(ty_toks, def_toks, children);
+                    used_data_ty |= layout.append_fields(ty_toks, def_toks, children, data_ty);
                 }
+                used_data_ty
             }
             Layout::Label(stor, text) => {
                 children.push(stor.to_token_stream());
                 let span = text.span();
-                ty_toks.append_all(quote! { #stor: ::kas::hidden::StrLabel, });
-                def_toks.append_all(
-                    quote_spanned! {span=> #stor: ::kas::hidden::StrLabel::new(#text), },
-                );
+                if *data_ty == syn::parse_quote! { () } {
+                    ty_toks.append_all(quote! { #stor: ::kas::hidden::StrLabel, });
+                    def_toks.append_all(
+                        quote_spanned! {span=> #stor: ::kas::hidden::StrLabel::new(#text), },
+                    );
+                    false
+                } else {
+                    ty_toks.append_all(
+                        quote! { #stor: ::kas::hidden::WithAny<#data_ty, ::kas::hidden::StrLabel>, },
+                    );
+                    def_toks.append_all(
+                        quote_spanned! {span=> #stor: ::kas::hidden::WithAny::new(::kas::hidden::StrLabel::new(#text)), },
+                    );
+                    true
+                }
             }
         }
     }

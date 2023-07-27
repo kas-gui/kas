@@ -37,7 +37,9 @@ impl_scope! {
         }
     }
     impl Events for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        type Data = ();
+
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(Increment(incr)) = mgr.try_pop() {
                 self.count += incr;
                 *mgr |= self.display.set_string(self.count.to_string());
@@ -50,7 +52,7 @@ fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let theme = kas::theme::SimpleTheme::new().with_font_size(24.0);
-    kas::shell::DefaultShell::new(theme)?
+    kas::shell::DefaultShell::new((), theme)?
         .with(Window::new(Counter::new(0), "Counter"))?
         .run()
 }

@@ -31,6 +31,7 @@ enum Msg {
 impl_scope! {
     /// A widget for viewing event config
     #[widget{
+        Data = ();
         layout = grid! {
             (0, 0) => "Menu delay:",
             (1, 0) => self.menu_delay,

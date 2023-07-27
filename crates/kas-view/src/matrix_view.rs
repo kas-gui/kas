@@ -300,7 +300,7 @@ impl_scope! {
         }
 
         /// Manually trigger an update to handle changed data
-        pub fn update_view(&mut self, mgr: &mut ConfigMgr) {
+        pub fn update_view(&mut self, in_data: &<V::Widget as Widget>::Data, mgr: &mut ConfigMgr) {
             let data = &self.data;
             self.data_ver = data.version();
 
@@ -317,7 +317,7 @@ impl_scope! {
             for w in &mut self.widgets {
                 w.key = None;
             }
-            self.update_widgets(mgr);
+            self.update_widgets(in_data, mgr);
 
             // Force SET_RECT so that scroll-bar wrappers get updated
             *mgr |= Action::SET_RECT;
@@ -343,7 +343,7 @@ impl_scope! {
             }
         }
 
-        fn update_widgets(&mut self, mgr: &mut ConfigMgr) -> PositionSolver {
+        fn update_widgets(&mut self, data: &<V::Widget as Widget>::Data, mgr: &mut ConfigMgr) -> PositionSolver {
             let time = Instant::now();
 
             let offset = self.scroll_offset();
@@ -385,7 +385,7 @@ impl_scope! {
                         // Reset widgets to ensure input state such as cursor
                         // position does not bleed over to next data entry
                         w.widget = self.driver.make();
-                        mgr.configure(&mut w.widget, id);
+                        mgr.configure(w.widget.as_node_mut(data), id);
 
                         if let Some(item) = self.data.borrow(&key) {
                             *mgr |= self.driver.set(&mut w.widget, &key, item.borrow());
@@ -444,29 +444,17 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, data: &Self::Data, mgr: &mut EventMgr, offset: Offset) -> Offset {
             *mgr |= self.scroll.set_offset(offset);
-            mgr.config_mgr(|mgr| self.update_widgets(mgr));
+            mgr.config_mgr(|mgr| self.update_widgets(data, mgr));
             self.scroll.offset()
         }
     }
 
-    impl WidgetChildren for Self {
+    impl Layout for Self {
         #[inline]
         fn num_children(&self) -> usize {
             self.cur_len.cast()
-        }
-        #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
-            self.widgets.get(index).and_then(|w| {
-                w.key.is_some().then(|| w.widget.as_node())
-            })
-        }
-        #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
-            self.widgets.get_mut(index).and_then(|w| {
-                w.key.is_some().then(|| w.widget.as_node_mut())
-            })
         }
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
             let key = T::Key::reconstruct_key(self.id_ref(), id);
@@ -485,10 +473,7 @@ impl_scope! {
             // We configure children in update_widgets and do not want this method to be called
             unimplemented!()
         }
-    }
 
-    #[allow(clippy::manual_clamp)]
-    impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
             let inner_margin = if self.sel_style.is_external() {
@@ -622,7 +607,7 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, data: &Self::Data, mgr: &mut ConfigMgr) {
             if self.widgets.is_empty() {
                 // Initial configure: ensure some widgets are loaded to allow
                 // better sizing of self.
@@ -635,21 +620,21 @@ impl_scope! {
                     WidgetData { key, widget }
                 });
                 self.alloc_len = self.ideal_len;
-                self.update_view(mgr);
+                self.update_view(data, mgr);
             } else {
                 // This method is invoked from set_rect to update widgets
-                self.update_widgets(mgr);
+                self.update_widgets(data, mgr);
             }
 
             mgr.register_nav_fallback(self.id());
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, data: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             let response = match event {
                 Event::Update { .. } => {
                     let data_ver = self.data.version();
                     if data_ver > self.data_ver {
-                        mgr.config_mgr(|mgr| self.update_view(mgr));
+                        mgr.config_mgr(|mgr| self.update_view(data, mgr));
                     }
                     return Response::Used;
                 }
@@ -668,7 +653,7 @@ impl_scope! {
                     };
 
                     use Command as C;
-                    let data = match cmd {
+                    let data_index = match cmd {
                         C::DocHome => Some((0, 0)),
                         C::DocEnd => Some((last_col, last_row)),
                         C::Home => Some((0, ri)),
@@ -684,10 +669,10 @@ impl_scope! {
                         // TODO: C::ViewUp, ...
                         _ => None,
                     };
-                    return if let Some((ci, ri)) = data {
+                    return if let Some((ci, ri)) = data_index {
                         // Set nav focus and update scroll position
                         if self.scroll.focus_rect(mgr, solver.rect(ci, ri), self.core.rect) {
-                            solver = mgr.config_mgr(|mgr| self.update_widgets(mgr));
+                            solver = mgr.config_mgr(|mgr| self.update_widgets(data, mgr));
                         }
 
                         let index = solver.data_to_child(ci, ri);
@@ -752,12 +737,12 @@ impl_scope! {
                 .scroll
                 .scroll_by_event(mgr, event, self.id(), self.core.rect);
             if moved {
-                mgr.config_mgr(|mgr| self.update_widgets(mgr));
+                mgr.config_mgr(|mgr| self.update_widgets(data, mgr));
             }
             response | sber_response
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             let key;
             if let Some(index) = mgr.last_child() {
                 let w = &mut self.widgets[index];
@@ -797,41 +782,60 @@ impl_scope! {
             }
         }
 
-        fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) {
+        fn handle_scroll(&mut self, data: &Self::Data, mgr: &mut EventMgr, scroll: Scroll) {
             self.scroll.scroll(mgr, self.rect(), scroll);
-            mgr.config_mgr(|mgr| self.update_widgets(mgr));
+            mgr.config_mgr(|mgr| self.update_widgets(data, mgr));
         }
     }
 
     // Direct implementation of this trait outside of Kas code is not supported!
     impl Widget for Self {
-        // Non-standard behaviour: do not configure children
-        fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId) {
-            self.pre_configure(cx, id);
-            self.configure(cx);
+        type Data = <V::Widget as Widget>::Data;
+
+        #[inline]
+        fn get_child(&self, data: &Self::Data, index: usize) -> Option<Node<'_>> {
+            self.widgets.get(index).and_then(|w| {
+                w.key.is_some().then(|| w.widget.as_node(data))
+            })
+        }
+        #[inline]
+        fn get_child_mut(&mut self, data: &Self::Data, index: usize) -> Option<NodeMut<'_>> {
+            self.widgets.get_mut(index).and_then(|w| {
+                w.key.is_some().then(|| w.widget.as_node_mut(data))
+            })
         }
 
-        fn _broadcast(&mut self, cx: &mut EventMgr, count: &mut usize, event: Event) {
-            kas::impls::_broadcast(self, cx, count, event);
+        // Non-standard behaviour: do not configure children
+        fn _configure(&mut self, data: &Self::Data, cx: &mut ConfigMgr, id: WidgetId) {
+            self.pre_configure(cx, id);
+            self.configure(data, cx);
+        }
+
+        fn _broadcast(&mut self,
+            data: &Self::Data, cx: &mut EventMgr, count: &mut usize, event: Event) {
+            kas::impls::_broadcast(self, data, cx, count, event);
         }
 
         fn _send(
             &mut self,
+            data: &Self::Data,
             cx: &mut EventMgr,
             id: WidgetId,
             disabled: bool,
             event: Event,
         ) -> Response {
-            kas::impls::_send(self, cx, id, disabled, event)
+            kas::impls::_send(self, data, cx, id, disabled, event)
         }
 
-        fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: kas::Erased) {
-            kas::impls::_replay(self, cx, id, msg);
+        fn _replay(&mut self,
+            data: &Self::Data, cx: &mut EventMgr, id: WidgetId, msg: kas::Erased) {
+            kas::impls::_replay(self, data, cx, id, msg);
         }
 
         // Non-standard implementation to allow mapping new children
         fn _nav_next(
             &mut self,
+            data: &Self::Data,
             cx: &mut EventMgr,
             focus: Option<&WidgetId>,
             advance: NavAdvance,
@@ -844,8 +848,8 @@ impl_scope! {
 
             if let Some(index) = child {
                 if let Some(id) = self
-                    .get_child_mut(index)
-                    .and_then(|w| w._nav_next(cx, focus, advance))
+                    .get_child_mut(data, index)
+                    .and_then(|mut w| w._nav_next(cx, focus, advance))
                 {
                     return Some(id);
                 }
@@ -886,13 +890,13 @@ impl_scope! {
                 };
 
                 if self.scroll.focus_rect(cx, solver.rect(ci, ri), self.core.rect) {
-                    solver = cx.config_mgr(|mgr| self.update_widgets(mgr));
+                    solver = cx.config_mgr(|mgr| self.update_widgets(data, mgr));
                 }
 
                 let index = solver.data_to_child(ci, ri);
                 if let Some(id) = self
-                    .get_child_mut(index)
-                    .and_then(|w| w._nav_next(cx, focus, advance))
+                    .get_child_mut(data, index)
+                    .and_then(|mut w| w._nav_next(cx, focus, advance))
                 {
                     return Some(id);
                 }

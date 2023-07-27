@@ -59,22 +59,23 @@ impl_scope! {
         }
     }
 
-    impl WidgetChildren for Self {
+    impl Widget for Self {
         #[inline]
-        fn num_children(&self) -> usize {
-            self.widgets.len()
+        fn get_child(&self, data: &Self::Data, index: usize) -> Option<Node> {
+            self.widgets.get(index).map(|w| w.as_node(data))
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
-            self.widgets.get(index).map(|w| w.as_node())
-        }
-        #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
-            self.widgets.get_mut(index).map(|w| w.as_node_mut())
+        fn get_child_mut(&mut self, data: &Self::Data, index: usize) -> Option<NodeMut> {
+            self.widgets.get_mut(index).map(|w| w.as_node_mut(data))
         }
     }
 
     impl Layout for Self {
+        #[inline]
+        fn num_children(&self) -> usize {
+            self.widgets.len()
+        }
+
         fn size_rules(&mut self, mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
             // Unusual behaviour: children's SizeRules are padded with a frame,
             // but the frame does not adjust the children's rects.
@@ -120,7 +121,9 @@ impl_scope! {
     }
 
     impl<D: Directional> Events for MenuBar<D> {
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        type Data = ();
+
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(id_code) => {
                     if let Some(id) = self.delayed_open.clone() {

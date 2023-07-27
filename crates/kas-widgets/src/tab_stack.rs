@@ -23,7 +23,7 @@ pub type Tab = TextButton;
 /// A tabbed stack of boxed widgets
 ///
 /// This is a parametrisation of [`TabStack`].
-pub type BoxTabStack = TabStack<Box<dyn Widget>>;
+pub type BoxTabStack<Data> = TabStack<Box<dyn Widget<Data = Data>>>;
 
 impl_scope! {
     /// A tabbed stack of widgets
@@ -51,7 +51,7 @@ impl_scope! {
     pub struct TabStack<W: Widget> {
         core: widget_core!(),
         direction: Direction = Direction::Up,
-        #[widget]
+        #[widget(&())]
         tabs: Row<Tab>, // TODO: want a TabBar widget for scrolling support?
         #[widget]
         stack: Stack<W>,
@@ -90,7 +90,9 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        type Data = W::Data;
+
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(MsgSelectIndex(index)) = mgr.try_pop() {
                 mgr.config_mgr(|mgr| self.set_active(mgr, index));
             }
@@ -209,9 +211,9 @@ impl<W: Widget> TabStack<W> {
     /// and then [`Action::RESIZE`] will be triggered.
     ///
     /// Returns the new page's index.
-    pub fn push(&mut self, mgr: &mut ConfigMgr, tab: Tab, widget: W) -> usize {
-        let ti = self.tabs.push(mgr, tab);
-        let si = self.stack.push(mgr, widget);
+    pub fn push(&mut self, data: &W::Data, mgr: &mut ConfigMgr, tab: Tab, widget: W) -> usize {
+        let ti = self.tabs.push(&(), mgr, tab);
+        let si = self.stack.push(data, mgr, widget);
         debug_assert_eq!(ti, si);
         si
     }
@@ -232,9 +234,16 @@ impl<W: Widget> TabStack<W> {
     ///
     /// The new child is configured immediately. The active page does not
     /// change.
-    pub fn insert(&mut self, mgr: &mut ConfigMgr, index: usize, tab: Tab, widget: W) {
-        self.tabs.insert(mgr, index, tab);
-        self.stack.insert(mgr, index, widget);
+    pub fn insert(
+        &mut self,
+        data: &W::Data,
+        mgr: &mut ConfigMgr,
+        index: usize,
+        tab: Tab,
+        widget: W,
+    ) {
+        self.tabs.insert(&(), mgr, index, tab);
+        self.stack.insert(data, mgr, index, widget);
     }
 
     /// Removes the child widget at position `index`
@@ -255,22 +264,27 @@ impl<W: Widget> TabStack<W> {
     ///
     /// The new child is configured immediately. If it replaces the active page,
     /// then [`Action::RESIZE`] is triggered.
-    pub fn replace(&mut self, mgr: &mut ConfigMgr, index: usize, w: W) -> W {
-        self.stack.replace(mgr, index, w)
+    pub fn replace(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize, w: W) -> W {
+        self.stack.replace(data, mgr, index, w)
     }
 
     /// Append child widgets from an iterator
     ///
     /// New children are configured immediately. If a new page becomes active,
     /// then [`Action::RESIZE`] is triggered.
-    pub fn extend<T: IntoIterator<Item = (Tab, W)>>(&mut self, mgr: &mut ConfigMgr, iter: T) {
+    pub fn extend<T: IntoIterator<Item = (Tab, W)>>(
+        &mut self,
+        data: &W::Data,
+        mgr: &mut ConfigMgr,
+        iter: T,
+    ) {
         let iter = iter.into_iter();
         // let min_len = iter.size_hint().0;
         // self.tabs.reserve(min_len);
         // self.stack.reserve(min_len);
         for (tab, w) in iter {
-            self.tabs.push(mgr, tab);
-            self.stack.push(mgr, w);
+            self.tabs.push(&(), mgr, tab);
+            self.stack.push(data, mgr, w);
         }
     }
 }

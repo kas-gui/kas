@@ -15,7 +15,9 @@ impl_scope! {
     ///
     /// The "progress" value may range from 0.0 to 1.0.
     #[derive(Clone, Debug, Default)]
-    #[widget]
+    #[widget {
+        Data = ();
+    }]
     pub struct ProgressBar<D: Directional> {
         core: widget_core!(),
         align: AlignPair,

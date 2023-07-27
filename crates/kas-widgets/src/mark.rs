@@ -12,7 +12,9 @@ use std::fmt::Debug;
 impl_scope! {
     /// A mark
     #[derive(Clone, Debug)]
-    #[widget]
+    #[widget {
+        Data = ();
+    }]
     pub struct Mark {
         core: widget_core!(),
         style: MarkStyle,
@@ -89,7 +91,9 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        type Data = ();
+
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             event.on_activate(mgr, self.id(), |mgr| {
                 mgr.push(self.msg.clone());
                 Response::Used

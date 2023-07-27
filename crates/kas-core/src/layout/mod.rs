@@ -232,6 +232,7 @@ impl From<AxisInfo> for Directions {
 ///
 /// impl_scope! {
 ///     #[widget {
+///         Data = ();
 ///         layout = "Example";
 ///     }]
 ///     struct Example {
@@ -258,11 +259,6 @@ pub trait AutoLayout {
     ///
     /// This functions identically to [`Layout::set_rect`].
     fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
-
-    /// Navigation in spatial order
-    ///
-    /// This functions identically to [`Layout::nav_next`].
-    fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize>;
 
     /// Translate a coordinate to a [`WidgetId`]
     ///

@@ -8,7 +8,7 @@
 //! ## Sub-modules
 //!
 //! -   [`adapter`] provides the [`AdaptWidget`](adapter::AdaptWidget) trait with `with_reserve` and `with_label` methods
-//! -   [`dialog`] provides [`MessageBox`](dialog::MessageBox), a simple [`Window`](dialog::Window), ...
+//! -   [`dialog`] provides [`MessageBox`](dialog::MessageBox), ...
 //! -   [`edit`] provides [`EditBox`], [`EditField`] widgets, [`EditGuard`] trait and some impls
 //! -   [`menu`] provides a [`MenuBar`](menu::MenuBar), [`SubMenu`](menu::SubMenu), ...
 //!
@@ -98,5 +98,5 @@ pub use separator::Separator;
 pub use slider::{Slider, SliderValue};
 pub use spinner::{Spinner, SpinnerValue};
 pub use splitter::*;
-pub use stack::{BoxStack, RefStack, Stack};
+pub use stack::{BoxStack, Stack};
 pub use tab_stack::{BoxTabStack, Tab, TabStack};

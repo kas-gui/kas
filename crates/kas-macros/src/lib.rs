@@ -12,8 +12,8 @@ extern crate proc_macro;
 use impl_tools_lib::{self as lib, autoimpl};
 use proc_macro::TokenStream;
 use proc_macro_error::{emit_call_site_error, proc_macro_error};
+use syn::parse_macro_input;
 use syn::spanned::Spanned;
-use syn::{parse_macro_input, parse_quote_spanned};
 
 mod class_traits;
 mod extends;
@@ -155,8 +155,8 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///
 /// This may *only* be used within the [`impl_scope!`] macro.
 ///
-/// Implements the [`WidgetCore`] and [`Widget`] traits for the deriving type.
-/// Implements the [`WidgetChildren`], [`Events`] and [`Layout`]
+/// Implements the [`WidgetCore`] trait for the deriving type.
+/// Implements the [`Widget`], [`Events`] and [`Layout`]
 /// traits only if not implemented explicitly within the
 /// defining [`impl_scope!`].
 ///
@@ -205,7 +205,11 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// the following attributes:
 ///
 /// -   `#[widget]`: marks the field as a [`Widget`] to be configured, enumerated by
-///     [`WidgetChildren`] and included by glob layouts
+///     [`Widget::get_child`] and included by glob layouts
+/// -   `#[widget(expr)]`: the same, but maps the data reference type; `expr` is
+///     an expression returning a reference to the child widget's input data;
+///     available inputs are `self`, `data` (own input data) and `index`
+///     (of the child).
 ///
 /// ## Layout
 ///
@@ -228,7 +232,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// >
 /// > _Slice_ :\
 /// > &nbsp;&nbsp; `slice!` _Storage_? `(` _Direction_ `,` `self` `.` _Member_ `)`\
-/// > &nbsp;&nbsp; A field with type `[W]` for some `W: Layout`. (Note: this does not automatically register the slice widgets as children for the purpose of configuration and event-handling. An explicit implementation of `WidgetChildren` will be required.)
+/// > &nbsp;&nbsp; A field with type `[W]` for some `W: Layout`. (Note: this does not automatically register the slice widgets as children for the purpose of configuration and event-handling. An explicit implementation of `Widget::get_child` will be required.)
 /// >
 /// > _Frame_ :\
 /// > &nbsp;&nbsp; `frame!` _Storage_? `(` _Layout_ ( `,` `style` `=` _Expr_ )? `)`\
@@ -315,14 +319,14 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// available. Only [`Layout`] methods may be specified (overriding those from
 /// the derived widget); everything else is derived.
 ///
-/// [`Widget`]: https://docs.rs/kas/0.11/kas/trait.Widget.html
-/// [`WidgetCore`]: https://docs.rs/kas/0.11/kas/trait.WidgetCore.html
-/// [`WidgetChildren`]: https://docs.rs/kas/0.11/kas/trait.WidgetChildren.html
-/// [`Layout`]: https://docs.rs/kas/0.11/kas/trait.Layout.html
-/// [`Events`]: https://docs.rs/kas/0.11/kas/trait.Events.html
-/// [`CursorIcon`]: https://docs.rs/kas/0.11/kas/event/enum.CursorIcon.html
-/// [`Response`]: https://docs.rs/kas/0.11/kas/event/enum.Response.html
-/// [`CoreData`]: https://docs.rs/kas/0.11/kas/struct.CoreData.html
+/// [`Widget`]: https://docs.rs/kas/latest/kas/trait.Widget.html
+/// [`Widget::get_child`]: https://docs.rs/kas/latest/kas/trait.Widget.html#method.get_child
+/// [`WidgetCore`]: https://docs.rs/kas/latest/kas/trait.WidgetCore.html
+/// [`Layout`]: https://docs.rs/kas/latest/kas/trait.Layout.html
+/// [`Events`]: https://docs.rs/kas/latest/kas/trait.Events.html
+/// [`CursorIcon`]: https://docs.rs/kas/latest/kas/event/enum.CursorIcon.html
+/// [`Response`]: https://docs.rs/kas/latest/kas/event/enum.Response.html
+/// [`CoreData`]: https://docs.rs/kas/latest/kas/struct.CoreData.html
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
@@ -361,16 +365,10 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// -   **regular struct:** `ident: ty = value`
 /// -   **regular struct:** `ident: ty` (uses `Default` to construct value)
-/// -   **regular struct:** `ident = value` (type is generic without bounds)
 /// -   **tuple struct:** `ty = value`
 /// -   **tuple struct:** `ty` (uses `Default` to construct value)
 ///
 /// The field name, `ident`, may be `_` (anonymous field).
-///
-/// The field type, `ty`, may be or may contain inferred types (`_`) and/or
-/// `impl Trait` type expressions. These are substituted with generics on the
-/// type. In the special case that the field has attribute `#[widget]` and type
-/// `_`, the generic for this type has bound `::kas::Widget` applied.
 ///
 /// Refer to [examples](https://github.com/search?q=singleton+repo%3Akas-gui%2Fkas+path%3Aexamples&type=Code) for usage.
 #[proc_macro_error]
@@ -378,10 +376,18 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 pub fn singleton(input: TokenStream) -> TokenStream {
     let mut input = parse_macro_input!(input as lib::Singleton);
     for field in input.fields.iter_mut() {
-        if let syn::Type::Infer(token) = &field.ty {
-            field.ty = parse_quote_spanned! {token.span()=>
-                impl ::kas::Widget
+        if matches!(&field.ty, syn::Type::Infer(_)) {
+            let span = if let Some(ref ident) = field.ident {
+                ident.span()
+            } else if let Some((ref eq, _)) = field.assignment {
+                eq.span()
+            } else {
+                // This is always available and should be the first choice,
+                // but it may be synthesized (thus no useful span).
+                // We can't test since Span::eq is unstable!
+                field.ty.span()
             };
+            proc_macro_error::emit_error!(span, "expected `: TYPE`");
         }
     }
     let mut scope = input.into_scope();
@@ -396,9 +402,9 @@ pub fn singleton(input: TokenStream) -> TokenStream {
 ///
 /// Example usage: `widget_index![self.a]`. If `a` is a child widget (a field
 /// marked with the `#[widget]` attribute), then this expands to the child
-/// widget's index (as used by [`WidgetChildren`]). Otherwise, this is an error.
+/// widget's index (as used by [`Widget::get_child`]). Otherwise, this is an error.
 ///
-/// [`WidgetChildren`]: https://docs.rs/kas/0.11/kas/trait.WidgetChildren.html
+/// [`Widget::get_child`]: https://docs.rs/kas/latest/kas/trait.Widget.html#method.get_child
 #[proc_macro_error]
 #[proc_macro]
 pub fn widget_index(input: TokenStream) -> TokenStream {

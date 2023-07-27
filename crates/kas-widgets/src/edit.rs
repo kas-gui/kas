@@ -268,14 +268,16 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr<'_>) {
+        type Data = ();
+
+        fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr<'_>) {
             if let Some(ScrollMsg(y)) = mgr.try_pop() {
                 self.inner
-                    .set_scroll_offset(mgr, Offset(self.inner.view_offset.0, y));
+                    .set_scroll_offset(data, mgr, Offset(self.inner.view_offset.0, y));
             }
         }
 
-        fn handle_scroll(&mut self, mgr: &mut EventMgr<'_>, _: Scroll) {
+        fn handle_scroll(&mut self, _: &Self::Data, mgr: &mut EventMgr<'_>, _: Scroll) {
             self.update_scroll_bar(mgr);
         }
     }
@@ -296,8 +298,8 @@ impl_scope! {
             self.inner.scroll_offset()
         }
 
-        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
-            let offset = self.inner.set_scroll_offset(mgr, offset);
+        fn set_scroll_offset(&mut self, data: &Self::Data, mgr: &mut EventMgr, offset: Offset) -> Offset {
+            let offset = self.inner.set_scroll_offset(data, mgr, offset);
             self.update_scroll_bar(mgr);
             offset
         }
@@ -577,7 +579,9 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        type Data = ();
+
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             fn request_focus<G: EditGuard + 'static>(s: &mut EditField<G>, mgr: &mut EventMgr) {
                 if !s.has_key_focus && mgr.request_char_focus(s.id()) {
                     s.has_key_focus = true;
@@ -718,7 +722,7 @@ impl_scope! {
             self.view_offset
         }
 
-        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, _: &Self::Data, mgr: &mut EventMgr, offset: Offset) -> Offset {
             let new_offset = offset.min(self.max_scroll_offset()).max(Offset::ZERO);
             if new_offset != self.view_offset {
                 self.view_offset = new_offset;
@@ -1186,8 +1190,7 @@ impl<G: EditGuard> EditField<G> {
                 // We always delete one code-point, not one grapheme cluster:
                 let prev = self.text.text()[0..pos]
                     .char_indices()
-                    .rev()
-                    .next()
+                    .next_back()
                     .map(|(i, _)| i)
                     .unwrap_or(0);
                 Action::Delete(prev..pos)

@@ -22,6 +22,7 @@ impl_scope! {
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Default)]
     #[widget{
+        Data = W::Data;
         navigable = true;
         layout = frame!(self.inner, style = kas::theme::FrameStyle::NavFocus);
     }]
@@ -43,7 +44,7 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd) if cmd.is_activate() => {
                     mgr.push(kas::message::Select);

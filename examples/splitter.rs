@@ -36,7 +36,9 @@ fn main() -> kas::shell::Result<()> {
             #[widget] panes: RowSplitter<EditField> = panes,
         }
         impl Events for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            type Data = ();
+
+            fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
                 if let Some(msg) = mgr.try_pop::<Message>() {
                     match msg {
                         Message::Decr => {
@@ -45,6 +47,7 @@ fn main() -> kas::shell::Result<()> {
                         Message::Incr => {
                             let n = self.panes.len() + 1;
                             mgr.config_mgr(|mgr| self.panes.push(
+                                data,
                                 mgr,
                                 EditField::new(format!("Pane {n}")).with_multi_line(true)
                             ));
@@ -57,5 +60,7 @@ fn main() -> kas::shell::Result<()> {
     let window = Window::new(ui, "Slitter panes");
 
     let theme = kas_wgpu::ShadedTheme::new();
-    kas::shell::DefaultShell::new(theme)?.with(window)?.run()
+    kas::shell::DefaultShell::new((), theme)?
+        .with(window)?
+        .run()
 }

@@ -8,7 +8,7 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::{parse_quote, Expr, ImplItem, ImplItemMethod, ItemImpl, Token};
+use syn::{parse_quote, Expr, ImplItem, ImplItemFn, ItemImpl, Token};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -33,7 +33,7 @@ impl Parse for Extends {
     }
 }
 
-struct Methods(Vec<ImplItemMethod>);
+struct Methods(Vec<ImplItemFn>);
 impl Parse for Methods {
     fn parse(input: ParseStream) -> Result<Methods> {
         let mut vec = Vec::new();
@@ -47,7 +47,7 @@ impl Parse for Methods {
 }
 
 impl Extends {
-    fn methods_theme_draw(self) -> Vec<ImplItemMethod> {
+    fn methods_theme_draw(self) -> Vec<ImplItemFn> {
         let base = self.base;
         let methods: Methods = parse_quote! {
             fn new_pass<'_gen_a>(
@@ -150,12 +150,12 @@ impl Extends {
         let mut methods = self.methods_theme_draw();
         methods.retain(|method| {
             let name = method.sig.ident.to_string();
-            impl_.items.iter().all(|item| !matches!(item, ImplItem::Method(ImplItemMethod { sig, .. }) if sig.ident == name))
+            impl_.items.iter().all(
+                |item| !matches!(item, ImplItem::Fn(ImplItemFn { sig, .. }) if sig.ident == name),
+            )
         });
 
-        impl_
-            .items
-            .extend(methods.into_iter().map(ImplItem::Method));
+        impl_.items.extend(methods.into_iter().map(ImplItem::Fn));
 
         Ok(quote! { #impl_ })
     }

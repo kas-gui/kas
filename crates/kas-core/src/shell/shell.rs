@@ -24,10 +24,10 @@ use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 /// and initialises the font database. Note that this database is a global
 /// singleton and some widgets and other library code may expect fonts to have
 /// been initialised first.
-pub struct Shell<G: GraphicalShell, T: Theme<G::Shared>> {
+pub struct Shell<Data: 'static, G: GraphicalShell, T: Theme<G::Shared>> {
     el: EventLoop<ProxyAction>,
-    windows: Vec<super::Window<G::Surface, T>>,
-    shared: SharedState<G::Surface, T>,
+    windows: Vec<super::Window<Data, G::Surface, T>>,
+    shared: SharedState<Data, G::Surface, T>,
 }
 
 /// Shell associated types
@@ -41,8 +41,9 @@ pub trait ShellAssoc {
     type Draw: DrawImpl;
 }
 
-impl<G: GraphicalShell, T: Theme<G::Shared> + 'static> ShellAssoc for Shell<G, T>
+impl<A: 'static, G: GraphicalShell, T> ShellAssoc for Shell<A, G, T>
 where
+    T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,
 {
     type DrawShared = G::Shared;
@@ -50,23 +51,29 @@ where
     type Draw = G::Window;
 }
 
-impl<G: GraphicalShell + Default, T: Theme<G::Shared> + 'static> Shell<G, T>
+impl<Data: 'static, G, T> Shell<Data, G, T>
 where
+    G: GraphicalShell + Default,
+    T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,
 {
     /// Construct a new instance with default options.
+    ///
+    /// All user interfaces are expected to provide `data: Data`: widget data
+    /// shared across all windows. If not required this may be `()`.
     ///
     /// Environment variables may affect option selection; see documentation
     /// of [`Options::from_env`]. KAS config is provided by
     /// [`Options::read_config`].
     #[inline]
-    pub fn new(theme: T) -> Result<Self> {
-        Self::new_custom(G::default(), theme, Options::from_env())
+    pub fn new(data: Data, theme: T) -> Result<Self> {
+        Self::new_custom(data, G::default(), theme, Options::from_env())
     }
 }
 
-impl<G: GraphicalShell, T: Theme<G::Shared> + 'static> Shell<G, T>
+impl<Data: 'static, G: GraphicalShell, T> Shell<Data, G, T>
 where
+    T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,
 {
     /// Construct an instance with custom options
@@ -78,6 +85,7 @@ where
     /// configured through [`Options::init_theme_config`].
     #[inline]
     pub fn new_custom(
+        data: Data,
         graphical_shell: impl Into<G>,
         mut theme: T,
         options: Options,
@@ -92,7 +100,7 @@ where
         };
         let config = SharedRc::new(config);
 
-        Self::new_custom_config(graphical_shell, theme, options, config)
+        Self::new_custom_config(data, graphical_shell, theme, options, config)
     }
 
     /// Construct an instance with custom options and config
@@ -104,6 +112,7 @@ where
     /// The user should call [`Options::init_theme_config`] before this method.
     #[inline]
     pub fn new_custom_config(
+        data: Data,
         graphical_shell: impl Into<G>,
         theme: T,
         options: Options,
@@ -115,7 +124,7 @@ where
         let mut draw_shared = graphical_shell.into().build()?;
         draw_shared.set_raster_config(theme.config().raster());
         let pw = PlatformWrapper(&el);
-        let shared = SharedState::new(pw, draw_shared, theme, options, config)?;
+        let shared = SharedState::new(data, pw, draw_shared, theme, options, config)?;
 
         Ok(Shell {
             el,
@@ -127,7 +136,7 @@ where
     /// Access shared draw state
     #[inline]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
-        &mut self.shared.draw
+        &mut self.shared.shell.draw
     }
 
     /// Access event configuration
@@ -139,19 +148,19 @@ where
     /// Access the theme by ref
     #[inline]
     pub fn theme(&self) -> &T {
-        &self.shared.theme
+        &self.shared.shell.theme
     }
 
     /// Access the theme by ref mut
     #[inline]
     pub fn theme_mut(&mut self) -> &mut T {
-        &mut self.shared.theme
+        &mut self.shared.shell.theme
     }
 
     /// Assume ownership of and display a window
     #[inline]
-    pub fn add(&mut self, window: Window) -> Result<WindowId> {
-        let id = self.shared.next_window_id();
+    pub fn add(&mut self, window: Window<Data>) -> Result<WindowId> {
+        let id = self.shared.shell.next_window_id();
         let win = super::Window::new(&mut self.shared, &self.el, id, window)?;
         self.windows.push(win);
         Ok(id)
@@ -159,7 +168,7 @@ where
 
     /// Assume ownership of and display a window, inline
     #[inline]
-    pub fn with(mut self, window: Window) -> Result<Self> {
+    pub fn with(mut self, window: Window<Data>) -> Result<Self> {
         let _ = self.add(window)?;
         Ok(self)
     }

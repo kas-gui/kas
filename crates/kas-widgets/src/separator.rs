@@ -15,7 +15,9 @@ impl_scope! {
     ///
     /// This widget draws a bar when in a list.
     #[derive(Clone, Debug, Default)]
-    #[widget]
+    #[widget {
+        Data = ();
+    }]
     pub struct Separator {
         core: widget_core!(),
     }

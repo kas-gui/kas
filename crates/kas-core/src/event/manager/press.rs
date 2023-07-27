@@ -74,7 +74,7 @@ impl PressSource {
 
 /// Details of press events
 #[crate::autoimpl(Deref using self.source)]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Press {
     /// Source
     pub source: PressSource,

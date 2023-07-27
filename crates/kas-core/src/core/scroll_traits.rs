@@ -7,7 +7,7 @@
 
 use crate::event::EventMgr;
 use crate::geom::{Offset, Size};
-use crate::Action;
+use crate::{Action, Widget};
 
 /// Additional functionality on scrollable widgets
 ///
@@ -15,7 +15,7 @@ use crate::Action;
 /// a parent to control scrolling.
 ///
 /// If the widget scrolls itself it should set a scroll action via [`EventMgr::set_scroll`].
-pub trait Scrollable {
+pub trait Scrollable: Widget {
     /// Given size `size`, returns whether `(horiz, vert)` scrolling is required
     fn scroll_axes(&self, size: Size) -> (bool, bool);
 
@@ -41,7 +41,12 @@ pub trait Scrollable {
     ///
     /// The offset is clamped to the available scroll range and applied. The
     /// resulting offset is returned.
-    fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset;
+    fn set_scroll_offset(
+        &mut self,
+        data: &Self::Data,
+        mgr: &mut EventMgr,
+        offset: Offset,
+    ) -> Offset;
 }
 
 /// Scroll bar mode

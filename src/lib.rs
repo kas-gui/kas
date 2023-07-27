@@ -50,7 +50,7 @@ pub use kas_core::*;
 
 #[doc(inline)] pub extern crate kas_widgets as widget;
 
-#[cfg(any(feature = "view"))]
+#[cfg(feature = "view")]
 #[cfg_attr(doc_cfg, doc(cfg(feature = "view")))]
 #[doc(inline)]
 pub extern crate kas_view as view;
@@ -80,11 +80,13 @@ pub mod shell {
 
     /// The WGPU shell
     #[cfg(feature = "wgpu")]
-    pub type WgpuShell<CB, T> = kas_core::shell::Shell<kas_wgpu::WgpuShellBuilder<CB>, T>;
+    pub type WgpuShell<Data, CB, T> =
+        kas_core::shell::Shell<Data, kas_wgpu::WgpuShellBuilder<CB>, T>;
 
     /// The default (configuration-specific) shell
     #[cfg(feature = "wgpu")]
-    pub type DefaultShell<T> = kas_core::shell::Shell<kas_wgpu::DefaultGraphicalShell, T>;
+    pub type DefaultShell<Data, T> =
+        kas_core::shell::Shell<Data, kas_wgpu::DefaultGraphicalShell, T>;
 }
 
 #[cfg(feature = "dynamic")]

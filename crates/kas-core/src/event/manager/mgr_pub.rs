@@ -716,14 +716,21 @@ impl<'a> EventMgr<'a> {
     /// Add a window
     ///
     /// Typically an application adds at least one window before the event-loop
-    /// starts (see `kas_wgpu::Toolkit::add`), however this method is not
-    /// available to a running UI. Instead, this method may be used.
+    /// starts (see `kas_wgpu::Toolkit::add`), however that method is not
+    /// available to a running UI. This method may be used instead.
+    ///
+    /// Requirement: the type `Data` must match the type of data passed to the
+    /// `Shell` and used by other windows. If not, a run-time error will result.
     ///
     /// Caveat: if an error occurs opening the new window it will not be
     /// reported (except via log messages).
     #[inline]
-    pub fn add_window(&mut self, window: Window) -> WindowId {
-        self.shell.add_window(window)
+    pub fn add_window<Data>(&mut self, window: Window<Data>) -> WindowId {
+        let data_type_id = std::any::TypeId::of::<Data>();
+        unsafe {
+            let window: Window<()> = std::mem::transmute(window);
+            self.shell.add_window(window, data_type_id)
+        }
     }
 
     /// Close a window or pop-up
@@ -856,7 +863,7 @@ impl<'a> EventMgr<'a> {
     /// Directly access Winit Window
     ///
     /// This is a temporary API, allowing e.g. to minimize the window.
-    #[cfg(features = "winit")]
+    #[cfg(feature = "winit")]
     pub fn winit_window(&self) -> Option<&winit::window::Window> {
         self.shell.winit_window()
     }
@@ -877,7 +884,7 @@ impl<'a> EventMgr<'a> {
     /// Configure a widget
     ///
     /// This is a shortcut to [`ConfigMgr::configure`].
-    pub fn configure(&mut self, widget: &mut dyn Widget, id: WidgetId) {
+    pub fn configure(&mut self, widget: NodeMut<'_>, id: WidgetId) {
         self.config_mgr(|mgr| mgr.configure(widget, id));
     }
 }

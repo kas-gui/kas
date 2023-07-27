@@ -6,7 +6,7 @@
 //! Utilities
 
 use crate::geom::Coord;
-use crate::{Widget, WidgetExt, WidgetId};
+use crate::{Node, WidgetId};
 use std::fmt;
 
 /// Helper to display widget identification (e.g. `MyWidget#01`)
@@ -23,11 +23,11 @@ impl<'a> fmt::Display for IdentifyWidget<'a> {
 ///
 /// Note: output starts with a new line.
 pub struct WidgetHierarchy<'a> {
-    widget: &'a dyn Widget,
+    widget: Node<'a>,
     indent: usize,
 }
 impl<'a> WidgetHierarchy<'a> {
-    pub fn new(widget: &'a dyn Widget) -> Self {
+    pub fn new(widget: Node<'a>) -> Self {
         WidgetHierarchy { widget, indent: 0 }
     }
 }
@@ -80,7 +80,7 @@ impl<'a, T: fmt::Debug + ?Sized> fmt::Debug for TryFormat<'a, T> {
     }
 }
 
-/// Generic implementation of [`crate::Events::nav_next`]
+/// Generic implementation of [`Layout::nav_next`](crate::Layout::nav_next)
 pub fn nav_next(reverse: bool, from: Option<usize>, len: usize) -> Option<usize> {
     let last = len.wrapping_sub(1);
     if last == usize::MAX {

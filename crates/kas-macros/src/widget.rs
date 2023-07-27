@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::make_layout::{self, NavNextResult};
+use crate::make_layout;
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
 use proc_macro2::{Span, TokenStream as Toks};
@@ -11,7 +11,10 @@ use proc_macro_error::{emit_error, emit_warning};
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::{parse2, parse_quote, token::Eq, Ident, ImplItem, Index, ItemImpl, Member, Token, Type};
+use syn::token::Eq;
+use syn::ImplItem::{self, Verbatim};
+use syn::{parse2, parse_quote};
+use syn::{Expr, Ident, Index, ItemImpl, MacroDelimiter, Member, Meta, Token, Type};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -22,6 +25,7 @@ mod kw {
     custom_keyword!(hover_highlight);
     custom_keyword!(cursor_icon);
     custom_keyword!(derive);
+    custom_keyword!(Data);
 }
 
 #[derive(Debug)]
@@ -40,15 +44,17 @@ pub struct ExprToken {
 
 #[derive(Debug, Default)]
 pub struct WidgetArgs {
+    data_ty: Option<Type>,
     pub navigable: Option<Toks>,
     pub hover_highlight: Option<BoolToken>,
     pub cursor_icon: Option<ExprToken>,
     pub derive: Option<Member>,
-    pub layout: Option<(Span, make_layout::Tree)>,
+    pub layout: Option<(kw::layout, make_layout::Tree)>,
 }
 
 impl Parse for WidgetArgs {
     fn parse(content: ParseStream) -> Result<Self> {
+        let mut data_ty = None;
         let mut navigable = None;
         let mut hover_highlight = None;
         let mut cursor_icon = None;
@@ -58,7 +64,11 @@ impl Parse for WidgetArgs {
 
         while !content.is_empty() {
             let lookahead = content.lookahead1();
-            if lookahead.peek(kw::navigable) && navigable.is_none() {
+            if lookahead.peek(kw::Data) && data_ty.is_none() {
+                let kw = content.parse::<kw::Data>()?;
+                let _: Eq = content.parse()?;
+                data_ty = Some((kw, content.parse()?));
+            } else if lookahead.peek(kw::navigable) && navigable.is_none() {
                 let span = content.parse::<kw::navigable>()?.span();
                 let _: Eq = content.parse()?;
                 let value = content.parse::<syn::LitBool>()?;
@@ -86,7 +96,7 @@ impl Parse for WidgetArgs {
             } else if lookahead.peek(kw::layout) && layout.is_none() {
                 let kw = content.parse::<kw::layout>()?;
                 let _: Eq = content.parse()?;
-                layout = Some((kw.span, content.parse()?));
+                layout = Some((kw, content.parse()?));
             } else {
                 return Err(lookahead.error());
             }
@@ -95,13 +105,17 @@ impl Parse for WidgetArgs {
         }
 
         if let Some(_derive) = kw_derive {
-            if let Some((span, _)) = layout {
-                return Err(Error::new(span, "incompatible with widget derive"));
+            if let Some((kw, _)) = layout {
+                return Err(Error::new(kw.span, "incompatible with widget derive"));
                 // note = derive.span() => "this derive"
+            }
+            if let Some((kw, _)) = data_ty {
+                return Err(Error::new(kw.span, "incompatible with widget derive"));
             }
         }
 
         Ok(WidgetArgs {
+            data_ty: data_ty.map(|(_, ty)| ty),
             navigable,
             hover_highlight,
             cursor_icon,
@@ -128,24 +142,109 @@ impl ScopeAttr for AttrImplWidget {
     }
 
     fn apply(&self, attr: syn::Attribute, scope: &mut Scope) -> Result<()> {
-        let args = if attr.tokens.is_empty() {
-            WidgetArgs::default()
-        } else {
-            attr.parse_args()?
+        let span = attr.span();
+        let args = match &attr.meta {
+            Meta::Path(_) => WidgetArgs::default(),
+            _ => attr.parse_args()?,
         };
-        widget(args, scope)
+        widget(span, args, scope)
     }
 }
 
-pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
+pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     scope.expand_impl_self();
     let name = &scope.ident;
     let opt_derive = &args.derive;
+    let mut data_ty = args.data_ty;
 
-    let mut do_impl_widget = true;
-    let mut do_impl_widget_children = true;
+    let mut widget_impl = None;
     let mut layout_impl = None;
     let mut events_impl = None;
+
+    let mut num_children = None;
+    let mut get_child = None;
+    let mut get_child_mut = None;
+    for (index, impl_) in scope.impls.iter().enumerate() {
+        if let Some((_, ref path, _)) = impl_.trait_ {
+            if *path == parse_quote! { ::kas::Widget }
+                || *path == parse_quote! { kas::Widget }
+                || *path == parse_quote! { Widget }
+            {
+                widget_impl = Some(index);
+
+                for item in &impl_.items {
+                    if let ImplItem::Fn(ref item) = item {
+                        if item.sig.ident == "get_child" {
+                            get_child = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "get_child_mut" {
+                            get_child_mut = Some(item.sig.ident.clone());
+                        }
+                    } else if let ImplItem::Type(ref item) = item {
+                        if item.ident == "Data" {
+                            if let Some(ref ty) = data_ty {
+                                emit_error!(
+                                    ty, "depulicate definition";
+                                    note = item.ty.span() => "also defined here";
+                                );
+                            } else {
+                                data_ty = Some(item.ty.clone());
+                            }
+                        }
+                    }
+                }
+            } else if *path == parse_quote! { ::kas::Layout }
+                || *path == parse_quote! { kas::Layout }
+                || *path == parse_quote! { Layout }
+            {
+                if layout_impl.is_none() {
+                    layout_impl = Some(index);
+                }
+
+                let mut find_child_index = None;
+                let mut make_child_id = None;
+                for item in &impl_.items {
+                    if let ImplItem::Fn(ref item) = item {
+                        if item.sig.ident == "num_children" {
+                            num_children = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "find_child_index" {
+                            find_child_index = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "make_child_id" {
+                            make_child_id = Some(item.sig.ident.clone());
+                        }
+                    }
+                }
+                if let Some(ref span) = find_child_index {
+                    if make_child_id.is_none() {
+                        emit_warning!(span, "fn find_child_index without fn make_child_id");
+                    }
+                } else if let Some(ref span) = make_child_id {
+                    emit_warning!(span, "fn make_child_id without fn find_child_index");
+                }
+            } else if *path == parse_quote! { ::kas::Events }
+                || *path == parse_quote! { kas::Events }
+                || *path == parse_quote! { Events }
+            {
+                if events_impl.is_none() {
+                    events_impl = Some(index);
+                }
+
+                for item in &impl_.items {
+                    if let ImplItem::Type(ref item) = item {
+                        if item.ident == "Data" {
+                            if let Some(ref ty) = data_ty {
+                                emit_error!(
+                                    ty, "depulicate definition";
+                                    note = item.ty.span() => "also defined here";
+                                );
+                            } else {
+                                data_ty = Some(item.ty.clone());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     let fields = match &mut scope.item {
         ScopeItem::Struct { token, fields } => match fields {
@@ -163,6 +262,32 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         item => {
             return Err(syn::Error::new(item.token_span(), "expected struct"));
         }
+    };
+
+    let data_ty = if let Some(ident) = opt_derive.as_ref() {
+        'outer: {
+            for (i, field) in fields.iter_mut().enumerate() {
+                if *ident == member(i, field.ident.clone()) {
+                    let ty = &field.ty;
+                    break 'outer parse_quote! { <#ty as ::kas::Widget>::Data };
+                }
+            }
+            return Err(Error::new(ident.span(), "field not found"));
+        }
+    } else if let Some(ty) = data_ty {
+        ty
+    } else {
+        let span = if let Some(index) = widget_impl {
+            scope.impls[index].brace_token.span.open()
+        } else if let Some(index) = events_impl {
+            scope.impls[index].brace_token.span.open()
+        } else {
+            attr_span
+        };
+        return Err(Error::new(
+            span,
+            "expected a definition of Data in Events, Widget or via #[widget] property",
+        ));
     };
 
     let mut core_data: Option<Member> = None;
@@ -190,13 +315,15 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
             core_data = Some(ident.clone());
 
-            if let Some((stor_ty, stor_def)) = args
-                .layout
-                .as_ref()
-                .and_then(|(_, l)| l.storage_fields(&mut layout_children))
-            {
+            let mut stor_defs = Default::default();
+            if let Some((_, ref layout)) = args.layout {
+                stor_defs = layout.storage_fields(&mut layout_children, &data_ty);
+            }
+            if !stor_defs.ty_toks.is_empty() {
                 let name = format!("_{name}CoreTy");
                 let core_type = Ident::new(&name, Span::call_site());
+                let stor_ty = &stor_defs.ty_toks;
+                let stor_def = &stor_defs.def_toks;
                 scope.generated.push(quote! {
                     struct #core_type {
                         rect: ::kas::geom::Rect,
@@ -237,15 +364,27 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         let mut is_widget = false;
         let mut other_attrs = Vec::with_capacity(field.attrs.len());
         for attr in field.attrs.drain(..) {
-            if attr.path == parse_quote! { widget } {
-                if !attr.tokens.is_empty() {
-                    emit_error!(attr.tokens, "unexpected token");
-                }
+            if *attr.path() == parse_quote! { widget } {
+                let data: Option<Expr> = match &attr.meta {
+                    Meta::Path(_) => None,
+                    Meta::List(list) if matches!(&list.delimiter, MacroDelimiter::Paren(_)) => {
+                        Some(parse2(list.tokens.clone())?)
+                    }
+                    Meta::List(list) => {
+                        let span = list.delimiter.span().join();
+                        return Err(Error::new(span, "expected `#[widget]` or `#[widget(..)]`"));
+                    }
+                    Meta::NameValue(nv) => {
+                        let span = nv.eq_token.span();
+                        return Err(Error::new(span, "unexpected"));
+                    }
+                };
                 if Some(&ident) == opt_derive.as_ref() {
                     emit_error!(attr, "#[widget] must not be used on widget derive target");
                 }
                 is_widget = true;
-                children.push(ident.clone());
+                let span = attr.span();
+                children.push((ident.clone(), span, data));
             } else {
                 other_attrs.push(attr);
             }
@@ -266,97 +405,43 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
     }
 
-    crate::widget_index::visit_impls(children.iter(), &mut scope.impls);
+    crate::widget_index::visit_impls(children.iter().map(|(ident, _, _)| ident), &mut scope.impls);
 
-    for (index, impl_) in scope.impls.iter().enumerate() {
-        if let Some((_, ref path, _)) = impl_.trait_ {
-            if *path == parse_quote! { ::kas::WidgetChildren }
-                || *path == parse_quote! { kas::WidgetChildren }
-                || *path == parse_quote! { WidgetChildren }
-            {
-                if opt_derive.is_some() {
-                    emit_error!(impl_, "impl conflicts with use of #[widget(derive=FIELD)]");
-                }
-                if !children.is_empty() {
-                    emit_error!(
-                        impl_,
-                        "custom `WidgetChildren` implementation when using `#[widget]` on fields"
-                    );
-                } else if !layout_children.is_empty() {
-                    emit_error!(
-                        impl_,
-                        "custom `WidgetChildren` implementation when using layout-defined children"
-                    );
-                }
-                do_impl_widget_children = false;
-
-                let mut num_children = None;
-                let mut get_child = None;
-                let mut get_child_mut = None;
-                let mut find_child_index = None;
-                let mut make_child_id = None;
-                for item in &impl_.items {
-                    if let ImplItem::Method(ref item) = item {
-                        if item.sig.ident == "num_children" {
-                            num_children = Some(item.sig.ident.clone());
-                        } else if item.sig.ident == "get_child" {
-                            get_child = Some(item.sig.ident.clone());
-                        } else if item.sig.ident == "get_child_mut" {
-                            get_child_mut = Some(item.sig.ident.clone());
-                        } else if item.sig.ident == "find_child_index" {
-                            find_child_index = Some(item.sig.ident.clone());
-                        } else if item.sig.ident == "make_child_id" {
-                            make_child_id = Some(item.sig.ident.clone());
-                        }
-                    }
-                }
-                if let Some(ref span) = num_children {
-                    if get_child.is_none() {
-                        emit_warning!(span, "fn num_children without fn get_child");
-                    }
-                    if get_child_mut.is_none() {
-                        emit_warning!(span, "fn num_children without fn get_child_mut");
-                    }
-                } else if let Some(ref span) = get_child {
-                    emit_warning!(span, "fn get_child without fn num_children");
-                } else if let Some(ref span) = get_child_mut {
-                    emit_warning!(span, "fn get_child_mut without fn num_children");
-                }
-                if let Some(ref span) = find_child_index {
-                    if make_child_id.is_none() {
-                        emit_warning!(span, "fn find_child_index without fn make_child_id");
-                    }
-                } else if let Some(ref span) = make_child_id {
-                    emit_warning!(span, "fn make_child_id without fn find_child_index");
-                }
-            } else if *path == parse_quote! { ::kas::Layout }
-                || *path == parse_quote! { kas::Layout }
-                || *path == parse_quote! { Layout }
-            {
-                if layout_impl.is_none() {
-                    layout_impl = Some(index);
-                }
-            } else if *path == parse_quote! { ::kas::Events }
-                || *path == parse_quote! { kas::Events }
-                || *path == parse_quote! { Events }
-            {
-                if events_impl.is_none() {
-                    events_impl = Some(index);
-                }
-            } else if *path == parse_quote! { ::kas::Widget }
-                || *path == parse_quote! { kas::Widget }
-                || *path == parse_quote! { Widget }
-            {
-                do_impl_widget = false;
-            }
+    if let Some(ref span) = num_children {
+        if get_child.is_none() {
+            emit_warning!(span, "fn num_children without fn get_child");
+        }
+        if get_child_mut.is_none() {
+            emit_warning!(span, "fn num_children without fn get_child_mut");
         }
     }
+    if let Some(span) = get_child.as_ref().or(get_child_mut.as_ref()) {
+        if num_children.is_none() {
+            emit_warning!(span, "fn get_child[_mut] without fn num_children");
+        }
+        if opt_derive.is_some() {
+            emit_error!(span, "impl conflicts with use of #[widget(derive=FIELD)]");
+        }
+        if !children.is_empty() {
+            emit_error!(
+                span,
+                "custom `Widget::get_child` implementation when using `#[widget]` on fields"
+            );
+        } else if !layout_children.is_empty() {
+            emit_error!(
+                span,
+                "custom `Widget::get_child` implementation when using layout-defined children"
+            );
+        }
+    }
+    let do_impl_widget_children = get_child.is_none() && get_child_mut.is_none();
 
     let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
     let impl_generics = impl_generics.to_token_stream();
     let impl_target = quote! { #name #ty_generics #where_clause };
     let widget_name = name.to_string();
 
+    let mut required_layout_methods = quote! {};
     let mut fn_size_rules = None;
     let mut fn_translation = None;
     let (fn_set_rect, fn_nav_next, fn_find_id);
@@ -381,36 +466,22 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 fn widget_name(&self) -> &'static str {
                     #widget_name
                 }
-
-                #[inline]
-                fn as_node(&self) -> &dyn ::kas::Widget { self }
-                #[inline]
-                fn as_node_mut(&mut self) -> &mut dyn ::kas::Widget { self }
-            }
-
-            impl #impl_generics ::kas::WidgetChildren for #impl_target {
-                #[inline]
-                fn num_children(&self) -> usize {
-                    self.#inner.num_children()
-                }
-                #[inline]
-                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Widget> {
-                    self.#inner.get_child(index)
-                }
-                #[inline]
-                fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::Widget> {
-                    self.#inner.get_child_mut(index)
-                }
-                #[inline]
-                fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
-                    self.#inner.find_child_index(id)
-                }
-                #[inline]
-                fn make_child_id(&mut self, index: usize) -> ::kas::WidgetId {
-                    self.#inner.make_child_id(index)
-                }
             }
         });
+
+        required_layout_methods = quote! {
+            fn num_children(&self) -> usize {
+                self.#inner.num_children()
+            }
+            #[inline]
+            fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
+                self.#inner.find_child_index(id)
+            }
+            #[inline]
+            fn make_child_id(&mut self, index: usize) -> ::kas::WidgetId {
+                self.#inner.make_child_id(index)
+            }
+        };
 
         fn_size_rules = Some(quote! {
             #[inline]
@@ -456,51 +527,73 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         });
 
         // Widget methods are derived. Cost: cannot override any Events methods or translation().
+        let fns_as_node = widget_as_node_methods();
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Widget for #impl_target {
+                type Data = #data_ty;
+                #fns_as_node
+
+                #[inline]
+                fn get_child(&self, data: &Self::Data, index: usize) -> Option<::kas::Node<'_>> {
+                    self.#inner.get_child(data, index)
+                }
+                #[inline]
+                fn get_child_mut(
+                    &mut self,
+                    data: &Self::Data,
+                    index: usize,
+                ) -> Option<::kas::NodeMut<'_>> {
+                    self.#inner.get_child_mut(data, index)
+                }
+
                 fn _configure(
                     &mut self,
+                    data: &Self::Data,
                     cx: &mut ::kas::event::ConfigMgr,
                     id: ::kas::WidgetId,
                 ) {
-                    self.#inner._configure(cx, id);
+                    self.#inner._configure(data, cx, id);
                 }
 
                 fn _broadcast(
                     &mut self,
+                    data: &Self::Data,
                     cx: &mut ::kas::event::EventMgr,
                     count: &mut usize,
                     event: ::kas::event::Event,
                 ) {
-                    self.#inner._broadcast(cx, count, event);
+                    self.#inner._broadcast(data, cx, count, event);
                 }
 
                 fn _send(
                     &mut self,
+                    data: &Self::Data,
                     cx: &mut ::kas::event::EventMgr,
                     id: ::kas::WidgetId,
                     disabled: bool,
                     event: ::kas::event::Event,
                 ) -> ::kas::event::Response {
-                    self.#inner._send(cx, id, disabled, event)
+                    self.#inner._send(data, cx, id, disabled, event)
                 }
 
                 fn _replay(
                     &mut self,
+                    data: &Self::Data,
                     cx: &mut ::kas::event::EventMgr,
                     id: ::kas::WidgetId,
                     msg: ::kas::Erased,
                 ) {
-                    self.#inner._replay(cx, id, msg);
+                    self.#inner._replay(data, cx, id, msg);
                 }
 
                 fn _nav_next(
                     &mut self,
+                    data: &Self::Data,
                     cx: &mut ::kas::event::EventMgr,
                     focus: Option<&::kas::WidgetId>,
                     advance: ::kas::NavAdvance,
                 ) -> Option<::kas::WidgetId> {
-                    self.#inner._nav_next(cx, focus, advance)
+                    self.#inner._nav_next(data, cx, focus, advance)
                 }
             }
         });
@@ -518,7 +611,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 _ => unreachable!(),
             };
             return Err(Error::new(
-                span,
+                span.join(),
                 "expected: a field with type `widget_core!()`",
             ));
         };
@@ -532,12 +625,38 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         ));
 
         if do_impl_widget_children {
-            scope.generated.push(impl_widget_children(
+            let count = children.len() + layout_children.len();
+            required_layout_methods = quote! {
+                fn num_children(&self) -> usize {
+                    #count
+                }
+            };
+        }
+
+        if let Some(index) = widget_impl {
+            let widget_impl = &mut scope.impls[index];
+            let item_idents = collect_idents(widget_impl);
+            let has_item = |name| item_idents.iter().any(|ident| ident == name);
+
+            let widget_impl = &mut scope.impls[index];
+            if !has_item("Data") {
+                widget_impl.items.push(Verbatim(quote! {
+                    type Data = #data_ty;
+                }));
+            }
+            widget_impl.items.push(Verbatim(widget_as_node_methods()));
+            if !has_item("_send") {
+                widget_impl.items.push(Verbatim(widget_recursive_methods()));
+            }
+        } else {
+            scope.generated.push(impl_widget(
                 &impl_generics,
                 &impl_target,
+                &data_ty,
                 &core_path,
                 &children,
                 layout_children,
+                do_impl_widget_children,
             ));
         }
 
@@ -548,34 +667,12 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         };
         if let Some((_, layout)) = args.layout.take() {
             gen_layout = true;
-            fn_nav_next = match layout.nav_next(children.iter()) {
-                NavNextResult::Err(span, msg) => {
+            fn_nav_next = match layout.nav_next(children.iter().map(|(ident, _, _)| ident)) {
+                Ok(toks) => Some(toks),
+                Err((span, msg)) => {
                     fn_nav_next_err = Some((span, msg));
                     None
                 }
-                NavNextResult::Slice(dir) => Some(quote! {
-                    fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-                        let reverse = reverse ^ (#dir).is_reversed();
-                        kas::util::nav_next(reverse, from, self.num_children())
-                    }
-                }),
-                NavNextResult::List(order) => Some(quote! {
-                    fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-                        let mut iter = [#(#order),*].into_iter();
-                        if !reverse {
-                            if let Some(wi) = from {
-                                let _ = iter.find(|x| *x == wi);
-                            }
-                            iter.next()
-                        } else {
-                            let mut iter = iter.rev();
-                            if let Some(wi) = from {
-                                let _ = iter.find(|x| *x == wi);
-                            }
-                            iter.next()
-                        }
-                    }
-                }),
             };
 
             let layout_methods = layout.layout_methods(&quote! { self.#core })?;
@@ -606,7 +703,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         } else {
             fn_nav_next = Some(quote! {
                 fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-                    use ::kas::WidgetChildren;
                     ::kas::util::nav_next(reverse, from, self.num_children())
                 }
             });
@@ -665,6 +761,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         let fn_pre_handle_event = quote! {
             fn pre_handle_event(
                 &mut self,
+                data: &Self::Data,
                 mgr: &mut ::kas::event::EventMgr,
                 event: ::kas::event::Event,
             ) -> ::kas::event::Response {
@@ -673,29 +770,36 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     mgr.set_scroll(Scroll::Rect(self.rect()));
                 }
                 #pre_handle_event
-                self.handle_event(mgr, event)
+                self.handle_event(data, mgr, event)
             }
         };
         let fn_handle_event = None;
 
         if let Some(index) = events_impl {
             let events_impl = &mut scope.impls[index];
-            let method_idents = collect_idents(events_impl);
-            let has_method = |name| method_idents.iter().any(|ident| ident == name);
+            let item_idents = collect_idents(events_impl);
+            let has_item = |name| item_idents.iter().any(|ident| ident == name);
 
-            if opt_derive.is_some() || !has_method("pre_configure") {
-                events_impl.items.push(parse2(fn_pre_configure)?);
+            if !has_item("Data") {
+                events_impl
+                    .items
+                    .push(Verbatim(quote! { type Data = #data_ty; }));
+            }
+
+            if opt_derive.is_some() || !has_item("pre_configure") {
+                events_impl.items.push(Verbatim(fn_pre_configure));
             }
             if let Some(method) = fn_navigable {
-                events_impl.items.push(parse2(method)?);
+                events_impl.items.push(Verbatim(method));
             }
-            events_impl.items.push(parse2(fn_pre_handle_event)?);
+            events_impl.items.push(Verbatim(fn_pre_handle_event));
             if let Some(item) = fn_handle_event {
-                events_impl.items.push(parse2(item)?);
+                events_impl.items.push(Verbatim(item));
             }
         } else {
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::Events for #impl_target {
+                    type Data = #data_ty;
                     #fn_pre_configure
                     #fn_navigable
                     #fn_pre_handle_event
@@ -703,31 +807,27 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 }
             });
         }
-
-        if do_impl_widget {
-            scope
-                .generated
-                .push(impl_widget(&impl_generics, &impl_target));
-        }
     }
 
     if let Some(index) = layout_impl {
         let layout_impl = &mut scope.impls[index];
-        let method_idents = collect_idents(layout_impl);
-        let has_method = |name| method_idents.iter().any(|ident| ident == name);
+        let item_idents = collect_idents(layout_impl);
+        let has_item = |name| item_idents.iter().any(|ident| ident == name);
+
+        layout_impl.items.push(Verbatim(required_layout_methods));
 
         if let Some(method) = fn_size_rules {
-            if !has_method("size_rules") {
-                layout_impl.items.push(parse2(method)?);
+            if !has_item("size_rules") {
+                layout_impl.items.push(Verbatim(method));
             }
         }
-        if !has_method("set_rect") {
-            layout_impl.items.push(parse2(fn_set_rect)?);
+        if !has_item("set_rect") {
+            layout_impl.items.push(Verbatim(fn_set_rect));
         }
 
-        if !has_method("nav_next") {
+        if !has_item("nav_next") {
             if let Some(method) = fn_nav_next {
-                layout_impl.items.push(parse2(method)?);
+                layout_impl.items.push(Verbatim(method));
             } else if gen_layout {
                 // We emit a warning here only if nav_next is not explicitly defined
                 let (span, msg) = fn_nav_next_err.unwrap();
@@ -735,25 +835,26 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
         }
 
-        if let Some(ident) = method_idents.iter().find(|ident| *ident == "translation") {
+        if let Some(ident) = item_idents.iter().find(|ident| *ident == "translation") {
             if opt_derive.is_some() {
                 emit_error!(ident, "method not supported in derive mode");
             }
         } else if let Some(method) = fn_translation {
-            layout_impl.items.push(parse2(method)?);
+            layout_impl.items.push(Verbatim(method));
         }
 
-        if !has_method("find_id") {
-            layout_impl.items.push(parse2(fn_find_id)?);
+        if !has_item("find_id") {
+            layout_impl.items.push(Verbatim(fn_find_id));
         }
         if let Some(method) = fn_draw {
-            if !has_method("draw") {
-                layout_impl.items.push(parse2(method)?);
+            if !has_item("draw") {
+                layout_impl.items.push(Verbatim(method));
             }
         }
     } else if let Some(fn_size_rules) = fn_size_rules {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Layout for #impl_target {
+                #required_layout_methods
                 #fn_size_rules
                 #fn_set_rect
                 #fn_nav_next
@@ -773,7 +874,8 @@ fn collect_idents(item_impl: &ItemImpl) -> Vec<Ident> {
         .items
         .iter()
         .filter_map(|item| match item {
-            ImplItem::Method(m) => Some(m.sig.ident.clone()),
+            ImplItem::Fn(m) => Some(m.sig.ident.clone()),
+            ImplItem::Type(t) => Some(t.ident.clone()),
             _ => None,
         })
         .collect()
@@ -795,106 +897,147 @@ pub fn impl_core(impl_generics: &Toks, impl_target: &Toks, name: &str, core_path
             fn widget_name(&self) -> &'static str {
                 #name
             }
-
-            #[inline]
-            fn as_node(&self) -> &dyn ::kas::Widget { self }
-            #[inline]
-            fn as_node_mut(&mut self) -> &mut dyn ::kas::Widget { self }
         }
     }
 }
 
-pub fn impl_widget_children(
+pub fn impl_widget(
     impl_generics: &Toks,
     impl_target: &Toks,
+    data_ty: &Type,
     core_path: &Toks,
-    children: &Vec<Member>,
+    children: &Vec<(Member, Span, Option<Expr>)>,
     layout_children: Vec<Toks>,
+    do_impl_widget_children: bool,
 ) -> Toks {
-    let mut count = children.len();
+    let fns_as_node = widget_as_node_methods();
 
-    let mut get_rules = quote! {};
-    let mut get_mut_rules = quote! {};
-    for (i, child) in children.iter().enumerate() {
-        let ident = child;
-        get_rules.append_all(quote! { #i => Some(&self.#ident), });
-        get_mut_rules.append_all(quote! { #i => Some(&mut self.#ident), });
-    }
-    for (i, path) in layout_children.iter().enumerate() {
-        let index = count + i;
-        get_rules.append_all(quote! { #index => Some(&#core_path.#path), });
-        get_mut_rules.append_all(quote! { #index => Some(&mut #core_path.#path), });
-    }
-    count += layout_children.len();
+    let fns_get_child = if do_impl_widget_children {
+        let count = children.len();
+        let mut get_rules = quote! {};
+        let mut get_mut_rules = quote! {};
+        for (i, (ident, span, opt_data)) in children.iter().enumerate() {
+            // TODO: incorrect or unconstrained data type of child causes a poor error
+            // message here. Add a constaint like this (assuming no mapping fn):
+            // <#ty as WidgetNode::Data> == Self::Data
+            // But this is unsupported: rust#20041
+            // predicates.push(..);
 
-    quote! {
-        impl #impl_generics ::kas::WidgetChildren for #impl_target {
-            fn num_children(&self) -> usize {
-                #count
-            }
-            fn get_child(&self, _index: usize) -> Option<&dyn ::kas::Widget> {
-                match _index {
+            get_rules.append_all(if let Some(data) = opt_data {
+                quote! { #i => Some(self.#ident.as_node(#data)), }
+            } else {
+                quote_spanned! {*span=> #i => Some(self.#ident.as_node(data)), }
+            });
+            get_mut_rules.append_all(if let Some(data) = opt_data {
+                quote! { #i => Some(self.#ident.as_node_mut(#data)), }
+            } else {
+                quote_spanned! {*span=> #i => Some(self.#ident.as_node_mut(data)), }
+            });
+        }
+        for (i, path) in layout_children.iter().enumerate() {
+            let index = count + i;
+            get_rules.append_all(quote! { #index => Some(#core_path.#path.as_node(data)), });
+            get_mut_rules
+                .append_all(quote! { #index => Some(#core_path.#path.as_node_mut(data)), });
+        }
+
+        quote! {
+            fn get_child(&self, data: &Self::Data, index: usize) -> Option<::kas::Node<'_>> {
+                use ::kas::WidgetCore;
+                match index {
                     #get_rules
                     _ => None
                 }
             }
-            fn get_child_mut(&mut self, _index: usize) -> Option<&mut dyn ::kas::Widget> {
-                match _index {
+            fn get_child_mut(
+                &mut self,
+                data: &Self::Data,
+                index: usize,
+            ) -> Option<::kas::NodeMut<'_>> {
+                use ::kas::WidgetCore;
+                match index {
                     #get_mut_rules
                     _ => None
                 }
             }
         }
+    } else {
+        quote! {}
+    };
+
+    let fns_recurse = widget_recursive_methods();
+
+    quote! {
+        impl #impl_generics ::kas::Widget for #impl_target {
+            type Data = #data_ty;
+            #fns_as_node
+            #fns_get_child
+            #fns_recurse
+        }
     }
 }
 
-pub fn impl_widget(impl_generics: &Toks, impl_target: &Toks) -> Toks {
+fn widget_as_node_methods() -> Toks {
     quote! {
-        impl #impl_generics ::kas::Widget for #impl_target {
-            fn _configure(
-                &mut self,
-                cx: &mut ::kas::event::ConfigMgr,
-                id: ::kas::WidgetId,
-            ) {
-                ::kas::impls::_configure(self, cx, id);
-            }
+        #[inline]
+        fn as_node(&self, data: &Self::Data) -> ::kas::Node<'_> { ::kas::Node::new(self, data) }
+        #[inline]
+        fn as_node_mut(&mut self, data: &Self::Data) -> ::kas::NodeMut<'_> {
+            ::kas::NodeMut::new(self, data)
+        }
+    }
+}
 
-            fn _broadcast(
-                &mut self,
-                cx: &mut ::kas::event::EventMgr,
-                count: &mut usize,
-                event: ::kas::event::Event,
-            ) {
-                ::kas::impls::_broadcast(self, cx, count, event);
-            }
+fn widget_recursive_methods() -> Toks {
+    quote! {
+        fn _configure(
+            &mut self,
+            data: &Self::Data,
+            cx: &mut ::kas::event::ConfigMgr,
+            id: ::kas::WidgetId,
+        ) {
+            ::kas::impls::_configure(self, data, cx, id);
+        }
 
-            fn _send(
-                &mut self,
-                cx: &mut ::kas::event::EventMgr,
-                id: ::kas::WidgetId,
-                disabled: bool,
-                event: ::kas::event::Event,
-            ) -> ::kas::event::Response {
-                ::kas::impls::_send(self, cx, id, disabled, event)
-            }
+        fn _broadcast(
+            &mut self,
+            data: &Self::Data,
+            cx: &mut ::kas::event::EventMgr,
+            count: &mut usize,
+            event: ::kas::event::Event,
+        ) {
+            ::kas::impls::_broadcast(self, data, cx, count, event);
+        }
 
-            fn _replay(
-                &mut self,
-                cx: &mut ::kas::event::EventMgr,
-                id: ::kas::WidgetId,
-                msg: ::kas::Erased,
-            ) {
-                ::kas::impls::_replay(self, cx, id, msg);
-            }
+        fn _send(
+            &mut self,
+            data: &Self::Data,
+            cx: &mut ::kas::event::EventMgr,
+            id: ::kas::WidgetId,
+            disabled: bool,
+            event: ::kas::event::Event,
+        ) -> ::kas::event::Response {
+            ::kas::impls::_send(self, data, cx, id, disabled, event)
+        }
 
-            fn _nav_next(
-                &mut self,
-                cx: &mut ::kas::event::EventMgr,
-                focus: Option<&::kas::WidgetId>,
-                advance: ::kas::NavAdvance,
-            ) -> Option<::kas::WidgetId> {
-                ::kas::impls::_nav_next(self, cx, focus, advance)
-            }
+        fn _replay(
+            &mut self,
+            data: &Self::Data,
+            cx: &mut ::kas::event::EventMgr,
+            id: ::kas::WidgetId,
+            msg: ::kas::Erased,
+        ) {
+            ::kas::impls::_replay(self, data, cx, id, msg);
+        }
+
+        fn _nav_next(
+            &mut self,
+            data: &Self::Data,
+            cx: &mut ::kas::event::EventMgr,
+            focus: Option<&::kas::WidgetId>,
+            advance: ::kas::NavAdvance,
+        ) -> Option<::kas::WidgetId> {
+            ::kas::impls::_nav_next(self, data, cx, focus, advance)
         }
     }
 }

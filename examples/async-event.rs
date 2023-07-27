@@ -21,7 +21,7 @@ use kas::theme::TextClass;
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
     let theme = kas::theme::FlatTheme::new();
-    let shell = kas::shell::DefaultShell::new(theme)?;
+    let shell = kas::shell::DefaultShell::new((), theme)?;
 
     // We construct a proxy from the shell to enable cross-thread communication.
     let proxy = shell.create_proxy();
@@ -90,7 +90,9 @@ impl_scope! {
         }
     }
     impl Events for ColourSquare {
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        type Data = ();
+
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Update { id, .. } if id == self.update_id => {
                     self.loaded = true;

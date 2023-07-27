@@ -12,6 +12,7 @@ use crate::geom::Size;
 use crate::theme::{ThemeControl, ThemeSize};
 use crate::{Action, Window, WindowId};
 use raw_window_handle as raw;
+use std::any::TypeId;
 use thiserror::Error;
 #[cfg(feature = "winit")] use winit::error::OsError;
 
@@ -248,7 +249,14 @@ pub(crate) trait ShellWindow {
     ///
     /// This method is an alternative allowing a window to be added from an
     /// event handler, albeit without error handling.
-    fn add_window(&mut self, window: Window) -> WindowId;
+    ///
+    /// Safety: this method *should* require generic parameter `Data` (data type
+    /// passed to the `Shell`). Realising this would require adding this type
+    /// parameter to `EventMgr` and thus to all widgets (not necessarily the
+    /// type accepted by the widget as input). As an alternative we require the
+    /// caller to type-cast `Window<Data>` to `Window<()>` and pass in
+    /// `TypeId::of::<Data>()`.
+    unsafe fn add_window(&mut self, window: Window<()>, data_type_id: TypeId) -> WindowId;
 
     /// Close a window
     fn close_window(&mut self, id: WindowId);
@@ -312,7 +320,7 @@ pub(crate) trait ShellWindow {
     /// Directly access Winit Window
     ///
     /// This is a temporary API, allowing e.g. to minimize the window.
-    #[cfg(features = "winit")]
+    #[cfg(feature = "winit")]
     fn winit_window(&self) -> Option<&winit::window::Window>;
 
     /// Access a Waker

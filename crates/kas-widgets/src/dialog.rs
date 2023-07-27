@@ -13,6 +13,7 @@
 //! At the current time, only a minimal selection of dialog boxes are provided
 //! and their design is likely to change.
 
+use crate::adapter::WithAny;
 use crate::{EditBox, Filler, Label, TextButton};
 use kas::event::{Command, VirtualKeyCode};
 use kas::model::{SharedRc, SingleDataMut};
@@ -50,21 +51,23 @@ impl_scope! {
         }
 
         /// Build a [`Window`]
-        pub fn into_window(self, title: impl ToString) -> Window {
-            Window::new(self, title)
+        pub fn into_window<A: 'static>(self, title: impl ToString) -> Window<A> {
+            Window::new(WithAny::new(self), title)
                 .with_restrictions(true, true)
         }
 
     }
 
     impl Events for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        type Data = ();
+
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(MessageBoxOk) = mgr.try_pop() {
                 mgr.send_action(Action::CLOSE);
             }
         }
 
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
             mgr.enable_alt_bypass(self.id_ref(), true);
         }
     }
@@ -104,8 +107,8 @@ impl_scope! {
         }
 
         /// Build a [`Window`]
-        pub fn into_window(self, title: impl ToString) -> Window {
-            Window::new(self, title)
+        pub fn into_window<A: 'static>(self, title: impl ToString) -> Window<A> {
+            Window::new(WithAny::new(self), title)
         }
 
         fn close(&mut self, mgr: &mut EventMgr, commit: bool) -> Response {
@@ -118,7 +121,9 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        type Data = ();
+
+        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
             mgr.register_nav_fallback(self.id());
 
             // Focus first item initially:
@@ -127,7 +132,7 @@ impl_scope! {
             }
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(Command::Escape) => self.close(mgr, false),
                 Event::Command(Command::Enter) => self.close(mgr, true),
@@ -135,7 +140,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(MsgClose(commit)) = mgr.try_pop() {
                 let _ = self.close(mgr, commit);
             }

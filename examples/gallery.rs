@@ -34,7 +34,7 @@ enum Item {
 //
 // We do not wish to disable navigation, but do with to disable controls.
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
-trait SetDisabled: Widget {
+trait SetDisabled: Widget<Data = ()> {
     fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool);
 }
 impl<T: SetDisabled> SetDisabled for ScrollBarRegion<T> {
@@ -99,11 +99,13 @@ fn widgets() -> Box<dyn SetDisabled> {
                 SingleView::new(SharedRc::new("Use button to edit →".to_string())),
         }
         impl Events for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            type Data = ();
+
+            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
                 if let Some(MsgEdit) = mgr.try_pop() {
                     let text = self.label.data().clone();
                     let ed = dialog::TextEdit::new(true, text);
-                    mgr.add_window(ed.into_window("Edit text"));
+                    mgr.add_window::<()>(ed.into_window("Edit text"));
                 }
             }
         }
@@ -137,10 +139,10 @@ fn widgets() -> Box<dyn SetDisabled> {
         }]
         struct {
             core: widget_core!(),
-            #[widget] sl = ScrollLabel::new(text),
-            #[widget] eb = EditBox::new("edit me").with_guard(Guard),
-            #[widget] tb = TextButton::new_msg("&Press me", Item::Button),
-            #[widget] bi = Row::new_vec(vec![
+            #[widget] sl: impl Widget<Data = ()> = ScrollLabel::new(text),
+            #[widget] eb: impl Widget<Data = ()> = EditBox::new("edit me").with_guard(Guard),
+            #[widget] tb: impl Widget<Data = ()> = TextButton::new_msg("&Press me", Item::Button),
+            #[widget] bi: impl Widget<Data = ()> = Row::new_vec(vec![
                 Button::new_msg(img_light.clone(), Item::Theme("light"))
                     .with_color("#B38DF9".parse().unwrap())
                     .with_keys(&[VK::H]),
@@ -151,15 +153,15 @@ fn widgets() -> Box<dyn SetDisabled> {
                     .with_color("#E77346".parse().unwrap())
                     .with_keys(&[VK::K]),
             ]),
-            #[widget] cb = CheckButton::new("&Check me")
+            #[widget] cb: impl Widget<Data = ()> = CheckButton::new("&Check me")
                 .with_state(true)
                 .on_toggle(|mgr, check| mgr.push(Item::Check(check))),
-            #[widget] rb = RadioButton::new("radio button &1", radio.clone())
+            #[widget] rb: impl Widget<Data = ()> = RadioButton::new("radio button &1", radio.clone())
                 .on_select(|mgr| mgr.push(Item::Radio(1))),
-            #[widget] rb2 = RadioButton::new("radio button &2", radio)
+            #[widget] rb2: impl Widget<Data = ()> = RadioButton::new("radio button &2", radio)
                 .with_state(true)
                 .on_select(|mgr| mgr.push(Item::Radio(2))),
-            #[widget] cbb = ComboBox::new_vec(vec![
+            #[widget] cbb: impl Widget<Data = ()> = ComboBox::new_vec(vec![
                 MenuEntry::new("&One", Item::Combo(1)),
                 MenuEntry::new("T&wo", Item::Combo(2)),
                 MenuEntry::new("Th&ree", Item::Combo(3)),
@@ -170,15 +172,17 @@ fn widgets() -> Box<dyn SetDisabled> {
                 .on_move(|mgr, value| mgr.push(Item::Slider(value))),
             #[widget] sc: ScrollBar<Right> = ScrollBar::new().with_limits(100, 20),
             #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
-            #[widget] sv = img_rustacean.with_scaling(|s| {
+            #[widget] sv: impl Widget<Data = ()> = img_rustacean.with_scaling(|s| {
                 s.min_factor = 0.1;
                 s.ideal_factor = 0.2;
                 s.stretch = kas::layout::Stretch::High;
             }),
-            #[widget] pu = popup_edit_box,
+            #[widget] pu: impl Widget<Data = ()> = popup_edit_box,
         }
         impl Events for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            type Data = ();
+
+            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
                 if let Some(ScrollMsg(value)) = mgr.try_pop() {
                     if mgr.last_child() == Some(widget_index![self.sc]) {
                         let ratio = value as f32 / self.sc.max_value() as f32;
@@ -253,7 +257,9 @@ Demonstration of *as-you-type* formatting from **Markdown**.
                 ScrollLabel::new(Markdown::new(doc).unwrap()),
         }
         impl Events for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            type Data = ();
+
+            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
                 if let Some(MsgDirection) = mgr.try_pop() {
                     self.dir = match self.dir {
                         Direction::Up => Direction::Right,
@@ -314,16 +320,18 @@ fn filter_list() -> Box<dyn SetDisabled> {
         }]
         struct {
             core: widget_core!(),
-            #[widget] r0 = RadioButton::new_msg("&n&one", r.clone(), SelectionMode::None).with_state(true),
-            #[widget] r1 = RadioButton::new_msg("s&ingle", r.clone(), SelectionMode::Single),
-            #[widget] r2 = RadioButton::new_msg("&multiple", r, SelectionMode::Multiple),
-            #[widget] filter = EditBox::new("")
+            #[widget] r0: RadioButton = RadioButton::new_msg("&n&one", r.clone(), SelectionMode::None).with_state(true),
+            #[widget] r1: RadioButton = RadioButton::new_msg("s&ingle", r.clone(), SelectionMode::Single),
+            #[widget] r2: RadioButton = RadioButton::new_msg("&multiple", r, SelectionMode::Multiple),
+            #[widget] filter: impl Widget<Data = ()> = EditBox::new("")
                 .on_edit(move |mgr, s| filter.set(mgr, &(), s.to_string())),
             #[widget] list: ScrollBars<MyListView> =
                 ScrollBars::new(MyListView::new(filtered))
         }
         impl Events for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            type Data = ();
+
+            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
                 if let Some(mode) = mgr.try_pop() {
                     *mgr |= self.list.set_selection_mode(mode);
                 } else if let Some(msg) = mgr.try_pop::<SelectionMsg<usize>>() {
@@ -415,6 +423,7 @@ fn canvas() -> Box<dyn SetDisabled> {
 
     Box::new(singleton! {
         #[widget{
+            Data = ();
             layout = column! [
                 Label::new("Animated canvas demo (CPU-rendered, async). Note: scheduling is broken on X11."),
                 self.canvas,
@@ -422,7 +431,7 @@ fn canvas() -> Box<dyn SetDisabled> {
         }]
         struct {
             core: widget_core!(),
-            #[widget] canvas = Canvas::new(Program(Instant::now())),
+            #[widget] canvas: Canvas<Program> = Canvas::new(Program(Instant::now())),
         }
         impl SetDisabled for Self {
             fn set_disabled(&mut self, _: &mut EventMgr, _: bool) {}
@@ -448,6 +457,7 @@ KAS_CONFIG_MODE=readwrite
 
     Box::new(ScrollBarRegion::new(singleton! {
         #[widget{
+            Data = ();
             layout = column! [
                 ScrollLabel::new(Markdown::new(DESC).unwrap()),
                 Separator::new(),
@@ -476,7 +486,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add("simple", kas::theme::SimpleTheme::new())
         .add("shaded", kas_wgpu::ShadedTheme::new())
         .build();
-    let mut shell = kas::shell::DefaultShell::new(theme)?;
+    let mut shell = kas::shell::DefaultShell::new((), theme)?;
 
     // TODO: use as logo of tab
     // let img_gallery = Svg::new(include_bytes!("../res/gallery-line.svg"));
@@ -538,7 +548,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }]
         struct {
             core: widget_core!(),
-            #[widget] menubar = menubar,
+            #[widget] menubar: impl Widget<Data = ()> = menubar,
             #[widget] stack: TabStack<Box<dyn SetDisabled>> = TabStack::new()
                 .with_title("&Widgets", widgets()) //TODO: use img_gallery as logo
                 .with_title("Te&xt editor", editor())
@@ -547,7 +557,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .with_title("Confi&g", config(shell.event_config().clone())),
         }
         impl Events for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            type Data = ();
+
+            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
                 if let Some(msg) = mgr.try_pop::<Menu>() {
                     match msg {
                         Menu::Theme(name) => {

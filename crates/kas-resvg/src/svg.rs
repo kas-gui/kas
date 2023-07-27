@@ -252,7 +252,9 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        type Data = ();
+
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(pixmap) = mgr.try_pop::<Pixmap>() {
                 let size = (pixmap.width(), pixmap.height());
                 mgr.draw_shared(|ds| {

@@ -28,6 +28,7 @@ impl_scope! {
     // Buttons get keyboard bindings through the "&" item (e.g. "&1"
     // binds both main and numpad 1 key) and via `with_keys`.
     #[widget{
+        Data = ();
         layout = grid! {
             (0, 0) => TextButton::new_msg("&clear", Key::Clear).with_keys(&[VK::Delete]),
             (1, 0) => TextButton::new_msg("&÷", Key::Divide).with_keys(&[VK::Slash]),
@@ -73,7 +74,9 @@ impl_scope! {
         calc: Calculator = Calculator::new(),
     }
     impl Events for Self {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        type Data = ();
+
+        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
             mgr.disable_nav_focus(true);
 
             // Enable key bindings without Alt held:
@@ -82,7 +85,7 @@ impl_scope! {
             mgr.register_nav_fallback(self.id());
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(Command::DelBack) => {
                     mgr.push(Key::DelBack);
@@ -92,7 +95,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(msg) = mgr.try_pop::<Key>() {
                 if self.calc.handle(msg) {
                     *mgr |= self.display.set_string(self.calc.display());
@@ -107,7 +110,9 @@ fn main() -> kas::shell::Result<()> {
 
     let theme = kas_wgpu::ShadedTheme::new().with_font_size(16.0);
     let window = Window::new(CalcUI::default(), "Calculator");
-    kas::shell::DefaultShell::new(theme)?.with(window)?.run()
+    kas::shell::DefaultShell::new((), theme)?
+        .with(window)?
+        .run()
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

@@ -11,6 +11,7 @@ use kas::widget::{Column, Label, StrLabel};
 
 impl_scope! {
     #[widget{
+        Data = ();
         layout = self.label;
         cursor_icon = self.cursor;
     }]
@@ -83,5 +84,7 @@ fn main() -> kas::shell::Result<()> {
 
     let window = Window::new(column, "Cursor gallery");
     let theme = kas::theme::FlatTheme::new();
-    kas::shell::DefaultShell::new(theme)?.with(window)?.run()
+    kas::shell::DefaultShell::new((), theme)?
+        .with(window)?
+        .run()
 }

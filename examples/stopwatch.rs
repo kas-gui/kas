@@ -19,7 +19,7 @@ struct MsgStart;
 
 // Unlike most examples, we encapsulate the GUI configuration into a function.
 // There's no reason for this, but it demonstrates usage of Toolkit::add_boxed
-fn make_window() -> Box<dyn kas::Widget> {
+fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
     Box::new(kas::singleton! {
         #[widget{
             layout = row! [
@@ -30,15 +30,17 @@ fn make_window() -> Box<dyn kas::Widget> {
         }]
         struct {
             core: widget_core!(),
-            #[widget] display: impl Widget + HasString = Frame::new(Label::new("0.000".to_string())),
+            #[widget] display: impl Widget<Data = ()> + HasString = Frame::new(Label::new("0.000".to_string())),
             saved: Duration,
             start: Option<Instant>,
         }
         impl Events for Self {
-            fn configure(&mut self, mgr: &mut ConfigMgr) {
+            type Data = ();
+
+            fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
                 mgr.enable_alt_bypass(self.id_ref(), true);
             }
-            fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+            fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
                 match event {
                     Event::TimerUpdate(0) => {
                         if let Some(start) = self.start {
@@ -52,7 +54,7 @@ fn make_window() -> Box<dyn kas::Widget> {
                     _ => Response::Unused,
                 }
             }
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
                 if let Some(MsgReset) = mgr.try_pop() {
                     self.saved = Duration::default();
                     self.start = None;
@@ -82,5 +84,7 @@ fn main() -> kas::shell::Result<()> {
     let theme = kas_wgpu::ShadedTheme::new()
         .with_colours("dark")
         .with_font_size(18.0);
-    kas::shell::DefaultShell::new(theme)?.with(window)?.run()
+    kas::shell::DefaultShell::new((), theme)?
+        .with(window)?
+        .run()
 }

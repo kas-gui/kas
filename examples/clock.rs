@@ -23,7 +23,7 @@ use kas::prelude::*;
 use kas::shell::ShellAssoc;
 
 type Theme = kas::theme::FlatTheme;
-type Shell = kas::shell::DefaultShell<Theme>;
+type Shell = kas::shell::DefaultShell<(), Theme>;
 
 impl_scope! {
     #[derive(Clone)]
@@ -120,11 +120,13 @@ impl_scope! {
     }
 
     impl Events for Clock {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        type Data = ();
+
+        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
             mgr.request_timer_update(self.id(), 0, Duration::new(0, 0), true);
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(0) => {
                     self.now = Local::now();
@@ -174,5 +176,5 @@ fn main() -> kas::shell::Result<()> {
         .with_decorations(kas::Decorations::None)
         .with_transparent(true);
 
-    Shell::new(Theme::new())?.with(window)?.run()
+    Shell::new((), Theme::new())?.with(window)?.run()
 }

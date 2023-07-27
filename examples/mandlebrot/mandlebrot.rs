@@ -354,7 +354,9 @@ impl_scope! {
     }
 
     impl Events for Mandlebrot {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        type Data = ();
+
+        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
             mgr.register_nav_fallback(self.id());
         }
 
@@ -362,7 +364,7 @@ impl_scope! {
             true
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd) => {
                     match cmd {
@@ -461,7 +463,9 @@ impl_scope! {
         }
     }
     impl Events for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        type Data = ();
+
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(iter) = mgr.try_pop() {
                 self.mbrot.iter = iter;
                 *mgr |= self.iters.set_string(format!("{iter}"));
@@ -479,7 +483,7 @@ fn main() -> kas::shell::Result<()> {
     let window = Window::new(MandlebrotUI::new(), "Mandlebrot").with_drag_anywhere(false);
     let theme = kas::theme::FlatTheme::new().with_colours("dark");
     let options = kas::config::Options::from_env();
-    kas::shell::WgpuShell::new_custom(PipeBuilder, theme, options)?
+    kas::shell::WgpuShell::new_custom((), PipeBuilder, theme, options)?
         .with(window)?
         .run()
 }

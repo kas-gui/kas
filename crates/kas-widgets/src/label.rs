@@ -20,7 +20,9 @@ impl_scope! {
     /// See also: [`StrLabel`], [`StringLabel`], [`AccelLabel`].
     #[impl_default(where T: Default)]
     #[derive(Clone, Debug)]
-    #[widget]
+    #[widget {
+        Data = ();
+    }]
     pub struct Label<T: FormattableText + 'static> {
         core: widget_core!(),
         class: TextClass = TextClass::Label(true),
@@ -312,11 +314,13 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        type Data = ();
+
+        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
             mgr.add_accel_keys(self.id_ref(), self.label.text().keys());
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd) if cmd.is_activate() => {
                     mgr.push(kas::message::Activate);

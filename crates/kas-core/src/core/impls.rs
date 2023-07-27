@@ -7,43 +7,50 @@
 
 use crate::event::{ConfigMgr, Event, EventMgr, Response};
 use crate::util::IdentifyWidget;
-use crate::{Erased, Events, Layout, NavAdvance, WidgetChildren, WidgetId};
+use crate::{Erased, Events, Layout, NavAdvance, Widget, WidgetId};
 
 /// Generic implementation of [`Widget::_configure`]
-pub fn _configure<W: WidgetChildren + Events>(widget: &mut W, cx: &mut ConfigMgr, id: WidgetId) {
+pub fn _configure<W: Widget + Events<Data = <W as Widget>::Data>>(
+    widget: &mut W,
+    data: &<W as Widget>::Data,
+    cx: &mut ConfigMgr,
+    id: WidgetId,
+) {
     widget.pre_configure(cx, id);
 
     for index in 0..widget.num_children() {
         let id = widget.make_child_id(index);
         if id.is_valid() {
-            if let Some(widget) = widget.get_child_mut(index) {
+            if let Some(mut widget) = widget.get_child_mut(data, index) {
                 widget._configure(cx, id);
             }
         }
     }
 
-    widget.configure(cx);
+    widget.configure(data, cx);
 }
 
 /// Generic implementation of [`Widget::_broadcast`]
-pub fn _broadcast<W: WidgetChildren + Events>(
+pub fn _broadcast<W: Widget + Events<Data = <W as Widget>::Data>>(
     widget: &mut W,
+    data: &<W as Widget>::Data,
     cx: &mut EventMgr,
     count: &mut usize,
     event: Event,
 ) {
-    widget.handle_event(cx, event.clone());
+    widget.handle_event(data, cx, event.clone());
     *count += 1;
     for index in 0..widget.num_children() {
-        if let Some(w) = widget.get_child_mut(index) {
+        if let Some(mut w) = widget.get_child_mut(data, index) {
             w._broadcast(cx, count, event.clone());
         }
     }
 }
 
 /// Generic implementation of [`Widget::_send`]
-pub fn _send<W: WidgetChildren + Events>(
+pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
     widget: &mut W,
+    data: &<W as Widget>::Data,
     cx: &mut EventMgr,
     id: WidgetId,
     disabled: bool,
@@ -55,17 +62,17 @@ pub fn _send<W: WidgetChildren + Events>(
             return response;
         }
 
-        response |= widget.pre_handle_event(cx, event);
-    } else if widget.steal_event(cx, &id, &event).is_used() {
+        response |= widget.pre_handle_event(data, cx, event);
+    } else if widget.steal_event(data, cx, &id, &event).is_used() {
         response = Response::Used;
     } else {
         cx.assert_post_steal_unused();
         if let Some(index) = widget.find_child_index(&id) {
             let translation = widget.translation();
-            if let Some(w) = widget.get_child_mut(index) {
+            if let Some(mut w) = widget.get_child_mut(data, index) {
                 response = w._send(cx, id, disabled, event.clone() + translation);
                 if let Some(scroll) = cx.post_send(index) {
-                    widget.handle_scroll(cx, scroll);
+                    widget.handle_scroll(data, cx, scroll);
                 }
             } else {
                 #[cfg(debug_assertions)]
@@ -77,29 +84,30 @@ pub fn _send<W: WidgetChildren + Events>(
         }
 
         if response.is_unused() && event.is_reusable() {
-            response = widget.handle_event(cx, event);
+            response = widget.handle_event(data, cx, event);
         }
     }
 
     if cx.has_msg() {
-        widget.handle_message(cx);
+        widget.handle_message(data, cx);
     }
 
     response
 }
 
 /// Generic implementation of [`Widget::_replay`]
-pub fn _replay<W: WidgetChildren + Events>(
+pub fn _replay<W: Widget + Events<Data = <W as Widget>::Data>>(
     widget: &mut W,
+    data: &<W as Widget>::Data,
     cx: &mut EventMgr,
     id: WidgetId,
     msg: Erased,
 ) {
     if let Some(index) = widget.find_child_index(&id) {
-        if let Some(w) = widget.get_child_mut(index) {
+        if let Some(mut w) = widget.get_child_mut(data, index) {
             w._replay(cx, id, msg);
             if let Some(scroll) = cx.post_send(index) {
-                widget.handle_scroll(cx, scroll);
+                widget.handle_scroll(data, cx, scroll);
             }
         } else {
             #[cfg(debug_assertions)]
@@ -110,11 +118,11 @@ pub fn _replay<W: WidgetChildren + Events>(
         }
 
         if cx.has_msg() {
-            widget.handle_message(cx);
+            widget.handle_message(data, cx);
         }
     } else if id == widget.id_ref() {
         cx.push_erased(msg);
-        widget.handle_message(cx);
+        widget.handle_message(data, cx);
     } else {
         #[cfg(debug_assertions)]
         log::debug!(
@@ -125,8 +133,9 @@ pub fn _replay<W: WidgetChildren + Events>(
 }
 
 /// Generic implementation of [`Widget::_nav_next`]
-pub fn _nav_next<W: WidgetChildren + Events>(
+pub fn _nav_next<W: Widget + Events<Data = <W as Widget>::Data>>(
     widget: &mut W,
+    data: &<W as Widget>::Data,
     cx: &mut EventMgr,
     focus: Option<&WidgetId>,
     advance: NavAdvance,
@@ -139,8 +148,8 @@ pub fn _nav_next<W: WidgetChildren + Events>(
 
     if let Some(index) = child {
         if let Some(id) = widget
-            .get_child_mut(index)
-            .and_then(|w| w._nav_next(cx, focus, advance))
+            .get_child_mut(data, index)
+            .and_then(|mut w| w._nav_next(cx, focus, advance))
         {
             return Some(id);
         }
@@ -166,8 +175,8 @@ pub fn _nav_next<W: WidgetChildren + Events>(
 
     while let Some(index) = widget.nav_next(rev, child) {
         if let Some(id) = widget
-            .get_child_mut(index)
-            .and_then(|w| w._nav_next(cx, focus, advance))
+            .get_child_mut(data, index)
+            .and_then(|mut w| w._nav_next(cx, focus, advance))
         {
             return Some(id);
         }

@@ -20,7 +20,7 @@ bitflags::bitflags! {
     ///
     /// This is mostly an implementation detail used to control the appearance
     /// of theme-drawn elements.
-    #[derive(Default)]
+    #[derive(Copy, Clone, Default)]
     pub struct InputState: u8 {
         /// Disabled widgets are not responsive to input and usually drawn in grey.
         ///

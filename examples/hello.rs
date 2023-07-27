@@ -11,5 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let window = MessageBox::new("Message").into_window("Hello world");
 
     let theme = kas::theme::FlatTheme::new();
-    kas::shell::DefaultShell::new(theme)?.with(window)?.run()
+    kas::shell::DefaultShell::new((), theme)?
+        .with(window)?
+        .run()
 }

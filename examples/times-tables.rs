@@ -66,7 +66,7 @@ fn main() -> kas::shell::Result<()> {
         }]
         struct {
             core: widget_core!(),
-            #[widget] max: impl Widget + HasString = EditBox::new("12")
+            #[widget] max: impl Widget<Data = ()> + HasString = EditBox::new("12")
                 .on_afl(|mgr, text| match text.parse::<usize>() {
                     Ok(n) => mgr.push(n),
                     Err(_) => (),
@@ -74,7 +74,9 @@ fn main() -> kas::shell::Result<()> {
             #[widget] table: ScrollBars<MatrixView<TableData, driver::NavView>> = table,
         }
         impl Events for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            type Data = ();
+
+            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
                 if mgr.last_child() == Some(widget_index![self.max]) {
                     if let Some(max) = mgr.try_pop::<usize>() {
                         let data = self.table.data_mut();
@@ -91,5 +93,7 @@ fn main() -> kas::shell::Result<()> {
     let window = Window::new(ui, "Times-Tables");
 
     let theme = kas::theme::SimpleTheme::new().with_font_size(16.0);
-    kas::shell::DefaultShell::new(theme)?.with(window)?.run()
+    kas::shell::DefaultShell::new((), theme)?
+        .with(window)?
+        .run()
 }

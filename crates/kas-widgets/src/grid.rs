@@ -16,7 +16,7 @@ use std::ops::{Index, IndexMut};
 /// This is parameterised over the handler message type.
 ///
 /// See documentation of [`Grid`] type.
-pub type BoxGrid = Grid<Box<dyn Widget>>;
+pub type BoxGrid<Data> = Grid<Box<dyn Widget<Data = Data>>>;
 
 impl_scope! {
     /// A generic grid widget
@@ -61,22 +61,24 @@ impl_scope! {
         on_message: Option<fn(&mut EventMgr, usize)>,
     }
 
-    impl WidgetChildren for Self {
+    impl Widget for Self {
+        type Data = W::Data;
+
         #[inline]
-        fn num_children(&self) -> usize {
-            self.widgets.len()
+        fn get_child(&self, data: &Self::Data, index: usize) -> Option<Node> {
+            self.widgets.get(index).map(|c| c.1.as_node(data))
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
-            self.widgets.get(index).map(|c| c.1.as_node())
-        }
-        #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
-            self.widgets.get_mut(index).map(|c| c.1.as_node_mut())
+        fn get_child_mut(&mut self, data: &Self::Data, index: usize) -> Option<NodeMut> {
+            self.widgets.get_mut(index).map(|c| c.1.as_node_mut(data))
         }
     }
 
     impl Layout for Self {
+        #[inline]
+        fn num_children(&self) -> usize {
+            self.widgets.len()
+        }
         fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, &mut self.data);
             for (info, child) in &mut self.widgets {
@@ -113,7 +115,7 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(f) = self.on_message {
                 let index = mgr.last_child().expect("message not sent from self");
                 f(mgr, index);

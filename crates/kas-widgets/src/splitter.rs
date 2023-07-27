@@ -29,38 +29,21 @@ pub type ColumnSplitter<W> = Splitter<Down, W>;
 /// This is parameterised over handler message type.
 ///
 /// See documentation of [`Splitter`] type.
-pub type BoxRowSplitter = BoxSplitter<Right>;
+pub type BoxRowSplitter<Data> = BoxSplitter<Right, Data>;
 
 /// A column of boxed widgets
 ///
 /// This is parameterised over handler message type.
 ///
 /// See documentation of [`Splitter`] type.
-pub type BoxColumnSplitter = BoxSplitter<Down>;
+pub type BoxColumnSplitter<Data> = BoxSplitter<Down, Data>;
 
 /// A row/column of boxed widgets
 ///
 /// This is parameterised over directionality.
 ///
 /// See documentation of [`Splitter`] type.
-pub type BoxSplitter<D> = Splitter<D, Box<dyn Widget>>;
-
-/// A row of widget references
-///
-/// See documentation of [`Splitter`] type.
-pub type RefRowSplitter<'a> = RefSplitter<'a, Right>;
-
-/// A column of widget references
-///
-/// See documentation of [`Splitter`] type.
-pub type RefColumnSplitter<'a> = RefSplitter<'a, Down>;
-
-/// A row/column of widget references
-///
-/// This is parameterised over directionality.
-///
-/// See documentation of [`Splitter`] type.
-pub type RefSplitter<'a, D> = Splitter<D, &'a mut dyn Widget>;
+pub type BoxSplitter<D, Data> = Splitter<D, Box<dyn Widget<Data = Data>>>;
 
 impl_scope! {
     /// A resizable row/column widget
@@ -107,26 +90,29 @@ impl_scope! {
         }
     }
 
-    impl WidgetChildren for Self {
+    impl Widget for Self {
+        #[inline]
+        fn get_child(&self, data: &W::Data, index: usize) -> Option<Node> {
+            if (index & 1) != 0 {
+                self.handles.get(index >> 1).map(|w| w.as_node(&()))
+            } else {
+                self.widgets.get(index >> 1).map(|w| w.as_node(data))
+            }
+        }
+        #[inline]
+        fn get_child_mut(&mut self, data: &W::Data, index: usize) -> Option<NodeMut> {
+            if (index & 1) != 0 {
+                self.handles.get_mut(index >> 1).map(|w| w.as_node_mut(&()))
+            } else {
+                self.widgets.get_mut(index >> 1).map(|w| w.as_node_mut(data))
+            }
+        }
+    }
+
+    impl Layout for Self {
         #[inline]
         fn num_children(&self) -> usize {
             self.widgets.len() + self.handles.len()
-        }
-        #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
-            if (index & 1) != 0 {
-                self.handles.get(index >> 1).map(|w| w.as_node())
-            } else {
-                self.widgets.get(index >> 1).map(|w| w.as_node())
-            }
-        }
-        #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
-            if (index & 1) != 0 {
-                self.handles.get_mut(index >> 1).map(|w| w.as_node_mut())
-            } else {
-                self.widgets.get_mut(index >> 1).map(|w| w.as_node_mut())
-            }
         }
 
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
@@ -138,9 +124,7 @@ impl_scope! {
             let is_handle = (child_index & 1) != 0;
             self.make_next_id(is_handle, child_index / 2)
         }
-    }
 
-    impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             if self.widgets.is_empty() {
                 return SizeRules::EMPTY;
@@ -241,12 +225,14 @@ impl_scope! {
     }
 
     impl Events for Self {
+        type Data = W::Data;
+
         fn pre_configure(&mut self, _: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             let index = mgr.last_child().expect("message not sent from self");
             if (index & 1) == 1 {
                 if let Some(GripMsg::PressMove(offset)) = mgr.try_pop() {
@@ -385,18 +371,18 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// triggered.
     ///
     /// Returns the new element's index.
-    pub fn push(&mut self, mgr: &mut ConfigMgr, mut widget: W) -> usize {
+    pub fn push(&mut self, data: &W::Data, mgr: &mut ConfigMgr, mut widget: W) -> usize {
         let index = self.widgets.len();
         if index > 0 {
             let len = self.handles.len();
             let id = self.make_next_id(true, len);
             let mut w = GripPart::new();
-            mgr.configure(&mut w, id);
+            mgr.configure(w.as_node_mut(&()), id);
             self.handles.push(w);
         }
 
         let id = self.make_next_id(false, index);
-        mgr.configure(&mut widget, id);
+        mgr.configure(widget.as_node_mut(data), id);
         self.widgets.push(widget);
 
         self.size_solved = false;
@@ -434,7 +420,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// Panics if `index > len`.
     ///
     /// The new child is configured immediately. Triggers [`Action::RESIZE`].
-    pub fn insert(&mut self, mgr: &mut ConfigMgr, index: usize, mut widget: W) {
+    pub fn insert(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize, mut widget: W) {
         for v in self.id_map.values_mut() {
             if *v >= index {
                 *v += 2;
@@ -445,12 +431,12 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
             let index = index.min(self.handles.len());
             let id = self.make_next_id(true, index);
             let mut w = GripPart::new();
-            mgr.configure(&mut w, id);
+            mgr.configure(w.as_node_mut(&()), id);
             self.handles.insert(index, w);
         }
 
         let id = self.make_next_id(false, index);
-        mgr.configure(&mut widget, id);
+        mgr.configure(widget.as_node_mut(data), id);
         self.widgets.insert(index, widget);
 
         self.size_solved = false;
@@ -493,9 +479,9 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// Panics if `index` is out of bounds.
     ///
     /// The new child is configured immediately. Triggers [`Action::RESIZE`].
-    pub fn replace(&mut self, mgr: &mut ConfigMgr, index: usize, mut w: W) -> W {
+    pub fn replace(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize, mut w: W) -> W {
         let id = self.make_next_id(false, index);
-        mgr.configure(&mut w, id);
+        mgr.configure(w.as_node_mut(data), id);
         std::mem::swap(&mut w, &mut self.widgets[index]);
 
         if w.id_ref().is_valid() {
@@ -513,7 +499,12 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// Append child widgets from an iterator
     ///
     /// New children are configured immediately. Triggers [`Action::RESIZE`].
-    pub fn extend<T: IntoIterator<Item = W>>(&mut self, mgr: &mut ConfigMgr, iter: T) {
+    pub fn extend<T: IntoIterator<Item = W>>(
+        &mut self,
+        data: &W::Data,
+        mgr: &mut ConfigMgr,
+        iter: T,
+    ) {
         let iter = iter.into_iter();
         if let Some(ub) = iter.size_hint().1 {
             self.handles.reserve(ub);
@@ -525,12 +516,12 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
             if index > 0 {
                 let id = self.make_next_id(true, self.handles.len());
                 let mut w = GripPart::new();
-                mgr.configure(&mut w, id);
+                mgr.configure(w.as_node_mut(&()), id);
                 self.handles.push(w);
             }
 
             let id = self.make_next_id(false, index);
-            mgr.configure(&mut widget, id);
+            mgr.configure(widget.as_node_mut(data), id);
             self.widgets.push(widget);
         }
 
@@ -541,7 +532,13 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// Resize, using the given closure to construct new widgets
     ///
     /// New children are configured immediately. Triggers [`Action::RESIZE`].
-    pub fn resize_with<F: Fn(usize) -> W>(&mut self, mgr: &mut ConfigMgr, len: usize, f: F) {
+    pub fn resize_with<F: Fn(usize) -> W>(
+        &mut self,
+        data: &W::Data,
+        mgr: &mut ConfigMgr,
+        len: usize,
+        f: F,
+    ) {
         let old_len = self.widgets.len();
 
         if len < old_len {
@@ -578,13 +575,13 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
                 if index > 0 {
                     let id = self.make_next_id(true, self.handles.len());
                     let mut w = GripPart::new();
-                    mgr.configure(&mut w, id);
+                    mgr.configure(w.as_node_mut(&()), id);
                     self.handles.push(w);
                 }
 
                 let id = self.make_next_id(false, index);
                 let mut widget = f(index);
-                mgr.configure(&mut widget, id);
+                mgr.configure(widget.as_node_mut(data), id);
                 self.widgets.push(widget);
             }
 

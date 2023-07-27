@@ -195,7 +195,6 @@ impl_scope! {
             }
         }
 
-        #[allow(clippy::manual_clamp)]
         fn update_widgets(&mut self) -> Action {
             let len = self.bar_len();
             let total = i64::from(self.max_value) + i64::from(self.handle_value);
@@ -302,7 +301,9 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        type Data = ();
+
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(_) => {
                     self.force_visible = false;
@@ -318,7 +319,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(GripMsg::PressMove(offset)) = mgr.try_pop() {
                 self.apply_grip_offset(mgr, offset);
             }
@@ -340,14 +341,16 @@ impl_scope! {
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[impl_default(where W: trait)]
     #[derive(Clone, Debug)]
-    #[widget]
+    #[widget {
+        Data = W::Data;
+    }]
     pub struct ScrollBars<W: Scrollable + Widget> {
         core: widget_core!(),
         mode: ScrollBarMode,
         show_bars: (bool, bool), // set by user (or set_rect when mode == Auto)
-        #[widget]
+        #[widget(&())]
         horiz_bar: ScrollBar<kas::dir::Right>,
-        #[widget]
+        #[widget(&())]
         vert_bar: ScrollBar<kas::dir::Down>,
         #[widget]
         inner: W,
@@ -429,8 +432,8 @@ impl_scope! {
         fn scroll_offset(&self) -> Offset {
             self.inner.scroll_offset()
         }
-        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
-            let offset = self.inner.set_scroll_offset(mgr, offset);
+        fn set_scroll_offset(&mut self, data: &Self::Data, mgr: &mut EventMgr, offset: Offset) -> Offset {
+            let offset = self.inner.set_scroll_offset(data, mgr, offset);
             self.horiz_bar.set_value(mgr, offset.0);
             self.vert_bar.set_value(mgr, offset.1);
             offset
@@ -528,22 +531,22 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
             let index = mgr.last_child().expect("message not sent from self");
             if index == widget_index![self.horiz_bar] {
                 if let Some(ScrollMsg(x)) = mgr.try_pop() {
                     let offset = Offset(x, self.inner.scroll_offset().1);
-                    self.inner.set_scroll_offset(mgr, offset);
+                    self.inner.set_scroll_offset(data, mgr, offset);
                 }
             } else if index == widget_index![self.vert_bar] {
                 if let Some(ScrollMsg(y)) = mgr.try_pop() {
                     let offset = Offset(self.inner.scroll_offset().0, y);
-                    self.inner.set_scroll_offset(mgr, offset);
+                    self.inner.set_scroll_offset(data, mgr, offset);
                 }
             }
         }
 
-        fn handle_scroll(&mut self, mgr: &mut EventMgr, _: Scroll) {
+        fn handle_scroll(&mut self, _: &Self::Data, mgr: &mut EventMgr, _: Scroll) {
             // We assume the inner already updated its positions; this is just to set bars
             let offset = self.inner.scroll_offset();
             self.horiz_bar.set_value(mgr, offset.0);
@@ -618,8 +621,8 @@ impl_scope! {
             self.0.inner.scroll_offset()
         }
         #[inline]
-        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
-            self.0.set_scroll_offset(mgr, offset)
+        fn set_scroll_offset(&mut self, data: &Self::Data, mgr: &mut EventMgr, offset: Offset) -> Offset {
+            self.0.set_scroll_offset(data, mgr, offset)
         }
     }
 }

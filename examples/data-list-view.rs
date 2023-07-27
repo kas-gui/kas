@@ -133,6 +133,7 @@ impl EditGuard for ListEntryGuard {
 impl_scope! {
     // The list entry
     #[widget{
+        Data = ();
         layout = column! [
             row! [self.label, self.radio],
             self.edit,
@@ -227,7 +228,9 @@ fn main() -> kas::shell::Result<()> {
             n: usize = 3,
         }
         impl Events for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            type Data = ();
+
+            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
                 if mgr.last_child() == Some(widget_index![self.edit]) {
                     if let Some(n) = mgr.try_pop::<usize>() {
                         if n != self.n {
@@ -269,13 +272,15 @@ fn main() -> kas::shell::Result<()> {
         }]
         struct {
             core: widget_core!(),
-            #[widget] controls = controls,
+            #[widget] controls: impl Widget<Data = ()> = controls,
             #[widget] display: StringLabel = Label::from("Entry #1"),
             #[widget] list: ScrollBars<MyList> =
                 ScrollBars::new(list).with_fixed_bars(false, true),
         }
         impl Events for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr) {
+            type Data = ();
+
+            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
                 if let Some(control) = mgr.try_pop::<Control>() {
                     match control {
                         Control::SetLen(len) => {
@@ -299,5 +304,7 @@ fn main() -> kas::shell::Result<()> {
     let window = Window::new(ui, "Dynamic widget demo");
 
     let theme = kas::theme::FlatTheme::new();
-    kas::shell::DefaultShell::new(theme)?.with(window)?.run()
+    kas::shell::DefaultShell::new((), theme)?
+        .with(window)?
+        .run()
 }

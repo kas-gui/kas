@@ -150,6 +150,8 @@ impl_scope! {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
             // FIXME: new layer should apply to self.list but not to self.label.
@@ -164,7 +166,7 @@ impl_scope! {
             self.navigable
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd) if cmd.is_activate() => {
                     if self.popup_id.is_none() {
@@ -182,7 +184,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr) {
+        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(kas::message::Activate) = mgr.try_pop() {
                 if self.popup_id.is_none() {
                     self.open_menu(mgr, true);
@@ -192,7 +194,7 @@ impl_scope! {
             }
         }
 
-        fn handle_scroll(&mut self, mgr: &mut EventMgr, _: Scroll) {
+        fn handle_scroll(&mut self, _: &Self::Data, mgr: &mut EventMgr, _: Scroll) {
             mgr.set_scroll(Scroll::None);
         }
     }
@@ -262,22 +264,25 @@ impl_scope! {
         list: Vec<W>,
     }
 
-    impl kas::WidgetChildren for Self {
+    impl kas::Widget for Self {
+        type Data = ();
+
         #[inline]
-        fn num_children(&self) -> usize {
-            self.list.len()
+        fn get_child(&self, data: &Self::Data, index: usize) -> Option<Node> {
+            self.list.get(index).map(|w| w.as_node(data))
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
-            self.list.get(index).map(|w| w.as_node())
-        }
-        #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
-            self.list.get_mut(index).map(|w| w.as_node_mut())
+        fn get_child_mut(&mut self, data: &Self::Data, index: usize) -> Option<NodeMut> {
+            self.list.get_mut(index).map(|w| w.as_node_mut(data))
         }
     }
 
     impl kas::Layout for Self {
+        #[inline]
+        fn num_children(&self) -> usize {
+            self.list.len()
+        }
+
         fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             self.dim = layout::GridDimensions {
                 cols: MENU_VIEW_COLS,
