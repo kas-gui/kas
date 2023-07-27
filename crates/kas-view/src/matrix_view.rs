@@ -666,7 +666,7 @@ impl_scope! {
                     None => return,
                 };
 
-                self.driver.on_messages(mgr, &data, &key, &mut w.widget);
+                self.driver.on_messages(mgr, data, &key, &mut w.widget);
             } else {
                 // Message is from self
                 key = match self.press_target.clone() {
