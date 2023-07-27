@@ -5,9 +5,11 @@
 
 //! Widget extension traits
 
-use super::{FnSizeRules, Reserve, WithLabel};
+use super::{FnSizeRules, OnUpdate, Reserve, WithLabel};
+use crate::Map;
 use kas::cast::{Cast, CastFloat};
 use kas::dir::Directional;
+use kas::event::ConfigMgr;
 use kas::geom::Vec2;
 use kas::layout::{AxisInfo, SizeRules};
 use kas::text::AccelString;
@@ -35,10 +37,34 @@ impl FnSizeRules for WithMinSizeEm {
 
 /// Provides some convenience methods on widgets
 ///
-/// TODO: add `fn with_any<A: 'static>(self) -> WithAny<A, Self>`
+/// TODO: add `fn with_any<A>(self) -> WithAny<A, Self>`
 /// Problem: this must be limited to `where Self::Data == ()` but "equality
 /// constraints are not yet supported in `where` clauses" (Rust#20041).
 pub trait AdaptWidget: Widget {
+    /// Map data type via a function
+    ///
+    /// Returns a wrapper around the input widget.
+    #[must_use]
+    fn map<A, F>(self, f: F) -> Map<A, Self, F>
+    where
+        F: for<'a> Fn(&'a A) -> &'a Self::Data,
+        Self: Sized,
+    {
+        Map::new(self, f)
+    }
+
+    /// Call the given closure on [`Widget::update`]
+    ///
+    /// Returns a wrapper around the input widget.
+    #[must_use]
+    fn on_update<F>(self, f: F) -> OnUpdate<Self>
+    where
+        F: Fn(&mut ConfigMgr, &mut Self, &Self::Data) + 'static,
+        Self: Sized,
+    {
+        OnUpdate::new(self, f)
+    }
+
     /// Construct a wrapper widget which reserves extra space
     ///
     /// The closure `reserve` should generate `SizeRules` on request, just like
@@ -64,6 +90,8 @@ pub trait AdaptWidget: Widget {
     /// ```
     /// The resulting `SizeRules` will be the max of those for the inner widget
     /// and the result of the `reserve` closure.
+    ///
+    /// Returns a wrapper around the input widget.
     #[must_use]
     fn with_reserve<R>(self, r: R) -> Reserve<Self, R>
     where
@@ -76,6 +104,8 @@ pub trait AdaptWidget: Widget {
     /// Construct a wrapper, setting minimum size in pixels
     ///
     /// The input size is scaled by the scale factor.
+    ///
+    /// Returns a wrapper around the input widget.
     #[must_use]
     fn with_min_size_px(self, w: i32, h: i32) -> Reserve<Self, WithMinSizePx>
     where
@@ -88,6 +118,8 @@ pub trait AdaptWidget: Widget {
     /// Construct a wrapper, setting minimum size in Em
     ///
     /// This depends on the font size, though not the exact font in use.
+    ///
+    /// Returns a wrapper around the input widget.
     #[must_use]
     fn with_min_size_em(self, w: f32, h: f32) -> Reserve<Self, WithMinSizeEm>
     where
@@ -98,6 +130,8 @@ pub trait AdaptWidget: Widget {
     }
 
     /// Construct a wrapper widget adding a label
+    ///
+    /// Returns a wrapper around the input widget.
     #[must_use]
     fn with_label<D, T>(self, direction: D, label: T) -> WithLabel<Self, D>
     where

@@ -28,7 +28,7 @@
 //!         skip to step 5.
 //! 4.  In the normal case (when the target is not disabled and the event is
 //!     not stolen), [`Events::handle_event`] is called on the target.
-//! 5.  If the message stack is not empty, call [`Events::handle_message`] on
+//! 5.  If the message stack is not empty, call [`Events::handle_messages`] on
 //!     the current node.
 //! 6.  Unwind, traversing back *up* the widget tree (towards the root).
 //!     On each node (excluding the target),
@@ -38,8 +38,9 @@
 //!     -   If the event has not yet been [used](Response::Used),
 //!         call [`Events::handle_event`]
 //!     -   If the message stack is non-empty (see [`EventMgr::push`]),
-//!         call [`Events::handle_message`].
-//! 7.  Clear any messages still on the message stack, printing a warning to the
+//!         call [`Events::handle_messages`].
+//! 7.  If the message stack is not empty, call [`AppState::handle_messages`](crate::AppState::handle_messages).
+//! 8.  Clear any messages still on the message stack, printing a warning to the
 //!     log. Messages *should* be handled during unwinding, though not doing so
 //!     is safe (and possibly useful during development).
 //!
@@ -61,7 +62,6 @@ pub mod config;
 mod events;
 mod manager;
 mod response;
-mod update;
 
 pub mod components;
 
@@ -78,7 +78,6 @@ pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
 pub use events::*;
 pub use manager::*;
 pub use response::{Response, Scroll};
-pub use update::UpdateId;
 
 /// A type supporting a small number of key bindings
 ///

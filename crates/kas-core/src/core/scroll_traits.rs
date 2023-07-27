@@ -41,12 +41,7 @@ pub trait Scrollable: Widget {
     ///
     /// The offset is clamped to the available scroll range and applied. The
     /// resulting offset is returned.
-    fn set_scroll_offset(
-        &mut self,
-        data: &Self::Data,
-        mgr: &mut EventMgr,
-        offset: Offset,
-    ) -> Offset;
+    fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset;
 }
 
 /// Scroll bar mode

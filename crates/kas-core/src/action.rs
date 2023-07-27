@@ -22,10 +22,6 @@ bitflags! {
     #[must_use]
     #[derive(Copy, Clone, Default)]
     pub struct Action: u32 {
-        /// No flags
-        ///
-        /// This is a [zero flag](https://docs.rs/bitflags/latest/bitflags/#zero-flags).
-        const EMPTY = 0;
         /// The whole window requires redrawing
         ///
         /// Note that [`event::EventMgr::redraw`] can instead be used for more
@@ -48,7 +44,13 @@ bitflags! {
         /// Resize all widgets in the window
         const RESIZE = 1 << 9;
         /// Update theme memory
+        #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+        #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
         const THEME_UPDATE = 1 << 10;
+        /// Reload per-window cache of event configuration
+        #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+        #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+        const EVENT_CONFIG = 1 << 11;
         /// Reconfigure all widgets of the window
         ///
         /// *Configuring* widgets assigns [`WidgetId`] identifiers and calls
@@ -56,6 +58,10 @@ bitflags! {
         ///
         /// [`WidgetId`]: crate::WidgetId
         const RECONFIGURE = 1 << 16;
+        /// Update all widgets
+        ///
+        /// This is a notification that input data has changed.
+        const UPDATE = 1 << 17;
         /// The current window should be closed
         const CLOSE = 1 << 30;
         /// Close all windows and exit

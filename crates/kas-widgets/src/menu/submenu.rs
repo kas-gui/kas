@@ -18,16 +18,16 @@ impl_scope! {
     #[widget {
         layout = self.label;
     }]
-    pub struct SubMenu<D: Directional> {
+    pub struct SubMenu<Data, D: Directional> {
         core: widget_core!(),
         direction: D,
         pub(crate) navigable: bool,
-        #[widget]
+        #[widget(&())]
         label: AccelLabel,
-        #[widget]
+        #[widget(&())]
         mark: Mark,
         #[widget]
-        list: PopupFrame<MenuView<BoxedMenu>>,
+        list: PopupFrame<MenuView<BoxedMenu<Data>>>,
         popup_id: Option<WindowId>,
     }
 
@@ -37,26 +37,26 @@ impl_scope! {
     {
         /// Construct a sub-menu
         #[inline]
-        pub fn new<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu>) -> Self {
+        pub fn new<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<Data>>) -> Self {
             SubMenu::new_with_direction(Default::default(), label, list)
         }
     }
 
-    impl SubMenu<kas::dir::Right> {
+    impl<Data> SubMenu<Data, kas::dir::Right> {
         /// Construct a sub-menu, opening to the right
         // NOTE: this is used since we can't infer direction of a boxed SubMenu.
         // Consider only accepting an enum of special menu widgets?
         // Then we can pass type information.
         #[inline]
-        pub fn right<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu>) -> Self {
+        pub fn right<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<Data>>) -> Self {
             SubMenu::new(label, list)
         }
     }
 
-    impl SubMenu<kas::dir::Down> {
+    impl<Data> SubMenu<Data, kas::dir::Down> {
         /// Construct a sub-menu, opening downwards
         #[inline]
-        pub fn down<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu>) -> Self {
+        pub fn down<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<Data>>) -> Self {
             SubMenu::new(label, list)
         }
     }
@@ -69,7 +69,7 @@ impl_scope! {
         pub fn new_with_direction<S: Into<AccelString>>(
             direction: D,
             label: S,
-            list: Vec<BoxedMenu>,
+            list: Vec<BoxedMenu<Data>>,
         ) -> Self {
             SubMenu {
                 core: Default::default(),
@@ -150,7 +150,7 @@ impl_scope! {
     }
 
     impl Events for Self {
-        type Data = ();
+        type Data = Data;
 
         fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
@@ -184,7 +184,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(kas::message::Activate) = mgr.try_pop() {
                 if self.popup_id.is_none() {
                     self.open_menu(mgr, true);
@@ -265,15 +265,27 @@ impl_scope! {
     }
 
     impl kas::Widget for Self {
-        type Data = ();
+        type Data = W::Data;
 
-        #[inline]
-        fn get_child(&self, data: &Self::Data, index: usize) -> Option<Node> {
-            self.list.get(index).map(|w| w.as_node(data))
+        fn for_child_impl(
+            &self,
+            data: &W::Data,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
+            if let Some(w) = self.list.get(index) {
+                closure(w.as_node(data));
+            }
         }
-        #[inline]
-        fn get_child_mut(&mut self, data: &Self::Data, index: usize) -> Option<NodeMut> {
-            self.list.get_mut(index).map(|w| w.as_node_mut(data))
+        fn for_child_mut_impl(
+            &mut self,
+            data: &W::Data,
+            index: usize,
+            closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
+        ) {
+            if let Some(w) = self.list.get_mut(index) {
+                closure(w.as_node_mut(data));
+            }
         }
     }
 

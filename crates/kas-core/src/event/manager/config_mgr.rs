@@ -14,7 +14,7 @@ use crate::shell::Platform;
 use crate::text::TextApi;
 use crate::theme::{Feature, SizeMgr, TextClass, ThemeSize};
 use crate::{Action, NodeMut, WidgetId};
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref, DerefMut, RangeBounds};
 
 #[allow(unused)] use crate::{event::Event, Events};
 
@@ -28,6 +28,8 @@ pub struct ConfigMgr<'a> {
     sh: &'a dyn ThemeSize,
     ds: &'a mut dyn DrawShared,
     pub(crate) ev: &'a mut EventState,
+    pub(crate) recurse_start: Option<usize>,
+    pub(crate) recurse_end: Option<usize>,
 }
 
 impl<'a> ConfigMgr<'a> {
@@ -35,7 +37,13 @@ impl<'a> ConfigMgr<'a> {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn new(sh: &'a dyn ThemeSize, ds: &'a mut dyn DrawShared, ev: &'a mut EventState) -> Self {
-        ConfigMgr { sh, ds, ev }
+        ConfigMgr {
+            sh,
+            ds,
+            ev,
+            recurse_start: None,
+            recurse_end: None,
+        }
     }
 
     /// Get the platform
@@ -86,8 +94,43 @@ impl<'a> ConfigMgr<'a> {
     ///
     /// Pass the `id` to assign to the widget: this should be constructed from
     /// the parent's id via [`WidgetId::make_child`].
+    #[inline]
     pub fn configure(&mut self, mut widget: NodeMut<'_>, id: WidgetId) {
         widget._configure(self, id);
+    }
+
+    /// Restrict recursive update
+    ///
+    /// Usually on update, all child widgets are updated recursively. This
+    /// method may be called to restrict which children get updated.
+    ///
+    /// Widgets should be updated even if their data is `()` or is unchanged.
+    /// The only valid reasons not to update a child is because (a) it is not
+    /// visible (for example, the `Stack` widget updates only the visible page)
+    /// or (b) another method is used to update the child.
+    #[inline]
+    pub fn restrict_recursion_to(&mut self, range: impl RangeBounds<usize>) {
+        use core::ops::Bound::*;
+        self.recurse_start = match range.start_bound() {
+            Included(start) => Some(*start),
+            Excluded(start) => Some(*start + 1),
+            Unbounded => None,
+        };
+        self.recurse_end = match range.end_bound() {
+            Included(end) => Some(*end + 1),
+            Excluded(end) => Some(*end),
+            Unbounded => None,
+        };
+    }
+
+    /// Update a widget
+    ///
+    /// [`Events::update`] will be called recursively on each child and finally
+    /// `self`. If a widget stores state which it passes to children as input
+    /// data, it should call this after mutating the state.
+    #[inline]
+    pub fn update(&mut self, mut widget: NodeMut<'_>) {
+        widget._update(self);
     }
 
     /// Align a feature's rect

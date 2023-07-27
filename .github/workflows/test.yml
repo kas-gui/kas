@@ -111,5 +111,7 @@ jobs:
           -A clippy::module-inception \
           -A clippy::too-many-arguments \
           -A clippy::comparison_chain \
+          -A clippy::or-fun-call \
           -A clippy::redundant_pattern_matching \
+          -A clippy::type_complexity \
           -A clippy::unit_arg

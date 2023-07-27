@@ -47,11 +47,13 @@
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "min_spec", feature(min_specialization))]
 
+mod adapt;
 mod button;
 mod check_box;
 mod combobox;
 pub mod dialog;
 pub mod edit;
+mod event_config;
 mod filler;
 mod frame;
 mod grid;
@@ -73,24 +75,27 @@ mod spinner;
 mod splitter;
 mod stack;
 mod tab_stack;
+mod text;
 
 pub mod adapter;
 
 pub use crate::image::Image;
+pub use adapt::{Adapt, Map};
 pub use button::{Button, TextButton};
 pub use check_box::{CheckBox, CheckButton};
 pub use combobox::ComboBox;
 pub use edit::{EditBox, EditField, EditGuard};
+pub use event_config::EventConfig;
 pub use filler::Filler;
 pub use frame::{Frame, PopupFrame};
 pub use grid::{BoxGrid, Grid};
 pub use grip::{GripMsg, GripPart};
-pub use label::{AccelLabel, Label, StrLabel, StringLabel};
+pub use label::{label, AccelLabel, Label, StrLabel, StringLabel};
 pub use list::*;
 pub use mark::{Mark, MarkButton};
 pub use nav_frame::NavFrame;
 pub use progress::ProgressBar;
-pub use radio_box::{RadioBox, RadioButton, RadioGroup};
+pub use radio_box::{RadioBox, RadioButton};
 pub use scroll::ScrollRegion;
 pub use scroll_bar::{ScrollBar, ScrollBarRegion, ScrollBars, ScrollMsg};
 pub use scroll_label::ScrollLabel;
@@ -100,3 +105,4 @@ pub use spinner::{Spinner, SpinnerValue};
 pub use splitter::*;
 pub use stack::{BoxStack, Stack};
 pub use tab_stack::{BoxTabStack, Tab, TabStack};
+pub use text::{StrText, StringText, Text};

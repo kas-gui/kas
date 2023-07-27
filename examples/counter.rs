@@ -6,46 +6,21 @@
 //! Counter example (simple button)
 
 use kas::prelude::*;
-use kas::widget::{Label, TextButton};
+use kas::widget::{adapter::WithAny, format_value, Adapt, TextButton};
 
 #[derive(Clone, Debug)]
 struct Increment(i32);
 
-impl_scope! {
-    #[widget{
-        layout = column! [
-            align!(center, self.display),
-            row! [
-                TextButton::new_msg("−", Increment(-1)),
-                TextButton::new_msg("+", Increment(1)),
-            ],
-        ];
-    }]
-    struct Counter {
-        core: widget_core!(),
-        #[widget]
-        display: Label<String>,
-        count: i32,
-    }
-    impl Self {
-        fn new(count: i32) -> Self {
-            Counter {
-                core: Default::default(),
-                display: Label::from(count.to_string()),
-                count,
-            }
-        }
-    }
-    impl Events for Self {
-        type Data = ();
+fn counter() -> impl Widget<Data = ()> {
+    let tree = kas::column![
+        align!(center, format_value!("{}")),
+        WithAny::new(kas::row![
+            TextButton::new_msg("−", Increment(-1)),
+            TextButton::new_msg("+", Increment(1)),
+        ]),
+    ];
 
-        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
-            if let Some(Increment(incr)) = mgr.try_pop() {
-                self.count += incr;
-                *mgr |= self.display.set_string(self.count.to_string());
-            }
-        }
-    }
+    Adapt::new(tree, 0).on_message(|_, count, Increment(add)| *count += add)
 }
 
 fn main() -> kas::shell::Result<()> {
@@ -53,6 +28,6 @@ fn main() -> kas::shell::Result<()> {
 
     let theme = kas::theme::SimpleTheme::new().with_font_size(24.0);
     kas::shell::DefaultShell::new((), theme)?
-        .with(Window::new(Counter::new(0), "Counter"))?
+        .with(Window::new(counter(), "Counter"))?
         .run()
 }

@@ -159,7 +159,7 @@ impl Tree {
         let name = Ident::new(widget_name, Span::call_site());
         let core_path = quote! { self };
         let (impl_generics, impl_target) = if stor_defs.used_data_ty {
-            (quote! { <_Data: 'static> }, quote! { #name <_Data> })
+            (quote! { <_Data> }, quote! { #name <_Data> })
         } else {
             (quote! {}, quote! { #name })
         };

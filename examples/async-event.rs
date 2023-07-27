@@ -9,57 +9,63 @@
 //! shell.create_proxy(). For a more integrated approach to async, see
 //! EventState::push_async() and push_spawn().
 
-use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use kas::draw::color::Rgba;
-use kas::event::UpdateId;
 use kas::prelude::*;
+use kas::text::Text;
 use kas::theme::TextClass;
+
+#[derive(Debug)]
+struct SetColor(Rgba);
+
+struct AppData {
+    color: Option<Rgba>,
+}
+
+impl kas::AppData for AppData {
+    fn handle_messages(&mut self, messages: &mut kas::ErasedStack) -> Action {
+        if let Some(SetColor(color)) = messages.try_pop() {
+            self.color = Some(color);
+            Action::UPDATE
+        } else {
+            Action::empty()
+        }
+    }
+}
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
+
+    let data = AppData { color: None };
     let theme = kas::theme::FlatTheme::new();
-    let shell = kas::shell::DefaultShell::new((), theme)?;
+    let shell = kas::shell::DefaultShell::new(data, theme)?;
 
     // We construct a proxy from the shell to enable cross-thread communication.
     let proxy = shell.create_proxy();
+    thread::spawn(move || generate_colors(proxy));
 
-    // UpdateId is used to identify the source of Event::Update (not essential in this example).
-    let update_id = UpdateId::new();
-
-    // The sender and receiver need to communicate. We use Arc<Mutex<T>>, but
-    // could instead use global statics or std::sync::mpsc or even encode our
-    // data within the update payload (a u64, so some compression required).
-    let colour = Arc::new(Mutex::new(Rgba::grey(1.0)));
-    let colour2 = colour.clone();
-
-    thread::spawn(move || generate_colors(proxy, update_id, colour2));
-
-    let widget = ColourSquare::new(colour, update_id);
+    let widget = ColourSquare::new();
     let window = Window::new(widget, "Async event demo");
 
     shell.with(window)?.run()
 }
 
 impl_scope! {
+    // A custom widget incorporating "Loading..." text, drawing and layout.
     #[widget]
     struct ColourSquare {
         core: widget_core!(),
-        colour: Arc<Mutex<Rgba>>,
-        update_id: UpdateId,
+        color: Option<Rgba>,
         loading_text: Text<&'static str>,
-        loaded: bool,
     }
     impl Self {
-        fn new(colour: Arc<Mutex<Rgba>>, update_id: UpdateId) -> Self {
+        fn new() -> Self {
             ColourSquare {
                 core: Default::default(),
-                colour,
-                update_id,
+                color: None,
                 loading_text: Text::new("Loading..."),
-                loaded: false,
             }
         }
     }
@@ -80,32 +86,25 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            if !self.loaded {
-                draw.text(self.core.rect, &self.loading_text, TextClass::Label(false));
-            } else {
+            if let Some(color) = self.color {
                 let draw = draw.draw_device();
-                let col = *self.colour.lock().unwrap();
-                draw.rect((self.rect()).cast(), col);
+                draw.rect((self.rect()).cast(), color);
+            } else {
+                draw.text(self.core.rect, &self.loading_text, TextClass::Label(false));
             }
         }
     }
     impl Events for ColourSquare {
-        type Data = ();
+        type Data = AppData;
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
-            match event {
-                Event::Update { id, .. } if id == self.update_id => {
-                    self.loaded = true;
-                    mgr.redraw(self.id());
-                    Response::Used
-                }
-                _ => Response::Unused,
-            }
+        fn update(&mut self, data: &AppData, mgr: &mut ConfigMgr) {
+            self.color = data.color;
+            mgr.redraw(self.id());
         }
     }
 }
 
-fn generate_colors(proxy: kas::shell::Proxy, update_id: UpdateId, colour: Arc<Mutex<Rgba>>) {
+fn generate_colors(mut proxy: kas::shell::Proxy) {
     // Loading takes time:
     thread::sleep(Duration::from_secs(1));
 
@@ -122,11 +121,7 @@ fn generate_colors(proxy: kas::shell::Proxy, update_id: UpdateId, colour: Arc<Mu
         };
         let c = Rgba::rgb(f(5.0), f(3.0), f(1.0));
 
-        // Communicate the colour ...
-        *colour.lock().unwrap() = c;
-        // .. and notify of an update.
-        // (Note: the 0 here is the u64 payload, which could pass useful data!)
-        if proxy.update_all(update_id, 0).is_err() {
+        if proxy.push(SetColor(c)).is_err() {
             // Sending failed; we should quit
             break;
         }

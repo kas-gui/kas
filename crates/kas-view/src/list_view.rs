@@ -5,12 +5,10 @@
 
 //! List view controller
 
-use super::{driver, Driver, SelectionError, SelectionMode, SelectionMsg};
+use crate::{DataKey, Driver, ListData, SelectionMode, SelectionMsg};
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, Scroll};
 use kas::layout::{solve_size_rules, AlignHints};
-#[allow(unused)] use kas::model::SharedData;
-use kas::model::{DataKey, ListData, SharedDataMut};
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
 use kas::NavAdvance;
@@ -18,6 +16,7 @@ use kas::NavAdvance;
 use kas_widgets::ScrollBars;
 use linear_map::set::LinearSet;
 use std::borrow::Borrow;
+use std::fmt::Debug;
 use std::time::Instant;
 
 #[derive(Clone, Debug, Default)]
@@ -29,39 +28,34 @@ struct WidgetData<K, W> {
 impl_scope! {
     /// View controller for 1D indexable data (list)
     ///
-    /// This widget supports a view over a list of shared data items.
+    /// This widget generates a view over a list of data items via the
+    /// [`ListData`] trait. "View widgets" are constructed via a [`Driver`] to
+    /// represent visible data items. These view widgets are reassigned as
+    /// required when the list is scrolled, keeping the number of widgets in
+    /// use roughly proportional to the number of data items within the view.
     ///
-    /// The shared data type `T` must support [`ListData`].
-    /// One may use `[T]`, `Vec<T>` or a custom shared data type.
-    ///
-    /// The driver `V` must implement [`Driver`] over `T`.
-    /// The default driver is [`driver::View`]; others are available in the
-    /// [`driver`] module or [`Driver`] may be implemented directly.
+    /// Each view widget has a [`WidgetId`] corresponding to its current data
+    /// item, and may handle events and emit messages like other widegts.
+    /// See [`Driver`] documentation for more on event handling.
     ///
     /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
     /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
     ///
     /// Optionally, data items may be selected; see [`Self::set_selection_mode`].
-    ///
-    /// # Messages
-    ///
-    /// When a view widget pushes a message, [`Driver::on_message`] is called.
-    ///
-    /// When selection is enabled and an item is selected or deselected, this
-    /// widget emits a [`SelectionMsg`].
+    /// If enabled, [`SelectionMsg`] messages are reported; view widgets may
+    /// emit [`kas::message::Select`] to have themselves be selected.
     #[derive(Clone, Debug)]
     #[widget]
-    pub struct ListView<D: Directional, T: ListData, V: Driver<T::Item, T> = driver::View> {
+    pub struct ListView<A: ListData, G: Driver<A::Item, A>, D: Directional> {
         core: widget_core!(),
         frame_offset: Offset,
         frame_size: Size,
-        driver: V,
+        guard: G,
         /// Empty widget used for sizing; this must be stored between horiz and vert size rule
         /// calculations for correct line wrapping/layout.
-        default_widget: V::Widget,
-        data: T,
-        data_ver: u64,
-        widgets: Vec<WidgetData<T::Key, V::Widget>>,
+        default_widget: G::Widget,
+        widgets: Vec<WidgetData<A::Key, G::Widget>>,
+        data_len: u32,
         /// The number of widgets in use (cur_len ≤ widgets.len())
         cur_len: u32,
         /// First data item mapped to a widget
@@ -78,43 +72,26 @@ impl_scope! {
         sel_mode: SelectionMode,
         sel_style: SelectionStyle,
         // TODO(opt): replace selection list with RangeOrSet type?
-        selection: LinearSet<T::Key>,
-        press_target: Option<(usize, T::Key)>,
+        selection: LinearSet<A::Key>,
+        press_target: Option<(usize, A::Key)>,
     }
 
     impl Self
     where
         D: Default,
-        V: Default,
     {
         /// Construct a new instance
-        ///
-        /// This constructor is available where the direction is determined by the
-        /// type: for `D: Directional + Default`. In other cases, use
-        /// [`ListView::new_with_direction`].
-        pub fn new(data: T) -> Self {
-            Self::new_with_dir_driver(D::default(), <V as Default>::default(), data)
+        pub fn new(guard: G) -> Self {
+            Self::new_with_direction(D::default(), guard)
         }
     }
-    impl Self
-    where
-        V: Default,
-    {
-        /// Construct a new instance with explicit direction
-        pub fn new_with_direction(direction: D, data: T) -> Self {
-            Self::new_with_dir_driver(direction, <V as Default>::default(), data)
+    impl<A: ListData, G: Driver<A::Item, A>> ListView<A, G, kas::dir::Down> {
+        /// Construct a new instance
+        pub fn down(guard: G) -> Self {
+            Self::new_with_direction(Default::default(), guard)
         }
     }
-    impl Self
-    where
-        D: Default,
-    {
-        /// Construct a new instance with explicit driver
-        pub fn new_with_driver(driver: V, data: T) -> Self {
-            Self::new_with_dir_driver(D::default(), driver, data)
-        }
-    }
-    impl<T: ListData + 'static, V: Driver<T::Item, T>> ListView<Direction, T, V> {
+    impl<A: ListData, G: Driver<A::Item, A>> ListView<A, G, Direction> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, direction: Direction) -> Action {
             self.direction = direction;
@@ -122,18 +99,17 @@ impl_scope! {
         }
     }
     impl Self {
-        /// Construct a new instance with explicit direction and driver
-        pub fn new_with_dir_driver(direction: D, driver: V, data: T) -> Self {
-            let default_widget = driver.make();
+        /// Construct a new instance with explicit direction and guard
+        pub fn new_with_direction(direction: D, mut guard: G) -> Self {
+            let default_widget = guard.make(&A::Key::default());
             ListView {
                 core: Default::default(),
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
-                driver,
+                guard,
                 default_widget,
-                data,
-                data_ver: 0,
                 widgets: Default::default(),
+                data_len: 0,
                 cur_len: 0,
                 first_data: 0,
                 direction,
@@ -152,57 +128,6 @@ impl_scope! {
             }
         }
 
-        /// Access the stored data
-        pub fn data(&self) -> &T {
-            &self.data
-        }
-
-        /// Mutably access the stored data
-        ///
-        /// It may be necessary to use [`ListView::update_view`] to update the view of this data.
-        pub fn data_mut(&mut self) -> &mut T {
-            &mut self.data
-        }
-
-        /// Borrow a reference to the shared value at `key`
-        pub fn borrow_value(&self, key: &T::Key) -> Option<impl Borrow<T::Item> + '_> {
-            self.data.borrow(key)
-        }
-
-        /// Get a copy of the shared value at `key`
-        pub fn get_value(&self, key: &T::Key) -> Option<T::Item> {
-            self.data.get_cloned(key)
-        }
-
-        /// Set shared data
-        ///
-        /// This method updates the shared data, if supported (see
-        /// [`SharedDataMut::borrow_mut`]). Other widgets sharing this data
-        /// are notified of the update, if data is changed.
-        pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item)
-        where
-            T: SharedDataMut,
-        {
-            self.data.set(mgr, key, data);
-        }
-
-        /// Update shared data
-        ///
-        /// This method updates the shared data, if supported (see
-        /// [`SharedDataMut::with_ref_mut`]). Other widgets sharing this data
-        /// are notified of the update, if data is changed.
-        pub fn update_value<U>(
-            &self,
-            mgr: &mut EventMgr,
-            key: &T::Key,
-            f: impl FnOnce(&mut T::Item) -> U,
-        ) -> Option<U>
-        where
-            T: SharedDataMut,
-        {
-            self.data.with_ref_mut(mgr, key, f)
-        }
-
         /// Get the current selection mode
         pub fn selection_mode(&self) -> SelectionMode {
             self.sel_mode
@@ -214,10 +139,10 @@ impl_scope! {
         /// [`Select`].
         ///
         /// On selection and deselection, a [`SelectionMsg`] message is emitted.
-        /// This is not sent to [`Driver::on_message`].
+        /// This is not sent to [`Driver::on_messages`].
         ///
-        /// The driver may trigger selection by emitting [`Select`] from
-        /// [`Driver::on_message`]. The driver is not notified of selection
+        /// The guard may trigger selection by emitting [`Select`] from
+        /// [`Driver::on_messages`]. The guard is not notified of selection
         /// except via [`Select`] from view widgets. (TODO: reconsider this.)
         ///
         /// [`Select`]: kas::message::Select
@@ -276,12 +201,12 @@ impl_scope! {
         ///
         /// With mode [`SelectionMode::Single`] this may contain zero or one entry;
         /// use `selected_iter().next()` to extract only the first (optional) entry.
-        pub fn selected_iter(&'_ self) -> impl Iterator<Item = &'_ T::Key> + '_ {
+        pub fn selected_iter(&'_ self) -> impl Iterator<Item = &'_ A::Key> + '_ {
             self.selection.iter()
         }
 
         /// Check whether an entry is selected
-        pub fn is_selected(&self, key: &T::Key) -> bool {
+        pub fn is_selected(&self, key: &A::Key) -> bool {
             self.selection.contains(key)
         }
 
@@ -297,21 +222,22 @@ impl_scope! {
 
         /// Directly select an item
         ///
+        /// Does nothing if [`Self::selection_mode`] is [`SelectionMode::None`].
+        /// Does not verify the validity of `key`.
+        /// Does not send [`SelectionMsg`] messages.
+        ///
         /// Returns `Action::REDRAW` if newly selected, `Action::empty()` if
         /// already selected. Fails if selection mode does not permit selection
         /// or if the key is invalid.
-        pub fn select(&mut self, key: T::Key) -> Result<Action, SelectionError> {
+        pub fn select(&mut self, key: A::Key) -> Action {
             match self.sel_mode {
-                SelectionMode::None => return Err(SelectionError::Disabled),
+                SelectionMode::None => return Action::empty(),
                 SelectionMode::Single => self.selection.clear(),
                 _ => (),
             }
-            if !self.data.contains_key(&key) {
-                return Err(SelectionError::Key);
-            }
             match self.selection.insert(key) {
-                true => Ok(Action::REDRAW),
-                false => Ok(Action::empty()),
+                true => Action::REDRAW,
+                false => Action::empty(),
             }
         }
 
@@ -319,33 +245,11 @@ impl_scope! {
         ///
         /// Returns `Action::REDRAW` if deselected, `Action::empty()` if not
         /// previously selected or if the key is invalid.
-        pub fn deselect(&mut self, key: &T::Key) -> Action {
+        pub fn deselect(&mut self, key: &A::Key) -> Action {
             match self.selection.remove(key) {
                 true => Action::REDRAW,
                 false => Action::empty(),
             }
-        }
-
-        /// Manually trigger an update to handle changed data
-        pub fn update_view(&mut self, in_data: &<V::Widget as Widget>::Data, mgr: &mut ConfigMgr) {
-            let data = &self.data;
-            self.data_ver = data.version();
-
-            self.selection.retain(|key| data.contains_key(key));
-
-            let data_len32 = i32::conv(self.data.len());
-            let view_size = self.rect().size - self.frame_size;
-            let mut content_size = view_size;
-            content_size.set_component(self.direction, (self.skip * data_len32 - self.child_inter_margin).max(0));
-            *mgr |= self.scroll.set_sizes(view_size, content_size);
-
-            for w in &mut self.widgets {
-                w.key = None;
-            }
-            self.update_widgets(in_data, mgr);
-
-            // Force SET_RECT so that scroll-bar wrappers get updated
-            *mgr |= Action::SET_RECT;
         }
 
         /// Get the direction of contents
@@ -364,6 +268,7 @@ impl_scope! {
         }
 
         fn position_solver(&self) -> PositionSolver {
+            let data_len: usize = self.data_len.cast();
             let cur_len: usize = self.cur_len.cast();
             let mut first_data: usize = self.first_data.cast();
             let mut skip = Offset::ZERO;
@@ -371,8 +276,8 @@ impl_scope! {
 
             let mut pos_start = self.core.rect.pos + self.frame_offset;
             if self.direction.is_reversed() {
-                first_data = (self.data.len() - first_data).saturating_sub(cur_len);
-                pos_start += skip * i32::conv(self.data.len() - 1);
+                first_data = (data_len - first_data).saturating_sub(cur_len);
+                pos_start += skip * i32::conv(data_len.saturating_sub(1));
                 skip = skip * -1;
             }
 
@@ -385,22 +290,21 @@ impl_scope! {
             }
         }
 
-        fn update_widgets(&mut self, data: &<V::Widget as Widget>::Data, mgr: &mut ConfigMgr) {
+        fn update_widgets(&mut self, data: &A, cx: &mut ConfigMgr) {
             let time = Instant::now();
 
             let offset = u64::conv(self.scroll_offset().extract(self.direction));
             let mut first_data = usize::conv(offset / u64::conv(self.skip));
 
-            let mut cur_len = self.widgets.len();
-            if self.data.len() - first_data < cur_len {
-                cur_len = cur_len.min(self.data.len());
-                first_data = self.data.len() - cur_len;
-            }
+            let data_len: usize = self.data_len.cast();
+            let mut cur_len: usize = self.widgets.len();
+            cur_len = cur_len.min(data_len - first_data);
+            first_data = first_data.min(data_len - cur_len);
             self.cur_len = cur_len.cast();
             self.first_data = first_data.cast();
 
             let solver = self.position_solver();
-            let keys = self.data.iter_from(solver.first_data, solver.cur_len);
+            let keys = data.iter_from(solver.first_data, solver.cur_len);
 
             let mut count = 0;
             for (i, key) in keys.enumerate() {
@@ -409,16 +313,14 @@ impl_scope! {
                 let id = key.make_id(self.id_ref());
                 let w = &mut self.widgets[i % solver.cur_len];
                 if w.key.as_ref() != Some(&key) {
-                    // Reset widgets to ensure input state such as cursor
-                    // position does not bleed over to next data entry
-                    w.widget = self.driver.make();
-                    mgr.configure(w.widget.as_node_mut(data), id);
+                    self.guard.set_key(&mut w.widget, &key);
 
-                    if let Some(item) = self.data.borrow(&key) {
-                        *mgr |= self.driver.set(&mut w.widget, &key, item.borrow());
+                    if let Some(item) = data.borrow(&key) {
+                        cx.configure(w.widget.as_node_mut(item.borrow()), id);
+
                         solve_size_rules(
                             &mut w.widget,
-                            mgr.size_mgr(),
+                            cx.size_mgr(),
                             Some(self.child_size.0),
                             Some(self.child_size.1),
                             self.align_hints.horiz,
@@ -428,8 +330,10 @@ impl_scope! {
                     } else {
                         w.key = None; // disables drawing and clicking
                     }
+                } else if let Some(item) = data.borrow(&key) {
+                    cx.update(w.widget.as_node_mut(item.borrow()));
                 }
-                w.widget.set_rect(mgr, solver.rect(i));
+                w.widget.set_rect(cx, solver.rect(i));
             }
 
             if count < solver.cur_len {
@@ -449,9 +353,9 @@ impl_scope! {
         fn scroll_axes(&self, size: Size) -> (bool, bool) {
             // TODO: maybe we should support a scroll bar on the other axis?
             // We would need to report a fake min-child-size to enable scrolling.
+            let data_len: i32 = self.data_len.cast();
             let item_min = self.child_size_min + self.child_inter_margin;
-            let num = i32::conv(self.data.len());
-            let min_size = (item_min * num - self.child_inter_margin).max(0);
+            let min_size = (item_min * data_len - self.child_inter_margin).max(0);
             (
                 self.direction.is_horizontal() && min_size > size.0,
                 self.direction.is_vertical() && min_size > size.1,
@@ -469,9 +373,9 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_scroll_offset(&mut self, data: &Self::Data, mgr: &mut EventMgr, offset: Offset) -> Offset {
-            *mgr |= self.scroll.set_offset(offset);
-            mgr.config_mgr(|mgr| self.update_widgets(data, mgr));
+        fn set_scroll_offset(&mut self, cx: &mut EventMgr, offset: Offset) -> Offset {
+            *cx |= self.scroll.set_offset(offset);
+            cx.request_update(self.id());
             self.scroll.offset()
         }
     }
@@ -482,7 +386,7 @@ impl_scope! {
             self.cur_len.cast()
         }
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
-            let key = T::Key::reconstruct_key(self.id_ref(), id);
+            let key = A::Key::reconstruct_key(self.id_ref(), id);
             if key.is_some() {
                 self.widgets
                     .iter()
@@ -580,8 +484,9 @@ impl_scope! {
                     req_widgets
                 );
                 self.widgets.reserve(req_widgets - avail_widgets);
+                let key = A::Key::default();
                 for _ in avail_widgets..req_widgets {
-                    let widget = self.driver.make();
+                    let widget = self.guard.make(&key);
                     self.widgets.push(WidgetData { key: None, widget });
                 }
             }
@@ -590,8 +495,8 @@ impl_scope! {
                 self.widgets.truncate(req_widgets);
             }
 
-            // Widgets need configuring and updating: do so by re-configuring self.
-            mgr.request_reconfigure(self.id());
+            // Widgets need configuring and updating: do so by updating self.
+            mgr.request_update(self.id());
         }
 
         #[inline]
@@ -606,8 +511,10 @@ impl_scope! {
 
             let coord = coord + self.scroll.offset();
             for child in &mut self.widgets[..self.cur_len.cast()] {
-                if let Some(id) = child.widget.find_id(coord) {
-                    return Some(id);
+                if child.key.is_some() {
+                    if let Some(id) = child.widget.find_id(coord) {
+                        return Some(id);
+                    }
                 }
             }
             Some(self.id())
@@ -629,46 +536,55 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn configure(&mut self, data: &Self::Data, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, cx: &mut ConfigMgr) {
             if self.widgets.is_empty() {
                 // Initial configure: ensure some widgets are loaded to allow
                 // better sizing of self.
                 self.skip = 1; // hack: avoid div by 0
 
                 let len = self.ideal_visible.cast();
+                let key = A::Key::default();
                 self.widgets.resize_with(len, || {
-                    let key = None;
-                    let widget = self.driver.make();
-                    WidgetData { key, widget }
+                    WidgetData {
+                        key: None,
+                        widget: self.guard.make(&key),
+                    }
                 });
-
-                self.update_view(data, mgr);
-            } else {
-                // This method is invoked from set_rect to update widgets
-                self.update_widgets(data, mgr);
             }
 
-            mgr.register_nav_fallback(self.id());
+            cx.register_nav_fallback(self.id());
         }
 
-        fn handle_event(&mut self, data: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+        fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
+            self.selection.retain(|key| data.contains_key(key));
+
+            let data_len = data.len().cast();
+            if data_len != self.data_len {
+                self.data_len = data_len;
+                *cx |= Action::SET_RECT; // update scrollable region
+            }
+            let data_len: i32 = data_len.cast();
+            let view_size = self.rect().size - self.frame_size;
+            let mut content_size = view_size;
+            content_size.set_component(
+                self.direction,
+                (self.skip * data_len - self.child_inter_margin).max(0),
+            );
+            *cx |= self.scroll.set_sizes(view_size, content_size);
+
+            self.update_widgets(data, cx);
+        }
+
+        fn handle_event(&mut self, data: &A, cx: &mut EventMgr, event: Event) -> Response {
             let response = match event {
-                Event::Update { .. } => {
-                    let data_ver = self.data.version();
-                    if data_ver > self.data_ver {
-                        // TODO(opt): use the update payload to indicate which widgets need updating?
-                        mgr.config_mgr(|mgr| self.update_view(data, mgr));
-                    }
-                    return Response::Used;
-                }
                 Event::Command(cmd) => {
-                    let last = self.data.len().wrapping_sub(1);
+                    let last = data.len().wrapping_sub(1);
                     if last == usize::MAX {
                         return Response::Unused;
                     }
 
                     let solver = self.position_solver();
-                    let cur = match mgr.nav_focus().and_then(|id| self.find_child_index(id)) {
+                    let cur = match cx.nav_focus().and_then(|id| self.find_child_index(id)) {
                         Some(index) => solver.child_to_data(index),
                         None => return Response::Unused,
                     };
@@ -690,30 +606,30 @@ impl_scope! {
                     };
                     return if let Some(i_data) = data_index {
                         // Set nav focus to i_data and update scroll position
-                        if self.scroll.focus_rect(mgr, solver.rect(i_data), self.core.rect) {
-                            mgr.config_mgr(|mgr| self.update_widgets(data, mgr));
+                        if self.scroll.focus_rect(cx, solver.rect(i_data), self.core.rect) {
+                            cx.config_mgr(|cx| self.update_widgets(data, cx));
                         }
                         let index = i_data % usize::conv(self.cur_len);
-                        mgr.next_nav_focus(self.widgets[index].widget.id(), false, true);
+                        cx.next_nav_focus(self.widgets[index].widget.id(), false, true);
                         Response::Used
                     } else {
                         Response::Unused
                     };
                 }
-                Event::PressStart { ref press } if press.is_primary() && mgr.config().mouse_nav_focus() => {
-                    if let Some(index) = mgr.last_child() {
+                Event::PressStart { ref press } if press.is_primary() && cx.config().mouse_nav_focus() => {
+                    if let Some(index) = cx.last_child() {
                         self.press_target = self.widgets[index].key.clone().map(|k| (index, k));
                     }
                     if let Some((index, ref key)) = self.press_target {
                         let w = &mut self.widgets[index];
                         if w.key.as_ref().map(|k| k == key).unwrap_or(false) {
-                            mgr.next_nav_focus(w.widget.id(), false, false);
+                            cx.next_nav_focus(w.widget.id(), false, false);
                         }
                     }
 
                     // Press may also be grabbed by scroll component (replacing
                     // this). Either way we can select on PressEnd.
-                    press.grab(self.id()).with_mgr(mgr)
+                    press.grab(self.id()).with_mgr(cx)
                 }
                 Event::PressEnd { ref press, success } if press.is_primary() => {
                     if let Some((index, ref key)) = self.press_target {
@@ -724,7 +640,7 @@ impl_scope! {
                             && w.key.as_ref().map(|k| k == key).unwrap_or(false)
                             && w.widget.rect().contains(press.coord + self.scroll.offset())
                         {
-                            mgr.push(kas::message::Select);
+                            cx.push(kas::message::Select);
                         }
                     }
                     Response::Used
@@ -734,89 +650,106 @@ impl_scope! {
 
             let (moved, sber_response) = self
                 .scroll
-                .scroll_by_event(mgr, event, self.id(), self.core.rect);
+                .scroll_by_event(cx, event, self.id(), self.core.rect);
             if moved {
-                mgr.config_mgr(|mgr| self.update_widgets(data, mgr));
+                cx.config_mgr(|cx| self.update_widgets(data, cx));
             }
             response | sber_response
         }
 
-        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, data: &A, cx: &mut EventMgr) {
             let key;
-            if let Some(index) = mgr.last_child() {
+            if let Some(index) = cx.last_child() {
                 let w = &mut self.widgets[index];
-                key = match w.key.clone() {
+                key = match w.key.as_ref() {
                     Some(k) => k,
                     None => return,
                 };
 
-                self.driver.on_message(mgr, &mut w.widget, &self.data, &key);
+                self.guard.on_messages(cx, data, key, &mut w.widget);
             } else {
                 // Message is from self
-                key = match self.press_target.clone() {
+                key = match self.press_target.as_ref() {
                     Some((_, k)) => k,
                     None => return,
                 };
             }
 
-            if let Some(kas::message::Select) = mgr.try_pop() {
+            if let Some(kas::message::Select) = cx.try_pop() {
                 match self.sel_mode {
                     SelectionMode::None => (),
                     SelectionMode::Single => {
-                        mgr.redraw(self.id());
+                        cx.redraw(self.core.id.clone());
                         self.selection.clear();
                         self.selection.insert(key.clone());
-                        mgr.push(SelectionMsg::Select(key));
+                        cx.push(SelectionMsg::Select(key.clone()));
                     }
                     SelectionMode::Multiple => {
-                        mgr.redraw(self.id());
-                        if self.selection.remove(&key) {
-                            mgr.push(SelectionMsg::Deselect(key));
+                        cx.redraw(self.core.id.clone());
+                        if self.selection.remove(key) {
+                            cx.push(SelectionMsg::Deselect(key.clone()));
                         } else {
                             self.selection.insert(key.clone());
-                            mgr.push(SelectionMsg::Select(key));
+                            cx.push(SelectionMsg::Select(key.clone()));
                         }
                     }
                 }
             }
         }
 
-        fn handle_scroll(&mut self, data: &Self::Data, mgr: &mut EventMgr, scroll: Scroll) {
-            self.scroll.scroll(mgr, self.rect(), scroll);
-            mgr.config_mgr(|mgr| self.update_widgets(data, mgr));
+        fn handle_scroll(&mut self, data: &A, cx: &mut EventMgr, scroll: Scroll) {
+            self.scroll.scroll(cx, self.rect(), scroll);
+            cx.config_mgr(|cx| self.update_widgets(data, cx));
         }
     }
 
     // Direct implementation of this trait outside of Kas code is not supported!
     impl Widget for Self {
-        type Data = <V::Widget as Widget>::Data;
+        type Data = A;
 
-        #[inline]
-        fn get_child(&self, data: &Self::Data, index: usize) -> Option<Node<'_>> {
-            self.widgets.get(index).and_then(|w| {
-                w.key.is_some().then(|| w.widget.as_node(data))
-            })
+        fn for_child_impl(
+            &self,
+            data: &A,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
+            if let Some(w) = self.widgets.get(index) {
+                if let Some(ref key) = w.key {
+                    if let Some(item) = data.borrow(key) {
+                        closure(w.widget.as_node(item.borrow()));
+                    }
+                }
+            }
         }
-        #[inline]
-        fn get_child_mut(&mut self, data: &Self::Data, index: usize) -> Option<NodeMut<'_>> {
-            self.widgets.get_mut(index).and_then(|w| {
-                w.key.is_some().then(|| w.widget.as_node_mut(data))
-            })
+        fn for_child_mut_impl(
+            &mut self,
+            data: &A,
+            index: usize,
+            closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
+        ) {
+            if let Some(w) = self.widgets.get_mut(index) {
+                if let Some(ref key) = w.key {
+                    if let Some(item) = data.borrow(key) {
+                        closure(w.widget.as_node_mut(item.borrow()));
+                    }
+                }
+            }
         }
 
         // Non-standard behaviour: do not configure children
-        fn _configure(&mut self, data: &Self::Data, cx: &mut ConfigMgr, id: WidgetId) {
+        fn _configure(&mut self, data: &A, cx: &mut ConfigMgr, id: WidgetId) {
             self.pre_configure(cx, id);
-            self.configure(data, cx);
+            self.configure(cx);
+            self.update(data, cx);
         }
 
-        fn _broadcast(&mut self, data: &Self::Data, cx: &mut EventMgr, count: &mut usize, event: Event) {
-            kas::impls::_broadcast(self, data, cx, count, event);
+        fn _update(&mut self, data: &A, cx: &mut ConfigMgr) {
+            self.update(data, cx);
         }
 
         fn _send(
             &mut self,
-            data: &Self::Data,
+            data: &A,
             cx: &mut EventMgr,
             id: WidgetId,
             disabled: bool,
@@ -825,14 +758,14 @@ impl_scope! {
             kas::impls::_send(self, data, cx, id, disabled, event)
         }
 
-        fn _replay(&mut self, data: &Self::Data, cx: &mut EventMgr, id: WidgetId, msg: kas::Erased) {
+        fn _replay(&mut self, data: &A, cx: &mut EventMgr, id: WidgetId, msg: kas::Erased) {
             kas::impls::_replay(self, data, cx, id, msg);
         }
 
         // Non-standard implementation to allow mapping new children
         fn _nav_next(
             &mut self,
-            data: &Self::Data,
+            data: &A,
             cx: &mut EventMgr,
             focus: Option<&WidgetId>,
             advance: NavAdvance,
@@ -844,9 +777,8 @@ impl_scope! {
             let mut child = focus.and_then(|id| self.find_child_index(id));
 
             if let Some(index) = child {
-                if let Some(id) = self
-                    .get_child_mut(data, index)
-                    .and_then(|mut w| w._nav_next(cx, focus, advance))
+                if let Some(Some(id)) = self.as_node_mut(data)
+                    .for_child(index, |mut w| w._nav_next(cx, focus, advance))
                 {
                     return Some(id);
                 }
@@ -860,7 +792,7 @@ impl_scope! {
 
             loop {
                 let solver = self.position_solver();
-                let last_data = self.data.len() - 1;
+                let last_data = data.len() - 1;
                 let data_index = if let Some(index) = child {
                     let data = solver.child_to_data(index);
                     if !reverse && data < last_data {
@@ -881,12 +813,12 @@ impl_scope! {
                 }
 
                 let index = data_index % usize::conv(self.cur_len);
-                if let Some(id) = self
-                    .get_child_mut(data, index)
-                    .and_then(|mut w| w._nav_next(cx, focus, advance))
+                if let Some(Some(id)) = self.as_node_mut(data)
+                    .for_child(index, |mut w| w._nav_next(cx, focus, advance))
                 {
                     return Some(id);
                 }
+
                 child = Some(index);
             }
         }

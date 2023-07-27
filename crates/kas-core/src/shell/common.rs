@@ -7,7 +7,7 @@
 
 use crate::draw::{color::Rgba, DrawIface, WindowCommon};
 use crate::draw::{DrawImpl, DrawShared, DrawSharedImpl};
-use crate::event::{CursorIcon, UpdateId};
+use crate::event::CursorIcon;
 use crate::geom::Size;
 use crate::theme::{ThemeControl, ThemeSize};
 use crate::{Action, Window, WindowId};
@@ -260,12 +260,6 @@ pub(crate) trait ShellWindow {
 
     /// Close a window
     fn close_window(&mut self, id: WindowId);
-
-    /// Updates all subscribed widgets
-    ///
-    /// All widgets subscribed to the given [`UpdateId`], across all
-    /// windows, will receive an update.
-    fn update_all(&mut self, id: UpdateId, payload: u64);
 
     /// Enable window dragging for current click
     ///

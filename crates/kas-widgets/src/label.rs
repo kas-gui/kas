@@ -3,14 +3,25 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Text widgets
+//! Fixed text widgets
 
+use super::adapter::WithAny;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
+use kas::text::Text;
 use kas::theme::TextClass;
+
+/// Construct a [`Label`] which accepts any data
+#[inline]
+pub fn label<A, T: FormattableText + 'static>(label: T) -> WithAny<A, Label<T>> {
+    WithAny::new(Label::new(label))
+}
 
 impl_scope! {
     /// A text label
+    ///
+    /// `Label` derives its contents from input data. Use [`Text`](crate::Text)
+    /// instead for fixed contents.
     ///
     /// A text label. Vertical alignment defaults to centred, horizontal
     /// alignment depends on the script direction if not specified.
@@ -316,7 +327,7 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.add_accel_keys(self.id_ref(), self.label.text().keys());
         }
 

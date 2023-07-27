@@ -26,23 +26,23 @@ impl_scope! {
     /// If no selection handler exists, then the choice's message is emitted
     /// when selected. If a handler is specified via [`Self::on_select`], then
     /// this message is passed to the handler and not emitted.
-    #[impl_default]
     #[widget {
         layout = button! 'frame(row! [self.label, self.mark]);
         navigable = true;
         hover_highlight = true;
     }]
-    pub struct ComboBox<M: Clone + Debug + 'static> {
+    pub struct ComboBox<A, M: Clone + Debug + Eq + 'static> {
         core: widget_core!(),
-        #[widget]
+        #[widget(&())]
         label: StringLabel,
-        #[widget]
-        mark: Mark = Mark::new(MarkStyle::Point(Direction::Down)),
-        #[widget]
+        #[widget(&())]
+        mark: Mark,
+        #[widget(&())]
         popup: ComboPopup<M>,
         active: usize,
         opening: bool,
         popup_id: Option<WindowId>,
+        state_fn: Box<dyn Fn(&ConfigMgr, &A) -> M>,
         on_select: Option<Box<dyn Fn(&mut EventMgr, M)>>,
     }
 
@@ -54,23 +54,41 @@ impl_scope! {
     }
 
     impl Events for Self {
-        type Data = ();
+        type Data = A;
 
         fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
             mgr.new_accel_layer(self.id(), true);
         }
 
-        fn handle_event(&mut self, data: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+        fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
+            let msg = (self.state_fn)(cx, data);
+            let index = 'outer: {
+                for (i, w) in self.popup.inner.iter().enumerate() {
+                    if *w == msg {
+                        break 'outer i;
+                    }
+                }
+
+                log::warn!("ComboBox::update: unknown entry {msg:?}");
+                return;
+            };
+            if index != self.active {
+                self.active = index;
+                *cx |= Action::REDRAW;
+            }
+        }
+
+        fn handle_event(&mut self, _: &A, mgr: &mut EventMgr, event: Event) -> Response {
             let open_popup = |s: &mut Self, mgr: &mut EventMgr, key_focus: bool| {
                 s.popup_id = mgr.add_popup(kas::Popup {
                     id: s.popup.id(),
                     parent: s.id(),
                     direction: Direction::Down,
                 });
-                if let Some(w) = s.popup.inner.inner.get_child(data, s.active) {
+                s.popup.inner.inner.as_node(&()).for_child(s.active, |w| {
                     mgr.next_nav_focus(w.id(), false, key_focus);
-                }
+                });
             };
 
             match event {
@@ -167,7 +185,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(IndexMsg(index)) = mgr.try_pop() {
                 *mgr |= self.set_active(index);
                 if let Some(id) = self.popup_id {
@@ -187,58 +205,71 @@ impl_scope! {
     }
 }
 
-impl<M, T, I> From<I> for ComboBox<M>
-where
-    M: Clone + Debug + 'static,
-    T: Into<AccelString>,
-    I: IntoIterator<Item = (T, M)>,
-{
+impl<A, M: Clone + Debug + Eq + 'static> ComboBox<A, M> {
     /// Construct a combobox
     ///
     /// Constructs a combobox with labels derived from an iterator over string
     /// types. For example:
     /// ```
     /// # use kas_widgets::ComboBox;
-    /// let combobox = ComboBox::from([("zero", 0), ("one", 1), ("two", 2)]);
+    /// #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    /// enum Select { A, B, C }
+    ///
+    /// let combobox = ComboBox::new(
+    ///     [("A", Select::A), ("B", Select::B), ("C", Select::C)],
+    ///     |_, selection| *selection,
+    /// );
     /// ```
     ///
-    /// Initially, the first entry is active.
+    /// The closure `state_fn` selects the active entry from input data.
     #[inline]
-    fn from(iter: I) -> Self {
+    pub fn new<T, I>(iter: I, state_fn: impl Fn(&ConfigMgr, &A) -> M + 'static) -> Self
+    where
+        T: Into<AccelString>,
+        I: IntoIterator<Item = (T, M)>,
+    {
         let entries = iter
             .into_iter()
             .map(|(label, msg)| MenuEntry::new(label, msg))
             .collect();
-        Self::new_vec(entries)
-    }
-}
-
-impl<M: Clone + Debug + 'static> ComboBox<M> {
-    /// Construct an empty combobox
-    #[inline]
-    pub fn new() -> Self {
-        Self::default()
+        Self::new_vec(entries, state_fn)
     }
 
     /// Construct a combobox with the given menu entries
     ///
     /// A combobox presents a menu with a fixed set of choices when clicked.
     ///
-    /// Initially, the first entry is active.
+    /// The closure `state_fn` selects the active entry from input data.
     #[inline]
-    pub fn new_vec(entries: Vec<MenuEntry<M>>) -> Self {
+    pub fn new_vec(
+        entries: Vec<MenuEntry<M>>,
+        state_fn: impl Fn(&ConfigMgr, &A) -> M + 'static,
+    ) -> Self {
         let label = entries.get(0).map(|entry| entry.get_string());
         let label = StringLabel::new(label.unwrap_or_default()).with_class(TextClass::Button);
         ComboBox {
+            core: Default::default(),
             label,
+            mark: Mark::new(MarkStyle::Point(Direction::Down)),
             popup: ComboPopup {
                 core: Default::default(),
                 inner: PopupFrame::new(
-                    Column::new_vec(entries).on_message(|mgr, index| mgr.push(IndexMsg(index))),
+                    Column::new_vec(entries).on_messages(|mgr, index| mgr.push(IndexMsg(index))),
                 ),
             },
-            ..Default::default()
+            active: 0,
+            opening: false,
+            popup_id: None,
+            state_fn: Box::new(state_fn),
+            on_select: None,
         }
+    }
+
+    /// Send a message on selection
+    #[inline]
+    #[must_use]
+    pub fn msg_on_select<M2: Debug + 'static>(self, f: impl Fn(M) -> M2 + 'static) -> Self {
+        self.on_select(move |mgr, m| mgr.push(f(m)))
     }
 
     /// Set the selection handler `f`
@@ -247,24 +278,16 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// message.
     #[inline]
     #[must_use]
-    pub fn on_select<F>(self, f: F) -> ComboBox<M>
+    pub fn on_select<F>(mut self, f: F) -> ComboBox<A, M>
     where
         F: Fn(&mut EventMgr, M) + 'static,
     {
-        ComboBox {
-            core: self.core,
-            label: self.label,
-            mark: self.mark,
-            popup: self.popup,
-            active: self.active,
-            opening: self.opening,
-            popup_id: self.popup_id,
-            on_select: Some(Box::new(f)),
-        }
+        self.on_select = Some(Box::new(f));
+        self
     }
 }
 
-impl<M: Clone + Debug + 'static> ComboBox<M> {
+impl<A, M: Clone + Debug + Eq + 'static> ComboBox<A, M> {
     /// Get the index of the active choice
     ///
     /// This index is normally less than the number of choices (`self.len()`),
@@ -368,7 +391,6 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
 
 impl_scope! {
     #[autoimpl(Default)]
-    #[derive(Clone)]
     #[widget{
         Data = ();
         layout = self.inner;

@@ -5,9 +5,8 @@
 
 //! Counter example (simple button)
 
-use kas::event::EventMgr;
-use kas::widget::{EditField, RowSplitter, TextButton};
-use kas::{Events, Window};
+use kas::prelude::*;
+use kas::widget::{adapter::WithAny, Adapt, EditField, RowSplitter, TextButton};
 
 #[derive(Clone, Debug)]
 enum Message {
@@ -18,46 +17,27 @@ enum Message {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let panes = (0..2).map(|n| EditField::new(format!("Pane {}", n + 1)).with_multi_line(true));
-    let panes = RowSplitter::<EditField>::new(panes.collect());
+    let ui = kas::column![
+        WithAny::new(kas::row![
+            TextButton::new_msg("−", Message::Decr),
+            TextButton::new_msg("+", Message::Incr),
+        ]),
+        RowSplitter::new(vec![]).on_update(|cx, panes, len| panes.resize_with(
+            len,
+            cx,
+            *len,
+            |n| EditField::text(format!("Pane {}", n + 1)).with_multi_line(true)
+        )),
+    ];
 
-    let ui = kas::singleton! {
-        #[widget{
-            layout = column! [
-                row! [
-                    TextButton::new_msg("−", Message::Decr),
-                    TextButton::new_msg("+", Message::Incr),
-                ],
-                self.panes,
-            ];
-        }]
-        struct {
-            core: widget_core!(),
-            #[widget] panes: RowSplitter<EditField> = panes,
+    let adapt = Adapt::new(ui, 3).on_message(|_, len, msg| {
+        *len = match msg {
+            Message::Decr => len.saturating_sub(1),
+            Message::Incr => len.saturating_add(1),
         }
-        impl Events for Self {
-            type Data = ();
+    });
 
-            fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
-                if let Some(msg) = mgr.try_pop::<Message>() {
-                    match msg {
-                        Message::Decr => {
-                            mgr.config_mgr(|mgr| self.panes.pop(mgr));
-                        }
-                        Message::Incr => {
-                            let n = self.panes.len() + 1;
-                            mgr.config_mgr(|mgr| self.panes.push(
-                                data,
-                                mgr,
-                                EditField::new(format!("Pane {n}")).with_multi_line(true)
-                            ));
-                        }
-                    };
-                }
-            }
-        }
-    };
-    let window = Window::new(ui, "Slitter panes");
+    let window = Window::new(adapt, "Slitter panes");
 
     let theme = kas_wgpu::ShadedTheme::new();
     kas::shell::DefaultShell::new((), theme)?

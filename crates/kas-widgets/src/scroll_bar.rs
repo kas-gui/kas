@@ -58,6 +58,24 @@ impl_scope! {
         }
     }
 
+    impl ScrollBar<kas::dir::Down> {
+        /// Construct a scroll bar (vertical)
+        ///
+        /// Default values are assumed for all parameters.
+        pub fn down() -> Self {
+            ScrollBar::new()
+        }
+    }
+
+    impl ScrollBar<kas::dir::Right> {
+        /// Construct a scroll bar (horizontal)
+        ///
+        /// Default values are assumed for all parameters.
+        pub fn right() -> Self {
+            ScrollBar::new()
+        }
+    }
+
     impl Self {
         /// Construct a scroll bar with the given direction
         ///
@@ -197,7 +215,7 @@ impl_scope! {
 
         fn update_widgets(&mut self) -> Action {
             let len = self.bar_len();
-            let total = i64::from(self.max_value) + i64::from(self.handle_value);
+            let total = 1i64.max(i64::from(self.max_value) + i64::from(self.handle_value));
             let handle_len = i64::from(self.handle_value) * i64::conv(len) / total;
             self.handle_len = i32::conv(handle_len).max(self.min_handle_len).min(len);
             let mut size = self.core.rect.size;
@@ -319,7 +337,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(GripMsg::PressMove(offset)) = mgr.try_pop() {
                 self.apply_grip_offset(mgr, offset);
             }
@@ -333,7 +351,7 @@ impl_scope! {
     /// This is a wrapper adding scroll bar controls around a child. Note that this
     /// widget does not enable scrolling; see [`ScrollBarRegion`] for that.
     ///
-    /// Scroll bar positioning does not respect the inner widgets margins, since
+    /// Scroll bar positioning does not respect the inner widget's margins, since
     /// the result looks poor when content is scrolled. Instead the content should
     /// force internal margins by wrapping contents with a (zero-sized) frame.
     /// [`ScrollRegion`] already does this.
@@ -432,8 +450,8 @@ impl_scope! {
         fn scroll_offset(&self) -> Offset {
             self.inner.scroll_offset()
         }
-        fn set_scroll_offset(&mut self, data: &Self::Data, mgr: &mut EventMgr, offset: Offset) -> Offset {
-            let offset = self.inner.set_scroll_offset(data, mgr, offset);
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
+            let offset = self.inner.set_scroll_offset(mgr, offset);
             self.horiz_bar.set_value(mgr, offset.0);
             self.vert_bar.set_value(mgr, offset.1);
             offset
@@ -531,17 +549,17 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             let index = mgr.last_child().expect("message not sent from self");
             if index == widget_index![self.horiz_bar] {
                 if let Some(ScrollMsg(x)) = mgr.try_pop() {
                     let offset = Offset(x, self.inner.scroll_offset().1);
-                    self.inner.set_scroll_offset(data, mgr, offset);
+                    self.inner.set_scroll_offset(mgr, offset);
                 }
             } else if index == widget_index![self.vert_bar] {
                 if let Some(ScrollMsg(y)) = mgr.try_pop() {
                     let offset = Offset(self.inner.scroll_offset().0, y);
-                    self.inner.set_scroll_offset(data, mgr, offset);
+                    self.inner.set_scroll_offset(mgr, offset);
                 }
             }
         }
@@ -621,8 +639,8 @@ impl_scope! {
             self.0.inner.scroll_offset()
         }
         #[inline]
-        fn set_scroll_offset(&mut self, data: &Self::Data, mgr: &mut EventMgr, offset: Offset) -> Offset {
-            self.0.set_scroll_offset(data, mgr, offset)
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
+            self.0.set_scroll_offset(mgr, offset)
         }
     }
 }

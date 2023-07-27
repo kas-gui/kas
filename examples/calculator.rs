@@ -8,9 +8,9 @@
 use std::num::ParseFloatError;
 use std::str::FromStr;
 
-use kas::event::{Command, VirtualKeyCode as VK};
+use kas::event::VirtualKeyCode as VK;
 use kas::prelude::*;
-use kas::widget::{EditBox, TextButton};
+use kas::widget::{adapter::WithAny, Adapt, EditBox, TextButton};
 
 #[derive(Clone, Debug)]
 enum Key {
@@ -24,94 +24,60 @@ enum Key {
     Char(char),
 }
 
-impl_scope! {
-    // Buttons get keyboard bindings through the "&" item (e.g. "&1"
-    // binds both main and numpad 1 key) and via `with_keys`.
-    #[widget{
-        Data = ();
-        layout = grid! {
-            (0, 0) => TextButton::new_msg("&clear", Key::Clear).with_keys(&[VK::Delete]),
-            (1, 0) => TextButton::new_msg("&÷", Key::Divide).with_keys(&[VK::Slash]),
-            (2, 0) => TextButton::new_msg("&×", Key::Multiply).with_keys(&[VK::Asterisk]),
-            (3, 0) => TextButton::new_msg("&−", Key::Subtract),
-            (0, 1) => TextButton::new_msg("&7", Key::Char('7')),
-            (1, 1) => TextButton::new_msg("&8", Key::Char('8')),
-            (2, 1) => TextButton::new_msg("&9", Key::Char('9')),
-            (3, 1..3) => TextButton::new_msg("&+", Key::Add),
-            (0, 2) => TextButton::new_msg("&4", Key::Char('4')),
-            (1, 2) => TextButton::new_msg("&5", Key::Char('5')),
-            (2, 2) => TextButton::new_msg("&6", Key::Char('6')),
-            (0, 3) => TextButton::new_msg("&1", Key::Char('1')),
-            (1, 3) => TextButton::new_msg("&2", Key::Char('2')),
-            (2, 3) => TextButton::new_msg("&3", Key::Char('3')),
-            (3, 3..5) => {
-                TextButton::new_msg("&=", Key::Equals)
-                    .with_keys(&[VK::Return, VK::NumpadEnter])
-            }
-            (0..2, 4) => TextButton::new_msg("&0", Key::Char('0')),
-            (2, 4) => TextButton::new_msg("&.", Key::Char('.')),
-        };
-    }]
-    #[derive(Default)]
-    struct Buttons(widget_core!());
-}
+fn calc_ui() -> Window<()> {
+    // We could use kas::widget::Text, but EditBox looks better.
+    let display = EditBox::ro(|calc: &Calculator| calc.display())
+        .with_multi_line(true)
+        .with_lines(3, 3)
+        .with_width_em(5.0, 10.0);
 
-impl_scope! {
-    #[impl_default]
-    #[widget{
-        layout = column! [
-            self.display,
-            Buttons::default(),
-        ];
-    }]
-    struct CalcUI {
-        core: widget_core!(),
-        #[widget] display: EditBox = EditBox::new("0")
-            .with_editable(false)
-            .with_multi_line(true)
-            .with_lines(3, 3)
-            .with_width_em(5.0, 10.0),
-        calc: Calculator = Calculator::new(),
-    }
-    impl Events for Self {
-        type Data = ();
-
-        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
-            mgr.disable_nav_focus(true);
-
-            // Enable key bindings without Alt held:
-            mgr.enable_alt_bypass(self.id_ref(), true);
-
-            mgr.register_nav_fallback(self.id());
+    // We use WithAny to avoid passing input data (not wanted by buttons):
+    let buttons = WithAny::new(kas::grid! {
+        // Key bindings: C, Del
+        (0, 0) => TextButton::new_msg("&clear", Key::Clear).with_keys(&[VK::Delete]),
+        // Widget is hidden but has key binding.
+        // TODO(opt): exclude from layout & drawing.
+        (0, 0) => TextButton::new_msg("", Key::DelBack).with_keys(&[VK::Back]),
+        (1, 0) => TextButton::new_msg("&÷", Key::Divide).with_keys(&[VK::Slash]),
+        (2, 0) => TextButton::new_msg("&×", Key::Multiply).with_keys(&[VK::Asterisk]),
+        (3, 0) => TextButton::new_msg("&−", Key::Subtract),
+        (0, 1) => TextButton::new_msg("&7", Key::Char('7')),
+        (1, 1) => TextButton::new_msg("&8", Key::Char('8')),
+        (2, 1) => TextButton::new_msg("&9", Key::Char('9')),
+        (3, 1..3) => TextButton::new_msg("&+", Key::Add),
+        (0, 2) => TextButton::new_msg("&4", Key::Char('4')),
+        (1, 2) => TextButton::new_msg("&5", Key::Char('5')),
+        (2, 2) => TextButton::new_msg("&6", Key::Char('6')),
+        (0, 3) => TextButton::new_msg("&1", Key::Char('1')),
+        (1, 3) => TextButton::new_msg("&2", Key::Char('2')),
+        (2, 3) => TextButton::new_msg("&3", Key::Char('3')),
+        (3, 3..5) => {
+            TextButton::new_msg("&=", Key::Equals)
+                .with_keys(&[VK::Return, VK::NumpadEnter])
         }
+        (0..2, 4) => TextButton::new_msg("&0", Key::Char('0')),
+        (2, 4) => TextButton::new_msg("&.", Key::Char('.')),
+    });
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
-            match event {
-                Event::Command(Command::DelBack) => {
-                    mgr.push(Key::DelBack);
-                    Response::Used
-                }
-                _ => Response::Unused,
-            }
-        }
+    let ui = Adapt::new(kas::column![display, buttons], Calculator::new())
+        .on_message(|_, calc, key| calc.handle(key));
 
-        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
-            if let Some(msg) = mgr.try_pop::<Key>() {
-                if self.calc.handle(msg) {
-                    *mgr |= self.display.set_string(self.calc.display());
-                }
-            }
-        }
-    }
+    Window::new(ui, "Calculator").on_configure(|window, cx| {
+        cx.disable_nav_focus(true);
+
+        // Enable key bindings without Alt held:
+        cx.enable_alt_bypass(window.id_ref(), true);
+
+        cx.register_nav_fallback(window.id());
+    })
 }
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let theme = kas_wgpu::ShadedTheme::new().with_font_size(16.0);
-    let window = Window::new(CalcUI::default(), "Calculator");
     kas::shell::DefaultShell::new((), theme)?
-        .with(window)?
+        .with(calc_ui())?
         .run()
 }
 
@@ -166,32 +132,29 @@ impl Calculator {
         format!("{}\n{}\n{}", self.state_str(), op, &self.line_buf)
     }
 
-    // return true if display changes
-    fn handle(&mut self, key: Key) -> bool {
+    fn handle(&mut self, key: Key) {
         match key {
             Key::Clear => {
                 self.state = Ok(0.0);
                 self.op = Op::None;
                 self.line_buf.clear();
-                true
             }
-            Key::DelBack => self.line_buf.pop().is_some(),
+            Key::DelBack => {
+                self.line_buf.pop();
+            }
             Key::Divide => self.do_op(Op::Divide),
             Key::Multiply => self.do_op(Op::Multiply),
             Key::Subtract => self.do_op(Op::Subtract),
             Key::Add => self.do_op(Op::Add),
             Key::Equals => self.do_op(Op::None),
-            Key::Char(c) => {
-                self.line_buf.push(c);
-                true
-            }
+            Key::Char(c) => self.line_buf.push(c),
         }
     }
 
-    fn do_op(&mut self, next_op: Op) -> bool {
+    fn do_op(&mut self, next_op: Op) {
         if self.line_buf.is_empty() {
             self.op = next_op;
-            return true;
+            return;
         }
 
         let line = f64::from_str(&self.line_buf);
@@ -215,6 +178,5 @@ impl Calculator {
         }
 
         self.op = next_op;
-        true
     }
 }

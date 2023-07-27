@@ -85,7 +85,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_scroll_offset(&mut self, _: &Self::Data, mgr: &mut EventMgr, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             *mgr |= self.scroll.set_offset(offset);
             self.scroll.offset()
         }
@@ -137,7 +137,7 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.register_nav_fallback(self.id());
         }
 

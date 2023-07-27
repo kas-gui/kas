@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 use super::*;
 use crate::cast::Conv;
 use crate::draw::DrawShared;
+use crate::event::config::ChangeConfig;
 use crate::geom::{Offset, Vec2};
 use crate::theme::{SizeMgr, ThemeControl};
 use crate::{Action, Erased, WidgetId, Window, WindowId};
@@ -159,6 +160,18 @@ impl EventState {
     #[inline]
     pub fn config_test_pan_thresh(&self, dist: Offset) -> bool {
         Vec2::conv(dist).abs().max_comp() >= self.config.pan_dist_thresh()
+    }
+
+    /// Update event configuration
+    #[inline]
+    pub fn change_config(&mut self, msg: ChangeConfig) {
+        match self.config.config.try_borrow_mut() {
+            Ok(mut config) => {
+                config.change_config(msg);
+                self.action |= Action::EVENT_CONFIG;
+            }
+            Err(_) => log::error!("EventState::change_config: failed to mutably borrow config"),
+        }
     }
 
     /// Set/unset a widget as disabled
@@ -515,7 +528,7 @@ impl EventState {
     /// The future must resolve to a message on completion. This message is
     /// pushed to the message stack as if it were pushed with [`EventMgr::push`]
     /// from widget `id`, allowing this widget or any ancestor to handle it in
-    /// [`Events::handle_message`].
+    /// [`Events::handle_messages`].
     //
     // TODO: Can we identify the calling widget `id` via the context (EventMgr)?
     pub fn push_async<Fut, M>(&mut self, id: WidgetId, fut: Fut)
@@ -558,7 +571,7 @@ impl EventState {
         self.push_async(id, async_global_executor::spawn(fut.into_future()));
     }
 
-    /// Request re-configure widget `id`
+    /// Request re-configure of widget `id`
     ///
     /// This method requires that `id` is a valid path to an already-configured
     /// widget. E.g. if widget `w` adds a new child, it may call
@@ -569,6 +582,13 @@ impl EventState {
         self.pending.push_back(Pending::Configure(id));
     }
 
+    /// Request update to widget `id`
+    ///
+    /// Schedules a call to [`Widget::update`] on widget `id`.
+    pub fn request_update(&mut self, id: WidgetId) {
+        self.pending.push_back(Pending::Update(id));
+    }
+
     /// Request set_rect of the given path
     pub fn request_set_rect(&mut self, id: WidgetId) {
         self.pending.push_back(Pending::SetRect(id));
@@ -577,11 +597,31 @@ impl EventState {
 
 /// Public API
 impl<'a> EventMgr<'a> {
+    /// Configure a widget
+    ///
+    /// Note that, when handling events, this method returns the *old* state.
+    ///
+    /// This is a shortcut to [`ConfigMgr::configure`].
+    #[inline]
+    pub fn configure(&mut self, mut widget: NodeMut<'_>, id: WidgetId) {
+        self.config_mgr(|mgr| widget._configure(mgr, id));
+    }
+
+    /// Update a widget
+    ///
+    /// [`Events::update`] will be called recursively on each child and finally
+    /// `self`. If a widget stores state which it passes to children as input
+    /// data, it should call this (or [`ConfigMgr::update`]) after mutating the state.
+    #[inline]
+    pub fn update(&mut self, mut widget: NodeMut<'_>) {
+        self.config_mgr(|mgr| widget._update(mgr));
+    }
+
     /// Get the index of the last child visited
     ///
     /// This is only used when unwinding (traversing back up the widget tree),
     /// and returns the index of the child last visited. E.g. when
-    /// [`Events::handle_message`] is called, this method returns the index of
+    /// [`Events::handle_messages`] is called, this method returns the index of
     /// the child which submitted the message (or whose descendant did).
     /// Otherwise this returns `None` (including when the widget itself is the
     /// submitter of the message).
@@ -614,7 +654,7 @@ impl<'a> EventMgr<'a> {
     /// then pushed to the stack.
     ///
     /// The message may be [popped](EventMgr::try_pop) or
-    /// [observed](EventMgr::try_observe) from [`Events::handle_message`]
+    /// [observed](EventMgr::try_observe) from [`Events::handle_messages`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn push<M: Debug + 'static>(&mut self, msg: M) {
         self.push_erased(Erased::new(msg));
@@ -625,38 +665,29 @@ impl<'a> EventMgr<'a> {
     /// This is a lower-level variant of [`Self::push`].
     ///
     /// The message may be [popped](EventMgr::try_pop) or
-    /// [observed](EventMgr::try_observe) from [`Events::handle_message`]
+    /// [observed](EventMgr::try_observe) from [`Events::handle_messages`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn push_erased(&mut self, msg: Erased) {
-        self.messages.push(msg);
+        self.messages.push_erased(msg);
     }
 
     /// True if the message stack is non-empty
     pub fn has_msg(&self) -> bool {
-        !self.messages.is_empty()
+        self.messages.has_any()
     }
 
     /// Try popping the last message from the stack with the given type
     ///
-    /// This method may be called from [`Events::handle_message`].
+    /// This method may be called from [`Events::handle_messages`].
     pub fn try_pop<M: Debug + 'static>(&mut self) -> Option<M> {
-        if self.messages.last().map(|m| m.is::<M>()).unwrap_or(false) {
-            self.messages
-                .pop()
-                .unwrap()
-                .downcast::<M>()
-                .ok()
-                .map(|m| *m)
-        } else {
-            None
-        }
+        self.messages.try_pop()
     }
 
     /// Try observing the last message on the stack without popping
     ///
-    /// This method may be called from [`Events::handle_message`].
+    /// This method may be called from [`Events::handle_messages`].
     pub fn try_observe<M: Debug + 'static>(&self) -> Option<&M> {
-        self.messages.last().and_then(|m| m.downcast_ref::<M>())
+        self.messages.try_observe()
     }
 
     /// Set a scroll action
@@ -725,7 +756,7 @@ impl<'a> EventMgr<'a> {
     /// Caveat: if an error occurs opening the new window it will not be
     /// reported (except via log messages).
     #[inline]
-    pub fn add_window<Data>(&mut self, window: Window<Data>) -> WindowId {
+    pub fn add_window<Data: 'static>(&mut self, window: Window<Data>) -> WindowId {
         let data_type_id = std::any::TypeId::of::<Data>();
         unsafe {
             let window: Window<()> = std::mem::transmute(window);
@@ -767,24 +798,6 @@ impl<'a> EventMgr<'a> {
         }
 
         self.shell.close_window(id);
-    }
-
-    /// Send [`Event::Update`] to all widgets
-    ///
-    /// All widgets across all windows will receive [`Event::Update`] with
-    /// [`UpdateId::ZERO`] and the given `payload`.
-    #[inline]
-    pub fn update_all(&mut self, payload: u64) {
-        self.shell.update_all(UpdateId::ZERO, payload);
-    }
-
-    /// Send [`Event::Update`] to all widgets
-    ///
-    /// All widgets across all windows will receive [`Event::Update`] with
-    /// the given `id` and `payload`.
-    pub fn update_with_id(&mut self, id: UpdateId, payload: u64) {
-        log::debug!(target: "kas_core::event::manager", "update_all: id={id:?}, payload={payload}");
-        self.shell.update_all(id, payload);
     }
 
     /// Attempt to get clipboard contents
@@ -879,12 +892,5 @@ impl<'a> EventMgr<'a> {
                 self.shell.set_cursor_icon(icon);
             }
         }
-    }
-
-    /// Configure a widget
-    ///
-    /// This is a shortcut to [`ConfigMgr::configure`].
-    pub fn configure(&mut self, widget: NodeMut<'_>, id: WidgetId) {
-        self.config_mgr(|mgr| mgr.configure(widget, id));
     }
 }

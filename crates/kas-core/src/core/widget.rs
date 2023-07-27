@@ -165,10 +165,10 @@ pub trait Layout: WidgetCore {
     /// -   Determine the next child after `from` (if provided) or the whole
     ///     range, optionally in `reverse` order
     /// -   Ensure that the selected widget is addressable through
-    ///     [`Widget::get_child`]
+    ///     [`Widget::for_child`]
     ///
     /// Both `from` and the return value use the widget index, as used by
-    /// [`Widget::get_child`].
+    /// [`Widget::for_child`].
     ///
     /// Default implementation:
     ///
@@ -276,11 +276,11 @@ pub trait Events: Sized {
     /// Pre-configuration
     ///
     /// This method is called before children are configured to assign a
-    /// [`WidgetId`]. Usually it does nothing else, but a custom implementation
-    /// may be used to affect child configuration, e.g. via
-    /// [`EventState::new_accel_layer`].
+    /// [`WidgetId`], therefore implementations should not access child state
+    /// (`child.id()` will be invalid the first time this method is called).
     ///
-    /// Default impl: assign `id` to self
+    /// This method must set `self.core.id = id`.
+    /// The default (macro-provided) impl does so.
     fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId);
 
     /// Configure widget
@@ -289,8 +289,7 @@ pub trait Events: Sized {
     /// parent calling [`ConfigMgr::configure`]. Parent widgets are responsible
     /// for ensuring that children are configured before calling
     /// [`Layout::size_rules`] or [`Layout::set_rect`]. Configuration may be
-    /// repeated and may be used as a mechanism to change a child's [`WidgetId`],
-    /// but this may be expensive.
+    /// repeated and may be used as a mechanism to change a child's [`WidgetId`].
     ///
     /// This method may be used to configure event handling and to load
     /// resources, including resources affecting [`Layout::size_rules`].
@@ -300,7 +299,29 @@ pub trait Events: Sized {
     /// construct all windows using scale factor 1) and/or may change in the
     /// future. Changes to the scale factor result in recalculation of
     /// [`Layout::size_rules`] but not repeated configuration.
-    fn configure(&mut self, data: &Self::Data, mgr: &mut ConfigMgr) {
+    ///
+    /// The default implementation does nothing.
+    fn configure(&mut self, mgr: &mut ConfigMgr) {
+        let _ = mgr;
+    }
+
+    /// Update data
+    ///
+    /// This method is called immediately after [`Self::configure`] and after
+    /// any input data is updated, before [`Layout::draw`] is called.
+    /// Typically this method is called immediately after the data is updated
+    /// but the call may be delayed until when the widget becomes visible.
+    ///
+    /// This method is called on the parent widget before children get updated.
+    ///
+    /// This method may call [`ConfigMgr::restrict_recursion_to`].
+    /// Widgets should be updated even if their data is `()` or is unchanged.
+    /// The only valid reasons not to update a child is because (a) it is not
+    /// visible (for example, the `Stack` widget updates only the visible page)
+    /// or (b) another method is used to update the child.
+    ///
+    /// The default implementation does nothing.
+    fn update(&mut self, data: &Self::Data, mgr: &mut ConfigMgr) {
         let _ = (data, mgr);
     }
 
@@ -384,7 +405,7 @@ pub trait Events: Sized {
     ///
     /// The default implementation does nothing.
     #[inline]
-    fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
+    fn handle_messages(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
         let _ = (data, mgr);
     }
 
@@ -471,6 +492,7 @@ pub enum NavAdvance {
 /// # extern crate kas_core as kas;
 /// use kas::event;
 /// use kas::prelude::*;
+/// use kas::text::Text;
 /// use kas::theme::TextClass;
 /// use std::fmt::Debug;
 ///
@@ -551,7 +573,7 @@ pub enum NavAdvance {
 ///     impl Events for Self {
 ///         type Data = ();
 ///
-///         fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
+///         fn configure(&mut self, mgr: &mut ConfigMgr) {
 ///             mgr.add_accel_keys(self.id_ref(), self.label.keys());
 ///         }
 ///
@@ -574,32 +596,52 @@ pub trait Widget: Layout {
     /// This type must match [`Events::Data`] if `Events` is implemented when
     /// using the `#[widget]` macro. The type only needs to be specified once,
     /// here, in the implementation of [`Events`], or via the `Data` property.
-    type Data: 'static;
+    type Data;
 
     /// Erase type
-    fn as_node(&self, data: &Self::Data) -> Node<'_>;
+    fn as_node<'a>(&'a self, data: &'a Self::Data) -> Node<'a>;
     /// Erase type
-    fn as_node_mut(&mut self, data: &Self::Data) -> NodeMut<'_>;
+    fn as_node_mut<'a>(&'a mut self, data: &'a Self::Data) -> NodeMut<'a>;
 
-    /// Get a reference to a child widget by index, if any
+    /// Call closure on child with given `index`, if `index < self.num_children()`.
     ///
-    /// Required: `index < self.num_children()`.
-    fn get_child(&self, data: &Self::Data, index: usize) -> Option<Node<'_>>;
+    /// Widgets with no children or using the `#[widget]` attribute on fields do
+    /// not need to implement this. Widgets with an explicit implementation of
+    /// [`Layout::num_children`] also need to implement this.
+    ///
+    /// It is recommended to use the methods on [`Node`] or [`WidgetExt`]
+    /// instead of calling this method.
+    fn for_child_impl(
+        &self,
+        data: &Self::Data,
+        index: usize,
+        closure: Box<dyn FnOnce(Node<'_>) + '_>,
+    );
 
-    /// Mutable variant of get
+    /// Call closure on child with given `index`, if `index < self.num_children()`.
     ///
-    /// Required: `index < self.num_children()`.
-    fn get_child_mut(&mut self, data: &Self::Data, index: usize) -> Option<NodeMut<'_>>;
+    /// Widgets with no children or using the `#[widget]` attribute on fields do
+    /// not need to implement this. Widgets with an explicit implementation of
+    /// [`Layout::num_children`] also need to implement this.
+    ///
+    /// It is recommended to use the methods on [`NodeMut`] or [`WidgetExt`]
+    /// instead of calling this method.
+    fn for_child_mut_impl(
+        &mut self,
+        data: &Self::Data,
+        index: usize,
+        closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
+    );
 
     /// Internal method: configure recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn _configure(&mut self, data: &Self::Data, cx: &mut ConfigMgr, id: WidgetId);
 
-    /// Internal method: broadcast recursively
+    /// Internal method: update recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn _broadcast(&mut self, data: &Self::Data, cx: &mut EventMgr, count: &mut usize, event: Event);
+    fn _update(&mut self, data: &Self::Data, cx: &mut ConfigMgr);
 
     /// Internal method: send recursively
     ///
@@ -681,16 +723,6 @@ pub trait WidgetExt: Widget {
     #[inline]
     fn is_strict_ancestor_of(&self, id: &WidgetId) -> bool {
         !self.eq_id(id) && self.id().is_ancestor_of(id)
-    }
-
-    /// Find the descendant with this `id`, if any
-    fn find_node(&self, data: &Self::Data, id: &WidgetId) -> Option<Node<'_>> {
-        self.as_node(data).find_node(id)
-    }
-
-    /// Find the descendant with this `id`, if any
-    fn find_node_mut(&mut self, data: &Self::Data, id: &WidgetId) -> Option<NodeMut<'_>> {
-        self.as_node_mut(data).find_node(id)
     }
 }
 impl<W: Widget + ?Sized> WidgetExt for W {}

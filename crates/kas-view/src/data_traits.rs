@@ -5,11 +5,8 @@
 
 //! Traits for shared data objects
 
-#[allow(unused)] // doc links
-use crate::event::Event;
-use crate::event::EventMgr;
-use crate::{autoimpl, WidgetId};
-use std::borrow::{Borrow, BorrowMut};
+use kas::{autoimpl, WidgetId};
+use std::borrow::Borrow;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -75,7 +72,7 @@ impl DataKey for (usize, usize) {
 /// Trait for shared data
 ///
 /// By design, all methods take only `&self` and only allow immutable access to
-/// data. See also [`SharedDataMut`].
+/// data.
 #[autoimpl(for<T: trait + ?Sized>
     &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait SharedData: Debug {
@@ -83,7 +80,7 @@ pub trait SharedData: Debug {
     type Key: DataKey;
 
     /// Item type
-    type Item: Clone + Debug + 'static;
+    type Item: Clone;
 
     /// A borrow of the item type
     ///
@@ -99,17 +96,6 @@ pub trait SharedData: Debug {
     type ItemRef<'b>: Borrow<Self::Item>
     where
         Self: 'b;
-
-    /// Get the data version
-    ///
-    /// The version is increased on change and may be used to detect when views
-    /// over the data need to be refreshed. The initial version number must be
-    /// at least 1 (allowing 0 to represent an uninitialized state).
-    ///
-    /// Whenever the data is updated, [`Event::Update`] must be sent via
-    /// [`EventMgr::update_all`] to notify other users of this data of the
-    /// update.
-    fn version(&self) -> u64;
 
     /// Check whether a key has data
     fn contains_key(&self, key: &Self::Key) -> bool;
@@ -144,89 +130,11 @@ pub trait SharedData: Debug {
     }
 }
 
-/// Trait for shared mutable data
-///
-/// By design, all methods take only `&self`: since data is shared, an internal
-/// locking or synchronization mechanism is required (e.g. `RefCell` or `Mutex`).
-#[autoimpl(for<T: trait + ?Sized>
-    &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
-pub trait SharedDataMut: SharedData {
-    /// A mutable borrow of the item type
-    ///
-    /// This type must support [`BorrowMut`] over [`SharedData::Item`]. This is, for
-    /// example, supported by `&mut Self::Item`.
-    ///
-    /// It is also recommended (but not required) that the type support
-    /// [`std::ops::DerefMut`]: this allows easier usage of [`Self::borrow_mut`].
-    type ItemRefMut<'b>: BorrowMut<Self::Item>
-    where
-        Self: 'b;
-
-    /// Mutably borrow an item by `key` and notify of an update
-    ///
-    /// Returns `None` if the data is by design not mutable or if `key` has no
-    /// associated item. Otherwise, this notifies
-    /// users of a data update (by calling [`EventMgr::update_all`] *and*
-    /// incrementing the number returned by [`SharedData::version`]).
-    ///
-    /// Depending on the implementation, this may involve some form of lock
-    /// such as `RefCell::borrow_mut` or `Mutex::lock`. The implementation
-    /// should panic on lock failure, not return `None`.
-    ///
-    /// Note: implementations of the return type *might* rely on [`Drop`] for
-    /// synchronization. Failing to drop the return value may thus cause errors.
-    fn borrow_mut(&self, mgr: &mut EventMgr, key: &Self::Key) -> Option<Self::ItemRefMut<'_>>;
-
-    /// Access a mutable borrow of an item
-    ///
-    /// This is a convenience method over [`Self::borrow_mut`].
-    fn with_ref_mut<V>(
-        &self,
-        mgr: &mut EventMgr,
-        key: &Self::Key,
-        f: impl FnOnce(&mut Self::Item) -> V,
-    ) -> Option<V>
-    where
-        Self: Sized,
-    {
-        self.borrow_mut(mgr, key)
-            .map(|mut borrow| f(borrow.borrow_mut()))
-    }
-
-    /// Set an item
-    ///
-    /// This is a convenience method over [`Self::borrow_mut`].
-    #[inline]
-    fn set(&self, mgr: &mut EventMgr, key: &Self::Key, item: Self::Item) {
-        if let Some(mut borrow) = self.borrow_mut(mgr, key) {
-            *borrow.borrow_mut() = item;
-        }
-    }
-}
-
-/// Trait bound for viewable single data
-///
-/// This is automatically implemented for every type implementing `SharedData<()>`.
-///
-/// Provided implementations: [`SharedRc`](super::SharedRc),
-/// [`SharedArc`](super::SharedArc).
-// TODO(trait aliases): make this an actual trait alias
-pub trait SingleData: SharedData<Key = ()> {}
-impl<T: SharedData<Key = ()>> SingleData for T {}
-
-/// Trait bound for mutable single data
-///
-/// This is automatically implemented for every type implementing `SharedDataMut<()>`.
-///
-/// Provided implementations: [`SharedRc`](super::SharedRc),
-/// [`SharedArc`](super::SharedArc).
-// TODO(trait aliases): make this an actual trait alias
-pub trait SingleDataMut: SharedDataMut<Key = ()> {}
-impl<T: SharedDataMut<Key = ()>> SingleDataMut for T {}
-
 /// Trait for viewable data lists
 ///
 /// Provided implementations: `[T]`, `Vec<T>`.
+/// Warning: these implementations do not communicate changes to data.
+/// Non-static lists should use a custom type and trait implementation.
 #[allow(clippy::len_without_is_empty)]
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait ListData: SharedData {
@@ -244,19 +152,18 @@ pub trait ListData: SharedData {
     /// Note: users may assume this is `O(1)`.
     fn len(&self) -> usize;
 
-    /// Iterate over keys
+    /// Iterate over up to `limit` keys from `start`
     ///
-    /// The result will be in deterministic implementation-defined order, with
-    /// a length of `max(limit, data_len)` where `data_len` is the number of
-    /// items available.
-    #[inline]
-    fn iter_limit(&self, limit: usize) -> Self::KeyIter<'_> {
-        self.iter_from(0, limit)
-    }
-
-    /// Iterate over keys from an arbitrary start-point
+    /// An example where `type Key = usize`:
+    /// ```ignore
+    /// type KeyIter<'b> = std::ops::Range<usize>;
     ///
-    /// The result is the same as `self.iter_limit(start + limit).skip(start)`.
+    /// fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_> {
+    ///     start.min(self.len)..(start + limit).min(self.len)
+    /// }
+    /// ```
+    ///
+    /// This method is called on every update so should be reasonably fast.
     fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_>;
 }
 
@@ -316,5 +223,5 @@ pub trait MatrixData: SharedData {
     fn row_iter_from(&self, start: usize, limit: usize) -> Self::RowKeyIter<'_>;
 
     /// Make a key from parts
-    fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key;
+    fn make_key(&self, col: &Self::ColKey, row: &Self::RowKey) -> Self::Key;
 }

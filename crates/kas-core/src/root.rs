@@ -76,6 +76,7 @@ impl_scope! {
         restrictions: (bool, bool),
         drag_anywhere: bool,
         transparent: bool,
+        config_fn: Option<Box<dyn Fn(&Self, &mut ConfigMgr)>>,
         #[widget(&())]
         title_bar: TitleBar,
         #[widget]
@@ -139,11 +140,7 @@ impl_scope! {
                 return None;
             }
             for (_, popup, translation) in self.popups.iter_mut().rev() {
-                if let Some(id) = self
-                    .w
-                    .find_node_mut(data, &popup.id)
-                    .and_then(|mut w| w.find_id(coord + *translation))
-                {
+                if let Some(Some(id)) = self.w.as_node_mut(data).for_id(&popup.id, |mut node| node.find_id(coord + *translation)) {
                     return Some(id);
                 }
             }
@@ -162,12 +159,12 @@ impl_scope! {
             }
             draw.recurse(&mut self.w);
             for (_, popup, translation) in &self.popups {
-                if let Some(mut widget) = self.w.find_node_mut(data, &popup.id) {
-                    let clip_rect = widget.rect() - *translation;
+                self.w.as_node_mut(data).for_id(&popup.id, |mut node| {
+                    let clip_rect = node.rect() - *translation;
                     draw.with_overlay(clip_rect, *translation, |draw| {
-                        widget._draw(draw);
+                        node._draw(draw);
                     });
-                }
+                });
             }
         }
     }
@@ -175,12 +172,16 @@ impl_scope! {
     impl Events for Self {
         type Data = Data;
 
-        fn configure(&mut self, _: &Data, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             if mgr.platform().is_wayland() && self.decorations == Decorations::Server {
                 // Wayland's base protocol does not support server-side decorations
                 // TODO: Wayland has extensions for this; server-side is still
                 // usually preferred where supported (e.g. KDE).
                 self.decorations = Decorations::Toolkit;
+            }
+
+            if let Some(ref f) = self.config_fn {
+                f(self, mgr);
             }
         }
 
@@ -206,6 +207,7 @@ impl<Data: 'static> Window<Data> {
             restrictions: (true, false),
             drag_anywhere: true,
             transparent: false,
+            config_fn: None,
             title_bar: TitleBar::new(title),
             w: ui,
             bar_h: 0,
@@ -308,6 +310,15 @@ impl<Data: 'static> Window<Data> {
         self
     }
 
+    /// Set a closure to be called on initialisation
+    ///
+    /// This closure is called before sizing, drawing and event handling.
+    /// It may be called more than once.
+    pub fn on_configure(mut self, config_fn: impl Fn(&Self, &mut ConfigMgr) + 'static) -> Self {
+        self.config_fn = Some(Box::new(config_fn));
+        self
+    }
+
     /// Add a pop-up as a layer in the current window
     ///
     /// Each [`crate::Popup`] is assigned a [`WindowId`]; both are passed.
@@ -345,13 +356,6 @@ impl<Data: 'static> Window<Data> {
 // Search for a widget by `id`. On success, return that widget's [`Rect`] and
 // the translation of its children.
 fn find_rect(widget: Node<'_>, id: WidgetId, mut translation: Offset) -> Option<(Rect, Offset)> {
-    if let Some(i) = widget.find_child_index(&id) {
-        if let Some(w) = widget.re().get_child(i) {
-            translation += widget.translation();
-            return find_rect(w, id, translation);
-        }
-    }
-
     if widget.eq_id(&id) {
         if widget.translation() != Offset::ZERO {
             // Unvalidated: does this cause issues with the parent's event handlers?
@@ -362,10 +366,17 @@ fn find_rect(widget: Node<'_>, id: WidgetId, mut translation: Offset) -> Option<
         }
 
         let rect = widget.rect();
-        Some((rect, translation))
-    } else {
-        None
+        return Some((rect, translation));
+    } else if let Some(i) = widget.find_child_index(&id) {
+        if let Some(r) = widget.for_child(i, |w| {
+            translation += widget.translation();
+            find_rect(w, id, translation)
+        }) {
+            return r;
+        }
     }
+
+    None
 }
 
 impl<Data: 'static> Window<Data> {
@@ -374,14 +385,6 @@ impl<Data: 'static> Window<Data> {
         // r=window/root rect, c=anchor rect
         let r = self.core.rect;
         let (_, ref mut popup, ref mut translation) = self.popups[index];
-
-        let (c, t) = find_rect(self.w.as_node(data), popup.parent.clone(), Offset::ZERO).unwrap();
-        *translation = t;
-        let r = r + t; // work in translated coordinate space
-        let mut widget = self.w.find_node_mut(data, &popup.id).unwrap();
-        let mut cache = layout::SolveCache::find_constraints(widget.re(), mgr.size_mgr());
-        let ideal = cache.ideal(false);
-        let m = cache.margins();
 
         let is_reversed = popup.direction.is_reversed();
         let place_in = |rp, rs: i32, cp: i32, cs: i32, ideal, m: (u16, u16)| -> (i32, i32) {
@@ -408,17 +411,27 @@ impl<Data: 'static> Window<Data> {
             let size = ideal.max(cs).min(rs);
             (pos, size)
         };
-        let rect = if popup.direction.is_horizontal() {
-            let (x, w) = place_in(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0, m.horiz);
-            let (y, h) = place_out(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1);
-            Rect::new(Coord(x, y), Size::new(w, h))
-        } else {
-            let (x, w) = place_out(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0);
-            let (y, h) = place_in(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1, m.vert);
-            Rect::new(Coord(x, y), Size::new(w, h))
-        };
 
-        cache.apply_rect(widget.re(), mgr, rect, false);
-        cache.print_widget_heirarchy(widget.as_node());
+        let (c, t) = find_rect(self.w.as_node(data), popup.parent.clone(), Offset::ZERO).unwrap();
+        *translation = t;
+        let r = r + t; // work in translated coordinate space
+        self.w.as_node_mut(data).for_id(&popup.id, |mut node| {
+            let mut cache = layout::SolveCache::find_constraints(node.re(), mgr.size_mgr());
+            let ideal = cache.ideal(false);
+            let m = cache.margins();
+
+            let rect = if popup.direction.is_horizontal() {
+                let (x, w) = place_in(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0, m.horiz);
+                let (y, h) = place_out(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1);
+                Rect::new(Coord(x, y), Size::new(w, h))
+            } else {
+                let (x, w) = place_out(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0);
+                let (y, h) = place_in(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1, m.vert);
+                Rect::new(Coord(x, y), Size::new(w, h))
+            };
+
+            cache.apply_rect(node.re(), mgr, rect, false);
+            cache.print_widget_heirarchy(node.re_node());
+        });
     }
 }

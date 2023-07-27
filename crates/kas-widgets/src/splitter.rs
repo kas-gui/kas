@@ -91,20 +91,36 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        #[inline]
-        fn get_child(&self, data: &W::Data, index: usize) -> Option<Node> {
+        fn for_child_impl(
+            &self,
+            data: &W::Data,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
             if (index & 1) != 0 {
-                self.handles.get(index >> 1).map(|w| w.as_node(&()))
+                if let Some(w) = self.handles.get(index >> 1) {
+                    closure(w.as_node(&()));
+                }
             } else {
-                self.widgets.get(index >> 1).map(|w| w.as_node(data))
+                if let Some(w) = self.widgets.get(index >> 1) {
+                    closure(w.as_node(data));
+                }
             }
         }
-        #[inline]
-        fn get_child_mut(&mut self, data: &W::Data, index: usize) -> Option<NodeMut> {
+        fn for_child_mut_impl(
+            &mut self,
+            data: &W::Data,
+            index: usize,
+            closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
+        ) {
             if (index & 1) != 0 {
-                self.handles.get_mut(index >> 1).map(|w| w.as_node_mut(&()))
+                if let Some(w) = self.handles.get_mut(index >> 1) {
+                    closure(w.as_node_mut(&()));
+                }
             } else {
-                self.widgets.get_mut(index >> 1).map(|w| w.as_node_mut(data))
+                if let Some(w) = self.widgets.get_mut(index >> 1) {
+                    closure(w.as_node_mut(data));
+                }
             }
         }
     }
@@ -232,7 +248,7 @@ impl_scope! {
             self.id_map.clear();
         }
 
-        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             let index = mgr.last_child().expect("message not sent from self");
             if (index & 1) == 1 {
                 if let Some(GripMsg::PressMove(offset)) = mgr.try_pop() {

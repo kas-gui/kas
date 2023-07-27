@@ -16,7 +16,6 @@
 use crate::adapter::WithAny;
 use crate::{EditBox, Filler, Label, TextButton};
 use kas::event::{Command, VirtualKeyCode};
-use kas::model::{SharedRc, SingleDataMut};
 use kas::prelude::*;
 use kas::text::format::FormattableText;
 
@@ -61,16 +60,23 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(MessageBoxOk) = mgr.try_pop() {
                 mgr.send_action(Action::CLOSE);
             }
         }
 
-        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.enable_alt_bypass(self.id_ref(), true);
         }
     }
+}
+
+/// Message sent by [`TextEdit`] on closure.
+#[derive(Debug)]
+pub enum TextEditResult {
+    Cancel,
+    Ok(String),
 }
 
 #[derive(Clone, Debug)]
@@ -85,25 +91,27 @@ impl_scope! {
             (2, 1) => TextButton::new_msg("&Save", MsgClose(true)),
         };
     }]
-    /// An editor over a shared `String`
+    /// An editor over a `String`
     ///
-    /// The shared data is updated only when the "Save" button is pressed.
-    pub struct TextEdit<T: SingleDataMut<Item = String> + 'static = SharedRc<String>> {
+    /// Emits a [`TextEditResult`] message on closure.
+    pub struct TextEdit {
         core: widget_core!(),
-        data: T,
         #[widget]
         edit: EditBox,
     }
 
     impl Self {
         /// Construct
-        pub fn new(multi_line: bool, data: T) -> Self {
-            let text = data.get_cloned(&()).unwrap();
+        pub fn new(text: impl ToString, multi_line: bool) -> Self {
             TextEdit {
                 core: Default::default(),
-                data,
-                edit: EditBox::new(text).with_multi_line(multi_line),
+                edit: EditBox::text(text).with_multi_line(multi_line),
             }
+        }
+
+        /// Set text
+        pub fn set_text(&mut self, text: impl ToString) -> Action {
+            self.edit.set_string(text.to_string())
         }
 
         /// Build a [`Window`]
@@ -111,11 +119,12 @@ impl_scope! {
             Window::new(WithAny::new(self), title)
         }
 
-        fn close(&mut self, mgr: &mut EventMgr, commit: bool) -> Response {
-            if commit {
-                self.data.set(mgr, &(), self.edit.get_string());
-            }
-            mgr.send_action(Action::CLOSE);
+        fn close(&mut self, cx: &mut EventMgr, commit: bool) -> Response {
+            cx.push(if commit {
+                TextEditResult::Ok(self.edit.get_string())
+            } else {
+                TextEditResult::Cancel
+            });
             Response::Used
         }
     }
@@ -123,7 +132,7 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.register_nav_fallback(self.id());
 
             // Focus first item initially:
@@ -140,7 +149,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(MsgClose(commit)) = mgr.try_pop() {
                 let _ = self.close(mgr, commit);
             }

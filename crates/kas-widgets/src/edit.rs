@@ -10,10 +10,12 @@ use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{Command, CursorIcon, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
-use kas::text::{NotReady, SelectionHelper};
+use kas::text::{NotReady, SelectionHelper, Text};
 use kas::theme::{Background, FrameStyle, TextClass};
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
+use std::marker::PhantomData;
 use std::ops::Range;
+use std::str::FromStr;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -32,28 +34,38 @@ enum EditAction {
     Edit,
 }
 
-/// A *guard* around an [`EditField`]
+/// Event-handling *guard* for [`EditField`], [`EditBox`]
 ///
-/// When an [`EditField`] receives input, it updates its contents as expected,
-/// then invokes a method of `EditGuard`. This method may update the
-/// [`EditField`] and may return a message via [`EventMgr::push`].
+/// This is the most generic interface; see also constructors of [`EditField`],
+/// [`EditBox`] for common use-cases.
 ///
 /// All methods on this trait are passed a reference to the [`EditField`] as
-/// parameter. The `EditGuard`'s state may be accessed via the
-/// [`EditField::guard`] public field.
+/// parameter. The guard itself is a public field: `edit.guard`.
 ///
 /// All methods have a default implementation which does nothing.
-///
-/// Pre-built implementations:
-///
-/// -   `()`: does nothing
-/// -   `GuardNotify`: clones text to a `String` and pushes as a message ([`EventMgr::push`])
-///     on `activate` and `focus_lost` events
-/// -   `GuardActivate: calls a closure on `activate`
-/// -   `GuardAFL`: calls a closure on `activate` and `focus_lost`
-/// -   `GuardEdit`: calls a closure on `edit`
-/// -   `GuardUpdate`: calls a closure on `update`
-pub trait EditGuard: Sized + 'static {
+pub trait EditGuard: Sized {
+    /// Data type
+    type Data;
+
+    /// Configure guard
+    ///
+    /// This function is called when the attached widget is configured.
+    fn configure(edit: &mut EditField<Self>, cx: &mut ConfigMgr) {
+        let _ = (edit, cx);
+    }
+
+    /// Update guard
+    ///
+    /// This function is called when input data is updated.
+    ///
+    /// Note that this method may be called during editing as a result of a
+    /// message sent by [`Self::edit`] or another cause, thus usually this
+    /// method should do nothing if [`EditField::has_key_focus`]. Instead, it
+    /// may be desirable to update content on [`Self::focus_lost`].
+    fn update(edit: &mut EditField<Self>, data: &Self::Data, cx: &mut ConfigMgr) {
+        let _ = (edit, data, cx);
+    }
+
     /// Activation guard
     ///
     /// This function is called when the widget is "activated", for example by
@@ -61,122 +73,180 @@ pub trait EditGuard: Sized + 'static {
     /// from `handle_event`.
     ///
     /// The default implementation returns [`Response::Unused`].
-    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
-        let _ = (edit, mgr);
+    fn activate(edit: &mut EditField<Self>, data: &Self::Data, cx: &mut EventMgr) -> Response {
+        let _ = (edit, data, cx);
         Response::Unused
     }
 
     /// Focus-gained guard
     ///
     /// This function is called when the widget gains keyboard input focus.
-    fn focus_gained(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        let _ = (edit, mgr);
+    fn focus_gained(edit: &mut EditField<Self>, data: &Self::Data, cx: &mut EventMgr) {
+        let _ = (edit, data, cx);
     }
 
     /// Focus-lost guard
     ///
     /// This function is called when the widget loses keyboard input focus.
-    ///
-    /// The default implementation does nothing.
-    fn focus_lost(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        let _ = (edit, mgr);
+    fn focus_lost(edit: &mut EditField<Self>, data: &Self::Data, cx: &mut EventMgr) {
+        let _ = (edit, data, cx);
     }
 
     /// Edit guard
     ///
-    /// This function is called when contents are updated by the user (but not
-    /// on programmatic updates — see also [`EditGuard::update`]).
-    ///
-    /// The default implementation calls [`EditGuard::update`].
-    fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        Self::update(edit);
-        let _ = mgr;
-    }
-
-    /// Update guard
-    ///
-    /// This function is called on any programmatic update to the contents
-    /// (and potentially also by [`EditGuard::edit`]).
-    fn update(edit: &mut EditField<Self>) {
-        let _ = edit;
+    /// This function is called when contents are updated by the user.
+    fn edit(edit: &mut EditField<Self>, data: &Self::Data, cx: &mut EventMgr) {
+        let _ = (edit, data, cx);
     }
 }
 
-impl EditGuard for () {}
-
-/// An [`EditGuard`] impl which notifies on activate and focus lost
+/// Ignore all events and data updates
 ///
-/// On activate and focus-lost actions, calls [`EventMgr::push`] with the
-/// edit's contents as a [`String`].
-///
-/// `Self::activate` returns [`Response::Used`].
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash)]
-pub struct GuardNotify;
-impl EditGuard for GuardNotify {
-    #[inline]
-    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
-        Self::focus_lost(edit, mgr);
-        Response::Used
+/// This guard should probably not be used for a functional user-interface but
+/// may be useful in mock UIs.
+#[autoimpl(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct DefaultGuard<A>(PhantomData<A>);
+impl<A: 'static> EditGuard for DefaultGuard<A> {
+    type Data = A;
+}
+
+impl_scope! {
+    /// An [`EditGuard`] impl for string input
+    #[autoimpl(Debug ignore self.value_fn, self.msg_fn)]
+    pub struct StringGuard<A> {
+        value_fn: Box<dyn Fn(&A) -> String>,
+        msg_fn: Option<Box<dyn Fn(&mut EventMgr, &str)>>,
     }
 
-    #[inline]
-    fn focus_lost(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        mgr.push(edit.get_string());
+    impl Self {
+        /// Construct with a value function
+        ///
+        /// On update, `value_fn` is used to extract a value from input data.
+        /// If, however, the input field has focus, the update is ignored.
+        ///
+        /// No other action happens unless [`Self::on_afl`] is used.
+        pub fn new(value_fn: impl Fn(&A) -> String + 'static) -> Self {
+            StringGuard {
+                value_fn: Box::new(value_fn),
+                msg_fn: None,
+            }
+        }
+
+        /// Set a message function
+        ///
+        /// On field **a**ctivation and **f**ocus **l**oss (AFL), `msg_fn` is
+        /// used to construct a message to be emitted via [`EventCx::push`].
+        ///
+        /// There is no message de-duplication: a message is sent each time the
+        /// field is activated or loses focus even if content remains unchanged.
+        /// TODO: should we change this behaviour to match [`ParseGuard`] which
+        /// does de-duplicate messages?
+        pub fn on_afl<M: Debug + 'static>(mut self, msg_fn: impl Fn(&str) -> M + 'static) -> Self {
+            debug_assert!(self.msg_fn.is_none());
+            self.msg_fn = Some(Box::new(move |cx, value| cx.push(msg_fn(value))));
+            self
+        }
+    }
+
+    impl EditGuard for Self {
+        type Data = A;
+
+        fn activate(edit: &mut EditField<Self>, data: &A, cx: &mut EventMgr) -> Response {
+            Self::focus_lost(edit, data, cx);
+            Response::Used
+        }
+
+        fn focus_lost(edit: &mut EditField<Self>, data: &A, cx: &mut EventMgr) {
+            if let Some(ref msg_fn) = edit.guard.msg_fn {
+                msg_fn(cx, edit.get_str());
+            } else {
+                // Reset data on focus loss (update is inhibited with focus).
+                // We do not do this given a msg_fn since that is expected
+                // to adjust data, thus triggering update with new data.
+                let string = (edit.guard.value_fn)(data);
+                *cx |= edit.set_string(string);
+            }
+        }
+
+        fn update(edit: &mut EditField<Self>, data: &A, cx: &mut ConfigMgr) {
+            if !edit.has_key_focus() {
+                let string = (edit.guard.value_fn)(data);
+                *cx |= edit.set_string(string);
+            }
+        }
     }
 }
 
-/// An [`EditGuard`] impl which calls a closure when activated
-#[autoimpl(Debug ignore self.0)]
-#[derive(Clone)]
-pub struct GuardActivate<F: FnMut(&mut EventMgr, &str) -> Response>(pub F);
-impl<F> EditGuard for GuardActivate<F>
-where
-    F: FnMut(&mut EventMgr, &str) -> Response + 'static,
-{
-    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
-        (edit.guard.0)(mgr, edit.text.text())
+impl_scope! {
+    /// An [`EditGuard`] impl for simple parsable types (e.g. numbers)
+    #[autoimpl(Debug ignore self.value_fn, self.msg_fn)]
+    pub struct ParseGuard<A, T: Debug + Display + FromStr> {
+        parsed: Option<T>,
+        value_fn: Box<dyn Fn(&A) -> T>,
+        msg_fn: Box<dyn Fn(&mut EventMgr, T)>,
     }
-}
 
-/// An [`EditGuard`] impl which calls a closure when activated or focus is lost
-///
-/// `Self::activate` returns [`Response::Used`].
-#[autoimpl(Debug ignore self.0)]
-#[derive(Clone)]
-pub struct GuardAFL<F: FnMut(&mut EventMgr, &str)>(pub F);
-impl<F> EditGuard for GuardAFL<F>
-where
-    F: FnMut(&mut EventMgr, &str) + 'static,
-{
-    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
-        (edit.guard.0)(mgr, edit.text.text());
-        Response::Used
+    impl Self {
+        /// Construct
+        ///
+        /// On update, `value_fn` is used to extract a value from input data
+        /// which is then formatted as a string via [`Display`].
+        /// If, however, the input field has focus, the update is ignored.
+        ///
+        /// On every edit, the guard attempts to parse the field's input as type
+        /// `T` via [`FromStr`], caching the result and setting the error state.
+        ///
+        /// On field activation and focus loss when a `T` value is cached (see
+        /// previous paragraph), `msg_fn` is used to construct a message to be
+        /// emitted via [`EventCx::push`].
+        ///
+        /// The cached value is cleared when a message is sent by activation or
+        /// focus loss to avoid duplicate messages. TODO: should we change this
+        /// behaviour to match [`StringGuard`] which does not de-duplicate?
+        pub fn new<M: Debug + 'static>(
+            value_fn: impl Fn(&A) -> T + 'static,
+            msg_fn: impl Fn(T) -> M + 'static,
+        ) -> Self {
+            ParseGuard {
+                parsed: None,
+                value_fn: Box::new(value_fn),
+                msg_fn: Box::new(move |cx, value| cx.push(msg_fn(value))),
+            }
+        }
     }
-    fn focus_lost(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        (edit.guard.0)(mgr, edit.text.text());
-    }
-}
 
-/// An [`EditGuard`] impl which calls a closure when edited
-#[autoimpl(Debug ignore self.0)]
-#[derive(Clone)]
-pub struct GuardEdit<F: FnMut(&mut EventMgr, &str)>(pub F);
-impl<F> EditGuard for GuardEdit<F>
-where
-    F: FnMut(&mut EventMgr, &str) + 'static,
-{
-    fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        (edit.guard.0)(mgr, edit.text.text());
-    }
-}
+    impl EditGuard for Self {
+        type Data = A;
 
-/// An [`EditGuard`] impl which calls a closure when updated
-#[autoimpl(Debug ignore self.0)]
-#[derive(Clone)]
-pub struct GuardUpdate<F: FnMut(&str)>(pub F);
-impl<F: FnMut(&str) + 'static> EditGuard for GuardUpdate<F> {
-    fn update(edit: &mut EditField<Self>) {
-        (edit.guard.0)(edit.text.text());
+        fn activate(edit: &mut EditField<Self>, data: &A, cx: &mut EventMgr) -> Response {
+            Self::focus_lost(edit, data, cx);
+            Response::Used
+        }
+
+        fn focus_lost(edit: &mut EditField<Self>, data: &A, cx: &mut EventMgr) {
+            if let Some(value) = edit.guard.parsed.take() {
+                (edit.guard.msg_fn)(cx, value);
+            } else {
+                // Reset data on focus loss (update is inhibited with focus).
+                // We do not do this given parsed value since msg_fn is expected
+                // to adjust data, thus triggering update with new data.
+                let value = (edit.guard.value_fn)(data);
+                *cx |= edit.set_string(format!("{}", value));
+            }
+        }
+
+        fn edit(edit: &mut EditField<Self>, _: &A, cx: &mut EventMgr) {
+            edit.guard.parsed = edit.get_str().parse().ok();
+            *cx |= edit.set_error_state(edit.guard.parsed.is_none());
+        }
+
+        fn update(edit: &mut EditField<Self>, data: &A, cx: &mut ConfigMgr) {
+            if !edit.has_key_focus() {
+                let value = (edit.guard.value_fn)(data);
+                *cx |= edit.set_string(format!("{}", value));
+                edit.guard.parsed = None;
+            }
+        }
     }
 }
 
@@ -189,13 +259,13 @@ impl_scope! {
     /// By default, the editor supports a single-line only;
     /// [`Self::with_multi_line`] and [`Self::with_class`] can be used to change this.
     #[autoimpl(Deref, DerefMut, HasStr, HasString using self.inner)]
-    #[derive(Clone, Default, Debug)]
+    #[autoimpl(Clone, Default, Debug where G: trait)]
     #[widget]
-    pub struct EditBox<G: EditGuard = ()> {
+    pub struct EditBox<G: EditGuard = DefaultGuard<()>> {
         core: widget_core!(),
         #[widget]
         inner: EditField<G>,
-        #[widget]
+        #[widget(&())]
         bar: ScrollBar<kas::dir::Down>,
         frame_offset: Offset,
         frame_size: Size,
@@ -268,16 +338,16 @@ impl_scope! {
     }
 
     impl Events for Self {
-        type Data = ();
+        type Data = G::Data;
 
-        fn handle_message(&mut self, data: &Self::Data, mgr: &mut EventMgr<'_>) {
+        fn handle_messages(&mut self, _: &G::Data, mgr: &mut EventMgr<'_>) {
             if let Some(ScrollMsg(y)) = mgr.try_pop() {
                 self.inner
-                    .set_scroll_offset(data, mgr, Offset(self.inner.view_offset.0, y));
+                    .set_scroll_offset(mgr, Offset(self.inner.view_offset.0, y));
             }
         }
 
-        fn handle_scroll(&mut self, _: &Self::Data, mgr: &mut EventMgr<'_>, _: Scroll) {
+        fn handle_scroll(&mut self, _: &G::Data, mgr: &mut EventMgr<'_>, _: Scroll) {
             self.update_scroll_bar(mgr);
         }
     }
@@ -298,8 +368,8 @@ impl_scope! {
             self.inner.scroll_offset()
         }
 
-        fn set_scroll_offset(&mut self, data: &Self::Data, mgr: &mut EventMgr, offset: Offset) -> Offset {
-            let offset = self.inner.set_scroll_offset(data, mgr, offset);
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
+            let offset = self.inner.set_scroll_offset(mgr, offset);
             self.update_scroll_bar(mgr);
             offset
         }
@@ -312,106 +382,75 @@ impl_scope! {
             self.bar.set_value(mgr, self.inner.view_offset.1);
         }
     }
-}
 
-impl EditBox<()> {
-    /// Construct an `EditBox` with the given inital `text`
-    #[inline]
-    pub fn new<S: ToString>(text: S) -> Self {
-        EditBox {
-            core: Default::default(),
-            inner: EditField::new(text),
-            bar: ScrollBar::new(),
-            frame_offset: Offset::ZERO,
-            frame_size: Size::ZERO,
-            inner_margin: 0,
+    impl ToString for Self {
+        fn to_string(&self) -> String {
+            self.inner.to_string()
         }
-    }
-
-    /// Construct an empty `EditBox`
-    #[inline]
-    pub fn empty() -> Self {
-        Self::new(String::new())
-    }
-
-    /// Set an [`EditGuard`]
-    ///
-    /// Technically, this consumes `self` and reconstructs another `EditBox`
-    /// with a different parameterisation.
-    ///
-    /// This method calls [`EditGuard::update`] after applying `guard` to `self`
-    /// and discards any message emitted.
-    #[inline]
-    #[must_use]
-    pub fn with_guard<G: EditGuard>(self, guard: G) -> EditBox<G> {
-        EditBox {
-            core: self.core,
-            inner: self.inner.with_guard(guard),
-            bar: self.bar,
-            frame_offset: self.frame_offset,
-            frame_size: self.frame_size,
-            inner_margin: self.inner_margin,
-        }
-    }
-
-    /// Set a guard function, called on activation
-    ///
-    /// The closure `f` is called when the `EditBox` is activated (when the
-    /// "enter" key is pressed).
-    ///
-    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
-    /// previously assigned to the `EditBox` will be replaced.
-    #[must_use]
-    pub fn on_activate<F>(self, f: F) -> EditBox<GuardActivate<F>>
-    where
-        F: FnMut(&mut EventMgr, &str) -> Response + 'static,
-    {
-        self.with_guard(GuardActivate(f))
-    }
-
-    /// Set a guard function, called on activation and input-focus lost
-    ///
-    /// The closure `f` is called when the `EditBox` is activated (when the
-    /// "enter" key is pressed) and when keyboard focus is lost.
-    ///
-    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
-    /// previously assigned to the `EditBox` will be replaced.
-    #[must_use]
-    pub fn on_afl<F>(self, f: F) -> EditBox<GuardAFL<F>>
-    where
-        F: FnMut(&mut EventMgr, &str) + 'static,
-    {
-        self.with_guard(GuardAFL(f))
-    }
-
-    /// Set a guard function, called on edit
-    ///
-    /// The closure `f` is called when the `EditBox` is edited by the user.
-    ///
-    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
-    /// previously assigned to the `EditBox` will be replaced.
-    #[must_use]
-    pub fn on_edit<F>(self, f: F) -> EditBox<GuardEdit<F>>
-    where
-        F: FnMut(&mut EventMgr, &str) + 'static,
-    {
-        self.with_guard(GuardEdit(f))
-    }
-
-    /// Set a guard function, called on update
-    ///
-    /// The closure `f` is called when the `EditBox` is updated (by the user or
-    /// programmatically). It is also called immediately by this method.
-    ///
-    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
-    /// previously assigned to the `EditBox` will be replaced.
-    #[must_use]
-    pub fn on_update<F: FnMut(&str) + 'static>(self, f: F) -> EditBox<GuardUpdate<F>> {
-        self.with_guard(GuardUpdate(f))
     }
 }
 
 impl<G: EditGuard> EditBox<G> {
+    /// Construct an `EditBox` with an [`EditGuard`]
+    #[inline]
+    pub fn new(guard: G) -> EditBox<G> {
+        EditBox {
+            core: Default::default(),
+            inner: EditField::new(guard),
+            bar: Default::default(),
+            frame_offset: Default::default(),
+            frame_size: Default::default(),
+            inner_margin: Default::default(),
+        }
+    }
+}
+
+impl<A: 'static> EditBox<DefaultGuard<A>> {
+    /// Construct an `EditBox` with the given inital `text` (no event handling)
+    #[inline]
+    pub fn text<S: ToString>(text: S) -> Self {
+        EditBox {
+            inner: EditField::text(text),
+            ..Default::default()
+        }
+    }
+
+    /// Construct a read-only `EditBox` for text content
+    #[inline]
+    pub fn ro(value_fn: impl Fn(&A) -> String + 'static) -> EditBox<StringGuard<A>> {
+        EditBox::new(StringGuard::new(value_fn)).with_editable(false)
+    }
+
+    /// Construct a read-write `EditBox` for text content
+    #[inline]
+    pub fn rw<M: Debug + 'static>(
+        value_fn: impl Fn(&A) -> String + 'static,
+        msg_fn: impl Fn(&str) -> M + 'static,
+    ) -> EditBox<StringGuard<A>> {
+        EditBox::new(StringGuard::new(value_fn).on_afl(msg_fn))
+    }
+
+    /// Construct an `EditBox` for a parsable value (e.g. a number)
+    #[inline]
+    pub fn parser<T: Debug + Display + FromStr, M: Debug + 'static>(
+        value_fn: impl Fn(&A) -> T + 'static,
+        msg_fn: impl Fn(T) -> M + 'static,
+    ) -> EditBox<ParseGuard<A, T>> {
+        EditBox::new(ParseGuard::new(value_fn, msg_fn))
+    }
+}
+
+impl<G: EditGuard> EditBox<G> {
+    /// Set the initial text (inline)
+    ///
+    /// This method should only be used on a new `EditBox`.
+    #[inline]
+    #[must_use]
+    pub fn with_text(mut self, text: impl ToString) -> Self {
+        self.inner = self.inner.with_text(text);
+        self
+    }
+
     /// Set whether this widget is editable (inline)
     #[inline]
     #[must_use]
@@ -496,13 +535,13 @@ impl_scope! {
     /// scratch on each key stroke). Regardless, this approach is not designed
     /// to scale to handle large documents via a single `EditField` widget.
     #[impl_default(where G: Default)]
-    #[derive(Clone, Debug)]
+    #[autoimpl(Clone, Debug where G: trait)]
     #[widget{
         navigable = true;
         hover_highlight = true;
         cursor_icon = CursorIcon::Text;
     }]
-    pub struct EditField<G: EditGuard = ()> {
+    pub struct EditField<G: EditGuard = DefaultGuard<()>> {
         core: widget_core!(),
         view_offset: Offset,
         editable: bool,
@@ -579,19 +618,28 @@ impl_scope! {
     }
 
     impl Events for Self {
-        type Data = ();
+        type Data = G::Data;
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
-            fn request_focus<G: EditGuard + 'static>(s: &mut EditField<G>, mgr: &mut EventMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
+            G::configure(self, mgr);
+        }
+
+        fn update(&mut self, data: &G::Data, mgr: &mut ConfigMgr) {
+            G::update(self, data, mgr);
+        }
+
+        fn handle_event(&mut self, data: &G::Data, mgr: &mut EventMgr, event: Event) -> Response {
+            fn request_focus<G: EditGuard>(s: &mut EditField<G>, data: &G::Data, mgr: &mut EventMgr) {
                 if !s.has_key_focus && mgr.request_char_focus(s.id()) {
                     s.has_key_focus = true;
                     mgr.set_scroll(Scroll::Rect(s.rect()));
-                    G::focus_gained(s, mgr);
+                    G::focus_gained(s, data, mgr);
                 }
             }
+
             match event {
                 Event::NavFocus(true) => {
-                    request_focus(self, mgr);
+                    request_focus(self, data, mgr);
                     if !self.class.multi_line() {
                         self.selection.clear();
                         self.selection.set_edit_pos(self.text.str_len());
@@ -610,7 +658,7 @@ impl_scope! {
                 Event::LostCharFocus => {
                     self.has_key_focus = false;
                     mgr.redraw(self.id());
-                    G::focus_lost(self, mgr);
+                    G::focus_lost(self, data, mgr);
                     Response::Used
                 }
                 Event::LostSelFocus => {
@@ -621,14 +669,14 @@ impl_scope! {
                 Event::Command(cmd) => {
                     // Note: we can receive a Command without char focus, but should
                     // ensure we have focus before acting on it.
-                    request_focus(self, mgr);
+                    request_focus(self, data, mgr);
                     if self.has_key_focus {
                         match self.control_key(mgr, cmd) {
                             Ok(EditAction::None) => Response::Used,
                             Ok(EditAction::Unused) => Response::Unused,
-                            Ok(EditAction::Activate) => G::activate(self, mgr),
+                            Ok(EditAction::Activate) => G::activate(self, data, mgr),
                             Ok(EditAction::Edit) => {
-                                G::edit(self, mgr);
+                                G::edit(self, data, mgr);
                                 Response::Used
                             }
                             Err(NotReady) => Response::Used,
@@ -640,7 +688,7 @@ impl_scope! {
                 Event::ReceivedCharacter(c) => match self.received_char(mgr, c) {
                     false => Response::Unused,
                     true => {
-                        G::edit(self, mgr);
+                        G::edit(self, data, mgr);
                         Response::Used
                     }
                 },
@@ -672,7 +720,7 @@ impl_scope! {
                         self.edit_x_coord = None;
                         self.prepare_text(mgr);
 
-                        G::edit(self, mgr);
+                        G::edit(self, data, mgr);
                     }
                     Response::Used
                 }
@@ -681,11 +729,11 @@ impl_scope! {
                     TextInputAction::Unused => Response::Unused,
                     TextInputAction::Pan(delta) => self.pan_delta(mgr, delta),
                     TextInputAction::Focus => {
-                        request_focus(self, mgr);
+                        request_focus(self, data, mgr);
                         Response::Used
                     }
                     TextInputAction::Cursor(coord, anchor, clear, repeats) => {
-                        request_focus(self, mgr);
+                        request_focus(self, data, mgr);
                         if self.has_key_focus {
                             self.set_edit_pos_from_coord(mgr, coord);
                             if anchor {
@@ -722,7 +770,7 @@ impl_scope! {
             self.view_offset
         }
 
-        fn set_scroll_offset(&mut self, _: &Self::Data, mgr: &mut EventMgr, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             let new_offset = offset.min(self.max_scroll_offset()).max(Offset::ZERO);
             if new_offset != self.view_offset {
                 self.view_offset = new_offset;
@@ -755,16 +803,47 @@ impl_scope! {
                 // We use SET_RECT just to set the outer scroll bar position:
                 action = Action::SET_RECT;
             }
-            G::update(self);
-            action
+            action | self.set_error_state(false)
+        }
+    }
+
+    impl ToString for Self {
+        fn to_string(&self) -> String {
+            self.text.text().clone()
         }
     }
 }
 
-impl EditField<()> {
-    /// Construct an `EditField` with the given inital `text`
+impl<G: EditGuard> EditField<G> {
+    /// Construct an `EditBox` with an [`EditGuard`]
     #[inline]
-    pub fn new<S: ToString>(text: S) -> Self {
+    pub fn new(guard: G) -> EditField<G> {
+        EditField {
+            core: Default::default(),
+            view_offset: Default::default(),
+            editable: true,
+            class: TextClass::Edit(false),
+            align: Default::default(),
+            width: (8.0, 16.0),
+            lines: (1, 1),
+            text: Default::default(),
+            text_size: Default::default(),
+            selection: Default::default(),
+            edit_x_coord: None,
+            old_state: None,
+            last_edit: Default::default(),
+            has_key_focus: false,
+            error_state: false,
+            input_handler: Default::default(),
+            guard,
+        }
+    }
+}
+
+impl<A: 'static> EditField<DefaultGuard<A>> {
+    /// Construct an `EditField` with the given inital `text` (no event handling)
+    #[inline]
+    pub fn text<S: ToString>(text: S) -> Self {
         let text = text.to_string();
         let len = text.len();
         EditField {
@@ -776,97 +855,45 @@ impl EditField<()> {
         }
     }
 
-    /// Construct an empty `EditField`
+    /// Construct a read-only `EditField` for text content
     #[inline]
-    pub fn empty() -> Self {
-        Self::new(String::new())
+    pub fn ro(value_fn: impl Fn(&A) -> String + 'static) -> EditField<StringGuard<A>> {
+        EditField::new(StringGuard::new(value_fn)).with_editable(false)
     }
 
-    /// Set an [`EditGuard`]
-    ///
-    /// Technically, this consumes `self` and reconstructs another `EditField`
-    /// with a different parameterisation.
-    ///
-    /// This method calls [`EditGuard::update`] after applying `guard` to `self`
-    /// and discards any message emitted.
+    /// Construct a read-write `EditField` for text content
     #[inline]
-    #[must_use]
-    pub fn with_guard<G: EditGuard>(self, guard: G) -> EditField<G> {
-        let mut edit = EditField {
-            core: self.core,
-            view_offset: self.view_offset,
-            editable: self.editable,
-            class: self.class,
-            align: self.align,
-            width: self.width,
-            lines: self.lines,
-            text: self.text,
-            text_size: self.text_size,
-            selection: self.selection,
-            edit_x_coord: self.edit_x_coord,
-            old_state: self.old_state,
-            last_edit: self.last_edit,
-            has_key_focus: self.has_key_focus,
-            error_state: self.error_state,
-            input_handler: self.input_handler,
-            guard,
-        };
-        G::update(&mut edit);
-        edit
+    pub fn rw<M: Debug + 'static>(
+        value_fn: impl Fn(&A) -> String + 'static,
+        msg_fn: impl Fn(&str) -> M + 'static,
+    ) -> EditField<StringGuard<A>> {
+        EditField::new(StringGuard::new(value_fn).on_afl(msg_fn))
     }
 
-    /// Set a guard function, called on activation
-    ///
-    /// The closure `f` is called when the `EditField` is activated (when the
-    /// "enter" key is pressed).
-    ///
-    /// This method is a parametisation of [`EditField::with_guard`]. Any guard
-    /// previously assigned to the `EditField` will be replaced.
-    #[must_use]
-    pub fn on_activate<F: FnMut(&mut EventMgr, &str) -> Response + 'static>(
-        self,
-        f: F,
-    ) -> EditField<GuardActivate<F>> {
-        self.with_guard(GuardActivate(f))
-    }
-
-    /// Set a guard function, called on activation and input-focus lost
-    ///
-    /// The closure `f` is called when the `EditField` is activated (when the
-    /// "enter" key is pressed) and when keyboard focus is lost.
-    ///
-    /// This method is a parametisation of [`EditField::with_guard`]. Any guard
-    /// previously assigned to the `EditField` will be replaced.
-    #[must_use]
-    pub fn on_afl<F: FnMut(&mut EventMgr, &str) + 'static>(self, f: F) -> EditField<GuardAFL<F>> {
-        self.with_guard(GuardAFL(f))
-    }
-
-    /// Set a guard function, called on edit
-    ///
-    /// The closure `f` is called when the `EditField` is edited by the user.
-    ///
-    /// This method is a parametisation of [`EditField::with_guard`]. Any guard
-    /// previously assigned to the `EditField` will be replaced.
-    #[must_use]
-    pub fn on_edit<F: FnMut(&mut EventMgr, &str) + 'static>(self, f: F) -> EditField<GuardEdit<F>> {
-        self.with_guard(GuardEdit(f))
-    }
-
-    /// Set a guard function, called on update
-    ///
-    /// The closure `f` is called when the `EditField` is updated (by the user or
-    /// programmatically). It is also called immediately by this method.
-    ///
-    /// This method is a parametisation of [`EditField::with_guard`]. Any guard
-    /// previously assigned to the `EditField` will be replaced.
-    #[must_use]
-    pub fn on_update<F: FnMut(&str) + 'static>(self, f: F) -> EditField<GuardUpdate<F>> {
-        self.with_guard(GuardUpdate(f))
+    /// Construct an `EditField` for a parsable value (e.g. a number)
+    #[inline]
+    pub fn parser<T: Debug + Display + FromStr, M: Debug + 'static>(
+        value_fn: impl Fn(&A) -> T + 'static,
+        msg_fn: impl Fn(T) -> M + 'static,
+    ) -> EditField<ParseGuard<A, T>> {
+        EditField::new(ParseGuard::new(value_fn, msg_fn))
     }
 }
 
 impl<G: EditGuard> EditField<G> {
+    /// Set the initial text (inline)
+    ///
+    /// This method should only be used on a new `EditBox`.
+    #[inline]
+    #[must_use]
+    pub fn with_text(mut self, text: impl ToString) -> Self {
+        let text = text.to_string();
+        let len = text.len();
+        self.text.set_string(text);
+        self.selection.set_pos(len);
+        self
+    }
+
     /// Set whether this `EditField` is editable (inline)
     #[inline]
     #[must_use]
@@ -967,9 +994,11 @@ impl<G: EditGuard> EditField<G> {
     /// Set the error state
     ///
     /// When true, the input field's background is drawn red.
+    /// This state is cleared by [`Self::set_string`].
     // TODO: possibly change type to Option<String> and display the error
-    pub fn set_error_state(&mut self, error_state: bool) {
+    pub fn set_error_state(&mut self, error_state: bool) -> Action {
         self.error_state = error_state;
+        Action::REDRAW
     }
 
     fn prepare_text(&mut self, mgr: &mut EventMgr) {
@@ -1068,7 +1097,9 @@ impl<G: EditGuard> EditField<G> {
             // NOTE: we might choose to optionally handle Tab in the future,
             // but without some workaround it prevents keyboard navigation.
             // Command::Tab => Action::Insert('\t'.encode_utf8(&mut buf), LastEdit::Insert),
-            Command::Left if !shift && have_sel => Action::Move(selection.start, None),
+            Command::Left | Command::Home if !shift && have_sel => {
+                Action::Move(selection.start, None)
+            }
             Command::Left if pos > 0 => {
                 let mut cursor = GraphemeCursor::new(pos, len, true);
                 cursor
@@ -1077,7 +1108,9 @@ impl<G: EditGuard> EditField<G> {
                     .map(|pos| Action::Move(pos, None))
                     .unwrap_or(Action::None)
             }
-            Command::Right if !shift && have_sel => Action::Move(selection.end, None),
+            Command::Right | Command::End if !shift && have_sel => {
+                Action::Move(selection.end, None)
+            }
             Command::Right if pos < len => {
                 let mut cursor = GraphemeCursor::new(pos, len, true);
                 cursor

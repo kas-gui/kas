@@ -12,9 +12,10 @@ use std::time::{Duration, Instant};
 use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
-use crate::model::SharedRc;
 use crate::shell::ShellWindow;
-use crate::{Action, NavAdvance, WidgetExt, WidgetId, Window};
+use crate::{Action, NavAdvance, WidgetId, Window};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
@@ -27,7 +28,7 @@ const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 impl EventState {
     /// Construct an event manager per-window data struct
     #[inline]
-    pub(crate) fn new(config: SharedRc<Config>, scale_factor: f32, dpem: f32) -> Self {
+    pub(crate) fn new(config: Rc<RefCell<Config>>, scale_factor: f32, dpem: f32) -> Self {
         EventState {
             config: WindowConfig::new(config, scale_factor, dpem),
             disabled: vec![],
@@ -58,7 +59,7 @@ impl EventState {
     }
 
     /// Update scale factor
-    pub(crate) fn set_scale_factor(&mut self, scale_factor: f32, dpem: f32) {
+    pub(crate) fn update_config(&mut self, scale_factor: f32, dpem: f32) {
         self.config.update(scale_factor, dpem);
     }
 
@@ -118,14 +119,14 @@ impl EventState {
     ///
     /// Invokes the given closure on this [`EventMgr`].
     #[inline]
-    pub(crate) fn with<F>(&mut self, shell: &mut dyn ShellWindow, f: F)
+    pub(crate) fn with<F>(&mut self, shell: &mut dyn ShellWindow, messages: &mut ErasedStack, f: F)
     where
         F: FnOnce(&mut EventMgr),
     {
         let mut mgr = EventMgr {
             state: self,
             shell,
-            messages: vec![],
+            messages,
             last_child: None,
             scroll: Scroll::None,
         };
@@ -134,9 +135,10 @@ impl EventState {
 
     /// Update, after receiving all events
     #[inline]
-    pub(crate) fn update<A>(
+    pub(crate) fn post_events<A>(
         &mut self,
         shell: &mut dyn ShellWindow,
+        messages: &mut ErasedStack,
         win: &mut Window<A>,
         data: &A,
     ) -> Action {
@@ -145,7 +147,7 @@ impl EventState {
         let mut mgr = EventMgr {
             state: self,
             shell,
-            messages: vec![],
+            messages,
             last_child: None,
             scroll: Scroll::None,
         };
@@ -212,12 +214,14 @@ impl EventState {
             log::trace!(target: "kas_core::event::manager", "update: handling Pending::{item:?}");
             match item {
                 Pending::Configure(id) => {
-                    if let Some(w) = win.find_node_mut(data, &id) {
-                        mgr.configure(w, id);
-                    }
+                    win.as_node_mut(data)
+                        .for_id(&id, |node| mgr.configure(node, id.clone()));
 
                     let hover = win.find_id(data, mgr.state.last_mouse_coord);
                     mgr.state.set_hover(hover);
+                }
+                Pending::Update(id) => {
+                    win.as_node_mut(data).for_id(&id, |node| mgr.update(node));
                 }
                 Pending::Send(id, event) => {
                     if matches!(&event, &Event::LostMouseHover) {
@@ -256,11 +260,16 @@ impl EventState {
     ///
     /// Returns true if action is non-empty
     #[inline]
-    pub(crate) fn post_draw(&mut self, shell: &mut dyn ShellWindow, widget: NodeMut<'_>) -> bool {
+    pub(crate) fn post_draw(
+        &mut self,
+        shell: &mut dyn ShellWindow,
+        messages: &mut ErasedStack,
+        widget: NodeMut<'_>,
+    ) -> bool {
         let mut mgr = EventMgr {
             state: self,
             shell,
-            messages: vec![],
+            messages,
             last_child: None,
             scroll: Scroll::None,
         };
@@ -292,22 +301,6 @@ impl<'a> EventMgr<'a> {
         }
 
         self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
-    }
-
-    /// Update widgets with an [`UpdateId`]
-    pub(crate) fn update_widgets(&mut self, widget: NodeMut<'_>, id: UpdateId, payload: u64) {
-        if id == self.state.config.config.id() {
-            let (sf, dpem) = self.size_mgr(|size| (size.scale_factor(), size.dpem()));
-            self.state.config.update(sf, dpem);
-        }
-
-        let start = Instant::now();
-        let count = self.send_update(widget, id, payload);
-        log::debug!(
-            target: "kas_core::event::manager",
-            "update_widgets: sent Event::Update ({id:?}) to {count} widgets in {}μs",
-            start.elapsed().as_micros()
-        );
     }
 
     fn poll_futures(&mut self, mut widget: NodeMut<'_>) {

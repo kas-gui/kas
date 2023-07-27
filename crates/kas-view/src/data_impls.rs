@@ -5,7 +5,7 @@
 
 //! Impls for data traits
 
-use super::*;
+use crate::{ListData, SharedData};
 use std::fmt::Debug;
 
 macro_rules! impl_list_data {
@@ -14,10 +14,6 @@ macro_rules! impl_list_data {
             type Key = usize;
             type Item = T;
             type ItemRef<'b> = &'b T;
-
-            fn version(&self) -> u64 {
-                1
-            }
 
             fn contains_key(&self, key: &Self::Key) -> bool {
                 *key < self.len()

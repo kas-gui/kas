@@ -16,10 +16,10 @@ use winit::window as ww;
 use super::{PendingAction, SharedState};
 use super::{ProxyAction, Window, WindowSurface};
 use kas::theme::Theme;
-use kas::{Action, WindowId};
+use kas::{Action, AppData, WindowId};
 
 /// Event-loop data structure (i.e. all run-time state)
-pub(super) struct Loop<A: 'static, S: WindowSurface, T: Theme<S::Shared>>
+pub(super) struct Loop<A: AppData, S: WindowSurface, T: Theme<S::Shared>>
 where
     T::Window: kas::theme::Window,
 {
@@ -35,7 +35,7 @@ where
     frame_count: (Instant, u32),
 }
 
-impl<A, S: WindowSurface, T: Theme<S::Shared>> Loop<A, S, T>
+impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Loop<A, S, T>
 where
     T::Window: kas::theme::Window,
 {
@@ -121,11 +121,10 @@ where
                         window.send_action(Action::CLOSE);
                     }
                 }
-                ProxyAction::Update(handle, payload) => {
-                    self.shared
-                        .shell
-                        .pending
-                        .push(PendingAction::Update(handle, payload));
+                ProxyAction::Message(msg) => {
+                    let mut stack = crate::ErasedStack::new();
+                    stack.push_erased(msg.into_erased());
+                    self.shared.handle_messages(&mut stack);
                 }
                 ProxyAction::WakeAsync => {
                     // We don't need to do anything: MainEventsCleared will
@@ -183,11 +182,6 @@ where
                                 }
                             }
                         }
-                        PendingAction::Update(handle, payload) => {
-                            for window in self.windows.values_mut() {
-                                window.update_widgets(&mut self.shared, handle, payload);
-                            }
-                        }
                     }
                 }
 
@@ -195,7 +189,7 @@ where
                 let mut to_close = SmallVec::<[ww::WindowId; 4]>::new();
                 self.resumes.clear();
                 for (window_id, window) in self.windows.iter_mut() {
-                    let (action, resume) = window.update(&mut self.shared);
+                    let (action, resume) = window.post_events(&mut self.shared);
                     if action.contains(Action::EXIT) {
                         close_all = true;
                     } else if action.contains(Action::CLOSE) {

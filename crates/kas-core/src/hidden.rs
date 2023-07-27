@@ -76,7 +76,7 @@ impl_scope! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Default)]
-    pub struct WithAny<A: 'static, W: Widget<Data = ()>> {
+    pub struct WithAny<A, W: Widget<Data = ()>> {
         _a: std::marker::PhantomData<A>,
         pub inner: W,
     }
@@ -159,27 +159,32 @@ impl_scope! {
     impl Widget for Self {
         type Data = A;
 
-        fn as_node(&self, _: &A) -> Node<'_> {
+        fn as_node<'a>(&'a self, _: &'a A) -> Node<'a> {
             self.inner.as_node(&())
         }
-        fn as_node_mut(&mut self, _: &A) -> NodeMut<'_> {
+        fn as_node_mut<'a>(&'a mut self, _: &'a A) -> NodeMut<'a> {
             self.inner.as_node_mut(&())
         }
 
-        fn get_child(&self, _: &A, index: usize) -> Option<Node<'_>> {
-            self.inner.get_child(&(), index)
+        #[inline]
+        fn for_child_impl(&self, _: &A, index: usize, closure: Box<dyn FnOnce(Node<'_>) + '_>) {
+            self.inner.for_child_impl(&(), index, closure)
         }
-        fn get_child_mut(&mut self, _: &A, index: usize) -> Option<NodeMut<'_>> {
-            self.inner.get_child_mut(&(), index)
+        #[inline]
+        fn for_child_mut_impl(
+            &mut self,
+            _: &A,
+            index: usize,
+            closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
+        ) {
+            self.inner.for_child_mut_impl(&(), index, closure)
         }
 
         fn _configure(&mut self, _: &A, cx: &mut ConfigMgr, id: WidgetId) {
             self.inner._configure(&(), cx, id);
         }
 
-        fn _broadcast(&mut self, _: &A, cx: &mut EventMgr, count: &mut usize, event: Event) {
-            self.inner._broadcast(&(), cx, count, event);
-        }
+        fn _update(&mut self, _: &A, _: &mut ConfigMgr) {}
 
         fn _send(&mut self, _: &A, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response {
             self.inner._send(&(), cx, id, disabled, event)

@@ -156,7 +156,7 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
             if let Some(msg) = mgr.try_pop() {
                 match msg {
                     TitleBarButton::Minimize => {

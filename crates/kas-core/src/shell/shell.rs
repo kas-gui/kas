@@ -8,11 +8,12 @@
 use super::{GraphicalShell, Platform, ProxyAction, Result, SharedState};
 use crate::config::Options;
 use crate::draw::{DrawImpl, DrawShared, DrawSharedImpl};
-use crate::event::{self, UpdateId};
-use crate::model::SharedRc;
+use crate::event;
 use crate::theme::{self, Theme, ThemeConfig};
 use crate::util::warn_about_error;
-use crate::{Window, WindowId};
+use crate::{AppData, Window, WindowId};
+use std::cell::RefCell;
+use std::rc::Rc;
 use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 
 /// The KAS shell
@@ -24,7 +25,7 @@ use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 /// and initialises the font database. Note that this database is a global
 /// singleton and some widgets and other library code may expect fonts to have
 /// been initialised first.
-pub struct Shell<Data: 'static, G: GraphicalShell, T: Theme<G::Shared>> {
+pub struct Shell<Data: AppData, G: GraphicalShell, T: Theme<G::Shared>> {
     el: EventLoop<ProxyAction>,
     windows: Vec<super::Window<Data, G::Surface, T>>,
     shared: SharedState<Data, G::Surface, T>,
@@ -41,7 +42,7 @@ pub trait ShellAssoc {
     type Draw: DrawImpl;
 }
 
-impl<A: 'static, G: GraphicalShell, T> ShellAssoc for Shell<A, G, T>
+impl<A: AppData, G: GraphicalShell, T> ShellAssoc for Shell<A, G, T>
 where
     T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,
@@ -51,7 +52,7 @@ where
     type Draw = G::Window;
 }
 
-impl<Data: 'static, G, T> Shell<Data, G, T>
+impl<Data: AppData, G, T> Shell<Data, G, T>
 where
     G: GraphicalShell + Default,
     T: Theme<G::Shared> + 'static,
@@ -71,7 +72,7 @@ where
     }
 }
 
-impl<Data: 'static, G: GraphicalShell, T> Shell<Data, G, T>
+impl<Data: AppData, G: GraphicalShell, T> Shell<Data, G, T>
 where
     T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,
@@ -98,7 +99,7 @@ where
                 Default::default()
             }
         };
-        let config = SharedRc::new(config);
+        let config = Rc::new(RefCell::new(config));
 
         Self::new_custom_config(data, graphical_shell, theme, options, config)
     }
@@ -116,7 +117,7 @@ where
         graphical_shell: impl Into<G>,
         theme: T,
         options: Options,
-        config: SharedRc<event::Config>,
+        config: Rc<RefCell<event::Config>>,
     ) -> Result<Self> {
         let el = EventLoopBuilder::with_user_event().build();
         let windows = vec![];
@@ -137,12 +138,6 @@ where
     #[inline]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
         &mut self.shared.shell.draw
-    }
-
-    /// Access event configuration
-    #[inline]
-    pub fn event_config(&self) -> &SharedRc<event::Config> {
-        &self.shared.config
     }
 
     /// Access the theme by ref
@@ -315,10 +310,16 @@ impl Proxy {
             .map_err(|_| ClosedError)
     }
 
-    /// Trigger an update
-    pub fn update_all(&self, id: UpdateId, payload: u64) -> std::result::Result<(), ClosedError> {
+    /// Send a message to [`AppData`]
+    ///
+    /// This is similar to [`EventMgr::push`](crate::events::EventMgr::push),
+    /// but can only be handled by top-level [`AppData`].
+    pub fn push<M: std::fmt::Debug + Send + 'static>(
+        &mut self,
+        msg: M,
+    ) -> std::result::Result<(), ClosedError> {
         self.0
-            .send_event(ProxyAction::Update(id, payload))
+            .send_event(ProxyAction::Message(kas::erased::SendErased::new(msg)))
             .map_err(|_| ClosedError)
     }
 

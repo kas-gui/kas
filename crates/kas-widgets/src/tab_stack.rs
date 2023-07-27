@@ -64,7 +64,7 @@ impl_scope! {
                 core: Default::default(),
                 direction: Direction::Up,
                 stack: Stack::new(),
-                tabs: Row::new().on_message(|mgr, index| {
+                tabs: Row::new().on_messages(|mgr, index| {
                     if let Some(MsgSelect) = mgr.try_pop() {
                         mgr.push(MsgSelectIndex(index));
                     }
@@ -92,9 +92,9 @@ impl_scope! {
     impl Events for Self {
         type Data = W::Data;
 
-        fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, data: &W::Data, mgr: &mut EventMgr) {
             if let Some(MsgSelectIndex(index)) = mgr.try_pop() {
-                mgr.config_mgr(|mgr| self.set_active(mgr, index));
+                mgr.config_mgr(|mgr| self.set_active(data, mgr, index));
             }
         }
     }
@@ -142,8 +142,8 @@ impl<W: Widget> TabStack<W> {
     /// -   `SizeRules` were solved: set layout ([`Layout::set_rect`]) and
     ///     update mouse-cursor target ([`Action::REGION_MOVED`])
     /// -   Otherwise: resize the whole window ([`Action::RESIZE`])
-    pub fn set_active(&mut self, mgr: &mut ConfigMgr, index: usize) {
-        self.stack.set_active(mgr, index);
+    pub fn set_active(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize) {
+        self.stack.set_active(data, mgr, index);
     }
 
     /// Get a direct reference to the active child widget, if any

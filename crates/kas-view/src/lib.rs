@@ -9,17 +9,13 @@
 //! Model-View-Controller pattern or Elm's Model-View-Update design, but with
 //! no direct link between Model and Controller:
 //!
-//! 1.  [`kas::model`] traits describe data **models**:
-//!     [`SingleData`](kas::model::SingleData),
-//!     [`ListData`](kas::model::ListData),
-//!     [`MatrixData`](kas::model::MatrixData)
+//! 1.  Model traits describe data **models**: [`ListData`], [`MatrixData`]
 //! 2.  [**Drivers**](`driver`) describe how to build a widget view over data
 //!     and (optionally) how to handle **messages** from view widgets
 //! 3.  **Controllers** are special widgets which manage views over data
 //!
 //! Three controllers are provided by this crate:
 //!
-//! -   [`SingleView`] constructs a single view over a simple data model
 //! -   [`ListView`] constructs a row or column of views over indexable data
 //! -   [`MatrixView`] constructs a table/sheet of views over two-dimensional
 //!     indexable data
@@ -31,19 +27,20 @@
 
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 
-use thiserror::Error;
+mod data_impls;
+mod data_traits;
+pub use data_traits::*;
 
-mod list_view;
-mod matrix_view;
-mod single_view;
+pub mod filter;
 
 pub mod driver;
-
 pub use driver::Driver;
+
+mod list_view;
 pub use list_view::ListView;
+
+mod matrix_view;
 pub use matrix_view::MatrixView;
-pub use maybe_owned::MaybeOwned;
-pub use single_view::SingleView;
 
 /// Used to notify selection and deselection of [`ListView`] and [`MatrixView`] children
 #[derive(Clone, Debug)]
@@ -57,7 +54,7 @@ pub enum SelectionMsg<K> {
 }
 
 /// Selection mode used by [`ListView`]
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SelectionMode {
     /// Disable selection
     #[default]
@@ -67,13 +64,4 @@ pub enum SelectionMode {
     Single,
     /// Support multi-item selection.
     Multiple,
-}
-
-/// Selection errors
-#[derive(Error, Debug)]
-pub enum SelectionError {
-    #[error("selection disabled")]
-    Disabled,
-    #[error("invalid key or index")]
-    Key,
 }

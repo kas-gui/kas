@@ -7,9 +7,8 @@
 
 use std::time::{Duration, Instant};
 
-use kas::class::HasString;
 use kas::event::{ConfigMgr, Event, EventMgr, Response};
-use kas::widget::{Frame, Label, TextButton};
+use kas::widget::{format_data, TextButton};
 use kas::{Decorations, Events, Widget, WidgetCore, WidgetExt, Window};
 
 #[derive(Clone, Debug)]
@@ -17,8 +16,6 @@ struct MsgReset;
 #[derive(Clone, Debug)]
 struct MsgStart;
 
-// Unlike most examples, we encapsulate the GUI configuration into a function.
-// There's no reason for this, but it demonstrates usage of Toolkit::add_boxed
 fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
     Box::new(kas::singleton! {
         #[widget{
@@ -30,42 +27,44 @@ fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
         }]
         struct {
             core: widget_core!(),
-            #[widget] display: impl Widget<Data = ()> + HasString = Frame::new(Label::new("0.000".to_string())),
-            saved: Duration,
-            start: Option<Instant>,
+            #[widget(&self.elapsed)] display: impl Widget<Data = Duration> =
+                format_data!(dur: &Duration, "{}.{:03}", dur.as_secs(), dur.subsec_millis()),
+            last: Option<Instant>,
+            elapsed: Duration,
         }
         impl Events for Self {
             type Data = ();
 
-            fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
-                mgr.enable_alt_bypass(self.id_ref(), true);
+            fn configure(&mut self, cx: &mut ConfigMgr) {
+                cx.enable_alt_bypass(self.id_ref(), true);
             }
-            fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+            fn handle_event(&mut self, data: &(), cx: &mut EventMgr, event: Event) -> Response {
                 match event {
                     Event::TimerUpdate(0) => {
-                        if let Some(start) = self.start {
-                            let dur = self.saved + (Instant::now() - start);
-                            let text = format!("{}.{:03}", dur.as_secs(), dur.subsec_millis());
-                            *mgr |= self.display.set_string(text);
-                            mgr.request_timer_update(self.id(), 0, Duration::new(0, 1), true);
+                        if let Some(last) = self.last {
+                            let now = Instant::now();
+                            self.elapsed += now - last;
+                            self.last = Some(now);
+                            cx.update(self.as_node_mut(data));
+                            cx.request_timer_update(self.id(), 0, Duration::new(0, 1), true);
                         }
                         Response::Used
                     }
                     _ => Response::Unused,
                 }
             }
-            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
-                if let Some(MsgReset) = mgr.try_pop() {
-                    self.saved = Duration::default();
-                    self.start = None;
-                    *mgr |= self.display.set_str("0.000");
-                } else if let Some(MsgStart) = mgr.try_pop() {
-                    if let Some(start) = self.start {
-                        self.saved += Instant::now() - start;
-                        self.start = None;
+            fn handle_messages(&mut self, data: &(), cx: &mut EventMgr) {
+                if let Some(MsgReset) = cx.try_pop() {
+                    self.elapsed = Duration::default();
+                    self.last = None;
+                    cx.update(self.as_node_mut(data));
+                } else if let Some(MsgStart) = cx.try_pop() {
+                    let now = Instant::now();
+                    if let Some(last) = self.last.take() {
+                        self.elapsed += now - last;
                     } else {
-                        self.start = Some(Instant::now());
-                        mgr.request_timer_update(self.id(), 0, Duration::new(0, 0), true);
+                        self.last = Some(now);
+                        cx.request_timer_update(self.id(), 0, Duration::new(0, 0), true);
                     }
                 }
             }

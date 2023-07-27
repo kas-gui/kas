@@ -44,13 +44,25 @@ impl_scope! {
     impl Widget for Self {
         type Data = W::Data;
 
-        #[inline]
-        fn get_child(&self, data: &W::Data, index: usize) -> Option<Node> {
-            self.widgets.get(index).map(|w| w.as_node(data))
+        fn for_child_impl(
+            &self,
+            data: &W::Data,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
+            if let Some(w) = self.widgets.get(index) {
+                closure(w.as_node(data));
+            }
         }
-        #[inline]
-        fn get_child_mut(&mut self, data: &W::Data, index: usize) -> Option<NodeMut> {
-            self.widgets.get_mut(index).map(|w| w.as_node_mut(data))
+        fn for_child_mut_impl(
+            &mut self,
+            data: &W::Data,
+            index: usize,
+            closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
+        ) {
+            if let Some(w) = self.widgets.get_mut(index) {
+                closure(w.as_node_mut(data));
+            }
         }
     }
 
@@ -135,6 +147,10 @@ impl_scope! {
         fn pre_configure(&mut self, _: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();
+        }
+
+        fn update(&mut self, _: &W::Data, mgr: &mut ConfigMgr) {
+            mgr.restrict_recursion_to(self.active..=self.active);
         }
     }
 
@@ -230,7 +246,7 @@ impl<W: Widget> Stack<W> {
     /// -   `SizeRules` were solved: set layout ([`Layout::set_rect`]) and
     ///     update mouse-cursor target ([`Action::REGION_MOVED`])
     /// -   Otherwise: resize the whole window ([`Action::RESIZE`])
-    pub fn set_active(&mut self, mgr: &mut ConfigMgr, index: usize) {
+    pub fn set_active(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize) {
         let old_index = self.active;
         self.active = index;
         if index >= self.widgets.len() {
@@ -248,6 +264,8 @@ impl<W: Widget> Stack<W> {
         } else {
             *mgr |= Action::RESIZE;
         }
+
+        mgr.update(self.widgets[index].as_node_mut(data));
     }
 
     /// Get a direct reference to the active child widget, if any

@@ -5,6 +5,8 @@
 
 //! Clock example
 //!
+//! Demonstrates low-level drawing and timer handling.
+//!
 //! Note that two forms of animation are possible: calling `draw.draw_device().animate();`
 //! in `fn Clock::draw`, or using `Event::TimerUpdate`. We use the latter since
 //! it lets us draw at 1 FPS with exactly the right frame time.
@@ -21,6 +23,7 @@ use kas::draw::{Draw, DrawRounded};
 use kas::geom::{Offset, Quad, Rect, Vec2};
 use kas::prelude::*;
 use kas::shell::ShellAssoc;
+use kas::text::Text;
 
 type Theme = kas::theme::FlatTheme;
 type Shell = kas::shell::DefaultShell<(), Theme>;
@@ -122,7 +125,7 @@ impl_scope! {
     impl Events for Clock {
         type Data = ();
 
-        fn configure(&mut self, _: &Self::Data, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.request_timer_update(self.id(), 0, Duration::new(0, 0), true);
         }
 

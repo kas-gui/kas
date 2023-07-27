@@ -10,14 +10,14 @@ use serde::{Deserialize, Serialize};
 
 #[allow(unused)]
 use super::{EventMgr, EventState, GrabMode, Response}; // for doc-links
-use super::{Press, UpdateId, VirtualKeyCode};
+use super::{Press, VirtualKeyCode};
 use crate::geom::{DVec2, Offset};
 #[allow(unused)] use crate::Events;
 use crate::{dir::Direction, WidgetId, WindowId};
 
 /// Events addressed to a widget
 ///
-/// Note regarding disabled widgets: [`Event::Update`], [`Event::PopupRemoved`]
+/// Note regarding disabled widgets: [`Event::PopupRemoved`]
 /// and `Lost..` events are received regardless of status; other events are not
 /// received by disabled widgets. See [`Event::pass_when_disabled`].
 #[non_exhaustive]
@@ -159,14 +159,6 @@ pub enum Event {
     ///
     /// The `u64` payload is copied from [`EventState::request_timer_update`].
     TimerUpdate(u64),
-    /// Update triggerred via an [`UpdateId`]
-    ///
-    /// When [`EventMgr::update_all`] is called, this event is broadcast to all
-    /// widgets via depth-first traversal of the widget tree. As such,
-    /// [`Events::steal_event`] is not called with this `Event`,
-    /// nor are [`Events::handle_message`] or
-    /// [`Events::handle_scroll`] called after a widget receives this `Event`.
-    Update { id: UpdateId, payload: u64 },
     /// Notification that a popup has been destroyed
     ///
     /// This is sent to the popup's parent after a popup has been removed.
@@ -272,7 +264,7 @@ impl Event {
             None | Command(_) => false,
             ReceivedCharacter(_) | Scroll(_) | Pan { .. } => false,
             CursorMove { .. } | PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
-            TimerUpdate(_) | Update { .. } | PopupRemoved(_) => true,
+            TimerUpdate(_) | PopupRemoved(_) => true,
             NavFocus(_) | MouseHover => false,
             LostNavFocus | LostMouseHover | LostCharFocus | LostSelFocus => true,
         }
@@ -293,7 +285,7 @@ impl Event {
             Command(_) | ReceivedCharacter(_) | Scroll(_) | Pan { .. } => true,
             CursorMove { .. } | PressStart { .. } => true,
             PressMove { .. } | PressEnd { .. } => false,
-            TimerUpdate(_) | Update { .. } | PopupRemoved(_) => false,
+            TimerUpdate(_) | PopupRemoved(_) => false,
             NavFocus(_) | MouseHover | LostNavFocus | LostMouseHover => false,
             LostCharFocus | LostSelFocus => false,
         }

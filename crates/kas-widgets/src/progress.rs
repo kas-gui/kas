@@ -5,8 +5,6 @@
 
 //! Progress bar
 
-use std::fmt::Debug;
-
 use kas::prelude::*;
 use kas::theme::Feature;
 
@@ -14,15 +12,14 @@ impl_scope! {
     /// A progress bar
     ///
     /// The "progress" value may range from 0.0 to 1.0.
-    #[derive(Clone, Debug, Default)]
-    #[widget {
-        Data = ();
-    }]
-    pub struct ProgressBar<D: Directional> {
+    #[autoimpl(Debug ignore self.value_fn)]
+    #[widget]
+    pub struct ProgressBar<A, D: Directional> {
         core: widget_core!(),
         align: AlignPair,
         direction: D,
         value: f32,
+        value_fn: Box<dyn Fn(&ConfigMgr, &A) -> f32>,
     }
 
     impl Self
@@ -31,24 +28,38 @@ impl_scope! {
     {
         /// Construct a progress bar
         ///
-        /// The initial value is `0.0`; use `ProgressBar::with_value` to override.
+        /// Closure `value_fn` returns the current progress as a value between
+        /// 0.0 and 1.0.
         #[inline]
-        pub fn new() -> Self {
-            ProgressBar::new_with_direction(D::default())
+        pub fn new(value_fn: impl Fn(&ConfigMgr, &A) -> f32 + 'static) -> Self {
+            ProgressBar::new_with_direction(value_fn, D::default())
+        }
+    }
+
+    impl<A>  ProgressBar<A, kas::dir::Right> {
+        /// Construct a progress bar (horizontal)
+        ///
+        /// Closure `value_fn` returns the current progress as a value between
+        /// 0.0 and 1.0.
+        #[inline]
+        pub fn right(value_fn: impl Fn(&ConfigMgr, &A) -> f32 + 'static) -> Self {
+            ProgressBar::new(value_fn)
         }
     }
 
     impl Self {
         /// Construct a slider with the given `direction`
         ///
-        /// The initial value is `0.0`; use `ProgressBar::with_value` to override.
+        /// Closure `value_fn` returns the current progress as a value between
+        /// 0.0 and 1.0.
         #[inline]
-        pub fn new_with_direction(direction: D) -> Self {
+        pub fn new_with_direction(value_fn: impl Fn(&ConfigMgr, &A) -> f32 + 'static, direction: D) -> Self {
             ProgressBar {
                 core: Default::default(),
                 align: Default::default(),
                 direction,
                 value: 0.0,
+                value_fn: Box::new(value_fn),
             }
         }
 
@@ -56,33 +67,6 @@ impl_scope! {
         #[inline]
         pub fn direction(&self) -> Direction {
             self.direction.as_direction()
-        }
-
-        /// Set the initial value
-        #[inline]
-        #[must_use]
-        pub fn with_value(mut self, value: f32) -> Self {
-            self.value = value.clamp(0.0, 1.0);
-            self
-        }
-
-        /// Get the current value
-        #[inline]
-        pub fn value(&self) -> f32 {
-            self.value
-        }
-
-        /// Set the value
-        ///
-        /// Returns [`Action::REDRAW`] if a redraw is required.
-        pub fn set_value(&mut self, value: f32) -> Action {
-            let value = value.clamp(0.0, 1.0);
-            if value == self.value {
-                Action::empty()
-            } else {
-                self.value = value;
-                Action::REDRAW
-            }
         }
     }
 
@@ -106,6 +90,15 @@ impl_scope! {
         fn draw(&mut self, mut draw: DrawMgr) {
             let dir = self.direction.as_direction();
             draw.progress_bar(self.rect(), dir, self.value);
+        }
+    }
+
+    impl Events for Self {
+        type Data = A;
+
+        fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
+            let value = (self.value_fn)(cx, data);
+            self.value = value.clamp(0.0, 1.0);
         }
     }
 }

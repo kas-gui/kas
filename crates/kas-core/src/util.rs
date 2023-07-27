@@ -45,11 +45,8 @@ impl<'a> fmt::Display for WidgetHierarchy<'a> {
         write!(f, "\n{trail}{identify:<len$} {xr:<xrlen$} y={y1}..{y2}")?;
 
         let indent = self.indent + 1;
-        for i in 0..self.widget.num_children() {
-            if let Some(w) = self.widget.get_child(i) {
-                write!(f, "{}", WidgetHierarchy { widget: w, indent })?;
-            }
-        }
+        self.widget
+            .for_children_try(|w| write!(f, "{}", WidgetHierarchy { widget: w, indent }))?;
         Ok(())
     }
 }

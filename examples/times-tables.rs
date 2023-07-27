@@ -1,29 +1,24 @@
 //! Do you know your times tables?
 
-use kas::model::{MatrixData, SharedData};
 use kas::prelude::*;
-use kas::view::{driver, MatrixView, SelectionMode};
-use kas::widget::{EditBox, ScrollBars};
+use kas::view::{driver, MatrixData, MatrixView, SelectionMode, SelectionMsg, SharedData};
+use kas::widget::{Adapt, EditBox, ScrollBars};
 
 #[derive(Debug)]
-struct TableData(u64, usize);
-impl SharedData for TableData {
+struct TableSize(usize);
+impl SharedData for TableSize {
     type Key = (usize, usize);
     type Item = usize;
     type ItemRef<'b> = usize;
 
-    fn version(&self) -> u64 {
-        self.0
-    }
-
     fn contains_key(&self, key: &Self::Key) -> bool {
-        key.0 < self.1 && key.1 < self.1
+        key.0 < self.0 && key.1 < self.0
     }
     fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>> {
         self.contains_key(key).then_some((key.0 + 1) * (key.1 + 1))
     }
 }
-impl MatrixData for TableData {
+impl MatrixData for TableSize {
     type ColKey = usize;
     type RowKey = usize;
 
@@ -31,20 +26,22 @@ impl MatrixData for TableData {
     type RowKeyIter<'b> = std::ops::Range<usize>;
 
     fn is_empty(&self) -> bool {
-        self.1 == 0
+        self.0 == 0
     }
     fn len(&self) -> (usize, usize) {
-        (self.1, self.1)
+        (self.0, self.0)
     }
 
     fn col_iter_from(&self, start: usize, limit: usize) -> std::ops::Range<usize> {
-        start..(start + limit)
+        let end = self.0.min(start + limit);
+        start..end
     }
     fn row_iter_from(&self, start: usize, limit: usize) -> std::ops::Range<usize> {
-        start..(start + limit)
+        let end = self.0.min(start + limit);
+        start..end
     }
 
-    fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key {
+    fn make_key(&self, col: &Self::ColKey, row: &Self::RowKey) -> Self::Key {
         (*col, *row)
     }
 }
@@ -52,44 +49,30 @@ impl MatrixData for TableData {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let table = MatrixView::new(TableData(1, 12))
+    let table = MatrixView::new(driver::NavView)
         .with_num_visible(12, 12)
         .with_selection_mode(SelectionMode::Single);
     let table = ScrollBars::new(table);
 
-    let ui = singleton! {
-        #[widget{
-            layout = column! [
-                row! ["From 1 to", self.max],
-                align!(right, self.table),
-            ];
-        }]
-        struct {
-            core: widget_core!(),
-            #[widget] max: impl Widget<Data = ()> + HasString = EditBox::new("12")
-                .on_afl(|mgr, text| match text.parse::<usize>() {
-                    Ok(n) => mgr.push(n),
-                    Err(_) => (),
-                }),
-            #[widget] table: ScrollBars<MatrixView<TableData, driver::NavView>> = table,
-        }
-        impl Events for Self {
-            type Data = ();
+    #[derive(Debug)]
+    struct SetLen(usize);
 
-            fn handle_message(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
-                if mgr.last_child() == Some(widget_index![self.max]) {
-                    if let Some(max) = mgr.try_pop::<usize>() {
-                        let data = self.table.data_mut();
-                        if data.1 != max {
-                            data.0 += 1;
-                            data.1 = max;
-                            mgr.update_all(0);
-                        }
-                    }
-                }
+    let ui = kas::column![
+        row![
+            "From 1 to",
+            EditBox::parser(|data: &TableSize| data.0, SetLen)
+        ],
+        align!(right, table),
+    ];
+    let ui = Adapt::new(ui, TableSize(12))
+        .on_message(|_, data, SetLen(len)| data.0 = len)
+        .on_message(|_, _, selection| match selection {
+            SelectionMsg::<(usize, usize)>::Select((col, row)) => {
+                let (c, r) = (col + 1, row + 1);
+                println!("{} × {} = {}", c, r, c * r);
             }
-        }
-    };
+            _ => (),
+        });
     let window = Window::new(ui, "Times-Tables");
 
     let theme = kas::theme::SimpleTheme::new().with_font_size(16.0);

@@ -10,17 +10,17 @@ use std::task::Waker;
 
 use super::{PendingAction, Platform, WindowSurface};
 use kas::config::Options;
-use kas::event::UpdateId;
-use kas::model::SharedRc;
 use kas::shell::Error;
 use kas::theme::Theme;
 use kas::util::warn_about_error;
-use kas::{draw, WindowId};
+use kas::{draw, AppData, ErasedStack, WindowId};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
 /// Shell interface state
-pub(super) struct ShellShared<Data: 'static, S: kas::draw::DrawSharedImpl, T> {
+pub(super) struct ShellShared<Data: AppData, S: kas::draw::DrawSharedImpl, T> {
     pub(super) platform: Platform,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Clipboard>,
@@ -32,16 +32,16 @@ pub(super) struct ShellShared<Data: 'static, S: kas::draw::DrawSharedImpl, T> {
 }
 
 /// State shared between windows
-pub struct SharedState<Data: 'static, S: WindowSurface, T> {
+pub struct SharedState<Data: AppData, S: WindowSurface, T> {
     pub(super) shell: ShellShared<Data, S::Shared, T>,
     pub(super) data: Data,
-    pub(super) config: SharedRc<kas::event::Config>,
+    pub(super) config: Rc<RefCell<kas::event::Config>>,
     /// Estimated scale factor (from last window constructed or available screens)
     pub(super) scale_factor: f64,
     options: Options,
 }
 
-impl<Data: 'static, S: WindowSurface, T: Theme<S::Shared>> SharedState<Data, S, T>
+impl<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> SharedState<Data, S, T>
 where
     T::Window: kas::theme::Window,
 {
@@ -52,7 +52,7 @@ where
         draw_shared: S::Shared,
         mut theme: T,
         options: Options,
-        config: SharedRc<kas::event::Config>,
+        config: Rc<RefCell<kas::event::Config>>,
     ) -> Result<Self, Error> {
         let platform = pw.platform();
         let mut draw = kas::draw::SharedState::new(draw_shared, platform);
@@ -85,6 +85,14 @@ where
         })
     }
 
+    #[inline]
+    pub(crate) fn handle_messages(&mut self, messages: &mut ErasedStack) {
+        if messages.reset_and_has_any() {
+            let action = self.data.handle_messages(messages);
+            self.shell.pending.push(PendingAction::Action(action));
+        }
+    }
+
     pub fn on_exit(&self) {
         match self
             .options
@@ -96,7 +104,7 @@ where
     }
 }
 
-impl<Data: 'static, S: kas::draw::DrawSharedImpl, T> ShellShared<Data, S, T> {
+impl<Data: AppData, S: kas::draw::DrawSharedImpl, T> ShellShared<Data, S, T> {
     pub fn next_window_id(&mut self) -> WindowId {
         self.window_id += 1;
         WindowId::new(NonZeroU32::new(self.window_id).unwrap())
@@ -166,9 +174,5 @@ impl<Data: 'static, S: kas::draw::DrawSharedImpl, T> ShellShared<Data, S, T> {
                 Err(e) => warn_about_error("Failed to set clipboard contents", &e),
             }
         }
-    }
-
-    pub fn update_all(&mut self, id: UpdateId, payload: u64) {
-        self.pending.push(PendingAction::Update(id, payload));
     }
 }
