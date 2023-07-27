@@ -85,6 +85,12 @@ impl_scope! {
             Self::new_with_direction(D::default(), guard)
         }
     }
+    impl<A: ListData, G: Driver<A::Item, A>> ListView<A, G, kas::dir::Down> {
+        /// Construct a new instance
+        pub fn down(guard: G) -> Self {
+            Self::new_with_direction(Default::default(), guard)
+        }
+    }
     impl<A: ListData, G: Driver<A::Item, A>> ListView<A, G, Direction> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, direction: Direction) -> Action {

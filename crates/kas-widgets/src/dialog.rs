@@ -125,7 +125,6 @@ impl_scope! {
             } else {
                 TextEditResult::Cancel
             });
-            *cx |= Action::CLOSE;
             Response::Used
         }
     }

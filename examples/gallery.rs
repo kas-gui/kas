@@ -129,8 +129,6 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
         }]
         struct {
             core: widget_core!(),
-            // text: String = "Use button to edit →".to_string(),
-            // #[widget(&self.text)] label: impl Widget<Data = String> = format_value!("{}"),
             #[widget(&())] editor: TextEdit = TextEdit::new("", true),
         }
         impl Events for Self {
@@ -170,7 +168,13 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
 
     let widgets = kas::aligned_column![
         row!["ScrollLabel", WithAny::new(ScrollLabel::new(text))],
-        row!["EditBox", EditBox::new(Guard).with_text("edit me")],
+        row![
+            "EditBox",
+            EditBox::rw(
+                |data: &Data| data.text.clone(),
+                |s| Item::Text(s.to_string())
+            )
+        ],
         row![
             "Button (text)",
             Button::new_msg(label("&Press me"), Item::Button)
@@ -358,7 +362,6 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 }
 
 fn filter_list() -> Box<dyn SetDisabled<()>> {
-    use kas::dir::Down;
     use kas::view::filter::{ContainsCaseInsensitive, FilterList, SetFilter, UnsafeFilteredList};
     use kas::view::{Driver, ListView, SelectionMode, SelectionMsg};
 
@@ -377,9 +380,23 @@ fn filter_list() -> Box<dyn SetDisabled<()>> {
         "December",
     ];
 
+    #[derive(Debug)]
+    struct Data {
+        mode: SelectionMode,
+        filter: String,
+        list: Vec<String>,
+    }
+    let data = Data {
+        mode: SelectionMode::None,
+        filter: String::new(),
+        list: (2019..=2023)
+            .flat_map(|year| MONTHS.iter().map(move |m| format!("{m} {year}")))
+            .collect(),
+    };
+
     struct FilterGuard;
     impl EditGuard for FilterGuard {
-        type Data = ();
+        type Data = Data;
 
         fn edit(edit: &mut EditField<Self>, _: &Self::Data, cx: &mut EventMgr) {
             cx.push(SetFilter(edit.to_string()));
@@ -394,56 +411,35 @@ fn filter_list() -> Box<dyn SetDisabled<()>> {
             Default::default()
         }
     }
-    type MyListView = ListView<FilteredList, ListGuard, Down>;
-    type FilteredListView = FilterList<Vec<String>, ContainsCaseInsensitive, MyListView>;
-    let list_view = FilterList::new(MyListView::new(ListGuard));
+    let filter = ContainsCaseInsensitive::new();
+    let list_view = FilterList::new(ListView::down(ListGuard), filter)
+        .map(|data: &Data| &data.list)
+        .on_update(|cx, list, data| {
+            *cx |= list.set_selection_mode(data.mode);
+            list.set_filter(&data.list, cx, data.filter.clone());
+        });
 
-    Box::new(singleton! {
-        #[widget{
-            layout = column! [
-                self.selection,
-                row! ["Filter:", EditBox::new(FilterGuard)],
-                self.list,
-            ];
-        }]
-        struct {
-            core: widget_core!(),
-            sel_mode: SelectionMode,
-            data: Vec<String> = (2019..=2022)
-                .flat_map(|year| MONTHS.iter().map(move |m| format!("{m} {year}")))
-                .collect(),
-            #[widget(&self.sel_mode)] selection: impl Widget<Data = SelectionMode> =
-                kas::row! [
-                    "Selection:",
-                    RadioButton::new_value("&n&one", SelectionMode::None),
-                    RadioButton::new_value("s&ingle", SelectionMode::Single),
-                    RadioButton::new_value("&multiple", SelectionMode::Multiple),
-                ],
-            #[widget(&self.data)] list: ScrollBars<FilteredListView> = ScrollBars::new(list_view),
-        }
-
-        impl Events for Self {
-            type Data = ();
-
-            fn handle_messages(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
-                if let Some(mode) = mgr.try_pop() {
-                    self.sel_mode = mode;
-                    *mgr |= self.list.inner.set_selection_mode(mode);
-                    mgr.update(self.as_node_mut(data));
-                } else if let Some(SetFilter(filter)) = mgr.try_pop() {
-                    mgr.config_mgr(|mgr| self.list.set_filter(&self.data, mgr, filter));
-                } else if let Some(msg) = mgr.try_pop::<SelectionMsg<usize>>() {
-                    println!("Selection message: {msg:?}");
-                }
-            }
-        }
-
-        impl SetDisabled<()> for Self {
-            fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
-                mgr.set_disabled(self.id(), state);
-            }
-        }
-    })
+    let ui = kas::column![
+        Map::new(
+            kas::row![
+                "Selection:",
+                RadioButton::new_value("&n&one", SelectionMode::None),
+                RadioButton::new_value("s&ingle", SelectionMode::Single),
+                RadioButton::new_value("&multiple", SelectionMode::Multiple),
+            ],
+            |data: &Data| &data.mode
+        ),
+        row!["Filter:", EditBox::new(FilterGuard)],
+        ScrollBars::new(list_view),
+    ];
+    let ui = Adapt::new(ui, data)
+        .on_message(|_, data, mode| data.mode = mode)
+        .on_message(|_, data, SetFilter(filter)| data.filter = filter)
+        .on_message(|_, data, selection: SelectionMsg<usize>| match selection {
+            SelectionMsg::Select(i) => println!("Selected: {}", &data.list[i]),
+            _ => (),
+        });
+    Box::new(ui)
 }
 
 fn canvas() -> Box<dyn SetDisabled<()>> {
@@ -520,28 +516,19 @@ fn canvas() -> Box<dyn SetDisabled<()>> {
         }
     }
 
-    Box::new(singleton! {
-        #[widget{
-            Data = ();
-            layout = column! [
-                Label::new("Animated canvas demo (CPU-rendered, async). Note: scheduling is broken on X11."),
-                Canvas::new(Program(Instant::now())),
-            ];
-        }]
-        struct {
-            core: widget_core!(),
-        }
-
-        impl SetDisabled<()> for Self {
-            fn set_disabled(&mut self, _: &mut EventMgr, _: bool) {}
-        }
-    })
+    let ui = kas::column![
+        Label::new(
+            "Animated canvas demo (CPU-rendered, async). Note: scheduling is broken on X11."
+        ),
+        Canvas::new(Program(Instant::now())),
+    ];
+    // Hack: use Adapt just to get something implementing SetDisabled
+    Box::new(Adapt::new(ui, ()))
 }
 
 fn config() -> Box<dyn SetDisabled<()>> {
-    use kas::text::format::Markdown;
-
-    const DESC: &str = "\
+    let desc = kas::text::format::Markdown::new(
+        "\
 Event configuration editor
 ================
 
@@ -552,27 +539,13 @@ To persist, set the following environment variables:
 KAS_CONFIG=config.yaml
 KAS_CONFIG_MODE=readwrite
 ```
-";
+",
+    )
+    .unwrap();
 
-    Box::new(ScrollBarRegion::new(singleton! {
-        #[widget{
-            Data = ();
-            layout = column! [
-                ScrollLabel::new(Markdown::new(DESC).unwrap()),
-                Separator::new(),
-                EventConfig::new(),
-            ];
-        }]
-        struct {
-            core: widget_core!(),
-        }
-
-        impl SetDisabled<()> for Self {
-            fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
-                mgr.set_disabled(self.id(), state);
-            }
-        }
-    }))
+    let ui = kas::column![ScrollLabel::new(desc), Separator::new(), EventConfig::new(),];
+    // Hack: use Adapt just to get something implementing SetDisabled
+    Box::new(Adapt::new(ui, ()))
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

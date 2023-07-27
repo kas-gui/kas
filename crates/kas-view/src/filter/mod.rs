@@ -11,7 +11,9 @@ pub use filter_list::*;
 /// Ability to set filter
 pub trait FilterValue: Default + 'static {
     type Value: std::fmt::Debug;
-    fn set_filter(&mut self, value: Self::Value);
+
+    /// Update the filter, returning `true` on change
+    fn set_filter(&mut self, value: Self::Value) -> bool;
 }
 
 /// Types usable as a filter
@@ -33,8 +35,13 @@ impl ContainsString {
 
 impl FilterValue for ContainsString {
     type Value = String;
-    fn set_filter(&mut self, value: String) {
-        self.0 = value;
+    fn set_filter(&mut self, value: String) -> bool {
+        if self.0 != value {
+            self.0 = value;
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -68,8 +75,14 @@ impl ContainsCaseInsensitive {
 
 impl FilterValue for ContainsCaseInsensitive {
     type Value = String;
-    fn set_filter(&mut self, value: String) {
-        self.0 = value.to_uppercase();
+    fn set_filter(&mut self, value: String) -> bool {
+        let filter = value.to_uppercase();
+        if filter != self.0 {
+            self.0 = filter;
+            true
+        } else {
+            false
+        }
     }
 }
 

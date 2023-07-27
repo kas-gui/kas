@@ -10,10 +10,10 @@ use crate::{ListData, SharedData};
 use kas::event::{ConfigMgr, EventMgr};
 use kas::geom::{Offset, Size};
 use kas::Scrollable;
-use kas::{impl_scope, Widget};
+use kas::{autoimpl, impl_scope, Widget};
 use std::fmt::Debug;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SetFilter<T: Debug>(pub T);
 
 impl_scope! {
@@ -28,6 +28,7 @@ impl_scope! {
     ///
     /// To set the filter call [`Self::set_filter`] or pass a message of type
     /// `SetFilter<F::Value>`.
+    #[autoimpl(Deref, DerefMut using self.inner)]
     #[widget {
         layout = self.inner;
     }]
@@ -41,19 +42,20 @@ impl_scope! {
 
     impl Self {
         /// Construct around `inner` widget with the given `filter`
-        pub fn new(inner: W) -> Self {
+        pub fn new(inner: W, filter: F) -> Self {
             FilterList {
                 core: Default::default(),
                 inner,
-                filter: Default::default(),
+                filter,
                 view: vec![],
             }
         }
 
         /// Set filter value
         pub fn set_filter(&mut self, data: &A, mgr: &mut ConfigMgr, filter: F::Value) {
-            self.filter.set_filter(filter);
-            mgr.update(self.as_node_mut(data));
+            if self.filter.set_filter(filter) {
+                mgr.update(self.as_node_mut(data));
+            }
         }
     }
 
