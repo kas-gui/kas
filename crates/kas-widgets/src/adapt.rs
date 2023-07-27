@@ -24,7 +24,7 @@ impl_scope! {
         state: S,
         #[widget(&self.state)]
         inner: W,
-        message_handler: Option<Box<dyn Fn(&mut EventMgr, &A, &mut S) -> bool>>,
+        message_handlers: Vec<Box<dyn Fn(&mut EventMgr, &A, &mut S) -> bool>>,
         update_handler: Option<Box<dyn Fn(&mut ConfigMgr, &A, &mut S)>>,
     }
 
@@ -36,7 +36,7 @@ impl_scope! {
                 core: Default::default(),
                 state,
                 inner,
-                message_handler: None,
+                message_handlers: vec![],
                 update_handler: None,
             }
         }
@@ -47,14 +47,14 @@ impl_scope! {
         ///
         /// Where multiple message types must be handled or access to the
         /// [`EventMgr`] is required, use [`Self::on_messages`] instead.
-        pub fn on_message<M, H>(self, message_handler: H) -> Self
+        pub fn on_message<M, H>(self, handler: H) -> Self
         where
             M: Debug + 'static,
             H: Fn(&A, &mut S, M) + 'static,
         {
             self.on_messages(move |mgr, data, state| {
                 if let Some(m) = mgr.try_pop() {
-                    message_handler(data, state, m);
+                    handler(data, state, m);
                     true
                 } else {
                     false
@@ -65,12 +65,11 @@ impl_scope! {
         /// Add a generic message handler
         ///
         /// The closure should return `true` if state was updated.
-        pub fn on_messages<H>(mut self, message_handler: H) -> Self
+        pub fn on_messages<H>(mut self, handler: H) -> Self
         where
             H: Fn(&mut EventMgr, &A, &mut S) -> bool + 'static,
         {
-            debug_assert!(self.message_handler.is_none());
-            self.message_handler = Some(Box::new(message_handler));
+            self.message_handlers.push(Box::new(handler));
             self
         }
 
@@ -97,11 +96,33 @@ impl_scope! {
         }
 
         fn handle_messages(&mut self, data: &A, mgr: &mut EventMgr) {
-            if let Some(handler) = self.message_handler.as_ref() {
-                if handler(mgr, data, &mut self.state) {
-                    mgr.update(self.as_node_mut(data));
-                }
+            let mut update = false;
+            for handler in self.message_handlers.iter() {
+                update |= handler(mgr, data, &mut self.state);
             }
+            if update {
+                mgr.update(self.as_node_mut(data));
+            }
+        }
+    }
+
+    // TODO: make derivable
+    impl Scrollable for Self where W: Scrollable {
+        #[inline]
+        fn scroll_axes(&self, size: Size) -> (bool, bool) {
+            self.inner.scroll_axes(size)
+        }
+        #[inline]
+        fn max_scroll_offset(&self) -> Offset {
+            self.inner.max_scroll_offset()
+        }
+        #[inline]
+        fn scroll_offset(&self) -> Offset {
+            self.inner.scroll_offset()
+        }
+        #[inline]
+        fn set_scroll_offset(&mut self, cx: &mut EventMgr, offset: Offset) -> Offset {
+            self.inner.set_scroll_offset(cx, offset)
         }
     }
 }
@@ -138,6 +159,26 @@ impl_scope! {
                 map_fn,
                 _data: PhantomData,
             }
+        }
+    }
+
+    // TODO: make derivable
+    impl Scrollable for Self where W: Scrollable {
+        #[inline]
+        fn scroll_axes(&self, size: Size) -> (bool, bool) {
+            self.inner.scroll_axes(size)
+        }
+        #[inline]
+        fn max_scroll_offset(&self) -> Offset {
+            self.inner.max_scroll_offset()
+        }
+        #[inline]
+        fn scroll_offset(&self) -> Offset {
+            self.inner.scroll_offset()
+        }
+        #[inline]
+        fn set_scroll_offset(&mut self, cx: &mut EventMgr, offset: Offset) -> Offset {
+            self.inner.set_scroll_offset(cx, offset)
         }
     }
 }

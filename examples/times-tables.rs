@@ -1,7 +1,7 @@
 //! Do you know your times tables?
 
 use kas::prelude::*;
-use kas::view::{driver, MatrixData, MatrixView, SelectionMode, SharedData};
+use kas::view::{driver, MatrixData, MatrixView, SelectionMode, SelectionMsg, SharedData};
 use kas::widget::{Adapt, EditBox, ScrollBars};
 
 #[derive(Debug)]
@@ -64,7 +64,15 @@ fn main() -> kas::shell::Result<()> {
         ],
         align!(right, table),
     ];
-    let ui = Adapt::new(ui, TableSize(12)).on_message(|_, data, SetLen(len)| data.0 = len);
+    let ui = Adapt::new(ui, TableSize(12))
+        .on_message(|_, data, SetLen(len)| data.0 = len)
+        .on_message(|_, _, selection| match selection {
+            SelectionMsg::<(usize, usize)>::Select((col, row)) => {
+                let (c, r) = (col + 1, row + 1);
+                println!("{} × {} = {}", c, r, c * r);
+            }
+            _ => (),
+        });
     let window = Window::new(ui, "Times-Tables");
 
     let theme = kas::theme::SimpleTheme::new().with_font_size(16.0);
