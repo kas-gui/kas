@@ -88,6 +88,9 @@ fixed!(Down, Right, Up);
 /// Axis-aligned directions
 ///
 /// This is a variable instantiation of [`Directional`].
+///
+/// A default direction is provided, though somewhat arbitrary: `Right`.
+#[crate::impl_default(Direction::Right)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Direction {

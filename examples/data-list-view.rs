@@ -225,7 +225,7 @@ fn main() -> kas::shell::Result<()> {
 
     let data = Data::new(3);
 
-    let list = ListView::new_with_direction(data.dir, MyDriver).on_update(|cx, list, data| {
+    let list = ListView::new(MyDriver).on_update(|cx, list, data| {
         *cx |= list.set_direction(data.dir);
     });
     let tree = kas::column![
