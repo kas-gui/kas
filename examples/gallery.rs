@@ -365,8 +365,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 }
 
 fn filter_list() -> Box<dyn SetDisabled<()>> {
-    use kas::view::filter::{ContainsCaseInsensitive, FilterList, SetFilter, UnsafeFilteredList};
-    use kas::view::{Driver, ListView, SelectionMode, SelectionMsg};
+    use kas::view::{filter, Driver, ListView, SelectionMode, SelectionMsg};
 
     const MONTHS: &[&str] = &[
         "January",
@@ -386,40 +385,29 @@ fn filter_list() -> Box<dyn SetDisabled<()>> {
     #[derive(Debug)]
     struct Data {
         mode: SelectionMode,
-        filter: String,
         list: Vec<String>,
     }
     let data = Data {
         mode: SelectionMode::None,
-        filter: String::new(),
         list: (2019..=2023)
             .flat_map(|year| MONTHS.iter().map(move |m| format!("{m} {year}")))
             .collect(),
     };
 
-    struct FilterGuard;
-    impl EditGuard for FilterGuard {
-        type Data = Data;
-
-        fn edit(edit: &mut EditField<Self>, _: &Self::Data, cx: &mut EventMgr) {
-            cx.push(SetFilter(edit.to_string()));
-        }
-    }
-
     struct ListGuard;
-    type FilteredList = UnsafeFilteredList<Vec<String>>;
+    type FilteredList = filter::UnsafeFilteredList<Vec<String>>;
     impl Driver<String, FilteredList> for ListGuard {
         type Widget = NavFrame<Text<String, String>>;
         fn make(&mut self, _: &usize) -> Self::Widget {
             Default::default()
         }
     }
-    let filter = ContainsCaseInsensitive::new();
-    let list_view = FilterList::new(ListView::down(ListGuard), filter)
+    let filter = filter::ContainsCaseInsensitive::new();
+    let guard = filter::KeystrokeGuard;
+    let list_view = filter::FilterBoxList::new(ListView::down(ListGuard), filter, guard)
         .map(|data: &Data| &data.list)
         .on_update(|cx, list, data| {
             *cx |= list.set_selection_mode(data.mode);
-            list.set_filter(&data.list, cx, data.filter.clone());
         });
 
     let ui = kas::column![
@@ -430,12 +418,10 @@ fn filter_list() -> Box<dyn SetDisabled<()>> {
             RadioButton::new_value("&multiple", SelectionMode::Multiple),
         ]
         .map(|data: &Data| &data.mode),
-        row!["Filter:", EditBox::new(FilterGuard)],
         ScrollBars::new(list_view),
     ];
     let ui = Adapt::new(ui, data)
         .on_message(|_, data, mode| data.mode = mode)
-        .on_message(|_, data, SetFilter(filter)| data.filter = filter)
         .on_message(|_, data, selection: SelectionMsg<usize>| match selection {
             SelectionMsg::Select(i) => println!("Selected: {}", &data.list[i]),
             _ => (),
