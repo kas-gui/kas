@@ -581,7 +581,7 @@ impl_scope! {
     /// while [`ScrollBars`] adds scroll bar controls.
     ///
     /// Use the [`HasScrollBars`] trait to adjust scroll bar behaviour.
-    #[autoimpl(Deref, DerefMut using self.0)]
+    #[autoimpl(Deref, DerefMut, HasScrollBars, Scrollable using self.0)]
     #[autoimpl(class_traits using self.0 where W: trait)]
     #[derive(Clone, Debug, Default)]
     #[widget{
@@ -606,41 +606,6 @@ impl_scope! {
         #[inline]
         pub fn inner_mut(&mut self) -> &mut W {
             self.0.inner.inner_mut()
-        }
-    }
-
-    impl HasScrollBars for Self {
-        fn get_mode(&self) -> ScrollBarMode {
-            self.0.get_mode()
-        }
-        fn set_mode(&mut self, mode: ScrollBarMode) -> Action {
-            self.0.set_mode(mode)
-        }
-
-        fn get_visible_bars(&self) -> (bool, bool) {
-            self.0.get_visible_bars()
-        }
-        fn set_visible_bars(&mut self, bars: (bool, bool)) -> Action {
-            self.0.set_visible_bars(bars)
-        }
-    }
-
-    impl Scrollable for Self {
-        #[inline]
-        fn scroll_axes(&self, size: Size) -> (bool, bool) {
-            self.0.inner.scroll_axes(size)
-        }
-        #[inline]
-        fn max_scroll_offset(&self) -> Offset {
-            self.0.inner.max_scroll_offset()
-        }
-        #[inline]
-        fn scroll_offset(&self) -> Offset {
-            self.0.inner.scroll_offset()
-        }
-        #[inline]
-        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
-            self.0.set_scroll_offset(mgr, offset)
         }
     }
 }

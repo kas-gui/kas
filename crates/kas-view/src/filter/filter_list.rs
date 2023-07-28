@@ -8,8 +8,6 @@
 use super::Filter;
 use crate::{ListData, SharedData};
 use kas::event::{ConfigMgr, EventMgr};
-use kas::geom::{Offset, Size};
-use kas::Scrollable;
 use kas::{autoimpl, impl_scope, Widget};
 use std::fmt::Debug;
 
@@ -29,6 +27,7 @@ impl_scope! {
     /// To set the filter call [`Self::set_filter`] or pass a message of type
     /// `SetFilter<F::Value>`.
     #[autoimpl(Deref, DerefMut using self.inner)]
+    #[autoimpl(Scrollable using self.inner where W: trait)]
     #[widget {
         layout = self.inner;
     }]
@@ -78,26 +77,6 @@ impl_scope! {
             if let Some(SetFilter(value)) = mgr.try_pop() {
                 mgr.config_mgr(|mgr| self.set_filter(data, mgr, value));
             }
-        }
-    }
-
-    // TODO: make derivable
-    impl Scrollable for Self where W: Scrollable {
-        #[inline]
-        fn scroll_axes(&self, size: Size) -> (bool, bool) {
-            self.inner.scroll_axes(size)
-        }
-        #[inline]
-        fn max_scroll_offset(&self) -> Offset {
-            self.inner.max_scroll_offset()
-        }
-        #[inline]
-        fn scroll_offset(&self) -> Offset {
-            self.inner.scroll_offset()
-        }
-        #[inline]
-        fn set_scroll_offset(&mut self, cx: &mut EventMgr, offset: Offset) -> Offset {
-            self.inner.set_scroll_offset(cx, offset)
         }
     }
 }

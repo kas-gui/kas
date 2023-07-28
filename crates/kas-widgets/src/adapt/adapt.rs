@@ -16,6 +16,7 @@ impl_scope! {
     /// mapping to a super-set (including internal storage). Further, `Adapt`
     /// supports message handlers which mutate internal storage.
     #[autoimpl(Deref, DerefMut using self.inner)]
+    #[autoimpl(Scrollable using self.inner where W: trait)]
     #[widget {
         layout = self.inner;
     }]
@@ -105,26 +106,6 @@ impl_scope! {
             }
         }
     }
-
-    // TODO: make derivable
-    impl Scrollable for Self where W: Scrollable {
-        #[inline]
-        fn scroll_axes(&self, size: Size) -> (bool, bool) {
-            self.inner.scroll_axes(size)
-        }
-        #[inline]
-        fn max_scroll_offset(&self) -> Offset {
-            self.inner.max_scroll_offset()
-        }
-        #[inline]
-        fn scroll_offset(&self) -> Offset {
-            self.inner.scroll_offset()
-        }
-        #[inline]
-        fn set_scroll_offset(&mut self, cx: &mut EventMgr, offset: Offset) -> Offset {
-            self.inner.set_scroll_offset(cx, offset)
-        }
-    }
 }
 
 impl_scope! {
@@ -132,6 +113,7 @@ impl_scope! {
     ///
     /// This is a generic data-mapping widget. See also [`Adapt`], [`MapAny`].
     #[autoimpl(Deref, DerefMut using self.inner)]
+    #[autoimpl(Scrollable using self.inner where W: trait)]
     #[widget {
         Data = A;
         layout = self.inner;
@@ -159,26 +141,6 @@ impl_scope! {
                 map_fn,
                 _data: PhantomData,
             }
-        }
-    }
-
-    // TODO: make derivable
-    impl Scrollable for Self where W: Scrollable {
-        #[inline]
-        fn scroll_axes(&self, size: Size) -> (bool, bool) {
-            self.inner.scroll_axes(size)
-        }
-        #[inline]
-        fn max_scroll_offset(&self) -> Offset {
-            self.inner.max_scroll_offset()
-        }
-        #[inline]
-        fn scroll_offset(&self) -> Offset {
-            self.inner.scroll_offset()
-        }
-        #[inline]
-        fn set_scroll_offset(&mut self, cx: &mut EventMgr, offset: Offset) -> Offset {
-            self.inner.set_scroll_offset(cx, offset)
         }
     }
 }
