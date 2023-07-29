@@ -86,9 +86,9 @@ impl_scope! {
                     parent: s.id(),
                     direction: Direction::Down,
                 });
-                s.popup.inner.inner.as_node(&()).for_child(s.active, |w| {
+                if let Some(w) = s.popup.inner.inner.get_child(s.active) {
                     mgr.next_nav_focus(w.id(), false, key_focus);
-                });
+                }
             };
 
             match event {

@@ -11,7 +11,7 @@ use crate::event::ConfigMgr;
 use crate::geom::{Rect, Size};
 use crate::theme::SizeMgr;
 use crate::util::WidgetHierarchy;
-use crate::{Layout, Node, NodeMut};
+use crate::{Layout, NodeMut};
 
 /// A [`SizeRules`] solver for layouts
 ///
@@ -228,7 +228,7 @@ impl SolveCache {
     /// Print widget heirarchy in the trace log
     ///
     /// This is sometimes called after [`Self::apply_rect`].
-    pub fn print_widget_heirarchy(&mut self, widget: Node) {
+    pub fn print_widget_heirarchy(&mut self, widget: &dyn Layout) {
         let rect = widget.rect();
         let hier = WidgetHierarchy::new(widget);
         log::trace!(

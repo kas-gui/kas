@@ -314,6 +314,7 @@ impl<'a> Node<'a> {
 #[cfg(not(feature = "unsafe_node"))]
 trait NodeMutT: NodeT {
     fn clone_node_mut(&mut self) -> NodeMut<'_>;
+    fn as_layout(&self) -> &dyn Layout;
 
     fn for_child_mut_impl(&mut self, index: usize, f: Box<dyn FnOnce(NodeMut<'_>) + '_>);
 
@@ -340,6 +341,9 @@ trait NodeMutT: NodeT {
 impl<'a, T> NodeMutT for (&'a mut dyn Widget<Data = T>, &'a T) {
     fn clone_node_mut(&mut self) -> NodeMut<'_> {
         NodeMut::new(self.0, self.1)
+    }
+    fn as_layout(&self) -> &dyn Layout {
+        self.0.as_layout()
     }
 
     fn for_child_mut_impl(&mut self, index: usize, f: Box<dyn FnOnce(NodeMut<'_>) + '_>) {
@@ -444,6 +448,11 @@ impl<'a> NodeMut<'a> {
                 self.0.clone_node()
             }
         }
+    }
+
+    /// Reborrow as a `dyn Layout`
+    pub fn as_layout(&self) -> &dyn Layout {
+        self.0.as_layout()
     }
 
     /// Get the widget's identifier

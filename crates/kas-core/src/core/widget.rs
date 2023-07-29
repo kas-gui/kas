@@ -731,5 +731,47 @@ pub trait LayoutExt: Layout {
     fn is_strict_ancestor_of(&self, id: &WidgetId) -> bool {
         !self.eq_id(id) && self.id().is_ancestor_of(id)
     }
+
+    /// Run a closure on all children
+    fn for_children(&self, mut f: impl FnMut(&dyn Layout)) {
+        for index in 0..self.num_children() {
+            if let Some(child) = self.get_child(index) {
+                f(child);
+            }
+        }
+    }
+
+    /// Run a fallible closure on all children
+    ///
+    /// Returns early in case of error.
+    fn for_children_try<E>(
+        &self,
+        mut f: impl FnMut(&dyn Layout) -> Result<(), E>,
+    ) -> Result<(), E> {
+        let mut result = Ok(());
+        for index in 0..self.num_children() {
+            if let Some(child) = self.get_child(index) {
+                result = f(child);
+            }
+            if result.is_err() {
+                break;
+            }
+        }
+        result
+    }
+
+    /// Find the descendant with this `id`, if any
+    ///
+    /// Since `id` represents a path, this operation is normally `O(d)` where
+    /// `d` is the depth of the path (depending on widget implementations).
+    fn get_id(&self, id: &WidgetId) -> Option<&dyn Layout> {
+        if let Some(child) = self.find_child_index(id).and_then(|i| self.get_child(i)) {
+            child.get_id(id)
+        } else if self.eq_id(id) {
+            Some(self.as_layout())
+        } else {
+            None
+        }
+    }
 }
 impl<W: Layout + ?Sized> LayoutExt for W {}

@@ -16,7 +16,7 @@ use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
 use kas::theme::{Theme, Window as _};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use kas::util::warn_about_error;
-use kas::{Action, AppData, ErasedStack, LayoutExt, Widget, WindowId};
+use kas::{Action, AppData, ErasedStack, LayoutExt, Widget, WidgetCore, WindowId};
 use std::any::TypeId;
 use std::mem::take;
 use std::time::Instant;
@@ -411,7 +411,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         );
         solve_cache.apply_rect(self.widget.as_node_mut(&shared.data), &mut mgr, rect, true);
         if first {
-            solve_cache.print_widget_heirarchy(self.widget.as_node(&shared.data));
+            solve_cache.print_widget_heirarchy(self.widget.as_layout());
         }
         self.widget.resize_popups(&shared.data, &mut mgr);
 

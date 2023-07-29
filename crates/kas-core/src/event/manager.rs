@@ -23,6 +23,7 @@ use crate::cast::Cast;
 use crate::geom::{Coord, Offset};
 use crate::shell::ShellWindow;
 use crate::util::WidgetHierarchy;
+use crate::LayoutExt;
 use crate::{Action, Erased, ErasedStack, NavAdvance, NodeMut, Widget, WidgetId, WindowId};
 
 mod config_mgr;
@@ -500,12 +501,12 @@ impl<'a> EventMgr<'a> {
 
             if matches!(cmd, Command::Debug) {
                 if let Some(ref id) = self.hover {
-                    widget.re_node().for_id(id, |node| {
-                        let hier = WidgetHierarchy::new(node.re());
+                    if let Some(w) = widget.as_layout().get_id(id) {
+                        let hier = WidgetHierarchy::new(w);
                         log::debug!("Widget heirarchy (from mouse): {hier}");
-                    });
+                    }
                 } else {
-                    let hier = WidgetHierarchy::new(widget.re_node());
+                    let hier = WidgetHierarchy::new(widget.as_layout());
                     log::debug!("Widget heirarchy (whole window): {hier}");
                 }
                 return;
