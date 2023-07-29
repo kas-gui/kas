@@ -162,6 +162,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let mut events_impl = None;
 
     let mut num_children = None;
+    let mut get_child = None;
     let mut for_child_impl = None;
     let mut for_child_mut_impl = None;
     for (index, impl_) in scope.impls.iter().enumerate() {
@@ -206,6 +207,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     if let ImplItem::Fn(ref item) = item {
                         if item.sig.ident == "num_children" {
                             num_children = Some(item.sig.ident.clone());
+                        } else if item.sig.ident == "get_child" {
+                            get_child = Some(item.sig.ident.clone());
                         } else if item.sig.ident == "find_child_index" {
                             find_child_index = Some(item.sig.ident.clone());
                         } else if item.sig.ident == "make_child_id" {
@@ -415,6 +418,9 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     crate::widget_index::visit_impls(children.iter().map(|(ident, _, _)| ident), &mut scope.impls);
 
     if let Some(ref span) = num_children {
+        if get_child.is_none() {
+            emit_warning!(span, "fn num_children without fn get_child");
+        }
         if for_child_impl.is_none() {
             emit_warning!(span, "fn num_children without fn for_child_impl");
         }
@@ -422,23 +428,20 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             emit_warning!(span, "fn num_children without fn for_child_mut_impl");
         }
     }
-    if let Some(span) = for_child_impl.as_ref().or(for_child_mut_impl.as_ref()) {
+    if let Some(span) = get_child.as_ref().or(for_child_mut_impl.as_ref()) {
         if num_children.is_none() {
-            emit_warning!(span, "fn for_child[_mut]_impl without fn num_children");
+            emit_warning!(
+                span,
+                "associated impl of `fn Layout::num_children` required"
+            );
         }
         if opt_derive.is_some() {
-            emit_error!(span, "impl conflicts with use of #[widget(derive=FIELD)]");
+            emit_error!(span, "impl forbidden when using #[widget(derive=FIELD)]");
         }
         if !children.is_empty() {
-            emit_error!(
-                span,
-                "custom `Widget::for_child_impl` implementation when using `#[widget]` on fields"
-            );
+            emit_error!(span, "impl forbidden when using `#[widget]` on fields");
         } else if !layout_children.is_empty() {
-            emit_error!(
-                span,
-                "custom `Widget::for_child_impl` implementation when using layout-defined children"
-            );
+            emit_error!(span, "impl forbidden when using layout-defined children");
         }
     }
     let do_impl_widget_children = for_child_impl.is_none() && for_child_mut_impl.is_none();
@@ -481,8 +484,13 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         });
 
         required_layout_methods = quote! {
+            #[inline]
             fn num_children(&self) -> usize {
                 self.#inner.num_children()
+            }
+            #[inline]
+            fn get_child(&self, index: usize) -> Option<&dyn Layout> {
+                self.#inner.get_child(index)
             }
             #[inline]
             fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
@@ -640,10 +648,29 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         ));
 
         if do_impl_widget_children {
+            let count = children.len();
+            let mut get_rules = quote! {};
+            for (i, (ident, _, _)) in children.iter().enumerate() {
+                get_rules.append_all(quote! { #i => Some(self.#ident.as_layout()), });
+            }
+            for (i, path) in layout_children.iter().enumerate() {
+                let index = count + i;
+                get_rules.append_all(quote! {
+                    #index => Some(#core_path.#path.as_layout()),
+                });
+            }
+
             let count = children.len() + layout_children.len();
             required_layout_methods = quote! {
                 fn num_children(&self) -> usize {
                     #count
+                }
+                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Layout> {
+                    use ::kas::WidgetCore;
+                    match index {
+                        #get_rules
+                        _ => None,
+                    }
                 }
             };
         }

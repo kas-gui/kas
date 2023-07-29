@@ -130,6 +130,13 @@ impl_scope! {
         fn num_children(&self) -> usize {
             self.widgets.len() + self.handles.len()
         }
+        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
+            if (index & 1) != 0 {
+                self.handles.get(index >> 1).map(|w| w.as_layout())
+            } else {
+                self.widgets.get(index >> 1).map(|w| w.as_layout())
+            }
+        }
 
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
             id.next_key_after(self.id_ref())

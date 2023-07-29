@@ -171,6 +171,13 @@ impl Tree {
             }
         };
 
+        let mut get_rules = quote! {};
+        for (index, path) in layout_children.iter().enumerate() {
+            get_rules.append_all(quote! {
+                #index => Some(#core_path.#path.as_layout()),
+            });
+        }
+
         let core_impl = widget::impl_core(&impl_generics, &impl_target, widget_name, &core_path);
         let widget_impl = widget::impl_widget(
             &impl_generics,
@@ -202,6 +209,14 @@ impl Tree {
 
             impl #impl_generics ::kas::Layout for #impl_target {
                 #num_children
+                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Layout> {
+                    use ::kas::WidgetCore;
+                    match index {
+                        #get_rules
+                        _ => None,
+                    }
+                }
+
                 #layout_methods
                 #nav_next
             }

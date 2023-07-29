@@ -87,6 +87,9 @@ impl_scope! {
         fn num_children(&self) -> usize {
             self.widgets.len()
         }
+        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
+            self.widgets.get(index).map(|w| w.as_layout())
+        }
 
         fn size_rules(&mut self, mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
             // Unusual behaviour: children's SizeRules are padded with a frame,

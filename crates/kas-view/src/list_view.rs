@@ -385,6 +385,9 @@ impl_scope! {
         fn num_children(&self) -> usize {
             self.cur_len.cast()
         }
+        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
+            self.widgets.get(index).map(|w| w.widget.as_layout())
+        }
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
             let key = A::Key::reconstruct_key(self.id_ref(), id);
             if key.is_some() {

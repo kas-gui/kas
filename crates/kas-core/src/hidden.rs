@@ -119,6 +119,10 @@ impl_scope! {
         fn num_children(&self) -> usize {
             self.inner.num_children()
         }
+        #[inline]
+        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
+            self.inner.get_child(index)
+        }
 
         #[inline]
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {

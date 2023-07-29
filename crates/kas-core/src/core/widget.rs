@@ -82,11 +82,15 @@ pub trait Layout: WidgetCore {
     ///
     /// This method is usually implemented automatically by the `#[widget]`
     /// macro. It should be implemented directly if and only if
-    /// [`Widget::get_child`] is also implemented directly.
-    ///
-    /// Aside: this method is here to avoid dependence on the `Data` type
-    /// parameter of [`Widget`].
+    /// [`Layout::get_child`] and [`Widget::for_child_mut_impl`] are
+    /// implemented directly.
     fn num_children(&self) -> usize;
+
+    /// Access a child as a `dyn Layout`
+    ///
+    /// This method is usually implemented automatically by the `#[widget]`
+    /// macro.
+    fn get_child(&self, index: usize) -> Option<&dyn Layout>;
 
     /// Find the child which is an ancestor of this `id`, if any
     ///
