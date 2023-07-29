@@ -11,7 +11,7 @@ use kas::draw::{Draw, DrawIface, PassId};
 use kas::event::{self, Command};
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
-use kas::widget::adapter::ReserveP;
+use kas::widget::adapt::ReserveP;
 use kas::widget::{format_data, format_value, Label, Slider, Text};
 use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawPipe};
 use kas_wgpu::wgpu;

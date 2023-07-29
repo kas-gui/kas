@@ -6,7 +6,7 @@
 //! Counter example (simple button)
 
 use kas::prelude::*;
-use kas::widget::{adapter::WithAny, Adapt, EditField, RowSplitter, TextButton};
+use kas::widget::{Adapt, EditField, RowSplitter, TextButton};
 
 #[derive(Clone, Debug)]
 enum Message {
@@ -18,10 +18,11 @@ fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let ui = kas::column![
-        WithAny::new(kas::row![
+        kas::row![
             TextButton::new_msg("−", Message::Decr),
             TextButton::new_msg("+", Message::Incr),
-        ]),
+        ]
+        .map_any(),
         RowSplitter::new(vec![]).on_update(|cx, panes, len| panes.resize_with(
             len,
             cx,

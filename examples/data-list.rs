@@ -21,7 +21,6 @@
 
 use kas::prelude::*;
 use kas::row;
-use kas::widget::adapter::WithAny;
 use kas::widget::edit::{EditBox, EditField, EditGuard};
 use kas::widget::{
     Adapt, Label, List, RadioButton, ScrollBarRegion, Separator, StringLabel, Text, TextButton,
@@ -148,13 +147,14 @@ fn main() -> kas::shell::Result<()> {
     let controls = row![
         "Number of rows:",
         EditBox::parser(|n| *n, Control::SetLen),
-        WithAny::new(row![
+        kas::row![
             // This button is just a click target; it doesn't do anything!
             TextButton::new_msg("Set", Control::None),
             TextButton::new_msg("−", Control::DecrLen),
             TextButton::new_msg("+", Control::IncrLen),
             TextButton::new_msg("↓↑", Control::Reverse),
-        ]),
+        ]
+        .map_any(),
     ];
 
     let entries = vec![ListEntry::new(0), ListEntry::new(1), ListEntry::new(2)];

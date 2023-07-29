@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 use kas::event::VirtualKeyCode as VK;
 use kas::prelude::*;
-use kas::widget::{adapter::WithAny, Adapt, EditBox, TextButton};
+use kas::widget::{Adapt, EditBox, TextButton};
 
 #[derive(Clone, Debug)]
 enum Key {
@@ -31,8 +31,8 @@ fn calc_ui() -> Window<()> {
         .with_lines(3, 3)
         .with_width_em(5.0, 10.0);
 
-    // We use WithAny to avoid passing input data (not wanted by buttons):
-    let buttons = WithAny::new(kas::grid! {
+    // We use map_any to avoid passing input data (not wanted by buttons):
+    let buttons = kas::grid! {
         // Key bindings: C, Del
         (0, 0) => TextButton::new_msg("&clear", Key::Clear).with_keys(&[VK::Delete]),
         // Widget is hidden but has key binding.
@@ -57,7 +57,8 @@ fn calc_ui() -> Window<()> {
         }
         (0..2, 4) => TextButton::new_msg("&0", Key::Char('0')),
         (2, 4) => TextButton::new_msg("&.", Key::Char('.')),
-    });
+    }
+    .map_any();
 
     let ui = Adapt::new(kas::column![display, buttons], Calculator::new())
         .on_message(|_, calc, key| calc.handle(key));

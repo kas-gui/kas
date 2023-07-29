@@ -76,7 +76,7 @@ impl_scope! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Default)]
-    pub struct WithAny<A, W: Widget<Data = ()>> {
+    pub struct MapAny<A, W: Widget<Data = ()>> {
         _a: std::marker::PhantomData<A>,
         pub inner: W,
     }
@@ -84,7 +84,7 @@ impl_scope! {
     impl Self {
         /// Construct
         pub fn new(inner: W) -> Self {
-            WithAny {
+            MapAny {
                 _a: std::marker::PhantomData,
                 inner,
             }
@@ -105,7 +105,7 @@ impl_scope! {
 
         #[inline]
         fn widget_name(&self) -> &'static str {
-            "WithAny"
+            "MapAny"
         }
     }
 

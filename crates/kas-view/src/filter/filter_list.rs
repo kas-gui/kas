@@ -7,14 +7,100 @@
 
 use super::Filter;
 use crate::{ListData, SharedData};
-use kas::event::{ConfigMgr, EventMgr};
-use kas::geom::{Offset, Size};
-use kas::Scrollable;
-use kas::{autoimpl, impl_scope, Widget};
+use kas::event::{ConfigMgr, EventMgr, Response};
+use kas::{autoimpl, impl_scope, Events, Widget};
+use kas_widgets::edit::{EditBox, EditField, EditGuard};
 use std::fmt::Debug;
 
 #[derive(Debug, Default)]
 pub struct SetFilter<T: Debug>(pub T);
+
+/// An [`EditGuard`] which sends a [`SetFilter`] message on every change
+///
+/// This may be used for search-as-you-type. Unfortunately the usual "messages
+/// return up the tree" mechanism will not pass these messages to [`FilterList`]
+/// when this is a sibling widget, hence the parent will likely need to call
+/// [`FilterList::set_filter`] with [`SetFilter`]'s value.
+pub struct KeystrokeGuard;
+impl EditGuard for KeystrokeGuard {
+    type Data = ();
+
+    fn edit(edit: &mut EditField<Self>, _: &Self::Data, cx: &mut EventMgr) {
+        cx.push(SetFilter(edit.to_string()));
+    }
+}
+
+/// An [`EditGuard`] which sends a [`SetFilter`] message on activate and focus loss
+///
+/// This may be used for search-as-you-type. Unfortunately the usual "messages
+/// return up the tree" mechanism will not pass these messages to [`FilterList`]
+/// when this is a sibling widget, hence the parent will likely need to call
+/// [`FilterList::set_filter`] with [`SetFilter`]'s value.
+pub struct AflGuard;
+impl EditGuard for AflGuard {
+    type Data = ();
+
+    fn activate(edit: &mut EditField<Self>, _: &Self::Data, cx: &mut EventMgr) -> Response {
+        cx.push(SetFilter(edit.to_string()));
+        Response::Used
+    }
+
+    #[inline]
+    fn focus_lost(edit: &mut EditField<Self>, data: &Self::Data, cx: &mut EventMgr) {
+        Self::activate(edit, data, cx);
+    }
+}
+
+impl_scope! {
+    /// An [`EditBox`] above a [`FilterList`]
+    ///
+    /// This is essentially just two widgets with "glue" to handle a
+    /// [`SetFilter`] message from the [`EditBox`].
+    #[autoimpl(Deref, DerefMut using self.list)]
+    #[autoimpl(Scrollable using self.list where W: trait)]
+    #[widget {
+        Data = A;
+        layout = column! [
+            self.edit,
+            self.list,
+        ];
+    }]
+    pub struct FilterBoxList<A, F, W, G = KeystrokeGuard>
+    where
+        A: ListData + 'static,
+        F: Filter<A::Item, Value = String>,
+        W: Widget<Data = UnsafeFilteredList<A>>,
+        G: EditGuard<Data = ()>,
+    {
+        core: widget_core!(),
+        #[widget(&())] edit: EditBox<G>,
+        #[widget] list: FilterList<A, F, W>,
+    }
+
+    impl Self {
+        /// Construct
+        ///
+        /// Parameters `list` and `filter` are passed to [`FilterList::new`].
+        ///
+        /// Parameter `guard` may be [`KeystrokeGuard`], [`AflGuard`] or a
+        /// custom implementation.
+        pub fn new(list: W, filter: F, guard: G) -> Self {
+            Self {
+                core: Default::default(),
+                edit: EditBox::new(guard),
+                list: FilterList::new(list, filter),
+            }
+        }
+    }
+
+    impl Events for Self {
+        fn handle_messages(&mut self, data: &A, mgr: &mut EventMgr) {
+            if let Some(SetFilter(value)) = mgr.try_pop() {
+                mgr.config_mgr(|mgr| self.list.set_filter(data, mgr, value));
+            }
+        }
+    }
+}
 
 impl_scope! {
     /// A widget adding a filter over some [`ListData`]
@@ -28,24 +114,30 @@ impl_scope! {
     ///
     /// To set the filter call [`Self::set_filter`] or pass a message of type
     /// `SetFilter<F::Value>`.
-    #[autoimpl(Deref, DerefMut using self.inner)]
+    #[autoimpl(Deref, DerefMut using self.list)]
+    #[autoimpl(Scrollable using self.list where W: trait)]
     #[widget {
-        layout = self.inner;
+        layout = self.list;
     }]
-    pub struct FilterList<A: ListData + 'static, F: Filter<A::Item>, W: Widget<Data = UnsafeFilteredList<A>>> {
+    pub struct FilterList<A, F, W>
+    where
+        A: ListData + 'static,
+        F: Filter<A::Item, Value = String>,
+        W: Widget<Data = UnsafeFilteredList<A>>,
+    {
         core: widget_core!(),
         #[widget(unsafe { &UnsafeFilteredList::new(data, &self.view) })]
-        pub inner: W,
+        pub list: W,
         filter: F,
         view: Vec<A::Key>,
     }
 
     impl Self {
-        /// Construct around `inner` widget with the given `filter`
-        pub fn new(inner: W, filter: F) -> Self {
+        /// Construct around `list` widget with the given `filter`
+        pub fn new(list: W, filter: F) -> Self {
             FilterList {
                 core: Default::default(),
-                inner,
+                list,
                 filter,
                 view: vec![],
             }
@@ -59,7 +151,7 @@ impl_scope! {
         }
     }
 
-    impl kas::Events for Self {
+    impl Events for Self {
         type Data = A;
 
         fn update(&mut self, data: &A, _: &mut kas::event::ConfigMgr) {
@@ -78,26 +170,6 @@ impl_scope! {
             if let Some(SetFilter(value)) = mgr.try_pop() {
                 mgr.config_mgr(|mgr| self.set_filter(data, mgr, value));
             }
-        }
-    }
-
-    // TODO: make derivable
-    impl Scrollable for Self where W: Scrollable {
-        #[inline]
-        fn scroll_axes(&self, size: Size) -> (bool, bool) {
-            self.inner.scroll_axes(size)
-        }
-        #[inline]
-        fn max_scroll_offset(&self) -> Offset {
-            self.inner.max_scroll_offset()
-        }
-        #[inline]
-        fn scroll_offset(&self) -> Offset {
-            self.inner.scroll_offset()
-        }
-        #[inline]
-        fn set_scroll_offset(&mut self, cx: &mut EventMgr, offset: Offset) -> Offset {
-            self.inner.set_scroll_offset(cx, offset)
         }
     }
 }

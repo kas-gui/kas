@@ -61,7 +61,7 @@ impl_scope! {
         /// [`Layout::size_rules`]. This can be done by instantiating a temporary
         /// widget, for example:
         ///```
-        /// use kas_widgets::adapter::Reserve;
+        /// use kas_widgets::adapt::Reserve;
         /// use kas_widgets::Label;
         /// use kas::prelude::*;
         ///
@@ -71,7 +71,7 @@ impl_scope! {
         ///```
         /// Alternatively one may use virtual pixels:
         ///```
-        /// use kas_widgets::adapter::Reserve;
+        /// use kas_widgets::adapt::Reserve;
         /// use kas_widgets::Filler;
         /// use kas::prelude::*;
         ///

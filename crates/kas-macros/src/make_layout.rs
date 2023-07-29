@@ -1094,10 +1094,10 @@ impl Layout {
                     false
                 } else {
                     ty_toks.append_all(
-                        quote! { #stor: ::kas::hidden::WithAny<#data_ty, ::kas::hidden::StrLabel>, },
+                        quote! { #stor: ::kas::hidden::MapAny<#data_ty, ::kas::hidden::StrLabel>, },
                     );
                     def_toks.append_all(
-                        quote_spanned! {span=> #stor: ::kas::hidden::WithAny::new(::kas::hidden::StrLabel::new(#text)), },
+                        quote_spanned! {span=> #stor: ::kas::hidden::MapAny::new(::kas::hidden::StrLabel::new(#text)), },
                     );
                     true
                 }

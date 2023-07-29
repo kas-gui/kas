@@ -13,7 +13,7 @@ use kas::event::VirtualKeyCode as VK;
 use kas::prelude::*;
 use kas::resvg::Svg;
 use kas::theme::{MarginStyle, ThemeControl};
-use kas::widget::{adapter::WithAny, *};
+use kas::widget::*;
 
 // Using a trait allows control of content
 //
@@ -124,7 +124,7 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
         #[widget{
             layout = row! [
                 format_data!(data: &Data, "{}", &data.text),
-                WithAny::new(TextButton::new_msg("&Edit", MsgEdit)),
+                TextButton::new_msg("&Edit", MsgEdit).map_any(),
             ];
         }]
         struct {
@@ -167,7 +167,7 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
 טקסט לדוגמא במספר שפות.";
 
     let widgets = kas::aligned_column![
-        row!["ScrollLabel", WithAny::new(ScrollLabel::new(text))],
+        row!["ScrollLabel", ScrollLabel::new(text).map_any()],
         row![
             "EditBox",
             EditBox::rw(
@@ -183,7 +183,7 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
             "Button (image)",
             pack!(
                 center,
-                WithAny::new(kas::row![
+                kas::row![
                     Button::new_msg(img_light.clone(), Item::Theme("light"))
                         .with_color("#B38DF9".parse().unwrap())
                         .with_keys(&[VK::H]),
@@ -193,7 +193,8 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
                     Button::new_msg(img_dark, Item::Theme("dark"))
                         .with_color("#E77346".parse().unwrap())
                         .with_keys(&[VK::K]),
-                ])
+                ]
+                .map_any()
             )
         ],
         row![
@@ -239,7 +240,7 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
         ],
         row![
             "ScrollBar",
-            WithAny::new(ScrollBar::right().with_limits(100, 20))
+            ScrollBar::right().with_limits(100, 20).map_any()
         ],
         row![
             "ProgressBar",
@@ -247,11 +248,13 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
         ],
         row![
             "SVG",
-            WithAny::new(img_rustacean.with_scaling(|s| {
-                s.min_factor = 0.1;
-                s.ideal_factor = 0.2;
-                s.stretch = kas::layout::Stretch::High;
-            }))
+            img_rustacean
+                .with_scaling(|s| {
+                    s.min_factor = 0.1;
+                    s.ideal_factor = 0.2;
+                    s.stretch = kas::layout::Stretch::High;
+                })
+                .map_any()
         ],
         row!["Child window", popup_edit_box],
     ];
@@ -362,8 +365,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 }
 
 fn filter_list() -> Box<dyn SetDisabled<()>> {
-    use kas::view::filter::{ContainsCaseInsensitive, FilterList, SetFilter, UnsafeFilteredList};
-    use kas::view::{Driver, ListView, SelectionMode, SelectionMsg};
+    use kas::view::{filter, Driver, ListView, SelectionMode, SelectionMsg};
 
     const MONTHS: &[&str] = &[
         "January",
@@ -383,58 +385,43 @@ fn filter_list() -> Box<dyn SetDisabled<()>> {
     #[derive(Debug)]
     struct Data {
         mode: SelectionMode,
-        filter: String,
         list: Vec<String>,
     }
     let data = Data {
         mode: SelectionMode::None,
-        filter: String::new(),
         list: (2019..=2023)
             .flat_map(|year| MONTHS.iter().map(move |m| format!("{m} {year}")))
             .collect(),
     };
 
-    struct FilterGuard;
-    impl EditGuard for FilterGuard {
-        type Data = Data;
-
-        fn edit(edit: &mut EditField<Self>, _: &Self::Data, cx: &mut EventMgr) {
-            cx.push(SetFilter(edit.to_string()));
-        }
-    }
-
     struct ListGuard;
-    type FilteredList = UnsafeFilteredList<Vec<String>>;
+    type FilteredList = filter::UnsafeFilteredList<Vec<String>>;
     impl Driver<String, FilteredList> for ListGuard {
         type Widget = NavFrame<Text<String, String>>;
         fn make(&mut self, _: &usize) -> Self::Widget {
             Default::default()
         }
     }
-    let filter = ContainsCaseInsensitive::new();
-    let list_view = FilterList::new(ListView::down(ListGuard), filter)
+    let filter = filter::ContainsCaseInsensitive::new();
+    let guard = filter::KeystrokeGuard;
+    let list_view = filter::FilterBoxList::new(ListView::down(ListGuard), filter, guard)
         .map(|data: &Data| &data.list)
         .on_update(|cx, list, data| {
             *cx |= list.set_selection_mode(data.mode);
-            list.set_filter(&data.list, cx, data.filter.clone());
         });
 
     let ui = kas::column![
-        Map::new(
-            kas::row![
-                "Selection:",
-                RadioButton::new_value("&n&one", SelectionMode::None),
-                RadioButton::new_value("s&ingle", SelectionMode::Single),
-                RadioButton::new_value("&multiple", SelectionMode::Multiple),
-            ],
-            |data: &Data| &data.mode
-        ),
-        row!["Filter:", EditBox::new(FilterGuard)],
+        kas::row![
+            "Selection:",
+            RadioButton::new_value("&n&one", SelectionMode::None),
+            RadioButton::new_value("s&ingle", SelectionMode::Single),
+            RadioButton::new_value("&multiple", SelectionMode::Multiple),
+        ]
+        .map(|data: &Data| &data.mode),
         ScrollBars::new(list_view),
     ];
     let ui = Adapt::new(ui, data)
         .on_message(|_, data, mode| data.mode = mode)
-        .on_message(|_, data, SetFilter(filter)| data.filter = filter)
         .on_message(|_, data, selection: SelectionMsg<usize>| match selection {
             SelectionMsg::Select(i) => println!("Selected: {}", &data.list[i]),
             _ => (),
