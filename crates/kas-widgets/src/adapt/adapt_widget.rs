@@ -79,7 +79,7 @@ pub trait AdaptWidget: Widget + Sized {
     /// [`Layout::size_rules`]. This can be done by instantiating a temporary
     /// widget, for example:
     ///```
-    /// # use kas_widgets::adapter::AdaptWidget;
+    /// # use kas_widgets::adapt::AdaptWidget;
     /// use kas::prelude::*;
     /// use kas_widgets::Label;
     ///
@@ -88,7 +88,7 @@ pub trait AdaptWidget: Widget + Sized {
     /// ```
     /// Alternatively one may use virtual pixels:
     ///```
-    /// # use kas_widgets::adapter::AdaptWidget;
+    /// # use kas_widgets::adapt::AdaptWidget;
     /// use kas::prelude::*;
     /// use kas_widgets::Filler;
     ///
