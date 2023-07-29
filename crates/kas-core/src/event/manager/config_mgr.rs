@@ -13,7 +13,7 @@ use crate::layout::AlignPair;
 use crate::shell::Platform;
 use crate::text::TextApi;
 use crate::theme::{Feature, SizeMgr, TextClass, ThemeSize};
-use crate::{Action, NodeMut, WidgetId};
+use crate::{Action, Node, WidgetId};
 use std::ops::{Deref, DerefMut, RangeBounds};
 
 #[allow(unused)] use crate::{event::Event, Events};
@@ -95,7 +95,7 @@ impl<'a> ConfigMgr<'a> {
     /// Pass the `id` to assign to the widget: this should be constructed from
     /// the parent's id via [`WidgetId::make_child`].
     #[inline]
-    pub fn configure(&mut self, mut widget: NodeMut<'_>, id: WidgetId) {
+    pub fn configure(&mut self, mut widget: Node<'_>, id: WidgetId) {
         widget._configure(self, id);
     }
 
@@ -129,7 +129,7 @@ impl<'a> ConfigMgr<'a> {
     /// `self`. If a widget stores state which it passes to children as input
     /// data, it should call this after mutating the state.
     #[inline]
-    pub fn update(&mut self, mut widget: NodeMut<'_>) {
+    pub fn update(&mut self, mut widget: Node<'_>) {
         widget._update(self);
     }
 

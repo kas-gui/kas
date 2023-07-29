@@ -7,7 +7,7 @@
 
 use crate::event::{ConfigMgr, Event, EventMgr, Response};
 #[cfg(debug_assertions)] use crate::util::IdentifyWidget;
-use crate::{Erased, Events, Layout, NavAdvance, NodeMut, Widget, WidgetId};
+use crate::{Erased, Events, Layout, NavAdvance, Node, Widget, WidgetId};
 
 /// Generic implementation of [`Widget::_configure`]
 pub fn _configure<W: Widget + Events<Data = <W as Widget>::Data>>(
@@ -22,7 +22,7 @@ pub fn _configure<W: Widget + Events<Data = <W as Widget>::Data>>(
         let id = widget.make_child_id(index);
         if id.is_valid() {
             widget
-                .as_node_mut(data)
+                .as_node(data)
                 .for_child(index, |mut node| node._configure(cx, id));
         }
     }
@@ -40,7 +40,7 @@ pub fn _update<W: Widget + Events<Data = <W as Widget>::Data>>(
     widget.update(data, cx);
     let start = cx.recurse_start.take().unwrap_or(0);
     let end = cx.recurse_end.take().unwrap_or(widget.num_children());
-    let mut node = widget.as_node_mut(data);
+    let mut node = widget.as_node(data);
     for index in start..end {
         node.for_child(index, |mut node| node._update(cx));
     }
@@ -69,7 +69,7 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
         if let Some(index) = widget.find_child_index(&id) {
             let translation = widget.translation();
             let mut found = false;
-            widget.as_node_mut(data).for_child(index, |mut node| {
+            widget.as_node(data).for_child(index, |mut node| {
                 response = node._send(cx, id.clone(), disabled, event.clone() + translation);
                 found = true;
             });
@@ -109,7 +109,7 @@ pub fn _replay<W: Widget + Events<Data = <W as Widget>::Data>>(
 ) {
     if let Some(index) = widget.find_child_index(&id) {
         let mut found = false;
-        widget.as_node_mut(data).for_child(index, |mut node| {
+        widget.as_node(data).for_child(index, |mut node| {
             node._replay(cx, id.clone(), msg);
             found = true;
         });
@@ -150,11 +150,11 @@ pub fn _nav_next<W: Widget + Events<Data = <W as Widget>::Data>>(
     advance: NavAdvance,
 ) -> Option<WidgetId> {
     let navigable = widget.navigable();
-    nav_next(widget.as_node_mut(data), cx, focus, advance, navigable)
+    nav_next(widget.as_node(data), cx, focus, advance, navigable)
 }
 
 fn nav_next(
-    mut widget: NodeMut<'_>,
+    mut widget: Node<'_>,
     cx: &mut EventMgr,
     focus: Option<&WidgetId>,
     advance: NavAdvance,

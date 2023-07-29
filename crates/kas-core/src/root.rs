@@ -140,7 +140,7 @@ impl_scope! {
                 return None;
             }
             for (_, popup, translation) in self.popups.iter_mut().rev() {
-                if let Some(Some(id)) = self.w.as_node_mut(data).for_id(&popup.id, |mut node| node.find_id(coord + *translation)) {
+                if let Some(Some(id)) = self.w.as_node(data).for_id(&popup.id, |mut node| node.find_id(coord + *translation)) {
                     return Some(id);
                 }
             }
@@ -159,7 +159,7 @@ impl_scope! {
             }
             draw.recurse(&mut self.w);
             for (_, popup, translation) in &self.popups {
-                self.w.as_node_mut(data).for_id(&popup.id, |mut node| {
+                self.w.as_node(data).for_id(&popup.id, |mut node| {
                     let clip_rect = node.rect() - *translation;
                     draw.with_overlay(clip_rect, *translation, |draw| {
                         node._draw(draw);
@@ -418,7 +418,7 @@ impl<Data: 'static> Window<Data> {
         let (c, t) = find_rect(self.w.as_layout(), popup.parent.clone(), Offset::ZERO).unwrap();
         *translation = t;
         let r = r + t; // work in translated coordinate space
-        self.w.as_node_mut(data).for_id(&popup.id, |mut node| {
+        self.w.as_node(data).for_id(&popup.id, |mut node| {
             let mut cache = layout::SolveCache::find_constraints(node.re(), mgr.size_mgr());
             let ideal = cache.ideal(false);
             let m = cache.margins();

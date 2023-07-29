@@ -16,7 +16,7 @@ mod widget_id;
 pub mod impls;
 
 pub use data::*;
-pub use node::NodeMut;
+pub use node::Node;
 pub use scroll_traits::*;
 pub use widget::*;
 pub use widget_id::*;

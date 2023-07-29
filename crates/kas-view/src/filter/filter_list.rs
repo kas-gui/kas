@@ -146,7 +146,7 @@ impl_scope! {
         /// Set filter value
         pub fn set_filter(&mut self, data: &A, mgr: &mut ConfigMgr, filter: F::Value) {
             if self.filter.set_filter(filter) {
-                mgr.update(self.as_node_mut(data));
+                mgr.update(self.as_node(data));
             }
         }
     }

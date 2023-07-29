@@ -73,7 +73,7 @@ dark-light = ["dep:dark-light"]
 # Support spawning async tasks
 spawn = ["dep:async-global-executor"]
 
-# Optimise Node, NodeMut using unsafe code
+# Optimise Node using unsafe code
 unsafe_node = []
 
 [build-dependencies]

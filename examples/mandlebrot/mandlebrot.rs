@@ -475,7 +475,7 @@ impl_scope! {
             } else {
                 return;
             }
-            mgr.update(self.as_node_mut(data));
+            mgr.update(self.as_node(data));
         }
     }
 }

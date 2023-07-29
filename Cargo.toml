@@ -111,7 +111,7 @@ wayland = ["kas-core/wayland"]
 # Support X11
 x11 = ["kas-core/x11"]
 
-# Optimise Node, NodeMut using unsafe code
+# Optimise Node using unsafe code
 unsafe_node = ["kas-core/unsafe_node"]
 
 [dependencies]

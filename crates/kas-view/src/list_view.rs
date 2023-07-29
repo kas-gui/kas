@@ -316,7 +316,7 @@ impl_scope! {
                     self.guard.set_key(&mut w.widget, &key);
 
                     if let Some(item) = data.borrow(&key) {
-                        cx.configure(w.widget.as_node_mut(item.borrow()), id);
+                        cx.configure(w.widget.as_node(item.borrow()), id);
 
                         solve_size_rules(
                             &mut w.widget,
@@ -331,7 +331,7 @@ impl_scope! {
                         w.key = None; // disables drawing and clicking
                     }
                 } else if let Some(item) = data.borrow(&key) {
-                    cx.update(w.widget.as_node_mut(item.borrow()));
+                    cx.update(w.widget.as_node(item.borrow()));
                 }
                 w.widget.set_rect(cx, solver.rect(i));
             }
@@ -710,16 +710,16 @@ impl_scope! {
     impl Widget for Self {
         type Data = A;
 
-        fn for_child_mut_impl(
+        fn for_child_node(
             &mut self,
             data: &A,
             index: usize,
-            closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
         ) {
             if let Some(w) = self.widgets.get_mut(index) {
                 if let Some(ref key) = w.key {
                     if let Some(item) = data.borrow(key) {
-                        closure(w.widget.as_node_mut(item.borrow()));
+                        closure(w.widget.as_node(item.borrow()));
                     }
                 }
             }
@@ -766,7 +766,7 @@ impl_scope! {
             let mut child = focus.and_then(|id| self.find_child_index(id));
 
             if let Some(index) = child {
-                if let Some(Some(id)) = self.as_node_mut(data)
+                if let Some(Some(id)) = self.as_node(data)
                     .for_child(index, |mut w| w._nav_next(cx, focus, advance))
                 {
                     return Some(id);
@@ -802,7 +802,7 @@ impl_scope! {
                 }
 
                 let index = data_index % usize::conv(self.cur_len);
-                if let Some(Some(id)) = self.as_node_mut(data)
+                if let Some(Some(id)) = self.as_node(data)
                     .for_child(index, |mut w| w._nav_next(cx, focus, advance))
                 {
                     return Some(id);

@@ -44,14 +44,14 @@ impl_scope! {
     impl Widget for Self {
         type Data = W::Data;
 
-        fn for_child_mut_impl(
+        fn for_child_node(
             &mut self,
             data: &W::Data,
             index: usize,
-            closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
         ) {
             if let Some(w) = self.widgets.get_mut(index) {
-                closure(w.as_node_mut(data));
+                closure(w.as_node(data));
             }
         }
     }
@@ -258,7 +258,7 @@ impl<W: Widget> Stack<W> {
             *mgr |= Action::RESIZE;
         }
 
-        mgr.update(self.widgets[index].as_node_mut(data));
+        mgr.update(self.widgets[index].as_node(data));
     }
 
     /// Get a direct reference to the active child widget, if any
@@ -307,7 +307,7 @@ impl<W: Widget> Stack<W> {
     pub fn push(&mut self, data: &W::Data, mgr: &mut ConfigMgr, mut widget: W) -> usize {
         let index = self.widgets.len();
         let id = self.make_child_id(index);
-        mgr.configure(widget.as_node_mut(data), id);
+        mgr.configure(widget.as_node(data), id);
 
         self.widgets.push(widget);
 
@@ -359,7 +359,7 @@ impl<W: Widget> Stack<W> {
         }
 
         let id = self.make_child_id(index);
-        mgr.configure(widget.as_node_mut(data), id);
+        mgr.configure(widget.as_node(data), id);
 
         self.widgets.insert(index, widget);
 
@@ -421,7 +421,7 @@ impl<W: Widget> Stack<W> {
         mut widget: W,
     ) -> W {
         let id = self.make_child_id(index);
-        mgr.configure(widget.as_node_mut(data), id);
+        mgr.configure(widget.as_node(data), id);
         std::mem::swap(&mut widget, &mut self.widgets[index]);
 
         if widget.id_ref().is_valid() {
@@ -460,7 +460,7 @@ impl<W: Widget> Stack<W> {
         }
         for mut w in iter {
             let id = self.make_child_id(self.widgets.len());
-            mgr.configure(w.as_node_mut(data), id);
+            mgr.configure(w.as_node(data), id);
             self.widgets.push(w);
         }
 
@@ -502,7 +502,7 @@ impl<W: Widget> Stack<W> {
             for index in old_len..len {
                 let id = self.make_child_id(index);
                 let mut w = f(index);
-                mgr.configure(w.as_node_mut(data), id);
+                mgr.configure(w.as_node(data), id);
                 self.widgets.push(w);
             }
 

@@ -24,7 +24,7 @@ use crate::geom::{Coord, Offset};
 use crate::shell::ShellWindow;
 use crate::util::WidgetHierarchy;
 use crate::LayoutExt;
-use crate::{Action, Erased, ErasedStack, NavAdvance, NodeMut, Widget, WidgetId, WindowId};
+use crate::{Action, Erased, ErasedStack, NavAdvance, Node, Widget, WidgetId, WindowId};
 
 mod config_mgr;
 mod mgr_pub;
@@ -71,7 +71,7 @@ struct MouseGrab {
 }
 
 impl<'a> EventMgr<'a> {
-    fn flush_mouse_grab_motion(&mut self, widget: NodeMut<'_>) {
+    fn flush_mouse_grab_motion(&mut self, widget: Node<'_>) {
         if let Some(grab) = self.mouse_grab.as_mut() {
             let delta = grab.delta;
             if delta == Offset::ZERO {
@@ -446,7 +446,7 @@ impl<'a> DerefMut for EventMgr<'a> {
 
 /// Internal methods
 impl<'a> EventMgr<'a> {
-    fn start_key_event(&mut self, mut widget: NodeMut<'_>, vkey: VirtualKeyCode, scancode: u32) {
+    fn start_key_event(&mut self, mut widget: Node<'_>, vkey: VirtualKeyCode, scancode: u32) {
         log::trace!(
             "start_key_event: widget={}, vkey={vkey:?}, scancode={scancode}",
             widget.id()
@@ -597,7 +597,7 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Replay a message as if it was pushed by `id`
-    fn replay(&mut self, mut widget: NodeMut<'_>, id: WidgetId, msg: Erased) {
+    fn replay(&mut self, mut widget: Node<'_>, id: WidgetId, msg: Erased) {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         self.messages.set_base();
@@ -610,7 +610,7 @@ impl<'a> EventMgr<'a> {
 
     // Wrapper around Self::send; returns true when event is used
     #[inline]
-    fn send_event(&mut self, widget: NodeMut<'_>, id: WidgetId, event: Event) -> bool {
+    fn send_event(&mut self, widget: Node<'_>, id: WidgetId, event: Event) -> bool {
         self.messages.set_base();
         let used = self.send_event_impl(widget, id, event);
         self.last_child = None;
@@ -619,7 +619,7 @@ impl<'a> EventMgr<'a> {
     }
 
     // Send an event; possibly leave messages on the stack
-    fn send_event_impl(&mut self, mut widget: NodeMut<'_>, mut id: WidgetId, event: Event) -> bool {
+    fn send_event_impl(&mut self, mut widget: Node<'_>, mut id: WidgetId, event: Event) -> bool {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         self.messages.set_base();
@@ -645,7 +645,7 @@ impl<'a> EventMgr<'a> {
     // Returns true if event is used
     fn send_popup_first(
         &mut self,
-        mut widget: NodeMut<'_>,
+        mut widget: Node<'_>,
         id: Option<WidgetId>,
         event: Event,
     ) -> bool {
@@ -669,7 +669,7 @@ impl<'a> EventMgr<'a> {
     /// Advance the keyboard navigation focus
     pub fn next_nav_focus_impl(
         &mut self,
-        mut widget: NodeMut,
+        mut widget: Node,
         target: Option<WidgetId>,
         reverse: bool,
         key_focus: bool,

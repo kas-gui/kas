@@ -603,7 +603,7 @@ impl<'a> EventMgr<'a> {
     ///
     /// This is a shortcut to [`ConfigMgr::configure`].
     #[inline]
-    pub fn configure(&mut self, mut widget: NodeMut<'_>, id: WidgetId) {
+    pub fn configure(&mut self, mut widget: Node<'_>, id: WidgetId) {
         self.config_mgr(|mgr| widget._configure(mgr, id));
     }
 
@@ -613,7 +613,7 @@ impl<'a> EventMgr<'a> {
     /// `self`. If a widget stores state which it passes to children as input
     /// data, it should call this (or [`ConfigMgr::update`]) after mutating the state.
     #[inline]
-    pub fn update(&mut self, mut widget: NodeMut<'_>) {
+    pub fn update(&mut self, mut widget: Node<'_>) {
         self.config_mgr(|mgr| widget._update(mgr));
     }
 

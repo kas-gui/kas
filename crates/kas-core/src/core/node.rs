@@ -13,16 +13,16 @@ use crate::theme::{DrawMgr, SizeMgr};
 use crate::{Erased, Layout, NavAdvance, WidgetId};
 
 #[cfg(not(feature = "unsafe_node"))]
-trait NodeMutT {
+trait NodeT {
     fn id_ref(&self) -> &WidgetId;
     fn rect(&self) -> Rect;
 
-    fn clone_node_mut(&mut self) -> NodeMut<'_>;
+    fn clone_node(&mut self) -> Node<'_>;
     fn as_layout(&self) -> &dyn Layout;
 
     fn num_children(&self) -> usize;
     fn find_child_index(&self, id: &WidgetId) -> Option<usize>;
-    fn for_child_mut_impl(&mut self, index: usize, f: Box<dyn FnOnce(NodeMut<'_>) + '_>);
+    fn for_child_node(&mut self, index: usize, f: Box<dyn FnOnce(Node<'_>) + '_>);
 
     fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
     fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
@@ -44,7 +44,7 @@ trait NodeMutT {
     ) -> Option<WidgetId>;
 }
 #[cfg(not(feature = "unsafe_node"))]
-impl<'a, T> NodeMutT for (&'a mut dyn Widget<Data = T>, &'a T) {
+impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
     fn id_ref(&self) -> &WidgetId {
         self.0.id_ref()
     }
@@ -52,8 +52,8 @@ impl<'a, T> NodeMutT for (&'a mut dyn Widget<Data = T>, &'a T) {
         self.0.rect()
     }
 
-    fn clone_node_mut(&mut self) -> NodeMut<'_> {
-        NodeMut::new(self.0, self.1)
+    fn clone_node(&mut self) -> Node<'_> {
+        Node::new(self.0, self.1)
     }
     fn as_layout(&self) -> &dyn Layout {
         self.0.as_layout()
@@ -66,8 +66,8 @@ impl<'a, T> NodeMutT for (&'a mut dyn Widget<Data = T>, &'a T) {
         self.0.find_child_index(id)
     }
 
-    fn for_child_mut_impl(&mut self, index: usize, f: Box<dyn FnOnce(NodeMut<'_>) + '_>) {
-        self.0.for_child_mut_impl(self.1, index, f);
+    fn for_child_node(&mut self, index: usize, f: Box<dyn FnOnce(Node<'_>) + '_>) {
+        self.0.for_child_node(self.1, index, f);
     }
 
     fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
@@ -115,11 +115,11 @@ impl<'a, T> NodeMutT for (&'a mut dyn Widget<Data = T>, &'a T) {
 /// Note: this type has no publically supported utility over [`Node`].
 /// It is, however, required for Kas's internals.
 #[cfg(feature = "unsafe_node")]
-pub struct NodeMut<'a>(&'a mut dyn Widget<Data = ()>, &'a ());
+pub struct Node<'a>(&'a mut dyn Widget<Data = ()>, &'a ());
 #[cfg(not(feature = "unsafe_node"))]
-pub struct NodeMut<'a>(Box<dyn NodeMutT + 'a>);
+pub struct Node<'a>(Box<dyn NodeT + 'a>);
 
-impl<'a> NodeMut<'a> {
+impl<'a> Node<'a> {
     /// Construct
     #[inline(always)]
     pub fn new<T: 'a>(widget: &'a mut dyn Widget<Data = T>, data: &'a T) -> Self {
@@ -130,9 +130,9 @@ impl<'a> NodeMut<'a> {
                 // We ensure here that the type of `data` matches that used by `widget`.
                 // NOTE: This makes assumptions beyond Rust's specification.
                 use std::mem::transmute;
-                unsafe { NodeMut(transmute(widget), transmute(data)) }
+                unsafe { Node(transmute(widget), transmute(data)) }
             } else {
-                NodeMut(Box::new((widget, data)))
+                Node(Box::new((widget, data)))
             }
         }
     }
@@ -143,15 +143,15 @@ impl<'a> NodeMut<'a> {
     /// coercion: essentially, the pointer is copied under a new, shorter, lifetime.
     /// Until rfcs#1403 lands, reborrows on user types require a method call.
     #[inline(always)]
-    pub fn re<'b>(&'b mut self) -> NodeMut<'b>
+    pub fn re<'b>(&'b mut self) -> Node<'b>
     where
         'a: 'b,
     {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
-                NodeMut(self.0, self.1)
+                Node(self.0, self.1)
             } else {
-                self.0.clone_node_mut()
+                self.0.clone_node()
             }
         }
     }
@@ -220,35 +220,35 @@ impl<'a> NodeMut<'a> {
     ///
     /// Calls the closure and returns `Some(result)` exactly when
     /// `index < self.num_children()`.
-    pub fn for_child<R>(&mut self, index: usize, f: impl FnOnce(NodeMut<'_>) -> R) -> Option<R> {
+    pub fn for_child<R>(&mut self, index: usize, f: impl FnOnce(Node<'_>) -> R) -> Option<R> {
         let mut result = None;
         let out = &mut result;
-        let f: Box<dyn for<'b> FnOnce(NodeMut<'b>)> = Box::new(|node| {
+        let f: Box<dyn for<'b> FnOnce(Node<'b>)> = Box::new(|node| {
             *out = Some(f(node));
         });
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
-                self.0.for_child_mut_impl(self.1, index, f);
+                self.0.for_child_node(self.1, index, f);
             } else {
-                self.0.for_child_mut_impl(index, f);
+                self.0.for_child_node(index, f);
             }
         }
         result
     }
 
     /// Run a `f` on all children
-    pub fn for_children(&mut self, mut f: impl FnMut(NodeMut<'_>)) {
+    pub fn for_children(&mut self, mut f: impl FnMut(Node<'_>)) {
         for index in 0..self.0.num_children() {
-            // NOTE: for_child_mut_impl takes FnOnce hence we must wrap the closure
+            // NOTE: for_child_node takes FnOnce hence we must wrap the closure
             let f = &mut f;
-            let f: Box<dyn for<'b> FnOnce(NodeMut<'b>)> = Box::new(|node| {
+            let f: Box<dyn for<'b> FnOnce(Node<'b>)> = Box::new(|node| {
                 f(node);
             });
             cfg_if::cfg_if! {
                 if #[cfg(feature = "unsafe_node")] {
-                    self.0.for_child_mut_impl(self.1, index, f);
+                    self.0.for_child_node(self.1, index, f);
                 } else {
-                    self.0.for_child_mut_impl(index, f);
+                    self.0.for_child_node(index, f);
                 }
             }
         }
@@ -266,7 +266,7 @@ impl<'a> NodeMut<'a> {
     /// Find the descendant with this `id`, if any, and call `cb` on it
     ///
     /// Returns `Some(result)` if and only if node `id` was found.
-    pub fn for_id<F: FnOnce(NodeMut<'_>) -> T, T>(&mut self, id: &WidgetId, cb: F) -> Option<T> {
+    pub fn for_id<F: FnOnce(Node<'_>) -> T, T>(&mut self, id: &WidgetId, cb: F) -> Option<T> {
         if let Some(index) = self.find_child_index(id) {
             self.for_child(index, |mut node| node.for_id(id, cb))
                 .unwrap()
@@ -280,7 +280,7 @@ impl<'a> NodeMut<'a> {
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-impl<'a> NodeMut<'a> {
+impl<'a> Node<'a> {
     /// Get size rules for the given axis
     pub(crate) fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         self.0.size_rules(size_mgr, axis)

@@ -119,14 +119,14 @@ impl_scope! {
     impl Widget for Self {
         type Data = W::Data;
 
-        fn for_child_mut_impl(
+        fn for_child_node(
             &mut self,
             data: &W::Data,
             index: usize,
-            closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
         ) {
             if let Some(w) = self.widgets.get_mut(index) {
-                closure(w.as_node_mut(data));
+                closure(w.as_node(data));
             }
         }
     }
@@ -272,7 +272,7 @@ impl_scope! {
         pub fn push(&mut self, data: &W::Data, mgr: &mut ConfigMgr, mut widget: W) -> usize {
             let index = self.widgets.len();
             let id = self.make_child_id(index);
-            mgr.configure(widget.as_node_mut(data), id);
+            mgr.configure(widget.as_node(data), id);
             self.widgets.push(widget);
 
             *mgr |= Action::RESIZE;
@@ -309,7 +309,7 @@ impl_scope! {
             }
 
             let id = self.make_child_id(index);
-            mgr.configure(widget.as_node_mut(data), id);
+            mgr.configure(widget.as_node(data), id);
             self.widgets.insert(index, widget);
             *mgr |= Action::RESIZE;
         }
@@ -344,7 +344,7 @@ impl_scope! {
         /// The new child is configured immediately. Triggers [`Action::RESIZE`].
         pub fn replace(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize, mut w: W) -> W {
             let id = self.make_child_id(index);
-            mgr.configure(w.as_node_mut(data), id);
+            mgr.configure(w.as_node(data), id);
             std::mem::swap(&mut w, &mut self.widgets[index]);
 
             if w.id_ref().is_valid() {
@@ -368,7 +368,7 @@ impl_scope! {
             }
             for mut w in iter {
                 let id = self.make_child_id(self.widgets.len());
-                mgr.configure(w.as_node_mut(data), id);
+                mgr.configure(w.as_node(data), id);
                 self.widgets.push(w);
             }
 
@@ -401,7 +401,7 @@ impl_scope! {
                 for index in old_len..len {
                     let id = self.make_child_id(index);
                     let mut w = f(index);
-                    mgr.configure(w.as_node_mut(data), id);
+                    mgr.configure(w.as_node(data), id);
                     self.widgets.push(w);
                 }
                 *mgr |= Action::RESIZE;

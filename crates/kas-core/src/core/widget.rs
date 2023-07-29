@@ -5,7 +5,7 @@
 
 //! Widget traits
 
-use super::NodeMut;
+use super::Node;
 use crate::event::{ConfigMgr, Event, EventMgr, Response, Scroll};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{AxisInfo, SizeRules};
@@ -82,7 +82,7 @@ pub trait Layout: WidgetCore {
     ///
     /// This method is usually implemented automatically by the `#[widget]`
     /// macro. It should be implemented directly if and only if
-    /// [`Layout::get_child`] and [`Widget::for_child_mut_impl`] are
+    /// [`Layout::get_child`] and [`Widget::for_child_node`] are
     /// implemented directly.
     fn num_children(&self) -> usize;
 
@@ -606,7 +606,7 @@ pub trait Widget: Layout {
     type Data;
 
     /// Erase type
-    fn as_node_mut<'a>(&'a mut self, data: &'a Self::Data) -> NodeMut<'a>;
+    fn as_node<'a>(&'a mut self, data: &'a Self::Data) -> Node<'a>;
 
     /// Call closure on child with given `index`, if `index < self.num_children()`.
     ///
@@ -614,13 +614,13 @@ pub trait Widget: Layout {
     /// not need to implement this. Widgets with an explicit implementation of
     /// [`Layout::num_children`] also need to implement this.
     ///
-    /// It is recommended to use the methods on [`NodeMut`]
+    /// It is recommended to use the methods on [`Node`]
     /// instead of calling this method.
-    fn for_child_mut_impl(
+    fn for_child_node(
         &mut self,
         data: &Self::Data,
         index: usize,
-        closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
+        closure: Box<dyn FnOnce(Node<'_>) + '_>,
     );
 
     /// Internal method: configure recursively

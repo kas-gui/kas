@@ -11,7 +11,7 @@ use crate::event::ConfigMgr;
 use crate::geom::{Rect, Size};
 use crate::theme::SizeMgr;
 use crate::util::WidgetHierarchy;
-use crate::{Layout, NodeMut};
+use crate::{Layout, Node};
 
 /// A [`SizeRules`] solver for layouts
 ///
@@ -134,7 +134,7 @@ impl SolveCache {
     /// Calculate required size of widget
     ///
     /// Assumes no explicit alignment.
-    pub fn find_constraints(mut widget: NodeMut<'_>, size_mgr: SizeMgr) -> Self {
+    pub fn find_constraints(mut widget: Node<'_>, size_mgr: SizeMgr) -> Self {
         let start = std::time::Instant::now();
 
         let w = widget.size_rules(size_mgr.re(), AxisInfo::new(false, None, None));
@@ -184,7 +184,7 @@ impl SolveCache {
     /// last used).
     pub fn apply_rect(
         &mut self,
-        mut widget: NodeMut<'_>,
+        mut widget: Node<'_>,
         mgr: &mut ConfigMgr,
         mut rect: Rect,
         inner_margin: bool,
