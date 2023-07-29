@@ -7,315 +7,21 @@
 
 use super::Widget;
 use crate::event::{ConfigMgr, Event, EventMgr, Response};
-use crate::geom::{Coord, Offset, Rect};
+use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
-use crate::util::IdentifyWidget;
 use crate::{Erased, Layout, NavAdvance, WidgetId};
 
 #[cfg(not(feature = "unsafe_node"))]
-trait NodeT {
-    fn clone_node(&self) -> Node<'_>;
-
+trait NodeMutT {
     fn id_ref(&self) -> &WidgetId;
     fn rect(&self) -> Rect;
-    fn widget_name(&self) -> &'static str;
 
-    fn num_children(&self) -> usize;
-    fn translation(&self) -> Offset;
-
-    fn for_child_impl(&self, index: usize, f: Box<dyn FnOnce(Node<'_>) + '_>);
-    fn find_child_index(&self, id: &WidgetId) -> Option<usize>;
-}
-#[cfg(not(feature = "unsafe_node"))]
-impl<'a, T> NodeT for (&'a dyn Widget<Data = T>, &'a T) {
-    fn clone_node(&self) -> Node<'_> {
-        Node::new(self.0, self.1)
-    }
-
-    fn id_ref(&self) -> &WidgetId {
-        self.0.id_ref()
-    }
-    fn rect(&self) -> Rect {
-        self.0.rect()
-    }
-    fn widget_name(&self) -> &'static str {
-        self.0.widget_name()
-    }
-
-    fn num_children(&self) -> usize {
-        self.0.num_children()
-    }
-    fn translation(&self) -> Offset {
-        self.0.translation()
-    }
-
-    fn for_child_impl(&self, index: usize, f: Box<dyn FnOnce(Node<'_>) + '_>) {
-        self.0.for_child_impl(self.1, index, f);
-    }
-    fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
-        self.0.find_child_index(id)
-    }
-}
-#[cfg(not(feature = "unsafe_node"))]
-impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
-    fn clone_node(&self) -> Node<'_> {
-        Node::new(self.0, self.1)
-    }
-
-    fn id_ref(&self) -> &WidgetId {
-        self.0.id_ref()
-    }
-    fn rect(&self) -> Rect {
-        self.0.rect()
-    }
-    fn widget_name(&self) -> &'static str {
-        self.0.widget_name()
-    }
-
-    fn num_children(&self) -> usize {
-        self.0.num_children()
-    }
-    fn translation(&self) -> Offset {
-        self.0.translation()
-    }
-
-    fn for_child_impl(&self, index: usize, f: Box<dyn FnOnce(Node<'_>) + '_>) {
-        self.0.for_child_impl(self.1, index, f);
-    }
-    fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
-        self.0.find_child_index(id)
-    }
-}
-
-/// Public API over a mutable widget
-#[cfg(feature = "unsafe_node")]
-pub struct Node<'a>(&'a dyn Widget<Data = ()>, &'a ());
-#[cfg(not(feature = "unsafe_node"))]
-pub struct Node<'a>(Box<dyn NodeT + 'a>);
-
-impl<'a> Node<'a> {
-    /// Construct
-    #[inline(always)]
-    pub fn new<T: 'a>(widget: &'a dyn Widget<Data = T>, data: &'a T) -> Self {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "unsafe_node")] {
-                // Safety: since the vtable for dyn Widget<Data = T> only uses T as &T
-                // and T: Sized, the vtable should be equivalent for all T.
-                // We ensure here that the type of `data` matches that used by `widget`.
-                // NOTE: This makes assumptions beyond Rust's specification.
-                use std::mem::transmute;
-                unsafe { Node(transmute(widget), transmute(data)) }
-            } else {
-                // NOTE: we want to store the type behind (unsized)
-                // `dyn NodeT + 'a`. We know the size so could use StackDST, but
-                // the only safe option is to use an allocator like Box.
-                Node(Box::new((widget, data)))
-            }
-        }
-    }
-
-    /// Reborrow with a new lifetime
-    ///
-    /// Rust allows references like `&T` or `&mut T` to be "reborrowed" through
-    /// coercion: essentially, the pointer is copied under a new, shorter, lifetime.
-    /// Until rfcs#1403 lands, reborrows on user types require a method call.
-    #[inline(always)]
-    pub fn re<'b>(&'b self) -> Node<'b>
-    where
-        'a: 'b,
-    {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "unsafe_node")] {
-                Node(self.0, self.1)
-            } else {
-                self.0.clone_node()
-            }
-        }
-    }
-
-    /// Get the widget's identifier
-    #[inline]
-    pub fn id_ref(&self) -> &WidgetId {
-        self.0.id_ref()
-    }
-
-    /// Get the widget's identifier
-    #[inline]
-    pub fn id(&self) -> WidgetId {
-        self.id_ref().clone()
-    }
-
-    /// Test widget identifier for equality
-    ///
-    /// This method may be used to test against `WidgetId`, `Option<WidgetId>`
-    /// and `Option<&WidgetId>`.
-    #[inline]
-    pub fn eq_id<T>(&self, rhs: T) -> bool
-    where
-        WidgetId: PartialEq<T>,
-    {
-        *self.id_ref() == rhs
-    }
-
-    /// Check whether `id` is self or a descendant
-    ///
-    /// This function assumes that `id` is a valid widget.
-    #[inline]
-    pub fn is_ancestor_of(&self, id: &WidgetId) -> bool {
-        self.id().is_ancestor_of(id)
-    }
-
-    /// Check whether `id` is not self and is a descendant
-    ///
-    /// This function assumes that `id` is a valid widget.
-    #[inline]
-    pub fn is_strict_ancestor_of(&self, id: &WidgetId) -> bool {
-        !self.eq_id(id) && self.id().is_ancestor_of(id)
-    }
-
-    /// Get the widget's region, relative to its parent.
-    #[inline]
-    pub fn rect(&self) -> Rect {
-        self.0.rect()
-    }
-
-    /// Get the name of the widget struct
-    #[inline]
-    pub fn widget_name(&self) -> &'static str {
-        self.0.widget_name()
-    }
-
-    /// Display as "StructName#WidgetId"
-    #[inline]
-    pub fn identify(&self) -> IdentifyWidget {
-        IdentifyWidget(self.widget_name(), self.id_ref())
-    }
-
-    /// Get the number of child widgets
-    ///
-    /// Every value in the range `0..self.num_children()` is a valid child
-    /// index.
-    #[inline]
-    pub fn num_children(&self) -> usize {
-        self.0.num_children()
-    }
-
-    /// Run `f` on some child by index and, if valid, return the result.
-    ///
-    /// Calls the closure and returns `Some(result)` exactly when
-    /// `index < self.num_children()`.
-    pub fn for_child<R>(&self, index: usize, f: impl FnOnce(Node<'_>) -> R) -> Option<R> {
-        let mut result = None;
-        let out = &mut result;
-        let f: Box<dyn for<'b> FnOnce(Node<'b>)> = Box::new(|node| {
-            *out = Some(f(node));
-        });
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "unsafe_node")] {
-                self.0.for_child_impl(self.1, index, f);
-            } else {
-                self.0.for_child_impl(index, f);
-            }
-        }
-        result
-    }
-
-    /// Run a closure on all children
-    pub fn for_children(&self, mut f: impl FnMut(Node<'_>)) {
-        for index in 0..self.0.num_children() {
-            // NOTE: for_child_impl takes FnOnce hence we must wrap the closure
-            let f = &mut f;
-            let f: Box<dyn for<'b> FnOnce(Node<'b>)> = Box::new(|node| {
-                f(node);
-            });
-            cfg_if::cfg_if! {
-                if #[cfg(feature = "unsafe_node")] {
-                    self.0.for_child_impl(self.1, index, f);
-                } else {
-                    self.0.for_child_impl(index, f);
-                }
-            }
-        }
-    }
-
-    /// Run a closure on all children, returning early in case of error
-    pub fn for_children_try<E>(
-        &self,
-        mut f: impl FnMut(Node<'_>) -> Result<(), E>,
-    ) -> Result<(), E> {
-        let mut result = Ok(());
-        for index in 0..self.0.num_children() {
-            let f = &mut f;
-            let out = &mut result;
-            let f: Box<dyn for<'b> FnOnce(Node<'b>)> = Box::new(|node| {
-                *out = f(node);
-            });
-            cfg_if::cfg_if! {
-                if #[cfg(feature = "unsafe_node")] {
-                    self.0.for_child_impl(self.1, index, f);
-                } else {
-                    self.0.for_child_impl(index, f);
-                }
-            }
-            if result.is_err() {
-                break;
-            }
-        }
-        result
-    }
-
-    /// Run `f` on each node of the path from `self` to `id`
-    ///
-    /// Calls `f` on `self`, then on the child of `self` which is an
-    /// ancestor of `id`, ..., then finally on the widget with `id`.
-    ///
-    /// In case no widget with `id` is found, this still calls `f` on each
-    /// node which could be an ancestor (see [`WidgetId::is_ancestor_of`]).
-    pub fn for_path(&self, id: &WidgetId, mut f: impl FnMut(Node<'_>)) {
-        f(self.re());
-        if let Some(index) = self.find_child_index(id) {
-            self.for_child(index, |node| node.for_path(id, f));
-        }
-    }
-
-    /// Find the child which is an ancestor of this `id`, if any
-    ///
-    /// If `Some(index)` is returned, this is *probably* but not guaranteed
-    /// to be a valid child index.
-    #[inline]
-    pub fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
-        self.0.find_child_index(id)
-    }
-
-    /// Find the descendant with this `id`, if any, and call `cb` on it
-    ///
-    /// Returns `Some(result)` if and only if node `id` was found.
-    pub fn for_id<F: FnOnce(Node<'_>) -> T, T>(&self, id: &WidgetId, cb: F) -> Option<T> {
-        if let Some(index) = self.find_child_index(id) {
-            self.for_child(index, |node| node.for_id(id, cb)).unwrap()
-        } else if self.eq_id(id) {
-            Some(cb(self.re()))
-        } else {
-            None
-        }
-    }
-}
-
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-impl<'a> Node<'a> {
-    /// Get translation of children relative to this widget
-    pub(crate) fn translation(&self) -> Offset {
-        self.0.translation()
-    }
-}
-
-#[cfg(not(feature = "unsafe_node"))]
-trait NodeMutT: NodeT {
     fn clone_node_mut(&mut self) -> NodeMut<'_>;
     fn as_layout(&self) -> &dyn Layout;
 
+    fn num_children(&self) -> usize;
+    fn find_child_index(&self, id: &WidgetId) -> Option<usize>;
     fn for_child_mut_impl(&mut self, index: usize, f: Box<dyn FnOnce(NodeMut<'_>) + '_>);
 
     fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
@@ -339,11 +45,25 @@ trait NodeMutT: NodeT {
 }
 #[cfg(not(feature = "unsafe_node"))]
 impl<'a, T> NodeMutT for (&'a mut dyn Widget<Data = T>, &'a T) {
+    fn id_ref(&self) -> &WidgetId {
+        self.0.id_ref()
+    }
+    fn rect(&self) -> Rect {
+        self.0.rect()
+    }
+
     fn clone_node_mut(&mut self) -> NodeMut<'_> {
         NodeMut::new(self.0, self.1)
     }
     fn as_layout(&self) -> &dyn Layout {
         self.0.as_layout()
+    }
+
+    fn num_children(&self) -> usize {
+        self.0.num_children()
+    }
+    fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+        self.0.find_child_index(id)
     }
 
     fn for_child_mut_impl(&mut self, index: usize, f: Box<dyn FnOnce(NodeMut<'_>) + '_>) {
@@ -436,20 +156,6 @@ impl<'a> NodeMut<'a> {
         }
     }
 
-    /// Reborrow as a non-mutable [`Node`]
-    pub fn re_node<'b>(&'b self) -> Node<'b>
-    where
-        'a: 'b,
-    {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "unsafe_node")] {
-                Node(self.0, self.1)
-            } else {
-                self.0.clone_node()
-            }
-        }
-    }
-
     /// Reborrow as a `dyn Layout`
     pub fn as_layout(&self) -> &dyn Layout {
         self.0.as_layout()
@@ -501,18 +207,6 @@ impl<'a> NodeMut<'a> {
         self.0.rect()
     }
 
-    /// Get the name of the widget struct
-    #[inline]
-    pub fn widget_name(&self) -> &'static str {
-        self.0.widget_name()
-    }
-
-    /// Display as "StructName#WidgetId"
-    #[inline]
-    pub fn identify(&self) -> IdentifyWidget {
-        IdentifyWidget(self.widget_name(), self.id_ref())
-    }
-
     /// Get the number of child widgets
     ///
     /// Every value in the range `0..self.num_children()` is a valid child
@@ -545,7 +239,7 @@ impl<'a> NodeMut<'a> {
     /// Run a `f` on all children
     pub fn for_children(&mut self, mut f: impl FnMut(NodeMut<'_>)) {
         for index in 0..self.0.num_children() {
-            // NOTE: for_child_impl takes FnOnce hence we must wrap the closure
+            // NOTE: for_child_mut_impl takes FnOnce hence we must wrap the closure
             let f = &mut f;
             let f: Box<dyn for<'b> FnOnce(NodeMut<'b>)> = Box::new(|node| {
                 f(node);

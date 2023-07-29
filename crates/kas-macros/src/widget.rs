@@ -163,7 +163,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
     let mut num_children = None;
     let mut get_child = None;
-    let mut for_child_impl = None;
     let mut for_child_mut_impl = None;
     for (index, impl_) in scope.impls.iter().enumerate() {
         if let Some((_, ref path, _)) = impl_.trait_ {
@@ -175,9 +174,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
                 for item in &impl_.items {
                     if let ImplItem::Fn(ref item) = item {
-                        if item.sig.ident == "for_child_impl" {
-                            for_child_impl = Some(item.sig.ident.clone());
-                        } else if item.sig.ident == "for_child_mut_impl" {
+                        if item.sig.ident == "for_child_mut_impl" {
                             for_child_mut_impl = Some(item.sig.ident.clone());
                         }
                     } else if let ImplItem::Type(ref item) = item {
@@ -421,9 +418,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         if get_child.is_none() {
             emit_warning!(span, "fn num_children without fn get_child");
         }
-        if for_child_impl.is_none() {
-            emit_warning!(span, "fn num_children without fn for_child_impl");
-        }
         if for_child_mut_impl.is_none() {
             emit_warning!(span, "fn num_children without fn for_child_mut_impl");
         }
@@ -444,7 +438,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             emit_error!(span, "impl forbidden when using layout-defined children");
         }
     }
-    let do_impl_widget_children = for_child_impl.is_none() && for_child_mut_impl.is_none();
+    let do_impl_widget_children = get_child.is_none() && for_child_mut_impl.is_none();
 
     let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
     let impl_generics = impl_generics.to_token_stream();
@@ -546,21 +540,12 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         });
 
         // Widget methods are derived. Cost: cannot override any Events methods or translation().
-        let fns_as_node = widget_as_node_methods();
+        let fns_as_node = widget_as_node();
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Widget for #impl_target {
                 type Data = #data_ty;
                 #fns_as_node
 
-                #[inline]
-                fn for_child_impl(
-                    &self,
-                    data: &Self::Data,
-                    index: usize,
-                    closure: Box<dyn FnOnce(::kas::Node<'_>) + '_>,
-                ) {
-                    self.#inner.for_child_impl(data, index, closure)
-                }
                 #[inline]
                 fn for_child_mut_impl(
                     &mut self,
@@ -686,7 +671,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     type Data = #data_ty;
                 }));
             }
-            widget_impl.items.push(Verbatim(widget_as_node_methods()));
+            widget_impl.items.push(Verbatim(widget_as_node()));
             if !has_item("_send") {
                 widget_impl.items.push(Verbatim(widget_recursive_methods()));
             }
@@ -956,11 +941,10 @@ pub fn impl_widget(
     layout_children: Vec<Toks>,
     do_impl_widget_children: bool,
 ) -> Toks {
-    let fns_as_node = widget_as_node_methods();
+    let fns_as_node = widget_as_node();
 
     let fns_for_child = if do_impl_widget_children {
         let count = children.len();
-        let mut get_rules = quote! {};
         let mut get_mut_rules = quote! {};
         for (i, (ident, span, opt_data)) in children.iter().enumerate() {
             // TODO: incorrect or unconstrained data type of child causes a poor error
@@ -969,11 +953,6 @@ pub fn impl_widget(
             // But this is unsupported: rust#20041
             // predicates.push(..);
 
-            get_rules.append_all(if let Some(data) = opt_data {
-                quote! { #i => closure(self.#ident.as_node(#data)), }
-            } else {
-                quote_spanned! {*span=> #i => closure(self.#ident.as_node(data)), }
-            });
             get_mut_rules.append_all(if let Some(data) = opt_data {
                 quote! { #i => closure(self.#ident.as_node_mut(#data)), }
             } else {
@@ -982,27 +961,12 @@ pub fn impl_widget(
         }
         for (i, path) in layout_children.iter().enumerate() {
             let index = count + i;
-            get_rules.append_all(quote! {
-                #index => closure(#core_path.#path.as_node(data)),
-            });
             get_mut_rules.append_all(quote! {
                 #index => closure(#core_path.#path.as_node_mut(data)),
             });
         }
 
         quote! {
-            fn for_child_impl(
-                &self,
-                data: &Self::Data,
-                index: usize,
-                closure: Box<dyn FnOnce(::kas::Node<'_>) + '_>,
-            ) {
-                use ::kas::WidgetCore;
-                match index {
-                    #get_rules
-                    _ => (),
-                }
-            }
             fn for_child_mut_impl(
                 &mut self,
                 data: &Self::Data,
@@ -1032,12 +996,8 @@ pub fn impl_widget(
     }
 }
 
-fn widget_as_node_methods() -> Toks {
+fn widget_as_node() -> Toks {
     quote! {
-        #[inline]
-        fn as_node<'a>(&'a self, data: &'a Self::Data) -> ::kas::Node<'a> {
-            ::kas::Node::new(self, data)
-        }
         #[inline]
         fn as_node_mut<'a>(&'a mut self, data: &'a Self::Data) -> ::kas::NodeMut<'a> {
             ::kas::NodeMut::new(self, data)

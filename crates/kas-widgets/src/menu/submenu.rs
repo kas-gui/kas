@@ -267,16 +267,6 @@ impl_scope! {
     impl kas::Widget for Self {
         type Data = W::Data;
 
-        fn for_child_impl(
-            &self,
-            data: &W::Data,
-            index: usize,
-            closure: Box<dyn FnOnce(Node<'_>) + '_>,
-        ) {
-            if let Some(w) = self.list.get(index) {
-                closure(w.as_node(data));
-            }
-        }
         fn for_child_mut_impl(
             &mut self,
             data: &W::Data,

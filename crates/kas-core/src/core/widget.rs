@@ -5,7 +5,7 @@
 
 //! Widget traits
 
-use super::{Node, NodeMut};
+use super::NodeMut;
 use crate::event::{ConfigMgr, Event, EventMgr, Response, Scroll};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{AxisInfo, SizeRules};
@@ -606,24 +606,7 @@ pub trait Widget: Layout {
     type Data;
 
     /// Erase type
-    fn as_node<'a>(&'a self, data: &'a Self::Data) -> Node<'a>;
-    /// Erase type
     fn as_node_mut<'a>(&'a mut self, data: &'a Self::Data) -> NodeMut<'a>;
-
-    /// Call closure on child with given `index`, if `index < self.num_children()`.
-    ///
-    /// Widgets with no children or using the `#[widget]` attribute on fields do
-    /// not need to implement this. Widgets with an explicit implementation of
-    /// [`Layout::num_children`] also need to implement this.
-    ///
-    /// It is recommended to use the methods on [`Node`] or [`WidgetExt`]
-    /// instead of calling this method.
-    fn for_child_impl(
-        &self,
-        data: &Self::Data,
-        index: usize,
-        closure: Box<dyn FnOnce(Node<'_>) + '_>,
-    );
 
     /// Call closure on child with given `index`, if `index < self.num_children()`.
     ///

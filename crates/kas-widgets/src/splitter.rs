@@ -91,22 +91,6 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn for_child_impl(
-            &self,
-            data: &W::Data,
-            index: usize,
-            closure: Box<dyn FnOnce(Node<'_>) + '_>,
-        ) {
-            if (index & 1) != 0 {
-                if let Some(w) = self.handles.get(index >> 1) {
-                    closure(w.as_node(&()));
-                }
-            } else {
-                if let Some(w) = self.widgets.get(index >> 1) {
-                    closure(w.as_node(data));
-                }
-            }
-        }
         fn for_child_mut_impl(
             &mut self,
             data: &W::Data,

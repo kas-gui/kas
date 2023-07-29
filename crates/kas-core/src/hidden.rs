@@ -15,7 +15,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::{AccelString, Text, TextApi};
 use crate::theme::{DrawMgr, SizeMgr, TextClass};
-use crate::{Erased, Layout, NavAdvance, Node, NodeMut, Widget, WidgetCore, WidgetId};
+use crate::{Erased, Layout, NavAdvance, NodeMut, Widget, WidgetCore, WidgetId};
 use kas_macros::{autoimpl, impl_scope};
 
 impl_scope! {
@@ -168,17 +168,10 @@ impl_scope! {
     impl Widget for Self {
         type Data = A;
 
-        fn as_node<'a>(&'a self, _: &'a A) -> Node<'a> {
-            self.inner.as_node(&())
-        }
         fn as_node_mut<'a>(&'a mut self, _: &'a A) -> NodeMut<'a> {
             self.inner.as_node_mut(&())
         }
 
-        #[inline]
-        fn for_child_impl(&self, _: &A, index: usize, closure: Box<dyn FnOnce(Node<'_>) + '_>) {
-            self.inner.for_child_impl(&(), index, closure)
-        }
         #[inline]
         fn for_child_mut_impl(
             &mut self,
