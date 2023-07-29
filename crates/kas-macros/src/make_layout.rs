@@ -91,7 +91,7 @@ impl Tree {
             }
 
             fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-                use ::kas::{layout, Layout, WidgetCore, WidgetExt};
+                use ::kas::{layout, Layout, WidgetCore, LayoutExt};
                 if !self.rect().contains(coord) {
                     return None;
                 }

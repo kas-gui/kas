@@ -704,7 +704,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
         let mut set_rect = quote! { self.#core.rect = rect; };
         let mut find_id = quote! {
-            use ::kas::{WidgetCore, WidgetExt};
+            use ::kas::{WidgetCore, LayoutExt};
             self.rect().contains(coord).then(|| self.id())
         };
         if let Some((_, layout)) = args.layout.take() {
@@ -807,7 +807,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 mgr: &mut ::kas::event::EventMgr,
                 event: ::kas::event::Event,
             ) -> ::kas::event::Response {
-                use ::kas::{event::{Event, Response, Scroll}, WidgetExt, WidgetCore};
+                use ::kas::{event::{Event, Response, Scroll}, LayoutExt, WidgetCore};
                 if event == Event::NavFocus(true) {
                     mgr.set_scroll(Scroll::Rect(self.rect()));
                 }

@@ -27,7 +27,7 @@ use crate::layout::{self, AlignPair, AutoLayout};
 /// Implementations of this trait are generated via macro.
 /// **Directly implementing this trait is not supported**.
 /// See [`Widget`] trait documentation.
-#[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
+#[autoimpl(for<T: trait + ?Sized> &T, &mut T, Box<T>)]
 pub trait WidgetCore {
     /// Get as a `dyn Layout`
     fn as_layout(&self) -> &dyn Layout;
@@ -631,7 +631,7 @@ pub trait Widget: Layout {
     /// not need to implement this. Widgets with an explicit implementation of
     /// [`Layout::num_children`] also need to implement this.
     ///
-    /// It is recommended to use the methods on [`NodeMut`] or [`WidgetExt`]
+    /// It is recommended to use the methods on [`NodeMut`]
     /// instead of calling this method.
     fn for_child_mut_impl(
         &mut self,
@@ -687,7 +687,7 @@ pub trait Widget: Layout {
 }
 
 /// Extension trait over widgets
-pub trait WidgetExt: Widget {
+pub trait LayoutExt: Layout {
     /// Get the widget's identifier
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
@@ -732,4 +732,4 @@ pub trait WidgetExt: Widget {
         !self.eq_id(id) && self.id().is_ancestor_of(id)
     }
 }
-impl<W: Widget + ?Sized> WidgetExt for W {}
+impl<W: Layout + ?Sized> LayoutExt for W {}

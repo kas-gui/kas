@@ -16,7 +16,7 @@ use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
 use kas::theme::{Theme, Window as _};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use kas::util::warn_about_error;
-use kas::{Action, AppData, ErasedStack, Widget, WidgetExt, WindowId};
+use kas::{Action, AppData, ErasedStack, LayoutExt, Widget, WindowId};
 use std::any::TypeId;
 use std::mem::take;
 use std::time::Instant;

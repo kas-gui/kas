@@ -11,7 +11,7 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, FrameStyle, SizeMgr};
 use crate::title_bar::TitleBar;
-use crate::{Action, Events, Icon, Layout, Node, Widget, WidgetExt, WidgetId};
+use crate::{Action, Events, Icon, Layout, LayoutExt, Node, Widget, WidgetId};
 use kas_macros::impl_scope;
 use smallvec::SmallVec;
 use std::num::NonZeroU32;
