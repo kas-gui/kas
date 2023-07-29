@@ -29,6 +29,9 @@ use crate::layout::{self, AlignPair, AutoLayout};
 /// See [`Widget`] trait documentation.
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait WidgetCore {
+    /// Get as a `dyn Layout`
+    fn as_layout(&self) -> &dyn Layout;
+
     /// Get the widget's identifier
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any

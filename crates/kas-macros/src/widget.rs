@@ -461,6 +461,10 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             impl #impl_generics ::kas::WidgetCore for #impl_target
             {
                 #[inline]
+                fn as_layout(&self) -> &dyn Layout {
+                    self
+                }
+                #[inline]
                 fn id_ref(&self) -> &::kas::WidgetId {
                     self.#inner.id_ref()
                 }
@@ -895,6 +899,10 @@ fn collect_idents(item_impl: &ItemImpl) -> Vec<Ident> {
 pub fn impl_core(impl_generics: &Toks, impl_target: &Toks, name: &str, core_path: &Toks) -> Toks {
     quote! {
         impl #impl_generics ::kas::WidgetCore for #impl_target {
+            #[inline]
+            fn as_layout(&self) -> &dyn ::kas::Layout {
+                self
+            }
             #[inline]
             fn id_ref(&self) -> &::kas::WidgetId {
                 &#core_path.id

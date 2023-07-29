@@ -94,6 +94,11 @@ impl_scope! {
     // We don't use #[widget] here. This is not supported outside of Kas!
     impl WidgetCore for Self {
         #[inline]
+        fn as_layout(&self) -> &dyn Layout {
+            self
+        }
+
+        #[inline]
         fn id_ref(&self) -> &WidgetId {
             self.inner.id_ref()
         }
