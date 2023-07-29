@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use kas::event::{ConfigMgr, Event, EventMgr, Response};
 use kas::widget::{format_data, TextButton};
-use kas::{Decorations, Events, LayoutExt, Widget, WidgetCore, Window};
+use kas::{Decorations, Events, Layout, LayoutExt, Widget, Window};
 
 #[derive(Clone, Debug)]
 struct MsgReset;

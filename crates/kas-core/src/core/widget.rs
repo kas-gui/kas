@@ -20,32 +20,6 @@ use crate::layout::{self, AlignPair, AutoLayout};
 #[allow(unused)] use crate::Action;
 #[allow(unused)] use kas_macros as macros;
 
-/// Base functionality for [`Widget`]s
-///
-/// # Implementing WidgetCore
-///
-/// Implementations of this trait are generated via macro.
-/// **Directly implementing this trait is not supported**.
-/// See [`Widget`] trait documentation.
-#[autoimpl(for<T: trait + ?Sized> &T, &mut T, Box<T>)]
-pub trait WidgetCore {
-    /// Get as a `dyn Layout`
-    fn as_layout(&self) -> &dyn Layout;
-
-    /// Get the widget's identifier
-    ///
-    /// Note that the default-constructed [`WidgetId`] is *invalid*: any
-    /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned by [`Events::pre_configure`].
-    fn id_ref(&self) -> &WidgetId;
-
-    /// Get the widget's region, relative to its parent.
-    fn rect(&self) -> Rect;
-
-    /// Get the name of the widget struct
-    fn widget_name(&self) -> &'static str;
-}
-
 /// Positioning and drawing routines for [`Widget`]s
 ///
 /// This trait is related to [`Widget`], but may be used independently.
@@ -74,7 +48,31 @@ pub trait WidgetCore {
 /// solve layout for a single widget/layout object, it may be useful to use
 /// [`layout::solve_size_rules`] or [`layout::SolveCache`].
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait Layout: WidgetCore {
+pub trait Layout {
+    /// Get as a `dyn Layout`
+    ///
+    /// This method is implemented by the `#[widget]` macro.
+    fn as_layout(&self) -> &dyn Layout;
+
+    /// Get the widget's identifier
+    ///
+    /// Note that the default-constructed [`WidgetId`] is *invalid*: any
+    /// operations on this value will cause a panic. Valid identifiers are
+    /// assigned by [`Events::pre_configure`].
+    ///
+    /// This method is implemented by the `#[widget]` macro.
+    fn id_ref(&self) -> &WidgetId;
+
+    /// Get the widget's region, relative to its parent.
+    ///
+    /// This method is implemented by the `#[widget]` macro.
+    fn rect(&self) -> Rect;
+
+    /// Get the name of the widget struct
+    ///
+    /// This method is implemented by the `#[widget]` macro.
+    fn widget_name(&self) -> &'static str;
+
     /// Get the number of child widgets
     ///
     /// Every value in the range `0..self.num_children()` is a valid child
@@ -464,7 +462,6 @@ pub enum NavAdvance {
 /// Widgets implement a family of traits, of which this trait is the final
 /// member:
 ///
-/// -   [`WidgetCore`] — base functionality
 /// -   [`Layout`] — handles sizing and positioning for self and children
 /// -   [`Events`] — configuration, event handling
 /// -   [`Widget`] — introspection, dyn-safe API
@@ -483,7 +480,6 @@ pub enum NavAdvance {
 /// The [`macros::widget`] macro only works within [`macros::impl_scope`].
 /// Other trait implementations can be detected within this scope:
 ///
-/// -   [`WidgetCore`] is always generated
 /// -   [`Layout`] is generated if the `layout` attribute property is set, and
 ///     no direct implementation is found. In other cases where a direct
 ///     implementation of the trait is found, (default) method implementations

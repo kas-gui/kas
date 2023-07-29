@@ -15,7 +15,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::{AccelString, Text, TextApi};
 use crate::theme::{DrawMgr, SizeMgr, TextClass};
-use crate::{Erased, Layout, NavAdvance, Node, Widget, WidgetCore, WidgetId};
+use crate::{Erased, Layout, NavAdvance, Node, Widget, WidgetId};
 use kas_macros::{autoimpl, impl_scope};
 
 impl_scope! {
@@ -92,7 +92,7 @@ impl_scope! {
     }
 
     // We don't use #[widget] here. This is not supported outside of Kas!
-    impl WidgetCore for Self {
+    impl Layout for Self {
         #[inline]
         fn as_layout(&self) -> &dyn Layout {
             self
@@ -112,9 +112,7 @@ impl_scope! {
         fn widget_name(&self) -> &'static str {
             "MapAny"
         }
-    }
 
-    impl Layout for Self {
         #[inline]
         fn num_children(&self) -> usize {
             self.inner.num_children()

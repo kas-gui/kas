@@ -157,10 +157,9 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///
 /// This may *only* be used within the [`impl_scope!`] macro.
 ///
-/// Implements the [`WidgetCore`] trait for the deriving type.
-/// Implements the [`Widget`], [`Events`] and [`Layout`]
-/// traits only if not implemented explicitly within the
-/// defining [`impl_scope!`].
+/// Assists implementation of the [`Widget`], [`Events`] and [`Layout`] traits.
+/// Implementations of these traits are generated if missing or augmented with
+/// missing method implementations.
 ///
 /// This macro may inject methods into existing [`Layout`] / [`Events`] / [`Widget`] implementations.
 /// This is used both to provide default implementations which could not be
@@ -323,7 +322,6 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///
 /// [`Widget`]: https://docs.rs/kas/latest/kas/trait.Widget.html
 /// [`Widget::get_child`]: https://docs.rs/kas/latest/kas/trait.Widget.html#method.get_child
-/// [`WidgetCore`]: https://docs.rs/kas/latest/kas/trait.WidgetCore.html
 /// [`Layout`]: https://docs.rs/kas/latest/kas/trait.Layout.html
 /// [`Events`]: https://docs.rs/kas/latest/kas/trait.Events.html
 /// [`CursorIcon`]: https://docs.rs/kas/latest/kas/event/enum.CursorIcon.html
