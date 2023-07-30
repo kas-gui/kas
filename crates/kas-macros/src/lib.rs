@@ -177,6 +177,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///
 /// Supported arguments (_WidgetAttrArg_) are:
 ///
+/// -   <code>Data = Type</code>: the `Widget::Data` associated type
 /// -   <code>derive = self.<em>field</em></code> where
 ///     <code><em>field</em></code> is the name (or number) of a field:
 ///     enables "derive mode" ([see below](#derive)) over the given field

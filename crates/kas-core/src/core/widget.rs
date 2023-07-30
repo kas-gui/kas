@@ -22,17 +22,27 @@ use crate::layout::{self, AlignPair, AutoLayout};
 
 /// Positioning and drawing routines for [`Widget`]s
 ///
-/// This trait is related to [`Widget`], but may be used independently.
+/// `Layout` is an unparameterised dyn-safe super-trait of [`Widget`].
+/// `Layout` covers sizing and drawing, child enumeration (introspection) and
+/// identification via [`WidgetId`].
 ///
 /// # Implementing Layout
 ///
-/// The [`#[widget]` macro](macros::widget) supports an optional property,
-/// `layout`. If this is used then the `Layout` trait is implemented
-/// automatically (although a custom implementation may still be used, which
-/// may refer to the implementation of [`AutoLayout`] for `Self`).
+/// Currently `Layout` may only be implemented alongside [`Widget`] via the
+/// [`#widget`] macro. See also [`Widget`] documentation.
 ///
-/// If the `layout` property is not used then at least [`Self::size_rules`] and
-/// [`Self::draw`] must be defined directly.
+/// Methods may be categorised as follows:
+///
+/// -   **Core** methods `as_dyn`, `id_ref`, `rect` and `widget_name` are
+///     *always* implemented via the [`#widget`] macro.
+/// -   **Introspection** methods `num_children` and `get_child`, are *usually*
+///     implemented by [`#widget`] but sometimes must be implemented manually
+///     (as a pair). Likewise, the pair `find_child_index` and `make_child_id`
+///     usually do not require an explicit implementation.
+/// -   **Layout** methods `size_rules`, `set_rect`, `nav_next`, `translation`,
+///     `find_id` and `draw` may be implemented manually, left at their defaults
+///     (except `size_rules` and `draw`) or implemented via
+///     [layout syntax](macros::widget#layout-1).
 ///
 /// # Solving layout
 ///
@@ -47,6 +57,8 @@ use crate::layout::{self, AlignPair, AutoLayout};
 /// Usually, [`Layout::size_rules`] methods are called recursively. To instead
 /// solve layout for a single widget/layout object, it may be useful to use
 /// [`layout::solve_size_rules`] or [`layout::SolveCache`].
+///
+/// [`#widget`]: macros::widget
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait Layout {
     /// Get as a `dyn Layout`
@@ -264,18 +276,23 @@ pub trait Layout {
 
 /// Widget event-handling
 ///
-/// This trait is automatically implemented if not explicitly included in a
-/// widget implemention. All methods have default implementations.
+/// This trait governs event handling as part of a [`Widget`] implementation.
+/// It is used by the [`#widget`] macro to generate hidden [`Widget`] methods.
 ///
-/// Although this [`Widget`] is not a sub-trait of `Events`, all widgets must
-/// implement this trait (though an empty implementation may be generated).
-/// See the [`Widget`] trait documentation.
+/// The implementation of this method may be omitted where no event-handling is
+/// required. All methods have a default trivial implementation except
+/// [`Events::pre_configure`] which assigns `self.core.id = id`.
+///
+/// [`#widget`]: macros::widget
 pub trait Events: Sized {
     /// Input data type
     ///
-    /// This type must match [`Widget::Data`]. When using the `#[widget]` macro,
-    /// the type only needs to be specified once, here, in the implementation of
-    /// [`Widget`], or via the `Data` property.
+    /// This type must match [`Widget::Data`]. When using the `#widget` macro,
+    /// the type must be specified exactly once in one of three places: here,
+    /// in the implementation of [`Widget`], or via the `Data` property of
+    /// [`#widget`].
+    ///
+    /// [`#widget`]: macros::widget
     type Data;
 
     /// Pre-configuration
@@ -459,34 +476,58 @@ pub enum NavAdvance {
 
 /// The Widget trait
 ///
-/// Widgets implement a family of traits, of which this trait is the final
-/// member:
+/// The primary widget trait covers event handling over super trait [`Layout`]
+/// which governs layout, drawing, child enumeration and identification.
+/// Most methods of `Widget` are hidden and only for use within the Kas library.
 ///
-/// -   [`Layout`] — handles sizing and positioning for self and children
-/// -   [`Events`] — configuration, event handling
-/// -   [`Widget`] — introspection, dyn-safe API
-///
-/// This trait is automatically implemented for every [`Widget`].
-/// Directly implementing this trait is not supported.
-///
-/// All methods are hidden and direct usage is not supported; instead use the
-/// [`ConfigMgr`] and [`EventMgr`] types which use these methods internally.
+/// `Widget` is dyn-safe given a type parameter, e.g. `dyn Widget<Data = ()>`.
+/// [`Layout`] is dyn-safe without a type parameter. [`Node`] is a dyn-safe
+/// abstraction over a `&dyn Widget<Data = T>` plus a `&T` data parameter.
 ///
 /// # Implementing Widget
 ///
-/// To implement a widget, use the [`macros::widget`] macro. **This is the
-/// only supported method of implementing `Widget`.**
+/// To implement a widget, use the [`#widget`] macro within an
+/// [`impl_scope`](macros::impl_scope). **This is the only supported method of
+/// implementing `Widget`.** Synopsis:
+/// ```ignore
+/// impl_scope! {
+///     #[widget {
+///         // macro properties (all optional)
+///         Data = T;
+///         layout = self.foo;
+///     }]
+///     struct MyWidget {
+///         core: widget_core!(),
+///         #[widget] foo: impl Widget<Data = T> = make_foo(),
+///         // ...
+///     }
 ///
-/// The [`macros::widget`] macro only works within [`macros::impl_scope`].
-/// Other trait implementations can be detected within this scope:
+///     // Optional implementations:
+///     impl Layout for Self { /* ... */ }
+///     impl Events for Self { /* ... */ }
+///     impl Self { /* ... */ }
+/// }
+/// ```
 ///
-/// -   [`Layout`] is generated if the `layout` attribute property is set, and
-///     no direct implementation is found. In other cases where a direct
-///     implementation of the trait is found, (default) method implementations
-///     may be injected where not already present.
-/// -   [`Events`] is generated if no direct implementation is present
-/// -   [`Widget`] is generated if no direct implementation is present.
-///     (Direct implementation is not supported outside of Kas libraries!)
+/// Details may be categorised as follows:
+///
+/// -   **Data**: the type [`Widget::Data`] must be specified exactly once, but
+///     this type may be given in any of three locations: as a property of the
+///     [`#widget`] macro, as [`Events::Data`] or as [`Widget::Data`].
+/// -   **Core** methods of [`Layout`] are *always* implemented via the [`#widget`]
+///     macro, whether or not an `impl Layout { ... }` item is present.
+/// -   **Introspection** methods [`Layout::num_children`], [`Layout::get_child`]
+///     and [`Widget::for_child_node`] are implemented by the [`#widget`] macro
+///     in most cases: child widgets embedded within a layout descriptor or
+///     included as fields marked with `#[widget]` are enumerated.
+/// -   **Introspection** methods [`Layout::find_child_index`] and
+///     [`Layout::make_child_id`] have default implementations which *usually*
+///     suffice.
+/// -   **Layout** is specified either via [layout syntax](macros::widget#layout-1)
+///     or via implementation of at least [`Layout::size_rules`] and
+///     [`Layout::draw`] (optionally also `set_rect`, `nav_next`, `translation`
+///     and `find_id`).
+///-    **Event handling** is optional, implemented through [`Events`].
 ///
 /// Some simple examples follow. See also
 /// [examples apps](https://github.com/kas-gui/kas/tree/master/examples)
@@ -589,6 +630,8 @@ pub enum NavAdvance {
 ///     }
 /// }
 /// ```
+///
+/// [`#widget`]: macros::widget
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait Widget: Layout {
     /// Input data type
