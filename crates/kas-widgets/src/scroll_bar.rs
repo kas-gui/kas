@@ -274,7 +274,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             self.align.set_component(
                 axis,
                 match axis.is_vertical() == self.direction.is_vertical() {
@@ -282,14 +282,14 @@ impl_scope! {
                     true => axis.align_or_stretch(),
                 },
             );
-            size_mgr.feature(Feature::ScrollBar(self.direction()), axis)
+            sizer.feature(Feature::ScrollBar(self.direction()), axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             let rect = cx.align_feature(Feature::ScrollBar(self.direction()), rect, self.align);
             self.core.rect = rect;
             self.handle.set_rect(cx, rect);
-            self.min_handle_len = cx.size_mgr().handle_len();
+            self.min_handle_len = cx.size_cx().handle_len();
             let _ = self.update_widgets();
         }
 
@@ -459,17 +459,17 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            let mut rules = self.inner.size_rules(size_mgr.re(), axis);
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut rules = self.inner.size_rules(sizer.re(), axis);
             let (use_horiz, use_vert) = match self.mode {
                 ScrollBarMode::Fixed => self.show_bars,
                 ScrollBarMode::Auto => (true, true),
                 ScrollBarMode::Invisible => (false, false),
             };
             if axis.is_horizontal() && use_horiz {
-                rules.append(self.vert_bar.size_rules(size_mgr.re(), axis));
+                rules.append(self.vert_bar.size_rules(sizer.re(), axis));
             } else if axis.is_vertical() && use_vert {
-                rules.append(self.horiz_bar.size_rules(size_mgr.re(), axis));
+                rules.append(self.horiz_bar.size_rules(sizer.re(), axis));
             }
             rules
         }
@@ -479,7 +479,7 @@ impl_scope! {
             let pos = rect.pos;
             let mut child_size = rect.size;
 
-            let bar_width = cx.size_mgr().scroll_bar_width();
+            let bar_width = cx.size_cx().scroll_bar_width();
             if self.mode == ScrollBarMode::Auto {
                 self.show_bars = self.inner.scroll_axes(child_size);
             }

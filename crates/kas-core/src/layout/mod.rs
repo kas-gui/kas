@@ -48,7 +48,7 @@ mod visitor;
 use crate::dir::{Direction, Directional, Directions};
 use crate::event::ConfigCx;
 use crate::geom::{Coord, Rect};
-use crate::theme::{DrawCx, SizeMgr};
+use crate::theme::{DrawCx, SizeCx};
 use crate::WidgetId;
 
 #[allow(unused)] use crate::Layout;
@@ -239,8 +239,8 @@ impl From<AxisInfo> for Directions {
 ///         core: widget_core!(),
 ///     }
 ///     impl Layout for Self {
-///         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-///             let mut rules = kas::layout::AutoLayout::size_rules(self, size_mgr, axis);
+///         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+///             let mut rules = kas::layout::AutoLayout::size_rules(self, sizer, axis);
 ///             rules.set_stretch(Stretch::High);
 ///             rules
 ///         }
@@ -253,7 +253,7 @@ pub trait AutoLayout {
     /// Get size rules for the given axis
     ///
     /// This functions identically to [`Layout::size_rules`].
-    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
 
     /// Set size and position
     ///

@@ -92,12 +92,12 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.sub_other(self.frame_size.extract(axis.flipped()));
 
-            let mut rules = self.inner.size_rules(size_mgr.re(), axis);
+            let mut rules = self.inner.size_rules(sizer.re(), axis);
             self.min_child_size.set_component(axis, rules.min_size());
-            rules.reduce_min_to(size_mgr.min_scroll_size(axis));
+            rules.reduce_min_to(sizer.min_scroll_size(axis));
 
             // We use a frame to contain the content margin within the scrollable area.
             let frame = kas::layout::FrameRules::ZERO;

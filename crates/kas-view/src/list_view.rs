@@ -320,7 +320,7 @@ impl_scope! {
 
                         solve_size_rules(
                             &mut w.widget,
-                            cx.size_mgr(),
+                            cx.size_cx(),
                             Some(self.child_size.0),
                             Some(self.child_size.1),
                             self.align_hints.horiz,
@@ -406,10 +406,10 @@ impl_scope! {
             unimplemented!()
         }
 
-        fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
             let inner_margin = if self.sel_style.is_external() {
-                size_mgr.inner_margins().extract(axis)
+                sizer.inner_margins().extract(axis)
             } else {
                 (0, 0)
             };
@@ -428,14 +428,14 @@ impl_scope! {
             });
             axis = AxisInfo::new(axis.is_vertical(), other, axis.align());
 
-            let mut rules = self.default_widget.size_rules(size_mgr.re(), axis);
+            let mut rules = self.default_widget.size_rules(sizer.re(), axis);
             if axis.is_vertical() == self.direction.is_vertical() {
                 self.child_size_min = rules.min_size();
             }
 
             if !self.widgets.is_empty() {
                 for w in self.widgets.iter_mut() {
-                    rules = rules.max(w.widget.size_rules(size_mgr.re(), axis));
+                    rules = rules.max(w.widget.size_rules(sizer.re(), axis));
                 }
             }
 

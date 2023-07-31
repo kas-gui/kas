@@ -35,11 +35,11 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let class = TextClass::LabelScroll;
-            let mut rules = size_mgr.text_rules(&mut self.text, class, axis);
+            let mut rules = sizer.text_rules(&mut self.text, class, axis);
             if axis.is_vertical() {
-                rules.reduce_min_to(size_mgr.line_height(class) * 4);
+                rules.reduce_min_to(sizer.line_height(class) * 4);
             }
             rules
         }
@@ -52,7 +52,7 @@ impl_scope! {
             let max_offset = self.max_scroll_offset();
             self.view_offset = self.view_offset.min(max_offset);
 
-            let w = cx.size_mgr().scroll_bar_width().min(rect.size.0);
+            let w = cx.size_cx().scroll_bar_width().min(rect.size.0);
             rect.pos.0 += rect.size.0 - w;
             rect.size.0 = w;
             self.bar.set_rect(cx, rect);

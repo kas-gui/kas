@@ -15,16 +15,16 @@ use kas::prelude::*;
 /// can't be named and trait methods cannot return unnamed objects (impl Trait
 /// is only supported on functions and inherent methods).
 pub trait FnSizeRules {
-    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
 }
 
 impl<F> FnSizeRules for F
 where
-    for<'a> F: FnMut(SizeMgr<'a>, AxisInfo) -> SizeRules,
+    for<'a> F: FnMut(SizeCx<'a>, AxisInfo) -> SizeRules,
 {
     #[inline]
-    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-        self(size_mgr, axis)
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        self(sizer, axis)
     }
 }
 
@@ -34,7 +34,7 @@ where
 /// required (e.g. in a struct field) is only possible by making the containing
 /// struct generic over this field, which may be undesirable. As an alternative
 /// a function pointer may be preferred.
-pub type ReserveP<W> = Reserve<W, fn(SizeMgr, AxisInfo) -> SizeRules>;
+pub type ReserveP<W> = Reserve<W, fn(SizeCx, AxisInfo) -> SizeRules>;
 
 impl_scope! {
     /// A generic widget for size reservations
@@ -65,8 +65,8 @@ impl_scope! {
         /// use kas_widgets::Label;
         /// use kas::prelude::*;
         ///
-        /// let label = Reserve::new(Label::new("0"), |size_mgr: SizeMgr<'_>, axis| {
-        ///     Label::new("00000").size_rules(size_mgr, axis)
+        /// let label = Reserve::new(Label::new("0"), |sizer: SizeCx<'_>, axis| {
+        ///     Label::new("00000").size_rules(sizer, axis)
         /// });
         ///```
         /// Alternatively one may use virtual pixels:
@@ -75,8 +75,8 @@ impl_scope! {
         /// use kas_widgets::Filler;
         /// use kas::prelude::*;
         ///
-        /// let label = Reserve::new(Filler::new(), |size_mgr: SizeMgr<'_>, axis| {
-        ///     let size = i32::conv_ceil(size_mgr.scale_factor() * 100.0);
+        /// let label = Reserve::new(Filler::new(), |sizer: SizeCx<'_>, axis| {
+        ///     let size = i32::conv_ceil(sizer.scale_factor() * 100.0);
         ///     SizeRules::fixed(size, (0, 0))
         /// });
         ///```
@@ -89,9 +89,9 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            let inner_rules = self.inner.size_rules(size_mgr.re(), axis);
-            let reserve_rules = self.reserve.size_rules(size_mgr.re(), axis);
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            let inner_rules = self.inner.size_rules(sizer.re(), axis);
+            let reserve_rules = self.reserve.size_rules(sizer.re(), axis);
             inner_rules.max(reserve_rules)
         }
     }

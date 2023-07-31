@@ -8,7 +8,7 @@
 use crate::event::ConfigCx;
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{AxisInfo, SizeRules};
-use crate::theme::{DrawCx, SizeMgr};
+use crate::theme::{DrawCx, SizeCx};
 use crate::util::IdentifyWidget;
 use crate::WidgetId;
 use kas_macros::autoimpl;
@@ -139,7 +139,7 @@ pub trait Layout {
     ///
     /// For row/column/grid layouts, a [`crate::layout::RulesSolver`] engine
     /// may be useful.
-    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
 
     /// Set size and position
     ///

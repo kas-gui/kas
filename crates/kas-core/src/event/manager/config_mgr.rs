@@ -12,7 +12,7 @@ use crate::geom::{Rect, Size};
 use crate::layout::AlignPair;
 use crate::shell::Platform;
 use crate::text::TextApi;
-use crate::theme::{Feature, SizeMgr, TextClass, ThemeSize};
+use crate::theme::{Feature, SizeCx, TextClass, ThemeSize};
 use crate::{Action, Node, WidgetId};
 use std::ops::{Deref, DerefMut, RangeBounds};
 
@@ -21,8 +21,8 @@ use std::ops::{Deref, DerefMut, RangeBounds};
 /// Manager used to configure widgets and layout
 ///
 /// This type supports easy access to [`EventState`] (via [`Deref`],
-/// [`DerefMut`] and [`Self::ev_state`]) as well as [`SizeMgr`]
-/// ([`Self::size_mgr`]) and [`DrawShared`] ([`Self::draw_shared`]).
+/// [`DerefMut`] and [`Self::ev_state`]) as well as [`SizeCx`]
+/// ([`Self::size_cx`]) and [`DrawShared`] ([`Self::draw_shared`]).
 #[must_use]
 pub struct ConfigCx<'a> {
     sh: &'a dyn ThemeSize,
@@ -51,10 +51,10 @@ impl<'a> ConfigCx<'a> {
         self.ds.platform()
     }
 
-    /// Access a [`SizeMgr`]
+    /// Access a [`SizeCx`]
     #[inline]
-    pub fn size_mgr(&self) -> SizeMgr<'a> {
-        SizeMgr::new(self.sh)
+    pub fn size_cx(&self) -> SizeCx<'a> {
+        SizeCx::new(self.sh)
     }
 
     /// Access [`DrawShared`]
@@ -148,7 +148,7 @@ impl<'a> ConfigCx<'a> {
     /// then performs the text preparation necessary before display.
     ///
     /// Note: setting alignment here is not necessary when the default alignment
-    /// is desired or when [`SizeMgr::text_rules`] is used.
+    /// is desired or when [`SizeCx::text_rules`] is used.
     #[inline]
     pub fn text_set_size(
         &self,

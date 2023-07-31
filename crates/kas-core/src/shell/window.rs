@@ -12,7 +12,7 @@ use kas::draw::{color::Rgba, AnimationState, DrawShared};
 use kas::event::{ConfigCx, CursorIcon, EventState};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
-use kas::theme::{DrawCx, SizeMgr, ThemeControl, ThemeSize};
+use kas::theme::{DrawCx, SizeCx, ThemeControl, ThemeSize};
 use kas::theme::{Theme, Window as _};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use kas::util::warn_about_error;
@@ -91,8 +91,8 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         let mut tkw = TkWindow::new(&mut shared.shell, None, &mut theme_window);
         ev_state.full_configure(&mut tkw, &mut widget, &shared.data);
 
-        let size_mgr = SizeMgr::new(theme_window.size());
-        let mut solve_cache = SolveCache::find_constraints(widget.as_node(&shared.data), size_mgr);
+        let sizer = SizeCx::new(theme_window.size());
+        let mut solve_cache = SolveCache::find_constraints(widget.as_node(&shared.data), sizer);
 
         // Opening a zero-size window causes a crash, so force at least 1x1:
         let ideal = solve_cache.ideal(true).max(Size(1, 1));

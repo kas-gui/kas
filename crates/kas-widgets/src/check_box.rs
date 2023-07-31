@@ -31,9 +31,9 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             self.align.set_component(axis, axis.align_or_center());
-            size_mgr.feature(Feature::CheckBox, axis)
+            sizer.feature(Feature::CheckBox, axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {

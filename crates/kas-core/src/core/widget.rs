@@ -55,7 +55,7 @@ pub trait Events: Sized {
     /// resources, including resources affecting [`Layout::size_rules`].
     ///
     /// The window's scale factor (and thus any sizes available through
-    /// [`ConfigCx::size_mgr`]) may not be correct initially (some platforms
+    /// [`ConfigCx::size_cx`]) may not be correct initially (some platforms
     /// construct all windows using scale factor 1) and/or may change in the
     /// future. Changes to the scale factor result in recalculation of
     /// [`Layout::size_rules`] but not repeated configuration.
@@ -311,9 +311,9 @@ pub enum NavAdvance {
 ///     }
 ///
 ///     impl Layout for Self {
-///         fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
+///         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
 ///             axis.set_default_align_hv(Align::Default, Align::Center);
-///             size_mgr.text_rules(&mut self.label, self.class, axis)
+///             sizer.text_rules(&mut self.label, self.class, axis)
 ///         }
 ///
 ///         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {

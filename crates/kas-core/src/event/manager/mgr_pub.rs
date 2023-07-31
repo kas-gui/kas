@@ -14,7 +14,7 @@ use crate::cast::Conv;
 use crate::draw::DrawShared;
 use crate::event::config::ChangeConfig;
 use crate::geom::{Offset, Vec2};
-use crate::theme::{SizeMgr, ThemeControl};
+use crate::theme::{SizeCx, ThemeControl};
 use crate::{Action, Erased, WidgetId, Window, WindowId};
 #[allow(unused)] use crate::{Events, Layout}; // for doc-links
 
@@ -839,16 +839,16 @@ impl<'a> EventCx<'a> {
         self.shell.adjust_theme(Box::new(f));
     }
 
-    /// Access a [`SizeMgr`]
+    /// Access a [`SizeCx`]
     ///
     /// Warning: sizes are calculated using the window's current scale factor.
     /// This may change, even without user action, since some platforms
     /// always initialize windows with scale factor 1.
     /// See also notes on [`Events::configure`].
-    pub fn size_mgr<F: FnOnce(SizeMgr) -> T, T>(&mut self, f: F) -> T {
+    pub fn size_cx<F: FnOnce(SizeCx) -> T, T>(&mut self, f: F) -> T {
         let mut result = None;
         self.shell.size_and_draw_shared(Box::new(|size, _| {
-            result = Some(f(SizeMgr::new(size)));
+            result = Some(f(SizeCx::new(size)));
         }));
         result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
     }

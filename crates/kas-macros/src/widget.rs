@@ -494,10 +494,10 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         fn_size_rules = Some(quote! {
             #[inline]
             fn size_rules(&mut self,
-                size_mgr: ::kas::theme::SizeMgr,
+                sizer: ::kas::theme::SizeCx,
                 axis: ::kas::layout::AxisInfo,
             ) -> ::kas::layout::SizeRules {
-                self.#inner.size_rules(size_mgr, axis)
+                self.#inner.size_rules(sizer, axis)
             }
         });
         fn_set_rect = quote! {
@@ -702,10 +702,10 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             fn_size_rules = Some(quote! {
                 fn size_rules(
                     &mut self,
-                    size_mgr: ::kas::theme::SizeMgr,
+                    sizer: ::kas::theme::SizeCx,
                     axis: ::kas::layout::AxisInfo,
                 ) -> ::kas::layout::SizeRules {
-                    <Self as ::kas::layout::AutoLayout>::size_rules(self, size_mgr, axis)
+                    <Self as ::kas::layout::AutoLayout>::size_rules(self, sizer, axis)
                 }
             });
             set_rect = quote! {

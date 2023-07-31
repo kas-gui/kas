@@ -5,7 +5,7 @@
 
 //! "Handle" types used by themes
 
-use super::{FrameStyle, MarkStyle, SelectionStyle, SizeMgr, TextClass, ThemeSize};
+use super::{FrameStyle, MarkStyle, SelectionStyle, SizeCx, TextClass, ThemeSize};
 use crate::dir::Direction;
 use crate::draw::color::Rgb;
 use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType};
@@ -92,9 +92,9 @@ impl<'a> DrawCx<'a> {
         self.h.components().2
     }
 
-    /// Access a [`SizeMgr`]
-    pub fn size_mgr(&mut self) -> SizeMgr {
-        SizeMgr::new(self.h.components().0)
+    /// Access a [`SizeCx`]
+    pub fn size_cx(&mut self) -> SizeCx {
+        SizeCx::new(self.h.components().0)
     }
 
     /// Access a [`ConfigCx`]
@@ -184,7 +184,7 @@ impl<'a> DrawCx<'a> {
 
     /// Draw a frame inside the given `rect`
     ///
-    /// The frame dimensions are given by [`SizeMgr::frame`].
+    /// The frame dimensions are given by [`SizeCx::frame`].
     pub fn frame(&mut self, rect: Rect, style: FrameStyle, bg: Background) {
         self.h.frame(&self.id, rect, style, bg)
     }
@@ -197,7 +197,7 @@ impl<'a> DrawCx<'a> {
     /// Draw a selection highlight / frame
     ///
     /// Adjusts the background color and/or draws a line around the given rect.
-    /// In the latter case, a margin of size [`SizeMgr::inner_margins`] around
+    /// In the latter case, a margin of size [`SizeCx::inner_margins`] around
     /// `rect` is expected.
     pub fn selection(&mut self, rect: Rect, style: SelectionStyle) {
         self.h.selection(rect, style);
@@ -522,7 +522,7 @@ mod test {
         // We can't call this method without constructing an actual ThemeDraw.
         // But we don't need to: we just want to test that methods are callable.
 
-        let _scale = draw.size_mgr().scale_factor();
+        let _scale = draw.size_cx().scale_factor();
 
         let text = crate::text::Text::new("sample");
         let class = TextClass::Label(false);

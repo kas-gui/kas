@@ -14,7 +14,7 @@ use crate::event::{ConfigCx, Event, EventCx, Response};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::{AccelString, Text, TextApi};
-use crate::theme::{DrawCx, SizeMgr, TextClass};
+use crate::theme::{DrawCx, SizeCx, TextClass};
 use crate::{Erased, Layout, NavAdvance, Node, Widget, WidgetId};
 use kas_macros::{autoimpl, impl_scope};
 
@@ -49,9 +49,9 @@ impl_scope! {
 
     impl Layout for Self {
         #[inline]
-        fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Default, Align::Center);
-            size_mgr.text_rules(&mut self.label, Self::CLASS, axis)
+            sizer.text_rules(&mut self.label, Self::CLASS, axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
@@ -133,8 +133,8 @@ impl_scope! {
         }
 
         #[inline]
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            self.inner.size_rules(size_mgr, axis)
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            self.inner.size_rules(sizer, axis)
         }
 
         #[inline]

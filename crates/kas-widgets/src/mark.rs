@@ -46,8 +46,8 @@ impl_scope! {
         }
     }
     impl Layout for Self {
-        fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            mgr.feature(self.style.into(), axis)
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            sizer.feature(self.style.into(), axis)
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
@@ -87,8 +87,8 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            mgr.feature(self.style.into(), axis)
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            sizer.feature(self.style.into(), axis)
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

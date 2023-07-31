@@ -23,7 +23,7 @@ impl_scope! {
     }
 
     impl Layout for Filler {
-        fn size_rules(&mut self, _: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, _: SizeCx, axis: AxisInfo) -> SizeRules {
             let stretch = if axis.is_horizontal() { self.horiz } else { self.vert };
             SizeRules::empty(stretch)
         }

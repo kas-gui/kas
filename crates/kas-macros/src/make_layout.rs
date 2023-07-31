@@ -73,11 +73,11 @@ impl Tree {
         Ok(quote! {
             fn size_rules(
                 &mut self,
-                size_mgr: ::kas::theme::SizeMgr,
+                sizer: ::kas::theme::SizeCx,
                 axis: ::kas::layout::AxisInfo,
             ) -> ::kas::layout::SizeRules {
                 use ::kas::{Layout, layout};
-                (#layout).size_rules(size_mgr, axis)
+                (#layout).size_rules(sizer, axis)
             }
 
             fn set_rect(

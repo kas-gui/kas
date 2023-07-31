@@ -9,7 +9,7 @@ use crate::dir::Directional;
 use crate::event::{ConfigCx, EventCx, Scroll};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
-use crate::theme::{DrawCx, FrameStyle, SizeMgr};
+use crate::theme::{DrawCx, FrameStyle, SizeCx};
 use crate::title_bar::TitleBar;
 use crate::{Action, Events, Icon, Layout, LayoutExt, Widget, WidgetId};
 use kas_macros::impl_scope;
@@ -88,12 +88,12 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            let mut inner = self.w.size_rules(size_mgr.re(), axis);
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut inner = self.w.size_rules(sizer.re(), axis);
 
             self.bar_h = 0;
             if matches!(self.decorations, Decorations::Toolkit) {
-                let bar = self.title_bar.size_rules(size_mgr.re(), axis);
+                let bar = self.title_bar.size_rules(sizer.re(), axis);
                 if axis.is_horizontal() {
                     inner.max_with(bar);
                 } else {
@@ -102,7 +102,7 @@ impl_scope! {
                 }
             }
             if matches!(self.decorations, Decorations::Border | Decorations::Toolkit) {
-                let frame = size_mgr.frame(FrameStyle::Window, axis);
+                let frame = sizer.frame(FrameStyle::Window, axis);
                 let (rules, offset, size) = frame.surround(inner);
                 self.dec_offset.set_component(axis, offset);
                 self.dec_size.set_component(axis, size);
@@ -419,7 +419,7 @@ impl<Data: 'static> Window<Data> {
         *translation = t;
         let r = r + t; // work in translated coordinate space
         self.w.as_node(data).for_id(&popup.id, |mut node| {
-            let mut cache = layout::SolveCache::find_constraints(node.re(), cx.size_mgr());
+            let mut cache = layout::SolveCache::find_constraints(node.re(), cx.size_cx());
             let ideal = cache.ideal(false);
             let m = cache.margins();
 

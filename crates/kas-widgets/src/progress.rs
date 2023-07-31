@@ -71,7 +71,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             self.align.set_component(
                 axis,
                 match axis.is_vertical() == self.direction.is_vertical() {
@@ -79,7 +79,7 @@ impl_scope! {
                     true => axis.align_or_stretch(),
                 },
             );
-            size_mgr.feature(Feature::ProgressBar(self.direction()), axis)
+            sizer.feature(Feature::ProgressBar(self.direction()), axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {

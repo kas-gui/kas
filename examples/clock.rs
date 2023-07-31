@@ -41,9 +41,9 @@ impl_scope! {
     }
 
     impl Layout for Clock {
-        fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             kas::layout::LogicalSize(64.0, 64.0)
-                .to_rules_with_factor(axis, mgr.scale_factor(), 3.0)
+                .to_rules_with_factor(axis, sizer.scale_factor(), 3.0)
                 .with_stretch(Stretch::High)
         }
 

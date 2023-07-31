@@ -288,7 +288,7 @@ impl_scope! {
             self.list.get(index).map(|w| w.as_layout())
         }
 
-        fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             self.dim = layout::GridDimensions {
                 cols: MENU_VIEW_COLS,
                 col_spans: self
@@ -304,18 +304,18 @@ impl_scope! {
             let store = &mut self.store;
             let mut solver = layout::GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, store);
 
-            let frame_rules = mgr.frame(FrameStyle::MenuEntry, axis);
+            let frame_rules = sizer.frame(FrameStyle::MenuEntry, axis);
             let is_horiz = axis.is_horizontal();
 
             // Assumption: frame inner margin is at least as large as content margins
             let child_rules = SizeRules::EMPTY;
-            let (_, _, frame_size_flipped) = mgr
+            let (_, _, frame_size_flipped) = sizer
                 .frame(FrameStyle::MenuEntry, axis.flipped())
                 .surround(child_rules);
 
-            let child_rules = |mgr: SizeMgr, w: &mut dyn Layout, mut axis: AxisInfo| {
+            let child_rules = |sizer: SizeCx, w: &mut dyn Layout, mut axis: AxisInfo| {
                 axis.sub_other(frame_size_flipped);
-                let rules = w.size_rules(mgr, axis);
+                let rules = w.size_rules(sizer, axis);
                 frame_rules.surround(rules).0
             };
 
@@ -325,28 +325,28 @@ impl_scope! {
                 if is_horiz {
                     // Note: we are required to call child.size_rules even if sub_items are used
                     // Note: axis is not modified by the solver in this case
-                    let row_rules = child.size_rules(mgr.re(), axis);
+                    let row_rules = child.size_rules(sizer.re(), axis);
 
                     if let Some(items) = child.sub_items() {
                         if let Some(w) = items.toggle {
                             let info = layout::GridChildInfo::new(0, row);
-                            solver.for_child(store, info, |axis| child_rules(mgr.re(), w, axis));
+                            solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
                         }
                         if let Some(w) = items.icon {
                             let info = layout::GridChildInfo::new(1, row);
-                            solver.for_child(store, info, |axis| child_rules(mgr.re(), w, axis));
+                            solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
                         }
                         if let Some(w) = items.label {
                             let info = layout::GridChildInfo::new(2, row);
-                            solver.for_child(store, info, |axis| child_rules(mgr.re(), w, axis));
+                            solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
                         }
                         if let Some(w) = items.label2 {
                             let info = layout::GridChildInfo::new(3, row);
-                            solver.for_child(store, info, |axis| child_rules(mgr.re(), w, axis));
+                            solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
                         }
                         if let Some(w) = items.submenu {
                             let info = layout::GridChildInfo::new(4, row);
-                            solver.for_child(store, info, |axis| child_rules(mgr.re(), w, axis));
+                            solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
                         }
                     } else {
                         solver.for_child(store, info, |_| row_rules);
@@ -354,9 +354,9 @@ impl_scope! {
                 } else {
                     // axis is vertical
                     if child.sub_items().is_some() {
-                        solver.for_child(store, info, |axis| child_rules(mgr.re(), child, axis))
+                        solver.for_child(store, info, |axis| child_rules(sizer.re(), child, axis))
                     } else {
-                        solver.for_child(store, info, |axis| child.size_rules(mgr.re(), axis))
+                        solver.for_child(store, info, |axis| child.size_rules(sizer.re(), axis))
                     }
                 }
             }
@@ -371,11 +371,11 @@ impl_scope! {
             // Assumption: frame inner margin is at least as large as content margins
             let child_rules = SizeRules::EMPTY;
             let (_, frame_x, frame_w) = cx
-                .size_mgr()
+                .size_cx()
                 .frame(FrameStyle::MenuEntry, Direction::Right)
                 .surround(child_rules);
             let (_, frame_y, frame_h) = cx
-                .size_mgr()
+                .size_cx()
                 .frame(FrameStyle::MenuEntry, Direction::Down)
                 .surround(child_rules);
             let frame_offset = Offset(frame_x, frame_y);

@@ -91,7 +91,7 @@ impl_scope! {
             }
         }
 
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let mut rules = SizeRules::EMPTY;
             let end = self
                 .active
@@ -101,7 +101,7 @@ impl_scope! {
             self.sized_range = start..end;
             debug_assert!(self.sized_range.contains(&self.active));
             for index in start..end {
-                rules = rules.max(self.widgets[index].size_rules(size_mgr.re(), axis));
+                rules = rules.max(self.widgets[index].size_rules(sizer.re(), axis));
             }
             rules
         }

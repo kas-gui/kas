@@ -78,7 +78,7 @@ impl_scope! {
     ///     `set_rect` (otherwise the grip's position will not be updated)
     /// 3.  `draw` does nothing: the parent is expected to do all drawing
     impl Layout for GripPart {
-        fn size_rules(&mut self, _: SizeMgr, _: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, _: SizeCx, _: AxisInfo) -> SizeRules {
             SizeRules::EMPTY
         }
 

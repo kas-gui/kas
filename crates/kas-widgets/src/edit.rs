@@ -273,17 +273,17 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.sub_other(self.frame_size.extract(axis.flipped()));
 
-            let mut rules = self.inner.size_rules(mgr.re(), axis);
+            let mut rules = self.inner.size_rules(sizer.re(), axis);
             if axis.is_horizontal() && self.multi_line() {
-                let bar_rules = self.bar.size_rules(mgr.re(), axis);
+                let bar_rules = self.bar.size_rules(sizer.re(), axis);
                 self.inner_margin = rules.margins_i32().1.max(bar_rules.margins_i32().0);
                 rules.append(bar_rules);
             }
 
-            let frame_rules = mgr.frame(FrameStyle::EditBox, axis);
+            let frame_rules = sizer.frame(FrameStyle::EditBox, axis);
             let (rules, offset, size) = frame_rules.surround(rules);
             self.frame_offset.set_component(axis, offset);
             self.frame_size.set_component(axis, size);
@@ -295,7 +295,7 @@ impl_scope! {
             rect.pos += self.frame_offset;
             rect.size -= self.frame_size;
             if self.multi_line() {
-                let bar_width = cx.size_mgr().scroll_bar_width();
+                let bar_width = cx.size_cx().scroll_bar_width();
                 let x1 = rect.pos.0 + rect.size.0;
                 let x0 = x1 - bar_width;
                 let bar_rect = Rect::new(Coord(x0, rect.pos.1), Size(bar_width, rect.size.1));
@@ -563,15 +563,15 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let (min, ideal) = if axis.is_horizontal() {
-                let dpem = size_mgr.dpem();
+                let dpem = sizer.dpem();
                 ((self.width.0 * dpem).cast_ceil(), (self.width.1 * dpem).cast_ceil())
             } else {
-                let height = size_mgr.line_height(self.class);
+                let height = sizer.line_height(self.class);
                 (self.lines.0 * height, self.lines.1 * height)
             };
-            let margins = size_mgr.text_margins().extract(axis);
+            let margins = sizer.text_margins().extract(axis);
             let (stretch, align) = if axis.is_horizontal() || self.multi_line() {
                 (Stretch::High, axis.align_or_default())
             } else {

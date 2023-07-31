@@ -132,13 +132,13 @@ impl_scope! {
             self.make_next_id(is_handle, child_index / 2)
         }
 
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             if self.widgets.is_empty() {
                 return SizeRules::EMPTY;
             }
             assert_eq!(self.handles.len() + 1, self.widgets.len());
 
-            let handle_rules = size_mgr.feature(Feature::Separator, axis);
+            let handle_rules = sizer.feature(Feature::Separator, axis);
 
             let dim = (self.direction, self.num_children());
             let mut solver = layout::RowSolver::new(axis, dim, &mut self.data);
@@ -148,7 +148,7 @@ impl_scope! {
                 assert!(n < self.widgets.len());
                 let widgets = &mut self.widgets;
                 solver.for_child(&mut self.data, n << 1, |axis| {
-                    widgets[n].size_rules(size_mgr.re(), axis)
+                    widgets[n].size_rules(sizer.re(), axis)
                 });
 
                 if n >= self.handles.len() {
