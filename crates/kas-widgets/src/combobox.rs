@@ -21,7 +21,7 @@ impl_scope! {
     /// # Messages
     ///
     /// A combobox presents a menu with a fixed set of choices when clicked.
-    /// Each choice has an associated "message" value of type `M`.
+    /// Each choice has an associated value of type `V`.
     ///
     /// If no selection handler exists, then the choice's message is emitted
     /// when selected. If a handler is specified via [`Self::on_select`], then
@@ -31,19 +31,19 @@ impl_scope! {
         navigable = true;
         hover_highlight = true;
     }]
-    pub struct ComboBox<A, M: Clone + Debug + Eq + 'static> {
+    pub struct ComboBox<A, V: Clone + Debug + Eq + 'static> {
         core: widget_core!(),
         #[widget(&())]
         label: StringLabel,
         #[widget(&())]
         mark: Mark,
         #[widget(&())]
-        popup: ComboPopup<M>,
+        popup: ComboPopup<V>,
         active: usize,
         opening: bool,
         popup_id: Option<WindowId>,
-        state_fn: Box<dyn Fn(&ConfigCx, &A) -> M>,
-        on_select: Option<Box<dyn Fn(&mut EventCx, M)>>,
+        state_fn: Box<dyn Fn(&ConfigCx, &A) -> V>,
+        on_select: Option<Box<dyn Fn(&mut EventCx, V)>>,
     }
 
     impl Layout for Self {
@@ -205,7 +205,7 @@ impl_scope! {
     }
 }
 
-impl<A, M: Clone + Debug + Eq + 'static> ComboBox<A, M> {
+impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
     /// Construct a combobox
     ///
     /// Constructs a combobox with labels derived from an iterator over string
@@ -223,10 +223,10 @@ impl<A, M: Clone + Debug + Eq + 'static> ComboBox<A, M> {
     ///
     /// The closure `state_fn` selects the active entry from input data.
     #[inline]
-    pub fn new<T, I>(iter: I, state_fn: impl Fn(&ConfigCx, &A) -> M + 'static) -> Self
+    pub fn new<T, I>(iter: I, state_fn: impl Fn(&ConfigCx, &A) -> V + 'static) -> Self
     where
         T: Into<AccelString>,
-        I: IntoIterator<Item = (T, M)>,
+        I: IntoIterator<Item = (T, V)>,
     {
         let entries = iter
             .into_iter()
@@ -242,8 +242,8 @@ impl<A, M: Clone + Debug + Eq + 'static> ComboBox<A, M> {
     /// The closure `state_fn` selects the active entry from input data.
     #[inline]
     pub fn new_vec(
-        entries: Vec<MenuEntry<M>>,
-        state_fn: impl Fn(&ConfigCx, &A) -> M + 'static,
+        entries: Vec<MenuEntry<V>>,
+        state_fn: impl Fn(&ConfigCx, &A) -> V + 'static,
     ) -> Self {
         let label = entries.get(0).map(|entry| entry.get_string());
         let label = StringLabel::new(label.unwrap_or_default()).with_class(TextClass::Button);
@@ -268,7 +268,7 @@ impl<A, M: Clone + Debug + Eq + 'static> ComboBox<A, M> {
     /// Send a message on selection
     #[inline]
     #[must_use]
-    pub fn msg_on_select<M2: Debug + 'static>(self, f: impl Fn(M) -> M2 + 'static) -> Self {
+    pub fn msg_on_select<M: Debug + 'static>(self, f: impl Fn(V) -> M + 'static) -> Self {
         self.on_select(move |cx, m| cx.push(f(m)))
     }
 
@@ -278,16 +278,16 @@ impl<A, M: Clone + Debug + Eq + 'static> ComboBox<A, M> {
     /// message.
     #[inline]
     #[must_use]
-    pub fn on_select<F>(mut self, f: F) -> ComboBox<A, M>
+    pub fn on_select<F>(mut self, f: F) -> ComboBox<A, V>
     where
-        F: Fn(&mut EventCx, M) + 'static,
+        F: Fn(&mut EventCx, V) + 'static,
     {
         self.on_select = Some(Box::new(f));
         self
     }
 }
 
-impl<A, M: Clone + Debug + Eq + 'static> ComboBox<A, M> {
+impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
     /// Get the index of the active choice
     ///
     /// This index is normally less than the number of choices (`self.len()`),
@@ -342,7 +342,7 @@ impl<A, M: Clone + Debug + Eq + 'static> ComboBox<A, M> {
     //
     // TODO(opt): these methods cause full-window resize. They don't need to
     // resize at all if the menu is closed!
-    pub fn push<T: Into<AccelString>>(&mut self, cx: &mut ConfigCx, label: T, msg: M) -> usize {
+    pub fn push<T: Into<AccelString>>(&mut self, cx: &mut ConfigCx, label: T, msg: V) -> usize {
         let column = &mut self.popup.inner;
         column.push(cx, &(), MenuEntry::new(label, msg))
     }
@@ -360,7 +360,7 @@ impl<A, M: Clone + Debug + Eq + 'static> ComboBox<A, M> {
         cx: &mut ConfigCx,
         index: usize,
         label: T,
-        msg: M,
+        msg: V,
     ) {
         let column = &mut self.popup.inner;
         column.insert(cx, &(), index, MenuEntry::new(label, msg));
@@ -381,7 +381,7 @@ impl<A, M: Clone + Debug + Eq + 'static> ComboBox<A, M> {
         cx: &mut ConfigCx,
         index: usize,
         label: T,
-        msg: M,
+        msg: V,
     ) {
         self.popup
             .inner
@@ -395,9 +395,9 @@ impl_scope! {
         Data = ();
         layout = self.inner;
     }]
-    struct ComboPopup<M: Clone + Debug + 'static> {
+    struct ComboPopup<V: Clone + Debug + 'static> {
         core: widget_core!(),
         #[widget]
-        inner: PopupFrame<Column<MenuEntry<M>>>,
+        inner: PopupFrame<Column<MenuEntry<V>>>,
     }
 }
