@@ -11,7 +11,7 @@ use crate::event::ConfigCx;
 use crate::geom::Rect;
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::Text;
-use crate::theme::{DrawMgr, SizeMgr, TextClass};
+use crate::theme::{DrawCx, SizeMgr, TextClass};
 use crate::Layout;
 use kas::prelude::*;
 use kas::theme::MarkStyle;
@@ -55,7 +55,7 @@ impl_scope! {
             cx.text_set_size(&mut self.label, Self::CLASS, rect.size, None);
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             draw.text(self.rect(), &self.label, Self::CLASS);
         }
     }
@@ -95,7 +95,7 @@ impl_scope! {
             mgr.feature(self.style.into(), axis)
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             draw.mark(self.core.rect, self.style);
         }
     }

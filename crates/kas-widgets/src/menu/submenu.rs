@@ -140,7 +140,7 @@ impl_scope! {
             self.rect().contains(coord).then(|| self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw.re_id(self.id()));
             if self.mark.rect().size != Size::ZERO {
@@ -430,7 +430,7 @@ impl_scope! {
             Some(self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             for child in self.list.iter_mut() {
                 draw.recurse(child);
             }

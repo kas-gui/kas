@@ -119,7 +119,7 @@ impl_scope! {
                 .or_else(|| Some(self.id()))
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             let solver = RowPositionSolver::new(self.direction);
             solver.for_children(&mut self.widgets, self.core.rect, |w| draw.recurse(w));
         }

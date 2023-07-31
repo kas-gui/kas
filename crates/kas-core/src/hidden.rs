@@ -14,7 +14,7 @@ use crate::event::{ConfigCx, Event, EventCx, Response};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::{AccelString, Text, TextApi};
-use crate::theme::{DrawMgr, SizeMgr, TextClass};
+use crate::theme::{DrawCx, SizeMgr, TextClass};
 use crate::{Erased, Layout, NavAdvance, Node, Widget, WidgetId};
 use kas_macros::{autoimpl, impl_scope};
 
@@ -59,7 +59,7 @@ impl_scope! {
             cx.text_set_size(&mut self.label, Self::CLASS, rect.size, None);
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             draw.text(self.rect(), &self.label, Self::CLASS);
         }
     }
@@ -158,7 +158,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn draw(&mut self, draw: DrawMgr) {
+        fn draw(&mut self, draw: DrawCx) {
             self.inner.draw(draw);
         }
     }

@@ -34,28 +34,28 @@ pub enum Background {
 /// This interface is provided to widgets in [`crate::Layout::draw`].
 /// Lower-level interfaces may be accessed through [`Self::draw_device`].
 ///
-/// `DrawMgr` is not a `Copy` or `Clone` type; instead it may be "reborrowed"
+/// `DrawCx` is not a `Copy` or `Clone` type; instead it may be "reborrowed"
 /// via [`Self::re_id`] or [`Self::re_clone`].
 ///
 /// -   `draw.check_box(&*self, self.state);` — note `&*self` to convert from to
 ///     `&W` from `&mut W`, since the latter would cause borrow conflicts
-pub struct DrawMgr<'a> {
+pub struct DrawCx<'a> {
     h: &'a mut dyn ThemeDraw,
     id: WidgetId,
 }
 
-impl<'a> DrawMgr<'a> {
+impl<'a> DrawCx<'a> {
     /// Reborrow with a new lifetime and new `id`
     ///
     /// Rust allows references like `&T` or `&mut T` to be "reborrowed" through
     /// coercion: essentially, the pointer is copied under a new, shorter, lifetime.
     /// Until rfcs#1403 lands, reborrows on user types require a method call.
     #[inline(always)]
-    pub fn re_id<'b>(&'b mut self, id: WidgetId) -> DrawMgr<'b>
+    pub fn re_id<'b>(&'b mut self, id: WidgetId) -> DrawCx<'b>
     where
         'a: 'b,
     {
-        DrawMgr { h: self.h, id }
+        DrawCx { h: self.h, id }
     }
 
     /// Reborrow with a new lifetime and same `id`
@@ -64,11 +64,11 @@ impl<'a> DrawMgr<'a> {
     /// coercion: essentially, the pointer is copied under a new, shorter, lifetime.
     /// Until rfcs#1403 lands, reborrows on user types require a method call.
     #[inline(always)]
-    pub fn re_clone<'b>(&'b mut self) -> DrawMgr<'b>
+    pub fn re_clone<'b>(&'b mut self) -> DrawCx<'b>
     where
         'a: 'b,
     {
-        DrawMgr {
+        DrawCx {
             h: self.h,
             id: self.id.clone(),
         }
@@ -80,11 +80,11 @@ impl<'a> DrawMgr<'a> {
         child.draw(self.re_id(child.id_ref().clone()));
     }
 
-    /// Construct from a [`DrawMgr`] and [`EventState`]
+    /// Construct from a [`DrawCx`] and [`EventState`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn new(h: &'a mut dyn ThemeDraw, id: WidgetId) -> Self {
-        DrawMgr { h, id }
+        DrawCx { h, id }
     }
 
     /// Access event-management state
@@ -129,14 +129,14 @@ impl<'a> DrawMgr<'a> {
     ///
     /// Adds a new draw pass for purposes of enforcing draw order. Content of
     /// the new pass will be drawn after content in the parent pass.
-    pub fn with_pass<F: FnOnce(DrawMgr)>(&mut self, f: F) {
+    pub fn with_pass<F: FnOnce(DrawCx)>(&mut self, f: F) {
         let clip_rect = self.h.get_clip_rect();
         let id = self.id.clone();
         self.h.new_pass(
             clip_rect,
             Offset::ZERO,
             PassType::Clip,
-            Box::new(|h| f(DrawMgr { h, id })),
+            Box::new(|h| f(DrawCx { h, id })),
         );
     }
 
@@ -144,13 +144,13 @@ impl<'a> DrawMgr<'a> {
     ///
     /// Adds a new draw pass of type [`PassType::Clip`], with draw operations
     /// clipped to `rect` and translated by `offset.
-    pub fn with_clip_region<F: FnOnce(DrawMgr)>(&mut self, rect: Rect, offset: Offset, f: F) {
+    pub fn with_clip_region<F: FnOnce(DrawCx)>(&mut self, rect: Rect, offset: Offset, f: F) {
         let id = self.id.clone();
         self.h.new_pass(
             rect,
             offset,
             PassType::Clip,
-            Box::new(|h| f(DrawMgr { h, id })),
+            Box::new(|h| f(DrawCx { h, id })),
         );
     }
 
@@ -162,13 +162,13 @@ impl<'a> DrawMgr<'a> {
     /// The theme is permitted to enlarge the `rect` for the purpose of drawing
     /// a frame or shadow around this overlay, thus the
     /// [`Self::get_clip_rect`] may be larger than expected.
-    pub fn with_overlay<F: FnOnce(DrawMgr)>(&mut self, rect: Rect, offset: Offset, f: F) {
+    pub fn with_overlay<F: FnOnce(DrawCx)>(&mut self, rect: Rect, offset: Offset, f: F) {
         let id = self.id.clone();
         self.h.new_pass(
             rect,
             offset,
             PassType::Overlay,
-            Box::new(|h| f(DrawMgr { h, id })),
+            Box::new(|h| f(DrawCx { h, id })),
         );
     }
 
@@ -331,7 +331,7 @@ impl<'a> DrawMgr<'a> {
     }
 }
 
-impl<'a> std::ops::BitOrAssign<Action> for DrawMgr<'a> {
+impl<'a> std::ops::BitOrAssign<Action> for DrawCx<'a> {
     #[inline]
     fn bitor_assign(&mut self, action: Action) {
         self.h.components().2.send_action(action);
@@ -431,7 +431,7 @@ pub trait ThemeDraw {
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text_effects(&mut self, id: &WidgetId, rect: Rect, text: &dyn TextApi, class: TextClass);
 
-    /// Method used to implement [`DrawMgr::text_selected`]
+    /// Method used to implement [`DrawCx::text_selected`]
     fn text_selected_range(
         &mut self,
         id: &WidgetId,
@@ -518,7 +518,7 @@ pub trait ThemeDraw {
 mod test {
     use super::*;
 
-    fn _draw_ext(mut draw: DrawMgr) {
+    fn _draw_ext(mut draw: DrawCx) {
         // We can't call this method without constructing an actual ThemeDraw.
         // But we don't need to: we just want to test that methods are callable.
 

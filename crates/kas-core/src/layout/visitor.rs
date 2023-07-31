@@ -15,7 +15,7 @@ use super::{RulesSetter, RulesSolver};
 use crate::draw::color::Rgb;
 use crate::event::ConfigCx;
 use crate::geom::{Coord, Offset, Rect, Size};
-use crate::theme::{Background, DrawMgr, FrameStyle, MarginStyle, SizeMgr};
+use crate::theme::{Background, DrawCx, FrameStyle, MarginStyle, SizeMgr};
 use crate::WidgetId;
 use crate::{dir::Directional, dir::Directions, Layout};
 use std::iter::ExactSizeIterator;
@@ -45,7 +45,7 @@ pub trait Visitable {
     /// Draw a widget and its children
     ///
     /// This method is identical to [`Layout::draw`].
-    fn draw(&mut self, draw: DrawMgr);
+    fn draw(&mut self, draw: DrawCx);
 }
 
 /// A layout visitor
@@ -281,10 +281,10 @@ impl<'a> Visitor<'a> {
 
     /// Draw a widget's children
     #[inline]
-    pub fn draw(mut self, draw: DrawMgr) {
+    pub fn draw(mut self, draw: DrawCx) {
         self.draw_(draw);
     }
-    fn draw_(&mut self, mut draw: DrawMgr) {
+    fn draw_(&mut self, mut draw: DrawCx) {
         match &mut self.layout {
             LayoutType::BoxComponent(layout) => layout.draw(draw),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => draw.recurse(*child),
@@ -341,7 +341,7 @@ where
         self.children.find_map(|child| child.find_id(coord))
     }
 
-    fn draw(&mut self, mut draw: DrawMgr) {
+    fn draw(&mut self, mut draw: DrawCx) {
         for child in &mut self.children {
             child.draw(draw.re_clone());
         }
@@ -378,7 +378,7 @@ where
         self.children.find_map(|child| child.find_id(coord))
     }
 
-    fn draw(&mut self, mut draw: DrawMgr) {
+    fn draw(&mut self, mut draw: DrawCx) {
         let mut iter = (&mut self.children).rev();
         if let Some(first) = iter.next() {
             first.draw(draw.re_clone());
@@ -422,7 +422,7 @@ impl<'a, W: Layout, D: Directional> Visitable for Slice<'a, W, D> {
             .and_then(|child| child.find_id(coord))
     }
 
-    fn draw(&mut self, mut draw: DrawMgr) {
+    fn draw(&mut self, mut draw: DrawCx) {
         let solver = RowPositionSolver::new(self.direction);
         solver.for_children(self.children, draw.get_clip_rect(), |w| draw.recurse(w));
     }
@@ -459,7 +459,7 @@ where
         self.children.find_map(|(_, child)| child.find_id(coord))
     }
 
-    fn draw(&mut self, mut draw: DrawMgr) {
+    fn draw(&mut self, mut draw: DrawCx) {
         for (_, child) in (&mut self.children).rev() {
             child.draw(draw.re_clone());
         }

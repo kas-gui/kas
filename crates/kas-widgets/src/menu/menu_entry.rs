@@ -35,7 +35,7 @@ impl_scope! {
             self.rect().contains(coord).then(|| self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw);
         }
@@ -130,7 +130,7 @@ impl_scope! {
             self.rect().contains(coord).then(|| self.checkbox.id())
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             let mut draw = draw.re_id(self.checkbox.id());
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             <Self as layout::AutoLayout>::draw(self, draw);

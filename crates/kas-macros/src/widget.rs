@@ -529,7 +529,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         };
         fn_draw = Some(quote! {
             #[inline]
-            fn draw(&mut self, draw: ::kas::theme::DrawMgr) {
+            fn draw(&mut self, draw: ::kas::theme::DrawCx) {
                 self.#inner.draw(draw);
             }
         });
@@ -713,7 +713,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             };
             find_id = quote! { <Self as ::kas::layout::AutoLayout>::find_id(self, coord) };
             fn_draw = Some(quote! {
-                fn draw(&mut self, draw: ::kas::theme::DrawMgr) {
+                fn draw(&mut self, draw: ::kas::theme::DrawCx) {
                     <Self as ::kas::layout::AutoLayout>::draw(self, draw);
                 }
             });

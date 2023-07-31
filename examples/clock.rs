@@ -72,7 +72,7 @@ impl_scope! {
             self.time_rect = Rect::new(time_pos, text_size);
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             let accent: Rgba = Rgba8Srgb::from_str("#d7916f").unwrap().into();
             let col_back = Rgba::ga(0.0, 0.5);
             let col_face = accent.multiply(0.4);

@@ -303,7 +303,7 @@ impl_scope! {
             self.handle.find_id(coord).or_else(|| Some(self.id()))
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             if draw.ev_state().is_hovered_recursive(self.id_ref()) {
                 self.force_visible(draw.ev_state());
             }
@@ -403,7 +403,7 @@ impl_scope! {
             &mut self.inner
         }
 
-        fn draw_(&mut self, mut draw: DrawMgr) {
+        fn draw_(&mut self, mut draw: DrawCx) {
             draw.recurse(&mut self.inner);
             draw.with_pass(|mut draw| {
                 if self.show_bars.0 {
@@ -520,18 +520,18 @@ impl_scope! {
         }
 
         #[cfg(feature = "min_spec")]
-        default fn draw(&mut self, draw: DrawMgr) {
+        default fn draw(&mut self, draw: DrawCx) {
             self.draw_(draw);
         }
         #[cfg(not(feature = "min_spec"))]
-        fn draw(&mut self, draw: DrawMgr) {
+        fn draw(&mut self, draw: DrawCx) {
             self.draw_(draw);
         }
     }
 
     #[cfg(feature = "min_spec")]
     impl<W: Widget> Layout for ScrollBars<ScrollRegion<W>> {
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             // Enlarge clip region to *our* rect:
             draw.with_clip_region(self.core.rect, self.inner.scroll_offset(), |mut draw| {
                 draw.recurse(&mut self.inner);

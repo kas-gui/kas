@@ -173,7 +173,7 @@ impl_scope! {
             }
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             if let Some(fut) = self.inner.maybe_redraw() {
                 draw.ev_state().push_spawn(self.id(), fut);
             }

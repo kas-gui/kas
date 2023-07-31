@@ -99,7 +99,7 @@ impl Tree {
                 (#layout).find_id(coord).or_else(|| Some(self.id()))
             }
 
-            fn draw(&mut self, draw: ::kas::theme::DrawMgr) {
+            fn draw(&mut self, draw: ::kas::theme::DrawCx) {
                 use ::kas::{Layout, layout};
                 (#layout).draw(draw);
             }

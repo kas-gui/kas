@@ -322,7 +322,7 @@ impl_scope! {
             Some(self.inner.id())
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             if self.max_scroll_offset().1 > 0 {
                 draw.recurse(&mut self.bar);
             }
@@ -588,7 +588,7 @@ impl_scope! {
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             let mut rect = self.rect();
             rect.size = rect.size.max(self.text_size);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {

@@ -9,7 +9,7 @@ use crate::dir::Directional;
 use crate::event::{ConfigCx, EventCx, Scroll};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
-use crate::theme::{DrawMgr, FrameStyle, SizeMgr};
+use crate::theme::{DrawCx, FrameStyle, SizeMgr};
 use crate::title_bar::TitleBar;
 use crate::{Action, Events, Icon, Layout, LayoutExt, Widget, WidgetId};
 use kas_macros::impl_scope;
@@ -129,7 +129,7 @@ impl_scope! {
             unimplemented!()
         }
 
-        fn draw(&mut self, _: DrawMgr) {
+        fn draw(&mut self, _: DrawCx) {
             unimplemented!()
         }
     }
@@ -150,7 +150,7 @@ impl_scope! {
         }
 
         #[cfg(feature = "winit")]
-        pub(crate) fn draw(&mut self, data: &Data, mut draw: DrawMgr) {
+        pub(crate) fn draw(&mut self, data: &Data, mut draw: DrawCx) {
             if self.dec_size != Size::ZERO {
                 draw.frame(self.core.rect, FrameStyle::Window, Default::default());
                 if self.bar_h > 0 {

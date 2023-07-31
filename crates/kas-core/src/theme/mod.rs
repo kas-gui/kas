@@ -6,7 +6,7 @@
 //! Themes
 //!
 //! Widgets expect the theme to provide an implementation of [`SizeMgr`] and of
-//! [`DrawMgr`].
+//! [`DrawCx`].
 //!
 //! Constructing a shell requires a [`Theme`]. Two implementations are provided
 //! here: [`SimpleTheme`] and [`FlatTheme`].
@@ -30,7 +30,7 @@ pub mod dimensions;
 
 pub use colors::{Colors, ColorsLinear, ColorsSrgb, InputState};
 pub use config::{Config, RasterConfig};
-pub use draw::{Background, DrawMgr, ThemeDraw};
+pub use draw::{Background, DrawCx, ThemeDraw};
 pub use flat_theme::FlatTheme;
 pub use multi::{MultiTheme, MultiThemeBuilder};
 pub use simple_theme::SimpleTheme;

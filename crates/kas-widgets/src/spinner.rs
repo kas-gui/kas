@@ -287,7 +287,7 @@ impl_scope! {
                 .or_else(|| Some(self.edit.id()))
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             let bg = if self.edit.has_error() {
                 Background::Error
             } else {

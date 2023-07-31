@@ -161,7 +161,7 @@ impl_scope! {
             self.core.rect = self.scaling.align_rect(rect, scale_factor);
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             if let Some(id) = self.handle.as_ref().map(|h| h.id()) {
                 draw.image(self.rect(), id);
             }

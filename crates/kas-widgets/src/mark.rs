@@ -50,7 +50,7 @@ impl_scope! {
             mgr.feature(self.style.into(), axis)
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             draw.mark(self.core.rect, self.style);
         }
     }
@@ -91,7 +91,7 @@ impl_scope! {
             mgr.feature(self.style.into(), axis)
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             draw.mark(self.core.rect, self.style);
         }
     }

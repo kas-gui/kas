@@ -85,7 +85,7 @@ impl_scope! {
             );
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             if let Some(color) = self.color {
                 let draw = draw.draw_device();
                 draw.rect((self.rect()).cast(), color);

@@ -129,7 +129,7 @@ impl_scope! {
             self.inner.find_id(coord + self.translation())
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             draw.with_clip_region(self.core.rect, self.scroll_offset(), |mut draw| {
                 draw.recurse(&mut self.inner);
             });

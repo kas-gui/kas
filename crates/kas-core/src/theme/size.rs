@@ -16,16 +16,16 @@ use crate::text::TextApi;
 
 #[allow(unused)] use crate::text::TextApiExt;
 #[allow(unused)]
-use crate::{event::ConfigCx, layout::Stretch, theme::DrawMgr};
+use crate::{event::ConfigCx, layout::Stretch, theme::DrawCx};
 
 /// Size and scale interface
 ///
 /// This interface is provided to widgets in [`crate::Layout::size_rules`].
 /// It may also be accessed through [`crate::event::EventCx::size_mgr`],
-/// [`DrawMgr::size_mgr`].
+/// [`DrawCx::size_mgr`].
 ///
 /// Most methods get or calculate the size of some feature. These same features
-/// may be drawn through [`DrawMgr`].
+/// may be drawn through [`DrawCx`].
 pub struct SizeMgr<'a>(&'a dyn ThemeSize);
 
 impl<'a> SizeMgr<'a> {

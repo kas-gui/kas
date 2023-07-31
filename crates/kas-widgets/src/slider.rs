@@ -319,7 +319,7 @@ impl_scope! {
             Some(self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             let dir = self.direction.as_direction();
             draw.slider(self.rect(), &self.grip, dir);
         }

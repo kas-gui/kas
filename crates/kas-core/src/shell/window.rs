@@ -12,7 +12,7 @@ use kas::draw::{color::Rgba, AnimationState, DrawShared};
 use kas::event::{ConfigCx, CursorIcon, EventState};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
-use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
+use kas::theme::{DrawCx, SizeMgr, ThemeControl, ThemeSize};
 use kas::theme::{Theme, Window as _};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use kas::util::warn_about_error;
@@ -445,8 +445,8 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                     .shell
                     .theme
                     .draw(draw, &mut self.ev_state, &mut self.theme_window);
-            let draw_mgr = DrawMgr::new(&mut draw, self.widget.id());
-            self.widget.draw(&shared.data, draw_mgr);
+            let draw_cx = DrawCx::new(&mut draw, self.widget.id());
+            self.widget.draw(&shared.data, draw_cx);
         }
         let time2 = Instant::now();
 

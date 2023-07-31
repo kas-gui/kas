@@ -321,7 +321,7 @@ pub enum NavAdvance {
 ///             cx.text_set_size(&mut self.label, self.class, rect.size, None);
 ///         }
 ///
-///         fn draw(&mut self, mut draw: DrawMgr) {
+///         fn draw(&mut self, mut draw: DrawCx) {
 ///             draw.text_effects(self.rect(), &self.label, self.class);
 ///         }
 ///     }

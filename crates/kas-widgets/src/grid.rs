@@ -111,7 +111,7 @@ impl_scope! {
                 .or_else(|| Some(self.id()))
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             for (_, child) in &mut self.widgets {
                 draw.recurse(child);
             }

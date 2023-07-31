@@ -119,11 +119,11 @@ impl_scope! {
         }
 
         #[cfg(feature = "min_spec")]
-        default fn draw(&mut self, mut draw: DrawMgr) {
+        default fn draw(&mut self, mut draw: DrawCx) {
             draw.text_effects(self.rect(), &self.label, self.class);
         }
         #[cfg(not(feature = "min_spec"))]
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             draw.text_effects(self.rect(), &self.label, self.class);
         }
     }
@@ -154,13 +154,13 @@ impl_scope! {
 // Str/String representations have no effects, so use simpler draw call
 #[cfg(feature = "min_spec")]
 impl<'a, A> Layout for Text<A, &'a str> {
-    fn draw(&mut self, mut draw: DrawMgr) {
+    fn draw(&mut self, mut draw: DrawCx) {
         draw.text(self.rect(), &self.label, self.class);
     }
 }
 #[cfg(feature = "min_spec")]
 impl<A> Layout for StringText<A> {
-    fn draw(&mut self, mut draw: DrawMgr) {
+    fn draw(&mut self, mut draw: DrawCx) {
         draw.text(self.rect(), &self.label, self.class);
     }
 }

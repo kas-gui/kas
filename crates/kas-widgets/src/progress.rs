@@ -87,7 +87,7 @@ impl_scope! {
             self.core.rect = rect;
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             let dir = self.direction.as_direction();
             draw.progress_bar(self.rect(), dir, self.value);
         }

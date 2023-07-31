@@ -86,7 +86,7 @@ impl_scope! {
             self.track = rect;
         }
 
-        fn draw(&mut self, _: DrawMgr) {}
+        fn draw(&mut self, _: DrawCx) {}
     }
 
     impl Events for GripPart {

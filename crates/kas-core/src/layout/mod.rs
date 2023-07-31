@@ -48,7 +48,7 @@ mod visitor;
 use crate::dir::{Direction, Directional, Directions};
 use crate::event::ConfigCx;
 use crate::geom::{Coord, Rect};
-use crate::theme::{DrawMgr, SizeMgr};
+use crate::theme::{DrawCx, SizeMgr};
 use crate::WidgetId;
 
 #[allow(unused)] use crate::Layout;
@@ -268,7 +268,7 @@ pub trait AutoLayout {
     /// Draw a widget and its children
     ///
     /// This functions identically to [`Layout::draw`].
-    fn draw(&mut self, draw: DrawMgr);
+    fn draw(&mut self, draw: DrawCx);
 }
 
 #[cfg(test)]

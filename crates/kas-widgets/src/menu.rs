@@ -66,11 +66,11 @@ pub trait Menu: Widget {
     /// "magically" by the caller. The implementor should draw a frame as follows:
     /// ```
     /// # use kas::geom::Rect;
-    /// # use kas::theme::{DrawMgr, FrameStyle};
+    /// # use kas::theme::{DrawCx, FrameStyle};
     /// # struct S;
     /// # impl S {
     /// # fn rect(&self) -> Rect { Rect::ZERO }
-    /// fn draw(&mut self, mut draw: DrawMgr) {
+    /// fn draw(&mut self, mut draw: DrawCx) {
     ///     draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
     ///     // draw children here
     /// }

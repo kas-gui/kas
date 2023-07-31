@@ -129,7 +129,7 @@ impl_scope! {
             None
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             if self.sized_range.contains(&self.active) && self.active < self.widgets.len() {
                 draw.recurse(&mut self.widgets[self.active]);
             }

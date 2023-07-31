@@ -9,7 +9,7 @@ use super::Widget;
 use crate::event::{ConfigCx, Event, EventCx, Response};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
-use crate::theme::{DrawMgr, SizeMgr};
+use crate::theme::{DrawCx, SizeMgr};
 use crate::{Erased, Layout, NavAdvance, WidgetId};
 
 #[cfg(not(feature = "unsafe_node"))]
@@ -29,7 +29,7 @@ trait NodeT {
 
     fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize>;
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
-    fn _draw(&mut self, draw: DrawMgr);
+    fn _draw(&mut self, draw: DrawCx);
 
     fn _configure(&mut self, cx: &mut ConfigCx, id: WidgetId);
     fn _update(&mut self, cx: &mut ConfigCx);
@@ -83,7 +83,7 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
         self.0.find_id(coord)
     }
-    fn _draw(&mut self, mut draw: DrawMgr) {
+    fn _draw(&mut self, mut draw: DrawCx) {
         draw.recurse(&mut self.0);
     }
 
@@ -304,12 +304,12 @@ impl<'a> Node<'a> {
     cfg_if::cfg_if! {
         if #[cfg(feature = "unsafe_node")] {
             /// Draw a widget and its children
-            pub(crate) fn _draw(&mut self, mut draw: DrawMgr) {
+            pub(crate) fn _draw(&mut self, mut draw: DrawCx) {
                 draw.recurse(&mut self.0);
             }
         } else {
             /// Draw a widget and its children
-            pub(crate) fn _draw(&mut self, draw: DrawMgr) {
+            pub(crate) fn _draw(&mut self, draw: DrawCx) {
                 self.0._draw(draw);
             }
         }

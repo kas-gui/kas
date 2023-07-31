@@ -8,14 +8,14 @@
 //! Multiple drawing APIs are available. Each has a slightly different purpose:
 //!
 //! -   High-level "themed widget components" are available through
-//!     [`DrawMgr`]. This is the primary drawing interface for widgets.
+//!     [`DrawCx`]. This is the primary drawing interface for widgets.
 //! -   Basic drawing components (shapes) are available through [`DrawIface`]
-//!     in this module. This can be accessed via [`DrawMgr::draw_device`].
+//!     in this module. This can be accessed via [`DrawCx::draw_device`].
 //! -   The shell may support custom graphics pipelines, for example
 //!     [`kas-wgpu::draw::CustomPipe`](https://docs.rs/kas-wgpu/*/kas_wgpu/draw/trait.CustomPipe.html)
 //!     (used by the [Mandlebrot example](https://github.com/kas-gui/kas/tree/master/examples/mandlebrot)).
 //!
-//! Text may be drawn by either [`DrawMgr`] or [`DrawIface`] with a slightly
+//! Text may be drawn by either [`DrawCx`] or [`DrawIface`] with a slightly
 //! different API (using theme properties or directly specifying colors and effects).
 //!
 //! ## Draw order
@@ -42,7 +42,7 @@ mod draw_rounded;
 mod draw_shared;
 
 use crate::cast::Cast;
-#[allow(unused)] use crate::theme::DrawMgr;
+#[allow(unused)] use crate::theme::DrawCx;
 
 pub use draw::{Draw, DrawIface, DrawImpl};
 pub use draw_rounded::{DrawRounded, DrawRoundedImpl};
