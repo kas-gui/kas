@@ -181,7 +181,7 @@ impl_scope! {
         b_up: MarkButton<SpinBtn>,
         #[widget(&())]
         b_down: MarkButton<SpinBtn>,
-        on_change: Option<Box<dyn Fn(&mut EventCx, T)>>,
+        on_change: Option<Box<dyn Fn(&mut EventCx, &A, T)>>,
     }
 
     impl Self {
@@ -213,7 +213,7 @@ impl_scope! {
             state_fn: impl Fn(&ConfigCx, &A) -> T + 'static,
             message_fn: impl Fn(T) -> M + 'static,
         ) -> Self {
-            Spinner::new(range, state_fn).on_change(move |cx, state| cx.push(message_fn(state)))
+            Spinner::new(range, state_fn).on_change(move |cx, _, state| cx.push(message_fn(state)))
         }
 
         /// Set event handler `f`
@@ -228,8 +228,7 @@ impl_scope! {
         #[must_use]
         pub fn on_change<F>(mut self, f: F) -> Self
         where
-        // TODO: include data?
-            F: Fn(&mut EventCx, T) + 'static,
+            F: Fn(&mut EventCx, &A, T) + 'static,
         {
             self.on_change = Some(Box::new(f));
             self
@@ -327,7 +326,7 @@ impl_scope! {
 
             if let Some(value) = self.edit.guard.handle_btn(cx, data, btn) {
                 if let Some(ref f) = self.on_change {
-                    f(cx, value);
+                    f(cx, data, value);
                 }
             }
             Response::Used
@@ -344,7 +343,7 @@ impl_scope! {
 
             if let Some(value) = new_value {
                 if let Some(ref f) = self.on_change {
-                    f(cx, value);
+                    f(cx, data, value);
                 }
             }
         }

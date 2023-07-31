@@ -232,7 +232,7 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
         row![
             "Spinner",
             Spinner::new(0..=10, |_, data: &Data| data.value)
-                .on_change(|cx, value| cx.push(Item::Spinner(value)))
+                .on_change(|cx, _, value| cx.push(Item::Spinner(value)))
         ],
         row![
             "Slider",
