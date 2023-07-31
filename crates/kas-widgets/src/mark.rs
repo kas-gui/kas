@@ -11,6 +11,11 @@ use std::fmt::Debug;
 
 impl_scope! {
     /// A mark
+    ///
+    /// These are small theme-defined "glyphs"; see [`MarkStyle`]. They may be
+    /// used as icons or visual connectors. See also [`MarkButton`].
+    ///
+    /// TODO: expand or replace.
     #[derive(Clone, Debug)]
     #[widget {
         Data = ();
@@ -54,6 +59,7 @@ impl_scope! {
 impl_scope! {
     /// A mark which is also a button
     ///
+    /// A clickable button over a [`Mark`].
     /// This button is not keyboard navigable; only mouse/touch interactive.
     ///
     /// Uses stretch policy [`Stretch::Low`].

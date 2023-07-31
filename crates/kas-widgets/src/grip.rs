@@ -56,8 +56,8 @@ impl_scope! {
     /// [`GripMsg`] to allow the parent to implement further handling.
     ///
     /// Optionally, the parent may call [`GripPart::handle_press_on_track`]
-    /// when a [`Event::PressStart`] occurs on the track area (which identifiers
-    /// as the parent widget).
+    /// when a [`Event::PressStart`] occurs on the track area (which identifies
+    /// as being the parent widget).
     #[derive(Clone, Debug, Default)]
     #[widget{
         hover_highlight = true;

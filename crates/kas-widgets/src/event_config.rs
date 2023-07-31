@@ -10,7 +10,13 @@ use kas::event::config::{ChangeConfig, MousePan};
 use kas::prelude::*;
 
 impl_scope! {
-    /// A widget for viewing event config
+    /// A widget for configuring event config
+    ///
+    /// This only needs to be added to a UI to be functional.
+    ///
+    /// Changes take effect immediately. A "Reset" button restores all
+    /// configuration to compiled (not saved) default values.
+    /// TODO: support undo and/or revert to saved values.
     #[widget{
         Data = ();
         layout = grid! {
