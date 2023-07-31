@@ -611,12 +611,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             core: widget_core!(),
             is_disabled: bool,
             #[widget(&self.is_disabled)] menubar: menu::MenuBar::<bool, Right> = menubar,
-            #[widget] stack: TabStack<Box<dyn SetDisabled<()>>> = TabStack::new()
-                .with_title("&Widgets", widgets()) //TODO: use img_gallery as logo
-                .with_title("Te&xt editor", editor())
-                .with_title("&List", filter_list())
-                .with_title("Can&vas", canvas())
-                .with_title("Confi&g", config()),
+            #[widget] stack: TabStack<Box<dyn SetDisabled<()>>> = TabStack::from([
+                ("&Widgets", widgets()), //TODO: use img_gallery as logo
+                ("Te&xt editor", editor()),
+                ("&List", filter_list()),
+                ("Can&vas", canvas()),
+                ("Confi&g", config()),
+            ]),
         }
         impl Events for Self {
             type Data = ();

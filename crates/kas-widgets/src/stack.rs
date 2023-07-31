@@ -163,21 +163,14 @@ impl_scope! {
 }
 
 impl<W: Widget> Stack<W> {
-    /// Construct a new, empty instance
-    #[inline]
-    pub fn new() -> Self {
-        Self::new_vec(vec![])
-    }
-
     /// Construct a new instance
     ///
     /// Initially, the first page (if any) will be shown. Use
     /// [`Self::with_active`] to change this.
-    #[inline]
-    pub fn new_vec(widgets: Vec<W>) -> Self {
+    pub fn new(widgets: impl Into<Vec<W>>) -> Self {
         Stack {
             core: Default::default(),
-            widgets,
+            widgets: widgets.into(),
             sized_range: 0..0,
             active: 0,
             size_limit: usize::MAX,
@@ -513,6 +506,6 @@ impl<W: Widget> FromIterator<W> for Stack<W> {
     where
         T: IntoIterator<Item = W>,
     {
-        Self::new_vec(iter.into_iter().collect())
+        Self::new(iter.into_iter().collect::<Vec<W>>())
     }
 }

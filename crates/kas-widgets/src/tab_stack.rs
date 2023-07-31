@@ -41,7 +41,7 @@ impl_scope! {
     /// it will be necessary to box children (this is what [`BoxTabStack`] is).
     ///
     /// See also the main implementing widget: [`Stack`].
-    #[impl_default]
+    #[impl_default(Self::new())]
     #[widget {
         layout = list!(self.direction, [
             self.stack,
@@ -50,7 +50,7 @@ impl_scope! {
     }]
     pub struct TabStack<W: Widget> {
         core: widget_core!(),
-        direction: Direction = Direction::Up,
+        direction: Direction,
         #[widget(&())]
         tabs: Row<Tab>, // TODO: want a TabBar widget for scrolling support?
         #[widget]
@@ -63,7 +63,7 @@ impl_scope! {
             Self {
                 core: Default::default(),
                 direction: Direction::Up,
-                stack: Stack::new(),
+                stack: Stack::new([]),
                 tabs: Row::new([]).on_messages(|cx, index| {
                     if let Some(MsgSelect) = cx.try_pop() {
                         cx.push(MsgSelectIndex(index));
@@ -282,19 +282,23 @@ impl<W: Widget> TabStack<W> {
     }
 }
 
-impl<W: Widget, T: IntoIterator<Item = (Tab, W)>> From<T> for TabStack<W> {
+impl<W: Widget, T, I> From<I> for TabStack<W>
+where
+    Tab: From<T>,
+    I: IntoIterator<Item = (T, W)>,
+{
     #[inline]
-    fn from(iter: T) -> Self {
+    fn from(iter: I) -> Self {
         let iter = iter.into_iter();
         let min_len = iter.size_hint().0;
         let mut stack = Vec::with_capacity(min_len);
         let mut tabs = Vec::with_capacity(min_len);
         for (tab, w) in iter {
             stack.push(w);
-            tabs.push(tab);
+            tabs.push(Tab::from(tab));
         }
         Self {
-            stack: Stack::new_vec(stack),
+            stack: Stack::new(stack),
             tabs: Row::new(tabs),
             ..Default::default()
         }

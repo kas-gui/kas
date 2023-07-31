@@ -264,4 +264,17 @@ impl_scope! {
             }
         }
     }
+
+    impl From<&str> for TextButton {
+        #[inline]
+        fn from(s: &str) -> Self {
+            Self::new(s)
+        }
+    }
+    impl From<String> for TextButton {
+        #[inline]
+        fn from(s: String) -> Self {
+            Self::new(s)
+        }
+    }
 }
