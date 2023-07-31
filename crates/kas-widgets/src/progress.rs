@@ -19,7 +19,7 @@ impl_scope! {
         align: AlignPair,
         direction: D,
         value: f32,
-        value_fn: Box<dyn Fn(&ConfigMgr, &A) -> f32>,
+        value_fn: Box<dyn Fn(&ConfigCx, &A) -> f32>,
     }
 
     impl Self
@@ -31,7 +31,7 @@ impl_scope! {
         /// Closure `value_fn` returns the current progress as a value between
         /// 0.0 and 1.0.
         #[inline]
-        pub fn new(value_fn: impl Fn(&ConfigMgr, &A) -> f32 + 'static) -> Self {
+        pub fn new(value_fn: impl Fn(&ConfigCx, &A) -> f32 + 'static) -> Self {
             ProgressBar::new_with_direction(value_fn, D::default())
         }
     }
@@ -42,7 +42,7 @@ impl_scope! {
         /// Closure `value_fn` returns the current progress as a value between
         /// 0.0 and 1.0.
         #[inline]
-        pub fn right(value_fn: impl Fn(&ConfigMgr, &A) -> f32 + 'static) -> Self {
+        pub fn right(value_fn: impl Fn(&ConfigCx, &A) -> f32 + 'static) -> Self {
             ProgressBar::new(value_fn)
         }
     }
@@ -53,7 +53,7 @@ impl_scope! {
         /// Closure `value_fn` returns the current progress as a value between
         /// 0.0 and 1.0.
         #[inline]
-        pub fn new_with_direction(value_fn: impl Fn(&ConfigMgr, &A) -> f32 + 'static, direction: D) -> Self {
+        pub fn new_with_direction(value_fn: impl Fn(&ConfigCx, &A) -> f32 + 'static, direction: D) -> Self {
             ProgressBar {
                 core: Default::default(),
                 align: Default::default(),
@@ -82,8 +82,8 @@ impl_scope! {
             size_mgr.feature(Feature::ProgressBar(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
-            let rect = mgr.align_feature(Feature::ProgressBar(self.direction()), rect, self.align);
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+            let rect = cx.align_feature(Feature::ProgressBar(self.direction()), rect, self.align);
             self.core.rect = rect;
         }
 
@@ -96,7 +96,7 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
+        fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             let value = (self.value_fn)(cx, data);
             self.value = value.clamp(0.0, 1.0);
         }

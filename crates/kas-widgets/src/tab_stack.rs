@@ -94,7 +94,7 @@ impl_scope! {
 
         fn handle_messages(&mut self, data: &W::Data, mgr: &mut EventMgr) {
             if let Some(MsgSelectIndex(index)) = mgr.try_pop() {
-                mgr.config_mgr(|mgr| self.set_active(data, mgr, index));
+                mgr.config_cx(|mgr| self.set_active(data, mgr, index));
             }
         }
     }
@@ -142,8 +142,8 @@ impl<W: Widget> TabStack<W> {
     /// -   `SizeRules` were solved: set layout ([`Layout::set_rect`]) and
     ///     update mouse-cursor target ([`Action::REGION_MOVED`])
     /// -   Otherwise: resize the whole window ([`Action::RESIZE`])
-    pub fn set_active(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize) {
-        self.stack.set_active(data, mgr, index);
+    pub fn set_active(&mut self, data: &W::Data, cx: &mut ConfigCx, index: usize) {
+        self.stack.set_active(data, cx, index);
     }
 
     /// Get a direct reference to the active child widget, if any
@@ -211,9 +211,9 @@ impl<W: Widget> TabStack<W> {
     /// and then [`Action::RESIZE`] will be triggered.
     ///
     /// Returns the new page's index.
-    pub fn push(&mut self, data: &W::Data, mgr: &mut ConfigMgr, tab: Tab, widget: W) -> usize {
-        let ti = self.tabs.push(&(), mgr, tab);
-        let si = self.stack.push(data, mgr, widget);
+    pub fn push(&mut self, data: &W::Data, cx: &mut ConfigCx, tab: Tab, widget: W) -> usize {
+        let ti = self.tabs.push(&(), cx, tab);
+        let si = self.stack.push(data, cx, widget);
         debug_assert_eq!(ti, si);
         si
     }
@@ -234,16 +234,9 @@ impl<W: Widget> TabStack<W> {
     ///
     /// The new child is configured immediately. The active page does not
     /// change.
-    pub fn insert(
-        &mut self,
-        data: &W::Data,
-        mgr: &mut ConfigMgr,
-        index: usize,
-        tab: Tab,
-        widget: W,
-    ) {
-        self.tabs.insert(&(), mgr, index, tab);
-        self.stack.insert(data, mgr, index, widget);
+    pub fn insert(&mut self, data: &W::Data, cx: &mut ConfigCx, index: usize, tab: Tab, widget: W) {
+        self.tabs.insert(&(), cx, index, tab);
+        self.stack.insert(data, cx, index, widget);
     }
 
     /// Removes the child widget at position `index`
@@ -264,8 +257,8 @@ impl<W: Widget> TabStack<W> {
     ///
     /// The new child is configured immediately. If it replaces the active page,
     /// then [`Action::RESIZE`] is triggered.
-    pub fn replace(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize, w: W) -> W {
-        self.stack.replace(data, mgr, index, w)
+    pub fn replace(&mut self, data: &W::Data, cx: &mut ConfigCx, index: usize, w: W) -> W {
+        self.stack.replace(data, cx, index, w)
     }
 
     /// Append child widgets from an iterator
@@ -275,7 +268,7 @@ impl<W: Widget> TabStack<W> {
     pub fn extend<T: IntoIterator<Item = (Tab, W)>>(
         &mut self,
         data: &W::Data,
-        mgr: &mut ConfigMgr,
+        cx: &mut ConfigCx,
         iter: T,
     ) {
         let iter = iter.into_iter();
@@ -283,8 +276,8 @@ impl<W: Widget> TabStack<W> {
         // self.tabs.reserve(min_len);
         // self.stack.reserve(min_len);
         for (tab, w) in iter {
-            self.tabs.push(&(), mgr, tab);
-            self.stack.push(data, mgr, w);
+            self.tabs.push(&(), cx, tab);
+            self.stack.push(data, cx, w);
         }
     }
 }

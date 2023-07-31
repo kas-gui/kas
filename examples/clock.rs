@@ -48,7 +48,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_rect(&mut self, _: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect) {
             // Force to square
             let size = rect.size.0.min(rect.size.1);
             let size = Size::splat(size);
@@ -125,8 +125,8 @@ impl_scope! {
     impl Events for Clock {
         type Data = ();
 
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
-            mgr.request_timer_update(self.id(), 0, Duration::new(0, 0), true);
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.request_timer_update(self.id(), 0, Duration::new(0, 0), true);
         }
 
         fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {

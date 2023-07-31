@@ -82,12 +82,12 @@ impl Tree {
 
             fn set_rect(
                 &mut self,
-                mgr: &mut ::kas::event::ConfigMgr,
+                cx: &mut ::kas::event::ConfigCx,
                 rect: ::kas::geom::Rect,
             ) {
                 use ::kas::{Layout, layout};
                 #core_path.rect = rect;
-                (#layout).set_rect(mgr, rect);
+                (#layout).set_rect(cx, rect);
             }
 
             fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
@@ -225,7 +225,7 @@ impl Tree {
 
                 fn pre_configure(
                     &mut self,
-                    _: &mut ::kas::event::ConfigMgr,
+                    _: &mut ::kas::event::ConfigCx,
                     id: ::kas::WidgetId,
                 ) {
                     self.id = id;

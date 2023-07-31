@@ -285,11 +285,11 @@ impl_scope! {
             size_mgr.feature(Feature::ScrollBar(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
-            let rect = mgr.align_feature(Feature::ScrollBar(self.direction()), rect, self.align);
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+            let rect = cx.align_feature(Feature::ScrollBar(self.direction()), rect, self.align);
             self.core.rect = rect;
-            self.handle.set_rect(mgr, rect);
-            self.min_handle_len = mgr.size_mgr().handle_len();
+            self.handle.set_rect(cx, rect);
+            self.min_handle_len = cx.size_mgr().handle_len();
             let _ = self.update_widgets();
         }
 
@@ -474,12 +474,12 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
             let pos = rect.pos;
             let mut child_size = rect.size;
 
-            let bar_width = mgr.size_mgr().scroll_bar_width();
+            let bar_width = cx.size_mgr().scroll_bar_width();
             if self.mode == ScrollBarMode::Auto {
                 self.show_bars = self.inner.scroll_axes(child_size);
             }
@@ -491,19 +491,19 @@ impl_scope! {
             }
 
             let child_rect = Rect::new(pos, child_size);
-            self.inner.set_rect(mgr, child_rect);
+            self.inner.set_rect(cx, child_rect);
             let max_scroll_offset = self.inner.max_scroll_offset();
 
             if self.show_bars.0 {
                 let pos = Coord(pos.0, rect.pos2().1 - bar_width);
                 let size = Size::new(child_size.0, bar_width);
-                self.horiz_bar.set_rect(mgr, Rect { pos, size });
+                self.horiz_bar.set_rect(cx, Rect { pos, size });
                 let _ = self.horiz_bar.set_limits(max_scroll_offset.0, rect.size.0);
             }
             if self.show_bars.1 {
                 let pos = Coord(rect.pos2().0 - bar_width, pos.1);
                 let size = Size::new(bar_width, self.core.rect.size.1);
-                self.vert_bar.set_rect(mgr, Rect { pos, size });
+                self.vert_bar.set_rect(cx, Rect { pos, size });
                 let _ = self.vert_bar.set_limits(max_scroll_offset.1, rect.size.1);
             }
         }

@@ -5,7 +5,7 @@
 
 //! Layout and LayoutExt traits
 
-use crate::event::ConfigMgr;
+use crate::event::ConfigCx;
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
@@ -159,7 +159,7 @@ pub trait Layout {
     /// regardless of the [`Stretch`] policy used. If the widget should never
     /// stretch, it must align itself.
     /// Example: the `CheckBox` widget uses an [`AlignPair`] (set from
-    /// `size_rules`'s [`AxisInfo`]) and uses [`ConfigMgr::align_feature`].
+    /// `size_rules`'s [`AxisInfo`]) and uses [`ConfigCx::align_feature`].
     /// Another example: `Label` uses a `Text` object which handles alignment
     /// internally.
     ///
@@ -167,7 +167,7 @@ pub trait Layout {
     /// field of `widget_core!()` to the input `rect`.
     ///
     /// [`Stretch`]: crate::layout::Stretch
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect);
 
     /// Navigation in spatial order
     ///

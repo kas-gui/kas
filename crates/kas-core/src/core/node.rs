@@ -6,7 +6,7 @@
 //! Node API for widgets
 
 use super::Widget;
-use crate::event::{ConfigMgr, Event, EventMgr, Response};
+use crate::event::{ConfigCx, Event, EventMgr, Response};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
@@ -25,14 +25,14 @@ trait NodeT {
     fn for_child_node(&mut self, index: usize, f: Box<dyn FnOnce(Node<'_>) + '_>);
 
     fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect);
 
     fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize>;
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
     fn _draw(&mut self, draw: DrawMgr);
 
-    fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId);
-    fn _update(&mut self, cx: &mut ConfigMgr);
+    fn _configure(&mut self, cx: &mut ConfigCx, id: WidgetId);
+    fn _update(&mut self, cx: &mut ConfigCx);
 
     fn _send(&mut self, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response;
     fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: Erased);
@@ -73,8 +73,8 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
     fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         self.0.size_rules(size_mgr, axis)
     }
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
-        self.0.set_rect(mgr, rect);
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        self.0.set_rect(cx, rect);
     }
 
     fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
@@ -87,11 +87,11 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
         draw.recurse(&mut self.0);
     }
 
-    fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId) {
-        self.0._configure(self.1, cx, id);
+    fn _configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
+        self.0._configure(cx, self.1, id);
     }
-    fn _update(&mut self, cx: &mut ConfigMgr) {
-        self.0._update(self.1, cx);
+    fn _update(&mut self, cx: &mut ConfigCx) {
+        self.0._update(cx, self.1);
     }
 
     fn _send(&mut self, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response {
@@ -287,8 +287,8 @@ impl<'a> Node<'a> {
     }
 
     /// Set size and position
-    pub(crate) fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
-        self.0.set_rect(mgr, rect);
+    pub(crate) fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        self.0.set_rect(cx, rect);
     }
 
     /// Navigation in spatial order
@@ -316,7 +316,7 @@ impl<'a> Node<'a> {
     }
 
     /// Internal method: configure recursively
-    pub(crate) fn _configure(&mut self, cx: &mut ConfigMgr, id: WidgetId) {
+    pub(crate) fn _configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
                 self.0._configure(self.1, cx, id);
@@ -327,7 +327,7 @@ impl<'a> Node<'a> {
     }
 
     /// Internal method: update recursively
-    pub(crate) fn _update(&mut self, cx: &mut ConfigMgr) {
+    pub(crate) fn _update(&mut self, cx: &mut ConfigCx) {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
                 self.0._update(self.1, cx);

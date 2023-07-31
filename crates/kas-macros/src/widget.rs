@@ -504,10 +504,10 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             #[inline]
             fn set_rect(
                 &mut self,
-                mgr: &mut ::kas::event::ConfigMgr,
+                cx: &mut ::kas::event::ConfigCx,
                 rect: ::kas::geom::Rect,
             ) {
-                self.#inner.set_rect(mgr, rect);
+                self.#inner.set_rect(cx, rect);
             }
         };
         fn_nav_next = Some(quote! {
@@ -553,19 +553,19 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
                 fn _configure(
                     &mut self,
+                    cx: &mut ::kas::event::ConfigCx,
                     data: &Self::Data,
-                    cx: &mut ::kas::event::ConfigMgr,
                     id: ::kas::WidgetId,
                 ) {
-                    self.#inner._configure(data, cx, id);
+                    self.#inner._configure(cx, data, id);
                 }
 
                 fn _update(
                     &mut self,
+                    cx: &mut ::kas::event::ConfigCx,
                     data: &Self::Data,
-                    cx: &mut ::kas::event::ConfigMgr,
                 ) {
-                    self.#inner._update(data, cx);
+                    self.#inner._update(cx, data);
                 }
 
                 fn _send(
@@ -709,7 +709,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 }
             });
             set_rect = quote! {
-                <Self as ::kas::layout::AutoLayout>::set_rect(self, mgr, rect);
+                <Self as ::kas::layout::AutoLayout>::set_rect(self, cx, rect);
             };
             find_id = quote! { <Self as ::kas::layout::AutoLayout>::find_id(self, coord) };
             fn_draw = Some(quote! {
@@ -727,7 +727,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         fn_set_rect = quote! {
             fn set_rect(
                 &mut self,
-                mgr: &mut ::kas::event::ConfigMgr,
+                cx: &mut ::kas::event::ConfigCx,
                 rect: ::kas::geom::Rect,
             ) {
                 #set_rect
@@ -740,7 +740,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         };
 
         let fn_pre_configure = quote! {
-            fn pre_configure(&mut self, _: &mut ::kas::event::ConfigMgr, id: ::kas::WidgetId) {
+            fn pre_configure(&mut self, _: &mut ::kas::event::ConfigCx, id: ::kas::WidgetId) {
                 self.#core.id = id;
             }
         };
@@ -997,19 +997,19 @@ fn widget_recursive_methods() -> Toks {
     quote! {
         fn _configure(
             &mut self,
+            cx: &mut ::kas::event::ConfigCx,
             data: &Self::Data,
-            cx: &mut ::kas::event::ConfigMgr,
             id: ::kas::WidgetId,
         ) {
-            ::kas::impls::_configure(self, data, cx, id);
+            ::kas::impls::_configure(self, cx, data, id);
         }
 
         fn _update(
             &mut self,
+            cx: &mut ::kas::event::ConfigCx,
             data: &Self::Data,
-            cx: &mut ::kas::event::ConfigMgr,
         ) {
-            ::kas::impls::_update(self, data, cx);
+            ::kas::impls::_update(self, cx, data);
         }
 
         fn _send(

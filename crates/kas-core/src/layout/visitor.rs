@@ -13,7 +13,7 @@ use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
 use super::{RulesSetter, RulesSolver};
 use crate::draw::color::Rgb;
-use crate::event::ConfigMgr;
+use crate::event::ConfigCx;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::theme::{Background, DrawMgr, FrameStyle, MarginStyle, SizeMgr};
 use crate::WidgetId;
@@ -33,7 +33,7 @@ pub trait Visitable {
     /// Set size and position
     ///
     /// This method is identical to [`Layout::set_rect`].
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect);
 
     /// Translate a coordinate to a [`WidgetId`]
     ///
@@ -236,24 +236,24 @@ impl<'a> Visitor<'a> {
 
     /// Apply a given `rect` to self
     #[inline]
-    pub fn set_rect(mut self, mgr: &mut ConfigMgr, rect: Rect) {
-        self.set_rect_(mgr, rect);
+    pub fn set_rect(mut self, cx: &mut ConfigCx, rect: Rect) {
+        self.set_rect_(cx, rect);
     }
-    fn set_rect_(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+    fn set_rect_(&mut self, cx: &mut ConfigCx, rect: Rect) {
         match &mut self.layout {
-            LayoutType::BoxComponent(layout) => layout.set_rect(mgr, rect),
-            LayoutType::Single(child) => child.set_rect(mgr, rect),
-            LayoutType::Align(layout, _) => layout.set_rect_(mgr, rect),
-            LayoutType::AlignSingle(child, _) => child.set_rect(mgr, rect),
-            LayoutType::Pack(layout, stor, _) => layout.set_rect_(mgr, stor.aligned_rect(rect)),
-            LayoutType::Margins(child, _, _) => child.set_rect_(mgr, rect),
+            LayoutType::BoxComponent(layout) => layout.set_rect(cx, rect),
+            LayoutType::Single(child) => child.set_rect(cx, rect),
+            LayoutType::Align(layout, _) => layout.set_rect_(cx, rect),
+            LayoutType::AlignSingle(child, _) => child.set_rect(cx, rect),
+            LayoutType::Pack(layout, stor, _) => layout.set_rect_(cx, stor.aligned_rect(rect)),
+            LayoutType::Margins(child, _, _) => child.set_rect_(cx, rect),
             LayoutType::Frame(child, storage, _) | LayoutType::Button(child, storage, _) => {
                 storage.rect = rect;
                 let child_rect = Rect {
                     pos: rect.pos + storage.offset,
                     size: rect.size - storage.size,
                 };
-                child.set_rect_(mgr, child_rect);
+                child.set_rect_(cx, child_rect);
             }
         }
     }
@@ -327,12 +327,12 @@ where
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
         let dim = (self.direction, self.children.len());
         let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, self.data);
 
         for (n, child) in (&mut self.children).enumerate() {
-            child.set_rect(mgr, setter.child_rect(self.data, n));
+            child.set_rect(cx, setter.child_rect(self.data, n));
         }
     }
 
@@ -368,9 +368,9 @@ where
         rules
     }
 
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
         for child in &mut self.children {
-            child.set_rect(mgr, rect);
+            child.set_rect(cx, rect);
         }
     }
 
@@ -406,12 +406,12 @@ impl<'a, W: Layout, D: Directional> Visitable for Slice<'a, W, D> {
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
         let dim = (self.direction, self.children.len());
         let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, self.data);
 
         for (n, child) in self.children.iter_mut().enumerate() {
-            child.set_rect(mgr, setter.child_rect(self.data, n));
+            child.set_rect(cx, setter.child_rect(self.data, n));
         }
     }
 
@@ -447,10 +447,10 @@ where
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
         let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, self.data);
         for (info, child) in &mut self.children {
-            child.set_rect(mgr, setter.child_rect(self.data, info));
+            child.set_rect(cx, setter.child_rect(self.data, info));
         }
     }
 

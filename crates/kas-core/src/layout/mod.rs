@@ -46,7 +46,7 @@ mod storage;
 mod visitor;
 
 use crate::dir::{Direction, Directional, Directions};
-use crate::event::ConfigMgr;
+use crate::event::ConfigCx;
 use crate::geom::{Coord, Rect};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::WidgetId;
@@ -258,7 +258,7 @@ pub trait AutoLayout {
     /// Set size and position
     ///
     /// This functions identically to [`Layout::set_rect`].
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect);
 
     /// Translate a coordinate to a [`WidgetId`]
     ///

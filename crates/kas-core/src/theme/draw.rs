@@ -9,7 +9,7 @@ use super::{FrameStyle, MarkStyle, SelectionStyle, SizeMgr, TextClass, ThemeSize
 use crate::dir::Direction;
 use crate::draw::color::Rgb;
 use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType};
-use crate::event::{ConfigMgr, EventState};
+use crate::event::{ConfigCx, EventState};
 use crate::geom::{Offset, Rect};
 use crate::text::{TextApi, TextDisplay};
 use crate::{autoimpl, Action, Layout, WidgetId};
@@ -97,11 +97,11 @@ impl<'a> DrawMgr<'a> {
         SizeMgr::new(self.h.components().0)
     }
 
-    /// Access a [`ConfigMgr`]
-    pub fn config_mgr<F: FnOnce(&mut ConfigMgr) -> T, T>(&mut self, f: F) -> T {
+    /// Access a [`ConfigCx`]
+    pub fn config_cx<F: FnOnce(&mut ConfigCx) -> T, T>(&mut self, f: F) -> T {
         let (sh, draw, ev) = self.h.components();
-        let mut mgr = ConfigMgr::new(sh, draw.shared(), ev);
-        f(&mut mgr)
+        let mut cx = ConfigCx::new(sh, draw.shared(), ev);
+        f(&mut cx)
     }
 
     /// Access a [`DrawShared`]
@@ -208,7 +208,7 @@ impl<'a> DrawMgr<'a> {
     /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
     /// scrolls, `rect` should be the size of the whole text, not the window.
     ///
-    /// [`ConfigMgr::text_set_size`] should be called prior to this method to
+    /// [`ConfigCx::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text(&mut self, rect: Rect, text: impl AsRef<TextDisplay>, class: TextClass) {
         self.h.text(&self.id, rect, text.as_ref(), class);
@@ -223,7 +223,7 @@ impl<'a> DrawMgr<'a> {
     /// emphasis, text size. In addition, this method supports underline and
     /// strikethrough effects.
     ///
-    /// [`ConfigMgr::text_set_size`] should be called prior to this method to
+    /// [`ConfigCx::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text_effects(&mut self, rect: Rect, text: &dyn TextApi, class: TextClass) {
         self.h.text_effects(&self.id, rect, text, class);
@@ -261,7 +261,7 @@ impl<'a> DrawMgr<'a> {
     /// The text cursor is draw from `rect.pos` and clipped to `rect`. If the text
     /// scrolls, `rect` should be the size of the whole text, not the window.
     ///
-    /// [`ConfigMgr::text_set_size`] should be called prior to this method to
+    /// [`ConfigCx::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text_cursor(
         &mut self,
@@ -417,7 +417,7 @@ pub trait ThemeDraw {
 
     /// Draw text
     ///
-    /// [`ConfigMgr::text_set_size`] should be called prior to this method to
+    /// [`ConfigCx::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text(&mut self, id: &WidgetId, rect: Rect, text: &TextDisplay, class: TextClass);
 
@@ -427,7 +427,7 @@ pub trait ThemeDraw {
     /// emphasis, text size. In addition, this method supports underline and
     /// strikethrough effects.
     ///
-    /// [`ConfigMgr::text_set_size`] should be called prior to this method to
+    /// [`ConfigCx::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text_effects(&mut self, id: &WidgetId, rect: Rect, text: &dyn TextApi, class: TextClass);
 
@@ -443,7 +443,7 @@ pub trait ThemeDraw {
 
     /// Draw an edit marker at the given `byte` index on this `text`
     ///
-    /// [`ConfigMgr::text_set_size`] should be called prior to this method to
+    /// [`ConfigCx::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text_cursor(
         &mut self,

@@ -601,20 +601,20 @@ impl<'a> EventMgr<'a> {
     ///
     /// Note that, when handling events, this method returns the *old* state.
     ///
-    /// This is a shortcut to [`ConfigMgr::configure`].
+    /// This is a shortcut to [`ConfigCx::configure`].
     #[inline]
     pub fn configure(&mut self, mut widget: Node<'_>, id: WidgetId) {
-        self.config_mgr(|mgr| widget._configure(mgr, id));
+        self.config_cx(|cx| widget._configure(cx, id));
     }
 
     /// Update a widget
     ///
     /// [`Events::update`] will be called recursively on each child and finally
     /// `self`. If a widget stores state which it passes to children as input
-    /// data, it should call this (or [`ConfigMgr::update`]) after mutating the state.
+    /// data, it should call this (or [`ConfigCx::update`]) after mutating the state.
     #[inline]
     pub fn update(&mut self, mut widget: Node<'_>) {
-        self.config_mgr(|mgr| widget._update(mgr));
+        self.config_cx(|cx| widget._update(cx));
     }
 
     /// Get the index of the last child visited
@@ -853,13 +853,13 @@ impl<'a> EventMgr<'a> {
         result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
     }
 
-    /// Access a [`ConfigMgr`]
-    pub fn config_mgr<F: FnOnce(&mut ConfigMgr) -> T, T>(&mut self, f: F) -> T {
+    /// Access a [`ConfigCx`]
+    pub fn config_cx<F: FnOnce(&mut ConfigCx) -> T, T>(&mut self, f: F) -> T {
         let mut result = None;
         self.shell
             .size_and_draw_shared(Box::new(|size, draw_shared| {
-                let mut mgr = ConfigMgr::new(size, draw_shared, self.state);
-                result = Some(f(&mut mgr));
+                let mut cx = ConfigCx::new(size, draw_shared, self.state);
+                result = Some(f(&mut cx));
             }));
         result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
     }

@@ -5,7 +5,7 @@
 
 //! Event adapters
 
-use kas::event::ConfigMgr;
+use kas::event::ConfigCx;
 use kas::{autoimpl, impl_scope, Events, Widget};
 
 impl_scope! {
@@ -19,13 +19,13 @@ impl_scope! {
         core: widget_core!(),
         #[widget]
         pub inner: W,
-        f: Box<dyn Fn(&mut ConfigMgr, &mut W, &W::Data)>,
+        f: Box<dyn Fn(&mut ConfigCx, &mut W, &W::Data)>,
     }
 
     impl Self {
         /// Construct
         #[inline]
-        pub fn new<F: Fn(&mut ConfigMgr, &mut W, &W::Data) + 'static>(inner: W, f: F) -> Self {
+        pub fn new<F: Fn(&mut ConfigCx, &mut W, &W::Data) + 'static>(inner: W, f: F) -> Self {
             OnUpdate { core: Default::default(), inner, f: Box::new(f) }
         }
     }
@@ -33,7 +33,7 @@ impl_scope! {
     impl Events for Self {
         type Data = W::Data;
 
-        fn update(&mut self, data: &W::Data, cx: &mut ConfigMgr) {
+        fn update(&mut self, cx: &mut ConfigCx, data: &W::Data) {
             (self.f)(cx, &mut self.inner, data);
         }
     }

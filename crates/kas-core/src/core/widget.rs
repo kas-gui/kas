@@ -6,7 +6,7 @@
 //! Widget and Events traits
 
 use super::{Layout, Node};
-use crate::event::{ConfigMgr, Event, EventMgr, Response, Scroll};
+use crate::event::{ConfigCx, Event, EventMgr, Response, Scroll};
 use crate::{Erased, WidgetId};
 use kas_macros::autoimpl;
 
@@ -41,12 +41,12 @@ pub trait Events: Sized {
     ///
     /// This method must set `self.core.id = id`.
     /// The default (macro-provided) impl does so.
-    fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId);
+    fn pre_configure(&mut self, cx: &mut ConfigCx, id: WidgetId);
 
     /// Configure widget
     ///
     /// Widgets are *configured* on window creation or dynamically via the
-    /// parent calling [`ConfigMgr::configure`]. Parent widgets are responsible
+    /// parent calling [`ConfigCx::configure`]. Parent widgets are responsible
     /// for ensuring that children are configured before calling
     /// [`Layout::size_rules`] or [`Layout::set_rect`]. Configuration may be
     /// repeated and may be used as a mechanism to change a child's [`WidgetId`].
@@ -55,14 +55,14 @@ pub trait Events: Sized {
     /// resources, including resources affecting [`Layout::size_rules`].
     ///
     /// The window's scale factor (and thus any sizes available through
-    /// [`ConfigMgr::size_mgr`]) may not be correct initially (some platforms
+    /// [`ConfigCx::size_mgr`]) may not be correct initially (some platforms
     /// construct all windows using scale factor 1) and/or may change in the
     /// future. Changes to the scale factor result in recalculation of
     /// [`Layout::size_rules`] but not repeated configuration.
     ///
     /// The default implementation does nothing.
-    fn configure(&mut self, mgr: &mut ConfigMgr) {
-        let _ = mgr;
+    fn configure(&mut self, cx: &mut ConfigCx) {
+        let _ = cx;
     }
 
     /// Update data
@@ -74,15 +74,15 @@ pub trait Events: Sized {
     ///
     /// This method is called on the parent widget before children get updated.
     ///
-    /// This method may call [`ConfigMgr::restrict_recursion_to`].
+    /// This method may call [`ConfigCx::restrict_recursion_to`].
     /// Widgets should be updated even if their data is `()` or is unchanged.
     /// The only valid reasons not to update a child is because (a) it is not
     /// visible (for example, the `Stack` widget updates only the visible page)
     /// or (b) another method is used to update the child.
     ///
     /// The default implementation does nothing.
-    fn update(&mut self, mgr: &mut ConfigMgr, data: &Self::Data) {
-        let _ = (mgr, data);
+    fn update(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+        let _ = (cx, data);
     }
 
     /// Is this widget navigable via <kbd>Tab</kbd> key?
@@ -317,9 +317,9 @@ pub enum NavAdvance {
 ///             size_mgr.text_rules(&mut self.label, self.class, axis)
 ///         }
 ///
-///         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+///         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
 ///             self.core.rect = rect;
-///             mgr.text_set_size(&mut self.label, self.class, rect.size, None);
+///             cx.text_set_size(&mut self.label, self.class, rect.size, None);
 ///         }
 ///
 ///         fn draw(&mut self, mut draw: DrawMgr) {
@@ -355,8 +355,8 @@ pub enum NavAdvance {
 ///     impl Events for Self {
 ///         type Data = ();
 ///
-///         fn configure(&mut self, mgr: &mut ConfigMgr) {
-///             mgr.add_accel_keys(self.id_ref(), self.label.keys());
+///         fn configure(&mut self, cx: &mut ConfigCx) {
+///             cx.add_accel_keys(self.id_ref(), self.label.keys());
 ///         }
 ///
 ///         fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
@@ -403,12 +403,12 @@ pub trait Widget: Layout {
     /// Internal method: configure recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn _configure(&mut self, cx: &mut ConfigMgr, data: &Self::Data, id: WidgetId);
+    fn _configure(&mut self, cx: &mut ConfigCx, data: &Self::Data, id: WidgetId);
 
     /// Internal method: update recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn _update(&mut self, cx: &mut ConfigMgr, data: &Self::Data);
+    fn _update(&mut self, cx: &mut ConfigCx, data: &Self::Data);
 
     /// Internal method: send recursively
     ///

@@ -167,7 +167,7 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
     pub fn push_toggle<M: Debug + 'static>(
         &mut self,
         label: impl Into<AccelString>,
-        state_fn: impl Fn(&ConfigMgr, &Data) -> bool + 'static,
+        state_fn: impl Fn(&ConfigCx, &Data) -> bool + 'static,
         message_fn: impl Fn(bool) -> M + 'static,
     ) {
         self.menu
@@ -178,7 +178,7 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
     pub fn toggle<M: Debug + 'static>(
         mut self,
         label: impl Into<AccelString>,
-        state_fn: impl Fn(&ConfigMgr, &Data) -> bool + 'static,
+        state_fn: impl Fn(&ConfigCx, &Data) -> bool + 'static,
         message_fn: impl Fn(bool) -> M + 'static,
     ) -> Self {
         self.push_toggle(label, state_fn, message_fn);

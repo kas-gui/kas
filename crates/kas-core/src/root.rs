@@ -6,7 +6,7 @@
 //! Window widgets
 
 use crate::dir::Directional;
-use crate::event::{ConfigMgr, EventMgr, Scroll};
+use crate::event::{ConfigCx, EventMgr, Scroll};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, FrameStyle, SizeMgr};
@@ -76,7 +76,7 @@ impl_scope! {
         restrictions: (bool, bool),
         drag_anywhere: bool,
         transparent: bool,
-        config_fn: Option<Box<dyn Fn(&Self, &mut ConfigMgr)>>,
+        config_fn: Option<Box<dyn Fn(&Self, &mut ConfigCx)>>,
         #[widget(&())]
         title_bar: TitleBar,
         #[widget]
@@ -112,17 +112,17 @@ impl_scope! {
             }
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, mut rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect) {
             self.core.rect = rect;
             rect.pos += self.dec_offset;
             rect.size -= self.dec_size;
             if self.bar_h > 0 {
                 let bar_size = Size(rect.size.0, self.bar_h);
-                self.title_bar.set_rect(mgr, Rect::new(rect.pos, bar_size));
+                self.title_bar.set_rect(cx, Rect::new(rect.pos, bar_size));
                 rect.pos.1 += self.bar_h;
                 rect.size -= Size(0, self.bar_h);
             }
-            self.w.set_rect(mgr, rect);
+            self.w.set_rect(cx, rect);
         }
 
         fn find_id(&mut self, _: Coord) -> Option<WidgetId> {
@@ -172,8 +172,8 @@ impl_scope! {
     impl Events for Self {
         type Data = Data;
 
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
-            if mgr.platform().is_wayland() && self.decorations == Decorations::Server {
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            if cx.platform().is_wayland() && self.decorations == Decorations::Server {
                 // Wayland's base protocol does not support server-side decorations
                 // TODO: Wayland has extensions for this; server-side is still
                 // usually preferred where supported (e.g. KDE).
@@ -181,13 +181,13 @@ impl_scope! {
             }
 
             if let Some(ref f) = self.config_fn {
-                f(self, mgr);
+                f(self, cx);
             }
         }
 
         fn handle_scroll(&mut self, data: &Data, mgr: &mut EventMgr, _: Scroll) {
             // Something was scrolled; update pop-up translations
-            mgr.config_mgr(|mgr| self.resize_popups(data, mgr));
+            mgr.config_cx(|mgr| self.resize_popups(data, mgr));
         }
     }
 }
@@ -314,7 +314,7 @@ impl<Data: 'static> Window<Data> {
     ///
     /// This closure is called before sizing, drawing and event handling.
     /// It may be called more than once.
-    pub fn on_configure(mut self, config_fn: impl Fn(&Self, &mut ConfigMgr) + 'static) -> Self {
+    pub fn on_configure(mut self, config_fn: impl Fn(&Self, &mut ConfigCx) + 'static) -> Self {
         self.config_fn = Some(Box::new(config_fn));
         self
     }
@@ -325,7 +325,7 @@ impl<Data: 'static> Window<Data> {
     pub fn add_popup(&mut self, data: &Data, mgr: &mut EventMgr, id: WindowId, popup: kas::Popup) {
         let index = self.popups.len();
         self.popups.push((id, popup, Offset::ZERO));
-        mgr.config_mgr(|mgr| self.resize_popup(data, mgr, index));
+        mgr.config_cx(|mgr| self.resize_popup(data, mgr, index));
         mgr.send_action(Action::REDRAW);
     }
 
@@ -346,9 +346,9 @@ impl<Data: 'static> Window<Data> {
     ///
     /// This is called immediately after [`Layout::set_rect`] to resize
     /// existing pop-ups.
-    pub fn resize_popups(&mut self, data: &Data, mgr: &mut ConfigMgr) {
+    pub fn resize_popups(&mut self, data: &Data, cx: &mut ConfigCx) {
         for i in 0..self.popups.len() {
-            self.resize_popup(data, mgr, i);
+            self.resize_popup(data, cx, i);
         }
     }
 }
@@ -383,7 +383,7 @@ fn find_rect(widget: &dyn Layout, id: WidgetId, mut translation: Offset) -> Opti
 }
 
 impl<Data: 'static> Window<Data> {
-    fn resize_popup(&mut self, data: &Data, mgr: &mut ConfigMgr, index: usize) {
+    fn resize_popup(&mut self, data: &Data, cx: &mut ConfigCx, index: usize) {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
         let r = self.core.rect;
@@ -419,7 +419,7 @@ impl<Data: 'static> Window<Data> {
         *translation = t;
         let r = r + t; // work in translated coordinate space
         self.w.as_node(data).for_id(&popup.id, |mut node| {
-            let mut cache = layout::SolveCache::find_constraints(node.re(), mgr.size_mgr());
+            let mut cache = layout::SolveCache::find_constraints(node.re(), cx.size_mgr());
             let ideal = cache.ideal(false);
             let m = cache.margins();
 
@@ -433,7 +433,7 @@ impl<Data: 'static> Window<Data> {
                 Rect::new(Coord(x, y), Size::new(w, h))
             };
 
-            cache.apply_rect(node.re(), mgr, rect, false);
+            cache.apply_rect(node.re(), cx, rect, false);
             cache.print_widget_heirarchy(node.as_layout());
         });
     }

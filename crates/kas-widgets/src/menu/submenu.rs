@@ -152,14 +152,14 @@ impl_scope! {
     impl Events for Self {
         type Data = Data;
 
-        fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId) {
+        fn pre_configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
             self.core.id = id;
             // FIXME: new layer should apply to self.list but not to self.label.
             // We don't currently have a way to do that. Possibly we should
             // remove `EventMgr::add_accel_keys` bindings, simply checking all
             // visible widgets whenever a shortcut key is pressed (also related:
             // currently all pages of a TabStack have active shortcut keys).
-            mgr.new_accel_layer(self.id(), true);
+            cx.new_accel_layer(self.id(), true);
         }
 
         fn navigable(&self) -> bool {
@@ -363,18 +363,18 @@ impl_scope! {
             solver.finish(store)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
             let store = &mut self.store;
             let mut setter = layout::GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, store);
 
             // Assumption: frame inner margin is at least as large as content margins
             let child_rules = SizeRules::EMPTY;
-            let (_, frame_x, frame_w) = mgr
+            let (_, frame_x, frame_w) = cx
                 .size_mgr()
                 .frame(FrameStyle::MenuEntry, Direction::Right)
                 .surround(child_rules);
-            let (_, frame_y, frame_h) = mgr
+            let (_, frame_y, frame_h) = cx
                 .size_mgr()
                 .frame(FrameStyle::MenuEntry, Direction::Down)
                 .surround(child_rules);
@@ -390,28 +390,28 @@ impl_scope! {
                 let row = u32::conv(row);
                 let child_rect = setter.child_rect(store, menu_view_row_info(row));
                 // Note: we are required to call child.set_rect even if sub_items are used
-                child.set_rect(mgr, child_rect);
+                child.set_rect(cx, child_rect);
 
                 if let Some(items) = child.sub_items() {
                     if let Some(w) = items.toggle {
                         let info = layout::GridChildInfo::new(0, row);
-                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)));
+                        w.set_rect(cx, subtract_frame(setter.child_rect(store, info)));
                     }
                     if let Some(w) = items.icon {
                         let info = layout::GridChildInfo::new(1, row);
-                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)));
+                        w.set_rect(cx, subtract_frame(setter.child_rect(store, info)));
                     }
                     if let Some(w) = items.label {
                         let info = layout::GridChildInfo::new(2, row);
-                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)));
+                        w.set_rect(cx, subtract_frame(setter.child_rect(store, info)));
                     }
                     if let Some(w) = items.label2 {
                         let info = layout::GridChildInfo::new(3, row);
-                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)));
+                        w.set_rect(cx, subtract_frame(setter.child_rect(store, info)));
                     }
                     if let Some(w) = items.submenu {
                         let info = layout::GridChildInfo::new(4, row);
-                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)));
+                        w.set_rect(cx, subtract_frame(setter.child_rect(store, info)));
                     }
                 }
             }

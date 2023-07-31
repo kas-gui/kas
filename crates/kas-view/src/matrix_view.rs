@@ -252,7 +252,7 @@ impl_scope! {
             }
         }
 
-        fn update_widgets(&mut self, data: &A, mgr: &mut ConfigMgr) -> PositionSolver {
+        fn update_widgets(&mut self, cx: &mut ConfigCx, data: &A) -> PositionSolver {
             let time = Instant::now();
 
             let offset = self.scroll_offset();
@@ -296,12 +296,12 @@ impl_scope! {
                         self.driver.set_key(&mut w.widget, &key);
 
                         if let Some(item) = data.borrow(&key) {
-                            mgr.configure(w.widget.as_node(item.borrow()), id);
+                            cx.configure(w.widget.as_node(item.borrow()), id);
 
                             w.key = Some(key);
                             solve_size_rules(
                                 &mut w.widget,
-                                mgr.size_mgr(),
+                                cx.size_mgr(),
                                 Some(self.child_size.0),
                                 Some(self.child_size.1),
                                 self.align_hints.horiz,
@@ -311,9 +311,9 @@ impl_scope! {
                             w.key = None; // disables drawing and clicking
                         }
                     } else if let Some(item) = data.borrow(&key) {
-                        mgr.update(w.widget.as_node(item.borrow()));
+                        cx.update(w.widget.as_node(item.borrow()));
                     }
-                    w.widget.set_rect(mgr, solver.rect(ci, ri));
+                    w.widget.set_rect(cx, solver.rect(ci, ri));
                 }
             }
 
@@ -435,7 +435,7 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
 
             let avail = rect.size - self.frame_size;
@@ -472,7 +472,7 @@ impl_scope! {
             }
 
             // Widgets need configuring and updating: do so by updating self.
-            mgr.request_update(self.id());
+            cx.request_update(self.id());
         }
 
         #[inline]
@@ -519,7 +519,7 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
+        fn configure(&mut self, cx: &mut ConfigCx) {
             if self.widgets.is_empty() {
                 // Initial configure: ensure some widgets are loaded to allow
                 // better sizing of self.
@@ -535,10 +535,10 @@ impl_scope! {
                 self.alloc_len = self.ideal_len;
             }
 
-            mgr.register_nav_fallback(self.id());
+            cx.register_nav_fallback(self.id());
         }
 
-        fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
+        fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             self.selection.retain(|key| data.contains_key(key));
 
             let (d_cols, d_rows) = data.len();
@@ -553,7 +553,7 @@ impl_scope! {
             let content_size = (skip.cwise_mul(data_len) - self.child_inter_margin).max(Size::ZERO);
             *cx |= self.scroll.set_sizes(view_size, content_size);
 
-            self.update_widgets(data, cx);
+            self.update_widgets(cx, data);
         }
 
         fn handle_event(&mut self, data: &A, mgr: &mut EventMgr, event: Event) -> Response {
@@ -592,7 +592,7 @@ impl_scope! {
                     return if let Some((ci, ri)) = data_index {
                         // Set nav focus and update scroll position
                         if self.scroll.focus_rect(mgr, solver.rect(ci, ri), self.core.rect) {
-                            solver = mgr.config_mgr(|mgr| self.update_widgets(data, mgr));
+                            solver = mgr.config_cx(|cx| self.update_widgets(cx, data));
                         }
 
                         let index = solver.data_to_child(ci, ri);
@@ -655,7 +655,7 @@ impl_scope! {
                 .scroll
                 .scroll_by_event(mgr, event, self.id(), self.core.rect);
             if moved {
-                mgr.config_mgr(|mgr| self.update_widgets(data, mgr));
+                mgr.config_cx(|cx| self.update_widgets(cx, data));
             }
             response | sber_response
         }
@@ -702,7 +702,7 @@ impl_scope! {
 
         fn handle_scroll(&mut self, data: &A, mgr: &mut EventMgr, scroll: Scroll) {
             self.scroll.scroll(mgr, self.rect(), scroll);
-            mgr.config_mgr(|mgr| self.update_widgets(data, mgr));
+            mgr.config_cx(|cx| self.update_widgets(cx, data));
         }
     }
 
@@ -726,14 +726,14 @@ impl_scope! {
         }
 
         // Non-standard behaviour: do not configure children
-        fn _configure(&mut self, data: &A, cx: &mut ConfigMgr, id: WidgetId) {
+        fn _configure(&mut self, cx: &mut ConfigCx, data: &A, id: WidgetId) {
             self.pre_configure(cx, id);
             self.configure(cx);
-            self.update(data, cx);
+            self.update(cx, data);
         }
 
-        fn _update(&mut self, data: &A, cx: &mut ConfigMgr) {
-            self.update(data, cx);
+        fn _update(&mut self, cx: &mut ConfigCx, data: &A) {
+            self.update(cx, data);
         }
 
         fn _send(
@@ -808,7 +808,7 @@ impl_scope! {
                 };
 
                 if self.scroll.focus_rect(cx, solver.rect(ci, ri), self.core.rect) {
-                    solver = cx.config_mgr(|mgr| self.update_widgets(data, mgr));
+                    solver = cx.config_cx(|cx| self.update_widgets(cx, data));
                 }
 
                 let index = solver.data_to_child(ci, ri);

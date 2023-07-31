@@ -16,7 +16,7 @@ bitflags! {
     /// assignments are supported by both `Action` and [`event::EventMgr`].
     ///
     /// Users receiving a value of this type from a widget update method should
-    /// usually handle with `*mgr |= action;`. Before the event loop starts
+    /// usually handle with `*cx |= action;`. Before the event loop starts
     /// (`toolkit.run()`) or if the widget in question is not part of a UI these
     /// values can be ignored.
     #[must_use]

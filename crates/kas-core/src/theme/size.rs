@@ -16,7 +16,7 @@ use crate::text::TextApi;
 
 #[allow(unused)] use crate::text::TextApiExt;
 #[allow(unused)]
-use crate::{event::ConfigMgr, layout::Stretch, theme::DrawMgr};
+use crate::{event::ConfigCx, layout::Stretch, theme::DrawMgr};
 
 /// Size and scale interface
 ///
@@ -179,7 +179,7 @@ impl<'a> SizeMgr<'a> {
     ///
     /// Note: this method partially prepares the `text` object. It is not
     /// required to call this method but it is required to call
-    /// [`ConfigMgr::text_set_size`] before text display for correct results.
+    /// [`ConfigCx::text_set_size`] before text display for correct results.
     pub fn text_rules(
         &self,
         text: &mut dyn TextApi,

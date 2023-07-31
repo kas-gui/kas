@@ -8,7 +8,7 @@
 use super::{FnSizeRules, Map, MapAny, OnUpdate, Reserve, WithLabel};
 use kas::cast::{Cast, CastFloat};
 use kas::dir::Directional;
-use kas::event::ConfigMgr;
+use kas::event::ConfigCx;
 use kas::geom::Vec2;
 use kas::layout::{AxisInfo, SizeRules};
 use kas::text::AccelString;
@@ -68,7 +68,7 @@ pub trait AdaptWidget: Widget + Sized {
     #[must_use]
     fn on_update<F>(self, f: F) -> OnUpdate<Self>
     where
-        F: Fn(&mut ConfigMgr, &mut Self, &Self::Data) + 'static,
+        F: Fn(&mut ConfigCx, &mut Self, &Self::Data) + 'static,
     {
         OnUpdate::new(self, f)
     }

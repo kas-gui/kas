@@ -74,10 +74,10 @@ impl_scope! {
             SizeRules::fixed_scaled(100.0, 10.0, mgr.scale_factor())
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
             let align = Some(AlignPair::new(Align::Center, Align::Center));
-            mgr.text_set_size(
+            cx.text_set_size(
                 &mut self.loading_text,
                 TextClass::Label(false),
                 rect.size,
@@ -97,9 +97,9 @@ impl_scope! {
     impl Events for ColourSquare {
         type Data = AppData;
 
-        fn update(&mut self, data: &AppData, mgr: &mut ConfigMgr) {
+        fn update(&mut self, cx: &mut ConfigCx, data: &AppData) {
             self.color = data.color;
-            mgr.redraw(self.id());
+            cx.redraw(self.id());
         }
     }
 }

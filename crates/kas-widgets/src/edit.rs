@@ -50,7 +50,7 @@ pub trait EditGuard: Sized {
     /// Configure guard
     ///
     /// This function is called when the attached widget is configured.
-    fn configure(edit: &mut EditField<Self>, cx: &mut ConfigMgr) {
+    fn configure(edit: &mut EditField<Self>, cx: &mut ConfigCx) {
         let _ = (edit, cx);
     }
 
@@ -62,8 +62,8 @@ pub trait EditGuard: Sized {
     /// message sent by [`Self::edit`] or another cause, thus usually this
     /// method should do nothing if [`EditField::has_key_focus`]. Instead, it
     /// may be desirable to update content on [`Self::focus_lost`].
-    fn update(edit: &mut EditField<Self>, data: &Self::Data, cx: &mut ConfigMgr) {
-        let _ = (edit, data, cx);
+    fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &Self::Data) {
+        let _ = (edit, cx, data);
     }
 
     /// Activation guard
@@ -168,7 +168,7 @@ impl_scope! {
             }
         }
 
-        fn update(edit: &mut EditField<Self>, data: &A, cx: &mut ConfigMgr) {
+        fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
             if !edit.has_key_focus() {
                 let string = (edit.guard.value_fn)(data);
                 *cx |= edit.set_string(string);
@@ -240,7 +240,7 @@ impl_scope! {
             *cx |= edit.set_error_state(edit.guard.parsed.is_none());
         }
 
-        fn update(edit: &mut EditField<Self>, data: &A, cx: &mut ConfigMgr) {
+        fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
             if !edit.has_key_focus() {
                 let value = (edit.guard.value_fn)(data);
                 *cx |= edit.set_string(format!("{}", value));
@@ -290,20 +290,20 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, mut rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect) {
             self.core.rect = rect;
             rect.pos += self.frame_offset;
             rect.size -= self.frame_size;
             if self.multi_line() {
-                let bar_width = mgr.size_mgr().scroll_bar_width();
+                let bar_width = cx.size_mgr().scroll_bar_width();
                 let x1 = rect.pos.0 + rect.size.0;
                 let x0 = x1 - bar_width;
                 let bar_rect = Rect::new(Coord(x0, rect.pos.1), Size(bar_width, rect.size.1));
-                self.bar.set_rect(mgr, bar_rect);
+                self.bar.set_rect(cx, bar_rect);
                 rect.size.0 = (rect.size.0 - bar_width - self.inner_margin).max(0);
             }
-            self.inner.set_rect(mgr, rect);
-            self.update_scroll_bar(mgr);
+            self.inner.set_rect(cx, rect);
+            self.update_scroll_bar(cx);
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
@@ -581,9 +581,9 @@ impl_scope! {
             SizeRules::new(min, ideal, margins, stretch)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            mgr.text_set_size(&mut self.text, self.class, rect.size, Some(self.align));
+            cx.text_set_size(&mut self.text, self.class, rect.size, Some(self.align));
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
         }
@@ -620,12 +620,12 @@ impl_scope! {
     impl Events for Self {
         type Data = G::Data;
 
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
-            G::configure(self, mgr);
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            G::configure(self, cx);
         }
 
-        fn update(&mut self, data: &G::Data, mgr: &mut ConfigMgr) {
-            G::update(self, data, mgr);
+        fn update(&mut self, cx: &mut ConfigCx, data: &G::Data) {
+            G::update(self, cx, data);
         }
 
         fn handle_event(&mut self, data: &G::Data, mgr: &mut EventMgr, event: Event) -> Response {

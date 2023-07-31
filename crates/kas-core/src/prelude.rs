@@ -13,7 +13,7 @@
 #[doc(no_inline)]
 pub use crate::dir::{Direction, Directional};
 #[doc(no_inline)]
-pub use crate::event::{ConfigMgr, Event, EventMgr, EventState, Response};
+pub use crate::event::{ConfigCx, Event, EventMgr, EventState, Response};
 #[doc(no_inline)]
 pub use crate::geom::{Coord, Offset, Rect, Size};
 #[doc(no_inline)]

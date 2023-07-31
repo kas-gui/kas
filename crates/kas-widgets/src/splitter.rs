@@ -160,7 +160,7 @@ impl_scope! {
             solver.finish(&mut self.data)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
             self.size_solved = true;
             if self.widgets.is_empty() {
@@ -174,7 +174,7 @@ impl_scope! {
             let mut n = 0;
             loop {
                 assert!(n < self.widgets.len());
-                self.widgets[n].set_rect(mgr, setter.child_rect(&mut self.data, n << 1));
+                self.widgets[n].set_rect(cx, setter.child_rect(&mut self.data, n << 1));
 
                 if n >= self.handles.len() {
                     break;
@@ -183,7 +183,7 @@ impl_scope! {
                 // TODO(opt): calculate all maximal sizes simultaneously
                 let index = (n << 1) + 1;
                 let track = setter.maximal_rect_of(&mut self.data, index);
-                self.handles[n].set_rect(mgr, track);
+                self.handles[n].set_rect(cx, track);
                 let handle = setter.child_rect(&mut self.data, index);
                 let _ = self.handles[n].set_size_and_offset(handle.size, handle.pos - track.pos);
 
@@ -234,7 +234,7 @@ impl_scope! {
     impl Events for Self {
         type Data = W::Data;
 
-        fn pre_configure(&mut self, _: &mut ConfigMgr, id: WidgetId) {
+        fn pre_configure(&mut self, _: &mut ConfigCx, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();
         }
@@ -246,7 +246,7 @@ impl_scope! {
                     let n = index >> 1;
                     assert!(n < self.handles.len());
                     *mgr |= self.handles[n].set_offset(offset).1;
-                    mgr.config_mgr(|mgr| self.adjust_size(mgr, n));
+                    mgr.config_cx(|mgr| self.adjust_size(mgr, n));
                 }
             }
         }
@@ -310,7 +310,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         Action::RECONFIGURE
     }
 
-    fn adjust_size(&mut self, mgr: &mut ConfigMgr, n: usize) {
+    fn adjust_size(&mut self, cx: &mut ConfigCx, n: usize) {
         assert!(n < self.handles.len());
         assert_eq!(self.widgets.len(), self.handles.len() + 1);
         let index = 2 * n + 1;
@@ -329,7 +329,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         let mut n = 0;
         loop {
             assert!(n < self.widgets.len());
-            self.widgets[n].set_rect(mgr, setter.child_rect(&mut self.data, n << 1));
+            self.widgets[n].set_rect(cx, setter.child_rect(&mut self.data, n << 1));
 
             if n >= self.handles.len() {
                 break;
@@ -337,7 +337,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
 
             let index = (n << 1) + 1;
             let track = self.handles[n].track();
-            self.handles[n].set_rect(mgr, track);
+            self.handles[n].set_rect(cx, track);
             let handle = setter.child_rect(&mut self.data, index);
             let _ = self.handles[n].set_size_and_offset(handle.size, handle.pos - track.pos);
 
@@ -378,22 +378,22 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// triggered.
     ///
     /// Returns the new element's index.
-    pub fn push(&mut self, data: &W::Data, mgr: &mut ConfigMgr, mut widget: W) -> usize {
+    pub fn push(&mut self, data: &W::Data, cx: &mut ConfigCx, mut widget: W) -> usize {
         let index = self.widgets.len();
         if index > 0 {
             let len = self.handles.len();
             let id = self.make_next_id(true, len);
             let mut w = GripPart::new();
-            mgr.configure(w.as_node(&()), id);
+            cx.configure(w.as_node(&()), id);
             self.handles.push(w);
         }
 
         let id = self.make_next_id(false, index);
-        mgr.configure(widget.as_node(data), id);
+        cx.configure(widget.as_node(data), id);
         self.widgets.push(widget);
 
         self.size_solved = false;
-        *mgr |= Action::RESIZE;
+        *cx |= Action::RESIZE;
         index
     }
 
@@ -427,7 +427,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// Panics if `index > len`.
     ///
     /// The new child is configured immediately. Triggers [`Action::RESIZE`].
-    pub fn insert(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize, mut widget: W) {
+    pub fn insert(&mut self, data: &W::Data, cx: &mut ConfigCx, index: usize, mut widget: W) {
         for v in self.id_map.values_mut() {
             if *v >= index {
                 *v += 2;
@@ -438,16 +438,16 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
             let index = index.min(self.handles.len());
             let id = self.make_next_id(true, index);
             let mut w = GripPart::new();
-            mgr.configure(w.as_node(&()), id);
+            cx.configure(w.as_node(&()), id);
             self.handles.insert(index, w);
         }
 
         let id = self.make_next_id(false, index);
-        mgr.configure(widget.as_node(data), id);
+        cx.configure(widget.as_node(data), id);
         self.widgets.insert(index, widget);
 
         self.size_solved = false;
-        *mgr |= Action::RESIZE;
+        *cx |= Action::RESIZE;
     }
 
     /// Removes the child widget at position `index`
@@ -486,9 +486,9 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// Panics if `index` is out of bounds.
     ///
     /// The new child is configured immediately. Triggers [`Action::RESIZE`].
-    pub fn replace(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize, mut w: W) -> W {
+    pub fn replace(&mut self, data: &W::Data, cx: &mut ConfigCx, index: usize, mut w: W) -> W {
         let id = self.make_next_id(false, index);
-        mgr.configure(w.as_node(data), id);
+        cx.configure(w.as_node(data), id);
         std::mem::swap(&mut w, &mut self.widgets[index]);
 
         if w.id_ref().is_valid() {
@@ -498,7 +498,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         }
 
         self.size_solved = false;
-        *mgr |= Action::RESIZE;
+        *cx |= Action::RESIZE;
 
         w
     }
@@ -509,7 +509,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     pub fn extend<T: IntoIterator<Item = W>>(
         &mut self,
         data: &W::Data,
-        mgr: &mut ConfigMgr,
+        cx: &mut ConfigCx,
         iter: T,
     ) {
         let iter = iter.into_iter();
@@ -523,17 +523,17 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
             if index > 0 {
                 let id = self.make_next_id(true, self.handles.len());
                 let mut w = GripPart::new();
-                mgr.configure(w.as_node(&()), id);
+                cx.configure(w.as_node(&()), id);
                 self.handles.push(w);
             }
 
             let id = self.make_next_id(false, index);
-            mgr.configure(widget.as_node(data), id);
+            cx.configure(widget.as_node(data), id);
             self.widgets.push(widget);
         }
 
         self.size_solved = false;
-        *mgr |= Action::RESIZE;
+        *cx |= Action::RESIZE;
     }
 
     /// Resize, using the given closure to construct new widgets
@@ -542,18 +542,18 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     pub fn resize_with<F: Fn(usize) -> W>(
         &mut self,
         data: &W::Data,
-        mgr: &mut ConfigMgr,
+        cx: &mut ConfigCx,
         len: usize,
         f: F,
     ) {
         let old_len = self.widgets.len();
 
         if len < old_len {
-            *mgr |= Action::RESIZE;
+            *cx |= Action::RESIZE;
             loop {
                 let result = self.widgets.pop();
                 if let Some(w) = result.as_ref() {
-                    *mgr |= Action::RESIZE;
+                    *cx |= Action::RESIZE;
 
                     if w.id_ref().is_valid() {
                         if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
@@ -582,18 +582,18 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
                 if index > 0 {
                     let id = self.make_next_id(true, self.handles.len());
                     let mut w = GripPart::new();
-                    mgr.configure(w.as_node(&()), id);
+                    cx.configure(w.as_node(&()), id);
                     self.handles.push(w);
                 }
 
                 let id = self.make_next_id(false, index);
                 let mut widget = f(index);
-                mgr.configure(widget.as_node(data), id);
+                cx.configure(widget.as_node(data), id);
                 self.widgets.push(widget);
             }
 
             self.size_solved = false;
-            *mgr |= Action::RESIZE;
+            *cx |= Action::RESIZE;
         }
     }
 }

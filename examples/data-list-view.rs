@@ -93,7 +93,7 @@ struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
     type Data = Item;
 
-    fn update(edit: &mut EditField<Self>, data: &Item, cx: &mut ConfigMgr) {
+    fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &Item) {
         if !edit.has_key_focus() {
             *cx |= edit.set_string(data.1.clone());
         }

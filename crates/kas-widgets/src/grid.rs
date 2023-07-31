@@ -93,11 +93,11 @@ impl_scope! {
             solver.finish(&mut self.data)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
             let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, &mut self.data);
             for (info, child) in &mut self.widgets {
-                child.set_rect(mgr, setter.child_rect(&mut self.data, *info));
+                child.set_rect(cx, setter.child_rect(&mut self.data, *info));
             }
         }
 

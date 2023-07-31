@@ -5,15 +5,15 @@
 
 //! Widget method implementations
 
-use crate::event::{ConfigMgr, Event, EventMgr, Response};
+use crate::event::{ConfigCx, Event, EventMgr, Response};
 #[cfg(debug_assertions)] use crate::util::IdentifyWidget;
 use crate::{Erased, Events, Layout, NavAdvance, Node, Widget, WidgetId};
 
 /// Generic implementation of [`Widget::_configure`]
 pub fn _configure<W: Widget + Events<Data = <W as Widget>::Data>>(
     widget: &mut W,
+    cx: &mut ConfigCx,
     data: &<W as Widget>::Data,
-    cx: &mut ConfigMgr,
     id: WidgetId,
 ) {
     widget.pre_configure(cx, id);
@@ -28,16 +28,16 @@ pub fn _configure<W: Widget + Events<Data = <W as Widget>::Data>>(
     }
 
     widget.configure(cx);
-    widget.update(data, cx);
+    widget.update(cx, data);
 }
 
 /// Generic implementation of [`Widget::_update`]
 pub fn _update<W: Widget + Events<Data = <W as Widget>::Data>>(
     widget: &mut W,
+    cx: &mut ConfigCx,
     data: &<W as Widget>::Data,
-    cx: &mut ConfigMgr,
 ) {
-    widget.update(data, cx);
+    widget.update(cx, data);
     let start = cx.recurse_start.take().unwrap_or(0);
     let end = cx.recurse_end.take().unwrap_or(widget.num_children());
     let mut node = widget.as_node(data);

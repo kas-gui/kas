@@ -26,7 +26,7 @@ impl_scope! {
         #[widget(&self.state)]
         inner: W,
         message_handlers: Vec<Box<dyn Fn(&mut EventMgr, &A, &mut S) -> bool>>,
-        update_handler: Option<Box<dyn Fn(&mut ConfigMgr, &A, &mut S)>>,
+        update_handler: Option<Box<dyn Fn(&mut ConfigCx, &A, &mut S)>>,
     }
 
     impl Self {
@@ -79,7 +79,7 @@ impl_scope! {
         /// Children will be updated after the handler is called.
         pub fn on_update<F>(mut self, update_handler: F) -> Self
         where
-            F: Fn(&mut ConfigMgr, &A, &mut S) + 'static,
+            F: Fn(&mut ConfigCx, &A, &mut S) + 'static,
         {
             debug_assert!(self.update_handler.is_none());
             self.update_handler = Some(Box::new(update_handler));
@@ -90,7 +90,7 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
+        fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             if let Some(handler) = self.update_handler.as_ref() {
                 handler(cx, data, &mut self.state);
             }

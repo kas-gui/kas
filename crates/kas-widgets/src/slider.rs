@@ -121,7 +121,7 @@ impl_scope! {
         value: T,
         #[widget(&())]
         grip: GripPart,
-        state_fn: Box<dyn Fn(&ConfigMgr, &A) -> T>,
+        state_fn: Box<dyn Fn(&ConfigCx, &A) -> T>,
         on_move: Option<Box<dyn Fn(&mut EventMgr, &A, T)>>,
     }
 
@@ -131,7 +131,7 @@ impl_scope! {
         /// This constructor fixes the slider direction but is otherwise
         /// identical to [`Self::new`].
         #[inline]
-        pub fn left(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigMgr, &A) -> T + 'static) -> Self {
+        pub fn left(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
             Slider::new(Default::default(), range, state_fn)
         }
     }
@@ -142,7 +142,7 @@ impl_scope! {
         /// This constructor fixes the slider direction but is otherwise
         /// identical to [`Self::new`].
         #[inline]
-        pub fn right(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigMgr, &A) -> T + 'static) -> Self {
+        pub fn right(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
             Slider::new(Default::default(), range, state_fn)
         }
     }
@@ -153,7 +153,7 @@ impl_scope! {
         /// This constructor fixes the slider direction but is otherwise
         /// identical to [`Self::new`].
         #[inline]
-        pub fn up(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigMgr, &A) -> T + 'static) -> Self {
+        pub fn up(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
             Slider::new(Default::default(), range, state_fn)
         }
     }
@@ -164,7 +164,7 @@ impl_scope! {
         /// This constructor fixes the slider direction but is otherwise
         /// identical to [`Self::new`].
         #[inline]
-        pub fn down(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigMgr, &A) -> T + 'static) -> Self {
+        pub fn down(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
             Slider::new(Default::default(), range, state_fn)
         }
     }
@@ -184,7 +184,7 @@ impl_scope! {
         pub fn new(
             direction: D,
             range: RangeInclusive<T>,
-            state_fn: impl Fn(&ConfigMgr, &A) -> T + 'static,
+            state_fn: impl Fn(&ConfigCx, &A) -> T + 'static,
         ) -> Self {
             assert!(!range.is_empty());
             let value = *range.start();
@@ -298,12 +298,12 @@ impl_scope! {
             size_mgr.feature(Feature::Slider(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
-            let rect = mgr.align_feature(Feature::Slider(self.direction()), rect, self.align);
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+            let rect = cx.align_feature(Feature::Slider(self.direction()), rect, self.align);
             self.core.rect = rect;
-            self.grip.set_rect(mgr, rect);
+            self.grip.set_rect(cx, rect);
             let mut size = rect.size;
-            size.set_component(self.direction, mgr.size_mgr().handle_len());
+            size.set_component(self.direction, cx.size_mgr().handle_len());
             let _ = self.grip.set_size_and_offset(size, self.offset());
         }
 
@@ -328,7 +328,7 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
+        fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             self.value = self.clamp_value((self.state_fn)(cx, data));
         }
 

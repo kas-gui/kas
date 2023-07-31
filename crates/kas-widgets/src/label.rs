@@ -122,9 +122,9 @@ impl_scope! {
             size_mgr.text_rules(&mut self.label, self.class, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            mgr.text_set_size(&mut self.label, self.class, rect.size, None);
+            cx.text_set_size(&mut self.label, self.class, rect.size, None);
         }
 
         #[cfg(feature = "min_spec")]
@@ -314,9 +314,9 @@ impl_scope! {
             size_mgr.text_rules(&mut self.label, self.class, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            mgr.text_set_size(&mut self.label, self.class, rect.size, None);
+            cx.text_set_size(&mut self.label, self.class, rect.size, None);
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
@@ -327,8 +327,8 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
-            mgr.add_accel_keys(self.id_ref(), self.label.text().keys());
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.add_accel_keys(self.id_ref(), self.label.text().keys());
         }
 
         fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {

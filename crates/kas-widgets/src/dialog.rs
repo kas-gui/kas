@@ -65,8 +65,8 @@ impl_scope! {
             }
         }
 
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
-            mgr.enable_alt_bypass(self.id_ref(), true);
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.enable_alt_bypass(self.id_ref(), true);
         }
     }
 }
@@ -131,12 +131,12 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
-            mgr.register_nav_fallback(self.id());
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.register_nav_fallback(self.id());
 
             // Focus first item initially:
-            if mgr.nav_focus().is_none() {
-                mgr.next_nav_focus(self.id(), false, true);
+            if cx.nav_focus().is_none() {
+                cx.next_nav_focus(self.id(), false, true);
             }
         }
 

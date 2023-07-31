@@ -42,7 +42,7 @@ impl_scope! {
         active: usize,
         opening: bool,
         popup_id: Option<WindowId>,
-        state_fn: Box<dyn Fn(&ConfigMgr, &A) -> M>,
+        state_fn: Box<dyn Fn(&ConfigCx, &A) -> M>,
         on_select: Option<Box<dyn Fn(&mut EventMgr, M)>>,
     }
 
@@ -56,12 +56,12 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId) {
+        fn pre_configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
             self.core.id = id;
-            mgr.new_accel_layer(self.id(), true);
+            cx.new_accel_layer(self.id(), true);
         }
 
-        fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
+        fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             let msg = (self.state_fn)(cx, data);
             let index = 'outer: {
                 for (i, w) in self.popup.inner.iter().enumerate() {
@@ -223,7 +223,7 @@ impl<A, M: Clone + Debug + Eq + 'static> ComboBox<A, M> {
     ///
     /// The closure `state_fn` selects the active entry from input data.
     #[inline]
-    pub fn new<T, I>(iter: I, state_fn: impl Fn(&ConfigMgr, &A) -> M + 'static) -> Self
+    pub fn new<T, I>(iter: I, state_fn: impl Fn(&ConfigCx, &A) -> M + 'static) -> Self
     where
         T: Into<AccelString>,
         I: IntoIterator<Item = (T, M)>,
@@ -243,7 +243,7 @@ impl<A, M: Clone + Debug + Eq + 'static> ComboBox<A, M> {
     #[inline]
     pub fn new_vec(
         entries: Vec<MenuEntry<M>>,
-        state_fn: impl Fn(&ConfigMgr, &A) -> M + 'static,
+        state_fn: impl Fn(&ConfigCx, &A) -> M + 'static,
     ) -> Self {
         let label = entries.get(0).map(|entry| entry.get_string());
         let label = StringLabel::new(label.unwrap_or_default()).with_class(TextClass::Button);
@@ -342,9 +342,9 @@ impl<A, M: Clone + Debug + Eq + 'static> ComboBox<A, M> {
     //
     // TODO(opt): these methods cause full-window resize. They don't need to
     // resize at all if the menu is closed!
-    pub fn push<T: Into<AccelString>>(&mut self, mgr: &mut ConfigMgr, label: T, msg: M) -> usize {
+    pub fn push<T: Into<AccelString>>(&mut self, cx: &mut ConfigCx, label: T, msg: M) -> usize {
         let column = &mut self.popup.inner;
-        column.push(&(), mgr, MenuEntry::new(label, msg))
+        column.push(&(), cx, MenuEntry::new(label, msg))
     }
 
     /// Pops the last choice from the combobox
@@ -357,13 +357,13 @@ impl<A, M: Clone + Debug + Eq + 'static> ComboBox<A, M> {
     /// Panics if `index > len`.
     pub fn insert<T: Into<AccelString>>(
         &mut self,
-        mgr: &mut ConfigMgr,
+        cx: &mut ConfigCx,
         index: usize,
         label: T,
         msg: M,
     ) {
         let column = &mut self.popup.inner;
-        column.insert(&(), mgr, index, MenuEntry::new(label, msg));
+        column.insert(&(), cx, index, MenuEntry::new(label, msg));
     }
 
     /// Removes the choice at position `index`
@@ -378,14 +378,14 @@ impl<A, M: Clone + Debug + Eq + 'static> ComboBox<A, M> {
     /// Panics if `index` is out of bounds.
     pub fn replace<T: Into<AccelString>>(
         &mut self,
-        mgr: &mut ConfigMgr,
+        cx: &mut ConfigCx,
         index: usize,
         label: T,
         msg: M,
     ) {
         self.popup
             .inner
-            .replace(&(), mgr, index, MenuEntry::new(label, msg));
+            .replace(&(), cx, index, MenuEntry::new(label, msg));
     }
 }
 

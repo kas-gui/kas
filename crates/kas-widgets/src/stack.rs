@@ -106,10 +106,10 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
             if let Some(child) = self.widgets.get_mut(self.active) {
-                child.set_rect(mgr, rect);
+                child.set_rect(cx, rect);
             }
         }
 
@@ -137,13 +137,13 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn pre_configure(&mut self, _: &mut ConfigMgr, id: WidgetId) {
+        fn pre_configure(&mut self, _: &mut ConfigCx, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();
         }
 
-        fn update(&mut self, _: &W::Data, mgr: &mut ConfigMgr) {
-            mgr.restrict_recursion_to(self.active..=self.active);
+        fn update(&mut self, cx: &mut ConfigCx, _: &W::Data) {
+            cx.restrict_recursion_to(self.active..=self.active);
         }
     }
 
@@ -239,26 +239,26 @@ impl<W: Widget> Stack<W> {
     /// -   `SizeRules` were solved: set layout ([`Layout::set_rect`]) and
     ///     update mouse-cursor target ([`Action::REGION_MOVED`])
     /// -   Otherwise: resize the whole window ([`Action::RESIZE`])
-    pub fn set_active(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize) {
+    pub fn set_active(&mut self, data: &W::Data, cx: &mut ConfigCx, index: usize) {
         let old_index = self.active;
         self.active = index;
         if index >= self.widgets.len() {
             if old_index < self.widgets.len() {
-                *mgr |= Action::REGION_MOVED;
+                *cx |= Action::REGION_MOVED;
             }
             return;
         }
 
         if self.sized_range.contains(&index) {
             if old_index != index {
-                self.widgets[index].set_rect(mgr, self.core.rect);
-                *mgr |= Action::REGION_MOVED;
+                self.widgets[index].set_rect(cx, self.core.rect);
+                *cx |= Action::REGION_MOVED;
             }
         } else {
-            *mgr |= Action::RESIZE;
+            *cx |= Action::RESIZE;
         }
 
-        mgr.update(self.widgets[index].as_node(data));
+        cx.update(self.widgets[index].as_node(data));
     }
 
     /// Get a direct reference to the active child widget, if any
@@ -304,15 +304,15 @@ impl<W: Widget> Stack<W> {
     /// and then [`Action::RESIZE`] will be triggered.
     ///
     /// Returns the new page's index.
-    pub fn push(&mut self, data: &W::Data, mgr: &mut ConfigMgr, mut widget: W) -> usize {
+    pub fn push(&mut self, data: &W::Data, cx: &mut ConfigCx, mut widget: W) -> usize {
         let index = self.widgets.len();
         let id = self.make_child_id(index);
-        mgr.configure(widget.as_node(data), id);
+        cx.configure(widget.as_node(data), id);
 
         self.widgets.push(widget);
 
         if index == self.active {
-            *mgr |= Action::RESIZE;
+            *cx |= Action::RESIZE;
         }
 
         self.sized_range.end = self.sized_range.end.min(index);
@@ -349,7 +349,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// The new child is configured immediately. The active page does not
     /// change.
-    pub fn insert(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize, mut widget: W) {
+    pub fn insert(&mut self, data: &W::Data, cx: &mut ConfigCx, index: usize, mut widget: W) {
         if self.active < index {
             self.sized_range.end = self.sized_range.end.min(index);
         } else {
@@ -359,7 +359,7 @@ impl<W: Widget> Stack<W> {
         }
 
         let id = self.make_child_id(index);
-        mgr.configure(widget.as_node(data), id);
+        cx.configure(widget.as_node(data), id);
 
         self.widgets.insert(index, widget);
 
@@ -413,15 +413,9 @@ impl<W: Widget> Stack<W> {
     ///
     /// The new child is configured immediately. If it replaces the active page,
     /// then [`Action::RESIZE`] is triggered.
-    pub fn replace(
-        &mut self,
-        data: &W::Data,
-        mgr: &mut ConfigMgr,
-        index: usize,
-        mut widget: W,
-    ) -> W {
+    pub fn replace(&mut self, data: &W::Data, cx: &mut ConfigCx, index: usize, mut widget: W) -> W {
         let id = self.make_child_id(index);
-        mgr.configure(widget.as_node(data), id);
+        cx.configure(widget.as_node(data), id);
         std::mem::swap(&mut widget, &mut self.widgets[index]);
 
         if widget.id_ref().is_valid() {
@@ -436,7 +430,7 @@ impl<W: Widget> Stack<W> {
             self.sized_range.start = (self.sized_range.start + 1).max(index + 1);
             self.sized_range.end += 1;
             if index == self.active {
-                *mgr |= Action::RESIZE;
+                *cx |= Action::RESIZE;
             }
         }
 
@@ -450,7 +444,7 @@ impl<W: Widget> Stack<W> {
     pub fn extend<T: IntoIterator<Item = W>>(
         &mut self,
         data: &W::Data,
-        mgr: &mut ConfigMgr,
+        cx: &mut ConfigCx,
         iter: T,
     ) {
         let old_len = self.widgets.len();
@@ -460,12 +454,12 @@ impl<W: Widget> Stack<W> {
         }
         for mut w in iter {
             let id = self.make_child_id(self.widgets.len());
-            mgr.configure(w.as_node(data), id);
+            cx.configure(w.as_node(data), id);
             self.widgets.push(w);
         }
 
         if (old_len..self.widgets.len()).contains(&self.active) {
-            *mgr |= Action::RESIZE;
+            *cx |= Action::RESIZE;
         }
     }
 
@@ -476,7 +470,7 @@ impl<W: Widget> Stack<W> {
     pub fn resize_with<F: Fn(usize) -> W>(
         &mut self,
         data: &W::Data,
-        mgr: &mut ConfigMgr,
+        cx: &mut ConfigCx,
         len: usize,
         f: F,
     ) {
@@ -502,12 +496,12 @@ impl<W: Widget> Stack<W> {
             for index in old_len..len {
                 let id = self.make_child_id(index);
                 let mut w = f(index);
-                mgr.configure(w.as_node(data), id);
+                cx.configure(w.as_node(data), id);
                 self.widgets.push(w);
             }
 
             if (old_len..len).contains(&self.active) {
-                *mgr |= Action::RESIZE;
+                *cx |= Action::RESIZE;
             }
         }
     }

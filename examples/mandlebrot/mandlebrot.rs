@@ -336,7 +336,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_rect(&mut self, _: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
             let size = DVec2::conv(rect.size);
             let rel_width = DVec2(size.0 / size.1, 1.0);
@@ -356,11 +356,11 @@ impl_scope! {
     impl Events for Mandlebrot {
         type Data = i32;
 
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
-            mgr.register_nav_fallback(self.id());
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.register_nav_fallback(self.id());
         }
 
-        fn update(&mut self, data: &i32, _: &mut ConfigMgr) {
+        fn update(&mut self, data: &i32, _: &mut ConfigCx) {
             self.iters = *data;
         }
 

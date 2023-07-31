@@ -9,7 +9,7 @@ use super::{PendingAction, Platform, ProxyAction};
 use super::{SharedState, ShellShared, ShellWindow, WindowSurface};
 use kas::cast::Cast;
 use kas::draw::{color::Rgba, AnimationState, DrawShared};
-use kas::event::{ConfigMgr, CursorIcon, EventState};
+use kas::event::{ConfigCx, CursorIcon, EventState};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
@@ -389,8 +389,8 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         let time = Instant::now();
 
         let size = self.theme_window.size();
-        let mut mgr = ConfigMgr::new(&size, &mut shared.shell.draw, &mut self.ev_state);
-        mgr.update(self.widget.as_node(&shared.data));
+        let mut cx = ConfigCx::new(&size, &mut shared.shell.draw, &mut self.ev_state);
+        cx.update(self.widget.as_node(&shared.data));
 
         log::trace!(target: "kas_perf::wgpu::window", "update: {}µs", time.elapsed().as_micros());
     }
@@ -401,16 +401,16 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         log::debug!("apply_size: rect={rect:?}");
 
         let solve_cache = &mut self.solve_cache;
-        let mut mgr = ConfigMgr::new(
+        let mut cx = ConfigCx::new(
             self.theme_window.size(),
             &mut shared.shell.draw,
             &mut self.ev_state,
         );
-        solve_cache.apply_rect(self.widget.as_node(&shared.data), &mut mgr, rect, true);
+        solve_cache.apply_rect(self.widget.as_node(&shared.data), &mut cx, rect, true);
         if first {
             solve_cache.print_widget_heirarchy(self.widget.as_layout());
         }
-        self.widget.resize_popups(&shared.data, &mut mgr);
+        self.widget.resize_popups(&shared.data, &mut cx);
 
         let (restrict_min, restrict_max) = self.widget.restrictions();
         if restrict_min {

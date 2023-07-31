@@ -7,7 +7,7 @@
 
 use std::time::{Duration, Instant};
 
-use kas::event::{ConfigMgr, Event, EventMgr, Response};
+use kas::event::{ConfigCx, Event, EventMgr, Response};
 use kas::widget::{format_data, TextButton};
 use kas::{Decorations, Events, Layout, LayoutExt, Widget, Window};
 
@@ -35,7 +35,7 @@ fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
         impl Events for Self {
             type Data = ();
 
-            fn configure(&mut self, cx: &mut ConfigMgr) {
+            fn configure(&mut self, cx: &mut ConfigCx) {
                 cx.enable_alt_bypass(self.id_ref(), true);
             }
             fn handle_event(&mut self, data: &(), cx: &mut EventMgr, event: Event) -> Response {

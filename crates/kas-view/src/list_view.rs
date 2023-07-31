@@ -290,7 +290,7 @@ impl_scope! {
             }
         }
 
-        fn update_widgets(&mut self, data: &A, cx: &mut ConfigMgr) {
+        fn update_widgets(&mut self, cx: &mut ConfigCx, data: &A) {
             let time = Instant::now();
 
             let offset = u64::conv(self.scroll_offset().extract(self.direction));
@@ -456,7 +456,7 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
 
             let mut child_size = rect.size - self.frame_size;
@@ -499,7 +499,7 @@ impl_scope! {
             }
 
             // Widgets need configuring and updating: do so by updating self.
-            mgr.request_update(self.id());
+            cx.request_update(self.id());
         }
 
         #[inline]
@@ -539,7 +539,7 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn configure(&mut self, cx: &mut ConfigMgr) {
+        fn configure(&mut self, cx: &mut ConfigCx) {
             if self.widgets.is_empty() {
                 // Initial configure: ensure some widgets are loaded to allow
                 // better sizing of self.
@@ -558,7 +558,7 @@ impl_scope! {
             cx.register_nav_fallback(self.id());
         }
 
-        fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
+        fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             self.selection.retain(|key| data.contains_key(key));
 
             let data_len = data.len().cast();
@@ -575,7 +575,7 @@ impl_scope! {
             );
             *cx |= self.scroll.set_sizes(view_size, content_size);
 
-            self.update_widgets(data, cx);
+            self.update_widgets(cx, data);
         }
 
         fn handle_event(&mut self, data: &A, cx: &mut EventMgr, event: Event) -> Response {
@@ -610,7 +610,7 @@ impl_scope! {
                     return if let Some(i_data) = data_index {
                         // Set nav focus to i_data and update scroll position
                         if self.scroll.focus_rect(cx, solver.rect(i_data), self.core.rect) {
-                            cx.config_mgr(|cx| self.update_widgets(data, cx));
+                            cx.config_cx(|cx| self.update_widgets(cx, data));
                         }
                         let index = i_data % usize::conv(self.cur_len);
                         cx.next_nav_focus(self.widgets[index].widget.id(), false, true);
@@ -655,7 +655,7 @@ impl_scope! {
                 .scroll
                 .scroll_by_event(cx, event, self.id(), self.core.rect);
             if moved {
-                cx.config_mgr(|cx| self.update_widgets(data, cx));
+                cx.config_cx(|cx| self.update_widgets(cx, data));
             }
             response | sber_response
         }
@@ -702,7 +702,7 @@ impl_scope! {
 
         fn handle_scroll(&mut self, data: &A, cx: &mut EventMgr, scroll: Scroll) {
             self.scroll.scroll(cx, self.rect(), scroll);
-            cx.config_mgr(|cx| self.update_widgets(data, cx));
+            cx.config_cx(|cx| self.update_widgets(cx, data));
         }
     }
 
@@ -726,14 +726,14 @@ impl_scope! {
         }
 
         // Non-standard behaviour: do not configure children
-        fn _configure(&mut self, data: &A, cx: &mut ConfigMgr, id: WidgetId) {
+        fn _configure(&mut self, cx: &mut ConfigCx, data: &A, id: WidgetId) {
             self.pre_configure(cx, id);
             self.configure(cx);
-            self.update(data, cx);
+            self.update(cx, data);
         }
 
-        fn _update(&mut self, data: &A, cx: &mut ConfigMgr) {
-            self.update(data, cx);
+        fn _update(&mut self, cx: &mut ConfigCx, data: &A) {
+            self.update(cx, data);
         }
 
         fn _send(
@@ -798,7 +798,7 @@ impl_scope! {
                 };
 
                 if self.scroll.focus_rect(cx, solver.rect(data_index), self.core.rect) {
-                    cx.config_mgr(|mgr| self.update_widgets(data, mgr));
+                    cx.config_cx(|cx| self.update_widgets(cx, data));
                 }
 
                 let index = data_index % usize::conv(self.cur_len);

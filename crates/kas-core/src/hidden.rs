@@ -10,7 +10,7 @@
 //! not supported (i.e. **changes are not considered breaking**).
 
 use crate::class::HasStr;
-use crate::event::{ConfigMgr, Event, EventMgr, Response};
+use crate::event::{ConfigCx, Event, EventMgr, Response};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::{AccelString, Text, TextApi};
@@ -54,9 +54,9 @@ impl_scope! {
             size_mgr.text_rules(&mut self.label, Self::CLASS, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            mgr.text_set_size(&mut self.label, Self::CLASS, rect.size, None);
+            cx.text_set_size(&mut self.label, Self::CLASS, rect.size, None);
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
@@ -138,8 +138,8 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
-            self.inner.set_rect(mgr, rect);
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+            self.inner.set_rect(cx, rect);
         }
 
         #[inline]
@@ -180,11 +180,11 @@ impl_scope! {
             self.inner.for_child_node(&(), index, closure)
         }
 
-        fn _configure(&mut self, _: &A, cx: &mut ConfigMgr, id: WidgetId) {
-            self.inner._configure(&(), cx, id);
+        fn _configure(&mut self, cx: &mut ConfigCx, _: &A, id: WidgetId) {
+            self.inner._configure(cx, &(), id);
         }
 
-        fn _update(&mut self, _: &A, _: &mut ConfigMgr) {}
+        fn _update(&mut self, _: &mut ConfigCx, _: &A) {}
 
         fn _send(&mut self, _: &A, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response {
             self.inner._send(&(), cx, id, disabled, event)

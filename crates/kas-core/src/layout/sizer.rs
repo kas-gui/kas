@@ -7,7 +7,7 @@
 
 use super::{Align, AxisInfo, Margins, SizeRules};
 use crate::cast::Conv;
-use crate::event::ConfigMgr;
+use crate::event::ConfigCx;
 use crate::geom::{Rect, Size};
 use crate::theme::SizeMgr;
 use crate::util::WidgetHierarchy;
@@ -185,7 +185,7 @@ impl SolveCache {
     pub fn apply_rect(
         &mut self,
         mut widget: Node<'_>,
-        mgr: &mut ConfigMgr,
+        cx: &mut ConfigCx,
         mut rect: Rect,
         inner_margin: bool,
     ) {
@@ -200,14 +200,14 @@ impl SolveCache {
         // internal layout solving.
         if self.refresh_rules || width != self.last_width {
             if self.refresh_rules {
-                let w = widget.size_rules(mgr.size_mgr(), AxisInfo::new(false, None, None));
+                let w = widget.size_rules(cx.size_mgr(), AxisInfo::new(false, None, None));
                 self.min.0 = w.min_size();
                 self.ideal.0 = w.ideal_size();
                 self.margins.horiz = w.margins();
                 width = rect.size.0 - self.margins.sum_horiz();
             }
 
-            let h = widget.size_rules(mgr.size_mgr(), AxisInfo::new(true, Some(width), None));
+            let h = widget.size_rules(cx.size_mgr(), AxisInfo::new(true, Some(width), None));
             self.min.1 = h.min_size();
             self.ideal.1 = h.ideal_size();
             self.margins.vert = h.margins();
@@ -219,7 +219,7 @@ impl SolveCache {
             rect.size.0 = width;
             rect.size.1 -= self.margins.sum_vert();
         }
-        widget.set_rect(mgr, rect);
+        widget.set_rect(cx, rect);
 
         log::trace!(target: "kas_perf::layout", "apply_rect: {}μs", start.elapsed().as_micros());
         self.refresh_rules = false;

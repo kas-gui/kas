@@ -68,7 +68,7 @@ impl EventState {
     /// This should be called by the toolkit on the widget tree when the window
     /// is created (before or after resizing).
     ///
-    /// This method calls [`ConfigMgr::configure`] in order to assign
+    /// This method calls [`ConfigCx::configure`] in order to assign
     /// [`WidgetId`] identifiers and call widgets' [`Events::configure`]
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
@@ -88,8 +88,8 @@ impl EventState {
         self.new_accel_layer(WidgetId::ROOT, false);
 
         shell.size_and_draw_shared(Box::new(|size, draw_shared| {
-            let mut mgr = ConfigMgr::new(size, draw_shared, self);
-            mgr.configure(win.as_node(data), WidgetId::ROOT);
+            let mut cx = ConfigCx::new(size, draw_shared, self);
+            cx.configure(win.as_node(data), WidgetId::ROOT);
         }));
 
         let hover = win.find_id(data, self.last_mouse_coord);

@@ -7,7 +7,7 @@
 
 use super::Filter;
 use crate::{ListData, SharedData};
-use kas::event::{ConfigMgr, EventMgr, Response};
+use kas::event::{ConfigCx, EventMgr, Response};
 use kas::{autoimpl, impl_scope, Events, Widget};
 use kas_widgets::edit::{EditBox, EditField, EditGuard};
 use std::fmt::Debug;
@@ -96,7 +96,7 @@ impl_scope! {
     impl Events for Self {
         fn handle_messages(&mut self, data: &A, mgr: &mut EventMgr) {
             if let Some(SetFilter(value)) = mgr.try_pop() {
-                mgr.config_mgr(|mgr| self.list.set_filter(data, mgr, value));
+                mgr.config_cx(|cx| self.list.set_filter(cx, data, value));
             }
         }
     }
@@ -144,9 +144,9 @@ impl_scope! {
         }
 
         /// Set filter value
-        pub fn set_filter(&mut self, data: &A, mgr: &mut ConfigMgr, filter: F::Value) {
+        pub fn set_filter(&mut self, cx: &mut ConfigCx, data: &A, filter: F::Value) {
             if self.filter.set_filter(filter) {
-                mgr.update(self.as_node(data));
+                cx.update(self.as_node(data));
             }
         }
     }
@@ -154,7 +154,7 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn update(&mut self, data: &A, _: &mut kas::event::ConfigMgr) {
+        fn update(&mut self, _: &mut kas::event::ConfigCx, data: &A) {
             self.view.clear();
             self.view.reserve(data.len());
             for key in data.iter_from(0, usize::MAX) {
@@ -168,7 +168,7 @@ impl_scope! {
 
         fn handle_messages(&mut self, data: &A, mgr: &mut EventMgr) {
             if let Some(SetFilter(value)) = mgr.try_pop() {
-                mgr.config_mgr(|mgr| self.set_filter(data, mgr, value));
+                mgr.config_cx(|cx| self.set_filter(cx, data, value));
             }
         }
     }

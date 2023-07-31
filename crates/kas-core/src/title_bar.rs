@@ -7,7 +7,7 @@
 //!
 //! Note: due to definition in kas-core, some widgets must be duplicated.
 
-use crate::event::ConfigMgr;
+use crate::event::ConfigCx;
 use crate::geom::Rect;
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::Text;
@@ -50,9 +50,9 @@ impl_scope! {
             size_mgr.text_rules(&mut self.label, Self::CLASS, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            mgr.text_set_size(&mut self.label, Self::CLASS, rect.size, None);
+            cx.text_set_size(&mut self.label, Self::CLASS, rect.size, None);
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
