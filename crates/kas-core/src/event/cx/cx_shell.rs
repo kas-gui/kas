@@ -26,7 +26,7 @@ const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl EventState {
-    /// Construct an event manager per-window data struct
+    /// Construct per-window event state
     #[inline]
     pub(crate) fn new(config: Rc<RefCell<Config>>, scale_factor: f32, dpem: f32) -> Self {
         EventState {
@@ -63,7 +63,7 @@ impl EventState {
         self.config.update(scale_factor, dpem);
     }
 
-    /// Configure event manager for a widget tree.
+    /// Configure a widget tree
     ///
     /// This should be called by the toolkit on the widget tree when the window
     /// is created (before or after resizing).
@@ -78,7 +78,7 @@ impl EventState {
         win: &mut Window<A>,
         data: &A,
     ) {
-        log::debug!(target: "kas_core::event::manager", "full_configure");
+        log::debug!(target: "kas_core::event", "full_configure");
         self.action.remove(Action::RECONFIGURE);
 
         // These are recreated during configure:
@@ -98,7 +98,7 @@ impl EventState {
 
     /// Update the widgets under the cursor and touch events
     pub(crate) fn region_moved<A>(&mut self, win: &mut Window<A>, data: &A) {
-        log::trace!(target: "kas_core::event::manager", "region_moved");
+        log::trace!(target: "kas_core::event", "region_moved");
         // Note: redraw is already implied.
 
         // Update hovered widget
@@ -211,7 +211,7 @@ impl EventState {
         // Warning: infinite loops are possible here if widgets always queue a
         // new pending event when evaluating one of these:
         while let Some(item) = cx.pending.pop_front() {
-            log::trace!(target: "kas_core::event::manager", "update: handling Pending::{item:?}");
+            log::trace!(target: "kas_core::event", "update: handling Pending::{item:?}");
             match item {
                 Pending::Configure(id) => {
                     win.as_node(data)

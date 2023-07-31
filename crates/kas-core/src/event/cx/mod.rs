@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Event manager
+//! Event context state
 
 // Without winit, several things go unused
 #![cfg_attr(not(feature = "winit"), allow(unused))]
@@ -26,11 +26,12 @@ use crate::util::WidgetHierarchy;
 use crate::LayoutExt;
 use crate::{Action, Erased, ErasedStack, NavAdvance, Node, Widget, WidgetId, WindowId};
 
-mod config_mgr;
-mod mgr_pub;
-mod mgr_shell;
+mod config;
+mod cx_pub;
+mod cx_shell;
 mod press;
-pub use config_mgr::ConfigCx;
+
+pub use config::ConfigCx;
 pub use press::{GrabBuilder, Press, PressSource};
 
 /// Controls the types of events delivered by [`Press::grab`]
@@ -185,7 +186,7 @@ enum Pending {
 
 type AccelLayer = (bool, HashMap<VirtualKeyCode, WidgetId>);
 
-/// Event manager state
+/// Event context state
 ///
 /// This struct encapsulates window-specific event-handling state and handling.
 /// Most operations are only available via a [`EventCx`] handle, though some
@@ -419,7 +420,7 @@ impl EventState {
     }
 }
 
-/// Manager of event-handling and toolkit actions
+/// Event handling context
 ///
 /// `EventCx` and [`EventState`] (available via [`Deref`]) support various
 /// event management and event-handling state querying operations.
@@ -601,7 +602,7 @@ impl<'a> EventCx<'a> {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         self.messages.set_base();
-        log::trace!(target: "kas_core::event::manager", "replay: id={id}: {msg:?}");
+        log::trace!(target: "kas_core::event", "replay: id={id}: {msg:?}");
 
         widget._replay(self, id, msg);
         self.last_child = None;
@@ -623,7 +624,7 @@ impl<'a> EventCx<'a> {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         self.messages.set_base();
-        log::trace!(target: "kas_core::event::manager", "send_event: id={id}: {event:?}");
+        log::trace!(target: "kas_core::event", "send_event: id={id}: {event:?}");
 
         // TODO(opt): we should be able to use binary search here
         let mut disabled = false;
@@ -635,7 +636,7 @@ impl<'a> EventCx<'a> {
                 }
             }
             if disabled {
-                log::trace!(target: "kas_core::event::manager", "target is disabled; sending to ancestor {id}");
+                log::trace!(target: "kas_core::event", "target is disabled; sending to ancestor {id}");
             }
         }
 
@@ -687,7 +688,7 @@ impl<'a> EventCx<'a> {
                 return r;
             } else {
                 log::warn!(
-                    target: "kas_core::event::config_mgr",
+                    target: "kas_core::event",
                     "next_nav_focus: have open pop-up which is not a child of widget",
                 );
                 return;
@@ -714,7 +715,7 @@ impl<'a> EventCx<'a> {
         }
 
         log::trace!(
-            target: "kas_core::event::config_mgr",
+            target: "kas_core::event",
             "next_nav_focus: nav_focus={opt_id:?}",
         );
         if opt_id == self.nav_focus {

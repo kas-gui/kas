@@ -160,7 +160,7 @@ impl GrabBuilder {
             mode,
             cursor,
         } = self;
-        log::trace!(target: "kas_core::event::manager", "grab_press: start_id={id}, source={source:?}");
+        log::trace!(target: "kas_core::event", "grab_press: start_id={id}, source={source:?}");
         let mut pan_grab = (u16::MAX, 0);
         match source {
             PressSource::Mouse(button, repetitions) => {
@@ -188,7 +188,7 @@ impl GrabBuilder {
             PressSource::Touch(touch_id) => {
                 if cx.remove_touch(touch_id).is_some() {
                     #[cfg(debug_assertions)]
-                    log::error!(target: "kas_core::event::manager", "grab_press: touch_id conflict!");
+                    log::error!(target: "kas_core::event", "grab_press: touch_id conflict!");
                 }
                 if mode.is_pan() {
                     pan_grab = cx.set_pan_on(id.clone(), mode, true, coord);

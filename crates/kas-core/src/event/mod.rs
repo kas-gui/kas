@@ -57,13 +57,12 @@
 //! [`WidgetId`]: crate::WidgetId
 //! [`Unused`]: Response::Unused
 
+pub mod components;
 pub mod config;
+mod cx;
 #[cfg(not(feature = "winit"))] mod enums;
 mod events;
-mod manager;
 mod response;
-
-pub mod components;
 
 use smallvec::SmallVec;
 
@@ -73,10 +72,10 @@ pub use winit::event::{ModifiersState, MouseButton, VirtualKeyCode};
 
 #[allow(unused)] use crate::{Events, Widget};
 #[doc(no_inline)] pub use config::Config;
+pub use cx::*;
 #[cfg(not(feature = "winit"))]
 pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
 pub use events::*;
-pub use manager::*;
 pub use response::{Response, Scroll};
 
 /// A type supporting a small number of key bindings

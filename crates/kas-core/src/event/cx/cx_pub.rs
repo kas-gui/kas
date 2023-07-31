@@ -228,7 +228,7 @@ impl EventState {
 
             row.0 = time;
             log::trace!(
-                target: "kas_core::event::manager",
+                target: "kas_core::event",
                 "request_timer_update: update {id} at now+{}ms",
                 delay.as_millis()
             );
@@ -275,7 +275,7 @@ impl EventState {
     /// respond to navigation keys when no widget has focus.
     pub fn register_nav_fallback(&mut self, id: WidgetId) {
         if self.nav_fallback.is_none() {
-            log::debug!(target: "kas_core::event::manager","register_nav_fallback: id={id}");
+            log::debug!(target: "kas_core::event","register_nav_fallback: id={id}");
             self.nav_fallback = Some(id);
         }
     }
@@ -410,7 +410,7 @@ impl EventState {
             }
         }
         if redraw {
-            log::trace!(target: "kas_core::event::manager", "set_grab_depress: target={target:?}");
+            log::trace!(target: "kas_core::event", "set_grab_depress: target={target:?}");
             self.send_action(Action::REDRAW);
         }
         redraw
@@ -448,7 +448,7 @@ impl EventState {
                 .push_back(Pending::Send(id, Event::LostNavFocus));
         }
         self.clear_char_focus();
-        log::trace!(target: "kas_core::event::manager", "clear_nav_focus");
+        log::trace!(target: "kas_core::event", "clear_nav_focus");
     }
 
     /// Set the keyboard navigation focus directly
@@ -476,7 +476,7 @@ impl EventState {
             self.clear_char_focus();
         }
         self.nav_focus = Some(id.clone());
-        log::trace!(target: "kas_core::event::manager", "set_nav_focus: {id}");
+        log::trace!(target: "kas_core::event", "set_nav_focus: {id}");
         self.pending
             .push_back(Pending::Send(id, Event::NavFocus(key_focus)));
     }
@@ -723,7 +723,7 @@ impl<'a> EventCx<'a> {
     /// Returns `None` if window creation is not currently available (but note
     /// that `Some` result does not guarantee the operation succeeded).
     pub fn add_popup(&mut self, popup: crate::Popup) -> Option<WindowId> {
-        log::trace!(target: "kas_core::event::manager", "add_popup: {popup:?}");
+        log::trace!(target: "kas_core::event", "add_popup: {popup:?}");
         let new_id = &popup.id;
         while let Some((_, popup, _)) = self.popups.last() {
             if popup.parent.is_ancestor_of(new_id) {

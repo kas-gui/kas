@@ -169,7 +169,7 @@ impl ErasedStack {
 impl Drop for ErasedStack {
     fn drop(&mut self) {
         for msg in self.stack.drain(..) {
-            log::warn!(target: "kas_core::event::manager", "unhandled: {msg:?}");
+            log::warn!(target: "kas_core::erased", "unhandled: {msg:?}");
         }
     }
 }

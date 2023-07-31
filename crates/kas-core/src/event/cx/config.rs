@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Size and EventState manager
+//! Configuration context
 
 use super::Pending;
 use crate::draw::DrawShared;
@@ -18,7 +18,7 @@ use std::ops::{Deref, DerefMut, RangeBounds};
 
 #[allow(unused)] use crate::{event::Event, Events};
 
-/// Manager used to configure widgets and layout
+/// Widget configuration and update context
 ///
 /// This type supports easy access to [`EventState`] (via [`Deref`],
 /// [`DerefMut`] and [`Self::ev_state`]) as well as [`SizeCx`]
