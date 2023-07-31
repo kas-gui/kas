@@ -46,15 +46,15 @@ impl_scope! {
     /// emit [`kas::message::Select`] to have themselves be selected.
     #[derive(Clone, Debug)]
     #[widget]
-    pub struct ListView<A: ListData, G: Driver<A::Item, A>, D: Directional> {
+    pub struct ListView<A: ListData, V: Driver<A::Item, A>, D: Directional> {
         core: widget_core!(),
         frame_offset: Offset,
         frame_size: Size,
-        guard: G,
+        driver: V,
         /// Empty widget used for sizing; this must be stored between horiz and vert size rule
         /// calculations for correct line wrapping/layout.
-        default_widget: G::Widget,
-        widgets: Vec<WidgetData<A::Key, G::Widget>>,
+        default_widget: V::Widget,
+        widgets: Vec<WidgetData<A::Key, V::Widget>>,
         data_len: u32,
         /// The number of widgets in use (cur_len ≤ widgets.len())
         cur_len: u32,
@@ -81,17 +81,17 @@ impl_scope! {
         D: Default,
     {
         /// Construct a new instance
-        pub fn new(guard: G) -> Self {
-            Self::new_with_direction(D::default(), guard)
+        pub fn new(driver: V) -> Self {
+            Self::new_with_direction(D::default(), driver)
         }
     }
-    impl<A: ListData, G: Driver<A::Item, A>> ListView<A, G, kas::dir::Down> {
+    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, kas::dir::Down> {
         /// Construct a new instance
-        pub fn down(guard: G) -> Self {
-            Self::new_with_direction(Default::default(), guard)
+        pub fn down(driver: V) -> Self {
+            Self::new_with_direction(Default::default(), driver)
         }
     }
-    impl<A: ListData, G: Driver<A::Item, A>> ListView<A, G, Direction> {
+    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, Direction> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, direction: Direction) -> Action {
             self.direction = direction;
@@ -99,14 +99,14 @@ impl_scope! {
         }
     }
     impl Self {
-        /// Construct a new instance with explicit direction and guard
-        pub fn new_with_direction(direction: D, mut guard: G) -> Self {
-            let default_widget = guard.make(&A::Key::default());
+        /// Construct a new instance with explicit direction and driver
+        pub fn new_with_direction(direction: D, mut driver: V) -> Self {
+            let default_widget = driver.make(&A::Key::default());
             ListView {
                 core: Default::default(),
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
-                guard,
+                driver,
                 default_widget,
                 widgets: Default::default(),
                 data_len: 0,
@@ -141,8 +141,8 @@ impl_scope! {
         /// On selection and deselection, a [`SelectionMsg`] message is emitted.
         /// This is not sent to [`Driver::on_messages`].
         ///
-        /// The guard may trigger selection by emitting [`Select`] from
-        /// [`Driver::on_messages`]. The guard is not notified of selection
+        /// The driver may trigger selection by emitting [`Select`] from
+        /// [`Driver::on_messages`]. The driver is not notified of selection
         /// except via [`Select`] from view widgets. (TODO: reconsider this.)
         ///
         /// [`Select`]: kas::message::Select
@@ -313,7 +313,7 @@ impl_scope! {
                 let id = key.make_id(self.id_ref());
                 let w = &mut self.widgets[i % solver.cur_len];
                 if w.key.as_ref() != Some(&key) {
-                    self.guard.set_key(&mut w.widget, &key);
+                    self.driver.set_key(&mut w.widget, &key);
 
                     if let Some(item) = data.borrow(&key) {
                         cx.configure(w.widget.as_node(item.borrow()), id);
@@ -489,7 +489,7 @@ impl_scope! {
                 self.widgets.reserve(req_widgets - avail_widgets);
                 let key = A::Key::default();
                 for _ in avail_widgets..req_widgets {
-                    let widget = self.guard.make(&key);
+                    let widget = self.driver.make(&key);
                     self.widgets.push(WidgetData { key: None, widget });
                 }
             }
@@ -550,7 +550,7 @@ impl_scope! {
                 self.widgets.resize_with(len, || {
                     WidgetData {
                         key: None,
-                        widget: self.guard.make(&key),
+                        widget: self.driver.make(&key),
                     }
                 });
             }
@@ -669,7 +669,7 @@ impl_scope! {
                     None => return,
                 };
 
-                self.guard.on_messages(cx, data, key, &mut w.widget);
+                self.driver.on_messages(cx, data, key, &mut w.widget);
             } else {
                 // Message is from self
                 key = match self.press_target.as_ref() {
