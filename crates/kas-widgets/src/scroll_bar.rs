@@ -30,7 +30,7 @@ impl_scope! {
     /// It is safe to not call `size_rules` before `set_rect` for this type.
     #[derive(Clone, Debug, Default)]
     #[widget(hover_highlight = true;)]
-    pub struct ScrollBar<D: Directional> {
+    pub struct ScrollBar<D: Directional = Direction> {
         core: widget_core!(),
         align: AlignPair,
         direction: D,
@@ -53,11 +53,11 @@ impl_scope! {
         /// Construct a scroll bar
         ///
         /// Default values are assumed for all parameters.
+        #[inline]
         pub fn new() -> Self {
-            ScrollBar::new_with_direction(D::default())
+            ScrollBar::new_dir(D::default())
         }
     }
-
     impl ScrollBar<kas::dir::Down> {
         /// Construct a scroll bar (vertical)
         ///
@@ -66,7 +66,6 @@ impl_scope! {
             ScrollBar::new()
         }
     }
-
     impl ScrollBar<kas::dir::Right> {
         /// Construct a scroll bar (horizontal)
         ///
@@ -81,7 +80,7 @@ impl_scope! {
         ///
         /// Default values are assumed for all parameters.
         #[inline]
-        pub fn new_with_direction(direction: D) -> Self {
+        pub fn new_dir(direction: D) -> Self {
             ScrollBar {
                 core: Default::default(),
                 align: Default::default(),

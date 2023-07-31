@@ -139,7 +139,7 @@ pub trait AdaptWidget: Widget + Sized {
         D: Directional,
         T: Into<AccelString>,
     {
-        WithLabel::new_with_direction(direction, self, label)
+        WithLabel::new_dir(self, direction, label)
     }
 }
 impl<W: Widget> AdaptWidget for W {}

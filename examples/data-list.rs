@@ -157,15 +157,14 @@ fn main() -> kas::shell::Result<()> {
         .map_any(),
     ];
 
-    let entries = vec![ListEntry::new(0), ListEntry::new(1), ListEntry::new(2)];
     let data = Data {
-        len: entries.len(),
+        len: 5,
         active: 0,
         dir: Direction::Down,
-        active_string: entries[0].label.get_string(),
+        active_string: ListEntry::new(0).label.get_string(),
     };
 
-    let list = List::new_dir_vec(data.dir, entries).on_update(|cx, list, data| {
+    let list = List::new([]).on_update(|cx, list, data: &Data| {
         *cx |= list.set_direction(data.dir);
         let len = data.len;
         if len != list.len() {

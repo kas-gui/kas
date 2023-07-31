@@ -136,9 +136,9 @@ impl<'a> Visitor<'a> {
         S: RowStorage,
     {
         let layout = LayoutType::BoxComponent(Box::new(List {
-            data,
-            direction,
             children: list,
+            direction,
+            data,
         }));
         Visitor { layout }
     }
@@ -155,9 +155,9 @@ impl<'a> Visitor<'a> {
         D: Directional,
     {
         let layout = LayoutType::BoxComponent(Box::new(Slice {
-            data,
-            direction,
             children: slice,
+            direction,
+            data,
         }));
         Visitor { layout }
     }
@@ -308,13 +308,13 @@ impl<'a> Visitor<'a> {
 }
 
 /// Implement row/column layout for children
-struct List<'a, S, D, I> {
-    data: &'a mut S,
-    direction: D,
+struct List<'a, I, D, S> {
     children: I,
+    direction: D,
+    data: &'a mut S,
 }
 
-impl<'a, S: RowStorage, D: Directional, I> Visitable for List<'a, S, D, I>
+impl<'a, I, D: Directional, S: RowStorage> Visitable for List<'a, I, D, S>
 where
     I: ExactSizeIterator<Item = Visitor<'a>>,
 {
@@ -391,9 +391,9 @@ where
 
 /// A row/column over a slice
 struct Slice<'a, W: Layout, D: Directional> {
-    data: &'a mut DynRowStorage,
-    direction: D,
     children: &'a mut [W],
+    direction: D,
+    data: &'a mut DynRowStorage,
 }
 
 impl<'a, W: Layout, D: Directional> Visitable for Slice<'a, W, D> {

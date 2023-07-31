@@ -254,7 +254,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
             popup: ComboPopup {
                 core: Default::default(),
                 inner: PopupFrame::new(
-                    Column::new_vec(entries).on_messages(|cx, index| cx.push(IndexMsg(index))),
+                    Column::new(entries).on_messages(|cx, index| cx.push(IndexMsg(index))),
                 ),
             },
             active: 0,

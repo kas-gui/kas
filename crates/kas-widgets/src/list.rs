@@ -13,37 +13,37 @@ use std::ops::{Index, IndexMut};
 /// A generic row widget
 ///
 /// See documentation of [`List`] type.
-pub type Row<W> = List<Right, W>;
+pub type Row<W> = List<W, Right>;
 
 /// A generic column widget
 ///
 /// See documentation of [`List`] type.
-pub type Column<W> = List<Down, W>;
+pub type Column<W> = List<W, Down>;
 
 /// A row of boxed widgets
 ///
 /// See documentation of [`List`] type.
-pub type BoxRow<Data> = BoxList<Right, Data>;
+pub type BoxRow<Data> = BoxList<Data, Right>;
 
 /// A column of boxed widgets
 ///
 /// See documentation of [`List`] type.
-pub type BoxColumn<Data> = BoxList<Down, Data>;
+pub type BoxColumn<Data> = BoxList<Data, Down>;
 
 /// A row/column of boxed widgets
 ///
 /// This is parameterised over directionality.
 ///
 /// See documentation of [`List`] type.
-pub type BoxList<D, Data> = List<D, Box<dyn Widget<Data = Data>>>;
+pub type BoxList<Data, D> = List<Box<dyn Widget<Data = Data>>, D>;
 
 impl_scope! {
     /// A generic row/column widget
     ///
     /// This type is roughly [`Vec`] but for widgets. Generics:
     ///
-    /// -   `D:` [`Directional`] — fixed or run-time direction of layout
     /// -   `W:` [`Widget`] — type of widget
+    /// -   `D:` [`Directional`] — fixed or run-time direction of layout
     ///
     /// ## Alternatives
     ///
@@ -68,7 +68,7 @@ impl_scope! {
     #[widget {
         layout = slice! 'layout (self.direction, self.widgets);
     }]
-    pub struct List<D: Directional, W: Widget> {
+    pub struct List<W: Widget, D: Directional> {
         core: widget_core!(),
         widgets: Vec<W>,
         direction: D,
@@ -154,23 +154,37 @@ impl_scope! {
         /// This constructor is available where the direction is determined by the
         /// type: for `D: Directional + Default`. In other cases, use
         /// [`Self::new_dir`].
-        #[inline]
-        pub fn new() -> Self {
-            Self::new_vec(vec![])
-        }
-
-        /// Construct a new instance with vec
-        ///
-        /// This constructor is available where the direction is determined by the
-        /// type: for `D: Directional + Default`. In other cases, use
-        /// [`Self::new_dir_vec`].
-        #[inline]
-        pub fn new_vec(widgets: Vec<W>) -> Self {
-            Self::new_dir_vec(D::default(), widgets)
+        pub fn new(widgets: impl Into<Vec<W>>) -> Self {
+            Self::new_dir(widgets, D::default())
         }
     }
 
-    impl<W: Widget> List<Direction, W> {
+    impl<W: Widget> List<W, kas::dir::Left> {
+        /// Construct a new instance
+        pub fn left(widgets: impl Into<Vec<W>>) -> Self {
+            Self::new(widgets)
+        }
+    }
+    impl<W: Widget> List<W, kas::dir::Right> {
+        /// Construct a new instance
+        pub fn right(widgets: impl Into<Vec<W>>) -> Self {
+            Self::new(widgets)
+        }
+    }
+    impl<W: Widget> List<W, kas::dir::Up> {
+        /// Construct a new instance
+        pub fn up(widgets: impl Into<Vec<W>>) -> Self {
+            Self::new(widgets)
+        }
+    }
+    impl<W: Widget> List<W, kas::dir::Down> {
+        /// Construct a new instance
+        pub fn down(widgets: impl Into<Vec<W>>) -> Self {
+            Self::new(widgets)
+        }
+    }
+
+    impl<W: Widget> List<W, Direction> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, direction: Direction) -> Action {
             if direction == self.direction {
@@ -186,16 +200,10 @@ impl_scope! {
     impl Self {
         /// Construct a new instance with explicit direction
         #[inline]
-        pub fn new_dir(direction: D) -> Self {
-            List::new_dir_vec(direction, vec![])
-        }
-
-        /// Construct a new instance with explicit direction and vec
-        #[inline]
-        pub fn new_dir_vec(direction: D, widgets: Vec<W>) -> Self {
+        pub fn new_dir(widgets: impl Into<Vec<W>>, direction: D) -> Self {
             List {
                 core: Default::default(),
-                widgets,
+                widgets: widgets.into(),
                 direction,
                 next: 0,
                 id_map: Default::default(),
@@ -361,7 +369,10 @@ impl_scope! {
         /// Append child widgets from an iterator
         ///
         /// New children are configured immediately. Triggers [`Action::RESIZE`].
-        pub fn extend<T: IntoIterator<Item = W>>(&mut self, cx: &mut ConfigCx, data: &W::Data, iter: T) {
+        pub fn extend<T>(&mut self, cx: &mut ConfigCx, data: &W::Data, iter: T)
+        where
+            T: IntoIterator<Item = W>,
+        {
             let iter = iter.into_iter();
             if let Some(ub) = iter.size_hint().1 {
                 self.widgets.reserve(ub);
@@ -378,7 +389,10 @@ impl_scope! {
         /// Resize, using the given closure to construct new widgets
         ///
         /// New children are configured immediately. Triggers [`Action::RESIZE`].
-        pub fn resize_with<F: Fn(usize) -> W>(&mut self, cx: &mut ConfigCx, data: &W::Data, len: usize, f: F) {
+        pub fn resize_with<F>(&mut self, cx: &mut ConfigCx, data: &W::Data, len: usize, f: F)
+        where
+            F: Fn(usize) -> W,
+        {
             let old_len = self.widgets.len();
 
             if len < old_len {
@@ -438,13 +452,13 @@ impl_scope! {
     }
 }
 
-impl<D: Directional + Default, W: Widget> FromIterator<W> for List<D, W> {
+impl<W: Widget, D: Directional + Default> FromIterator<W> for List<W, D> {
     #[inline]
     fn from_iter<T>(iter: T) -> Self
     where
         T: IntoIterator<Item = W>,
     {
-        Self::new_vec(iter.into_iter().collect())
+        Self::new(iter.into_iter().collect::<Vec<W>>())
     }
 }
 

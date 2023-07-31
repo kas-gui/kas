@@ -21,7 +21,7 @@ impl_scope! {
         Data = W::Data;
         layout = list! 'row (self.dir, [self.inner, non_navigable!(self.label)]);
     }]
-    pub struct WithLabel<W: Widget, D: Directional> {
+    pub struct WithLabel<W: Widget, D: Directional = Direction> {
         core: widget_core!(),
         dir: D,
         #[widget]
@@ -30,21 +30,29 @@ impl_scope! {
         label: AccelLabel,
     }
 
-    impl Self
-    where
-        D: Default,
-    {
+    impl Self {
+        /// Construct a wrapper around `inner` placing a `label` in the given `direction`
+        pub fn new<T: Into<AccelString>>(inner: W, label: T) -> Self where D: Default {
+            Self::new_dir(inner, D::default(), label)
+        }
+    }
+    impl<W: Widget> WithLabel<W, kas::dir::Left> {
         /// Construct from `inner` widget and `label`
-        #[inline]
-        pub fn new<T: Into<AccelString>>(inner: W, label: T) -> Self {
-            Self::new_with_direction(D::default(), inner, label)
+        pub fn left<T: Into<AccelString>>(inner: W, label: T) -> Self {
+            Self::new(inner, label)
+        }
+    }
+    impl<W: Widget> WithLabel<W, kas::dir::Right> {
+        /// Construct from `inner` widget and `label`
+        pub fn right<T: Into<AccelString>>(inner: W, label: T) -> Self {
+            Self::new(inner, label)
         }
     }
 
     impl Self {
-        /// Construct from `direction`, `inner` widget and `label`
+        /// Construct a wrapper around `inner` placing a `label` in the given `direction`
         #[inline]
-        pub fn new_with_direction<T: Into<AccelString>>(direction: D, inner: W, label: T) -> Self {
+        pub fn new_dir<T: Into<AccelString>>(inner: W, direction: D, label: T) -> Self {
             WithLabel {
                 core: Default::default(),
                 dir: direction,

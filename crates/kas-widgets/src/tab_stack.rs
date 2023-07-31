@@ -64,7 +64,7 @@ impl_scope! {
                 core: Default::default(),
                 direction: Direction::Up,
                 stack: Stack::new(),
-                tabs: Row::new().on_messages(|cx, index| {
+                tabs: Row::new([]).on_messages(|cx, index| {
                     if let Some(MsgSelect) = cx.try_pop() {
                         cx.push(MsgSelectIndex(index));
                     }
@@ -295,7 +295,7 @@ impl<W: Widget, T: IntoIterator<Item = (Tab, W)>> From<T> for TabStack<W> {
         }
         Self {
             stack: Stack::new_vec(stack),
-            tabs: Row::new_vec(tabs),
+            tabs: Row::new(tabs),
             ..Default::default()
         }
     }

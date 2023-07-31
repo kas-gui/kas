@@ -9,41 +9,16 @@ use std::collections::hash_map::{Entry, HashMap};
 use std::ops::{Index, IndexMut};
 
 use super::{GripMsg, GripPart};
-use kas::dir::{Down, Right};
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::theme::Feature;
 
-/// A generic row widget
-///
-/// See documentation of [`Splitter`] type.
-pub type RowSplitter<W> = Splitter<Right, W>;
-
-/// A generic column widget
-///
-/// See documentation of [`Splitter`] type.
-pub type ColumnSplitter<W> = Splitter<Down, W>;
-
-/// A row of boxed widgets
-///
-/// This is parameterised over handler message type.
-///
-/// See documentation of [`Splitter`] type.
-pub type BoxRowSplitter<Data> = BoxSplitter<Right, Data>;
-
-/// A column of boxed widgets
-///
-/// This is parameterised over handler message type.
-///
-/// See documentation of [`Splitter`] type.
-pub type BoxColumnSplitter<Data> = BoxSplitter<Down, Data>;
-
 /// A row/column of boxed widgets
 ///
-/// This is parameterised over directionality.
+/// Parameters: `Data`, `D` (direction).
 ///
 /// See documentation of [`Splitter`] type.
-pub type BoxSplitter<D, Data> = Splitter<D, Box<dyn Widget<Data = Data>>>;
+pub type BoxSplitter<Data, D> = Splitter<Box<dyn Widget<Data = Data>>, D>;
 
 impl_scope! {
     /// A resizable row/column widget
@@ -52,7 +27,7 @@ impl_scope! {
     // TODO: better doc
     #[derive(Clone, Default, Debug)]
     #[widget]
-    pub struct Splitter<D: Directional, W: Widget> {
+    pub struct Splitter<W: Widget, D: Directional = Direction> {
         core: widget_core!(),
         widgets: Vec<W>,
         handles: Vec<GripPart>,
@@ -63,7 +38,43 @@ impl_scope! {
         id_map: HashMap<usize, usize>, // map key of WidgetId to index
     }
 
+    impl Self where D: Default {
+        /// Construct a new instance
+        pub fn new(widgets: impl Into<Vec<W>>) -> Self {
+            Self::new_dir(widgets, Default::default())
+        }
+    }
+    impl<W: Widget> Splitter<W, kas::dir::Right> {
+        /// Construct a new instance
+        pub fn right(widgets: impl Into<Vec<W>>) -> Self {
+            Self::new(widgets)
+        }
+    }
+    impl<W: Widget> Splitter<W, kas::dir::Down> {
+        /// Construct a new instance
+        pub fn down(widgets: impl Into<Vec<W>>) -> Self {
+            Self::new(widgets)
+        }
+    }
+
     impl Self {
+        /// Construct a new instance with explicit direction
+        pub fn new_dir(widgets: impl Into<Vec<W>>, direction: D) -> Self {
+            let widgets = widgets.into();
+            let mut handles = Vec::new();
+            handles.resize_with(widgets.len().saturating_sub(1), GripPart::new);
+            Splitter {
+                core: Default::default(),
+                widgets,
+                handles,
+                data: Default::default(),
+                direction,
+                size_solved: false,
+                next: 0,
+                id_map: Default::default(),
+            }
+        }
+
         // Assumption: index is a valid entry of self.widgets
         fn make_next_id(&mut self, is_handle: bool, index: usize) -> WidgetId {
             let child_index = (2 * index) + (is_handle as usize);
@@ -267,35 +278,7 @@ impl_scope! {
     }
 }
 
-impl<D: Directional + Default, W: Widget> Splitter<D, W> {
-    /// Construct a new instance
-    ///
-    /// This constructor is available where the direction is determined by the
-    /// type: for `D: Directional + Default`. In other cases, use
-    /// [`Splitter::new_with_direction`].
-    pub fn new(widgets: Vec<W>) -> Self {
-        let direction = D::default();
-        Self::new_with_direction(direction, widgets)
-    }
-}
-
-impl<D: Directional, W: Widget> Splitter<D, W> {
-    /// Construct a new instance with explicit direction
-    pub fn new_with_direction(direction: D, widgets: Vec<W>) -> Self {
-        let mut handles = Vec::new();
-        handles.resize_with(widgets.len().saturating_sub(1), GripPart::new);
-        Splitter {
-            core: Default::default(),
-            widgets,
-            handles,
-            data: Default::default(),
-            direction,
-            size_solved: false,
-            next: 0,
-            id_map: Default::default(),
-        }
-    }
-
+impl<W: Widget, D: Directional> Splitter<W, D> {
     /// Edit the list of children directly
     ///
     /// This may be used to edit children before window construction. It may

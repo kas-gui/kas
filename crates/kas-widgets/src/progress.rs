@@ -14,7 +14,7 @@ impl_scope! {
     /// The "progress" value may range from 0.0 to 1.0.
     #[autoimpl(Debug ignore self.value_fn)]
     #[widget]
-    pub struct ProgressBar<A, D: Directional> {
+    pub struct ProgressBar<A, D: Directional = kas::dir::Right> {
         core: widget_core!(),
         align: AlignPair,
         direction: D,
@@ -26,17 +26,16 @@ impl_scope! {
     where
         D: Default,
     {
-        /// Construct a progress bar
+        /// Construct a slider
         ///
         /// Closure `value_fn` returns the current progress as a value between
         /// 0.0 and 1.0.
         #[inline]
         pub fn new(value_fn: impl Fn(&ConfigCx, &A) -> f32 + 'static) -> Self {
-            ProgressBar::new_with_direction(value_fn, D::default())
+            Self::new_dir(value_fn, D::default())
         }
     }
-
-    impl<A>  ProgressBar<A, kas::dir::Right> {
+    impl<A> ProgressBar<A, kas::dir::Right> {
         /// Construct a progress bar (horizontal)
         ///
         /// Closure `value_fn` returns the current progress as a value between
@@ -53,7 +52,7 @@ impl_scope! {
         /// Closure `value_fn` returns the current progress as a value between
         /// 0.0 and 1.0.
         #[inline]
-        pub fn new_with_direction(value_fn: impl Fn(&ConfigCx, &A) -> f32 + 'static, direction: D) -> Self {
+        pub fn new_dir(value_fn: impl Fn(&ConfigCx, &A) -> f32 + 'static, direction: D) -> Self {
             ProgressBar {
                 core: Default::default(),
                 align: Default::default(),

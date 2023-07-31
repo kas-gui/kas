@@ -30,18 +30,25 @@ impl_scope! {
         D: Default,
     {
         /// Construct a menubar
-        ///
-        /// Note: it appears that `MenuBar::new(..)` causes a type inference error,
-        /// however `MenuBar::<_>::new(..)` does not. Alternatively one may specify
-        /// the direction explicitly: `MenuBar::<_, kas::dir::Right>::new(..)`.
         pub fn new(menus: Vec<SubMenu<Data, D::Flipped>>) -> Self {
-            MenuBar::new_with_direction(D::default(), menus)
+            MenuBar::new_dir(menus, Default::default())
+        }
+
+        /// Construct a menu builder
+        pub fn builder() -> MenuBuilder<Data, D> {
+            MenuBuilder { menus: vec![], direction: D::default() }
+        }
+    }
+    impl<Data> MenuBar<Data, kas::dir::Right> {
+        /// Construct a menubar
+        pub fn right(menus: Vec<SubMenu<Data, kas::dir::Down>>) -> Self {
+            MenuBar::new(menus)
         }
     }
 
     impl Self {
         /// Construct a menubar with explicit direction
-        pub fn new_with_direction(direction: D, mut menus: Vec<SubMenu<Data, D::Flipped>>) -> Self {
+        pub fn new_dir(mut menus: Vec<SubMenu<Data, D::Flipped>>, direction: D) -> Self {
             for menu in menus.iter_mut() {
                 menu.navigable = false;
             }
@@ -52,10 +59,6 @@ impl_scope! {
                 layout_store: Default::default(),
                 delayed_open: None,
             }
-        }
-
-        pub fn builder() -> MenuBuilder<Data, D> {
-            MenuBuilder { menus: vec![] }
         }
     }
 
@@ -272,6 +275,7 @@ impl_scope! {
 /// Access through [`MenuBar::builder`].
 pub struct MenuBuilder<Data, D: Directional> {
     menus: Vec<SubMenu<Data, D::Flipped>>,
+    direction: D,
 }
 
 impl<Data, D: Directional> MenuBuilder<Data, D> {
@@ -290,10 +294,7 @@ impl<Data, D: Directional> MenuBuilder<Data, D> {
     }
 
     /// Finish, yielding a [`MenuBar`]
-    pub fn build(self) -> MenuBar<Data, D>
-    where
-        D: Default,
-    {
-        MenuBar::new(self.menus)
+    pub fn build(self) -> MenuBar<Data, D> {
+        MenuBar::new_dir(self.menus, self.direction)
     }
 }

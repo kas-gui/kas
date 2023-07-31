@@ -18,7 +18,7 @@ impl_scope! {
     #[widget {
         layout = self.label;
     }]
-    pub struct SubMenu<Data, D: Directional> {
+    pub struct SubMenu<Data, D: Directional = kas::dir::Down> {
         core: widget_core!(),
         direction: D,
         pub(crate) navigable: bool,
@@ -36,26 +36,18 @@ impl_scope! {
         D: Default,
     {
         /// Construct a sub-menu
-        #[inline]
         pub fn new<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<Data>>) -> Self {
-            SubMenu::new_with_direction(Default::default(), label, list)
+            Self::new_dir(label, list, D::default())
         }
     }
-
     impl<Data> SubMenu<Data, kas::dir::Right> {
         /// Construct a sub-menu, opening to the right
-        // NOTE: this is used since we can't infer direction of a boxed SubMenu.
-        // Consider only accepting an enum of special menu widgets?
-        // Then we can pass type information.
-        #[inline]
         pub fn right<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<Data>>) -> Self {
             SubMenu::new(label, list)
         }
     }
-
     impl<Data> SubMenu<Data, kas::dir::Down> {
         /// Construct a sub-menu, opening downwards
-        #[inline]
         pub fn down<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<Data>>) -> Self {
             SubMenu::new(label, list)
         }
@@ -63,13 +55,11 @@ impl_scope! {
 
     impl Self {
         /// Construct a sub-menu
-        ///
-        /// The sub-menu is opened in the `direction` given (contents are always vertical).
         #[inline]
-        pub fn new_with_direction<S: Into<AccelString>>(
-            direction: D,
+        pub fn new_dir<S: Into<AccelString>>(
             label: S,
             list: Vec<BoxedMenu<Data>>,
+            direction: D,
         ) -> Self {
             SubMenu {
                 core: Default::default(),

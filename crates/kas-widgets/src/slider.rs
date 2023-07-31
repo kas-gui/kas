@@ -111,7 +111,7 @@ impl_scope! {
         navigable = true;
         hover_highlight = true;
     }]
-    pub struct Slider<A, T: SliderValue, D: Directional> {
+    pub struct Slider<A, T: SliderValue, D: Directional = Direction> {
         core: widget_core!(),
         align: AlignPair,
         direction: D,
@@ -125,51 +125,10 @@ impl_scope! {
         on_move: Option<Box<dyn Fn(&mut EventCx, &A, T)>>,
     }
 
-    impl<A, T: SliderValue> Slider<A, T, kas::dir::Left> {
-        /// Construct with fixed direction
-        ///
-        /// This constructor fixes the slider direction but is otherwise
-        /// identical to [`Self::new`].
-        #[inline]
-        pub fn left(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
-            Slider::new(Default::default(), range, state_fn)
-        }
-    }
-
-    impl<A, T: SliderValue> Slider<A, T, kas::dir::Right> {
-        /// Construct with fixed direction
-        ///
-        /// This constructor fixes the slider direction but is otherwise
-        /// identical to [`Self::new`].
-        #[inline]
-        pub fn right(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
-            Slider::new(Default::default(), range, state_fn)
-        }
-    }
-
-    impl<A, T: SliderValue> Slider<A, T, kas::dir::Up> {
-        /// Construct with fixed direction
-        ///
-        /// This constructor fixes the slider direction but is otherwise
-        /// identical to [`Self::new`].
-        #[inline]
-        pub fn up(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
-            Slider::new(Default::default(), range, state_fn)
-        }
-    }
-
-    impl<A, T: SliderValue> Slider<A, T, kas::dir::Down> {
-        /// Construct with fixed direction
-        ///
-        /// This constructor fixes the slider direction but is otherwise
-        /// identical to [`Self::new`].
-        #[inline]
-        pub fn down(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
-            Slider::new(Default::default(), range, state_fn)
-        }
-    }
-
-    impl Self {
+    impl Self
+    where
+        D: Default,
+    {
         /// Construct a slider
         ///
         /// Values vary within the given `range`, increasing in the given
@@ -181,10 +140,56 @@ impl_scope! {
         /// To make the slider interactive, assign an event handler with
         /// [`Self::on_move`] or [`Self::msg_on_move`].
         #[inline]
-        pub fn new(
-            direction: D,
+        pub fn new(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+            Slider::new_dir(range, state_fn, D::default())
+        }
+    }
+    impl<A, T: SliderValue> Slider<A, T, kas::dir::Left> {
+        /// Construct with fixed direction
+        #[inline]
+        pub fn left(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+            Slider::new(range, state_fn)
+        }
+    }
+    impl<A, T: SliderValue> Slider<A, T, kas::dir::Right> {
+        /// Construct with fixed direction
+        #[inline]
+        pub fn right(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+            Slider::new(range, state_fn)
+        }
+    }
+    impl<A, T: SliderValue> Slider<A, T, kas::dir::Up> {
+        /// Construct with fixed direction
+        #[inline]
+        pub fn up(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+            Slider::new(range, state_fn)
+        }
+    }
+
+    impl<A, T: SliderValue> Slider<A, T, kas::dir::Down> {
+        /// Construct with fixed direction
+        #[inline]
+        pub fn down(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+            Slider::new(range, state_fn)
+        }
+    }
+
+    impl Self {
+        /// Construct a slider with given direction
+        ///
+        /// Values vary within the given `range`, increasing in the given
+        /// `direction`. The default step size is
+        /// 1 for common types (see [`SliderValue::default_step`]).
+        ///
+        /// The slider's current value is set by `state_fn` on update.
+        ///
+        /// To make the slider interactive, assign an event handler with
+        /// [`Self::on_move`] or [`Self::msg_on_move`].
+        #[inline]
+        pub fn new_dir(
             range: RangeInclusive<T>,
             state_fn: impl Fn(&ConfigCx, &A) -> T + 'static,
+            direction: D,
         ) -> Self {
             assert!(!range.is_empty());
             let value = *range.start();

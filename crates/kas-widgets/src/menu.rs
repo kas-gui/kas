@@ -19,7 +19,6 @@
 
 use crate::adapt::MapAny;
 use crate::Separator;
-use kas::dir::Right;
 use kas::prelude::*;
 use std::fmt::Debug;
 
@@ -200,50 +199,47 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
     /// Append a [`SubMenu`]
     ///
     /// This submenu prefers opens to the right.
-    #[inline]
     pub fn push_submenu<F>(&mut self, label: impl Into<AccelString>, f: F)
     where
         F: FnOnce(SubMenuBuilder<Data>),
     {
-        self.push_submenu_with_dir(Right, label, f);
+        self.push_submenu_dir(label, f, kas::dir::Right);
     }
 
     /// Append a [`SubMenu`], chain style
     ///
     /// This submenu prefers opens to the right.
-    #[inline]
     pub fn submenu<F>(mut self, label: impl Into<AccelString>, f: F) -> Self
     where
         F: FnOnce(SubMenuBuilder<Data>),
     {
-        self.push_submenu_with_dir(Right, label, f);
+        self.push_submenu(label, f);
         self
     }
 
     /// Append a [`SubMenu`]
     ///
     /// This submenu prefers to open in the specified direction.
-    pub fn push_submenu_with_dir<D, F>(&mut self, dir: D, label: impl Into<AccelString>, f: F)
+    pub fn push_submenu_dir<F, D>(&mut self, label: impl Into<AccelString>, f: F, dir: D)
     where
-        D: Directional,
         F: FnOnce(SubMenuBuilder<Data>),
+        D: Directional,
     {
         let mut menu = Vec::new();
         f(SubMenuBuilder { menu: &mut menu });
-        self.menu
-            .push(Box::new(SubMenu::new_with_direction(dir, label, menu)));
+        self.menu.push(Box::new(SubMenu::new_dir(label, menu, dir)));
     }
 
     /// Append a [`SubMenu`], chain style
     ///
     /// This submenu prefers to open in the specified direction.
     #[inline]
-    pub fn submenu_with_dir<D, F>(mut self, dir: D, label: impl Into<AccelString>, f: F) -> Self
+    pub fn submenu_dir<F, D>(mut self, label: impl Into<AccelString>, f: F, dir: D) -> Self
     where
-        D: Directional,
         F: FnOnce(SubMenuBuilder<Data>),
+        D: Directional,
     {
-        self.push_submenu_with_dir(dir, label, f);
+        self.push_submenu_dir(label, f, dir);
         self
     }
 }

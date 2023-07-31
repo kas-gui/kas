@@ -46,7 +46,11 @@ impl_scope! {
     /// emit [`kas::message::Select`] to have themselves be selected.
     #[derive(Clone, Debug)]
     #[widget]
-    pub struct ListView<A: ListData, V: Driver<A::Item, A>, D: Directional> {
+    pub struct ListView<A: ListData, V, D = Direction>
+    where
+        V: Driver<A::Item, A>,
+        D: Directional,
+    {
         core: widget_core!(),
         frame_offset: Offset,
         frame_size: Size,
@@ -82,13 +86,31 @@ impl_scope! {
     {
         /// Construct a new instance
         pub fn new(driver: V) -> Self {
-            Self::new_with_direction(D::default(), driver)
+            Self::new_dir(driver, D::default())
+        }
+    }
+    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, kas::dir::Left> {
+        /// Construct a new instance
+        pub fn left(driver: V) -> Self {
+            Self::new(driver)
+        }
+    }
+    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, kas::dir::Right> {
+        /// Construct a new instance
+        pub fn right(driver: V) -> Self {
+            Self::new(driver)
+        }
+    }
+    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, kas::dir::Up> {
+        /// Construct a new instance
+        pub fn up(driver: V) -> Self {
+            Self::new(driver)
         }
     }
     impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, kas::dir::Down> {
         /// Construct a new instance
         pub fn down(driver: V) -> Self {
-            Self::new_with_direction(Default::default(), driver)
+            Self::new(driver)
         }
     }
     impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, Direction> {
@@ -98,9 +120,10 @@ impl_scope! {
             Action::SET_RECT
         }
     }
+
     impl Self {
-        /// Construct a new instance with explicit direction and driver
-        pub fn new_with_direction(direction: D, mut driver: V) -> Self {
+        /// Construct a new instance
+        pub fn new_dir(mut driver: V, direction: D) -> Self {
             let default_widget = driver.make(&A::Key::default());
             ListView {
                 core: Default::default(),
