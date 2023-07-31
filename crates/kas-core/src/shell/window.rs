@@ -201,8 +201,8 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                     &mut self.theme_window,
                 );
                 let mut messages = ErasedStack::new();
-                self.ev_state.with(&mut tkw, &mut messages, |mgr| {
-                    mgr.handle_winit(&shared.data, &mut self.widget, event);
+                self.ev_state.with(&mut tkw, &mut messages, |cx| {
+                    cx.handle_winit(&shared.data, &mut self.widget, event);
                 });
                 shared.handle_messages(&mut messages);
 
@@ -300,7 +300,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         }
         /*if action.contains(Action::Popup) {
             let widget = &mut self.widget;
-            self.ev_state.with(&mut tkw, |mgr| widget.resize_popups(mgr));
+            self.ev_state.with(&mut tkw, |cx| widget.resize_popups(cx));
             self.ev_state.region_moved(&mut *self.widget);
         } else*/
         if action.contains(Action::REGION_MOVED) {
@@ -320,7 +320,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         let widget = self.widget.as_node(&shared.data);
         let mut messages = ErasedStack::new();
         self.ev_state
-            .with(&mut tkw, &mut messages, |mgr| mgr.update_timer(widget));
+            .with(&mut tkw, &mut messages, |cx| cx.update_timer(widget));
         shared.handle_messages(&mut messages);
         self.next_resume()
     }
@@ -338,8 +338,8 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             &mut self.theme_window,
         );
         let mut messages = ErasedStack::new();
-        self.ev_state.with(&mut tkw, &mut messages, |mgr| {
-            widget.add_popup(&shared.data, mgr, id, popup)
+        self.ev_state.with(&mut tkw, &mut messages, |cx| {
+            widget.add_popup(cx, &shared.data, id, popup)
         });
         shared.handle_messages(&mut messages);
     }
@@ -360,7 +360,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             let widget = &mut self.widget;
             let mut messages = ErasedStack::new();
             self.ev_state
-                .with(&mut tkw, &mut messages, |mgr| widget.remove_popup(mgr, id));
+                .with(&mut tkw, &mut messages, |cx| widget.remove_popup(cx, id));
             shared.handle_messages(&mut messages);
         }
     }
@@ -410,7 +410,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         if first {
             solve_cache.print_widget_heirarchy(self.widget.as_layout());
         }
-        self.widget.resize_popups(&shared.data, &mut cx);
+        self.widget.resize_popups(&mut cx, &shared.data);
 
         let (restrict_min, restrict_max) = self.widget.restrictions();
         if restrict_min {

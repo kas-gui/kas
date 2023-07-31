@@ -9,11 +9,11 @@ bitflags! {
     /// Action required after processing
     ///
     /// This type is returned by many widgets on modification to self and is tracked
-    /// internally by [`event::EventMgr`] to determine which updates are needed to
+    /// internally by [`event::EventCx`] to determine which updates are needed to
     /// the UI.
     ///
     /// Two `Action` values may be combined via bit-or (`a | b`). Bit-or
-    /// assignments are supported by both `Action` and [`event::EventMgr`].
+    /// assignments are supported by both `Action` and [`event::EventCx`].
     ///
     /// Users receiving a value of this type from a widget update method should
     /// usually handle with `*cx |= action;`. Before the event loop starts
@@ -24,7 +24,7 @@ bitflags! {
     pub struct Action: u32 {
         /// The whole window requires redrawing
         ///
-        /// Note that [`event::EventMgr::redraw`] can instead be used for more
+        /// Note that [`event::EventCx::redraw`] can instead be used for more
         /// selective redrawing.
         const REDRAW = 1 << 0;
         /// Some widgets within a region moved

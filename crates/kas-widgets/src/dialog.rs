@@ -59,9 +59,9 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
-            if let Some(MessageBoxOk) = mgr.try_pop() {
-                mgr.send_action(Action::CLOSE);
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(MessageBoxOk) = cx.try_pop() {
+                cx.send_action(Action::CLOSE);
             }
         }
 
@@ -118,7 +118,7 @@ impl_scope! {
             Window::new(self.map_any(), title)
         }
 
-        fn close(&mut self, cx: &mut EventMgr, commit: bool) -> Response {
+        fn close(&mut self, cx: &mut EventCx, commit: bool) -> Response {
             cx.push(if commit {
                 TextEditResult::Ok(self.edit.get_string())
             } else {
@@ -140,17 +140,17 @@ impl_scope! {
             }
         }
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
-                Event::Command(Command::Escape) => self.close(mgr, false),
-                Event::Command(Command::Enter) => self.close(mgr, true),
+                Event::Command(Command::Escape) => self.close(cx, false),
+                Event::Command(Command::Enter) => self.close(cx, true),
                 _ => Response::Unused,
             }
         }
 
-        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
-            if let Some(MsgClose(commit)) = mgr.try_pop() {
-                let _ = self.close(mgr, commit);
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(MsgClose(commit)) = cx.try_pop() {
+                let _ = self.close(cx, commit);
             }
         }
     }

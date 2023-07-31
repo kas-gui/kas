@@ -18,7 +18,7 @@ use crate::theme::{SizeMgr, ThemeControl};
 use crate::{Action, Erased, WidgetId, Window, WindowId};
 #[allow(unused)] use crate::{Events, Layout}; // for doc-links
 
-impl<'a> std::ops::BitOrAssign<Action> for EventMgr<'a> {
+impl<'a> std::ops::BitOrAssign<Action> for EventCx<'a> {
     #[inline]
     fn bitor_assign(&mut self, action: Action) {
         self.send_action(action);
@@ -242,7 +242,7 @@ impl EventState {
     /// Notify that a widget must be redrawn
     ///
     /// Note: currently, only full-window redraws are supported, thus this is
-    /// equivalent to: `mgr.send_action(Action::REDRAW);`
+    /// equivalent to: `cx.send_action(Action::REDRAW);`
     #[inline]
     pub fn redraw(&mut self, _id: WidgetId) {
         // Theoretically, notifying by WidgetId allows selective redrawing
@@ -254,7 +254,7 @@ impl EventState {
     ///
     /// This causes the given action to happen after event handling.
     ///
-    /// Calling `mgr.send_action(action)` is equivalent to `*mgr |= action`.
+    /// Calling `cx.send_action(action)` is equivalent to `*cx |= action`.
     ///
     /// Whenever a widget is added, removed or replaced, a reconfigure action is
     /// required. Should a widget's size requirements change, these will only
@@ -526,11 +526,11 @@ impl EventState {
     /// high-CPU tasks use [`Self::push_spawn`] instead.
     ///
     /// The future must resolve to a message on completion. This message is
-    /// pushed to the message stack as if it were pushed with [`EventMgr::push`]
+    /// pushed to the message stack as if it were pushed with [`EventCx::push`]
     /// from widget `id`, allowing this widget or any ancestor to handle it in
     /// [`Events::handle_messages`].
     //
-    // TODO: Can we identify the calling widget `id` via the context (EventMgr)?
+    // TODO: Can we identify the calling widget `id` via the context (EventCx)?
     pub fn push_async<Fut, M>(&mut self, id: WidgetId, fut: Fut)
     where
         Fut: IntoFuture<Output = M> + 'static,
@@ -596,7 +596,7 @@ impl EventState {
 }
 
 /// Public API
-impl<'a> EventMgr<'a> {
+impl<'a> EventCx<'a> {
     /// Configure a widget
     ///
     /// Note that, when handling events, this method returns the *old* state.
@@ -653,8 +653,8 @@ impl<'a> EventMgr<'a> {
     /// The message is first type-erased by wrapping with [`Erased`],
     /// then pushed to the stack.
     ///
-    /// The message may be [popped](EventMgr::try_pop) or
-    /// [observed](EventMgr::try_observe) from [`Events::handle_messages`]
+    /// The message may be [popped](EventCx::try_pop) or
+    /// [observed](EventCx::try_observe) from [`Events::handle_messages`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn push<M: Debug + 'static>(&mut self, msg: M) {
         self.push_erased(Erased::new(msg));
@@ -664,8 +664,8 @@ impl<'a> EventMgr<'a> {
     ///
     /// This is a lower-level variant of [`Self::push`].
     ///
-    /// The message may be [popped](EventMgr::try_pop) or
-    /// [observed](EventMgr::try_observe) from [`Events::handle_messages`]
+    /// The message may be [popped](EventCx::try_pop) or
+    /// [observed](EventCx::try_observe) from [`Events::handle_messages`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn push_erased(&mut self, msg: Erased) {
         self.messages.push_erased(msg);
@@ -717,7 +717,7 @@ impl<'a> EventMgr<'a> {
     /// It is recommended to call [`EventState::set_nav_focus`] or
     /// [`EventState::next_nav_focus`] after this method.
     ///
-    /// A pop-up may be closed by calling [`EventMgr::close_window`] with
+    /// A pop-up may be closed by calling [`EventCx::close_window`] with
     /// the [`WindowId`] returned by this method.
     ///
     /// Returns `None` if window creation is not currently available (but note

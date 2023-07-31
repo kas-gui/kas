@@ -11,12 +11,12 @@ use crate::event::EventState;
 use crate::{autoimpl, Action};
 use std::any::Any;
 
-#[allow(unused)] use crate::event::EventMgr;
+#[allow(unused)] use crate::event::EventCx;
 
 /// Interface through which a theme can be adjusted at run-time
 ///
 /// All methods return a [`Action`] to enable correct action when a theme
-/// is updated via [`EventMgr::adjust_theme`]. When adjusting a theme before
+/// is updated via [`EventCx::adjust_theme`]. When adjusting a theme before
 /// the UI is started, this return value can be safely ignored.
 #[crate::autoimpl(for<T: trait + ?Sized> &mut T, Box<T>)]
 pub trait ThemeControl {

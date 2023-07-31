@@ -122,7 +122,7 @@ impl_scope! {
         #[widget(&())]
         grip: GripPart,
         state_fn: Box<dyn Fn(&ConfigCx, &A) -> T>,
-        on_move: Option<Box<dyn Fn(&mut EventMgr, &A, T)>>,
+        on_move: Option<Box<dyn Fn(&mut EventCx, &A, T)>>,
     }
 
     impl<A, T: SliderValue> Slider<A, T, kas::dir::Left> {
@@ -217,7 +217,7 @@ impl_scope! {
         #[must_use]
         pub fn on_move<F>(mut self, f: F) -> Self
         where
-            F: Fn(&mut EventMgr, &A, T) + 'static,
+            F: Fn(&mut EventCx, &A, T) + 'static,
         {
             self.on_move = Some(Box::new(f));
             self
@@ -265,7 +265,7 @@ impl_scope! {
             }
         }
 
-        fn apply_grip_offset(&mut self, data: &A, mgr: &mut EventMgr, offset: Offset) {
+        fn apply_grip_offset(&mut self, cx: &mut EventCx, data: &A, offset: Offset) {
             let b = self.range.1 - self.range.0;
             let max_offset = self.grip.max_offset();
             let mut a = match self.direction.is_vertical() {
@@ -278,9 +278,9 @@ impl_scope! {
             let value = self.clamp_value(a + self.range.0);
             if value != self.value {
                 self.value = value;
-                *mgr |= self.grip.set_offset(self.offset()).1;
+                *cx |= self.grip.set_offset(self.offset()).1;
                 if let Some(ref f) = self.on_move {
-                    f(mgr, data, value);
+                    f(cx, data, value);
                 }
             }
         }
@@ -332,7 +332,7 @@ impl_scope! {
             self.value = self.clamp_value((self.state_fn)(cx, data));
         }
 
-        fn handle_event(&mut self, data: &A, cx: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> Response {
             if self.on_move.is_none() {
                 return Response::Unused;
             }
@@ -377,22 +377,22 @@ impl_scope! {
                 }
                 Event::PressStart { press } => {
                     let offset = self.grip.handle_press_on_track(cx, &press);
-                    self.apply_grip_offset(data, cx, offset);
+                    self.apply_grip_offset(cx, data, offset);
                 }
                 _ => return Response::Unused,
             }
             Response::Used
         }
 
-        fn handle_messages(&mut self, data: &A, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
             if self.on_move.is_none() {
                 return;
             }
 
-            match mgr.try_pop() {
-                Some(GripMsg::PressStart) => mgr.set_nav_focus(self.id(), false),
+            match cx.try_pop() {
+                Some(GripMsg::PressStart) => cx.set_nav_focus(self.id(), false),
                 Some(GripMsg::PressMove(pos)) => {
-                    self.apply_grip_offset(data, mgr, pos);
+                    self.apply_grip_offset(cx, data, pos);
                 }
                 _ => (),
             }

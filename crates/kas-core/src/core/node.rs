@@ -6,7 +6,7 @@
 //! Node API for widgets
 
 use super::Widget;
-use crate::event::{ConfigCx, Event, EventMgr, Response};
+use crate::event::{ConfigCx, Event, EventCx, Response};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
@@ -34,11 +34,11 @@ trait NodeT {
     fn _configure(&mut self, cx: &mut ConfigCx, id: WidgetId);
     fn _update(&mut self, cx: &mut ConfigCx);
 
-    fn _send(&mut self, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response;
-    fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: Erased);
+    fn _send(&mut self, cx: &mut EventCx, id: WidgetId, disabled: bool, event: Event) -> Response;
+    fn _replay(&mut self, cx: &mut EventCx, id: WidgetId, msg: Erased);
     fn _nav_next(
         &mut self,
-        cx: &mut EventMgr,
+        cx: &mut EventCx,
         focus: Option<&WidgetId>,
         advance: NavAdvance,
     ) -> Option<WidgetId>;
@@ -94,19 +94,19 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
         self.0._update(cx, self.1);
     }
 
-    fn _send(&mut self, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response {
-        self.0._send(self.1, cx, id, disabled, event)
+    fn _send(&mut self, cx: &mut EventCx, id: WidgetId, disabled: bool, event: Event) -> Response {
+        self.0._send(cx, self.1, id, disabled, event)
     }
-    fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: Erased) {
-        self.0._replay(self.1, cx, id, msg);
+    fn _replay(&mut self, cx: &mut EventCx, id: WidgetId, msg: Erased) {
+        self.0._replay(cx, self.1, id, msg);
     }
     fn _nav_next(
         &mut self,
-        cx: &mut EventMgr,
+        cx: &mut EventCx,
         focus: Option<&WidgetId>,
         advance: NavAdvance,
     ) -> Option<WidgetId> {
-        self.0._nav_next(self.1, cx, focus, advance)
+        self.0._nav_next(cx, self.1, focus, advance)
     }
 }
 
@@ -319,7 +319,7 @@ impl<'a> Node<'a> {
     pub(crate) fn _configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
-                self.0._configure(self.1, cx, id);
+                self.0._configure(cx, self.1, id);
             } else {
                 self.0._configure(cx, id);
             }
@@ -330,7 +330,7 @@ impl<'a> Node<'a> {
     pub(crate) fn _update(&mut self, cx: &mut ConfigCx) {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
-                self.0._update(self.1, cx);
+                self.0._update(cx, self.1);
             } else {
                 self.0._update(cx);
             }
@@ -340,14 +340,14 @@ impl<'a> Node<'a> {
     /// Internal method: send recursively
     pub(crate) fn _send(
         &mut self,
-        cx: &mut EventMgr,
+        cx: &mut EventCx,
         id: WidgetId,
         disabled: bool,
         event: Event,
     ) -> Response {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
-                self.0._send(self.1, cx, id, disabled, event)
+                self.0._send(cx, self.1, id, disabled, event)
             } else {
                 self.0._send(cx, id, disabled, event)
             }
@@ -355,10 +355,10 @@ impl<'a> Node<'a> {
     }
 
     /// Internal method: replay recursively
-    pub(crate) fn _replay(&mut self, cx: &mut EventMgr, id: WidgetId, msg: Erased) {
+    pub(crate) fn _replay(&mut self, cx: &mut EventCx, id: WidgetId, msg: Erased) {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
-                self.0._replay(self.1, cx, id, msg);
+                self.0._replay(cx, self.1, id, msg);
             } else {
                 self.0._replay(cx, id, msg);
             }
@@ -369,13 +369,13 @@ impl<'a> Node<'a> {
     // NOTE: public on account of ListView
     pub fn _nav_next(
         &mut self,
-        cx: &mut EventMgr,
+        cx: &mut EventCx,
         focus: Option<&WidgetId>,
         advance: NavAdvance,
     ) -> Option<WidgetId> {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
-                self.0._nav_next(self.1, cx, focus, advance)
+                self.0._nav_next(cx, self.1, focus, advance)
             } else {
                 self.0._nav_next(cx, focus, advance)
             }

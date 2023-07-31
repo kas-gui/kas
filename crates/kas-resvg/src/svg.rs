@@ -254,10 +254,10 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
-            if let Some(pixmap) = mgr.try_pop::<Pixmap>() {
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(pixmap) = cx.try_pop::<Pixmap>() {
                 let size = (pixmap.width(), pixmap.height());
-                mgr.draw_shared(|ds| {
+                cx.draw_shared(|ds| {
                     if let Some(im_size) = self.image.as_ref().and_then(|h| ds.image_size(h)) {
                         if im_size != Size::conv(size) {
                             if let Some(handle) = self.image.take() {
@@ -275,7 +275,7 @@ impl_scope! {
                     }
                 });
 
-                mgr.redraw(self.id());
+                cx.redraw(self.id());
                 let inner = std::mem::replace(&mut self.inner, State::None);
                 self.inner = match inner {
                     State::None => State::None,

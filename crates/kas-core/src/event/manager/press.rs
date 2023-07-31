@@ -6,7 +6,7 @@
 //! Event handling: events
 
 #[allow(unused)] use super::{Event, EventState}; // for doc-links
-use super::{EventMgr, GrabMode, MouseGrab, Pending, Response, TouchGrab};
+use super::{EventCx, GrabMode, MouseGrab, Pending, Response, TouchGrab};
 use crate::event::{CursorIcon, MouseButton};
 use crate::geom::{Coord, Offset};
 use crate::{Action, WidgetId};
@@ -120,7 +120,7 @@ impl Press {
 
 /// Bulider pattern (see [`Press::grab`])
 ///
-/// Conclude by calling [`Self::with_mgr`].
+/// Conclude by calling [`Self::with_cx`].
 #[must_use]
 pub struct GrabBuilder {
     id: WidgetId,
@@ -151,8 +151,8 @@ impl GrabBuilder {
         self
     }
 
-    /// Complete the grab, providing the [`EventMgr`]
-    pub fn with_mgr(self, mgr: &mut EventMgr) -> Response {
+    /// Complete the grab, providing the [`EventCx`]
+    pub fn with_cx(self, cx: &mut EventCx) -> Response {
         let GrabBuilder {
             id,
             source,
@@ -164,13 +164,13 @@ impl GrabBuilder {
         let mut pan_grab = (u16::MAX, 0);
         match source {
             PressSource::Mouse(button, repetitions) => {
-                if let Some((id, event)) = mgr.remove_mouse_grab(false) {
-                    mgr.pending.push_back(Pending::Send(id, event));
+                if let Some((id, event)) = cx.remove_mouse_grab(false) {
+                    cx.pending.push_back(Pending::Send(id, event));
                 }
                 if mode.is_pan() {
-                    pan_grab = mgr.set_pan_on(id.clone(), mode, false, coord);
+                    pan_grab = cx.set_pan_on(id.clone(), mode, false, coord);
                 }
-                mgr.mouse_grab = Some(MouseGrab {
+                cx.mouse_grab = Some(MouseGrab {
                     button,
                     repetitions,
                     start_id: id.clone(),
@@ -182,18 +182,18 @@ impl GrabBuilder {
                     delta: Offset::ZERO,
                 });
                 if let Some(icon) = cursor {
-                    mgr.shell.set_cursor_icon(icon);
+                    cx.shell.set_cursor_icon(icon);
                 }
             }
             PressSource::Touch(touch_id) => {
-                if mgr.remove_touch(touch_id).is_some() {
+                if cx.remove_touch(touch_id).is_some() {
                     #[cfg(debug_assertions)]
                     log::error!(target: "kas_core::event::manager", "grab_press: touch_id conflict!");
                 }
                 if mode.is_pan() {
-                    pan_grab = mgr.set_pan_on(id.clone(), mode, true, coord);
+                    pan_grab = cx.set_pan_on(id.clone(), mode, true, coord);
                 }
-                mgr.touch_grab.push(TouchGrab {
+                cx.touch_grab.push(TouchGrab {
                     id: touch_id,
                     start_id: id.clone(),
                     depress: Some(id.clone()),
@@ -206,7 +206,7 @@ impl GrabBuilder {
             }
         }
 
-        mgr.send_action(Action::REDRAW);
+        cx.send_action(Action::REDRAW);
         Response::Used
     }
 }

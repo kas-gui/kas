@@ -233,11 +233,11 @@ impl Tree {
 
                 fn pre_handle_event(
                     &mut self,
+                    cx: &mut ::kas::event::EventCx,
                     data: &Self::Data,
-                    cx: &mut ::kas::event::EventMgr,
                     event: ::kas::event::Event,
                 ) -> ::kas::event::Response {
-                    self.handle_event(data, cx, event)
+                    self.handle_event(cx, data, event)
                 }
             }
 

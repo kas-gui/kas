@@ -129,7 +129,7 @@ impl_scope! {
             cx.request_timer_update(self.id(), 0, Duration::new(0, 0), true);
         }
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(0) => {
                     self.now = Local::now();
@@ -143,8 +143,8 @@ impl_scope! {
                         .expect("invalid font_id");
                     let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                     log::info!("Requesting update in {}ns", ns);
-                    mgr.request_timer_update(self.id(), 0, Duration::new(0, ns), true);
-                    *mgr |= Action::REDRAW;
+                    cx.request_timer_update(self.id(), 0, Duration::new(0, ns), true);
+                    *cx |= Action::REDRAW;
                     Response::Used
                 }
                 _ => Response::Unused,

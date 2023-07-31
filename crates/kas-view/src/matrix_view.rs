@@ -350,9 +350,9 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
-            *mgr |= self.scroll.set_offset(offset);
-            mgr.request_update(self.id());
+        fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
+            *cx |= self.scroll.set_offset(offset);
+            cx.request_update(self.id());
             self.scroll.offset()
         }
     }
@@ -556,7 +556,7 @@ impl_scope! {
             self.update_widgets(cx, data);
         }
 
-        fn handle_event(&mut self, data: &A, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> Response {
             let response = match event {
                 Event::Command(cmd) => {
                     if data.is_empty() {
@@ -567,7 +567,7 @@ impl_scope! {
 
                     let row_len: usize = self.cur_len.1.cast();
                     let mut solver = self.position_solver();
-                    let (ci, ri) = match mgr.nav_focus().and_then(|id| self.find_child_index(id)) {
+                    let (ci, ri) = match cx.nav_focus().and_then(|id| self.find_child_index(id)) {
                         Some(index) => solver.child_to_data(index),
                         None => return Response::Unused,
                     };
@@ -591,8 +591,8 @@ impl_scope! {
                     };
                     return if let Some((ci, ri)) = data_index {
                         // Set nav focus and update scroll position
-                        if self.scroll.focus_rect(mgr, solver.rect(ci, ri), self.core.rect) {
-                            solver = mgr.config_cx(|cx| self.update_widgets(cx, data));
+                        if self.scroll.focus_rect(cx, solver.rect(ci, ri), self.core.rect) {
+                            solver = cx.config_cx(|cx| self.update_widgets(cx, data));
                         }
 
                         let index = solver.data_to_child(ci, ri);
@@ -613,26 +613,26 @@ impl_scope! {
                             );
                         }
 
-                        mgr.next_nav_focus(self.widgets[index].widget.id(), false, true);
+                        cx.next_nav_focus(self.widgets[index].widget.id(), false, true);
                         Response::Used
                     } else {
                         Response::Unused
                     };
                 }
-                Event::PressStart { ref press } if press.is_primary() && mgr.config().mouse_nav_focus() => {
-                    if let Some(index) = mgr.last_child() {
+                Event::PressStart { ref press } if press.is_primary() && cx.config().mouse_nav_focus() => {
+                    if let Some(index) = cx.last_child() {
                         self.press_target = self.widgets[index].key.clone().map(|k| (index, k));
                     }
                     if let Some((index, ref key)) = self.press_target {
                         let w = &mut self.widgets[index];
                         if w.key.as_ref().map(|k| k == key).unwrap_or(false) {
-                            mgr.next_nav_focus(w.widget.id(), false, false);
+                            cx.next_nav_focus(w.widget.id(), false, false);
                         }
                     }
 
                     // Press may also be grabbed by scroll component (replacing
                     // this). Either way we can select on PressEnd.
-                    press.grab(self.id()).with_mgr(mgr)
+                    press.grab(self.id()).with_cx(cx)
                 }
                 Event::PressEnd { ref press, success } if press.is_primary() => {
                     if let Some((index, ref key)) = self.press_target {
@@ -643,7 +643,7 @@ impl_scope! {
                             && w.key.as_ref().map(|k| k == key).unwrap_or(false)
                             && w.widget.rect().contains(press.coord + self.scroll.offset())
                         {
-                            mgr.push(kas::message::Select);
+                            cx.push(kas::message::Select);
                         }
                     }
                     Response::Used
@@ -653,23 +653,23 @@ impl_scope! {
 
             let (moved, sber_response) = self
                 .scroll
-                .scroll_by_event(mgr, event, self.id(), self.core.rect);
+                .scroll_by_event(cx, event, self.id(), self.core.rect);
             if moved {
-                mgr.config_cx(|cx| self.update_widgets(cx, data));
+                cx.config_cx(|cx| self.update_widgets(cx, data));
             }
             response | sber_response
         }
 
-        fn handle_messages(&mut self, data: &A, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
             let key;
-            if let Some(index) = mgr.last_child() {
+            if let Some(index) = cx.last_child() {
                 let w = &mut self.widgets[index];
                 key = match w.key.clone() {
                     Some(k) => k,
                     None => return,
                 };
 
-                self.driver.on_messages(mgr, data, &key, &mut w.widget);
+                self.driver.on_messages(cx, data, &key, &mut w.widget);
             } else {
                 // Message is from self
                 key = match self.press_target.clone() {
@@ -678,31 +678,31 @@ impl_scope! {
                 };
             }
 
-            if let Some(kas::message::Select) = mgr.try_pop() {
+            if let Some(kas::message::Select) = cx.try_pop() {
                 match self.sel_mode {
                     SelectionMode::None => (),
                     SelectionMode::Single => {
-                        mgr.redraw(self.id());
+                        cx.redraw(self.id());
                         self.selection.clear();
                         self.selection.insert(key.clone());
-                        mgr.push(SelectionMsg::Select(key));
+                        cx.push(SelectionMsg::Select(key));
                     }
                     SelectionMode::Multiple => {
-                        mgr.redraw(self.id());
+                        cx.redraw(self.id());
                         if self.selection.remove(&key) {
-                            mgr.push(SelectionMsg::Deselect(key));
+                            cx.push(SelectionMsg::Deselect(key));
                         } else {
                             self.selection.insert(key.clone());
-                            mgr.push(SelectionMsg::Select(key));
+                            cx.push(SelectionMsg::Select(key));
                         }
                     }
                 }
             }
         }
 
-        fn handle_scroll(&mut self, data: &A, mgr: &mut EventMgr, scroll: Scroll) {
-            self.scroll.scroll(mgr, self.rect(), scroll);
-            mgr.config_cx(|cx| self.update_widgets(cx, data));
+        fn handle_scroll(&mut self, cx: &mut EventCx, data: &A, scroll: Scroll) {
+            self.scroll.scroll(cx, self.rect(), scroll);
+            cx.config_cx(|cx| self.update_widgets(cx, data));
         }
     }
 
@@ -738,24 +738,24 @@ impl_scope! {
 
         fn _send(
             &mut self,
+            cx: &mut EventCx,
             data: &A,
-            cx: &mut EventMgr,
             id: WidgetId,
             disabled: bool,
             event: Event,
         ) -> Response {
-            kas::impls::_send(self, data, cx, id, disabled, event)
+            kas::impls::_send(self, cx, data, id, disabled, event)
         }
 
-        fn _replay(&mut self, data: &A, cx: &mut EventMgr, id: WidgetId, msg: kas::Erased) {
-            kas::impls::_replay(self, data, cx, id, msg);
+        fn _replay(&mut self, cx: &mut EventCx, data: &A, id: WidgetId, msg: kas::Erased) {
+            kas::impls::_replay(self, cx, data, id, msg);
         }
 
         // Non-standard implementation to allow mapping new children
         fn _nav_next(
             &mut self,
+            cx: &mut EventCx,
             data: &A,
-            cx: &mut EventMgr,
             focus: Option<&WidgetId>,
             advance: NavAdvance,
         ) -> Option<WidgetId> {

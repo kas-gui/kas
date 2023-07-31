@@ -111,7 +111,7 @@ impl<A, T: SpinnerValue> SpinnerGuard<A, T> {
     }
 
     /// Returns new value if different
-    fn handle_btn(&self, data: &A, cx: &mut EventMgr, btn: SpinBtn) -> Option<T> {
+    fn handle_btn(&self, cx: &mut EventCx, data: &A, btn: SpinBtn) -> Option<T> {
         let old_value = cx.config_cx(|cx| (self.state_fn)(cx, data));
         let value = match btn {
             SpinBtn::Down => old_value.sub_step(self.step, self.start),
@@ -130,12 +130,12 @@ impl<A, T: SpinnerValue> EditGuard for SpinnerGuard<A, T> {
         *cx |= edit.set_string(value.to_string());
     }
 
-    fn activate(edit: &mut EditField<Self>, data: &A, mgr: &mut EventMgr) -> Response {
-        Self::focus_lost(edit, data, mgr);
+    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, data: &A) -> Response {
+        Self::focus_lost(edit, cx, data);
         Response::Used
     }
 
-    fn focus_lost(edit: &mut EditField<Self>, data: &A, cx: &mut EventMgr) {
+    fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, data: &A) {
         if let Some(value) = edit.guard.parsed.take() {
             cx.push(ValueMsg(value));
         } else {
@@ -144,7 +144,7 @@ impl<A, T: SpinnerValue> EditGuard for SpinnerGuard<A, T> {
         }
     }
 
-    fn edit(edit: &mut EditField<Self>, _: &A, cx: &mut EventMgr) {
+    fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &A) {
         let is_err;
         if let Ok(value) = edit.get_str().parse::<T>() {
             edit.guard.parsed = Some(value.clamp(edit.guard.start, edit.guard.end));
@@ -181,7 +181,7 @@ impl_scope! {
         b_up: MarkButton<SpinBtn>,
         #[widget(&())]
         b_down: MarkButton<SpinBtn>,
-        on_change: Option<Box<dyn Fn(&mut EventMgr, T)>>,
+        on_change: Option<Box<dyn Fn(&mut EventCx, T)>>,
     }
 
     impl Self {
@@ -229,7 +229,7 @@ impl_scope! {
         pub fn on_change<F>(mut self, f: F) -> Self
         where
         // TODO: include data?
-            F: Fn(&mut EventMgr, T) + 'static,
+            F: Fn(&mut EventCx, T) + 'static,
         {
             self.on_change = Some(Box::new(f));
             self
@@ -306,7 +306,7 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn steal_event(&mut self, data: &A, mgr: &mut EventMgr, _: &WidgetId, event: &Event) -> Response {
+        fn steal_event(&mut self, cx: &mut EventCx, data: &A, _: &WidgetId, event: &Event) -> Response {
             let btn = match event {
                 Event::Command(cmd) => match cmd {
                     Command::Down => SpinBtn::Down,
@@ -325,26 +325,26 @@ impl_scope! {
                 _ => return Response::Unused,
             };
 
-            if let Some(value) = self.edit.guard.handle_btn(data, mgr, btn) {
+            if let Some(value) = self.edit.guard.handle_btn(cx, data, btn) {
                 if let Some(ref f) = self.on_change {
-                    f(mgr, value);
+                    f(cx, value);
                 }
             }
             Response::Used
         }
 
-        fn handle_messages(&mut self, data: &A, mgr: &mut EventMgr) {
-            let new_value = if let Some(ValueMsg(value)) = mgr.try_pop() {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
+            let new_value = if let Some(ValueMsg(value)) = cx.try_pop() {
                 Some(value)
-            } else if let Some(btn) = mgr.try_pop::<SpinBtn>() {
-                self.edit.guard.handle_btn(data, mgr, btn)
+            } else if let Some(btn) = cx.try_pop::<SpinBtn>() {
+                self.edit.guard.handle_btn(cx, data, btn)
             } else {
                 None
             };
 
             if let Some(value) = new_value {
                 if let Some(ref f) = self.on_change {
-                    f(mgr, value);
+                    f(cx, value);
                 }
             }
         }

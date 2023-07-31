@@ -29,7 +29,7 @@ impl_scope! {
         color: Option<Rgb>,
         #[widget]
         pub inner: W,
-        on_press: Option<Box<dyn Fn(&mut EventMgr, &W::Data)>>,
+        on_press: Option<Box<dyn Fn(&mut EventCx, &W::Data)>>,
     }
 
     impl<W: Widget> Button<W> {
@@ -52,7 +52,7 @@ impl_scope! {
         #[must_use]
         pub fn on_press<F>(self, f: F) -> Button<W>
         where
-            F: Fn(&mut EventMgr, &W::Data) + 'static,
+            F: Fn(&mut EventCx, &W::Data) + 'static,
         {
             Button {
                 core: self.core,
@@ -71,7 +71,7 @@ impl_scope! {
         #[inline]
         pub fn new_on<F>(inner: W, f: F) -> Self
         where
-            F: Fn(&mut EventMgr, &W::Data) + 'static,
+            F: Fn(&mut EventCx, &W::Data) + 'static,
         {
             Button::new(inner).on_press(f)
         }
@@ -83,7 +83,7 @@ impl_scope! {
         /// [`Events::handle_messages`].
         #[inline]
         pub fn new_msg<M: Clone + Debug + 'static>(inner: W, msg: M) -> Self {
-            Self::new_on(inner, move |mgr, _| mgr.push(msg.clone()))
+            Self::new_on(inner, move |cx, _| cx.push(msg.clone()))
         }
 
         /// Add accelerator keys (chain style)
@@ -112,19 +112,19 @@ impl_scope! {
             cx.add_accel_keys(self.id_ref(), &self.keys1);
         }
 
-        fn handle_event(&mut self, data: &W::Data, mgr: &mut EventMgr, event: Event) -> Response {
-            event.on_activate(mgr, self.id(), |mgr| {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &W::Data, event: Event) -> Response {
+            event.on_activate(cx, self.id(), |cx| {
                 if let Some(f) = self.on_press.as_ref() {
-                    f(mgr, data);
+                    f(cx, data);
                 }
                 Response::Used
             })
         }
 
-        fn handle_messages(&mut self, data: &W::Data, mgr: &mut EventMgr) {
-            if let Some(kas::message::Activate) = mgr.try_pop() {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &W::Data) {
+            if let Some(kas::message::Activate) = cx.try_pop() {
                 if let Some(f) = self.on_press.as_ref() {
-                    f(mgr, data);
+                    f(cx, data);
                 }
             }
         }
@@ -149,7 +149,7 @@ impl_scope! {
         #[widget]
         label: AccelLabel,
         color: Option<Rgb>,
-        on_press: Option<Box<dyn Fn(&mut EventMgr)>>,
+        on_press: Option<Box<dyn Fn(&mut EventCx)>>,
     }
 
     impl Self {
@@ -172,7 +172,7 @@ impl_scope! {
         #[must_use]
         pub fn on_press<F>(self, f: F) -> TextButton
         where
-            F: Fn(&mut EventMgr) + 'static,
+            F: Fn(&mut EventCx) + 'static,
         {
             TextButton {
                 core: self.core,
@@ -189,7 +189,7 @@ impl_scope! {
         #[inline]
         pub fn new_on<S: Into<AccelString>, F>(label: S, f: F) -> Self
         where
-            F: Fn(&mut EventMgr) + 'static,
+            F: Fn(&mut EventCx) + 'static,
         {
             TextButton::new(label).on_press(f)
         }
@@ -201,7 +201,7 @@ impl_scope! {
         /// [`Events::handle_messages`].
         #[inline]
         pub fn new_msg<S: Into<AccelString>, M: Clone + Debug + 'static>(label: S, msg: M) -> Self {
-            Self::new_on(label, move |mgr| mgr.push(msg.clone()))
+            Self::new_on(label, move |cx| cx.push(msg.clone()))
         }
 
         /// Add accelerator keys (chain style)
@@ -247,19 +247,19 @@ impl_scope! {
             cx.add_accel_keys(self.id_ref(), &self.keys1);
         }
 
-        fn handle_event(&mut self, _: &(), mgr: &mut EventMgr, event: Event) -> Response {
-            event.on_activate(mgr, self.id(), |mgr| {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> Response {
+            event.on_activate(cx, self.id(), |cx| {
                 if let Some(f) = self.on_press.as_ref() {
-                    f(mgr);
+                    f(cx);
                 }
                 Response::Used
             })
         }
 
-        fn handle_messages(&mut self, _: &(), mgr: &mut EventMgr) {
-            if let Some(kas::message::Activate) = mgr.try_pop() {
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &()) {
+            if let Some(kas::message::Activate) = cx.try_pop() {
                 if let Some(f) = self.on_press.as_ref() {
-                    f(mgr);
+                    f(cx);
                 }
             }
         }

@@ -188,21 +188,21 @@ impl_scope! {
         /// Set the value
         ///
         /// Returns true if the value changes.
-        pub fn set_value(&mut self, mgr: &mut EventState, value: i32) -> bool {
+        pub fn set_value(&mut self, cx: &mut EventState, value: i32) -> bool {
             let value = value.clamp(0, self.max_value);
             let changed = value != self.value;
             if changed {
                 self.value = value;
-                *mgr |= self.handle.set_offset(self.offset()).1;
+                *cx |= self.handle.set_offset(self.offset()).1;
             }
-            self.force_visible(mgr);
+            self.force_visible(cx);
             changed
         }
 
-        fn force_visible(&mut self, mgr: &mut EventState) {
+        fn force_visible(&mut self, cx: &mut EventState) {
             self.force_visible = true;
-            let delay = mgr.config().touch_select_delay();
-            mgr.request_timer_update(self.id(), 0, delay, false);
+            let delay = cx.config().touch_select_delay();
+            cx.request_timer_update(self.id(), 0, delay, false);
         }
 
         #[inline]
@@ -247,9 +247,9 @@ impl_scope! {
         }
 
         // true if not equal to old value
-        fn apply_grip_offset(&mut self, mgr: &mut EventMgr, offset: Offset) {
+        fn apply_grip_offset(&mut self, cx: &mut EventCx, offset: Offset) {
             let (offset, action) = self.handle.set_offset(offset);
-            *mgr |= action;
+            *cx |= action;
 
             let len = self.bar_len() - self.handle_len;
             let mut offset = match self.direction.is_vertical() {
@@ -267,8 +267,8 @@ impl_scope! {
                 return;
             }
             let value = i32::conv((lhs + (rhs / 2)) / rhs);
-            if self.set_value(mgr, value) {
-                mgr.push(ScrollMsg(value));
+            if self.set_value(cx, value) {
+                cx.push(ScrollMsg(value));
             }
         }
     }
@@ -321,25 +321,25 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(_) => {
                     self.force_visible = false;
-                    *mgr |= Action::REDRAW;
+                    *cx |= Action::REDRAW;
                     Response::Used
                 }
                 Event::PressStart { press } => {
-                    let offset = self.handle.handle_press_on_track(mgr, &press);
-                    self.apply_grip_offset(mgr, offset);
+                    let offset = self.handle.handle_press_on_track(cx, &press);
+                    self.apply_grip_offset(cx, offset);
                     Response::Used
                 }
                 _ => Response::Unused,
             }
         }
 
-        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
-            if let Some(GripMsg::PressMove(offset)) = mgr.try_pop() {
-                self.apply_grip_offset(mgr, offset);
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(GripMsg::PressMove(offset)) = cx.try_pop() {
+                self.apply_grip_offset(cx, offset);
             }
         }
     }
@@ -450,10 +450,10 @@ impl_scope! {
         fn scroll_offset(&self) -> Offset {
             self.inner.scroll_offset()
         }
-        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
-            let offset = self.inner.set_scroll_offset(mgr, offset);
-            self.horiz_bar.set_value(mgr, offset.0);
-            self.vert_bar.set_value(mgr, offset.1);
+        fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
+            let offset = self.inner.set_scroll_offset(cx, offset);
+            self.horiz_bar.set_value(cx, offset.0);
+            self.vert_bar.set_value(cx, offset.1);
             offset
         }
     }
@@ -549,26 +549,26 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
-            let index = mgr.last_child().expect("message not sent from self");
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            let index = cx.last_child().expect("message not sent from self");
             if index == widget_index![self.horiz_bar] {
-                if let Some(ScrollMsg(x)) = mgr.try_pop() {
+                if let Some(ScrollMsg(x)) = cx.try_pop() {
                     let offset = Offset(x, self.inner.scroll_offset().1);
-                    self.inner.set_scroll_offset(mgr, offset);
+                    self.inner.set_scroll_offset(cx, offset);
                 }
             } else if index == widget_index![self.vert_bar] {
-                if let Some(ScrollMsg(y)) = mgr.try_pop() {
+                if let Some(ScrollMsg(y)) = cx.try_pop() {
                     let offset = Offset(self.inner.scroll_offset().0, y);
-                    self.inner.set_scroll_offset(mgr, offset);
+                    self.inner.set_scroll_offset(cx, offset);
                 }
             }
         }
 
-        fn handle_scroll(&mut self, _: &Self::Data, mgr: &mut EventMgr, _: Scroll) {
+        fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, _: Scroll) {
             // We assume the inner already updated its positions; this is just to set bars
             let offset = self.inner.scroll_offset();
-            self.horiz_bar.set_value(mgr, offset.0);
-            self.vert_bar.set_value(mgr, offset.1);
+            self.horiz_bar.set_value(cx, offset.0);
+            self.vert_bar.set_value(cx, offset.1);
         }
     }
 }

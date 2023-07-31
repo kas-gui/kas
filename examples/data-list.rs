@@ -83,12 +83,12 @@ struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
     type Data = Data;
 
-    fn activate(edit: &mut EditField<Self>, _: &Data, cx: &mut EventMgr) -> Response {
+    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Data) -> Response {
         cx.push(SelectEntry(edit.guard.0));
         Response::Used
     }
 
-    fn edit(edit: &mut EditField<Self>, data: &Data, cx: &mut EventMgr) {
+    fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Data) {
         if data.active == edit.guard.0 {
             cx.push(Control::UpdateCurrent(edit.get_string()));
         }
@@ -116,7 +116,7 @@ impl_scope! {
     impl Events for Self {
         type Data = Data;
 
-        fn handle_messages(&mut self, data: &Data, cx: &mut EventMgr) {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &Data) {
             if let Some(SelectEntry(n)) = cx.try_pop() {
                 if data.active != n {
                     cx.push(Control::Select(n, self.edit.get_string()));
@@ -169,7 +169,7 @@ fn main() -> kas::shell::Result<()> {
         *cx |= list.set_direction(data.dir);
         let len = data.len;
         if len != list.len() {
-            list.resize_with(data, cx, len, ListEntry::new);
+            list.resize_with(cx, data, len, ListEntry::new);
         }
     });
     let tree = kas::column![

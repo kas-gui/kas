@@ -373,7 +373,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_scroll_offset(&mut self, cx: &mut EventMgr, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
             *cx |= self.scroll.set_offset(offset);
             cx.request_update(self.id());
             self.scroll.offset()
@@ -578,7 +578,7 @@ impl_scope! {
             self.update_widgets(cx, data);
         }
 
-        fn handle_event(&mut self, data: &A, cx: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> Response {
             let response = match event {
                 Event::Command(cmd) => {
                     let last = data.len().wrapping_sub(1);
@@ -632,7 +632,7 @@ impl_scope! {
 
                     // Press may also be grabbed by scroll component (replacing
                     // this). Either way we can select on PressEnd.
-                    press.grab(self.id()).with_mgr(cx)
+                    press.grab(self.id()).with_cx(cx)
                 }
                 Event::PressEnd { ref press, success } if press.is_primary() => {
                     if let Some((index, ref key)) = self.press_target {
@@ -660,7 +660,7 @@ impl_scope! {
             response | sber_response
         }
 
-        fn handle_messages(&mut self, data: &A, cx: &mut EventMgr) {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
             let key;
             if let Some(index) = cx.last_child() {
                 let w = &mut self.widgets[index];
@@ -700,7 +700,7 @@ impl_scope! {
             }
         }
 
-        fn handle_scroll(&mut self, data: &A, cx: &mut EventMgr, scroll: Scroll) {
+        fn handle_scroll(&mut self, cx: &mut EventCx, data: &A, scroll: Scroll) {
             self.scroll.scroll(cx, self.rect(), scroll);
             cx.config_cx(|cx| self.update_widgets(cx, data));
         }
@@ -738,24 +738,24 @@ impl_scope! {
 
         fn _send(
             &mut self,
+            cx: &mut EventCx,
             data: &A,
-            cx: &mut EventMgr,
             id: WidgetId,
             disabled: bool,
             event: Event,
         ) -> Response {
-            kas::impls::_send(self, data, cx, id, disabled, event)
+            kas::impls::_send(self, cx, data, id, disabled, event)
         }
 
-        fn _replay(&mut self, data: &A, cx: &mut EventMgr, id: WidgetId, msg: kas::Erased) {
-            kas::impls::_replay(self, data, cx, id, msg);
+        fn _replay(&mut self, cx: &mut EventCx, data: &A, id: WidgetId, msg: kas::Erased) {
+            kas::impls::_replay(self, cx, data, id, msg);
         }
 
         // Non-standard implementation to allow mapping new children
         fn _nav_next(
             &mut self,
+            cx: &mut EventCx,
             data: &A,
-            cx: &mut EventMgr,
             focus: Option<&WidgetId>,
             advance: NavAdvance,
         ) -> Option<WidgetId> {

@@ -77,19 +77,19 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
                 Event::Command(cmd) if cmd.is_activate() => {
-                    mgr.push(self.msg.clone());
+                    cx.push(self.msg.clone());
                     Response::Used
                 }
                 _ => Response::Unused,
             }
         }
 
-        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
-            if let Some(kas::message::Activate) = mgr.try_pop() {
-                mgr.push(self.msg.clone());
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(kas::message::Activate) = cx.try_pop() {
+                cx.push(self.msg.clone());
             }
         }
     }
@@ -171,7 +171,7 @@ impl_scope! {
         #[must_use]
         pub fn on_toggle<F>(self, on_toggle: F) -> Self
         where
-            F: Fn(&mut EventMgr, &A, bool) + 'static,
+            F: Fn(&mut EventCx, &A, bool) + 'static,
         {
             MenuToggle {
                 core: self.core,

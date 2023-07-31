@@ -115,22 +115,22 @@ impl EventState {
         self.time_updates.last().map(|time| time.0)
     }
 
-    /// Construct a [`EventMgr`] referring to this state
+    /// Construct a [`EventCx`] referring to this state
     ///
-    /// Invokes the given closure on this [`EventMgr`].
+    /// Invokes the given closure on this [`EventCx`].
     #[inline]
     pub(crate) fn with<F>(&mut self, shell: &mut dyn ShellWindow, messages: &mut ErasedStack, f: F)
     where
-        F: FnOnce(&mut EventMgr),
+        F: FnOnce(&mut EventCx),
     {
-        let mut mgr = EventMgr {
+        let mut cx = EventCx {
             state: self,
             shell,
             messages,
             last_child: None,
             scroll: Scroll::None,
         };
-        f(&mut mgr);
+        f(&mut cx);
     }
 
     /// Update, after receiving all events
@@ -144,7 +144,7 @@ impl EventState {
     ) -> Action {
         let old_hover_icon = self.hover_icon;
 
-        let mut mgr = EventMgr {
+        let mut cx = EventCx {
             state: self,
             shell,
             messages,
@@ -152,21 +152,21 @@ impl EventState {
             scroll: Scroll::None,
         };
 
-        while let Some((parent, wid)) = mgr.popup_removed.pop() {
-            mgr.send_event(win.as_node(data), parent, Event::PopupRemoved(wid));
+        while let Some((parent, wid)) = cx.popup_removed.pop() {
+            cx.send_event(win.as_node(data), parent, Event::PopupRemoved(wid));
         }
 
-        mgr.flush_mouse_grab_motion(win.as_node(data));
-        for i in 0..mgr.touch_grab.len() {
-            let action = mgr.touch_grab[i].flush_click_move();
-            mgr.state.action |= action;
-            if let Some((id, event)) = mgr.touch_grab[i].flush_grab_move() {
-                mgr.send_event(win.as_node(data), id, event);
+        cx.flush_mouse_grab_motion(win.as_node(data));
+        for i in 0..cx.touch_grab.len() {
+            let action = cx.touch_grab[i].flush_click_move();
+            cx.state.action |= action;
+            if let Some((id, event)) = cx.touch_grab[i].flush_grab_move() {
+                cx.send_event(win.as_node(data), id, event);
             }
         }
 
-        for gi in 0..mgr.pan_grab.len() {
-            let grab = &mut mgr.pan_grab[gi];
+        for gi in 0..cx.pan_grab.len() {
+            let grab = &mut cx.pan_grab[gi];
             debug_assert!(grab.mode != GrabMode::Grab);
             assert!(grab.n > 0);
 
@@ -204,50 +204,50 @@ impl EventState {
             let id = grab.id.clone();
             if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
                 let event = Event::Pan { alpha, delta };
-                mgr.send_event(win.as_node(data), id, event);
+                cx.send_event(win.as_node(data), id, event);
             }
         }
 
         // Warning: infinite loops are possible here if widgets always queue a
         // new pending event when evaluating one of these:
-        while let Some(item) = mgr.pending.pop_front() {
+        while let Some(item) = cx.pending.pop_front() {
             log::trace!(target: "kas_core::event::manager", "update: handling Pending::{item:?}");
             match item {
                 Pending::Configure(id) => {
                     win.as_node(data)
-                        .for_id(&id, |node| mgr.configure(node, id.clone()));
+                        .for_id(&id, |node| cx.configure(node, id.clone()));
 
-                    let hover = win.find_id(data, mgr.state.last_mouse_coord);
-                    mgr.state.set_hover(hover);
+                    let hover = win.find_id(data, cx.state.last_mouse_coord);
+                    cx.state.set_hover(hover);
                 }
                 Pending::Update(id) => {
-                    win.as_node(data).for_id(&id, |node| mgr.update(node));
+                    win.as_node(data).for_id(&id, |node| cx.update(node));
                 }
                 Pending::Send(id, event) => {
                     if matches!(&event, &Event::LostMouseHover) {
-                        mgr.hover_icon = Default::default();
+                        cx.hover_icon = Default::default();
                     }
-                    mgr.send_event(win.as_node(data), id, event);
+                    cx.send_event(win.as_node(data), id, event);
                 }
                 Pending::SetRect(_id) => {
                     // TODO(opt): set only this child
-                    mgr.send_action(Action::SET_RECT);
+                    cx.send_action(Action::SET_RECT);
                 }
                 Pending::NextNavFocus {
                     target,
                     reverse,
                     key_focus,
                 } => {
-                    mgr.next_nav_focus_impl(win.as_node(data), target, reverse, key_focus);
+                    cx.next_nav_focus_impl(win.as_node(data), target, reverse, key_focus);
                 }
             }
         }
 
         // Poll futures last. This means that any newly pushed future should
         // get polled from the same update() call.
-        mgr.poll_futures(win.as_node(data));
+        cx.poll_futures(win.as_node(data));
 
-        drop(mgr);
+        drop(cx);
 
         if self.hover_icon != old_hover_icon && self.mouse_grab.is_none() {
             shell.set_cursor_icon(self.hover_icon);
@@ -266,7 +266,7 @@ impl EventState {
         messages: &mut ErasedStack,
         widget: Node<'_>,
     ) -> bool {
-        let mut mgr = EventMgr {
+        let mut cx = EventCx {
             state: self,
             shell,
             messages,
@@ -275,9 +275,9 @@ impl EventState {
         };
 
         // Widget::draw may add futures; we should poll those now.
-        mgr.poll_futures(widget);
+        cx.poll_futures(widget);
 
-        drop(mgr);
+        drop(cx);
         !self.action.is_empty()
     }
 }
@@ -285,7 +285,7 @@ impl EventState {
 /// Shell API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-impl<'a> EventMgr<'a> {
+impl<'a> EventCx<'a> {
     /// Update widgets due to timer
     pub(crate) fn update_timer(&mut self, mut widget: Node<'_>) {
         let now = Instant::now();
@@ -481,7 +481,7 @@ impl<'a> EventMgr<'a> {
                         // No mouse grab but have a hover target
                         if self.config.mouse_nav_focus() {
                             if let Some(id) =
-                                win._nav_next(data, self, Some(&start_id), NavAdvance::None)
+                                win._nav_next(self, data, Some(&start_id), NavAdvance::None)
                             {
                                 self.set_nav_focus(id, false);
                             }
@@ -513,7 +513,7 @@ impl<'a> EventMgr<'a> {
                         if let Some(id) = start_id.as_ref() {
                             if self.config.touch_nav_focus() {
                                 if let Some(id) =
-                                    win._nav_next(data, self, Some(id), NavAdvance::None)
+                                    win._nav_next(self, data, Some(id), NavAdvance::None)
                                 {
                                     self.set_nav_focus(id, false);
                                 }

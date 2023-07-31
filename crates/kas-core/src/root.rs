@@ -6,7 +6,7 @@
 //! Window widgets
 
 use crate::dir::Directional;
-use crate::event::{ConfigCx, EventMgr, Scroll};
+use crate::event::{ConfigCx, EventCx, Scroll};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, FrameStyle, SizeMgr};
@@ -63,7 +63,7 @@ impl_scope! {
     ///
     /// TODO: there is currently no mechanism for adjusting window properties at
     /// run-time. The intention is to support sending a message like:
-    /// `mgr.push(WindowCommand::SetTitle("New Title"));`. The problem is that
+    /// `cx.push(WindowCommand::SetTitle("New Title"));`. The problem is that
     /// this window representation is disconnected from winit::Window and has no
     /// mechanism for updating that. This may be easier to implement later.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -185,9 +185,9 @@ impl_scope! {
             }
         }
 
-        fn handle_scroll(&mut self, data: &Data, mgr: &mut EventMgr, _: Scroll) {
+        fn handle_scroll(&mut self, cx: &mut EventCx, data: &Data, _: Scroll) {
             // Something was scrolled; update pop-up translations
-            mgr.config_cx(|mgr| self.resize_popups(data, mgr));
+            cx.config_cx(|cx| self.resize_popups(cx, data));
         }
     }
 }
@@ -322,21 +322,21 @@ impl<Data: 'static> Window<Data> {
     /// Add a pop-up as a layer in the current window
     ///
     /// Each [`crate::Popup`] is assigned a [`WindowId`]; both are passed.
-    pub fn add_popup(&mut self, data: &Data, mgr: &mut EventMgr, id: WindowId, popup: kas::Popup) {
+    pub fn add_popup(&mut self, cx: &mut EventCx, data: &Data, id: WindowId, popup: kas::Popup) {
         let index = self.popups.len();
         self.popups.push((id, popup, Offset::ZERO));
-        mgr.config_cx(|mgr| self.resize_popup(data, mgr, index));
-        mgr.send_action(Action::REDRAW);
+        cx.config_cx(|cx| self.resize_popup(cx, data, index));
+        cx.send_action(Action::REDRAW);
     }
 
     /// Trigger closure of a pop-up
     ///
     /// If the given `id` refers to a pop-up, it should be closed.
-    pub fn remove_popup(&mut self, mgr: &mut EventMgr, id: WindowId) {
+    pub fn remove_popup(&mut self, cx: &mut EventCx, id: WindowId) {
         for i in 0..self.popups.len() {
             if id == self.popups[i].0 {
                 self.popups.remove(i);
-                mgr.send_action(Action::REGION_MOVED);
+                cx.send_action(Action::REGION_MOVED);
                 return;
             }
         }
@@ -346,9 +346,9 @@ impl<Data: 'static> Window<Data> {
     ///
     /// This is called immediately after [`Layout::set_rect`] to resize
     /// existing pop-ups.
-    pub fn resize_popups(&mut self, data: &Data, cx: &mut ConfigCx) {
+    pub fn resize_popups(&mut self, cx: &mut ConfigCx, data: &Data) {
         for i in 0..self.popups.len() {
-            self.resize_popup(data, cx, i);
+            self.resize_popup(cx, data, i);
         }
     }
 }
@@ -383,7 +383,7 @@ fn find_rect(widget: &dyn Layout, id: WidgetId, mut translation: Offset) -> Opti
 }
 
 impl<Data: 'static> Window<Data> {
-    fn resize_popup(&mut self, data: &Data, cx: &mut ConfigCx, index: usize) {
+    fn resize_popup(&mut self, cx: &mut ConfigCx, data: &Data, index: usize) {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
         let r = self.core.rect;

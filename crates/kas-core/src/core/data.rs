@@ -8,7 +8,7 @@
 use super::WidgetId;
 #[allow(unused)] use super::{Layout, Widget};
 use crate::dir::Direction;
-#[allow(unused)] use crate::event::EventMgr;
+#[allow(unused)] use crate::event::EventCx;
 use crate::geom::Rect;
 
 #[cfg(feature = "winit")] pub use winit::window::Icon;
@@ -62,7 +62,7 @@ impl Clone for CoreData {
 ///
 /// A pop-up is in some ways an ordinary child widget and in some ways not.
 /// The pop-up widget should be a permanent child of its parent, but is not
-/// visible until [`EventMgr::add_popup`] is called.
+/// visible until [`EventCx::add_popup`] is called.
 ///
 /// A pop-up widget's rect is not contained by its parent, therefore the parent
 /// must not call any [`Layout`] methods on the pop-up (whether or not it is

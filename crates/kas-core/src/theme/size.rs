@@ -21,7 +21,7 @@ use crate::{event::ConfigCx, layout::Stretch, theme::DrawMgr};
 /// Size and scale interface
 ///
 /// This interface is provided to widgets in [`crate::Layout::size_rules`].
-/// It may also be accessed through [`crate::event::EventMgr::size_mgr`],
+/// It may also be accessed through [`crate::event::EventCx::size_mgr`],
 /// [`DrawMgr::size_mgr`].
 ///
 /// Most methods get or calculate the size of some feature. These same features

@@ -128,12 +128,12 @@ impl_scope! {
     impl<Data, D: Directional> Events for MenuBar<Data, D> {
         type Data = Data;
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(id_code) => {
                     if let Some(id) = self.delayed_open.clone() {
                         if id.as_u64() == id_code {
-                            self.set_menu_path(mgr, Some(&id), false);
+                            self.set_menu_path(cx, Some(&id), false);
                         }
                     }
                     Response::Used
@@ -149,18 +149,18 @@ impl_scope! {
                             let press_in_the_bar = self.rect().contains(press.coord);
 
                             if !press_in_the_bar || !any_menu_open {
-                                press.grab(self.id()).with_mgr(mgr);
+                                press.grab(self.id()).with_cx(cx);
                             }
-                            mgr.set_grab_depress(*press, press.id.clone());
+                            cx.set_grab_depress(*press, press.id.clone());
                             if press_in_the_bar {
                                 if self
                                     .widgets
                                     .iter()
                                     .any(|w| w.eq_id(&press.id) && !w.menu_is_open())
                                 {
-                                    self.set_menu_path(mgr, press.id.as_ref(), false);
+                                    self.set_menu_path(cx, press.id.as_ref(), false);
                                 } else {
-                                    self.set_menu_path(mgr, None, false);
+                                    self.set_menu_path(cx, None, false);
                                 }
                             }
                         }
@@ -173,7 +173,7 @@ impl_scope! {
                     }
                 }
                 Event::CursorMove { press } | Event::PressMove { press, .. } => {
-                    mgr.set_grab_depress(*press, press.id.clone());
+                    cx.set_grab_depress(*press, press.id.clone());
 
                     let id = match press.id {
                         Some(x) => x,
@@ -184,13 +184,13 @@ impl_scope! {
                         // We instantly open a sub-menu on motion over the bar,
                         // but delay when over a sub-menu (most intuitive?)
                         if self.rect().contains(press.coord) {
-                            mgr.clear_nav_focus();
+                            cx.clear_nav_focus();
                             self.delayed_open = None;
-                            self.set_menu_path(mgr, Some(&id), false);
+                            self.set_menu_path(cx, Some(&id), false);
                         } else if id != self.delayed_open {
-                            mgr.set_nav_focus(id.clone(), false);
-                            let delay = mgr.config().menu_delay();
-                            mgr.request_timer_update(self.id(), id.as_u64(), delay, true);
+                            cx.set_nav_focus(id.clone(), false);
+                            let delay = cx.config().menu_delay();
+                            cx.request_timer_update(self.id(), id.as_u64(), delay, true);
                             self.delayed_open = Some(id);
                         }
                     } else {
@@ -211,7 +211,7 @@ impl_scope! {
                     if !self.rect().contains(press.coord) {
                         // not on the menubar
                         self.delayed_open = None;
-                        mgr.send(id, Event::Command(Command::Activate));
+                        cx.send(id, Event::Command(Command::Activate));
                     }
                     Response::Used
                 }
@@ -228,16 +228,16 @@ impl_scope! {
                                     let mut j = isize::conv(i);
                                     j = if reverse { j - 1 } else { j + 1 };
                                     j = j.rem_euclid(self.widgets.len().cast());
-                                    self.widgets[i].set_menu_path(mgr, None, true);
+                                    self.widgets[i].set_menu_path(cx, None, true);
                                     let w = &mut self.widgets[usize::conv(j)];
-                                    w.set_menu_path(mgr, Some(&w.id()), true);
+                                    w.set_menu_path(cx, Some(&w.id()), true);
                                     break;
                                 }
                             }
                             Response::Used
                         }
                         Some(_) => {
-                            mgr.next_nav_focus(self.id(), reverse, true);
+                            cx.next_nav_focus(self.id(), reverse, true);
                             Response::Used
                         }
                         None => Response::Unused,
@@ -251,7 +251,7 @@ impl_scope! {
     impl Self {
         fn set_menu_path(
             &mut self,
-            mgr: &mut EventMgr,
+            cx: &mut EventCx,
             target: Option<&WidgetId>,
             set_focus: bool,
         ) {
@@ -261,7 +261,7 @@ impl_scope! {
             );
             self.delayed_open = None;
             for i in 0..self.widgets.len() {
-                self.widgets[i].set_menu_path(mgr, target, set_focus);
+                self.widgets[i].set_menu_path(cx, target, set_focus);
             }
         }
     }

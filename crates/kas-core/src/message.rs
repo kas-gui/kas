@@ -5,7 +5,7 @@
 
 //! Standard messages
 //!
-//! These are messages that may be sent via [`EventMgr::push`](crate::event::EventMgr::push).
+//! These are messages that may be sent via [`EventCx::push`](crate::event::EventCx::push).
 
 /// Message: activate
 ///

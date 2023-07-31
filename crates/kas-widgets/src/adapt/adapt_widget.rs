@@ -92,8 +92,8 @@ pub trait AdaptWidget: Widget + Sized {
     /// use kas::prelude::*;
     /// use kas_widgets::Filler;
     ///
-    /// let label = Filler::new().with_reserve(|mgr, axis| {
-    ///     kas::layout::LogicalSize(5.0, 5.0).to_rules(axis, mgr.scale_factor())
+    /// let label = Filler::new().with_reserve(|cx, axis| {
+    ///     kas::layout::LogicalSize(5.0, 5.0).to_rules(axis, cx.scale_factor())
     /// });
     /// ```
     /// The resulting `SizeRules` will be the max of those for the inner widget

@@ -6,7 +6,7 @@
 //! Widget and Events traits
 
 use super::{Layout, Node};
-use crate::event::{ConfigCx, Event, EventMgr, Response, Scroll};
+use crate::event::{ConfigCx, Event, EventCx, Response, Scroll};
 use crate::{Erased, WidgetId};
 use kas_macros::autoimpl;
 
@@ -99,20 +99,19 @@ pub trait Events: Sized {
     /// part of the stable API. Do not implement or call this method directly.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn pre_handle_event(&mut self, data: &Self::Data, mgr: &mut EventMgr, event: Event)
-        -> Response;
+    fn pre_handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> Response;
 
     /// Handle an [`Event`]
     ///
     /// This is the primary event handler (see [documentation](crate::event)).
     ///
     /// This method is called on the primary event target. In this case,
-    /// [`EventMgr::last_child`] returns `None`.
+    /// [`EventCx::last_child`] returns `None`.
     ///
     /// This method may also be called on ancestors during unwinding (if the
     /// event remains [unused](Response::Unused) and the event
     /// [is reusable](Event::is_reusable)). In this case,
-    /// [`EventMgr::last_child`] returns `Some(index)` with the index of the
+    /// [`EventCx::last_child`] returns `Some(index)` with the index of the
     /// child being unwound from.
     ///
     /// Default implementation of `handle_event`: do nothing; return
@@ -123,10 +122,10 @@ pub trait Events: Sized {
     /// It is not recommended to call `handle_event` directly except on `self`.
     /// Doing so would miss related event handling code such as cursor-hover
     /// effects and calling other event-handling methods on parents.
-    /// Instead, one should call [`EventMgr::send`] with the target's `id`.
+    /// Instead, one should call [`EventCx::send`] with the target's `id`.
     #[inline]
-    fn handle_event(&mut self, data: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
-        let _ = (data, mgr, event);
+    fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> Response {
+        let _ = (cx, data, event);
         Response::Unused
     }
 
@@ -135,20 +134,20 @@ pub trait Events: Sized {
     /// This is an optional event handler (see [documentation](crate::event)).
     ///
     /// May cause a panic if this method returns [`Response::Unused`] but does
-    /// affect `mgr` (e.g. by calling [`EventMgr::set_scroll`] or leaving a
-    /// message on the stack, possibly from [`EventMgr::send`]).
+    /// affect `cx` (e.g. by calling [`EventCx::set_scroll`] or leaving a
+    /// message on the stack, possibly from [`EventCx::send`]).
     /// This is considered a corner-case and not currently supported.
     ///
     /// Default implementation: return [`Response::Unused`].
     #[inline]
     fn steal_event(
         &mut self,
+        cx: &mut EventCx,
         data: &Self::Data,
-        mgr: &mut EventMgr,
         id: &WidgetId,
         event: &Event,
     ) -> Response {
-        let _ = (data, mgr, id, event);
+        let _ = (cx, data, id, event);
         Response::Unused
     }
 
@@ -157,22 +156,22 @@ pub trait Events: Sized {
     /// This is the secondary event handler (see [documentation](crate::event)).
     ///
     /// It is implied that the stack contains at least one message.
-    /// Use [`EventMgr::try_pop`] and/or [`EventMgr::try_observe`].
+    /// Use [`EventCx::try_pop`] and/or [`EventCx::try_observe`].
     ///
-    /// [`EventMgr::last_child`] may be called to find the message's sender.
+    /// [`EventCx::last_child`] may be called to find the message's sender.
     /// This may return [`None`] (if no child was visited, which implies that
     /// the message was sent by `self`).
     ///
     /// The default implementation does nothing.
     #[inline]
-    fn handle_messages(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
-        let _ = (data, mgr);
+    fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
+        let _ = (cx, data);
     }
 
     /// Handler for scrolling
     ///
     /// When, during [event handling](crate::event), a widget which is a strict
-    /// descendant of `self` (i.e. not `self`) calls [`EventMgr::set_scroll`]
+    /// descendant of `self` (i.e. not `self`) calls [`EventCx::set_scroll`]
     /// with a value other than [`Scroll::None`], this method is called.
     ///
     /// Note that [`Scroll::Rect`] values are in the child's coordinate space,
@@ -182,16 +181,16 @@ pub trait Events: Sized {
     /// anyway).
     ///
     /// If the child is in an independent coordinate space, then this method
-    /// should call `mgr.set_scroll(Scroll::None)` to avoid any reactions to
+    /// should call `cx.set_scroll(Scroll::None)` to avoid any reactions to
     /// child's scroll requests.
     ///
-    /// [`EventMgr::last_child`] may be called to find the child responsible,
+    /// [`EventCx::last_child`] may be called to find the child responsible,
     /// and should never return [`None`] (when called from this method).
     ///
     /// The default implementation does nothing.
     #[inline]
-    fn handle_scroll(&mut self, data: &Self::Data, mgr: &mut EventMgr, scroll: Scroll) {
-        let _ = (data, mgr, scroll);
+    fn handle_scroll(&mut self, cx: &mut EventCx, data: &Self::Data, scroll: Scroll) {
+        let _ = (cx, data, scroll);
     }
 }
 
@@ -359,9 +358,9 @@ pub enum NavAdvance {
 ///             cx.add_accel_keys(self.id_ref(), self.label.keys());
 ///         }
 ///
-///         fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
-///             event.on_activate(mgr, self.id(), |mgr| {
-///                 mgr.push(self.message.clone());
+///         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+///             event.on_activate(cx, self.id(), |cx| {
+///                 cx.push(self.message.clone());
 ///                 Response::Used
 ///             })
 ///         }
@@ -419,8 +418,8 @@ pub trait Widget: Layout {
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn _send(
         &mut self,
+        cx: &mut EventCx,
         data: &Self::Data,
-        cx: &mut EventMgr,
         id: WidgetId,
         disabled: bool,
         event: Event,
@@ -432,15 +431,15 @@ pub trait Widget: Layout {
     /// `msg` to the message stack. Widget `id` or any ancestor may handle.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn _replay(&mut self, data: &Self::Data, cx: &mut EventMgr, id: WidgetId, msg: Erased);
+    fn _replay(&mut self, cx: &mut EventCx, data: &Self::Data, id: WidgetId, msg: Erased);
 
     /// Internal method: search for the previous/next navigation target
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn _nav_next(
         &mut self,
+        cx: &mut EventCx,
         data: &Self::Data,
-        cx: &mut EventMgr,
         focus: Option<&WidgetId>,
         advance: NavAdvance,
     ) -> Option<WidgetId>;

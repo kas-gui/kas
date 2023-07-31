@@ -70,7 +70,7 @@ struct MouseGrab {
     delta: Offset,
 }
 
-impl<'a> EventMgr<'a> {
+impl<'a> EventCx<'a> {
     fn flush_mouse_grab_motion(&mut self, widget: Node<'_>) {
         if let Some(grab) = self.mouse_grab.as_mut() {
             let delta = grab.delta;
@@ -188,7 +188,7 @@ type AccelLayer = (bool, HashMap<VirtualKeyCode, WidgetId>);
 /// Event manager state
 ///
 /// This struct encapsulates window-specific event-handling state and handling.
-/// Most operations are only available via a [`EventMgr`] handle, though some
+/// Most operations are only available via a [`EventCx`] handle, though some
 /// are available on this struct.
 ///
 /// Besides event handling, this struct also configures widgets.
@@ -421,10 +421,10 @@ impl EventState {
 
 /// Manager of event-handling and toolkit actions
 ///
-/// `EventMgr` and [`EventState`] (available via [`Deref`]) support various
+/// `EventCx` and [`EventState`] (available via [`Deref`]) support various
 /// event management and event-handling state querying operations.
 #[must_use]
-pub struct EventMgr<'a> {
+pub struct EventCx<'a> {
     state: &'a mut EventState,
     shell: &'a mut dyn ShellWindow,
     messages: &'a mut ErasedStack,
@@ -432,20 +432,20 @@ pub struct EventMgr<'a> {
     scroll: Scroll,
 }
 
-impl<'a> Deref for EventMgr<'a> {
+impl<'a> Deref for EventCx<'a> {
     type Target = EventState;
     fn deref(&self) -> &Self::Target {
         self.state
     }
 }
-impl<'a> DerefMut for EventMgr<'a> {
+impl<'a> DerefMut for EventCx<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.state
     }
 }
 
 /// Internal methods
-impl<'a> EventMgr<'a> {
+impl<'a> EventCx<'a> {
     fn start_key_event(&mut self, mut widget: Node<'_>, vkey: VirtualKeyCode, scancode: u32) {
         log::trace!(
             "start_key_event: widget={}, vkey={vkey:?}, scancode={scancode}",
@@ -587,7 +587,7 @@ impl<'a> EventMgr<'a> {
 
     pub(crate) fn assert_post_steal_unused(&self) {
         if self.scroll != Scroll::None || self.messages.has_any() {
-            panic!("steal_event affected EventMgr and returned Unused");
+            panic!("steal_event affected EventCx and returned Unused");
         }
     }
 

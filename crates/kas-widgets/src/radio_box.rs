@@ -26,7 +26,7 @@ impl_scope! {
         state: bool,
         last_change: Option<Instant>,
         state_fn: Box<dyn Fn(&ConfigCx, &A) -> bool>,
-        on_select: Option<Box<dyn Fn(&mut EventMgr, &A)>>,
+        on_select: Option<Box<dyn Fn(&mut EventCx, &A)>>,
     }
 
     impl Events for Self {
@@ -41,9 +41,9 @@ impl_scope! {
             }
         }
 
-        fn handle_event(&mut self, data: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
-            event.on_activate(mgr, self.id(), |mgr| {
-                self.select(mgr, data);
+        fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> Response {
+            event.on_activate(cx, self.id(), |cx| {
+                self.select(cx, data);
                 Response::Used
             })
         }
@@ -88,7 +88,7 @@ impl_scope! {
         /// No handler is called on deselection.
         #[inline]
         #[must_use]
-        pub fn on_select(mut self, f: impl Fn(&mut EventMgr, &A) + 'static) -> Self {
+        pub fn on_select(mut self, f: impl Fn(&mut EventCx, &A) + 'static) -> Self {
             self.on_select = Some(Box::new(f));
             self
         }
@@ -118,10 +118,10 @@ impl_scope! {
         {
             let v2 = value.clone();
             Self::new(move |_, data| *data == value)
-                .on_select(move |mgr, _| mgr.push(v2.clone()))
+                .on_select(move |cx, _| cx.push(v2.clone()))
         }
 
-        fn select(&mut self, cx: &mut EventMgr, data: &A) {
+        fn select(&mut self, cx: &mut EventCx, data: &A) {
             self.state = true;
             if let Some(ref f) = self.on_select {
                 f(cx, data);
@@ -163,7 +163,7 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn handle_messages(&mut self, data: &Self::Data, cx: &mut EventMgr) {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
             if let Some(kas::message::Activate) = cx.try_pop() {
                 self.inner.select(cx, data);
             }
@@ -196,7 +196,7 @@ impl_scope! {
         #[must_use]
         pub fn on_select<F>(self, f: F) -> Self
         where
-            F: Fn(&mut EventMgr, &A) + 'static,
+            F: Fn(&mut EventCx, &A) + 'static,
         {
             RadioButton {
                 core: self.core,
@@ -232,7 +232,7 @@ impl_scope! {
         {
             let v2 = value.clone();
             Self::new(label, move |_, data| *data == value)
-                .on_select(move |mgr, _| mgr.push(v2.clone()))
+                .on_select(move |cx, _| cx.push(v2.clone()))
         }
 
         fn direction(&self) -> Direction {

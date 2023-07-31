@@ -27,7 +27,7 @@ impl_scope! {
         editable: bool,
         last_change: Option<Instant>,
         state_fn: Box<dyn Fn(&ConfigCx, &A) -> bool>,
-        on_toggle: Option<Box<dyn Fn(&mut EventMgr, &A, bool)>>,
+        on_toggle: Option<Box<dyn Fn(&mut EventCx, &A, bool)>>,
     }
 
     impl Layout for Self {
@@ -70,7 +70,7 @@ impl_scope! {
         #[must_use]
         pub fn on_toggle<F>(self, on_toggle: F) -> Self
         where
-            F: Fn(&mut EventMgr, &A, bool) + 'static,
+            F: Fn(&mut EventCx, &A, bool) + 'static,
         {
             CheckBox {
                 core: self.core,
@@ -116,17 +116,17 @@ impl_scope! {
             self.editable = editable;
         }
 
-        fn toggle(&mut self, data: &A, mgr: &mut EventMgr) {
+        fn toggle(&mut self, cx: &mut EventCx, data: &A) {
             // Note: do not update self.state; that is the responsibility of update.
             self.state = !self.state;
             if let Some(f) = self.on_toggle.as_ref() {
                 // Pass what should be the new value of state here:
-                f(mgr, data, self.state);
+                f(cx, data, self.state);
             }
 
             // Do animate (even if state never changes):
             self.last_change = Some(Instant::now());
-            mgr.redraw(self.id());
+            cx.redraw(self.id());
         }
     }
 
@@ -142,9 +142,9 @@ impl_scope! {
             }
         }
 
-        fn handle_event(&mut self, data: &A, mgr: &mut EventMgr, event: Event) -> Response {
-            event.on_activate(mgr, self.id(), |mgr| {
-                self.toggle(data, mgr);
+        fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> Response {
+            event.on_activate(cx, self.id(), |cx| {
+                self.toggle(cx, data);
                 Response::Used
             })
         }
@@ -203,9 +203,9 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn handle_messages(&mut self, data: &Self::Data, mgr: &mut EventMgr) {
-            if let Some(kas::message::Activate) = mgr.try_pop() {
-                self.inner.toggle(data, mgr);
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
+            if let Some(kas::message::Activate) = cx.try_pop() {
+                self.inner.toggle(cx, data);
             }
         }
     }
@@ -234,7 +234,7 @@ impl_scope! {
         #[must_use]
         pub fn on_toggle<F>(self, on_toggle: F) -> Self
         where
-            F: Fn(&mut EventMgr, &A, bool) + 'static,
+            F: Fn(&mut EventCx, &A, bool) + 'static,
         {
             CheckButton {
                 core: self.core,

@@ -99,12 +99,12 @@ impl EditGuard for ListEntryGuard {
         }
     }
 
-    fn activate(edit: &mut EditField<Self>, _: &Item, cx: &mut EventMgr) -> Response {
+    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Item) -> Response {
         cx.push(SelectEntry(edit.guard.0));
         Response::Used
     }
 
-    fn edit(edit: &mut EditField<Self>, _: &Item, cx: &mut EventMgr) {
+    fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Item) {
         cx.push(Control::Update(edit.guard.0, edit.get_string()));
     }
 }
@@ -130,7 +130,7 @@ impl_scope! {
     impl Events for Self {
         type Data = Item;
 
-        fn handle_messages(&mut self, data: &Item, cx: &mut EventMgr) {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &Item) {
             if let Some(SelectEntry(n)) = cx.try_pop() {
                 if data.0 != n {
                     cx.push(Control::Select(n, self.edit.get_string()));

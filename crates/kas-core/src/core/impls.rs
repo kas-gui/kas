@@ -5,7 +5,7 @@
 
 //! Widget method implementations
 
-use crate::event::{ConfigCx, Event, EventMgr, Response};
+use crate::event::{ConfigCx, Event, EventCx, Response};
 #[cfg(debug_assertions)] use crate::util::IdentifyWidget;
 use crate::{Erased, Events, Layout, NavAdvance, Node, Widget, WidgetId};
 
@@ -49,8 +49,8 @@ pub fn _update<W: Widget + Events<Data = <W as Widget>::Data>>(
 /// Generic implementation of [`Widget::_send`]
 pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
     widget: &mut W,
+    cx: &mut EventCx,
     data: &<W as Widget>::Data,
-    cx: &mut EventMgr,
     id: WidgetId,
     disabled: bool,
     event: Event,
@@ -61,8 +61,8 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
             return response;
         }
 
-        response |= widget.pre_handle_event(data, cx, event);
-    } else if widget.steal_event(data, cx, &id, &event).is_used() {
+        response |= widget.pre_handle_event(cx, data, event);
+    } else if widget.steal_event(cx, data, &id, &event).is_used() {
         response = Response::Used;
     } else {
         cx.assert_post_steal_unused();
@@ -76,7 +76,7 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
 
             if found {
                 if let Some(scroll) = cx.post_send(index) {
-                    widget.handle_scroll(data, cx, scroll);
+                    widget.handle_scroll(cx, data, scroll);
                 }
             } else {
                 #[cfg(debug_assertions)]
@@ -88,12 +88,12 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
         }
 
         if response.is_unused() && event.is_reusable() {
-            response = widget.handle_event(data, cx, event);
+            response = widget.handle_event(cx, data, event);
         }
     }
 
     if cx.has_msg() {
-        widget.handle_messages(data, cx);
+        widget.handle_messages(cx, data);
     }
 
     response
@@ -102,8 +102,8 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
 /// Generic implementation of [`Widget::_replay`]
 pub fn _replay<W: Widget + Events<Data = <W as Widget>::Data>>(
     widget: &mut W,
+    cx: &mut EventCx,
     data: &<W as Widget>::Data,
-    cx: &mut EventMgr,
     id: WidgetId,
     msg: Erased,
 ) {
@@ -116,11 +116,11 @@ pub fn _replay<W: Widget + Events<Data = <W as Widget>::Data>>(
 
         if found {
             if let Some(scroll) = cx.post_send(index) {
-                widget.handle_scroll(data, cx, scroll);
+                widget.handle_scroll(cx, data, scroll);
             }
 
             if cx.has_msg() {
-                widget.handle_messages(data, cx);
+                widget.handle_messages(cx, data);
             }
         } else {
             #[cfg(debug_assertions)]
@@ -131,7 +131,7 @@ pub fn _replay<W: Widget + Events<Data = <W as Widget>::Data>>(
         }
     } else if id == widget.id_ref() {
         cx.push_erased(msg);
-        widget.handle_messages(data, cx);
+        widget.handle_messages(cx, data);
     } else {
         #[cfg(debug_assertions)]
         log::debug!(
@@ -144,8 +144,8 @@ pub fn _replay<W: Widget + Events<Data = <W as Widget>::Data>>(
 /// Generic implementation of [`Widget::_nav_next`]
 pub fn _nav_next<W: Widget + Events<Data = <W as Widget>::Data>>(
     widget: &mut W,
+    cx: &mut EventCx,
     data: &<W as Widget>::Data,
-    cx: &mut EventMgr,
     focus: Option<&WidgetId>,
     advance: NavAdvance,
 ) -> Option<WidgetId> {
@@ -155,7 +155,7 @@ pub fn _nav_next<W: Widget + Events<Data = <W as Widget>::Data>>(
 
 fn nav_next(
     mut widget: Node<'_>,
-    cx: &mut EventMgr,
+    cx: &mut EventCx,
     focus: Option<&WidgetId>,
     advance: NavAdvance,
     navigable: bool,

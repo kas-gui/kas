@@ -570,33 +570,33 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
                 fn _send(
                     &mut self,
+                    cx: &mut ::kas::event::EventCx,
                     data: &Self::Data,
-                    cx: &mut ::kas::event::EventMgr,
                     id: ::kas::WidgetId,
                     disabled: bool,
                     event: ::kas::event::Event,
                 ) -> ::kas::event::Response {
-                    self.#inner._send(data, cx, id, disabled, event)
+                    self.#inner._send(cx, data, id, disabled, event)
                 }
 
                 fn _replay(
                     &mut self,
+                    cx: &mut ::kas::event::EventCx,
                     data: &Self::Data,
-                    cx: &mut ::kas::event::EventMgr,
                     id: ::kas::WidgetId,
                     msg: ::kas::Erased,
                 ) {
-                    self.#inner._replay(data, cx, id, msg);
+                    self.#inner._replay(cx, data, id, msg);
                 }
 
                 fn _nav_next(
                     &mut self,
+                    cx: &mut ::kas::event::EventCx,
                     data: &Self::Data,
-                    cx: &mut ::kas::event::EventMgr,
                     focus: Option<&::kas::WidgetId>,
                     advance: ::kas::NavAdvance,
                 ) -> Option<::kas::WidgetId> {
-                    self.#inner._nav_next(data, cx, focus, advance)
+                    self.#inner._nav_next(cx, data, focus, advance)
                 }
             }
         });
@@ -755,22 +755,22 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             (false, None) => quote! {},
             (true, None) => quote! {
                 if matches!(event, Event::MouseHover | Event::LostMouseHover) {
-                    mgr.redraw(self.id());
+                    cx.redraw(self.id());
                     return Response::Used;
                 }
             },
             (false, Some(icon_expr)) => quote! {
                 if matches!(event, Event::MouseHover) {
-                    mgr.set_cursor_icon(#icon_expr);
+                    cx.set_cursor_icon(#icon_expr);
                     return Response::Used;
                 }
             },
             (true, Some(icon_expr)) => quote! {
                 if matches!(event, Event::MouseHover | Event::LostMouseHover) {
                     if matches!(event, Event::MouseHover) {
-                        mgr.set_cursor_icon(#icon_expr);
+                        cx.set_cursor_icon(#icon_expr);
                     }
-                    mgr.redraw(self.id());
+                    cx.redraw(self.id());
                     return Response::Used;
                 }
             },
@@ -778,16 +778,16 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         let fn_pre_handle_event = quote! {
             fn pre_handle_event(
                 &mut self,
+                cx: &mut ::kas::event::EventCx,
                 data: &Self::Data,
-                mgr: &mut ::kas::event::EventMgr,
                 event: ::kas::event::Event,
             ) -> ::kas::event::Response {
                 use ::kas::{event::{Event, Response, Scroll}, LayoutExt, Layout};
                 if event == Event::NavFocus(true) {
-                    mgr.set_scroll(Scroll::Rect(self.rect()));
+                    cx.set_scroll(Scroll::Rect(self.rect()));
                 }
                 #pre_handle_event
-                self.handle_event(data, mgr, event)
+                self.handle_event(cx, data, event)
             }
         };
         let fn_handle_event = None;
@@ -1014,33 +1014,33 @@ fn widget_recursive_methods() -> Toks {
 
         fn _send(
             &mut self,
+            cx: &mut ::kas::event::EventCx,
             data: &Self::Data,
-            cx: &mut ::kas::event::EventMgr,
             id: ::kas::WidgetId,
             disabled: bool,
             event: ::kas::event::Event,
         ) -> ::kas::event::Response {
-            ::kas::impls::_send(self, data, cx, id, disabled, event)
+            ::kas::impls::_send(self, cx, data, id, disabled, event)
         }
 
         fn _replay(
             &mut self,
+            cx: &mut ::kas::event::EventCx,
             data: &Self::Data,
-            cx: &mut ::kas::event::EventMgr,
             id: ::kas::WidgetId,
             msg: ::kas::Erased,
         ) {
-            ::kas::impls::_replay(self, data, cx, id, msg);
+            ::kas::impls::_replay(self, cx, data, id, msg);
         }
 
         fn _nav_next(
             &mut self,
+            cx: &mut ::kas::event::EventCx,
             data: &Self::Data,
-            cx: &mut ::kas::event::EventMgr,
             focus: Option<&::kas::WidgetId>,
             advance: ::kas::NavAdvance,
         ) -> Option<::kas::WidgetId> {
-            ::kas::impls::_nav_next(self, data, cx, focus, advance)
+            ::kas::impls::_nav_next(self, cx, data, focus, advance)
         }
     }
 }

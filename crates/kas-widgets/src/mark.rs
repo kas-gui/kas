@@ -99,9 +99,9 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
-            event.on_activate(mgr, self.id(), |mgr| {
-                mgr.push(self.msg.clone());
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+            event.on_activate(cx, self.id(), |cx| {
+                cx.push(self.msg.clone());
                 Response::Used
             })
         }

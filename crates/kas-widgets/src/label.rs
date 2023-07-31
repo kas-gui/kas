@@ -213,9 +213,9 @@ impl_scope! {
     /// widget must do something like:
     /// ```no_test
     /// impl Events for Self {
-    ///     fn configure(&mut self, mgr: &mut EventMgr) {
+    ///     fn configure(&mut self, cx: &mut EventCx) {
     ///         let target = self.id(); // widget receiving Event::Activate
-    ///         mgr.add_accel_keys(target, self.label.keys());
+    ///         cx.add_accel_keys(target, self.label.keys());
     ///     }
     //// }
     /// ```
@@ -331,10 +331,10 @@ impl_scope! {
             cx.add_accel_keys(self.id_ref(), self.label.text().keys());
         }
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
                 Event::Command(cmd) if cmd.is_activate() => {
-                    mgr.push(kas::message::Activate);
+                    cx.push(kas::message::Activate);
                     Response::Used
                 }
                 _ => Response::Unused

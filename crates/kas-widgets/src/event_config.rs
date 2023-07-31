@@ -86,9 +86,9 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_messages(&mut self, _: &(), mgr: &mut EventMgr) {
-            if let Some(msg) = mgr.try_pop() {
-                mgr.change_config(msg);
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &()) {
+            if let Some(msg) = cx.try_pop() {
+                cx.change_config(msg);
             }
         }
     }
@@ -107,33 +107,33 @@ impl_scope! {
                 core: Default::default(),
                 menu_delay: Spinner::new(0..=5_000, |cx, _| cx.config().borrow().menu_delay_ms)
                     .with_step(50)
-                    .on_change(|mgr, v| mgr.push(ChangeConfig::MenuDelay(v))),
+                    .on_change(|cx, v| cx.push(ChangeConfig::MenuDelay(v))),
                 touch_select_delay: Spinner::new(0..=5_000, |cx: &ConfigCx, _| cx.config().borrow().touch_select_delay_ms)
                     .with_step(50)
-                    .on_change(|mgr, v| mgr.push(ChangeConfig::TouchSelectDelay(v))),
+                    .on_change(|cx, v| cx.push(ChangeConfig::TouchSelectDelay(v))),
                 scroll_flick_timeout: Spinner::new(0..=500, |cx: &ConfigCx, _| cx.config().borrow().scroll_flick_timeout_ms)
                     .with_step(5)
-                    .on_change(|mgr, v| mgr.push(ChangeConfig::ScrollFlickTimeout(v))),
+                    .on_change(|cx, v| cx.push(ChangeConfig::ScrollFlickTimeout(v))),
                 scroll_flick_mul: Spinner::new(0.0..=1.0, |cx: &ConfigCx, _| cx.config().borrow().scroll_flick_mul)
                     .with_step(0.0625)
-                    .on_change(|mgr, v| mgr.push(ChangeConfig::ScrollFlickMul(v))),
+                    .on_change(|cx, v| cx.push(ChangeConfig::ScrollFlickMul(v))),
                 scroll_flick_sub: Spinner::new(0.0..=1.0e4, |cx: &ConfigCx, _| cx.config().borrow().scroll_flick_sub)
                     .with_step(10.0)
-                    .on_change(|mgr, v| mgr.push(ChangeConfig::ScrollFlickSub(v))),
+                    .on_change(|cx, v| cx.push(ChangeConfig::ScrollFlickSub(v))),
                 scroll_dist_em: Spinner::new(0.125..=125.0, |cx: &ConfigCx, _| cx.config().borrow().scroll_dist_em)
                     .with_step(0.125)
-                    .on_change(|mgr, v| mgr.push(ChangeConfig::ScrollDistEm(v))),
+                    .on_change(|cx, v| cx.push(ChangeConfig::ScrollDistEm(v))),
                 pan_dist_thresh: Spinner::new(0.25..=25.0, |cx: &ConfigCx, _| cx.config().borrow().pan_dist_thresh)
                     .with_step(0.25)
-                    .on_change(|mgr, v| mgr.push(ChangeConfig::PanDistThresh(v))),
+                    .on_change(|cx, v| cx.push(ChangeConfig::PanDistThresh(v))),
                 mouse_pan: ComboBox::new(pan_options, |cx: &ConfigCx, _| cx.config().borrow().mouse_pan)
-                    .on_select(|mgr, v| mgr.push(ChangeConfig::MousePan(v))),
+                    .on_select(|cx, v| cx.push(ChangeConfig::MousePan(v))),
                 mouse_text_pan: ComboBox::new(pan_options, |cx: &ConfigCx, _| cx.config().borrow().mouse_text_pan)
-                    .on_select(|mgr, v| mgr.push(ChangeConfig::MouseTextPan(v))),
+                    .on_select(|cx, v| cx.push(ChangeConfig::MouseTextPan(v))),
                 mouse_nav_focus: CheckButton::new("&Mouse navigation focus", |cx: &ConfigCx, _| cx.config().borrow().mouse_nav_focus)
-                    .on_toggle(|mgr, _, v| mgr.push(ChangeConfig::MouseNavFocus(v))),
+                    .on_toggle(|cx, _, v| cx.push(ChangeConfig::MouseNavFocus(v))),
                 touch_nav_focus: CheckButton::new("&Touchscreen navigation focus", |cx: &ConfigCx, _| cx.config().borrow().touch_nav_focus)
-                    .on_toggle(|mgr, _, v| mgr.push(ChangeConfig::TouchNavFocus(v))),
+                    .on_toggle(|cx, _, v| cx.push(ChangeConfig::TouchNavFocus(v))),
             }
         }
     }

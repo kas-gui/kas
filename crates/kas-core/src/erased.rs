@@ -98,7 +98,7 @@ impl SendErased {
 /// A type-erased message stack
 ///
 /// This is a stack over [`Erased`], with some downcasting methods.
-/// It is a component of [`EventMgr`](crate::events::EventMgr) and usually only
+/// It is a component of [`EventCx`](crate::events::EventCx) and usually only
 /// used through that, thus the interface here is incomplete.
 #[must_use]
 #[derive(Debug, Default)]

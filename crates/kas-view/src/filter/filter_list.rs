@@ -7,7 +7,7 @@
 
 use super::Filter;
 use crate::{ListData, SharedData};
-use kas::event::{ConfigCx, EventMgr, Response};
+use kas::event::{ConfigCx, EventCx, Response};
 use kas::{autoimpl, impl_scope, Events, Widget};
 use kas_widgets::edit::{EditBox, EditField, EditGuard};
 use std::fmt::Debug;
@@ -25,7 +25,7 @@ pub struct KeystrokeGuard;
 impl EditGuard for KeystrokeGuard {
     type Data = ();
 
-    fn edit(edit: &mut EditField<Self>, _: &Self::Data, cx: &mut EventMgr) {
+    fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Self::Data) {
         cx.push(SetFilter(edit.to_string()));
     }
 }
@@ -40,14 +40,14 @@ pub struct AflGuard;
 impl EditGuard for AflGuard {
     type Data = ();
 
-    fn activate(edit: &mut EditField<Self>, _: &Self::Data, cx: &mut EventMgr) -> Response {
+    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Self::Data) -> Response {
         cx.push(SetFilter(edit.to_string()));
         Response::Used
     }
 
     #[inline]
-    fn focus_lost(edit: &mut EditField<Self>, data: &Self::Data, cx: &mut EventMgr) {
-        Self::activate(edit, data, cx);
+    fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Self::Data) {
+        Self::activate(edit, cx, data);
     }
 }
 
@@ -94,9 +94,9 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_messages(&mut self, data: &A, mgr: &mut EventMgr) {
-            if let Some(SetFilter(value)) = mgr.try_pop() {
-                mgr.config_cx(|cx| self.list.set_filter(cx, data, value));
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
+            if let Some(SetFilter(value)) = cx.try_pop() {
+                cx.config_cx(|cx| self.list.set_filter(cx, data, value));
             }
         }
     }
@@ -166,9 +166,9 @@ impl_scope! {
             }
         }
 
-        fn handle_messages(&mut self, data: &A, mgr: &mut EventMgr) {
-            if let Some(SetFilter(value)) = mgr.try_pop() {
-                mgr.config_cx(|cx| self.set_filter(cx, data, value));
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
+            if let Some(SetFilter(value)) = cx.try_pop() {
+                cx.config_cx(|cx| self.set_filter(cx, data, value));
             }
         }
     }

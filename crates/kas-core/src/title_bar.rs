@@ -103,9 +103,9 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
-            event.on_activate(mgr, self.id(), |mgr| {
-                mgr.push(self.msg.clone());
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+            event.on_activate(cx, self.id(), |cx| {
+                cx.push(self.msg.clone());
                 Response::Used
             })
         }
@@ -156,12 +156,12 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
-            if let Some(msg) = mgr.try_pop() {
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(msg) = cx.try_pop() {
                 match msg {
                     TitleBarButton::Minimize => {
                         #[cfg(features = "winit")]
-                        if let Some(w) = mgr.winit_window() {
+                        if let Some(w) = cx.winit_window() {
                             // TODO: supported in winit 0.28:
                             // let is_minimized = w.is_minimized().unwrap_or(false);
                             let is_minimized = false;
@@ -170,11 +170,11 @@ impl_scope! {
                     }
                     TitleBarButton::Maximize => {
                         #[cfg(features = "winit")]
-                        if let Some(w) = mgr.winit_window() {
+                        if let Some(w) = cx.winit_window() {
                             w.set_maximized(!w.is_maximized());
                         }
                     }
-                    TitleBarButton::Close => mgr.send_action(Action::CLOSE),
+                    TitleBarButton::Close => cx.send_action(Action::CLOSE),
                 }
             }
         }

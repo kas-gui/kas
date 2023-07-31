@@ -239,7 +239,7 @@ impl<W: Widget> Stack<W> {
     /// -   `SizeRules` were solved: set layout ([`Layout::set_rect`]) and
     ///     update mouse-cursor target ([`Action::REGION_MOVED`])
     /// -   Otherwise: resize the whole window ([`Action::RESIZE`])
-    pub fn set_active(&mut self, data: &W::Data, cx: &mut ConfigCx, index: usize) {
+    pub fn set_active(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize) {
         let old_index = self.active;
         self.active = index;
         if index >= self.widgets.len() {
@@ -282,7 +282,7 @@ impl<W: Widget> Stack<W> {
 
     /// Remove all pages
     ///
-    /// This does not change the active page index.
+    /// This does not change the activen page index.
     pub fn clear(&mut self) {
         self.widgets.clear();
         self.sized_range = 0..0;
@@ -304,7 +304,7 @@ impl<W: Widget> Stack<W> {
     /// and then [`Action::RESIZE`] will be triggered.
     ///
     /// Returns the new page's index.
-    pub fn push(&mut self, data: &W::Data, cx: &mut ConfigCx, mut widget: W) -> usize {
+    pub fn push(&mut self, cx: &mut ConfigCx, data: &W::Data, mut widget: W) -> usize {
         let index = self.widgets.len();
         let id = self.make_child_id(index);
         cx.configure(widget.as_node(data), id);
@@ -322,15 +322,15 @@ impl<W: Widget> Stack<W> {
     /// Remove the last child widget (if any) and return
     ///
     /// If this page was active then the previous page becomes active.
-    pub fn pop(&mut self, mgr: &mut EventState) -> Option<W> {
+    pub fn pop(&mut self, cx: &mut EventState) -> Option<W> {
         let result = self.widgets.pop();
         if let Some(w) = result.as_ref() {
             if self.active > 0 && self.active == self.widgets.len() {
                 self.active -= 1;
                 if self.sized_range.contains(&self.active) {
-                    mgr.request_set_rect(self.widgets[self.active].id());
+                    cx.request_set_rect(self.widgets[self.active].id());
                 } else {
-                    *mgr |= Action::RESIZE;
+                    *cx |= Action::RESIZE;
                 }
             }
 
@@ -349,7 +349,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// The new child is configured immediately. The active page does not
     /// change.
-    pub fn insert(&mut self, data: &W::Data, cx: &mut ConfigCx, index: usize, mut widget: W) {
+    pub fn insert(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, mut widget: W) {
         if self.active < index {
             self.sized_range.end = self.sized_range.end.min(index);
         } else {
@@ -376,7 +376,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// If the active page is removed then the previous page (if any) becomes
     /// active.
-    pub fn remove(&mut self, mgr: &mut EventState, index: usize) -> W {
+    pub fn remove(&mut self, cx: &mut EventState, index: usize) -> W {
         let w = self.widgets.remove(index);
         if w.id_ref().is_valid() {
             if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
@@ -387,9 +387,9 @@ impl<W: Widget> Stack<W> {
         if self.active == index {
             self.active = self.active.saturating_sub(1);
             if self.sized_range.contains(&self.active) {
-                mgr.request_set_rect(self.widgets[self.active].id());
+                cx.request_set_rect(self.widgets[self.active].id());
             } else {
-                *mgr |= Action::RESIZE;
+                *cx |= Action::RESIZE;
             }
         }
         if index < self.sized_range.end {
@@ -413,7 +413,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// The new child is configured immediately. If it replaces the active page,
     /// then [`Action::RESIZE`] is triggered.
-    pub fn replace(&mut self, data: &W::Data, cx: &mut ConfigCx, index: usize, mut widget: W) -> W {
+    pub fn replace(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, mut widget: W) -> W {
         let id = self.make_child_id(index);
         cx.configure(widget.as_node(data), id);
         std::mem::swap(&mut widget, &mut self.widgets[index]);
@@ -443,8 +443,8 @@ impl<W: Widget> Stack<W> {
     /// then [`Action::RESIZE`] is triggered.
     pub fn extend<T: IntoIterator<Item = W>>(
         &mut self,
-        data: &W::Data,
         cx: &mut ConfigCx,
+        data: &W::Data,
         iter: T,
     ) {
         let old_len = self.widgets.len();
@@ -469,8 +469,8 @@ impl<W: Widget> Stack<W> {
     /// then [`Action::RESIZE`] is triggered.
     pub fn resize_with<F: Fn(usize) -> W>(
         &mut self,
-        data: &W::Data,
         cx: &mut ConfigCx,
+        data: &W::Data,
         len: usize,
         f: F,
     ) {
