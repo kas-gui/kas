@@ -81,8 +81,8 @@ pub trait Events: Sized {
     /// or (b) another method is used to update the child.
     ///
     /// The default implementation does nothing.
-    fn update(&mut self, data: &Self::Data, mgr: &mut ConfigMgr) {
-        let _ = (data, mgr);
+    fn update(&mut self, mgr: &mut ConfigMgr, data: &Self::Data) {
+        let _ = (mgr, data);
     }
 
     /// Is this widget navigable via <kbd>Tab</kbd> key?
@@ -403,12 +403,12 @@ pub trait Widget: Layout {
     /// Internal method: configure recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn _configure(&mut self, data: &Self::Data, cx: &mut ConfigMgr, id: WidgetId);
+    fn _configure(&mut self, cx: &mut ConfigMgr, data: &Self::Data, id: WidgetId);
 
     /// Internal method: update recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn _update(&mut self, data: &Self::Data, cx: &mut ConfigMgr);
+    fn _update(&mut self, cx: &mut ConfigMgr, data: &Self::Data);
 
     /// Internal method: send recursively
     ///
