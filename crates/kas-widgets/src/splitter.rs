@@ -91,35 +91,19 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn for_child_impl(
-            &self,
+        fn for_child_node(
+            &mut self,
             data: &W::Data,
             index: usize,
             closure: Box<dyn FnOnce(Node<'_>) + '_>,
         ) {
             if (index & 1) != 0 {
-                if let Some(w) = self.handles.get(index >> 1) {
+                if let Some(w) = self.handles.get_mut(index >> 1) {
                     closure(w.as_node(&()));
                 }
             } else {
-                if let Some(w) = self.widgets.get(index >> 1) {
-                    closure(w.as_node(data));
-                }
-            }
-        }
-        fn for_child_mut_impl(
-            &mut self,
-            data: &W::Data,
-            index: usize,
-            closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
-        ) {
-            if (index & 1) != 0 {
-                if let Some(w) = self.handles.get_mut(index >> 1) {
-                    closure(w.as_node_mut(&()));
-                }
-            } else {
                 if let Some(w) = self.widgets.get_mut(index >> 1) {
-                    closure(w.as_node_mut(data));
+                    closure(w.as_node(data));
                 }
             }
         }
@@ -129,6 +113,13 @@ impl_scope! {
         #[inline]
         fn num_children(&self) -> usize {
             self.widgets.len() + self.handles.len()
+        }
+        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
+            if (index & 1) != 0 {
+                self.handles.get(index >> 1).map(|w| w.as_layout())
+            } else {
+                self.widgets.get(index >> 1).map(|w| w.as_layout())
+            }
         }
 
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
@@ -393,12 +384,12 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
             let len = self.handles.len();
             let id = self.make_next_id(true, len);
             let mut w = GripPart::new();
-            mgr.configure(w.as_node_mut(&()), id);
+            mgr.configure(w.as_node(&()), id);
             self.handles.push(w);
         }
 
         let id = self.make_next_id(false, index);
-        mgr.configure(widget.as_node_mut(data), id);
+        mgr.configure(widget.as_node(data), id);
         self.widgets.push(widget);
 
         self.size_solved = false;
@@ -447,12 +438,12 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
             let index = index.min(self.handles.len());
             let id = self.make_next_id(true, index);
             let mut w = GripPart::new();
-            mgr.configure(w.as_node_mut(&()), id);
+            mgr.configure(w.as_node(&()), id);
             self.handles.insert(index, w);
         }
 
         let id = self.make_next_id(false, index);
-        mgr.configure(widget.as_node_mut(data), id);
+        mgr.configure(widget.as_node(data), id);
         self.widgets.insert(index, widget);
 
         self.size_solved = false;
@@ -497,7 +488,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// The new child is configured immediately. Triggers [`Action::RESIZE`].
     pub fn replace(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize, mut w: W) -> W {
         let id = self.make_next_id(false, index);
-        mgr.configure(w.as_node_mut(data), id);
+        mgr.configure(w.as_node(data), id);
         std::mem::swap(&mut w, &mut self.widgets[index]);
 
         if w.id_ref().is_valid() {
@@ -532,12 +523,12 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
             if index > 0 {
                 let id = self.make_next_id(true, self.handles.len());
                 let mut w = GripPart::new();
-                mgr.configure(w.as_node_mut(&()), id);
+                mgr.configure(w.as_node(&()), id);
                 self.handles.push(w);
             }
 
             let id = self.make_next_id(false, index);
-            mgr.configure(widget.as_node_mut(data), id);
+            mgr.configure(widget.as_node(data), id);
             self.widgets.push(widget);
         }
 
@@ -591,13 +582,13 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
                 if index > 0 {
                     let id = self.make_next_id(true, self.handles.len());
                     let mut w = GripPart::new();
-                    mgr.configure(w.as_node_mut(&()), id);
+                    mgr.configure(w.as_node(&()), id);
                     self.handles.push(w);
                 }
 
                 let id = self.make_next_id(false, index);
                 let mut widget = f(index);
-                mgr.configure(widget.as_node_mut(data), id);
+                mgr.configure(widget.as_node(data), id);
                 self.widgets.push(widget);
             }
 

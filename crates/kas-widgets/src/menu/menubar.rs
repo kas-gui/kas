@@ -60,24 +60,14 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn for_child_impl(
-            &self,
+        fn for_child_node(
+            &mut self,
             data: &Data,
             index: usize,
             closure: Box<dyn FnOnce(Node<'_>) + '_>,
         ) {
-            if let Some(w) = self.widgets.get(index) {
-                closure(w.as_node(data));
-            }
-        }
-        fn for_child_mut_impl(
-            &mut self,
-            data: &Data,
-            index: usize,
-            closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
-        ) {
             if let Some(w) = self.widgets.get_mut(index) {
-                closure(w.as_node_mut(data));
+                closure(w.as_node(data));
             }
         }
     }
@@ -86,6 +76,9 @@ impl_scope! {
         #[inline]
         fn num_children(&self) -> usize {
             self.widgets.len()
+        }
+        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
+            self.widgets.get(index).map(|w| w.as_layout())
         }
 
         fn size_rules(&mut self, mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {

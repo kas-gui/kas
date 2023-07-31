@@ -15,7 +15,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::{AccelString, Text, TextApi};
 use crate::theme::{DrawMgr, SizeMgr, TextClass};
-use crate::{Erased, Layout, NavAdvance, Node, NodeMut, Widget, WidgetCore, WidgetId};
+use crate::{Erased, Layout, NavAdvance, Node, Widget, WidgetId};
 use kas_macros::{autoimpl, impl_scope};
 
 impl_scope! {
@@ -92,7 +92,12 @@ impl_scope! {
     }
 
     // We don't use #[widget] here. This is not supported outside of Kas!
-    impl WidgetCore for Self {
+    impl Layout for Self {
+        #[inline]
+        fn as_layout(&self) -> &dyn Layout {
+            self
+        }
+
         #[inline]
         fn id_ref(&self) -> &WidgetId {
             self.inner.id_ref()
@@ -107,12 +112,14 @@ impl_scope! {
         fn widget_name(&self) -> &'static str {
             "MapAny"
         }
-    }
 
-    impl Layout for Self {
         #[inline]
         fn num_children(&self) -> usize {
             self.inner.num_children()
+        }
+        #[inline]
+        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
+            self.inner.get_child(index)
         }
 
         #[inline]
@@ -159,25 +166,18 @@ impl_scope! {
     impl Widget for Self {
         type Data = A;
 
-        fn as_node<'a>(&'a self, _: &'a A) -> Node<'a> {
+        fn as_node<'a>(&'a mut self, _: &'a A) -> Node<'a> {
             self.inner.as_node(&())
-        }
-        fn as_node_mut<'a>(&'a mut self, _: &'a A) -> NodeMut<'a> {
-            self.inner.as_node_mut(&())
         }
 
         #[inline]
-        fn for_child_impl(&self, _: &A, index: usize, closure: Box<dyn FnOnce(Node<'_>) + '_>) {
-            self.inner.for_child_impl(&(), index, closure)
-        }
-        #[inline]
-        fn for_child_mut_impl(
+        fn for_child_node(
             &mut self,
             _: &A,
             index: usize,
-            closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
         ) {
-            self.inner.for_child_mut_impl(&(), index, closure)
+            self.inner.for_child_node(&(), index, closure)
         }
 
         fn _configure(&mut self, _: &A, cx: &mut ConfigMgr, id: WidgetId) {

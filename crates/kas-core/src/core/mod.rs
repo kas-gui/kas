@@ -6,6 +6,7 @@
 //! Core widget types
 
 mod data;
+mod layout;
 mod node;
 mod scroll_traits;
 mod widget;
@@ -16,7 +17,8 @@ mod widget_id;
 pub mod impls;
 
 pub use data::*;
-pub use node::{Node, NodeMut};
+pub use layout::*;
+pub use node::Node;
 pub use scroll_traits::*;
 pub use widget::*;
 pub use widget_id::*;

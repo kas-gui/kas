@@ -6,12 +6,12 @@
 //! Utilities
 
 use crate::geom::Coord;
-use crate::{Node, WidgetId};
+use crate::{Layout, LayoutExt, WidgetId};
 use std::fmt;
 
 /// Helper to display widget identification (e.g. `MyWidget#01`)
 ///
-/// Constructed by [`crate::WidgetExt::identify`].
+/// Constructed by [`crate::LayoutExt::identify`].
 pub struct IdentifyWidget<'a>(pub(crate) &'static str, pub(crate) &'a WidgetId);
 impl<'a> fmt::Display for IdentifyWidget<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
@@ -23,11 +23,11 @@ impl<'a> fmt::Display for IdentifyWidget<'a> {
 ///
 /// Note: output starts with a new line.
 pub struct WidgetHierarchy<'a> {
-    widget: Node<'a>,
+    widget: &'a dyn Layout,
     indent: usize,
 }
 impl<'a> WidgetHierarchy<'a> {
-    pub fn new(widget: Node<'a>) -> Self {
+    pub fn new(widget: &'a dyn Layout) -> Self {
         WidgetHierarchy { widget, indent: 0 }
     }
 }

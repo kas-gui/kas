@@ -102,7 +102,7 @@ impl_scope! {
                 update |= handler(mgr, data, &mut self.state);
             }
             if update {
-                mgr.update(self.as_node_mut(data));
+                mgr.update(self.as_node(data));
             }
         }
     }

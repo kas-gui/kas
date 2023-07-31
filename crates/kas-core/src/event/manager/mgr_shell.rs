@@ -89,7 +89,7 @@ impl EventState {
 
         shell.size_and_draw_shared(Box::new(|size, draw_shared| {
             let mut mgr = ConfigMgr::new(size, draw_shared, self);
-            mgr.configure(win.as_node_mut(data), WidgetId::ROOT);
+            mgr.configure(win.as_node(data), WidgetId::ROOT);
         }));
 
         let hover = win.find_id(data, self.last_mouse_coord);
@@ -153,15 +153,15 @@ impl EventState {
         };
 
         while let Some((parent, wid)) = mgr.popup_removed.pop() {
-            mgr.send_event(win.as_node_mut(data), parent, Event::PopupRemoved(wid));
+            mgr.send_event(win.as_node(data), parent, Event::PopupRemoved(wid));
         }
 
-        mgr.flush_mouse_grab_motion(win.as_node_mut(data));
+        mgr.flush_mouse_grab_motion(win.as_node(data));
         for i in 0..mgr.touch_grab.len() {
             let action = mgr.touch_grab[i].flush_click_move();
             mgr.state.action |= action;
             if let Some((id, event)) = mgr.touch_grab[i].flush_grab_move() {
-                mgr.send_event(win.as_node_mut(data), id, event);
+                mgr.send_event(win.as_node(data), id, event);
             }
         }
 
@@ -204,7 +204,7 @@ impl EventState {
             let id = grab.id.clone();
             if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
                 let event = Event::Pan { alpha, delta };
-                mgr.send_event(win.as_node_mut(data), id, event);
+                mgr.send_event(win.as_node(data), id, event);
             }
         }
 
@@ -214,20 +214,20 @@ impl EventState {
             log::trace!(target: "kas_core::event::manager", "update: handling Pending::{item:?}");
             match item {
                 Pending::Configure(id) => {
-                    win.as_node_mut(data)
+                    win.as_node(data)
                         .for_id(&id, |node| mgr.configure(node, id.clone()));
 
                     let hover = win.find_id(data, mgr.state.last_mouse_coord);
                     mgr.state.set_hover(hover);
                 }
                 Pending::Update(id) => {
-                    win.as_node_mut(data).for_id(&id, |node| mgr.update(node));
+                    win.as_node(data).for_id(&id, |node| mgr.update(node));
                 }
                 Pending::Send(id, event) => {
                     if matches!(&event, &Event::LostMouseHover) {
                         mgr.hover_icon = Default::default();
                     }
-                    mgr.send_event(win.as_node_mut(data), id, event);
+                    mgr.send_event(win.as_node(data), id, event);
                 }
                 Pending::SetRect(_id) => {
                     // TODO(opt): set only this child
@@ -238,14 +238,14 @@ impl EventState {
                     reverse,
                     key_focus,
                 } => {
-                    mgr.next_nav_focus_impl(win.as_node_mut(data), target, reverse, key_focus);
+                    mgr.next_nav_focus_impl(win.as_node(data), target, reverse, key_focus);
                 }
             }
         }
 
         // Poll futures last. This means that any newly pushed future should
         // get polled from the same update() call.
-        mgr.poll_futures(win.as_node_mut(data));
+        mgr.poll_futures(win.as_node(data));
 
         drop(mgr);
 
@@ -264,7 +264,7 @@ impl EventState {
         &mut self,
         shell: &mut dyn ShellWindow,
         messages: &mut ErasedStack,
-        widget: NodeMut<'_>,
+        widget: Node<'_>,
     ) -> bool {
         let mut mgr = EventMgr {
             state: self,
@@ -287,7 +287,7 @@ impl EventState {
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl<'a> EventMgr<'a> {
     /// Update widgets due to timer
-    pub(crate) fn update_timer(&mut self, mut widget: NodeMut<'_>) {
+    pub(crate) fn update_timer(&mut self, mut widget: Node<'_>) {
         let now = Instant::now();
 
         // assumption: time_updates are sorted in reverse order
@@ -303,7 +303,7 @@ impl<'a> EventMgr<'a> {
         self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
     }
 
-    fn poll_futures(&mut self, mut widget: NodeMut<'_>) {
+    fn poll_futures(&mut self, mut widget: Node<'_>) {
         let mut i = 0;
         while i < self.state.fut_messages.len() {
             let (_, fut) = &mut self.state.fut_messages[i];
@@ -352,7 +352,7 @@ impl<'a> EventMgr<'a> {
                     // layer. We use our own shortcut system instead.
                     if c >= '\x20' && !('\x7f'..='\u{9f}').contains(&c) {
                         let event = Event::ReceivedCharacter(c);
-                        self.send_event(win.as_node_mut(data), id, event);
+                        self.send_event(win.as_node(data), id, event);
                     }
                 }
             }
@@ -375,7 +375,7 @@ impl<'a> EventMgr<'a> {
             } => {
                 if input.state == ElementState::Pressed && !is_synthetic {
                     if let Some(vkey) = input.virtual_keycode {
-                        self.start_key_event(win.as_node_mut(data), vkey, input.scancode);
+                        self.start_key_event(win.as_node(data), vkey, input.scancode);
                     }
                 } else if input.state == ElementState::Released {
                     self.end_key_event(input.scancode);
@@ -414,7 +414,7 @@ impl<'a> EventMgr<'a> {
                         coord,
                     };
                     let event = Event::CursorMove { press };
-                    self.send_event(win.as_node_mut(data), id, event);
+                    self.send_event(win.as_node(data), id, event);
                 } else {
                     // We don't forward move events without a grab
                 }
@@ -433,7 +433,7 @@ impl<'a> EventMgr<'a> {
                 }
             }
             MouseWheel { delta, .. } => {
-                self.flush_mouse_grab_motion(win.as_node_mut(data));
+                self.flush_mouse_grab_motion(win.as_node(data));
 
                 self.last_click_button = FAKE_MOUSE_BUTTON;
 
@@ -447,11 +447,11 @@ impl<'a> EventMgr<'a> {
                     }
                 });
                 if let Some(id) = self.hover.clone() {
-                    self.send_event(win.as_node_mut(data), id, event);
+                    self.send_event(win.as_node(data), id, event);
                 }
             }
             MouseInput { state, button, .. } => {
-                self.flush_mouse_grab_motion(win.as_node_mut(data));
+                self.flush_mouse_grab_motion(win.as_node(data));
 
                 let coord = self.last_mouse_coord;
 
@@ -472,7 +472,7 @@ impl<'a> EventMgr<'a> {
                     .unwrap_or(false)
                 {
                     if let Some((id, event)) = self.remove_mouse_grab(true) {
-                        self.send_event(win.as_node_mut(data), id, event);
+                        self.send_event(win.as_node(data), id, event);
                     }
                 }
 
@@ -495,8 +495,7 @@ impl<'a> EventMgr<'a> {
                         coord,
                     };
                     let event = Event::PressStart { press };
-                    let used =
-                        self.send_popup_first(win.as_node_mut(data), self.hover.clone(), event);
+                    let used = self.send_popup_first(win.as_node(data), self.hover.clone(), event);
 
                     if !used && self.mouse_grab.is_none() && win.drag_anywhere() {
                         self.shell.drag_window();
@@ -526,7 +525,7 @@ impl<'a> EventMgr<'a> {
                                 coord,
                             };
                             let event = Event::PressStart { press };
-                            self.send_popup_first(win.as_node_mut(data), start_id, event);
+                            self.send_popup_first(win.as_node(data), start_id, event);
                         }
                     }
                     TouchPhase::Moved => {
@@ -561,7 +560,7 @@ impl<'a> EventMgr<'a> {
                         if let Some(mut grab) = self.remove_touch(touch.id) {
                             self.send_action(grab.flush_click_move());
                             if let Some((id, event)) = grab.flush_grab_move() {
-                                self.send_event(win.as_node_mut(data), id, event);
+                                self.send_event(win.as_node(data), id, event);
                             }
 
                             if grab.mode == GrabMode::Grab {
@@ -569,7 +568,7 @@ impl<'a> EventMgr<'a> {
                                 let press = Press { source, id, coord };
                                 let success = ev == TouchPhase::Ended;
                                 let event = Event::PressEnd { press, success };
-                                self.send_event(win.as_node_mut(data), grab.start_id, event);
+                                self.send_event(win.as_node(data), grab.start_id, event);
                             }
                         }
                     }

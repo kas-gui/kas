@@ -12,7 +12,7 @@ use crate::geom::Rect;
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::Text;
 use crate::theme::{DrawMgr, SizeMgr, TextClass};
-use crate::{Layout, WidgetCore};
+use crate::Layout;
 use kas::prelude::*;
 use kas::theme::MarkStyle;
 use kas_macros::impl_scope;

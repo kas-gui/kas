@@ -16,7 +16,7 @@ use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
 use kas::theme::{Theme, Window as _};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use kas::util::warn_about_error;
-use kas::{Action, AppData, ErasedStack, Widget, WidgetExt, WindowId};
+use kas::{Action, AppData, ErasedStack, Layout, LayoutExt, Widget, WindowId};
 use std::any::TypeId;
 use std::mem::take;
 use std::time::Instant;
@@ -92,8 +92,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         ev_state.full_configure(&mut tkw, &mut widget, &shared.data);
 
         let size_mgr = SizeMgr::new(theme_window.size());
-        let mut solve_cache =
-            SolveCache::find_constraints(widget.as_node_mut(&shared.data), size_mgr);
+        let mut solve_cache = SolveCache::find_constraints(widget.as_node(&shared.data), size_mgr);
 
         // Opening a zero-size window causes a crash, so force at least 1x1:
         let ideal = solve_cache.ideal(true).max(Size(1, 1));
@@ -261,11 +260,9 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             &mut self.theme_window,
         );
         let mut messages = ErasedStack::new();
-        let has_action = self.ev_state.post_draw(
-            &mut tkw,
-            &mut messages,
-            self.widget.as_node_mut(&shared.data),
-        );
+        let has_action =
+            self.ev_state
+                .post_draw(&mut tkw, &mut messages, self.widget.as_node(&shared.data));
         shared.handle_messages(&mut messages);
 
         if has_action {
@@ -320,7 +317,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             Some(&self.window),
             &mut self.theme_window,
         );
-        let widget = self.widget.as_node_mut(&shared.data);
+        let widget = self.widget.as_node(&shared.data);
         let mut messages = ErasedStack::new();
         self.ev_state
             .with(&mut tkw, &mut messages, |mgr| mgr.update_timer(widget));
@@ -393,7 +390,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
 
         let size = self.theme_window.size();
         let mut mgr = ConfigMgr::new(&size, &mut shared.shell.draw, &mut self.ev_state);
-        mgr.update(self.widget.as_node_mut(&shared.data));
+        mgr.update(self.widget.as_node(&shared.data));
 
         log::trace!(target: "kas_perf::wgpu::window", "update: {}µs", time.elapsed().as_micros());
     }
@@ -409,9 +406,9 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             &mut shared.shell.draw,
             &mut self.ev_state,
         );
-        solve_cache.apply_rect(self.widget.as_node_mut(&shared.data), &mut mgr, rect, true);
+        solve_cache.apply_rect(self.widget.as_node(&shared.data), &mut mgr, rect, true);
         if first {
-            solve_cache.print_widget_heirarchy(self.widget.as_node(&shared.data));
+            solve_cache.print_widget_heirarchy(self.widget.as_layout());
         }
         self.widget.resize_popups(&shared.data, &mut mgr);
 

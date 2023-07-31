@@ -11,7 +11,7 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, FrameStyle, SizeMgr};
 use crate::title_bar::TitleBar;
-use crate::{Action, Events, Icon, Layout, Node, Widget, WidgetExt, WidgetId};
+use crate::{Action, Events, Icon, Layout, LayoutExt, Widget, WidgetId};
 use kas_macros::impl_scope;
 use smallvec::SmallVec;
 use std::num::NonZeroU32;
@@ -140,7 +140,7 @@ impl_scope! {
                 return None;
             }
             for (_, popup, translation) in self.popups.iter_mut().rev() {
-                if let Some(Some(id)) = self.w.as_node_mut(data).for_id(&popup.id, |mut node| node.find_id(coord + *translation)) {
+                if let Some(Some(id)) = self.w.as_node(data).for_id(&popup.id, |mut node| node.find_id(coord + *translation)) {
                     return Some(id);
                 }
             }
@@ -159,7 +159,7 @@ impl_scope! {
             }
             draw.recurse(&mut self.w);
             for (_, popup, translation) in &self.popups {
-                self.w.as_node_mut(data).for_id(&popup.id, |mut node| {
+                self.w.as_node(data).for_id(&popup.id, |mut node| {
                     let clip_rect = node.rect() - *translation;
                     draw.with_overlay(clip_rect, *translation, |draw| {
                         node._draw(draw);
@@ -355,28 +355,31 @@ impl<Data: 'static> Window<Data> {
 
 // Search for a widget by `id`. On success, return that widget's [`Rect`] and
 // the translation of its children.
-fn find_rect(widget: Node<'_>, id: WidgetId, mut translation: Offset) -> Option<(Rect, Offset)> {
-    if widget.eq_id(&id) {
-        if widget.translation() != Offset::ZERO {
-            // Unvalidated: does this cause issues with the parent's event handlers?
-            log::warn!(
-                "Parent of pop-up {} has non-zero translation",
-                widget.identify()
-            );
-        }
+fn find_rect(widget: &dyn Layout, id: WidgetId, mut translation: Offset) -> Option<(Rect, Offset)> {
+    let mut widget = widget;
+    loop {
+        if widget.eq_id(&id) {
+            if widget.translation() != Offset::ZERO {
+                // Unvalidated: does this cause issues with the parent's event handlers?
+                log::warn!(
+                    "Parent of pop-up {} has non-zero translation",
+                    widget.identify()
+                );
+            }
 
-        let rect = widget.rect();
-        return Some((rect, translation));
-    } else if let Some(i) = widget.find_child_index(&id) {
-        if let Some(r) = widget.for_child(i, |w| {
+            let rect = widget.rect();
+            return Some((rect, translation));
+        } else if let Some(child) = widget
+            .find_child_index(&id)
+            .and_then(|i| widget.get_child(i))
+        {
             translation += widget.translation();
-            find_rect(w, id, translation)
-        }) {
-            return r;
+            widget = child;
+            continue;
+        } else {
+            return None;
         }
     }
-
-    None
 }
 
 impl<Data: 'static> Window<Data> {
@@ -412,10 +415,10 @@ impl<Data: 'static> Window<Data> {
             (pos, size)
         };
 
-        let (c, t) = find_rect(self.w.as_node(data), popup.parent.clone(), Offset::ZERO).unwrap();
+        let (c, t) = find_rect(self.w.as_layout(), popup.parent.clone(), Offset::ZERO).unwrap();
         *translation = t;
         let r = r + t; // work in translated coordinate space
-        self.w.as_node_mut(data).for_id(&popup.id, |mut node| {
+        self.w.as_node(data).for_id(&popup.id, |mut node| {
             let mut cache = layout::SolveCache::find_constraints(node.re(), mgr.size_mgr());
             let ideal = cache.ideal(false);
             let m = cache.margins();
@@ -431,7 +434,7 @@ impl<Data: 'static> Window<Data> {
             };
 
             cache.apply_rect(node.re(), mgr, rect, false);
-            cache.print_widget_heirarchy(node.re_node());
+            cache.print_widget_heirarchy(node.as_layout());
         });
     }
 }

@@ -3,274 +3,34 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Widget traits
+//! Widget and Events traits
 
-use super::{Node, NodeMut};
+use super::{Layout, Node};
 use crate::event::{ConfigMgr, Event, EventMgr, Response, Scroll};
-use crate::geom::{Coord, Offset, Rect};
-use crate::layout::{AxisInfo, SizeRules};
-use crate::theme::{DrawMgr, SizeMgr};
-use crate::util::IdentifyWidget;
 use crate::{Erased, WidgetId};
 use kas_macros::autoimpl;
 
-#[allow(unused)] use crate::event::EventState;
-#[allow(unused)]
-use crate::layout::{self, AlignPair, AutoLayout};
-#[allow(unused)] use crate::Action;
 #[allow(unused)] use kas_macros as macros;
-
-/// Base functionality for [`Widget`]s
-///
-/// # Implementing WidgetCore
-///
-/// Implementations of this trait are generated via macro.
-/// **Directly implementing this trait is not supported**.
-/// See [`Widget`] trait documentation.
-#[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait WidgetCore {
-    /// Get the widget's identifier
-    ///
-    /// Note that the default-constructed [`WidgetId`] is *invalid*: any
-    /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned by [`Events::pre_configure`].
-    fn id_ref(&self) -> &WidgetId;
-
-    /// Get the widget's region, relative to its parent.
-    fn rect(&self) -> Rect;
-
-    /// Get the name of the widget struct
-    fn widget_name(&self) -> &'static str;
-}
-
-/// Positioning and drawing routines for [`Widget`]s
-///
-/// This trait is related to [`Widget`], but may be used independently.
-///
-/// # Implementing Layout
-///
-/// The [`#[widget]` macro](macros::widget) supports an optional property,
-/// `layout`. If this is used then the `Layout` trait is implemented
-/// automatically (although a custom implementation may still be used, which
-/// may refer to the implementation of [`AutoLayout`] for `Self`).
-///
-/// If the `layout` property is not used then at least [`Self::size_rules`] and
-/// [`Self::draw`] must be defined directly.
-///
-/// # Solving layout
-///
-/// Layout is resolved as follows:
-///
-/// 1.  [`Events::configure`] is called (widgets only), and may be used to load assets
-/// 2.  [`Self::size_rules`] is called at least once for each axis
-/// 3.  [`Self::set_rect`] is called to position elements. This may use data cached by `size_rules`.
-/// 4.  [`Self::find_id`] may be used to find the widget under the mouse and [`Self::draw`] to draw
-///     elements.
-///
-/// Usually, [`Layout::size_rules`] methods are called recursively. To instead
-/// solve layout for a single widget/layout object, it may be useful to use
-/// [`layout::solve_size_rules`] or [`layout::SolveCache`].
-#[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait Layout: WidgetCore {
-    /// Get the number of child widgets
-    ///
-    /// Every value in the range `0..self.num_children()` is a valid child
-    /// index.
-    ///
-    /// This method is usually implemented automatically by the `#[widget]`
-    /// macro. It should be implemented directly if and only if
-    /// [`Widget::get_child`] is also implemented directly.
-    ///
-    /// Aside: this method is here to avoid dependence on the `Data` type
-    /// parameter of [`Widget`].
-    fn num_children(&self) -> usize;
-
-    /// Find the child which is an ancestor of this `id`, if any
-    ///
-    /// If `Some(index)` is returned, this is *probably* but not guaranteed
-    /// to be a valid child index.
-    ///
-    /// The default implementation simply uses [`WidgetId::next_key_after`].
-    /// Widgets may choose to assign children custom keys by overriding this
-    /// method and [`Self::make_child_id`].
-    #[inline]
-    fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
-        id.next_key_after(self.id_ref())
-    }
-
-    /// Make an identifier for a child
-    ///
-    /// This is used to configure children. It may return [`WidgetId::default`]
-    /// in order to avoid configuring the child, but in this case the widget
-    /// must configure via another means.
-    ///
-    /// Default impl: `self.id_ref().make_child(index)`
-    #[inline]
-    fn make_child_id(&mut self, index: usize) -> WidgetId {
-        self.id_ref().make_child(index)
-    }
-
-    /// Get size rules for the given axis
-    ///
-    /// Typically, this method is called twice: first for the horizontal axis,
-    /// second for the vertical axis (with resolved width available through
-    /// the `axis` parameter allowing content wrapping).
-    /// For a description of the widget size model, see [`SizeRules`].
-    ///
-    /// This method is expected to cache any size requirements calculated from
-    /// children which would be required for space allocations in
-    /// [`Self::set_rect`]. As an example, the horizontal [`SizeRules`] for a
-    /// row layout is the sum of the rules for each column (plus margins);
-    /// these per-column [`SizeRules`] are also needed to calculate column
-    /// widths in [`Self::size_rules`] once the available size is known.
-    ///
-    /// For row/column/grid layouts, a [`crate::layout::RulesSolver`] engine
-    /// may be useful.
-    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
-
-    /// Set size and position
-    ///
-    /// This method is called after [`Self::size_rules`] and may use values
-    /// cached by `size_rules` (in the case `size_rules` is not called first,
-    /// the widget may exhibit incorrect layout but should not panic). This
-    /// method should not write over values cached by `size_rules` since
-    /// `set_rect` may be called multiple times consecutively.
-    /// After `set_rect` is called, the widget must be ready for drawing and event handling.
-    ///
-    /// The size of the assigned `rect` is normally at least the minimum size
-    /// requested by [`Self::size_rules`], but this is not guaranteed. In case
-    /// this minimum is not met, it is permissible for the widget to draw
-    /// outside of its assigned `rect` and to not function as normal.
-    ///
-    /// The assigned `rect` may be larger than the widget's size requirements,
-    /// regardless of the [`Stretch`] policy used. If the widget should never
-    /// stretch, it must align itself.
-    /// Example: the `CheckBox` widget uses an [`AlignPair`] (set from
-    /// `size_rules`'s [`AxisInfo`]) and uses [`ConfigMgr::align_feature`].
-    /// Another example: `Label` uses a `Text` object which handles alignment
-    /// internally.
-    ///
-    /// Default implementation when not using the `layout` property: set `rect`
-    /// field of `widget_core!()` to the input `rect`.
-    ///
-    /// [`Stretch`]: crate::layout::Stretch
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
-
-    /// Navigation in spatial order
-    ///
-    /// Controls <kbd>Tab</kbd> navigation order of children.
-    /// This method should:
-    ///
-    /// -   Return `None` if there is no next child
-    /// -   Determine the next child after `from` (if provided) or the whole
-    ///     range, optionally in `reverse` order
-    /// -   Ensure that the selected widget is addressable through
-    ///     [`Widget::for_child`]
-    ///
-    /// Both `from` and the return value use the widget index, as used by
-    /// [`Widget::for_child`].
-    ///
-    /// Default implementation:
-    ///
-    /// -   Generated from `#[widget]`'s layout property, if used (not always possible!)
-    /// -   Otherwise, iterate through children in order of definition
-    fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize>;
-
-    /// Get translation of children relative to this widget
-    ///
-    /// Usually this is zero; only widgets with scrollable or offset content
-    /// *and* child widgets need to implement this.
-    /// Such widgets must also implement [`Events::handle_scroll`].
-    ///
-    /// Affects event handling via [`Layout::find_id`] and affects the positioning
-    /// of pop-up menus. [`Layout::draw`] must be implemented directly using
-    /// [`DrawMgr::with_clip_region`] to offset contents.
-    ///
-    /// Default implementation: return [`Offset::ZERO`]
-    #[inline]
-    fn translation(&self) -> Offset {
-        Offset::ZERO
-    }
-
-    /// Translate a coordinate to a [`WidgetId`]
-    ///
-    /// This method is used to determine which widget reacts to the mouse cursor
-    /// or a touch event. The result affects mouse-hover highlighting, event
-    /// handling by the target, and potentially also event handling by other
-    /// widgets (e.g. a `Label` widget will not handle touch events, but if it
-    /// is contained by a `ScrollRegion`, that widget may capture these via
-    /// [`Events::handle_event`] to implement touch scrolling).
-    ///
-    /// The result is usually the widget which draws at the given `coord`, but
-    /// does not have to be. For example, a `Button` widget will return its own
-    /// `id` for coordinates drawn by internal content, while the `CheckButton`
-    /// widget uses an internal component for event handling and thus reports
-    /// this component's `id` even over its own area.
-    ///
-    /// It is expected that [`Layout::set_rect`] is called before this method,
-    /// but failure to do so should not cause a fatal error.
-    ///
-    /// The default implementation suffices for widgets without children as well
-    /// as widgets using the `layout` property of [`#[widget]`](crate::widget).
-    /// Custom implementations may be required if:
-    ///
-    /// -   A custom [`Layout`] implementation is used
-    /// -   Event stealing or donation is desired (but note that
-    ///     `layout = button: ..;` does this already)
-    ///
-    /// When writing a custom implementation:
-    ///
-    /// -   Widgets should test `self.rect().contains(coord)`, returning `None`
-    ///     if this test is `false`; otherwise, they should always return *some*
-    ///     [`WidgetId`], either a childs or their own.
-    /// -   If the Widget uses a translated coordinate space (i.e.
-    ///     `self.translation() != Offset::ZERO`) then pass
-    ///     `coord + self.translation()` to children.
-    ///
-    /// The default implementation is non-trivial:
-    /// ```ignore
-    /// if !self.rect().contains(coord) {
-    ///     return None;
-    /// }
-    /// let coord = coord + self.translation();
-    /// for child in ITER_OVER_CHILDREN {
-    ///     if let Some(id) = child.find_id(coord) {
-    ///         return Some(id);
-    ///     }
-    /// }
-    /// Some(self.id())
-    /// ```
-    fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
-
-    /// Draw a widget and its children
-    ///
-    /// This method is invoked each frame to draw visible widgets. It should
-    /// draw itself and recurse into all visible children.
-    ///
-    /// It is expected that [`Self::set_rect`] is called before this method,
-    /// but failure to do so should not cause a fatal error.
-    ///
-    /// The `draw` parameter is pre-parameterized with this widget's
-    /// [`WidgetId`], allowing drawn components to react to input state. This
-    /// implies that when calling `draw` on children, the child's `id` must be
-    /// supplied via [`DrawMgr::re_id`] or [`DrawMgr::recurse`].
-    fn draw(&mut self, draw: DrawMgr);
-}
 
 /// Widget event-handling
 ///
-/// This trait is automatically implemented if not explicitly included in a
-/// widget implemention. All methods have default implementations.
+/// This trait governs event handling as part of a [`Widget`] implementation.
+/// It is used by the [`#widget`] macro to generate hidden [`Widget`] methods.
 ///
-/// Although this [`Widget`] is not a sub-trait of `Events`, all widgets must
-/// implement this trait (though an empty implementation may be generated).
-/// See the [`Widget`] trait documentation.
+/// The implementation of this method may be omitted where no event-handling is
+/// required. All methods have a default trivial implementation except
+/// [`Events::pre_configure`] which assigns `self.core.id = id`.
+///
+/// [`#widget`]: macros::widget
 pub trait Events: Sized {
     /// Input data type
     ///
-    /// This type must match [`Widget::Data`]. When using the `#[widget]` macro,
-    /// the type only needs to be specified once, here, in the implementation of
-    /// [`Widget`], or via the `Data` property.
+    /// This type must match [`Widget::Data`]. When using the `#widget` macro,
+    /// the type must be specified exactly once in one of three places: here,
+    /// in the implementation of [`Widget`], or via the `Data` property of
+    /// [`#widget`].
+    ///
+    /// [`#widget`]: macros::widget
     type Data;
 
     /// Pre-configuration
@@ -454,36 +214,58 @@ pub enum NavAdvance {
 
 /// The Widget trait
 ///
-/// Widgets implement a family of traits, of which this trait is the final
-/// member:
+/// The primary widget trait covers event handling over super trait [`Layout`]
+/// which governs layout, drawing, child enumeration and identification.
+/// Most methods of `Widget` are hidden and only for use within the Kas library.
 ///
-/// -   [`WidgetCore`] — base functionality
-/// -   [`Layout`] — handles sizing and positioning for self and children
-/// -   [`Events`] — configuration, event handling
-/// -   [`Widget`] — introspection, dyn-safe API
-///
-/// This trait is automatically implemented for every [`Widget`].
-/// Directly implementing this trait is not supported.
-///
-/// All methods are hidden and direct usage is not supported; instead use the
-/// [`ConfigMgr`] and [`EventMgr`] types which use these methods internally.
+/// `Widget` is dyn-safe given a type parameter, e.g. `dyn Widget<Data = ()>`.
+/// [`Layout`] is dyn-safe without a type parameter. [`Node`] is a dyn-safe
+/// abstraction over a `&dyn Widget<Data = T>` plus a `&T` data parameter.
 ///
 /// # Implementing Widget
 ///
-/// To implement a widget, use the [`macros::widget`] macro. **This is the
-/// only supported method of implementing `Widget`.**
+/// To implement a widget, use the [`#widget`] macro within an
+/// [`impl_scope`](macros::impl_scope). **This is the only supported method of
+/// implementing `Widget`.** Synopsis:
+/// ```ignore
+/// impl_scope! {
+///     #[widget {
+///         // macro properties (all optional)
+///         Data = T;
+///         layout = self.foo;
+///     }]
+///     struct MyWidget {
+///         core: widget_core!(),
+///         #[widget] foo: impl Widget<Data = T> = make_foo(),
+///         // ...
+///     }
 ///
-/// The [`macros::widget`] macro only works within [`macros::impl_scope`].
-/// Other trait implementations can be detected within this scope:
+///     // Optional implementations:
+///     impl Layout for Self { /* ... */ }
+///     impl Events for Self { /* ... */ }
+///     impl Self { /* ... */ }
+/// }
+/// ```
 ///
-/// -   [`WidgetCore`] is always generated
-/// -   [`Layout`] is generated if the `layout` attribute property is set, and
-///     no direct implementation is found. In other cases where a direct
-///     implementation of the trait is found, (default) method implementations
-///     may be injected where not already present.
-/// -   [`Events`] is generated if no direct implementation is present
-/// -   [`Widget`] is generated if no direct implementation is present.
-///     (Direct implementation is not supported outside of Kas libraries!)
+/// Details may be categorised as follows:
+///
+/// -   **Data**: the type [`Widget::Data`] must be specified exactly once, but
+///     this type may be given in any of three locations: as a property of the
+///     [`#widget`] macro, as [`Events::Data`] or as [`Widget::Data`].
+/// -   **Core** methods of [`Layout`] are *always* implemented via the [`#widget`]
+///     macro, whether or not an `impl Layout { ... }` item is present.
+/// -   **Introspection** methods [`Layout::num_children`], [`Layout::get_child`]
+///     and [`Widget::for_child_node`] are implemented by the [`#widget`] macro
+///     in most cases: child widgets embedded within a layout descriptor or
+///     included as fields marked with `#[widget]` are enumerated.
+/// -   **Introspection** methods [`Layout::find_child_index`] and
+///     [`Layout::make_child_id`] have default implementations which *usually*
+///     suffice.
+/// -   **Layout** is specified either via [layout syntax](macros::widget#layout-1)
+///     or via implementation of at least [`Layout::size_rules`] and
+///     [`Layout::draw`] (optionally also `set_rect`, `nav_next`, `translation`
+///     and `find_id`).
+///-    **Event handling** is optional, implemented through [`Events`].
 ///
 /// Some simple examples follow. See also
 /// [examples apps](https://github.com/kas-gui/kas/tree/master/examples)
@@ -586,6 +368,8 @@ pub enum NavAdvance {
 ///     }
 /// }
 /// ```
+///
+/// [`#widget`]: macros::widget
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait Widget: Layout {
     /// Input data type
@@ -599,9 +383,7 @@ pub trait Widget: Layout {
     type Data;
 
     /// Erase type
-    fn as_node<'a>(&'a self, data: &'a Self::Data) -> Node<'a>;
-    /// Erase type
-    fn as_node_mut<'a>(&'a mut self, data: &'a Self::Data) -> NodeMut<'a>;
+    fn as_node<'a>(&'a mut self, data: &'a Self::Data) -> Node<'a>;
 
     /// Call closure on child with given `index`, if `index < self.num_children()`.
     ///
@@ -609,28 +391,13 @@ pub trait Widget: Layout {
     /// not need to implement this. Widgets with an explicit implementation of
     /// [`Layout::num_children`] also need to implement this.
     ///
-    /// It is recommended to use the methods on [`Node`] or [`WidgetExt`]
+    /// It is recommended to use the methods on [`Node`]
     /// instead of calling this method.
-    fn for_child_impl(
-        &self,
-        data: &Self::Data,
-        index: usize,
-        closure: Box<dyn FnOnce(Node<'_>) + '_>,
-    );
-
-    /// Call closure on child with given `index`, if `index < self.num_children()`.
-    ///
-    /// Widgets with no children or using the `#[widget]` attribute on fields do
-    /// not need to implement this. Widgets with an explicit implementation of
-    /// [`Layout::num_children`] also need to implement this.
-    ///
-    /// It is recommended to use the methods on [`NodeMut`] or [`WidgetExt`]
-    /// instead of calling this method.
-    fn for_child_mut_impl(
+    fn for_child_node(
         &mut self,
         data: &Self::Data,
         index: usize,
-        closure: Box<dyn FnOnce(NodeMut<'_>) + '_>,
+        closure: Box<dyn FnOnce(Node<'_>) + '_>,
     );
 
     /// Internal method: configure recursively
@@ -678,51 +445,3 @@ pub trait Widget: Layout {
         advance: NavAdvance,
     ) -> Option<WidgetId>;
 }
-
-/// Extension trait over widgets
-pub trait WidgetExt: Widget {
-    /// Get the widget's identifier
-    ///
-    /// Note that the default-constructed [`WidgetId`] is *invalid*: any
-    /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned during configure.
-    #[inline]
-    fn id(&self) -> WidgetId {
-        self.id_ref().clone()
-    }
-
-    /// Test widget identifier for equality
-    ///
-    /// This method may be used to test against `WidgetId`, `Option<WidgetId>`
-    /// and `Option<&WidgetId>`.
-    #[inline]
-    fn eq_id<T>(&self, rhs: T) -> bool
-    where
-        WidgetId: PartialEq<T>,
-    {
-        *self.id_ref() == rhs
-    }
-
-    /// Display as "StructName#WidgetId"
-    #[inline]
-    fn identify(&self) -> IdentifyWidget {
-        IdentifyWidget(self.widget_name(), self.id_ref())
-    }
-
-    /// Check whether `id` is self or a descendant
-    ///
-    /// This function assumes that `id` is a valid widget.
-    #[inline]
-    fn is_ancestor_of(&self, id: &WidgetId) -> bool {
-        self.id().is_ancestor_of(id)
-    }
-
-    /// Check whether `id` is not self and is a descendant
-    ///
-    /// This function assumes that `id` is a valid widget.
-    #[inline]
-    fn is_strict_ancestor_of(&self, id: &WidgetId) -> bool {
-        !self.eq_id(id) && self.id().is_ancestor_of(id)
-    }
-}
-impl<W: Widget + ?Sized> WidgetExt for W {}

@@ -76,7 +76,7 @@ impl Tree {
                 size_mgr: ::kas::theme::SizeMgr,
                 axis: ::kas::layout::AxisInfo,
             ) -> ::kas::layout::SizeRules {
-                use ::kas::{WidgetCore, layout};
+                use ::kas::{Layout, layout};
                 (#layout).size_rules(size_mgr, axis)
             }
 
@@ -85,13 +85,13 @@ impl Tree {
                 mgr: &mut ::kas::event::ConfigMgr,
                 rect: ::kas::geom::Rect,
             ) {
-                use ::kas::{WidgetCore, layout};
+                use ::kas::{Layout, layout};
                 #core_path.rect = rect;
                 (#layout).set_rect(mgr, rect);
             }
 
             fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-                use ::kas::{layout, Layout, WidgetCore, WidgetExt};
+                use ::kas::{layout, Layout, LayoutExt};
                 if !self.rect().contains(coord) {
                     return None;
                 }
@@ -100,7 +100,7 @@ impl Tree {
             }
 
             fn draw(&mut self, draw: ::kas::theme::DrawMgr) {
-                use ::kas::{WidgetCore, layout};
+                use ::kas::{Layout, layout};
                 (#layout).draw(draw);
             }
         })
@@ -171,7 +171,14 @@ impl Tree {
             }
         };
 
-        let core_impl = widget::impl_core(&impl_generics, &impl_target, widget_name, &core_path);
+        let mut get_rules = quote! {};
+        for (index, path) in layout_children.iter().enumerate() {
+            get_rules.append_all(quote! {
+                #index => Some(#core_path.#path.as_layout()),
+            });
+        }
+
+        let core_impl = widget::impl_core_methods(widget_name, &core_path);
         let widget_impl = widget::impl_widget(
             &impl_generics,
             &impl_target,
@@ -198,10 +205,17 @@ impl Tree {
                 #stor_ty
             }
 
-            #core_impl
-
             impl #impl_generics ::kas::Layout for #impl_target {
+                #core_impl
                 #num_children
+                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Layout> {
+                    use ::kas::Layout;
+                    match index {
+                        #get_rules
+                        _ => None,
+                    }
+                }
+
                 #layout_methods
                 #nav_next
             }

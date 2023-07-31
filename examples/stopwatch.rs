@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use kas::event::{ConfigMgr, Event, EventMgr, Response};
 use kas::widget::{format_data, TextButton};
-use kas::{Decorations, Events, Widget, WidgetCore, WidgetExt, Window};
+use kas::{Decorations, Events, Layout, LayoutExt, Widget, Window};
 
 #[derive(Clone, Debug)]
 struct MsgReset;
@@ -45,7 +45,7 @@ fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
                             let now = Instant::now();
                             self.elapsed += now - last;
                             self.last = Some(now);
-                            cx.update(self.as_node_mut(data));
+                            cx.update(self.as_node(data));
                             cx.request_timer_update(self.id(), 0, Duration::new(0, 1), true);
                         }
                         Response::Used
@@ -57,7 +57,7 @@ fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
                 if let Some(MsgReset) = cx.try_pop() {
                     self.elapsed = Duration::default();
                     self.last = None;
-                    cx.update(self.as_node_mut(data));
+                    cx.update(self.as_node(data));
                 } else if let Some(MsgStart) = cx.try_pop() {
                     let now = Instant::now();
                     if let Some(last) = self.last.take() {
