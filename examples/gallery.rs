@@ -170,10 +170,8 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
         row!["ScrollLabel", ScrollLabel::new(text).map_any()],
         row![
             "EditBox",
-            EditBox::rw(
-                |data: &Data| data.text.clone(),
-                |s| Item::Text(s.to_string())
-            )
+            EditBox::string(|data: &Data| data.text.clone())
+                .with_msg(|s| Item::Text(s.to_string())),
         ],
         row![
             "Button (text)",

@@ -415,19 +415,13 @@ impl<A: 'static> EditBox<DefaultGuard<A>> {
         }
     }
 
-    /// Construct a read-only `EditBox` for text content
+    /// Construct an `EditField` displaying some `String` value
+    ///
+    /// The field is read-only. To make it read-write call [`Self::with_msg`]
+    /// or [`Self::with_editable`].
     #[inline]
-    pub fn ro(value_fn: impl Fn(&A) -> String + 'static) -> EditBox<StringGuard<A>> {
+    pub fn string(value_fn: impl Fn(&A) -> String + 'static) -> EditBox<StringGuard<A>> {
         EditBox::new(StringGuard::new(value_fn)).with_editable(false)
-    }
-
-    /// Construct a read-write `EditBox` for text content
-    #[inline]
-    pub fn rw<M: Debug + 'static>(
-        value_fn: impl Fn(&A) -> String + 'static,
-        msg_fn: impl Fn(&str) -> M + 'static,
-    ) -> EditBox<StringGuard<A>> {
-        EditBox::new(StringGuard::new(value_fn).on_afl(msg_fn))
     }
 
     /// Construct an `EditBox` for a parsable value (e.g. a number)
@@ -437,6 +431,24 @@ impl<A: 'static> EditBox<DefaultGuard<A>> {
         msg_fn: impl Fn(T) -> M + 'static,
     ) -> EditBox<ParseGuard<A, T>> {
         EditBox::new(ParseGuard::new(value_fn, msg_fn))
+    }
+}
+
+impl<A: 'static> EditBox<StringGuard<A>> {
+    /// Assign a message function for a `String` value
+    ///
+    /// The `msg_fn` is called when the field is activated (<kbd>Enter</kbd>)
+    /// and when it loses focus after content is changed.
+    ///
+    /// This method sets self as editable (see [`Self::with_editable`]).
+    #[must_use]
+    pub fn with_msg<M>(mut self, msg_fn: impl Fn(&str) -> M + 'static) -> Self
+    where
+        M: Debug + 'static,
+    {
+        self.inner.guard = self.inner.guard.on_afl(msg_fn);
+        self.inner.editable = true;
+        self
     }
 }
 
@@ -855,19 +867,13 @@ impl<A: 'static> EditField<DefaultGuard<A>> {
         }
     }
 
-    /// Construct a read-only `EditField` for text content
+    /// Construct an `EditField` displaying some `String` value
+    ///
+    /// The field is read-only. To make it read-write call [`Self::with_msg`]
+    /// or [`Self::with_editable`].
     #[inline]
-    pub fn ro(value_fn: impl Fn(&A) -> String + 'static) -> EditField<StringGuard<A>> {
+    pub fn string(value_fn: impl Fn(&A) -> String + 'static) -> EditField<StringGuard<A>> {
         EditField::new(StringGuard::new(value_fn)).with_editable(false)
-    }
-
-    /// Construct a read-write `EditField` for text content
-    #[inline]
-    pub fn rw<M: Debug + 'static>(
-        value_fn: impl Fn(&A) -> String + 'static,
-        msg_fn: impl Fn(&str) -> M + 'static,
-    ) -> EditField<StringGuard<A>> {
-        EditField::new(StringGuard::new(value_fn).on_afl(msg_fn))
     }
 
     /// Construct an `EditField` for a parsable value (e.g. a number)
@@ -877,6 +883,24 @@ impl<A: 'static> EditField<DefaultGuard<A>> {
         msg_fn: impl Fn(T) -> M + 'static,
     ) -> EditField<ParseGuard<A, T>> {
         EditField::new(ParseGuard::new(value_fn, msg_fn))
+    }
+}
+
+impl<A: 'static> EditField<StringGuard<A>> {
+    /// Assign a message function for a `String` value
+    ///
+    /// The `msg_fn` is called when the field is activated (<kbd>Enter</kbd>)
+    /// and when it loses focus after content is changed.
+    ///
+    /// This method sets self as editable (see [`Self::with_editable`]).
+    #[must_use]
+    pub fn with_msg<M>(mut self, msg_fn: impl Fn(&str) -> M + 'static) -> Self
+    where
+        M: Debug + 'static,
+    {
+        self.guard = self.guard.on_afl(msg_fn);
+        self.editable = true;
+        self
     }
 }
 
