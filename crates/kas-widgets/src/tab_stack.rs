@@ -202,7 +202,7 @@ impl<W: Widget> TabStack<W> {
     ///
     /// Does not configure or size child.
     pub fn with_title(self, title: impl Into<AccelString>, widget: W) -> Self {
-        self.with_tab(Tab::new_on(title, |cx| cx.push(MsgSelect)), widget)
+        self.with_tab(Tab::new_msg(title, MsgSelect), widget)
     }
 
     /// Append a page

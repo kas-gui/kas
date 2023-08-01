@@ -458,7 +458,7 @@ impl_scope! {
                 iters_label: format_value!("{}")
                     .with_reserve(|sizer, axis| Label::new("000").size_rules(sizer, axis)),
                 slider: Slider::up(0..=256, |_, iters| *iters)
-                    .msg_on_move(|iters| iters),
+                    .with_msg(|iters| iters),
                 mbrot: Mandlebrot::new(),
                 iters: 64,
             }

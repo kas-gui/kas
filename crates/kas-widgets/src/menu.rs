@@ -149,7 +149,7 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
         M: Clone + Debug + 'static,
     {
         self.menu
-            .push(Box::new(MapAny::new(MenuEntry::new(label, msg))));
+            .push(Box::new(MapAny::new(MenuEntry::new_msg(label, msg))));
     }
 
     /// Append a [`MenuEntry`], chain style
@@ -167,10 +167,10 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
         &mut self,
         label: impl Into<AccelString>,
         state_fn: impl Fn(&ConfigCx, &Data) -> bool + 'static,
-        message_fn: impl Fn(bool) -> M + 'static,
+        msg_fn: impl Fn(bool) -> M + 'static,
     ) {
         self.menu
-            .push(Box::new(MenuToggle::new_msg(label, state_fn, message_fn)));
+            .push(Box::new(MenuToggle::new_msg(label, state_fn, msg_fn)));
     }
 
     /// Append a [`MenuToggle`], chain style
@@ -178,9 +178,9 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
         mut self,
         label: impl Into<AccelString>,
         state_fn: impl Fn(&ConfigCx, &Data) -> bool + 'static,
-        message_fn: impl Fn(bool) -> M + 'static,
+        msg_fn: impl Fn(bool) -> M + 'static,
     ) -> Self {
-        self.push_toggle(label, state_fn, message_fn);
+        self.push_toggle(label, state_fn, msg_fn);
         self
     }
 

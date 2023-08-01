@@ -77,7 +77,7 @@ impl_scope! {
         /// Construct
         ///
         /// A clone of `msg` is sent as a message on click.
-        pub fn new(style: MarkStyle, msg: M) -> Self {
+        pub fn new_msg(style: MarkStyle, msg: M) -> Self {
             MarkButton {
                 core: Default::default(),
                 style,

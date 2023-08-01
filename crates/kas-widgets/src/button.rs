@@ -32,7 +32,7 @@ impl_scope! {
         on_press: Option<Box<dyn Fn(&mut EventCx, &W::Data)>>,
     }
 
-    impl<W: Widget> Button<W> {
+    impl Self {
         /// Construct a button with given `inner` widget
         #[inline]
         pub fn new(inner: W) -> Self {
@@ -45,35 +45,23 @@ impl_scope! {
             }
         }
 
-        /// Set event handler `f`
-        ///
-        /// This closure is called when the button is activated.
+        /// Call the handler `f` on press / activation
         #[inline]
         #[must_use]
-        pub fn on_press<F>(self, f: F) -> Button<W>
-        where
-            F: Fn(&mut EventCx, &W::Data) + 'static,
-        {
-            Button {
-                core: self.core,
-                keys1: self.keys1,
-                color: self.color,
-                inner: self.inner,
-                on_press: Some(Box::new(f)),
-            }
+        pub fn with(mut self, f: impl Fn(&mut EventCx, &W::Data) + 'static) -> Self {
+            debug_assert!(self.on_press.is_none());
+            self.on_press = Some(Box::new(f));
+            self
         }
-    }
 
-    impl Self {
-        /// Construct a button with a given `inner` widget and event handler `f`
-        ///
-        /// This closure is called when the button is activated.
+        /// Send the message `msg` on press / activation
         #[inline]
-        pub fn new_on<F>(inner: W, f: F) -> Self
+        #[must_use]
+        pub fn with_msg<M>(self, msg: M) -> Self
         where
-            F: Fn(&mut EventCx, &W::Data) + 'static,
+            M: Clone + Debug + 'static,
         {
-            Button::new(inner).on_press(f)
+            self.with(move |cx, _| cx.push(msg.clone()))
         }
 
         /// Construct a button with a given `inner` and payload `msg`
@@ -83,7 +71,7 @@ impl_scope! {
         /// [`Events::handle_messages`].
         #[inline]
         pub fn new_msg<M: Clone + Debug + 'static>(inner: W, msg: M) -> Self {
-            Self::new_on(inner, move |cx, _| cx.push(msg.clone()))
+            Self::new(inner).with_msg(msg)
         }
 
         /// Add accelerator keys (chain style)
@@ -155,7 +143,7 @@ impl_scope! {
     impl Self {
         /// Construct a button with given `label`
         #[inline]
-        pub fn new<S: Into<AccelString>>(label: S) -> Self {
+        pub fn new(label: impl Into<AccelString>) -> Self {
             TextButton {
                 core: Default::default(),
                 keys1: Default::default(),
@@ -165,33 +153,23 @@ impl_scope! {
             }
         }
 
-        /// Set event handler `f`
-        ///
-        /// This closure is called when the button is activated.
+        /// Call the handler `f` on press / activation
         #[inline]
         #[must_use]
-        pub fn on_press<F>(self, f: F) -> TextButton
-        where
-            F: Fn(&mut EventCx) + 'static,
-        {
-            TextButton {
-                core: self.core,
-                keys1: self.keys1,
-                color: self.color,
-                label: self.label,
-                on_press: Some(Box::new(f)),
-            }
+        pub fn with(mut self, f: impl Fn(&mut EventCx) + 'static) -> Self {
+            debug_assert!(self.on_press.is_none());
+            self.on_press = Some(Box::new(f));
+            self
         }
 
-        /// Construct a button with a given `label` and event handler `f`
-        ///
-        /// This closure is called when the button is activated.
+        /// Send the message `msg` on press / activation
         #[inline]
-        pub fn new_on<S: Into<AccelString>, F>(label: S, f: F) -> Self
+        #[must_use]
+        pub fn with_msg<M>(self, msg: M) -> Self
         where
-            F: Fn(&mut EventCx) + 'static,
+            M: Clone + Debug + 'static,
         {
-            TextButton::new(label).on_press(f)
+            self.with(move |cx| cx.push(msg.clone()))
         }
 
         /// Construct a button with a given `label` and payload `msg`
@@ -200,8 +178,8 @@ impl_scope! {
         /// parent widget. The parent (or an ancestor) should handle this using
         /// [`Events::handle_messages`].
         #[inline]
-        pub fn new_msg<S: Into<AccelString>, M: Clone + Debug + 'static>(label: S, msg: M) -> Self {
-            Self::new_on(label, move |cx| cx.push(msg.clone()))
+        pub fn new_msg<M: Clone + Debug + 'static>(label: impl Into<AccelString>, msg: M) -> Self {
+            Self::new(label).with_msg(msg)
         }
 
         /// Add accelerator keys (chain style)

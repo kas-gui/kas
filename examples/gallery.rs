@@ -71,6 +71,11 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
         Two,
         Three,
     }
+    let entries = [
+        ("&One", Entry::One),
+        ("T&wo", Entry::Two),
+        ("Th&ree", Entry::Three),
+    ];
 
     #[derive(Clone, Debug)]
     enum Item {
@@ -217,24 +222,15 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
         ],
         row![
             "ComboBox",
-            ComboBox::new(
-                [
-                    ("&One", Entry::One),
-                    ("T&wo", Entry::Two),
-                    ("Th&ree", Entry::Three),
-                ],
-                |_, data: &Data| data.entry
-            )
-            .msg_on_select(|m| Item::Combo(m))
+            ComboBox::new(entries, |_, data: &Data| data.entry).with_msg(|m| Item::Combo(m))
         ],
         row![
             "Spinner",
-            Spinner::new(0..=10, |_, data: &Data| data.value)
-                .on_change(|cx, _, value| cx.push(Item::Spinner(value)))
+            Spinner::new_msg(0..=10, |_, data: &Data| data.value, Item::Spinner)
         ],
         row![
             "Slider",
-            Slider::right(0..=10, |_, data: &Data| data.value).msg_on_move(Item::Slider)
+            Slider::right(0..=10, |_, data: &Data| data.value).with_msg(Item::Slider)
         ],
         row![
             "ScrollBar",
