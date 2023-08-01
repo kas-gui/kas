@@ -350,7 +350,7 @@ where
                     self.draw.frame(outer, inner, col);
                 }
             }
-            FrameStyle::Button => {
+            FrameStyle::Button | FrameStyle::Tab => {
                 let state = InputState::new_all(self.ev, id);
                 let outer = Quad::conv(rect);
 

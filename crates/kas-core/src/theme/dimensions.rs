@@ -290,7 +290,7 @@ impl<D: 'static> ThemeSize for Window<D> {
         align.aligned_rect(ideal_size, rect)
     }
 
-    fn frame(&self, style: FrameStyle, _is_vert: bool) -> FrameRules {
+    fn frame(&self, style: FrameStyle, is_vert: bool) -> FrameRules {
         let outer = self.dims.m_large;
         match style {
             FrameStyle::None => FrameRules::ZERO,
@@ -299,8 +299,16 @@ impl<D: 'static> ThemeSize for Window<D> {
             FrameStyle::Popup => FrameRules::new_sym(self.dims.popup_frame, 0, 0),
             FrameStyle::MenuEntry => FrameRules::new_sym(self.dims.menu_frame, 0, 0),
             FrameStyle::NavFocus => FrameRules::new_sym(0, self.dims.m_inner, 0),
-            FrameStyle::Button => {
-                FrameRules::new_sym(self.dims.button_frame, self.dims.button_inner, outer)
+            FrameStyle::Button | FrameStyle::Tab => {
+                if is_vert && style == FrameStyle::Tab {
+                    FrameRules::new(
+                        self.dims.button_frame,
+                        (self.dims.button_inner, 0),
+                        (outer, 0),
+                    )
+                } else {
+                    FrameRules::new_sym(self.dims.button_frame, self.dims.button_inner, outer)
+                }
             }
             FrameStyle::EditBox => FrameRules::new_sym(self.dims.frame, 0, outer),
         }

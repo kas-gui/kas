@@ -5,8 +5,10 @@
 
 //! A tabbed stack
 
-use crate::{Row, Stack, TextButton};
+use crate::{AccelLabel, Row, Stack};
+use kas::layout::{FrameStorage, Visitor};
 use kas::prelude::*;
+use kas::theme::FrameStyle;
 use std::fmt::Debug;
 
 #[derive(Clone, Debug)]
@@ -15,10 +17,79 @@ struct MsgSelect;
 #[derive(Clone, Debug)]
 struct MsgSelectIndex(usize);
 
-/// A tab
-///
-/// TODO: a tab is not a button! Support directional graphics, icon and close button.
-pub type Tab = TextButton;
+impl_scope! {
+    /// A tab
+    ///
+    /// This is a special variant of `Button` which a [`MsgSelect`] on press.
+    #[autoimpl(HasStr, SetAccel using self.label)]
+    #[widget {
+        Data = ();
+        layout = button!(self.label);
+        navigable = true;
+        hover_highlight = true;
+    }]
+    pub struct Tab {
+        core: widget_core!(),
+        frame: FrameStorage,
+        #[widget]
+        label: AccelLabel,
+    }
+
+    impl Self {
+        /// Construct a button with given `label` widget
+        #[inline]
+        pub fn new(label: impl Into<AccelString>) -> Self {
+            Tab {
+                core: Default::default(),
+                frame: FrameStorage::default(),
+                label: AccelLabel::new(label),
+            }
+        }
+    }
+
+    impl Layout for Self {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            let label = Visitor::single(&mut self.label);
+            Visitor::frame(&mut self.frame, label, FrameStyle::Tab).size_rules(sizer, axis)
+        }
+
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+            self.core.rect = rect;
+            let label = Visitor::single(&mut self.label);
+            Visitor::frame(&mut self.frame, label, FrameStyle::Tab).set_rect(cx, rect)
+        }
+
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            self.rect().contains(coord).then_some(self.id())
+        }
+
+        fn draw(&mut self, draw: DrawCx) {
+            let label = Visitor::single(&mut self.label);
+            Visitor::frame(&mut self.frame, label, FrameStyle::Tab).draw(draw)
+        }
+    }
+
+    impl Events for Self {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> Response {
+            event.on_activate(cx, self.id(), |cx| {
+                cx.push(MsgSelect);
+                Response::Used
+            })
+        }
+
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &()) {
+            if let Some(kas::message::Activate) = cx.try_pop() {
+                cx.push(MsgSelect);
+            }
+        }
+    }
+
+    impl<T: Into<AccelString>> From<T> for Tab {
+        fn from(label: T) -> Self {
+            Tab::new(label)
+        }
+    }
+}
 
 /// A tabbed stack of boxed widgets
 ///
@@ -202,7 +273,7 @@ impl<W: Widget> TabStack<W> {
     ///
     /// Does not configure or size child.
     pub fn with_title(self, title: impl Into<AccelString>, widget: W) -> Self {
-        self.with_tab(Tab::new_msg(title, MsgSelect), widget)
+        self.with_tab(Tab::new(title), widget)
     }
 
     /// Append a page
@@ -299,7 +370,11 @@ where
         }
         Self {
             stack: Stack::new(stack),
-            tabs: Row::new(tabs),
+            tabs: Row::new(tabs).on_messages(|cx, index| {
+                if let Some(MsgSelect) = cx.try_pop() {
+                    cx.push(MsgSelectIndex(index));
+                }
+            }),
             ..Default::default()
         }
     }

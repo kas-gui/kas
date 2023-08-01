@@ -31,6 +31,13 @@ const SHADOW_HOVER: f32 = 1.1;
 // Shadow enlargement for pop-ups
 const SHADOW_POPUP: f32 = 1.2;
 
+#[derive(PartialEq, Eq)]
+enum ShadowStyle {
+    None,
+    Normal,
+    Hover,
+}
+
 /// A theme with flat (unshaded) rendering
 ///
 /// This is a fully functional theme using only the basic drawing primitives
@@ -198,14 +205,14 @@ where
         }
     }
 
-    pub fn button_frame(
+    fn button_frame(
         &mut self,
         outer: Quad,
+        inner: Quad,
         col_frame: Rgba,
         col_bg: Rgba,
-        state: InputState,
+        shadow: ShadowStyle,
     ) -> Quad {
-        let inner = outer.shrink(self.w.dims.button_frame as f32);
         #[cfg(debug_assertions)]
         {
             if !inner.a.lt(inner.b) {
@@ -213,9 +220,9 @@ where
             }
         }
 
-        if !(self.cols.is_dark || state.disabled() || state.depress()) {
+        if shadow != ShadowStyle::None {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
-            if state.hover() {
+            if shadow == ShadowStyle::Hover {
                 a = a * SHADOW_HOVER;
                 b = b * SHADOW_HOVER;
             }
@@ -388,10 +395,31 @@ where
             FrameStyle::Button => {
                 let state = InputState::new_all(self.ev, id);
                 let outer = Quad::conv(rect);
+                let inner = outer.shrink(self.w.dims.button_frame as f32);
 
                 let col_bg = self.cols.from_bg(bg, state, false);
                 let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
-                self.button_frame(outer, col_frame, col_bg, state);
+
+                let shadow = match () {
+                    () if (self.cols.is_dark || state.disabled() || state.depress()) => {
+                        ShadowStyle::None
+                    }
+                    () if state.hover() => ShadowStyle::Hover,
+                    _ => ShadowStyle::Normal,
+                };
+
+                self.button_frame(outer, inner, col_frame, col_bg, shadow);
+            }
+            FrameStyle::Tab => {
+                let state = InputState::new_all(self.ev, id);
+                let outer = Quad::conv(rect);
+                let w = self.w.dims.button_frame as f32;
+                let inner = Quad::from_coords(outer.a + w, outer.b - Vec2(w, 0.0));
+
+                let col_bg = self.cols.from_bg(bg, state, false);
+                let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
+
+                self.button_frame(outer, inner, col_frame, col_bg, ShadowStyle::None);
             }
             FrameStyle::EditBox => self.edit_box(id, outer, bg),
         }
@@ -406,10 +434,18 @@ where
     ) {
         let state = InputState::new_all(self.ev, id);
         let outer = Quad::conv(rect);
+        let inner = outer.shrink(self.w.dims.button_frame as f32);
 
         let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
         let col_bg = self.cols.from_edit_bg(Default::default(), state);
-        let inner = self.button_frame(outer, col_frame, col_bg, state);
+
+        let shadow = match () {
+            () if (self.cols.is_dark || state.disabled() || state.depress()) => ShadowStyle::None,
+            () if state.hover() => ShadowStyle::Hover,
+            _ => ShadowStyle::Normal,
+        };
+
+        let inner = self.button_frame(outer, inner, col_frame, col_bg, shadow);
 
         self.check_mark(inner, state, checked, last_change);
     }

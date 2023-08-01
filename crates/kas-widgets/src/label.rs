@@ -209,16 +209,10 @@ pub type StringLabel = Label<String>;
 impl_scope! {
     /// A label supporting an accelerator key
     ///
-    /// Accelerator keys are not useful on plain labels. To be useful, a parent
-    /// widget must do something like:
-    /// ```no_test
-    /// impl Events for Self {
-    ///     fn configure(&mut self, cx: &mut EventCx) {
-    ///         let target = self.id(); // widget receiving Event::Activate
-    ///         cx.add_accel_keys(target, self.label.keys());
-    ///     }
-    //// }
-    /// ```
+    /// An `AccelLabel` is a variant of [`Label`] supporting [`AccelString`],
+    /// for example "&Edit" binds an action to <kbd>Alt+E</kbd>. When the
+    /// corresponding key-sequence is pressed this widget sends the message
+    /// [`kas::message::Activate`] which should be handled by a parent.
     ///
     /// A text label. Vertical alignment defaults to centred, horizontal
     /// alignment depends on the script direction if not specified.
@@ -235,7 +229,7 @@ impl_scope! {
     impl Self {
         /// Construct from `label`
         #[inline]
-        pub fn new<S: Into<AccelString>>(label: S) -> Self {
+        pub fn new(label: impl Into<AccelString>) -> Self {
             AccelLabel {
                 core: Default::default(),
                 class: TextClass::AccelLabel(true),

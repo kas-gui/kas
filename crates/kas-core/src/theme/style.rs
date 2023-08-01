@@ -91,6 +91,8 @@ pub enum FrameStyle {
     NavFocus,
     /// Border of a button
     Button,
+    /// Border of a tab
+    Tab,
     /// Box used to contain editable text
     EditBox,
     /// Window decoration (excludes top buttons)
