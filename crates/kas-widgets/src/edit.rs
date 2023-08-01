@@ -1062,6 +1062,11 @@ impl<G: EditGuard> EditField<G> {
     }
 
     fn prepare_text(&mut self, cx: &mut EventCx) {
+        if !self.text.env().bounds.1.is_finite() {
+            // Do not attempt to prepare before bounds are set.
+            return;
+        }
+
         if !self.text.required_action().is_ready() {
             let start = std::time::Instant::now();
 
