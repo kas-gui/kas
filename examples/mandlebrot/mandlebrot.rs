@@ -360,7 +360,7 @@ impl_scope! {
             cx.register_nav_fallback(self.id());
         }
 
-        fn update(&mut self, data: &i32, _: &mut ConfigCx) {
+        fn update(&mut self, _: &mut ConfigCx, data: &i32) {
             self.iters = *data;
         }
 
@@ -368,7 +368,7 @@ impl_scope! {
             true
         }
 
-        fn handle_event(&mut self, _: &i32, cx: &mut EventCx, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &i32, event: Event) -> Response {
             match event {
                 Event::Command(cmd) => {
                     match cmd {
