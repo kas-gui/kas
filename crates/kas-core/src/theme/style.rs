@@ -76,8 +76,11 @@ impl From<MarkStyle> for Feature {
 /// Style of a frame
 ///
 /// A "frame" is an element surrounding another element.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum FrameStyle {
+    /// No frame, just draw the background
+    #[default]
+    None,
     /// A frame for grouping content
     Frame,
     /// A frame around pop-ups
@@ -88,6 +91,8 @@ pub enum FrameStyle {
     NavFocus,
     /// Border of a button
     Button,
+    /// Border of a tab
+    Tab,
     /// Box used to contain editable text
     EditBox,
     /// Window decoration (excludes top buttons)
@@ -110,7 +115,7 @@ pub enum SelectionStyle {
 impl SelectionStyle {
     /// True if an external margin is required
     ///
-    /// Margin size is [`SizeMgr::inner_margins`](super::SizeMgr::inner_margins)
+    /// Margin size is [`SizeCx::inner_margins`](super::SizeCx::inner_margins)
     pub fn is_external(self) -> bool {
         matches!(self, SelectionStyle::Frame | SelectionStyle::Both)
     }

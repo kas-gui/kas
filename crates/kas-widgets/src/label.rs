@@ -117,22 +117,22 @@ impl_scope! {
 
     impl Layout for Self {
         #[inline]
-        fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Default, Align::Center);
-            size_mgr.text_rules(&mut self.label, self.class, axis)
+            sizer.text_rules(&mut self.label, self.class, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            mgr.text_set_size(&mut self.label, self.class, rect.size, None);
+            cx.text_set_size(&mut self.label, self.class, rect.size, None);
         }
 
         #[cfg(feature = "min_spec")]
-        default fn draw(&mut self, mut draw: DrawMgr) {
+        default fn draw(&mut self, mut draw: DrawCx) {
             draw.text_effects(self.rect(), &self.label, self.class);
         }
         #[cfg(not(feature = "min_spec"))]
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             draw.text_effects(self.rect(), &self.label, self.class);
         }
     }
@@ -160,13 +160,13 @@ impl_scope! {
 // Str/String representations have no effects, so use simpler draw call
 #[cfg(feature = "min_spec")]
 impl<'a> Layout for Label<&'a str> {
-    fn draw(&mut self, mut draw: DrawMgr) {
+    fn draw(&mut self, mut draw: DrawCx) {
         draw.text(self.rect(), &self.label, self.class);
     }
 }
 #[cfg(feature = "min_spec")]
 impl Layout for StringLabel {
-    fn draw(&mut self, mut draw: DrawMgr) {
+    fn draw(&mut self, mut draw: DrawCx) {
         draw.text(self.rect(), &self.label, self.class);
     }
 }
@@ -209,16 +209,10 @@ pub type StringLabel = Label<String>;
 impl_scope! {
     /// A label supporting an accelerator key
     ///
-    /// Accelerator keys are not useful on plain labels. To be useful, a parent
-    /// widget must do something like:
-    /// ```no_test
-    /// impl Events for Self {
-    ///     fn configure(&mut self, mgr: &mut EventMgr) {
-    ///         let target = self.id(); // widget receiving Event::Activate
-    ///         mgr.add_accel_keys(target, self.label.keys());
-    ///     }
-    //// }
-    /// ```
+    /// An `AccelLabel` is a variant of [`Label`] supporting [`AccelString`],
+    /// for example "&Edit" binds an action to <kbd>Alt+E</kbd>. When the
+    /// corresponding key-sequence is pressed this widget sends the message
+    /// [`kas::message::Activate`] which should be handled by a parent.
     ///
     /// A text label. Vertical alignment defaults to centred, horizontal
     /// alignment depends on the script direction if not specified.
@@ -235,7 +229,7 @@ impl_scope! {
     impl Self {
         /// Construct from `label`
         #[inline]
-        pub fn new<S: Into<AccelString>>(label: S) -> Self {
+        pub fn new(label: impl Into<AccelString>) -> Self {
             AccelLabel {
                 core: Default::default(),
                 class: TextClass::AccelLabel(true),
@@ -309,17 +303,17 @@ impl_scope! {
 
     impl Layout for Self {
         #[inline]
-        fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Default, Align::Center);
-            size_mgr.text_rules(&mut self.label, self.class, axis)
+            sizer.text_rules(&mut self.label, self.class, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            mgr.text_set_size(&mut self.label, self.class, rect.size, None);
+            cx.text_set_size(&mut self.label, self.class, rect.size, None);
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             draw.text_effects(self.rect(), &self.label, self.class);
         }
     }
@@ -327,14 +321,14 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
-            mgr.add_accel_keys(self.id_ref(), self.label.text().keys());
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.add_accel_keys(self.id_ref(), self.label.text().keys());
         }
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
                 Event::Command(cmd) if cmd.is_activate() => {
-                    mgr.push(kas::message::Activate);
+                    cx.push(kas::message::Activate);
                     Response::Used
                 }
                 _ => Response::Unused

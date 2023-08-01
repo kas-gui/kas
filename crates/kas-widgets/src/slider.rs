@@ -111,7 +111,7 @@ impl_scope! {
         navigable = true;
         hover_highlight = true;
     }]
-    pub struct Slider<A, T: SliderValue, D: Directional> {
+    pub struct Slider<A, T: SliderValue, D: Directional = Direction> {
         core: widget_core!(),
         align: AlignPair,
         direction: D,
@@ -121,55 +121,14 @@ impl_scope! {
         value: T,
         #[widget(&())]
         grip: GripPart,
-        state_fn: Box<dyn Fn(&ConfigMgr, &A) -> T>,
-        on_move: Option<Box<dyn Fn(&mut EventMgr, &A, T)>>,
+        state_fn: Box<dyn Fn(&ConfigCx, &A) -> T>,
+        on_move: Option<Box<dyn Fn(&mut EventCx, &A, T)>>,
     }
 
-    impl<A, T: SliderValue> Slider<A, T, kas::dir::Left> {
-        /// Construct with fixed direction
-        ///
-        /// This constructor fixes the slider direction but is otherwise
-        /// identical to [`Self::new`].
-        #[inline]
-        pub fn left(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigMgr, &A) -> T + 'static) -> Self {
-            Slider::new(Default::default(), range, state_fn)
-        }
-    }
-
-    impl<A, T: SliderValue> Slider<A, T, kas::dir::Right> {
-        /// Construct with fixed direction
-        ///
-        /// This constructor fixes the slider direction but is otherwise
-        /// identical to [`Self::new`].
-        #[inline]
-        pub fn right(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigMgr, &A) -> T + 'static) -> Self {
-            Slider::new(Default::default(), range, state_fn)
-        }
-    }
-
-    impl<A, T: SliderValue> Slider<A, T, kas::dir::Up> {
-        /// Construct with fixed direction
-        ///
-        /// This constructor fixes the slider direction but is otherwise
-        /// identical to [`Self::new`].
-        #[inline]
-        pub fn up(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigMgr, &A) -> T + 'static) -> Self {
-            Slider::new(Default::default(), range, state_fn)
-        }
-    }
-
-    impl<A, T: SliderValue> Slider<A, T, kas::dir::Down> {
-        /// Construct with fixed direction
-        ///
-        /// This constructor fixes the slider direction but is otherwise
-        /// identical to [`Self::new`].
-        #[inline]
-        pub fn down(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigMgr, &A) -> T + 'static) -> Self {
-            Slider::new(Default::default(), range, state_fn)
-        }
-    }
-
-    impl Self {
+    impl Self
+    where
+        D: Default,
+    {
         /// Construct a slider
         ///
         /// Values vary within the given `range`, increasing in the given
@@ -179,12 +138,58 @@ impl_scope! {
         /// The slider's current value is set by `state_fn` on update.
         ///
         /// To make the slider interactive, assign an event handler with
-        /// [`Self::on_move`] or [`Self::msg_on_move`].
+        /// [`Self::with`] or [`Self::with_msg`].
         #[inline]
-        pub fn new(
-            direction: D,
+        pub fn new(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+            Slider::new_dir(range, state_fn, D::default())
+        }
+    }
+    impl<A, T: SliderValue> Slider<A, T, kas::dir::Left> {
+        /// Construct with fixed direction
+        #[inline]
+        pub fn left(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+            Slider::new(range, state_fn)
+        }
+    }
+    impl<A, T: SliderValue> Slider<A, T, kas::dir::Right> {
+        /// Construct with fixed direction
+        #[inline]
+        pub fn right(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+            Slider::new(range, state_fn)
+        }
+    }
+    impl<A, T: SliderValue> Slider<A, T, kas::dir::Up> {
+        /// Construct with fixed direction
+        #[inline]
+        pub fn up(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+            Slider::new(range, state_fn)
+        }
+    }
+
+    impl<A, T: SliderValue> Slider<A, T, kas::dir::Down> {
+        /// Construct with fixed direction
+        #[inline]
+        pub fn down(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+            Slider::new(range, state_fn)
+        }
+    }
+
+    impl Self {
+        /// Construct a slider with given direction
+        ///
+        /// Values vary within the given `range`, increasing in the given
+        /// `direction`. The default step size is
+        /// 1 for common types (see [`SliderValue::default_step`]).
+        ///
+        /// The slider's current value is set by `state_fn` on update.
+        ///
+        /// To make the slider interactive, assign an event handler with
+        /// [`Self::with`] or [`Self::with_msg`].
+        #[inline]
+        pub fn new_dir(
             range: RangeInclusive<T>,
-            state_fn: impl Fn(&ConfigMgr, &A) -> T + 'static,
+            state_fn: impl Fn(&ConfigCx, &A) -> T + 'static,
+            direction: D,
         ) -> Self {
             assert!(!range.is_empty());
             let value = *range.start();
@@ -201,24 +206,21 @@ impl_scope! {
             }
         }
 
-        /// Emit a message on movement
-        #[inline]
-        pub fn msg_on_move<M: std::fmt::Debug + 'static>(
-            self,
-            message_fn: impl Fn(T) -> M + 'static,
-        ) -> Self {
-            self.on_move(move |cx, _, state| cx.push(message_fn(state)))
-        }
-
-        /// Set event handler `f`
-        ///
-        /// This closure is called when the slider is moved.
+        /// Send the message generated by `f` on movement
         #[inline]
         #[must_use]
-        pub fn on_move<F>(mut self, f: F) -> Self
+        pub fn with_msg<M>(self, f: impl Fn(T) -> M + 'static) -> Self
         where
-            F: Fn(&mut EventMgr, &A, T) + 'static,
+            M: std::fmt::Debug + 'static,
         {
+            self.with(move |cx, _, state| cx.push(f(state)))
+        }
+
+        /// Call the handler `f` on movement
+        #[inline]
+        #[must_use]
+        pub fn with(mut self, f: impl Fn(&mut EventCx, &A, T) + 'static) -> Self {
+            debug_assert!(self.on_move.is_none());
             self.on_move = Some(Box::new(f));
             self
         }
@@ -265,7 +267,7 @@ impl_scope! {
             }
         }
 
-        fn apply_grip_offset(&mut self, data: &A, mgr: &mut EventMgr, offset: Offset) {
+        fn apply_grip_offset(&mut self, cx: &mut EventCx, data: &A, offset: Offset) {
             let b = self.range.1 - self.range.0;
             let max_offset = self.grip.max_offset();
             let mut a = match self.direction.is_vertical() {
@@ -278,16 +280,16 @@ impl_scope! {
             let value = self.clamp_value(a + self.range.0);
             if value != self.value {
                 self.value = value;
-                *mgr |= self.grip.set_offset(self.offset()).1;
+                *cx |= self.grip.set_offset(self.offset()).1;
                 if let Some(ref f) = self.on_move {
-                    f(mgr, data, value);
+                    f(cx, data, value);
                 }
             }
         }
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             self.align.set_component(
                 axis,
                 match axis.is_vertical() == self.direction.is_vertical() {
@@ -295,15 +297,15 @@ impl_scope! {
                     true => axis.align_or_stretch(),
                 },
             );
-            size_mgr.feature(Feature::Slider(self.direction()), axis)
+            sizer.feature(Feature::Slider(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
-            let rect = mgr.align_feature(Feature::Slider(self.direction()), rect, self.align);
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+            let rect = cx.align_feature(Feature::Slider(self.direction()), rect, self.align);
             self.core.rect = rect;
-            self.grip.set_rect(mgr, rect);
+            self.grip.set_rect(cx, rect);
             let mut size = rect.size;
-            size.set_component(self.direction, mgr.size_mgr().handle_len());
+            size.set_component(self.direction, cx.size_cx().handle_len());
             let _ = self.grip.set_size_and_offset(size, self.offset());
         }
 
@@ -319,7 +321,7 @@ impl_scope! {
             Some(self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             let dir = self.direction.as_direction();
             draw.slider(self.rect(), &self.grip, dir);
         }
@@ -328,11 +330,11 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
+        fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             self.value = self.clamp_value((self.state_fn)(cx, data));
         }
 
-        fn handle_event(&mut self, data: &A, cx: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> Response {
             if self.on_move.is_none() {
                 return Response::Unused;
             }
@@ -377,22 +379,22 @@ impl_scope! {
                 }
                 Event::PressStart { press } => {
                     let offset = self.grip.handle_press_on_track(cx, &press);
-                    self.apply_grip_offset(data, cx, offset);
+                    self.apply_grip_offset(cx, data, offset);
                 }
                 _ => return Response::Unused,
             }
             Response::Used
         }
 
-        fn handle_messages(&mut self, data: &A, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
             if self.on_move.is_none() {
                 return;
             }
 
-            match mgr.try_pop() {
-                Some(GripMsg::PressStart) => mgr.set_nav_focus(self.id(), false),
+            match cx.try_pop() {
+                Some(GripMsg::PressStart) => cx.set_nav_focus(self.id(), false),
                 Some(GripMsg::PressMove(pos)) => {
-                    self.apply_grip_offset(data, mgr, pos);
+                    self.apply_grip_offset(cx, data, pos);
                 }
                 _ => (),
             }

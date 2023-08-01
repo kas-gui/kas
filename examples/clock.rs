@@ -41,14 +41,14 @@ impl_scope! {
     }
 
     impl Layout for Clock {
-        fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             kas::layout::LogicalSize(64.0, 64.0)
-                .to_rules_with_factor(axis, mgr.scale_factor(), 3.0)
+                .to_rules_with_factor(axis, sizer.scale_factor(), 3.0)
                 .with_stretch(Stretch::High)
         }
 
         #[inline]
-        fn set_rect(&mut self, _: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect) {
             // Force to square
             let size = rect.size.0.min(rect.size.1);
             let size = Size::splat(size);
@@ -72,7 +72,7 @@ impl_scope! {
             self.time_rect = Rect::new(time_pos, text_size);
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             let accent: Rgba = Rgba8Srgb::from_str("#d7916f").unwrap().into();
             let col_back = Rgba::ga(0.0, 0.5);
             let col_face = accent.multiply(0.4);
@@ -125,11 +125,11 @@ impl_scope! {
     impl Events for Clock {
         type Data = ();
 
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
-            mgr.request_timer_update(self.id(), 0, Duration::new(0, 0), true);
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.request_timer_update(self.id(), 0, Duration::new(0, 0), true);
         }
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(0) => {
                     self.now = Local::now();
@@ -143,8 +143,8 @@ impl_scope! {
                         .expect("invalid font_id");
                     let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                     log::info!("Requesting update in {}ns", ns);
-                    mgr.request_timer_update(self.id(), 0, Duration::new(0, ns), true);
-                    *mgr |= Action::REDRAW;
+                    cx.request_timer_update(self.id(), 0, Duration::new(0, ns), true);
+                    *cx |= Action::REDRAW;
                     Response::Used
                 }
                 _ => Response::Unused,

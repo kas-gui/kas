@@ -7,8 +7,8 @@
 
 use std::time::{Duration, Instant};
 
-use kas::event::{ConfigMgr, Event, EventMgr, Response};
-use kas::widget::{format_data, TextButton};
+use kas::event::{ConfigCx, Event, EventCx, Response};
+use kas::widget::{format_data, Button};
 use kas::{Decorations, Events, Layout, LayoutExt, Widget, Window};
 
 #[derive(Clone, Debug)]
@@ -21,8 +21,8 @@ fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
         #[widget{
             layout = row! [
                 self.display,
-                TextButton::new_msg("&reset", MsgReset),
-                TextButton::new_msg("&start / &stop", MsgStart),
+                Button::label_msg("&reset", MsgReset),
+                Button::label_msg("&start / &stop", MsgStart),
             ];
         }]
         struct {
@@ -35,10 +35,10 @@ fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
         impl Events for Self {
             type Data = ();
 
-            fn configure(&mut self, cx: &mut ConfigMgr) {
+            fn configure(&mut self, cx: &mut ConfigCx) {
                 cx.enable_alt_bypass(self.id_ref(), true);
             }
-            fn handle_event(&mut self, data: &(), cx: &mut EventMgr, event: Event) -> Response {
+            fn handle_event(&mut self, cx: &mut EventCx, data: &(), event: Event) -> Response {
                 match event {
                     Event::TimerUpdate(0) => {
                         if let Some(last) = self.last {
@@ -53,7 +53,7 @@ fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
                     _ => Response::Unused,
                 }
             }
-            fn handle_messages(&mut self, data: &(), cx: &mut EventMgr) {
+            fn handle_messages(&mut self, cx: &mut EventCx, data: &()) {
                 if let Some(MsgReset) = cx.try_pop() {
                     self.elapsed = Duration::default();
                     self.last = None;

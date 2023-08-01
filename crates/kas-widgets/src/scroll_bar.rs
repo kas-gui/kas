@@ -30,7 +30,7 @@ impl_scope! {
     /// It is safe to not call `size_rules` before `set_rect` for this type.
     #[derive(Clone, Debug, Default)]
     #[widget(hover_highlight = true;)]
-    pub struct ScrollBar<D: Directional> {
+    pub struct ScrollBar<D: Directional = Direction> {
         core: widget_core!(),
         align: AlignPair,
         direction: D,
@@ -53,11 +53,11 @@ impl_scope! {
         /// Construct a scroll bar
         ///
         /// Default values are assumed for all parameters.
+        #[inline]
         pub fn new() -> Self {
-            ScrollBar::new_with_direction(D::default())
+            ScrollBar::new_dir(D::default())
         }
     }
-
     impl ScrollBar<kas::dir::Down> {
         /// Construct a scroll bar (vertical)
         ///
@@ -66,7 +66,6 @@ impl_scope! {
             ScrollBar::new()
         }
     }
-
     impl ScrollBar<kas::dir::Right> {
         /// Construct a scroll bar (horizontal)
         ///
@@ -81,7 +80,7 @@ impl_scope! {
         ///
         /// Default values are assumed for all parameters.
         #[inline]
-        pub fn new_with_direction(direction: D) -> Self {
+        pub fn new_dir(direction: D) -> Self {
             ScrollBar {
                 core: Default::default(),
                 align: Default::default(),
@@ -188,21 +187,21 @@ impl_scope! {
         /// Set the value
         ///
         /// Returns true if the value changes.
-        pub fn set_value(&mut self, mgr: &mut EventState, value: i32) -> bool {
+        pub fn set_value(&mut self, cx: &mut EventState, value: i32) -> bool {
             let value = value.clamp(0, self.max_value);
             let changed = value != self.value;
             if changed {
                 self.value = value;
-                *mgr |= self.handle.set_offset(self.offset()).1;
+                *cx |= self.handle.set_offset(self.offset()).1;
             }
-            self.force_visible(mgr);
+            self.force_visible(cx);
             changed
         }
 
-        fn force_visible(&mut self, mgr: &mut EventState) {
+        fn force_visible(&mut self, cx: &mut EventState) {
             self.force_visible = true;
-            let delay = mgr.config().touch_select_delay();
-            mgr.request_timer_update(self.id(), 0, delay, false);
+            let delay = cx.config().touch_select_delay();
+            cx.request_timer_update(self.id(), 0, delay, false);
         }
 
         #[inline]
@@ -247,9 +246,9 @@ impl_scope! {
         }
 
         // true if not equal to old value
-        fn apply_grip_offset(&mut self, mgr: &mut EventMgr, offset: Offset) {
+        fn apply_grip_offset(&mut self, cx: &mut EventCx, offset: Offset) {
             let (offset, action) = self.handle.set_offset(offset);
-            *mgr |= action;
+            *cx |= action;
 
             let len = self.bar_len() - self.handle_len;
             let mut offset = match self.direction.is_vertical() {
@@ -267,14 +266,14 @@ impl_scope! {
                 return;
             }
             let value = i32::conv((lhs + (rhs / 2)) / rhs);
-            if self.set_value(mgr, value) {
-                mgr.push(ScrollMsg(value));
+            if self.set_value(cx, value) {
+                cx.push(ScrollMsg(value));
             }
         }
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             self.align.set_component(
                 axis,
                 match axis.is_vertical() == self.direction.is_vertical() {
@@ -282,14 +281,14 @@ impl_scope! {
                     true => axis.align_or_stretch(),
                 },
             );
-            size_mgr.feature(Feature::ScrollBar(self.direction()), axis)
+            sizer.feature(Feature::ScrollBar(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
-            let rect = mgr.align_feature(Feature::ScrollBar(self.direction()), rect, self.align);
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+            let rect = cx.align_feature(Feature::ScrollBar(self.direction()), rect, self.align);
             self.core.rect = rect;
-            self.handle.set_rect(mgr, rect);
-            self.min_handle_len = mgr.size_mgr().handle_len();
+            self.handle.set_rect(cx, rect);
+            self.min_handle_len = cx.size_cx().handle_len();
             let _ = self.update_widgets();
         }
 
@@ -303,7 +302,7 @@ impl_scope! {
             self.handle.find_id(coord).or_else(|| Some(self.id()))
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             if draw.ev_state().is_hovered_recursive(self.id_ref()) {
                 self.force_visible(draw.ev_state());
             }
@@ -321,25 +320,25 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(_) => {
                     self.force_visible = false;
-                    *mgr |= Action::REDRAW;
+                    *cx |= Action::REDRAW;
                     Response::Used
                 }
                 Event::PressStart { press } => {
-                    let offset = self.handle.handle_press_on_track(mgr, &press);
-                    self.apply_grip_offset(mgr, offset);
+                    let offset = self.handle.handle_press_on_track(cx, &press);
+                    self.apply_grip_offset(cx, offset);
                     Response::Used
                 }
                 _ => Response::Unused,
             }
         }
 
-        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
-            if let Some(GripMsg::PressMove(offset)) = mgr.try_pop() {
-                self.apply_grip_offset(mgr, offset);
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(GripMsg::PressMove(offset)) = cx.try_pop() {
+                self.apply_grip_offset(cx, offset);
             }
         }
     }
@@ -403,7 +402,7 @@ impl_scope! {
             &mut self.inner
         }
 
-        fn draw_(&mut self, mut draw: DrawMgr) {
+        fn draw_(&mut self, mut draw: DrawCx) {
             draw.recurse(&mut self.inner);
             draw.with_pass(|mut draw| {
                 if self.show_bars.0 {
@@ -450,36 +449,36 @@ impl_scope! {
         fn scroll_offset(&self) -> Offset {
             self.inner.scroll_offset()
         }
-        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
-            let offset = self.inner.set_scroll_offset(mgr, offset);
-            self.horiz_bar.set_value(mgr, offset.0);
-            self.vert_bar.set_value(mgr, offset.1);
+        fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
+            let offset = self.inner.set_scroll_offset(cx, offset);
+            self.horiz_bar.set_value(cx, offset.0);
+            self.vert_bar.set_value(cx, offset.1);
             offset
         }
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            let mut rules = self.inner.size_rules(size_mgr.re(), axis);
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut rules = self.inner.size_rules(sizer.re(), axis);
             let (use_horiz, use_vert) = match self.mode {
                 ScrollBarMode::Fixed => self.show_bars,
                 ScrollBarMode::Auto => (true, true),
                 ScrollBarMode::Invisible => (false, false),
             };
             if axis.is_horizontal() && use_horiz {
-                rules.append(self.vert_bar.size_rules(size_mgr.re(), axis));
+                rules.append(self.vert_bar.size_rules(sizer.re(), axis));
             } else if axis.is_vertical() && use_vert {
-                rules.append(self.horiz_bar.size_rules(size_mgr.re(), axis));
+                rules.append(self.horiz_bar.size_rules(sizer.re(), axis));
             }
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
             let pos = rect.pos;
             let mut child_size = rect.size;
 
-            let bar_width = mgr.size_mgr().scroll_bar_width();
+            let bar_width = cx.size_cx().scroll_bar_width();
             if self.mode == ScrollBarMode::Auto {
                 self.show_bars = self.inner.scroll_axes(child_size);
             }
@@ -491,19 +490,19 @@ impl_scope! {
             }
 
             let child_rect = Rect::new(pos, child_size);
-            self.inner.set_rect(mgr, child_rect);
+            self.inner.set_rect(cx, child_rect);
             let max_scroll_offset = self.inner.max_scroll_offset();
 
             if self.show_bars.0 {
                 let pos = Coord(pos.0, rect.pos2().1 - bar_width);
                 let size = Size::new(child_size.0, bar_width);
-                self.horiz_bar.set_rect(mgr, Rect { pos, size });
+                self.horiz_bar.set_rect(cx, Rect { pos, size });
                 let _ = self.horiz_bar.set_limits(max_scroll_offset.0, rect.size.0);
             }
             if self.show_bars.1 {
                 let pos = Coord(rect.pos2().0 - bar_width, pos.1);
                 let size = Size::new(bar_width, self.core.rect.size.1);
-                self.vert_bar.set_rect(mgr, Rect { pos, size });
+                self.vert_bar.set_rect(cx, Rect { pos, size });
                 let _ = self.vert_bar.set_limits(max_scroll_offset.1, rect.size.1);
             }
         }
@@ -520,18 +519,18 @@ impl_scope! {
         }
 
         #[cfg(feature = "min_spec")]
-        default fn draw(&mut self, draw: DrawMgr) {
+        default fn draw(&mut self, draw: DrawCx) {
             self.draw_(draw);
         }
         #[cfg(not(feature = "min_spec"))]
-        fn draw(&mut self, draw: DrawMgr) {
+        fn draw(&mut self, draw: DrawCx) {
             self.draw_(draw);
         }
     }
 
     #[cfg(feature = "min_spec")]
     impl<W: Widget> Layout for ScrollBars<ScrollRegion<W>> {
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             // Enlarge clip region to *our* rect:
             draw.with_clip_region(self.core.rect, self.inner.scroll_offset(), |mut draw| {
                 draw.recurse(&mut self.inner);
@@ -549,26 +548,26 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
-            let index = mgr.last_child().expect("message not sent from self");
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            let index = cx.last_child().expect("message not sent from self");
             if index == widget_index![self.horiz_bar] {
-                if let Some(ScrollMsg(x)) = mgr.try_pop() {
+                if let Some(ScrollMsg(x)) = cx.try_pop() {
                     let offset = Offset(x, self.inner.scroll_offset().1);
-                    self.inner.set_scroll_offset(mgr, offset);
+                    self.inner.set_scroll_offset(cx, offset);
                 }
             } else if index == widget_index![self.vert_bar] {
-                if let Some(ScrollMsg(y)) = mgr.try_pop() {
+                if let Some(ScrollMsg(y)) = cx.try_pop() {
                     let offset = Offset(self.inner.scroll_offset().0, y);
-                    self.inner.set_scroll_offset(mgr, offset);
+                    self.inner.set_scroll_offset(cx, offset);
                 }
             }
         }
 
-        fn handle_scroll(&mut self, _: &Self::Data, mgr: &mut EventMgr, _: Scroll) {
+        fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, _: Scroll) {
             // We assume the inner already updated its positions; this is just to set bars
             let offset = self.inner.scroll_offset();
-            self.horiz_bar.set_value(mgr, offset.0);
-            self.vert_bar.set_value(mgr, offset.1);
+            self.horiz_bar.set_value(cx, offset.0);
+            self.vert_bar.set_value(cx, offset.1);
         }
     }
 }

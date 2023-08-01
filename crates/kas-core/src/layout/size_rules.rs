@@ -15,7 +15,7 @@ use crate::geom::Size;
 
 // for doc use
 #[allow(unused)] use super::FrameRules;
-#[allow(unused)] use crate::theme::SizeMgr;
+#[allow(unused)] use crate::theme::SizeCx;
 
 /// Widget sizing information
 ///
@@ -23,8 +23,8 @@ use crate::geom::Size;
 /// describe size and margin requirements for widgets. This type only concerns
 /// size requirements along a *single* axis.
 ///
-/// All units are in pixels. Sizes usually come directly from [`SizeMgr`]
-/// or from a fixed quantity multiplied by [`SizeMgr::scale_factor`].
+/// All units are in pixels. Sizes usually come directly from [`SizeCx`]
+/// or from a fixed quantity multiplied by [`SizeCx::scale_factor`].
 ///
 /// ### Sizes
 ///

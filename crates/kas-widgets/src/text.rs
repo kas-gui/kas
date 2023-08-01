@@ -27,7 +27,7 @@ impl_scope! {
         core: widget_core!(),
         class: TextClass,
         label: text::Text<T>,
-        label_fn: Box<dyn Fn(&ConfigMgr, &A) -> T>,
+        label_fn: Box<dyn Fn(&ConfigCx, &A) -> T>,
     }
 
     impl Default for Self where for<'a> &'a A: Into<T> {
@@ -44,7 +44,7 @@ impl_scope! {
     impl Self {
         /// Construct with a data binding
         #[inline]
-        pub fn new(label_fn: impl Fn(&ConfigMgr, &A) -> T + 'static) -> Self {
+        pub fn new(label_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
             Text {
                 core: Default::default(),
                 class: TextClass::Label(true),
@@ -108,22 +108,22 @@ impl_scope! {
 
     impl Layout for Self {
         #[inline]
-        fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Default, Align::Center);
-            size_mgr.text_rules(&mut self.label, self.class, axis)
+            sizer.text_rules(&mut self.label, self.class, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            mgr.text_set_size(&mut self.label, self.class, rect.size, None);
+            cx.text_set_size(&mut self.label, self.class, rect.size, None);
         }
 
         #[cfg(feature = "min_spec")]
-        default fn draw(&mut self, mut draw: DrawMgr) {
+        default fn draw(&mut self, mut draw: DrawCx) {
             draw.text_effects(self.rect(), &self.label, self.class);
         }
         #[cfg(not(feature = "min_spec"))]
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             draw.text_effects(self.rect(), &self.label, self.class);
         }
     }
@@ -131,7 +131,7 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
+        fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             let text = (self.label_fn)(cx, data);
             if text.as_str() == self.label.as_str() {
                 // NOTE(opt): avoiding re-preparation of text is a *huge*
@@ -154,13 +154,13 @@ impl_scope! {
 // Str/String representations have no effects, so use simpler draw call
 #[cfg(feature = "min_spec")]
 impl<'a, A> Layout for Text<A, &'a str> {
-    fn draw(&mut self, mut draw: DrawMgr) {
+    fn draw(&mut self, mut draw: DrawCx) {
         draw.text(self.rect(), &self.label, self.class);
     }
 }
 #[cfg(feature = "min_spec")]
 impl<A> Layout for StringText<A> {
-    fn draw(&mut self, mut draw: DrawMgr) {
+    fn draw(&mut self, mut draw: DrawCx) {
         draw.text(self.rect(), &self.label, self.class);
     }
 }

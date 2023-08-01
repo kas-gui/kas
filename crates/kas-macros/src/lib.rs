@@ -188,7 +188,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///     `Event::MouseHover` and `Event::LostMouseHover`, requesting redraw and
 ///     returning `Response::Used`
 /// -   <code>cursor_icon = <em>expr</em></code> — if used, then match
-///     `Event::MouseHover`, calling `mgr.set_cursor_icon(expr)`
+///     `Event::MouseHover`, calling `cx.set_cursor_icon(expr)`
 /// -   <code>layout = <em>layout</em></code> — defines widget layout via an
 ///     expression; [see below for documentation](#layout)
 ///

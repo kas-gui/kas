@@ -73,21 +73,21 @@ impl Tree {
         Ok(quote! {
             fn size_rules(
                 &mut self,
-                size_mgr: ::kas::theme::SizeMgr,
+                sizer: ::kas::theme::SizeCx,
                 axis: ::kas::layout::AxisInfo,
             ) -> ::kas::layout::SizeRules {
                 use ::kas::{Layout, layout};
-                (#layout).size_rules(size_mgr, axis)
+                (#layout).size_rules(sizer, axis)
             }
 
             fn set_rect(
                 &mut self,
-                mgr: &mut ::kas::event::ConfigMgr,
+                cx: &mut ::kas::event::ConfigCx,
                 rect: ::kas::geom::Rect,
             ) {
                 use ::kas::{Layout, layout};
                 #core_path.rect = rect;
-                (#layout).set_rect(mgr, rect);
+                (#layout).set_rect(cx, rect);
             }
 
             fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
@@ -99,7 +99,7 @@ impl Tree {
                 (#layout).find_id(coord).or_else(|| Some(self.id()))
             }
 
-            fn draw(&mut self, draw: ::kas::theme::DrawMgr) {
+            fn draw(&mut self, draw: ::kas::theme::DrawCx) {
                 use ::kas::{Layout, layout};
                 (#layout).draw(draw);
             }
@@ -225,7 +225,7 @@ impl Tree {
 
                 fn pre_configure(
                     &mut self,
-                    _: &mut ::kas::event::ConfigMgr,
+                    _: &mut ::kas::event::ConfigCx,
                     id: ::kas::WidgetId,
                 ) {
                     self.id = id;
@@ -233,11 +233,11 @@ impl Tree {
 
                 fn pre_handle_event(
                     &mut self,
+                    cx: &mut ::kas::event::EventCx,
                     data: &Self::Data,
-                    cx: &mut ::kas::event::EventMgr,
                     event: ::kas::event::Event,
                 ) -> ::kas::event::Response {
-                    self.handle_event(data, cx, event)
+                    self.handle_event(cx, data, event)
                 }
             }
 

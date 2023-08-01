@@ -85,19 +85,19 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
-            *mgr |= self.scroll.set_offset(offset);
+        fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
+            *cx |= self.scroll.set_offset(offset);
             self.scroll.offset()
         }
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.sub_other(self.frame_size.extract(axis.flipped()));
 
-            let mut rules = self.inner.size_rules(size_mgr.re(), axis);
+            let mut rules = self.inner.size_rules(sizer.re(), axis);
             self.min_child_size.set_component(axis, rules.min_size());
-            rules.reduce_min_to(size_mgr.min_scroll_size(axis));
+            rules.reduce_min_to(sizer.min_scroll_size(axis));
 
             // We use a frame to contain the content margin within the scrollable area.
             let frame = kas::layout::FrameRules::ZERO;
@@ -107,11 +107,11 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
             let child_size = (rect.size - self.frame_size).max(self.min_child_size);
             let child_rect = Rect::new(rect.pos + self.offset, child_size);
-            self.inner.set_rect(mgr, child_rect);
+            self.inner.set_rect(cx, child_rect);
             let _ = self
                 .scroll
                 .set_sizes(rect.size, child_size + self.frame_size);
@@ -129,7 +129,7 @@ impl_scope! {
             self.inner.find_id(coord + self.translation())
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             draw.with_clip_region(self.core.rect, self.scroll_offset(), |mut draw| {
                 draw.recurse(&mut self.inner);
             });
@@ -137,18 +137,18 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
-            mgr.register_nav_fallback(self.id());
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.register_nav_fallback(self.id());
         }
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             self.scroll
-                .scroll_by_event(mgr, event, self.id(), self.core.rect)
+                .scroll_by_event(cx, event, self.id(), self.core.rect)
                 .1
         }
 
-        fn handle_scroll(&mut self, _: &Self::Data, mgr: &mut EventMgr, scroll: Scroll) {
-            self.scroll.scroll(mgr, self.rect(), scroll);
+        fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, scroll: Scroll) {
+            self.scroll.scroll(cx, self.rect(), scroll);
         }
     }
 }

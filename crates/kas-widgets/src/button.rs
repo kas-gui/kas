@@ -5,11 +5,11 @@
 
 //! Push-buttons
 
-use crate::AccelLabel;
+use super::Label;
 use kas::draw::color::Rgb;
 use kas::event::{VirtualKeyCode, VirtualKeyCodes};
 use kas::prelude::*;
-use kas::theme::TextClass;
+use kas::text::format::FormattableText;
 use std::fmt::Debug;
 
 impl_scope! {
@@ -29,10 +29,10 @@ impl_scope! {
         color: Option<Rgb>,
         #[widget]
         pub inner: W,
-        on_press: Option<Box<dyn Fn(&mut EventMgr, &W::Data)>>,
+        on_press: Option<Box<dyn Fn(&mut EventCx, &W::Data)>>,
     }
 
-    impl<W: Widget> Button<W> {
+    impl Self {
         /// Construct a button with given `inner` widget
         #[inline]
         pub fn new(inner: W) -> Self {
@@ -45,35 +45,23 @@ impl_scope! {
             }
         }
 
-        /// Set event handler `f`
-        ///
-        /// This closure is called when the button is activated.
+        /// Call the handler `f` on press / activation
         #[inline]
         #[must_use]
-        pub fn on_press<F>(self, f: F) -> Button<W>
-        where
-            F: Fn(&mut EventMgr, &W::Data) + 'static,
-        {
-            Button {
-                core: self.core,
-                keys1: self.keys1,
-                color: self.color,
-                inner: self.inner,
-                on_press: Some(Box::new(f)),
-            }
+        pub fn with(mut self, f: impl Fn(&mut EventCx, &W::Data) + 'static) -> Self {
+            debug_assert!(self.on_press.is_none());
+            self.on_press = Some(Box::new(f));
+            self
         }
-    }
 
-    impl Self {
-        /// Construct a button with a given `inner` widget and event handler `f`
-        ///
-        /// This closure is called when the button is activated.
+        /// Send the message `msg` on press / activation
         #[inline]
-        pub fn new_on<F>(inner: W, f: F) -> Self
+        #[must_use]
+        pub fn with_msg<M>(self, msg: M) -> Self
         where
-            F: Fn(&mut EventMgr, &W::Data) + 'static,
+            M: Clone + Debug + 'static,
         {
-            Button::new(inner).on_press(f)
+            self.with(move |cx, _| cx.push(msg.clone()))
         }
 
         /// Construct a button with a given `inner` and payload `msg`
@@ -83,7 +71,7 @@ impl_scope! {
         /// [`Events::handle_messages`].
         #[inline]
         pub fn new_msg<M: Clone + Debug + 'static>(inner: W, msg: M) -> Self {
-            Self::new_on(inner, move |mgr, _| mgr.push(msg.clone()))
+            Self::new(inner).with_msg(msg)
         }
 
         /// Add accelerator keys (chain style)
@@ -108,160 +96,45 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
-            mgr.add_accel_keys(self.id_ref(), &self.keys1);
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.add_accel_keys(self.id_ref(), &self.keys1);
         }
 
-        fn handle_event(&mut self, data: &W::Data, mgr: &mut EventMgr, event: Event) -> Response {
-            event.on_activate(mgr, self.id(), |mgr| {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &W::Data, event: Event) -> Response {
+            event.on_activate(cx, self.id(), |cx| {
                 if let Some(f) = self.on_press.as_ref() {
-                    f(mgr, data);
+                    f(cx, data);
                 }
                 Response::Used
             })
         }
 
-        fn handle_messages(&mut self, data: &W::Data, mgr: &mut EventMgr) {
-            if let Some(kas::message::Activate) = mgr.try_pop() {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &W::Data) {
+            if let Some(kas::message::Activate) = cx.try_pop() {
                 if let Some(f) = self.on_press.as_ref() {
-                    f(mgr, data);
+                    f(cx, data);
                 }
             }
         }
     }
-}
 
-impl_scope! {
-    /// A push-button with a text label
-    ///
-    /// This is a specialised variant of [`Button`] supporting key shortcuts from an
-    /// [`AccelString`] label and using a custom text class (and thus theme colour).
-    ///
-    /// Default alignment of content is centered.
-    #[widget {
-        layout = button!(self.label, color = self.color);
-        navigable = true;
-        hover_highlight = true;
-    }]
-    pub struct TextButton {
-        core: widget_core!(),
-        keys1: VirtualKeyCodes,
-        #[widget]
-        label: AccelLabel,
-        color: Option<Rgb>,
-        on_press: Option<Box<dyn Fn(&mut EventMgr)>>,
-    }
-
-    impl Self {
-        /// Construct a button with given `label`
-        #[inline]
-        pub fn new<S: Into<AccelString>>(label: S) -> Self {
-            TextButton {
-                core: Default::default(),
-                keys1: Default::default(),
-                label: AccelLabel::new(label).with_class(TextClass::Button),
-                color: None,
-                on_press: None,
-            }
-        }
-
-        /// Set event handler `f`
+    impl<T: FormattableText + 'static> Button<Label<T>> {
+        /// Construct a button with the given `label`
         ///
-        /// This closure is called when the button is activated.
-        #[inline]
-        #[must_use]
-        pub fn on_press<F>(self, f: F) -> TextButton
-        where
-            F: Fn(&mut EventMgr) + 'static,
-        {
-            TextButton {
-                core: self.core,
-                keys1: self.keys1,
-                color: self.color,
-                label: self.label,
-                on_press: Some(Box::new(f)),
-            }
+        /// This is a convenience method. It may be possible to merge this
+        /// functionality into [`Button::new`] once Rust has support for
+        /// overlapping trait implementations (not specialisation).
+        pub fn label(label: T) -> Self {
+            Button::new(Label::new(label))
         }
 
-        /// Construct a button with a given `label` and event handler `f`
+        /// Construct a button with the given `label` and payload `msg`
         ///
-        /// This closure is called when the button is activated.
-        #[inline]
-        pub fn new_on<S: Into<AccelString>, F>(label: S, f: F) -> Self
-        where
-            F: Fn(&mut EventMgr) + 'static,
-        {
-            TextButton::new(label).on_press(f)
-        }
-
-        /// Construct a button with a given `label` and payload `msg`
-        ///
-        /// When the button is activated, a clone of `msg` is sent to the
-        /// parent widget. The parent (or an ancestor) should handle this using
-        /// [`Events::handle_messages`].
-        #[inline]
-        pub fn new_msg<S: Into<AccelString>, M: Clone + Debug + 'static>(label: S, msg: M) -> Self {
-            Self::new_on(label, move |mgr| mgr.push(msg.clone()))
-        }
-
-        /// Add accelerator keys (chain style)
-        ///
-        /// These keys are added to those inferred from the label via `&` marks.
-        #[must_use]
-        pub fn with_keys(mut self, keys: &[VirtualKeyCode]) -> Self {
-            self.keys1.clear();
-            self.keys1.extend_from_slice(keys);
-            self
-        }
-
-        /// Set button color
-        pub fn set_color(&mut self, color: Option<Rgb>) {
-            self.color = color;
-        }
-
-        /// Set button color (chain style)
-        #[must_use]
-        pub fn with_color(mut self, color: Rgb) -> Self {
-            self.color = Some(color);
-            self
-        }
-    }
-
-    impl HasStr for Self {
-        fn get_str(&self) -> &str {
-            self.label.get_str()
-        }
-    }
-
-    impl SetAccel for Self {
-        #[inline]
-        fn set_accel_string(&mut self, string: AccelString) -> Action {
-            self.label.set_accel_string(string)
-        }
-    }
-
-    impl Events for Self {
-        type Data = ();
-
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
-            mgr.add_accel_keys(self.id_ref(), &self.keys1);
-        }
-
-        fn handle_event(&mut self, _: &(), mgr: &mut EventMgr, event: Event) -> Response {
-            event.on_activate(mgr, self.id(), |mgr| {
-                if let Some(f) = self.on_press.as_ref() {
-                    f(mgr);
-                }
-                Response::Used
-            })
-        }
-
-        fn handle_messages(&mut self, _: &(), mgr: &mut EventMgr) {
-            if let Some(kas::message::Activate) = mgr.try_pop() {
-                if let Some(f) = self.on_press.as_ref() {
-                    f(mgr);
-                }
-            }
+        /// This is a convenience method. It may be possible to merge this
+        /// functionality into [`Button::new_msg`] once Rust has support for
+        /// overlapping trait implementations (not specialisation).
+        pub fn label_msg<M: Clone + Debug + 'static>(label: T, msg: M) -> Self {
+            Button::new_msg(Label::new(label), msg)
         }
     }
 }

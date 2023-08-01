@@ -5,12 +5,18 @@
 
 //! Drivers for configuration types
 
-use crate::{adapt::AdaptWidgetAny, CheckButton, ComboBox, Spinner, TextButton};
+use crate::{label, Button, CheckButton, ComboBox, Spinner};
 use kas::event::config::{ChangeConfig, MousePan};
 use kas::prelude::*;
 
 impl_scope! {
-    /// A widget for viewing event config
+    /// A widget for configuring event config
+    ///
+    /// This only needs to be added to a UI to be functional.
+    ///
+    /// Changes take effect immediately. A "Reset" button restores all
+    /// configuration to compiled (not saved) default values.
+    /// TODO: support undo and/or revert to saved values.
     #[widget{
         Data = ();
         layout = grid! {
@@ -49,7 +55,7 @@ impl_scope! {
             (1..3, 10) => self.touch_nav_focus,
 
             (0, 11) => "Restore default values:",
-            (1..3, 11) => TextButton::new_msg("&Reset", ChangeConfig::ResetToDefault).map_any(),
+            (1..3, 11) => Button::new_msg(label("&Reset"), ChangeConfig::ResetToDefault),
         };
     }]
     #[impl_default(EventConfig::new())]
@@ -80,9 +86,9 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_messages(&mut self, _: &(), mgr: &mut EventMgr) {
-            if let Some(msg) = mgr.try_pop() {
-                mgr.change_config(msg);
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &()) {
+            if let Some(msg) = cx.try_pop() {
+                cx.change_config(msg);
             }
         }
     }
@@ -101,33 +107,45 @@ impl_scope! {
                 core: Default::default(),
                 menu_delay: Spinner::new(0..=5_000, |cx, _| cx.config().borrow().menu_delay_ms)
                     .with_step(50)
-                    .on_change(|mgr, v| mgr.push(ChangeConfig::MenuDelay(v))),
-                touch_select_delay: Spinner::new(0..=5_000, |cx: &ConfigMgr, _| cx.config().borrow().touch_select_delay_ms)
+                    .with_msg(ChangeConfig::MenuDelay),
+                touch_select_delay: Spinner::new(0..=5_000, |cx: &ConfigCx, _| cx.config().borrow().touch_select_delay_ms)
                     .with_step(50)
-                    .on_change(|mgr, v| mgr.push(ChangeConfig::TouchSelectDelay(v))),
-                scroll_flick_timeout: Spinner::new(0..=500, |cx: &ConfigMgr, _| cx.config().borrow().scroll_flick_timeout_ms)
+                    .with_msg(ChangeConfig::TouchSelectDelay),
+                scroll_flick_timeout: Spinner::new(0..=500, |cx: &ConfigCx, _| cx.config().borrow().scroll_flick_timeout_ms)
                     .with_step(5)
-                    .on_change(|mgr, v| mgr.push(ChangeConfig::ScrollFlickTimeout(v))),
-                scroll_flick_mul: Spinner::new(0.0..=1.0, |cx: &ConfigMgr, _| cx.config().borrow().scroll_flick_mul)
+                    .with_msg(ChangeConfig::ScrollFlickTimeout),
+                scroll_flick_mul: Spinner::new(0.0..=1.0, |cx: &ConfigCx, _| cx.config().borrow().scroll_flick_mul)
                     .with_step(0.0625)
-                    .on_change(|mgr, v| mgr.push(ChangeConfig::ScrollFlickMul(v))),
-                scroll_flick_sub: Spinner::new(0.0..=1.0e4, |cx: &ConfigMgr, _| cx.config().borrow().scroll_flick_sub)
+                    .with_msg(ChangeConfig::ScrollFlickMul),
+                scroll_flick_sub: Spinner::new(0.0..=1.0e4, |cx: &ConfigCx, _| cx.config().borrow().scroll_flick_sub)
                     .with_step(10.0)
-                    .on_change(|mgr, v| mgr.push(ChangeConfig::ScrollFlickSub(v))),
-                scroll_dist_em: Spinner::new(0.125..=125.0, |cx: &ConfigMgr, _| cx.config().borrow().scroll_dist_em)
+                    .with_msg(ChangeConfig::ScrollFlickSub),
+                scroll_dist_em: Spinner::new(0.125..=125.0, |cx: &ConfigCx, _| cx.config().borrow().scroll_dist_em)
                     .with_step(0.125)
-                    .on_change(|mgr, v| mgr.push(ChangeConfig::ScrollDistEm(v))),
-                pan_dist_thresh: Spinner::new(0.25..=25.0, |cx: &ConfigMgr, _| cx.config().borrow().pan_dist_thresh)
+                    .with_msg(ChangeConfig::ScrollDistEm),
+                pan_dist_thresh: Spinner::new(0.25..=25.0, |cx: &ConfigCx, _| cx.config().borrow().pan_dist_thresh)
                     .with_step(0.25)
-                    .on_change(|mgr, v| mgr.push(ChangeConfig::PanDistThresh(v))),
-                mouse_pan: ComboBox::new(pan_options, |cx: &ConfigMgr, _| cx.config().borrow().mouse_pan)
-                    .on_select(|mgr, v| mgr.push(ChangeConfig::MousePan(v))),
-                mouse_text_pan: ComboBox::new(pan_options, |cx: &ConfigMgr, _| cx.config().borrow().mouse_text_pan)
-                    .on_select(|mgr, v| mgr.push(ChangeConfig::MouseTextPan(v))),
-                mouse_nav_focus: CheckButton::new("&Mouse navigation focus", |cx: &ConfigMgr, _| cx.config().borrow().mouse_nav_focus)
-                    .on_toggle(|mgr, _, v| mgr.push(ChangeConfig::MouseNavFocus(v))),
-                touch_nav_focus: CheckButton::new("&Touchscreen navigation focus", |cx: &ConfigMgr, _| cx.config().borrow().touch_nav_focus)
-                    .on_toggle(|mgr, _, v| mgr.push(ChangeConfig::TouchNavFocus(v))),
+                    .with_msg(ChangeConfig::PanDistThresh),
+                mouse_pan: ComboBox::new_msg(
+                    pan_options,
+                    |cx: &ConfigCx, _| cx.config().borrow().mouse_pan,
+                    ChangeConfig::MousePan,
+                ),
+                mouse_text_pan: ComboBox::new_msg(
+                    pan_options,
+                    |cx: &ConfigCx, _| cx.config().borrow().mouse_text_pan,
+                    ChangeConfig::MouseTextPan,
+                ),
+                mouse_nav_focus: CheckButton::new_msg(
+                    "&Mouse navigation focus",
+                    |cx: &ConfigCx, _| cx.config().borrow().mouse_nav_focus,
+                    ChangeConfig::MouseNavFocus,
+                ),
+                touch_nav_focus: CheckButton::new_msg(
+                    "&Touchscreen navigation focus",
+                    |cx: &ConfigCx, _| cx.config().borrow().touch_nav_focus,
+                    ChangeConfig::TouchNavFocus,
+                ),
             }
         }
     }

@@ -10,11 +10,11 @@
 //! not supported (i.e. **changes are not considered breaking**).
 
 use crate::class::HasStr;
-use crate::event::{ConfigMgr, Event, EventMgr, Response};
+use crate::event::{ConfigCx, Event, EventCx, Response};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::{AccelString, Text, TextApi};
-use crate::theme::{DrawMgr, SizeMgr, TextClass};
+use crate::theme::{DrawCx, SizeCx, TextClass};
 use crate::{Erased, Layout, NavAdvance, Node, Widget, WidgetId};
 use kas_macros::{autoimpl, impl_scope};
 
@@ -49,17 +49,17 @@ impl_scope! {
 
     impl Layout for Self {
         #[inline]
-        fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Default, Align::Center);
-            size_mgr.text_rules(&mut self.label, Self::CLASS, axis)
+            sizer.text_rules(&mut self.label, Self::CLASS, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            mgr.text_set_size(&mut self.label, Self::CLASS, rect.size, None);
+            cx.text_set_size(&mut self.label, Self::CLASS, rect.size, None);
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             draw.text(self.rect(), &self.label, Self::CLASS);
         }
     }
@@ -133,13 +133,13 @@ impl_scope! {
         }
 
         #[inline]
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            self.inner.size_rules(size_mgr, axis)
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            self.inner.size_rules(sizer, axis)
         }
 
         #[inline]
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
-            self.inner.set_rect(mgr, rect);
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+            self.inner.set_rect(cx, rect);
         }
 
         #[inline]
@@ -158,7 +158,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn draw(&mut self, draw: DrawMgr) {
+        fn draw(&mut self, draw: DrawCx) {
             self.inner.draw(draw);
         }
     }
@@ -180,28 +180,28 @@ impl_scope! {
             self.inner.for_child_node(&(), index, closure)
         }
 
-        fn _configure(&mut self, _: &A, cx: &mut ConfigMgr, id: WidgetId) {
-            self.inner._configure(&(), cx, id);
+        fn _configure(&mut self, cx: &mut ConfigCx, _: &A, id: WidgetId) {
+            self.inner._configure(cx, &(), id);
         }
 
-        fn _update(&mut self, _: &A, _: &mut ConfigMgr) {}
+        fn _update(&mut self, _: &mut ConfigCx, _: &A) {}
 
-        fn _send(&mut self, _: &A, cx: &mut EventMgr, id: WidgetId, disabled: bool, event: Event) -> Response {
-            self.inner._send(&(), cx, id, disabled, event)
+        fn _send(&mut self, cx: &mut EventCx, _: &A, id: WidgetId, disabled: bool, event: Event) -> Response {
+            self.inner._send(cx, &(), id, disabled, event)
         }
 
-        fn _replay(&mut self, _: &A, cx: &mut EventMgr, id: WidgetId, msg: Erased) {
-            self.inner._replay(&(), cx, id, msg);
+        fn _replay(&mut self, cx: &mut EventCx, _: &A, id: WidgetId, msg: Erased) {
+            self.inner._replay(cx, &(), id, msg);
         }
 
         fn _nav_next(
             &mut self,
+            cx: &mut EventCx,
             _: &A,
-            cx: &mut EventMgr,
             focus: Option<&WidgetId>,
             advance: NavAdvance,
         ) -> Option<WidgetId> {
-            self.inner._nav_next(&(), cx, focus, advance)
+            self.inner._nav_next(cx, &(), focus, advance)
         }
     }
 }

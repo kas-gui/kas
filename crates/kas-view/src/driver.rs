@@ -66,18 +66,18 @@ pub trait Driver<Item, Data: SharedData<Item = Item>> {
     /// Handle a message from a widget
     ///
     /// This method is called when a view widget returns a message. Often
-    /// it won't be used, but it may, for example, [pop](EventMgr::try_pop) a
-    /// message then [push](EventMgr::push) a new one with the associated `key`.
+    /// it won't be used, but it may, for example, [pop](EventCx::try_pop) a
+    /// message then [push](EventCx::push) a new one with the associated `key`.
     ///
     /// Default implementation: do nothing.
     fn on_messages(
         &mut self,
-        mgr: &mut EventMgr,
+        cx: &mut EventCx,
         data: &Data,
         key: &Data::Key,
         widget: &mut Self::Widget,
     ) {
-        let _ = (mgr, data, key, widget);
+        let _ = (cx, data, key, widget);
     }
 }
 

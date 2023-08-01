@@ -91,7 +91,7 @@ impl_scope! {
             }
         }
 
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let mut rules = SizeRules::EMPTY;
             let end = self
                 .active
@@ -101,15 +101,15 @@ impl_scope! {
             self.sized_range = start..end;
             debug_assert!(self.sized_range.contains(&self.active));
             for index in start..end {
-                rules = rules.max(self.widgets[index].size_rules(size_mgr.re(), axis));
+                rules = rules.max(self.widgets[index].size_rules(sizer.re(), axis));
             }
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
             if let Some(child) = self.widgets.get_mut(self.active) {
-                child.set_rect(mgr, rect);
+                child.set_rect(cx, rect);
             }
         }
 
@@ -129,7 +129,7 @@ impl_scope! {
             None
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             if self.sized_range.contains(&self.active) && self.active < self.widgets.len() {
                 draw.recurse(&mut self.widgets[self.active]);
             }
@@ -137,13 +137,13 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn pre_configure(&mut self, _: &mut ConfigMgr, id: WidgetId) {
+        fn pre_configure(&mut self, _: &mut ConfigCx, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();
         }
 
-        fn update(&mut self, _: &W::Data, mgr: &mut ConfigMgr) {
-            mgr.restrict_recursion_to(self.active..=self.active);
+        fn update(&mut self, cx: &mut ConfigCx, _: &W::Data) {
+            cx.restrict_recursion_to(self.active..=self.active);
         }
     }
 
@@ -163,21 +163,14 @@ impl_scope! {
 }
 
 impl<W: Widget> Stack<W> {
-    /// Construct a new, empty instance
-    #[inline]
-    pub fn new() -> Self {
-        Self::new_vec(vec![])
-    }
-
     /// Construct a new instance
     ///
     /// Initially, the first page (if any) will be shown. Use
     /// [`Self::with_active`] to change this.
-    #[inline]
-    pub fn new_vec(widgets: Vec<W>) -> Self {
+    pub fn new(widgets: impl Into<Vec<W>>) -> Self {
         Stack {
             core: Default::default(),
-            widgets,
+            widgets: widgets.into(),
             sized_range: 0..0,
             active: 0,
             size_limit: usize::MAX,
@@ -239,26 +232,26 @@ impl<W: Widget> Stack<W> {
     /// -   `SizeRules` were solved: set layout ([`Layout::set_rect`]) and
     ///     update mouse-cursor target ([`Action::REGION_MOVED`])
     /// -   Otherwise: resize the whole window ([`Action::RESIZE`])
-    pub fn set_active(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize) {
+    pub fn set_active(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize) {
         let old_index = self.active;
         self.active = index;
         if index >= self.widgets.len() {
             if old_index < self.widgets.len() {
-                *mgr |= Action::REGION_MOVED;
+                *cx |= Action::REGION_MOVED;
             }
             return;
         }
 
         if self.sized_range.contains(&index) {
             if old_index != index {
-                self.widgets[index].set_rect(mgr, self.core.rect);
-                *mgr |= Action::REGION_MOVED;
+                self.widgets[index].set_rect(cx, self.core.rect);
+                *cx |= Action::REGION_MOVED;
             }
         } else {
-            *mgr |= Action::RESIZE;
+            *cx |= Action::RESIZE;
         }
 
-        mgr.update(self.widgets[index].as_node(data));
+        cx.update(self.widgets[index].as_node(data));
     }
 
     /// Get a direct reference to the active child widget, if any
@@ -282,7 +275,7 @@ impl<W: Widget> Stack<W> {
 
     /// Remove all pages
     ///
-    /// This does not change the active page index.
+    /// This does not change the activen page index.
     pub fn clear(&mut self) {
         self.widgets.clear();
         self.sized_range = 0..0;
@@ -304,15 +297,15 @@ impl<W: Widget> Stack<W> {
     /// and then [`Action::RESIZE`] will be triggered.
     ///
     /// Returns the new page's index.
-    pub fn push(&mut self, data: &W::Data, mgr: &mut ConfigMgr, mut widget: W) -> usize {
+    pub fn push(&mut self, cx: &mut ConfigCx, data: &W::Data, mut widget: W) -> usize {
         let index = self.widgets.len();
         let id = self.make_child_id(index);
-        mgr.configure(widget.as_node(data), id);
+        cx.configure(widget.as_node(data), id);
 
         self.widgets.push(widget);
 
         if index == self.active {
-            *mgr |= Action::RESIZE;
+            *cx |= Action::RESIZE;
         }
 
         self.sized_range.end = self.sized_range.end.min(index);
@@ -322,15 +315,15 @@ impl<W: Widget> Stack<W> {
     /// Remove the last child widget (if any) and return
     ///
     /// If this page was active then the previous page becomes active.
-    pub fn pop(&mut self, mgr: &mut EventState) -> Option<W> {
+    pub fn pop(&mut self, cx: &mut EventState) -> Option<W> {
         let result = self.widgets.pop();
         if let Some(w) = result.as_ref() {
             if self.active > 0 && self.active == self.widgets.len() {
                 self.active -= 1;
                 if self.sized_range.contains(&self.active) {
-                    mgr.request_set_rect(self.widgets[self.active].id());
+                    cx.request_set_rect(self.widgets[self.active].id());
                 } else {
-                    *mgr |= Action::RESIZE;
+                    *cx |= Action::RESIZE;
                 }
             }
 
@@ -349,7 +342,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// The new child is configured immediately. The active page does not
     /// change.
-    pub fn insert(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize, mut widget: W) {
+    pub fn insert(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, mut widget: W) {
         if self.active < index {
             self.sized_range.end = self.sized_range.end.min(index);
         } else {
@@ -359,7 +352,7 @@ impl<W: Widget> Stack<W> {
         }
 
         let id = self.make_child_id(index);
-        mgr.configure(widget.as_node(data), id);
+        cx.configure(widget.as_node(data), id);
 
         self.widgets.insert(index, widget);
 
@@ -376,7 +369,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// If the active page is removed then the previous page (if any) becomes
     /// active.
-    pub fn remove(&mut self, mgr: &mut EventState, index: usize) -> W {
+    pub fn remove(&mut self, cx: &mut EventState, index: usize) -> W {
         let w = self.widgets.remove(index);
         if w.id_ref().is_valid() {
             if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
@@ -387,9 +380,9 @@ impl<W: Widget> Stack<W> {
         if self.active == index {
             self.active = self.active.saturating_sub(1);
             if self.sized_range.contains(&self.active) {
-                mgr.request_set_rect(self.widgets[self.active].id());
+                cx.request_set_rect(self.widgets[self.active].id());
             } else {
-                *mgr |= Action::RESIZE;
+                *cx |= Action::RESIZE;
             }
         }
         if index < self.sized_range.end {
@@ -413,15 +406,9 @@ impl<W: Widget> Stack<W> {
     ///
     /// The new child is configured immediately. If it replaces the active page,
     /// then [`Action::RESIZE`] is triggered.
-    pub fn replace(
-        &mut self,
-        data: &W::Data,
-        mgr: &mut ConfigMgr,
-        index: usize,
-        mut widget: W,
-    ) -> W {
+    pub fn replace(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, mut widget: W) -> W {
         let id = self.make_child_id(index);
-        mgr.configure(widget.as_node(data), id);
+        cx.configure(widget.as_node(data), id);
         std::mem::swap(&mut widget, &mut self.widgets[index]);
 
         if widget.id_ref().is_valid() {
@@ -436,7 +423,7 @@ impl<W: Widget> Stack<W> {
             self.sized_range.start = (self.sized_range.start + 1).max(index + 1);
             self.sized_range.end += 1;
             if index == self.active {
-                *mgr |= Action::RESIZE;
+                *cx |= Action::RESIZE;
             }
         }
 
@@ -449,8 +436,8 @@ impl<W: Widget> Stack<W> {
     /// then [`Action::RESIZE`] is triggered.
     pub fn extend<T: IntoIterator<Item = W>>(
         &mut self,
+        cx: &mut ConfigCx,
         data: &W::Data,
-        mgr: &mut ConfigMgr,
         iter: T,
     ) {
         let old_len = self.widgets.len();
@@ -460,12 +447,12 @@ impl<W: Widget> Stack<W> {
         }
         for mut w in iter {
             let id = self.make_child_id(self.widgets.len());
-            mgr.configure(w.as_node(data), id);
+            cx.configure(w.as_node(data), id);
             self.widgets.push(w);
         }
 
         if (old_len..self.widgets.len()).contains(&self.active) {
-            *mgr |= Action::RESIZE;
+            *cx |= Action::RESIZE;
         }
     }
 
@@ -475,8 +462,8 @@ impl<W: Widget> Stack<W> {
     /// then [`Action::RESIZE`] is triggered.
     pub fn resize_with<F: Fn(usize) -> W>(
         &mut self,
+        cx: &mut ConfigCx,
         data: &W::Data,
-        mgr: &mut ConfigMgr,
         len: usize,
         f: F,
     ) {
@@ -502,12 +489,12 @@ impl<W: Widget> Stack<W> {
             for index in old_len..len {
                 let id = self.make_child_id(index);
                 let mut w = f(index);
-                mgr.configure(w.as_node(data), id);
+                cx.configure(w.as_node(data), id);
                 self.widgets.push(w);
             }
 
             if (old_len..len).contains(&self.active) {
-                *mgr |= Action::RESIZE;
+                *cx |= Action::RESIZE;
             }
         }
     }
@@ -519,6 +506,6 @@ impl<W: Widget> FromIterator<W> for Stack<W> {
     where
         T: IntoIterator<Item = W>,
     {
-        Self::new_vec(iter.into_iter().collect())
+        Self::new(iter.into_iter().collect::<Vec<W>>())
     }
 }

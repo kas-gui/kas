@@ -57,7 +57,7 @@ impl std::ops::BitOrAssign for Response {
 
 /// Request to / notification of scrolling from a child
 ///
-/// See: [`EventMgr::set_scroll`](super::EventMgr::set_scroll).
+/// See: [`EventCx::set_scroll`](super::EventCx::set_scroll).
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 #[must_use]
 pub enum Scroll {

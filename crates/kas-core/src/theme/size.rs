@@ -16,24 +16,24 @@ use crate::text::TextApi;
 
 #[allow(unused)] use crate::text::TextApiExt;
 #[allow(unused)]
-use crate::{event::ConfigMgr, layout::Stretch, theme::DrawMgr};
+use crate::{event::ConfigCx, layout::Stretch, theme::DrawCx};
 
 /// Size and scale interface
 ///
 /// This interface is provided to widgets in [`crate::Layout::size_rules`].
-/// It may also be accessed through [`crate::event::EventMgr::size_mgr`],
-/// [`DrawMgr::size_mgr`].
+/// It may also be accessed through [`crate::event::EventCx::size_cx`],
+/// [`DrawCx::size_cx`].
 ///
 /// Most methods get or calculate the size of some feature. These same features
-/// may be drawn through [`DrawMgr`].
-pub struct SizeMgr<'a>(&'a dyn ThemeSize);
+/// may be drawn through [`DrawCx`].
+pub struct SizeCx<'a>(&'a dyn ThemeSize);
 
-impl<'a> SizeMgr<'a> {
+impl<'a> SizeCx<'a> {
     /// Construct from a [`ThemeSize`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn new(h: &'a dyn ThemeSize) -> Self {
-        SizeMgr(h)
+        SizeCx(h)
     }
 
     /// Reborrow with a new lifetime
@@ -44,11 +44,11 @@ impl<'a> SizeMgr<'a> {
     ///
     /// Calling this method is zero-cost.
     #[inline(always)]
-    pub fn re<'b>(&'b self) -> SizeMgr<'b>
+    pub fn re<'b>(&'b self) -> SizeCx<'b>
     where
         'a: 'b,
     {
-        SizeMgr(self.0)
+        SizeCx(self.0)
     }
 
     /// Get the scale factor
@@ -179,7 +179,7 @@ impl<'a> SizeMgr<'a> {
     ///
     /// Note: this method partially prepares the `text` object. It is not
     /// required to call this method but it is required to call
-    /// [`ConfigMgr::text_set_size`] before text display for correct results.
+    /// [`ConfigCx::text_set_size`] before text display for correct results.
     pub fn text_rules(
         &self,
         text: &mut dyn TextApi,

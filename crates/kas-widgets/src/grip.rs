@@ -56,8 +56,8 @@ impl_scope! {
     /// [`GripMsg`] to allow the parent to implement further handling.
     ///
     /// Optionally, the parent may call [`GripPart::handle_press_on_track`]
-    /// when a [`Event::PressStart`] occurs on the track area (which identifiers
-    /// as the parent widget).
+    /// when a [`Event::PressStart`] occurs on the track area (which identifies
+    /// as being the parent widget).
     #[derive(Clone, Debug, Default)]
     #[widget{
         hover_highlight = true;
@@ -78,27 +78,27 @@ impl_scope! {
     ///     `set_rect` (otherwise the grip's position will not be updated)
     /// 3.  `draw` does nothing: the parent is expected to do all drawing
     impl Layout for GripPart {
-        fn size_rules(&mut self, _: SizeMgr, _: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, _: SizeCx, _: AxisInfo) -> SizeRules {
             SizeRules::EMPTY
         }
 
-        fn set_rect(&mut self, _: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect) {
             self.track = rect;
         }
 
-        fn draw(&mut self, _: DrawMgr) {}
+        fn draw(&mut self, _: DrawCx) {}
     }
 
     impl Events for GripPart {
         type Data = ();
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
                 Event::PressStart { press, .. } => {
-                    mgr.push(GripMsg::PressStart);
+                    cx.push(GripMsg::PressStart);
                     press.grab(self.id())
                         .with_icon(CursorIcon::Grabbing)
-                        .with_mgr(mgr);
+                        .with_cx(cx);
 
                     // Event delivery implies coord is over the grip.
                     self.press_coord = press.coord - self.offset();
@@ -107,11 +107,11 @@ impl_scope! {
                 Event::PressMove { press, .. } => {
                     let offset = press.coord - self.press_coord;
                     let offset = offset.clamp(Offset::ZERO, self.max_offset());
-                    mgr.push(GripMsg::PressMove(offset));
+                    cx.push(GripMsg::PressMove(offset));
                     Response::Used
                 }
                 Event::PressEnd { success, .. } => {
-                    mgr.push(GripMsg::PressEnd(success));
+                    cx.push(GripMsg::PressEnd(success));
                     Response::Used
                 }
                 _ => Response::Unused,
@@ -186,11 +186,11 @@ impl GripPart {
     /// The grip position is not adjusted; the caller should also call
     /// [`Self::set_offset`] to do so. This is separate to allow adjustment of
     /// the posision; e.g. `Slider` pins the position to the nearest detent.
-    pub fn handle_press_on_track(&mut self, mgr: &mut EventMgr, press: &Press) -> Offset {
+    pub fn handle_press_on_track(&mut self, cx: &mut EventCx, press: &Press) -> Offset {
         press
             .grab(self.id())
             .with_icon(CursorIcon::Grabbing)
-            .with_mgr(mgr);
+            .with_cx(cx);
 
         let offset = press.coord - self.track.pos - Offset::conv(self.core.rect.size / 2);
         let offset = offset.clamp(Offset::ZERO, self.max_offset());

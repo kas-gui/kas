@@ -46,15 +46,19 @@ impl_scope! {
     /// emit [`kas::message::Select`] to have themselves be selected.
     #[derive(Clone, Debug)]
     #[widget]
-    pub struct ListView<A: ListData, G: Driver<A::Item, A>, D: Directional> {
+    pub struct ListView<A: ListData, V, D = Direction>
+    where
+        V: Driver<A::Item, A>,
+        D: Directional,
+    {
         core: widget_core!(),
         frame_offset: Offset,
         frame_size: Size,
-        guard: G,
+        driver: V,
         /// Empty widget used for sizing; this must be stored between horiz and vert size rule
         /// calculations for correct line wrapping/layout.
-        default_widget: G::Widget,
-        widgets: Vec<WidgetData<A::Key, G::Widget>>,
+        default_widget: V::Widget,
+        widgets: Vec<WidgetData<A::Key, V::Widget>>,
         data_len: u32,
         /// The number of widgets in use (cur_len ≤ widgets.len())
         cur_len: u32,
@@ -81,32 +85,51 @@ impl_scope! {
         D: Default,
     {
         /// Construct a new instance
-        pub fn new(guard: G) -> Self {
-            Self::new_with_direction(D::default(), guard)
+        pub fn new(driver: V) -> Self {
+            Self::new_dir(driver, D::default())
         }
     }
-    impl<A: ListData, G: Driver<A::Item, A>> ListView<A, G, kas::dir::Down> {
+    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, kas::dir::Left> {
         /// Construct a new instance
-        pub fn down(guard: G) -> Self {
-            Self::new_with_direction(Default::default(), guard)
+        pub fn left(driver: V) -> Self {
+            Self::new(driver)
         }
     }
-    impl<A: ListData, G: Driver<A::Item, A>> ListView<A, G, Direction> {
+    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, kas::dir::Right> {
+        /// Construct a new instance
+        pub fn right(driver: V) -> Self {
+            Self::new(driver)
+        }
+    }
+    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, kas::dir::Up> {
+        /// Construct a new instance
+        pub fn up(driver: V) -> Self {
+            Self::new(driver)
+        }
+    }
+    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, kas::dir::Down> {
+        /// Construct a new instance
+        pub fn down(driver: V) -> Self {
+            Self::new(driver)
+        }
+    }
+    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, Direction> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, direction: Direction) -> Action {
             self.direction = direction;
             Action::SET_RECT
         }
     }
+
     impl Self {
-        /// Construct a new instance with explicit direction and guard
-        pub fn new_with_direction(direction: D, mut guard: G) -> Self {
-            let default_widget = guard.make(&A::Key::default());
+        /// Construct a new instance
+        pub fn new_dir(mut driver: V, direction: D) -> Self {
+            let default_widget = driver.make(&A::Key::default());
             ListView {
                 core: Default::default(),
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
-                guard,
+                driver,
                 default_widget,
                 widgets: Default::default(),
                 data_len: 0,
@@ -141,8 +164,8 @@ impl_scope! {
         /// On selection and deselection, a [`SelectionMsg`] message is emitted.
         /// This is not sent to [`Driver::on_messages`].
         ///
-        /// The guard may trigger selection by emitting [`Select`] from
-        /// [`Driver::on_messages`]. The guard is not notified of selection
+        /// The driver may trigger selection by emitting [`Select`] from
+        /// [`Driver::on_messages`]. The driver is not notified of selection
         /// except via [`Select`] from view widgets. (TODO: reconsider this.)
         ///
         /// [`Select`]: kas::message::Select
@@ -290,7 +313,7 @@ impl_scope! {
             }
         }
 
-        fn update_widgets(&mut self, data: &A, cx: &mut ConfigMgr) {
+        fn update_widgets(&mut self, cx: &mut ConfigCx, data: &A) {
             let time = Instant::now();
 
             let offset = u64::conv(self.scroll_offset().extract(self.direction));
@@ -313,14 +336,14 @@ impl_scope! {
                 let id = key.make_id(self.id_ref());
                 let w = &mut self.widgets[i % solver.cur_len];
                 if w.key.as_ref() != Some(&key) {
-                    self.guard.set_key(&mut w.widget, &key);
+                    self.driver.set_key(&mut w.widget, &key);
 
                     if let Some(item) = data.borrow(&key) {
                         cx.configure(w.widget.as_node(item.borrow()), id);
 
                         solve_size_rules(
                             &mut w.widget,
-                            cx.size_mgr(),
+                            cx.size_cx(),
                             Some(self.child_size.0),
                             Some(self.child_size.1),
                             self.align_hints.horiz,
@@ -373,7 +396,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_scroll_offset(&mut self, cx: &mut EventMgr, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
             *cx |= self.scroll.set_offset(offset);
             cx.request_update(self.id());
             self.scroll.offset()
@@ -406,10 +429,10 @@ impl_scope! {
             unimplemented!()
         }
 
-        fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
             let inner_margin = if self.sel_style.is_external() {
-                size_mgr.inner_margins().extract(axis)
+                sizer.inner_margins().extract(axis)
             } else {
                 (0, 0)
             };
@@ -428,14 +451,14 @@ impl_scope! {
             });
             axis = AxisInfo::new(axis.is_vertical(), other, axis.align());
 
-            let mut rules = self.default_widget.size_rules(size_mgr.re(), axis);
+            let mut rules = self.default_widget.size_rules(sizer.re(), axis);
             if axis.is_vertical() == self.direction.is_vertical() {
                 self.child_size_min = rules.min_size();
             }
 
             if !self.widgets.is_empty() {
                 for w in self.widgets.iter_mut() {
-                    rules = rules.max(w.widget.size_rules(size_mgr.re(), axis));
+                    rules = rules.max(w.widget.size_rules(sizer.re(), axis));
                 }
             }
 
@@ -456,7 +479,7 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
 
             let mut child_size = rect.size - self.frame_size;
@@ -489,7 +512,7 @@ impl_scope! {
                 self.widgets.reserve(req_widgets - avail_widgets);
                 let key = A::Key::default();
                 for _ in avail_widgets..req_widgets {
-                    let widget = self.guard.make(&key);
+                    let widget = self.driver.make(&key);
                     self.widgets.push(WidgetData { key: None, widget });
                 }
             }
@@ -499,7 +522,7 @@ impl_scope! {
             }
 
             // Widgets need configuring and updating: do so by updating self.
-            mgr.request_update(self.id());
+            cx.request_update(self.id());
         }
 
         #[inline]
@@ -523,7 +546,7 @@ impl_scope! {
             Some(self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             let offset = self.scroll_offset();
             draw.with_clip_region(self.core.rect, offset, |mut draw| {
                 for child in &mut self.widgets[..self.cur_len.cast()] {
@@ -539,7 +562,7 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn configure(&mut self, cx: &mut ConfigMgr) {
+        fn configure(&mut self, cx: &mut ConfigCx) {
             if self.widgets.is_empty() {
                 // Initial configure: ensure some widgets are loaded to allow
                 // better sizing of self.
@@ -550,7 +573,7 @@ impl_scope! {
                 self.widgets.resize_with(len, || {
                     WidgetData {
                         key: None,
-                        widget: self.guard.make(&key),
+                        widget: self.driver.make(&key),
                     }
                 });
             }
@@ -558,7 +581,7 @@ impl_scope! {
             cx.register_nav_fallback(self.id());
         }
 
-        fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
+        fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             self.selection.retain(|key| data.contains_key(key));
 
             let data_len = data.len().cast();
@@ -575,10 +598,10 @@ impl_scope! {
             );
             *cx |= self.scroll.set_sizes(view_size, content_size);
 
-            self.update_widgets(data, cx);
+            self.update_widgets(cx, data);
         }
 
-        fn handle_event(&mut self, data: &A, cx: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> Response {
             let response = match event {
                 Event::Command(cmd) => {
                     let last = data.len().wrapping_sub(1);
@@ -610,7 +633,7 @@ impl_scope! {
                     return if let Some(i_data) = data_index {
                         // Set nav focus to i_data and update scroll position
                         if self.scroll.focus_rect(cx, solver.rect(i_data), self.core.rect) {
-                            cx.config_mgr(|cx| self.update_widgets(data, cx));
+                            cx.config_cx(|cx| self.update_widgets(cx, data));
                         }
                         let index = i_data % usize::conv(self.cur_len);
                         cx.next_nav_focus(self.widgets[index].widget.id(), false, true);
@@ -632,7 +655,7 @@ impl_scope! {
 
                     // Press may also be grabbed by scroll component (replacing
                     // this). Either way we can select on PressEnd.
-                    press.grab(self.id()).with_mgr(cx)
+                    press.grab(self.id()).with_cx(cx)
                 }
                 Event::PressEnd { ref press, success } if press.is_primary() => {
                     if let Some((index, ref key)) = self.press_target {
@@ -655,12 +678,12 @@ impl_scope! {
                 .scroll
                 .scroll_by_event(cx, event, self.id(), self.core.rect);
             if moved {
-                cx.config_mgr(|cx| self.update_widgets(data, cx));
+                cx.config_cx(|cx| self.update_widgets(cx, data));
             }
             response | sber_response
         }
 
-        fn handle_messages(&mut self, data: &A, cx: &mut EventMgr) {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
             let key;
             if let Some(index) = cx.last_child() {
                 let w = &mut self.widgets[index];
@@ -669,7 +692,7 @@ impl_scope! {
                     None => return,
                 };
 
-                self.guard.on_messages(cx, data, key, &mut w.widget);
+                self.driver.on_messages(cx, data, key, &mut w.widget);
             } else {
                 // Message is from self
                 key = match self.press_target.as_ref() {
@@ -700,9 +723,9 @@ impl_scope! {
             }
         }
 
-        fn handle_scroll(&mut self, data: &A, cx: &mut EventMgr, scroll: Scroll) {
+        fn handle_scroll(&mut self, cx: &mut EventCx, data: &A, scroll: Scroll) {
             self.scroll.scroll(cx, self.rect(), scroll);
-            cx.config_mgr(|cx| self.update_widgets(data, cx));
+            cx.config_cx(|cx| self.update_widgets(cx, data));
         }
     }
 
@@ -726,36 +749,36 @@ impl_scope! {
         }
 
         // Non-standard behaviour: do not configure children
-        fn _configure(&mut self, data: &A, cx: &mut ConfigMgr, id: WidgetId) {
+        fn _configure(&mut self, cx: &mut ConfigCx, data: &A, id: WidgetId) {
             self.pre_configure(cx, id);
             self.configure(cx);
-            self.update(data, cx);
+            self.update(cx, data);
         }
 
-        fn _update(&mut self, data: &A, cx: &mut ConfigMgr) {
-            self.update(data, cx);
+        fn _update(&mut self, cx: &mut ConfigCx, data: &A) {
+            self.update(cx, data);
         }
 
         fn _send(
             &mut self,
+            cx: &mut EventCx,
             data: &A,
-            cx: &mut EventMgr,
             id: WidgetId,
             disabled: bool,
             event: Event,
         ) -> Response {
-            kas::impls::_send(self, data, cx, id, disabled, event)
+            kas::impls::_send(self, cx, data, id, disabled, event)
         }
 
-        fn _replay(&mut self, data: &A, cx: &mut EventMgr, id: WidgetId, msg: kas::Erased) {
-            kas::impls::_replay(self, data, cx, id, msg);
+        fn _replay(&mut self, cx: &mut EventCx, data: &A, id: WidgetId, msg: kas::Erased) {
+            kas::impls::_replay(self, cx, data, id, msg);
         }
 
         // Non-standard implementation to allow mapping new children
         fn _nav_next(
             &mut self,
+            cx: &mut EventCx,
             data: &A,
-            cx: &mut EventMgr,
             focus: Option<&WidgetId>,
             advance: NavAdvance,
         ) -> Option<WidgetId> {
@@ -798,7 +821,7 @@ impl_scope! {
                 };
 
                 if self.scroll.focus_rect(cx, solver.rect(data_index), self.core.rect) {
-                    cx.config_mgr(|mgr| self.update_widgets(data, mgr));
+                    cx.config_cx(|cx| self.update_widgets(cx, data));
                 }
 
                 let index = data_index % usize::conv(self.cur_len);

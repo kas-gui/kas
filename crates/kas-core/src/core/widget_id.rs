@@ -227,7 +227,7 @@ impl<'a> Iterator for WidgetPathIter<'a> {
 /// `WidgetId` is neither `Send` nor `Sync`.
 ///
 /// Identifiers are assigned when configured and when re-configured
-/// (via [`Action::RECONFIGURE`] or [`ConfigMgr::configure`]).
+/// (via [`Action::RECONFIGURE`] or [`ConfigCx::configure`]).
 /// In most cases values are persistent but this is not guaranteed (e.g.
 /// inserting or removing a child from a `List` widget will affect the
 /// identifiers of all following children). View-widgets assign path components
@@ -235,7 +235,7 @@ impl<'a> Iterator for WidgetPathIter<'a> {
 ///
 /// [`Display`]: std::fmt::Display
 /// [`Action::RECONFIGURE`]: crate::Action::RECONFIGURE
-/// [`ConfigMgr::configure`]: crate::event::ConfigMgr::configure
+/// [`ConfigCx::configure`]: crate::event::ConfigCx::configure
 #[derive(Clone)]
 pub struct WidgetId(IntOrPtr);
 

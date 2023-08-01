@@ -11,6 +11,11 @@ use std::fmt::Debug;
 
 impl_scope! {
     /// A mark
+    ///
+    /// These are small theme-defined "glyphs"; see [`MarkStyle`]. They may be
+    /// used as icons or visual connectors. See also [`MarkButton`].
+    ///
+    /// TODO: expand or replace.
     #[derive(Clone, Debug)]
     #[widget {
         Data = ();
@@ -41,11 +46,11 @@ impl_scope! {
         }
     }
     impl Layout for Self {
-        fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            mgr.feature(self.style.into(), axis)
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            sizer.feature(self.style.into(), axis)
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             draw.mark(self.core.rect, self.style);
         }
     }
@@ -54,6 +59,7 @@ impl_scope! {
 impl_scope! {
     /// A mark which is also a button
     ///
+    /// A clickable button over a [`Mark`].
     /// This button is not keyboard navigable; only mouse/touch interactive.
     ///
     /// Uses stretch policy [`Stretch::Low`].
@@ -71,7 +77,7 @@ impl_scope! {
         /// Construct
         ///
         /// A clone of `msg` is sent as a message on click.
-        pub fn new(style: MarkStyle, msg: M) -> Self {
+        pub fn new_msg(style: MarkStyle, msg: M) -> Self {
             MarkButton {
                 core: Default::default(),
                 style,
@@ -81,11 +87,11 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            mgr.feature(self.style.into(), axis)
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            sizer.feature(self.style.into(), axis)
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             draw.mark(self.core.rect, self.style);
         }
     }
@@ -93,9 +99,9 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
-            event.on_activate(mgr, self.id(), |mgr| {
-                mgr.push(self.msg.clone());
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+            event.on_activate(cx, self.id(), |cx| {
+                cx.push(self.msg.clone());
                 Response::Used
             })
         }

@@ -6,10 +6,10 @@
 //! Window widgets
 
 use crate::dir::Directional;
-use crate::event::{ConfigMgr, EventMgr, Scroll};
+use crate::event::{ConfigCx, EventCx, Scroll};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
-use crate::theme::{DrawMgr, FrameStyle, SizeMgr};
+use crate::theme::{DrawCx, FrameStyle, SizeCx};
 use crate::title_bar::TitleBar;
 use crate::{Action, Events, Icon, Layout, LayoutExt, Widget, WidgetId};
 use kas_macros::impl_scope;
@@ -63,7 +63,7 @@ impl_scope! {
     ///
     /// TODO: there is currently no mechanism for adjusting window properties at
     /// run-time. The intention is to support sending a message like:
-    /// `mgr.push(WindowCommand::SetTitle("New Title"));`. The problem is that
+    /// `cx.push(WindowCommand::SetTitle("New Title"));`. The problem is that
     /// this window representation is disconnected from winit::Window and has no
     /// mechanism for updating that. This may be easier to implement later.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -76,7 +76,7 @@ impl_scope! {
         restrictions: (bool, bool),
         drag_anywhere: bool,
         transparent: bool,
-        config_fn: Option<Box<dyn Fn(&Self, &mut ConfigMgr)>>,
+        config_fn: Option<Box<dyn Fn(&Self, &mut ConfigCx)>>,
         #[widget(&())]
         title_bar: TitleBar,
         #[widget]
@@ -88,12 +88,12 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            let mut inner = self.w.size_rules(size_mgr.re(), axis);
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut inner = self.w.size_rules(sizer.re(), axis);
 
             self.bar_h = 0;
             if matches!(self.decorations, Decorations::Toolkit) {
-                let bar = self.title_bar.size_rules(size_mgr.re(), axis);
+                let bar = self.title_bar.size_rules(sizer.re(), axis);
                 if axis.is_horizontal() {
                     inner.max_with(bar);
                 } else {
@@ -102,7 +102,7 @@ impl_scope! {
                 }
             }
             if matches!(self.decorations, Decorations::Border | Decorations::Toolkit) {
-                let frame = size_mgr.frame(FrameStyle::Window, axis);
+                let frame = sizer.frame(FrameStyle::Window, axis);
                 let (rules, offset, size) = frame.surround(inner);
                 self.dec_offset.set_component(axis, offset);
                 self.dec_size.set_component(axis, size);
@@ -112,24 +112,24 @@ impl_scope! {
             }
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, mut rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect) {
             self.core.rect = rect;
             rect.pos += self.dec_offset;
             rect.size -= self.dec_size;
             if self.bar_h > 0 {
                 let bar_size = Size(rect.size.0, self.bar_h);
-                self.title_bar.set_rect(mgr, Rect::new(rect.pos, bar_size));
+                self.title_bar.set_rect(cx, Rect::new(rect.pos, bar_size));
                 rect.pos.1 += self.bar_h;
                 rect.size -= Size(0, self.bar_h);
             }
-            self.w.set_rect(mgr, rect);
+            self.w.set_rect(cx, rect);
         }
 
         fn find_id(&mut self, _: Coord) -> Option<WidgetId> {
             unimplemented!()
         }
 
-        fn draw(&mut self, _: DrawMgr) {
+        fn draw(&mut self, _: DrawCx) {
             unimplemented!()
         }
     }
@@ -150,7 +150,7 @@ impl_scope! {
         }
 
         #[cfg(feature = "winit")]
-        pub(crate) fn draw(&mut self, data: &Data, mut draw: DrawMgr) {
+        pub(crate) fn draw(&mut self, data: &Data, mut draw: DrawCx) {
             if self.dec_size != Size::ZERO {
                 draw.frame(self.core.rect, FrameStyle::Window, Default::default());
                 if self.bar_h > 0 {
@@ -172,8 +172,8 @@ impl_scope! {
     impl Events for Self {
         type Data = Data;
 
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
-            if mgr.platform().is_wayland() && self.decorations == Decorations::Server {
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            if cx.platform().is_wayland() && self.decorations == Decorations::Server {
                 // Wayland's base protocol does not support server-side decorations
                 // TODO: Wayland has extensions for this; server-side is still
                 // usually preferred where supported (e.g. KDE).
@@ -181,13 +181,13 @@ impl_scope! {
             }
 
             if let Some(ref f) = self.config_fn {
-                f(self, mgr);
+                f(self, cx);
             }
         }
 
-        fn handle_scroll(&mut self, data: &Data, mgr: &mut EventMgr, _: Scroll) {
+        fn handle_scroll(&mut self, cx: &mut EventCx, data: &Data, _: Scroll) {
             // Something was scrolled; update pop-up translations
-            mgr.config_mgr(|mgr| self.resize_popups(data, mgr));
+            cx.config_cx(|cx| self.resize_popups(cx, data));
         }
     }
 }
@@ -314,7 +314,7 @@ impl<Data: 'static> Window<Data> {
     ///
     /// This closure is called before sizing, drawing and event handling.
     /// It may be called more than once.
-    pub fn on_configure(mut self, config_fn: impl Fn(&Self, &mut ConfigMgr) + 'static) -> Self {
+    pub fn on_configure(mut self, config_fn: impl Fn(&Self, &mut ConfigCx) + 'static) -> Self {
         self.config_fn = Some(Box::new(config_fn));
         self
     }
@@ -322,21 +322,21 @@ impl<Data: 'static> Window<Data> {
     /// Add a pop-up as a layer in the current window
     ///
     /// Each [`crate::Popup`] is assigned a [`WindowId`]; both are passed.
-    pub fn add_popup(&mut self, data: &Data, mgr: &mut EventMgr, id: WindowId, popup: kas::Popup) {
+    pub fn add_popup(&mut self, cx: &mut EventCx, data: &Data, id: WindowId, popup: kas::Popup) {
         let index = self.popups.len();
         self.popups.push((id, popup, Offset::ZERO));
-        mgr.config_mgr(|mgr| self.resize_popup(data, mgr, index));
-        mgr.send_action(Action::REDRAW);
+        cx.config_cx(|cx| self.resize_popup(cx, data, index));
+        cx.send_action(Action::REDRAW);
     }
 
     /// Trigger closure of a pop-up
     ///
     /// If the given `id` refers to a pop-up, it should be closed.
-    pub fn remove_popup(&mut self, mgr: &mut EventMgr, id: WindowId) {
+    pub fn remove_popup(&mut self, cx: &mut EventCx, id: WindowId) {
         for i in 0..self.popups.len() {
             if id == self.popups[i].0 {
                 self.popups.remove(i);
-                mgr.send_action(Action::REGION_MOVED);
+                cx.send_action(Action::REGION_MOVED);
                 return;
             }
         }
@@ -346,9 +346,9 @@ impl<Data: 'static> Window<Data> {
     ///
     /// This is called immediately after [`Layout::set_rect`] to resize
     /// existing pop-ups.
-    pub fn resize_popups(&mut self, data: &Data, mgr: &mut ConfigMgr) {
+    pub fn resize_popups(&mut self, cx: &mut ConfigCx, data: &Data) {
         for i in 0..self.popups.len() {
-            self.resize_popup(data, mgr, i);
+            self.resize_popup(cx, data, i);
         }
     }
 }
@@ -383,7 +383,7 @@ fn find_rect(widget: &dyn Layout, id: WidgetId, mut translation: Offset) -> Opti
 }
 
 impl<Data: 'static> Window<Data> {
-    fn resize_popup(&mut self, data: &Data, mgr: &mut ConfigMgr, index: usize) {
+    fn resize_popup(&mut self, cx: &mut ConfigCx, data: &Data, index: usize) {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
         let r = self.core.rect;
@@ -419,7 +419,7 @@ impl<Data: 'static> Window<Data> {
         *translation = t;
         let r = r + t; // work in translated coordinate space
         self.w.as_node(data).for_id(&popup.id, |mut node| {
-            let mut cache = layout::SolveCache::find_constraints(node.re(), mgr.size_mgr());
+            let mut cache = layout::SolveCache::find_constraints(node.re(), cx.size_cx());
             let ideal = cache.ideal(false);
             let m = cache.margins();
 
@@ -433,7 +433,7 @@ impl<Data: 'static> Window<Data> {
                 Rect::new(Coord(x, y), Size::new(w, h))
             };
 
-            cache.apply_rect(node.re(), mgr, rect, false);
+            cache.apply_rect(node.re(), cx, rect, false);
             cache.print_widget_heirarchy(node.as_layout());
         });
     }

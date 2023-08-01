@@ -6,7 +6,7 @@
 //! Event handling components
 
 use super::ScrollDelta::{LineDelta, PixelDelta};
-use super::{Command, CursorIcon, Event, EventMgr, PressSource, Response, Scroll};
+use super::{Command, CursorIcon, Event, EventCx, PressSource, Response, Scroll};
 use crate::cast::traits::*;
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
 #[allow(unused)] use crate::text::SelectionHelper;
@@ -196,40 +196,40 @@ impl ScrollComponent {
     /// Sets [`Scroll::Rect`] to ensure correct scrolling of parents.
     ///
     /// Returns `true` when the scroll offset changes.
-    pub fn focus_rect(&mut self, mgr: &mut EventMgr, rect: Rect, window_rect: Rect) -> bool {
+    pub fn focus_rect(&mut self, cx: &mut EventCx, rect: Rect, window_rect: Rect) -> bool {
         self.glide.stop();
         let v = rect.pos - window_rect.pos;
         let off = Offset::conv(rect.size) - Offset::conv(window_rect.size);
         let offset = self.offset.max(v + off).min(v);
         let action = self.set_offset(offset);
-        mgr.set_scroll(Scroll::Rect(rect - self.offset));
+        cx.set_scroll(Scroll::Rect(rect - self.offset));
         if action.is_empty() {
             false
         } else {
-            *mgr |= action;
+            *cx |= action;
             true
         }
     }
 
     /// Handle a [`Scroll`] action
-    pub fn scroll(&mut self, mgr: &mut EventMgr, window_rect: Rect, scroll: Scroll) {
+    pub fn scroll(&mut self, cx: &mut EventCx, window_rect: Rect, scroll: Scroll) {
         match scroll {
             Scroll::None | Scroll::Scrolled => (),
             Scroll::Offset(delta) => {
                 let old_offset = self.offset;
-                *mgr |= self.set_offset(old_offset - delta);
-                mgr.set_scroll(match delta - old_offset + self.offset {
+                *cx |= self.set_offset(old_offset - delta);
+                cx.set_scroll(match delta - old_offset + self.offset {
                     delta if delta == Offset::ZERO => Scroll::Scrolled,
                     delta => Scroll::Offset(delta),
                 });
             }
             Scroll::Rect(rect) => {
-                self.focus_rect(mgr, rect, window_rect);
+                self.focus_rect(cx, rect, window_rect);
             }
         }
     }
 
-    fn scroll_by_delta(&mut self, mgr: &mut EventMgr, d: Offset) -> bool {
+    fn scroll_by_delta(&mut self, cx: &mut EventCx, d: Offset) -> bool {
         let mut delta = d;
         let mut moved = false;
         let offset = (self.offset - d).clamp(Offset::ZERO, self.max_offset);
@@ -237,10 +237,10 @@ impl ScrollComponent {
             moved = true;
             delta = d - (self.offset - offset);
             self.offset = offset;
-            *mgr |= Action::REGION_MOVED;
+            *cx |= Action::REGION_MOVED;
         }
 
-        mgr.set_scroll(if delta != Offset::ZERO {
+        cx.set_scroll(if delta != Offset::ZERO {
             Scroll::Offset(delta)
         } else {
             Scroll::Scrolled
@@ -268,7 +268,7 @@ impl ScrollComponent {
     /// scrolled* (scrolling of a parent is possible even if `!moved`).
     pub fn scroll_by_event(
         &mut self,
-        mgr: &mut EventMgr,
+        cx: &mut EventCx,
         event: Event,
         id: WidgetId,
         window_rect: Rect,
@@ -290,7 +290,7 @@ impl ScrollComponent {
                             _ => return (false, Response::Unused),
                         };
                         let delta = match delta {
-                            LineDelta(x, y) => mgr.config().scroll_distance((x, y)),
+                            LineDelta(x, y) => cx.config().scroll_distance((x, y)),
                             PixelDelta(d) => d,
                         };
                         self.offset - delta
@@ -299,51 +299,51 @@ impl ScrollComponent {
                 let action = self.set_offset(offset);
                 if !action.is_empty() {
                     moved = true;
-                    *mgr |= action;
+                    *cx |= action;
                 }
-                mgr.set_scroll(Scroll::Rect(window_rect));
+                cx.set_scroll(Scroll::Rect(window_rect));
             }
             Event::Scroll(delta) => {
                 let delta = match delta {
-                    LineDelta(x, y) => mgr.config().scroll_distance((x, y)),
+                    LineDelta(x, y) => cx.config().scroll_distance((x, y)),
                     PixelDelta(d) => d,
                 };
                 self.glide.stop();
-                moved = self.scroll_by_delta(mgr, delta);
+                moved = self.scroll_by_delta(cx, delta);
             }
             Event::PressStart { press, .. }
-                if self.max_offset != Offset::ZERO && mgr.config_enable_pan(*press) =>
+                if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>
             {
-                let _ = press.grab(id).with_icon(CursorIcon::Grabbing).with_mgr(mgr);
+                let _ = press.grab(id).with_icon(CursorIcon::Grabbing).with_cx(cx);
                 self.glide.press_start();
             }
             Event::PressMove { press, delta, .. }
-                if self.max_offset != Offset::ZERO && mgr.config_enable_pan(*press) =>
+                if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>
             {
                 if self.glide.press_move(delta) {
-                    moved = self.scroll_by_delta(mgr, delta);
+                    moved = self.scroll_by_delta(cx, delta);
                 }
             }
             Event::PressEnd { press, .. }
-                if self.max_offset != Offset::ZERO && mgr.config_enable_pan(*press) =>
+                if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>
             {
-                let timeout = mgr.config().scroll_flick_timeout();
-                let pan_dist_thresh = mgr.config().pan_dist_thresh();
+                let timeout = cx.config().scroll_flick_timeout();
+                let pan_dist_thresh = cx.config().pan_dist_thresh();
                 if self.glide.press_end(timeout, pan_dist_thresh) {
-                    mgr.request_timer_update(id, PAYLOAD_GLIDE, Duration::new(0, 0), true);
+                    cx.request_timer_update(id, PAYLOAD_GLIDE, Duration::new(0, 0), true);
                 }
             }
             Event::TimerUpdate(pl) if pl == PAYLOAD_GLIDE => {
                 // Momentum/glide scrolling: update per arbitrary step time until movment stops.
-                let timeout = mgr.config().scroll_flick_timeout();
-                let decay = mgr.config().scroll_flick_decay();
+                let timeout = cx.config().scroll_flick_timeout();
+                let decay = cx.config().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(timeout, decay) {
-                    moved = self.scroll_by_delta(mgr, delta);
+                    moved = self.scroll_by_delta(cx, delta);
 
                     if self.glide.vel != Vec2::ZERO {
                         let dur = Duration::from_millis(GLIDE_POLL_MS);
-                        mgr.request_timer_update(id, PAYLOAD_GLIDE, dur, true);
-                        mgr.set_scroll(Scroll::Scrolled);
+                        cx.request_timer_update(id, PAYLOAD_GLIDE, dur, true);
+                        cx.set_scroll(Scroll::Scrolled);
                     }
                 }
             }
@@ -406,26 +406,26 @@ impl TextInput {
     ///
     /// Implements scrolling and text selection behaviour, excluding handling of
     /// [`Event::Scroll`].
-    pub fn handle(&mut self, mgr: &mut EventMgr, w_id: WidgetId, event: Event) -> TextInputAction {
+    pub fn handle(&mut self, cx: &mut EventCx, w_id: WidgetId, event: Event) -> TextInputAction {
         use TextInputAction as Action;
         match event {
             Event::PressStart { press } if press.is_primary() => {
                 let (action, icon) = match *press {
                     PressSource::Touch(touch_id) => {
                         self.touch_phase = TouchPhase::Start(touch_id, press.coord);
-                        let delay = mgr.config().touch_select_delay();
-                        mgr.request_timer_update(w_id.clone(), PAYLOAD_SELECT, delay, false);
+                        let delay = cx.config().touch_select_delay();
+                        cx.request_timer_update(w_id.clone(), PAYLOAD_SELECT, delay, false);
                         (Action::Focus, None)
                     }
-                    PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan() => {
+                    PressSource::Mouse(..) if cx.config_enable_mouse_text_pan() => {
                         (Action::Focus, Some(CursorIcon::Grabbing))
                     }
                     PressSource::Mouse(_, repeats) => (
-                        Action::Cursor(press.coord, true, !mgr.modifiers().shift(), repeats),
+                        Action::Cursor(press.coord, true, !cx.modifiers().shift(), repeats),
                         None,
                     ),
                 };
-                press.grab(w_id).with_opt_icon(icon).with_mgr(mgr);
+                press.grab(w_id).with_opt_icon(icon).with_cx(cx);
                 self.glide.press_start();
                 action
             }
@@ -435,7 +435,7 @@ impl TextInput {
                     PressSource::Touch(touch_id) => match self.touch_phase {
                         TouchPhase::Start(id, start_coord) if id == touch_id => {
                             let delta = press.coord - start_coord;
-                            if mgr.config_test_pan_thresh(delta) {
+                            if cx.config_test_pan_thresh(delta) {
                                 self.touch_phase = TouchPhase::Pan(id);
                                 Action::Pan(delta)
                             } else {
@@ -445,7 +445,7 @@ impl TextInput {
                         TouchPhase::Pan(id) if id == touch_id => Action::Pan(delta),
                         _ => Action::Cursor(press.coord, false, false, 1),
                     },
-                    PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan() => {
+                    PressSource::Mouse(..) if cx.config_enable_mouse_text_pan() => {
                         Action::Pan(delta)
                     }
                     PressSource::Mouse(_, repeats) => {
@@ -454,14 +454,14 @@ impl TextInput {
                 }
             }
             Event::PressEnd { press, .. } if press.is_primary() => {
-                let timeout = mgr.config().scroll_flick_timeout();
-                let pan_dist_thresh = mgr.config().pan_dist_thresh();
+                let timeout = cx.config().scroll_flick_timeout();
+                let pan_dist_thresh = cx.config().pan_dist_thresh();
                 if self.glide.press_end(timeout, pan_dist_thresh)
                     && (matches!(press.source, PressSource::Touch(id) if self.touch_phase == TouchPhase::Pan(id))
-                        || matches!(press.source, PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan()))
+                        || matches!(press.source, PressSource::Mouse(..) if cx.config_enable_mouse_text_pan()))
                 {
                     self.touch_phase = TouchPhase::None;
-                    mgr.request_timer_update(w_id, PAYLOAD_GLIDE, Duration::new(0, 0), true);
+                    cx.request_timer_update(w_id, PAYLOAD_GLIDE, Duration::new(0, 0), true);
                 }
                 Action::None
             }
@@ -469,7 +469,7 @@ impl TextInput {
                 match self.touch_phase {
                     TouchPhase::Start(touch_id, coord) => {
                         self.touch_phase = TouchPhase::Cursor(touch_id);
-                        Action::Cursor(coord, true, !mgr.modifiers().shift(), 1)
+                        Action::Cursor(coord, true, !cx.modifiers().shift(), 1)
                     }
                     // Note: if the TimerUpdate were from another requester it
                     // should technically be Unused, but it doesn't matter
@@ -479,11 +479,11 @@ impl TextInput {
             }
             Event::TimerUpdate(pl) if pl == PAYLOAD_GLIDE => {
                 // Momentum/glide scrolling: update per arbitrary step time until movment stops.
-                let timeout = mgr.config().scroll_flick_timeout();
-                let decay = mgr.config().scroll_flick_decay();
+                let timeout = cx.config().scroll_flick_timeout();
+                let decay = cx.config().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(timeout, decay) {
                     let dur = Duration::from_millis(GLIDE_POLL_MS);
-                    mgr.request_timer_update(w_id, PAYLOAD_GLIDE, dur, true);
+                    cx.request_timer_update(w_id, PAYLOAD_GLIDE, dur, true);
                     Action::Pan(delta)
                 } else {
                     Action::None

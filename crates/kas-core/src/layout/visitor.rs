@@ -13,9 +13,9 @@ use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
 use super::{RulesSetter, RulesSolver};
 use crate::draw::color::Rgb;
-use crate::event::ConfigMgr;
+use crate::event::ConfigCx;
 use crate::geom::{Coord, Offset, Rect, Size};
-use crate::theme::{Background, DrawMgr, FrameStyle, MarginStyle, SizeMgr};
+use crate::theme::{Background, DrawCx, FrameStyle, MarginStyle, SizeCx};
 use crate::WidgetId;
 use crate::{dir::Directional, dir::Directions, Layout};
 use std::iter::ExactSizeIterator;
@@ -28,12 +28,12 @@ pub trait Visitable {
     /// Get size rules for the given axis
     ///
     /// This method is identical to [`Layout::size_rules`].
-    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
 
     /// Set size and position
     ///
     /// This method is identical to [`Layout::set_rect`].
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect);
 
     /// Translate a coordinate to a [`WidgetId`]
     ///
@@ -45,7 +45,7 @@ pub trait Visitable {
     /// Draw a widget and its children
     ///
     /// This method is identical to [`Layout::draw`].
-    fn draw(&mut self, draw: DrawMgr);
+    fn draw(&mut self, draw: DrawCx);
 }
 
 /// A layout visitor
@@ -113,7 +113,7 @@ impl<'a> Visitor<'a> {
 
     /// Construct a frame around a sub-layout
     ///
-    /// This frame has dimensions according to [`SizeMgr::frame`].
+    /// This frame has dimensions according to [`SizeCx::frame`].
     pub fn frame(data: &'a mut FrameStorage, child: Self, style: FrameStyle) -> Self {
         let layout = LayoutType::Frame(Box::new(child), data, style);
         Visitor { layout }
@@ -136,9 +136,9 @@ impl<'a> Visitor<'a> {
         S: RowStorage,
     {
         let layout = LayoutType::BoxComponent(Box::new(List {
-            data,
-            direction,
             children: list,
+            direction,
+            data,
         }));
         Visitor { layout }
     }
@@ -155,9 +155,9 @@ impl<'a> Visitor<'a> {
         D: Directional,
     {
         let layout = LayoutType::BoxComponent(Box::new(Slice {
-            data,
-            direction,
             children: slice,
+            direction,
+            data,
         }));
         Visitor { layout }
     }
@@ -190,29 +190,29 @@ impl<'a> Visitor<'a> {
 
     /// Get size rules for the given axis
     #[inline]
-    pub fn size_rules(mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-        self.size_rules_(mgr, axis)
+    pub fn size_rules(mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        self.size_rules_(sizer, axis)
     }
-    fn size_rules_(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+    fn size_rules_(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         match &mut self.layout {
-            LayoutType::BoxComponent(component) => component.size_rules(mgr, axis),
-            LayoutType::Single(child) => child.size_rules(mgr, axis),
+            LayoutType::BoxComponent(component) => component.size_rules(sizer, axis),
+            LayoutType::Single(child) => child.size_rules(sizer, axis),
             LayoutType::AlignSingle(child, hints) => {
-                child.size_rules(mgr, axis.with_align_hints(*hints))
+                child.size_rules(sizer, axis.with_align_hints(*hints))
             }
             LayoutType::Align(layout, hints) => {
-                layout.size_rules_(mgr, axis.with_align_hints(*hints))
+                layout.size_rules_(sizer, axis.with_align_hints(*hints))
             }
             LayoutType::Pack(layout, stor, hints) => {
-                let rules = layout.size_rules_(mgr, stor.apply_align(axis, *hints));
+                let rules = layout.size_rules_(sizer, stor.apply_align(axis, *hints));
                 stor.size.set_component(axis, rules.ideal_size());
                 rules
             }
             LayoutType::Margins(child, dirs, margins) => {
-                let mut child_rules = child.size_rules_(mgr.re(), axis);
+                let mut child_rules = child.size_rules_(sizer.re(), axis);
                 if dirs.intersects(Directions::from(axis)) {
                     let mut rule_margins = child_rules.margins();
-                    let margins = mgr.margins(*margins).extract(axis);
+                    let margins = sizer.margins(*margins).extract(axis);
                     if dirs.intersects(Directions::LEFT | Directions::UP) {
                         rule_margins.0 = margins.0;
                     }
@@ -224,36 +224,36 @@ impl<'a> Visitor<'a> {
                 child_rules
             }
             LayoutType::Frame(child, storage, style) => {
-                let child_rules = child.size_rules_(mgr.re(), storage.child_axis(axis));
-                storage.size_rules(mgr, axis, child_rules, *style)
+                let child_rules = child.size_rules_(sizer.re(), storage.child_axis(axis));
+                storage.size_rules(sizer, axis, child_rules, *style)
             }
             LayoutType::Button(child, storage, _) => {
-                let child_rules = child.size_rules_(mgr.re(), storage.child_axis_centered(axis));
-                storage.size_rules(mgr, axis, child_rules, FrameStyle::Button)
+                let child_rules = child.size_rules_(sizer.re(), storage.child_axis_centered(axis));
+                storage.size_rules(sizer, axis, child_rules, FrameStyle::Button)
             }
         }
     }
 
     /// Apply a given `rect` to self
     #[inline]
-    pub fn set_rect(mut self, mgr: &mut ConfigMgr, rect: Rect) {
-        self.set_rect_(mgr, rect);
+    pub fn set_rect(mut self, cx: &mut ConfigCx, rect: Rect) {
+        self.set_rect_(cx, rect);
     }
-    fn set_rect_(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+    fn set_rect_(&mut self, cx: &mut ConfigCx, rect: Rect) {
         match &mut self.layout {
-            LayoutType::BoxComponent(layout) => layout.set_rect(mgr, rect),
-            LayoutType::Single(child) => child.set_rect(mgr, rect),
-            LayoutType::Align(layout, _) => layout.set_rect_(mgr, rect),
-            LayoutType::AlignSingle(child, _) => child.set_rect(mgr, rect),
-            LayoutType::Pack(layout, stor, _) => layout.set_rect_(mgr, stor.aligned_rect(rect)),
-            LayoutType::Margins(child, _, _) => child.set_rect_(mgr, rect),
+            LayoutType::BoxComponent(layout) => layout.set_rect(cx, rect),
+            LayoutType::Single(child) => child.set_rect(cx, rect),
+            LayoutType::Align(layout, _) => layout.set_rect_(cx, rect),
+            LayoutType::AlignSingle(child, _) => child.set_rect(cx, rect),
+            LayoutType::Pack(layout, stor, _) => layout.set_rect_(cx, stor.aligned_rect(rect)),
+            LayoutType::Margins(child, _, _) => child.set_rect_(cx, rect),
             LayoutType::Frame(child, storage, _) | LayoutType::Button(child, storage, _) => {
                 storage.rect = rect;
                 let child_rect = Rect {
                     pos: rect.pos + storage.offset,
                     size: rect.size - storage.size,
                 };
-                child.set_rect_(mgr, child_rect);
+                child.set_rect_(cx, child_rect);
             }
         }
     }
@@ -281,10 +281,10 @@ impl<'a> Visitor<'a> {
 
     /// Draw a widget's children
     #[inline]
-    pub fn draw(mut self, draw: DrawMgr) {
+    pub fn draw(mut self, draw: DrawCx) {
         self.draw_(draw);
     }
-    fn draw_(&mut self, mut draw: DrawMgr) {
+    fn draw_(&mut self, mut draw: DrawCx) {
         match &mut self.layout {
             LayoutType::BoxComponent(layout) => layout.draw(draw),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => draw.recurse(*child),
@@ -308,31 +308,31 @@ impl<'a> Visitor<'a> {
 }
 
 /// Implement row/column layout for children
-struct List<'a, S, D, I> {
-    data: &'a mut S,
-    direction: D,
+struct List<'a, I, D, S> {
     children: I,
+    direction: D,
+    data: &'a mut S,
 }
 
-impl<'a, S: RowStorage, D: Directional, I> Visitable for List<'a, S, D, I>
+impl<'a, I, D: Directional, S: RowStorage> Visitable for List<'a, I, D, S>
 where
     I: ExactSizeIterator<Item = Visitor<'a>>,
 {
-    fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         let dim = (self.direction, self.children.len());
         let mut solver = RowSolver::new(axis, dim, self.data);
         for (n, child) in (&mut self.children).enumerate() {
-            solver.for_child(self.data, n, |axis| child.size_rules(mgr.re(), axis));
+            solver.for_child(self.data, n, |axis| child.size_rules(sizer.re(), axis));
         }
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
         let dim = (self.direction, self.children.len());
         let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, self.data);
 
         for (n, child) in (&mut self.children).enumerate() {
-            child.set_rect(mgr, setter.child_rect(self.data, n));
+            child.set_rect(cx, setter.child_rect(self.data, n));
         }
     }
 
@@ -341,7 +341,7 @@ where
         self.children.find_map(|child| child.find_id(coord))
     }
 
-    fn draw(&mut self, mut draw: DrawMgr) {
+    fn draw(&mut self, mut draw: DrawCx) {
         for child in &mut self.children {
             child.draw(draw.re_clone());
         }
@@ -360,17 +360,17 @@ impl<'a, I> Visitable for Float<'a, I>
 where
     I: DoubleEndedIterator<Item = Visitor<'a>>,
 {
-    fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         let mut rules = SizeRules::EMPTY;
         for child in &mut self.children {
-            rules = rules.max(child.size_rules(mgr.re(), axis));
+            rules = rules.max(child.size_rules(sizer.re(), axis));
         }
         rules
     }
 
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
         for child in &mut self.children {
-            child.set_rect(mgr, rect);
+            child.set_rect(cx, rect);
         }
     }
 
@@ -378,7 +378,7 @@ where
         self.children.find_map(|child| child.find_id(coord))
     }
 
-    fn draw(&mut self, mut draw: DrawMgr) {
+    fn draw(&mut self, mut draw: DrawCx) {
         let mut iter = (&mut self.children).rev();
         if let Some(first) = iter.next() {
             first.draw(draw.re_clone());
@@ -391,27 +391,27 @@ where
 
 /// A row/column over a slice
 struct Slice<'a, W: Layout, D: Directional> {
-    data: &'a mut DynRowStorage,
-    direction: D,
     children: &'a mut [W],
+    direction: D,
+    data: &'a mut DynRowStorage,
 }
 
 impl<'a, W: Layout, D: Directional> Visitable for Slice<'a, W, D> {
-    fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         let dim = (self.direction, self.children.len());
         let mut solver = RowSolver::new(axis, dim, self.data);
         for (n, child) in self.children.iter_mut().enumerate() {
-            solver.for_child(self.data, n, |axis| child.size_rules(mgr.re(), axis));
+            solver.for_child(self.data, n, |axis| child.size_rules(sizer.re(), axis));
         }
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
         let dim = (self.direction, self.children.len());
         let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, self.data);
 
         for (n, child) in self.children.iter_mut().enumerate() {
-            child.set_rect(mgr, setter.child_rect(self.data, n));
+            child.set_rect(cx, setter.child_rect(self.data, n));
         }
     }
 
@@ -422,7 +422,7 @@ impl<'a, W: Layout, D: Directional> Visitable for Slice<'a, W, D> {
             .and_then(|child| child.find_id(coord))
     }
 
-    fn draw(&mut self, mut draw: DrawMgr) {
+    fn draw(&mut self, mut draw: DrawCx) {
         let solver = RowPositionSolver::new(self.direction);
         solver.for_children(self.children, draw.get_clip_rect(), |w| draw.recurse(w));
     }
@@ -439,18 +439,18 @@ impl<'a, S: GridStorage, I> Visitable for Grid<'a, S, I>
 where
     I: DoubleEndedIterator<Item = (GridChildInfo, Visitor<'a>)>,
 {
-    fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, self.data);
         for (info, child) in &mut self.children {
-            solver.for_child(self.data, info, |axis| child.size_rules(mgr.re(), axis));
+            solver.for_child(self.data, info, |axis| child.size_rules(sizer.re(), axis));
         }
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
         let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, self.data);
         for (info, child) in &mut self.children {
-            child.set_rect(mgr, setter.child_rect(self.data, info));
+            child.set_rect(cx, setter.child_rect(self.data, info));
         }
     }
 
@@ -459,7 +459,7 @@ where
         self.children.find_map(|(_, child)| child.find_id(coord))
     }
 
-    fn draw(&mut self, mut draw: DrawMgr) {
+    fn draw(&mut self, mut draw: DrawCx) {
         for (_, child) in (&mut self.children).rev() {
             child.draw(draw.re_clone());
         }
@@ -515,12 +515,12 @@ impl FrameStorage {
     /// Generate [`SizeRules`]
     pub fn size_rules(
         &mut self,
-        mgr: SizeMgr,
+        sizer: SizeCx,
         axis: AxisInfo,
         child_rules: SizeRules,
         style: FrameStyle,
     ) -> SizeRules {
-        let frame_rules = mgr.frame(style, axis);
+        let frame_rules = sizer.frame(style, axis);
         let (rules, offset, size) = frame_rules.surround(child_rules);
         self.offset.set_component(axis, offset);
         self.size.set_component(axis, size);

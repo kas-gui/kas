@@ -494,20 +494,20 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         fn_size_rules = Some(quote! {
             #[inline]
             fn size_rules(&mut self,
-                size_mgr: ::kas::theme::SizeMgr,
+                sizer: ::kas::theme::SizeCx,
                 axis: ::kas::layout::AxisInfo,
             ) -> ::kas::layout::SizeRules {
-                self.#inner.size_rules(size_mgr, axis)
+                self.#inner.size_rules(sizer, axis)
             }
         });
         fn_set_rect = quote! {
             #[inline]
             fn set_rect(
                 &mut self,
-                mgr: &mut ::kas::event::ConfigMgr,
+                cx: &mut ::kas::event::ConfigCx,
                 rect: ::kas::geom::Rect,
             ) {
-                self.#inner.set_rect(mgr, rect);
+                self.#inner.set_rect(cx, rect);
             }
         };
         fn_nav_next = Some(quote! {
@@ -529,7 +529,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         };
         fn_draw = Some(quote! {
             #[inline]
-            fn draw(&mut self, draw: ::kas::theme::DrawMgr) {
+            fn draw(&mut self, draw: ::kas::theme::DrawCx) {
                 self.#inner.draw(draw);
             }
         });
@@ -553,50 +553,50 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
                 fn _configure(
                     &mut self,
+                    cx: &mut ::kas::event::ConfigCx,
                     data: &Self::Data,
-                    cx: &mut ::kas::event::ConfigMgr,
                     id: ::kas::WidgetId,
                 ) {
-                    self.#inner._configure(data, cx, id);
+                    self.#inner._configure(cx, data, id);
                 }
 
                 fn _update(
                     &mut self,
+                    cx: &mut ::kas::event::ConfigCx,
                     data: &Self::Data,
-                    cx: &mut ::kas::event::ConfigMgr,
                 ) {
-                    self.#inner._update(data, cx);
+                    self.#inner._update(cx, data);
                 }
 
                 fn _send(
                     &mut self,
+                    cx: &mut ::kas::event::EventCx,
                     data: &Self::Data,
-                    cx: &mut ::kas::event::EventMgr,
                     id: ::kas::WidgetId,
                     disabled: bool,
                     event: ::kas::event::Event,
                 ) -> ::kas::event::Response {
-                    self.#inner._send(data, cx, id, disabled, event)
+                    self.#inner._send(cx, data, id, disabled, event)
                 }
 
                 fn _replay(
                     &mut self,
+                    cx: &mut ::kas::event::EventCx,
                     data: &Self::Data,
-                    cx: &mut ::kas::event::EventMgr,
                     id: ::kas::WidgetId,
                     msg: ::kas::Erased,
                 ) {
-                    self.#inner._replay(data, cx, id, msg);
+                    self.#inner._replay(cx, data, id, msg);
                 }
 
                 fn _nav_next(
                     &mut self,
+                    cx: &mut ::kas::event::EventCx,
                     data: &Self::Data,
-                    cx: &mut ::kas::event::EventMgr,
                     focus: Option<&::kas::WidgetId>,
                     advance: ::kas::NavAdvance,
                 ) -> Option<::kas::WidgetId> {
-                    self.#inner._nav_next(data, cx, focus, advance)
+                    self.#inner._nav_next(cx, data, focus, advance)
                 }
             }
         });
@@ -702,18 +702,18 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             fn_size_rules = Some(quote! {
                 fn size_rules(
                     &mut self,
-                    size_mgr: ::kas::theme::SizeMgr,
+                    sizer: ::kas::theme::SizeCx,
                     axis: ::kas::layout::AxisInfo,
                 ) -> ::kas::layout::SizeRules {
-                    <Self as ::kas::layout::AutoLayout>::size_rules(self, size_mgr, axis)
+                    <Self as ::kas::layout::AutoLayout>::size_rules(self, sizer, axis)
                 }
             });
             set_rect = quote! {
-                <Self as ::kas::layout::AutoLayout>::set_rect(self, mgr, rect);
+                <Self as ::kas::layout::AutoLayout>::set_rect(self, cx, rect);
             };
             find_id = quote! { <Self as ::kas::layout::AutoLayout>::find_id(self, coord) };
             fn_draw = Some(quote! {
-                fn draw(&mut self, draw: ::kas::theme::DrawMgr) {
+                fn draw(&mut self, draw: ::kas::theme::DrawCx) {
                     <Self as ::kas::layout::AutoLayout>::draw(self, draw);
                 }
             });
@@ -727,7 +727,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         fn_set_rect = quote! {
             fn set_rect(
                 &mut self,
-                mgr: &mut ::kas::event::ConfigMgr,
+                cx: &mut ::kas::event::ConfigCx,
                 rect: ::kas::geom::Rect,
             ) {
                 #set_rect
@@ -740,7 +740,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         };
 
         let fn_pre_configure = quote! {
-            fn pre_configure(&mut self, _: &mut ::kas::event::ConfigMgr, id: ::kas::WidgetId) {
+            fn pre_configure(&mut self, _: &mut ::kas::event::ConfigCx, id: ::kas::WidgetId) {
                 self.#core.id = id;
             }
         };
@@ -755,22 +755,22 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             (false, None) => quote! {},
             (true, None) => quote! {
                 if matches!(event, Event::MouseHover | Event::LostMouseHover) {
-                    mgr.redraw(self.id());
+                    cx.redraw(self.id());
                     return Response::Used;
                 }
             },
             (false, Some(icon_expr)) => quote! {
                 if matches!(event, Event::MouseHover) {
-                    mgr.set_cursor_icon(#icon_expr);
+                    cx.set_cursor_icon(#icon_expr);
                     return Response::Used;
                 }
             },
             (true, Some(icon_expr)) => quote! {
                 if matches!(event, Event::MouseHover | Event::LostMouseHover) {
                     if matches!(event, Event::MouseHover) {
-                        mgr.set_cursor_icon(#icon_expr);
+                        cx.set_cursor_icon(#icon_expr);
                     }
-                    mgr.redraw(self.id());
+                    cx.redraw(self.id());
                     return Response::Used;
                 }
             },
@@ -778,16 +778,16 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         let fn_pre_handle_event = quote! {
             fn pre_handle_event(
                 &mut self,
+                cx: &mut ::kas::event::EventCx,
                 data: &Self::Data,
-                mgr: &mut ::kas::event::EventMgr,
                 event: ::kas::event::Event,
             ) -> ::kas::event::Response {
                 use ::kas::{event::{Event, Response, Scroll}, LayoutExt, Layout};
                 if event == Event::NavFocus(true) {
-                    mgr.set_scroll(Scroll::Rect(self.rect()));
+                    cx.set_scroll(Scroll::Rect(self.rect()));
                 }
                 #pre_handle_event
-                self.handle_event(data, mgr, event)
+                self.handle_event(cx, data, event)
             }
         };
         let fn_handle_event = None;
@@ -997,50 +997,50 @@ fn widget_recursive_methods() -> Toks {
     quote! {
         fn _configure(
             &mut self,
+            cx: &mut ::kas::event::ConfigCx,
             data: &Self::Data,
-            cx: &mut ::kas::event::ConfigMgr,
             id: ::kas::WidgetId,
         ) {
-            ::kas::impls::_configure(self, data, cx, id);
+            ::kas::impls::_configure(self, cx, data, id);
         }
 
         fn _update(
             &mut self,
+            cx: &mut ::kas::event::ConfigCx,
             data: &Self::Data,
-            cx: &mut ::kas::event::ConfigMgr,
         ) {
-            ::kas::impls::_update(self, data, cx);
+            ::kas::impls::_update(self, cx, data);
         }
 
         fn _send(
             &mut self,
+            cx: &mut ::kas::event::EventCx,
             data: &Self::Data,
-            cx: &mut ::kas::event::EventMgr,
             id: ::kas::WidgetId,
             disabled: bool,
             event: ::kas::event::Event,
         ) -> ::kas::event::Response {
-            ::kas::impls::_send(self, data, cx, id, disabled, event)
+            ::kas::impls::_send(self, cx, data, id, disabled, event)
         }
 
         fn _replay(
             &mut self,
+            cx: &mut ::kas::event::EventCx,
             data: &Self::Data,
-            cx: &mut ::kas::event::EventMgr,
             id: ::kas::WidgetId,
             msg: ::kas::Erased,
         ) {
-            ::kas::impls::_replay(self, data, cx, id, msg);
+            ::kas::impls::_replay(self, cx, data, id, msg);
         }
 
         fn _nav_next(
             &mut self,
+            cx: &mut ::kas::event::EventCx,
             data: &Self::Data,
-            cx: &mut ::kas::event::EventMgr,
             focus: Option<&::kas::WidgetId>,
             advance: ::kas::NavAdvance,
         ) -> Option<::kas::WidgetId> {
-            ::kas::impls::_nav_next(self, data, cx, focus, advance)
+            ::kas::impls::_nav_next(self, cx, data, focus, advance)
         }
     }
 }

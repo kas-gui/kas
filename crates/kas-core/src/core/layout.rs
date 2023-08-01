@@ -5,10 +5,10 @@
 
 //! Layout and LayoutExt traits
 
-use crate::event::ConfigMgr;
+use crate::event::ConfigCx;
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{AxisInfo, SizeRules};
-use crate::theme::{DrawMgr, SizeMgr};
+use crate::theme::{DrawCx, SizeCx};
 use crate::util::IdentifyWidget;
 use crate::WidgetId;
 use kas_macros::autoimpl;
@@ -139,7 +139,7 @@ pub trait Layout {
     ///
     /// For row/column/grid layouts, a [`crate::layout::RulesSolver`] engine
     /// may be useful.
-    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
 
     /// Set size and position
     ///
@@ -159,7 +159,7 @@ pub trait Layout {
     /// regardless of the [`Stretch`] policy used. If the widget should never
     /// stretch, it must align itself.
     /// Example: the `CheckBox` widget uses an [`AlignPair`] (set from
-    /// `size_rules`'s [`AxisInfo`]) and uses [`ConfigMgr::align_feature`].
+    /// `size_rules`'s [`AxisInfo`]) and uses [`ConfigCx::align_feature`].
     /// Another example: `Label` uses a `Text` object which handles alignment
     /// internally.
     ///
@@ -167,7 +167,7 @@ pub trait Layout {
     /// field of `widget_core!()` to the input `rect`.
     ///
     /// [`Stretch`]: crate::layout::Stretch
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect);
 
     /// Navigation in spatial order
     ///
@@ -197,7 +197,7 @@ pub trait Layout {
     ///
     /// Affects event handling via [`Layout::find_id`] and affects the positioning
     /// of pop-up menus. [`Layout::draw`] must be implemented directly using
-    /// [`DrawMgr::with_clip_region`] to offset contents.
+    /// [`DrawCx::with_clip_region`] to offset contents.
     ///
     /// Default implementation: return [`Offset::ZERO`]
     #[inline]
@@ -266,8 +266,8 @@ pub trait Layout {
     /// The `draw` parameter is pre-parameterized with this widget's
     /// [`WidgetId`], allowing drawn components to react to input state. This
     /// implies that when calling `draw` on children, the child's `id` must be
-    /// supplied via [`DrawMgr::re_id`] or [`DrawMgr::recurse`].
-    fn draw(&mut self, draw: DrawMgr);
+    /// supplied via [`DrawCx::re_id`] or [`DrawCx::recurse`].
+    fn draw(&mut self, draw: DrawCx);
 }
 
 /// Extension trait over widgets

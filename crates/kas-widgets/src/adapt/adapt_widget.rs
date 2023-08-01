@@ -8,19 +8,19 @@
 use super::{FnSizeRules, Map, MapAny, OnUpdate, Reserve, WithLabel};
 use kas::cast::{Cast, CastFloat};
 use kas::dir::Directional;
-use kas::event::ConfigMgr;
+use kas::event::ConfigCx;
 use kas::geom::Vec2;
 use kas::layout::{AxisInfo, SizeRules};
 use kas::text::AccelString;
-use kas::theme::SizeMgr;
+use kas::theme::SizeCx;
 #[allow(unused)] use kas::Layout;
 use kas::Widget;
 
 /// Support type for [`AdaptWidget::with_min_size_px`]
 pub struct WithMinSizePx(Vec2);
 impl FnSizeRules for WithMinSizePx {
-    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-        let size = self.0.extract(axis) * size_mgr.scale_factor();
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        let size = self.0.extract(axis) * sizer.scale_factor();
         SizeRules::fixed(size.cast_ceil(), (0, 0))
     }
 }
@@ -28,8 +28,8 @@ impl FnSizeRules for WithMinSizePx {
 /// Support type for [`AdaptWidget::with_min_size_em`]
 pub struct WithMinSizeEm(Vec2);
 impl FnSizeRules for WithMinSizeEm {
-    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-        let size = self.0.extract(axis) * size_mgr.dpem();
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        let size = self.0.extract(axis) * sizer.dpem();
         SizeRules::fixed(size.cast_ceil(), (0, 0))
     }
 }
@@ -68,7 +68,7 @@ pub trait AdaptWidget: Widget + Sized {
     #[must_use]
     fn on_update<F>(self, f: F) -> OnUpdate<Self>
     where
-        F: Fn(&mut ConfigMgr, &mut Self, &Self::Data) + 'static,
+        F: Fn(&mut ConfigCx, &mut Self, &Self::Data) + 'static,
     {
         OnUpdate::new(self, f)
     }
@@ -84,7 +84,7 @@ pub trait AdaptWidget: Widget + Sized {
     /// use kas_widgets::Label;
     ///
     /// let label = Label::new("0")
-    ///     .with_reserve(|size_mgr, axis| Label::new("00000").size_rules(size_mgr, axis));
+    ///     .with_reserve(|sizer, axis| Label::new("00000").size_rules(sizer, axis));
     /// ```
     /// Alternatively one may use virtual pixels:
     ///```
@@ -92,8 +92,8 @@ pub trait AdaptWidget: Widget + Sized {
     /// use kas::prelude::*;
     /// use kas_widgets::Filler;
     ///
-    /// let label = Filler::new().with_reserve(|mgr, axis| {
-    ///     kas::layout::LogicalSize(5.0, 5.0).to_rules(axis, mgr.scale_factor())
+    /// let label = Filler::new().with_reserve(|cx, axis| {
+    ///     kas::layout::LogicalSize(5.0, 5.0).to_rules(axis, cx.scale_factor())
     /// });
     /// ```
     /// The resulting `SizeRules` will be the max of those for the inner widget
@@ -103,7 +103,7 @@ pub trait AdaptWidget: Widget + Sized {
     #[must_use]
     fn with_reserve<R>(self, r: R) -> Reserve<Self, R>
     where
-        R: FnMut(SizeMgr, AxisInfo) -> SizeRules,
+        R: FnMut(SizeCx, AxisInfo) -> SizeRules,
     {
         Reserve::new(self, r)
     }
@@ -139,7 +139,7 @@ pub trait AdaptWidget: Widget + Sized {
         D: Directional,
         T: Into<AccelString>,
     {
-        WithLabel::new_with_direction(direction, self, label)
+        WithLabel::new_dir(self, direction, label)
     }
 }
 impl<W: Widget> AdaptWidget for W {}

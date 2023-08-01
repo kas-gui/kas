@@ -25,8 +25,8 @@ impl_scope! {
         state: S,
         #[widget(&self.state)]
         inner: W,
-        message_handlers: Vec<Box<dyn Fn(&mut EventMgr, &A, &mut S) -> bool>>,
-        update_handler: Option<Box<dyn Fn(&mut ConfigMgr, &A, &mut S)>>,
+        message_handlers: Vec<Box<dyn Fn(&mut EventCx, &A, &mut S) -> bool>>,
+        update_handler: Option<Box<dyn Fn(&mut ConfigCx, &A, &mut S)>>,
     }
 
     impl Self {
@@ -47,14 +47,14 @@ impl_scope! {
         /// Children will be updated whenever this handler is invoked.
         ///
         /// Where multiple message types must be handled or access to the
-        /// [`EventMgr`] is required, use [`Self::on_messages`] instead.
+        /// [`EventCx`] is required, use [`Self::on_messages`] instead.
         pub fn on_message<M, H>(self, handler: H) -> Self
         where
             M: Debug + 'static,
             H: Fn(&A, &mut S, M) + 'static,
         {
-            self.on_messages(move |mgr, data, state| {
-                if let Some(m) = mgr.try_pop() {
+            self.on_messages(move |cx, data, state| {
+                if let Some(m) = cx.try_pop() {
                     handler(data, state, m);
                     true
                 } else {
@@ -68,7 +68,7 @@ impl_scope! {
         /// The closure should return `true` if state was updated.
         pub fn on_messages<H>(mut self, handler: H) -> Self
         where
-            H: Fn(&mut EventMgr, &A, &mut S) -> bool + 'static,
+            H: Fn(&mut EventCx, &A, &mut S) -> bool + 'static,
         {
             self.message_handlers.push(Box::new(handler));
             self
@@ -79,7 +79,7 @@ impl_scope! {
         /// Children will be updated after the handler is called.
         pub fn on_update<F>(mut self, update_handler: F) -> Self
         where
-            F: Fn(&mut ConfigMgr, &A, &mut S) + 'static,
+            F: Fn(&mut ConfigCx, &A, &mut S) + 'static,
         {
             debug_assert!(self.update_handler.is_none());
             self.update_handler = Some(Box::new(update_handler));
@@ -90,19 +90,19 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
+        fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             if let Some(handler) = self.update_handler.as_ref() {
                 handler(cx, data, &mut self.state);
             }
         }
 
-        fn handle_messages(&mut self, data: &A, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
             let mut update = false;
             for handler in self.message_handlers.iter() {
-                update |= handler(mgr, data, &mut self.state);
+                update |= handler(cx, data, &mut self.state);
             }
             if update {
-                mgr.update(self.as_node(data));
+                cx.update(self.as_node(data));
             }
         }
     }

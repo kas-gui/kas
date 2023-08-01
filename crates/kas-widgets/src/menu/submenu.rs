@@ -18,7 +18,7 @@ impl_scope! {
     #[widget {
         layout = self.label;
     }]
-    pub struct SubMenu<Data, D: Directional> {
+    pub struct SubMenu<Data, D: Directional = kas::dir::Down> {
         core: widget_core!(),
         direction: D,
         pub(crate) navigable: bool,
@@ -36,26 +36,18 @@ impl_scope! {
         D: Default,
     {
         /// Construct a sub-menu
-        #[inline]
         pub fn new<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<Data>>) -> Self {
-            SubMenu::new_with_direction(Default::default(), label, list)
+            Self::new_dir(label, list, D::default())
         }
     }
-
     impl<Data> SubMenu<Data, kas::dir::Right> {
         /// Construct a sub-menu, opening to the right
-        // NOTE: this is used since we can't infer direction of a boxed SubMenu.
-        // Consider only accepting an enum of special menu widgets?
-        // Then we can pass type information.
-        #[inline]
         pub fn right<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<Data>>) -> Self {
             SubMenu::new(label, list)
         }
     }
-
     impl<Data> SubMenu<Data, kas::dir::Down> {
         /// Construct a sub-menu, opening downwards
-        #[inline]
         pub fn down<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<Data>>) -> Self {
             SubMenu::new(label, list)
         }
@@ -63,13 +55,11 @@ impl_scope! {
 
     impl Self {
         /// Construct a sub-menu
-        ///
-        /// The sub-menu is opened in the `direction` given (contents are always vertical).
         #[inline]
-        pub fn new_with_direction<S: Into<AccelString>>(
-            direction: D,
+        pub fn new_dir<S: Into<AccelString>>(
             label: S,
             list: Vec<BoxedMenu<Data>>,
+            direction: D,
         ) -> Self {
             SubMenu {
                 core: Default::default(),
@@ -82,47 +72,47 @@ impl_scope! {
             }
         }
 
-        fn open_menu(&mut self, mgr: &mut EventMgr, set_focus: bool) {
+        fn open_menu(&mut self, cx: &mut EventCx, set_focus: bool) {
             if self.popup_id.is_none() {
-                self.popup_id = mgr.add_popup(kas::Popup {
+                self.popup_id = cx.add_popup(kas::Popup {
                     id: self.list.id(),
                     parent: self.id(),
                     direction: self.direction.as_direction(),
                 });
                 if set_focus {
-                    mgr.next_nav_focus(self.id(), false, true);
+                    cx.next_nav_focus(self.id(), false, true);
                 }
             }
         }
-        fn close_menu(&mut self, mgr: &mut EventMgr, restore_focus: bool) {
+        fn close_menu(&mut self, cx: &mut EventCx, restore_focus: bool) {
             if let Some(id) = self.popup_id {
-                mgr.close_window(id, restore_focus);
+                cx.close_window(id, restore_focus);
             }
         }
 
-        fn handle_dir_key(&mut self, mgr: &mut EventMgr, cmd: Command) -> Response {
+        fn handle_dir_key(&mut self, cx: &mut EventCx, cmd: Command) -> Response {
             if self.menu_is_open() {
                 if let Some(dir) = cmd.as_direction() {
                     if dir.is_vertical() {
                         let rev = dir.is_reversed();
-                        mgr.next_nav_focus(self.id(), rev, true);
+                        cx.next_nav_focus(self.id(), rev, true);
                         Response::Used
                     } else if dir == self.direction.as_direction().reversed() {
-                        self.close_menu(mgr, true);
+                        self.close_menu(cx, true);
                         Response::Used
                     } else {
                         Response::Unused
                     }
                 } else if matches!(cmd, Command::Home | Command::End) {
-                    mgr.clear_nav_focus();
+                    cx.clear_nav_focus();
                     let rev = cmd == Command::End;
-                    mgr.next_nav_focus(self.id(), rev, true);
+                    cx.next_nav_focus(self.id(), rev, true);
                     Response::Used
                 } else {
                     Response::Unused
                 }
             } else if Some(self.direction.as_direction()) == cmd.as_direction() {
-                self.open_menu(mgr, true);
+                self.open_menu(cx, true);
                 Response::Used
             } else {
                 Response::Unused
@@ -140,7 +130,7 @@ impl_scope! {
             self.rect().contains(coord).then(|| self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw.re_id(self.id()));
             if self.mark.rect().size != Size::ZERO {
@@ -152,29 +142,29 @@ impl_scope! {
     impl Events for Self {
         type Data = Data;
 
-        fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId) {
+        fn pre_configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
             self.core.id = id;
             // FIXME: new layer should apply to self.list but not to self.label.
             // We don't currently have a way to do that. Possibly we should
-            // remove `EventMgr::add_accel_keys` bindings, simply checking all
+            // remove `EventCx::add_accel_keys` bindings, simply checking all
             // visible widgets whenever a shortcut key is pressed (also related:
             // currently all pages of a TabStack have active shortcut keys).
-            mgr.new_accel_layer(self.id(), true);
+            cx.new_accel_layer(self.id(), true);
         }
 
         fn navigable(&self) -> bool {
             self.navigable
         }
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
                 Event::Command(cmd) if cmd.is_activate() => {
                     if self.popup_id.is_none() {
-                        self.open_menu(mgr, true);
+                        self.open_menu(cx, true);
                     }
                     Response::Used
                 }
-                Event::Command(cmd) => self.handle_dir_key(mgr, cmd),
+                Event::Command(cmd) => self.handle_dir_key(cx, cmd),
                 Event::PopupRemoved(id) => {
                     debug_assert_eq!(Some(id), self.popup_id);
                     self.popup_id = None;
@@ -184,18 +174,18 @@ impl_scope! {
             }
         }
 
-        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
-            if let Some(kas::message::Activate) = mgr.try_pop() {
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(kas::message::Activate) = cx.try_pop() {
                 if self.popup_id.is_none() {
-                    self.open_menu(mgr, true);
+                    self.open_menu(cx, true);
                 }
             } else {
-                self.close_menu(mgr, true);
+                self.close_menu(cx, true);
             }
         }
 
-        fn handle_scroll(&mut self, _: &Self::Data, mgr: &mut EventMgr, _: Scroll) {
-            mgr.set_scroll(Scroll::None);
+        fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, _: Scroll) {
+            cx.set_scroll(Scroll::None);
         }
     }
 
@@ -214,23 +204,23 @@ impl_scope! {
 
         fn set_menu_path(
             &mut self,
-            mgr: &mut EventMgr,
+            cx: &mut EventCx,
             target: Option<&WidgetId>,
             set_focus: bool,
         ) {
             match target {
                 Some(id) if self.is_ancestor_of(id) => {
                     if self.popup_id.is_none() {
-                        self.open_menu(mgr, set_focus);
+                        self.open_menu(cx, set_focus);
                     }
                     if !self.eq_id(id) {
                         for i in 0..self.list.len() {
-                            self.list[i].set_menu_path(mgr, target, set_focus);
+                            self.list[i].set_menu_path(cx, target, set_focus);
                         }
                     }
                 }
                 _ if self.popup_id.is_some() => {
-                    self.close_menu(mgr, set_focus);
+                    self.close_menu(cx, set_focus);
                 }
                 _ => (),
             }
@@ -288,7 +278,7 @@ impl_scope! {
             self.list.get(index).map(|w| w.as_layout())
         }
 
-        fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             self.dim = layout::GridDimensions {
                 cols: MENU_VIEW_COLS,
                 col_spans: self
@@ -304,18 +294,18 @@ impl_scope! {
             let store = &mut self.store;
             let mut solver = layout::GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, store);
 
-            let frame_rules = mgr.frame(FrameStyle::MenuEntry, axis);
+            let frame_rules = sizer.frame(FrameStyle::MenuEntry, axis);
             let is_horiz = axis.is_horizontal();
 
             // Assumption: frame inner margin is at least as large as content margins
             let child_rules = SizeRules::EMPTY;
-            let (_, _, frame_size_flipped) = mgr
+            let (_, _, frame_size_flipped) = sizer
                 .frame(FrameStyle::MenuEntry, axis.flipped())
                 .surround(child_rules);
 
-            let child_rules = |mgr: SizeMgr, w: &mut dyn Layout, mut axis: AxisInfo| {
+            let child_rules = |sizer: SizeCx, w: &mut dyn Layout, mut axis: AxisInfo| {
                 axis.sub_other(frame_size_flipped);
-                let rules = w.size_rules(mgr, axis);
+                let rules = w.size_rules(sizer, axis);
                 frame_rules.surround(rules).0
             };
 
@@ -325,28 +315,28 @@ impl_scope! {
                 if is_horiz {
                     // Note: we are required to call child.size_rules even if sub_items are used
                     // Note: axis is not modified by the solver in this case
-                    let row_rules = child.size_rules(mgr.re(), axis);
+                    let row_rules = child.size_rules(sizer.re(), axis);
 
                     if let Some(items) = child.sub_items() {
                         if let Some(w) = items.toggle {
                             let info = layout::GridChildInfo::new(0, row);
-                            solver.for_child(store, info, |axis| child_rules(mgr.re(), w, axis));
+                            solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
                         }
                         if let Some(w) = items.icon {
                             let info = layout::GridChildInfo::new(1, row);
-                            solver.for_child(store, info, |axis| child_rules(mgr.re(), w, axis));
+                            solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
                         }
                         if let Some(w) = items.label {
                             let info = layout::GridChildInfo::new(2, row);
-                            solver.for_child(store, info, |axis| child_rules(mgr.re(), w, axis));
+                            solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
                         }
                         if let Some(w) = items.label2 {
                             let info = layout::GridChildInfo::new(3, row);
-                            solver.for_child(store, info, |axis| child_rules(mgr.re(), w, axis));
+                            solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
                         }
                         if let Some(w) = items.submenu {
                             let info = layout::GridChildInfo::new(4, row);
-                            solver.for_child(store, info, |axis| child_rules(mgr.re(), w, axis));
+                            solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
                         }
                     } else {
                         solver.for_child(store, info, |_| row_rules);
@@ -354,28 +344,28 @@ impl_scope! {
                 } else {
                     // axis is vertical
                     if child.sub_items().is_some() {
-                        solver.for_child(store, info, |axis| child_rules(mgr.re(), child, axis))
+                        solver.for_child(store, info, |axis| child_rules(sizer.re(), child, axis))
                     } else {
-                        solver.for_child(store, info, |axis| child.size_rules(mgr.re(), axis))
+                        solver.for_child(store, info, |axis| child.size_rules(sizer.re(), axis))
                     }
                 }
             }
             solver.finish(store)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
             let store = &mut self.store;
             let mut setter = layout::GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, store);
 
             // Assumption: frame inner margin is at least as large as content margins
             let child_rules = SizeRules::EMPTY;
-            let (_, frame_x, frame_w) = mgr
-                .size_mgr()
+            let (_, frame_x, frame_w) = cx
+                .size_cx()
                 .frame(FrameStyle::MenuEntry, Direction::Right)
                 .surround(child_rules);
-            let (_, frame_y, frame_h) = mgr
-                .size_mgr()
+            let (_, frame_y, frame_h) = cx
+                .size_cx()
                 .frame(FrameStyle::MenuEntry, Direction::Down)
                 .surround(child_rules);
             let frame_offset = Offset(frame_x, frame_y);
@@ -390,28 +380,28 @@ impl_scope! {
                 let row = u32::conv(row);
                 let child_rect = setter.child_rect(store, menu_view_row_info(row));
                 // Note: we are required to call child.set_rect even if sub_items are used
-                child.set_rect(mgr, child_rect);
+                child.set_rect(cx, child_rect);
 
                 if let Some(items) = child.sub_items() {
                     if let Some(w) = items.toggle {
                         let info = layout::GridChildInfo::new(0, row);
-                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)));
+                        w.set_rect(cx, subtract_frame(setter.child_rect(store, info)));
                     }
                     if let Some(w) = items.icon {
                         let info = layout::GridChildInfo::new(1, row);
-                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)));
+                        w.set_rect(cx, subtract_frame(setter.child_rect(store, info)));
                     }
                     if let Some(w) = items.label {
                         let info = layout::GridChildInfo::new(2, row);
-                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)));
+                        w.set_rect(cx, subtract_frame(setter.child_rect(store, info)));
                     }
                     if let Some(w) = items.label2 {
                         let info = layout::GridChildInfo::new(3, row);
-                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)));
+                        w.set_rect(cx, subtract_frame(setter.child_rect(store, info)));
                     }
                     if let Some(w) = items.submenu {
                         let info = layout::GridChildInfo::new(4, row);
-                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)));
+                        w.set_rect(cx, subtract_frame(setter.child_rect(store, info)));
                     }
                 }
             }
@@ -430,7 +420,7 @@ impl_scope! {
             Some(self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             for child in self.list.iter_mut() {
                 draw.recurse(child);
             }

@@ -7,9 +7,9 @@
 
 use super::{Align, AxisInfo, Margins, SizeRules};
 use crate::cast::Conv;
-use crate::event::ConfigMgr;
+use crate::event::ConfigCx;
 use crate::geom::{Rect, Size};
-use crate::theme::SizeMgr;
+use crate::theme::SizeCx;
 use crate::util::WidgetHierarchy;
 use crate::{Layout, Node};
 
@@ -73,14 +73,14 @@ pub trait RulesSetter {
 /// fixed and are used e.g. for text wrapping.
 pub fn solve_size_rules<W: Layout + ?Sized>(
     widget: &mut W,
-    size_mgr: SizeMgr,
+    sizer: SizeCx,
     x_size: Option<i32>,
     y_size: Option<i32>,
     h_align: Option<Align>,
     v_align: Option<Align>,
 ) {
-    widget.size_rules(size_mgr.re(), AxisInfo::new(false, y_size, h_align));
-    widget.size_rules(size_mgr.re(), AxisInfo::new(true, x_size, v_align));
+    widget.size_rules(sizer.re(), AxisInfo::new(false, y_size, h_align));
+    widget.size_rules(sizer.re(), AxisInfo::new(true, x_size, v_align));
 }
 
 /// Size solver
@@ -134,14 +134,11 @@ impl SolveCache {
     /// Calculate required size of widget
     ///
     /// Assumes no explicit alignment.
-    pub fn find_constraints(mut widget: Node<'_>, size_mgr: SizeMgr) -> Self {
+    pub fn find_constraints(mut widget: Node<'_>, sizer: SizeCx) -> Self {
         let start = std::time::Instant::now();
 
-        let w = widget.size_rules(size_mgr.re(), AxisInfo::new(false, None, None));
-        let h = widget.size_rules(
-            size_mgr.re(),
-            AxisInfo::new(true, Some(w.ideal_size()), None),
-        );
+        let w = widget.size_rules(sizer.re(), AxisInfo::new(false, None, None));
+        let h = widget.size_rules(sizer.re(), AxisInfo::new(true, Some(w.ideal_size()), None));
 
         let min = Size(w.min_size(), h.min_size());
         let ideal = Size(w.ideal_size(), h.ideal_size());
@@ -185,7 +182,7 @@ impl SolveCache {
     pub fn apply_rect(
         &mut self,
         mut widget: Node<'_>,
-        mgr: &mut ConfigMgr,
+        cx: &mut ConfigCx,
         mut rect: Rect,
         inner_margin: bool,
     ) {
@@ -200,14 +197,14 @@ impl SolveCache {
         // internal layout solving.
         if self.refresh_rules || width != self.last_width {
             if self.refresh_rules {
-                let w = widget.size_rules(mgr.size_mgr(), AxisInfo::new(false, None, None));
+                let w = widget.size_rules(cx.size_cx(), AxisInfo::new(false, None, None));
                 self.min.0 = w.min_size();
                 self.ideal.0 = w.ideal_size();
                 self.margins.horiz = w.margins();
                 width = rect.size.0 - self.margins.sum_horiz();
             }
 
-            let h = widget.size_rules(mgr.size_mgr(), AxisInfo::new(true, Some(width), None));
+            let h = widget.size_rules(cx.size_cx(), AxisInfo::new(true, Some(width), None));
             self.min.1 = h.min_size();
             self.ideal.1 = h.ideal_size();
             self.margins.vert = h.margins();
@@ -219,7 +216,7 @@ impl SolveCache {
             rect.size.0 = width;
             rect.size.1 -= self.margins.sum_vert();
         }
-        widget.set_rect(mgr, rect);
+        widget.set_rect(cx, rect);
 
         log::trace!(target: "kas_perf::layout", "apply_rect: {}μs", start.elapsed().as_micros());
         self.refresh_rules = false;

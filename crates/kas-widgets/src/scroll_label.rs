@@ -35,29 +35,29 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let class = TextClass::LabelScroll;
-            let mut rules = size_mgr.text_rules(&mut self.text, class, axis);
+            let mut rules = sizer.text_rules(&mut self.text, class, axis);
             if axis.is_vertical() {
-                rules.reduce_min_to(size_mgr.line_height(class) * 4);
+                rules.reduce_min_to(sizer.line_height(class) * 4);
             }
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, mut rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect) {
             self.core.rect = rect;
-            mgr.text_set_size(&mut self.text, TextClass::LabelScroll, rect.size, None);
+            cx.text_set_size(&mut self.text, TextClass::LabelScroll, rect.size, None);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
 
             let max_offset = self.max_scroll_offset();
             self.view_offset = self.view_offset.min(max_offset);
 
-            let w = mgr.size_mgr().scroll_bar_width().min(rect.size.0);
+            let w = cx.size_cx().scroll_bar_width().min(rect.size.0);
             rect.pos.0 += rect.size.0 - w;
             rect.size.0 = w;
-            self.bar.set_rect(mgr, rect);
+            self.bar.set_rect(cx, rect);
             let _ = self.bar.set_limits(max_offset.1, rect.size.1);
-            self.bar.set_value(mgr, self.view_offset.1);
+            self.bar.set_value(cx, self.view_offset.1);
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
@@ -68,7 +68,7 @@ impl_scope! {
             self.bar.find_id(coord).or_else(|| Some(self.id()))
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             let class = TextClass::LabelScroll;
             let rect = Rect::new(self.rect().pos, self.text_size);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
@@ -121,36 +121,36 @@ impl_scope! {
             Action::REDRAW
         }
 
-        fn set_edit_pos_from_coord(&mut self, mgr: &mut EventMgr, coord: Coord) {
+        fn set_edit_pos_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {
             let rel_pos = (coord - self.rect().pos + self.view_offset).cast();
             if let Ok(pos) = self.text.text_index_nearest(rel_pos) {
                 if pos != self.selection.edit_pos() {
                     self.selection.set_edit_pos(pos);
-                    self.set_view_offset_from_edit_pos(mgr, pos);
-                    self.bar.set_value(mgr, self.view_offset.1);
-                    mgr.redraw(self.id());
+                    self.set_view_offset_from_edit_pos(cx, pos);
+                    self.bar.set_value(cx, self.view_offset.1);
+                    cx.redraw(self.id());
                 }
             }
         }
 
-        fn set_primary(&self, mgr: &mut EventMgr) {
+        fn set_primary(&self, cx: &mut EventCx) {
             if !self.selection.is_empty() {
                 let range = self.selection.range();
-                mgr.set_primary(String::from(&self.text.as_str()[range]));
+                cx.set_primary(String::from(&self.text.as_str()[range]));
             }
         }
 
         // Pan by given delta. Return `Response::Scrolled` or `Response::Pan(remaining)`.
-        fn pan_delta(&mut self, mgr: &mut EventMgr, mut delta: Offset) -> Response {
+        fn pan_delta(&mut self, cx: &mut EventCx, mut delta: Offset) -> Response {
             let new_offset = (self.view_offset - delta)
                 .min(self.max_scroll_offset())
                 .max(Offset::ZERO);
             if new_offset != self.view_offset {
                 delta -= self.view_offset - new_offset;
-                self.set_offset(mgr, new_offset);
+                self.set_offset(cx, new_offset);
             }
 
-            mgr.set_scroll(if delta == Offset::ZERO {
+            cx.set_scroll(if delta == Offset::ZERO {
                 Scroll::Scrolled
             } else {
                 Scroll::Offset(delta)
@@ -161,7 +161,7 @@ impl_scope! {
         /// Update view_offset from edit_pos
         ///
         /// This method is mostly identical to its counterpart in `EditField`.
-        fn set_view_offset_from_edit_pos(&mut self, mgr: &mut EventMgr, edit_pos: usize) {
+        fn set_view_offset_from_edit_pos(&mut self, cx: &mut EventCx, edit_pos: usize) {
             if let Some(marker) = self
                 .text
                 .text_glyph_pos(edit_pos)
@@ -181,16 +181,16 @@ impl_scope! {
                 let new_offset = self.view_offset.max(min).min(max);
                 if new_offset != self.view_offset {
                     self.view_offset = new_offset;
-                    mgr.set_scroll(Scroll::Scrolled);
+                    cx.set_scroll(Scroll::Scrolled);
                 }
             }
         }
 
         /// Set offset, updating the scroll bar
-        fn set_offset(&mut self, mgr: &mut EventState, offset: Offset) {
+        fn set_offset(&mut self, cx: &mut EventState, offset: Offset) {
             self.view_offset = offset;
-            // unnecessary: mgr.redraw(self.id());
-            self.bar.set_value(mgr, offset.1);
+            // unnecessary: cx.redraw(self.id());
+            self.bar.set_value(cx, offset.1);
         }
     }
 
@@ -214,24 +214,24 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
                 Event::Command(cmd) => match cmd {
                     Command::Escape | Command::Deselect if !self.selection.is_empty() => {
                         self.selection.set_empty();
-                        mgr.redraw(self.id());
+                        cx.redraw(self.id());
                         Response::Used
                     }
                     Command::SelectAll => {
                         self.selection.set_sel_pos(0);
                         self.selection.set_edit_pos(self.text.str_len());
-                        self.set_primary(mgr);
-                        mgr.redraw(self.id());
+                        self.set_primary(cx);
+                        cx.redraw(self.id());
                         Response::Used
                     }
                     Command::Cut | Command::Copy => {
                         let range = self.selection.range();
-                        mgr.set_clipboard((self.text.as_str()[range]).to_string());
+                        cx.set_clipboard((self.text.as_str()[range]).to_string());
                         Response::Used
                     }
                     // TODO: scroll by command
@@ -239,23 +239,23 @@ impl_scope! {
                 },
                 Event::LostSelFocus => {
                     self.selection.set_empty();
-                    mgr.redraw(self.id());
+                    cx.redraw(self.id());
                     Response::Used
                 }
                 Event::Scroll(delta) => {
                     let delta2 = match delta {
-                        ScrollDelta::LineDelta(x, y) => mgr.config().scroll_distance((x, y)),
+                        ScrollDelta::LineDelta(x, y) => cx.config().scroll_distance((x, y)),
                         ScrollDelta::PixelDelta(coord) => coord,
                     };
-                    self.pan_delta(mgr, delta2)
+                    self.pan_delta(cx, delta2)
                 }
-                event => match self.input_handler.handle(mgr, self.id(), event) {
+                event => match self.input_handler.handle(cx, self.id(), event) {
                     TextInputAction::None | TextInputAction::Focus => Response::Used,
                     TextInputAction::Unused => Response::Unused,
-                    TextInputAction::Pan(delta) => self.pan_delta(mgr, delta),
+                    TextInputAction::Pan(delta) => self.pan_delta(cx, delta),
                     TextInputAction::Cursor(coord, anchor, clear, repeats) => {
-                        if (clear && repeats <= 1) || mgr.request_sel_focus(self.id()) {
-                            self.set_edit_pos_from_coord(mgr, coord);
+                        if (clear && repeats <= 1) || cx.request_sel_focus(self.id()) {
+                            self.set_edit_pos_from_coord(cx, coord);
                             if anchor {
                                 self.selection.set_anchor();
                             }
@@ -265,7 +265,7 @@ impl_scope! {
                             if repeats > 1 {
                                 self.selection.expand(&self.text, repeats);
                             }
-                            self.set_primary(mgr);
+                            self.set_primary(cx);
                         }
                         Response::Used
                     }
@@ -273,11 +273,11 @@ impl_scope! {
             }
         }
 
-        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
-            if let Some(ScrollMsg(y)) = mgr.try_pop() {
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(ScrollMsg(y)) = cx.try_pop() {
                 let y = y.clamp(0, self.max_scroll_offset().1);
                 self.view_offset.1 = y;
-                mgr.redraw(self.id());
+                cx.redraw(self.id());
             }
         }
     }
@@ -298,10 +298,10 @@ impl_scope! {
             self.view_offset
         }
 
-        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
             let new_offset = offset.min(self.max_scroll_offset()).max(Offset::ZERO);
             if new_offset != self.view_offset {
-                self.set_offset(mgr, new_offset);
+                self.set_offset(cx, new_offset);
                 // No widget moves so do not need to report Action::REGION_MOVED
             }
             new_offset

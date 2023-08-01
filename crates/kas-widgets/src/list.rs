@@ -13,37 +13,37 @@ use std::ops::{Index, IndexMut};
 /// A generic row widget
 ///
 /// See documentation of [`List`] type.
-pub type Row<W> = List<Right, W>;
+pub type Row<W> = List<W, Right>;
 
 /// A generic column widget
 ///
 /// See documentation of [`List`] type.
-pub type Column<W> = List<Down, W>;
+pub type Column<W> = List<W, Down>;
 
 /// A row of boxed widgets
 ///
 /// See documentation of [`List`] type.
-pub type BoxRow<Data> = BoxList<Right, Data>;
+pub type BoxRow<Data> = BoxList<Data, Right>;
 
 /// A column of boxed widgets
 ///
 /// See documentation of [`List`] type.
-pub type BoxColumn<Data> = BoxList<Down, Data>;
+pub type BoxColumn<Data> = BoxList<Data, Down>;
 
 /// A row/column of boxed widgets
 ///
 /// This is parameterised over directionality.
 ///
 /// See documentation of [`List`] type.
-pub type BoxList<D, Data> = List<D, Box<dyn Widget<Data = Data>>>;
+pub type BoxList<Data, D> = List<Box<dyn Widget<Data = Data>>, D>;
 
 impl_scope! {
     /// A generic row/column widget
     ///
     /// This type is roughly [`Vec`] but for widgets. Generics:
     ///
-    /// -   `D:` [`Directional`] — fixed or run-time direction of layout
     /// -   `W:` [`Widget`] — type of widget
+    /// -   `D:` [`Directional`] — fixed or run-time direction of layout
     ///
     /// ## Alternatives
     ///
@@ -68,13 +68,13 @@ impl_scope! {
     #[widget {
         layout = slice! 'layout (self.direction, self.widgets);
     }]
-    pub struct List<D: Directional, W: Widget> {
+    pub struct List<W: Widget, D: Directional> {
         core: widget_core!(),
         widgets: Vec<W>,
         direction: D,
         next: usize,
         id_map: HashMap<usize, usize>, // map key of WidgetId to index
-        on_messages: Option<Box<dyn Fn(&mut EventMgr, usize)>>,
+        on_messages: Option<Box<dyn Fn(&mut EventCx, usize)>>,
     }
 
     impl Layout for Self {
@@ -132,15 +132,15 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn pre_configure(&mut self, _: &mut ConfigMgr, id: WidgetId) {
+        fn pre_configure(&mut self, _: &mut ConfigCx, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();
         }
 
-        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(ref f) = self.on_messages {
-                let index = mgr.last_child().expect("message not sent from self");
-                f(mgr, index);
+                let index = cx.last_child().expect("message not sent from self");
+                f(cx, index);
             }
         }
     }
@@ -154,23 +154,37 @@ impl_scope! {
         /// This constructor is available where the direction is determined by the
         /// type: for `D: Directional + Default`. In other cases, use
         /// [`Self::new_dir`].
-        #[inline]
-        pub fn new() -> Self {
-            Self::new_vec(vec![])
-        }
-
-        /// Construct a new instance with vec
-        ///
-        /// This constructor is available where the direction is determined by the
-        /// type: for `D: Directional + Default`. In other cases, use
-        /// [`Self::new_dir_vec`].
-        #[inline]
-        pub fn new_vec(widgets: Vec<W>) -> Self {
-            Self::new_dir_vec(D::default(), widgets)
+        pub fn new(widgets: impl Into<Vec<W>>) -> Self {
+            Self::new_dir(widgets, D::default())
         }
     }
 
-    impl<W: Widget> List<Direction, W> {
+    impl<W: Widget> List<W, kas::dir::Left> {
+        /// Construct a new instance
+        pub fn left(widgets: impl Into<Vec<W>>) -> Self {
+            Self::new(widgets)
+        }
+    }
+    impl<W: Widget> List<W, kas::dir::Right> {
+        /// Construct a new instance
+        pub fn right(widgets: impl Into<Vec<W>>) -> Self {
+            Self::new(widgets)
+        }
+    }
+    impl<W: Widget> List<W, kas::dir::Up> {
+        /// Construct a new instance
+        pub fn up(widgets: impl Into<Vec<W>>) -> Self {
+            Self::new(widgets)
+        }
+    }
+    impl<W: Widget> List<W, kas::dir::Down> {
+        /// Construct a new instance
+        pub fn down(widgets: impl Into<Vec<W>>) -> Self {
+            Self::new(widgets)
+        }
+    }
+
+    impl<W: Widget> List<W, Direction> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, direction: Direction) -> Action {
             if direction == self.direction {
@@ -186,16 +200,10 @@ impl_scope! {
     impl Self {
         /// Construct a new instance with explicit direction
         #[inline]
-        pub fn new_dir(direction: D) -> Self {
-            List::new_dir_vec(direction, vec![])
-        }
-
-        /// Construct a new instance with explicit direction and vec
-        #[inline]
-        pub fn new_dir_vec(direction: D, widgets: Vec<W>) -> Self {
+        pub fn new_dir(widgets: impl Into<Vec<W>>, direction: D) -> Self {
             List {
                 core: Default::default(),
-                widgets,
+                widgets: widgets.into(),
                 direction,
                 next: 0,
                 id_map: Default::default(),
@@ -206,9 +214,9 @@ impl_scope! {
         /// Assign a child message handler (inline style)
         ///
         /// This handler is called when a child pushes a message:
-        /// `f(mgr, index)`, where `index` is the child's index.
+        /// `f(cx, index)`, where `index` is the child's index.
         #[inline]
-        pub fn on_messages(mut self, f: impl Fn(&mut EventMgr, usize) + 'static) -> Self {
+        pub fn on_messages(mut self, f: impl Fn(&mut EventCx, usize) + 'static) -> Self {
         self.on_messages = Some(Box::new(f));
             self
         }
@@ -269,23 +277,23 @@ impl_scope! {
         /// triggered.
         ///
         /// Returns the new element's index.
-        pub fn push(&mut self, data: &W::Data, mgr: &mut ConfigMgr, mut widget: W) -> usize {
+        pub fn push(&mut self, cx: &mut ConfigCx, data: &W::Data, mut widget: W) -> usize {
             let index = self.widgets.len();
             let id = self.make_child_id(index);
-            mgr.configure(widget.as_node(data), id);
+            cx.configure(widget.as_node(data), id);
             self.widgets.push(widget);
 
-            *mgr |= Action::RESIZE;
+            *cx |= Action::RESIZE;
             index
         }
 
         /// Remove the last child widget (if any) and return
         ///
         /// Triggers [`Action::RESIZE`].
-        pub fn pop(&mut self, mgr: &mut EventState) -> Option<W> {
+        pub fn pop(&mut self, cx: &mut EventState) -> Option<W> {
             let result = self.widgets.pop();
             if let Some(w) = result.as_ref() {
-                *mgr |= Action::RESIZE;
+                *cx |= Action::RESIZE;
 
                 if w.id_ref().is_valid() {
                     if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
@@ -301,7 +309,7 @@ impl_scope! {
         /// Panics if `index > len`.
         ///
         /// The new child is configured immediately. Triggers [`Action::RESIZE`].
-        pub fn insert(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize, mut widget: W) {
+        pub fn insert(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, mut widget: W) {
             for v in self.id_map.values_mut() {
                 if *v >= index {
                     *v += 1;
@@ -309,9 +317,9 @@ impl_scope! {
             }
 
             let id = self.make_child_id(index);
-            mgr.configure(widget.as_node(data), id);
+            cx.configure(widget.as_node(data), id);
             self.widgets.insert(index, widget);
-            *mgr |= Action::RESIZE;
+            *cx |= Action::RESIZE;
         }
 
         /// Removes the child widget at position `index`
@@ -319,7 +327,7 @@ impl_scope! {
         /// Panics if `index` is out of bounds.
         ///
         /// Triggers [`Action::RESIZE`].
-        pub fn remove(&mut self, mgr: &mut EventState, index: usize) -> W {
+        pub fn remove(&mut self, cx: &mut EventState, index: usize) -> W {
             let w = self.widgets.remove(index);
             if w.id_ref().is_valid() {
                 if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
@@ -327,7 +335,7 @@ impl_scope! {
                 }
             }
 
-            *mgr |= Action::RESIZE;
+            *cx |= Action::RESIZE;
 
             for v in self.id_map.values_mut() {
                 if *v > index {
@@ -342,9 +350,9 @@ impl_scope! {
         /// Panics if `index` is out of bounds.
         ///
         /// The new child is configured immediately. Triggers [`Action::RESIZE`].
-        pub fn replace(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize, mut w: W) -> W {
+        pub fn replace(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, mut w: W) -> W {
             let id = self.make_child_id(index);
-            mgr.configure(w.as_node(data), id);
+            cx.configure(w.as_node(data), id);
             std::mem::swap(&mut w, &mut self.widgets[index]);
 
             if w.id_ref().is_valid() {
@@ -353,7 +361,7 @@ impl_scope! {
                 }
             }
 
-            *mgr |= Action::RESIZE;
+            *cx |= Action::RESIZE;
 
             w
         }
@@ -361,28 +369,34 @@ impl_scope! {
         /// Append child widgets from an iterator
         ///
         /// New children are configured immediately. Triggers [`Action::RESIZE`].
-        pub fn extend<T: IntoIterator<Item = W>>(&mut self, data: &W::Data, mgr: &mut ConfigMgr, iter: T) {
+        pub fn extend<T>(&mut self, cx: &mut ConfigCx, data: &W::Data, iter: T)
+        where
+            T: IntoIterator<Item = W>,
+        {
             let iter = iter.into_iter();
             if let Some(ub) = iter.size_hint().1 {
                 self.widgets.reserve(ub);
             }
             for mut w in iter {
                 let id = self.make_child_id(self.widgets.len());
-                mgr.configure(w.as_node(data), id);
+                cx.configure(w.as_node(data), id);
                 self.widgets.push(w);
             }
 
-            *mgr |= Action::RESIZE;
+            *cx |= Action::RESIZE;
         }
 
         /// Resize, using the given closure to construct new widgets
         ///
         /// New children are configured immediately. Triggers [`Action::RESIZE`].
-        pub fn resize_with<F: Fn(usize) -> W>(&mut self, data: &W::Data, mgr: &mut ConfigMgr, len: usize, f: F) {
+        pub fn resize_with<F>(&mut self, cx: &mut ConfigCx, data: &W::Data, len: usize, f: F)
+        where
+            F: Fn(usize) -> W,
+        {
             let old_len = self.widgets.len();
 
             if len < old_len {
-                *mgr |= Action::RESIZE;
+                *cx |= Action::RESIZE;
                 loop {
                     let w = self.widgets.pop().unwrap();
                     if w.id_ref().is_valid() {
@@ -401,10 +415,10 @@ impl_scope! {
                 for index in old_len..len {
                     let id = self.make_child_id(index);
                     let mut w = f(index);
-                    mgr.configure(w.as_node(data), id);
+                    cx.configure(w.as_node(data), id);
                     self.widgets.push(w);
                 }
-                *mgr |= Action::RESIZE;
+                *cx |= Action::RESIZE;
             }
         }
 
@@ -438,13 +452,13 @@ impl_scope! {
     }
 }
 
-impl<D: Directional + Default, W: Widget> FromIterator<W> for List<D, W> {
+impl<W: Widget, D: Directional + Default> FromIterator<W> for List<W, D> {
     #[inline]
     fn from_iter<T>(iter: T) -> Self
     where
         T: IntoIterator<Item = W>,
     {
-        Self::new_vec(iter.into_iter().collect())
+        Self::new(iter.into_iter().collect::<Vec<W>>())
     }
 }
 

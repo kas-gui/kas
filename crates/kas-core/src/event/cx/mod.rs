@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Event manager
+//! Event context state
 
 // Without winit, several things go unused
 #![cfg_attr(not(feature = "winit"), allow(unused))]
@@ -26,11 +26,12 @@ use crate::util::WidgetHierarchy;
 use crate::LayoutExt;
 use crate::{Action, Erased, ErasedStack, NavAdvance, Node, Widget, WidgetId, WindowId};
 
-mod config_mgr;
-mod mgr_pub;
-mod mgr_shell;
+mod config;
+mod cx_pub;
+mod cx_shell;
 mod press;
-pub use config_mgr::ConfigMgr;
+
+pub use config::ConfigCx;
 pub use press::{GrabBuilder, Press, PressSource};
 
 /// Controls the types of events delivered by [`Press::grab`]
@@ -70,7 +71,7 @@ struct MouseGrab {
     delta: Offset,
 }
 
-impl<'a> EventMgr<'a> {
+impl<'a> EventCx<'a> {
     fn flush_mouse_grab_motion(&mut self, widget: Node<'_>) {
         if let Some(grab) = self.mouse_grab.as_mut() {
             let delta = grab.delta;
@@ -185,10 +186,10 @@ enum Pending {
 
 type AccelLayer = (bool, HashMap<VirtualKeyCode, WidgetId>);
 
-/// Event manager state
+/// Event context state
 ///
 /// This struct encapsulates window-specific event-handling state and handling.
-/// Most operations are only available via a [`EventMgr`] handle, though some
+/// Most operations are only available via a [`EventCx`] handle, though some
 /// are available on this struct.
 ///
 /// Besides event handling, this struct also configures widgets.
@@ -419,12 +420,12 @@ impl EventState {
     }
 }
 
-/// Manager of event-handling and toolkit actions
+/// Event handling context
 ///
-/// `EventMgr` and [`EventState`] (available via [`Deref`]) support various
+/// `EventCx` and [`EventState`] (available via [`Deref`]) support various
 /// event management and event-handling state querying operations.
 #[must_use]
-pub struct EventMgr<'a> {
+pub struct EventCx<'a> {
     state: &'a mut EventState,
     shell: &'a mut dyn ShellWindow,
     messages: &'a mut ErasedStack,
@@ -432,20 +433,20 @@ pub struct EventMgr<'a> {
     scroll: Scroll,
 }
 
-impl<'a> Deref for EventMgr<'a> {
+impl<'a> Deref for EventCx<'a> {
     type Target = EventState;
     fn deref(&self) -> &Self::Target {
         self.state
     }
 }
-impl<'a> DerefMut for EventMgr<'a> {
+impl<'a> DerefMut for EventCx<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.state
     }
 }
 
 /// Internal methods
-impl<'a> EventMgr<'a> {
+impl<'a> EventCx<'a> {
     fn start_key_event(&mut self, mut widget: Node<'_>, vkey: VirtualKeyCode, scancode: u32) {
         log::trace!(
             "start_key_event: widget={}, vkey={vkey:?}, scancode={scancode}",
@@ -587,7 +588,7 @@ impl<'a> EventMgr<'a> {
 
     pub(crate) fn assert_post_steal_unused(&self) {
         if self.scroll != Scroll::None || self.messages.has_any() {
-            panic!("steal_event affected EventMgr and returned Unused");
+            panic!("steal_event affected EventCx and returned Unused");
         }
     }
 
@@ -601,7 +602,7 @@ impl<'a> EventMgr<'a> {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         self.messages.set_base();
-        log::trace!(target: "kas_core::event::manager", "replay: id={id}: {msg:?}");
+        log::trace!(target: "kas_core::event", "replay: id={id}: {msg:?}");
 
         widget._replay(self, id, msg);
         self.last_child = None;
@@ -623,7 +624,7 @@ impl<'a> EventMgr<'a> {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         self.messages.set_base();
-        log::trace!(target: "kas_core::event::manager", "send_event: id={id}: {event:?}");
+        log::trace!(target: "kas_core::event", "send_event: id={id}: {event:?}");
 
         // TODO(opt): we should be able to use binary search here
         let mut disabled = false;
@@ -635,7 +636,7 @@ impl<'a> EventMgr<'a> {
                 }
             }
             if disabled {
-                log::trace!(target: "kas_core::event::manager", "target is disabled; sending to ancestor {id}");
+                log::trace!(target: "kas_core::event", "target is disabled; sending to ancestor {id}");
             }
         }
 
@@ -687,7 +688,7 @@ impl<'a> EventMgr<'a> {
                 return r;
             } else {
                 log::warn!(
-                    target: "kas_core::event::config_mgr",
+                    target: "kas_core::event",
                     "next_nav_focus: have open pop-up which is not a child of widget",
                 );
                 return;
@@ -714,7 +715,7 @@ impl<'a> EventMgr<'a> {
         }
 
         log::trace!(
-            target: "kas_core::event::config_mgr",
+            target: "kas_core::event",
             "next_nav_focus: nav_focus={opt_id:?}",
         );
         if opt_id == self.nav_focus {

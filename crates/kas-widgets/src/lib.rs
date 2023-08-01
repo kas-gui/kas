@@ -22,7 +22,7 @@
 //!
 //! ## Controls
 //!
-//! -   [`TextButton`], [`Button`], [`MarkButton`]: button widgets
+//! -   [`Button`], [`MarkButton`]: button widgets
 //! -   [`CheckBox`], [`CheckButton`]: checkable boxes
 //! -   [`RadioBox`], [`RadioButton`]: linked checkable boxes
 //! -   [`ScrollBar`]: a scroll bar
@@ -80,7 +80,7 @@ mod tab_stack;
 mod text;
 
 pub use crate::image::Image;
-pub use button::{Button, TextButton};
+pub use button::Button;
 pub use check_box::{CheckBox, CheckButton};
 pub use combobox::ComboBox;
 pub use edit::{EditBox, EditField, EditGuard};

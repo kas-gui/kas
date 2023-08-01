@@ -19,7 +19,6 @@
 
 use crate::adapt::MapAny;
 use crate::Separator;
-use kas::dir::Right;
 use kas::prelude::*;
 use std::fmt::Debug;
 
@@ -66,11 +65,11 @@ pub trait Menu: Widget {
     /// "magically" by the caller. The implementor should draw a frame as follows:
     /// ```
     /// # use kas::geom::Rect;
-    /// # use kas::theme::{DrawMgr, FrameStyle};
+    /// # use kas::theme::{DrawCx, FrameStyle};
     /// # struct S;
     /// # impl S {
     /// # fn rect(&self) -> Rect { Rect::ZERO }
-    /// fn draw(&mut self, mut draw: DrawMgr) {
+    /// fn draw(&mut self, mut draw: DrawCx) {
     ///     draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
     ///     // draw children here
     /// }
@@ -99,8 +98,8 @@ pub trait Menu: Widget {
     /// When opening menus and `set_focus` is true, the first navigable child
     /// of the newly opened menu will be given focus. This is used for keyboard
     /// navigation only.
-    fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
-        let _ = (mgr, target, set_focus);
+    fn set_menu_path(&mut self, cx: &mut EventCx, target: Option<&WidgetId>, set_focus: bool) {
+        let _ = (cx, target, set_focus);
     }
 }
 
@@ -113,8 +112,8 @@ impl<A, W: Menu<Data = ()>> Menu for MapAny<A, W> {
         self.inner.menu_is_open()
     }
 
-    fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
-        self.inner.set_menu_path(mgr, target, set_focus);
+    fn set_menu_path(&mut self, cx: &mut EventCx, target: Option<&WidgetId>, set_focus: bool) {
+        self.inner.set_menu_path(cx, target, set_focus);
     }
 }
 
@@ -150,7 +149,7 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
         M: Clone + Debug + 'static,
     {
         self.menu
-            .push(Box::new(MapAny::new(MenuEntry::new(label, msg))));
+            .push(Box::new(MapAny::new(MenuEntry::new_msg(label, msg))));
     }
 
     /// Append a [`MenuEntry`], chain style
@@ -167,21 +166,21 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
     pub fn push_toggle<M: Debug + 'static>(
         &mut self,
         label: impl Into<AccelString>,
-        state_fn: impl Fn(&ConfigMgr, &Data) -> bool + 'static,
-        message_fn: impl Fn(bool) -> M + 'static,
+        state_fn: impl Fn(&ConfigCx, &Data) -> bool + 'static,
+        msg_fn: impl Fn(bool) -> M + 'static,
     ) {
         self.menu
-            .push(Box::new(MenuToggle::new_msg(label, state_fn, message_fn)));
+            .push(Box::new(MenuToggle::new_msg(label, state_fn, msg_fn)));
     }
 
     /// Append a [`MenuToggle`], chain style
     pub fn toggle<M: Debug + 'static>(
         mut self,
         label: impl Into<AccelString>,
-        state_fn: impl Fn(&ConfigMgr, &Data) -> bool + 'static,
-        message_fn: impl Fn(bool) -> M + 'static,
+        state_fn: impl Fn(&ConfigCx, &Data) -> bool + 'static,
+        msg_fn: impl Fn(bool) -> M + 'static,
     ) -> Self {
-        self.push_toggle(label, state_fn, message_fn);
+        self.push_toggle(label, state_fn, msg_fn);
         self
     }
 
@@ -200,50 +199,47 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
     /// Append a [`SubMenu`]
     ///
     /// This submenu prefers opens to the right.
-    #[inline]
     pub fn push_submenu<F>(&mut self, label: impl Into<AccelString>, f: F)
     where
         F: FnOnce(SubMenuBuilder<Data>),
     {
-        self.push_submenu_with_dir(Right, label, f);
+        self.push_submenu_dir(label, f, kas::dir::Right);
     }
 
     /// Append a [`SubMenu`], chain style
     ///
     /// This submenu prefers opens to the right.
-    #[inline]
     pub fn submenu<F>(mut self, label: impl Into<AccelString>, f: F) -> Self
     where
         F: FnOnce(SubMenuBuilder<Data>),
     {
-        self.push_submenu_with_dir(Right, label, f);
+        self.push_submenu(label, f);
         self
     }
 
     /// Append a [`SubMenu`]
     ///
     /// This submenu prefers to open in the specified direction.
-    pub fn push_submenu_with_dir<D, F>(&mut self, dir: D, label: impl Into<AccelString>, f: F)
+    pub fn push_submenu_dir<F, D>(&mut self, label: impl Into<AccelString>, f: F, dir: D)
     where
-        D: Directional,
         F: FnOnce(SubMenuBuilder<Data>),
+        D: Directional,
     {
         let mut menu = Vec::new();
         f(SubMenuBuilder { menu: &mut menu });
-        self.menu
-            .push(Box::new(SubMenu::new_with_direction(dir, label, menu)));
+        self.menu.push(Box::new(SubMenu::new_dir(label, menu, dir)));
     }
 
     /// Append a [`SubMenu`], chain style
     ///
     /// This submenu prefers to open in the specified direction.
     #[inline]
-    pub fn submenu_with_dir<D, F>(mut self, dir: D, label: impl Into<AccelString>, f: F) -> Self
+    pub fn submenu_dir<F, D>(mut self, label: impl Into<AccelString>, f: F, dir: D) -> Self
     where
-        D: Directional,
         F: FnOnce(SubMenuBuilder<Data>),
+        D: Directional,
     {
-        self.push_submenu_with_dir(dir, label, f);
+        self.push_submenu_dir(label, f, dir);
         self
     }
 }

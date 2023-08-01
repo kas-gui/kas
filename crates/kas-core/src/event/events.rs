@@ -9,7 +9,7 @@
 use serde::{Deserialize, Serialize};
 
 #[allow(unused)]
-use super::{EventMgr, EventState, GrabMode, Response}; // for doc-links
+use super::{EventCx, EventState, GrabMode, Response}; // for doc-links
 use super::{Press, VirtualKeyCode};
 use crate::geom::{DVec2, Offset};
 #[allow(unused)] use crate::Events;
@@ -31,7 +31,7 @@ pub enum Event {
     /// keyboard. It is sent to whichever widget is "most appropriate", then
     /// potentially to the "next most appropriate" target if the first returns
     /// [`Response::Unused`], until handled or no more appropriate targets
-    /// are available (the exact logic is encoded in `EventMgr::start_key_event`).
+    /// are available (the exact logic is encoded in `EventCx::start_key_event`).
     ///
     /// In some cases keys are remapped, e.g. a widget with selection focus but
     /// not character or navigation focus may receive [`Command::Deselect`]
@@ -108,7 +108,7 @@ pub enum Event {
     /// This event is sent only when:
     ///
     /// 1.  No [`Press::grab`] is active
-    /// 2.  When a pop-up layer is active ([`EventMgr::add_popup`]), the owner
+    /// 2.  When a pop-up layer is active ([`EventCx::add_popup`]), the owner
     ///     of the top-most layer will receive this event. If the event is not
     ///     used, then the pop-up will be closed and the event sent again.
     CursorMove { press: Press },
@@ -119,7 +119,7 @@ pub enum Event {
     ///
     /// This event is sent in exactly two cases, in this order:
     ///
-    /// 1.  When a pop-up layer is active ([`EventMgr::add_popup`]), the owner
+    /// 1.  When a pop-up layer is active ([`EventCx::add_popup`]), the owner
     ///     of the top-most layer will receive this event. If the event is not
     ///     used, then the pop-up will be closed and the event sent again.
     /// 2.  If a widget is found under the mouse when pressed or where a touch
@@ -162,7 +162,7 @@ pub enum Event {
     /// Notification that a popup has been destroyed
     ///
     /// This is sent to the popup's parent after a popup has been removed.
-    /// Since popups may be removed directly by the EventMgr, the parent should
+    /// Since popups may be removed directly by the EventCx, the parent should
     /// clean up any associated state here.
     PopupRemoved(WindowId),
     /// Sent when a widget receives (keyboard) navigation focus
@@ -174,7 +174,7 @@ pub enum Event {
     ///
     /// Note: when `NavFocus(true)` is sent to a widget, the sender
     /// automatically sets `Scroll::Rect(widget.rect())` to
-    /// [`EventMgr::set_scroll`] and considers the event used.
+    /// [`EventCx::set_scroll`] and considers the event used.
     NavFocus(bool),
     /// Sent when a widget becomes the mouse hover target
     MouseHover,
@@ -234,18 +234,18 @@ impl Event {
     /// -   Mouse click and release on the same widget
     /// -   Touchscreen press and release on the same widget
     /// -   `Event::Command(cmd, _)` where [`cmd.is_activate()`](Command::is_activate)
-    pub fn on_activate<F: FnOnce(&mut EventMgr) -> Response>(
+    pub fn on_activate<F: FnOnce(&mut EventCx) -> Response>(
         self,
-        mgr: &mut EventMgr,
+        cx: &mut EventCx,
         id: WidgetId,
         f: F,
     ) -> Response {
         match self {
-            Event::Command(cmd) if cmd.is_activate() => f(mgr),
-            Event::PressStart { press, .. } if press.is_primary() => press.grab(id).with_mgr(mgr),
+            Event::Command(cmd) if cmd.is_activate() => f(cx),
+            Event::PressStart { press, .. } if press.is_primary() => press.grab(id).with_cx(cx),
             Event::PressEnd { press, success } => {
                 if success && id == press.id {
-                    f(mgr)
+                    f(cx)
                 } else {
                     Response::Used
                 }

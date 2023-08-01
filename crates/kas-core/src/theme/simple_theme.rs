@@ -319,6 +319,11 @@ where
     fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle, bg: Background) {
         let outer = Quad::conv(rect);
         match style {
+            FrameStyle::None => {
+                let state = InputState::new_except_depress(self.ev, id);
+                let col = self.cols.from_bg(bg, state, false);
+                self.draw.rect(outer, col);
+            }
             FrameStyle::Frame | FrameStyle::Window => {
                 let inner = outer.shrink(self.w.dims.frame as f32);
                 self.draw.frame(outer, inner, self.cols.frame);
@@ -345,7 +350,7 @@ where
                     self.draw.frame(outer, inner, col);
                 }
             }
-            FrameStyle::Button => {
+            FrameStyle::Button | FrameStyle::Tab => {
                 let state = InputState::new_all(self.ev, id);
                 let outer = Quad::conv(rect);
 

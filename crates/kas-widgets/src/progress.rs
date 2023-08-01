@@ -14,35 +14,34 @@ impl_scope! {
     /// The "progress" value may range from 0.0 to 1.0.
     #[autoimpl(Debug ignore self.value_fn)]
     #[widget]
-    pub struct ProgressBar<A, D: Directional> {
+    pub struct ProgressBar<A, D: Directional = kas::dir::Right> {
         core: widget_core!(),
         align: AlignPair,
         direction: D,
         value: f32,
-        value_fn: Box<dyn Fn(&ConfigMgr, &A) -> f32>,
+        value_fn: Box<dyn Fn(&ConfigCx, &A) -> f32>,
     }
 
     impl Self
     where
         D: Default,
     {
-        /// Construct a progress bar
+        /// Construct a slider
         ///
         /// Closure `value_fn` returns the current progress as a value between
         /// 0.0 and 1.0.
         #[inline]
-        pub fn new(value_fn: impl Fn(&ConfigMgr, &A) -> f32 + 'static) -> Self {
-            ProgressBar::new_with_direction(value_fn, D::default())
+        pub fn new(value_fn: impl Fn(&ConfigCx, &A) -> f32 + 'static) -> Self {
+            Self::new_dir(value_fn, D::default())
         }
     }
-
-    impl<A>  ProgressBar<A, kas::dir::Right> {
+    impl<A> ProgressBar<A, kas::dir::Right> {
         /// Construct a progress bar (horizontal)
         ///
         /// Closure `value_fn` returns the current progress as a value between
         /// 0.0 and 1.0.
         #[inline]
-        pub fn right(value_fn: impl Fn(&ConfigMgr, &A) -> f32 + 'static) -> Self {
+        pub fn right(value_fn: impl Fn(&ConfigCx, &A) -> f32 + 'static) -> Self {
             ProgressBar::new(value_fn)
         }
     }
@@ -53,7 +52,7 @@ impl_scope! {
         /// Closure `value_fn` returns the current progress as a value between
         /// 0.0 and 1.0.
         #[inline]
-        pub fn new_with_direction(value_fn: impl Fn(&ConfigMgr, &A) -> f32 + 'static, direction: D) -> Self {
+        pub fn new_dir(value_fn: impl Fn(&ConfigCx, &A) -> f32 + 'static, direction: D) -> Self {
             ProgressBar {
                 core: Default::default(),
                 align: Default::default(),
@@ -71,7 +70,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             self.align.set_component(
                 axis,
                 match axis.is_vertical() == self.direction.is_vertical() {
@@ -79,15 +78,15 @@ impl_scope! {
                     true => axis.align_or_stretch(),
                 },
             );
-            size_mgr.feature(Feature::ProgressBar(self.direction()), axis)
+            sizer.feature(Feature::ProgressBar(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
-            let rect = mgr.align_feature(Feature::ProgressBar(self.direction()), rect, self.align);
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+            let rect = cx.align_feature(Feature::ProgressBar(self.direction()), rect, self.align);
             self.core.rect = rect;
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             let dir = self.direction.as_direction();
             draw.progress_bar(self.rect(), dir, self.value);
         }
@@ -96,7 +95,7 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn update(&mut self, data: &A, cx: &mut ConfigMgr) {
+        fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             let value = (self.value_fn)(cx, data);
             self.value = value.clamp(0.0, 1.0);
         }

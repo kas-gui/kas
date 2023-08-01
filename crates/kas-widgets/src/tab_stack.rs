@@ -5,8 +5,10 @@
 
 //! A tabbed stack
 
-use crate::{Row, Stack, TextButton};
+use crate::{AccelLabel, Row, Stack};
+use kas::layout::{FrameStorage, Visitor};
 use kas::prelude::*;
+use kas::theme::FrameStyle;
 use std::fmt::Debug;
 
 #[derive(Clone, Debug)]
@@ -15,10 +17,79 @@ struct MsgSelect;
 #[derive(Clone, Debug)]
 struct MsgSelectIndex(usize);
 
-/// A tab
-///
-/// TODO: a tab is not a button! Support directional graphics, icon and close button.
-pub type Tab = TextButton;
+impl_scope! {
+    /// A tab
+    ///
+    /// This is a special variant of `Button` which a [`MsgSelect`] on press.
+    #[autoimpl(HasStr, SetAccel using self.label)]
+    #[widget {
+        Data = ();
+        layout = button!(self.label);
+        navigable = true;
+        hover_highlight = true;
+    }]
+    pub struct Tab {
+        core: widget_core!(),
+        frame: FrameStorage,
+        #[widget]
+        label: AccelLabel,
+    }
+
+    impl Self {
+        /// Construct a button with given `label` widget
+        #[inline]
+        pub fn new(label: impl Into<AccelString>) -> Self {
+            Tab {
+                core: Default::default(),
+                frame: FrameStorage::default(),
+                label: AccelLabel::new(label),
+            }
+        }
+    }
+
+    impl Layout for Self {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            let label = Visitor::single(&mut self.label);
+            Visitor::frame(&mut self.frame, label, FrameStyle::Tab).size_rules(sizer, axis)
+        }
+
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+            self.core.rect = rect;
+            let label = Visitor::single(&mut self.label);
+            Visitor::frame(&mut self.frame, label, FrameStyle::Tab).set_rect(cx, rect)
+        }
+
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            self.rect().contains(coord).then_some(self.id())
+        }
+
+        fn draw(&mut self, draw: DrawCx) {
+            let label = Visitor::single(&mut self.label);
+            Visitor::frame(&mut self.frame, label, FrameStyle::Tab).draw(draw)
+        }
+    }
+
+    impl Events for Self {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> Response {
+            event.on_activate(cx, self.id(), |cx| {
+                cx.push(MsgSelect);
+                Response::Used
+            })
+        }
+
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &()) {
+            if let Some(kas::message::Activate) = cx.try_pop() {
+                cx.push(MsgSelect);
+            }
+        }
+    }
+
+    impl<T: Into<AccelString>> From<T> for Tab {
+        fn from(label: T) -> Self {
+            Tab::new(label)
+        }
+    }
+}
 
 /// A tabbed stack of boxed widgets
 ///
@@ -41,7 +112,7 @@ impl_scope! {
     /// it will be necessary to box children (this is what [`BoxTabStack`] is).
     ///
     /// See also the main implementing widget: [`Stack`].
-    #[impl_default]
+    #[impl_default(Self::new())]
     #[widget {
         layout = list!(self.direction, [
             self.stack,
@@ -50,7 +121,7 @@ impl_scope! {
     }]
     pub struct TabStack<W: Widget> {
         core: widget_core!(),
-        direction: Direction = Direction::Up,
+        direction: Direction,
         #[widget(&())]
         tabs: Row<Tab>, // TODO: want a TabBar widget for scrolling support?
         #[widget]
@@ -63,10 +134,10 @@ impl_scope! {
             Self {
                 core: Default::default(),
                 direction: Direction::Up,
-                stack: Stack::new(),
-                tabs: Row::new().on_messages(|mgr, index| {
-                    if let Some(MsgSelect) = mgr.try_pop() {
-                        mgr.push(MsgSelectIndex(index));
+                stack: Stack::new([]),
+                tabs: Row::new([]).on_messages(|cx, index| {
+                    if let Some(MsgSelect) = cx.try_pop() {
+                        cx.push(MsgSelectIndex(index));
                     }
                 }),
             }
@@ -92,9 +163,9 @@ impl_scope! {
     impl Events for Self {
         type Data = W::Data;
 
-        fn handle_messages(&mut self, data: &W::Data, mgr: &mut EventMgr) {
-            if let Some(MsgSelectIndex(index)) = mgr.try_pop() {
-                mgr.config_mgr(|mgr| self.set_active(data, mgr, index));
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &W::Data) {
+            if let Some(MsgSelectIndex(index)) = cx.try_pop() {
+                cx.config_cx(|cx| self.set_active(cx, data, index));
             }
         }
     }
@@ -142,8 +213,8 @@ impl<W: Widget> TabStack<W> {
     /// -   `SizeRules` were solved: set layout ([`Layout::set_rect`]) and
     ///     update mouse-cursor target ([`Action::REGION_MOVED`])
     /// -   Otherwise: resize the whole window ([`Action::RESIZE`])
-    pub fn set_active(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize) {
-        self.stack.set_active(data, mgr, index);
+    pub fn set_active(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize) {
+        self.stack.set_active(cx, data, index);
     }
 
     /// Get a direct reference to the active child widget, if any
@@ -202,7 +273,7 @@ impl<W: Widget> TabStack<W> {
     ///
     /// Does not configure or size child.
     pub fn with_title(self, title: impl Into<AccelString>, widget: W) -> Self {
-        self.with_tab(Tab::new_on(title, |mgr| mgr.push(MsgSelect)), widget)
+        self.with_tab(Tab::new(title), widget)
     }
 
     /// Append a page
@@ -211,9 +282,9 @@ impl<W: Widget> TabStack<W> {
     /// and then [`Action::RESIZE`] will be triggered.
     ///
     /// Returns the new page's index.
-    pub fn push(&mut self, data: &W::Data, mgr: &mut ConfigMgr, tab: Tab, widget: W) -> usize {
-        let ti = self.tabs.push(&(), mgr, tab);
-        let si = self.stack.push(data, mgr, widget);
+    pub fn push(&mut self, cx: &mut ConfigCx, data: &W::Data, tab: Tab, widget: W) -> usize {
+        let ti = self.tabs.push(cx, &(), tab);
+        let si = self.stack.push(cx, data, widget);
         debug_assert_eq!(ti, si);
         si
     }
@@ -221,9 +292,9 @@ impl<W: Widget> TabStack<W> {
     /// Remove the last child widget (if any) and return
     ///
     /// If this page was active then the previous page becomes active.
-    pub fn pop(&mut self, mgr: &mut EventState) -> Option<(Tab, W)> {
-        let tab = self.tabs.pop(mgr);
-        let w = self.stack.pop(mgr);
+    pub fn pop(&mut self, cx: &mut EventState) -> Option<(Tab, W)> {
+        let tab = self.tabs.pop(cx);
+        let w = self.stack.pop(cx);
         debug_assert_eq!(tab.is_some(), w.is_some());
         tab.zip(w)
     }
@@ -234,16 +305,9 @@ impl<W: Widget> TabStack<W> {
     ///
     /// The new child is configured immediately. The active page does not
     /// change.
-    pub fn insert(
-        &mut self,
-        data: &W::Data,
-        mgr: &mut ConfigMgr,
-        index: usize,
-        tab: Tab,
-        widget: W,
-    ) {
-        self.tabs.insert(&(), mgr, index, tab);
-        self.stack.insert(data, mgr, index, widget);
+    pub fn insert(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, tab: Tab, widget: W) {
+        self.tabs.insert(cx, &(), index, tab);
+        self.stack.insert(cx, data, index, widget);
     }
 
     /// Removes the child widget at position `index`
@@ -252,9 +316,9 @@ impl<W: Widget> TabStack<W> {
     ///
     /// If the active page is removed then the previous page (if any) becomes
     /// active.
-    pub fn remove(&mut self, mgr: &mut EventState, index: usize) -> (Tab, W) {
-        let tab = self.tabs.remove(mgr, index);
-        let stack = self.stack.remove(mgr, index);
+    pub fn remove(&mut self, cx: &mut EventState, index: usize) -> (Tab, W) {
+        let tab = self.tabs.remove(cx, index);
+        let stack = self.stack.remove(cx, index);
         (tab, stack)
     }
 
@@ -264,8 +328,8 @@ impl<W: Widget> TabStack<W> {
     ///
     /// The new child is configured immediately. If it replaces the active page,
     /// then [`Action::RESIZE`] is triggered.
-    pub fn replace(&mut self, data: &W::Data, mgr: &mut ConfigMgr, index: usize, w: W) -> W {
-        self.stack.replace(data, mgr, index, w)
+    pub fn replace(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, w: W) -> W {
+        self.stack.replace(cx, data, index, w)
     }
 
     /// Append child widgets from an iterator
@@ -274,8 +338,8 @@ impl<W: Widget> TabStack<W> {
     /// then [`Action::RESIZE`] is triggered.
     pub fn extend<T: IntoIterator<Item = (Tab, W)>>(
         &mut self,
+        cx: &mut ConfigCx,
         data: &W::Data,
-        mgr: &mut ConfigMgr,
         iter: T,
     ) {
         let iter = iter.into_iter();
@@ -283,26 +347,34 @@ impl<W: Widget> TabStack<W> {
         // self.tabs.reserve(min_len);
         // self.stack.reserve(min_len);
         for (tab, w) in iter {
-            self.tabs.push(&(), mgr, tab);
-            self.stack.push(data, mgr, w);
+            self.tabs.push(cx, &(), tab);
+            self.stack.push(cx, data, w);
         }
     }
 }
 
-impl<W: Widget, T: IntoIterator<Item = (Tab, W)>> From<T> for TabStack<W> {
+impl<W: Widget, T, I> From<I> for TabStack<W>
+where
+    Tab: From<T>,
+    I: IntoIterator<Item = (T, W)>,
+{
     #[inline]
-    fn from(iter: T) -> Self {
+    fn from(iter: I) -> Self {
         let iter = iter.into_iter();
         let min_len = iter.size_hint().0;
         let mut stack = Vec::with_capacity(min_len);
         let mut tabs = Vec::with_capacity(min_len);
         for (tab, w) in iter {
             stack.push(w);
-            tabs.push(tab);
+            tabs.push(Tab::from(tab));
         }
         Self {
-            stack: Stack::new_vec(stack),
-            tabs: Row::new_vec(tabs),
+            stack: Stack::new(stack),
+            tabs: Row::new(tabs).on_messages(|cx, index| {
+                if let Some(MsgSelect) = cx.try_pop() {
+                    cx.push(MsgSelectIndex(index));
+                }
+            }),
             ..Default::default()
         }
     }

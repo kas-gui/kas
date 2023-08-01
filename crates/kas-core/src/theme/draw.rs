@@ -5,11 +5,11 @@
 
 //! "Handle" types used by themes
 
-use super::{FrameStyle, MarkStyle, SelectionStyle, SizeMgr, TextClass, ThemeSize};
+use super::{FrameStyle, MarkStyle, SelectionStyle, SizeCx, TextClass, ThemeSize};
 use crate::dir::Direction;
 use crate::draw::color::Rgb;
 use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType};
-use crate::event::{ConfigMgr, EventState};
+use crate::event::{ConfigCx, EventState};
 use crate::geom::{Offset, Rect};
 use crate::text::{TextApi, TextDisplay};
 use crate::{autoimpl, Action, Layout, WidgetId};
@@ -34,28 +34,28 @@ pub enum Background {
 /// This interface is provided to widgets in [`crate::Layout::draw`].
 /// Lower-level interfaces may be accessed through [`Self::draw_device`].
 ///
-/// `DrawMgr` is not a `Copy` or `Clone` type; instead it may be "reborrowed"
+/// `DrawCx` is not a `Copy` or `Clone` type; instead it may be "reborrowed"
 /// via [`Self::re_id`] or [`Self::re_clone`].
 ///
 /// -   `draw.check_box(&*self, self.state);` — note `&*self` to convert from to
 ///     `&W` from `&mut W`, since the latter would cause borrow conflicts
-pub struct DrawMgr<'a> {
+pub struct DrawCx<'a> {
     h: &'a mut dyn ThemeDraw,
     id: WidgetId,
 }
 
-impl<'a> DrawMgr<'a> {
+impl<'a> DrawCx<'a> {
     /// Reborrow with a new lifetime and new `id`
     ///
     /// Rust allows references like `&T` or `&mut T` to be "reborrowed" through
     /// coercion: essentially, the pointer is copied under a new, shorter, lifetime.
     /// Until rfcs#1403 lands, reborrows on user types require a method call.
     #[inline(always)]
-    pub fn re_id<'b>(&'b mut self, id: WidgetId) -> DrawMgr<'b>
+    pub fn re_id<'b>(&'b mut self, id: WidgetId) -> DrawCx<'b>
     where
         'a: 'b,
     {
-        DrawMgr { h: self.h, id }
+        DrawCx { h: self.h, id }
     }
 
     /// Reborrow with a new lifetime and same `id`
@@ -64,11 +64,11 @@ impl<'a> DrawMgr<'a> {
     /// coercion: essentially, the pointer is copied under a new, shorter, lifetime.
     /// Until rfcs#1403 lands, reborrows on user types require a method call.
     #[inline(always)]
-    pub fn re_clone<'b>(&'b mut self) -> DrawMgr<'b>
+    pub fn re_clone<'b>(&'b mut self) -> DrawCx<'b>
     where
         'a: 'b,
     {
-        DrawMgr {
+        DrawCx {
             h: self.h,
             id: self.id.clone(),
         }
@@ -80,11 +80,11 @@ impl<'a> DrawMgr<'a> {
         child.draw(self.re_id(child.id_ref().clone()));
     }
 
-    /// Construct from a [`DrawMgr`] and [`EventState`]
+    /// Construct from a [`DrawCx`] and [`EventState`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn new(h: &'a mut dyn ThemeDraw, id: WidgetId) -> Self {
-        DrawMgr { h, id }
+        DrawCx { h, id }
     }
 
     /// Access event-management state
@@ -92,16 +92,16 @@ impl<'a> DrawMgr<'a> {
         self.h.components().2
     }
 
-    /// Access a [`SizeMgr`]
-    pub fn size_mgr(&mut self) -> SizeMgr {
-        SizeMgr::new(self.h.components().0)
+    /// Access a [`SizeCx`]
+    pub fn size_cx(&mut self) -> SizeCx {
+        SizeCx::new(self.h.components().0)
     }
 
-    /// Access a [`ConfigMgr`]
-    pub fn config_mgr<F: FnOnce(&mut ConfigMgr) -> T, T>(&mut self, f: F) -> T {
+    /// Access a [`ConfigCx`]
+    pub fn config_cx<F: FnOnce(&mut ConfigCx) -> T, T>(&mut self, f: F) -> T {
         let (sh, draw, ev) = self.h.components();
-        let mut mgr = ConfigMgr::new(sh, draw.shared(), ev);
-        f(&mut mgr)
+        let mut cx = ConfigCx::new(sh, draw.shared(), ev);
+        f(&mut cx)
     }
 
     /// Access a [`DrawShared`]
@@ -129,14 +129,14 @@ impl<'a> DrawMgr<'a> {
     ///
     /// Adds a new draw pass for purposes of enforcing draw order. Content of
     /// the new pass will be drawn after content in the parent pass.
-    pub fn with_pass<F: FnOnce(DrawMgr)>(&mut self, f: F) {
+    pub fn with_pass<F: FnOnce(DrawCx)>(&mut self, f: F) {
         let clip_rect = self.h.get_clip_rect();
         let id = self.id.clone();
         self.h.new_pass(
             clip_rect,
             Offset::ZERO,
             PassType::Clip,
-            Box::new(|h| f(DrawMgr { h, id })),
+            Box::new(|h| f(DrawCx { h, id })),
         );
     }
 
@@ -144,13 +144,13 @@ impl<'a> DrawMgr<'a> {
     ///
     /// Adds a new draw pass of type [`PassType::Clip`], with draw operations
     /// clipped to `rect` and translated by `offset.
-    pub fn with_clip_region<F: FnOnce(DrawMgr)>(&mut self, rect: Rect, offset: Offset, f: F) {
+    pub fn with_clip_region<F: FnOnce(DrawCx)>(&mut self, rect: Rect, offset: Offset, f: F) {
         let id = self.id.clone();
         self.h.new_pass(
             rect,
             offset,
             PassType::Clip,
-            Box::new(|h| f(DrawMgr { h, id })),
+            Box::new(|h| f(DrawCx { h, id })),
         );
     }
 
@@ -162,13 +162,13 @@ impl<'a> DrawMgr<'a> {
     /// The theme is permitted to enlarge the `rect` for the purpose of drawing
     /// a frame or shadow around this overlay, thus the
     /// [`Self::get_clip_rect`] may be larger than expected.
-    pub fn with_overlay<F: FnOnce(DrawMgr)>(&mut self, rect: Rect, offset: Offset, f: F) {
+    pub fn with_overlay<F: FnOnce(DrawCx)>(&mut self, rect: Rect, offset: Offset, f: F) {
         let id = self.id.clone();
         self.h.new_pass(
             rect,
             offset,
             PassType::Overlay,
-            Box::new(|h| f(DrawMgr { h, id })),
+            Box::new(|h| f(DrawCx { h, id })),
         );
     }
 
@@ -184,7 +184,7 @@ impl<'a> DrawMgr<'a> {
 
     /// Draw a frame inside the given `rect`
     ///
-    /// The frame dimensions are given by [`SizeMgr::frame`].
+    /// The frame dimensions are given by [`SizeCx::frame`].
     pub fn frame(&mut self, rect: Rect, style: FrameStyle, bg: Background) {
         self.h.frame(&self.id, rect, style, bg)
     }
@@ -197,7 +197,7 @@ impl<'a> DrawMgr<'a> {
     /// Draw a selection highlight / frame
     ///
     /// Adjusts the background color and/or draws a line around the given rect.
-    /// In the latter case, a margin of size [`SizeMgr::inner_margins`] around
+    /// In the latter case, a margin of size [`SizeCx::inner_margins`] around
     /// `rect` is expected.
     pub fn selection(&mut self, rect: Rect, style: SelectionStyle) {
         self.h.selection(rect, style);
@@ -208,7 +208,7 @@ impl<'a> DrawMgr<'a> {
     /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
     /// scrolls, `rect` should be the size of the whole text, not the window.
     ///
-    /// [`ConfigMgr::text_set_size`] should be called prior to this method to
+    /// [`ConfigCx::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text(&mut self, rect: Rect, text: impl AsRef<TextDisplay>, class: TextClass) {
         self.h.text(&self.id, rect, text.as_ref(), class);
@@ -223,7 +223,7 @@ impl<'a> DrawMgr<'a> {
     /// emphasis, text size. In addition, this method supports underline and
     /// strikethrough effects.
     ///
-    /// [`ConfigMgr::text_set_size`] should be called prior to this method to
+    /// [`ConfigCx::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text_effects(&mut self, rect: Rect, text: &dyn TextApi, class: TextClass) {
         self.h.text_effects(&self.id, rect, text, class);
@@ -261,7 +261,7 @@ impl<'a> DrawMgr<'a> {
     /// The text cursor is draw from `rect.pos` and clipped to `rect`. If the text
     /// scrolls, `rect` should be the size of the whole text, not the window.
     ///
-    /// [`ConfigMgr::text_set_size`] should be called prior to this method to
+    /// [`ConfigCx::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text_cursor(
         &mut self,
@@ -331,7 +331,7 @@ impl<'a> DrawMgr<'a> {
     }
 }
 
-impl<'a> std::ops::BitOrAssign<Action> for DrawMgr<'a> {
+impl<'a> std::ops::BitOrAssign<Action> for DrawCx<'a> {
     #[inline]
     fn bitor_assign(&mut self, action: Action) {
         self.h.components().2.send_action(action);
@@ -417,7 +417,7 @@ pub trait ThemeDraw {
 
     /// Draw text
     ///
-    /// [`ConfigMgr::text_set_size`] should be called prior to this method to
+    /// [`ConfigCx::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text(&mut self, id: &WidgetId, rect: Rect, text: &TextDisplay, class: TextClass);
 
@@ -427,11 +427,11 @@ pub trait ThemeDraw {
     /// emphasis, text size. In addition, this method supports underline and
     /// strikethrough effects.
     ///
-    /// [`ConfigMgr::text_set_size`] should be called prior to this method to
+    /// [`ConfigCx::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text_effects(&mut self, id: &WidgetId, rect: Rect, text: &dyn TextApi, class: TextClass);
 
-    /// Method used to implement [`DrawMgr::text_selected`]
+    /// Method used to implement [`DrawCx::text_selected`]
     fn text_selected_range(
         &mut self,
         id: &WidgetId,
@@ -443,7 +443,7 @@ pub trait ThemeDraw {
 
     /// Draw an edit marker at the given `byte` index on this `text`
     ///
-    /// [`ConfigMgr::text_set_size`] should be called prior to this method to
+    /// [`ConfigCx::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text_cursor(
         &mut self,
@@ -518,11 +518,11 @@ pub trait ThemeDraw {
 mod test {
     use super::*;
 
-    fn _draw_ext(mut draw: DrawMgr) {
+    fn _draw_ext(mut draw: DrawCx) {
         // We can't call this method without constructing an actual ThemeDraw.
         // But we don't need to: we just want to test that methods are callable.
 
-        let _scale = draw.size_mgr().scale_factor();
+        let _scale = draw.size_cx().scale_factor();
 
         let text = crate::text::Text::new("sample");
         let class = TextClass::Label(false);

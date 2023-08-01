@@ -7,7 +7,7 @@
 
 use super::Filter;
 use crate::{ListData, SharedData};
-use kas::event::{ConfigMgr, EventMgr, Response};
+use kas::event::{ConfigCx, EventCx};
 use kas::{autoimpl, impl_scope, Events, Widget};
 use kas_widgets::edit::{EditBox, EditField, EditGuard};
 use std::fmt::Debug;
@@ -25,7 +25,7 @@ pub struct KeystrokeGuard;
 impl EditGuard for KeystrokeGuard {
     type Data = ();
 
-    fn edit(edit: &mut EditField<Self>, _: &Self::Data, cx: &mut EventMgr) {
+    fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Self::Data) {
         cx.push(SetFilter(edit.to_string()));
     }
 }
@@ -40,14 +40,9 @@ pub struct AflGuard;
 impl EditGuard for AflGuard {
     type Data = ();
 
-    fn activate(edit: &mut EditField<Self>, _: &Self::Data, cx: &mut EventMgr) -> Response {
-        cx.push(SetFilter(edit.to_string()));
-        Response::Used
-    }
-
     #[inline]
-    fn focus_lost(edit: &mut EditField<Self>, data: &Self::Data, cx: &mut EventMgr) {
-        Self::activate(edit, data, cx);
+    fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Self::Data) {
+        cx.push(SetFilter(edit.to_string()));
     }
 }
 
@@ -94,9 +89,9 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_messages(&mut self, data: &A, mgr: &mut EventMgr) {
-            if let Some(SetFilter(value)) = mgr.try_pop() {
-                mgr.config_mgr(|mgr| self.list.set_filter(data, mgr, value));
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
+            if let Some(SetFilter(value)) = cx.try_pop() {
+                cx.config_cx(|cx| self.list.set_filter(cx, data, value));
             }
         }
     }
@@ -144,9 +139,9 @@ impl_scope! {
         }
 
         /// Set filter value
-        pub fn set_filter(&mut self, data: &A, mgr: &mut ConfigMgr, filter: F::Value) {
+        pub fn set_filter(&mut self, cx: &mut ConfigCx, data: &A, filter: F::Value) {
             if self.filter.set_filter(filter) {
-                mgr.update(self.as_node(data));
+                cx.update(self.as_node(data));
             }
         }
     }
@@ -154,7 +149,7 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn update(&mut self, data: &A, _: &mut kas::event::ConfigMgr) {
+        fn update(&mut self, _: &mut kas::event::ConfigCx, data: &A) {
             self.view.clear();
             self.view.reserve(data.len());
             for key in data.iter_from(0, usize::MAX) {
@@ -166,9 +161,9 @@ impl_scope! {
             }
         }
 
-        fn handle_messages(&mut self, data: &A, mgr: &mut EventMgr) {
-            if let Some(SetFilter(value)) = mgr.try_pop() {
-                mgr.config_mgr(|mgr| self.set_filter(data, mgr, value));
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
+            if let Some(SetFilter(value)) = cx.try_pop() {
+                cx.config_cx(|cx| self.set_filter(cx, data, value));
             }
         }
     }

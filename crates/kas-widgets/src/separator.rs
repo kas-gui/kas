@@ -34,11 +34,11 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            size_mgr.feature(kas::theme::Feature::Separator, axis)
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            sizer.feature(kas::theme::Feature::Separator, axis)
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             draw.separator(self.rect());
         }
     }

@@ -230,21 +230,21 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            self.scaling.size_rules(size_mgr, axis)
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            self.scaling.size_rules(sizer, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
-            let scale_factor = mgr.size_mgr().scale_factor();
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+            let scale_factor = cx.size_cx().scale_factor();
             self.core.rect = self.scaling.align_rect(rect, scale_factor);
             let size: (u32, u32) = self.core.rect.size.cast();
 
             if let Some(fut) = self.inner.resize(size) {
-                mgr.ev_state().push_spawn(self.id(), fut);
+                cx.ev_state().push_spawn(self.id(), fut);
             }
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             if let Some(id) = self.image.as_ref().map(|h| h.id()) {
                 draw.image(self.rect(), id);
             }
@@ -254,10 +254,10 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_messages(&mut self, _: &Self::Data, mgr: &mut EventMgr) {
-            if let Some(pixmap) = mgr.try_pop::<Pixmap>() {
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(pixmap) = cx.try_pop::<Pixmap>() {
                 let size = (pixmap.width(), pixmap.height());
-                mgr.draw_shared(|ds| {
+                cx.draw_shared(|ds| {
                     if let Some(im_size) = self.image.as_ref().and_then(|h| ds.image_size(h)) {
                         if im_size != Size::conv(size) {
                             if let Some(handle) = self.image.take() {
@@ -275,7 +275,7 @@ impl_scope! {
                     }
                 });
 
-                mgr.redraw(self.id());
+                cx.redraw(self.id());
                 let inner = std::mem::replace(&mut self.inner, State::None);
                 self.inner = match inner {
                     State::None => State::None,

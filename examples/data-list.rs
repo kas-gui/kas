@@ -23,7 +23,7 @@ use kas::prelude::*;
 use kas::row;
 use kas::widget::edit::{EditBox, EditField, EditGuard};
 use kas::widget::{
-    Adapt, Label, List, RadioButton, ScrollBarRegion, Separator, StringLabel, Text, TextButton,
+    Adapt, Button, Label, List, RadioButton, ScrollBarRegion, Separator, StringLabel, Text,
 };
 
 #[derive(Debug)]
@@ -83,12 +83,12 @@ struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
     type Data = Data;
 
-    fn activate(edit: &mut EditField<Self>, _: &Data, cx: &mut EventMgr) -> Response {
+    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Data) -> Response {
         cx.push(SelectEntry(edit.guard.0));
         Response::Used
     }
 
-    fn edit(edit: &mut EditField<Self>, data: &Data, cx: &mut EventMgr) {
+    fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Data) {
         if data.active == edit.guard.0 {
             cx.push(Control::UpdateCurrent(edit.get_string()));
         }
@@ -116,7 +116,7 @@ impl_scope! {
     impl Events for Self {
         type Data = Data;
 
-        fn handle_messages(&mut self, data: &Data, cx: &mut EventMgr) {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &Data) {
             if let Some(SelectEntry(n)) = cx.try_pop() {
                 if data.active != n {
                     cx.push(Control::Select(n, self.edit.get_string()));
@@ -149,27 +149,26 @@ fn main() -> kas::shell::Result<()> {
         EditBox::parser(|n| *n, Control::SetLen),
         kas::row![
             // This button is just a click target; it doesn't do anything!
-            TextButton::new_msg("Set", Control::None),
-            TextButton::new_msg("−", Control::DecrLen),
-            TextButton::new_msg("+", Control::IncrLen),
-            TextButton::new_msg("↓↑", Control::Reverse),
+            Button::label_msg("Set", Control::None),
+            Button::label_msg("−", Control::DecrLen),
+            Button::label_msg("+", Control::IncrLen),
+            Button::label_msg("↓↑", Control::Reverse),
         ]
         .map_any(),
     ];
 
-    let entries = vec![ListEntry::new(0), ListEntry::new(1), ListEntry::new(2)];
     let data = Data {
-        len: entries.len(),
+        len: 5,
         active: 0,
         dir: Direction::Down,
-        active_string: entries[0].label.get_string(),
+        active_string: ListEntry::new(0).label.get_string(),
     };
 
-    let list = List::new_dir_vec(data.dir, entries).on_update(|cx, list, data| {
+    let list = List::new([]).on_update(|cx, list, data: &Data| {
         *cx |= list.set_direction(data.dir);
         let len = data.len;
         if len != list.len() {
-            list.resize_with(data, cx, len, ListEntry::new);
+            list.resize_with(cx, data, len, ListEntry::new);
         }
     });
     let tree = kas::column![

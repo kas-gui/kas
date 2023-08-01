@@ -152,16 +152,16 @@ impl_scope! {
     }
 
     impl Layout for Image {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            self.scaling.size_rules(size_mgr, axis)
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            self.scaling.size_rules(sizer, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
-            let scale_factor = mgr.size_mgr().scale_factor();
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+            let scale_factor = cx.size_cx().scale_factor();
             self.core.rect = self.scaling.align_rect(rect, scale_factor);
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             if let Some(id) = self.handle.as_ref().map(|h| h.id()) {
                 draw.image(self.rect(), id);
             }

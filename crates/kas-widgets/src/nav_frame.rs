@@ -44,10 +44,10 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_event(&mut self, _: &Self::Data, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
                 Event::Command(cmd) if cmd.is_activate() => {
-                    mgr.push(kas::message::Select);
+                    cx.push(kas::message::Select);
                     Response::Used
                 }
                 _ => Response::Unused,

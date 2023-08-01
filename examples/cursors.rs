@@ -44,7 +44,7 @@ fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     // These are winit::window::CursorIcon enum variants
-    let column = Column::new_vec(vec![
+    let column = Column::new([
         cursor!(Default),
         cursor!(Crosshair),
         cursor!(Hand),

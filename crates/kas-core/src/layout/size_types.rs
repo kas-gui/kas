@@ -13,7 +13,7 @@ use crate::theme::MarginStyle;
 use kas_macros::impl_scope;
 
 // for doc use
-#[allow(unused)] use crate::theme::SizeMgr;
+#[allow(unused)] use crate::theme::SizeCx;
 
 /// Logical (pre-scaling) pixel size
 ///
@@ -245,9 +245,9 @@ impl_scope! {
 
 impl PixmapScaling {
     /// Generates `size_rules` based on size
-    pub fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-        let margins = mgr.margins(self.margins).extract(axis);
-        let scale_factor = mgr.scale_factor();
+    pub fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        let margins = sizer.margins(self.margins).extract(axis);
+        let scale_factor = sizer.scale_factor();
         let min = self
             .size
             .to_physical(scale_factor * self.min_factor)

@@ -93,18 +93,18 @@ struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
     type Data = Item;
 
-    fn update(edit: &mut EditField<Self>, data: &Item, cx: &mut ConfigMgr) {
-        if !edit.has_key_focus() {
+    fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &Item) {
+        if !edit.has_edit_focus() {
             *cx |= edit.set_string(data.1.clone());
         }
     }
 
-    fn activate(edit: &mut EditField<Self>, _: &Item, cx: &mut EventMgr) -> Response {
+    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Item) -> Response {
         cx.push(SelectEntry(edit.guard.0));
         Response::Used
     }
 
-    fn edit(edit: &mut EditField<Self>, _: &Item, cx: &mut EventMgr) {
+    fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Item) {
         cx.push(Control::Update(edit.guard.0, edit.get_string()));
     }
 }
@@ -130,7 +130,7 @@ impl_scope! {
     impl Events for Self {
         type Data = Item;
 
-        fn handle_messages(&mut self, data: &Item, cx: &mut EventMgr) {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &Item) {
             if let Some(SelectEntry(n)) = cx.try_pop() {
                 if data.0 != n {
                     cx.push(Control::Select(n, self.edit.get_string()));
@@ -215,10 +215,10 @@ fn main() -> kas::shell::Result<()> {
         EditBox::parser(|n| *n, Control::SetLen),
         kas::row![
             // This button is just a click target; it doesn't do anything!
-            TextButton::new_msg("Set", Control::None),
-            TextButton::new_msg("−", Control::DecrLen),
-            TextButton::new_msg("+", Control::IncrLen),
-            TextButton::new_msg("↓↑", Control::Reverse),
+            Button::label_msg("Set", Control::None),
+            Button::label_msg("−", Control::DecrLen),
+            Button::label_msg("+", Control::IncrLen),
+            Button::label_msg("↓↑", Control::Reverse),
         ]
         .map_any(),
     ];

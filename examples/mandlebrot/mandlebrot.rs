@@ -327,16 +327,16 @@ impl_scope! {
     }
 
     impl Layout for Mandlebrot {
-        fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             // We use a reasonable minimum size of 300x200 and a large ideal
             // size of 3000x2000: the initial size should fill the screen.
             kas::layout::LogicalSize(300.0, 200.0)
-                .to_rules_with_factor(axis, mgr.scale_factor(), 10.0)
+                .to_rules_with_factor(axis, sizer.scale_factor(), 10.0)
                 .with_stretch(Stretch::High)
         }
 
         #[inline]
-        fn set_rect(&mut self, _: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
             let size = DVec2::conv(rect.size);
             let rel_width = DVec2(size.0 / size.1, 1.0);
@@ -345,7 +345,7 @@ impl_scope! {
             self.rel_width = rel_width.0 as f32;
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawCx) {
             let draw = draw.draw_device();
             let draw = DrawIface::<DrawPipe<Pipe>>::downcast_from(draw).unwrap();
             let p = (self.alpha, self.delta, self.rel_width, self.iters);
@@ -356,11 +356,11 @@ impl_scope! {
     impl Events for Mandlebrot {
         type Data = i32;
 
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
-            mgr.register_nav_fallback(self.id());
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.register_nav_fallback(self.id());
         }
 
-        fn update(&mut self, data: &i32, _: &mut ConfigMgr) {
+        fn update(&mut self, _: &mut ConfigCx, data: &i32) {
             self.iters = *data;
         }
 
@@ -368,7 +368,7 @@ impl_scope! {
             true
         }
 
-        fn handle_event(&mut self, _: &i32, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &i32, event: Event) -> Response {
             match event {
                 Event::Command(cmd) => {
                     match cmd {
@@ -387,7 +387,7 @@ impl_scope! {
                             self.delta += self.alpha.complex_mul(delta);
                         }
                     }
-                    mgr.push(ViewUpdate);
+                    cx.push(ViewUpdate);
                 }
                 Event::Scroll(delta) => {
                     let factor = match delta {
@@ -395,7 +395,7 @@ impl_scope! {
                         event::ScrollDelta::PixelDelta(coord) => -0.01 * coord.1 as f64,
                     };
                     self.alpha = self.alpha * 2f64.powf(factor);
-                    mgr.push(ViewUpdate);
+                    cx.push(ViewUpdate);
                 }
                 Event::Pan { alpha, delta } => {
                     // Our full transform (from screen coordinates to world coordinates) is:
@@ -412,13 +412,13 @@ impl_scope! {
                         + (self.alpha - new_alpha).complex_mul(self.view_delta);
                     self.alpha = new_alpha;
 
-                    mgr.push(ViewUpdate);
+                    cx.push(ViewUpdate);
                 }
                 Event::PressStart { press } => {
                     return press.grab(self.id())
                         .with_mode(event::GrabMode::PanFull)
                         .with_icon(event::CursorIcon::Grabbing)
-                        .with_mgr(mgr);
+                        .with_cx(cx);
                 }
                 _ => return Response::Unused,
             }
@@ -456,9 +456,9 @@ impl_scope! {
                 core: Default::default(),
                 label: format_data!(mbrot: &Mandlebrot, "{}", mbrot.loc()),
                 iters_label: format_value!("{}")
-                    .with_reserve(|size_mgr, axis| Label::new("000").size_rules(size_mgr, axis)),
+                    .with_reserve(|sizer, axis| Label::new("000").size_rules(sizer, axis)),
                 slider: Slider::up(0..=256, |_, iters| *iters)
-                    .msg_on_move(|iters| iters),
+                    .with_msg(|iters| iters),
                 mbrot: Mandlebrot::new(),
                 iters: 64,
             }
@@ -467,15 +467,15 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_messages(&mut self, data: &(), mgr: &mut EventMgr) {
-            if let Some(iters) = mgr.try_pop() {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &()) {
+            if let Some(iters) = cx.try_pop() {
                 self.iters = iters;
-            } else if let Some(ViewUpdate) = mgr.try_pop() {
-                mgr.redraw(self.mbrot.id());
+            } else if let Some(ViewUpdate) = cx.try_pop() {
+                cx.redraw(self.mbrot.id());
             } else {
                 return;
             }
-            mgr.update(self.as_node(data));
+            cx.update(self.as_node(data));
         }
     }
 }

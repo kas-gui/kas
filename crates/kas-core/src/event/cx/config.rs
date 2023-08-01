@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Size and EventState manager
+//! Configuration context
 
 use super::Pending;
 use crate::draw::DrawShared;
@@ -12,19 +12,19 @@ use crate::geom::{Rect, Size};
 use crate::layout::AlignPair;
 use crate::shell::Platform;
 use crate::text::TextApi;
-use crate::theme::{Feature, SizeMgr, TextClass, ThemeSize};
+use crate::theme::{Feature, SizeCx, TextClass, ThemeSize};
 use crate::{Action, Node, WidgetId};
 use std::ops::{Deref, DerefMut, RangeBounds};
 
 #[allow(unused)] use crate::{event::Event, Events};
 
-/// Manager used to configure widgets and layout
+/// Widget configuration and update context
 ///
 /// This type supports easy access to [`EventState`] (via [`Deref`],
-/// [`DerefMut`] and [`Self::ev_state`]) as well as [`SizeMgr`]
-/// ([`Self::size_mgr`]) and [`DrawShared`] ([`Self::draw_shared`]).
+/// [`DerefMut`] and [`Self::ev_state`]) as well as [`SizeCx`]
+/// ([`Self::size_cx`]) and [`DrawShared`] ([`Self::draw_shared`]).
 #[must_use]
-pub struct ConfigMgr<'a> {
+pub struct ConfigCx<'a> {
     sh: &'a dyn ThemeSize,
     ds: &'a mut dyn DrawShared,
     pub(crate) ev: &'a mut EventState,
@@ -32,12 +32,12 @@ pub struct ConfigMgr<'a> {
     pub(crate) recurse_end: Option<usize>,
 }
 
-impl<'a> ConfigMgr<'a> {
+impl<'a> ConfigCx<'a> {
     /// Construct
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn new(sh: &'a dyn ThemeSize, ds: &'a mut dyn DrawShared, ev: &'a mut EventState) -> Self {
-        ConfigMgr {
+        ConfigCx {
             sh,
             ds,
             ev,
@@ -51,10 +51,10 @@ impl<'a> ConfigMgr<'a> {
         self.ds.platform()
     }
 
-    /// Access a [`SizeMgr`]
+    /// Access a [`SizeCx`]
     #[inline]
-    pub fn size_mgr(&self) -> SizeMgr<'a> {
-        SizeMgr::new(self.sh)
+    pub fn size_cx(&self) -> SizeCx<'a> {
+        SizeCx::new(self.sh)
     }
 
     /// Access [`DrawShared`]
@@ -148,7 +148,7 @@ impl<'a> ConfigMgr<'a> {
     /// then performs the text preparation necessary before display.
     ///
     /// Note: setting alignment here is not necessary when the default alignment
-    /// is desired or when [`SizeMgr::text_rules`] is used.
+    /// is desired or when [`SizeCx::text_rules`] is used.
     #[inline]
     pub fn text_set_size(
         &self,
@@ -161,20 +161,20 @@ impl<'a> ConfigMgr<'a> {
     }
 }
 
-impl<'a> std::ops::BitOrAssign<Action> for ConfigMgr<'a> {
+impl<'a> std::ops::BitOrAssign<Action> for ConfigCx<'a> {
     #[inline]
     fn bitor_assign(&mut self, action: Action) {
         self.ev.send_action(action);
     }
 }
 
-impl<'a> Deref for ConfigMgr<'a> {
+impl<'a> Deref for ConfigCx<'a> {
     type Target = EventState;
     fn deref(&self) -> &EventState {
         self.ev
     }
 }
-impl<'a> DerefMut for ConfigMgr<'a> {
+impl<'a> DerefMut for ConfigCx<'a> {
     fn deref_mut(&mut self) -> &mut EventState {
         self.ev
     }

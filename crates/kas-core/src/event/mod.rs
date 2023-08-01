@@ -12,7 +12,7 @@
 //! A [`WidgetId`] represents a *path* and may be used to find the most
 //! direct root from the root to the target.
 //!
-//! An [`Event`] is [sent](EventMgr::send) to a target widget as follows:
+//! An [`Event`] is [sent](EventCx::send) to a target widget as follows:
 //!
 //! 1.  Determine the target's [`WidgetId`]. For example, this may be
 //!     the [`nav_focus`](EventState::nav_focus) or may be determined from
@@ -33,11 +33,11 @@
 //! 6.  Unwind, traversing back *up* the widget tree (towards the root).
 //!     On each node (excluding the target),
 //!
-//!     -   If a non-empty scroll action is [set](EventMgr::set_scroll),
+//!     -   If a non-empty scroll action is [set](EventCx::set_scroll),
 //!         call [`Events::handle_scroll`]
 //!     -   If the event has not yet been [used](Response::Used),
 //!         call [`Events::handle_event`]
-//!     -   If the message stack is non-empty (see [`EventMgr::push`]),
+//!     -   If the message stack is non-empty (see [`EventCx::push`]),
 //!         call [`Events::handle_messages`].
 //! 7.  If the message stack is not empty, call [`AppState::handle_messages`](crate::AppState::handle_messages).
 //! 8.  Clear any messages still on the message stack, printing a warning to the
@@ -57,13 +57,12 @@
 //! [`WidgetId`]: crate::WidgetId
 //! [`Unused`]: Response::Unused
 
+pub mod components;
 pub mod config;
+mod cx;
 #[cfg(not(feature = "winit"))] mod enums;
 mod events;
-mod manager;
 mod response;
-
-pub mod components;
 
 use smallvec::SmallVec;
 
@@ -73,10 +72,10 @@ pub use winit::event::{ModifiersState, MouseButton, VirtualKeyCode};
 
 #[allow(unused)] use crate::{Events, Widget};
 #[doc(no_inline)] pub use config::Config;
+pub use cx::*;
 #[cfg(not(feature = "winit"))]
 pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
 pub use events::*;
-pub use manager::*;
 pub use response::{Response, Scroll};
 
 /// A type supporting a small number of key bindings

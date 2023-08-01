@@ -14,11 +14,11 @@ use crate::cast::Conv;
 use crate::draw::DrawShared;
 use crate::event::config::ChangeConfig;
 use crate::geom::{Offset, Vec2};
-use crate::theme::{SizeMgr, ThemeControl};
+use crate::theme::{SizeCx, ThemeControl};
 use crate::{Action, Erased, WidgetId, Window, WindowId};
 #[allow(unused)] use crate::{Events, Layout}; // for doc-links
 
-impl<'a> std::ops::BitOrAssign<Action> for EventMgr<'a> {
+impl<'a> std::ops::BitOrAssign<Action> for EventCx<'a> {
     #[inline]
     fn bitor_assign(&mut self, action: Action) {
         self.send_action(action);
@@ -228,7 +228,7 @@ impl EventState {
 
             row.0 = time;
             log::trace!(
-                target: "kas_core::event::manager",
+                target: "kas_core::event",
                 "request_timer_update: update {id} at now+{}ms",
                 delay.as_millis()
             );
@@ -242,7 +242,7 @@ impl EventState {
     /// Notify that a widget must be redrawn
     ///
     /// Note: currently, only full-window redraws are supported, thus this is
-    /// equivalent to: `mgr.send_action(Action::REDRAW);`
+    /// equivalent to: `cx.send_action(Action::REDRAW);`
     #[inline]
     pub fn redraw(&mut self, _id: WidgetId) {
         // Theoretically, notifying by WidgetId allows selective redrawing
@@ -254,7 +254,7 @@ impl EventState {
     ///
     /// This causes the given action to happen after event handling.
     ///
-    /// Calling `mgr.send_action(action)` is equivalent to `*mgr |= action`.
+    /// Calling `cx.send_action(action)` is equivalent to `*cx |= action`.
     ///
     /// Whenever a widget is added, removed or replaced, a reconfigure action is
     /// required. Should a widget's size requirements change, these will only
@@ -275,7 +275,7 @@ impl EventState {
     /// respond to navigation keys when no widget has focus.
     pub fn register_nav_fallback(&mut self, id: WidgetId) {
         if self.nav_fallback.is_none() {
-            log::debug!(target: "kas_core::event::manager","register_nav_fallback: id={id}");
+            log::debug!(target: "kas_core::event","register_nav_fallback: id={id}");
             self.nav_fallback = Some(id);
         }
     }
@@ -410,7 +410,7 @@ impl EventState {
             }
         }
         if redraw {
-            log::trace!(target: "kas_core::event::manager", "set_grab_depress: target={target:?}");
+            log::trace!(target: "kas_core::event", "set_grab_depress: target={target:?}");
             self.send_action(Action::REDRAW);
         }
         redraw
@@ -448,7 +448,7 @@ impl EventState {
                 .push_back(Pending::Send(id, Event::LostNavFocus));
         }
         self.clear_char_focus();
-        log::trace!(target: "kas_core::event::manager", "clear_nav_focus");
+        log::trace!(target: "kas_core::event", "clear_nav_focus");
     }
 
     /// Set the keyboard navigation focus directly
@@ -476,7 +476,7 @@ impl EventState {
             self.clear_char_focus();
         }
         self.nav_focus = Some(id.clone());
-        log::trace!(target: "kas_core::event::manager", "set_nav_focus: {id}");
+        log::trace!(target: "kas_core::event", "set_nav_focus: {id}");
         self.pending
             .push_back(Pending::Send(id, Event::NavFocus(key_focus)));
     }
@@ -526,11 +526,11 @@ impl EventState {
     /// high-CPU tasks use [`Self::push_spawn`] instead.
     ///
     /// The future must resolve to a message on completion. This message is
-    /// pushed to the message stack as if it were pushed with [`EventMgr::push`]
+    /// pushed to the message stack as if it were pushed with [`EventCx::push`]
     /// from widget `id`, allowing this widget or any ancestor to handle it in
     /// [`Events::handle_messages`].
     //
-    // TODO: Can we identify the calling widget `id` via the context (EventMgr)?
+    // TODO: Can we identify the calling widget `id` via the context (EventCx)?
     pub fn push_async<Fut, M>(&mut self, id: WidgetId, fut: Fut)
     where
         Fut: IntoFuture<Output = M> + 'static,
@@ -596,25 +596,25 @@ impl EventState {
 }
 
 /// Public API
-impl<'a> EventMgr<'a> {
+impl<'a> EventCx<'a> {
     /// Configure a widget
     ///
     /// Note that, when handling events, this method returns the *old* state.
     ///
-    /// This is a shortcut to [`ConfigMgr::configure`].
+    /// This is a shortcut to [`ConfigCx::configure`].
     #[inline]
     pub fn configure(&mut self, mut widget: Node<'_>, id: WidgetId) {
-        self.config_mgr(|mgr| widget._configure(mgr, id));
+        self.config_cx(|cx| widget._configure(cx, id));
     }
 
     /// Update a widget
     ///
     /// [`Events::update`] will be called recursively on each child and finally
     /// `self`. If a widget stores state which it passes to children as input
-    /// data, it should call this (or [`ConfigMgr::update`]) after mutating the state.
+    /// data, it should call this (or [`ConfigCx::update`]) after mutating the state.
     #[inline]
     pub fn update(&mut self, mut widget: Node<'_>) {
-        self.config_mgr(|mgr| widget._update(mgr));
+        self.config_cx(|cx| widget._update(cx));
     }
 
     /// Get the index of the last child visited
@@ -653,8 +653,8 @@ impl<'a> EventMgr<'a> {
     /// The message is first type-erased by wrapping with [`Erased`],
     /// then pushed to the stack.
     ///
-    /// The message may be [popped](EventMgr::try_pop) or
-    /// [observed](EventMgr::try_observe) from [`Events::handle_messages`]
+    /// The message may be [popped](EventCx::try_pop) or
+    /// [observed](EventCx::try_observe) from [`Events::handle_messages`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn push<M: Debug + 'static>(&mut self, msg: M) {
         self.push_erased(Erased::new(msg));
@@ -664,8 +664,8 @@ impl<'a> EventMgr<'a> {
     ///
     /// This is a lower-level variant of [`Self::push`].
     ///
-    /// The message may be [popped](EventMgr::try_pop) or
-    /// [observed](EventMgr::try_observe) from [`Events::handle_messages`]
+    /// The message may be [popped](EventCx::try_pop) or
+    /// [observed](EventCx::try_observe) from [`Events::handle_messages`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn push_erased(&mut self, msg: Erased) {
         self.messages.push_erased(msg);
@@ -717,13 +717,13 @@ impl<'a> EventMgr<'a> {
     /// It is recommended to call [`EventState::set_nav_focus`] or
     /// [`EventState::next_nav_focus`] after this method.
     ///
-    /// A pop-up may be closed by calling [`EventMgr::close_window`] with
+    /// A pop-up may be closed by calling [`EventCx::close_window`] with
     /// the [`WindowId`] returned by this method.
     ///
     /// Returns `None` if window creation is not currently available (but note
     /// that `Some` result does not guarantee the operation succeeded).
     pub fn add_popup(&mut self, popup: crate::Popup) -> Option<WindowId> {
-        log::trace!(target: "kas_core::event::manager", "add_popup: {popup:?}");
+        log::trace!(target: "kas_core::event", "add_popup: {popup:?}");
         let new_id = &popup.id;
         while let Some((_, popup, _)) = self.popups.last() {
             if popup.parent.is_ancestor_of(new_id) {
@@ -839,27 +839,27 @@ impl<'a> EventMgr<'a> {
         self.shell.adjust_theme(Box::new(f));
     }
 
-    /// Access a [`SizeMgr`]
+    /// Access a [`SizeCx`]
     ///
     /// Warning: sizes are calculated using the window's current scale factor.
     /// This may change, even without user action, since some platforms
     /// always initialize windows with scale factor 1.
     /// See also notes on [`Events::configure`].
-    pub fn size_mgr<F: FnOnce(SizeMgr) -> T, T>(&mut self, f: F) -> T {
+    pub fn size_cx<F: FnOnce(SizeCx) -> T, T>(&mut self, f: F) -> T {
         let mut result = None;
         self.shell.size_and_draw_shared(Box::new(|size, _| {
-            result = Some(f(SizeMgr::new(size)));
+            result = Some(f(SizeCx::new(size)));
         }));
         result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
     }
 
-    /// Access a [`ConfigMgr`]
-    pub fn config_mgr<F: FnOnce(&mut ConfigMgr) -> T, T>(&mut self, f: F) -> T {
+    /// Access a [`ConfigCx`]
+    pub fn config_cx<F: FnOnce(&mut ConfigCx) -> T, T>(&mut self, f: F) -> T {
         let mut result = None;
         self.shell
             .size_and_draw_shared(Box::new(|size, draw_shared| {
-                let mut mgr = ConfigMgr::new(size, draw_shared, self.state);
-                result = Some(f(&mut mgr));
+                let mut cx = ConfigCx::new(size, draw_shared, self.state);
+                result = Some(f(&mut cx));
             }));
         result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
     }
