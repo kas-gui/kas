@@ -298,8 +298,9 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect) {
-            self.core.rect = rect;
+        fn set_rect(&mut self, cx: &mut ConfigCx, outer_rect: Rect) {
+            self.core.rect = outer_rect;
+            let mut rect = outer_rect;
             rect.pos += self.frame_offset;
             rect.size -= self.frame_size;
             if self.multi_line() {
@@ -311,6 +312,7 @@ impl_scope! {
                 rect.size.0 = (rect.size.0 - bar_width - self.inner_margin).max(0);
             }
             self.inner.set_rect(cx, rect);
+            self.inner.set_outer_rect(outer_rect, FrameStyle::EditBox);
             self.update_scroll_bar(cx);
         }
 
@@ -331,17 +333,10 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
+            draw.recurse(&mut self.inner);
             if self.max_scroll_offset().1 > 0 {
                 draw.recurse(&mut self.bar);
             }
-            let mut draw = draw.re_id(self.inner.id());
-            let bg = if self.inner.has_error() {
-                Background::Error
-            } else {
-                Background::Default
-            };
-            draw.frame(self.rect(), FrameStyle::EditBox, bg);
-            self.inner.draw(draw);
         }
     }
 
@@ -522,9 +517,7 @@ impl_scope! {
     /// A text-edit field (single- or multi-line)
     ///
     /// This widget implements the mechanics of text layout and event handling.
-    /// It does not draw any background (even to indicate an error state) or
-    /// borders (even to indicate focus), thus usually it is better to use a
-    /// derived type like [`EditBox`] instead.
+    /// If you want a box with a border, use [`EditBox`] instead.
     ///
     /// By default, the editor supports a single-line only;
     /// [`Self::with_multi_line`] and [`Self::with_class`] can be used to change this.
@@ -563,6 +556,8 @@ impl_scope! {
     }]
     pub struct EditField<G: EditGuard = DefaultGuard<()>> {
         core: widget_core!(),
+        outer_rect: Rect,
+        frame_style: FrameStyle,
         view_offset: Offset,
         editable: bool,
         class: TextClass = TextClass::Edit(false),
@@ -603,12 +598,24 @@ impl_scope! {
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
+            self.outer_rect = rect;
             cx.text_set_size(&mut self.text, self.class, rect.size, Some(self.align));
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
         }
 
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            self.outer_rect.contains(coord).then_some(self.id())
+        }
+
         fn draw(&mut self, mut draw: DrawCx) {
+            let bg = if self.has_error() {
+                Background::Error
+            } else {
+                Background::Default
+            };
+            draw.frame(self.outer_rect, self.frame_style, bg);
+
             let mut rect = self.rect();
             rect.size = rect.size.max(self.text_size);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
@@ -840,6 +847,8 @@ impl<G: EditGuard> EditField<G> {
     pub fn new(guard: G) -> EditField<G> {
         EditField {
             core: Default::default(),
+            outer_rect: Rect::ZERO,
+            frame_style: FrameStyle::None,
             view_offset: Default::default(),
             editable: true,
             class: TextClass::Edit(false),
@@ -913,6 +922,23 @@ impl<A: 'static> EditField<StringGuard<A>> {
 }
 
 impl<G: EditGuard> EditField<G> {
+    /// Set outer rect
+    ///
+    /// Optionally, call this immediately after [`Self::set_rect`] with the
+    /// "outer" rect and frame style. In this case, a frame will be drawn using
+    /// this `outer_rect` and `style`. The advantages are:
+    ///
+    /// -   The "error state" background can correctly fill the frame
+    /// -   Clicks on the frame get registered as clicks on self
+    ///
+    /// Any other widgets painted over the `outer_rect` should be drawn after
+    /// the `EditField`.
+    #[inline]
+    pub fn set_outer_rect(&mut self, outer_rect: Rect, style: FrameStyle) {
+        self.outer_rect = outer_rect;
+        self.frame_style = style;
+    }
+
     /// Set the initial text (inline)
     ///
     /// This method should only be used on a new `EditBox`.

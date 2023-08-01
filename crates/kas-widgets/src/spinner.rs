@@ -8,7 +8,7 @@
 use crate::{EditField, EditGuard, MarkButton};
 use kas::event::{Command, ScrollDelta};
 use kas::prelude::*;
-use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
+use kas::theme::{FrameStyle, MarkStyle, TextClass};
 use std::cmp::Ord;
 use std::ops::RangeInclusive;
 
@@ -277,29 +277,13 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-
-            // If coord is over self but not over b_up or b_down, we assign
-            // the event to self.edit without further question.
-            self.b_up.find_id(coord)
-                .or_else(|| self.b_down.find_id(coord))
-                .or_else(|| Some(self.edit.id()))
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+            <Self as kas::layout::AutoLayout>::set_rect(self, cx, rect);
+            self.edit.set_outer_rect(rect, FrameStyle::EditBox);
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            let bg = if self.edit.has_error() {
-                Background::Error
-            } else {
-                Background::Default
-            };
-            {
-                let mut draw = draw.re_id(self.edit.id());
-                draw.frame(self.rect(), FrameStyle::EditBox, bg);
-                self.edit.draw(draw);
-            }
+            draw.recurse(&mut self.edit);
             draw.recurse(&mut self.b_up);
             draw.recurse(&mut self.b_down);
         }
