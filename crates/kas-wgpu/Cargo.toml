@@ -29,7 +29,7 @@ raster = ["kas-text/raster"]
 bytemuck = "1.7.0"
 futures-lite = "1.12"
 log = "0.4"
-wgpu = { version = "0.15.0", features = ["spirv"] }
+wgpu = { version = "0.17.0", features = ["spirv"] }
 thiserror = "1.0.23"
 guillotiere = "0.6.0"
 rustc-hash = "1.0"
