@@ -76,8 +76,11 @@ impl From<MarkStyle> for Feature {
 /// Style of a frame
 ///
 /// A "frame" is an element surrounding another element.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum FrameStyle {
+    /// No frame, just draw the background
+    #[default]
+    None,
     /// A frame for grouping content
     Frame,
     /// A frame around pop-ups

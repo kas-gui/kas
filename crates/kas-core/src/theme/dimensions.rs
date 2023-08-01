@@ -293,6 +293,7 @@ impl<D: 'static> ThemeSize for Window<D> {
     fn frame(&self, style: FrameStyle, _is_vert: bool) -> FrameRules {
         let outer = self.dims.m_large;
         match style {
+            FrameStyle::None => FrameRules::ZERO,
             FrameStyle::Frame => FrameRules::new_sym(self.dims.frame, 0, outer),
             FrameStyle::Window => FrameRules::new_sym(self.dims.frame, 0, 0),
             FrameStyle::Popup => FrameRules::new_sym(self.dims.popup_frame, 0, 0),
