@@ -59,9 +59,12 @@ pub trait EditGuard: Sized {
     /// This function is called when input data is updated.
     ///
     /// Note that this method may be called during editing as a result of a
-    /// message sent by [`Self::edit`] or another cause, thus usually this
-    /// method should do nothing if [`EditField::has_key_focus`]. Instead, it
-    /// may be desirable to update content on [`Self::focus_lost`].
+    /// message sent by [`Self::edit`] or another cause. It is recommended to
+    /// ignore updates for editable widgets with key focus
+    /// ([`EditField::has_edit_focus`]) to avoid overwriting user input;
+    /// [`Self::focus_lost`] may update the content instead.
+    /// For read-only fields this is not recommended (but `has_edit_focus` will
+    /// not be true anyway).
     fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &Self::Data) {
         let _ = (edit, cx, data);
     }
@@ -72,10 +75,18 @@ pub trait EditGuard: Sized {
     /// the Enter/Return key for single-line edit boxes. Its result is returned
     /// from `handle_event`.
     ///
-    /// The default implementation returns [`Response::Unused`].
+    /// The default implementation:
+    ///
+    /// -   If the field is editable, calls [`Self::focus_lost`] and returns
+    ///     returns [`Response::Unused`].
+    /// -   If the field is not editable, returns [`Response::Unused`].
     fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Self::Data) -> Response {
-        let _ = (edit, cx, data);
-        Response::Unused
+        if edit.editable {
+            Self::focus_lost(edit, cx, data);
+            Response::Used
+        } else {
+            Response::Unused
+        }
     }
 
     /// Focus-gained guard
@@ -116,6 +127,7 @@ impl_scope! {
     pub struct StringGuard<A> {
         value_fn: Box<dyn Fn(&A) -> String>,
         msg_fn: Option<Box<dyn Fn(&mut EventCx, &str)>>,
+        edited: bool,
     }
 
     impl Self {
@@ -129,18 +141,15 @@ impl_scope! {
             StringGuard {
                 value_fn: Box::new(value_fn),
                 msg_fn: None,
+                edited: false,
             }
         }
 
         /// Set a message function
         ///
-        /// On field **a**ctivation and **f**ocus **l**oss (AFL), `msg_fn` is
-        /// used to construct a message to be emitted via [`EventCx::push`].
-        ///
-        /// There is no message de-duplication: a message is sent each time the
-        /// field is activated or loses focus even if content remains unchanged.
-        /// TODO: should we change this behaviour to match [`ParseGuard`] which
-        /// does de-duplicate messages?
+        /// On field **a**ctivation and **f**ocus **l**oss (AFL) after an edit,
+        /// `msg_fn` is used to construct a message to be emitted via
+        /// [`EventCx::push`].
         pub fn on_afl<M: Debug + 'static>(mut self, msg_fn: impl Fn(&str) -> M + 'static) -> Self {
             debug_assert!(self.msg_fn.is_none());
             self.msg_fn = Some(Box::new(move |cx, value| cx.push(msg_fn(value))));
@@ -151,28 +160,29 @@ impl_scope! {
     impl EditGuard for Self {
         type Data = A;
 
-        fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, data: &A) -> Response {
-            Self::focus_lost(edit, cx, data);
-            Response::Used
-        }
-
         fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, data: &A) {
-            if let Some(ref msg_fn) = edit.guard.msg_fn {
-                msg_fn(cx, edit.get_str());
-            } else {
-                // Reset data on focus loss (update is inhibited with focus).
-                // We do not do this given a msg_fn since that is expected
-                // to adjust data, thus triggering update with new data.
-                let string = (edit.guard.value_fn)(data);
-                *cx |= edit.set_string(string);
+            if edit.guard.edited {
+                edit.guard.edited = false;
+                if let Some(ref msg_fn) = edit.guard.msg_fn {
+                    return msg_fn(cx, edit.get_str());
+                }
             }
+
+            // Reset data on focus loss (update is inhibited with focus).
+            // No need if we just sent a message (should cause an update).
+            let string = (edit.guard.value_fn)(data);
+            *cx |= edit.set_string(string);
         }
 
         fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
-            if !edit.has_key_focus() {
+            if !edit.has_edit_focus() {
                 let string = (edit.guard.value_fn)(data);
                 *cx |= edit.set_string(string);
             }
+        }
+
+        fn edit(edit: &mut EditField<Self>, _: &mut EventCx, _: &Self::Data) {
+            edit.guard.edited = true;
         }
     }
 }
@@ -198,11 +208,8 @@ impl_scope! {
         ///
         /// On field activation and focus loss when a `T` value is cached (see
         /// previous paragraph), `msg_fn` is used to construct a message to be
-        /// emitted via [`EventCx::push`].
-        ///
-        /// The cached value is cleared when a message is sent by activation or
-        /// focus loss to avoid duplicate messages. TODO: should we change this
-        /// behaviour to match [`StringGuard`] which does not de-duplicate?
+        /// emitted via [`EventCx::push`]. The cached value is then cleared to
+        /// avoid sending duplicate messages.
         pub fn new<M: Debug + 'static>(
             value_fn: impl Fn(&A) -> T + 'static,
             msg_fn: impl Fn(T) -> M + 'static,
@@ -218,18 +225,12 @@ impl_scope! {
     impl EditGuard for Self {
         type Data = A;
 
-        fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, data: &A) -> Response {
-            Self::focus_lost(edit, cx, data);
-            Response::Used
-        }
-
         fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, data: &A) {
             if let Some(value) = edit.guard.parsed.take() {
                 (edit.guard.msg_fn)(cx, value);
             } else {
                 // Reset data on focus loss (update is inhibited with focus).
-                // We do not do this given parsed value since msg_fn is expected
-                // to adjust data, thus triggering update with new data.
+                // No need if we just sent a message (should cause an update).
                 let value = (edit.guard.value_fn)(data);
                 *cx |= edit.set_string(format!("{}", value));
             }
@@ -241,7 +242,7 @@ impl_scope! {
         }
 
         fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
-            if !edit.has_key_focus() {
+            if !edit.has_edit_focus() {
                 let value = (edit.guard.value_fn)(data);
                 *cx |= edit.set_string(format!("{}", value));
                 edit.guard.parsed = None;
@@ -1003,10 +1004,12 @@ impl<G: EditGuard> EditField<G> {
         self
     }
 
-    /// Get whether the widget currently has keyboard input focus
+    /// Get whether the widget has edit focus
+    ///
+    /// This is true when the widget is editable and has keyboard focus.
     #[inline]
-    pub fn has_key_focus(&self) -> bool {
-        self.has_key_focus
+    pub fn has_edit_focus(&self) -> bool {
+        self.editable && self.has_key_focus
     }
 
     /// Get whether the input state is erroneous

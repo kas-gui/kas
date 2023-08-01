@@ -130,11 +130,6 @@ impl<A, T: SpinnerValue> EditGuard for SpinnerGuard<A, T> {
         *cx |= edit.set_string(value.to_string());
     }
 
-    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, data: &A) -> Response {
-        Self::focus_lost(edit, cx, data);
-        Response::Used
-    }
-
     fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, data: &A) {
         if let Some(value) = edit.guard.parsed.take() {
             cx.push(ValueMsg(value));

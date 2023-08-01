@@ -7,7 +7,7 @@
 
 use super::Filter;
 use crate::{ListData, SharedData};
-use kas::event::{ConfigCx, EventCx, Response};
+use kas::event::{ConfigCx, EventCx};
 use kas::{autoimpl, impl_scope, Events, Widget};
 use kas_widgets::edit::{EditBox, EditField, EditGuard};
 use std::fmt::Debug;
@@ -40,14 +40,9 @@ pub struct AflGuard;
 impl EditGuard for AflGuard {
     type Data = ();
 
-    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Self::Data) -> Response {
-        cx.push(SetFilter(edit.to_string()));
-        Response::Used
-    }
-
     #[inline]
-    fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Self::Data) {
-        Self::activate(edit, cx, data);
+    fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Self::Data) {
+        cx.push(SetFilter(edit.to_string()));
     }
 }
 
