@@ -215,10 +215,10 @@ fn main() -> kas::shell::Result<()> {
         EditBox::parser(|n| *n, Control::SetLen),
         kas::row![
             // This button is just a click target; it doesn't do anything!
-            TextButton::new_msg("Set", Control::None),
-            TextButton::new_msg("−", Control::DecrLen),
-            TextButton::new_msg("+", Control::IncrLen),
-            TextButton::new_msg("↓↑", Control::Reverse),
+            Button::label_msg("Set", Control::None),
+            Button::label_msg("−", Control::DecrLen),
+            Button::label_msg("+", Control::IncrLen),
+            Button::label_msg("↓↑", Control::Reverse),
         ]
         .map_any(),
     ];

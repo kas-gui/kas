@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 use kas::event::VirtualKeyCode as VK;
 use kas::prelude::*;
-use kas::widget::{Adapt, EditBox, TextButton};
+use kas::widget::{Adapt, Button, EditBox};
 
 #[derive(Clone, Debug)]
 enum Key {
@@ -34,29 +34,29 @@ fn calc_ui() -> Window<()> {
     // We use map_any to avoid passing input data (not wanted by buttons):
     let buttons = kas::grid! {
         // Key bindings: C, Del
-        (0, 0) => TextButton::new_msg("&clear", Key::Clear).with_keys(&[VK::Delete]),
+        (0, 0) => Button::label_msg("&clear", Key::Clear).with_keys(&[VK::Delete]),
         // Widget is hidden but has key binding.
         // TODO(opt): exclude from layout & drawing.
-        (0, 0) => TextButton::new_msg("", Key::DelBack).with_keys(&[VK::Back]),
-        (1, 0) => TextButton::new_msg("&÷", Key::Divide).with_keys(&[VK::Slash]),
-        (2, 0) => TextButton::new_msg("&×", Key::Multiply).with_keys(&[VK::Asterisk]),
-        (3, 0) => TextButton::new_msg("&−", Key::Subtract),
-        (0, 1) => TextButton::new_msg("&7", Key::Char('7')),
-        (1, 1) => TextButton::new_msg("&8", Key::Char('8')),
-        (2, 1) => TextButton::new_msg("&9", Key::Char('9')),
-        (3, 1..3) => TextButton::new_msg("&+", Key::Add),
-        (0, 2) => TextButton::new_msg("&4", Key::Char('4')),
-        (1, 2) => TextButton::new_msg("&5", Key::Char('5')),
-        (2, 2) => TextButton::new_msg("&6", Key::Char('6')),
-        (0, 3) => TextButton::new_msg("&1", Key::Char('1')),
-        (1, 3) => TextButton::new_msg("&2", Key::Char('2')),
-        (2, 3) => TextButton::new_msg("&3", Key::Char('3')),
+        (0, 0) => Button::label_msg("", Key::DelBack).with_keys(&[VK::Back]),
+        (1, 0) => Button::label_msg("&÷", Key::Divide).with_keys(&[VK::Slash]),
+        (2, 0) => Button::label_msg("&×", Key::Multiply).with_keys(&[VK::Asterisk]),
+        (3, 0) => Button::label_msg("&−", Key::Subtract),
+        (0, 1) => Button::label_msg("&7", Key::Char('7')),
+        (1, 1) => Button::label_msg("&8", Key::Char('8')),
+        (2, 1) => Button::label_msg("&9", Key::Char('9')),
+        (3, 1..3) => Button::label_msg("&+", Key::Add),
+        (0, 2) => Button::label_msg("&4", Key::Char('4')),
+        (1, 2) => Button::label_msg("&5", Key::Char('5')),
+        (2, 2) => Button::label_msg("&6", Key::Char('6')),
+        (0, 3) => Button::label_msg("&1", Key::Char('1')),
+        (1, 3) => Button::label_msg("&2", Key::Char('2')),
+        (2, 3) => Button::label_msg("&3", Key::Char('3')),
         (3, 3..5) => {
-            TextButton::new_msg("&=", Key::Equals)
+            Button::label_msg("&=", Key::Equals)
                 .with_keys(&[VK::Return, VK::NumpadEnter])
         }
-        (0..2, 4) => TextButton::new_msg("&0", Key::Char('0')),
-        (2, 4) => TextButton::new_msg("&.", Key::Char('.')),
+        (0..2, 4) => Button::label_msg("&0", Key::Char('0')),
+        (2, 4) => Button::label_msg("&.", Key::Char('.')),
     }
     .map_any();
 

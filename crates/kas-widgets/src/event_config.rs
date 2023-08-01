@@ -5,7 +5,7 @@
 
 //! Drivers for configuration types
 
-use crate::{adapt::AdaptWidgetAny, CheckButton, ComboBox, Spinner, TextButton};
+use crate::{label, Button, CheckButton, ComboBox, Spinner};
 use kas::event::config::{ChangeConfig, MousePan};
 use kas::prelude::*;
 
@@ -55,7 +55,7 @@ impl_scope! {
             (1..3, 10) => self.touch_nav_focus,
 
             (0, 11) => "Restore default values:",
-            (1..3, 11) => TextButton::new_msg("&Reset", ChangeConfig::ResetToDefault).map_any(),
+            (1..3, 11) => Button::new_msg(label("&Reset"), ChangeConfig::ResetToDefault),
         };
     }]
     #[impl_default(EventConfig::new())]

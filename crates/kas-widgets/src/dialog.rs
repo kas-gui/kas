@@ -13,7 +13,7 @@
 //! At the current time, only a minimal selection of dialog boxes are provided
 //! and their design is likely to change.
 
-use crate::{adapt::AdaptWidgetAny, EditBox, Filler, Label, TextButton};
+use crate::{adapt::AdaptWidgetAny, Button, EditBox, Filler, Label};
 use kas::event::{Command, VirtualKeyCode};
 use kas::prelude::*;
 use kas::text::format::FormattableText;
@@ -31,7 +31,7 @@ impl_scope! {
         #[widget]
         label: Label<T>,
         #[widget]
-        button: TextButton,
+        button: Button<Label<&'static str>>,
     }
 
     impl Self {
@@ -40,7 +40,7 @@ impl_scope! {
             MessageBox {
                 core: Default::default(),
                 label: Label::new(message),
-                button: TextButton::new_msg("Ok", MessageBoxOk).with_keys(&[
+                button: Button::new_msg(Label::new("Ok"), MessageBoxOk).with_keys(&[
                     VirtualKeyCode::Return,
                     VirtualKeyCode::Space,
                     VirtualKeyCode::NumpadEnter,
@@ -86,8 +86,8 @@ impl_scope! {
         layout = grid! {
             (0..3, 0) => self.edit,
             (0, 1) => Filler::maximize(),
-            (1, 1) => TextButton::new_msg("&Cancel", MsgClose(false)),
-            (2, 1) => TextButton::new_msg("&Save", MsgClose(true)),
+            (1, 1) => Button::label_msg("&Cancel", MsgClose(false)),
+            (2, 1) => Button::label_msg("&Save", MsgClose(true)),
         };
     }]
     /// An editor over a `String`

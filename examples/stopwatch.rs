@@ -8,7 +8,7 @@
 use std::time::{Duration, Instant};
 
 use kas::event::{ConfigCx, Event, EventCx, Response};
-use kas::widget::{format_data, TextButton};
+use kas::widget::{format_data, Button};
 use kas::{Decorations, Events, Layout, LayoutExt, Widget, Window};
 
 #[derive(Clone, Debug)]
@@ -21,8 +21,8 @@ fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
         #[widget{
             layout = row! [
                 self.display,
-                TextButton::new_msg("&reset", MsgReset),
-                TextButton::new_msg("&start / &stop", MsgStart),
+                Button::label_msg("&reset", MsgReset),
+                Button::label_msg("&start / &stop", MsgStart),
             ];
         }]
         struct {

@@ -6,7 +6,7 @@
 //! Counter example (simple button)
 
 use kas::prelude::*;
-use kas::widget::{format_value, Adapt, TextButton};
+use kas::widget::{format_value, Adapt, Button};
 
 #[derive(Clone, Debug)]
 struct Increment(i32);
@@ -15,8 +15,8 @@ fn counter() -> impl Widget<Data = ()> {
     let tree = kas::column![
         align!(center, format_value!("{}")),
         kas::row![
-            TextButton::new_msg("−", Increment(-1)),
-            TextButton::new_msg("+", Increment(1)),
+            Button::label_msg("−", Increment(-1)),
+            Button::label_msg("+", Increment(1)),
         ]
         .map_any(),
     ];

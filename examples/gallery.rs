@@ -129,7 +129,7 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
         #[widget{
             layout = row! [
                 format_data!(data: &Data, "{}", &data.text),
-                TextButton::new_msg("&Edit", MsgEdit).map_any(),
+                Button::label_msg("&Edit", MsgEdit).map_any(),
             ];
         }]
         struct {
@@ -318,7 +318,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
     Box::new(singleton! {
         #[widget{
             layout = float! [
-                pack!(right top, TextButton::new_msg("↻", MsgDirection)),
+                pack!(right top, Button::label_msg("↻", MsgDirection)),
                 list!(self.dir, [self.editor, non_navigable!(self.label)]),
             ];
         }]
