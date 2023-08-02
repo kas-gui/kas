@@ -68,13 +68,13 @@ use smallvec::SmallVec;
 
 #[cfg(feature = "winit")]
 pub use winit::event::{ModifiersState, MouseButton, VirtualKeyCode};
-#[cfg(feature = "winit")] pub use winit::window::CursorIcon;
+#[cfg(feature = "winit")]
+pub use winit::window::{CursorIcon, ResizeDirection};
 
 #[allow(unused)] use crate::{Events, Widget};
 #[doc(no_inline)] pub use config::Config;
 pub use cx::*;
-#[cfg(not(feature = "winit"))]
-pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
+#[cfg(not(feature = "winit"))] pub use enums::*;
 pub use events::*;
 pub use response::{Response, Scroll};
 

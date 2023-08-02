@@ -261,11 +261,6 @@ pub(crate) trait ShellWindow {
     /// Close a window
     fn close_window(&mut self, id: WindowId);
 
-    /// Enable window dragging for current click
-    ///
-    /// This calls `winit::window::Window::drag_window`. Errors are ignored.
-    fn drag_window(&self);
-
     /// Attempt to get clipboard contents
     ///
     /// In case of failure, paste actions will simply fail. The implementation

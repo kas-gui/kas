@@ -800,6 +800,30 @@ impl<'a> EventCx<'a> {
         self.shell.close_window(id);
     }
 
+    /// Enable window dragging for current click
+    ///
+    /// This calls [`winit::window::Window::drag_window`](https://docs.rs/winit/latest/winit/window/struct.Window.html#method.drag_window). Errors are ignored.
+    pub fn drag_window(&self) {
+        #[cfg(feature = "winit")]
+        if let Some(ww) = self.shell.winit_window() {
+            if let Err(e) = ww.drag_window() {
+                log::warn!("EventCx::drag_window: {e}");
+            }
+        }
+    }
+
+    /// Enable window resizing for the current click
+    ///
+    /// This calls [`winit::window::Window::drag_resize_window`](https://docs.rs/winit/latest/winit/window/struct.Window.html#method.drag_resize_window). Errors are ignored.
+    pub fn drag_resize_window(&self, direction: ResizeDirection) {
+        #[cfg(feature = "winit")]
+        if let Some(ww) = self.shell.winit_window() {
+            if let Err(e) = ww.drag_resize_window(direction) {
+                log::warn!("EventCx::drag_resize_window: {e}");
+            }
+        }
+    }
+
     /// Attempt to get clipboard contents
     ///
     /// In case of failure, paste actions will simply fail. The implementation

@@ -562,12 +562,6 @@ where
         self.shared.pending.push(PendingAction::CloseWindow(id));
     }
 
-    fn drag_window(&self) {
-        if let Some(window) = self.window {
-            let _result = window.drag_window();
-        }
-    }
-
     #[inline]
     fn get_clipboard(&mut self) -> Option<String> {
         #[cfg(all(wayland_platform, feature = "clipboard"))]

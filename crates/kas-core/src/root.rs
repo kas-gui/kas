@@ -6,7 +6,7 @@
 //! Window widgets
 
 use crate::dir::Directional;
-use crate::event::{ConfigCx, EventCx, Scroll};
+use crate::event::{ConfigCx, Event, EventCx, Response, Scroll};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
@@ -182,6 +182,16 @@ impl_scope! {
 
             if let Some(ref f) = self.config_fn {
                 f(self, cx);
+            }
+        }
+
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+            match event {
+                Event::PressStart { .. } if self.drag_anywhere => {
+                    cx.drag_window();
+                    Response::Used
+                }
+                _ => Response::Unused,
             }
         }
 

@@ -495,11 +495,7 @@ impl<'a> EventCx<'a> {
                         coord,
                     };
                     let event = Event::PressStart { press };
-                    let used = self.send_popup_first(win.as_node(data), self.hover.clone(), event);
-
-                    if !used && self.mouse_grab.is_none() && win.drag_anywhere() {
-                        self.shell.drag_window();
-                    }
+                    let _ = self.send_popup_first(win.as_node(data), self.hover.clone(), event);
                 }
             }
             // TouchpadPressure { pressure: f32, stage: i64, },
