@@ -180,7 +180,7 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
         ],
         row![
             "Button (text)",
-            Button::new_msg(label("&Press me"), Item::Button)
+            Button::label_msg("&Press me", Item::Button).map_any()
         ],
         row![
             "Button (image)",

@@ -5,11 +5,10 @@
 
 //! Push-buttons
 
-use super::Label;
+use super::AccelLabel;
 use kas::draw::color::Rgb;
 use kas::event::{VirtualKeyCode, VirtualKeyCodes};
 use kas::prelude::*;
-use kas::text::format::FormattableText;
 use std::fmt::Debug;
 
 impl_scope! {
@@ -118,14 +117,14 @@ impl_scope! {
         }
     }
 
-    impl<T: FormattableText + 'static> Button<Label<T>> {
+    impl Button<AccelLabel> {
         /// Construct a button with the given `label`
         ///
         /// This is a convenience method. It may be possible to merge this
         /// functionality into [`Button::new`] once Rust has support for
         /// overlapping trait implementations (not specialisation).
-        pub fn label(label: T) -> Self {
-            Button::new(Label::new(label))
+        pub fn label(label: impl Into<AccelString>) -> Self {
+            Button::new(AccelLabel::new(label))
         }
 
         /// Construct a button with the given `label` and payload `msg`
@@ -133,8 +132,11 @@ impl_scope! {
         /// This is a convenience method. It may be possible to merge this
         /// functionality into [`Button::new_msg`] once Rust has support for
         /// overlapping trait implementations (not specialisation).
-        pub fn label_msg<M: Clone + Debug + 'static>(label: T, msg: M) -> Self {
-            Button::new_msg(Label::new(label), msg)
+        pub fn label_msg<M>(label: impl Into<AccelString>, msg: M) -> Self
+        where
+            M: Clone + Debug + 'static,
+        {
+            Button::new_msg(AccelLabel::new(label), msg)
         }
     }
 }
