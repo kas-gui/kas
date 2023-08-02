@@ -25,6 +25,7 @@ impl_scope! {
         state: S,
         #[widget(&self.state)]
         inner: W,
+        event_handler: Option<Box<dyn Fn(&mut EventCx, &A, &mut S, Event) -> Response>>,
         message_handlers: Vec<Box<dyn Fn(&mut EventCx, &A, &mut S) -> bool>>,
         update_handler: Option<Box<dyn Fn(&mut ConfigCx, &A, &mut S)>>,
     }
@@ -37,9 +38,22 @@ impl_scope! {
                 core: Default::default(),
                 state,
                 inner,
+                event_handler: None,
                 message_handlers: vec![],
                 update_handler: None,
             }
+        }
+
+        /// Set a custom event handler
+        ///
+        /// The closure should return [`Response::Used`] if state was updated.
+        pub fn on_event<H>(mut self, handler: H) -> Self
+        where
+            H: Fn(&mut EventCx, &A, &mut S, Event) -> Response + 'static,
+        {
+            debug_assert!(self.event_handler.is_none());
+            self.event_handler = Some(Box::new(handler));
+            self
         }
 
         /// Add a handler on message of type `M`
@@ -93,6 +107,18 @@ impl_scope! {
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             if let Some(handler) = self.update_handler.as_ref() {
                 handler(cx, data, &mut self.state);
+            }
+        }
+
+        fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> Response {
+            if let Some(handler) = self.event_handler.as_ref() {
+                let r = handler(cx, data, &mut self.state, event);
+                if r.is_used() {
+                    cx.update(self.as_node(data));
+                }
+                r
+            } else {
+                Response::Unused
             }
         }
 

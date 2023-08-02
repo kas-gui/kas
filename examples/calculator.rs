@@ -61,16 +61,15 @@ fn calc_ui() -> Window<()> {
     .map_any();
 
     let ui = Adapt::new(kas::column![display, buttons], Calculator::new())
-        .on_message(|_, calc, key| calc.handle(key));
+        .on_message(|_, calc, key| calc.handle(key))
+        .on_configure(|cx, adapt| {
+            cx.disable_nav_focus(true);
 
-    Window::new(ui, "Calculator").on_configure(|window, cx| {
-        cx.disable_nav_focus(true);
+            // Enable key bindings without Alt held:
+            cx.enable_alt_bypass(adapt.id_ref(), true);
+        });
 
-        // Enable key bindings without Alt held:
-        cx.enable_alt_bypass(window.id_ref(), true);
-
-        cx.register_nav_fallback(window.id());
-    })
+    Window::new(ui, "Calculator")
 }
 
 fn main() -> kas::shell::Result<()> {

@@ -77,7 +77,6 @@ impl_scope! {
         restrictions: (bool, bool),
         drag_anywhere: bool,
         transparent: bool,
-        config_fn: Option<Box<dyn Fn(&Self, &mut ConfigCx)>>,
         #[widget]
         inner: Box<dyn Widget<Data = Data>>,
         #[widget(&())]
@@ -212,10 +211,6 @@ impl_scope! {
                 // usually preferred where supported (e.g. KDE).
                 self.decorations = Decorations::Toolkit;
             }
-
-            if let Some(ref f) = self.config_fn {
-                f(self, cx);
-            }
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
@@ -250,7 +245,6 @@ impl<Data: 'static> Window<Data> {
             restrictions: (true, false),
             drag_anywhere: true,
             transparent: false,
-            config_fn: None,
             inner: ui,
             title_bar: TitleBar::new(title),
             b_w: Border::new(ResizeDirection::West),
@@ -358,15 +352,6 @@ impl<Data: 'static> Window<Data> {
     /// Default: `false`.
     pub fn with_transparent(mut self, transparent: bool) -> Self {
         self.transparent = transparent;
-        self
-    }
-
-    /// Set a closure to be called on initialisation
-    ///
-    /// This closure is called before sizing, drawing and event handling.
-    /// It may be called more than once.
-    pub fn on_configure(mut self, config_fn: impl Fn(&Self, &mut ConfigCx) + 'static) -> Self {
-        self.config_fn = Some(Box::new(config_fn));
         self
     }
 
