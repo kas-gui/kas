@@ -5,12 +5,13 @@
 
 //! Window widgets
 
+use crate::cast::Cast;
 use crate::dir::Directional;
-use crate::event::{ConfigCx, Event, EventCx, Response, Scroll};
+use crate::event::{ConfigCx, Event, EventCx, ResizeDirection, Response, Scroll};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
-use crate::title_bar::TitleBar;
+use crate::title_bar::{Border, TitleBar};
 use crate::{Action, Events, Icon, Layout, LayoutExt, Widget, WidgetId};
 use kas_macros::impl_scope;
 use smallvec::SmallVec;
@@ -77,10 +78,18 @@ impl_scope! {
         drag_anywhere: bool,
         transparent: bool,
         config_fn: Option<Box<dyn Fn(&Self, &mut ConfigCx)>>,
+        #[widget]
+        inner: Box<dyn Widget<Data = Data>>,
         #[widget(&())]
         title_bar: TitleBar,
-        #[widget]
-        w: Box<dyn Widget<Data = Data>>,
+        #[widget(&())] b_w: Border,
+        #[widget(&())] b_e: Border,
+        #[widget(&())] b_n: Border,
+        #[widget(&())] b_s: Border,
+        #[widget(&())] b_nw: Border,
+        #[widget(&())] b_ne: Border,
+        #[widget(&())] b_sw: Border,
+        #[widget(&())] b_se: Border,
         bar_h: i32,
         dec_offset: Offset,
         dec_size: Size,
@@ -89,7 +98,7 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let mut inner = self.w.size_rules(sizer.re(), axis);
+            let mut inner = self.inner.size_rules(sizer.re(), axis);
 
             self.bar_h = 0;
             if matches!(self.decorations, Decorations::Toolkit) {
@@ -102,6 +111,7 @@ impl_scope! {
                 }
             }
             if matches!(self.decorations, Decorations::Border | Decorations::Toolkit) {
+                // We would call size_rules on Border widgets here if it did anything
                 let frame = sizer.frame(FrameStyle::Window, axis);
                 let (rules, offset, size) = frame.surround(inner);
                 self.dec_offset.set_component(axis, offset);
@@ -112,17 +122,32 @@ impl_scope! {
             }
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            rect.pos += self.dec_offset;
-            rect.size -= self.dec_size;
+            // Calculate position and size for nw, ne, and inner portions:
+            let s_nw: Size = self.dec_offset.cast();
+            let s_se = self.dec_size - s_nw;
+            let mut s_in = rect.size - self.dec_size;
+            let p_nw = rect.pos;
+            let mut p_in = p_nw + self.dec_offset;
+            let p_se = p_in + s_in;
+
+            self.b_w.set_rect(cx, Rect::new(Coord(p_nw.0, p_in.1), Size(s_nw.0, s_in.1)));
+            self.b_e.set_rect(cx, Rect::new(Coord(p_se.0, p_in.1), Size(s_se.0, s_in.1)));
+            self.b_n.set_rect(cx, Rect::new(Coord(p_in.0, p_nw.1), Size(s_in.0, s_nw.1)));
+            self.b_s.set_rect(cx, Rect::new(Coord(p_in.0, p_se.1), Size(s_in.0, s_se.1)));
+            self.b_nw.set_rect(cx, Rect::new(p_nw, s_nw));
+            self.b_ne.set_rect(cx, Rect::new(Coord(p_se.0, p_nw.1), Size(s_se.0, s_nw.1)));
+            self.b_se.set_rect(cx, Rect::new(p_se, s_se));
+            self.b_sw.set_rect(cx, Rect::new(Coord(p_nw.0, p_se.1), Size(s_nw.0, s_se.1)));
+
             if self.bar_h > 0 {
-                let bar_size = Size(rect.size.0, self.bar_h);
-                self.title_bar.set_rect(cx, Rect::new(rect.pos, bar_size));
-                rect.pos.1 += self.bar_h;
-                rect.size -= Size(0, self.bar_h);
+                let bar_size = Size(s_in.0, self.bar_h);
+                self.title_bar.set_rect(cx, Rect::new(p_in, bar_size));
+                p_in.1 += self.bar_h;
+                s_in -= Size(0, self.bar_h);
             }
-            self.w.set_rect(cx, rect);
+            self.inner.set_rect(cx, Rect::new(p_in, s_in));
         }
 
         fn find_id(&mut self, _: Coord) -> Option<WidgetId> {
@@ -140,12 +165,20 @@ impl_scope! {
                 return None;
             }
             for (_, popup, translation) in self.popups.iter_mut().rev() {
-                if let Some(Some(id)) = self.w.as_node(data).for_id(&popup.id, |mut node| node.find_id(coord + *translation)) {
+                if let Some(Some(id)) = self.inner.as_node(data).for_id(&popup.id, |mut node| node.find_id(coord + *translation)) {
                     return Some(id);
                 }
             }
-            self.title_bar.find_id(coord)
-                .or_else(|| self.w.find_id(coord))
+            self.inner.find_id(coord)
+                .or_else(|| self.title_bar.find_id(coord))
+                .or_else(|| self.b_w.find_id(coord))
+                .or_else(|| self.b_e.find_id(coord))
+                .or_else(|| self.b_n.find_id(coord))
+                .or_else(|| self.b_s.find_id(coord))
+                .or_else(|| self.b_nw.find_id(coord))
+                .or_else(|| self.b_ne.find_id(coord))
+                .or_else(|| self.b_sw.find_id(coord))
+                .or_else(|| self.b_se.find_id(coord))
                 .or_else(|| Some(self.id()))
         }
 
@@ -157,9 +190,9 @@ impl_scope! {
                     draw.recurse(&mut self.title_bar);
                 }
             }
-            draw.recurse(&mut self.w);
+            draw.recurse(&mut self.inner);
             for (_, popup, translation) in &self.popups {
-                self.w.as_node(data).for_id(&popup.id, |mut node| {
+                self.inner.as_node(data).for_id(&popup.id, |mut node| {
                     let clip_rect = node.rect() - *translation;
                     draw.with_overlay(clip_rect, *translation, |draw| {
                         node._draw(draw);
@@ -218,8 +251,16 @@ impl<Data: 'static> Window<Data> {
             drag_anywhere: true,
             transparent: false,
             config_fn: None,
+            inner: ui,
             title_bar: TitleBar::new(title),
-            w: ui,
+            b_w: Border::new(ResizeDirection::West),
+            b_e: Border::new(ResizeDirection::East),
+            b_n: Border::new(ResizeDirection::North),
+            b_s: Border::new(ResizeDirection::South),
+            b_nw: Border::new(ResizeDirection::NorthWest),
+            b_ne: Border::new(ResizeDirection::NorthEast),
+            b_sw: Border::new(ResizeDirection::SouthWest),
+            b_se: Border::new(ResizeDirection::SouthEast),
             bar_h: 0,
             dec_offset: Default::default(),
             dec_size: Default::default(),
@@ -425,10 +466,10 @@ impl<Data: 'static> Window<Data> {
             (pos, size)
         };
 
-        let (c, t) = find_rect(self.w.as_layout(), popup.parent.clone(), Offset::ZERO).unwrap();
+        let (c, t) = find_rect(self.inner.as_layout(), popup.parent.clone(), Offset::ZERO).unwrap();
         *translation = t;
         let r = r + t; // work in translated coordinate space
-        self.w.as_node(data).for_id(&popup.id, |mut node| {
+        self.inner.as_node(data).for_id(&popup.id, |mut node| {
             let mut cache = layout::SolveCache::find_constraints(node.re(), cx.size_cx());
             let ideal = cache.ideal(false);
             let m = cache.margins();

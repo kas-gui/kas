@@ -7,7 +7,7 @@
 //!
 //! Note: due to definition in kas-core, some widgets must be duplicated.
 
-use crate::event::ConfigCx;
+use crate::event::{ConfigCx, ResizeDirection};
 use crate::geom::Rect;
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::Text;
@@ -17,6 +17,50 @@ use kas::prelude::*;
 use kas::theme::MarkStyle;
 use kas_macros::impl_scope;
 use std::fmt::Debug;
+
+impl_scope! {
+    /// A border region
+    ///
+    /// Does not draw anything; used solely for event handling.
+    #[widget {
+        cursor_icon = self.direction.into();
+    }]
+    pub(crate) struct Border {
+        core: widget_core!(),
+        direction: ResizeDirection,
+    }
+
+    impl Self {
+        pub fn new(direction: ResizeDirection) -> Self {
+            Border {
+                core: Default::default(),
+                direction,
+            }
+        }
+    }
+
+    impl Layout for Self {
+        fn size_rules(&mut self, _: SizeCx, _: AxisInfo) -> SizeRules {
+            SizeRules::EMPTY
+        }
+
+        fn draw(&mut self, _: DrawCx) {}
+    }
+
+    impl Events for Self {
+        type Data = ();
+
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+            match event {
+                Event::PressStart { .. } => {
+                    cx.drag_resize_window(self.direction);
+                    Response::Used
+                }
+                _ => Response::Unused,
+            }
+        }
+    }
+}
 
 impl_scope! {
     /// A simple label
@@ -155,6 +199,16 @@ impl_scope! {
 
     impl Events for Self {
         type Data = ();
+
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+            match event {
+                Event::PressStart { .. } => {
+                    cx.drag_window();
+                    Response::Used
+                }
+                _ => Response::Unused,
+            }
+        }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(msg) = cx.try_pop() {

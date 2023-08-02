@@ -309,7 +309,7 @@ where
             }
             FrameStyle::Window => {
                 let outer = Quad::conv(rect);
-                let inner = outer.shrink(self.w.dims.frame as f32);
+                let inner = outer.shrink(self.w.dims.frame_window as f32);
                 let col = self.cols.background;
                 self.draw
                     .shaded_round_frame(outer, inner, NORMS_RAISED, col);
