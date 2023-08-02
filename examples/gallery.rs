@@ -9,7 +9,7 @@
 //! (excepting custom graphics).
 
 use kas::dir::Right;
-use kas::event::VirtualKeyCode as VK;
+use kas::event::Key;
 use kas::prelude::*;
 use kas::resvg::Svg;
 use kas::theme::{MarginStyle, ThemeControl};
@@ -189,13 +189,13 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
                 kas::row![
                     Button::new_msg(img_light.clone(), Item::Theme("light"))
                         .with_color("#B38DF9".parse().unwrap())
-                        .with_keys(&[VK::H]),
+                        .with_key(Key::Character("h".into())),
                     Button::new_msg(img_light, Item::Theme("blue"))
                         .with_color("#7CDAFF".parse().unwrap())
-                        .with_keys(&[VK::B]),
+                        .with_key(Key::Character("b".into())),
                     Button::new_msg(img_dark, Item::Theme("dark"))
                         .with_color("#E77346".parse().unwrap())
-                        .with_keys(&[VK::K]),
+                        .with_key(Key::Character("k".into())),
                 ]
                 .map_any()
             )

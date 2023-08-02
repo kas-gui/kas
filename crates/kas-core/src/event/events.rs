@@ -10,10 +10,11 @@ use serde::{Deserialize, Serialize};
 
 #[allow(unused)]
 use super::{EventCx, EventState, GrabMode, Response}; // for doc-links
-use super::{Press, VirtualKeyCode};
+use super::{Key, Press};
 use crate::geom::{DVec2, Offset};
 #[allow(unused)] use crate::Events;
 use crate::{dir::Direction, WidgetId, WindowId};
+use smol_str::SmolStr;
 
 /// Events addressed to a widget
 ///
@@ -37,13 +38,13 @@ pub enum Event {
     /// not character or navigation focus may receive [`Command::Deselect`]
     /// when the <kbd>Esc</kbd> key is pressed.
     Command(Command),
-    /// Widget receives a character of text input
+    /// Widget receives text input
     ///
     /// This is only received by a widget with character focus (see
-    /// [`EventState::request_char_focus`]). There is no overlap with
-    /// [`Event::Command`]: key presses result in at most one of these events
-    /// being sent to a widget.
-    ReceivedCharacter(char),
+    /// [`EventState::request_char_focus`]). There should be no overlap with
+    /// [`Event::Command`]; if a widget receives both for a single key-press
+    /// this is considered a bug.
+    Text(SmolStr),
     /// A mouse or touchpad scroll event
     Scroll(ScrollDelta),
     /// A mouse or touch-screen move/zoom/rotate event
@@ -262,7 +263,7 @@ impl Event {
         use Event::*;
         match self {
             None | Command(_) => false,
-            ReceivedCharacter(_) | Scroll(_) | Pan { .. } => false,
+            Text(_) | Scroll(_) | Pan { .. } => false,
             CursorMove { .. } | PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | PopupRemoved(_) => true,
             NavFocus(_) | MouseHover => false,
@@ -281,8 +282,8 @@ impl Event {
     pub fn is_reusable(&self) -> bool {
         use Event::*;
         match self {
-            None => false,
-            Command(_) | ReceivedCharacter(_) | Scroll(_) | Pan { .. } => true,
+            None | Text(_) => false,
+            Command(_) | Scroll(_) | Pan { .. } => true,
             CursorMove { .. } | PressStart { .. } => true,
             PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | PopupRemoved(_) => false,
@@ -308,6 +309,7 @@ impl Event {
 /// (e.g. `Escape`, `Space`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[non_exhaustive]
 pub enum Command {
     /// Escape key
     ///
@@ -397,7 +399,7 @@ pub enum Command {
     /// Find next
     FindNext,
     /// Find previous
-    FindPrev,
+    FindPrevious,
 
     /// Make text bold
     Bold,
@@ -431,7 +433,7 @@ pub enum Command {
     /// Navigate forwards one page/item
     NavNext,
     /// Navigate backwards one page/item
-    NavPrev,
+    NavPrevious,
     /// Navigate to the parent item
     ///
     /// May be used to browse "up" to a parent directory.
@@ -446,7 +448,7 @@ pub enum Command {
     /// Navigate to next tab
     TabNext,
     /// Navigate to previous tab
-    TabPrev,
+    TabPrevious,
 
     /// Show help
     Help,
@@ -457,8 +459,10 @@ pub enum Command {
     /// Debug
     Debug,
     /// Spell-check tool
-    Spelling,
-    /// Open the menu / activate the menubar
+    SpellCheck,
+    /// Open the context menu
+    ContextMenu,
+    /// Open or activate the application menu / menubar
     Menu,
     /// Make view fullscreen
     Fullscreen,
@@ -470,34 +474,48 @@ pub enum Command {
 }
 
 impl Command {
-    /// Try constructing from a [`VirtualKeyCode`]
-    pub fn new(vkey: VirtualKeyCode) -> Option<Self> {
-        use VirtualKeyCode::*;
-        Some(match vkey {
-            Escape => Command::Escape,
-            Snapshot => Command::Snapshot,
-            Scroll => Command::ScrollLock,
-            Space => Command::Space,
-            Pause => Command::Pause,
-            Insert => Command::Insert,
-            Home => Command::Home,
-            Delete => Command::Delete,
-            End => Command::End,
-            PageDown => Command::PageDown,
-            PageUp => Command::PageUp,
-            Left => Command::Left,
-            Up => Command::Up,
-            Right => Command::Right,
-            Down => Command::Down,
-            Back => Command::DelBack,
-            Return => Command::Enter,
-            NavigateForward => Command::NavNext,
-            NavigateBackward => Command::NavPrev,
-            NumpadEnter => Command::Enter,
-            Tab => Command::Tab,
-            Cut => Command::Cut,
-            Copy => Command::Copy,
-            Paste => Command::Paste,
+    /// Try constructing from a [`winit::keyboard::Key`]
+    pub fn new(key: &Key) -> Option<Self> {
+        Some(match key {
+            Key::ScrollLock => Command::ScrollLock,
+            Key::Enter => Command::Enter,
+            Key::Tab => Command::Tab,
+            Key::Space => Command::Space,
+            Key::ArrowDown => Command::Down,
+            Key::ArrowLeft => Command::Left,
+            Key::ArrowRight => Command::Right,
+            Key::ArrowUp => Command::Up,
+            Key::End => Command::End,
+            Key::Home => Command::Home,
+            Key::PageDown => Command::PageDown,
+            Key::PageUp => Command::PageUp,
+            Key::Backspace => Command::DelBack,
+            Key::Clear => Command::Deselect,
+            Key::Copy => Command::Copy,
+            Key::Cut => Command::Cut,
+            Key::Delete => Command::Delete,
+            Key::Insert => Command::Insert,
+            Key::Paste => Command::Paste,
+            Key::Redo | Key::Again => Command::Redo,
+            Key::Undo => Command::Undo,
+            Key::ContextMenu => Command::ContextMenu,
+            Key::Escape => Command::Escape,
+            Key::Execute => Command::Activate,
+            Key::Find => Command::Find,
+            Key::Help => Command::Help,
+            Key::Pause => Command::Pause,
+            Key::Select => Command::SelectAll,
+            Key::PrintScreen => Command::Snapshot,
+            // Key::Close => CloseDocument ?
+            Key::New => Command::New,
+            Key::Open => Command::Open,
+            Key::Print => Command::Print,
+            Key::Save => Command::Save,
+            Key::SpellCheck => Command::SpellCheck,
+            Key::BrowserBack | Key::GoBack => Command::NavPrevious,
+            Key::BrowserForward => Command::NavNext,
+            Key::BrowserRefresh => Command::Refresh,
+            Key::Exit => Command::Exit,
             _ => return None,
         })
     }

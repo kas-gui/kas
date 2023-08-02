@@ -47,7 +47,7 @@ impl EventState {
     /// This is a fast check.
     #[inline]
     pub fn show_accel_labels(&self) -> bool {
-        self.modifiers.alt()
+        self.modifiers.alt_key()
     }
 
     /// Get whether this widget has `(char_focus, sel_focus)`
@@ -335,11 +335,9 @@ impl EventState {
     ///
     /// This should only be called from [`Events::configure`].
     #[inline]
-    pub fn add_accel_keys(&mut self, id: &WidgetId, keys: &[VirtualKeyCode]) {
+    pub fn add_accel_key(&mut self, id: &WidgetId, key: Key) {
         if let Some(layer) = self.accel_layer_for_id(id) {
-            for key in keys {
-                layer.1.entry(*key).or_insert_with(|| id.clone());
-            }
+            layer.1.entry(key).or_insert_with(|| id.clone());
         }
     }
 

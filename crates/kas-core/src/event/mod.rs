@@ -64,12 +64,12 @@ mod cx;
 mod events;
 mod response;
 
-use smallvec::SmallVec;
-
+pub use smol_str::SmolStr;
+#[cfg(feature = "winit")] pub use winit::event::MouseButton;
 #[cfg(feature = "winit")]
-pub use winit::event::{ModifiersState, MouseButton, VirtualKeyCode};
+pub use winit::keyboard::{Key, KeyCode, ModifiersState};
 #[cfg(feature = "winit")]
-pub use winit::window::{CursorIcon, ResizeDirection};
+pub use winit::window::{CursorIcon, ResizeDirection}; // used by Key
 
 #[allow(unused)] use crate::{Events, Widget};
 #[doc(no_inline)] pub use config::Config;
@@ -77,17 +77,3 @@ pub use cx::*;
 #[cfg(not(feature = "winit"))] pub use enums::*;
 pub use events::*;
 pub use response::{Response, Scroll};
-
-/// A type supporting a small number of key bindings
-///
-/// This type may be used where it is desirable to support a small number of
-/// key bindings. The type is allowed to silently ignore extra bindings beyond
-/// some *small* number of at least 3. (Currently numbers over 5 are accepted
-/// but cause allocation.)
-pub type VirtualKeyCodes = SmallVec<[VirtualKeyCode; 5]>;
-
-#[test]
-fn size_of_virtual_key_codes() {
-    // Currently sized to maximise use of available space on 64-bit platforms
-    assert!(std::mem::size_of::<VirtualKeyCodes>() <= 32);
-}

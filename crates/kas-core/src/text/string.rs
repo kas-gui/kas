@@ -9,10 +9,10 @@
 //! Hopefully it can be replaced with a real mark-up processor without too
 //! much API breakage.
 
-use smallvec::{smallvec, SmallVec};
+use smallvec::SmallVec;
 
 use crate::cast::Conv;
-use crate::event::{VirtualKeyCode as VK, VirtualKeyCodes};
+use crate::event::Key;
 use crate::text::format::{FontToken, FormattableText};
 use crate::text::{Effect, EffectFlags};
 
@@ -30,8 +30,7 @@ use crate::text::{Effect, EffectFlags};
 pub struct AccelString {
     label: String,
     effects: SmallVec<[Effect<()>; 2]>,
-    // TODO: is it worth using such a large structure here instead of Option?
-    keys: VirtualKeyCodes,
+    key: Option<Key>,
 }
 
 impl AccelString {
@@ -42,7 +41,7 @@ impl AccelString {
     fn parse(mut s: &str) -> Self {
         let mut buf = String::with_capacity(s.len());
         let mut effects = SmallVec::<[Effect<()>; 2]>::default();
-        let mut keys = VirtualKeyCodes::new();
+        let mut key = None;
 
         while let Some(mut i) = s.find('&') {
             buf.push_str(&s[..i]);
@@ -57,6 +56,7 @@ impl AccelString {
                     break;
                 }
                 Some((j, c)) => {
+                    // TODO(opt): we can simplify if we don't support multiple mnemonic keys
                     let pos = u32::conv(buf.len());
                     buf.push(c);
                     if effects.last().map(|e| e.start == pos).unwrap_or(false) {
@@ -68,9 +68,10 @@ impl AccelString {
                             aux: (),
                         });
                     }
-                    let vkeys = find_vkeys(c);
-                    if !vkeys.is_empty() {
-                        keys.extend(vkeys);
+                    if key.is_none() {
+                        let mut kbuf = [0u8; 4];
+                        let s = c.to_ascii_lowercase().encode_utf8(&mut kbuf);
+                        key = Some(Key::Character(s.into()));
                     }
                     let i = c.len_utf8();
                     s = &s[i..];
@@ -89,21 +90,13 @@ impl AccelString {
         AccelString {
             label: buf,
             effects,
-            keys,
+            key,
         }
     }
 
-    /// Get the key bindings
-    ///
-    /// Usually this list has length zero or one, but nothing prevents the use
-    /// multiple mnemonic key bindings.
-    pub fn keys(&self) -> &[VK] {
-        &self.keys
-    }
-
-    /// Take the key bindings, destroying self
-    pub fn take_keys(self) -> VirtualKeyCodes {
-        self.keys
+    /// Get the key binding, if any
+    pub fn key(&self) -> Option<&Key> {
+        self.key.as_ref()
     }
 
     /// Get the text
@@ -153,66 +146,5 @@ impl From<&str> for AccelString {
 impl<T: Into<AccelString> + Copy> From<&T> for AccelString {
     fn from(input: &T) -> Self {
         (*input).into()
-    }
-}
-
-fn find_vkeys(c: char) -> VirtualKeyCodes {
-    // TODO: lots of keys aren't yet available in VirtualKeyCode!
-    // NOTE: some of these bindings are a little inaccurate. It isn't obvious
-    // whether prefer strict or more flexible bindings here.
-    match c.to_ascii_uppercase() {
-        '\'' => smallvec![VK::Apostrophe],
-        '+' => smallvec![VK::Plus, VK::NumpadAdd],
-        ',' => smallvec![VK::Comma],
-        '-' => smallvec![VK::Minus, VK::NumpadSubtract],
-        '.' => smallvec![VK::Period],
-        '/' => smallvec![VK::Slash],
-        '0' => smallvec![VK::Key0, VK::Numpad0],
-        '1' => smallvec![VK::Key1, VK::Numpad1],
-        '2' => smallvec![VK::Key2, VK::Numpad2],
-        '3' => smallvec![VK::Key3, VK::Numpad3],
-        '4' => smallvec![VK::Key4, VK::Numpad4],
-        '5' => smallvec![VK::Key5, VK::Numpad5],
-        '6' => smallvec![VK::Key6, VK::Numpad6],
-        '7' => smallvec![VK::Key7, VK::Numpad7],
-        '8' => smallvec![VK::Key8, VK::Numpad8],
-        '9' => smallvec![VK::Key9, VK::Numpad9],
-        ':' => smallvec![VK::Colon],
-        ';' => smallvec![VK::Semicolon],
-        '=' => smallvec![VK::Equals, VK::NumpadEquals],
-        '`' => smallvec![VK::Grave],
-        'A' => smallvec![VK::A],
-        'B' => smallvec![VK::B],
-        'C' => smallvec![VK::C],
-        'D' => smallvec![VK::D],
-        'E' => smallvec![VK::E],
-        'F' => smallvec![VK::F],
-        'G' => smallvec![VK::G],
-        'H' => smallvec![VK::H],
-        'I' => smallvec![VK::I],
-        'J' => smallvec![VK::J],
-        'K' => smallvec![VK::K],
-        'L' => smallvec![VK::L],
-        'M' => smallvec![VK::M],
-        'N' => smallvec![VK::N],
-        'O' => smallvec![VK::O],
-        'P' => smallvec![VK::P],
-        'Q' => smallvec![VK::Q],
-        'R' => smallvec![VK::R],
-        'S' => smallvec![VK::S],
-        'T' => smallvec![VK::T],
-        'U' => smallvec![VK::U],
-        'V' => smallvec![VK::V],
-        'W' => smallvec![VK::W],
-        'X' => smallvec![VK::X],
-        'Y' => smallvec![VK::Y],
-        'Z' => smallvec![VK::Z],
-        '[' => smallvec![VK::LBracket],
-        ']' => smallvec![VK::RBracket],
-        '^' => smallvec![VK::Caret],
-        '÷' => smallvec![VK::NumpadDivide],
-        '×' => smallvec![VK::NumpadMultiply],
-        '−' => smallvec![VK::Minus, VK::NumpadSubtract],
-        _ => smallvec![],
     }
 }

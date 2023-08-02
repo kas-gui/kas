@@ -318,8 +318,8 @@ impl MousePan {
     pub fn is_enabled_with(self, modifiers: ModifiersState) -> bool {
         match self {
             MousePan::Never => false,
-            MousePan::WithAlt => modifiers.alt(),
-            MousePan::WithCtrl => modifiers.ctrl(),
+            MousePan::WithAlt => modifiers.alt_key(),
+            MousePan::WithCtrl => modifiers.control_key(),
             MousePan::Always => true,
         }
     }

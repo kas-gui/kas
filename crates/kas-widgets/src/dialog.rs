@@ -14,7 +14,7 @@
 //! and their design is likely to change.
 
 use crate::{adapt::AdaptWidgetAny, Button, EditBox, Filler, Label};
-use kas::event::{Command, VirtualKeyCode};
+use kas::event::{Command, Key};
 use kas::prelude::*;
 use kas::text::format::FormattableText;
 
@@ -40,11 +40,7 @@ impl_scope! {
             MessageBox {
                 core: Default::default(),
                 label: Label::new(message),
-                button: Button::new_msg(Label::new("Ok"), MessageBoxOk).with_keys(&[
-                    VirtualKeyCode::Return,
-                    VirtualKeyCode::Space,
-                    VirtualKeyCode::NumpadEnter,
-                ]),
+                button: Button::new_msg(Label::new("Ok"), MessageBoxOk).with_key(Key::Enter),
             }
         }
 

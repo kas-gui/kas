@@ -7,7 +7,7 @@
 
 use super::AccelLabel;
 use kas::draw::color::Rgb;
-use kas::event::{VirtualKeyCode, VirtualKeyCodes};
+use kas::event::Key;
 use kas::prelude::*;
 use std::fmt::Debug;
 
@@ -24,7 +24,7 @@ impl_scope! {
     }]
     pub struct Button<W: Widget> {
         core: widget_core!(),
-        keys1: VirtualKeyCodes,
+        key: Option<Key>,
         color: Option<Rgb>,
         #[widget]
         pub inner: W,
@@ -37,7 +37,7 @@ impl_scope! {
         pub fn new(inner: W) -> Self {
             Button {
                 core: Default::default(),
-                keys1: Default::default(),
+                key: Default::default(),
                 color: None,
                 inner,
                 on_press: None,
@@ -73,11 +73,11 @@ impl_scope! {
             Self::new(inner).with_msg(msg)
         }
 
-        /// Add accelerator keys (chain style)
+        /// Add accelerator key (chain style)
         #[must_use]
-        pub fn with_keys(mut self, keys: &[VirtualKeyCode]) -> Self {
-            self.keys1.clear();
-            self.keys1.extend_from_slice(keys);
+        pub fn with_key(mut self, key: Key) -> Self {
+            debug_assert!(self.key.is_none());
+            self.key = Some(key);
             self
         }
 
@@ -96,7 +96,9 @@ impl_scope! {
 
     impl Events for Self {
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.add_accel_keys(self.id_ref(), &self.keys1);
+            if let Some(key) = self.key.clone() {
+                cx.add_accel_key(self.id_ref(), key);
+            }
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &W::Data, event: Event) -> Response {
