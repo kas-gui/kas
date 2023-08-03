@@ -59,20 +59,28 @@ pub enum Decorations {
     Server,
 }
 
+/// Commands supported by the [`Window`]
+///
+/// This may be sent as a message from any widget in the window.
+#[derive(Clone, Debug)]
+pub enum WindowCommand {
+    /// Change the window's title
+    SetTitle(String),
+    /// Change the window's icon
+    SetIcon(Option<Icon>),
+}
+
 impl_scope! {
     /// A support layer around a window
     ///
-    /// TODO: there is currently no mechanism for adjusting window properties at
-    /// run-time. The intention is to support sending a message like:
-    /// `cx.push(WindowCommand::SetTitle("New Title"));`. The problem is that
-    /// this window representation is disconnected from winit::Window and has no
-    /// mechanism for updating that. This may be easier to implement later.
+    /// To change window properties at run-time, send a [`WindowCommand`] from a
+    /// child widget.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     #[widget]
     pub struct Window<Data: 'static> {
         core: widget_core!(),
-        icon: Option<Icon>,
+        icon: Option<Icon>, // initial icon, if any
         decorations: Decorations,
         restrictions: (bool, bool),
         drag_anywhere: bool,
@@ -223,6 +231,32 @@ impl_scope! {
             }
         }
 
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(cmd) = cx.try_pop() {
+                match cmd {
+                    WindowCommand::SetTitle(title) => {
+                        *cx |= self.title_bar.set_title(title);
+                        #[cfg(feature = "winit")]
+                        if self.decorations == Decorations::Server {
+                            if let Some(w) = cx.winit_window() {
+                                w.set_title(self.title());
+                            }
+                        }
+                    }
+                    WindowCommand::SetIcon(icon) => {
+                        #[cfg(feature = "winit")]
+                        if self.decorations == Decorations::Server {
+                            if let Some(w) = cx.winit_window() {
+                                w.set_window_icon(icon);
+                                return; // do not set self.icon
+                            }
+                        }
+                        self.icon = icon;
+                    }
+                }
+            }
+        }
+
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &Data, _: Scroll) {
             // Something was scrolled; update pop-up translations
             cx.config_cx(|cx| self.resize_popups(cx, data));
@@ -267,9 +301,9 @@ impl<Data: 'static> Window<Data> {
         self.title_bar.title()
     }
 
-    /// Get the window's icon, if any
-    pub fn icon(&self) -> Option<&Icon> {
-        self.icon.as_ref()
+    /// Take the window's icon, if any
+    pub(crate) fn take_icon(&mut self) -> Option<Icon> {
+        self.icon.take()
     }
 
     /// Set the window's icon (inline)

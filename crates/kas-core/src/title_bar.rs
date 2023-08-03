@@ -103,6 +103,22 @@ impl_scope! {
             draw.text(self.rect(), &self.label, Self::CLASS);
         }
     }
+
+    impl HasStr for Self {
+        fn get_str(&self) -> &str {
+            self.label.as_str()
+        }
+    }
+
+    impl HasString for Self {
+        fn set_string(&mut self, string: String) -> Action {
+            self.label.set_string(string);
+            match self.label.try_prepare() {
+                Ok(true) => Action::RESIZE,
+                _ => Action::REDRAW,
+            }
+        }
+    }
 }
 
 impl_scope! {
@@ -194,6 +210,11 @@ impl_scope! {
         /// Get the title
         pub fn title(&self) -> &str {
             self.title.label.as_str()
+        }
+
+        /// Set the title
+        pub fn set_title(&mut self, title: String) -> Action {
+            self.title.set_string(title)
         }
     }
 

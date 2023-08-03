@@ -116,7 +116,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         }
         let window = builder
             .with_title(widget.title())
-            .with_window_icon(widget.icon().cloned())
+            .with_window_icon(widget.take_icon())
             .with_decorations(widget.decorations() == kas::Decorations::Server)
             .with_transparent(widget.transparent())
             .build(elwt)?;

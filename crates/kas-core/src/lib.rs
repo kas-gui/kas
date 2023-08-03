@@ -35,7 +35,7 @@ pub use crate::core::*;
 pub use action::Action;
 pub use erased::{AppData, Erased, ErasedStack};
 pub use kas_macros::*;
-pub use root::{Decorations, Window, WindowId};
+pub use root::{Decorations, Window, WindowCommand, WindowId};
 
 // public implementations:
 pub mod class;
