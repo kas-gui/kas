@@ -317,7 +317,7 @@ impl_scope! {
         fn loc(&self) -> String {
             let op = if self.delta.1 < 0.0 { "−" } else { "+" };
             format!(
-                "Location: {} {} {}i; scale: {}",
+                "Location: {:.7} {} {:.7}i; scale: {:.7}",
                 self.delta.0,
                 op,
                 self.delta.1.abs(),
@@ -328,10 +328,8 @@ impl_scope! {
 
     impl Layout for Mandlebrot {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            // We use a reasonable minimum size of 300x200 and a large ideal
-            // size of 3000x2000: the initial size should fill the screen.
-            kas::layout::LogicalSize(300.0, 200.0)
-                .to_rules_with_factor(axis, sizer.scale_factor(), 10.0)
+            kas::layout::LogicalSize(320.0, 240.0)
+                .to_rules_with_factor(axis, sizer.scale_factor(), 4.0)
                 .with_stretch(Stretch::High)
         }
 
@@ -483,7 +481,7 @@ impl_scope! {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let window = Window::new(MandlebrotUI::new(), "Mandlebrot").with_drag_anywhere(false);
+    let window = Window::new(MandlebrotUI::new(), "Mandlebrot");
     let theme = kas::theme::FlatTheme::new().with_colours("dark");
     let options = kas::config::Options::from_env();
     kas::shell::WgpuShell::new_custom((), PipeBuilder, theme, options)?
