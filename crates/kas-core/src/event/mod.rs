@@ -60,20 +60,20 @@
 pub mod components;
 pub mod config;
 mod cx;
-#[cfg(not(feature = "winit"))] mod enums;
+#[cfg(not(winit))] mod enums;
 mod events;
 mod response;
 
 pub use smol_str::SmolStr;
-#[cfg(feature = "winit")] pub use winit::event::MouseButton;
-#[cfg(feature = "winit")]
+#[cfg(winit)] pub use winit::event::MouseButton;
+#[cfg(winit)]
 pub use winit::keyboard::{Key, KeyCode, ModifiersState};
-#[cfg(feature = "winit")]
+#[cfg(winit)]
 pub use winit::window::{CursorIcon, ResizeDirection}; // used by Key
 
 #[allow(unused)] use crate::{Events, Widget};
 #[doc(no_inline)] pub use config::Config;
 pub use cx::*;
-#[cfg(not(feature = "winit"))] pub use enums::*;
+#[cfg(not(winit))] pub use enums::*;
 pub use events::*;
 pub use response::{Response, Scroll};

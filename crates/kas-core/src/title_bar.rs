@@ -235,13 +235,13 @@ impl_scope! {
             if let Some(msg) = cx.try_pop() {
                 match msg {
                     TitleBarButton::Minimize => {
-                        #[cfg(feature = "winit")]
+                        #[cfg(winit)]
                         if let Some(w) = cx.winit_window() {
                             w.set_minimized(true);
                         }
                     }
                     TitleBarButton::Maximize => {
-                        #[cfg(feature = "winit")]
+                        #[cfg(winit)]
                         if let Some(w) = cx.winit_window() {
                             w.set_maximized(!w.is_maximized());
                         }

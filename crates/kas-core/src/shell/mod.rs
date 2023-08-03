@@ -6,27 +6,26 @@
 //! Shell
 
 mod common;
-#[cfg(feature = "winit")] mod event_loop;
-#[cfg(feature = "winit")] mod shared;
-#[cfg(feature = "winit")] mod shell;
-#[cfg(feature = "winit")] mod window;
+#[cfg(winit)] mod event_loop;
+#[cfg(winit)] mod shared;
+#[cfg(winit)] mod shell;
+#[cfg(winit)] mod window;
 
-#[cfg(feature = "winit")] use event_loop::Loop as EventLoop;
-#[cfg(feature = "winit")]
-use shared::{SharedState, ShellShared};
-#[cfg(feature = "winit")] use shell::PlatformWrapper;
-#[cfg(feature = "winit")] use window::Window;
+#[cfg(winit)] use event_loop::Loop as EventLoop;
+#[cfg(winit)] use shared::{SharedState, ShellShared};
+#[cfg(winit)] use shell::PlatformWrapper;
+#[cfg(winit)] use window::Window;
 
 pub(crate) use common::ShellWindow;
 pub use common::{Error, GraphicalShell, Platform, Result, WindowSurface};
-#[cfg(feature = "winit")]
+#[cfg(winit)]
 pub use shell::{ClosedError, Proxy, Shell, ShellAssoc};
 pub extern crate raw_window_handle;
 
 // TODO(opt): Clippy is probably right that we shouldn't copy a large value
 // around (also applies when constructing a shell::Window).
 #[allow(clippy::large_enum_variant)]
-#[cfg(feature = "winit")]
+#[cfg(winit)]
 enum PendingAction<A: 'static> {
     AddPopup(winit::window::WindowId, kas::WindowId, kas::Popup),
     AddWindow(kas::WindowId, kas::Window<A>),
@@ -34,7 +33,7 @@ enum PendingAction<A: 'static> {
     Action(kas::Action),
 }
 
-#[cfg(feature = "winit")]
+#[cfg(winit)]
 enum ProxyAction {
     CloseAll,
     Close(kas::WindowId),

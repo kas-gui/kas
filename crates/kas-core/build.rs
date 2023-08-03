@@ -8,6 +8,8 @@ fn main() {
 
     // Setup cfg aliases
     cfg_aliases! {
+        winit: { feature = "winit" },
+
         // Systems.
         android_platform: { target_os = "android" },
         wasm_platform: { target_arch = "wasm32" },

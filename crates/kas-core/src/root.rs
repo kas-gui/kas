@@ -189,7 +189,7 @@ impl_scope! {
                 .or_else(|| Some(self.id()))
         }
 
-        #[cfg(feature = "winit")]
+        #[cfg(winit)]
         pub(crate) fn draw(&mut self, data: &Data, mut draw: DrawCx) {
             if self.dec_size != Size::ZERO {
                 draw.frame(self.core.rect, FrameStyle::Window, Default::default());
@@ -236,7 +236,7 @@ impl_scope! {
                 match cmd {
                     WindowCommand::SetTitle(title) => {
                         *cx |= self.title_bar.set_title(title);
-                        #[cfg(feature = "winit")]
+                        #[cfg(winit)]
                         if self.decorations == Decorations::Server {
                             if let Some(w) = cx.winit_window() {
                                 w.set_title(self.title());
@@ -244,7 +244,7 @@ impl_scope! {
                         }
                     }
                     WindowCommand::SetIcon(icon) => {
-                        #[cfg(feature = "winit")]
+                        #[cfg(winit)]
                         if self.decorations == Decorations::Server {
                             if let Some(w) = cx.winit_window() {
                                 w.set_window_icon(icon);

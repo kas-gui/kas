@@ -328,7 +328,7 @@ impl<'a> EventCx<'a> {
     /// Note that some event types are not handled, since for these
     /// events the shell must take direct action anyway:
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
-    #[cfg(feature = "winit")]
+    #[cfg(winit)]
     #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
     pub(crate) fn handle_winit<A>(
         &mut self,

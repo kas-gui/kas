@@ -6,7 +6,7 @@
 //! Event context state
 
 // Without winit, several things go unused
-#![cfg_attr(not(feature = "winit"), allow(unused))]
+#![cfg_attr(not(winit), allow(unused))]
 
 use linear_map::LinearMap;
 use smallvec::SmallVec;

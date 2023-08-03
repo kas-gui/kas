@@ -5,7 +5,7 @@
 
 //! Erased type
 
-#![cfg_attr(not(feature = "winit"), allow(unused))]
+#![cfg_attr(not(winit), allow(unused))]
 
 use crate::Action;
 use std::any::Any;
