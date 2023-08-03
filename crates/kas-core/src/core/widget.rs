@@ -304,9 +304,9 @@ pub enum NavAdvance {
 ///             self
 ///         }
 ///
-///         /// Get the accelerator keys
-///         pub fn keys(&self) -> &[event::VirtualKeyCode] {
-///             self.label.text().keys()
+///         /// Get the accelerator key
+///         pub fn accel_key(&self) -> Option<&event::Key> {
+///             self.label.text().key()
 ///         }
 ///     }
 ///
@@ -355,7 +355,9 @@ pub enum NavAdvance {
 ///         type Data = ();
 ///
 ///         fn configure(&mut self, cx: &mut ConfigCx) {
-///             cx.add_accel_keys(self.id_ref(), self.label.keys());
+///             if let Some(key) = self.label.accel_key() {
+///                 cx.add_accel_key(self.id_ref(), key.clone());
+///             }
 ///         }
 ///
 ///         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
