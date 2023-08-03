@@ -611,7 +611,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ("&List", filter_list()),
                 ("Can&vas", canvas()),
                 ("Confi&g", config()),
-            ]),
+            ]).with_msg(|_, title| WindowCommand::SetTitle(format!("Gallery — {}", title))),
         }
         impl Events for Self {
             type Data = ();
@@ -640,6 +640,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    shell.add(Window::new(ui, "Widget Gallery"))?;
+    shell.add(Window::new(ui, "Gallery — Widgets"))?;
     shell.run()
 }
