@@ -27,15 +27,16 @@ pub extern crate easy_cast as cast;
 // internal modules:
 mod action;
 mod core;
+mod decorations;
 mod erased;
 mod root;
-mod title_bar;
 
 pub use crate::core::*;
 pub use action::Action;
+pub use decorations::Decorations;
 pub use erased::{AppData, Erased, ErasedStack};
 pub use kas_macros::*;
-pub use root::{Decorations, Window, WindowCommand, WindowId};
+pub use root::{Window, WindowCommand, WindowId};
 
 // public implementations:
 pub mod class;

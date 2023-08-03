@@ -6,12 +6,12 @@
 //! Window widgets
 
 use crate::cast::Cast;
+use crate::decorations::{Border, Decorations, TitleBar};
 use crate::dir::Directional;
 use crate::event::{ConfigCx, Event, EventCx, ResizeDirection, Response, Scroll};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
-use crate::title_bar::{Border, TitleBar};
 use crate::{Action, Events, Icon, Layout, LayoutExt, Widget, WidgetId};
 use kas_macros::impl_scope;
 use smallvec::SmallVec;
@@ -31,32 +31,6 @@ impl WindowId {
     pub(crate) fn new(n: NonZeroU32) -> WindowId {
         WindowId(n)
     }
-}
-
-/// Available decoration modes
-///
-/// See [`Window::decorations`].
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum Decorations {
-    /// No decorations
-    ///
-    /// The root widget is drawn as a simple rectangle with no borders.
-    None,
-    /// Add a simple themed border to the widget
-    ///
-    /// Probably looks better if [`Window::transparent`] is true.
-    Border,
-    /// Toolkit-drawn decorations
-    ///
-    /// Decorations will match the toolkit theme, not the platform theme.
-    /// These decorations may not have all the same capabilities.
-    ///
-    /// Probably looks better if [`Window::transparent`] is true.
-    Toolkit,
-    /// Server-side decorations
-    ///
-    /// Decorations are drawn by the window manager, if available.
-    Server,
 }
 
 /// Commands supported by the [`Window`]

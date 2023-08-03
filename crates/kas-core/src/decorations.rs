@@ -18,6 +18,32 @@ use kas::theme::MarkStyle;
 use kas_macros::impl_scope;
 use std::fmt::Debug;
 
+/// Available decoration modes
+///
+/// See [`Window::decorations`].
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum Decorations {
+    /// No decorations
+    ///
+    /// The root widget is drawn as a simple rectangle with no borders.
+    None,
+    /// Add a simple themed border to the widget
+    ///
+    /// Probably looks better if [`Window::transparent`] is true.
+    Border,
+    /// Toolkit-drawn decorations
+    ///
+    /// Decorations will match the toolkit theme, not the platform theme.
+    /// These decorations may not have all the same capabilities.
+    ///
+    /// Probably looks better if [`Window::transparent`] is true.
+    Toolkit,
+    /// Server-side decorations
+    ///
+    /// Decorations are drawn by the window manager, if available.
+    Server,
+}
+
 impl_scope! {
     /// A border region
     ///
