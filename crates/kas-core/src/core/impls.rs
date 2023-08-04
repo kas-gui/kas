@@ -5,7 +5,7 @@
 
 //! Widget method implementations
 
-use crate::event::{ConfigCx, Event, EventCx, Response};
+use crate::event::{ConfigCx, Event, EventCx, Response, Scroll};
 #[cfg(debug_assertions)] use crate::util::IdentifyWidget;
 use crate::{Erased, Events, Layout, NavAdvance, Node, Widget, WidgetId};
 
@@ -59,6 +59,11 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
     if id == widget.id_ref() {
         if disabled {
             return response;
+        }
+
+        if matches!(event, Event::NavFocus { key_focus: true }) {
+            cx.set_scroll(Scroll::Rect(widget.rect()));
+            response |= Response::Used;
         }
 
         response |= widget.pre_handle_event(cx, data, event);

@@ -166,15 +166,15 @@ pub enum Event {
     PopupRemoved(WindowId),
     /// Sent when a widget receives (keyboard) navigation focus
     ///
-    /// When the payload, `key_focus`, is true when the focus was triggered by
-    /// the keyboard, not the mouse or a touch event.
-    /// This event may be used e.g. to request char focus or to
-    /// steal focus from a child.
+    /// Parameter `key_focus` is:
     ///
-    /// Note: when `NavFocus(true)` is sent to a widget, the sender
-    /// automatically sets `Scroll::Rect(widget.rect())` to
-    /// [`EventCx::set_scroll`] and considers the event used.
-    NavFocus(bool),
+    /// -   `false` when focus is gained through mouse or touch input
+    /// -   `true` when focus is gained through keyboard input. In this case the
+    ///     recipient may wish to call [`EventCx::request_char_focus`]. Further,
+    ///     [`EventCx::set_scroll`] is automatically called with rect
+    ///     `Scroll::Rect(widget.rect())` (thus ensuring the widget is visible)
+    ///     and the [`Response`] will always be `Used`.
+    NavFocus { key_focus: bool },
     /// Sent when a widget becomes the mouse hover target
     MouseHover,
     /// Sent when a widget loses navigation focus
@@ -264,7 +264,7 @@ impl Event {
             Text(_) | Scroll(_) | Pan { .. } => false,
             CursorMove { .. } | PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | PopupRemoved(_) => true,
-            NavFocus(_) | MouseHover => false,
+            NavFocus { .. } | MouseHover => false,
             LostNavFocus | LostMouseHover | LostCharFocus | LostSelFocus => true,
         }
     }
@@ -285,7 +285,7 @@ impl Event {
             CursorMove { .. } | PressStart { .. } => true,
             PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | PopupRemoved(_) => false,
-            NavFocus(_) | MouseHover | LostNavFocus | LostMouseHover => false,
+            NavFocus { .. } | MouseHover | LostNavFocus | LostMouseHover => false,
             LostCharFocus | LostSelFocus => false,
         }
     }

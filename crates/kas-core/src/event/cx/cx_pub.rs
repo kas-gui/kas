@@ -476,7 +476,7 @@ impl EventState {
         self.nav_focus = Some(id.clone());
         log::trace!(target: "kas_core::event", "set_nav_focus: {id}");
         self.pending
-            .push_back(Pending::Send(id, Event::NavFocus(key_focus)));
+            .push_back(Pending::Send(id, Event::NavFocus { key_focus }));
     }
 
     /// Advance the keyboard navigation focus

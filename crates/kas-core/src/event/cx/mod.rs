@@ -731,7 +731,7 @@ impl<'a> EventCx<'a> {
         self.nav_focus = opt_id.clone();
         if let Some(id) = opt_id {
             self.pending
-                .push_back(Pending::Send(id, Event::NavFocus(key_focus)));
+                .push_back(Pending::Send(id, Event::NavFocus { key_focus }));
         } else {
             // Most likely an error occurred
         }

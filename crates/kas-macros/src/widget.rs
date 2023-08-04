@@ -782,10 +782,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 data: &Self::Data,
                 event: ::kas::event::Event,
             ) -> ::kas::event::Response {
-                use ::kas::{event::{Event, Response, Scroll}, LayoutExt, Layout};
-                if event == Event::NavFocus(true) {
-                    cx.set_scroll(Scroll::Rect(self.rect()));
-                }
+                use ::kas::{event::{Event, Response}, LayoutExt};
                 #pre_handle_event
                 self.handle_event(cx, data, event)
             }
