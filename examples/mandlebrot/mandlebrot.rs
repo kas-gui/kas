@@ -27,7 +27,7 @@ type ShaderVec2 = DVec2;
 #[cfg(not(feature = "shader64"))]
 const SHADER_FLOAT64: wgpu::Features = wgpu::Features::empty();
 #[cfg(feature = "shader64")]
-const SHADER_FLOAT64: wgpu::Features = wgpu::Features::SHADER_FLOAT64;
+const SHADER_FLOAT64: wgpu::Features = wgpu::Features::SHADER_F64;
 
 #[cfg(not(feature = "shader64"))]
 const FRAG_SHADER: &[u8] = include_bytes!("shader32.frag.spv");
@@ -315,14 +315,16 @@ impl_scope! {
         }
 
         fn loc(&self) -> String {
+            let d0 = self.delta.0;
             let op = if self.delta.1 < 0.0 { "−" } else { "+" };
-            format!(
-                "Location: {:.7} {} {:.7}i; scale: {:.7}",
-                self.delta.0,
-                op,
-                self.delta.1.abs(),
-                self.alpha.sum_square().sqrt()
-            )
+            let d1 = self.delta.1.abs();
+            let s = self.alpha.sum_square().sqrt().ln();
+            #[cfg(not(feature = "shader64"))] {
+                format!("Location: {:.7} {} {:.7}i; scale: {:.2}", d0, op, d1, s)
+            }
+            #[cfg(feature = "shader64")] {
+                format!("Location: {:.15} {} {:.15}i; scale: {:.2}", d0, op, d1, s)
+            }
         }
     }
 
