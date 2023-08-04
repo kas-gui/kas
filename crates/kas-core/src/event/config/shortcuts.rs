@@ -129,10 +129,10 @@ impl Shortcuts {
         {
             let shortcuts = [
                 (Key::Character("g".into()), Command::FindNext),
-                (Key::Up, Command::DocHome),
-                (Key::Down, Command::DocEnd),
-                (Key::Left, Command::Home),
-                (Key::Right, Command::End),
+                (Key::ArrowUp, Command::DocHome),
+                (Key::ArrowDown, Command::DocEnd),
+                (Key::ArrowLeft, Command::Home),
+                (Key::ArrowRight, Command::End),
             ];
             map.extend(shortcuts.iter().cloned());
         }
@@ -185,11 +185,11 @@ impl Shortcuts {
         {
             let shortcuts = [
                 (Key::Character("g".into()), Command::FindPrevious),
-                (Key::Colon, Command::Spelling),
-                (Key::Up, Command::DocHome),
-                (Key::Down, Command::DocEnd),
-                (Key::Left, Command::Home),
-                (Key::Right, Command::End),
+                (Key::Character(":".into()), Command::SpellCheck),
+                (Key::ArrowUp, Command::DocHome),
+                (Key::ArrowDown, Command::DocEnd),
+                (Key::ArrowLeft, Command::Home),
+                (Key::ArrowRight, Command::End),
             ];
             map.extend(shortcuts.iter().cloned());
         }
