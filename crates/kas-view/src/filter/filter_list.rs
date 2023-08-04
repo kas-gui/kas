@@ -239,7 +239,7 @@ impl_scope! {
     }
 }
 
-/// Key iterator used by [`FilteredList`]
+/// Key iterator used by [`UnsafeFilteredList`]
 pub struct KeyIter<'b, Item: Clone> {
     list: &'b [Item],
     index: usize,

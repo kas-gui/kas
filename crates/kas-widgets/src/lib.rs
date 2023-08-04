@@ -5,9 +5,15 @@
 
 //! KAS widget library
 //!
+//! ## Complex widgets
+//!
+//! -   [`EventConfig`] provides an editor for event configuration
+//! -   [`kas::Window`](kas::Window) is the root of any UI tree used as a window
+//!
 //! ## Sub-modules
 //!
-//! -   [`adapt`] provides the [`AdaptWidget`] trait with `with_reserve` and `with_label` methods
+//! -   [`adapt`] provides [`Adapt`], [`AdaptWidget`], [`AdaptWidgetAny`] and supporting items
+//!     (the items mentioned are re-export here).
 //! -   [`dialog`] provides [`MessageBox`](dialog::MessageBox), ...
 //! -   [`edit`] provides [`EditBox`], [`EditField`] widgets, [`EditGuard`] trait and some impls
 //! -   [`menu`] provides a [`MenuBar`](menu::MenuBar), [`SubMenu`](menu::SubMenu), ...
@@ -19,24 +25,29 @@
 //! -   [`Stack`], [`TabStack`]: a stack of widgets in the same rect
 //! -   [`List`]: a row / column of children
 //! -   [`Splitter`]: like [`List`] but with resizing handles
+//! -   [`Grid`]: a container using matrix layout
 //!
 //! ## Controls
 //!
 //! -   [`Button`], [`MarkButton`]: button widgets
 //! -   [`CheckBox`], [`CheckButton`]: checkable boxes
 //! -   [`RadioBox`], [`RadioButton`]: linked checkable boxes
-//! -   [`ScrollBar`]: a scroll bar
+//! -   [`ComboBox`]: a drop-down menu over a list
+//! -   [`ScrollBar`]: a scroll bar; [`ScrollBars`]: a wrapper adding scroll
+//!     bars around an inner widget
 //! -   [`Slider`]: a slider
 //! -   [`Spinner`]: numeric entry
 //!
 //! ## Displays
 //!
 //! -   [`Filler`]: an empty widget, sometimes used to fill space
-//! -   [`Separator`]: a visible bar to separate things
-//! -   [`Mark`]: a small mark
-//! -   [`Label`]: a simple text label
-//! -   [`ScrollLabel`]: text label supporting scrolling and selection
 //! -   [`Image`]: a pixmap image
+//! -   [`Label`], [`AccelLabel`]: are static text labels
+//! -   [`Mark`]: a small mark
+//! -   [`ScrollLabel`]: text label supporting scrolling and selection
+//! -   [`Separator`]: a visible bar to separate things
+//! -   [`format_value`] and [`format_data`] are constructors for [`Text`],
+//!     displaying a text label derived from input data
 //! -   [`ProgressBar`]: show completion level
 //!
 //! ## Components

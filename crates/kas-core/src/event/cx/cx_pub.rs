@@ -294,7 +294,7 @@ impl EventState {
     /// Add a new accelerator key layer
     ///
     /// This method constructs a new "layer" for accelerator keys: any keys
-    /// added via [`EventState::add_accel_keys`] to a widget which is a descentant
+    /// added via [`EventState::add_accel_key`] to a widget which is a descentant
     /// of (or equal to) `id` will only be active when that layer is active.
     ///
     /// This method should only be called by parents of a pop-up: layers over
@@ -346,7 +346,7 @@ impl EventState {
     /// Returns true on success or when the widget already had char focus.
     ///
     /// Character data is sent to the widget with char focus via
-    /// [`Event::ReceivedCharacter`] and [`Event::Command`].
+    /// [`Event::Text`] and [`Event::Command`].
     ///
     /// Char focus implies sel focus (see [`Self::request_sel_focus`]) and
     /// navigation focus.
@@ -582,7 +582,7 @@ impl EventState {
 
     /// Request update to widget `id`
     ///
-    /// Schedules a call to [`Widget::update`] on widget `id`.
+    /// Schedules a call to [`Events::update`] on widget `id`.
     pub fn request_update(&mut self, id: WidgetId) {
         self.pending.push_back(Pending::Update(id));
     }

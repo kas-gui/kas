@@ -137,7 +137,7 @@ impl_scope! {
 impl_scope! {
     /// Data mapping
     ///
-    /// This is a generic data-mapping widget. See also [`Adapt`], [`MapAny`].
+    /// This is a generic data-mapping widget. See also [`Adapt`], [`MapAny`](super::MapAny).
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(Scrollable using self.inner where W: trait)]
     #[widget {

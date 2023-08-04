@@ -35,7 +35,7 @@ impl_scope! {
             }
         }
 
-        /// Call the given closure on [`Widget::configure`]
+        /// Call the given closure on [`Events::configure`]
         ///
         /// Returns a wrapper around the input widget.
         #[must_use]
@@ -47,7 +47,7 @@ impl_scope! {
             self
         }
 
-        /// Call the given closure on [`Widget::update`]
+        /// Call the given closure on [`Events::update`]
         ///
         /// Returns a wrapper around the input widget.
         #[must_use]

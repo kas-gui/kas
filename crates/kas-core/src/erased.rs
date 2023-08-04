@@ -8,6 +8,7 @@
 #![cfg_attr(not(winit), allow(unused))]
 
 use crate::Action;
+#[allow(unused)] use crate::Events;
 use std::any::Any;
 use std::fmt::Debug;
 
@@ -98,7 +99,7 @@ impl SendErased {
 /// A type-erased message stack
 ///
 /// This is a stack over [`Erased`], with some downcasting methods.
-/// It is a component of [`EventCx`](crate::events::EventCx) and usually only
+/// It is a component of [`EventCx`](crate::event::EventCx) and usually only
 /// used through that, thus the interface here is incomplete.
 #[must_use]
 #[derive(Debug, Default)]
@@ -186,7 +187,7 @@ pub trait AppData: 'static {
     /// Handle messages
     ///
     /// This is the last message handler: it is called when, after traversing
-    /// the widget tree (see [kas::events] module doc), a message is left on the
+    /// the widget tree (see [kas::event] module doc), a message is left on the
     /// stack. Unhandled messages will result in warnings in the log.
     ///
     /// The method returns an [`Action`], usually either [`Action::empty`]

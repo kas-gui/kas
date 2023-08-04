@@ -5,15 +5,11 @@
 
 //! KAS GUI core
 //!
-//! This core library provides:
+//! Re-exports:
 //!
-//! -   the [`Widget`] trait family, along with the [`widget`] macro to implement them
-//! -   high-level themable and mid-level [`draw`] APIs
-//! -   [`event`] handling code
-//! -   [`geom`]-etry types and widget [`layout`] solvers
-//!
-//! **Crate [`easy-cast`](https://crates.io/crates/easy-cast):** `Conv`, `Cast` traits and related functionality
-//! (always included), available as [`kas::cast`](https://docs.rs/easy-cast/0.5/easy_cast).
+//! -   [`kas::cast`] is a re-export of [`easy-cast`](https://crates.io/crates/easy-cast)
+//! -   [`impl_scope!`], [`singleton!`], [`autoimpl`] and [`impl_default`] are
+//!     re-implementations of [`impl-tools`](https://crates.io/crates/impl-tools) macros
 
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "spec", feature(specialization))]

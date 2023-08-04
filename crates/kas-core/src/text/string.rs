@@ -21,7 +21,7 @@ use crate::text::{Effect, EffectFlags};
 /// This is a label which supports highlighting of accelerator keys (elsewhere
 /// called "access keys" or "mnemonics"). This type represents both the
 /// displayed text (via [`FormattableText`] implementation)
-/// and the shortcut (via [`AccelString::keys`]).
+/// and the shortcut (via [`AccelString::key`]).
 ///
 /// Markup: `&&` translates to `&`; `&x` for any `x` translates to `x` and
 /// identifies `x` as an "accelerator key"; this may be drawn underlined and

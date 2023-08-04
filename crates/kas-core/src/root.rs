@@ -45,12 +45,13 @@ pub enum WindowCommand {
 }
 
 impl_scope! {
-    /// A support layer around a window
+    /// The window widget
+    ///
+    /// This widget is the root of any UI tree used as a window. It manages
+    /// window decorations.
     ///
     /// To change window properties at run-time, send a [`WindowCommand`] from a
     /// child widget.
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     #[widget]
     pub struct Window<Data: 'static> {
         core: widget_core!(),
