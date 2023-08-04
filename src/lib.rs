@@ -42,7 +42,8 @@ pub mod prelude {
     // - kas::WidgetId appears to have no methods
     // - doc_cfg annotations appear to be attached to the wrong items
 
-    pub use kas_core::prelude::*;
+    #[doc(no_inline)] pub use kas_core::prelude::*;
+    #[doc(no_inline)]
     pub use kas_widgets::adapt::{AdaptWidget, AdaptWidgetAny};
 }
 
