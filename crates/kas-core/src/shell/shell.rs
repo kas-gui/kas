@@ -312,7 +312,7 @@ impl Proxy {
 
     /// Send a message to [`AppData`]
     ///
-    /// This is similar to [`EventCx::push`](crate::events::EventCx::push),
+    /// This is similar to [`EventCx::push`](crate::event::EventCx::push),
     /// but can only be handled by top-level [`AppData`].
     pub fn push<M: std::fmt::Debug + Send + 'static>(
         &mut self,

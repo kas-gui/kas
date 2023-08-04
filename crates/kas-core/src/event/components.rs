@@ -421,7 +421,7 @@ impl TextInput {
                         (Action::Focus, Some(CursorIcon::Grabbing))
                     }
                     PressSource::Mouse(_, repeats) => (
-                        Action::Cursor(press.coord, true, !cx.modifiers().shift(), repeats),
+                        Action::Cursor(press.coord, true, !cx.modifiers().shift_key(), repeats),
                         None,
                     ),
                 };
@@ -469,7 +469,7 @@ impl TextInput {
                 match self.touch_phase {
                     TouchPhase::Start(touch_id, coord) => {
                         self.touch_phase = TouchPhase::Cursor(touch_id);
-                        Action::Cursor(coord, true, !cx.modifiers().shift(), 1)
+                        Action::Cursor(coord, true, !cx.modifiers().shift_key(), 1)
                     }
                     // Note: if the TimerUpdate were from another requester it
                     // should technically be Unused, but it doesn't matter

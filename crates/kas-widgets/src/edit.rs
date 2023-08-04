@@ -712,7 +712,7 @@ impl_scope! {
                         Response::Unused
                     }
                 }
-                Event::ReceivedCharacter(c) => match self.received_char(cx, c) {
+                Event::Text(text) => match self.received_text(cx, &text) {
                     false => Response::Unused,
                     true => {
                         G::edit(self, cx, data);
@@ -1100,7 +1100,7 @@ impl<G: EditGuard> EditField<G> {
     }
 
     // returns true on success, false on unhandled event
-    fn received_char(&mut self, cx: &mut EventCx, c: char) -> bool {
+    fn received_text(&mut self, cx: &mut EventCx, text: &str) -> bool {
         if !self.editable {
             return false;
         }
@@ -1113,13 +1113,16 @@ impl<G: EditGuard> EditField<G> {
             self.last_edit = LastEdit::Insert;
         }
         if have_sel {
-            let mut buf = [0u8; 4];
-            let s = c.encode_utf8(&mut buf);
-            self.text.replace_range(selection.clone(), s);
-            self.selection.set_pos(selection.start + s.len());
+            self.text.replace_range(selection.clone(), text);
+            self.selection.set_pos(selection.start + text.len());
         } else {
-            self.text.insert_char(pos, c);
-            self.selection.set_pos(pos + c.len_utf8());
+            // TODO(kas-text) support the following:
+            // self.text.insert_str(pos, text);
+            let mut s = self.text.clone_string();
+            s.insert_str(pos, text);
+            self.text.set_text(s);
+            // END workaround
+            self.selection.set_pos(pos + text.len());
         }
         self.edit_x_coord = None;
 
@@ -1129,7 +1132,7 @@ impl<G: EditGuard> EditField<G> {
 
     fn control_key(&mut self, cx: &mut EventCx, key: Command) -> Result<EditAction, NotReady> {
         let editable = self.editable;
-        let mut shift = cx.modifiers().shift();
+        let mut shift = cx.modifiers().shift_key();
         let mut buf = [0u8; 4];
         let pos = self.selection.edit_pos();
         let len = self.text.str_len();

@@ -13,9 +13,6 @@
 //!
 //! -   [`View`] is the default, providing a simple read-only view over content
 //! -   [`NavView`] is like [`View`], but using keyboard navigable widgets
-//! -   [`EditBox`], [`CheckBox`] etc. provide an interactive view over common
-//!     data types using the like-named widgets
-//! -   [`EventConfig`] provides an editor over a specific complex data type
 //!
 //! Intended usage is to import the module name rather than its contents, thus
 //! allowing referal to e.g. `driver::View`.
@@ -55,7 +52,7 @@ pub trait Driver<Item, Data: SharedData<Item = Item>> {
     /// widget with a text selection is assigned to a new key it does not
     /// attempt to apply the old selection to the new text.
     ///
-    /// This does not need to set data; [`Widget::update`] does that.
+    /// This does not need to set data; [`Events::update`] does that.
     ///
     /// The default implementation simply replaces widget with `self.make(key)`,
     /// which is sufficient, if not always optimal.

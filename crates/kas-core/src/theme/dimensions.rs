@@ -51,8 +51,10 @@ crate::impl_scope! {
         pub m_text: (f32, f32) = (3.3, 0.8),
         /// Frame size
         pub frame: f32 = 2.4,
+        /// Window frame size
+        pub frame_window: f32 = 4.0,
         /// Popup frame size
-        pub popup_frame: f32 = 0.0,
+        pub frame_popup: f32 = 0.0,
         /// MenuEntry frame size (horiz, vert)
         pub menu_frame: f32 = 2.4,
         /// Button frame size (non-flat outer region)
@@ -92,7 +94,8 @@ pub struct Dimensions {
     pub m_large: u16,
     pub m_text: (u16, u16),
     pub frame: i32,
-    pub popup_frame: i32,
+    pub frame_window: i32,
+    pub frame_popup: i32,
     pub menu_frame: i32,
     pub button_frame: i32,
     pub button_inner: u16,
@@ -128,7 +131,8 @@ impl Dimensions {
             m_large: (params.m_large * scale).cast_nearest(),
             m_text: (text_m0, text_m1),
             frame: (params.frame * scale).cast_nearest(),
-            popup_frame: (params.popup_frame * scale).cast_nearest(),
+            frame_window: (params.frame_window * scale).cast_nearest(),
+            frame_popup: (params.frame_popup * scale).cast_nearest(),
             menu_frame: (params.menu_frame * scale).cast_nearest(),
             button_frame: (params.button_frame * scale).cast_nearest(),
             button_inner: (params.button_inner * scale).cast_nearest(),
@@ -295,8 +299,8 @@ impl<D: 'static> ThemeSize for Window<D> {
         match style {
             FrameStyle::None => FrameRules::ZERO,
             FrameStyle::Frame => FrameRules::new_sym(self.dims.frame, 0, outer),
-            FrameStyle::Window => FrameRules::new_sym(self.dims.frame, 0, 0),
-            FrameStyle::Popup => FrameRules::new_sym(self.dims.popup_frame, 0, 0),
+            FrameStyle::Window => FrameRules::new_sym(self.dims.frame_window, 0, 0),
+            FrameStyle::Popup => FrameRules::new_sym(self.dims.frame_popup, 0, 0),
             FrameStyle::MenuEntry => FrameRules::new_sym(self.dims.menu_frame, 0, 0),
             FrameStyle::NavFocus => FrameRules::new_sym(0, self.dims.m_inner, 0),
             FrameStyle::Button | FrameStyle::Tab => {

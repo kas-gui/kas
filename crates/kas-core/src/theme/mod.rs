@@ -30,11 +30,13 @@ pub mod dimensions;
 
 pub use colors::{Colors, ColorsLinear, ColorsSrgb, InputState};
 pub use config::{Config, RasterConfig};
-pub use draw::{Background, DrawCx, ThemeDraw};
+pub use draw::{Background, DrawCx};
 pub use flat_theme::FlatTheme;
 pub use multi::{MultiTheme, MultiThemeBuilder};
 pub use simple_theme::SimpleTheme;
-pub use size::{SizeCx, ThemeSize};
+pub use size::SizeCx;
 pub use style::*;
 pub use theme_dst::{MaybeBoxed, ThemeDst};
 pub use traits::{Theme, ThemeConfig, ThemeControl, Window};
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+pub use {draw::ThemeDraw, size::ThemeSize};

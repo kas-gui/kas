@@ -13,8 +13,8 @@ use kas::geom::Vec2;
 use kas::layout::{AxisInfo, SizeRules};
 use kas::text::AccelString;
 use kas::theme::SizeCx;
-#[allow(unused)] use kas::Layout;
 use kas::Widget;
+#[allow(unused)] use kas::{Events, Layout};
 
 /// Support type for [`AdaptWidget::with_min_size_px`]
 pub struct WithMinSizePx(Vec2);
@@ -62,7 +62,18 @@ pub trait AdaptWidget: Widget + Sized {
         Map::new(self, f)
     }
 
-    /// Call the given closure on [`Widget::update`]
+    /// Call the given closure on [`Events::configure`]
+    ///
+    /// Returns a wrapper around the input widget.
+    #[must_use]
+    fn on_configure<F>(self, f: F) -> OnUpdate<Self>
+    where
+        F: Fn(&mut ConfigCx, &mut Self) + 'static,
+    {
+        OnUpdate::new(self).on_configure(f)
+    }
+
+    /// Call the given closure on [`Events::update`]
     ///
     /// Returns a wrapper around the input widget.
     #[must_use]
@@ -70,7 +81,7 @@ pub trait AdaptWidget: Widget + Sized {
     where
         F: Fn(&mut ConfigCx, &mut Self, &Self::Data) + 'static,
     {
-        OnUpdate::new(self, f)
+        OnUpdate::new(self).on_update(f)
     }
 
     /// Construct a wrapper widget which reserves extra space

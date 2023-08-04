@@ -116,7 +116,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         }
         let window = builder
             .with_title(widget.title())
-            .with_window_icon(widget.icon().cloned())
+            .with_window_icon(widget.take_icon())
             .with_decorations(widget.decorations() == kas::Decorations::Server)
             .with_transparent(widget.transparent())
             .build(elwt)?;
@@ -562,12 +562,6 @@ where
         self.shared.pending.push(PendingAction::CloseWindow(id));
     }
 
-    fn drag_window(&self) {
-        if let Some(window) = self.window {
-            let _result = window.drag_window();
-        }
-    }
-
     #[inline]
     fn get_clipboard(&mut self) -> Option<String> {
         #[cfg(all(wayland_platform, feature = "clipboard"))]
@@ -663,7 +657,7 @@ where
         self.shared.platform
     }
 
-    #[cfg(feature = "winit")]
+    #[cfg(winit)]
     #[inline]
     fn winit_window(&self) -> Option<&winit::window::Window> {
         self.window.map(|w| &w.window)

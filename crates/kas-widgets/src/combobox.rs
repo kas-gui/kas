@@ -24,8 +24,8 @@ impl_scope! {
     /// Each choice has an associated value of type `V`.
     ///
     /// If no selection handler exists, then the choice's message is emitted
-    /// when selected. If a handler is specified via [`Self::on_select`], then
-    /// this message is passed to the handler and not emitted.
+    /// when selected. If a handler is specified via [`Self::with`] or
+    /// [`Self::with_msg`] then this message is passed to the handler and not emitted.
     #[widget {
         layout = button! 'frame(row! [self.label, self.mark]);
         navigable = true;

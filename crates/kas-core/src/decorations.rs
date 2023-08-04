@@ -7,7 +7,7 @@
 //!
 //! Note: due to definition in kas-core, some widgets must be duplicated.
 
-use crate::event::ConfigCx;
+use crate::event::{ConfigCx, CursorIcon, ResizeDirection};
 use crate::geom::Rect;
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::Text;
@@ -17,6 +17,90 @@ use kas::prelude::*;
 use kas::theme::MarkStyle;
 use kas_macros::impl_scope;
 use std::fmt::Debug;
+
+/// Available decoration modes
+///
+/// See [`Window::decorations`].
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum Decorations {
+    /// No decorations
+    ///
+    /// The root widget is drawn as a simple rectangle with no borders.
+    None,
+    /// Add a simple themed border to the widget
+    ///
+    /// Probably looks better if [`Window::transparent`] is true.
+    Border,
+    /// Toolkit-drawn decorations
+    ///
+    /// Decorations will match the toolkit theme, not the platform theme.
+    /// These decorations may not have all the same capabilities.
+    ///
+    /// Probably looks better if [`Window::transparent`] is true.
+    Toolkit,
+    /// Server-side decorations
+    ///
+    /// Decorations are drawn by the window manager, if available.
+    Server,
+}
+
+impl_scope! {
+    /// A border region
+    ///
+    /// Does not draw anything; used solely for event handling.
+    #[widget {
+        cursor_icon = self.cursor_icon();
+    }]
+    pub(crate) struct Border {
+        core: widget_core!(),
+        resizable: bool,
+        direction: ResizeDirection,
+    }
+
+    impl Self {
+        pub fn new(direction: ResizeDirection) -> Self {
+            Border {
+                core: Default::default(),
+                resizable: true,
+                direction,
+            }
+        }
+
+        pub fn set_resizable(&mut self, resizable: bool) {
+            self.resizable = resizable;
+        }
+
+        fn cursor_icon(&self) -> CursorIcon {
+            if self.resizable {
+                self.direction.into()
+            } else {
+                CursorIcon::default()
+            }
+        }
+    }
+
+    impl Layout for Self {
+        fn size_rules(&mut self, _: SizeCx, _: AxisInfo) -> SizeRules {
+            SizeRules::EMPTY
+        }
+
+        fn draw(&mut self, _: DrawCx) {}
+    }
+
+    impl Events for Self {
+        type Data = ();
+
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+            match event {
+                Event::PressStart { .. } => {
+                    cx.drag_resize_window(self.direction);
+                    Response::Used
+                }
+                _ => Response::Unused,
+            }
+        }
+    }
+}
 
 impl_scope! {
     /// A simple label
@@ -57,6 +141,22 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawCx) {
             draw.text(self.rect(), &self.label, Self::CLASS);
+        }
+    }
+
+    impl HasStr for Self {
+        fn get_str(&self) -> &str {
+            self.label.as_str()
+        }
+    }
+
+    impl HasString for Self {
+        fn set_string(&mut self, string: String) -> Action {
+            self.label.set_string(string);
+            match self.label.try_prepare() {
+                Ok(true) => Action::RESIZE,
+                _ => Action::REDRAW,
+            }
         }
     }
 }
@@ -151,25 +251,37 @@ impl_scope! {
         pub fn title(&self) -> &str {
             self.title.label.as_str()
         }
+
+        /// Set the title
+        pub fn set_title(&mut self, title: String) -> Action {
+            self.title.set_string(title)
+        }
     }
 
     impl Events for Self {
         type Data = ();
 
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+            match event {
+                Event::PressStart { .. } => {
+                    cx.drag_window();
+                    Response::Used
+                }
+                _ => Response::Unused,
+            }
+        }
+
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(msg) = cx.try_pop() {
                 match msg {
                     TitleBarButton::Minimize => {
-                        #[cfg(features = "winit")]
+                        #[cfg(winit)]
                         if let Some(w) = cx.winit_window() {
-                            // TODO: supported in winit 0.28:
-                            // let is_minimized = w.is_minimized().unwrap_or(false);
-                            let is_minimized = false;
-                            w.set_minimized(!is_minimized);
+                            w.set_minimized(true);
                         }
                     }
                     TitleBarButton::Maximize => {
-                        #[cfg(features = "winit")]
+                        #[cfg(winit)]
                         if let Some(w) = cx.winit_window() {
                             w.set_maximized(!w.is_maximized());
                         }

@@ -359,8 +359,13 @@ where
                 let col = self.cols.from_bg(bg, state, false);
                 self.draw.rect(outer, col);
             }
-            FrameStyle::Frame | FrameStyle::Window => {
+            FrameStyle::Frame => {
                 let inner = outer.shrink(self.w.dims.frame as f32);
+                self.draw
+                    .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
+            }
+            FrameStyle::Window => {
+                let inner = outer.shrink(self.w.dims.frame_window as f32);
                 self.draw
                     .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
             }

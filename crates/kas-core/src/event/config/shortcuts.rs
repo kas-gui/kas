@@ -5,7 +5,7 @@
 
 //! Shortcut matching
 
-use crate::event::{Command, ModifiersState, VirtualKeyCode};
+use crate::event::{Command, Key, ModifiersState};
 use linear_map::LinearMap;
 #[cfg(feature = "serde")]
 use serde::de::{self, Deserialize, Deserializer, MapAccess, Unexpected, Visitor};
@@ -18,7 +18,7 @@ use std::collections::HashMap;
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Shortcuts {
-    map: LinearMap<ModifiersState, HashMap<VirtualKeyCode, Command>>,
+    map: LinearMap<ModifiersState, HashMap<Key, Command>>,
 }
 
 impl Shortcuts {
@@ -40,11 +40,10 @@ impl Shortcuts {
 
     /// Load default shortcuts for the current platform
     pub fn load_platform_defaults(&mut self) {
-        use VirtualKeyCode as VK;
         #[cfg(target_os = "macos")]
-        const CMD: ModifiersState = ModifiersState::LOGO;
+        const CMD: ModifiersState = ModifiersState::SUPER;
         #[cfg(not(target_os = "macos"))]
-        const CMD: ModifiersState = ModifiersState::CTRL;
+        const CMD: ModifiersState = ModifiersState::CONTROL;
 
         // No modifiers
         #[cfg(not(target_os = "macos"))]
@@ -52,14 +51,14 @@ impl Shortcuts {
             let modifiers = ModifiersState::empty();
             let map = self.map.entry(modifiers).or_insert_with(Default::default);
             let shortcuts = [
-                (VK::F1, Command::Help),
-                (VK::F2, Command::Rename),
-                (VK::F3, Command::FindNext),
-                (VK::F5, Command::Refresh),
-                (VK::F7, Command::Spelling),
-                (VK::F8, Command::Debug),
-                (VK::F10, Command::Menu),
-                (VK::F11, Command::Fullscreen),
+                (Key::F1, Command::Help),
+                (Key::F2, Command::Rename),
+                (Key::F3, Command::FindNext),
+                (Key::F5, Command::Refresh),
+                (Key::F7, Command::SpellCheck),
+                (Key::F8, Command::Debug),
+                (Key::F10, Command::Menu),
+                (Key::F11, Command::Fullscreen),
             ];
             map.extend(shortcuts.iter().cloned());
         }
@@ -69,7 +68,7 @@ impl Shortcuts {
         {
             let modifiers = ModifiersState::SHIFT;
             let map = self.map.entry(modifiers).or_insert_with(Default::default);
-            map.insert(VK::F3, Command::FindPrev);
+            map.insert(Key::F3, Command::FindPrevious);
         }
 
         // Alt (Option on MacOS)
@@ -78,11 +77,11 @@ impl Shortcuts {
         #[cfg(not(target_os = "macos"))]
         {
             let shortcuts = [
-                (VK::F4, Command::Close),
-                (VK::Left, Command::NavPrev),
-                (VK::Right, Command::NavNext),
-                (VK::Up, Command::NavParent),
-                (VK::Down, Command::NavDown),
+                (Key::F4, Command::Close),
+                (Key::ArrowLeft, Command::NavPrevious),
+                (Key::ArrowRight, Command::NavNext),
+                (Key::ArrowUp, Command::NavParent),
+                (Key::ArrowDown, Command::NavDown),
             ];
             map.extend(shortcuts.iter().cloned());
         }
@@ -90,11 +89,11 @@ impl Shortcuts {
         {
             // Missing functionality: move to start/end of paragraph on (Shift)+Alt+Up/Down
             let shortcuts = [
-                (VK::Left, Command::WordLeft),
-                (VK::Right, Command::WordRight),
+                (Key::ArrowLeft, Command::WordLeft),
+                (Key::ArrowRight, Command::WordRight),
             ];
 
-            map.insert(VK::Delete, Command::DelWordBack);
+            map.insert(Key::Delete, Command::DelWordBack);
             map.extend(shortcuts.iter().cloned());
 
             // Shift + Option
@@ -106,52 +105,56 @@ impl Shortcuts {
         // Command (MacOS) or Ctrl (other OS)
         let map = self.map.entry(CMD).or_insert_with(Default::default);
         let shortcuts = [
-            (VK::A, Command::SelectAll),
-            (VK::B, Command::Bold),
-            (VK::C, Command::Copy),
-            (VK::F, Command::Find),
-            (VK::I, Command::Italic),
-            (VK::K, Command::Link),
-            (VK::N, Command::New),
-            (VK::O, Command::Open),
-            (VK::P, Command::Print),
-            (VK::S, Command::Save),
-            (VK::T, Command::TabNew),
-            (VK::U, Command::Underline),
-            (VK::V, Command::Paste),
-            (VK::W, Command::Close),
-            (VK::X, Command::Cut),
-            (VK::Z, Command::Undo),
-            (VK::Tab, Command::TabNext),
+            (Key::Character("a".into()), Command::SelectAll),
+            (Key::Character("b".into()), Command::Bold),
+            (Key::Character("c".into()), Command::Copy),
+            (Key::Character("f".into()), Command::Find),
+            (Key::Character("i".into()), Command::Italic),
+            (Key::Character("k".into()), Command::Link),
+            (Key::Character("n".into()), Command::New),
+            (Key::Character("o".into()), Command::Open),
+            (Key::Character("p".into()), Command::Print),
+            (Key::Character("s".into()), Command::Save),
+            (Key::Character("t".into()), Command::TabNew),
+            (Key::Character("u".into()), Command::Underline),
+            (Key::Character("v".into()), Command::Paste),
+            (Key::Character("]".into()), Command::Paste),
+            (Key::Character("w".into()), Command::Close),
+            (Key::Character("w".into()), Command::Cut),
+            (Key::Character("z".into()), Command::Undo),
+            (Key::Tab, Command::TabNext),
         ];
         map.extend(shortcuts.iter().cloned());
         #[cfg(target_os = "macos")]
         {
             let shortcuts = [
-                (VK::G, Command::FindNext),
-                (VK::Up, Command::DocHome),
-                (VK::Down, Command::DocEnd),
-                (VK::Left, Command::Home),
-                (VK::Right, Command::End),
+                (Key::Character("g".into()), Command::FindNext),
+                (Key::ArrowUp, Command::DocHome),
+                (Key::ArrowDown, Command::DocEnd),
+                (Key::ArrowLeft, Command::Home),
+                (Key::ArrowRight, Command::End),
             ];
             map.extend(shortcuts.iter().cloned());
         }
         #[cfg(not(target_os = "macos"))]
         {
-            let shortcuts = [(VK::Q, Command::Exit), (VK::R, Command::FindReplace)];
+            let shortcuts = [
+                (Key::Character("q".into()), Command::Exit),
+                (Key::Character("r".into()), Command::FindReplace),
+            ];
             map.extend(shortcuts.iter().cloned());
 
             let shortcuts = [
-                (VK::Up, Command::ViewUp),
-                (VK::Down, Command::ViewDown),
-                (VK::Left, Command::WordLeft),
-                (VK::Right, Command::WordRight),
-                (VK::Back, Command::DelWordBack),
-                (VK::Delete, Command::DelWord),
-                (VK::Home, Command::DocHome),
-                (VK::End, Command::DocEnd),
-                (VK::PageUp, Command::TabPrev),
-                (VK::PageDown, Command::TabNext),
+                (Key::ArrowUp, Command::ViewUp),
+                (Key::ArrowDown, Command::ViewDown),
+                (Key::ArrowLeft, Command::WordLeft),
+                (Key::ArrowRight, Command::WordRight),
+                (Key::Backspace, Command::DelWordBack),
+                (Key::Delete, Command::DelWord),
+                (Key::Home, Command::DocHome),
+                (Key::End, Command::DocEnd),
+                (Key::PageUp, Command::TabPrevious),
+                (Key::PageDown, Command::TabNext),
             ];
             map.extend(shortcuts.iter().cloned());
 
@@ -164,29 +167,29 @@ impl Shortcuts {
         // Ctrl + Command (MacOS)
         #[cfg(target_os = "macos")]
         {
-            let modifiers = ModifiersState::CTRL | ModifiersState::LOGO;
+            let modifiers = ModifiersState::CONTROL | ModifiersState::SUPER;
             let map = self.map.entry(modifiers).or_insert_with(Default::default);
-            map.insert(VK::F, Command::Fullscreen);
+            map.insert(Key::Character("f".into()), Command::Fullscreen);
         }
 
         // Shift + Ctrl/Command
         let modifiers = ModifiersState::SHIFT | CMD;
         let map = self.map.entry(modifiers).or_insert_with(Default::default);
         let shortcuts = [
-            (VK::A, Command::Deselect),
-            (VK::Z, Command::Redo),
-            (VK::Tab, Command::TabPrev),
+            (Key::Character("a".into()), Command::Deselect),
+            (Key::Character("z".into()), Command::Redo),
+            (Key::Tab, Command::TabPrevious),
         ];
         map.extend(shortcuts.iter().cloned());
         #[cfg(target_os = "macos")]
         {
             let shortcuts = [
-                (VK::G, Command::FindPrev),
-                (VK::Colon, Command::Spelling),
-                (VK::Up, Command::DocHome),
-                (VK::Down, Command::DocEnd),
-                (VK::Left, Command::Home),
-                (VK::Right, Command::End),
+                (Key::Character("g".into()), Command::FindPrevious),
+                (Key::Character(":".into()), Command::SpellCheck),
+                (Key::ArrowUp, Command::DocHome),
+                (Key::ArrowDown, Command::DocEnd),
+                (Key::ArrowLeft, Command::Home),
+                (Key::ArrowRight, Command::End),
             ];
             map.extend(shortcuts.iter().cloned());
         }
@@ -196,7 +199,7 @@ impl Shortcuts {
         {
             let modifiers = ModifiersState::ALT | CMD;
             let map = self.map.entry(modifiers).or_insert_with(Default::default);
-            map.insert(VK::W, Command::Exit);
+            map.insert(Key::Character("w".into()), Command::Exit);
         }
     }
 
@@ -205,8 +208,8 @@ impl Shortcuts {
     /// Note: text-editor navigation keys (e.g. arrows, home/end) result in the
     /// same output with and without Shift pressed. Editors should check the
     /// status of the Shift modifier directly where this has an affect.
-    pub fn get(&self, mut modifiers: ModifiersState, vkey: VirtualKeyCode) -> Option<Command> {
-        if let Some(result) = self.map.get(&modifiers).and_then(|m| m.get(&vkey)) {
+    pub fn get(&self, mut modifiers: ModifiersState, vkey: &Key) -> Option<Command> {
+        if let Some(result) = self.map.get(&modifiers).and_then(|m| m.get(vkey)) {
             return Some(*result);
         }
         modifiers.remove(ModifiersState::SHIFT);
@@ -221,9 +224,9 @@ impl Shortcuts {
 #[cfg(feature = "serde")]
 fn state_to_string(state: ModifiersState) -> &'static str {
     const SHIFT: ModifiersState = ModifiersState::SHIFT;
-    const CTRL: ModifiersState = ModifiersState::CTRL;
+    const CONTROL: ModifiersState = ModifiersState::CONTROL;
     const ALT: ModifiersState = ModifiersState::ALT;
-    const SUPER: ModifiersState = ModifiersState::LOGO;
+    const SUPER: ModifiersState = ModifiersState::SUPER;
     // we can't use match since OR patterns are unstable (rust#54883)
     if state == ModifiersState::empty() {
         "none"
@@ -233,13 +236,13 @@ fn state_to_string(state: ModifiersState) -> &'static str {
         "alt"
     } else if state == ALT | SUPER {
         "alt-super"
-    } else if state == CTRL {
+    } else if state == CONTROL {
         "ctrl"
-    } else if state == CTRL | SUPER {
+    } else if state == CONTROL | SUPER {
         "ctrl-super"
-    } else if state == CTRL | ALT {
+    } else if state == CONTROL | ALT {
         "ctrl-alt"
-    } else if state == CTRL | ALT | SUPER {
+    } else if state == CONTROL | ALT | SUPER {
         "ctrl-alt-super"
     } else if state == SHIFT {
         "shift"
@@ -249,11 +252,11 @@ fn state_to_string(state: ModifiersState) -> &'static str {
         "alt-shift"
     } else if state == SHIFT | ALT | SUPER {
         "alt-shift-super"
-    } else if state == SHIFT | CTRL {
+    } else if state == SHIFT | CONTROL {
         "ctrl-shift"
-    } else if state == SHIFT | CTRL | SUPER {
+    } else if state == SHIFT | CONTROL | SUPER {
         "ctrl-shift-super"
-    } else if state == SHIFT | CTRL | ALT {
+    } else if state == SHIFT | CONTROL | ALT {
         "ctrl-alt-shift"
     } else {
         "ctrl-alt-shift-super"
@@ -273,7 +276,8 @@ impl Serialize for Shortcuts {
             // Sort items in the hash-map to ensure stable order
             // NOTE: We need a "map type" to ensure entries are serialised as
             // a map, not as a list. BTreeMap is easier than a shim over a Vec.
-            let bindings: std::collections::BTreeMap<_, _> = bindings.iter().collect();
+            // TODO: winit::keyboard::Key does not support Ord!
+            // let bindings: std::collections::BTreeMap<_, _> = bindings.iter().collect();
             map.serialize_value(&bindings)?;
         }
         map.end()
@@ -301,7 +305,7 @@ impl<'de> Visitor<'de> for ModifierStateVisitor {
         let mut state = ModifiersState::empty();
 
         if v.starts_with("ctrl") {
-            state |= ModifiersState::CTRL;
+            state |= ModifiersState::CONTROL;
             v = &v[v.len().min(4)..];
         }
         if v.starts_with('-') {
@@ -322,7 +326,7 @@ impl<'de> Visitor<'de> for ModifierStateVisitor {
             v = &v[1..];
         }
         if v.starts_with("super") {
-            state |= ModifiersState::LOGO;
+            state |= ModifiersState::SUPER;
             v = &v[v.len().min(5)..];
         }
 
@@ -361,7 +365,7 @@ impl<'de> Visitor<'de> for ShortcutsVisitor {
     where
         A: MapAccess<'de>,
     {
-        let mut map = LinearMap::<ModifiersState, HashMap<VirtualKeyCode, Command>>::new();
+        let mut map = LinearMap::<ModifiersState, HashMap<Key, Command>>::new();
         while let Some(key) = reader.next_key::<ModifierStateVisitor>()? {
             let value = reader.next_value()?;
             map.insert(key.0, value);

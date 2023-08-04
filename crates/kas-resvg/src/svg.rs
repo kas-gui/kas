@@ -12,7 +12,7 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tiny_skia::{Pixmap, Transform};
-use usvg::Tree;
+use usvg::{Tree, TreeParsing};
 
 /// Load errors
 #[derive(thiserror::Error, Debug)]
@@ -45,11 +45,11 @@ fn load(data: &[u8], resources_dir: Option<&Path>) -> Result<Tree, usvg::Error> 
         shape_rendering: usvg::ShapeRendering::default(),
         text_rendering: usvg::TextRendering::default(),
         image_rendering: usvg::ImageRendering::default(),
-        default_size: usvg::Size::new(100.0, 100.0).unwrap(),
+        default_size: usvg::Size::from_wh(100.0, 100.0).unwrap(),
         image_href_resolver: Default::default(),
     };
 
-    usvg::Tree::from_data(data, &opts)
+    Tree::from_data(data, &opts)
 }
 
 #[derive(Clone)]
@@ -85,10 +85,12 @@ enum State {
 }
 
 async fn draw(svg: Source, mut pixmap: Pixmap) -> Pixmap {
-    let (w, h) = (pixmap.width(), pixmap.height());
     if let Ok(tree) = svg.tree() {
-        let transform = Transform::identity();
-        resvg::render(&tree, usvg::FitTo::Size(w, h), transform, pixmap.as_mut());
+        let tree = resvg::Tree::from_usvg(&tree);
+        let w = f32::conv(pixmap.width()) / tree.size.width();
+        let h = f32::conv(pixmap.height()) / tree.size.height();
+        let transform = Transform::from_scale(w, h);
+        tree.render(transform, &mut pixmap.as_mut());
     }
     pixmap
 }
@@ -169,8 +171,8 @@ impl_scope! {
 
         fn load_source(&mut self, source: Source) -> Result<Action, usvg::Error> {
             // Set scaling size. TODO: this is useless if Self::with_size is called after.
-            let tree = source.tree()?;
-            self.scaling.size = LogicalSize::conv(tree.size.to_screen_size().dimensions());
+            let size = source.tree()?.size;
+            self.scaling.size = LogicalSize(size.width(), size.height());
 
             self.inner = match std::mem::take(&mut self.inner) {
                 State::Ready(_, px) => State::Ready(source, px),

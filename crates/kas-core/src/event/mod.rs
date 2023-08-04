@@ -39,7 +39,7 @@
 //!         call [`Events::handle_event`]
 //!     -   If the message stack is non-empty (see [`EventCx::push`]),
 //!         call [`Events::handle_messages`].
-//! 7.  If the message stack is not empty, call [`AppState::handle_messages`](crate::AppState::handle_messages).
+//! 7.  If the message stack is not empty, call [`AppData::handle_messages`](crate::AppData::handle_messages).
 //! 8.  Clear any messages still on the message stack, printing a warning to the
 //!     log. Messages *should* be handled during unwinding, though not doing so
 //!     is safe (and possibly useful during development).
@@ -60,34 +60,20 @@
 pub mod components;
 pub mod config;
 mod cx;
-#[cfg(not(feature = "winit"))] mod enums;
+#[cfg(not(winit))] mod enums;
 mod events;
 mod response;
 
-use smallvec::SmallVec;
-
-#[cfg(feature = "winit")]
-pub use winit::event::{ModifiersState, MouseButton, VirtualKeyCode};
-#[cfg(feature = "winit")] pub use winit::window::CursorIcon;
+pub use smol_str::SmolStr;
+#[cfg(winit)] pub use winit::event::MouseButton;
+#[cfg(winit)]
+pub use winit::keyboard::{Key, KeyCode, ModifiersState};
+#[cfg(winit)]
+pub use winit::window::{CursorIcon, ResizeDirection}; // used by Key
 
 #[allow(unused)] use crate::{Events, Widget};
 #[doc(no_inline)] pub use config::Config;
 pub use cx::*;
-#[cfg(not(feature = "winit"))]
-pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
+#[cfg(not(winit))] pub use enums::*;
 pub use events::*;
 pub use response::{Response, Scroll};
-
-/// A type supporting a small number of key bindings
-///
-/// This type may be used where it is desirable to support a small number of
-/// key bindings. The type is allowed to silently ignore extra bindings beyond
-/// some *small* number of at least 3. (Currently numbers over 5 are accepted
-/// but cause allocation.)
-pub type VirtualKeyCodes = SmallVec<[VirtualKeyCode; 5]>;
-
-#[test]
-fn size_of_virtual_key_codes() {
-    // Currently sized to maximise use of available space on 64-bit platforms
-    assert!(std::mem::size_of::<VirtualKeyCodes>() <= 32);
-}

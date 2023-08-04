@@ -5,12 +5,13 @@
 
 //! Window widgets
 
+use crate::cast::Cast;
+use crate::decorations::{Border, Decorations, TitleBar};
 use crate::dir::Directional;
-use crate::event::{ConfigCx, EventCx, Scroll};
+use crate::event::{ConfigCx, Event, EventCx, ResizeDirection, Response, Scroll};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
-use crate::title_bar::TitleBar;
 use crate::{Action, Events, Icon, Layout, LayoutExt, Widget, WidgetId};
 use kas_macros::impl_scope;
 use smallvec::SmallVec;
@@ -32,55 +33,45 @@ impl WindowId {
     }
 }
 
-/// Available decoration modes
+/// Commands supported by the [`Window`]
 ///
-/// See [`Window::decorations`].
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum Decorations {
-    /// No decorations
-    ///
-    /// The root widget is drawn as a simple rectangle with no borders.
-    None,
-    /// Add a simple themed border to the widget
-    ///
-    /// Probably looks better if [`Window::transparent`] is true.
-    Border,
-    /// Toolkit-drawn decorations
-    ///
-    /// Decorations will match the toolkit theme, not the platform theme.
-    /// These decorations may not have all the same capabilities.
-    ///
-    /// Probably looks better if [`Window::transparent`] is true.
-    Toolkit,
-    /// Server-side decorations
-    ///
-    /// Decorations are drawn by the window manager, if available.
-    Server,
+/// This may be sent as a message from any widget in the window.
+#[derive(Clone, Debug)]
+pub enum WindowCommand {
+    /// Change the window's title
+    SetTitle(String),
+    /// Change the window's icon
+    SetIcon(Option<Icon>),
 }
 
 impl_scope! {
-    /// A support layer around a window
+    /// The window widget
     ///
-    /// TODO: there is currently no mechanism for adjusting window properties at
-    /// run-time. The intention is to support sending a message like:
-    /// `cx.push(WindowCommand::SetTitle("New Title"));`. The problem is that
-    /// this window representation is disconnected from winit::Window and has no
-    /// mechanism for updating that. This may be easier to implement later.
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    /// This widget is the root of any UI tree used as a window. It manages
+    /// window decorations.
+    ///
+    /// To change window properties at run-time, send a [`WindowCommand`] from a
+    /// child widget.
     #[widget]
     pub struct Window<Data: 'static> {
         core: widget_core!(),
-        icon: Option<Icon>,
+        icon: Option<Icon>, // initial icon, if any
         decorations: Decorations,
         restrictions: (bool, bool),
         drag_anywhere: bool,
         transparent: bool,
-        config_fn: Option<Box<dyn Fn(&Self, &mut ConfigCx)>>,
+        #[widget]
+        inner: Box<dyn Widget<Data = Data>>,
         #[widget(&())]
         title_bar: TitleBar,
-        #[widget]
-        w: Box<dyn Widget<Data = Data>>,
+        #[widget(&())] b_w: Border,
+        #[widget(&())] b_e: Border,
+        #[widget(&())] b_n: Border,
+        #[widget(&())] b_s: Border,
+        #[widget(&())] b_nw: Border,
+        #[widget(&())] b_ne: Border,
+        #[widget(&())] b_sw: Border,
+        #[widget(&())] b_se: Border,
         bar_h: i32,
         dec_offset: Offset,
         dec_size: Size,
@@ -89,7 +80,7 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let mut inner = self.w.size_rules(sizer.re(), axis);
+            let mut inner = self.inner.size_rules(sizer.re(), axis);
 
             self.bar_h = 0;
             if matches!(self.decorations, Decorations::Toolkit) {
@@ -102,6 +93,7 @@ impl_scope! {
                 }
             }
             if matches!(self.decorations, Decorations::Border | Decorations::Toolkit) {
+                // We would call size_rules on Border widgets here if it did anything
                 let frame = sizer.frame(FrameStyle::Window, axis);
                 let (rules, offset, size) = frame.surround(inner);
                 self.dec_offset.set_component(axis, offset);
@@ -112,17 +104,32 @@ impl_scope! {
             }
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            rect.pos += self.dec_offset;
-            rect.size -= self.dec_size;
+            // Calculate position and size for nw, ne, and inner portions:
+            let s_nw: Size = self.dec_offset.cast();
+            let s_se = self.dec_size - s_nw;
+            let mut s_in = rect.size - self.dec_size;
+            let p_nw = rect.pos;
+            let mut p_in = p_nw + self.dec_offset;
+            let p_se = p_in + s_in;
+
+            self.b_w.set_rect(cx, Rect::new(Coord(p_nw.0, p_in.1), Size(s_nw.0, s_in.1)));
+            self.b_e.set_rect(cx, Rect::new(Coord(p_se.0, p_in.1), Size(s_se.0, s_in.1)));
+            self.b_n.set_rect(cx, Rect::new(Coord(p_in.0, p_nw.1), Size(s_in.0, s_nw.1)));
+            self.b_s.set_rect(cx, Rect::new(Coord(p_in.0, p_se.1), Size(s_in.0, s_se.1)));
+            self.b_nw.set_rect(cx, Rect::new(p_nw, s_nw));
+            self.b_ne.set_rect(cx, Rect::new(Coord(p_se.0, p_nw.1), Size(s_se.0, s_nw.1)));
+            self.b_se.set_rect(cx, Rect::new(p_se, s_se));
+            self.b_sw.set_rect(cx, Rect::new(Coord(p_nw.0, p_se.1), Size(s_nw.0, s_se.1)));
+
             if self.bar_h > 0 {
-                let bar_size = Size(rect.size.0, self.bar_h);
-                self.title_bar.set_rect(cx, Rect::new(rect.pos, bar_size));
-                rect.pos.1 += self.bar_h;
-                rect.size -= Size(0, self.bar_h);
+                let bar_size = Size(s_in.0, self.bar_h);
+                self.title_bar.set_rect(cx, Rect::new(p_in, bar_size));
+                p_in.1 += self.bar_h;
+                s_in -= Size(0, self.bar_h);
             }
-            self.w.set_rect(cx, rect);
+            self.inner.set_rect(cx, Rect::new(p_in, s_in));
         }
 
         fn find_id(&mut self, _: Coord) -> Option<WidgetId> {
@@ -140,16 +147,24 @@ impl_scope! {
                 return None;
             }
             for (_, popup, translation) in self.popups.iter_mut().rev() {
-                if let Some(Some(id)) = self.w.as_node(data).for_id(&popup.id, |mut node| node.find_id(coord + *translation)) {
+                if let Some(Some(id)) = self.inner.as_node(data).for_id(&popup.id, |mut node| node.find_id(coord + *translation)) {
                     return Some(id);
                 }
             }
-            self.title_bar.find_id(coord)
-                .or_else(|| self.w.find_id(coord))
+            self.inner.find_id(coord)
+                .or_else(|| self.title_bar.find_id(coord))
+                .or_else(|| self.b_w.find_id(coord))
+                .or_else(|| self.b_e.find_id(coord))
+                .or_else(|| self.b_n.find_id(coord))
+                .or_else(|| self.b_s.find_id(coord))
+                .or_else(|| self.b_nw.find_id(coord))
+                .or_else(|| self.b_ne.find_id(coord))
+                .or_else(|| self.b_sw.find_id(coord))
+                .or_else(|| self.b_se.find_id(coord))
                 .or_else(|| Some(self.id()))
         }
 
-        #[cfg(feature = "winit")]
+        #[cfg(winit)]
         pub(crate) fn draw(&mut self, data: &Data, mut draw: DrawCx) {
             if self.dec_size != Size::ZERO {
                 draw.frame(self.core.rect, FrameStyle::Window, Default::default());
@@ -157,9 +172,9 @@ impl_scope! {
                     draw.recurse(&mut self.title_bar);
                 }
             }
-            draw.recurse(&mut self.w);
+            draw.recurse(&mut self.inner);
             for (_, popup, translation) in &self.popups {
-                self.w.as_node(data).for_id(&popup.id, |mut node| {
+                self.inner.as_node(data).for_id(&popup.id, |mut node| {
                     let clip_rect = node.rect() - *translation;
                     draw.with_overlay(clip_rect, *translation, |draw| {
                         node._draw(draw);
@@ -179,9 +194,41 @@ impl_scope! {
                 // usually preferred where supported (e.g. KDE).
                 self.decorations = Decorations::Toolkit;
             }
+        }
 
-            if let Some(ref f) = self.config_fn {
-                f(self, cx);
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+            match event {
+                Event::PressStart { .. } if self.drag_anywhere => {
+                    cx.drag_window();
+                    Response::Used
+                }
+                _ => Response::Unused,
+            }
+        }
+
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(cmd) = cx.try_pop() {
+                match cmd {
+                    WindowCommand::SetTitle(title) => {
+                        *cx |= self.title_bar.set_title(title);
+                        #[cfg(winit)]
+                        if self.decorations == Decorations::Server {
+                            if let Some(w) = cx.winit_window() {
+                                w.set_title(self.title());
+                            }
+                        }
+                    }
+                    WindowCommand::SetIcon(icon) => {
+                        #[cfg(winit)]
+                        if self.decorations == Decorations::Server {
+                            if let Some(w) = cx.winit_window() {
+                                w.set_window_icon(icon);
+                                return; // do not set self.icon
+                            }
+                        }
+                        self.icon = icon;
+                    }
+                }
             }
         }
 
@@ -207,9 +254,16 @@ impl<Data: 'static> Window<Data> {
             restrictions: (true, false),
             drag_anywhere: true,
             transparent: false,
-            config_fn: None,
+            inner: ui,
             title_bar: TitleBar::new(title),
-            w: ui,
+            b_w: Border::new(ResizeDirection::West),
+            b_e: Border::new(ResizeDirection::East),
+            b_n: Border::new(ResizeDirection::North),
+            b_s: Border::new(ResizeDirection::South),
+            b_nw: Border::new(ResizeDirection::NorthWest),
+            b_ne: Border::new(ResizeDirection::NorthEast),
+            b_sw: Border::new(ResizeDirection::SouthWest),
+            b_se: Border::new(ResizeDirection::SouthEast),
             bar_h: 0,
             dec_offset: Default::default(),
             dec_size: Default::default(),
@@ -222,9 +276,9 @@ impl<Data: 'static> Window<Data> {
         self.title_bar.title()
     }
 
-    /// Get the window's icon, if any
-    pub fn icon(&self) -> Option<&Icon> {
-        self.icon.as_ref()
+    /// Take the window's icon, if any
+    pub(crate) fn take_icon(&mut self) -> Option<Icon> {
+        self.icon.take()
     }
 
     /// Set the window's icon (inline)
@@ -272,6 +326,15 @@ impl<Data: 'static> Window<Data> {
     /// Default value: `false`.
     pub fn with_restrictions(mut self, restrict_min: bool, restrict_max: bool) -> Self {
         self.restrictions = (restrict_min, restrict_max);
+        let resizable = !restrict_min || !restrict_max;
+        self.b_w.set_resizable(resizable);
+        self.b_e.set_resizable(resizable);
+        self.b_n.set_resizable(resizable);
+        self.b_s.set_resizable(resizable);
+        self.b_nw.set_resizable(resizable);
+        self.b_ne.set_resizable(resizable);
+        self.b_se.set_resizable(resizable);
+        self.b_sw.set_resizable(resizable);
         self
     }
 
@@ -307,15 +370,6 @@ impl<Data: 'static> Window<Data> {
     /// Default: `false`.
     pub fn with_transparent(mut self, transparent: bool) -> Self {
         self.transparent = transparent;
-        self
-    }
-
-    /// Set a closure to be called on initialisation
-    ///
-    /// This closure is called before sizing, drawing and event handling.
-    /// It may be called more than once.
-    pub fn on_configure(mut self, config_fn: impl Fn(&Self, &mut ConfigCx) + 'static) -> Self {
-        self.config_fn = Some(Box::new(config_fn));
         self
     }
 
@@ -415,10 +469,10 @@ impl<Data: 'static> Window<Data> {
             (pos, size)
         };
 
-        let (c, t) = find_rect(self.w.as_layout(), popup.parent.clone(), Offset::ZERO).unwrap();
+        let (c, t) = find_rect(self.inner.as_layout(), popup.parent.clone(), Offset::ZERO).unwrap();
         *translation = t;
         let r = r + t; // work in translated coordinate space
-        self.w.as_node(data).for_id(&popup.id, |mut node| {
+        self.inner.as_node(data).for_id(&popup.id, |mut node| {
             let mut cache = layout::SolveCache::find_constraints(node.re(), cx.size_cx());
             let ideal = cache.ideal(false);
             let m = cache.margins();

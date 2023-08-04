@@ -15,7 +15,6 @@ use kas::theme::RasterConfig;
 use kas_text::raster::{raster, Config, SpriteDescriptor};
 use rustc_hash::FxHashMap as HashMap;
 use std::mem::size_of;
-use std::num::NonZeroU32;
 
 /// A Sprite
 ///
@@ -160,8 +159,8 @@ impl Pipeline {
                 &data,
                 wgpu::ImageDataLayout {
                     offset: 0,
-                    bytes_per_row: NonZeroU32::new(size.0),
-                    rows_per_image: NonZeroU32::new(size.1),
+                    bytes_per_row: Some(size.0),
+                    rows_per_image: Some(size.1),
                 },
                 wgpu::Extent3d {
                     width: size.0,

@@ -8,7 +8,6 @@
 use guillotiere::AllocId;
 use std::collections::HashMap;
 use std::mem::size_of;
-use std::num::NonZeroU32;
 
 use super::{atlases, ShaderManager};
 use kas::cast::Conv;
@@ -49,8 +48,8 @@ impl Image {
             data,
             wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: NonZeroU32::new(4 * size.0),
-                rows_per_image: NonZeroU32::new(size.1),
+                bytes_per_row: Some(4 * size.0),
+                rows_per_image: Some(size.1),
             },
             wgpu::Extent3d {
                 width: size.0,

@@ -47,7 +47,7 @@ impl EventState {
     /// This is a fast check.
     #[inline]
     pub fn show_accel_labels(&self) -> bool {
-        self.modifiers.alt()
+        self.modifiers.alt_key()
     }
 
     /// Get whether this widget has `(char_focus, sel_focus)`
@@ -294,7 +294,7 @@ impl EventState {
     /// Add a new accelerator key layer
     ///
     /// This method constructs a new "layer" for accelerator keys: any keys
-    /// added via [`EventState::add_accel_keys`] to a widget which is a descentant
+    /// added via [`EventState::add_accel_key`] to a widget which is a descentant
     /// of (or equal to) `id` will only be active when that layer is active.
     ///
     /// This method should only be called by parents of a pop-up: layers over
@@ -335,11 +335,9 @@ impl EventState {
     ///
     /// This should only be called from [`Events::configure`].
     #[inline]
-    pub fn add_accel_keys(&mut self, id: &WidgetId, keys: &[VirtualKeyCode]) {
+    pub fn add_accel_key(&mut self, id: &WidgetId, key: Key) {
         if let Some(layer) = self.accel_layer_for_id(id) {
-            for key in keys {
-                layer.1.entry(*key).or_insert_with(|| id.clone());
-            }
+            layer.1.entry(key).or_insert_with(|| id.clone());
         }
     }
 
@@ -348,7 +346,7 @@ impl EventState {
     /// Returns true on success or when the widget already had char focus.
     ///
     /// Character data is sent to the widget with char focus via
-    /// [`Event::ReceivedCharacter`] and [`Event::Command`].
+    /// [`Event::Text`] and [`Event::Command`].
     ///
     /// Char focus implies sel focus (see [`Self::request_sel_focus`]) and
     /// navigation focus.
@@ -584,7 +582,7 @@ impl EventState {
 
     /// Request update to widget `id`
     ///
-    /// Schedules a call to [`Widget::update`] on widget `id`.
+    /// Schedules a call to [`Events::update`] on widget `id`.
     pub fn request_update(&mut self, id: WidgetId) {
         self.pending.push_back(Pending::Update(id));
     }
@@ -800,6 +798,30 @@ impl<'a> EventCx<'a> {
         self.shell.close_window(id);
     }
 
+    /// Enable window dragging for current click
+    ///
+    /// This calls [`winit::window::Window::drag_window`](https://docs.rs/winit/latest/winit/window/struct.Window.html#method.drag_window). Errors are ignored.
+    pub fn drag_window(&self) {
+        #[cfg(winit)]
+        if let Some(ww) = self.shell.winit_window() {
+            if let Err(e) = ww.drag_window() {
+                log::warn!("EventCx::drag_window: {e}");
+            }
+        }
+    }
+
+    /// Enable window resizing for the current click
+    ///
+    /// This calls [`winit::window::Window::drag_resize_window`](https://docs.rs/winit/latest/winit/window/struct.Window.html#method.drag_resize_window). Errors are ignored.
+    pub fn drag_resize_window(&self, direction: ResizeDirection) {
+        #[cfg(winit)]
+        if let Some(ww) = self.shell.winit_window() {
+            if let Err(e) = ww.drag_resize_window(direction) {
+                log::warn!("EventCx::drag_resize_window: {e}");
+            }
+        }
+    }
+
     /// Attempt to get clipboard contents
     ///
     /// In case of failure, paste actions will simply fail. The implementation
@@ -876,7 +898,7 @@ impl<'a> EventCx<'a> {
     /// Directly access Winit Window
     ///
     /// This is a temporary API, allowing e.g. to minimize the window.
-    #[cfg(feature = "winit")]
+    #[cfg(winit)]
     pub fn winit_window(&self) -> Option<&winit::window::Window> {
         self.shell.winit_window()
     }

@@ -9,7 +9,7 @@
 //! (excepting custom graphics).
 
 use kas::dir::Right;
-use kas::event::VirtualKeyCode as VK;
+use kas::event::Key;
 use kas::prelude::*;
 use kas::resvg::Svg;
 use kas::theme::{MarginStyle, ThemeControl};
@@ -180,7 +180,7 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
         ],
         row![
             "Button (text)",
-            Button::new_msg(label("&Press me"), Item::Button)
+            Button::label_msg("&Press me", Item::Button).map_any()
         ],
         row![
             "Button (image)",
@@ -189,13 +189,13 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
                 kas::row![
                     Button::new_msg(img_light.clone(), Item::Theme("light"))
                         .with_color("#B38DF9".parse().unwrap())
-                        .with_keys(&[VK::H]),
+                        .with_key(Key::Character("h".into())),
                     Button::new_msg(img_light, Item::Theme("blue"))
                         .with_color("#7CDAFF".parse().unwrap())
-                        .with_keys(&[VK::B]),
+                        .with_key(Key::Character("b".into())),
                     Button::new_msg(img_dark, Item::Theme("dark"))
                         .with_color("#E77346".parse().unwrap())
-                        .with_keys(&[VK::K]),
+                        .with_key(Key::Character("k".into())),
                 ]
                 .map_any()
             )
@@ -611,7 +611,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ("&List", filter_list()),
                 ("Can&vas", canvas()),
                 ("Confi&g", config()),
-            ]),
+            ]).with_msg(|_, title| WindowCommand::SetTitle(format!("Gallery — {}", title))),
         }
         impl Events for Self {
             type Data = ();
@@ -640,6 +640,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    shell.add(Window::new(ui, "Widget Gallery"))?;
+    shell.add(Window::new(ui, "Gallery — Widgets"))?;
     shell.run()
 }

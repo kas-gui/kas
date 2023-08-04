@@ -6,7 +6,7 @@
 //! Event context state
 
 // Without winit, several things go unused
-#![cfg_attr(not(feature = "winit"), allow(unused))]
+#![cfg_attr(not(winit), allow(unused))]
 
 use linear_map::LinearMap;
 use smallvec::SmallVec;
@@ -184,7 +184,7 @@ enum Pending {
     },
 }
 
-type AccelLayer = (bool, HashMap<VirtualKeyCode, WidgetId>);
+type AccelLayer = (bool, HashMap<Key, WidgetId>);
 
 /// Event context state
 ///
@@ -215,7 +215,7 @@ pub struct EventState {
     nav_fallback: Option<WidgetId>,
     hover: Option<WidgetId>,
     hover_icon: CursorIcon,
-    key_depress: LinearMap<u32, WidgetId>,
+    key_depress: LinearMap<KeyCode, WidgetId>,
     last_mouse_coord: Coord,
     last_click_button: MouseButton,
     last_click_repetitions: u32,
@@ -329,18 +329,18 @@ impl EventState {
         }
     }
 
-    fn add_key_depress(&mut self, scancode: u32, id: WidgetId) {
+    fn add_key_depress(&mut self, code: KeyCode, id: WidgetId) {
         if self.key_depress.values().any(|v| *v == id) {
             return;
         }
 
-        self.key_depress.insert(scancode, id);
+        self.key_depress.insert(code, id);
         self.send_action(Action::REDRAW);
     }
 
-    fn end_key_event(&mut self, scancode: u32) {
-        // We must match scancode not vkey since the latter may have changed due to modifiers
-        if let Some(id) = self.key_depress.remove(&scancode) {
+    fn end_key_event(&mut self, code: KeyCode) {
+        // We must match code not vkey since the latter may have changed due to modifiers
+        if let Some(id) = self.key_depress.remove(&code) {
             self.redraw(id);
         }
     }
@@ -447,15 +447,13 @@ impl<'a> DerefMut for EventCx<'a> {
 
 /// Internal methods
 impl<'a> EventCx<'a> {
-    fn start_key_event(&mut self, mut widget: Node<'_>, vkey: VirtualKeyCode, scancode: u32) {
+    fn start_key_event(&mut self, mut widget: Node<'_>, vkey: Key, code: KeyCode) {
         log::trace!(
-            "start_key_event: widget={}, vkey={vkey:?}, scancode={scancode}",
+            "start_key_event: widget={}, vkey={vkey:?}, physical_key={code:?}",
             widget.id()
         );
 
-        use VirtualKeyCode as VK;
-
-        let opt_command = self.config.shortcuts(|s| s.get(self.modifiers, vkey));
+        let opt_command = self.config.shortcuts(|s| s.get(self.modifiers, &vkey));
 
         if let Some(cmd) = opt_command {
             let mut targets = vec![];
@@ -463,7 +461,7 @@ impl<'a> EventCx<'a> {
                 if !targets.contains(&id) {
                     let used = _self.send_event(widget.re(), id.clone(), Event::Command(cmd));
                     if used {
-                        _self.add_key_depress(scancode, id.clone());
+                        _self.add_key_depress(code, id.clone());
                     }
                     targets.push(id);
                     used
@@ -480,7 +478,7 @@ impl<'a> EventCx<'a> {
                 }
             }
 
-            if !self.modifiers.alt() {
+            if !self.modifiers.alt_key() {
                 if let Some(id) = self.nav_focus.clone() {
                     if send(self, id, cmd) {
                         return;
@@ -549,13 +547,13 @@ impl<'a> EventCx<'a> {
             if let Some(id) = widget._nav_next(self, Some(&id), NavAdvance::None) {
                 self.set_nav_focus(id, true);
             }
-            self.add_key_depress(scancode, id.clone());
+            self.add_key_depress(code, id.clone());
             self.send_event(widget, id, Event::Command(Command::Activate));
-        } else if self.config.nav_focus && vkey == VK::Tab {
+        } else if self.config.nav_focus && vkey == Key::Tab {
             self.clear_char_focus();
-            let shift = self.modifiers.shift();
+            let shift = self.modifiers.shift_key();
             self.next_nav_focus_impl(widget.re(), None, shift, true);
-        } else if vkey == VK::Escape {
+        } else if vkey == Key::Escape {
             if let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
                 self.close_window(id, true);
             }

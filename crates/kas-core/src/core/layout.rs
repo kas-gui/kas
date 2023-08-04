@@ -13,6 +13,7 @@ use crate::util::IdentifyWidget;
 use crate::WidgetId;
 use kas_macros::autoimpl;
 
+#[allow(unused)] use super::{Events, Widget};
 #[allow(unused)] use crate::layout::{self, AlignPair};
 #[allow(unused)] use kas_macros as macros;
 
@@ -178,10 +179,10 @@ pub trait Layout {
     /// -   Determine the next child after `from` (if provided) or the whole
     ///     range, optionally in `reverse` order
     /// -   Ensure that the selected widget is addressable through
-    ///     [`Widget::for_child`]
+    ///     [`Layout::get_child`]
     ///
     /// Both `from` and the return value use the widget index, as used by
-    /// [`Widget::for_child`].
+    /// [`Layout::get_child`].
     ///
     /// Default implementation:
     ///

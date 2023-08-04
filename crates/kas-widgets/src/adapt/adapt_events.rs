@@ -19,22 +19,60 @@ impl_scope! {
         core: widget_core!(),
         #[widget]
         pub inner: W,
-        f: Box<dyn Fn(&mut ConfigCx, &mut W, &W::Data)>,
+        on_configure: Option<Box<dyn Fn(&mut ConfigCx, &mut W)>>,
+        on_update: Option<Box<dyn Fn(&mut ConfigCx, &mut W, &W::Data)>>,
     }
 
     impl Self {
         /// Construct
         #[inline]
-        pub fn new<F: Fn(&mut ConfigCx, &mut W, &W::Data) + 'static>(inner: W, f: F) -> Self {
-            OnUpdate { core: Default::default(), inner, f: Box::new(f) }
+        pub fn new(inner: W) -> Self {
+            OnUpdate {
+                core: Default::default(),
+                inner,
+                on_configure: None,
+                on_update: None,
+            }
+        }
+
+        /// Call the given closure on [`Events::configure`]
+        ///
+        /// Returns a wrapper around the input widget.
+        #[must_use]
+        pub fn on_configure<F>(mut self, f: F) -> Self
+        where
+            F: Fn(&mut ConfigCx, &mut W) + 'static,
+        {
+            self.on_configure = Some(Box::new(f));
+            self
+        }
+
+        /// Call the given closure on [`Events::update`]
+        ///
+        /// Returns a wrapper around the input widget.
+        #[must_use]
+        pub fn on_update<F>(mut self, f: F) -> Self
+        where
+            F: Fn(&mut ConfigCx, &mut W, &W::Data) + 'static,
+        {
+            self.on_update = Some(Box::new(f));
+            self
         }
     }
 
     impl Events for Self {
         type Data = W::Data;
 
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            if let Some(ref f) = self.on_configure {
+                f(cx, &mut self.inner);
+            }
+        }
+
         fn update(&mut self, cx: &mut ConfigCx, data: &W::Data) {
-            (self.f)(cx, &mut self.inner, data);
+            if let Some(ref f) = self.on_update {
+                f(cx, &mut self.inner, data);
+            }
         }
     }
 }

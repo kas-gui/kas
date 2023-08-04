@@ -328,7 +328,7 @@ impl<'a> EventCx<'a> {
     /// Note that some event types are not handled, since for these
     /// events the shell must take direct action anyway:
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
-    #[cfg(feature = "winit")]
+    #[cfg(winit)]
     #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
     pub(crate) fn handle_winit<A>(
         &mut self,
@@ -345,17 +345,6 @@ impl<'a> EventCx<'a> {
             HoveredFile(path) => ,
             HoveredFileCancelled => ,
             */
-            ReceivedCharacter(c) => {
-                if let Some(id) = self.char_focus() {
-                    // Filter out control codes (Unicode 5.11). These may be
-                    // generated from combinations such as Ctrl+C by some other
-                    // layer. We use our own shortcut system instead.
-                    if c >= '\x20' && !('\x7f'..='\u{9f}').contains(&c) {
-                        let event = Event::ReceivedCharacter(c);
-                        self.send_event(win.as_node(data), id, event);
-                    }
-                }
-            }
             Focused(state) => {
                 self.window_has_focus = state;
                 if state {
@@ -369,20 +358,31 @@ impl<'a> EventCx<'a> {
                 }
             }
             KeyboardInput {
-                input,
+                event,
                 is_synthetic,
                 ..
             } => {
-                if input.state == ElementState::Pressed && !is_synthetic {
-                    if let Some(vkey) = input.virtual_keycode {
-                        self.start_key_event(win.as_node(data), vkey, input.scancode);
+                let is_dead = matches!(&event.logical_key, Key::Dead(_));
+                if event.state == ElementState::Pressed && !is_synthetic {
+                    self.start_key_event(win.as_node(data), event.logical_key, event.physical_key);
+                } else if event.state == ElementState::Released {
+                    self.end_key_event(event.physical_key);
+                }
+
+                if let Some(id) = self.char_focus() {
+                    let mut mods = self.modifiers;
+                    mods.remove(ModifiersState::SHIFT);
+                    if event.state == ElementState::Pressed && mods.is_empty() && !is_dead {
+                        if let Some(text) = event.text {
+                            let event = Event::Text(text);
+                            self.send_event(win.as_node(data), id, event);
+                        }
                     }
-                } else if input.state == ElementState::Released {
-                    self.end_key_event(input.scancode);
                 }
             }
-            ModifiersChanged(state) => {
-                if state.alt() != self.modifiers.alt() {
+            ModifiersChanged(modifiers) => {
+                let state = modifiers.state();
+                if state.alt_key() != self.modifiers.alt_key() {
                     // This controls drawing of accelerator key indicators
                     self.send_action(Action::REDRAW);
                 }
@@ -495,11 +495,7 @@ impl<'a> EventCx<'a> {
                         coord,
                     };
                     let event = Event::PressStart { press };
-                    let used = self.send_popup_first(win.as_node(data), self.hover.clone(), event);
-
-                    if !used && self.mouse_grab.is_none() && win.drag_anywhere() {
-                        self.shell.drag_window();
-                    }
+                    let _ = self.send_popup_first(win.as_node(data), self.hover.clone(), event);
                 }
             }
             // TouchpadPressure { pressure: f32, stage: i64, },

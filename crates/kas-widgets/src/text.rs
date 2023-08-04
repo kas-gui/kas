@@ -21,7 +21,7 @@ impl_scope! {
     /// Line-wrapping is enabled by default.
     ///
     /// This type is generic over the text type.
-    /// See also: [`StrText`], [`StringText`], [`AccelText`].
+    /// See also: [`StrText`], [`StringText`].
     #[widget]
     pub struct Text<A, T: Default + FormattableText + 'static> {
         core: widget_core!(),

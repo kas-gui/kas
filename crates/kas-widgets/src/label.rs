@@ -322,7 +322,9 @@ impl_scope! {
         type Data = ();
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.add_accel_keys(self.id_ref(), self.label.text().keys());
+            if let Some(key) = self.label.text().key() {
+                cx.add_accel_key(self.id_ref(), key.clone());
+            }
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
@@ -344,7 +346,7 @@ impl_scope! {
 
     impl SetAccel for AccelLabel {
         fn set_accel_string(&mut self, string: AccelString) -> Action {
-            if self.label.text().keys() != string.keys() {
+            if self.label.text().key() != string.key() {
                 return Action::RECONFIGURE;
             }
             self.set_text(string)

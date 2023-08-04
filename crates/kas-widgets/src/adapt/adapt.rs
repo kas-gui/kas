@@ -25,6 +25,7 @@ impl_scope! {
         state: S,
         #[widget(&self.state)]
         inner: W,
+        event_handler: Option<Box<dyn Fn(&mut EventCx, &A, &mut S, Event) -> Response>>,
         message_handlers: Vec<Box<dyn Fn(&mut EventCx, &A, &mut S) -> bool>>,
         update_handler: Option<Box<dyn Fn(&mut ConfigCx, &A, &mut S)>>,
     }
@@ -37,9 +38,22 @@ impl_scope! {
                 core: Default::default(),
                 state,
                 inner,
+                event_handler: None,
                 message_handlers: vec![],
                 update_handler: None,
             }
+        }
+
+        /// Set a custom event handler
+        ///
+        /// The closure should return [`Response::Used`] if state was updated.
+        pub fn on_event<H>(mut self, handler: H) -> Self
+        where
+            H: Fn(&mut EventCx, &A, &mut S, Event) -> Response + 'static,
+        {
+            debug_assert!(self.event_handler.is_none());
+            self.event_handler = Some(Box::new(handler));
+            self
         }
 
         /// Add a handler on message of type `M`
@@ -96,6 +110,18 @@ impl_scope! {
             }
         }
 
+        fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> Response {
+            if let Some(handler) = self.event_handler.as_ref() {
+                let r = handler(cx, data, &mut self.state, event);
+                if r.is_used() {
+                    cx.update(self.as_node(data));
+                }
+                r
+            } else {
+                Response::Unused
+            }
+        }
+
         fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
             let mut update = false;
             for handler in self.message_handlers.iter() {
@@ -111,7 +137,7 @@ impl_scope! {
 impl_scope! {
     /// Data mapping
     ///
-    /// This is a generic data-mapping widget. See also [`Adapt`], [`MapAny`].
+    /// This is a generic data-mapping widget. See also [`Adapt`], [`MapAny`](super::MapAny).
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(Scrollable using self.inner where W: trait)]
     #[widget {

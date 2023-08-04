@@ -632,7 +632,7 @@ impl std::ops::SubAssign<Offset> for Rect {
     }
 }
 
-#[cfg(feature = "winit")]
+#[cfg(winit)]
 #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
 mod winit_impls {
     use super::{Coord, Size};

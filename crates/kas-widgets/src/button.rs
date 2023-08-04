@@ -5,11 +5,10 @@
 
 //! Push-buttons
 
-use super::Label;
+use super::AccelLabel;
 use kas::draw::color::Rgb;
-use kas::event::{VirtualKeyCode, VirtualKeyCodes};
+use kas::event::Key;
 use kas::prelude::*;
-use kas::text::format::FormattableText;
 use std::fmt::Debug;
 
 impl_scope! {
@@ -25,7 +24,7 @@ impl_scope! {
     }]
     pub struct Button<W: Widget> {
         core: widget_core!(),
-        keys1: VirtualKeyCodes,
+        key: Option<Key>,
         color: Option<Rgb>,
         #[widget]
         pub inner: W,
@@ -38,7 +37,7 @@ impl_scope! {
         pub fn new(inner: W) -> Self {
             Button {
                 core: Default::default(),
-                keys1: Default::default(),
+                key: Default::default(),
                 color: None,
                 inner,
                 on_press: None,
@@ -74,11 +73,11 @@ impl_scope! {
             Self::new(inner).with_msg(msg)
         }
 
-        /// Add accelerator keys (chain style)
+        /// Add accelerator key (chain style)
         #[must_use]
-        pub fn with_keys(mut self, keys: &[VirtualKeyCode]) -> Self {
-            self.keys1.clear();
-            self.keys1.extend_from_slice(keys);
+        pub fn with_key(mut self, key: Key) -> Self {
+            debug_assert!(self.key.is_none());
+            self.key = Some(key);
             self
         }
 
@@ -97,7 +96,9 @@ impl_scope! {
 
     impl Events for Self {
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.add_accel_keys(self.id_ref(), &self.keys1);
+            if let Some(key) = self.key.clone() {
+                cx.add_accel_key(self.id_ref(), key);
+            }
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &W::Data, event: Event) -> Response {
@@ -118,14 +119,14 @@ impl_scope! {
         }
     }
 
-    impl<T: FormattableText + 'static> Button<Label<T>> {
+    impl Button<AccelLabel> {
         /// Construct a button with the given `label`
         ///
         /// This is a convenience method. It may be possible to merge this
         /// functionality into [`Button::new`] once Rust has support for
         /// overlapping trait implementations (not specialisation).
-        pub fn label(label: T) -> Self {
-            Button::new(Label::new(label))
+        pub fn label(label: impl Into<AccelString>) -> Self {
+            Button::new(AccelLabel::new(label))
         }
 
         /// Construct a button with the given `label` and payload `msg`
@@ -133,8 +134,11 @@ impl_scope! {
         /// This is a convenience method. It may be possible to merge this
         /// functionality into [`Button::new_msg`] once Rust has support for
         /// overlapping trait implementations (not specialisation).
-        pub fn label_msg<M: Clone + Debug + 'static>(label: T, msg: M) -> Self {
-            Button::new_msg(Label::new(label), msg)
+        pub fn label_msg<M>(label: impl Into<AccelString>, msg: M) -> Self
+        where
+            M: Clone + Debug + 'static,
+        {
+            Button::new_msg(AccelLabel::new(label), msg)
         }
     }
 }

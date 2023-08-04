@@ -14,7 +14,7 @@ use crate::{Action, Window, WindowId};
 use raw_window_handle as raw;
 use std::any::TypeId;
 use thiserror::Error;
-#[cfg(feature = "winit")] use winit::error::OsError;
+#[cfg(winit)] use winit::error::OsError;
 
 /// Possible failures from constructing a [`Shell`](super::Shell)
 ///
@@ -34,7 +34,7 @@ pub enum Error {
 
     /// OS error during window creation
     #[error("operating system error")]
-    #[cfg(feature = "winit")]
+    #[cfg(winit)]
     #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
     Window(#[from] OsError),
 }
@@ -261,11 +261,6 @@ pub(crate) trait ShellWindow {
     /// Close a window
     fn close_window(&mut self, id: WindowId);
 
-    /// Enable window dragging for current click
-    ///
-    /// This calls `winit::window::Window::drag_window`. Errors are ignored.
-    fn drag_window(&self);
-
     /// Attempt to get clipboard contents
     ///
     /// In case of failure, paste actions will simply fail. The implementation
@@ -314,7 +309,7 @@ pub(crate) trait ShellWindow {
     /// Directly access Winit Window
     ///
     /// This is a temporary API, allowing e.g. to minimize the window.
-    #[cfg(feature = "winit")]
+    #[cfg(winit)]
     fn winit_window(&self) -> Option<&winit::window::Window>;
 
     /// Access a Waker
