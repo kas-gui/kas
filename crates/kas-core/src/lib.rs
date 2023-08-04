@@ -22,7 +22,7 @@ extern crate self as kas;
 
 #[macro_use] extern crate bitflags;
 
-pub extern crate easy_cast as cast;
+#[doc(inline)] pub extern crate easy_cast as cast;
 
 // internal modules:
 mod action;
@@ -36,6 +36,7 @@ pub use action::Action;
 pub use decorations::Decorations;
 pub use erased::{AppData, Erased, ErasedStack};
 pub use kas_macros::*;
+#[doc(inline)]
 pub use root::{Window, WindowCommand, WindowId};
 
 // public implementations:

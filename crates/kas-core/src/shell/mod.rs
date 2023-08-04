@@ -17,9 +17,12 @@ mod common;
 #[cfg(winit)] use window::Window;
 
 pub(crate) use common::ShellWindow;
-pub use common::{Error, GraphicalShell, Platform, Result, WindowSurface};
+pub use common::{Error, Platform, Result};
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+pub use common::{GraphicalShell, WindowSurface};
 #[cfg(winit)]
 pub use shell::{ClosedError, Proxy, Shell, ShellAssoc};
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 pub extern crate raw_window_handle;
 
 // TODO(opt): Clippy is probably right that we shouldn't copy a large value

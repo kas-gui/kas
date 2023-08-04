@@ -48,7 +48,8 @@
 #![cfg_attr(feature = "min_spec", feature(min_specialization))]
 
 pub mod adapt;
-pub use adapt::Adapt;
+#[doc(no_inline)]
+pub use adapt::{Adapt, AdaptWidget, AdaptWidgetAny};
 
 mod button;
 mod check_box;
