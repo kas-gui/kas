@@ -24,8 +24,6 @@ use smol_str::SmolStr;
 #[non_exhaustive]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
-    /// No event
-    None,
     /// (Keyboard) command input
     ///
     /// This represents a control or navigation action, usually from the
@@ -262,7 +260,7 @@ impl Event {
     pub fn pass_when_disabled(&self) -> bool {
         use Event::*;
         match self {
-            None | Command(_) => false,
+            Command(_) => false,
             Text(_) | Scroll(_) | Pan { .. } => false,
             CursorMove { .. } | PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | PopupRemoved(_) => true,
@@ -282,7 +280,7 @@ impl Event {
     pub fn is_reusable(&self) -> bool {
         use Event::*;
         match self {
-            None | Text(_) => false,
+            Text(_) => false,
             Command(_) | Scroll(_) | Pan { .. } => true,
             CursorMove { .. } | PressStart { .. } => true,
             PressMove { .. } | PressEnd { .. } => false,
