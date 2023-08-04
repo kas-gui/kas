@@ -39,7 +39,8 @@
 //!         call [`Events::handle_event`]
 //!     -   If the message stack is non-empty (see [`EventCx::push`]),
 //!         call [`Events::handle_messages`].
-//! 7.  If the message stack is not empty, call [`AppData::handle_messages`](crate::AppData::handle_messages).
+//! 7.  If the message stack is not empty, call
+//!     [`AppData::handle_messages`](crate::AppData::handle_messages).
 //! 8.  Clear any messages still on the message stack, printing a warning to the
 //!     log. Messages *should* be handled during unwinding, though not doing so
 //!     is safe (and possibly useful during development).

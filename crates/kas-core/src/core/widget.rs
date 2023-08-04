@@ -131,12 +131,7 @@ pub trait Events: Sized {
     /// Default implementation of `handle_event`: do nothing; return
     /// [`Response::Unused`].
     ///
-    /// # Calling `handle_event`
-    ///
-    /// It is not recommended to call `handle_event` directly except on `self`.
-    /// Doing so would miss related event handling code such as cursor-hover
-    /// effects and calling other event-handling methods on parents.
-    /// Instead, one should call [`EventCx::send`] with the target's `id`.
+    /// Use [`EventCx::send`] instead of calling this method.
     #[inline]
     fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> Response {
         let _ = (cx, data, event);
