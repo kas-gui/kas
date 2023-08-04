@@ -325,6 +325,15 @@ impl<Data: 'static> Window<Data> {
     /// Default value: `false`.
     pub fn with_restrictions(mut self, restrict_min: bool, restrict_max: bool) -> Self {
         self.restrictions = (restrict_min, restrict_max);
+        let resizable = !restrict_min || !restrict_max;
+        self.b_w.set_resizable(resizable);
+        self.b_e.set_resizable(resizable);
+        self.b_n.set_resizable(resizable);
+        self.b_s.set_resizable(resizable);
+        self.b_nw.set_resizable(resizable);
+        self.b_ne.set_resizable(resizable);
+        self.b_se.set_resizable(resizable);
+        self.b_sw.set_resizable(resizable);
         self
     }
 

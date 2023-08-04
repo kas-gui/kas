@@ -7,7 +7,7 @@
 //!
 //! Note: due to definition in kas-core, some widgets must be duplicated.
 
-use crate::event::{ConfigCx, ResizeDirection};
+use crate::event::{ConfigCx, CursorIcon, ResizeDirection};
 use crate::geom::Rect;
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::Text;
@@ -49,10 +49,11 @@ impl_scope! {
     ///
     /// Does not draw anything; used solely for event handling.
     #[widget {
-        cursor_icon = self.direction.into();
+        cursor_icon = self.cursor_icon();
     }]
     pub(crate) struct Border {
         core: widget_core!(),
+        resizable: bool,
         direction: ResizeDirection,
     }
 
@@ -60,7 +61,20 @@ impl_scope! {
         pub fn new(direction: ResizeDirection) -> Self {
             Border {
                 core: Default::default(),
+                resizable: true,
                 direction,
+            }
+        }
+
+        pub fn set_resizable(&mut self, resizable: bool) {
+            self.resizable = resizable;
+        }
+
+        fn cursor_icon(&self) -> CursorIcon {
+            if self.resizable {
+                self.direction.into()
+            } else {
+                CursorIcon::default()
             }
         }
     }
