@@ -2,7 +2,7 @@
 
 use kas::prelude::*;
 use kas::view::{driver, MatrixData, MatrixView, SelectionMode, SelectionMsg, SharedData};
-use kas::widget::{Adapt, EditBox, ScrollBars};
+use kas::widgets::{Adapt, EditBox, ScrollBars};
 
 #[derive(Debug)]
 struct TableSize(usize);

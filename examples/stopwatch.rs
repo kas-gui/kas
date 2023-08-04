@@ -8,7 +8,7 @@
 use std::time::{Duration, Instant};
 
 use kas::event::{ConfigCx, Event, EventCx, Response};
-use kas::widget::{format_data, Button};
+use kas::widgets::{format_data, Button};
 use kas::{Decorations, Events, Layout, LayoutExt, Widget, Window};
 
 #[derive(Clone, Debug)]

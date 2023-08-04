@@ -13,7 +13,7 @@
 //! - [`easy-cast`](https://docs.rs/easy-cast/0.5) is re-export as [`kas::cast`](cast)
 //! - `kas_macros` is an extended version of [`impl-tools`](https://docs.rs/impl-tools/),
 //!     re-export at the top-level
-//! - [`kas_widgets`](https://docs.rs/kas-widgets/0.11) is re-export as [`kas::widget`](mod@widget)
+//! - [`kas_widgets`](https://docs.rs/kas-widgets/0.11) is re-export as [`kas::widgets`](mod@widgets)
 //! - [`kas_resvg`] is re-export as [`kas::resvg`](resvg) (`resvg` or `tiny-skia` feature)
 //! - [`kas_view`](https://docs.rs/kas-view/0.11) is re-export as [`kas::view`](view) (`view` feature)
 //! - [`kas_wgpu`](https://docs.rs/kas-wgpu/0.11) is re-export as [`kas::shell`](shell); in the current version
@@ -49,7 +49,7 @@ pub mod prelude {
 
 pub use kas_core::*;
 
-#[doc(inline)] pub extern crate kas_widgets as widget;
+#[doc(inline)] pub extern crate kas_widgets as widgets;
 
 #[cfg(feature = "view")]
 #[cfg_attr(doc_cfg, doc(cfg(feature = "view")))]

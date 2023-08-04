@@ -13,7 +13,7 @@ use kas::event::Key;
 use kas::prelude::*;
 use kas::resvg::Svg;
 use kas::theme::{MarginStyle, ThemeControl};
-use kas::widget::*;
+use kas::widgets::*;
 
 // Using a trait allows control of content
 //
