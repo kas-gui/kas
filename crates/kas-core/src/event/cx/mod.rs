@@ -409,12 +409,13 @@ impl EventState {
             log::trace!("set_hover: w_id={w_id:?}");
             if let Some(id) = self.hover.take() {
                 self.pending
-                    .push_back(Pending::Send(id, Event::LostMouseHover));
+                    .push_back(Pending::Send(id, Event::MouseHover(false)));
             }
             self.hover = w_id.clone();
 
             if let Some(id) = w_id {
-                self.pending.push_back(Pending::Send(id, Event::MouseHover));
+                self.pending
+                    .push_back(Pending::Send(id, Event::MouseHover(true)));
             }
         }
     }

@@ -176,11 +176,11 @@ pub enum Event {
     ///     and the [`Response`] will always be `Used`.
     NavFocus { key_focus: bool },
     /// Sent when a widget becomes the mouse hover target
-    MouseHover,
+    ///
+    /// The payload is `true` when focus is gained, `false` when lost.
+    MouseHover(bool),
     /// Sent when a widget loses navigation focus
     LostNavFocus,
-    /// Sent when a widget is no longer the mouse hover target
-    LostMouseHover,
     /// Widget lost keyboard input focus
     ///
     /// This focus is gained through the widget calling [`EventState::request_char_focus`].
@@ -264,8 +264,8 @@ impl Event {
             Text(_) | Scroll(_) | Pan { .. } => false,
             CursorMove { .. } | PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | PopupRemoved(_) => true,
-            NavFocus { .. } | MouseHover => false,
-            LostNavFocus | LostMouseHover | LostCharFocus | LostSelFocus => true,
+            NavFocus { .. } | MouseHover(_) => false,
+            LostNavFocus | LostCharFocus | LostSelFocus => true,
         }
     }
 
@@ -285,7 +285,7 @@ impl Event {
             CursorMove { .. } | PressStart { .. } => true,
             PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | PopupRemoved(_) => false,
-            NavFocus { .. } | MouseHover | LostNavFocus | LostMouseHover => false,
+            NavFocus { .. } | MouseHover(_) | LostNavFocus => false,
             LostCharFocus | LostSelFocus => false,
         }
     }

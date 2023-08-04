@@ -61,12 +61,18 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
             return response;
         }
 
-        if matches!(event, Event::NavFocus { key_focus: true }) {
-            cx.set_scroll(Scroll::Rect(widget.rect()));
-            response |= Response::Used;
+        match &event {
+            Event::MouseHover(state) => {
+                response |= widget.mouse_hover(cx, *state);
+            }
+            Event::NavFocus { key_focus: true } => {
+                cx.set_scroll(Scroll::Rect(widget.rect()));
+                response |= Response::Used;
+            }
+            _ => (),
         }
 
-        response |= widget.pre_handle_event(cx, data, event);
+        response |= widget.handle_event(cx, data, event);
     } else if widget.steal_event(cx, data, &id, &event).is_used() {
         response = Response::Used;
     } else {
