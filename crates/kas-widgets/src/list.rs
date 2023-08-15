@@ -217,7 +217,7 @@ impl_scope! {
         /// `f(cx, index)`, where `index` is the child's index.
         #[inline]
         pub fn on_messages(mut self, f: impl Fn(&mut EventCx, usize) + 'static) -> Self {
-        self.on_messages = Some(Box::new(f));
+            self.on_messages = Some(Box::new(f));
             self
         }
 
