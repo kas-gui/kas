@@ -731,9 +731,11 @@ impl<'a> EventCx<'a> {
 
         self.nav_focus = opt_id.clone();
         if let Some(id) = opt_id {
+            log::debug!(target: "kas_core::event", "nav_focus = Some({id})");
             self.pending
                 .push_back(Pending::Send(id, Event::NavFocus { key_focus }));
         } else {
+            log::debug!(target: "kas_core::event", "nav_focus = None");
             // Most likely an error occurred
         }
     }

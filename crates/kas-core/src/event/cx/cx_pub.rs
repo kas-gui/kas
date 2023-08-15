@@ -446,7 +446,7 @@ impl EventState {
                 .push_back(Pending::Send(id, Event::LostNavFocus));
         }
         self.clear_char_focus();
-        log::trace!(target: "kas_core::event", "clear_nav_focus");
+        log::debug!(target: "kas_core::event", "nav_focus = None");
     }
 
     /// Set the keyboard navigation focus directly
@@ -474,7 +474,7 @@ impl EventState {
             self.clear_char_focus();
         }
         self.nav_focus = Some(id.clone());
-        log::trace!(target: "kas_core::event", "set_nav_focus: {id}");
+        log::debug!(target: "kas_core::event", "nav_focus = Some({id})");
         self.pending
             .push_back(Pending::Send(id, Event::NavFocus { key_focus }));
     }
