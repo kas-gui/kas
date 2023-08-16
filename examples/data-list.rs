@@ -21,8 +21,8 @@
 
 use kas::prelude::*;
 use kas::row;
-use kas::widget::edit::{EditBox, EditField, EditGuard};
-use kas::widget::{
+use kas::widgets::edit::{EditBox, EditField, EditGuard};
+use kas::widgets::{
     Adapt, Button, Label, List, RadioButton, ScrollBarRegion, Separator, StringLabel, Text,
 };
 

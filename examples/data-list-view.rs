@@ -13,7 +13,7 @@
 use kas::prelude::*;
 use kas::row;
 use kas::view::{Driver, ListData, ListView, SharedData};
-use kas::widget::*;
+use kas::widgets::*;
 use std::collections::HashMap;
 
 #[derive(Debug)]

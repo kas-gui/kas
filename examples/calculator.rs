@@ -9,7 +9,7 @@ use std::num::ParseFloatError;
 use std::str::FromStr;
 
 use kas::prelude::*;
-use kas::widget::{AccelLabel, Adapt, Button, EditBox};
+use kas::widgets::{AccelLabel, Adapt, Button, EditBox};
 
 type Key = kas::event::Key<kas::event::SmolStr>;
 

@@ -7,7 +7,7 @@
 
 use kas::event::CursorIcon;
 use kas::prelude::*;
-use kas::widget::{Column, Label, StrLabel};
+use kas::widgets::{Column, Label, StrLabel};
 
 impl_scope! {
     #[widget{

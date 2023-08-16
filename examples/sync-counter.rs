@@ -7,7 +7,7 @@
 //!
 //! Each window shares the counter, but has its own increment step.
 
-use kas::widget::{format_data, label, Adapt, Button, Slider};
+use kas::widgets::{format_data, label, Adapt, Button, Slider};
 use kas::{Action, ErasedStack, Window};
 
 #[derive(Clone, Debug)]

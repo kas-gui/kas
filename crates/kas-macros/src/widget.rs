@@ -751,46 +751,35 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             .map(|tok| tok.lit.value)
             .unwrap_or(false);
         let icon_expr = args.cursor_icon.map(|tok| tok.expr);
-        let pre_handle_event = match (hover_highlight, icon_expr) {
+        let fn_mouse_hover = match (hover_highlight, icon_expr) {
             (false, None) => quote! {},
             (true, None) => quote! {
-                if matches!(event, Event::MouseHover | Event::LostMouseHover) {
+                #[inline]
+                fn mouse_hover(&mut self, cx: &mut EventCx, _: bool) -> ::kas::event::Response {
                     cx.redraw(self.id());
-                    return Response::Used;
+                    ::kas::event::Response::Used
                 }
             },
             (false, Some(icon_expr)) => quote! {
-                if matches!(event, Event::MouseHover) {
-                    cx.set_cursor_icon(#icon_expr);
-                    return Response::Used;
+                #[inline]
+                fn mouse_hover(&mut self, cx: &mut EventCx, state: bool) -> ::kas::event::Response {
+                    if state {
+                        cx.set_cursor_icon(#icon_expr);
+                    }
+                    ::kas::event::Response::Used
                 }
             },
             (true, Some(icon_expr)) => quote! {
-                if matches!(event, Event::MouseHover | Event::LostMouseHover) {
-                    if matches!(event, Event::MouseHover) {
+                #[inline]
+                fn mouse_hover(&mut self, cx: &mut EventCx, state: bool) -> ::kas::event::Response {
+                    cx.redraw(self.id());
+                    if state {
                         cx.set_cursor_icon(#icon_expr);
                     }
-                    cx.redraw(self.id());
-                    return Response::Used;
+                    ::kas::event::Response::Used
                 }
             },
         };
-        let fn_pre_handle_event = quote! {
-            fn pre_handle_event(
-                &mut self,
-                cx: &mut ::kas::event::EventCx,
-                data: &Self::Data,
-                event: ::kas::event::Event,
-            ) -> ::kas::event::Response {
-                use ::kas::{event::{Event, Response, Scroll}, LayoutExt, Layout};
-                if event == Event::NavFocus(true) {
-                    cx.set_scroll(Scroll::Rect(self.rect()));
-                }
-                #pre_handle_event
-                self.handle_event(cx, data, event)
-            }
-        };
-        let fn_handle_event = None;
 
         if let Some(index) = events_impl {
             let events_impl = &mut scope.impls[index];
@@ -809,18 +798,14 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             if let Some(method) = fn_navigable {
                 events_impl.items.push(Verbatim(method));
             }
-            events_impl.items.push(Verbatim(fn_pre_handle_event));
-            if let Some(item) = fn_handle_event {
-                events_impl.items.push(Verbatim(item));
-            }
+            events_impl.items.push(Verbatim(fn_mouse_hover));
         } else {
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::Events for #impl_target {
                     type Data = #data_ty;
                     #fn_pre_configure
                     #fn_navigable
-                    #fn_pre_handle_event
-                    #fn_handle_event
+                    #fn_mouse_hover
                 }
             });
         }

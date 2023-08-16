@@ -230,15 +230,6 @@ impl Tree {
                 ) {
                     self.id = id;
                 }
-
-                fn pre_handle_event(
-                    &mut self,
-                    cx: &mut ::kas::event::EventCx,
-                    data: &Self::Data,
-                    event: ::kas::event::Event,
-                ) -> ::kas::event::Response {
-                    self.handle_event(cx, data, event)
-                }
             }
 
             #widget_impl

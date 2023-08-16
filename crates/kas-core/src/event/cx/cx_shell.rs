@@ -224,7 +224,7 @@ impl EventState {
                     win.as_node(data).for_id(&id, |node| cx.update(node));
                 }
                 Pending::Send(id, event) => {
-                    if matches!(&event, &Event::LostMouseHover) {
+                    if matches!(&event, &Event::MouseHover(false)) {
                         cx.hover_icon = Default::default();
                     }
                     cx.send_event(win.as_node(data), id, event);

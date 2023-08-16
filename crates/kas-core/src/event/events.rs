@@ -24,8 +24,6 @@ use smol_str::SmolStr;
 #[non_exhaustive]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
-    /// No event
-    None,
     /// (Keyboard) command input
     ///
     /// This represents a control or navigation action, usually from the
@@ -168,21 +166,21 @@ pub enum Event {
     PopupRemoved(WindowId),
     /// Sent when a widget receives (keyboard) navigation focus
     ///
-    /// When the payload, `key_focus`, is true when the focus was triggered by
-    /// the keyboard, not the mouse or a touch event.
-    /// This event may be used e.g. to request char focus or to
-    /// steal focus from a child.
+    /// Parameter `key_focus` is:
     ///
-    /// Note: when `NavFocus(true)` is sent to a widget, the sender
-    /// automatically sets `Scroll::Rect(widget.rect())` to
-    /// [`EventCx::set_scroll`] and considers the event used.
-    NavFocus(bool),
+    /// -   `false` when focus is gained through mouse or touch input
+    /// -   `true` when focus is gained through keyboard input. In this case the
+    ///     recipient may wish to call [`EventCx::request_char_focus`]. Further,
+    ///     [`EventCx::set_scroll`] is automatically called with rect
+    ///     `Scroll::Rect(widget.rect())` (thus ensuring the widget is visible)
+    ///     and the [`Response`] will always be `Used`.
+    NavFocus { key_focus: bool },
     /// Sent when a widget becomes the mouse hover target
-    MouseHover,
+    ///
+    /// The payload is `true` when focus is gained, `false` when lost.
+    MouseHover(bool),
     /// Sent when a widget loses navigation focus
     LostNavFocus,
-    /// Sent when a widget is no longer the mouse hover target
-    LostMouseHover,
     /// Widget lost keyboard input focus
     ///
     /// This focus is gained through the widget calling [`EventState::request_char_focus`].
@@ -262,12 +260,12 @@ impl Event {
     pub fn pass_when_disabled(&self) -> bool {
         use Event::*;
         match self {
-            None | Command(_) => false,
+            Command(_) => false,
             Text(_) | Scroll(_) | Pan { .. } => false,
             CursorMove { .. } | PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | PopupRemoved(_) => true,
-            NavFocus(_) | MouseHover => false,
-            LostNavFocus | LostMouseHover | LostCharFocus | LostSelFocus => true,
+            NavFocus { .. } | MouseHover(_) => false,
+            LostNavFocus | LostCharFocus | LostSelFocus => true,
         }
     }
 
@@ -282,12 +280,12 @@ impl Event {
     pub fn is_reusable(&self) -> bool {
         use Event::*;
         match self {
-            None | Text(_) => false,
+            Text(_) => false,
             Command(_) | Scroll(_) | Pan { .. } => true,
             CursorMove { .. } | PressStart { .. } => true,
             PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | PopupRemoved(_) => false,
-            NavFocus(_) | MouseHover | LostNavFocus | LostMouseHover => false,
+            NavFocus { .. } | MouseHover(_) | LostNavFocus => false,
             LostCharFocus | LostSelFocus => false,
         }
     }

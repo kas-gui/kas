@@ -6,7 +6,7 @@
 //! Counter example (simple button)
 
 use kas::prelude::*;
-use kas::widget::{format_value, Adapt, Button};
+use kas::widgets::{format_value, Adapt, Button};
 
 #[derive(Clone, Debug)]
 struct Increment(i32);
