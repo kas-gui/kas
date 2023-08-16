@@ -133,9 +133,8 @@ impl EventState {
         f(&mut cx);
     }
 
-    /// Update, after receiving all events
-    #[inline]
-    pub(crate) fn post_events<A>(
+    /// Handle all pending items before event loop sleeps
+    pub(crate) fn flush_pending<A>(
         &mut self,
         shell: &mut dyn ShellWindow,
         messages: &mut ErasedStack,
@@ -254,31 +253,6 @@ impl EventState {
         }
 
         std::mem::take(&mut self.action)
-    }
-
-    /// Update, after drawing
-    ///
-    /// Returns true if action is non-empty
-    #[inline]
-    pub(crate) fn post_draw(
-        &mut self,
-        shell: &mut dyn ShellWindow,
-        messages: &mut ErasedStack,
-        widget: Node<'_>,
-    ) -> bool {
-        let mut cx = EventCx {
-            state: self,
-            shell,
-            messages,
-            last_child: None,
-            scroll: Scroll::None,
-        };
-
-        // Widget::draw may add futures; we should poll those now.
-        cx.poll_futures(widget);
-
-        drop(cx);
-        !self.action.is_empty()
     }
 }
 

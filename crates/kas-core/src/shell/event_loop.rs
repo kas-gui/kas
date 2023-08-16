@@ -138,7 +138,7 @@ where
             Suspended => (),
             Resumed => (),
 
-            MainEventsCleared => {
+            AboutToWait => {
                 while let Some(pending) = self.shared.shell.pending.pop() {
                     match pending {
                         PendingAction::AddPopup(parent_id, id, popup) => {
@@ -189,7 +189,7 @@ where
                 let mut to_close = SmallVec::<[ww::WindowId; 4]>::new();
                 self.resumes.clear();
                 for (window_id, window) in self.windows.iter_mut() {
-                    let (action, resume) = window.post_events(&mut self.shared);
+                    let (action, resume) = window.flush_pending(&mut self.shared);
                     if action.contains(Action::EXIT) {
                         close_all = true;
                     } else if action.contains(Action::CLOSE) {
@@ -241,24 +241,8 @@ where
                     self.frame_count.1 = 0;
                 }
             }
-            RedrawEventsCleared => {
-                if matches!(control_flow, ControlFlow::Wait | ControlFlow::WaitUntil(_)) {
-                    self.resumes.clear();
-                    for (window_id, window) in self.windows.iter_mut() {
-                        if let Some(instant) = window.post_draw(&mut self.shared) {
-                            self.resumes.push((instant, *window_id));
-                        }
-                    }
-                    self.resumes.sort_by_key(|item| item.0);
 
-                    *control_flow = match self.resumes.first() {
-                        Some((instant, _)) => ControlFlow::WaitUntil(*instant),
-                        None => ControlFlow::Wait,
-                    };
-                }
-            }
-
-            LoopDestroyed => (),
+            LoopExiting => (),
         }
     }
 }

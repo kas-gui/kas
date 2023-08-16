@@ -119,7 +119,7 @@ where
         options: Options,
         config: Rc<RefCell<event::Config>>,
     ) -> Result<Self> {
-        let el = EventLoopBuilder::with_user_event().build();
+        let el = EventLoopBuilder::with_user_event().build()?;
         let windows = vec![];
 
         let mut draw_shared = graphical_shell.into().build()?;
@@ -175,10 +175,11 @@ where
 
     /// Run the main loop.
     #[inline]
-    pub fn run(self) -> ! {
+    pub fn run(self) -> Result<()> {
         let mut el = super::EventLoop::new(self.windows, self.shared);
         self.el
-            .run(move |event, elwt, control_flow| el.handle(event, elwt, control_flow))
+            .run(move |event, elwt, control_flow| el.handle(event, elwt, control_flow))?;
+        Ok(())
     }
 }
 

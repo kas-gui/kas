@@ -39,10 +39,16 @@ impl WindowData {
 
     #[cfg(all(wayland_platform, feature = "clipboard"))]
     fn new(window: winit::window::Window) -> Self {
-        use winit::platform::wayland::WindowExtWayland;
-        let wayland_clipboard = window
-            .wayland_display()
-            .map(|display| unsafe { smithay_clipboard::Clipboard::new(display) });
+        use winit::window::raw_window_handle::{
+            HasRawDisplayHandle, RawDisplayHandle, WaylandDisplayHandle,
+        };
+        let wayland_clipboard = match window.raw_display_handle() {
+            RawDisplayHandle::Wayland(WaylandDisplayHandle { display, .. }) => {
+                Some(unsafe { smithay_clipboard::Clipboard::new(display) })
+            }
+            _ => None,
+        };
+
         WindowData {
             window,
             wayland_clipboard,
@@ -175,10 +181,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                     self.apply_size(shared, false);
                 }
             }
-            WindowEvent::ScaleFactorChanged {
-                scale_factor,
-                new_inner_size,
-            } => {
+            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 // Note: API allows us to set new window size here.
                 shared.scale_factor = scale_factor;
                 let scale_factor = scale_factor as f32;
@@ -189,10 +192,6 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                 let dpem = self.theme_window.size().dpem();
                 self.ev_state.update_config(scale_factor, dpem);
                 self.solve_cache.invalidate_rule_cache();
-                let size = (*new_inner_size).cast();
-                if self.surface.do_resize(&mut shared.shell.draw.draw, size) {
-                    self.apply_size(shared, false);
-                }
             }
             event => {
                 let mut tkw = TkWindow::new(
@@ -215,8 +214,8 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         }
     }
 
-    /// Update, after receiving all events
-    pub(super) fn post_events(
+    /// Handle all pending items before event loop sleeps
+    pub(super) fn flush_pending(
         &mut self,
         shared: &mut SharedState<A, S, T>,
     ) -> (Action, Option<Instant>) {
@@ -228,7 +227,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         let mut messages = ErasedStack::new();
         let action =
             self.ev_state
-                .post_events(&mut tkw, &mut messages, &mut self.widget, &shared.data);
+                .flush_pending(&mut tkw, &mut messages, &mut self.widget, &shared.data);
         shared.handle_messages(&mut messages);
 
         if action.contains(Action::CLOSE | Action::EXIT) {
@@ -248,28 +247,6 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         }
 
         (action, resume)
-    }
-
-    /// Post-draw updates
-    ///
-    /// Returns: time of next scheduled resume.
-    pub(super) fn post_draw(&mut self, shared: &mut SharedState<A, S, T>) -> Option<Instant> {
-        let mut tkw = TkWindow::new(
-            &mut shared.shell,
-            Some(&self.window),
-            &mut self.theme_window,
-        );
-        let mut messages = ErasedStack::new();
-        let has_action =
-            self.ev_state
-                .post_draw(&mut tkw, &mut messages, self.widget.as_node(&shared.data));
-        shared.handle_messages(&mut messages);
-
-        if has_action {
-            self.queued_frame_time = Some(self.next_avail_frame_time);
-        }
-
-        self.next_resume()
     }
 
     /// Handle an action (excludes handling of CLOSE and EXIT)

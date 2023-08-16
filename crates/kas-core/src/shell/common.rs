@@ -14,7 +14,6 @@ use crate::{Action, Window, WindowId};
 use raw_window_handle as raw;
 use std::any::TypeId;
 use thiserror::Error;
-#[cfg(winit)] use winit::error::OsError;
 
 /// Possible failures from constructing a [`Shell`](super::Shell)
 ///
@@ -30,13 +29,16 @@ pub enum Error {
     /// Config load/save error
     #[error("config load/save error")]
     Config(#[from] kas::config::Error),
-    #[doc(hidden)]
 
-    /// OS error during window creation
-    #[error("operating system error")]
-    #[cfg(winit)]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
-    Window(#[from] OsError),
+    /// Event loop error
+    #[error("event loop")]
+    EventLoop(#[from] winit::error::EventLoopError),
+}
+
+impl From<winit::error::OsError> for Error {
+    fn from(error: winit::error::OsError) -> Self {
+        Error::EventLoop(winit::error::EventLoopError::Os(error))
+    }
 }
 
 /// A `Result` type representing `T` or [`enum@Error`]

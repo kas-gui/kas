@@ -529,7 +529,7 @@ KAS_CONFIG_MODE=readwrite
     Box::new(Adapt::new(ui, ()))
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let theme = kas::theme::MultiTheme::builder()
