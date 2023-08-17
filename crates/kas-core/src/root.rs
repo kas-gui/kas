@@ -31,6 +31,10 @@ impl WindowId {
     pub(crate) fn new(n: NonZeroU32) -> WindowId {
         WindowId(n)
     }
+
+    pub(crate) fn get(self) -> u32 {
+        self.0.get()
+    }
 }
 
 /// Commands supported by the [`Window`]

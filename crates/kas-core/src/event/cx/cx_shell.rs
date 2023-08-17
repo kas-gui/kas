@@ -75,21 +75,24 @@ impl EventState {
     pub(crate) fn full_configure<A>(
         &mut self,
         shell: &mut dyn ShellWindow,
+        wid: WindowId,
         win: &mut Window<A>,
         data: &A,
     ) {
-        log::debug!(target: "kas_core::event", "full_configure");
+        let id = WidgetId::ROOT.make_child(wid.get().cast());
+
+        log::debug!(target: "kas_core::event", "full_configure of Window{id}");
         self.action.remove(Action::RECONFIGURE);
 
         // These are recreated during configure:
         self.accel_layers.clear();
         self.nav_fallback = None;
 
-        self.new_accel_layer(WidgetId::ROOT, false);
+        self.new_accel_layer(id.clone(), false);
 
         shell.size_and_draw_shared(Box::new(|size, draw_shared| {
             let mut cx = ConfigCx::new(size, draw_shared, self);
-            cx.configure(win.as_node(data), WidgetId::ROOT);
+            cx.configure(win.as_node(data), id);
         }));
 
         let hover = win.find_id(data, self.last_mouse_coord);

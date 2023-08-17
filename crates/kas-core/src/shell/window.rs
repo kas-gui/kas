@@ -95,7 +95,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
 
         let mut ev_state = EventState::new(shared.config.clone(), scale_factor, dpem);
         let mut tkw = TkWindow::new(&mut shared.shell, None, &mut theme_window);
-        ev_state.full_configure(&mut tkw, &mut widget, &shared.data);
+        ev_state.full_configure(&mut tkw, window_id, &mut widget, &shared.data);
 
         let sizer = SizeCx::new(theme_window.size());
         let mut solve_cache = SolveCache::find_constraints(widget.as_node(&shared.data), sizer);
@@ -354,7 +354,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             &mut self.theme_window,
         );
         self.ev_state
-            .full_configure(&mut tkw, &mut self.widget, &shared.data);
+            .full_configure(&mut tkw, self.window_id, &mut self.widget, &shared.data);
 
         self.solve_cache.invalidate_rule_cache();
         self.apply_size(shared, false);

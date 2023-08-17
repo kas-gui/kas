@@ -105,9 +105,14 @@ where
 }
 
 impl<Data: AppData, S: kas::draw::DrawSharedImpl, T> ShellShared<Data, S, T> {
+    /// Return the next window identifier
+    ///
+    /// TODO(opt): this should recycle used identifiers since WidgetId does not
+    /// efficiently represent large numbers.
     pub fn next_window_id(&mut self) -> WindowId {
-        self.window_id += 1;
-        WindowId::new(NonZeroU32::new(self.window_id).unwrap())
+        let id = self.window_id + 1;
+        self.window_id = id;
+        WindowId::new(NonZeroU32::new(id).unwrap())
     }
 
     #[inline]
