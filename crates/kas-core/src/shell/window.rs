@@ -9,7 +9,7 @@ use super::{PendingAction, Platform, ProxyAction};
 use super::{SharedState, ShellShared, ShellWindow, WindowSurface};
 use kas::cast::Cast;
 use kas::draw::{color::Rgba, AnimationState, DrawShared};
-use kas::event::{ConfigCx, CursorIcon, EventState};
+use kas::event::{config::WindowConfig, ConfigCx, CursorIcon, EventState};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::theme::{DrawCx, SizeCx, ThemeControl, ThemeSize};
@@ -91,9 +91,10 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         };
 
         let mut theme_window = shared.shell.theme.new_window(scale_factor);
-        let dpem = theme_window.size().dpem();
 
-        let mut ev_state = EventState::new(shared.config.clone(), scale_factor, dpem);
+        let config = WindowConfig::new(shared.config.clone());
+        let mut ev_state = EventState::new(config);
+        ev_state.update_config(scale_factor, theme_window.size().dpem());
         let mut tkw = TkWindow::new(&mut shared.shell, None, &mut theme_window);
         ev_state.full_configure(&mut tkw, window_id, &mut widget, &shared.data);
 

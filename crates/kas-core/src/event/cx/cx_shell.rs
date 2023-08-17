@@ -14,8 +14,6 @@ use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
 use crate::shell::ShellWindow;
 use crate::{Action, NavAdvance, WidgetId, Window};
-use std::cell::RefCell;
-use std::rc::Rc;
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
@@ -28,9 +26,9 @@ const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 impl EventState {
     /// Construct per-window event state
     #[inline]
-    pub(crate) fn new(config: Rc<RefCell<Config>>, scale_factor: f32, dpem: f32) -> Self {
+    pub(crate) fn new(config: WindowConfig) -> Self {
         EventState {
-            config: WindowConfig::new(config, scale_factor, dpem),
+            config,
             disabled: vec![],
             window_has_focus: false,
             modifiers: ModifiersState::empty(),
