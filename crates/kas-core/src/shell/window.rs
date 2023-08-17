@@ -200,11 +200,8 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                 self.solve_cache.invalidate_rule_cache();
             }
             event => {
-                let mut tkw = TkWindow::new(
-                    &mut shared.shell,
-                    Some(&self.window),
-                    &mut self.theme_window,
-                );
+                let mut tkw =
+                    TkWindow::new(&mut shared.shell, &self.window, &mut self.theme_window);
                 let mut messages = ErasedStack::new();
                 self.ev_state.with(&mut tkw, &mut messages, |cx| {
                     cx.handle_winit(&shared.data, &mut self.widget, event);
@@ -225,11 +222,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         &mut self,
         shared: &mut SharedState<A, S, T>,
     ) -> (Action, Option<Instant>) {
-        let mut tkw = TkWindow::new(
-            &mut shared.shell,
-            Some(&self.window),
-            &mut self.theme_window,
-        );
+        let mut tkw = TkWindow::new(&mut shared.shell, &self.window, &mut self.theme_window);
         let mut messages = ErasedStack::new();
         let action =
             self.ev_state
@@ -295,11 +288,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     }
 
     pub(super) fn update_timer(&mut self, shared: &mut SharedState<A, S, T>) -> Option<Instant> {
-        let mut tkw = TkWindow::new(
-            &mut shared.shell,
-            Some(&self.window),
-            &mut self.theme_window,
-        );
+        let mut tkw = TkWindow::new(&mut shared.shell, &self.window, &mut self.theme_window);
         let widget = self.widget.as_node(&shared.data);
         let mut messages = ErasedStack::new();
         self.ev_state
@@ -315,11 +304,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         popup: kas::Popup,
     ) {
         let widget = &mut self.widget;
-        let mut tkw = TkWindow::new(
-            &mut shared.shell,
-            Some(&self.window),
-            &mut self.theme_window,
-        );
+        let mut tkw = TkWindow::new(&mut shared.shell, &self.window, &mut self.theme_window);
         let mut messages = ErasedStack::new();
         self.ev_state.with(&mut tkw, &mut messages, |cx| {
             widget.add_popup(cx, &shared.data, id, popup)
@@ -335,11 +320,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         if id == self.window_id {
             self.ev_state.send_action(Action::CLOSE);
         } else {
-            let mut tkw = TkWindow::new(
-                &mut shared.shell,
-                Some(&self.window),
-                &mut self.theme_window,
-            );
+            let mut tkw = TkWindow::new(&mut shared.shell, &self.window, &mut self.theme_window);
             let widget = &mut self.widget;
             let mut messages = ErasedStack::new();
             self.ev_state
@@ -482,7 +463,7 @@ where
     T::Window: kas::theme::Window,
 {
     shared: &'a mut ShellShared<A, S, T>,
-    window: Option<&'a WindowData>,
+    window: &'a WindowData,
     theme_window: &'a mut T::Window,
 }
 
@@ -493,7 +474,7 @@ where
 {
     fn new(
         shared: &'a mut ShellShared<A, S, T>,
-        window: Option<&'a WindowData>,
+        window: &'a WindowData,
         theme_window: &'a mut T::Window,
     ) -> Self {
         TkWindow {
@@ -510,14 +491,13 @@ where
     T: Theme<S>,
     T::Window: kas::theme::Window,
 {
-    fn add_popup(&mut self, popup: kas::Popup) -> Option<WindowId> {
-        self.window.map(|w| w.id()).map(|parent_id| {
-            let id = self.shared.next_window_id();
-            self.shared
-                .pending
-                .push(PendingAction::AddPopup(parent_id, id, popup));
-            id
-        })
+    fn add_popup(&mut self, popup: kas::Popup) -> WindowId {
+        let parent_id = self.window.id();
+        let id = self.shared.next_window_id();
+        self.shared
+            .pending
+            .push(PendingAction::AddPopup(parent_id, id, popup));
+        id
     }
 
     unsafe fn add_window(&mut self, window: kas::Window<()>, data_type_id: TypeId) -> WindowId {
@@ -548,11 +528,7 @@ where
     #[inline]
     fn get_clipboard(&mut self) -> Option<String> {
         #[cfg(all(wayland_platform, feature = "clipboard"))]
-        if let Some(cb) = self
-            .window
-            .as_ref()
-            .and_then(|data| data.wayland_clipboard.as_ref())
-        {
+        if let Some(cb) = self.window.wayland_clipboard.as_ref() {
             return match cb.load() {
                 Ok(s) => Some(s),
                 Err(e) => {
@@ -568,11 +544,7 @@ where
     #[inline]
     fn set_clipboard<'c>(&mut self, content: String) {
         #[cfg(all(wayland_platform, feature = "clipboard"))]
-        if let Some(cb) = self
-            .window
-            .as_ref()
-            .and_then(|data| data.wayland_clipboard.as_ref())
-        {
+        if let Some(cb) = self.window.wayland_clipboard.as_ref() {
             cb.store(content);
             return;
         }
@@ -583,11 +555,7 @@ where
     #[inline]
     fn get_primary(&mut self) -> Option<String> {
         #[cfg(all(wayland_platform, feature = "clipboard"))]
-        if let Some(cb) = self
-            .window
-            .as_ref()
-            .and_then(|data| data.wayland_clipboard.as_ref())
-        {
+        if let Some(cb) = self.window.wayland_clipboard.as_ref() {
             return match cb.load_primary() {
                 Ok(s) => Some(s),
                 Err(e) => {
@@ -603,11 +571,7 @@ where
     #[inline]
     fn set_primary<'c>(&mut self, content: String) {
         #[cfg(all(wayland_platform, feature = "clipboard"))]
-        if let Some(cb) = self
-            .window
-            .as_ref()
-            .and_then(|data| data.wayland_clipboard.as_ref())
-        {
+        if let Some(cb) = self.window.wayland_clipboard.as_ref() {
             cb.store_primary(content);
             return;
         }
@@ -629,9 +593,7 @@ where
 
     #[inline]
     fn set_cursor_icon(&mut self, icon: CursorIcon) {
-        if let Some(window) = self.window {
-            window.set_cursor_icon(icon);
-        }
+        self.window.set_cursor_icon(icon);
     }
 
     fn platform(&self) -> Platform {
@@ -641,7 +603,7 @@ where
     #[cfg(winit)]
     #[inline]
     fn winit_window(&self) -> Option<&winit::window::Window> {
-        self.window.map(|w| &w.window)
+        Some(&self.window.window)
     }
 
     #[inline]
