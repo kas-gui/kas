@@ -42,10 +42,13 @@ where
     pub(super) fn new(mut windows: Vec<Window<A, S, T>>, shared: SharedState<A, S, T>) -> Self {
         let id_map = windows
             .iter()
-            .map(|w| (w.window_id, w.window.id()))
+            .map(|w| (w.window_id, w.winit_window_id()))
             .collect();
         Loop {
-            windows: windows.drain(..).map(|w| (w.window.id(), w)).collect(),
+            windows: windows
+                .drain(..)
+                .map(|w| (w.winit_window_id(), w))
+                .collect(),
             id_map,
             shared,
             resumes: vec![],
@@ -155,7 +158,7 @@ where
                             log::debug!("Pending: adding window {}", widget.title());
                             match Window::new(&mut self.shared, elwt, id, widget) {
                                 Ok(window) => {
-                                    let wid = window.window.id();
+                                    let wid = window.winit_window_id();
                                     self.id_map.insert(id, wid);
                                     self.windows.insert(wid, window);
                                 }
