@@ -11,8 +11,10 @@ use std::time::{Duration, Instant};
 
 use super::*;
 use crate::cast::traits::*;
+use crate::draw::DrawShared;
 use crate::geom::{Coord, DVec2};
 use crate::shell::ShellWindow;
+use crate::theme::ThemeSize;
 use crate::{Action, NavAdvance, WidgetId, Window};
 
 // TODO: this should be configurable or derived from the system
@@ -72,7 +74,8 @@ impl EventState {
     /// renamed and removed widgets.
     pub(crate) fn full_configure<A>(
         &mut self,
-        shell: &mut dyn ShellWindow,
+        sizer: &dyn ThemeSize,
+        draw_shared: &mut dyn DrawShared,
         wid: WindowId,
         win: &mut Window<A>,
         data: &A,
@@ -88,10 +91,7 @@ impl EventState {
 
         self.new_accel_layer(id.clone(), false);
 
-        shell.size_and_draw_shared(Box::new(|size, draw_shared| {
-            let mut cx = ConfigCx::new(size, draw_shared, self);
-            cx.configure(win.as_node(data), id);
-        }));
+        ConfigCx::new(sizer, draw_shared, self).configure(win.as_node(data), id);
 
         let hover = win.find_id(data, self.last_mouse_coord);
         self.set_hover(hover);

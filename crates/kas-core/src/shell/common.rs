@@ -299,7 +299,7 @@ pub(crate) trait ShellWindow {
     /// User-code *must not* depend on `f` being called for memory safety.
     fn size_and_draw_shared<'s>(
         &'s mut self,
-        f: Box<dyn FnOnce(&mut dyn ThemeSize, &mut dyn DrawShared) + 's>,
+        f: Box<dyn FnOnce(&dyn ThemeSize, &mut dyn DrawShared) + 's>,
     );
 
     /// Set the mouse cursor

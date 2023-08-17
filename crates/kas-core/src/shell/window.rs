@@ -95,8 +95,13 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         let config = WindowConfig::new(shared.config.clone());
         let mut ev_state = EventState::new(config);
         ev_state.update_config(scale_factor, theme_window.size().dpem());
-        let mut tkw = TkWindow::new(&mut shared.shell, None, &mut theme_window);
-        ev_state.full_configure(&mut tkw, window_id, &mut widget, &shared.data);
+        ev_state.full_configure(
+            theme_window.size(),
+            &mut shared.shell.draw,
+            window_id,
+            &mut widget,
+            &shared.data,
+        );
 
         let sizer = SizeCx::new(theme_window.size());
         let mut solve_cache = SolveCache::find_constraints(widget.as_node(&shared.data), sizer);
@@ -349,13 +354,13 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     fn reconfigure(&mut self, shared: &mut SharedState<A, S, T>) {
         let time = Instant::now();
 
-        let mut tkw = TkWindow::new(
-            &mut shared.shell,
-            Some(&self.window),
-            &mut self.theme_window,
+        self.ev_state.full_configure(
+            self.theme_window.size(),
+            &mut shared.shell.draw,
+            self.window_id,
+            &mut self.widget,
+            &shared.data,
         );
-        self.ev_state
-            .full_configure(&mut tkw, self.window_id, &mut self.widget, &shared.data);
 
         self.solve_cache.invalidate_rule_cache();
         self.apply_size(shared, false);
@@ -617,11 +622,9 @@ where
 
     fn size_and_draw_shared<'s>(
         &'s mut self,
-        f: Box<dyn FnOnce(&mut dyn ThemeSize, &mut dyn DrawShared) + 's>,
+        f: Box<dyn FnOnce(&dyn ThemeSize, &mut dyn DrawShared) + 's>,
     ) {
-        use kas::theme::Window;
-        let mut size = self.theme_window.size();
-        f(&mut size, &mut self.shared.draw);
+        f(self.theme_window.size(), &mut self.shared.draw);
     }
 
     #[inline]
