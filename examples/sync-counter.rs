@@ -63,7 +63,7 @@ fn main() -> kas::shell::Result<()> {
     let theme = kas_wgpu::ShadedTheme::new().with_font_size(24.0);
 
     kas::shell::DefaultShell::new(count, theme)?
-        .with(counter("Counter 1"))?
-        .with(counter("Counter 2"))?
+        .with(counter("Counter 1"))
+        .with(counter("Counter 2"))
         .run()
 }

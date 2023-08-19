@@ -644,6 +644,6 @@ fn main() -> kas::shell::Result<()> {
         }
     };
 
-    shell.add(Window::new(ui, "Gallery — Widgets"))?;
+    shell.add(Window::new(ui, "Gallery — Widgets"));
     shell.run()
 }

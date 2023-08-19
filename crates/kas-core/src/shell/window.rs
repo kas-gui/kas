@@ -51,13 +51,28 @@ pub struct Window<A: AppData, S: WindowSurface, T: Theme<S::Shared>> {
 
 // Public functions, for use by the toolkit
 impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
-    /// Construct a window
+    /// Construct window state (widget)
     pub(super) fn new(
         shared: &mut SharedState<A, S, T>,
-        elwt: &EventLoopWindowTarget<ProxyAction>,
         window_id: WindowId,
-        mut widget: kas::Window<A>,
-    ) -> super::Result<Self> {
+        widget: kas::Window<A>,
+    ) -> Self {
+        let config = WindowConfig::new(shared.config.clone());
+        Window {
+            _data: std::marker::PhantomData,
+            widget,
+            window_id,
+            ev_state: EventState::new(config),
+            window: None,
+        }
+    }
+
+    /// Open (resume) a window
+    pub(super) fn resume(
+        &mut self,
+        shared: &mut SharedState<A, S, T>,
+        elwt: &EventLoopWindowTarget<ProxyAction>,
+    ) -> super::Result<winit::window::WindowId> {
         let time = Instant::now();
 
         // Wayland only supports windows constructed via logical size
@@ -70,20 +85,20 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         };
 
         let mut theme_window = shared.shell.theme.new_window(scale_factor);
+        let dpem = theme_window.size().dpem();
 
-        let config = WindowConfig::new(shared.config.clone());
-        let mut ev_state = EventState::new(config);
-        ev_state.update_config(scale_factor, theme_window.size().dpem());
-        ev_state.full_configure(
+        self.ev_state.update_config(scale_factor, dpem);
+        self.ev_state.full_configure(
             theme_window.size(),
             &mut shared.shell.draw,
-            window_id,
-            &mut widget,
+            self.window_id,
+            &mut self.widget,
             &shared.data,
         );
 
+        let node = self.widget.as_node(&shared.data);
         let sizer = SizeCx::new(theme_window.size());
-        let mut solve_cache = SolveCache::find_constraints(widget.as_node(&shared.data), sizer);
+        let mut solve_cache = SolveCache::find_constraints(node, sizer);
 
         // Opening a zero-size window causes a crash, so force at least 1x1:
         let ideal = solve_cache.ideal(true).max(Size(1, 1));
@@ -93,7 +108,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         };
 
         let mut builder = WindowBuilder::new().with_inner_size(ideal);
-        let (restrict_min, restrict_max) = widget.restrictions();
+        let (restrict_min, restrict_max) = self.widget.restrictions();
         if restrict_min {
             let min = solve_cache.min(true);
             let min = match use_logical_size {
@@ -106,10 +121,10 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             builder = builder.with_max_inner_size(ideal);
         }
         let window = builder
-            .with_title(widget.title())
-            .with_window_icon(widget.take_icon())
-            .with_decorations(widget.decorations() == kas::Decorations::Server)
-            .with_transparent(widget.transparent())
+            .with_title(self.widget.title())
+            .with_window_icon(self.widget.icon())
+            .with_decorations(self.widget.decorations() == kas::Decorations::Server)
+            .with_transparent(self.widget.transparent())
             .build(elwt)?;
 
         let scale_factor = window.scale_factor();
@@ -129,7 +144,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                 .theme
                 .update_window(&mut theme_window, scale_factor);
             let dpem = theme_window.size().dpem();
-            ev_state.update_config(scale_factor, dpem);
+            self.ev_state.update_config(scale_factor, dpem);
             solve_cache.invalidate_rule_cache();
         }
 
@@ -147,34 +162,31 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
 
         let surface = S::new(&mut shared.shell.draw.draw, size, &window)?;
 
-        let window = WindowData {
+        let winit_id = window.id();
+
+        self.window = Some(WindowData {
             window,
             #[cfg(all(wayland_platform, feature = "clipboard"))]
             wayland_clipboard,
             surface,
 
-            window_id,
+            window_id: self.window_id,
             solve_cache,
             theme_window,
             next_avail_frame_time: time,
             queued_frame_time: Some(time),
-        };
+        });
 
-        let mut r = Window {
-            _data: std::marker::PhantomData,
-            widget,
-            window_id,
-            ev_state,
-            window: Some(window),
-        };
-        r.apply_size(shared, true);
+        self.apply_size(shared, true);
 
-        log::trace!(target: "kas_perf::wgpu::window", "new: {}µs", time.elapsed().as_micros());
-        Ok(r)
+        log::trace!(target: "kas_perf::wgpu::window", "resume: {}µs", time.elapsed().as_micros());
+        Ok(winit_id)
     }
 
-    pub(super) fn winit_window_id(&self) -> winit::window::WindowId {
-        self.window.as_ref().map(|w| w.id()).unwrap()
+    /// Close (suspend) the window, keeping state (widget)
+    pub(super) fn suspend(&mut self) {
+        // TODO: close popups and notify the widget to allow saving data
+        self.window = None;
     }
 
     /// Handle an event

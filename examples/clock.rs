@@ -179,5 +179,5 @@ fn main() -> kas::shell::Result<()> {
         .with_decorations(kas::Decorations::None)
         .with_transparent(true);
 
-    Shell::new((), Theme::new())?.with(window)?.run()
+    Shell::new((), Theme::new())?.with(window).run()
 }

@@ -154,18 +154,18 @@ where
 
     /// Assume ownership of and display a window
     #[inline]
-    pub fn add(&mut self, window: Window<Data>) -> Result<WindowId> {
+    pub fn add(&mut self, window: Window<Data>) -> WindowId {
         let id = self.shared.shell.next_window_id();
-        let win = super::Window::new(&mut self.shared, &self.el, id, window)?;
+        let win = super::Window::new(&mut self.shared, id, window);
         self.windows.push(win);
-        Ok(id)
+        id
     }
 
     /// Assume ownership of and display a window, inline
     #[inline]
-    pub fn with(mut self, window: Window<Data>) -> Result<Self> {
-        let _ = self.add(window)?;
-        Ok(self)
+    pub fn with(mut self, window: Window<Data>) -> Self {
+        let _ = self.add(window);
+        self
     }
 
     /// Create a proxy which can be used to update the UI from another thread

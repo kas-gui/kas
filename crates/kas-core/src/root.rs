@@ -280,9 +280,9 @@ impl<Data: 'static> Window<Data> {
         self.title_bar.title()
     }
 
-    /// Take the window's icon, if any
-    pub(crate) fn take_icon(&mut self) -> Option<Icon> {
-        self.icon.take()
+    /// Get the window's icon, if any
+    pub(crate) fn icon(&mut self) -> Option<Icon> {
+        self.icon.clone()
     }
 
     /// Set the window's icon (inline)

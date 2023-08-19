@@ -487,6 +487,6 @@ fn main() -> kas::shell::Result<()> {
     let theme = kas::theme::FlatTheme::new().with_colours("dark");
     let options = kas::config::Options::from_env();
     kas::shell::WgpuShell::new_custom((), PipeBuilder, theme, options)?
-        .with(window)?
+        .with(window)
         .run()
 }
