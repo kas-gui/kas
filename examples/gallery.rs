@@ -135,6 +135,7 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
         struct {
             core: widget_core!(),
             #[widget(&())] editor: TextEdit = TextEdit::new("", true),
+            popup_id: Option<kas::WindowId>,
         }
         impl Events for Self {
             type Data = Data;
@@ -148,11 +149,11 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
                     // cx.add_window::<()>(ed.into_window("Edit text"));
                     // TODO: cx.add_modal(..)
                     // FIXME: what's with mouse focus here?
-                    cx.add_popup(kas::Popup {
+                    self.popup_id = Some(cx.add_popup(kas::Popup {
                         id: self.editor.id(),
                         parent: self.id(),
                         direction: kas::dir::Direction::Up,
-                    });
+                    }));
                 } else if let Some(result) = cx.try_pop() {
                     match result {
                         TextEditResult::Cancel => (),
@@ -160,6 +161,9 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
                             // Translate from TextEdit's output
                             cx.push(Item::Text(text));
                         }
+                    }
+                    if let Some(id) = self.popup_id.take() {
+                        cx.close_window(id, true);
                     }
                 }
             }

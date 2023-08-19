@@ -33,6 +33,7 @@ struct WindowData<S: WindowSurface, T: Theme<S::Shared>> {
     surface: S,
 
     // NOTE: cached components could be here or in Window
+    window_id: WindowId,
     solve_cache: SolveCache,
     theme_window: T::Window,
     next_avail_frame_time: Instant,
@@ -152,6 +153,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             wayland_clipboard,
             surface,
 
+            window_id,
             solve_cache,
             theme_window,
             next_avail_frame_time: time,
@@ -478,7 +480,7 @@ impl<'a, A: AppData, S: WindowSurface, T: Theme<S::Shared>> TkWindow<'a, A, S, T
 
 impl<'a, A: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellWindow for TkWindow<'a, A, S, T> {
     fn add_popup(&mut self, popup: kas::Popup) -> WindowId {
-        let parent_id = self.window.id();
+        let parent_id = self.window.window_id;
         let id = self.shared.next_window_id();
         self.shared
             .pending

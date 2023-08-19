@@ -788,6 +788,8 @@ impl<'a> EventCx<'a> {
             }
             // TODO: if popup.id is an ancestor of self.nav_focus then clear
             // focus if not setting (currently we cannot test this)
+
+            return;
         }
 
         self.shell.close_window(id);

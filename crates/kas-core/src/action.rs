@@ -20,7 +20,7 @@ bitflags! {
     /// (`toolkit.run()`) or if the widget in question is not part of a UI these
     /// values can be ignored.
     #[must_use]
-    #[derive(Copy, Clone, Default)]
+    #[derive(Copy, Clone, Debug, Default)]
     pub struct Action: u32 {
         /// The whole window requires redrawing
         ///

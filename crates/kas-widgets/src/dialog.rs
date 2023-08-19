@@ -88,7 +88,9 @@ impl_scope! {
     }]
     /// An editor over a `String`
     ///
-    /// Emits a [`TextEditResult`] message on closure.
+    /// Emits a [`TextEditResult`] message when the "Ok" or "Cancel" button is
+    /// pressed. When used as a pop-up, it is up to the caller to close on this
+    /// message.
     pub struct TextEdit {
         core: widget_core!(),
         #[widget]
