@@ -497,7 +497,7 @@ impl<'a> EventCx<'a> {
 
             if matches!(cmd, Command::Debug) {
                 if let Some(ref id) = self.hover {
-                    if let Some(w) = widget.as_layout().get_id(id) {
+                    if let Some(w) = widget.as_layout().find_widget(id) {
                         let hier = WidgetHierarchy::new(w);
                         log::debug!("Widget heirarchy (from mouse): {hier}");
                     }
@@ -677,7 +677,7 @@ impl<'a> EventCx<'a> {
         if let Some(id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
             if id.is_ancestor_of(widget.id_ref()) {
                 // do nothing
-            } else if let Some(r) = widget.for_id(&id, |node| {
+            } else if let Some(r) = widget.find_node(&id, |node| {
                 self.next_nav_focus_impl(node, target, reverse, key_focus)
             }) {
                 return r;

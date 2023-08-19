@@ -349,9 +349,9 @@ pub trait LayoutExt: Layout {
     ///
     /// Since `id` represents a path, this operation is normally `O(d)` where
     /// `d` is the depth of the path (depending on widget implementations).
-    fn get_id(&self, id: &WidgetId) -> Option<&dyn Layout> {
+    fn find_widget(&self, id: &WidgetId) -> Option<&dyn Layout> {
         if let Some(child) = self.find_child_index(id).and_then(|i| self.get_child(i)) {
-            child.get_id(id)
+            child.find_widget(id)
         } else if self.eq_id(id) {
             Some(self.as_layout())
         } else {

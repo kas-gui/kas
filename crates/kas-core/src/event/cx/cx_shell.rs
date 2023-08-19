@@ -215,13 +215,13 @@ impl EventState {
             match item {
                 Pending::Configure(id) => {
                     win.as_node(data)
-                        .for_id(&id, |node| cx.configure(node, id.clone()));
+                        .find_node(&id, |node| cx.configure(node, id.clone()));
 
                     let hover = win.find_id(data, cx.state.last_mouse_coord);
                     cx.state.set_hover(hover);
                 }
                 Pending::Update(id) => {
-                    win.as_node(data).for_id(&id, |node| cx.update(node));
+                    win.as_node(data).find_node(&id, |node| cx.update(node));
                 }
                 Pending::Send(id, event) => {
                     if matches!(&event, &Event::MouseHover(false)) {
