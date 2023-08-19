@@ -87,11 +87,9 @@ impl<'a> EventCx<'a> {
                             grab.depress = grab.cur_id.clone();
                             self.action |= Action::REDRAW;
                         }
-                    } else {
-                        if grab.depress.is_some() {
-                            grab.depress = None;
-                            self.action |= Action::REDRAW;
-                        }
+                    } else if grab.depress.is_some() {
+                        grab.depress = None;
+                        self.action |= Action::REDRAW;
                     }
                 }
                 GrabMode::Grab => {
@@ -131,11 +129,9 @@ impl TouchGrab {
                     self.depress = self.cur_id.clone();
                     return Action::REDRAW;
                 }
-            } else {
-                if self.depress.is_some() {
-                    self.depress = None;
-                    return Action::REDRAW;
-                }
+            } else if self.depress.is_some() {
+                self.depress = None;
+                return Action::REDRAW;
             }
         }
         Action::empty()

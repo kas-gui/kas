@@ -5,7 +5,6 @@
 
 //! Event loop and handling
 
-use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -23,14 +22,17 @@ pub(super) struct Loop<A: AppData, S: WindowSurface, T: Theme<S::Shared>>
 where
     T::Window: kas::theme::Window,
 {
+    /// State is suspended until we receive Event::Resumed
+    suspended: bool,
     /// Window states
-    windows: HashMap<ww::WindowId, Window<A, S, T>>,
+    windows: HashMap<WindowId, Window<A, S, T>>,
+    popups: HashMap<WindowId, WindowId>,
     /// Translates our WindowId to winit's
-    id_map: HashMap<WindowId, ww::WindowId>,
+    id_map: HashMap<ww::WindowId, WindowId>,
     /// Shared data passed from Toolkit
     shared: SharedState<A, S, T>,
-    /// Timer resumes: (time, window index)
-    resumes: Vec<(Instant, ww::WindowId)>,
+    /// Timer resumes: (time, window identifier)
+    resumes: Vec<(Instant, WindowId)>,
     /// Frame rate counter
     frame_count: (Instant, u32),
 }
@@ -40,13 +42,11 @@ where
     T::Window: kas::theme::Window,
 {
     pub(super) fn new(mut windows: Vec<Window<A, S, T>>, shared: SharedState<A, S, T>) -> Self {
-        let id_map = windows
-            .iter()
-            .map(|w| (w.window_id, w.window.id()))
-            .collect();
         Loop {
-            windows: windows.drain(..).map(|w| (w.window.id(), w)).collect(),
-            id_map,
+            suspended: true,
+            windows: windows.drain(..).map(|w| (w.window_id, w)).collect(),
+            popups: Default::default(),
+            id_map: Default::default(),
             shared,
             resumes: vec![],
             frame_count: (Instant::now(), 0),
@@ -59,10 +59,8 @@ where
         elwt: &EventLoopWindowTarget<ProxyAction>,
         control_flow: &mut ControlFlow,
     ) {
-        use Event::*;
-
         match event {
-            NewEvents(cause) => {
+            Event::NewEvents(cause) => {
                 // MainEventsCleared will reset control_flow (but not when it is Poll)
                 *control_flow = ControlFlow::Wait;
 
@@ -100,20 +98,20 @@ where
                 }
             }
 
-            WindowEvent { window_id, event } => {
-                if let Some(window) = self.windows.get_mut(&window_id) {
-                    window.handle_event(&mut self.shared, event);
+            Event::WindowEvent { window_id, event } => {
+                if let Some(id) = self.id_map.get(&window_id) {
+                    if let Some(window) = self.windows.get_mut(id) {
+                        window.handle_event(&mut self.shared, event);
+                    }
                 }
             }
-            DeviceEvent { .. } => {
+            Event::DeviceEvent { .. } => {
                 // windows handle local input; we do not handle global input
             }
-            UserEvent(action) => match action {
+            Event::UserEvent(action) => match action {
                 ProxyAction::Close(id) => {
-                    if let Some(id) = self.id_map.get(&id) {
-                        if let Some(window) = self.windows.get_mut(id) {
-                            window.send_action(Action::CLOSE);
-                        }
+                    if let Some(window) = self.windows.get_mut(&id) {
+                        window.send_action(Action::CLOSE);
                     }
                 }
                 ProxyAction::CloseAll => {
@@ -133,12 +131,29 @@ where
                 }
             },
 
-            // TODO: windows should be constructed in Resumed and destroyed
-            // (everything but the widget) in Suspended:
-            Suspended => (),
-            Resumed => (),
+            Event::Suspended if !self.suspended => {
+                for window in self.windows.values_mut() {
+                    window.suspend();
+                }
+                self.suspended = true;
+            }
+            Event::Suspended => (),
+            Event::Resumed if self.suspended => {
+                for window in self.windows.values_mut() {
+                    match window.resume(&mut self.shared, elwt) {
+                        Ok(winit_id) => {
+                            self.id_map.insert(winit_id, window.window_id);
+                        }
+                        Err(e) => {
+                            log::error!("Unable to create window: {}", e);
+                        }
+                    }
+                }
+                self.suspended = false;
+            }
+            Event::Resumed => (),
 
-            MainEventsCleared => {
+            Event::AboutToWait => {
                 while let Some(pending) = self.shared.shell.pending.pop() {
                     match pending {
                         PendingAction::AddPopup(parent_id, id, popup) => {
@@ -149,32 +164,36 @@ where
                                 id,
                                 popup,
                             );
-                            self.id_map.insert(id, parent_id);
+                            self.popups.insert(id, parent_id);
                         }
                         PendingAction::AddWindow(id, widget) => {
                             log::debug!("Pending: adding window {}", widget.title());
-                            match Window::new(&mut self.shared, elwt, id, widget) {
-                                Ok(window) => {
-                                    let wid = window.window.id();
-                                    self.id_map.insert(id, wid);
-                                    self.windows.insert(wid, window);
+                            let mut window = Window::new(&self.shared, id, widget);
+                            if !self.suspended {
+                                match window.resume(&mut self.shared, elwt) {
+                                    Ok(winit_id) => {
+                                        self.id_map.insert(winit_id, id);
+                                    }
+                                    Err(e) => {
+                                        log::error!("Unable to create window: {}", e);
+                                    }
                                 }
-                                Err(e) => {
-                                    log::error!("Unable to create window: {}", e);
-                                }
-                            };
+                            }
+                            self.windows.insert(id, window);
                         }
-                        PendingAction::CloseWindow(id) => {
-                            if let Some(wwid) = self.id_map.get(&id) {
-                                if let Some(window) = self.windows.get_mut(wwid) {
-                                    window.send_close(&mut self.shared, id);
-                                }
-                                self.id_map.remove(&id);
+                        PendingAction::CloseWindow(target) => {
+                            let mut win_id = target;
+                            if let Some(id) = self.popups.remove(&target) {
+                                win_id = id;
+                            }
+                            if let Some(window) = self.windows.get_mut(&win_id) {
+                                window.send_close(&mut self.shared, target);
                             }
                         }
                         PendingAction::Action(action) => {
                             if action.contains(Action::CLOSE | Action::EXIT) {
                                 self.windows.clear();
+                                self.id_map.clear();
                                 *control_flow = ControlFlow::Poll;
                             } else {
                                 for (_, window) in self.windows.iter_mut() {
@@ -186,27 +205,28 @@ where
                 }
 
                 let mut close_all = false;
-                let mut to_close = SmallVec::<[ww::WindowId; 4]>::new();
                 self.resumes.clear();
-                for (window_id, window) in self.windows.iter_mut() {
-                    let (action, resume) = window.post_events(&mut self.shared);
-                    if action.contains(Action::EXIT) {
-                        close_all = true;
-                    } else if action.contains(Action::CLOSE) {
-                        to_close.push(*window_id);
-                    }
+                self.windows.retain(|window_id, window| {
+                    let (action, resume) = window.flush_pending(&mut self.shared);
                     if let Some(instant) = resume {
                         self.resumes.push((instant, *window_id));
                     }
-                }
-
-                for window_id in &to_close {
-                    if let Some(window) = self.windows.remove(window_id) {
-                        self.id_map.remove(&window.window_id);
+                    if action.contains(Action::EXIT) {
+                        close_all = true;
+                        true
+                    } else if action.contains(Action::CLOSE) {
+                        self.id_map.retain(|_, v| v != window_id);
+                        false
+                    } else {
+                        true
                     }
-                }
+                });
+
                 if close_all {
-                    self.windows.clear();
+                    for (_, mut window) in self.windows.drain() {
+                        window.suspend();
+                    }
+                    self.id_map.clear();
                 }
 
                 self.resumes.sort_by_key(|item| item.0);
@@ -225,10 +245,12 @@ where
                 };
             }
 
-            RedrawRequested(id) => {
-                if let Some(window) = self.windows.get_mut(&id) {
-                    if window.do_draw(&mut self.shared).is_err() {
-                        *control_flow = ControlFlow::Poll;
+            Event::RedrawRequested(id) => {
+                if let Some(id) = self.id_map.get(&id) {
+                    if let Some(window) = self.windows.get_mut(id) {
+                        if window.do_draw(&mut self.shared).is_err() {
+                            *control_flow = ControlFlow::Poll;
+                        }
                     }
                 }
 
@@ -241,24 +263,8 @@ where
                     self.frame_count.1 = 0;
                 }
             }
-            RedrawEventsCleared => {
-                if matches!(control_flow, ControlFlow::Wait | ControlFlow::WaitUntil(_)) {
-                    self.resumes.clear();
-                    for (window_id, window) in self.windows.iter_mut() {
-                        if let Some(instant) = window.post_draw(&mut self.shared) {
-                            self.resumes.push((instant, *window_id));
-                        }
-                    }
-                    self.resumes.sort_by_key(|item| item.0);
 
-                    *control_flow = match self.resumes.first() {
-                        Some((instant, _)) => ControlFlow::WaitUntil(*instant),
-                        None => ControlFlow::Wait,
-                    };
-                }
-            }
-
-            LoopDestroyed => (),
+            Event::LoopExiting => (),
         }
     }
 }

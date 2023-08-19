@@ -14,7 +14,6 @@ use crate::{Action, Window, WindowId};
 use raw_window_handle as raw;
 use std::any::TypeId;
 use thiserror::Error;
-#[cfg(winit)] use winit::error::OsError;
 
 /// Possible failures from constructing a [`Shell`](super::Shell)
 ///
@@ -30,13 +29,16 @@ pub enum Error {
     /// Config load/save error
     #[error("config load/save error")]
     Config(#[from] kas::config::Error),
-    #[doc(hidden)]
 
-    /// OS error during window creation
-    #[error("operating system error")]
-    #[cfg(winit)]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
-    Window(#[from] OsError),
+    /// Event loop error
+    #[error("event loop")]
+    EventLoop(#[from] winit::error::EventLoopError),
+}
+
+impl From<winit::error::OsError> for Error {
+    fn from(error: winit::error::OsError) -> Self {
+        Error::EventLoop(winit::error::EventLoopError::Os(error))
+    }
 }
 
 /// A `Result` type representing `T` or [`enum@Error`]
@@ -240,7 +242,7 @@ pub(crate) trait ShellWindow {
     ///
     /// Returns `None` if window creation is not currently available (but note
     /// that `Some` result does not guarantee the operation succeeded).
-    fn add_popup(&mut self, popup: crate::Popup) -> Option<WindowId>;
+    fn add_popup(&mut self, popup: crate::Popup) -> WindowId;
 
     /// Add a window
     ///
@@ -297,7 +299,7 @@ pub(crate) trait ShellWindow {
     /// User-code *must not* depend on `f` being called for memory safety.
     fn size_and_draw_shared<'s>(
         &'s mut self,
-        f: Box<dyn FnOnce(&mut dyn ThemeSize, &mut dyn DrawShared) + 's>,
+        f: Box<dyn FnOnce(&dyn ThemeSize, &mut dyn DrawShared) + 's>,
     );
 
     /// Set the mouse cursor

@@ -160,19 +160,19 @@ pub struct WindowConfig {
 
 impl WindowConfig {
     /// Construct
+    ///
+    /// It is required to call [`Self::update`] before usage.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(config: Rc<RefCell<Config>>, scale_factor: f32, dpem: f32) -> Self {
-        let mut w = WindowConfig {
+    pub fn new(config: Rc<RefCell<Config>>) -> Self {
+        WindowConfig {
             config,
             scroll_flick_sub: f32::NAN,
             scroll_dist: f32::NAN,
             pan_dist_thresh: f32::NAN,
             nav_focus: true,
             frame_dur: Default::default(),
-        };
-        w.update(scale_factor, dpem);
-        w
+        }
     }
 
     /// Update window-specific/cached values

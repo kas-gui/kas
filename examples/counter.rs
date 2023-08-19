@@ -29,6 +29,6 @@ fn main() -> kas::shell::Result<()> {
 
     let theme = kas::theme::SimpleTheme::new().with_font_size(24.0);
     kas::shell::DefaultShell::new((), theme)?
-        .with(Window::new(counter(), "Counter"))?
+        .with(Window::new(counter(), "Counter"))
         .run()
 }

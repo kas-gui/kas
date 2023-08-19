@@ -11,11 +11,11 @@ use std::time::{Duration, Instant};
 
 use super::*;
 use crate::cast::traits::*;
+use crate::draw::DrawShared;
 use crate::geom::{Coord, DVec2};
 use crate::shell::ShellWindow;
+use crate::theme::ThemeSize;
 use crate::{Action, NavAdvance, WidgetId, Window};
-use std::cell::RefCell;
-use std::rc::Rc;
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
@@ -28,9 +28,9 @@ const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 impl EventState {
     /// Construct per-window event state
     #[inline]
-    pub(crate) fn new(config: Rc<RefCell<Config>>, scale_factor: f32, dpem: f32) -> Self {
+    pub(crate) fn new(config: WindowConfig) -> Self {
         EventState {
-            config: WindowConfig::new(config, scale_factor, dpem),
+            config,
             disabled: vec![],
             window_has_focus: false,
             modifiers: ModifiersState::empty(),
@@ -74,23 +74,24 @@ impl EventState {
     /// renamed and removed widgets.
     pub(crate) fn full_configure<A>(
         &mut self,
-        shell: &mut dyn ShellWindow,
+        sizer: &dyn ThemeSize,
+        draw_shared: &mut dyn DrawShared,
+        wid: WindowId,
         win: &mut Window<A>,
         data: &A,
     ) {
-        log::debug!(target: "kas_core::event", "full_configure");
+        let id = WidgetId::ROOT.make_child(wid.get().cast());
+
+        log::debug!(target: "kas_core::event", "full_configure of Window{id}");
         self.action.remove(Action::RECONFIGURE);
 
         // These are recreated during configure:
         self.accel_layers.clear();
         self.nav_fallback = None;
 
-        self.new_accel_layer(WidgetId::ROOT, false);
+        self.new_accel_layer(id.clone(), false);
 
-        shell.size_and_draw_shared(Box::new(|size, draw_shared| {
-            let mut cx = ConfigCx::new(size, draw_shared, self);
-            cx.configure(win.as_node(data), WidgetId::ROOT);
-        }));
+        ConfigCx::new(sizer, draw_shared, self).configure(win.as_node(data), id);
 
         let hover = win.find_id(data, self.last_mouse_coord);
         self.set_hover(hover);
@@ -133,9 +134,8 @@ impl EventState {
         f(&mut cx);
     }
 
-    /// Update, after receiving all events
-    #[inline]
-    pub(crate) fn post_events<A>(
+    /// Handle all pending items before event loop sleeps
+    pub(crate) fn flush_pending<A>(
         &mut self,
         shell: &mut dyn ShellWindow,
         messages: &mut ErasedStack,
@@ -254,31 +254,6 @@ impl EventState {
         }
 
         std::mem::take(&mut self.action)
-    }
-
-    /// Update, after drawing
-    ///
-    /// Returns true if action is non-empty
-    #[inline]
-    pub(crate) fn post_draw(
-        &mut self,
-        shell: &mut dyn ShellWindow,
-        messages: &mut ErasedStack,
-        widget: Node<'_>,
-    ) -> bool {
-        let mut cx = EventCx {
-            state: self,
-            shell,
-            messages,
-            last_child: None,
-            scroll: Scroll::None,
-        };
-
-        // Widget::draw may add futures; we should poll those now.
-        cx.poll_futures(widget);
-
-        drop(cx);
-        !self.action.is_empty()
     }
 }
 

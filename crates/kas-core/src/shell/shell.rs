@@ -119,7 +119,7 @@ where
         options: Options,
         config: Rc<RefCell<event::Config>>,
     ) -> Result<Self> {
-        let el = EventLoopBuilder::with_user_event().build();
+        let el = EventLoopBuilder::with_user_event().build()?;
         let windows = vec![];
 
         let mut draw_shared = graphical_shell.into().build()?;
@@ -154,18 +154,18 @@ where
 
     /// Assume ownership of and display a window
     #[inline]
-    pub fn add(&mut self, window: Window<Data>) -> Result<WindowId> {
+    pub fn add(&mut self, window: Window<Data>) -> WindowId {
         let id = self.shared.shell.next_window_id();
-        let win = super::Window::new(&mut self.shared, &self.el, id, window)?;
+        let win = super::Window::new(&self.shared, id, window);
         self.windows.push(win);
-        Ok(id)
+        id
     }
 
     /// Assume ownership of and display a window, inline
     #[inline]
-    pub fn with(mut self, window: Window<Data>) -> Result<Self> {
-        let _ = self.add(window)?;
-        Ok(self)
+    pub fn with(mut self, window: Window<Data>) -> Self {
+        let _ = self.add(window);
+        self
     }
 
     /// Create a proxy which can be used to update the UI from another thread
@@ -175,10 +175,11 @@ where
 
     /// Run the main loop.
     #[inline]
-    pub fn run(self) -> ! {
+    pub fn run(self) -> Result<()> {
         let mut el = super::EventLoop::new(self.windows, self.shared);
         self.el
-            .run(move |event, elwt, control_flow| el.handle(event, elwt, control_flow))
+            .run(move |event, elwt, control_flow| el.handle(event, elwt, control_flow))?;
+        Ok(())
     }
 }
 

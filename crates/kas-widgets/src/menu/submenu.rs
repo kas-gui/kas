@@ -74,11 +74,11 @@ impl_scope! {
 
         fn open_menu(&mut self, cx: &mut EventCx, set_focus: bool) {
             if self.popup_id.is_none() {
-                self.popup_id = cx.add_popup(kas::Popup {
+                self.popup_id = Some(cx.add_popup(kas::Popup {
                     id: self.list.id(),
                     parent: self.id(),
                     direction: self.direction.as_direction(),
-                });
+                }));
                 if set_focus {
                     cx.next_nav_focus(self.id(), false, true);
                 }

@@ -11,6 +11,7 @@ mod common;
 #[cfg(winit)] mod shell;
 #[cfg(winit)] mod window;
 
+#[cfg(winit)] use crate::WindowId;
 #[cfg(winit)] use event_loop::Loop as EventLoop;
 #[cfg(winit)] use shared::{SharedState, ShellShared};
 #[cfg(winit)] use shell::PlatformWrapper;
@@ -30,16 +31,16 @@ pub extern crate raw_window_handle;
 #[allow(clippy::large_enum_variant)]
 #[cfg(winit)]
 enum PendingAction<A: 'static> {
-    AddPopup(winit::window::WindowId, kas::WindowId, kas::Popup),
-    AddWindow(kas::WindowId, kas::Window<A>),
-    CloseWindow(kas::WindowId),
+    AddPopup(WindowId, WindowId, kas::Popup),
+    AddWindow(WindowId, kas::Window<A>),
+    CloseWindow(WindowId),
     Action(kas::Action),
 }
 
 #[cfg(winit)]
 enum ProxyAction {
     CloseAll,
-    Close(kas::WindowId),
+    Close(WindowId),
     Message(kas::erased::SendErased),
     WakeAsync,
 }

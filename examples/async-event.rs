@@ -49,7 +49,7 @@ fn main() -> kas::shell::Result<()> {
     let widget = ColourSquare::new();
     let window = Window::new(widget, "Async event demo");
 
-    shell.with(window)?.run()
+    shell.with(window).run()
 }
 
 impl_scope! {

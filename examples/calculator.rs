@@ -72,7 +72,7 @@ fn main() -> kas::shell::Result<()> {
 
     let theme = kas_wgpu::ShadedTheme::new().with_font_size(16.0);
     kas::shell::DefaultShell::new((), theme)?
-        .with(calc_ui())?
+        .with(calc_ui())
         .run()
 }
 

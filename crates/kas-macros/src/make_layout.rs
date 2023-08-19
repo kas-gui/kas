@@ -457,7 +457,7 @@ fn parse_cell_info(input: ParseStream) -> Result<CellInfo> {
             let lit = input.parse::<LitInt>()?;
             let n: u32 = lit.base10_parse()?;
 
-            if let Ok(_) = plus {
+            if plus.is_ok() {
                 Ok(start + n)
             } else if n > start {
                 Ok(n)

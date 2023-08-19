@@ -31,6 +31,10 @@ impl WindowId {
     pub(crate) fn new(n: NonZeroU32) -> WindowId {
         WindowId(n)
     }
+
+    pub(crate) fn get(self) -> u32 {
+        self.0.get()
+    }
 }
 
 /// Commands supported by the [`Window`]
@@ -276,9 +280,9 @@ impl<Data: 'static> Window<Data> {
         self.title_bar.title()
     }
 
-    /// Take the window's icon, if any
-    pub(crate) fn take_icon(&mut self) -> Option<Icon> {
-        self.icon.take()
+    /// Get the window's icon, if any
+    pub(crate) fn icon(&mut self) -> Option<Icon> {
+        self.icon.clone()
     }
 
     /// Set the window's icon (inline)

@@ -81,11 +81,11 @@ impl_scope! {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &A, event: Event) -> Response {
             let open_popup = |s: &mut Self, cx: &mut EventCx, key_focus: bool| {
-                s.popup_id = cx.add_popup(kas::Popup {
+                s.popup_id = Some(cx.add_popup(kas::Popup {
                     id: s.popup.id(),
                     parent: s.id(),
                     direction: Direction::Down,
-                });
+                }));
                 if let Some(w) = s.popup.inner.inner.get_child(s.active) {
                     cx.next_nav_focus(w.id(), false, key_focus);
                 }

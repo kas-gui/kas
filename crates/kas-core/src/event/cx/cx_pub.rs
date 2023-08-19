@@ -717,10 +717,7 @@ impl<'a> EventCx<'a> {
     ///
     /// A pop-up may be closed by calling [`EventCx::close_window`] with
     /// the [`WindowId`] returned by this method.
-    ///
-    /// Returns `None` if window creation is not currently available (but note
-    /// that `Some` result does not guarantee the operation succeeded).
-    pub fn add_popup(&mut self, popup: crate::Popup) -> Option<WindowId> {
+    pub fn add_popup(&mut self, popup: crate::Popup) -> WindowId {
         log::trace!(target: "kas_core::event", "add_popup: {popup:?}");
         let new_id = &popup.id;
         while let Some((_, popup, _)) = self.popups.last() {
@@ -733,13 +730,11 @@ impl<'a> EventCx<'a> {
             // Don't restore old nav focus: assume new focus will be set by new popup
         }
 
-        let opt_id = self.shell.add_popup(popup.clone());
-        if let Some(id) = opt_id {
-            let nav_focus = self.nav_focus.clone();
-            self.popups.push((id, popup, nav_focus));
-        }
+        let id = self.shell.add_popup(popup.clone());
+        let nav_focus = self.nav_focus.clone();
+        self.popups.push((id, popup, nav_focus));
         self.clear_nav_focus();
-        opt_id
+        id
     }
 
     /// Add a window
@@ -793,6 +788,8 @@ impl<'a> EventCx<'a> {
             }
             // TODO: if popup.id is an ancestor of self.nav_focus then clear
             // focus if not setting (currently we cannot test this)
+
+            return;
         }
 
         self.shell.close_window(id);
