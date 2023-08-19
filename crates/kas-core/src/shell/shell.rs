@@ -156,7 +156,7 @@ where
     #[inline]
     pub fn add(&mut self, window: Window<Data>) -> WindowId {
         let id = self.shared.shell.next_window_id();
-        let win = super::Window::new(&mut self.shared, id, window);
+        let win = super::Window::new(&self.shared, id, window);
         self.windows.push(win);
         id
     }

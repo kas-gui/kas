@@ -168,7 +168,7 @@ where
                         }
                         PendingAction::AddWindow(id, widget) => {
                             log::debug!("Pending: adding window {}", widget.title());
-                            let mut window = Window::new(&mut self.shared, id, widget);
+                            let mut window = Window::new(&self.shared, id, widget);
                             if !self.suspended {
                                 match window.resume(&mut self.shared, elwt) {
                                     Ok(winit_id) => {

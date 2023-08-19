@@ -53,7 +53,7 @@ pub struct Window<A: AppData, S: WindowSurface, T: Theme<S::Shared>> {
 impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     /// Construct window state (widget)
     pub(super) fn new(
-        shared: &mut SharedState<A, S, T>,
+        shared: &SharedState<A, S, T>,
         window_id: WindowId,
         widget: kas::Window<A>,
     ) -> Self {
@@ -630,7 +630,7 @@ impl<'a, A: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellWindow for TkWi
     #[cfg(winit)]
     #[inline]
     fn winit_window(&self) -> Option<&winit::window::Window> {
-        Some(&self.window)
+        Some(self.window)
     }
 
     #[inline]
