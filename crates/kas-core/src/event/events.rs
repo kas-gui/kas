@@ -40,7 +40,7 @@ pub enum Event {
     /// Keyboard input
     ///
     /// This is only received by a widget with character focus (see
-    /// [`EventState::request_char_focus`]).
+    /// [`EventState::request_key_focus`]).
     ///
     /// The widget will not also receive [`Event::Command`] key presses. A key
     /// event may be converted to a [`Command`] using
@@ -180,7 +180,7 @@ pub enum Event {
     /// called automatically (to ensure that the widget is visible) and the
     /// response will be forced to [`Response::Used`].
     ///
-    /// The widget may wish to call [`EventCx::request_char_focus`], but likely
+    /// The widget may wish to call [`EventCx::request_key_focus`], but likely
     /// only when [`FocusSource::key_or_synthetic`].
     NavFocus(FocusSource),
     /// Sent when a widget becomes the mouse hover target
@@ -191,12 +191,12 @@ pub enum Event {
     LostNavFocus,
     /// Widget lost keyboard input focus
     ///
-    /// This focus is gained through the widget calling [`EventState::request_char_focus`].
+    /// This focus is gained through the widget calling [`EventState::request_key_focus`].
     LostCharFocus,
     /// Widget lost selection focus
     ///
     /// This focus is gained through the widget calling [`EventState::request_sel_focus`]
-    /// or [`EventState::request_char_focus`].
+    /// or [`EventState::request_key_focus`].
     ///
     /// In the case the widget also had character focus, [`Event::LostCharFocus`] is
     /// received first.

@@ -50,19 +50,19 @@ impl EventState {
         self.modifiers.alt_key()
     }
 
-    /// Get whether this widget has `(char_focus, sel_focus)`
+    /// Get whether this widget has `(key_focus, sel_focus)`
     ///
-    /// -   `char_focus`: implies this widget receives keyboard input
+    /// -   `key_focus`: implies this widget receives keyboard input
     /// -   `sel_focus`: implies this widget is allowed to select things
     ///
-    /// Note that `char_focus` implies `sel_focus`.
+    /// Note that `key_focus` implies `sel_focus`.
     #[inline]
-    pub fn has_char_focus(&self, w_id: &WidgetId) -> (bool, bool) {
+    pub fn has_key_focus(&self, w_id: &WidgetId) -> (bool, bool) {
         let sel_focus = *w_id == self.sel_focus;
-        (sel_focus && self.char_focus, sel_focus)
+        (sel_focus && self.key_focus, sel_focus)
     }
 
-    /// Get whether this widget has keyboard navigation focus
+    /// Get whether this widget has navigation focus
     #[inline]
     pub fn has_nav_focus(&self, w_id: &WidgetId) -> bool {
         *w_id == self.nav_focus
@@ -341,19 +341,20 @@ impl EventState {
         }
     }
 
-    /// Request character-input focus
+    /// Request keyboard input focus
     ///
-    /// Returns true on success or when the widget already had char focus.
+    /// When granted, the widget will receive [`Event::Key`] on key presses
+    /// and releases. It will not receive [`Event::Command`] for these events
+    /// (though it may still receive [`Event::Command`] from other sources).
     ///
-    /// Character data is sent to the widget with char focus via
-    /// [`Event::Text`] and [`Event::Command`].
-    ///
-    /// Char focus implies sel focus (see [`Self::request_sel_focus`]) and
+    /// Key focus implies sel focus (see [`Self::request_sel_focus`]) and
     /// navigation focus.
     ///
-    /// When char focus is lost, [`Event::LostCharFocus`] is sent.
+    /// Returns true on success or when the widget already had key focus.
+    ///
+    /// When key focus is lost, [`Event::LostKeyFocus`] is sent.
     #[inline]
-    pub fn request_char_focus(&mut self, id: WidgetId) -> bool {
+    pub fn request_key_focus(&mut self, id: WidgetId) -> bool {
         self.set_sel_focus(id, true);
         true
     }
@@ -370,7 +371,7 @@ impl EventState {
     ///
     /// Selection focus implies navigation focus.
     ///
-    /// When char focus is lost, [`Event::LostSelFocus`] is sent.
+    /// When key focus is lost, [`Event::LostSelFocus`] is sent.
     #[inline]
     pub fn request_sel_focus(&mut self, id: WidgetId) -> bool {
         self.set_sel_focus(id, false);
@@ -430,7 +431,7 @@ impl EventState {
         false
     }
 
-    /// Get the current keyboard navigation focus, if any
+    /// Get the current navigation focus, if any
     ///
     /// This is the widget selected by navigating the UI with the Tab key.
     #[inline]
@@ -438,14 +439,14 @@ impl EventState {
         self.nav_focus.as_ref()
     }
 
-    /// Clear keyboard navigation focus
+    /// Clear navigation focus
     pub fn clear_nav_focus(&mut self) {
         if let Some(id) = self.nav_focus.take() {
             self.send_action(Action::REDRAW);
             self.pending
                 .push_back(Pending::Send(id, Event::LostNavFocus));
         }
-        self.clear_char_focus();
+        self.clear_key_focus();
         log::debug!(target: "kas_core::event", "nav_focus = None");
     }
 
@@ -469,7 +470,7 @@ impl EventState {
                 .push_back(Pending::Send(old_id, Event::LostNavFocus));
         }
         if id != self.sel_focus {
-            self.clear_char_focus();
+            self.clear_key_focus();
         }
         self.nav_focus = Some(id.clone());
         log::debug!(target: "kas_core::event", "nav_focus = Some({id})");
@@ -477,7 +478,7 @@ impl EventState {
             .push_back(Pending::Send(id, Event::NavFocus(source)));
     }
 
-    /// Advance the keyboard navigation focus
+    /// Advance the navigation focus
     ///
     /// If `target == Some(id)`, this looks for the next widget from `id`
     /// (inclusive) which is navigable ([`Events::navigable`]). Otherwise where

@@ -632,7 +632,7 @@ impl_scope! {
                         self.class,
                     );
                 }
-                if self.editable && draw.ev_state().has_char_focus(self.id_ref()).0 {
+                if self.editable && draw.ev_state().has_key_focus(self.id_ref()).0 {
                     draw.text_cursor(
                         rect,
                         &self.text,
@@ -657,7 +657,7 @@ impl_scope! {
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> Response {
             fn request_focus<G: EditGuard>(s: &mut EditField<G>, cx: &mut EventCx, data: &G::Data) {
-                if !s.has_key_focus && cx.request_char_focus(s.id()) {
+                if !s.has_key_focus && cx.request_key_focus(s.id()) {
                     s.has_key_focus = true;
                     cx.set_scroll(Scroll::Rect(s.rect()));
                     G::focus_gained(s, cx, data);
@@ -694,7 +694,7 @@ impl_scope! {
                     Response::Used
                 }
                 Event::Command(cmd) => {
-                    // Note: we can receive a Command without char focus, but should
+                    // Note: we can receive a Command without key focus, but should
                     // ensure we have focus before acting on it.
                     request_focus(self, cx, data);
                     if self.has_key_focus {

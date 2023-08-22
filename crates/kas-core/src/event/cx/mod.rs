@@ -204,8 +204,8 @@ pub struct EventState {
     disabled: Vec<WidgetId>,
     window_has_focus: bool,
     modifiers: ModifiersState,
-    /// char focus is on same widget as sel_focus; otherwise its value is ignored
-    char_focus: bool,
+    /// key focus is on same widget as sel_focus; otherwise its value is ignored
+    key_focus: bool,
     sel_focus: Option<WidgetId>,
     nav_focus: Option<WidgetId>,
     nav_fallback: Option<WidgetId>,
@@ -236,8 +236,8 @@ pub struct EventState {
 /// internals
 impl EventState {
     #[inline]
-    fn char_focus(&self) -> Option<WidgetId> {
-        if self.char_focus {
+    fn key_focus(&self) -> Option<WidgetId> {
+        if self.key_focus {
             self.sel_focus.clone()
         } else {
             None
@@ -363,40 +363,40 @@ impl EventState {
         None
     }
 
-    fn clear_char_focus(&mut self) {
-        if let Some(id) = self.char_focus() {
-            log::trace!("clear_char_focus");
-            // If widget has char focus, this is lost
-            self.char_focus = false;
+    fn clear_key_focus(&mut self) {
+        if let Some(id) = self.key_focus() {
+            log::trace!("clear_key_focus");
+            // If widget has key focus, this is lost
+            self.key_focus = false;
             self.pending
                 .push_back(Pending::Send(id, Event::LostCharFocus));
         }
     }
 
-    // Set selection focus to `wid`; if `char_focus` also set that
-    fn set_sel_focus(&mut self, wid: WidgetId, char_focus: bool) {
-        log::trace!("set_sel_focus: wid={wid}, char_focus={char_focus}");
+    // Set selection focus to `wid`; if `key_focus` also set that
+    fn set_sel_focus(&mut self, wid: WidgetId, key_focus: bool) {
+        log::trace!("set_sel_focus: wid={wid}, key_focus={key_focus}");
         // The widget probably already has nav focus, but anyway:
         self.set_nav_focus(wid.clone(), FocusSource::Synthetic);
 
         if wid == self.sel_focus {
-            self.char_focus = self.char_focus || char_focus;
+            self.key_focus = self.key_focus || key_focus;
             return;
         }
 
         if let Some(id) = self.sel_focus.clone() {
-            if self.char_focus {
-                // If widget has char focus, this is lost
+            if self.key_focus {
+                // If widget has key focus, this is lost
                 self.pending
                     .push_back(Pending::Send(id.clone(), Event::LostCharFocus));
             }
 
-            // Selection focus is lost if another widget receives char focus
+            // Selection focus is lost if another widget receives key focus
             self.pending
                 .push_back(Pending::Send(id, Event::LostSelFocus));
         }
 
-        self.char_focus = char_focus;
+        self.key_focus = key_focus;
         self.sel_focus = Some(wid);
     }
 
@@ -467,7 +467,7 @@ impl<'a> EventCx<'a> {
                 }
             };
 
-            if self.char_focus || cmd.suitable_for_sel_focus() {
+            if self.key_focus || cmd.suitable_for_sel_focus() {
                 if let Some(id) = self.sel_focus.clone() {
                     if send(self, id, cmd) {
                         return;
@@ -547,7 +547,7 @@ impl<'a> EventCx<'a> {
             self.add_key_depress(code, id.clone());
             self.send_event(widget, id, Event::Command(Command::Activate));
         } else if self.config.nav_focus && vkey == Key::Tab {
-            self.clear_char_focus();
+            self.clear_key_focus();
             let shift = self.modifiers.shift_key();
             self.next_nav_focus_impl(widget.re(), None, shift, FocusSource::Key);
         } else if vkey == Key::Escape {
@@ -722,7 +722,7 @@ impl<'a> EventCx<'a> {
                 .push_back(Pending::Send(id, Event::LostNavFocus));
         }
         if self.sel_focus != opt_id {
-            self.clear_char_focus();
+            self.clear_key_focus();
         }
 
         self.nav_focus = opt_id.clone();

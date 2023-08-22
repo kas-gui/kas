@@ -34,7 +34,7 @@ impl EventState {
             disabled: vec![],
             window_has_focus: false,
             modifiers: ModifiersState::empty(),
-            char_focus: false,
+            key_focus: false,
             sel_focus: None,
             nav_focus: None,
             nav_fallback: None,
@@ -344,7 +344,7 @@ impl<'a> EventCx<'a> {
                     self.end_key_event(event.physical_key);
                 }
 
-                if let Some(id) = self.char_focus() {
+                if let Some(id) = self.key_focus() {
                     let mut mods = self.modifiers;
                     mods.remove(ModifiersState::SHIFT);
                     if event.state == ElementState::Pressed && mods.is_empty() && !is_dead {
