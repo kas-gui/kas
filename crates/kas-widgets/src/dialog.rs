@@ -14,7 +14,7 @@
 //! and their design is likely to change.
 
 use crate::{adapt::AdaptWidgetAny, Button, EditBox, Filler, Label};
-use kas::event::{Command, Key};
+use kas::event::{Command, FocusSource, Key};
 use kas::prelude::*;
 use kas::text::format::FormattableText;
 
@@ -134,7 +134,7 @@ impl_scope! {
 
             // Focus first item initially:
             if cx.nav_focus().is_none() {
-                cx.next_nav_focus(self.id(), false, true);
+                cx.next_nav_focus(self.id(), false, FocusSource::Synthetic);
             }
         }
 

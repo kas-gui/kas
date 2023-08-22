@@ -449,18 +449,16 @@ impl EventState {
         log::debug!(target: "kas_core::event", "nav_focus = None");
     }
 
-    /// Set the keyboard navigation focus directly
+    /// Set navigation focus directly
     ///
-    /// Normally, [`Events::navigable`] will be true for the specified
-    /// widget, but this is not required, e.g. a `ScrollLabel` can receive focus
-    /// on text selection with the mouse. (Currently such widgets will receive
-    /// events like any other with nav focus, but this may change.)
+    /// If `id` already has navigation focus or navigation focus is disabled
+    /// globally then nothing happens, otherwise widget `id` should receive
+    /// [`Event::NavFocus`].
     ///
-    /// The target widget, if not already having navigation focus, will receive
-    /// [`Event::NavFocus`] with `key_focus` as the payload. This boolean should
-    /// be true if focussing in response to keyboard input, false if reacting to
-    /// mouse or touch input.
-    pub fn set_nav_focus(&mut self, id: WidgetId, key_focus: bool) {
+    /// Normally, [`Events::navigable`] will be true for widget `id` but this
+    /// is not checked or required. For example, a `ScrollLabel` can receive
+    /// focus on text selection with the mouse.
+    pub fn set_nav_focus(&mut self, id: WidgetId, source: FocusSource) {
         if id == self.nav_focus || !self.config.nav_focus {
             return;
         }
@@ -476,7 +474,7 @@ impl EventState {
         self.nav_focus = Some(id.clone());
         log::debug!(target: "kas_core::event", "nav_focus = Some({id})");
         self.pending
-            .push_back(Pending::Send(id, Event::NavFocus { key_focus }));
+            .push_back(Pending::Send(id, Event::NavFocus(source)));
     }
 
     /// Advance the keyboard navigation focus
@@ -488,20 +486,16 @@ impl EventState {
     /// this instead looks for the first navigable widget.
     ///
     /// If `reverse`, instead search for the previous or last navigable widget.
-    ///
-    /// Parameter `key_focus` should be `true` for keyboard-driven and
-    /// programmatic navigation, `false` for mouse/touch-driven navigation.
-    /// The parameter is passed to the target through [`Event::NavFocus`].
     pub fn next_nav_focus(
         &mut self,
         target: impl Into<Option<WidgetId>>,
         reverse: bool,
-        key_focus: bool,
+        source: FocusSource,
     ) {
         self.pending.push_back(Pending::NextNavFocus {
             target: target.into(),
             reverse,
-            key_focus,
+            source,
         });
     }
 
@@ -784,7 +778,7 @@ impl<'a> EventCx<'a> {
                 old_nav_focus = None
             }
             if let Some(id) = old_nav_focus {
-                self.set_nav_focus(id, true);
+                self.set_nav_focus(id, FocusSource::Synthetic);
             }
             // TODO: if popup.id is an ancestor of self.nav_focus then clear
             // focus if not setting (currently we cannot test this)

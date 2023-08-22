@@ -176,7 +176,7 @@ enum Pending {
     NextNavFocus {
         target: Option<WidgetId>,
         reverse: bool,
-        key_focus: bool,
+        source: FocusSource,
     },
 }
 
@@ -377,7 +377,7 @@ impl EventState {
     fn set_sel_focus(&mut self, wid: WidgetId, char_focus: bool) {
         log::trace!("set_sel_focus: wid={wid}, char_focus={char_focus}");
         // The widget probably already has nav focus, but anyway:
-        self.set_nav_focus(wid.clone(), true);
+        self.set_nav_focus(wid.clone(), FocusSource::Synthetic);
 
         if wid == self.sel_focus {
             self.char_focus = self.char_focus || char_focus;
@@ -542,14 +542,14 @@ impl<'a> EventCx<'a> {
 
         if let Some(id) = target {
             if let Some(id) = widget._nav_next(self, Some(&id), NavAdvance::None) {
-                self.set_nav_focus(id, true);
+                self.set_nav_focus(id, FocusSource::Key);
             }
             self.add_key_depress(code, id.clone());
             self.send_event(widget, id, Event::Command(Command::Activate));
         } else if self.config.nav_focus && vkey == Key::Tab {
             self.clear_char_focus();
             let shift = self.modifiers.shift_key();
-            self.next_nav_focus_impl(widget.re(), None, shift, true);
+            self.next_nav_focus_impl(widget.re(), None, shift, FocusSource::Key);
         } else if vkey == Key::Escape {
             if let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
                 self.close_window(id, true);
@@ -668,7 +668,7 @@ impl<'a> EventCx<'a> {
         mut widget: Node,
         target: Option<WidgetId>,
         reverse: bool,
-        key_focus: bool,
+        source: FocusSource,
     ) {
         if !self.config.nav_focus || (target.is_some() && target == self.nav_focus) {
             return;
@@ -678,7 +678,7 @@ impl<'a> EventCx<'a> {
             if id.is_ancestor_of(widget.id_ref()) {
                 // do nothing
             } else if let Some(r) = widget.find_node(&id, |node| {
-                self.next_nav_focus_impl(node, target, reverse, key_focus)
+                self.next_nav_focus_impl(node, target, reverse, source)
             }) {
                 return r;
             } else {
@@ -729,7 +729,7 @@ impl<'a> EventCx<'a> {
         if let Some(id) = opt_id {
             log::debug!(target: "kas_core::event", "nav_focus = Some({id})");
             self.pending
-                .push_back(Pending::Send(id, Event::NavFocus { key_focus }));
+                .push_back(Pending::Send(id, Event::NavFocus(source)));
         } else {
             log::debug!(target: "kas_core::event", "nav_focus = None");
             // Most likely an error occurred

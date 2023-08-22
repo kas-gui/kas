@@ -6,7 +6,7 @@
 //! `Slider` control
 
 use super::{GripMsg, GripPart};
-use kas::event::Command;
+use kas::event::{Command, FocusSource};
 use kas::prelude::*;
 use kas::theme::Feature;
 use std::fmt::Debug;
@@ -392,7 +392,7 @@ impl_scope! {
             }
 
             match cx.try_pop() {
-                Some(GripMsg::PressStart) => cx.set_nav_focus(self.id(), false),
+                Some(GripMsg::PressStart) => cx.set_nav_focus(self.id(), FocusSource::Synthetic),
                 Some(GripMsg::PressMove(pos)) => {
                     self.apply_grip_offset(cx, data, pos);
                 }

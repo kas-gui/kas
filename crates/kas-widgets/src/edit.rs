@@ -665,7 +665,7 @@ impl_scope! {
             }
 
             match event {
-                Event::NavFocus { key_focus: true } => {
+                Event::NavFocus(source) if source.key_or_synthetic() => {
                     request_focus(self, cx, data);
                     if !self.class.multi_line() {
                         self.selection.clear();
@@ -674,7 +674,7 @@ impl_scope! {
                     }
                     Response::Used
                 }
-                Event::NavFocus { key_focus: false } => Response::Used,
+                Event::NavFocus(_) => Response::Used,
                 Event::LostNavFocus => {
                     if !self.class.multi_line() {
                         self.selection.set_empty();

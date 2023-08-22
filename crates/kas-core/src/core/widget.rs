@@ -87,7 +87,13 @@ pub trait Events: Sized {
 
     /// Is this widget navigable via <kbd>Tab</kbd> key?
     ///
-    /// Defaults to `false`.
+    /// Note that when this method returns `false` the widget will not receive
+    /// navigation focus via the <kbd>Tab</kbd> key, but it may still receive
+    /// navigation focus through some other means, for example a keyboard
+    /// shortcut or a mouse click.
+    ///
+    /// Defaults to `false`. May instead be set via the `navigable` property of
+    /// the `#[widget]` macro.
     #[inline]
     fn navigable(&self) -> bool {
         false

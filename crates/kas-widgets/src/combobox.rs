@@ -6,7 +6,7 @@
 //! Combobox
 
 use super::{menu::MenuEntry, Column, Mark, PopupFrame, StringLabel};
-use kas::event::{Command, Scroll, ScrollDelta};
+use kas::event::{Command, FocusSource, Scroll, ScrollDelta};
 use kas::prelude::*;
 use kas::theme::{MarkStyle, TextClass};
 use kas::WindowId;
@@ -80,14 +80,14 @@ impl_scope! {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &A, event: Event) -> Response {
-            let open_popup = |s: &mut Self, cx: &mut EventCx, key_focus: bool| {
+            let open_popup = |s: &mut Self, cx: &mut EventCx, source: FocusSource| {
                 s.popup_id = Some(cx.add_popup(kas::Popup {
                     id: s.popup.id(),
                     parent: s.id(),
                     direction: Direction::Down,
                 }));
                 if let Some(w) = s.popup.inner.inner.get_child(s.active) {
-                    cx.next_nav_focus(w.id(), false, key_focus);
+                    cx.next_nav_focus(w.id(), false, source);
                 }
             };
 
@@ -98,7 +98,7 @@ impl_scope! {
                             if clr {
                                 cx.clear_nav_focus();
                             }
-                            cx.next_nav_focus(Some(id), rev, true);
+                            cx.next_nav_focus(Some(id), rev, FocusSource::Key);
                         };
                         match cmd {
                             cmd if cmd.is_activate() => cx.close_window(popup_id, true),
@@ -111,7 +111,7 @@ impl_scope! {
                     } else {
                         let last = self.len().saturating_sub(1);
                         match cmd {
-                            cmd if cmd.is_activate() => open_popup(self, cx, true),
+                            cmd if cmd.is_activate() => open_popup(self, cx, FocusSource::Key),
                             Command::Up => *cx |= self.set_active(self.active.saturating_sub(1)),
                             Command::Down => *cx |= self.set_active((self.active + 1).min(last)),
                             Command::Home => *cx |= self.set_active(0),
@@ -147,13 +147,13 @@ impl_scope! {
                 }
                 Event::CursorMove { press } | Event::PressMove { press, .. } => {
                     if self.popup_id.is_none() {
-                        open_popup(self, cx, false);
+                        open_popup(self, cx, FocusSource::Pointer);
                     }
                     let cond = self.popup.inner.rect().contains(press.coord);
                     let target = if cond { press.id } else { None };
                     cx.set_grab_depress(press.source, target.clone());
                     if let Some(id) = target {
-                        cx.set_nav_focus(id, false);
+                        cx.set_nav_focus(id, FocusSource::Pointer);
                     }
                     Response::Used
                 }
@@ -162,7 +162,7 @@ impl_scope! {
                         if self.eq_id(&id) {
                             if self.opening {
                                 if self.popup_id.is_none() {
-                                    open_popup(self, cx, false);
+                                    open_popup(self, cx, FocusSource::Pointer);
                                 }
                                 return Response::Used;
                             }

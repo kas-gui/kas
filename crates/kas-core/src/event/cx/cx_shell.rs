@@ -236,9 +236,9 @@ impl EventState {
                 Pending::NextNavFocus {
                     target,
                     reverse,
-                    key_focus,
+                    source,
                 } => {
-                    cx.next_nav_focus_impl(win.as_node(data), target, reverse, key_focus);
+                    cx.next_nav_focus_impl(win.as_node(data), target, reverse, source);
                 }
             }
         }
@@ -458,7 +458,7 @@ impl<'a> EventCx<'a> {
                             if let Some(id) =
                                 win._nav_next(self, data, Some(&start_id), NavAdvance::None)
                             {
-                                self.set_nav_focus(id, false);
+                                self.set_nav_focus(id, FocusSource::Pointer);
                             }
                         }
                     }
@@ -486,7 +486,7 @@ impl<'a> EventCx<'a> {
                                 if let Some(id) =
                                     win._nav_next(self, data, Some(id), NavAdvance::None)
                                 {
-                                    self.set_nav_focus(id, false);
+                                    self.set_nav_focus(id, FocusSource::Pointer);
                                 }
                             }
 
