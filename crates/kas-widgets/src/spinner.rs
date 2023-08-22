@@ -282,6 +282,12 @@ impl_scope! {
             self.edit.set_outer_rect(rect, FrameStyle::EditBox);
         }
 
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            self.b_up.find_id(coord)
+                .or_else(|| self.b_down.find_id(coord))
+                .or_else(|| self.edit.find_id(coord))
+        }
+
         fn draw(&mut self, mut draw: DrawCx) {
             draw.recurse(&mut self.edit);
             draw.recurse(&mut self.b_up);
