@@ -14,7 +14,7 @@
 //! and their design is likely to change.
 
 use crate::{adapt::AdaptWidgetAny, Button, EditBox, Filler, Label};
-use kas::event::{Command, FocusSource, Key};
+use kas::event::{Command, Key};
 use kas::prelude::*;
 use kas::text::format::FormattableText;
 
@@ -129,6 +129,7 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
+        /* NOTE: this makes sense for a window but not an embedded editor.
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.register_nav_fallback(self.id());
 
@@ -136,7 +137,7 @@ impl_scope! {
             if cx.nav_focus().is_none() {
                 cx.next_nav_focus(self.id(), false, FocusSource::Synthetic);
             }
-        }
+        }*/
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
