@@ -519,6 +519,10 @@ impl_scope! {
     }
 
     impl Events for Self {
+        fn recurse_range(&self) -> std::ops::Range<usize> {
+            0..0
+        }
+
         fn configure(&mut self, cx: &mut ConfigCx) {
             if self.widgets.is_empty() {
                 // Initial configure: ensure some widgets are loaded to allow
@@ -725,7 +729,6 @@ impl_scope! {
             }
         }
 
-        // Non-standard behaviour: do not configure children
         fn _configure(&mut self, cx: &mut ConfigCx, data: &A, id: WidgetId) {
             self.pre_configure(cx, id);
             self.configure(cx);
