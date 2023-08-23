@@ -76,7 +76,9 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
 
         do_handle_event = true;
     } else {
-        response = widget.steal_event(cx, data, &id, &event);
+        if event.is_reusable() {
+            response = widget.steal_event(cx, data, &id, &event);
+        }
         if response.is_unused() {
             cx.assert_post_steal_unused();
 
