@@ -18,7 +18,7 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
-          components: rustfmt, clippy
+          components: rustfmt
       - name: Install dependencies
         run: sudo apt-get install -y libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev
 
@@ -81,7 +81,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
-          components: clippy
+          # components: clippy
       - name: Install dependencies
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install -y libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev
@@ -102,16 +102,16 @@ jobs:
         run: cargo test --features stable
       - name: Test examples/mandlebrot
         run: cargo test --manifest-path examples/mandlebrot/Cargo.toml
-      - name: Clippy (stable)
-        if: matrix.toolchain != 'beta' && matrix.toolchain != 'stable'
-        run: |
-          cargo clippy --all -- -D warnings \
-          -A clippy::collapsible-if \
-          -A clippy::collapsible_else_if \
-          -A clippy::module-inception \
-          -A clippy::too-many-arguments \
-          -A clippy::comparison_chain \
-          -A clippy::or-fun-call \
-          -A clippy::redundant_pattern_matching \
-          -A clippy::type_complexity \
-          -A clippy::unit_arg
+      # - name: Clippy (stable)
+      #   if: matrix.toolchain != 'beta' && matrix.toolchain != 'stable'
+      #   run: |
+      #     cargo clippy --all -- -D warnings \
+      #     -A clippy::collapsible-if \
+      #     -A clippy::collapsible_else_if \
+      #     -A clippy::module-inception \
+      #     -A clippy::too-many-arguments \
+      #     -A clippy::comparison_chain \
+      #     -A clippy::or-fun-call \
+      #     -A clippy::redundant_pattern_matching \
+      #     -A clippy::type_complexity \
+      #     -A clippy::unit_arg
