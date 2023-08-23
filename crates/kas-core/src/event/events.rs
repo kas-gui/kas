@@ -14,7 +14,6 @@ use super::{Key, KeyEvent, Press};
 use crate::geom::{DVec2, Offset};
 #[allow(unused)] use crate::Events;
 use crate::{dir::Direction, WidgetId, WindowId};
-use smol_str::SmolStr;
 
 /// Events addressed to a widget
 ///
@@ -37,16 +36,31 @@ pub enum Event {
     /// If a widget has character focus then it will receive [`Event::Key`]
     /// instead of `Event::Command` on key presses.
     Command(Command),
-    /// Keyboard input
+    /// Keyboard input: `event, is_synthetic`
     ///
     /// This is only received by a widget with character focus (see
     /// [`EventState::request_key_focus`]).
     ///
-    /// The widget will not also receive [`Event::Command`] key presses. A key
-    /// event may be converted to a [`Command`] using
-    /// `Command::new(logical_key)` when `state == ElementState::Pressed`.
-    // Key(KeyEvent),
-    Text(SmolStr),
+    /// On some platforms, synthetic key events are generated when a window
+    /// gains or loses focus with a key held (see documentation of
+    /// [`winit::event::WindowEvent::KeyboardInput`]). This is indicated by the
+    /// second parameter, `is_synthetic`. Unless you need to track key states
+    /// it is advised only to match `Event::Key(event, false)`.
+    ///
+    /// Some key presses can be mapped to a [`Command`]. To do this (normally
+    /// only when `event.state == ElementState::Pressed && !is_synthetic`), use
+    /// `cx.config().shortcuts(|s| s.try_match(cx.modifiers(), &event.logical_key)`
+    /// or (omitting shortcut matching) `Command::new(event.logical_key)`.
+    /// Note that if the handler returns [`Response::Unused`] the widget might
+    /// then receive [`Event::Command`] for the same key press, but this is not
+    /// guaranteed (behaviour may change in future versions).
+    ///
+    /// For standard text input, simply consume `event.text` when
+    /// `event.state == ElementState::Pressed && !is_synthetic`.
+    /// NOTE: unlike Winit, we force `text = None` for control chars and when
+    /// <kbd>Ctrl</kbd>, <kbd>Alt</kbd> or <kbd>Super</kbd> modifier keys are
+    /// pressed. This is subject to change.
+    Key(KeyEvent, bool),
     /// A mouse or touchpad scroll event
     Scroll(ScrollDelta),
     /// A mouse or touch-screen move/zoom/rotate event
@@ -269,7 +283,7 @@ impl Event {
         use Event::*;
         match self {
             Command(_) => false,
-            Text(_) | Scroll(_) | Pan { .. } => false,
+            Key(_, _) | Scroll(_) | Pan { .. } => false,
             CursorMove { .. } | PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | PopupRemoved(_) => true,
             NavFocus { .. } | MouseHover(_) => false,
@@ -288,7 +302,7 @@ impl Event {
     pub fn is_reusable(&self) -> bool {
         use Event::*;
         match self {
-            Text(_) => false,
+            Key(_, _) => false,
             Command(_) | Scroll(_) | Pan { .. } => true,
             CursorMove { .. } | PressStart { .. } => true,
             PressMove { .. } | PressEnd { .. } => false,

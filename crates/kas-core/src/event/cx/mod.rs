@@ -334,13 +334,6 @@ impl EventState {
         self.send_action(Action::REDRAW);
     }
 
-    fn end_key_event(&mut self, code: KeyCode) {
-        // We must match code not vkey since the latter may have changed due to modifiers
-        if let Some(id) = self.key_depress.remove(&code) {
-            self.redraw(id);
-        }
-    }
-
     #[inline]
     fn get_touch(&mut self, touch_id: u64) -> Option<&mut TouchGrab> {
         self.touch_grab.iter_mut().find(|grab| grab.id == touch_id)
@@ -450,7 +443,9 @@ impl<'a> EventCx<'a> {
             widget.id()
         );
 
-        let opt_command = self.config.shortcuts(|s| s.get(self.modifiers, &vkey));
+        let opt_command = self
+            .config
+            .shortcuts(|s| s.try_match(self.modifiers, &vkey));
 
         if let Some(cmd) = opt_command {
             let mut targets = vec![];

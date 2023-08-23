@@ -208,14 +208,14 @@ impl Shortcuts {
     /// Note: text-editor navigation keys (e.g. arrows, home/end) result in the
     /// same output with and without Shift pressed. Editors should check the
     /// status of the Shift modifier directly where this has an affect.
-    pub fn get(&self, mut modifiers: ModifiersState, vkey: &Key) -> Option<Command> {
-        if let Some(result) = self.map.get(&modifiers).and_then(|m| m.get(vkey)) {
+    pub fn try_match(&self, mut modifiers: ModifiersState, key: &Key) -> Option<Command> {
+        if let Some(result) = self.map.get(&modifiers).and_then(|m| m.get(key)) {
             return Some(*result);
         }
         modifiers.remove(ModifiersState::SHIFT);
         if modifiers.is_empty() {
             // These keys get matched with and without Shift:
-            return Command::new(vkey);
+            return Command::new(key);
         }
         None
     }

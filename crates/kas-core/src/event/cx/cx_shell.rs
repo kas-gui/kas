@@ -311,7 +311,7 @@ impl<'a> EventCx<'a> {
         win: &mut Window<A>,
         event: winit::event::WindowEvent,
     ) {
-        use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
+        use winit::event::{MouseScrollDelta, TouchPhase, WindowEvent::*};
 
         match event {
             CloseRequested => self.send_action(Action::CLOSE),
@@ -333,25 +333,40 @@ impl<'a> EventCx<'a> {
                 }
             }
             KeyboardInput {
-                event,
+                mut event,
                 is_synthetic,
                 ..
             } => {
-                let is_dead = matches!(&event.logical_key, Key::Dead(_));
-                if event.state == ElementState::Pressed && !is_synthetic {
-                    self.start_key_event(win.as_node(data), event.logical_key, event.physical_key);
-                } else if event.state == ElementState::Released {
-                    self.end_key_event(event.physical_key);
-                }
+                let state = event.state;
+                let physical_key = event.physical_key;
+                let logical_key = event.logical_key.clone();
 
                 if let Some(id) = self.key_focus() {
+                    // TODO(winit): https://github.com/rust-windowing/winit/issues/3038
                     let mut mods = self.modifiers;
                     mods.remove(ModifiersState::SHIFT);
-                    if event.state == ElementState::Pressed && mods.is_empty() && !is_dead {
-                        if let Some(text) = event.text {
-                            let event = Event::Text(text);
-                            self.send_event(win.as_node(data), id, event);
-                        }
+                    if !mods.is_empty() {
+                        event.text = None;
+                    } else if event
+                        .text
+                        .as_ref()
+                        .and_then(|t| t.chars().next())
+                        .map(|c| c.is_control())
+                        .unwrap_or(false)
+                    {
+                        event.text = None;
+                    }
+
+                    if self.send_event(win.as_node(data), id, Event::Key(event, is_synthetic)) {
+                        return;
+                    }
+                }
+
+                if state == ElementState::Pressed && !is_synthetic {
+                    self.start_key_event(win.as_node(data), logical_key, physical_key);
+                } else if state == ElementState::Released {
+                    if let Some(id) = self.key_depress.remove(&physical_key) {
+                        self.redraw(id);
                     }
                 }
             }
