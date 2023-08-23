@@ -84,8 +84,8 @@ impl<'a> ConfigCx<'a> {
     /// [`Events::configure`]). This method may be used to configure a new
     /// child widget without requiring the whole window to be reconfigured.
     ///
-    /// Pass the `id` to assign to the widget: this should be constructed from
-    /// the parent's id via [`WidgetId::make_child`].
+    /// Pass the `id` to assign to the widget. This is usually constructed with
+    /// [`Layout::make_child_id`].
     #[inline]
     pub fn configure(&mut self, mut widget: Node<'_>, id: WidgetId) {
         widget._configure(self, id);

@@ -18,7 +18,7 @@ pub fn _configure<W: Widget + Events<Data = <W as Widget>::Data>>(
 ) {
     widget.pre_configure(cx, id);
 
-    for index in 0..widget.num_children() {
+    for index in widget.recurse_range() {
         let id = widget.make_child_id(index);
         if id.is_valid() {
             widget

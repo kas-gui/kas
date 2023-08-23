@@ -35,12 +35,13 @@ pub trait Events: Layout + Sized {
 
     /// Recursion range
     ///
-    /// Usually on update, all child widgets are updated recursively. This
-    /// method may be called to restrict which children get updated.
+    /// Methods `pre_configure`, `configure` and `update` all recurse over the
+    /// widget tree. This method may be used to limit that recursion to a range
+    /// of children.
     ///
-    /// Widgets do not need to be updated if not visible, but in this case must
-    /// be updated when made visible (for example, the `Stack` widget updates
-    /// only the visible page).
+    /// Widgets do not need to be configured or updated if not visible, but in
+    /// this case must be configured when made visible (for example, the `Stack`
+    /// widget configures only the visible page).
     ///
     /// Default implementation: `0..self.num_children()`.
     fn recurse_range(&self) -> std::ops::Range<usize> {
@@ -64,6 +65,9 @@ pub trait Events: Layout + Sized {
     /// for ensuring that children are configured before calling
     /// [`Layout::size_rules`] or [`Layout::set_rect`]. Configuration may be
     /// repeated and may be used as a mechanism to change a child's [`WidgetId`].
+    ///
+    /// It is possible to limit which children get configured via
+    /// [`Self::recurse_range`].
     ///
     /// This method may be used to configure event handling and to load
     /// resources, including resources affecting [`Layout::size_rules`].

@@ -242,6 +242,9 @@ impl<W: Widget> Stack<W> {
             return;
         }
 
+        let id = self.make_child_id(index);
+        cx.configure(self.widgets[index].as_node(data), id);
+
         if self.sized_range.contains(&index) {
             if old_index != index {
                 self.widgets[index].set_rect(cx, self.core.rect);
@@ -250,8 +253,6 @@ impl<W: Widget> Stack<W> {
         } else {
             *cx |= Action::RESIZE;
         }
-
-        cx.update(self.widgets[index].as_node(data));
     }
 
     /// Get a direct reference to the active child widget, if any
