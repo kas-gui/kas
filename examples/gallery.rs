@@ -15,36 +15,12 @@ use kas::resvg::Svg;
 use kas::theme::{MarginStyle, ThemeControl};
 use kas::widgets::*;
 
-// Using a trait allows control of content
-//
-// We wish to disable controls but not navigation. Using a custom trait gives us
-// this flexibility at the cost of a little more code.
-// TODO: consider whether to include something like this in core functionality.
-#[autoimpl(for<T: trait + ?Sized> Box<T>)]
-trait SetDisabled<A>: Widget<Data = A> {
-    fn set_disabled(&mut self, cx: &mut EventCx, state: bool);
-}
-impl<A, T: SetDisabled<A>> SetDisabled<A> for ScrollBarRegion<T> {
-    fn set_disabled(&mut self, cx: &mut EventCx, state: bool) {
-        self.inner_mut().set_disabled(cx, state);
-    }
-}
-impl<A, T: SetDisabled<A>> SetDisabled<A> for TabStack<T> {
-    fn set_disabled(&mut self, cx: &mut EventCx, state: bool) {
-        for index in 0..self.len() {
-            if let Some(w) = self.get_mut(index) {
-                w.set_disabled(cx, state);
-            }
-        }
-    }
-}
-impl<A, W: Widget<Data = S>, S: std::fmt::Debug> SetDisabled<A> for Adapt<A, W, S> {
-    fn set_disabled(&mut self, cx: &mut EventCx, state: bool) {
-        cx.set_disabled(self.id(), state);
-    }
+#[derive(Debug, Default)]
+struct AppData {
+    disabled: bool,
 }
 
-fn widgets() -> Box<dyn SetDisabled<()>> {
+fn widgets() -> Box<dyn Widget<Data = AppData>> {
     use crate::dialog::{TextEdit, TextEditResult};
 
     // A real app might use async loading of resources here (Svg permits loading
@@ -257,7 +233,7 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
         row!["Child window", popup_edit_box],
     ];
 
-    let widgets = Adapt::new(widgets, data).on_messages(|cx, _, data| {
+    let ui = Adapt::new(widgets, data).on_messages(|cx, _, data| {
         if let Some(ScrollMsg(value)) = cx.try_pop() {
             println!("ScrollMsg({value})");
             data.ratio = value as f32 / 100.0;
@@ -281,10 +257,13 @@ fn widgets() -> Box<dyn SetDisabled<()>> {
         }
     });
 
-    Box::new(ScrollBarRegion::new(widgets))
+    let ui = adapt::OnUpdate::new(ui)
+        .on_update(|cx, w, data: &AppData| cx.set_disabled(w.id(), data.disabled));
+
+    Box::new(ScrollBarRegion::new(ui))
 }
 
-fn editor() -> Box<dyn SetDisabled<()>> {
+fn editor() -> Box<dyn Widget<Data = AppData>> {
     use kas::text::format::Markdown;
 
     #[derive(Clone, Debug)]
@@ -292,9 +271,13 @@ fn editor() -> Box<dyn SetDisabled<()>> {
 
     struct Guard;
     impl EditGuard for Guard {
-        type Data = ();
+        type Data = AppData;
 
-        fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, (): &Self::Data) {
+        fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &AppData) {
+            cx.set_disabled(edit.id(), data.disabled);
+        }
+
+        fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &AppData) {
             let result = Markdown::new(edit.get_str());
             *cx |= edit.set_error_state(result.is_err());
             cx.push(result.unwrap_or_else(|err| Markdown::new(&format!("{err}")).unwrap()));
@@ -322,7 +305,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
     Box::new(singleton! {
         #[widget{
             layout = float! [
-                pack!(right top, Button::label_msg("↻", MsgDirection)),
+                pack!(right top, Button::label_msg("↻", MsgDirection).map_any()),
                 list!(self.dir, [self.editor, non_navigable!(self.label)]),
             ];
         }]
@@ -334,12 +317,12 @@ Demonstration of *as-you-type* formatting from **Markdown**.
                     .with_multi_line(true)
                     .with_lines(4, 12)
                     .with_text(doc),
-            #[widget] label: ScrollLabel<Markdown> =
+            #[widget(&())] label: ScrollLabel<Markdown> =
                 ScrollLabel::new(Markdown::new(doc).unwrap()),
         }
 
         impl Events for Self {
-            type Data = ();
+            type Data = AppData;
 
             fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
                 if let Some(MsgDirection) = cx.try_pop() {
@@ -353,16 +336,10 @@ Demonstration of *as-you-type* formatting from **Markdown**.
                 }
             }
         }
-
-        impl SetDisabled<()> for Self {
-            fn set_disabled(&mut self, cx: &mut EventCx, state: bool) {
-                cx.set_disabled(self.editor.id(), state);
-            }
-        }
     })
 }
 
-fn filter_list() -> Box<dyn SetDisabled<()>> {
+fn filter_list() -> Box<dyn Widget<Data = AppData>> {
     use kas::view::{filter, Driver, ListView, SelectionMode, SelectionMsg};
 
     const MONTHS: &[&str] = &[
@@ -424,10 +401,12 @@ fn filter_list() -> Box<dyn SetDisabled<()>> {
             SelectionMsg::Select(i) => println!("Selected: {}", &data.list[i]),
             _ => (),
         });
+    let ui = adapt::OnUpdate::new(ui)
+        .on_update(|cx, w, data: &AppData| cx.set_disabled(w.id(), data.disabled));
     Box::new(ui)
 }
 
-fn canvas() -> Box<dyn SetDisabled<()>> {
+fn canvas() -> Box<dyn Widget<Data = AppData>> {
     use kas::geom::Vec2;
     use kas_resvg::tiny_skia::*;
     use kas_resvg::{Canvas, CanvasProgram};
@@ -507,11 +486,10 @@ fn canvas() -> Box<dyn SetDisabled<()>> {
         ),
         Canvas::new(Program(Instant::now())),
     ];
-    // Hack: use Adapt just to get something implementing SetDisabled
-    Box::new(Adapt::new(ui, ()))
+    Box::new(ui.map_any())
 }
 
-fn config() -> Box<dyn SetDisabled<()>> {
+fn config() -> Box<dyn Widget<Data = AppData>> {
     let desc = kas::text::format::Markdown::new(
         "\
 Event configuration editor
@@ -528,9 +506,10 @@ KAS_CONFIG_MODE=readwrite
     )
     .unwrap();
 
-    let ui = kas::column![ScrollLabel::new(desc), Separator::new(), EventConfig::new(),];
-    // Hack: use Adapt just to get something implementing SetDisabled
-    Box::new(Adapt::new(ui, ()))
+    let ui = kas::column![ScrollLabel::new(desc), Separator::new(), EventConfig::new(),]
+        .map_any()
+        .on_update(|cx, w, data: &AppData| cx.set_disabled(w.id(), data.disabled));
+    Box::new(ui)
 }
 
 fn main() -> kas::shell::Result<()> {
@@ -554,7 +533,7 @@ fn main() -> kas::shell::Result<()> {
         Quit,
     }
 
-    let menubar = menu::MenuBar::<bool, Right>::builder()
+    let menubar = menu::MenuBar::<AppData, Right>::builder()
         .menu("&App", |menu| {
             menu.entry("&Quit", Menu::Quit);
         })
@@ -591,7 +570,7 @@ fn main() -> kas::shell::Result<()> {
             .separator()
             .toggle(
                 "&Disabled",
-                |_, is_disabled| *is_disabled,
+                |_, data| data.disabled,
                 |state| Menu::Disabled(state),
             );
         })
@@ -607,9 +586,9 @@ fn main() -> kas::shell::Result<()> {
         }]
         struct {
             core: widget_core!(),
-            is_disabled: bool,
-            #[widget(&self.is_disabled)] menubar: menu::MenuBar::<bool, Right> = menubar,
-            #[widget] stack: TabStack<Box<dyn SetDisabled<()>>> = TabStack::from([
+            state: AppData,
+            #[widget(&self.state)] menubar: menu::MenuBar::<AppData, Right> = menubar,
+            #[widget(&self.state)] stack: TabStack<Box<dyn Widget<Data = AppData>>> = TabStack::from([
                 ("&Widgets", widgets()), //TODO: use img_gallery as logo
                 ("Te&xt editor", editor()),
                 ("&List", filter_list()),
@@ -632,8 +611,8 @@ fn main() -> kas::shell::Result<()> {
                             cx.adjust_theme(|theme| theme.set_scheme(&name));
                         }
                         Menu::Disabled(state) => {
-                            self.is_disabled = state;
-                            self.stack.set_disabled(cx, state);
+                            self.state.disabled = state;
+                            cx.update(self.as_node(&()));
                         }
                         Menu::Quit => {
                             *cx |= Action::EXIT;
