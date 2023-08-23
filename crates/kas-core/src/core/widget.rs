@@ -22,7 +22,7 @@ use kas_macros::autoimpl;
 /// [`Events::pre_configure`] which assigns `self.core.id = id`.
 ///
 /// [`#widget`]: macros::widget
-pub trait Events: Sized {
+pub trait Events: Layout + Sized {
     /// Input data type
     ///
     /// This type must match [`Widget::Data`]. When using the `#widget` macro,
@@ -32,6 +32,20 @@ pub trait Events: Sized {
     ///
     /// [`#widget`]: macros::widget
     type Data;
+
+    /// Recursion range
+    ///
+    /// Usually on update, all child widgets are updated recursively. This
+    /// method may be called to restrict which children get updated.
+    ///
+    /// Widgets do not need to be updated if not visible, but in this case must
+    /// be updated when made visible (for example, the `Stack` widget updates
+    /// only the visible page).
+    ///
+    /// Default implementation: `0..self.num_children()`.
+    fn recurse_range(&self) -> std::ops::Range<usize> {
+        0..self.num_children()
+    }
 
     /// Pre-configuration
     ///
@@ -74,11 +88,9 @@ pub trait Events: Sized {
     ///
     /// This method is called on the parent widget before children get updated.
     ///
-    /// This method may call [`ConfigCx::restrict_recursion_to`].
+    /// It is possible to limit which children get updated via
+    /// [`Self::recurse_range`].
     /// Widgets should be updated even if their data is `()` or is unchanged.
-    /// The only valid reasons not to update a child is because (a) it is not
-    /// visible (for example, the `Stack` widget updates only the visible page)
-    /// or (b) another method is used to update the child.
     ///
     /// The default implementation does nothing.
     fn update(&mut self, cx: &mut ConfigCx, data: &Self::Data) {

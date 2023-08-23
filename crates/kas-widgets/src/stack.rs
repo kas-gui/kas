@@ -137,13 +137,13 @@ impl_scope! {
     }
 
     impl Events for Self {
+        fn recurse_range(&self) -> std::ops::Range<usize> {
+            self.active..(self.active + 1)
+        }
+
         fn pre_configure(&mut self, _: &mut ConfigCx, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();
-        }
-
-        fn update(&mut self, cx: &mut ConfigCx, _: &W::Data) {
-            cx.restrict_recursion_to(self.active..=self.active);
         }
     }
 

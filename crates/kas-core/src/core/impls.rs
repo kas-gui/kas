@@ -38,10 +38,9 @@ pub fn _update<W: Widget + Events<Data = <W as Widget>::Data>>(
     data: &<W as Widget>::Data,
 ) {
     widget.update(cx, data);
-    let start = cx.recurse_start.take().unwrap_or(0);
-    let end = cx.recurse_end.take().unwrap_or(widget.num_children());
+    let range = widget.recurse_range();
     let mut node = widget.as_node(data);
-    for index in start..end {
+    for index in range {
         node.for_child(index, |mut node| node._update(cx));
     }
 }

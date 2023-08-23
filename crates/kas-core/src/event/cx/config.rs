@@ -14,7 +14,7 @@ use crate::shell::Platform;
 use crate::text::TextApi;
 use crate::theme::{Feature, SizeCx, TextClass, ThemeSize};
 use crate::{Action, Node, WidgetId};
-use std::ops::{Deref, DerefMut, RangeBounds};
+use std::ops::{Deref, DerefMut};
 
 #[allow(unused)] use crate::{event::Event, Events};
 
@@ -28,8 +28,6 @@ pub struct ConfigCx<'a> {
     sh: &'a dyn ThemeSize,
     ds: &'a mut dyn DrawShared,
     pub(crate) ev: &'a mut EventState,
-    pub(crate) recurse_start: Option<usize>,
-    pub(crate) recurse_end: Option<usize>,
 }
 
 impl<'a> ConfigCx<'a> {
@@ -37,13 +35,7 @@ impl<'a> ConfigCx<'a> {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn new(sh: &'a dyn ThemeSize, ds: &'a mut dyn DrawShared, ev: &'a mut EventState) -> Self {
-        ConfigCx {
-            sh,
-            ds,
-            ev,
-            recurse_start: None,
-            recurse_end: None,
-        }
+        ConfigCx { sh, ds, ev }
     }
 
     /// Get the platform
@@ -97,30 +89,6 @@ impl<'a> ConfigCx<'a> {
     #[inline]
     pub fn configure(&mut self, mut widget: Node<'_>, id: WidgetId) {
         widget._configure(self, id);
-    }
-
-    /// Restrict recursive update
-    ///
-    /// Usually on update, all child widgets are updated recursively. This
-    /// method may be called to restrict which children get updated.
-    ///
-    /// Widgets should be updated even if their data is `()` or is unchanged.
-    /// The only valid reasons not to update a child is because (a) it is not
-    /// visible (for example, the `Stack` widget updates only the visible page)
-    /// or (b) another method is used to update the child.
-    #[inline]
-    pub fn restrict_recursion_to(&mut self, range: impl RangeBounds<usize>) {
-        use core::ops::Bound::*;
-        self.recurse_start = match range.start_bound() {
-            Included(start) => Some(*start),
-            Excluded(start) => Some(*start + 1),
-            Unbounded => None,
-        };
-        self.recurse_end = match range.end_bound() {
-            Included(end) => Some(*end + 1),
-            Excluded(end) => Some(*end),
-            Unbounded => None,
-        };
     }
 
     /// Update a widget
