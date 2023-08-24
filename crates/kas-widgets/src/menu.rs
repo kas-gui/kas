@@ -98,8 +98,14 @@ pub trait Menu: Widget {
     /// When opening menus and `set_focus` is true, the first navigable child
     /// of the newly opened menu will be given focus. This is used for keyboard
     /// navigation only.
-    fn set_menu_path(&mut self, cx: &mut EventCx, target: Option<&WidgetId>, set_focus: bool) {
-        let _ = (cx, target, set_focus);
+    fn set_menu_path(
+        &mut self,
+        cx: &mut EventCx,
+        data: &Self::Data,
+        target: Option<&WidgetId>,
+        set_focus: bool,
+    ) {
+        let _ = (cx, data, target, set_focus);
     }
 }
 
@@ -112,8 +118,14 @@ impl<A, W: Menu<Data = ()>> Menu for MapAny<A, W> {
         self.inner.menu_is_open()
     }
 
-    fn set_menu_path(&mut self, cx: &mut EventCx, target: Option<&WidgetId>, set_focus: bool) {
-        self.inner.set_menu_path(cx, target, set_focus);
+    fn set_menu_path(
+        &mut self,
+        cx: &mut EventCx,
+        _: &A,
+        target: Option<&WidgetId>,
+        set_focus: bool,
+    ) {
+        self.inner.set_menu_path(cx, &(), target, set_focus);
     }
 }
 

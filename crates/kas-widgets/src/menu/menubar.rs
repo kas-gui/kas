@@ -131,12 +131,12 @@ impl_scope! {
     impl<Data, D: Directional> Events for MenuBar<Data, D> {
         type Data = Data;
 
-        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(id_code) => {
                     if let Some(id) = self.delayed_open.clone() {
                         if id.as_u64() == id_code {
-                            self.set_menu_path(cx, Some(&id), false);
+                            self.set_menu_path(cx, data, Some(&id), false);
                         }
                     }
                     Response::Used
@@ -161,9 +161,9 @@ impl_scope! {
                                     .iter()
                                     .any(|w| w.eq_id(&press.id) && !w.menu_is_open())
                                 {
-                                    self.set_menu_path(cx, press.id.as_ref(), false);
+                                    self.set_menu_path(cx, data, press.id.as_ref(), false);
                                 } else {
-                                    self.set_menu_path(cx, None, false);
+                                    self.set_menu_path(cx, data, None, false);
                                 }
                             }
                         }
@@ -189,7 +189,7 @@ impl_scope! {
                         if self.rect().contains(press.coord) {
                             cx.clear_nav_focus();
                             self.delayed_open = None;
-                            self.set_menu_path(cx, Some(&id), false);
+                            self.set_menu_path(cx, data, Some(&id), false);
                         } else if id != self.delayed_open {
                             cx.set_nav_focus(id.clone(), FocusSource::Pointer);
                             let delay = cx.config().menu_delay();
@@ -231,9 +231,9 @@ impl_scope! {
                                     let mut j = isize::conv(i);
                                     j = if reverse { j - 1 } else { j + 1 };
                                     j = j.rem_euclid(self.widgets.len().cast());
-                                    self.widgets[i].set_menu_path(cx, None, true);
+                                    self.widgets[i].set_menu_path(cx, data, None, true);
                                     let w = &mut self.widgets[usize::conv(j)];
-                                    w.set_menu_path(cx, Some(&w.id()), true);
+                                    w.set_menu_path(cx, data, Some(&w.id()), true);
                                     break;
                                 }
                             }
@@ -255,6 +255,7 @@ impl_scope! {
         fn set_menu_path(
             &mut self,
             cx: &mut EventCx,
+            data: &Data,
             target: Option<&WidgetId>,
             set_focus: bool,
         ) {
@@ -264,7 +265,7 @@ impl_scope! {
             );
             self.delayed_open = None;
             for i in 0..self.widgets.len() {
-                self.widgets[i].set_menu_path(cx, target, set_focus);
+                self.widgets[i].set_menu_path(cx, data, target, set_focus);
             }
         }
     }

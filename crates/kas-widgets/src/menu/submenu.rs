@@ -72,10 +72,12 @@ impl_scope! {
             }
         }
 
-        fn open_menu(&mut self, cx: &mut EventCx, set_focus: bool) {
+        fn open_menu(&mut self, cx: &mut EventCx, data: &Data, set_focus: bool) {
             if self.popup_id.is_none() {
+                let id = self.make_child_id(widget_index!(self.list));
+                cx.configure(self.list.as_node(data), id.clone());
                 self.popup_id = Some(cx.add_popup(kas::Popup {
-                    id: self.list.id(),
+                    id: id,
                     parent: self.id(),
                     direction: self.direction.as_direction(),
                 }));
@@ -90,7 +92,7 @@ impl_scope! {
             }
         }
 
-        fn handle_dir_key(&mut self, cx: &mut EventCx, cmd: Command) -> Response {
+        fn handle_dir_key(&mut self, cx: &mut EventCx, data: &Data, cmd: Command) -> Response {
             if self.menu_is_open() {
                 if let Some(dir) = cmd.as_direction() {
                     if dir.is_vertical() {
@@ -112,7 +114,7 @@ impl_scope! {
                     Response::Unused
                 }
             } else if Some(self.direction.as_direction()) == cmd.as_direction() {
-                self.open_menu(cx, true);
+                self.open_menu(cx, data, true);
                 Response::Used
             } else {
                 Response::Unused
@@ -142,6 +144,14 @@ impl_scope! {
     impl Events for Self {
         type Data = Data;
 
+        fn recurse_range(&self) -> std::ops::Range<usize> {
+            let mut end = widget_index!(self.list);
+            if self.popup_id.is_some() {
+                end += 1;
+            }
+            0..end
+        }
+
         fn pre_configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
             self.core.id = id;
             // FIXME: new layer should apply to self.list but not to self.label.
@@ -156,15 +166,15 @@ impl_scope! {
             self.navigable
         }
 
-        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> Response {
             match event {
                 Event::Command(cmd) if cmd.is_activate() => {
                     if self.popup_id.is_none() {
-                        self.open_menu(cx, true);
+                        self.open_menu(cx, data, true);
                     }
                     Response::Used
                 }
-                Event::Command(cmd) => self.handle_dir_key(cx, cmd),
+                Event::Command(cmd) => self.handle_dir_key(cx, data, cmd),
                 Event::PopupRemoved(id) => {
                     debug_assert_eq!(Some(id), self.popup_id);
                     self.popup_id = None;
@@ -174,10 +184,10 @@ impl_scope! {
             }
         }
 
-        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &Data) {
             if let Some(kas::message::Activate) = cx.try_pop() {
                 if self.popup_id.is_none() {
-                    self.open_menu(cx, true);
+                    self.open_menu(cx, data, true);
                 }
             } else {
                 self.close_menu(cx, true);
@@ -205,17 +215,18 @@ impl_scope! {
         fn set_menu_path(
             &mut self,
             cx: &mut EventCx,
+            data: &Data,
             target: Option<&WidgetId>,
             set_focus: bool,
         ) {
             match target {
                 Some(id) if self.is_ancestor_of(id) => {
                     if self.popup_id.is_none() {
-                        self.open_menu(cx, set_focus);
+                        self.open_menu(cx, data, set_focus);
                     }
                     if !self.eq_id(id) {
                         for i in 0..self.list.len() {
-                            self.list[i].set_menu_path(cx, target, set_focus);
+                            self.list[i].set_menu_path(cx, data, target, set_focus);
                         }
                     }
                 }

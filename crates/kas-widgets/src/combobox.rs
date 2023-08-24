@@ -56,6 +56,14 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
+        fn recurse_range(&self) -> std::ops::Range<usize> {
+            let mut end = widget_index!(self.popup);
+            if self.popup_id.is_some() {
+                end += 1;
+            }
+            0..end
+        }
+
         fn pre_configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
             self.core.id = id;
             cx.new_accel_layer(self.id(), true);
@@ -63,26 +71,27 @@ impl_scope! {
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             let msg = (self.state_fn)(cx, data);
-            let index = 'outer: {
-                for (i, w) in self.popup.inner.iter().enumerate() {
-                    if *w == msg {
-                        break 'outer i;
-                    }
+            if let Some(index) = self.popup
+                .inner
+                .iter()
+                .enumerate()
+                .find_map(|(i, w)| (*w == msg).then_some(i))
+            {
+                if index != self.active {
+                    self.active = index;
+                    *cx |= Action::REDRAW;
                 }
-
+            } else {
                 log::warn!("ComboBox::update: unknown entry {msg:?}");
-                return;
             };
-            if index != self.active {
-                self.active = index;
-                *cx |= Action::REDRAW;
-            }
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &A, event: Event) -> Response {
             let open_popup = |s: &mut Self, cx: &mut EventCx, source: FocusSource| {
+                let id = s.make_child_id(widget_index!(self.popup));
+                cx.configure(s.popup.as_node(&()), id.clone());
                 s.popup_id = Some(cx.add_popup(kas::Popup {
-                    id: s.popup.id(),
+                    id: id,
                     parent: s.id(),
                     direction: Direction::Down,
                 }));
