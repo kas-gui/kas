@@ -445,9 +445,9 @@ impl EventState {
             self.send_action(Action::REDRAW);
             self.pending
                 .push_back(Pending::Send(id, Event::LostNavFocus));
+            log::debug!(target: "kas_core::event", "nav_focus = None");
         }
         self.clear_key_focus();
-        log::debug!(target: "kas_core::event", "nav_focus = None");
     }
 
     /// Set navigation focus directly
