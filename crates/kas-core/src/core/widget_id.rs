@@ -322,6 +322,15 @@ impl WidgetId {
         }
     }
 
+    /// Get the path len (number of indices, not storage length)
+    pub fn path_len(&self) -> usize {
+        match self.0.get() {
+            Variant::Invalid => panic!("WidgetId::path_len: invalid"),
+            Variant::Int(x) => BitsIter::new(x).count(),
+            Variant::Slice(path) => path.len(),
+        }
+    }
+
     /// Returns true if `self` equals `id` or if `id` is a descendant of `self`
     pub fn is_ancestor_of(&self, id: &Self) -> bool {
         match (self.0.get(), id.0.get()) {
@@ -525,17 +534,6 @@ impl WidgetId {
     pub unsafe fn opt_from_u64(n: u64) -> Option<WidgetId> {
         IntOrPtr::opt_from_u64(n).map(WidgetId)
     }
-
-    /// Construct an iterator, returning indices
-    ///
-    /// This represents the widget's "path" from the root (window).
-    pub fn iter_path(&self) -> impl Iterator<Item = usize> + '_ {
-        match self.0.get() {
-            Variant::Invalid => panic!("WidgetId::iter_path on invalid"),
-            Variant::Int(x) => PathIter::Bits(BitsIter::new(x)),
-            Variant::Slice(path) => PathIter::Slice(path.iter().cloned()),
-        }
-    }
 }
 
 impl PartialEq for WidgetId {
@@ -543,7 +541,7 @@ impl PartialEq for WidgetId {
         match (self.0.get(), rhs.0.get()) {
             (Variant::Invalid, _) | (_, Variant::Invalid) => panic!("WidgetId::eq: invalid id"),
             (Variant::Int(x), Variant::Int(y)) => x == y,
-            _ => self.iter_path().eq(rhs.iter_path()),
+            _ => self.iter().eq(rhs.iter()),
         }
     }
 }
@@ -560,7 +558,7 @@ impl Ord for WidgetId {
         match (self.0.get(), rhs.0.get()) {
             (Variant::Invalid, _) | (_, Variant::Invalid) => panic!("WidgetId::cmp: invalid id"),
             (Variant::Int(x), Variant::Int(y)) => x.cmp(&y),
-            _ => self.iter_path().cmp(rhs.iter_path()),
+            _ => self.iter().cmp(rhs.iter()),
         }
     }
 }
