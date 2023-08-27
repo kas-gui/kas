@@ -10,11 +10,10 @@ use serde::{Deserialize, Serialize};
 
 #[allow(unused)]
 use super::{EventCx, EventState, GrabMode, Response}; // for doc-links
-use super::{Key, Press};
+use super::{Key, KeyEvent, Press};
 use crate::geom::{DVec2, Offset};
 #[allow(unused)] use crate::Events;
 use crate::{dir::Direction, WidgetId, WindowId};
-use smol_str::SmolStr;
 
 /// Events addressed to a widget
 ///
@@ -24,25 +23,44 @@ use smol_str::SmolStr;
 #[non_exhaustive]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
-    /// (Keyboard) command input
+    /// Command input
     ///
-    /// This represents a control or navigation action, usually from the
-    /// keyboard. It is sent to whichever widget is "most appropriate", then
-    /// potentially to the "next most appropriate" target if the first returns
-    /// [`Response::Unused`], until handled or no more appropriate targets
-    /// are available (the exact logic is encoded in `EventCx::start_key_event`).
+    /// Even without keyboard focus a widget may receive a command (most
+    /// commonly [`Command::Activate`]). This is often a result of some keyboard
+    /// shortcut, but not necessarily.
     ///
     /// In some cases keys are remapped, e.g. a widget with selection focus but
     /// not character or navigation focus may receive [`Command::Deselect`]
     /// when the <kbd>Esc</kbd> key is pressed.
+    ///
+    /// If a widget has character focus then it will receive [`Event::Key`]
+    /// instead of `Event::Command` on key presses.
     Command(Command),
-    /// Widget receives text input
+    /// Keyboard input: `event, is_synthetic`
     ///
     /// This is only received by a widget with character focus (see
-    /// [`EventState::request_char_focus`]). There should be no overlap with
-    /// [`Event::Command`]; if a widget receives both for a single key-press
-    /// this is considered a bug.
-    Text(SmolStr),
+    /// [`EventState::request_key_focus`]).
+    ///
+    /// On some platforms, synthetic key events are generated when a window
+    /// gains or loses focus with a key held (see documentation of
+    /// [`winit::event::WindowEvent::KeyboardInput`]). This is indicated by the
+    /// second parameter, `is_synthetic`. Unless you need to track key states
+    /// it is advised only to match `Event::Key(event, false)`.
+    ///
+    /// Some key presses can be mapped to a [`Command`]. To do this (normally
+    /// only when `event.state == ElementState::Pressed && !is_synthetic`), use
+    /// `cx.config().shortcuts(|s| s.try_match(cx.modifiers(), &event.logical_key)`
+    /// or (omitting shortcut matching) `Command::new(event.logical_key)`.
+    /// Note that if the handler returns [`Response::Unused`] the widget might
+    /// then receive [`Event::Command`] for the same key press, but this is not
+    /// guaranteed (behaviour may change in future versions).
+    ///
+    /// For standard text input, simply consume `event.text` when
+    /// `event.state == ElementState::Pressed && !is_synthetic`.
+    /// NOTE: unlike Winit, we force `text = None` for control chars and when
+    /// <kbd>Ctrl</kbd>, <kbd>Alt</kbd> or <kbd>Super</kbd> modifier keys are
+    /// pressed. This is subject to change.
+    Key(KeyEvent, bool),
     /// A mouse or touchpad scroll event
     Scroll(ScrollDelta),
     /// A mouse or touch-screen move/zoom/rotate event
@@ -164,17 +182,21 @@ pub enum Event {
     /// Since popups may be removed directly by the EventCx, the parent should
     /// clean up any associated state here.
     PopupRemoved(WindowId),
-    /// Sent when a widget receives (keyboard) navigation focus
+    /// Sent when a widget receives navigation focus
     ///
-    /// Parameter `key_focus` is:
+    /// Navigation focus implies that the widget is highlighted and will be the
+    /// primary target of [`Event::Command`].
     ///
-    /// -   `false` when focus is gained through mouse or touch input
-    /// -   `true` when focus is gained through keyboard input. In this case the
-    ///     recipient may wish to call [`EventCx::request_char_focus`]. Further,
-    ///     [`EventCx::set_scroll`] is automatically called with rect
-    ///     `Scroll::Rect(widget.rect())` (thus ensuring the widget is visible)
-    ///     and the [`Response`] will always be `Used`.
-    NavFocus { key_focus: bool },
+    /// With [`FocusSource::Pointer`] the widget should already have received
+    /// [`Event::PressStart`].
+    ///
+    /// With [`FocusSource::Key`], [`EventCx::set_scroll`] is
+    /// called automatically (to ensure that the widget is visible) and the
+    /// response will be forced to [`Response::Used`].
+    ///
+    /// The widget may wish to call [`EventCx::request_key_focus`], but likely
+    /// only when [`FocusSource::key_or_synthetic`].
+    NavFocus(FocusSource),
     /// Sent when a widget becomes the mouse hover target
     ///
     /// The payload is `true` when focus is gained, `false` when lost.
@@ -183,12 +205,12 @@ pub enum Event {
     LostNavFocus,
     /// Widget lost keyboard input focus
     ///
-    /// This focus is gained through the widget calling [`EventState::request_char_focus`].
+    /// This focus is gained through the widget calling [`EventState::request_key_focus`].
     LostCharFocus,
     /// Widget lost selection focus
     ///
     /// This focus is gained through the widget calling [`EventState::request_sel_focus`]
-    /// or [`EventState::request_char_focus`].
+    /// or [`EventState::request_key_focus`].
     ///
     /// In the case the widget also had character focus, [`Event::LostCharFocus`] is
     /// received first.
@@ -261,7 +283,7 @@ impl Event {
         use Event::*;
         match self {
             Command(_) => false,
-            Text(_) | Scroll(_) | Pan { .. } => false,
+            Key(_, _) | Scroll(_) | Pan { .. } => false,
             CursorMove { .. } | PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | PopupRemoved(_) => true,
             NavFocus { .. } | MouseHover(_) => false,
@@ -280,7 +302,7 @@ impl Event {
     pub fn is_reusable(&self) -> bool {
         use Event::*;
         match self {
-            Text(_) => false,
+            Key(_, _) => false,
             Command(_) | Scroll(_) | Pan { .. } => true,
             CursorMove { .. } | PressStart { .. } => true,
             PressMove { .. } | PressEnd { .. } => false,
@@ -547,6 +569,27 @@ impl Command {
             Command::Up => Some(Direction::Up),
             Command::Down => Some(Direction::Down),
             _ => None,
+        }
+    }
+}
+
+/// Reason that navigation focus is received
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum FocusSource {
+    /// Focus is received as a result of a mouse or touch event
+    Pointer,
+    /// Focus is received as a result of keyboard navigation (usually
+    /// <kbd>Tab</kbd>) or a command ([`Event::Command`])
+    Key,
+    /// Focus is received from a programmatic event
+    Synthetic,
+}
+
+impl FocusSource {
+    pub fn key_or_synthetic(self) -> bool {
+        match self {
+            FocusSource::Pointer => false,
+            FocusSource::Key | FocusSource::Synthetic => true,
         }
     }
 }

@@ -6,7 +6,7 @@
 //! Menubar
 
 use super::{Menu, SubMenu, SubMenuBuilder};
-use kas::event::Command;
+use kas::event::{Command, FocusSource};
 use kas::layout::{self, RowPositionSolver, RowSetter, RowSolver, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::theme::FrameStyle;
@@ -191,7 +191,7 @@ impl_scope! {
                             self.delayed_open = None;
                             self.set_menu_path(cx, Some(&id), false);
                         } else if id != self.delayed_open {
-                            cx.set_nav_focus(id.clone(), false);
+                            cx.set_nav_focus(id.clone(), FocusSource::Pointer);
                             let delay = cx.config().menu_delay();
                             cx.request_timer_update(self.id(), id.as_u64(), delay, true);
                             self.delayed_open = Some(id);
@@ -240,7 +240,7 @@ impl_scope! {
                             Response::Used
                         }
                         Some(_) => {
-                            cx.next_nav_focus(self.id(), reverse, true);
+                            cx.next_nav_focus(self.id(), reverse, FocusSource::Key);
                             Response::Used
                         }
                         None => Response::Unused,

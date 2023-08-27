@@ -266,9 +266,9 @@ impl<'a> Node<'a> {
     /// Find the descendant with this `id`, if any, and call `cb` on it
     ///
     /// Returns `Some(result)` if and only if node `id` was found.
-    pub fn for_id<F: FnOnce(Node<'_>) -> T, T>(&mut self, id: &WidgetId, cb: F) -> Option<T> {
+    pub fn find_node<F: FnOnce(Node<'_>) -> T, T>(&mut self, id: &WidgetId, cb: F) -> Option<T> {
         if let Some(index) = self.find_child_index(id) {
-            self.for_child(index, |mut node| node.for_id(id, cb))
+            self.for_child(index, |mut node| node.find_node(id, cb))
                 .unwrap()
         } else if self.eq_id(id) {
             Some(cb(self.re()))

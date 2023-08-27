@@ -7,7 +7,7 @@
 
 use crate::{DataKey, Driver, ListData, SelectionMode, SelectionMsg};
 use kas::event::components::ScrollComponent;
-use kas::event::{Command, Scroll};
+use kas::event::{Command, FocusSource, Scroll};
 use kas::layout::{solve_size_rules, AlignHints};
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
@@ -636,7 +636,7 @@ impl_scope! {
                             cx.config_cx(|cx| self.update_widgets(cx, data));
                         }
                         let index = i_data % usize::conv(self.cur_len);
-                        cx.next_nav_focus(self.widgets[index].widget.id(), false, true);
+                        cx.next_nav_focus(self.widgets[index].widget.id(), false, FocusSource::Key);
                         Response::Used
                     } else {
                         Response::Unused
@@ -649,7 +649,7 @@ impl_scope! {
                     if let Some((index, ref key)) = self.press_target {
                         let w = &mut self.widgets[index];
                         if w.key.as_ref().map(|k| k == key).unwrap_or(false) {
-                            cx.next_nav_focus(w.widget.id(), false, false);
+                            cx.next_nav_focus(w.widget.id(), false, FocusSource::Pointer);
                         }
                     }
 

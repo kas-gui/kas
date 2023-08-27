@@ -5,7 +5,7 @@
 
 //! Widget method implementations
 
-use crate::event::{ConfigCx, Event, EventCx, Response, Scroll};
+use crate::event::{ConfigCx, Event, EventCx, FocusSource, Response, Scroll};
 #[cfg(debug_assertions)] use crate::util::IdentifyWidget;
 use crate::{Erased, Events, Layout, NavAdvance, Node, Widget, WidgetId};
 
@@ -56,6 +56,8 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
     event: Event,
 ) -> Response {
     let mut response = Response::Unused;
+    let do_handle_event;
+
     if id == widget.id_ref() {
         if disabled {
             return response;
@@ -65,42 +67,50 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
             Event::MouseHover(state) => {
                 response |= widget.mouse_hover(cx, *state);
             }
-            Event::NavFocus { key_focus: true } => {
+            Event::NavFocus(FocusSource::Key) => {
                 cx.set_scroll(Scroll::Rect(widget.rect()));
                 response |= Response::Used;
             }
             _ => (),
         }
 
-        response |= widget.handle_event(cx, data, event);
-    } else if widget.steal_event(cx, data, &id, &event).is_used() {
-        response = Response::Used;
+        do_handle_event = true;
     } else {
-        cx.assert_post_steal_unused();
-        if let Some(index) = widget.find_child_index(&id) {
-            let translation = widget.translation();
-            let mut found = false;
-            widget.as_node(data).for_child(index, |mut node| {
-                response = node._send(cx, id.clone(), disabled, event.clone() + translation);
-                found = true;
-            });
+        if event.is_reusable() {
+            response = widget.steal_event(cx, data, &id, &event);
+        }
+        if response.is_unused() {
+            cx.assert_post_steal_unused();
 
-            if found {
+            if let Some(index) = widget.find_child_index(&id) {
+                let translation = widget.translation();
+                let mut _found = false;
+                widget.as_node(data).for_child(index, |mut node| {
+                    response = node._send(cx, id.clone(), disabled, event.clone() + translation);
+                    _found = true;
+                });
+
+                #[cfg(debug_assertions)]
+                if !_found {
+                    // This is an error in the widget. It's unlikely and not fatal
+                    // so we ignore in release builds.
+                    log::error!(
+                        "_send: {} found index {index} for {id} but not child",
+                        IdentifyWidget(widget.widget_name(), widget.id_ref())
+                    );
+                }
+
                 if let Some(scroll) = cx.post_send(index) {
                     widget.handle_scroll(cx, data, scroll);
                 }
-            } else {
-                #[cfg(debug_assertions)]
-                log::warn!(
-                    "_send: {} found index {index} for {id} but not child",
-                    IdentifyWidget(widget.widget_name(), widget.id_ref())
-                );
             }
         }
 
-        if response.is_unused() && event.is_reusable() {
-            response = widget.handle_event(cx, data, event);
-        }
+        do_handle_event = response.is_unused() && event.is_reusable();
+    }
+
+    if do_handle_event {
+        response = widget.handle_event(cx, data, event);
     }
 
     if cx.has_msg() {
@@ -119,31 +129,35 @@ pub fn _replay<W: Widget + Events<Data = <W as Widget>::Data>>(
     msg: Erased,
 ) {
     if let Some(index) = widget.find_child_index(&id) {
-        let mut found = false;
+        let mut _found = false;
         widget.as_node(data).for_child(index, |mut node| {
             node._replay(cx, id.clone(), msg);
-            found = true;
+            _found = true;
         });
 
-        if found {
-            if let Some(scroll) = cx.post_send(index) {
-                widget.handle_scroll(cx, data, scroll);
-            }
-
-            if cx.has_msg() {
-                widget.handle_messages(cx, data);
-            }
-        } else {
-            #[cfg(debug_assertions)]
-            log::warn!(
+        #[cfg(debug_assertions)]
+        if !_found {
+            // This is an error in the widget. It's unlikely and not fatal
+            // so we ignore in release builds.
+            log::error!(
                 "_replay: {} found index {index} for {id} but not child",
                 IdentifyWidget(widget.widget_name(), widget.id_ref())
             );
+        }
+
+        if let Some(scroll) = cx.post_send(index) {
+            widget.handle_scroll(cx, data, scroll);
+        }
+
+        if cx.has_msg() {
+            widget.handle_messages(cx, data);
         }
     } else if id == widget.id_ref() {
         cx.push_erased(msg);
         widget.handle_messages(cx, data);
     } else {
+        // This implies use of push_async / push_spawn from a widget which was
+        // unmapped or removed.
         #[cfg(debug_assertions)]
         log::debug!(
             "_replay: {} cannot find path to {id}",

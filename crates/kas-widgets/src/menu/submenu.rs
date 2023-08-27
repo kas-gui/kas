@@ -7,7 +7,7 @@
 
 use super::{BoxedMenu, Menu, SubItems};
 use crate::{AccelLabel, Mark, PopupFrame};
-use kas::event::{Command, Scroll};
+use kas::event::{Command, FocusSource, Scroll};
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::theme::{FrameStyle, MarkStyle, TextClass};
@@ -80,7 +80,7 @@ impl_scope! {
                     direction: self.direction.as_direction(),
                 }));
                 if set_focus {
-                    cx.next_nav_focus(self.id(), false, true);
+                    cx.next_nav_focus(self.id(), false, FocusSource::Key);
                 }
             }
         }
@@ -95,7 +95,7 @@ impl_scope! {
                 if let Some(dir) = cmd.as_direction() {
                     if dir.is_vertical() {
                         let rev = dir.is_reversed();
-                        cx.next_nav_focus(self.id(), rev, true);
+                        cx.next_nav_focus(self.id(), rev, FocusSource::Key);
                         Response::Used
                     } else if dir == self.direction.as_direction().reversed() {
                         self.close_menu(cx, true);
@@ -106,7 +106,7 @@ impl_scope! {
                 } else if matches!(cmd, Command::Home | Command::End) {
                     cx.clear_nav_focus();
                     let rev = cmd == Command::End;
-                    cx.next_nav_focus(self.id(), rev, true);
+                    cx.next_nav_focus(self.id(), rev, FocusSource::Key);
                     Response::Used
                 } else {
                     Response::Unused

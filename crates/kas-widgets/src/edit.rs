@@ -7,7 +7,7 @@
 
 use crate::{ScrollBar, ScrollMsg};
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{Command, CursorIcon, Scroll, ScrollDelta};
+use kas::event::{Command, CursorIcon, ElementState, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::{NotReady, SelectionHelper, Text};
@@ -78,7 +78,7 @@ pub trait EditGuard: Sized {
     /// The default implementation:
     ///
     /// -   If the field is editable, calls [`Self::focus_lost`] and returns
-    ///     returns [`Response::Unused`].
+    ///     returns [`Response::Used`].
     /// -   If the field is not editable, returns [`Response::Unused`].
     fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Self::Data) -> Response {
         if edit.editable {
@@ -632,7 +632,7 @@ impl_scope! {
                         self.class,
                     );
                 }
-                if self.editable && draw.ev_state().has_char_focus(self.id_ref()).0 {
+                if self.editable && draw.ev_state().has_key_focus(self.id_ref()).0 {
                     draw.text_cursor(
                         rect,
                         &self.text,
@@ -657,7 +657,7 @@ impl_scope! {
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> Response {
             fn request_focus<G: EditGuard>(s: &mut EditField<G>, cx: &mut EventCx, data: &G::Data) {
-                if !s.has_key_focus && cx.request_char_focus(s.id()) {
+                if !s.has_key_focus && cx.request_key_focus(s.id()) {
                     s.has_key_focus = true;
                     cx.set_scroll(Scroll::Rect(s.rect()));
                     G::focus_gained(s, cx, data);
@@ -665,7 +665,7 @@ impl_scope! {
             }
 
             match event {
-                Event::NavFocus { key_focus: true } => {
+                Event::NavFocus(source) if source.key_or_synthetic() => {
                     request_focus(self, cx, data);
                     if !self.class.multi_line() {
                         self.selection.clear();
@@ -674,7 +674,7 @@ impl_scope! {
                     }
                     Response::Used
                 }
-                Event::NavFocus { key_focus: false } => Response::Used,
+                Event::NavFocus(_) => Response::Used,
                 Event::LostNavFocus => {
                     if !self.class.multi_line() {
                         self.selection.set_empty();
@@ -694,31 +694,32 @@ impl_scope! {
                     Response::Used
                 }
                 Event::Command(cmd) => {
-                    // Note: we can receive a Command without char focus, but should
+                    // Note: we can receive a Command without key focus, but should
                     // ensure we have focus before acting on it.
                     request_focus(self, cx, data);
                     if self.has_key_focus {
-                        match self.control_key(cx, cmd) {
-                            Ok(EditAction::None) => Response::Used,
-                            Ok(EditAction::Unused) => Response::Unused,
-                            Ok(EditAction::Activate) => G::activate(self, cx, data),
-                            Ok(EditAction::Edit) => {
-                                G::edit(self, cx, data);
-                                Response::Used
-                            }
+                        match self.control_key(cx, data, cmd) {
+                            Ok(r) => r,
                             Err(NotReady) => Response::Used,
                         }
                     } else {
                         Response::Unused
                     }
                 }
-                Event::Text(text) => match self.received_text(cx, &text) {
-                    false => Response::Unused,
-                    true => {
-                        G::edit(self, cx, data);
-                        Response::Used
+                Event::Key(event, false) if event.state == ElementState::Pressed => {
+                    if let Some(text) = event.text {
+                        self.received_text(cx, data, &text)
+                    } else {
+                        if let Some(cmd) = cx.config().shortcuts(|s| s.try_match(cx.modifiers(), &event.logical_key)) {
+                            match self.control_key(cx, data, cmd) {
+                                Ok(r) => r,
+                                Err(NotReady) => Response::Used,
+                            }
+                        } else {
+                            Response::Unused
+                        }
                     }
-                },
+                }
                 Event::Scroll(delta) => {
                     let delta2 = match delta {
                         ScrollDelta::LineDelta(x, y) => cx.config().scroll_distance((x, y)),
@@ -1099,10 +1100,9 @@ impl<G: EditGuard> EditField<G> {
         0..end
     }
 
-    // returns true on success, false on unhandled event
-    fn received_text(&mut self, cx: &mut EventCx, text: &str) -> bool {
+    fn received_text(&mut self, cx: &mut EventCx, data: &G::Data, text: &str) -> Response {
         if !self.editable {
-            return false;
+            return Response::Unused;
         }
 
         let pos = self.selection.edit_pos();
@@ -1127,10 +1127,17 @@ impl<G: EditGuard> EditField<G> {
         self.edit_x_coord = None;
 
         self.prepare_text(cx);
-        true
+
+        G::edit(self, cx, data);
+        Response::Used
     }
 
-    fn control_key(&mut self, cx: &mut EventCx, key: Command) -> Result<EditAction, NotReady> {
+    fn control_key(
+        &mut self,
+        cx: &mut EventCx,
+        data: &G::Data,
+        cmd: Command,
+    ) -> Result<Response, NotReady> {
         let editable = self.editable;
         let mut shift = cx.modifiers().shift_key();
         let mut buf = [0u8; 4];
@@ -1151,7 +1158,7 @@ impl<G: EditGuard> EditField<G> {
             Move(usize, Option<f32>),
         }
 
-        let action = match key {
+        let action = match cmd {
             Command::Escape | Command::Deselect if !selection.is_empty() => {
                 self.selection.set_empty();
                 cx.redraw(self.id());
@@ -1233,7 +1240,7 @@ impl<G: EditGuard> EditField<G> {
                 };
                 let mut line = self.text.find_line(pos)?.map(|r| r.0).unwrap_or(0);
                 // We can tolerate invalid line numbers here!
-                line = match key {
+                line = match cmd {
                     Command::Up => line.wrapping_sub(1),
                     Command::Down => line.wrapping_add(1),
                     _ => unreachable!(),
@@ -1270,7 +1277,7 @@ impl<G: EditGuard> EditField<G> {
                 }
                 const FACTOR: f32 = 2.0 / 3.0;
                 let mut h_dist = self.text.env().bounds.1 * FACTOR;
-                if key == Command::PageUp {
+                if cmd == Command::PageUp {
                     h_dist *= -1.0;
                 }
                 v.1 += h_dist;
@@ -1404,7 +1411,16 @@ impl<G: EditGuard> EditField<G> {
         };
 
         self.prepare_text(cx);
-        Ok(result)
+
+        Ok(match result {
+            EditAction::None => Response::Used,
+            EditAction::Unused => Response::Unused,
+            EditAction::Activate => G::activate(self, cx, data),
+            EditAction::Edit => {
+                G::edit(self, cx, data);
+                Response::Used
+            }
+        })
     }
 
     fn set_edit_pos_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {

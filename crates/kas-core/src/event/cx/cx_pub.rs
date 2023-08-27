@@ -50,19 +50,19 @@ impl EventState {
         self.modifiers.alt_key()
     }
 
-    /// Get whether this widget has `(char_focus, sel_focus)`
+    /// Get whether this widget has `(key_focus, sel_focus)`
     ///
-    /// -   `char_focus`: implies this widget receives keyboard input
+    /// -   `key_focus`: implies this widget receives keyboard input
     /// -   `sel_focus`: implies this widget is allowed to select things
     ///
-    /// Note that `char_focus` implies `sel_focus`.
+    /// Note that `key_focus` implies `sel_focus`.
     #[inline]
-    pub fn has_char_focus(&self, w_id: &WidgetId) -> (bool, bool) {
+    pub fn has_key_focus(&self, w_id: &WidgetId) -> (bool, bool) {
         let sel_focus = *w_id == self.sel_focus;
-        (sel_focus && self.char_focus, sel_focus)
+        (sel_focus && self.key_focus, sel_focus)
     }
 
-    /// Get whether this widget has keyboard navigation focus
+    /// Get whether this widget has navigation focus
     #[inline]
     pub fn has_nav_focus(&self, w_id: &WidgetId) -> bool {
         *w_id == self.nav_focus
@@ -341,19 +341,20 @@ impl EventState {
         }
     }
 
-    /// Request character-input focus
+    /// Request keyboard input focus
     ///
-    /// Returns true on success or when the widget already had char focus.
+    /// When granted, the widget will receive [`Event::Key`] on key presses
+    /// and releases. It will not receive [`Event::Command`] for these events
+    /// (though it may still receive [`Event::Command`] from other sources).
     ///
-    /// Character data is sent to the widget with char focus via
-    /// [`Event::Text`] and [`Event::Command`].
-    ///
-    /// Char focus implies sel focus (see [`Self::request_sel_focus`]) and
+    /// Key focus implies sel focus (see [`Self::request_sel_focus`]) and
     /// navigation focus.
     ///
-    /// When char focus is lost, [`Event::LostCharFocus`] is sent.
+    /// Returns true on success or when the widget already had key focus.
+    ///
+    /// When key focus is lost, [`Event::LostKeyFocus`] is sent.
     #[inline]
-    pub fn request_char_focus(&mut self, id: WidgetId) -> bool {
+    pub fn request_key_focus(&mut self, id: WidgetId) -> bool {
         self.set_sel_focus(id, true);
         true
     }
@@ -370,7 +371,7 @@ impl EventState {
     ///
     /// Selection focus implies navigation focus.
     ///
-    /// When char focus is lost, [`Event::LostSelFocus`] is sent.
+    /// When key focus is lost, [`Event::LostSelFocus`] is sent.
     #[inline]
     pub fn request_sel_focus(&mut self, id: WidgetId) -> bool {
         self.set_sel_focus(id, false);
@@ -430,7 +431,7 @@ impl EventState {
         false
     }
 
-    /// Get the current keyboard navigation focus, if any
+    /// Get the current navigation focus, if any
     ///
     /// This is the widget selected by navigating the UI with the Tab key.
     #[inline]
@@ -438,29 +439,27 @@ impl EventState {
         self.nav_focus.as_ref()
     }
 
-    /// Clear keyboard navigation focus
+    /// Clear navigation focus
     pub fn clear_nav_focus(&mut self) {
         if let Some(id) = self.nav_focus.take() {
             self.send_action(Action::REDRAW);
             self.pending
                 .push_back(Pending::Send(id, Event::LostNavFocus));
         }
-        self.clear_char_focus();
+        self.clear_key_focus();
         log::debug!(target: "kas_core::event", "nav_focus = None");
     }
 
-    /// Set the keyboard navigation focus directly
+    /// Set navigation focus directly
     ///
-    /// Normally, [`Events::navigable`] will be true for the specified
-    /// widget, but this is not required, e.g. a `ScrollLabel` can receive focus
-    /// on text selection with the mouse. (Currently such widgets will receive
-    /// events like any other with nav focus, but this may change.)
+    /// If `id` already has navigation focus or navigation focus is disabled
+    /// globally then nothing happens, otherwise widget `id` should receive
+    /// [`Event::NavFocus`].
     ///
-    /// The target widget, if not already having navigation focus, will receive
-    /// [`Event::NavFocus`] with `key_focus` as the payload. This boolean should
-    /// be true if focussing in response to keyboard input, false if reacting to
-    /// mouse or touch input.
-    pub fn set_nav_focus(&mut self, id: WidgetId, key_focus: bool) {
+    /// Normally, [`Events::navigable`] will be true for widget `id` but this
+    /// is not checked or required. For example, a `ScrollLabel` can receive
+    /// focus on text selection with the mouse.
+    pub fn set_nav_focus(&mut self, id: WidgetId, source: FocusSource) {
         if id == self.nav_focus || !self.config.nav_focus {
             return;
         }
@@ -471,15 +470,15 @@ impl EventState {
                 .push_back(Pending::Send(old_id, Event::LostNavFocus));
         }
         if id != self.sel_focus {
-            self.clear_char_focus();
+            self.clear_key_focus();
         }
         self.nav_focus = Some(id.clone());
         log::debug!(target: "kas_core::event", "nav_focus = Some({id})");
         self.pending
-            .push_back(Pending::Send(id, Event::NavFocus { key_focus }));
+            .push_back(Pending::Send(id, Event::NavFocus(source)));
     }
 
-    /// Advance the keyboard navigation focus
+    /// Advance the navigation focus
     ///
     /// If `target == Some(id)`, this looks for the next widget from `id`
     /// (inclusive) which is navigable ([`Events::navigable`]). Otherwise where
@@ -488,20 +487,16 @@ impl EventState {
     /// this instead looks for the first navigable widget.
     ///
     /// If `reverse`, instead search for the previous or last navigable widget.
-    ///
-    /// Parameter `key_focus` should be `true` for keyboard-driven and
-    /// programmatic navigation, `false` for mouse/touch-driven navigation.
-    /// The parameter is passed to the target through [`Event::NavFocus`].
     pub fn next_nav_focus(
         &mut self,
         target: impl Into<Option<WidgetId>>,
         reverse: bool,
-        key_focus: bool,
+        source: FocusSource,
     ) {
         self.pending.push_back(Pending::NextNavFocus {
             target: target.into(),
             reverse,
-            key_focus,
+            source,
         });
     }
 
@@ -784,7 +779,7 @@ impl<'a> EventCx<'a> {
                 old_nav_focus = None
             }
             if let Some(id) = old_nav_focus {
-                self.set_nav_focus(id, true);
+                self.set_nav_focus(id, FocusSource::Synthetic);
             }
             // TODO: if popup.id is an ancestor of self.nav_focus then clear
             // focus if not setting (currently we cannot test this)

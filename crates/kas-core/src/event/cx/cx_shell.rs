@@ -34,7 +34,7 @@ impl EventState {
             disabled: vec![],
             window_has_focus: false,
             modifiers: ModifiersState::empty(),
-            char_focus: false,
+            key_focus: false,
             sel_focus: None,
             nav_focus: None,
             nav_fallback: None,
@@ -215,13 +215,13 @@ impl EventState {
             match item {
                 Pending::Configure(id) => {
                     win.as_node(data)
-                        .for_id(&id, |node| cx.configure(node, id.clone()));
+                        .find_node(&id, |node| cx.configure(node, id.clone()));
 
                     let hover = win.find_id(data, cx.state.last_mouse_coord);
                     cx.state.set_hover(hover);
                 }
                 Pending::Update(id) => {
-                    win.as_node(data).for_id(&id, |node| cx.update(node));
+                    win.as_node(data).find_node(&id, |node| cx.update(node));
                 }
                 Pending::Send(id, event) => {
                     if matches!(&event, &Event::MouseHover(false)) {
@@ -236,9 +236,9 @@ impl EventState {
                 Pending::NextNavFocus {
                     target,
                     reverse,
-                    key_focus,
+                    source,
                 } => {
-                    cx.next_nav_focus_impl(win.as_node(data), target, reverse, key_focus);
+                    cx.next_nav_focus_impl(win.as_node(data), target, reverse, source);
                 }
             }
         }
@@ -311,7 +311,7 @@ impl<'a> EventCx<'a> {
         win: &mut Window<A>,
         event: winit::event::WindowEvent,
     ) {
-        use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
+        use winit::event::{MouseScrollDelta, TouchPhase, WindowEvent::*};
 
         match event {
             CloseRequested => self.send_action(Action::CLOSE),
@@ -333,25 +333,40 @@ impl<'a> EventCx<'a> {
                 }
             }
             KeyboardInput {
-                event,
+                mut event,
                 is_synthetic,
                 ..
             } => {
-                let is_dead = matches!(&event.logical_key, Key::Dead(_));
-                if event.state == ElementState::Pressed && !is_synthetic {
-                    self.start_key_event(win.as_node(data), event.logical_key, event.physical_key);
-                } else if event.state == ElementState::Released {
-                    self.end_key_event(event.physical_key);
-                }
+                let state = event.state;
+                let physical_key = event.physical_key;
+                let logical_key = event.logical_key.clone();
 
-                if let Some(id) = self.char_focus() {
+                if let Some(id) = self.key_focus() {
+                    // TODO(winit): https://github.com/rust-windowing/winit/issues/3038
                     let mut mods = self.modifiers;
                     mods.remove(ModifiersState::SHIFT);
-                    if event.state == ElementState::Pressed && mods.is_empty() && !is_dead {
-                        if let Some(text) = event.text {
-                            let event = Event::Text(text);
-                            self.send_event(win.as_node(data), id, event);
-                        }
+                    if !mods.is_empty() {
+                        event.text = None;
+                    } else if event
+                        .text
+                        .as_ref()
+                        .and_then(|t| t.chars().next())
+                        .map(|c| c.is_control())
+                        .unwrap_or(false)
+                    {
+                        event.text = None;
+                    }
+
+                    if self.send_event(win.as_node(data), id, Event::Key(event, is_synthetic)) {
+                        return;
+                    }
+                }
+
+                if state == ElementState::Pressed && !is_synthetic {
+                    self.start_key_event(win.as_node(data), logical_key, physical_key);
+                } else if state == ElementState::Released {
+                    if let Some(id) = self.key_depress.remove(&physical_key) {
+                        self.redraw(id);
                     }
                 }
             }
@@ -458,7 +473,7 @@ impl<'a> EventCx<'a> {
                             if let Some(id) =
                                 win._nav_next(self, data, Some(&start_id), NavAdvance::None)
                             {
-                                self.set_nav_focus(id, false);
+                                self.set_nav_focus(id, FocusSource::Pointer);
                             }
                         }
                     }
@@ -486,7 +501,7 @@ impl<'a> EventCx<'a> {
                                 if let Some(id) =
                                     win._nav_next(self, data, Some(id), NavAdvance::None)
                                 {
-                                    self.set_nav_focus(id, false);
+                                    self.set_nav_focus(id, FocusSource::Pointer);
                                 }
                             }
 

@@ -66,7 +66,8 @@ mod events;
 mod response;
 
 pub use smol_str::SmolStr;
-#[cfg(winit)] pub use winit::event::MouseButton;
+#[cfg(winit)]
+pub use winit::event::{ElementState, KeyEvent, MouseButton};
 #[cfg(winit)]
 pub use winit::keyboard::{Key, KeyCode, ModifiersState};
 #[cfg(winit)]

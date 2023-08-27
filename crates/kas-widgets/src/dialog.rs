@@ -129,14 +129,15 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
+        /* NOTE: this makes sense for a window but not an embedded editor.
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.register_nav_fallback(self.id());
 
             // Focus first item initially:
             if cx.nav_focus().is_none() {
-                cx.next_nav_focus(self.id(), false, true);
+                cx.next_nav_focus(self.id(), false, FocusSource::Synthetic);
             }
-        }
+        }*/
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {

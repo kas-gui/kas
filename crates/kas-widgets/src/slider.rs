@@ -6,7 +6,7 @@
 //! `Slider` control
 
 use super::{GripMsg, GripPart};
-use kas::event::Command;
+use kas::event::{Command, FocusSource};
 use kas::prelude::*;
 use kas::theme::Feature;
 use std::fmt::Debug;
@@ -239,16 +239,23 @@ impl_scope! {
             self
         }
 
-        #[inline]
+        /// Set value and update grip
         #[allow(clippy::neg_cmp_op_on_partial_ord)]
-        fn clamp_value(&self, value: T) -> T {
-            if !(value >= self.range.0) {
+        fn set_value(&mut self, value: T) -> Action {
+            let value = if !(value >= self.range.0) {
                 self.range.0
             } else if !(value <= self.range.1) {
                 self.range.1
             } else {
                 value
+            };
+
+            if value == self.value {
+                return Action::empty();
             }
+
+            self.value = value;
+            self.grip.set_offset(self.offset()).1
         }
 
         // translate value to offset in local coordinates
@@ -277,12 +284,11 @@ impl_scope! {
             if self.direction.is_reversed() {
                 a = b - a;
             }
-            let value = self.clamp_value(a + self.range.0);
-            if value != self.value {
-                self.value = value;
-                *cx |= self.grip.set_offset(self.offset()).1;
+            let action = self.set_value(a + self.range.0);
+            if !action.is_empty() {
+                *cx |= action;
                 if let Some(ref f) = self.on_move {
-                    f(cx, data, value);
+                    f(cx, data, self.value);
                 }
             }
         }
@@ -331,7 +337,7 @@ impl_scope! {
         type Data = A;
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
-            self.value = self.clamp_value((self.state_fn)(cx, data));
+            *cx |= self.set_value((self.state_fn)(cx, data));
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> Response {
@@ -367,13 +373,11 @@ impl_scope! {
                         _ => return Response::Unused,
                     };
 
-                    let value = self.clamp_value(value);
-                    if value != self.value {
-                        self.value = value;
-                        let _ = self.grip.set_offset(self.offset());
-                        cx.redraw(self.id());
+                    let action = self.set_value(value);
+                    if !action.is_empty() {
+                        *cx |= action;
                         if let Some(ref f) = self.on_move {
-                            f(cx, data, value);
+                            f(cx, data, self.value);
                         }
                     }
                 }
@@ -392,7 +396,7 @@ impl_scope! {
             }
 
             match cx.try_pop() {
-                Some(GripMsg::PressStart) => cx.set_nav_focus(self.id(), false),
+                Some(GripMsg::PressStart) => cx.set_nav_focus(self.id(), FocusSource::Synthetic),
                 Some(GripMsg::PressMove(pos)) => {
                     self.apply_grip_offset(cx, data, pos);
                 }
