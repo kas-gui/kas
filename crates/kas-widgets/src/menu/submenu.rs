@@ -97,7 +97,7 @@ impl_scope! {
                 if let Some(dir) = cmd.as_direction() {
                     if dir.is_vertical() {
                         let rev = dir.is_reversed();
-                        cx.next_nav_focus(self.id(), rev, FocusSource::Key);
+                        cx.next_nav_focus(None, rev, FocusSource::Key);
                         Response::Used
                     } else if dir == self.direction.as_direction().reversed() {
                         self.close_menu(cx, true);

@@ -478,7 +478,7 @@ impl<'a> EventCx<'a> {
                 }
             }
 
-            if let Some(id) = self.popups.last().map(|popup| popup.1.parent.clone()) {
+            if let Some(id) = self.popups.last().map(|popup| popup.1.id.clone()) {
                 if send(self, id, cmd) {
                     return;
                 }
@@ -640,13 +640,9 @@ impl<'a> EventCx<'a> {
         id: Option<WidgetId>,
         event: Event,
     ) -> bool {
-        while let Some((wid, parent)) = self
-            .popups
-            .last()
-            .map(|(wid, p, _)| (*wid, p.parent.clone()))
-        {
-            log::trace!("send_popup_first: parent={parent}: {event:?}");
-            if self.send_event(widget.re(), parent, event.clone()) {
+        while let Some((wid, pid)) = self.popups.last().map(|(wid, p, _)| (*wid, p.id.clone())) {
+            log::trace!("send_popup_first: id={pid}: {event:?}");
+            if self.send_event(widget.re(), pid, event.clone()) {
                 return true;
             }
             self.close_window(wid, false);

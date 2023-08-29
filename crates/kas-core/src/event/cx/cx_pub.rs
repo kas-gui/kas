@@ -703,7 +703,7 @@ impl<'a> EventCx<'a> {
     /// window without borders and with precise placement, or may be a layer
     /// drawn in an existing window.
     ///
-    /// The parent of a popup automatically receives mouse-motion events
+    /// The popup automatically receives mouse-motion events
     /// ([`Event::CursorMove`]) which may be used to navigate menus.
     /// The parent automatically receives the "depressed" visual state.
     ///

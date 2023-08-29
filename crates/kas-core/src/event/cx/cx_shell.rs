@@ -397,7 +397,7 @@ impl<'a> EventCx<'a> {
                     {
                         pan.coords[usize::conv(grab.pan_grab.1)].1 = coord;
                     }
-                } else if let Some(id) = self.popups.last().map(|(_, p, _)| p.parent.clone()) {
+                } else if let Some(id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
                     let press = Press {
                         source: PressSource::Mouse(FAKE_MOUSE_BUTTON, 0),
                         id: cur_id,

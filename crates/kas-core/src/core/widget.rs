@@ -467,6 +467,8 @@ pub trait Widget: Layout {
     fn _replay(&mut self, cx: &mut EventCx, data: &Self::Data, id: WidgetId, msg: Erased);
 
     /// Internal method: search for the previous/next navigation target
+    ///
+    /// `focus`: the current focus or starting point.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn _nav_next(

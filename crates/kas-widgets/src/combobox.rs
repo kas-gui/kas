@@ -103,18 +103,18 @@ impl_scope! {
             match event {
                 Event::Command(cmd) => {
                     if let Some(popup_id) = self.popup_id {
-                        let next = |cx: &mut EventCx, id, clr, rev| {
+                        let next = |cx: &mut EventCx, clr, rev| {
                             if clr {
                                 cx.clear_nav_focus();
                             }
-                            cx.next_nav_focus(Some(id), rev, FocusSource::Key);
+                            cx.next_nav_focus(None, rev, FocusSource::Key);
                         };
                         match cmd {
                             cmd if cmd.is_activate() => cx.close_window(popup_id, true),
-                            Command::Up => next(cx, self.id(), false, true),
-                            Command::Down => next(cx, self.id(), false, false),
-                            Command::Home => next(cx, self.id(), true, false),
-                            Command::End => next(cx, self.id(), true, true),
+                            Command::Up => next(cx, false, true),
+                            Command::Down => next(cx, false, false),
+                            Command::Home => next(cx, true, false),
+                            Command::End => next(cx, true, true),
                             _ => return Response::Unused,
                         }
                     } else {

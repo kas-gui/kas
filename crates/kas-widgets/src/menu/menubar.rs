@@ -172,6 +172,7 @@ impl_scope! {
                         // Click happened out of the menubar or submenus,
                         // while one or more submenus are opened.
                         self.delayed_open = None;
+                        self.set_menu_path(cx, data, None, false);
                         Response::Unused
                     }
                 }
