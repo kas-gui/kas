@@ -215,7 +215,7 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
     where
         F: FnOnce(SubMenuBuilder<Data>),
     {
-        self.push_submenu_dir(label, f, kas::dir::Right);
+        self.push_submenu_dir(label, f, Direction::Right);
     }
 
     /// Append a [`SubMenu`], chain style
@@ -232,24 +232,22 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
     /// Append a [`SubMenu`]
     ///
     /// This submenu prefers to open in the specified direction.
-    pub fn push_submenu_dir<F, D>(&mut self, label: impl Into<AccelString>, f: F, dir: D)
+    pub fn push_submenu_dir<F>(&mut self, label: impl Into<AccelString>, f: F, dir: Direction)
     where
         F: FnOnce(SubMenuBuilder<Data>),
-        D: Directional,
     {
         let mut menu = Vec::new();
         f(SubMenuBuilder { menu: &mut menu });
-        self.menu.push(Box::new(SubMenu::new_dir(label, menu, dir)));
+        self.menu.push(Box::new(SubMenu::new(label, menu, dir)));
     }
 
     /// Append a [`SubMenu`], chain style
     ///
     /// This submenu prefers to open in the specified direction.
     #[inline]
-    pub fn submenu_dir<F, D>(mut self, label: impl Into<AccelString>, f: F, dir: D) -> Self
+    pub fn submenu_dir<F>(mut self, label: impl Into<AccelString>, f: F, dir: Direction) -> Self
     where
         F: FnOnce(SubMenuBuilder<Data>),
-        D: Directional,
     {
         self.push_submenu_dir(label, f, dir);
         self

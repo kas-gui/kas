@@ -18,9 +18,9 @@ impl_scope! {
     #[widget {
         layout = self.label;
     }]
-    pub struct SubMenu<Data, D: Directional = kas::dir::Down> {
+    pub struct SubMenu<Data> {
         core: widget_core!(),
-        direction: D,
+        direction: Direction,
         pub(crate) navigable: bool,
         #[widget(&())]
         label: AccelLabel,
@@ -31,42 +31,30 @@ impl_scope! {
         popup_id: Option<WindowId>,
     }
 
-    impl Self
-    where
-        D: Default,
-    {
-        /// Construct a sub-menu
-        pub fn new<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<Data>>) -> Self {
-            Self::new_dir(label, list, D::default())
-        }
-    }
-    impl<Data> SubMenu<Data, kas::dir::Right> {
+    impl Self {
         /// Construct a sub-menu, opening to the right
         pub fn right<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<Data>>) -> Self {
-            SubMenu::new(label, list)
+            SubMenu::new(label, list, Direction::Right)
         }
-    }
-    impl<Data> SubMenu<Data, kas::dir::Down> {
+
         /// Construct a sub-menu, opening downwards
         pub fn down<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<Data>>) -> Self {
-            SubMenu::new(label, list)
+            SubMenu::new(label, list, Direction::Down)
         }
-    }
 
-    impl Self {
         /// Construct a sub-menu
         #[inline]
-        pub fn new_dir<S: Into<AccelString>>(
+        pub fn new<S: Into<AccelString>>(
             label: S,
             list: Vec<BoxedMenu<Data>>,
-            direction: D,
+            direction: Direction,
         ) -> Self {
             SubMenu {
                 core: Default::default(),
                 direction,
                 navigable: true,
                 label: AccelLabel::new(label).with_class(TextClass::MenuLabel),
-                mark: Mark::new(MarkStyle::Point(direction.as_direction())),
+                mark: Mark::new(MarkStyle::Point(direction)),
                 list: PopupFrame::new(MenuView::new(list)),
                 popup_id: None,
             }
@@ -79,7 +67,7 @@ impl_scope! {
                 self.popup_id = Some(cx.add_popup(kas::Popup {
                     id: id,
                     parent: self.id(),
-                    direction: self.direction.as_direction(),
+                    direction: self.direction,
                 }));
                 if set_focus {
                     cx.next_nav_focus(self.id(), false, FocusSource::Key);
@@ -99,7 +87,7 @@ impl_scope! {
                         let rev = dir.is_reversed();
                         cx.next_nav_focus(None, rev, FocusSource::Key);
                         Response::Used
-                    } else if dir == self.direction.as_direction().reversed() {
+                    } else if dir == self.direction.reversed() {
                         self.close_menu(cx, true);
                         Response::Used
                     } else {
@@ -113,7 +101,7 @@ impl_scope! {
                 } else {
                     Response::Unused
                 }
-            } else if Some(self.direction.as_direction()) == cmd.as_direction() {
+            } else if Some(self.direction) == cmd.as_direction() {
                 self.open_menu(cx, data, true);
                 Response::Used
             } else {

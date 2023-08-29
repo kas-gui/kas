@@ -20,7 +20,7 @@ impl_scope! {
     pub struct MenuBar<Data, D: Directional = kas::dir::Right> {
         core: widget_core!(),
         direction: D,
-        widgets: Vec<SubMenu<Data, D::Flipped>>,
+        widgets: Vec<SubMenu<Data>>,
         layout_store: layout::DynRowStorage,
         delayed_open: Option<WidgetId>,
     }
@@ -30,7 +30,7 @@ impl_scope! {
         D: Default,
     {
         /// Construct a menubar
-        pub fn new(menus: Vec<SubMenu<Data, D::Flipped>>) -> Self {
+        pub fn new(menus: Vec<SubMenu<Data>>) -> Self {
             MenuBar::new_dir(menus, Default::default())
         }
 
@@ -41,14 +41,14 @@ impl_scope! {
     }
     impl<Data> MenuBar<Data, kas::dir::Right> {
         /// Construct a menubar
-        pub fn right(menus: Vec<SubMenu<Data, kas::dir::Down>>) -> Self {
+        pub fn right(menus: Vec<SubMenu<Data>>) -> Self {
             MenuBar::new(menus)
         }
     }
 
     impl Self {
         /// Construct a menubar with explicit direction
-        pub fn new_dir(mut menus: Vec<SubMenu<Data, D::Flipped>>, direction: D) -> Self {
+        pub fn new_dir(mut menus: Vec<SubMenu<Data>>, direction: D) -> Self {
             for menu in menus.iter_mut() {
                 menu.navigable = false;
             }
@@ -276,7 +276,7 @@ impl_scope! {
 ///
 /// Access through [`MenuBar::builder`].
 pub struct MenuBuilder<Data, D: Directional> {
-    menus: Vec<SubMenu<Data, D::Flipped>>,
+    menus: Vec<SubMenu<Data>>,
     direction: D,
 }
 
@@ -287,11 +287,11 @@ impl<Data, D: Directional> MenuBuilder<Data, D> {
     pub fn menu<F>(mut self, label: impl Into<AccelString>, f: F) -> Self
     where
         F: FnOnce(SubMenuBuilder<Data>),
-        D::Flipped: Default,
     {
         let mut menu = Vec::new();
         f(SubMenuBuilder { menu: &mut menu });
-        self.menus.push(SubMenu::new(label, menu));
+        let dir = self.direction.as_direction().flipped();
+        self.menus.push(SubMenu::new(label, menu, dir));
         self
     }
 
