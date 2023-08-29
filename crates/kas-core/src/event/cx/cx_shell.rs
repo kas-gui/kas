@@ -485,7 +485,7 @@ impl<'a> EventCx<'a> {
                         coord,
                     };
                     let event = Event::PressStart { press };
-                    let _ = self.send_popup_first(win.as_node(data), self.hover.clone(), event);
+                    self.send_popup_first(win.as_node(data), self.hover.clone(), event);
                 }
             }
             // TouchpadPressure { pressure: f32, stage: i64, },

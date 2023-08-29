@@ -128,7 +128,6 @@ impl_scope! {
                         }
                         Response::Used
                     } else {
-                        self.popup.close(cx);
                         Response::Unused
                     }
                 }

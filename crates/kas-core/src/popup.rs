@@ -57,8 +57,16 @@ impl_scope! {
             cx.new_accel_layer(self.id(), true);
         }
 
-        fn handle_event(&mut self, _: &mut EventCx, _: &W::Data, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &W::Data, event: Event) -> Response {
             match event {
+                Event::PressStart { press } => {
+                    if press.id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
+                        Response::Unused
+                    } else {
+                        self.close(cx);
+                        Response::Unused
+                    }
+                }
                 Event::PopupClosed(id) => {
                     debug_assert_eq!(Some(id), self.win_id);
                     self.win_id = None;

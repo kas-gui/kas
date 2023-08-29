@@ -631,14 +631,8 @@ impl<'a> EventCx<'a> {
         widget._send(self, id, disabled, event) == Response::Used
     }
 
-    // Returns true if event is used
-    fn send_popup_first(
-        &mut self,
-        mut widget: Node<'_>,
-        id: Option<WidgetId>,
-        event: Event,
-    ) -> bool {
-        while let Some((wid, pid)) = self.popups.last().map(|(wid, p, _)| (*wid, p.id.clone())) {
+    fn send_popup_first(&mut self, mut widget: Node<'_>, id: Option<WidgetId>, event: Event) {
+        while let Some(pid) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
             let mut target = pid;
             if let Some(id) = id.clone() {
                 if target.is_ancestor_of(&id) {
@@ -647,14 +641,12 @@ impl<'a> EventCx<'a> {
             }
             log::trace!("send_popup_first: id={target}: {event:?}");
             if self.send_event(widget.re(), target, event.clone()) {
-                return true;
+                return;
             }
-            self.close_window(wid, false);
         }
         if let Some(id) = id {
-            return self.send_event(widget, id, event);
+            self.send_event(widget, id, event);
         }
-        false
     }
 
     /// Advance the keyboard navigation focus
