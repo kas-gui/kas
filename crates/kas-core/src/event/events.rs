@@ -17,9 +17,8 @@ use crate::{dir::Direction, WidgetId, WindowId};
 
 /// Events addressed to a widget
 ///
-/// Note regarding disabled widgets: [`Event::PopupRemoved`]
-/// and `Lost..` events are received regardless of status; other events are not
-/// received by disabled widgets. See [`Event::pass_when_disabled`].
+/// Note that a few events are received by disabled widgets; see
+/// [`Event::pass_when_disabled`].
 #[non_exhaustive]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
@@ -176,12 +175,14 @@ pub enum Event {
     ///
     /// The `u64` payload is copied from [`EventState::request_timer_update`].
     TimerUpdate(u64),
-    /// Notification that a popup has been destroyed
+    /// Notification that a popup has been closed
     ///
-    /// This is sent to the popup's parent after a popup has been removed.
+    /// This is sent to the popup when closed.
     /// Since popups may be removed directly by the EventCx, the parent should
     /// clean up any associated state here.
-    PopupRemoved(WindowId),
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    PopupClosed(WindowId),
     /// Sent when a widget receives navigation focus
     ///
     /// Navigation focus implies that the widget is highlighted and will be the
@@ -285,7 +286,7 @@ impl Event {
             Command(_) => false,
             Key(_, _) | Scroll(_) | Pan { .. } => false,
             CursorMove { .. } | PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
-            TimerUpdate(_) | PopupRemoved(_) => true,
+            TimerUpdate(_) | PopupClosed(_) => true,
             NavFocus { .. } | MouseHover(_) => false,
             LostNavFocus | LostCharFocus | LostSelFocus => true,
         }
@@ -306,7 +307,7 @@ impl Event {
             Command(_) | Scroll(_) | Pan { .. } => true,
             CursorMove { .. } | PressStart { .. } => true,
             PressMove { .. } | PressEnd { .. } => false,
-            TimerUpdate(_) | PopupRemoved(_) => false,
+            TimerUpdate(_) | PopupClosed(_) => false,
             NavFocus { .. } | MouseHover(_) | LostNavFocus => false,
             LostCharFocus | LostSelFocus => false,
         }

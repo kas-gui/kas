@@ -152,8 +152,8 @@ impl EventState {
             scroll: Scroll::None,
         };
 
-        while let Some((parent, wid)) = cx.popup_removed.pop() {
-            cx.send_event(win.as_node(data), parent, Event::PopupRemoved(wid));
+        while let Some((id, wid)) = cx.popup_removed.pop() {
+            cx.send_event(win.as_node(data), id, Event::PopupClosed(wid));
         }
 
         cx.flush_mouse_grab_motion(win.as_node(data));

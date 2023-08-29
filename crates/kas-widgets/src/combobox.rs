@@ -5,11 +5,11 @@
 
 //! Combobox
 
-use super::{menu::MenuEntry, Column, Mark, PopupFrame, StringLabel};
+use super::{menu::MenuEntry, Column, Mark, StringLabel};
 use kas::event::{Command, FocusSource, Scroll, ScrollDelta};
 use kas::prelude::*;
 use kas::theme::{MarkStyle, TextClass};
-use kas::WindowId;
+use kas::Popup;
 use std::fmt::Debug;
 
 #[derive(Clone, Debug)]
@@ -38,10 +38,9 @@ impl_scope! {
         #[widget(&())]
         mark: Mark,
         #[widget(&())]
-        popup: ComboPopup<V>,
+        popup: Popup<Column<MenuEntry<V>>>,
         active: usize,
         opening: bool,
-        popup_id: Option<WindowId>,
         state_fn: Box<dyn Fn(&ConfigCx, &A) -> V>,
         on_select: Option<Box<dyn Fn(&mut EventCx, V)>>,
     }
@@ -56,23 +55,9 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn recurse_range(&self) -> std::ops::Range<usize> {
-            let mut end = widget_index!(self.popup);
-            if self.popup_id.is_some() {
-                end += 1;
-            }
-            0..end
-        }
-
-        fn pre_configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
-            self.core.id = id;
-            cx.new_accel_layer(self.id(), true);
-        }
-
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             let msg = (self.state_fn)(cx, data);
             if let Some(index) = self.popup
-                .inner
                 .iter()
                 .enumerate()
                 .find_map(|(i, w)| (*w == msg).then_some(i))
@@ -88,21 +73,16 @@ impl_scope! {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &A, event: Event) -> Response {
             let open_popup = |s: &mut Self, cx: &mut EventCx, source: FocusSource| {
-                let id = s.make_child_id(widget_index!(self.popup));
-                cx.configure(s.popup.as_node(&()), id.clone());
-                s.popup_id = Some(cx.add_popup(kas::Popup {
-                    id: id,
-                    parent: s.id(),
-                    direction: Direction::Down,
-                }));
-                if let Some(w) = s.popup.inner.inner.get_child(s.active) {
-                    cx.next_nav_focus(w.id(), false, source);
+                if s.popup.open(cx, &(), s.id()) {
+                    if let Some(w) = s.popup.get_child(s.active) {
+                        cx.next_nav_focus(w.id(), false, source);
+                    }
                 }
             };
 
             match event {
                 Event::Command(cmd) => {
-                    if let Some(popup_id) = self.popup_id {
+                    if self.popup.is_open() {
                         let next = |cx: &mut EventCx, clr, rev| {
                             if clr {
                                 cx.clear_nav_focus();
@@ -110,7 +90,7 @@ impl_scope! {
                             cx.next_nav_focus(None, rev, FocusSource::Key);
                         };
                         match cmd {
-                            cmd if cmd.is_activate() => cx.close_window(popup_id, true),
+                            cmd if cmd.is_activate() => self.popup.close(cx, true),
                             Command::Up => next(cx, false, true),
                             Command::Down => next(cx, false, false),
                             Command::Home => next(cx, true, false),
@@ -130,7 +110,7 @@ impl_scope! {
                     }
                     Response::Used
                 }
-                Event::Scroll(ScrollDelta::LineDelta(_, y)) if self.popup_id.is_none() => {
+                Event::Scroll(ScrollDelta::LineDelta(_, y)) if !self.popup.is_open() => {
                     if y > 0.0 {
                         *cx |= self.set_active(self.active.saturating_sub(1));
                     } else if y < 0.0 {
@@ -144,21 +124,17 @@ impl_scope! {
                         if press.is_primary() {
                             press.grab(self.id()).with_cx(cx);
                             cx.set_grab_depress(*press, press.id);
-                            self.opening = self.popup_id.is_none();
+                            self.opening = !self.popup.is_open();
                         }
                         Response::Used
                     } else {
-                        if let Some(id) = self.popup_id {
-                            cx.close_window(id, false);
-                        }
+                        self.popup.close(cx, false);
                         Response::Unused
                     }
                 }
                 Event::CursorMove { press } | Event::PressMove { press, .. } => {
-                    if self.popup_id.is_none() {
-                        open_popup(self, cx, FocusSource::Pointer);
-                    }
-                    let cond = self.popup.inner.rect().contains(press.coord);
+                    open_popup(self, cx, FocusSource::Pointer);
+                    let cond = self.popup.rect().contains(press.coord);
                     let target = if cond { press.id } else { None };
                     cx.set_grab_depress(press.source, target.clone());
                     if let Some(id) = target {
@@ -170,24 +146,15 @@ impl_scope! {
                     if let Some(id) = press.id {
                         if self.eq_id(&id) {
                             if self.opening {
-                                if self.popup_id.is_none() {
-                                    open_popup(self, cx, FocusSource::Pointer);
-                                }
+                                open_popup(self, cx, FocusSource::Pointer);
                                 return Response::Used;
                             }
-                        } else if self.popup_id.is_some() && self.popup.is_ancestor_of(&id) {
+                        } else if self.popup.is_open() && self.popup.is_ancestor_of(&id) {
                             cx.send(id, Event::Command(Command::Activate));
                             return Response::Used;
                         }
                     }
-                    if let Some(id) = self.popup_id {
-                        cx.close_window(id, true);
-                    }
-                    Response::Used
-                }
-                Event::PopupRemoved(id) => {
-                    debug_assert_eq!(Some(id), self.popup_id);
-                    self.popup_id = None;
+                    self.popup.close(cx, true);
                     Response::Used
                 }
                 _ => Response::Unused,
@@ -197,9 +164,7 @@ impl_scope! {
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(IndexMsg(index)) = cx.try_pop() {
                 *cx |= self.set_active(index);
-                if let Some(id) = self.popup_id {
-                    cx.close_window(id, true);
-                }
+                self.popup.close(cx, true);
                 if let Some(ref f) = self.on_select {
                     if let Some(msg) = cx.try_pop() {
                         (f)(cx, msg);
@@ -258,15 +223,12 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
             core: Default::default(),
             label,
             mark: Mark::new(MarkStyle::Point(Direction::Down)),
-            popup: ComboPopup {
-                core: Default::default(),
-                inner: PopupFrame::new(
-                    Column::new(entries).on_messages(|cx, index| cx.push(IndexMsg(index))),
-                ),
-            },
+            popup: Popup::new(
+                Column::new(entries).on_messages(|cx, index| cx.push(IndexMsg(index))),
+                Direction::Down,
+            ),
             active: 0,
             opening: false,
-            popup_id: None,
             state_fn: Box::new(state_fn),
             on_select: None,
         }
@@ -327,10 +289,10 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
 
     /// Set the active choice
     pub fn set_active(&mut self, index: usize) -> Action {
-        if self.active != index && index < self.popup.inner.len() {
+        if self.active != index && index < self.popup.len() {
             self.active = index;
             let string = if index < self.len() {
-                self.popup.inner[index].get_string()
+                self.popup[index].get_string()
             } else {
                 "".to_string()
             };
@@ -343,18 +305,18 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
     /// Get the number of entries
     #[inline]
     pub fn len(&self) -> usize {
-        self.popup.inner.len()
+        self.popup.len()
     }
 
     /// True if the box contains no entries
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.popup.inner.is_empty()
+        self.popup.is_empty()
     }
 
     /// Remove all choices
     pub fn clear(&mut self) {
-        self.popup.inner.clear()
+        self.popup.clear()
     }
 
     /// Add a choice to the combobox, in last position
@@ -364,13 +326,13 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
     // TODO(opt): these methods cause full-window resize. They don't need to
     // resize at all if the menu is closed!
     pub fn push<T: Into<AccelString>>(&mut self, cx: &mut ConfigCx, label: T, msg: V) -> usize {
-        let column = &mut self.popup.inner;
+        let column = &mut self.popup;
         column.push(cx, &(), MenuEntry::new_msg(label, msg))
     }
 
     /// Pops the last choice from the combobox
     pub fn pop(&mut self, cx: &mut EventState) -> Option<()> {
-        self.popup.inner.pop(cx).map(|_| ())
+        self.popup.pop(cx).map(|_| ())
     }
 
     /// Add a choice at position `index`
@@ -383,7 +345,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
         label: T,
         msg: V,
     ) {
-        let column = &mut self.popup.inner;
+        let column = &mut self.popup;
         column.insert(cx, &(), index, MenuEntry::new_msg(label, msg));
     }
 
@@ -391,7 +353,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
     ///
     /// Panics if `index` is out of bounds.
     pub fn remove(&mut self, cx: &mut EventState, index: usize) {
-        self.popup.inner.remove(cx, index);
+        self.popup.remove(cx, index);
     }
 
     /// Replace the choice at `index`
@@ -405,20 +367,6 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
         msg: V,
     ) {
         self.popup
-            .inner
             .replace(cx, &(), index, MenuEntry::new_msg(label, msg));
-    }
-}
-
-impl_scope! {
-    #[autoimpl(Default)]
-    #[widget{
-        Data = ();
-        layout = self.inner;
-    }]
-    struct ComboPopup<V: Clone + Debug + 'static> {
-        core: widget_core!(),
-        #[widget]
-        inner: PopupFrame<Column<MenuEntry<V>>>,
     }
 }

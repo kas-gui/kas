@@ -36,32 +36,3 @@ impl_scope! {
         }
     }
 }
-
-impl_scope! {
-    /// A frame around pop-ups
-    ///
-    /// It is expected that this be the top-most widget inside any popup.
-    #[autoimpl(Deref, DerefMut using self.inner)]
-    #[autoimpl(class_traits using self.inner where W: trait)]
-    #[derive(Clone, Default)]
-    #[widget{
-        Data = W::Data;
-        layout = frame!(self.inner, style = kas::theme::FrameStyle::Popup);
-    }]
-    pub struct PopupFrame<W: Widget> {
-        core: widget_core!(),
-        #[widget]
-        pub inner: W,
-    }
-
-    impl Self {
-        /// Construct a frame
-        #[inline]
-        pub fn new(inner: W) -> Self {
-            PopupFrame {
-                core: Default::default(),
-                inner,
-            }
-        }
-    }
-}

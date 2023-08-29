@@ -221,7 +221,7 @@ pub struct EventState {
     pan_grab: SmallVec<[PanGrab; 4]>,
     accel_layers: BTreeMap<WidgetId, AccelLayer>,
     // For each: (WindowId of popup, popup descriptor, old nav focus)
-    popups: SmallVec<[(WindowId, crate::Popup, Option<WidgetId>); 16]>,
+    popups: SmallVec<[(WindowId, crate::PopupDescriptor, Option<WidgetId>); 16]>,
     popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
     time_updates: Vec<(Instant, WidgetId, u64)>,
     // Set of futures of messages together with id of sending widget
@@ -507,7 +507,7 @@ impl<'a> EventCx<'a> {
         // Next priority goes to accelerator keys when Alt is held or alt_bypass is true
         let mut target = None;
         for id in (self.popups.iter().rev())
-            .map(|(_, popup, _)| popup.parent.clone())
+            .map(|(_, popup, _)| popup.id.clone())
             .chain(std::iter::once(widget.id()))
         {
             if let Some(layer) = self.accel_layers.get(&id) {

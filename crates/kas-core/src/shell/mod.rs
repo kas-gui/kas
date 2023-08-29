@@ -31,7 +31,7 @@ pub extern crate raw_window_handle;
 #[allow(clippy::large_enum_variant)]
 #[cfg(winit)]
 enum PendingAction<A: 'static> {
-    AddPopup(WindowId, WindowId, kas::Popup),
+    AddPopup(WindowId, WindowId, kas::PopupDescriptor),
     AddWindow(WindowId, kas::Window<A>),
     CloseWindow(WindowId),
     Action(kas::Action),

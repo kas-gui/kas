@@ -98,7 +98,7 @@ pub use combobox::ComboBox;
 pub use edit::{EditBox, EditField, EditGuard};
 pub use event_config::EventConfig;
 pub use filler::Filler;
-pub use frame::{Frame, PopupFrame};
+pub use frame::Frame;
 pub use grid::{BoxGrid, Grid};
 pub use grip::{GripMsg, GripPart};
 pub use label::{label, AccelLabel, Label, StrLabel, StringLabel};

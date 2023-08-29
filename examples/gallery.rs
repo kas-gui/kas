@@ -21,7 +21,8 @@ struct AppData {
 }
 
 fn widgets() -> Box<dyn Widget<Data = AppData>> {
-    use crate::dialog::{TextEdit, TextEditResult};
+    use kas::widgets::dialog::{TextEdit, TextEditResult};
+    use kas::Popup;
 
     // A real app might use async loading of resources here (Svg permits loading
     // from a data slice; DrawShared allows allocation from data slice).
@@ -110,8 +111,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
         }]
         struct {
             core: widget_core!(),
-            #[widget(&())] editor: TextEdit = TextEdit::new("", true),
-            popup_id: Option<kas::WindowId>,
+            #[widget(&())] popup: Popup<TextEdit> = Popup::new(TextEdit::new("", true), Direction::Down),
         }
         impl Events for Self {
             type Data = Data;
@@ -120,16 +120,12 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
                 if let Some(MsgEdit) = cx.try_pop() {
                     // TODO: do not always set text: if this is a true pop-up it
                     // should not normally lose data.
-                    *cx |= self.editor.set_text(data.text.clone());
+                    *cx |= self.popup.set_text(data.text.clone());
                     // let ed = TextEdit::new(text, true);
                     // cx.add_window::<()>(ed.into_window("Edit text"));
                     // TODO: cx.add_modal(..)
                     // FIXME: what's with mouse focus here?
-                    self.popup_id = Some(cx.add_popup(kas::Popup {
-                        id: self.editor.id(),
-                        parent: self.id(),
-                        direction: kas::dir::Direction::Up,
-                    }));
+                    self.popup.open(cx, &(), self.id());
                 } else if let Some(result) = cx.try_pop() {
                     match result {
                         TextEditResult::Cancel => (),
@@ -138,9 +134,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
                             cx.push(Item::Text(text));
                         }
                     }
-                    if let Some(id) = self.popup_id.take() {
-                        cx.close_window(id, true);
-                    }
+                    self.popup.close(cx, true);
                 }
             }
         }

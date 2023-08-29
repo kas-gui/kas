@@ -6,12 +6,12 @@
 //! Sub-menu
 
 use super::{BoxedMenu, Menu, SubItems};
-use crate::{AccelLabel, Mark, PopupFrame};
+use crate::{AccelLabel, Mark};
 use kas::event::{Command, FocusSource, Scroll};
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::theme::{FrameStyle, MarkStyle, TextClass};
-use kas::WindowId;
+use kas::Popup;
 
 impl_scope! {
     /// A sub-menu
@@ -20,15 +20,13 @@ impl_scope! {
     }]
     pub struct SubMenu<Data> {
         core: widget_core!(),
-        direction: Direction,
         pub(crate) navigable: bool,
         #[widget(&())]
         label: AccelLabel,
         #[widget(&())]
         mark: Mark,
         #[widget]
-        list: PopupFrame<MenuView<BoxedMenu<Data>>>,
-        popup_id: Option<WindowId>,
+        popup: Popup<MenuView<BoxedMenu<Data>>>,
     }
 
     impl Self {
@@ -51,32 +49,18 @@ impl_scope! {
         ) -> Self {
             SubMenu {
                 core: Default::default(),
-                direction,
                 navigable: true,
                 label: AccelLabel::new(label).with_class(TextClass::MenuLabel),
                 mark: Mark::new(MarkStyle::Point(direction)),
-                list: PopupFrame::new(MenuView::new(list)),
-                popup_id: None,
+                popup: Popup::new(MenuView::new(list), direction),
             }
         }
 
         fn open_menu(&mut self, cx: &mut EventCx, data: &Data, set_focus: bool) {
-            if self.popup_id.is_none() {
-                let id = self.make_child_id(widget_index!(self.list));
-                cx.configure(self.list.as_node(data), id.clone());
-                self.popup_id = Some(cx.add_popup(kas::Popup {
-                    id: id,
-                    parent: self.id(),
-                    direction: self.direction,
-                }));
+            if self.popup.open(cx, data, self.id()) {
                 if set_focus {
                     cx.next_nav_focus(self.id(), false, FocusSource::Key);
                 }
-            }
-        }
-        fn close_menu(&mut self, cx: &mut EventCx, restore_focus: bool) {
-            if let Some(id) = self.popup_id {
-                cx.close_window(id, restore_focus);
             }
         }
 
@@ -87,8 +71,8 @@ impl_scope! {
                         let rev = dir.is_reversed();
                         cx.next_nav_focus(None, rev, FocusSource::Key);
                         Response::Used
-                    } else if dir == self.direction.reversed() {
-                        self.close_menu(cx, true);
+                    } else if dir == self.popup.direction().reversed() {
+                        self.popup.close(cx, true);
                         Response::Used
                     } else {
                         Response::Unused
@@ -101,7 +85,7 @@ impl_scope! {
                 } else {
                     Response::Unused
                 }
-            } else if Some(self.direction) == cmd.as_direction() {
+            } else if Some(self.popup.direction()) == cmd.as_direction() {
                 self.open_menu(cx, data, true);
                 Response::Used
             } else {
@@ -132,24 +116,6 @@ impl_scope! {
     impl Events for Self {
         type Data = Data;
 
-        fn recurse_range(&self) -> std::ops::Range<usize> {
-            let mut end = widget_index!(self.list);
-            if self.popup_id.is_some() {
-                end += 1;
-            }
-            0..end
-        }
-
-        fn pre_configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
-            self.core.id = id;
-            // FIXME: new layer should apply to self.list but not to self.label.
-            // We don't currently have a way to do that. Possibly we should
-            // remove `EventCx::add_accel_keys` bindings, simply checking all
-            // visible widgets whenever a shortcut key is pressed (also related:
-            // currently all pages of a TabStack have active shortcut keys).
-            cx.new_accel_layer(self.id(), true);
-        }
-
         fn navigable(&self) -> bool {
             self.navigable
         }
@@ -157,28 +123,19 @@ impl_scope! {
         fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> Response {
             match event {
                 Event::Command(cmd) if cmd.is_activate() => {
-                    if self.popup_id.is_none() {
-                        self.open_menu(cx, data, true);
-                    }
+                    self.open_menu(cx, data, true);
                     Response::Used
                 }
                 Event::Command(cmd) => self.handle_dir_key(cx, data, cmd),
-                Event::PopupRemoved(id) => {
-                    debug_assert_eq!(Some(id), self.popup_id);
-                    self.popup_id = None;
-                    Response::Used
-                }
                 _ => Response::Unused,
             }
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Data) {
             if let Some(kas::message::Activate) = cx.try_pop() {
-                if self.popup_id.is_none() {
-                    self.open_menu(cx, data, true);
-                }
+                self.popup.open(cx, data, self.id());
             } else {
-                self.close_menu(cx, true);
+                self.popup.close(cx, true);
             }
         }
 
@@ -197,7 +154,7 @@ impl_scope! {
         }
 
         fn menu_is_open(&self) -> bool {
-            self.popup_id.is_some()
+            self.popup.is_open()
         }
 
         fn set_menu_path(
@@ -213,18 +170,13 @@ impl_scope! {
 
             match target {
                 Some(id) if self.is_ancestor_of(id) => {
-                    if self.popup_id.is_none() {
-                        self.open_menu(cx, data, set_focus);
-                    }
+                    self.open_menu(cx, data, set_focus);
                 }
-                _ if self.popup_id.is_some() => {
-                    self.close_menu(cx, set_focus);
-                }
-                _ => (),
+                _ => self.popup.close(cx, set_focus),
             }
 
-            for i in 0..self.list.len() {
-                self.list[i].set_menu_path(cx, data, target, set_focus);
+            for i in 0..self.popup.len() {
+                self.popup[i].set_menu_path(cx, data, target, set_focus);
             }
         }
     }
