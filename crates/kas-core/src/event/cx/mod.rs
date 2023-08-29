@@ -393,7 +393,17 @@ impl EventState {
         self.sel_focus = Some(wid);
     }
 
-    fn set_hover(&mut self, w_id: Option<WidgetId>) {
+    // Clear old hover, set new hover, send events.
+    // If there is a popup, only permit descendands of that.
+    fn set_hover(&mut self, mut w_id: Option<WidgetId>) {
+        if let Some(ref id) = w_id {
+            if let Some(ref popup) = self.popups.last() {
+                if !popup.1.id.is_ancestor_of(id) {
+                    w_id = None;
+                }
+            }
+        }
+
         if self.hover != w_id {
             log::trace!("set_hover: w_id={w_id:?}");
             if let Some(id) = self.hover.take() {
