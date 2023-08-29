@@ -328,7 +328,7 @@ impl<'a> EventCx<'a> {
                 } else {
                     // Window focus lost: close all popups
                     while let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
-                        self.close_window(id, true);
+                        self.close_window(id);
                     }
                 }
             }

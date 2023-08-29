@@ -103,11 +103,6 @@ impl_scope! {
             self.win_id.is_some()
         }
 
-        // /// Get the popup's [`WindowId`], if open
-        // pub fn window_id(&self) -> Option<WindowId> {
-        //     self.win_id.clone()
-        // }
-
         /// Open the popup
         ///
         /// The popup is positioned next to the `parent`'s rect in the specified
@@ -116,7 +111,8 @@ impl_scope! {
         /// The `parent` is marked as depressed (pushed down) while the popup is
         /// open.
         ///
-        /// Returns `true` if opened, `false` if already open.
+        /// Returns `true` when the popup is newly opened. In this case, the
+        /// caller may wish to call [`EventCx::next_nav_focus`] next.
         pub fn open(&mut self, cx: &mut EventCx, data: &W::Data, parent: WidgetId) -> bool {
             if self.win_id.is_some() {
                 return false;
@@ -140,7 +136,7 @@ impl_scope! {
         /// the popup was open.
         pub fn close(&mut self, cx: &mut EventCx) {
             if let Some(id) = self.win_id {
-                cx.close_window(id, true);
+                cx.close_window(id);
             }
         }
     }

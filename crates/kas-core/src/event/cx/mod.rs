@@ -545,7 +545,7 @@ impl<'a> EventCx<'a> {
             self.next_nav_focus_impl(widget.re(), None, shift, FocusSource::Key);
         } else if vkey == Key::Escape {
             if let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
-                self.close_window(id, true);
+                self.close_window(id);
             }
         }
     }

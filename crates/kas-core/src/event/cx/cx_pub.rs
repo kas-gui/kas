@@ -744,10 +744,9 @@ impl<'a> EventCx<'a> {
 
     /// Close a window or pop-up
     ///
-    /// If `restore_focus` then navigation focus will return to whichever widget
-    /// had focus before the popup was open. (Usually this is true excepting
-    /// where focus has already been changed.)
-    pub fn close_window(&mut self, id: WindowId, restore_focus: bool) {
+    /// Navigation focus will return to whichever widget had focus before
+    /// the popup was open.
+    pub fn close_window(&mut self, id: WindowId) {
         if let Some(index) =
             self.popups
                 .iter()
@@ -758,12 +757,9 @@ impl<'a> EventCx<'a> {
             self.popup_removed.push((popup.id, wid));
             self.shell.close_window(wid);
 
-            if restore_focus {
-                if let Some(id) = onf {
-                    self.set_nav_focus(id, FocusSource::Synthetic);
-                }
+            if let Some(id) = onf {
+                self.set_nav_focus(id, FocusSource::Synthetic);
             }
-
             return;
         }
 
