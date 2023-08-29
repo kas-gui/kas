@@ -714,16 +714,6 @@ impl<'a> EventCx<'a> {
     /// the [`WindowId`] returned by this method.
     pub fn add_popup(&mut self, popup: crate::Popup) -> WindowId {
         log::trace!(target: "kas_core::event", "add_popup: {popup:?}");
-        let new_id = &popup.id;
-        while let Some((_, popup, _)) = self.popups.last() {
-            if popup.parent.is_ancestor_of(new_id) {
-                break;
-            }
-            let (wid, popup, _old_nav_focus) = self.popups.pop().unwrap();
-            self.shell.close_window(wid);
-            self.popup_removed.push((popup.parent, wid));
-            // Don't restore old nav focus: assume new focus will be set by new popup
-        }
 
         let id = self.shell.add_popup(popup.clone());
         let nav_focus = self.nav_focus.clone();
@@ -754,9 +744,6 @@ impl<'a> EventCx<'a> {
 
     /// Close a window or pop-up
     ///
-    /// In the case of a pop-up, all pop-ups created after this will also be
-    /// removed (on the assumption they are a descendant of the first popup).
-    ///
     /// If `restore_focus` then navigation focus will return to whichever widget
     /// had focus before the popup was open. (Usually this is true excepting
     /// where focus has already been changed.)
@@ -767,22 +754,15 @@ impl<'a> EventCx<'a> {
                 .enumerate()
                 .find_map(|(i, p)| if p.0 == id { Some(i) } else { None })
         {
-            let mut old_nav_focus = None;
-            while self.popups.len() > index {
-                let (wid, popup, onf) = self.popups.pop().unwrap();
-                self.popup_removed.push((popup.parent, wid));
-                self.shell.close_window(wid);
-                old_nav_focus = onf;
-            }
+            let (wid, popup, onf) = self.popups.remove(index);
+            self.popup_removed.push((popup.parent, wid));
+            self.shell.close_window(wid);
 
-            if !restore_focus {
-                old_nav_focus = None
+            if restore_focus {
+                if let Some(id) = onf {
+                    self.set_nav_focus(id, FocusSource::Synthetic);
+                }
             }
-            if let Some(id) = old_nav_focus {
-                self.set_nav_focus(id, FocusSource::Synthetic);
-            }
-            // TODO: if popup.id is an ancestor of self.nav_focus then clear
-            // focus if not setting (currently we cannot test this)
 
             return;
         }

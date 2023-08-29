@@ -506,11 +506,9 @@ impl<'a> EventCx<'a> {
 
         // Next priority goes to accelerator keys when Alt is held or alt_bypass is true
         let mut target = None;
-        let mut n = 0;
-        for (i, id) in (self.popups.iter().rev())
+        for id in (self.popups.iter().rev())
             .map(|(_, popup, _)| popup.parent.clone())
             .chain(std::iter::once(widget.id()))
-            .enumerate()
         {
             if let Some(layer) = self.accel_layers.get(&id) {
                 // but only when Alt is held or alt-bypass is enabled:
@@ -519,19 +517,9 @@ impl<'a> EventCx<'a> {
                 {
                     if let Some(id) = layer.1.get(&vkey).cloned() {
                         target = Some(id);
-                        n = i;
                         break;
                     }
                 }
-            }
-        }
-
-        // If we found a key binding below the top layer, we should close everything above
-        if n > 0 {
-            let len = self.popups.len();
-            for i in ((len - n)..len).rev() {
-                let id = self.popups[i].0;
-                self.close_window(id, false);
             }
         }
 

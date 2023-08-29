@@ -219,21 +219,24 @@ impl_scope! {
             target: Option<&WidgetId>,
             set_focus: bool,
         ) {
+            if !self.id_ref().is_valid() {
+                return;
+            }
+
             match target {
                 Some(id) if self.is_ancestor_of(id) => {
                     if self.popup_id.is_none() {
                         self.open_menu(cx, data, set_focus);
-                    }
-                    if !self.eq_id(id) {
-                        for i in 0..self.list.len() {
-                            self.list[i].set_menu_path(cx, data, target, set_focus);
-                        }
                     }
                 }
                 _ if self.popup_id.is_some() => {
                     self.close_menu(cx, set_focus);
                 }
                 _ => (),
+            }
+
+            for i in 0..self.list.len() {
+                self.list[i].set_menu_path(cx, data, target, set_focus);
             }
         }
     }
