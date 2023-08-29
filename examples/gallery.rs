@@ -133,7 +133,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
                             cx.push(Item::Text(text));
                         }
                     }
-                    self.popup.close(cx, true);
+                    self.popup.close(cx);
                 }
             }
         }

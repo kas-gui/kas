@@ -72,7 +72,7 @@ impl_scope! {
                         cx.next_nav_focus(None, rev, FocusSource::Key);
                         Response::Used
                     } else if dir == self.popup.direction().reversed() {
-                        self.popup.close(cx, true);
+                        self.popup.close(cx);
                         Response::Used
                     } else {
                         Response::Unused
@@ -135,7 +135,7 @@ impl_scope! {
             if let Some(kas::message::Activate) = cx.try_pop() {
                 self.popup.open(cx, data, self.id());
             } else {
-                self.popup.close(cx, true);
+                self.popup.close(cx);
             }
         }
 
@@ -172,7 +172,7 @@ impl_scope! {
                 Some(id) if self.is_ancestor_of(id) => {
                     self.open_menu(cx, data, set_focus);
                 }
-                _ => self.popup.close(cx, set_focus),
+                _ => self.popup.close(cx),
             }
 
             for i in 0..self.popup.len() {

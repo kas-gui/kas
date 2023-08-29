@@ -90,7 +90,7 @@ impl_scope! {
                             cx.next_nav_focus(None, rev, FocusSource::Key);
                         };
                         match cmd {
-                            cmd if cmd.is_activate() => self.popup.close(cx, true),
+                            cmd if cmd.is_activate() => self.popup.close(cx),
                             Command::Up => next(cx, false, true),
                             Command::Down => next(cx, false, false),
                             Command::Home => next(cx, true, false),
@@ -128,7 +128,7 @@ impl_scope! {
                         }
                         Response::Used
                     } else {
-                        self.popup.close(cx, false);
+                        self.popup.close(cx);
                         Response::Unused
                     }
                 }
@@ -154,7 +154,7 @@ impl_scope! {
                             return Response::Used;
                         }
                     }
-                    self.popup.close(cx, true);
+                    self.popup.close(cx);
                     Response::Used
                 }
                 _ => Response::Unused,
@@ -164,7 +164,7 @@ impl_scope! {
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(IndexMsg(index)) = cx.try_pop() {
                 *cx |= self.set_active(index);
-                self.popup.close(cx, true);
+                self.popup.close(cx);
                 if let Some(ref f) = self.on_select {
                     if let Some(msg) = cx.try_pop() {
                         (f)(cx, msg);

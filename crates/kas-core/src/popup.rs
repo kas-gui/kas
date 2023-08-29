@@ -128,12 +128,11 @@ impl_scope! {
 
         /// Close the popup
         ///
-        /// If `restore_focus` then navigation focus will return to whichever
-        /// widget had focus before the popup was open. (Usually this is true
-        /// excepting where focus has already been changed.)
-        pub fn close(&mut self, cx: &mut EventCx, restore_focus: bool) {
+        /// Navigation focus will return to whichever widget had focus before
+        /// the popup was open.
+        pub fn close(&mut self, cx: &mut EventCx) {
             if let Some(id) = self.win_id {
-                cx.close_window(id, restore_focus);
+                cx.close_window(id, true);
             }
         }
     }
