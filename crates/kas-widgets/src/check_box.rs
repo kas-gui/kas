@@ -134,7 +134,8 @@ impl_scope! {
             self.editable = editable;
         }
 
-        fn toggle(&mut self, cx: &mut EventCx, data: &A) {
+        /// Toggle the check box
+        pub fn toggle(&mut self, cx: &mut EventCx, data: &A) {
             // Note: do not update self.state; that is the responsibility of update.
             self.state = !self.state;
             if let Some(f) = self.on_toggle.as_ref() {

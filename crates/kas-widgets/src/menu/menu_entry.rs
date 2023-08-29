@@ -114,7 +114,6 @@ impl_scope! {
 impl_scope! {
     /// A menu entry which can be toggled
     #[widget {
-        Data = A;
         layout = row! [self.checkbox, self.label];
     }]
     pub struct MenuToggle<A> {
@@ -134,6 +133,16 @@ impl_scope! {
             let mut draw = draw.re_id(self.checkbox.id());
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             <Self as layout::AutoLayout>::draw(self, draw);
+        }
+    }
+
+    impl Events for Self {
+        type Data = A;
+
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
+            if let Some(kas::message::Activate) = cx.try_pop() {
+                self.checkbox.toggle(cx, data);
+            }
         }
     }
 
