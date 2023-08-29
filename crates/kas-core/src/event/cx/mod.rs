@@ -629,8 +629,14 @@ impl<'a> EventCx<'a> {
         event: Event,
     ) -> bool {
         while let Some((wid, pid)) = self.popups.last().map(|(wid, p, _)| (*wid, p.id.clone())) {
-            log::trace!("send_popup_first: id={pid}: {event:?}");
-            if self.send_event(widget.re(), pid, event.clone()) {
+            let mut target = pid;
+            if let Some(id) = id.clone() {
+                if target.is_ancestor_of(&id) {
+                    target = id;
+                }
+            }
+            log::trace!("send_popup_first: id={target}: {event:?}");
+            if self.send_event(widget.re(), target, event.clone()) {
                 return true;
             }
             self.close_window(wid, false);

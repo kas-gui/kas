@@ -124,7 +124,6 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
                     // let ed = TextEdit::new(text, true);
                     // cx.add_window::<()>(ed.into_window("Edit text"));
                     // TODO: cx.add_modal(..)
-                    // FIXME: what's with mouse focus here?
                     self.popup.open(cx, &(), self.id());
                 } else if let Some(result) = cx.try_pop() {
                     match result {
