@@ -310,9 +310,7 @@ pub enum NavAdvance {
 ///
 /// impl_scope! {
 ///     /// A text label
-///     #[widget {
-///         Data = ();
-///     }]
+///     #[widget]
 ///     pub struct AccessLabel {
 ///         core: widget_core!(),
 ///         class: TextClass,
@@ -356,6 +354,26 @@ pub enum NavAdvance {
 ///             draw.text_effects(self.rect(), &self.label, self.class);
 ///         }
 ///     }
+///
+///     impl Events for Self {
+///         type Data = ();
+///
+///         fn configure(&mut self, cx: &mut ConfigCx) {
+///             if let Some(key) = self.label.text().key() {
+///                 cx.add_access_key(self.id_ref(), key.clone());
+///             }
+///         }
+///
+///         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+///             match event {
+///                 Event::Command(cmd, code) if cmd.is_activate() => {
+///                     cx.push(kas::message::Activate(code));
+///                     Response::Used
+///                 }
+///                 _ => Response::Unused
+///             }
+///         }
+///     }
 /// }
 ///
 /// impl_scope! {
@@ -382,20 +400,24 @@ pub enum NavAdvance {
 ///             }
 ///         }
 ///     }
+///
 ///     impl Events for Self {
 ///         type Data = ();
 ///
-///         fn configure(&mut self, cx: &mut ConfigCx) {
-///             if let Some(key) = self.label.access_key() {
-///                 cx.add_access_key(self.id_ref(), key.clone());
-///             }
-///         }
-///
-///         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+///         fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> Response {
 ///             event.on_activate(cx, self.id(), |cx| {
 ///                 cx.push(self.message.clone());
 ///                 Response::Used
 ///             })
+///         }
+///
+///         fn handle_messages(&mut self, cx: &mut EventCx, _: &()) {
+///             if let Some(kas::message::Activate(code)) = cx.try_pop() {
+///                 cx.push(self.message.clone());
+///                 if let Some(code) = code {
+///                     cx.depress_with_key(self.id(), code);
+///                 }
+///             }
 ///         }
 ///     }
 /// }
