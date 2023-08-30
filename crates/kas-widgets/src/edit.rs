@@ -682,7 +682,7 @@ impl_scope! {
                     }
                     Response::Used
                 }
-                Event::LostCharFocus => {
+                Event::LostKeyFocus => {
                     self.has_key_focus = false;
                     cx.redraw(self.id());
                     G::focus_lost(self, cx, data);

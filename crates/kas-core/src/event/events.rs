@@ -207,13 +207,13 @@ pub enum Event {
     /// Widget lost keyboard input focus
     ///
     /// This focus is gained through the widget calling [`EventState::request_key_focus`].
-    LostCharFocus,
+    LostKeyFocus,
     /// Widget lost selection focus
     ///
     /// This focus is gained through the widget calling [`EventState::request_sel_focus`]
     /// or [`EventState::request_key_focus`].
     ///
-    /// In the case the widget also had character focus, [`Event::LostCharFocus`] is
+    /// In the case the widget also had character focus, [`Event::LostKeyFocus`] is
     /// received first.
     LostSelFocus,
 }
@@ -295,7 +295,7 @@ impl Event {
             CursorMove { .. } | PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | PopupClosed(_) => true,
             NavFocus { .. } | MouseHover(_) => false,
-            LostNavFocus | LostCharFocus | LostSelFocus => true,
+            LostNavFocus | LostKeyFocus | LostSelFocus => true,
         }
     }
 
@@ -305,7 +305,7 @@ impl Event {
     /// keyboard navigation target may be acted on by an ancestor if unused.
     /// Other events may not be; e.g. [`Event::PressMove`] and
     /// [`Event::PressEnd`] are only received by the widget requesting them
-    /// while [`Event::LostCharFocus`] (and similar events) are only sent to a
+    /// while [`Event::LostKeyFocus`] (and similar events) are only sent to a
     /// specific widget.
     pub fn is_reusable(&self) -> bool {
         use Event::*;
@@ -316,7 +316,7 @@ impl Event {
             PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | PopupClosed(_) => false,
             NavFocus { .. } | MouseHover(_) | LostNavFocus => false,
-            LostCharFocus | LostSelFocus => false,
+            LostKeyFocus | LostSelFocus => false,
         }
     }
 }

@@ -353,7 +353,7 @@ impl EventState {
             // If widget has key focus, this is lost
             self.key_focus = false;
             self.pending
-                .push_back(Pending::Send(id, Event::LostCharFocus));
+                .push_back(Pending::Send(id, Event::LostKeyFocus));
         }
     }
 
@@ -372,7 +372,7 @@ impl EventState {
             if self.key_focus {
                 // If widget has key focus, this is lost
                 self.pending
-                    .push_back(Pending::Send(id.clone(), Event::LostCharFocus));
+                    .push_back(Pending::Send(id.clone(), Event::LostKeyFocus));
             }
 
             // Selection focus is lost if another widget receives key focus
