@@ -342,6 +342,25 @@ impl EventState {
         }
     }
 
+    /// Visually depress a widget via a key code
+    ///
+    /// When a button-like widget is activated by a key it may call this to
+    /// ensure the widget is visually depressed until the key is released.
+    /// The widget will not receive a notification of key-release but will be
+    /// redrawn automatically.
+    ///
+    /// Note that keyboard shortcuts and mnemonics should usually match against
+    /// the "logical key". [`KeyCode`] is used here since the the logical key
+    /// may be changed by modifier keys.
+    pub fn depress_with_key(&mut self, id: WidgetId, code: KeyCode) {
+        if self.key_depress.values().any(|v| *v == id) {
+            return;
+        }
+
+        self.key_depress.insert(code, id);
+        self.send_action(Action::REDRAW);
+    }
+
     /// Request keyboard input focus
     ///
     /// When granted, the widget will receive [`Event::Key`] on key presses

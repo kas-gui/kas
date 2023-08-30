@@ -216,7 +216,7 @@ impl_scope! {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
-                Event::Command(cmd) => match cmd {
+                Event::Command(cmd, _) => match cmd {
                     Command::Escape | Command::Deselect if !self.selection.is_empty() => {
                         self.selection.set_empty();
                         cx.redraw(self.id());

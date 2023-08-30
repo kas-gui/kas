@@ -111,9 +111,12 @@ impl_scope! {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &W::Data) {
-            if let Some(kas::message::Activate) = cx.try_pop() {
+            if let Some(kas::message::Activate(code)) = cx.try_pop() {
                 if let Some(f) = self.on_press.as_ref() {
                     f(cx, data);
+                }
+                if let Some(code) = code {
+                    cx.depress_with_key(self.id(), code);
                 }
             }
         }

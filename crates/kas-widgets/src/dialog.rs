@@ -141,8 +141,8 @@ impl_scope! {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
-                Event::Command(Command::Escape) => self.close(cx, false),
-                Event::Command(Command::Enter) => self.close(cx, true),
+                Event::Command(Command::Escape, _) => self.close(cx, false),
+                Event::Command(Command::Enter, _) => self.close(cx, true),
                 _ => Response::Unused,
             }
         }

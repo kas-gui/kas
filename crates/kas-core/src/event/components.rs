@@ -275,7 +275,7 @@ impl ScrollComponent {
     ) -> (bool, Response) {
         let mut moved = false;
         match event {
-            Event::Command(cmd) => {
+            Event::Command(cmd, _) => {
                 let offset = match cmd {
                     Command::Home => Offset::ZERO,
                     Command::End => self.max_offset,

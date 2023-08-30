@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 #[allow(unused)]
 use super::{EventCx, EventState, GrabMode, Response}; // for doc-links
-use super::{Key, KeyEvent, Press};
+use super::{Key, KeyCode, KeyEvent, Press};
 use crate::geom::{DVec2, Offset};
 #[allow(unused)] use crate::Events;
 use crate::{dir::Direction, WidgetId, WindowId};
@@ -24,17 +24,17 @@ use crate::{dir::Direction, WidgetId, WindowId};
 pub enum Event {
     /// Command input
     ///
-    /// Even without keyboard focus a widget may receive a command (most
-    /// commonly [`Command::Activate`]). This is often a result of some keyboard
-    /// shortcut, but not necessarily.
+    /// A generic "command". The source is often but not always a key press.
+    /// In many cases (but not all) the target widget has navigation focus.
     ///
-    /// In some cases keys are remapped, e.g. a widget with selection focus but
-    /// not character or navigation focus may receive [`Command::Deselect`]
-    /// when the <kbd>Esc</kbd> key is pressed.
+    /// A [`KeyCode`] is attached when the command is caused by a key press.
+    /// The recipient may use this to call [`EventState::depress_with_key`].
     ///
-    /// If a widget has character focus then it will receive [`Event::Key`]
-    /// instead of `Event::Command` on key presses.
-    Command(Command),
+    /// If a widget has keyboard input focus (see
+    /// [`EventState::request_key_focus`]) it will instead receive
+    /// [`Event::Key`] for key presses (but may still receive `Event::Command`
+    /// from other sources).
+    Command(Command, Option<KeyCode>),
     /// Keyboard input: `event, is_synthetic`
     ///
     /// This is only received by a widget with character focus (see
@@ -256,6 +256,8 @@ impl Event {
     /// -   Mouse click and release on the same widget
     /// -   Touchscreen press and release on the same widget
     /// -   `Event::Command(cmd, _)` where [`cmd.is_activate()`](Command::is_activate)
+    ///
+    /// The method calls [`EventState::depress_with_key`] on activation.
     pub fn on_activate<F: FnOnce(&mut EventCx) -> Response>(
         self,
         cx: &mut EventCx,
@@ -263,7 +265,12 @@ impl Event {
         f: F,
     ) -> Response {
         match self {
-            Event::Command(cmd) if cmd.is_activate() => f(cx),
+            Event::Command(cmd, code) if cmd.is_activate() => {
+                if let Some(code) = code {
+                    cx.depress_with_key(id, code);
+                }
+                f(cx)
+            }
             Event::PressStart { press, .. } if press.is_primary() => press.grab(id).with_cx(cx),
             Event::PressEnd { press, success } => {
                 if success && id == press.id {
@@ -283,7 +290,7 @@ impl Event {
     pub fn pass_when_disabled(&self) -> bool {
         use Event::*;
         match self {
-            Command(_) => false,
+            Command(_, _) => false,
             Key(_, _) | Scroll(_) | Pan { .. } => false,
             CursorMove { .. } | PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | PopupClosed(_) => true,
@@ -304,7 +311,7 @@ impl Event {
         use Event::*;
         match self {
             Key(_, _) => false,
-            Command(_) | Scroll(_) | Pan { .. } => true,
+            Command(_, _) | Scroll(_) | Pan { .. } => true,
             CursorMove { .. } | PressStart { .. } => true,
             PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | PopupClosed(_) => false,

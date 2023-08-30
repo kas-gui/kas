@@ -300,9 +300,19 @@ impl_scope! {
 
         fn steal_event(&mut self, cx: &mut EventCx, data: &A, _: &WidgetId, event: &Event) -> Response {
             let btn = match event {
-                Event::Command(cmd) => match cmd {
-                    Command::Down => SpinBtn::Down,
-                    Command::Up => SpinBtn::Up,
+                Event::Command(cmd, code) => match cmd {
+                    Command::Down => {
+                        if let Some(code) = code {
+                            cx.depress_with_key(self.b_down.id(), *code);
+                        }
+                        SpinBtn::Down
+                    }
+                    Command::Up => {
+                        if let Some(code) = code {
+                            cx.depress_with_key(self.b_up.id(), *code);
+                        }
+                        SpinBtn::Up
+                    }
                     _ => return Response::Unused,
                 },
                 Event::Scroll(ScrollDelta::LineDelta(_, y)) => {

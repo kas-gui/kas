@@ -163,8 +163,11 @@ impl_scope! {
         type Data = A;
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
-            if let Some(kas::message::Activate) = cx.try_pop() {
+            if let Some(kas::message::Activate(code)) = cx.try_pop() {
                 self.inner.select(cx, data);
+                if let Some(code) = code {
+                    cx.depress_with_key(self.inner.id(), code);
+                }
             }
         }
     }

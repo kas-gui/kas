@@ -122,18 +122,24 @@ impl_scope! {
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> Response {
             match event {
-                Event::Command(cmd) if cmd.is_activate() => {
+                Event::Command(cmd, code) if cmd.is_activate() => {
                     self.open_menu(cx, data, true);
+                    if let Some(code) = code {
+                        cx.depress_with_key(self.id(), code);
+                    }
                     Response::Used
                 }
-                Event::Command(cmd) => self.handle_dir_key(cx, data, cmd),
+                Event::Command(cmd, _) => self.handle_dir_key(cx, data, cmd),
                 _ => Response::Unused,
             }
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Data) {
-            if let Some(kas::message::Activate) = cx.try_pop() {
+            if let Some(kas::message::Activate(code)) = cx.try_pop() {
                 self.popup.open(cx, data, self.id());
+                if let Some(code) = code {
+                    cx.depress_with_key(self.id(), code);
+                }
             } else {
                 self.popup.close(cx);
             }

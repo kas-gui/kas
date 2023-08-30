@@ -607,7 +607,7 @@ impl_scope! {
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> Response {
             let response = match event {
-                Event::Command(cmd) => {
+                Event::Command(cmd, _) => {
                     let last = data.len().wrapping_sub(1);
                     if last == usize::MAX {
                         return Response::Unused;

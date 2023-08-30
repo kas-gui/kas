@@ -81,7 +81,7 @@ impl_scope! {
             };
 
             match event {
-                Event::Command(cmd) => {
+                Event::Command(cmd, code) => {
                     if self.popup.is_open() {
                         let next = |cx: &mut EventCx, clr, rev| {
                             if clr {
@@ -90,7 +90,12 @@ impl_scope! {
                             cx.next_nav_focus(None, rev, FocusSource::Key);
                         };
                         match cmd {
-                            cmd if cmd.is_activate() => self.popup.close(cx),
+                            cmd if cmd.is_activate() => {
+                                self.popup.close(cx);
+                                if let Some(code) = code {
+                                    cx.depress_with_key(self.id(), code);
+                                }
+                            }
                             Command::Up => next(cx, false, true),
                             Command::Down => next(cx, false, false),
                             Command::Home => next(cx, true, false),
@@ -100,7 +105,12 @@ impl_scope! {
                     } else {
                         let last = self.len().saturating_sub(1);
                         match cmd {
-                            cmd if cmd.is_activate() => open_popup(self, cx, FocusSource::Key),
+                            cmd if cmd.is_activate() => {
+                                open_popup(self, cx, FocusSource::Key);
+                                if let Some(code) = code {
+                                    cx.depress_with_key(self.id(), code);
+                                }
+                            }
                             Command::Up => *cx |= self.set_active(self.active.saturating_sub(1)),
                             Command::Down => *cx |= self.set_active((self.active + 1).min(last)),
                             Command::Home => *cx |= self.set_active(0),
@@ -149,7 +159,7 @@ impl_scope! {
                                 return Response::Used;
                             }
                         } else if self.popup.is_open() && self.popup.is_ancestor_of(&id) {
-                            cx.send(id, Event::Command(Command::Activate));
+                            cx.send(id, Event::Command(Command::Activate, None));
                             return Response::Used;
                         }
                     }

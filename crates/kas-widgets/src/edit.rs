@@ -7,7 +7,7 @@
 
 use crate::{ScrollBar, ScrollMsg};
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{Command, CursorIcon, ElementState, Scroll, ScrollDelta};
+use kas::event::{Command, CursorIcon, ElementState, KeyCode, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::{NotReady, SelectionHelper, Text};
@@ -693,12 +693,12 @@ impl_scope! {
                     cx.redraw(self.id());
                     Response::Used
                 }
-                Event::Command(cmd) => {
+                Event::Command(cmd, code) => {
                     // Note: we can receive a Command without key focus, but should
                     // ensure we have focus before acting on it.
                     request_focus(self, cx, data);
                     if self.has_key_focus {
-                        match self.control_key(cx, data, cmd) {
+                        match self.control_key(cx, data, cmd, code) {
                             Ok(r) => r,
                             Err(NotReady) => Response::Used,
                         }
@@ -711,7 +711,7 @@ impl_scope! {
                         self.received_text(cx, data, &text)
                     } else {
                         if let Some(cmd) = cx.config().shortcuts(|s| s.try_match(cx.modifiers(), &event.logical_key)) {
-                            match self.control_key(cx, data, cmd) {
+                            match self.control_key(cx, data, cmd, Some(event.physical_key)) {
                                 Ok(r) => r,
                                 Err(NotReady) => Response::Used,
                             }
@@ -1137,6 +1137,7 @@ impl<G: EditGuard> EditField<G> {
         cx: &mut EventCx,
         data: &G::Data,
         cmd: Command,
+        code: Option<KeyCode>,
     ) -> Result<Response, NotReady> {
         let editable = self.editable;
         let mut shift = cx.modifiers().shift_key();
@@ -1415,7 +1416,12 @@ impl<G: EditGuard> EditField<G> {
         Ok(match result {
             EditAction::None => Response::Used,
             EditAction::Unused => Response::Unused,
-            EditAction::Activate => G::activate(self, cx, data),
+            EditAction::Activate => {
+                if let Some(code) = code {
+                    cx.depress_with_key(self.id(), code);
+                }
+                G::activate(self, cx, data)
+            }
             EditAction::Edit => {
                 G::edit(self, cx, data);
                 Response::Used

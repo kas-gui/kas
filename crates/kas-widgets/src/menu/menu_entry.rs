@@ -72,8 +72,11 @@ impl_scope! {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
-                Event::Command(cmd) if cmd.is_activate() => {
+                Event::Command(cmd, code) if cmd.is_activate() => {
                     cx.push(self.msg.clone());
+                    if let Some(code) = code {
+                        cx.depress_with_key(self.id(), code);
+                    }
                     Response::Used
                 }
                 _ => Response::Unused,
@@ -81,8 +84,11 @@ impl_scope! {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-            if let Some(kas::message::Activate) = cx.try_pop() {
+            if let Some(kas::message::Activate(code)) = cx.try_pop() {
                 cx.push(self.msg.clone());
+                if let Some(code) = code {
+                    cx.depress_with_key(self.id(), code);
+                }
             }
         }
     }
@@ -133,8 +139,11 @@ impl_scope! {
         type Data = A;
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
-            if let Some(kas::message::Activate) = cx.try_pop() {
+            if let Some(kas::message::Activate(code)) = cx.try_pop() {
                 self.checkbox.toggle(cx, data);
+                if let Some(code) = code {
+                    cx.depress_with_key(self.id(), code);
+                }
             }
         }
     }

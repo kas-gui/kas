@@ -215,11 +215,11 @@ impl_scope! {
                     if !self.rect().contains(press.coord) {
                         // not on the menubar
                         self.delayed_open = None;
-                        cx.send(id, Event::Command(Command::Activate));
+                        cx.send(id, Event::Command(Command::Activate, None));
                     }
                     Response::Used
                 }
-                Event::Command(cmd) => {
+                Event::Command(cmd, _) => {
                     // Arrow keys can switch to the next / previous menu
                     // as well as to the first / last item of an open menu.
                     use Command::{Left, Up};

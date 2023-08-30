@@ -562,7 +562,7 @@ impl_scope! {
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> Response {
             let response = match event {
-                Event::Command(cmd) => {
+                Event::Command(cmd, _) => {
                     if data.is_empty() {
                         return Response::Unused;
                     }

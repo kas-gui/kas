@@ -7,12 +7,16 @@
 //!
 //! These are messages that may be sent via [`EventCx::push`](crate::event::EventCx::push).
 
+use crate::event::KeyCode;
+
 /// Message: activate
 ///
 /// Example: a button's label has a keyboard shortcut; this message is sent by the label to
 /// trigger the button.
+///
+/// Payload: the key press which caused this message to be emitted, if any.
 #[derive(Copy, Clone, Debug)]
-pub struct Activate;
+pub struct Activate(pub Option<KeyCode>);
 
 /// Message: select child
 ///

@@ -325,15 +325,6 @@ impl EventState {
         }
     }
 
-    fn add_key_depress(&mut self, code: KeyCode, id: WidgetId) {
-        if self.key_depress.values().any(|v| *v == id) {
-            return;
-        }
-
-        self.key_depress.insert(code, id);
-        self.send_action(Action::REDRAW);
-    }
-
     #[inline]
     fn get_touch(&mut self, touch_id: u64) -> Option<&mut TouchGrab> {
         self.touch_grab.iter_mut().find(|grab| grab.id == touch_id)
@@ -461,10 +452,8 @@ impl<'a> EventCx<'a> {
             let mut targets = vec![];
             let mut send = |_self: &mut Self, id: WidgetId, cmd| -> bool {
                 if !targets.contains(&id) {
-                    let used = _self.send_event(widget.re(), id.clone(), Event::Command(cmd));
-                    if used {
-                        _self.add_key_depress(code, id.clone());
-                    }
+                    let event = Event::Command(cmd, Some(code));
+                    let used = _self.send_event(widget.re(), id.clone(), event);
                     targets.push(id);
                     used
                 } else {
@@ -537,8 +526,8 @@ impl<'a> EventCx<'a> {
             if let Some(id) = widget._nav_next(self, Some(&id), NavAdvance::None) {
                 self.set_nav_focus(id, FocusSource::Key);
             }
-            self.add_key_depress(code, id.clone());
-            self.send_event(widget, id, Event::Command(Command::Activate));
+            let event = Event::Command(Command::Activate, Some(code));
+            self.send_event(widget, id, event);
         } else if self.config.nav_focus && vkey == Key::Tab {
             self.clear_key_focus();
             let shift = self.modifiers.shift_key();

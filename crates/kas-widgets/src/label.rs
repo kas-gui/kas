@@ -329,8 +329,8 @@ impl_scope! {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
-                Event::Command(cmd) if cmd.is_activate() => {
-                    cx.push(kas::message::Activate);
+                Event::Command(cmd, code) if cmd.is_activate() => {
+                    cx.push(kas::message::Activate(code));
                     Response::Used
                 }
                 _ => Response::Unused
