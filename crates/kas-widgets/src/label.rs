@@ -343,13 +343,4 @@ impl_scope! {
             self.label.as_str()
         }
     }
-
-    impl SetAccel for AccelLabel {
-        fn set_accel_string(&mut self, string: AccelString) -> Action {
-            if self.label.text().key() != string.key() {
-                return Action::RECONFIGURE;
-            }
-            self.set_text(string)
-        }
-    }
 }

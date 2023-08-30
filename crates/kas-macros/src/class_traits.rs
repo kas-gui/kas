@@ -9,8 +9,7 @@ use proc_macro2::TokenStream as Toks;
 use quote::{quote, TokenStreamExt};
 use syn::ItemStruct;
 
-pub const CLASS_IMPLS: &[&dyn ImplTrait] =
-    &[&ImplHasBool, &ImplHasStr, &ImplHasString, &ImplSetAccel];
+pub const CLASS_IMPLS: &[&dyn ImplTrait] = &[&ImplHasBool, &ImplHasStr, &ImplHasString];
 
 pub struct ImplClassTraits;
 impl ImplTrait for ImplClassTraits {
@@ -147,35 +146,6 @@ impl ImplTrait for ImplHasString {
                 }
             };
             Ok((quote! { ::kas::class::HasString }, methods))
-        } else {
-            Err(Error::RequireUsing)
-        }
-    }
-}
-
-pub struct ImplSetAccel;
-impl ImplTrait for ImplSetAccel {
-    fn path(&self) -> SimplePath {
-        SimplePath::new(&["", "kas", "class", "SetAccel"])
-    }
-
-    fn support_ignore(&self) -> bool {
-        false
-    }
-
-    fn support_using(&self) -> bool {
-        true
-    }
-
-    fn struct_items(&self, _: &ItemStruct, args: &ImplArgs) -> Result<(Toks, Toks)> {
-        if let Some(using) = args.using_member() {
-            let methods = quote! {
-                #[inline]
-                fn set_accel_string(&mut self, accel: AccelString) -> ::kas::Action {
-                    self.#using.set_accel_string(accel)
-                }
-            };
-            Ok((quote! { ::kas::class::SetAccel }, methods))
         } else {
             Err(Error::RequireUsing)
         }

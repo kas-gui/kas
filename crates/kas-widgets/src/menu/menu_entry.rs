@@ -67,13 +67,6 @@ impl_scope! {
         }
     }
 
-    impl SetAccel for Self {
-        #[inline]
-        fn set_accel_string(&mut self, string: AccelString) -> Action {
-            self.label.set_accel_string(string)
-        }
-    }
-
     impl Events for Self {
         type Data = ();
 

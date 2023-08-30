@@ -19,7 +19,7 @@ impl_scope! {
     /// A tab
     ///
     /// This is a special variant of `Button` which sends a [`Select`] on press.
-    #[autoimpl(HasStr, SetAccel using self.label)]
+    #[autoimpl(HasStr using self.label)]
     #[widget {
         Data = ();
         layout = button!(self.label);

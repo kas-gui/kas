@@ -117,11 +117,4 @@ impl_scope! {
             self.rect().contains(coord).then(|| self.inner.id())
         }
     }
-
-    impl SetAccel for Self {
-        #[inline]
-        fn set_accel_string(&mut self, string: AccelString) -> Action {
-            self.label.set_accel_string(string)
-        }
-    }
 }
