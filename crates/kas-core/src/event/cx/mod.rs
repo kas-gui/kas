@@ -180,7 +180,7 @@ enum Pending {
     },
 }
 
-type AccelLayer = (bool, HashMap<Key, WidgetId>);
+type AccessLayer = (bool, HashMap<Key, WidgetId>);
 
 /// Event context state
 ///
@@ -219,9 +219,9 @@ pub struct EventState {
     mouse_grab: Option<MouseGrab>,
     touch_grab: SmallVec<[TouchGrab; 8]>,
     pan_grab: SmallVec<[PanGrab; 4]>,
-    accel_layers: BTreeMap<WidgetId, AccelLayer>,
+    access_layers: BTreeMap<WidgetId, AccessLayer>,
     // For each: (WindowId of popup, popup descriptor, old nav focus)
-    popups: SmallVec<[(WindowId, crate::Popup, Option<WidgetId>); 16]>,
+    popups: SmallVec<[(WindowId, crate::PopupDescriptor, Option<WidgetId>); 16]>,
     popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
     time_updates: Vec<(Instant, WidgetId, u64)>,
     // Set of futures of messages together with id of sending widget
@@ -325,15 +325,6 @@ impl EventState {
         }
     }
 
-    fn add_key_depress(&mut self, code: KeyCode, id: WidgetId) {
-        if self.key_depress.values().any(|v| *v == id) {
-            return;
-        }
-
-        self.key_depress.insert(code, id);
-        self.send_action(Action::REDRAW);
-    }
-
     #[inline]
     fn get_touch(&mut self, touch_id: u64) -> Option<&mut TouchGrab> {
         self.touch_grab.iter_mut().find(|grab| grab.id == touch_id)
@@ -362,7 +353,7 @@ impl EventState {
             // If widget has key focus, this is lost
             self.key_focus = false;
             self.pending
-                .push_back(Pending::Send(id, Event::LostCharFocus));
+                .push_back(Pending::Send(id, Event::LostKeyFocus));
         }
     }
 
@@ -381,7 +372,7 @@ impl EventState {
             if self.key_focus {
                 // If widget has key focus, this is lost
                 self.pending
-                    .push_back(Pending::Send(id.clone(), Event::LostCharFocus));
+                    .push_back(Pending::Send(id.clone(), Event::LostKeyFocus));
             }
 
             // Selection focus is lost if another widget receives key focus
@@ -393,7 +384,17 @@ impl EventState {
         self.sel_focus = Some(wid);
     }
 
-    fn set_hover(&mut self, w_id: Option<WidgetId>) {
+    // Clear old hover, set new hover, send events.
+    // If there is a popup, only permit descendands of that.
+    fn set_hover(&mut self, mut w_id: Option<WidgetId>) {
+        if let Some(ref id) = w_id {
+            if let Some(popup) = self.popups.last() {
+                if !popup.1.id.is_ancestor_of(id) {
+                    w_id = None;
+                }
+            }
+        }
+
         if self.hover != w_id {
             log::trace!("set_hover: w_id={w_id:?}");
             if let Some(id) = self.hover.take() {
@@ -451,10 +452,8 @@ impl<'a> EventCx<'a> {
             let mut targets = vec![];
             let mut send = |_self: &mut Self, id: WidgetId, cmd| -> bool {
                 if !targets.contains(&id) {
-                    let used = _self.send_event(widget.re(), id.clone(), Event::Command(cmd));
-                    if used {
-                        _self.add_key_depress(code, id.clone());
-                    }
+                    let event = Event::Command(cmd, Some(code));
+                    let used = _self.send_event(widget.re(), id.clone(), event);
                     targets.push(id);
                     used
                 } else {
@@ -478,7 +477,7 @@ impl<'a> EventCx<'a> {
                 }
             }
 
-            if let Some(id) = self.popups.last().map(|popup| popup.1.parent.clone()) {
+            if let Some(id) = self.popups.last().map(|popup| popup.1.id.clone()) {
                 if send(self, id, cmd) {
                     return;
                 }
@@ -504,34 +503,22 @@ impl<'a> EventCx<'a> {
             }
         }
 
-        // Next priority goes to accelerator keys when Alt is held or alt_bypass is true
+        // Next priority goes to access keys when Alt is held or alt_bypass is true
         let mut target = None;
-        let mut n = 0;
-        for (i, id) in (self.popups.iter().rev())
-            .map(|(_, popup, _)| popup.parent.clone())
+        for id in (self.popups.iter().rev())
+            .map(|(_, popup, _)| popup.id.clone())
             .chain(std::iter::once(widget.id()))
-            .enumerate()
         {
-            if let Some(layer) = self.accel_layers.get(&id) {
+            if let Some(layer) = self.access_layers.get(&id) {
                 // but only when Alt is held or alt-bypass is enabled:
                 if self.modifiers == ModifiersState::ALT
                     || layer.0 && self.modifiers == ModifiersState::empty()
                 {
                     if let Some(id) = layer.1.get(&vkey).cloned() {
                         target = Some(id);
-                        n = i;
                         break;
                     }
                 }
-            }
-        }
-
-        // If we found a key binding below the top layer, we should close everything above
-        if n > 0 {
-            let len = self.popups.len();
-            for i in ((len - n)..len).rev() {
-                let id = self.popups[i].0;
-                self.close_window(id, false);
             }
         }
 
@@ -539,15 +526,15 @@ impl<'a> EventCx<'a> {
             if let Some(id) = widget._nav_next(self, Some(&id), NavAdvance::None) {
                 self.set_nav_focus(id, FocusSource::Key);
             }
-            self.add_key_depress(code, id.clone());
-            self.send_event(widget, id, Event::Command(Command::Activate));
+            let event = Event::Command(Command::Activate, Some(code));
+            self.send_event(widget, id, event);
         } else if self.config.nav_focus && vkey == Key::Tab {
             self.clear_key_focus();
             let shift = self.modifiers.shift_key();
             self.next_nav_focus_impl(widget.re(), None, shift, FocusSource::Key);
         } else if vkey == Key::Escape {
             if let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
-                self.close_window(id, true);
+                self.close_window(id);
             }
         }
     }
@@ -633,28 +620,22 @@ impl<'a> EventCx<'a> {
         widget._send(self, id, disabled, event) == Response::Used
     }
 
-    // Returns true if event is used
-    fn send_popup_first(
-        &mut self,
-        mut widget: Node<'_>,
-        id: Option<WidgetId>,
-        event: Event,
-    ) -> bool {
-        while let Some((wid, parent)) = self
-            .popups
-            .last()
-            .map(|(wid, p, _)| (*wid, p.parent.clone()))
-        {
-            log::trace!("send_popup_first: parent={parent}: {event:?}");
-            if self.send_event(widget.re(), parent, event.clone()) {
-                return true;
+    fn send_popup_first(&mut self, mut widget: Node<'_>, id: Option<WidgetId>, event: Event) {
+        while let Some(pid) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
+            let mut target = pid;
+            if let Some(id) = id.clone() {
+                if target.is_ancestor_of(&id) {
+                    target = id;
+                }
             }
-            self.close_window(wid, false);
+            log::trace!("send_popup_first: id={target}: {event:?}");
+            if self.send_event(widget.re(), target, event.clone()) {
+                return;
+            }
         }
         if let Some(id) = id {
-            return self.send_event(widget, id, event);
+            self.send_event(widget, id, event);
         }
-        false
     }
 
     /// Advance the keyboard navigation focus

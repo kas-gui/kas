@@ -20,7 +20,7 @@ impl_scope! {
     pub struct MenuBar<Data, D: Directional = kas::dir::Right> {
         core: widget_core!(),
         direction: D,
-        widgets: Vec<SubMenu<Data, D::Flipped>>,
+        widgets: Vec<SubMenu<Data>>,
         layout_store: layout::DynRowStorage,
         delayed_open: Option<WidgetId>,
     }
@@ -30,7 +30,7 @@ impl_scope! {
         D: Default,
     {
         /// Construct a menubar
-        pub fn new(menus: Vec<SubMenu<Data, D::Flipped>>) -> Self {
+        pub fn new(menus: Vec<SubMenu<Data>>) -> Self {
             MenuBar::new_dir(menus, Default::default())
         }
 
@@ -41,14 +41,14 @@ impl_scope! {
     }
     impl<Data> MenuBar<Data, kas::dir::Right> {
         /// Construct a menubar
-        pub fn right(menus: Vec<SubMenu<Data, kas::dir::Down>>) -> Self {
+        pub fn right(menus: Vec<SubMenu<Data>>) -> Self {
             MenuBar::new(menus)
         }
     }
 
     impl Self {
         /// Construct a menubar with explicit direction
-        pub fn new_dir(mut menus: Vec<SubMenu<Data, D::Flipped>>, direction: D) -> Self {
+        pub fn new_dir(mut menus: Vec<SubMenu<Data>>, direction: D) -> Self {
             for menu in menus.iter_mut() {
                 menu.navigable = false;
             }
@@ -131,12 +131,12 @@ impl_scope! {
     impl<Data, D: Directional> Events for MenuBar<Data, D> {
         type Data = Data;
 
-        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(id_code) => {
                     if let Some(id) = self.delayed_open.clone() {
                         if id.as_u64() == id_code {
-                            self.set_menu_path(cx, Some(&id), false);
+                            self.set_menu_path(cx, data, Some(&id), false);
                         }
                     }
                     Response::Used
@@ -161,9 +161,9 @@ impl_scope! {
                                     .iter()
                                     .any(|w| w.eq_id(&press.id) && !w.menu_is_open())
                                 {
-                                    self.set_menu_path(cx, press.id.as_ref(), false);
+                                    self.set_menu_path(cx, data, press.id.as_ref(), false);
                                 } else {
-                                    self.set_menu_path(cx, None, false);
+                                    self.set_menu_path(cx, data, None, false);
                                 }
                             }
                         }
@@ -172,6 +172,7 @@ impl_scope! {
                         // Click happened out of the menubar or submenus,
                         // while one or more submenus are opened.
                         self.delayed_open = None;
+                        self.set_menu_path(cx, data, None, false);
                         Response::Unused
                     }
                 }
@@ -189,7 +190,7 @@ impl_scope! {
                         if self.rect().contains(press.coord) {
                             cx.clear_nav_focus();
                             self.delayed_open = None;
-                            self.set_menu_path(cx, Some(&id), false);
+                            self.set_menu_path(cx, data, Some(&id), false);
                         } else if id != self.delayed_open {
                             cx.set_nav_focus(id.clone(), FocusSource::Pointer);
                             let delay = cx.config().menu_delay();
@@ -214,11 +215,11 @@ impl_scope! {
                     if !self.rect().contains(press.coord) {
                         // not on the menubar
                         self.delayed_open = None;
-                        cx.send(id, Event::Command(Command::Activate));
+                        cx.send(id, Event::Command(Command::Activate, None));
                     }
                     Response::Used
                 }
-                Event::Command(cmd) => {
+                Event::Command(cmd, _) => {
                     // Arrow keys can switch to the next / previous menu
                     // as well as to the first / last item of an open menu.
                     use Command::{Left, Up};
@@ -231,9 +232,9 @@ impl_scope! {
                                     let mut j = isize::conv(i);
                                     j = if reverse { j - 1 } else { j + 1 };
                                     j = j.rem_euclid(self.widgets.len().cast());
-                                    self.widgets[i].set_menu_path(cx, None, true);
+                                    self.widgets[i].set_menu_path(cx, data, None, true);
                                     let w = &mut self.widgets[usize::conv(j)];
-                                    w.set_menu_path(cx, Some(&w.id()), true);
+                                    w.set_menu_path(cx, data, Some(&w.id()), true);
                                     break;
                                 }
                             }
@@ -255,6 +256,7 @@ impl_scope! {
         fn set_menu_path(
             &mut self,
             cx: &mut EventCx,
+            data: &Data,
             target: Option<&WidgetId>,
             set_focus: bool,
         ) {
@@ -264,7 +266,7 @@ impl_scope! {
             );
             self.delayed_open = None;
             for i in 0..self.widgets.len() {
-                self.widgets[i].set_menu_path(cx, target, set_focus);
+                self.widgets[i].set_menu_path(cx, data, target, set_focus);
             }
         }
     }
@@ -274,7 +276,7 @@ impl_scope! {
 ///
 /// Access through [`MenuBar::builder`].
 pub struct MenuBuilder<Data, D: Directional> {
-    menus: Vec<SubMenu<Data, D::Flipped>>,
+    menus: Vec<SubMenu<Data>>,
     direction: D,
 }
 
@@ -282,14 +284,14 @@ impl<Data, D: Directional> MenuBuilder<Data, D> {
     /// Add a new menu
     ///
     /// The menu's direction is determined via [`Directional::Flipped`].
-    pub fn menu<F>(mut self, label: impl Into<AccelString>, f: F) -> Self
+    pub fn menu<F>(mut self, label: impl Into<AccessString>, f: F) -> Self
     where
         F: FnOnce(SubMenuBuilder<Data>),
-        D::Flipped: Default,
     {
         let mut menu = Vec::new();
         f(SubMenuBuilder { menu: &mut menu });
-        self.menus.push(SubMenu::new(label, menu));
+        let dir = self.direction.as_direction().flipped();
+        self.menus.push(SubMenu::new(label, menu, dir));
         self
     }
 

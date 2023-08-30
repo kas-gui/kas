@@ -9,6 +9,7 @@
 //!
 //! -   [`EventConfig`] provides an editor for event configuration
 //! -   [`kas::Window`](kas::Window) is the root of any UI tree used as a window
+//! -   [`kas::Popup`](kas::Popup) is the root of any popup
 //!
 //! ## Sub-modules
 //!
@@ -20,7 +21,7 @@
 //!
 //! ## Container widgets
 //!
-//! -   [`Frame`], [`NavFrame`], [`PopupFrame`]: frames around content
+//! -   [`Frame`], [`NavFrame`]: frames around content
 //! -   [`ScrollRegion`], [`ScrollBarRegion`]: larger on the inside
 //! -   [`Stack`], [`TabStack`]: a stack of widgets in the same rect
 //! -   [`List`]: a row / column of children
@@ -42,7 +43,7 @@
 //!
 //! -   [`Filler`]: an empty widget, sometimes used to fill space
 //! -   [`Image`]: a pixmap image
-//! -   [`Label`], [`AccelLabel`]: are static text labels
+//! -   [`Label`], [`AccessLabel`]: are static text labels
 //! -   [`Mark`]: a small mark
 //! -   [`ScrollLabel`]: text label supporting scrolling and selection
 //! -   [`Separator`]: a visible bar to separate things
@@ -52,7 +53,7 @@
 //!
 //! ## Components
 //!
-//! -   [`AccelLabel`]: a label which parses accelerator keys
+//! -   [`AccessLabel`]: a label which parses access keys
 //! -   [`GripPart`]: a handle (e.g. for a slider, splitter or scroll_bar)
 
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
@@ -98,10 +99,10 @@ pub use combobox::ComboBox;
 pub use edit::{EditBox, EditField, EditGuard};
 pub use event_config::EventConfig;
 pub use filler::Filler;
-pub use frame::{Frame, PopupFrame};
+pub use frame::Frame;
 pub use grid::{BoxGrid, Grid};
 pub use grip::{GripMsg, GripPart};
-pub use label::{label, AccelLabel, Label, StrLabel, StringLabel};
+pub use label::{label, AccessLabel, Label, StrLabel, StringLabel};
 pub use list::*;
 pub use mark::{Mark, MarkButton};
 pub use nav_frame::NavFrame;

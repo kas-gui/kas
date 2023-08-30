@@ -40,13 +40,13 @@ impl EventState {
         self.window_has_focus
     }
 
-    /// True when accelerator key labels should be shown
+    /// True when access key labels should be shown
     ///
     /// (True when Alt is held and no widget has character focus.)
     ///
     /// This is a fast check.
     #[inline]
-    pub fn show_accel_labels(&self) -> bool {
+    pub fn show_access_labels(&self) -> bool {
         self.modifiers.alt_key()
     }
 
@@ -280,65 +280,85 @@ impl EventState {
         }
     }
 
-    fn accel_layer_for_id(&mut self, id: &WidgetId) -> Option<&mut AccelLayer> {
+    fn access_layer_for_id(&mut self, id: &WidgetId) -> Option<&mut AccessLayer> {
         let root = &WidgetId::ROOT;
-        for (k, v) in self.accel_layers.range_mut(root..=id).rev() {
+        for (k, v) in self.access_layers.range_mut(root..=id).rev() {
             if k.is_ancestor_of(id) {
                 return Some(v);
             };
         }
-        debug_assert!(false, "expected ROOT accel layer");
+        debug_assert!(false, "expected ROOT access layer");
         None
     }
 
-    /// Add a new accelerator key layer
+    /// Add a new access key layer
     ///
-    /// This method constructs a new "layer" for accelerator keys: any keys
-    /// added via [`EventState::add_accel_key`] to a widget which is a descentant
+    /// This method constructs a new "layer" for access keys: any keys
+    /// added via [`EventState::add_access_key`] to a widget which is a descentant
     /// of (or equal to) `id` will only be active when that layer is active.
     ///
     /// This method should only be called by parents of a pop-up: layers over
     /// the base layer are *only* activated by an open pop-up.
     ///
-    /// If `alt_bypass` is true, then this layer's accelerator keys will be
+    /// If `alt_bypass` is true, then this layer's access keys will be
     /// active even without Alt pressed (but only highlighted with Alt pressed).
-    pub fn new_accel_layer(&mut self, id: WidgetId, alt_bypass: bool) {
-        self.accel_layers.insert(id, (alt_bypass, HashMap::new()));
+    pub fn new_access_layer(&mut self, id: WidgetId, alt_bypass: bool) {
+        self.access_layers.insert(id, (alt_bypass, HashMap::new()));
     }
 
     /// Enable `alt_bypass` for layer
     ///
     /// This may be called by a child widget during configure to enable or
-    /// disable alt-bypass for the accel-key layer containing its accel keys.
-    /// This allows accelerator keys to be used as shortcuts without the Alt
-    /// key held. See also [`EventState::new_accel_layer`].
+    /// disable alt-bypass for the access-key layer containing its access keys.
+    /// This allows access keys to be used as shortcuts without the Alt
+    /// key held. See also [`EventState::new_access_layer`].
     pub fn enable_alt_bypass(&mut self, id: &WidgetId, alt_bypass: bool) {
-        if let Some(layer) = self.accel_layer_for_id(id) {
+        if let Some(layer) = self.access_layer_for_id(id) {
             layer.0 = alt_bypass;
         }
     }
 
-    /// Adds an accelerator key for a widget
+    /// Adds an access key for a widget
     ///
-    /// An *accelerator key* is a shortcut key able to directly open menus,
+    /// An *access key* (also known as mnemonic) is a shortcut key able to
+    /// directly open menus,
     /// activate buttons, etc. A user triggers the key by pressing `Alt+Key`,
     /// or (if `alt_bypass` is enabled) by simply pressing the key.
     /// The widget with this `id` then receives [`Command::Activate`].
     ///
-    /// Note that accelerator keys may be automatically derived from labels:
-    /// see [`crate::text::AccelString`].
+    /// Note that access keys may be automatically derived from labels:
+    /// see [`crate::text::AccessString`].
     ///
-    /// Accelerator keys are added to the layer with the longest path which is
+    /// Access keys are added to the layer with the longest path which is
     /// an ancestor of `id`. This usually means that if the widget is part of a
     /// pop-up, the key is only active when that pop-up is open.
-    /// See [`EventState::new_accel_layer`].
+    /// See [`EventState::new_access_layer`].
     ///
     /// This should only be called from [`Events::configure`].
     #[inline]
-    pub fn add_accel_key(&mut self, id: &WidgetId, key: Key) {
-        if let Some(layer) = self.accel_layer_for_id(id) {
+    pub fn add_access_key(&mut self, id: &WidgetId, key: Key) {
+        if let Some(layer) = self.access_layer_for_id(id) {
             layer.1.entry(key).or_insert_with(|| id.clone());
         }
+    }
+
+    /// Visually depress a widget via a key code
+    ///
+    /// When a button-like widget is activated by a key it may call this to
+    /// ensure the widget is visually depressed until the key is released.
+    /// The widget will not receive a notification of key-release but will be
+    /// redrawn automatically.
+    ///
+    /// Note that keyboard shortcuts and mnemonics should usually match against
+    /// the "logical key". [`KeyCode`] is used here since the the logical key
+    /// may be changed by modifier keys.
+    pub fn depress_with_key(&mut self, id: WidgetId, code: KeyCode) {
+        if self.key_depress.values().any(|v| *v == id) {
+            return;
+        }
+
+        self.key_depress.insert(code, id);
+        self.send_action(Action::REDRAW);
     }
 
     /// Request keyboard input focus
@@ -445,9 +465,9 @@ impl EventState {
             self.send_action(Action::REDRAW);
             self.pending
                 .push_back(Pending::Send(id, Event::LostNavFocus));
+            log::debug!(target: "kas_core::event", "nav_focus = None");
         }
         self.clear_key_focus();
-        log::debug!(target: "kas_core::event", "nav_focus = None");
     }
 
     /// Set navigation focus directly
@@ -703,7 +723,7 @@ impl<'a> EventCx<'a> {
     /// window without borders and with precise placement, or may be a layer
     /// drawn in an existing window.
     ///
-    /// The parent of a popup automatically receives mouse-motion events
+    /// The popup automatically receives mouse-motion events
     /// ([`Event::CursorMove`]) which may be used to navigate menus.
     /// The parent automatically receives the "depressed" visual state.
     ///
@@ -712,18 +732,8 @@ impl<'a> EventCx<'a> {
     ///
     /// A pop-up may be closed by calling [`EventCx::close_window`] with
     /// the [`WindowId`] returned by this method.
-    pub fn add_popup(&mut self, popup: crate::Popup) -> WindowId {
+    pub(crate) fn add_popup(&mut self, popup: crate::PopupDescriptor) -> WindowId {
         log::trace!(target: "kas_core::event", "add_popup: {popup:?}");
-        let new_id = &popup.id;
-        while let Some((_, popup, _)) = self.popups.last() {
-            if popup.parent.is_ancestor_of(new_id) {
-                break;
-            }
-            let (wid, popup, _old_nav_focus) = self.popups.pop().unwrap();
-            self.shell.close_window(wid);
-            self.popup_removed.push((popup.parent, wid));
-            // Don't restore old nav focus: assume new focus will be set by new popup
-        }
 
         let id = self.shell.add_popup(popup.clone());
         let nav_focus = self.nav_focus.clone();
@@ -754,36 +764,22 @@ impl<'a> EventCx<'a> {
 
     /// Close a window or pop-up
     ///
-    /// In the case of a pop-up, all pop-ups created after this will also be
-    /// removed (on the assumption they are a descendant of the first popup).
-    ///
-    /// If `restore_focus` then navigation focus will return to whichever widget
-    /// had focus before the popup was open. (Usually this is true excepting
-    /// where focus has already been changed.)
-    pub fn close_window(&mut self, id: WindowId, restore_focus: bool) {
+    /// Navigation focus will return to whichever widget had focus before
+    /// the popup was open.
+    pub fn close_window(&mut self, id: WindowId) {
         if let Some(index) =
             self.popups
                 .iter()
                 .enumerate()
                 .find_map(|(i, p)| if p.0 == id { Some(i) } else { None })
         {
-            let mut old_nav_focus = None;
-            while self.popups.len() > index {
-                let (wid, popup, onf) = self.popups.pop().unwrap();
-                self.popup_removed.push((popup.parent, wid));
-                self.shell.close_window(wid);
-                old_nav_focus = onf;
-            }
+            let (wid, popup, onf) = self.popups.remove(index);
+            self.popup_removed.push((popup.id, wid));
+            self.shell.close_window(wid);
 
-            if !restore_focus {
-                old_nav_focus = None
-            }
-            if let Some(id) = old_nav_focus {
+            if let Some(id) = onf {
                 self.set_nav_focus(id, FocusSource::Synthetic);
             }
-            // TODO: if popup.id is an ancestor of self.nav_focus then clear
-            // focus if not setting (currently we cannot test this)
-
             return;
         }
 

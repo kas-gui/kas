@@ -5,13 +5,13 @@
 
 //! Wrapper adding a label
 
-use crate::AccelLabel;
+use crate::AccessLabel;
 use kas::{layout, prelude::*};
 
 impl_scope! {
     /// A wrapper widget with a label
     ///
-    /// The label supports accelerator keys, which activate `self.inner` on
+    /// The label supports access keys, which activate `self.inner` on
     /// usage.
     ///
     /// Mouse/touch input on the label sends events to the inner widget.
@@ -27,24 +27,24 @@ impl_scope! {
         #[widget]
         inner: W,
         #[widget(&())]
-        label: AccelLabel,
+        label: AccessLabel,
     }
 
     impl Self {
         /// Construct a wrapper around `inner` placing a `label` in the given `direction`
-        pub fn new<T: Into<AccelString>>(inner: W, label: T) -> Self where D: Default {
+        pub fn new<T: Into<AccessString>>(inner: W, label: T) -> Self where D: Default {
             Self::new_dir(inner, D::default(), label)
         }
     }
     impl<W: Widget> WithLabel<W, kas::dir::Left> {
         /// Construct from `inner` widget and `label`
-        pub fn left<T: Into<AccelString>>(inner: W, label: T) -> Self {
+        pub fn left<T: Into<AccessString>>(inner: W, label: T) -> Self {
             Self::new(inner, label)
         }
     }
     impl<W: Widget> WithLabel<W, kas::dir::Right> {
         /// Construct from `inner` widget and `label`
-        pub fn right<T: Into<AccelString>>(inner: W, label: T) -> Self {
+        pub fn right<T: Into<AccessString>>(inner: W, label: T) -> Self {
             Self::new(inner, label)
         }
     }
@@ -52,12 +52,12 @@ impl_scope! {
     impl Self {
         /// Construct a wrapper around `inner` placing a `label` in the given `direction`
         #[inline]
-        pub fn new_dir<T: Into<AccelString>>(inner: W, direction: D, label: T) -> Self {
+        pub fn new_dir<T: Into<AccessString>>(inner: W, direction: D, label: T) -> Self {
             WithLabel {
                 core: Default::default(),
                 dir: direction,
                 inner,
-                label: AccelLabel::new(label.into()),
+                label: AccessLabel::new(label.into()),
             }
         }
 
@@ -107,7 +107,7 @@ impl_scope! {
         ///
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
-        pub fn set_text<T: Into<AccelString>>(&mut self, text: T) -> Action {
+        pub fn set_text<T: Into<AccessString>>(&mut self, text: T) -> Action {
             self.label.set_text(text.into())
         }
     }
@@ -115,13 +115,6 @@ impl_scope! {
     impl Layout for Self {
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             self.rect().contains(coord).then(|| self.inner.id())
-        }
-    }
-
-    impl SetAccel for Self {
-        #[inline]
-        fn set_accel_string(&mut self, string: AccelString) -> Action {
-            self.label.set_accel_string(string)
         }
     }
 }

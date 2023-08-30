@@ -333,7 +333,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         &mut self,
         shared: &mut SharedState<A, S, T>,
         id: WindowId,
-        popup: kas::Popup,
+        popup: kas::PopupDescriptor,
     ) {
         let Some(ref window) = self.window else {
             return;
@@ -518,7 +518,7 @@ impl<'a, A: AppData, S: WindowSurface, T: Theme<S::Shared>> TkWindow<'a, A, S, T
 }
 
 impl<'a, A: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellWindow for TkWindow<'a, A, S, T> {
-    fn add_popup(&mut self, popup: kas::Popup) -> WindowId {
+    fn add_popup(&mut self, popup: kas::PopupDescriptor) -> WindowId {
         let parent_id = self.window.window_id;
         let id = self.shared.next_window_id();
         self.shared

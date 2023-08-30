@@ -5,7 +5,7 @@
 
 //! A tabbed stack
 
-use crate::{AccelLabel, Row, Stack};
+use crate::{AccessLabel, Row, Stack};
 use kas::layout::{FrameStorage, Visitor};
 use kas::message::Select;
 use kas::prelude::*;
@@ -19,7 +19,7 @@ impl_scope! {
     /// A tab
     ///
     /// This is a special variant of `Button` which sends a [`Select`] on press.
-    #[autoimpl(HasStr, SetAccel using self.label)]
+    #[autoimpl(HasStr using self.label)]
     #[widget {
         Data = ();
         layout = button!(self.label);
@@ -30,17 +30,17 @@ impl_scope! {
         core: widget_core!(),
         frame: FrameStorage,
         #[widget]
-        label: AccelLabel,
+        label: AccessLabel,
     }
 
     impl Self {
         /// Construct a button with given `label` widget
         #[inline]
-        pub fn new(label: impl Into<AccelString>) -> Self {
+        pub fn new(label: impl Into<AccessString>) -> Self {
             Tab {
                 core: Default::default(),
                 frame: FrameStorage::default(),
-                label: AccelLabel::new(label),
+                label: AccessLabel::new(label),
             }
         }
     }
@@ -76,13 +76,16 @@ impl_scope! {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &()) {
-            if let Some(kas::message::Activate) = cx.try_pop() {
+            if let Some(kas::message::Activate(code)) = cx.try_pop() {
                 cx.push(Select);
+                if let Some(code) = code {
+                    cx.depress_with_key(self.id(), code);
+                }
             }
         }
     }
 
-    impl<T: Into<AccelString>> From<T> for Tab {
+    impl<T: Into<AccessString>> From<T> for Tab {
         fn from(label: T) -> Self {
             Tab::new(label)
         }
@@ -299,7 +302,7 @@ impl<W: Widget> TabStack<W> {
     /// Append a page (inline)
     ///
     /// Does not configure or size child.
-    pub fn with_title(self, title: impl Into<AccelString>, widget: W) -> Self {
+    pub fn with_title(self, title: impl Into<AccessString>, widget: W) -> Self {
         self.with_tab(Tab::new(title), widget)
     }
 

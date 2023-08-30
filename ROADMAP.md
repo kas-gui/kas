@@ -46,7 +46,7 @@ Thirdly (and no less significantly), the release added pop-up menus, including
 fixes for overlapping graphics and robust event handling (including delayed
 opening of sub-menus and navigation via tab and arrow keys).
 
-Fourthly, it added Alt-accelerator keys, including visible labels when Alt is
+Fourthly, it added access keys, including visible labels when Alt is
 depressed and locality to the visible pop-up layer.
 
 Small additions included recursive disabled states for all widgets and an error

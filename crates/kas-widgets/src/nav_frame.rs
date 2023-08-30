@@ -46,7 +46,10 @@ impl_scope! {
     impl Events for Self {
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
-                Event::Command(cmd) if cmd.is_activate() => {
+                Event::Command(cmd, code) if cmd.is_activate() => {
+                    if let Some(code) = code {
+                        cx.depress_with_key(self.id(), code);
+                    }
                     cx.push(kas::message::Select);
                     Response::Used
                 }

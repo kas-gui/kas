@@ -48,7 +48,7 @@ impl EventState {
             mouse_grab: None,
             touch_grab: Default::default(),
             pan_grab: SmallVec::new(),
-            accel_layers: Default::default(),
+            access_layers: Default::default(),
             popups: Default::default(),
             popup_removed: Default::default(),
             time_updates: vec![],
@@ -86,10 +86,10 @@ impl EventState {
         self.action.remove(Action::RECONFIGURE);
 
         // These are recreated during configure:
-        self.accel_layers.clear();
+        self.access_layers.clear();
         self.nav_fallback = None;
 
-        self.new_accel_layer(id.clone(), false);
+        self.new_access_layer(id.clone(), false);
 
         ConfigCx::new(sizer, draw_shared, self).configure(win.as_node(data), id);
 
@@ -152,8 +152,8 @@ impl EventState {
             scroll: Scroll::None,
         };
 
-        while let Some((parent, wid)) = cx.popup_removed.pop() {
-            cx.send_event(win.as_node(data), parent, Event::PopupRemoved(wid));
+        while let Some((id, wid)) = cx.popup_removed.pop() {
+            cx.send_event(win.as_node(data), id, Event::PopupClosed(wid));
         }
 
         cx.flush_mouse_grab_motion(win.as_node(data));
@@ -328,7 +328,7 @@ impl<'a> EventCx<'a> {
                 } else {
                     // Window focus lost: close all popups
                     while let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
-                        self.close_window(id, true);
+                        self.close_window(id);
                     }
                 }
             }
@@ -373,7 +373,7 @@ impl<'a> EventCx<'a> {
             ModifiersChanged(modifiers) => {
                 let state = modifiers.state();
                 if state.alt_key() != self.modifiers.alt_key() {
-                    // This controls drawing of accelerator key indicators
+                    // This controls drawing of access key indicators
                     self.send_action(Action::REDRAW);
                 }
                 self.modifiers = state;
@@ -397,7 +397,7 @@ impl<'a> EventCx<'a> {
                     {
                         pan.coords[usize::conv(grab.pan_grab.1)].1 = coord;
                     }
-                } else if let Some(id) = self.popups.last().map(|(_, p, _)| p.parent.clone()) {
+                } else if let Some(id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
                     let press = Press {
                         source: PressSource::Mouse(FAKE_MOUSE_BUTTON, 0),
                         id: cur_id,
@@ -485,7 +485,7 @@ impl<'a> EventCx<'a> {
                         coord,
                     };
                     let event = Event::PressStart { press };
-                    let _ = self.send_popup_first(win.as_node(data), self.hover.clone(), event);
+                    self.send_popup_first(win.as_node(data), self.hover.clone(), event);
                 }
             }
             // TouchpadPressure { pressure: f32, stage: i64, },

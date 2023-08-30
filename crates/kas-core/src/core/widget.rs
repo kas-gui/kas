@@ -22,7 +22,7 @@ use kas_macros::autoimpl;
 /// [`Events::pre_configure`] which assigns `self.core.id = id`.
 ///
 /// [`#widget`]: macros::widget
-pub trait Events: Sized {
+pub trait Events: Layout + Sized {
     /// Input data type
     ///
     /// This type must match [`Widget::Data`]. When using the `#widget` macro,
@@ -32,6 +32,21 @@ pub trait Events: Sized {
     ///
     /// [`#widget`]: macros::widget
     type Data;
+
+    /// Recursion range
+    ///
+    /// Methods `pre_configure`, `configure` and `update` all recurse over the
+    /// widget tree. This method may be used to limit that recursion to a range
+    /// of children.
+    ///
+    /// Widgets do not need to be configured or updated if not visible, but in
+    /// this case must be configured when made visible (for example, the `Stack`
+    /// widget configures only the visible page).
+    ///
+    /// Default implementation: `0..self.num_children()`.
+    fn recurse_range(&self) -> std::ops::Range<usize> {
+        0..self.num_children()
+    }
 
     /// Pre-configuration
     ///
@@ -50,6 +65,9 @@ pub trait Events: Sized {
     /// for ensuring that children are configured before calling
     /// [`Layout::size_rules`] or [`Layout::set_rect`]. Configuration may be
     /// repeated and may be used as a mechanism to change a child's [`WidgetId`].
+    ///
+    /// It is possible to limit which children get configured via
+    /// [`Self::recurse_range`].
     ///
     /// This method may be used to configure event handling and to load
     /// resources, including resources affecting [`Layout::size_rules`].
@@ -74,11 +92,9 @@ pub trait Events: Sized {
     ///
     /// This method is called on the parent widget before children get updated.
     ///
-    /// This method may call [`ConfigCx::restrict_recursion_to`].
+    /// It is possible to limit which children get updated via
+    /// [`Self::recurse_range`].
     /// Widgets should be updated even if their data is `()` or is unchanged.
-    /// The only valid reasons not to update a child is because (a) it is not
-    /// visible (for example, the `Stack` widget updates only the visible page)
-    /// or (b) another method is used to update the child.
     ///
     /// The default implementation does nothing.
     fn update(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
@@ -294,21 +310,19 @@ pub enum NavAdvance {
 ///
 /// impl_scope! {
 ///     /// A text label
-///     #[widget {
-///         Data = ();
-///     }]
-///     pub struct AccelLabel {
+///     #[widget]
+///     pub struct AccessLabel {
 ///         core: widget_core!(),
 ///         class: TextClass,
-///         label: Text<AccelString>,
+///         label: Text<AccessString>,
 ///     }
 ///
 ///     impl Self {
 ///         /// Construct from `label`
-///         pub fn new(label: impl Into<AccelString>) -> Self {
-///             AccelLabel {
+///         pub fn new(label: impl Into<AccessString>) -> Self {
+///             AccessLabel {
 ///                 core: Default::default(),
-///                 class: TextClass::AccelLabel(true),
+///                 class: TextClass::AccessLabel(true),
 ///                 label: Text::new(label.into()),
 ///             }
 ///         }
@@ -319,8 +333,8 @@ pub enum NavAdvance {
 ///             self
 ///         }
 ///
-///         /// Get the accelerator key
-///         pub fn accel_key(&self) -> Option<&event::Key> {
+///         /// Get the access key
+///         pub fn access_key(&self) -> Option<&event::Key> {
 ///             self.label.text().key()
 ///         }
 ///     }
@@ -340,6 +354,26 @@ pub enum NavAdvance {
 ///             draw.text_effects(self.rect(), &self.label, self.class);
 ///         }
 ///     }
+///
+///     impl Events for Self {
+///         type Data = ();
+///
+///         fn configure(&mut self, cx: &mut ConfigCx) {
+///             if let Some(key) = self.label.text().key() {
+///                 cx.add_access_key(self.id_ref(), key.clone());
+///             }
+///         }
+///
+///         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+///             match event {
+///                 Event::Command(cmd, code) if cmd.is_activate() => {
+///                     cx.push(kas::message::Activate(code));
+///                     Response::Used
+///                 }
+///                 _ => Response::Unused
+///             }
+///         }
+///     }
 /// }
 ///
 /// impl_scope! {
@@ -352,34 +386,38 @@ pub enum NavAdvance {
 ///     pub struct TextButton<M: Clone + Debug + 'static> {
 ///         core: widget_core!(),
 ///         #[widget]
-///         label: AccelLabel,
+///         label: AccessLabel,
 ///         message: M,
 ///     }
 ///
 ///     impl Self {
 ///         /// Construct a button with given `label`
-///         pub fn new(label: impl Into<AccelString>, message: M) -> Self {
+///         pub fn new(label: impl Into<AccessString>, message: M) -> Self {
 ///             TextButton {
 ///                 core: Default::default(),
-///                 label: AccelLabel::new(label).with_class(TextClass::Button),
+///                 label: AccessLabel::new(label).with_class(TextClass::Button),
 ///                 message,
 ///             }
 ///         }
 ///     }
+///
 ///     impl Events for Self {
 ///         type Data = ();
 ///
-///         fn configure(&mut self, cx: &mut ConfigCx) {
-///             if let Some(key) = self.label.accel_key() {
-///                 cx.add_accel_key(self.id_ref(), key.clone());
-///             }
-///         }
-///
-///         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+///         fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> Response {
 ///             event.on_activate(cx, self.id(), |cx| {
 ///                 cx.push(self.message.clone());
 ///                 Response::Used
 ///             })
+///         }
+///
+///         fn handle_messages(&mut self, cx: &mut EventCx, _: &()) {
+///             if let Some(kas::message::Activate(code)) = cx.try_pop() {
+///                 cx.push(self.message.clone());
+///                 if let Some(code) = code {
+///                     cx.depress_with_key(self.id(), code);
+///                 }
+///             }
 ///         }
 ///     }
 /// }
@@ -451,6 +489,8 @@ pub trait Widget: Layout {
     fn _replay(&mut self, cx: &mut EventCx, data: &Self::Data, id: WidgetId, msg: Erased);
 
     /// Internal method: search for the previous/next navigation target
+    ///
+    /// `focus`: the current focus or starting point.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn _nav_next(

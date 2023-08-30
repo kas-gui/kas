@@ -10,32 +10,31 @@ use serde::{Deserialize, Serialize};
 
 #[allow(unused)]
 use super::{EventCx, EventState, GrabMode, Response}; // for doc-links
-use super::{Key, KeyEvent, Press};
+use super::{Key, KeyCode, KeyEvent, Press};
 use crate::geom::{DVec2, Offset};
-#[allow(unused)] use crate::Events;
 use crate::{dir::Direction, WidgetId, WindowId};
+#[allow(unused)] use crate::{Events, Popup};
 
 /// Events addressed to a widget
 ///
-/// Note regarding disabled widgets: [`Event::PopupRemoved`]
-/// and `Lost..` events are received regardless of status; other events are not
-/// received by disabled widgets. See [`Event::pass_when_disabled`].
+/// Note that a few events are received by disabled widgets; see
+/// [`Event::pass_when_disabled`].
 #[non_exhaustive]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
     /// Command input
     ///
-    /// Even without keyboard focus a widget may receive a command (most
-    /// commonly [`Command::Activate`]). This is often a result of some keyboard
-    /// shortcut, but not necessarily.
+    /// A generic "command". The source is often but not always a key press.
+    /// In many cases (but not all) the target widget has navigation focus.
     ///
-    /// In some cases keys are remapped, e.g. a widget with selection focus but
-    /// not character or navigation focus may receive [`Command::Deselect`]
-    /// when the <kbd>Esc</kbd> key is pressed.
+    /// A [`KeyCode`] is attached when the command is caused by a key press.
+    /// The recipient may use this to call [`EventState::depress_with_key`].
     ///
-    /// If a widget has character focus then it will receive [`Event::Key`]
-    /// instead of `Event::Command` on key presses.
-    Command(Command),
+    /// If a widget has keyboard input focus (see
+    /// [`EventState::request_key_focus`]) it will instead receive
+    /// [`Event::Key`] for key presses (but may still receive `Event::Command`
+    /// from other sources).
+    Command(Command, Option<KeyCode>),
     /// Keyboard input: `event, is_synthetic`
     ///
     /// This is only received by a widget with character focus (see
@@ -125,9 +124,10 @@ pub enum Event {
     /// This event is sent only when:
     ///
     /// 1.  No [`Press::grab`] is active
-    /// 2.  When a pop-up layer is active ([`EventCx::add_popup`]), the owner
-    ///     of the top-most layer will receive this event. If the event is not
-    ///     used, then the pop-up will be closed and the event sent again.
+    /// 2.  A [`Popup`] is open
+    ///
+    /// The parent (or an ancestor) of a [`Popup`] should handle or explicitly
+    /// ignore this event.
     CursorMove { press: Press },
     /// A mouse button was pressed or touch event started
     ///
@@ -136,9 +136,10 @@ pub enum Event {
     ///
     /// This event is sent in exactly two cases, in this order:
     ///
-    /// 1.  When a pop-up layer is active ([`EventCx::add_popup`]), the owner
-    ///     of the top-most layer will receive this event. If the event is not
-    ///     used, then the pop-up will be closed and the event sent again.
+    /// 1.  When a [`Popup`] is open. A [`Popup`] will close itself if
+    ///     `press.id` is not a descendant of itself, but will still return
+    ///     [`Response::Unused`]. The parent (or an ancestor) of the
+    ///     [`Popup`] should handle this event.
     /// 2.  If a widget is found under the mouse when pressed or where a touch
     ///     event starts, this event is sent to the widget.
     ///
@@ -176,12 +177,14 @@ pub enum Event {
     ///
     /// The `u64` payload is copied from [`EventState::request_timer_update`].
     TimerUpdate(u64),
-    /// Notification that a popup has been destroyed
+    /// Notification that a popup has been closed
     ///
-    /// This is sent to the popup's parent after a popup has been removed.
+    /// This is sent to the popup when closed.
     /// Since popups may be removed directly by the EventCx, the parent should
     /// clean up any associated state here.
-    PopupRemoved(WindowId),
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    PopupClosed(WindowId),
     /// Sent when a widget receives navigation focus
     ///
     /// Navigation focus implies that the widget is highlighted and will be the
@@ -194,8 +197,8 @@ pub enum Event {
     /// called automatically (to ensure that the widget is visible) and the
     /// response will be forced to [`Response::Used`].
     ///
-    /// The widget may wish to call [`EventCx::request_key_focus`], but likely
-    /// only when [`FocusSource::key_or_synthetic`].
+    /// The widget may wish to call [`EventState::request_key_focus`], but
+    /// likely only when [`FocusSource::key_or_synthetic`].
     NavFocus(FocusSource),
     /// Sent when a widget becomes the mouse hover target
     ///
@@ -206,13 +209,13 @@ pub enum Event {
     /// Widget lost keyboard input focus
     ///
     /// This focus is gained through the widget calling [`EventState::request_key_focus`].
-    LostCharFocus,
+    LostKeyFocus,
     /// Widget lost selection focus
     ///
     /// This focus is gained through the widget calling [`EventState::request_sel_focus`]
     /// or [`EventState::request_key_focus`].
     ///
-    /// In the case the widget also had character focus, [`Event::LostCharFocus`] is
+    /// In the case the widget also had character focus, [`Event::LostKeyFocus`] is
     /// received first.
     LostSelFocus,
 }
@@ -255,6 +258,8 @@ impl Event {
     /// -   Mouse click and release on the same widget
     /// -   Touchscreen press and release on the same widget
     /// -   `Event::Command(cmd, _)` where [`cmd.is_activate()`](Command::is_activate)
+    ///
+    /// The method calls [`EventState::depress_with_key`] on activation.
     pub fn on_activate<F: FnOnce(&mut EventCx) -> Response>(
         self,
         cx: &mut EventCx,
@@ -262,7 +267,12 @@ impl Event {
         f: F,
     ) -> Response {
         match self {
-            Event::Command(cmd) if cmd.is_activate() => f(cx),
+            Event::Command(cmd, code) if cmd.is_activate() => {
+                if let Some(code) = code {
+                    cx.depress_with_key(id, code);
+                }
+                f(cx)
+            }
             Event::PressStart { press, .. } if press.is_primary() => press.grab(id).with_cx(cx),
             Event::PressEnd { press, success } => {
                 if success && id == press.id {
@@ -282,12 +292,12 @@ impl Event {
     pub fn pass_when_disabled(&self) -> bool {
         use Event::*;
         match self {
-            Command(_) => false,
+            Command(_, _) => false,
             Key(_, _) | Scroll(_) | Pan { .. } => false,
             CursorMove { .. } | PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
-            TimerUpdate(_) | PopupRemoved(_) => true,
+            TimerUpdate(_) | PopupClosed(_) => true,
             NavFocus { .. } | MouseHover(_) => false,
-            LostNavFocus | LostCharFocus | LostSelFocus => true,
+            LostNavFocus | LostKeyFocus | LostSelFocus => true,
         }
     }
 
@@ -297,18 +307,18 @@ impl Event {
     /// keyboard navigation target may be acted on by an ancestor if unused.
     /// Other events may not be; e.g. [`Event::PressMove`] and
     /// [`Event::PressEnd`] are only received by the widget requesting them
-    /// while [`Event::LostCharFocus`] (and similar events) are only sent to a
+    /// while [`Event::LostKeyFocus`] (and similar events) are only sent to a
     /// specific widget.
     pub fn is_reusable(&self) -> bool {
         use Event::*;
         match self {
             Key(_, _) => false,
-            Command(_) | Scroll(_) | Pan { .. } => true,
+            Command(_, _) | Scroll(_) | Pan { .. } => true,
             CursorMove { .. } | PressStart { .. } => true,
             PressMove { .. } | PressEnd { .. } => false,
-            TimerUpdate(_) | PopupRemoved(_) => false,
+            TimerUpdate(_) | PopupClosed(_) => false,
             NavFocus { .. } | MouseHover(_) | LostNavFocus => false,
-            LostCharFocus | LostSelFocus => false,
+            LostKeyFocus | LostSelFocus => false,
         }
     }
 }

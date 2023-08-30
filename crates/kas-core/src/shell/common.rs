@@ -242,7 +242,7 @@ pub(crate) trait ShellWindow {
     ///
     /// Returns `None` if window creation is not currently available (but note
     /// that `Some` result does not guarantee the operation succeeded).
-    fn add_popup(&mut self, popup: crate::Popup) -> WindowId;
+    fn add_popup(&mut self, popup: crate::PopupDescriptor) -> WindowId;
 
     /// Add a window
     ///

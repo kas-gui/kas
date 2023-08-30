@@ -19,7 +19,7 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 # RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --no-deps --open
 
 [features]
-# Use min_specialization (enables accelerator underlining for AccelLabel)
+# Use min_specialization (enables access key underlining for AccessLabel)
 min_spec = []
 
 [dependencies]

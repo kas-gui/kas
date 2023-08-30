@@ -25,6 +25,7 @@ mod action;
 mod core;
 mod decorations;
 mod erased;
+mod popup;
 mod root;
 
 pub use crate::core::*;
@@ -32,6 +33,8 @@ pub use action::Action;
 pub use decorations::Decorations;
 pub use erased::{AppData, Erased, ErasedStack};
 pub use kas_macros::*;
+#[doc(inline)] pub use popup::Popup;
+#[doc(inline)] pub(crate) use popup::PopupDescriptor;
 #[doc(inline)]
 pub use root::{Window, WindowCommand, WindowId};
 

@@ -5,10 +5,8 @@
 
 //! Widget data types
 
+#[allow(unused)] use super::Widget;
 use super::WidgetId;
-#[allow(unused)] use super::{Layout, Widget};
-use crate::dir::Direction;
-#[allow(unused)] use crate::event::EventCx;
 use crate::geom::Rect;
 
 #[cfg(feature = "winit")] pub use winit::window::Icon;
@@ -51,25 +49,4 @@ impl Clone for CoreData {
             id: WidgetId::default(),
         }
     }
-}
-
-/// A widget which escapes its parent's rect
-///
-/// A pop-up is a special widget drawn either as a layer over the existing
-/// window or in a new borderless window. It should be precisely positioned
-/// *next to* it's `parent`'s `rect`, in the specified `direction` (or, if not
-/// possible, in the opposite direction).
-///
-/// A pop-up is in some ways an ordinary child widget and in some ways not.
-/// The pop-up widget should be a permanent child of its parent, but is not
-/// visible until [`EventCx::add_popup`] is called.
-///
-/// A pop-up widget's rect is not contained by its parent, therefore the parent
-/// must not call any [`Layout`] methods on the pop-up (whether or not it is
-/// visible). The window is responsible for calling these methods.
-#[derive(Clone, Debug)]
-pub struct Popup {
-    pub id: WidgetId,
-    pub parent: WidgetId,
-    pub direction: Direction,
 }

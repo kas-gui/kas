@@ -346,7 +346,7 @@ impl_scope! {
             }
 
             match event {
-                Event::Command(cmd) => {
+                Event::Command(cmd, code) => {
                     let rev = self.direction.is_reversed();
                     let value = match cmd {
                         Command::Left | Command::Up => match rev {
@@ -372,6 +372,10 @@ impl_scope! {
                         Command::End => self.range.1,
                         _ => return Response::Unused,
                     };
+
+                    if let Some(code) = code {
+                        cx.depress_with_key(self.id(), code);
+                    }
 
                     let action = self.set_value(value);
                     if !action.is_empty() {

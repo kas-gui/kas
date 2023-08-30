@@ -28,7 +28,7 @@ impl_scope! {
     /// Line-wrapping is enabled by default.
     ///
     /// This type is generic over the text type.
-    /// See also: [`StrLabel`], [`StringLabel`], [`AccelLabel`].
+    /// See also: [`StrLabel`], [`StringLabel`], [`AccessLabel`].
     #[impl_default(where T: Default)]
     #[derive(Clone, Debug)]
     #[widget {
@@ -203,13 +203,13 @@ pub type StrLabel = Label<&'static str>;
 /// Label with `String` as backing type
 pub type StringLabel = Label<String>;
 
-// NOTE: AccelLabel requires a different text class. Once specialization is
+// NOTE: AccessLabel requires a different text class. Once specialization is
 // stable we can simply replace the `draw` method, but for now we use a whole
 // new type.
 impl_scope! {
-    /// A label supporting an accelerator key
+    /// A label supporting an access key
     ///
-    /// An `AccelLabel` is a variant of [`Label`] supporting [`AccelString`],
+    /// An `AccessLabel` is a variant of [`Label`] supporting [`AccessString`],
     /// for example "&Edit" binds an action to <kbd>Alt+E</kbd>. When the
     /// corresponding key-sequence is pressed this widget sends the message
     /// [`kas::message::Activate`] which should be handled by a parent.
@@ -220,19 +220,19 @@ impl_scope! {
     #[impl_default]
     #[derive(Clone, Debug)]
     #[widget]
-    pub struct AccelLabel {
+    pub struct AccessLabel {
         core: widget_core!(),
         class: TextClass = TextClass::Label(true),
-        label: Text<AccelString>,
+        label: Text<AccessString>,
     }
 
     impl Self {
         /// Construct from `label`
         #[inline]
-        pub fn new(label: impl Into<AccelString>) -> Self {
-            AccelLabel {
+        pub fn new(label: impl Into<AccessString>) -> Self {
+            AccessLabel {
                 core: Default::default(),
-                class: TextClass::AccelLabel(true),
+                class: TextClass::AccessLabel(true),
                 label: Text::new(label.into()),
             }
         }
@@ -245,7 +245,7 @@ impl_scope! {
 
         /// Set text class
         ///
-        /// Default: `AccelLabel::Label(true)`
+        /// Default: `AccessLabel::Label(true)`
         #[inline]
         pub fn set_class(&mut self, class: TextClass) {
             self.class = class;
@@ -253,7 +253,7 @@ impl_scope! {
 
         /// Set text class (inline)
         ///
-        /// Default: `AccelLabel::Label(true)`
+        /// Default: `AccessLabel::Label(true)`
         #[inline]
         pub fn with_class(mut self, class: TextClass) -> Self {
             self.class = class;
@@ -268,12 +268,12 @@ impl_scope! {
 
         /// Enable/disable line wrapping
         ///
-        /// This is equivalent to `label.set_class(TextClass::AccelLabel(wrap))`.
+        /// This is equivalent to `label.set_class(TextClass::AccessLabel(wrap))`.
         ///
         /// By default this is enabled.
         #[inline]
         pub fn set_wrap(&mut self, wrap: bool) {
-            self.class = TextClass::AccelLabel(wrap);
+            self.class = TextClass::AccessLabel(wrap);
         }
 
         /// Enable/disable line wrapping (inline)
@@ -285,7 +285,7 @@ impl_scope! {
 
         /// Get read access to the text object
         #[inline]
-        pub fn text(&self) -> &Text<AccelString> {
+        pub fn text(&self) -> &Text<AccessString> {
             &self.label
         }
 
@@ -293,7 +293,7 @@ impl_scope! {
         ///
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
-        pub fn set_text(&mut self, text: AccelString) -> Action {
+        pub fn set_text(&mut self, text: AccessString) -> Action {
             match self.label.set_and_try_prepare(text) {
                 Ok(true) => Action::RESIZE,
                 _ => Action::REDRAW,
@@ -323,14 +323,14 @@ impl_scope! {
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             if let Some(key) = self.label.text().key() {
-                cx.add_accel_key(self.id_ref(), key.clone());
+                cx.add_access_key(self.id_ref(), key.clone());
             }
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             match event {
-                Event::Command(cmd) if cmd.is_activate() => {
-                    cx.push(kas::message::Activate);
+                Event::Command(cmd, code) if cmd.is_activate() => {
+                    cx.push(kas::message::Activate(code));
                     Response::Used
                 }
                 _ => Response::Unused
@@ -341,15 +341,6 @@ impl_scope! {
     impl HasStr for Self {
         fn get_str(&self) -> &str {
             self.label.as_str()
-        }
-    }
-
-    impl SetAccel for AccelLabel {
-        fn set_accel_string(&mut self, string: AccelString) -> Action {
-            if self.label.text().key() != string.key() {
-                return Action::RECONFIGURE;
-            }
-            self.set_text(string)
         }
     }
 }

@@ -9,17 +9,17 @@ use std::num::ParseFloatError;
 use std::str::FromStr;
 
 use kas::prelude::*;
-use kas::widgets::{AccelLabel, Adapt, Button, EditBox};
+use kas::widgets::{AccessLabel, Adapt, Button, EditBox};
 
 type Key = kas::event::Key<kas::event::SmolStr>;
 
-fn key_button(label: &str) -> Button<AccelLabel> {
-    let string = AccelString::from(label);
+fn key_button(label: &str) -> Button<AccessLabel> {
+    let string = AccessString::from(label);
     let key = string.key().unwrap().clone();
     Button::label_msg(string, key)
 }
-fn key_button_with(label: &str, key: Key) -> Button<AccelLabel> {
-    Button::label_msg(label, key.clone()).with_key(key)
+fn key_button_with(label: &str, key: Key) -> Button<AccessLabel> {
+    Button::label_msg(label, key.clone()).with_access_key(key)
 }
 
 fn calc_ui() -> Window<()> {
@@ -32,7 +32,7 @@ fn calc_ui() -> Window<()> {
     // We use map_any to avoid passing input data (not wanted by buttons):
     let buttons = kas::grid! {
         // Key bindings: C, Del
-        (0, 0) => Button::label_msg("&clear", Key::Clear).with_key(Key::Delete),
+        (0, 0) => Button::label_msg("&clear", Key::Clear).with_access_key(Key::Delete),
         // Widget is hidden but has key binding.
         // TODO(opt): exclude from layout & drawing.
         (0, 0) => key_button_with("", Key::Backspace),

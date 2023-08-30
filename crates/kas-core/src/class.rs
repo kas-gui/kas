@@ -8,7 +8,6 @@
 //! These traits provide generic ways to interact with common widget properties,
 //! e.g. to read the text of a `Label` or set the state of a `CheckBox`.
 
-use crate::text::AccelString;
 use crate::Action;
 
 /// Read / write a boolean value
@@ -70,23 +69,3 @@ pub trait HasFormatted {
     fn set_formatted_string(&mut self, text: FormattedString) -> Action;
 }
 */
-
-/// Set a control label
-///
-/// Control labels do not support rich-text formatting but do support
-/// accelerator keys, identified via a `&` prefix (e.g. `&File`).
-pub trait SetAccel {
-    /// Set text
-    ///
-    /// This method supports [`AccelString`], `String` and `&str` as input.
-    /// The latter are parsed for accel keys identified by `&` prefix.
-    fn set_accel<T: Into<AccelString>>(&mut self, accel: T) -> Action
-    where
-        Self: Sized,
-    {
-        self.set_accel_string(accel.into())
-    }
-
-    /// Set accel string
-    fn set_accel_string(&mut self, accel: AccelString) -> Action;
-}

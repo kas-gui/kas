@@ -67,7 +67,6 @@ pub fn impl_default(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// | `::kas::class::HasBool` | - | deref target | |
 /// | `::kas::class::HasStr` | - | deref target | |
 /// | `::kas::class::HasString` | - | deref target | |
-/// | `::kas::class::SetAccel` | - | deref target | |
 /// | `class_traits` | - | deref target | implements each `kas::class` trait |
 ///
 /// ### Examples

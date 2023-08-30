@@ -79,7 +79,7 @@ impl_scope! {
         bar_h: i32,
         dec_offset: Offset,
         dec_size: Size,
-        popups: SmallVec<[(WindowId, kas::Popup, Offset); 16]>,
+        popups: SmallVec<[(WindowId, kas::PopupDescriptor, Offset); 16]>,
     }
 
     impl Layout for Self {
@@ -380,7 +380,13 @@ impl<Data: 'static> Window<Data> {
     /// Add a pop-up as a layer in the current window
     ///
     /// Each [`crate::Popup`] is assigned a [`WindowId`]; both are passed.
-    pub fn add_popup(&mut self, cx: &mut EventCx, data: &Data, id: WindowId, popup: kas::Popup) {
+    pub(crate) fn add_popup(
+        &mut self,
+        cx: &mut EventCx,
+        data: &Data,
+        id: WindowId,
+        popup: kas::PopupDescriptor,
+    ) {
         let index = self.popups.len();
         self.popups.push((id, popup, Offset::ZERO));
         cx.config_cx(|cx| self.resize_popup(cx, data, index));
@@ -390,7 +396,7 @@ impl<Data: 'static> Window<Data> {
     /// Trigger closure of a pop-up
     ///
     /// If the given `id` refers to a pop-up, it should be closed.
-    pub fn remove_popup(&mut self, cx: &mut EventCx, id: WindowId) {
+    pub(crate) fn remove_popup(&mut self, cx: &mut EventCx, id: WindowId) {
         for i in 0..self.popups.len() {
             if id == self.popups[i].0 {
                 self.popups.remove(i);
@@ -404,7 +410,7 @@ impl<Data: 'static> Window<Data> {
     ///
     /// This is called immediately after [`Layout::set_rect`] to resize
     /// existing pop-ups.
-    pub fn resize_popups(&mut self, cx: &mut ConfigCx, data: &Data) {
+    pub(crate) fn resize_popups(&mut self, cx: &mut ConfigCx, data: &Data) {
         for i in 0..self.popups.len() {
             self.resize_popup(cx, data, i);
         }
