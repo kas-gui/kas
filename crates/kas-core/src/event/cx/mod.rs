@@ -388,7 +388,7 @@ impl EventState {
     // If there is a popup, only permit descendands of that.
     fn set_hover(&mut self, mut w_id: Option<WidgetId>) {
         if let Some(ref id) = w_id {
-            if let Some(ref popup) = self.popups.last() {
+            if let Some(popup) = self.popups.last() {
                 if !popup.1.id.is_ancestor_of(id) {
                     w_id = None;
                 }
