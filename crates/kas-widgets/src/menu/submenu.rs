@@ -6,7 +6,7 @@
 //! Sub-menu
 
 use super::{BoxedMenu, Menu, SubItems};
-use crate::{AccelLabel, Mark};
+use crate::{AccessLabel, Mark};
 use kas::event::{Command, FocusSource, Scroll};
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
@@ -22,7 +22,7 @@ impl_scope! {
         core: widget_core!(),
         pub(crate) navigable: bool,
         #[widget(&())]
-        label: AccelLabel,
+        label: AccessLabel,
         #[widget(&())]
         mark: Mark,
         #[widget]
@@ -31,18 +31,18 @@ impl_scope! {
 
     impl Self {
         /// Construct a sub-menu, opening to the right
-        pub fn right<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<Data>>) -> Self {
+        pub fn right<S: Into<AccessString>>(label: S, list: Vec<BoxedMenu<Data>>) -> Self {
             SubMenu::new(label, list, Direction::Right)
         }
 
         /// Construct a sub-menu, opening downwards
-        pub fn down<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<Data>>) -> Self {
+        pub fn down<S: Into<AccessString>>(label: S, list: Vec<BoxedMenu<Data>>) -> Self {
             SubMenu::new(label, list, Direction::Down)
         }
 
         /// Construct a sub-menu
         #[inline]
-        pub fn new<S: Into<AccelString>>(
+        pub fn new<S: Into<AccessString>>(
             label: S,
             list: Vec<BoxedMenu<Data>>,
             direction: Direction,
@@ -50,7 +50,7 @@ impl_scope! {
             SubMenu {
                 core: Default::default(),
                 navigable: true,
-                label: AccelLabel::new(label).with_class(TextClass::MenuLabel),
+                label: AccessLabel::new(label).with_class(TextClass::MenuLabel),
                 mark: Mark::new(MarkStyle::Point(direction)),
                 popup: Popup::new(MenuView::new(list), direction),
             }

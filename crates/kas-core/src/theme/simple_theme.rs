@@ -402,7 +402,7 @@ where
         } else {
             self.cols.text
         };
-        if class.is_accel() && !self.ev.show_accel_labels() {
+        if class.is_access_key() && !self.ev.show_access_labels() {
             self.draw.text(rect, text.display(), col);
         } else {
             self.draw

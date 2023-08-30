@@ -284,7 +284,7 @@ impl<Data, D: Directional> MenuBuilder<Data, D> {
     /// Add a new menu
     ///
     /// The menu's direction is determined via [`Directional::Flipped`].
-    pub fn menu<F>(mut self, label: impl Into<AccelString>, f: F) -> Self
+    pub fn menu<F>(mut self, label: impl Into<AccessString>, f: F) -> Self
     where
         F: FnOnce(SubMenuBuilder<Data>),
     {

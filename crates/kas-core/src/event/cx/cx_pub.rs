@@ -40,13 +40,13 @@ impl EventState {
         self.window_has_focus
     }
 
-    /// True when accelerator key labels should be shown
+    /// True when access key labels should be shown
     ///
     /// (True when Alt is held and no widget has character focus.)
     ///
     /// This is a fast check.
     #[inline]
-    pub fn show_accel_labels(&self) -> bool {
+    pub fn show_access_labels(&self) -> bool {
         self.modifiers.alt_key()
     }
 
@@ -280,63 +280,64 @@ impl EventState {
         }
     }
 
-    fn accel_layer_for_id(&mut self, id: &WidgetId) -> Option<&mut AccelLayer> {
+    fn access_layer_for_id(&mut self, id: &WidgetId) -> Option<&mut AccessLayer> {
         let root = &WidgetId::ROOT;
-        for (k, v) in self.accel_layers.range_mut(root..=id).rev() {
+        for (k, v) in self.access_layers.range_mut(root..=id).rev() {
             if k.is_ancestor_of(id) {
                 return Some(v);
             };
         }
-        debug_assert!(false, "expected ROOT accel layer");
+        debug_assert!(false, "expected ROOT access layer");
         None
     }
 
-    /// Add a new accelerator key layer
+    /// Add a new access key layer
     ///
-    /// This method constructs a new "layer" for accelerator keys: any keys
-    /// added via [`EventState::add_accel_key`] to a widget which is a descentant
+    /// This method constructs a new "layer" for access keys: any keys
+    /// added via [`EventState::add_access_key`] to a widget which is a descentant
     /// of (or equal to) `id` will only be active when that layer is active.
     ///
     /// This method should only be called by parents of a pop-up: layers over
     /// the base layer are *only* activated by an open pop-up.
     ///
-    /// If `alt_bypass` is true, then this layer's accelerator keys will be
+    /// If `alt_bypass` is true, then this layer's access keys will be
     /// active even without Alt pressed (but only highlighted with Alt pressed).
-    pub fn new_accel_layer(&mut self, id: WidgetId, alt_bypass: bool) {
-        self.accel_layers.insert(id, (alt_bypass, HashMap::new()));
+    pub fn new_access_layer(&mut self, id: WidgetId, alt_bypass: bool) {
+        self.access_layers.insert(id, (alt_bypass, HashMap::new()));
     }
 
     /// Enable `alt_bypass` for layer
     ///
     /// This may be called by a child widget during configure to enable or
-    /// disable alt-bypass for the accel-key layer containing its accel keys.
-    /// This allows accelerator keys to be used as shortcuts without the Alt
-    /// key held. See also [`EventState::new_accel_layer`].
+    /// disable alt-bypass for the access-key layer containing its access keys.
+    /// This allows access keys to be used as shortcuts without the Alt
+    /// key held. See also [`EventState::new_access_layer`].
     pub fn enable_alt_bypass(&mut self, id: &WidgetId, alt_bypass: bool) {
-        if let Some(layer) = self.accel_layer_for_id(id) {
+        if let Some(layer) = self.access_layer_for_id(id) {
             layer.0 = alt_bypass;
         }
     }
 
-    /// Adds an accelerator key for a widget
+    /// Adds an access key for a widget
     ///
-    /// An *accelerator key* is a shortcut key able to directly open menus,
+    /// An *access key* (also known as mnemonic) is a shortcut key able to
+    /// directly open menus,
     /// activate buttons, etc. A user triggers the key by pressing `Alt+Key`,
     /// or (if `alt_bypass` is enabled) by simply pressing the key.
     /// The widget with this `id` then receives [`Command::Activate`].
     ///
-    /// Note that accelerator keys may be automatically derived from labels:
-    /// see [`crate::text::AccelString`].
+    /// Note that access keys may be automatically derived from labels:
+    /// see [`crate::text::AccessString`].
     ///
-    /// Accelerator keys are added to the layer with the longest path which is
+    /// Access keys are added to the layer with the longest path which is
     /// an ancestor of `id`. This usually means that if the widget is part of a
     /// pop-up, the key is only active when that pop-up is open.
-    /// See [`EventState::new_accel_layer`].
+    /// See [`EventState::new_access_layer`].
     ///
     /// This should only be called from [`Events::configure`].
     #[inline]
-    pub fn add_accel_key(&mut self, id: &WidgetId, key: Key) {
-        if let Some(layer) = self.accel_layer_for_id(id) {
+    pub fn add_access_key(&mut self, id: &WidgetId, key: Key) {
+        if let Some(layer) = self.access_layer_for_id(id) {
             layer.1.entry(key).or_insert_with(|| id.clone());
         }
     }

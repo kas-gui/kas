@@ -48,7 +48,7 @@ impl EventState {
             mouse_grab: None,
             touch_grab: Default::default(),
             pan_grab: SmallVec::new(),
-            accel_layers: Default::default(),
+            access_layers: Default::default(),
             popups: Default::default(),
             popup_removed: Default::default(),
             time_updates: vec![],
@@ -86,10 +86,10 @@ impl EventState {
         self.action.remove(Action::RECONFIGURE);
 
         // These are recreated during configure:
-        self.accel_layers.clear();
+        self.access_layers.clear();
         self.nav_fallback = None;
 
-        self.new_accel_layer(id.clone(), false);
+        self.new_access_layer(id.clone(), false);
 
         ConfigCx::new(sizer, draw_shared, self).configure(win.as_node(data), id);
 
@@ -373,7 +373,7 @@ impl<'a> EventCx<'a> {
             ModifiersChanged(modifiers) => {
                 let state = modifiers.state();
                 if state.alt_key() != self.modifiers.alt_key() {
-                    // This controls drawing of accelerator key indicators
+                    // This controls drawing of access key indicators
                     self.send_action(Action::REDRAW);
                 }
                 self.modifiers = state;

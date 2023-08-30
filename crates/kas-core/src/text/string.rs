@@ -16,24 +16,24 @@ use crate::event::Key;
 use crate::text::format::{FontToken, FormattableText};
 use crate::text::{Effect, EffectFlags};
 
-/// An accelerator key string
+/// An access key string
 ///
-/// This is a label which supports highlighting of accelerator keys (elsewhere
-/// called "access keys" or "mnemonics"). This type represents both the
+/// This is a label which supports highlighting of access keys (sometimes called
+/// "mnemonics"). This type represents both the
 /// displayed text (via [`FormattableText`] implementation)
-/// and the shortcut (via [`AccelString::key`]).
+/// and the shortcut (via [`AccessString::key`]).
 ///
 /// Markup: `&&` translates to `&`; `&x` for any `x` translates to `x` and
-/// identifies `x` as an "accelerator key"; this may be drawn underlined and
+/// identifies `x` as an "access key"; this may be drawn underlined and
 /// may support keyboard access via e.g. `Alt+X`
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct AccelString {
+pub struct AccessString {
     label: String,
     effects: SmallVec<[Effect<()>; 2]>,
     key: Option<Key>,
 }
 
-impl AccelString {
+impl AccessString {
     /// Parse a `&str`
     ///
     /// Since we require `'static` for references and don't yet have
@@ -87,7 +87,7 @@ impl AccelString {
             }
         }
         buf.push_str(s);
-        AccelString {
+        AccessString {
             label: buf,
             effects,
             key,
@@ -105,7 +105,7 @@ impl AccelString {
     }
 }
 
-impl FormattableText for AccelString {
+impl FormattableText for AccessString {
     type FontTokenIter<'a> = std::iter::Empty<FontToken>;
 
     #[inline]
@@ -123,13 +123,13 @@ impl FormattableText for AccelString {
     }
 }
 
-impl From<String> for AccelString {
+impl From<String> for AccessString {
     fn from(input: String) -> Self {
         if input.as_bytes().contains(&b'&') {
             Self::parse(&input)
         } else {
             // fast path: we can use the raw input
-            AccelString {
+            AccessString {
                 label: input,
                 ..Default::default()
             }
@@ -137,13 +137,13 @@ impl From<String> for AccelString {
     }
 }
 
-impl From<&str> for AccelString {
+impl From<&str> for AccessString {
     fn from(input: &str) -> Self {
         Self::parse(input)
     }
 }
 
-impl<T: Into<AccelString> + Copy> From<&T> for AccelString {
+impl<T: Into<AccessString> + Copy> From<&T> for AccessString {
     fn from(input: &T) -> Self {
         (*input).into()
     }

@@ -11,7 +11,7 @@ use kas::dir::Directional;
 use kas::event::ConfigCx;
 use kas::geom::Vec2;
 use kas::layout::{AxisInfo, SizeRules};
-use kas::text::AccelString;
+use kas::text::AccessString;
 use kas::theme::SizeCx;
 use kas::Widget;
 #[allow(unused)] use kas::{Events, Layout};
@@ -148,7 +148,7 @@ pub trait AdaptWidget: Widget + Sized {
     fn with_label<D, T>(self, direction: D, label: T) -> WithLabel<Self, D>
     where
         D: Directional,
-        T: Into<AccelString>,
+        T: Into<AccessString>,
     {
         WithLabel::new_dir(self, direction, label)
     }

@@ -313,18 +313,18 @@ pub enum NavAdvance {
 ///     #[widget {
 ///         Data = ();
 ///     }]
-///     pub struct AccelLabel {
+///     pub struct AccessLabel {
 ///         core: widget_core!(),
 ///         class: TextClass,
-///         label: Text<AccelString>,
+///         label: Text<AccessString>,
 ///     }
 ///
 ///     impl Self {
 ///         /// Construct from `label`
-///         pub fn new(label: impl Into<AccelString>) -> Self {
-///             AccelLabel {
+///         pub fn new(label: impl Into<AccessString>) -> Self {
+///             AccessLabel {
 ///                 core: Default::default(),
-///                 class: TextClass::AccelLabel(true),
+///                 class: TextClass::AccessLabel(true),
 ///                 label: Text::new(label.into()),
 ///             }
 ///         }
@@ -335,8 +335,8 @@ pub enum NavAdvance {
 ///             self
 ///         }
 ///
-///         /// Get the accelerator key
-///         pub fn accel_key(&self) -> Option<&event::Key> {
+///         /// Get the access key
+///         pub fn access_key(&self) -> Option<&event::Key> {
 ///             self.label.text().key()
 ///         }
 ///     }
@@ -368,16 +368,16 @@ pub enum NavAdvance {
 ///     pub struct TextButton<M: Clone + Debug + 'static> {
 ///         core: widget_core!(),
 ///         #[widget]
-///         label: AccelLabel,
+///         label: AccessLabel,
 ///         message: M,
 ///     }
 ///
 ///     impl Self {
 ///         /// Construct a button with given `label`
-///         pub fn new(label: impl Into<AccelString>, message: M) -> Self {
+///         pub fn new(label: impl Into<AccessString>, message: M) -> Self {
 ///             TextButton {
 ///                 core: Default::default(),
-///                 label: AccelLabel::new(label).with_class(TextClass::Button),
+///                 label: AccessLabel::new(label).with_class(TextClass::Button),
 ///                 message,
 ///             }
 ///         }
@@ -386,8 +386,8 @@ pub enum NavAdvance {
 ///         type Data = ();
 ///
 ///         fn configure(&mut self, cx: &mut ConfigCx) {
-///             if let Some(key) = self.label.accel_key() {
-///                 cx.add_accel_key(self.id_ref(), key.clone());
+///             if let Some(key) = self.label.access_key() {
+///                 cx.add_access_key(self.id_ref(), key.clone());
 ///             }
 ///         }
 ///

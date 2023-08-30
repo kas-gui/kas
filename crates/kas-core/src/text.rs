@@ -23,4 +23,4 @@ mod selection;
 pub use selection::SelectionHelper;
 
 mod string;
-pub use string::AccelString;
+pub use string::AccessString;

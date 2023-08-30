@@ -5,7 +5,7 @@
 
 //! Push-buttons
 
-use super::AccelLabel;
+use super::AccessLabel;
 use kas::draw::color::Rgb;
 use kas::event::Key;
 use kas::prelude::*;
@@ -73,9 +73,9 @@ impl_scope! {
             Self::new(inner).with_msg(msg)
         }
 
-        /// Add accelerator key (chain style)
+        /// Add access key (chain style)
         #[must_use]
-        pub fn with_key(mut self, key: Key) -> Self {
+        pub fn with_access_key(mut self, key: Key) -> Self {
             debug_assert!(self.key.is_none());
             self.key = Some(key);
             self
@@ -97,7 +97,7 @@ impl_scope! {
     impl Events for Self {
         fn configure(&mut self, cx: &mut ConfigCx) {
             if let Some(key) = self.key.clone() {
-                cx.add_accel_key(self.id_ref(), key);
+                cx.add_access_key(self.id_ref(), key);
             }
         }
 
@@ -119,14 +119,14 @@ impl_scope! {
         }
     }
 
-    impl Button<AccelLabel> {
+    impl Button<AccessLabel> {
         /// Construct a button with the given `label`
         ///
         /// This is a convenience method. It may be possible to merge this
         /// functionality into [`Button::new`] once Rust has support for
         /// overlapping trait implementations (not specialisation).
-        pub fn label(label: impl Into<AccelString>) -> Self {
-            Button::new(AccelLabel::new(label))
+        pub fn label(label: impl Into<AccessString>) -> Self {
+            Button::new(AccessLabel::new(label))
         }
 
         /// Construct a button with the given `label` and payload `msg`
@@ -134,11 +134,11 @@ impl_scope! {
         /// This is a convenience method. It may be possible to merge this
         /// functionality into [`Button::new_msg`] once Rust has support for
         /// overlapping trait implementations (not specialisation).
-        pub fn label_msg<M>(label: impl Into<AccelString>, msg: M) -> Self
+        pub fn label_msg<M>(label: impl Into<AccessString>, msg: M) -> Self
         where
             M: Clone + Debug + 'static,
         {
-            Button::new_msg(AccelLabel::new(label), msg)
+            Button::new_msg(AccessLabel::new(label), msg)
         }
     }
 }

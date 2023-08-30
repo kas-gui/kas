@@ -29,7 +29,7 @@ bitflags::bitflags! {
         /// "Hover" is true if the mouse is over this element
         const HOVER = 1 << 2;
         /// Elements such as buttons, handles and menu entries may be depressed
-        /// (visually pushed) by a click or touch event or an accelerator key.
+        /// (visually pushed) by a click or touch event or an access key.
         /// This is often visualised by a darker colour and/or by offsetting
         /// graphics. The `hover` state should be ignored when depressed.
         const DEPRESS = 1 << 3;

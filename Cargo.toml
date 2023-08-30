@@ -41,7 +41,7 @@ nightly = ["min_spec"]
 # Enable dynamic linking (faster linking via an extra run-time dependency):
 dynamic = ["dep:kas-dylib"]
 
-# Use min_specialization (enables accelerator underlining for AccelLabel)
+# Use min_specialization (enables access key underlining for AccessLabel)
 min_spec = ["kas-widgets/min_spec"]
 # Use full specialization
 spec = ["min_spec", "kas-core/spec"]

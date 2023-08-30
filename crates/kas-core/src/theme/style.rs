@@ -137,20 +137,20 @@ pub enum TextClass {
     /// Usually it also implies that the text is both scrollable and selectable,
     /// but these are characteristics of the widget, not the text object.
     LabelScroll,
-    /// Label with accelerator keys
+    /// Label with access keys
     ///
     /// This takes one parameter: `multi_line`. Text is wrapped only if true.
     ///
     /// This is identical to `Label` except that effects are only drawn if
-    /// accelerator-key mode is activated (usually the `Alt` key).
-    AccelLabel(bool),
+    /// access key mode is activated (usually the `Alt` key).
+    AccessLabel(bool),
     /// Button text is drawn over a button
     ///
-    /// Same as `AccelLabel(false)`, though theme may differentiate.
+    /// Same as `AccessLabel(false)`, though theme may differentiate.
     Button,
     /// Menu label (single line, does not stretch)
     ///
-    /// Similar to `AccelLabel(false)`, but with horizontal stretching disabled.
+    /// Similar to `AccessLabel(false)`, but with horizontal stretching disabled.
     MenuLabel,
     /// Editable text, usually encapsulated in some type of box
     ///
@@ -171,15 +171,15 @@ impl TextClass {
         use TextClass::*;
         matches!(
             self,
-            Label(true) | LabelScroll | AccelLabel(true) | Edit(true)
+            Label(true) | LabelScroll | AccessLabel(true) | Edit(true)
         )
     }
 
-    /// True if text effects should only be shown dependant on accelerator-key
+    /// True if text effects should only be shown dependant on access key
     /// mode being active
     #[inline]
-    pub fn is_accel(self) -> bool {
+    pub fn is_access_key(self) -> bool {
         use TextClass::*;
-        matches!(self, AccelLabel(_) | Button | MenuLabel)
+        matches!(self, AccessLabel(_) | Button | MenuLabel)
     }
 }

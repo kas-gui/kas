@@ -162,13 +162,13 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
                 kas::row![
                     Button::new_msg(img_light.clone(), Item::Theme("light"))
                         .with_color("#B38DF9".parse().unwrap())
-                        .with_key(Key::Character("h".into())),
+                        .with_access_key(Key::Character("h".into())),
                     Button::new_msg(img_light, Item::Theme("blue"))
                         .with_color("#7CDAFF".parse().unwrap())
-                        .with_key(Key::Character("b".into())),
+                        .with_access_key(Key::Character("b".into())),
                     Button::new_msg(img_dark, Item::Theme("dark"))
                         .with_color("#E77346".parse().unwrap())
-                        .with_key(Key::Character("k".into())),
+                        .with_access_key(Key::Character("k".into())),
                 ]
                 .map_any()
             )

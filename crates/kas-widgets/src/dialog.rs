@@ -40,7 +40,7 @@ impl_scope! {
             MessageBox {
                 core: Default::default(),
                 label: Label::new(message),
-                button: Button::new_msg(Label::new("Ok"), MessageBoxOk).with_key(Key::Enter),
+                button: Button::new_msg(Label::new("Ok"), MessageBoxOk).with_access_key(Key::Enter),
             }
         }
 

@@ -156,7 +156,7 @@ impl<'a, Data> SubMenuBuilder<'a, Data> {
 
 impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
     /// Append a [`MenuEntry`]
-    pub fn push_entry<S: Into<AccelString>, M>(&mut self, label: S, msg: M)
+    pub fn push_entry<S: Into<AccessString>, M>(&mut self, label: S, msg: M)
     where
         M: Clone + Debug + 'static,
     {
@@ -166,7 +166,7 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
 
     /// Append a [`MenuEntry`], chain style
     #[inline]
-    pub fn entry<S: Into<AccelString>, M>(mut self, label: S, msg: M) -> Self
+    pub fn entry<S: Into<AccessString>, M>(mut self, label: S, msg: M) -> Self
     where
         M: Clone + Debug + 'static,
     {
@@ -177,7 +177,7 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
     /// Append a [`MenuToggle`]
     pub fn push_toggle<M: Debug + 'static>(
         &mut self,
-        label: impl Into<AccelString>,
+        label: impl Into<AccessString>,
         state_fn: impl Fn(&ConfigCx, &Data) -> bool + 'static,
         msg_fn: impl Fn(bool) -> M + 'static,
     ) {
@@ -188,7 +188,7 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
     /// Append a [`MenuToggle`], chain style
     pub fn toggle<M: Debug + 'static>(
         mut self,
-        label: impl Into<AccelString>,
+        label: impl Into<AccessString>,
         state_fn: impl Fn(&ConfigCx, &Data) -> bool + 'static,
         msg_fn: impl Fn(bool) -> M + 'static,
     ) -> Self {
@@ -211,7 +211,7 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
     /// Append a [`SubMenu`]
     ///
     /// This submenu prefers opens to the right.
-    pub fn push_submenu<F>(&mut self, label: impl Into<AccelString>, f: F)
+    pub fn push_submenu<F>(&mut self, label: impl Into<AccessString>, f: F)
     where
         F: FnOnce(SubMenuBuilder<Data>),
     {
@@ -221,7 +221,7 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
     /// Append a [`SubMenu`], chain style
     ///
     /// This submenu prefers opens to the right.
-    pub fn submenu<F>(mut self, label: impl Into<AccelString>, f: F) -> Self
+    pub fn submenu<F>(mut self, label: impl Into<AccessString>, f: F) -> Self
     where
         F: FnOnce(SubMenuBuilder<Data>),
     {
@@ -232,7 +232,7 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
     /// Append a [`SubMenu`]
     ///
     /// This submenu prefers to open in the specified direction.
-    pub fn push_submenu_dir<F>(&mut self, label: impl Into<AccelString>, f: F, dir: Direction)
+    pub fn push_submenu_dir<F>(&mut self, label: impl Into<AccessString>, f: F, dir: Direction)
     where
         F: FnOnce(SubMenuBuilder<Data>),
     {
@@ -245,7 +245,7 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
     ///
     /// This submenu prefers to open in the specified direction.
     #[inline]
-    pub fn submenu_dir<F>(mut self, label: impl Into<AccelString>, f: F, dir: Direction) -> Self
+    pub fn submenu_dir<F>(mut self, label: impl Into<AccessString>, f: F, dir: Direction) -> Self
     where
         F: FnOnce(SubMenuBuilder<Data>),
     {

@@ -180,7 +180,7 @@ enum Pending {
     },
 }
 
-type AccelLayer = (bool, HashMap<Key, WidgetId>);
+type AccessLayer = (bool, HashMap<Key, WidgetId>);
 
 /// Event context state
 ///
@@ -219,7 +219,7 @@ pub struct EventState {
     mouse_grab: Option<MouseGrab>,
     touch_grab: SmallVec<[TouchGrab; 8]>,
     pan_grab: SmallVec<[PanGrab; 4]>,
-    accel_layers: BTreeMap<WidgetId, AccelLayer>,
+    access_layers: BTreeMap<WidgetId, AccessLayer>,
     // For each: (WindowId of popup, popup descriptor, old nav focus)
     popups: SmallVec<[(WindowId, crate::PopupDescriptor, Option<WidgetId>); 16]>,
     popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
@@ -514,13 +514,13 @@ impl<'a> EventCx<'a> {
             }
         }
 
-        // Next priority goes to accelerator keys when Alt is held or alt_bypass is true
+        // Next priority goes to access keys when Alt is held or alt_bypass is true
         let mut target = None;
         for id in (self.popups.iter().rev())
             .map(|(_, popup, _)| popup.id.clone())
             .chain(std::iter::once(widget.id()))
         {
-            if let Some(layer) = self.accel_layers.get(&id) {
+            if let Some(layer) = self.access_layers.get(&id) {
                 // but only when Alt is held or alt-bypass is enabled:
                 if self.modifiers == ModifiersState::ALT
                     || layer.0 && self.modifiers == ModifiersState::empty()

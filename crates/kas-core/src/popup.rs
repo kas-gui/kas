@@ -54,7 +54,7 @@ impl_scope! {
 
         fn pre_configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
             self.core.id = id;
-            cx.new_accel_layer(self.id(), true);
+            cx.new_access_layer(self.id(), true);
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &W::Data, event: Event) -> Response {

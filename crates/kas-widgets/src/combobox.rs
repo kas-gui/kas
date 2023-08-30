@@ -197,7 +197,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
     /// The closure `state_fn` selects the active entry from input data.
     pub fn new<T, I>(iter: I, state_fn: impl Fn(&ConfigCx, &A) -> V + 'static) -> Self
     where
-        T: Into<AccelString>,
+        T: Into<AccessString>,
         I: IntoIterator<Item = (T, V)>,
     {
         let entries = iter
@@ -261,7 +261,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
         msg_fn: impl Fn(V) -> M + 'static,
     ) -> Self
     where
-        T: Into<AccelString>,
+        T: Into<AccessString>,
         I: IntoIterator<Item = (T, V)>,
         M: Debug + 'static,
     {
@@ -324,7 +324,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
     //
     // TODO(opt): these methods cause full-window resize. They don't need to
     // resize at all if the menu is closed!
-    pub fn push<T: Into<AccelString>>(&mut self, cx: &mut ConfigCx, label: T, msg: V) -> usize {
+    pub fn push<T: Into<AccessString>>(&mut self, cx: &mut ConfigCx, label: T, msg: V) -> usize {
         let column = &mut self.popup;
         column.push(cx, &(), MenuEntry::new_msg(label, msg))
     }
@@ -337,7 +337,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
     /// Add a choice at position `index`
     ///
     /// Panics if `index > len`.
-    pub fn insert<T: Into<AccelString>>(
+    pub fn insert<T: Into<AccessString>>(
         &mut self,
         cx: &mut ConfigCx,
         index: usize,
@@ -358,7 +358,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
     /// Replace the choice at `index`
     ///
     /// Panics if `index` is out of bounds.
-    pub fn replace<T: Into<AccelString>>(
+    pub fn replace<T: Into<AccessString>>(
         &mut self,
         cx: &mut ConfigCx,
         index: usize,
