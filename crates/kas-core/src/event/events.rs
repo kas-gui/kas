@@ -12,8 +12,8 @@ use serde::{Deserialize, Serialize};
 use super::{EventCx, EventState, GrabMode, Response}; // for doc-links
 use super::{Key, KeyCode, KeyEvent, Press};
 use crate::geom::{DVec2, Offset};
-#[allow(unused)] use crate::Events;
 use crate::{dir::Direction, WidgetId, WindowId};
+#[allow(unused)] use crate::{Events, Popup};
 
 /// Events addressed to a widget
 ///
@@ -124,9 +124,10 @@ pub enum Event {
     /// This event is sent only when:
     ///
     /// 1.  No [`Press::grab`] is active
-    /// 2.  When a pop-up layer is active ([`EventCx::add_popup`]), the owner
-    ///     of the top-most layer will receive this event. If the event is not
-    ///     used, then the pop-up will be closed and the event sent again.
+    /// 2.  A [`Popup`] is open
+    ///
+    /// The parent (or an ancestor) of a [`Popup`] should handle or explicitly
+    /// ignore this event.
     CursorMove { press: Press },
     /// A mouse button was pressed or touch event started
     ///
@@ -135,9 +136,10 @@ pub enum Event {
     ///
     /// This event is sent in exactly two cases, in this order:
     ///
-    /// 1.  When a pop-up layer is active ([`EventCx::add_popup`]), the owner
-    ///     of the top-most layer will receive this event. If the event is not
-    ///     used, then the pop-up will be closed and the event sent again.
+    /// 1.  When a [`Popup`] is open. A [`Popup`] will close itself if
+    ///     `press.id` is not a descendant of itself, but will still return
+    ///     [`Response::Unused`]. The parent (or an ancestor) of the
+    ///     [`Popup`] should handle this event.
     /// 2.  If a widget is found under the mouse when pressed or where a touch
     ///     event starts, this event is sent to the widget.
     ///
@@ -195,8 +197,8 @@ pub enum Event {
     /// called automatically (to ensure that the widget is visible) and the
     /// response will be forced to [`Response::Used`].
     ///
-    /// The widget may wish to call [`EventCx::request_key_focus`], but likely
-    /// only when [`FocusSource::key_or_synthetic`].
+    /// The widget may wish to call [`EventState::request_key_focus`], but
+    /// likely only when [`FocusSource::key_or_synthetic`].
     NavFocus(FocusSource),
     /// Sent when a widget becomes the mouse hover target
     ///

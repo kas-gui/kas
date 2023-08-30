@@ -9,6 +9,7 @@
 //!
 //! -   [`EventConfig`] provides an editor for event configuration
 //! -   [`kas::Window`](kas::Window) is the root of any UI tree used as a window
+//! -   [`kas::Popup`](kas::Popup) is the root of any popup
 //!
 //! ## Sub-modules
 //!
@@ -20,7 +21,7 @@
 //!
 //! ## Container widgets
 //!
-//! -   [`Frame`], [`NavFrame`], [`PopupFrame`]: frames around content
+//! -   [`Frame`], [`NavFrame`]: frames around content
 //! -   [`ScrollRegion`], [`ScrollBarRegion`]: larger on the inside
 //! -   [`Stack`], [`TabStack`]: a stack of widgets in the same rect
 //! -   [`List`]: a row / column of children

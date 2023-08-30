@@ -16,7 +16,7 @@ use crate::theme::{Feature, SizeCx, TextClass, ThemeSize};
 use crate::{Action, Node, WidgetId};
 use std::ops::{Deref, DerefMut};
 
-#[allow(unused)] use crate::{event::Event, Events};
+#[allow(unused)] use crate::{event::Event, Events, Layout};
 
 /// Widget configuration and update context
 ///

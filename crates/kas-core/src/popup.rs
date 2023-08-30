@@ -11,6 +11,8 @@ use crate::event::{ConfigCx, Event, EventCx, Response};
 use crate::{Events, Layout, LayoutExt, Widget, WidgetId, WindowId};
 use kas_macros::{autoimpl, impl_scope, widget_index};
 
+#[allow(unused)] use crate::event::EventState;
+
 #[derive(Clone, Debug)]
 pub(crate) struct PopupDescriptor {
     pub id: WidgetId,
@@ -112,7 +114,7 @@ impl_scope! {
         /// open.
         ///
         /// Returns `true` when the popup is newly opened. In this case, the
-        /// caller may wish to call [`EventCx::next_nav_focus`] next.
+        /// caller may wish to call [`EventState::next_nav_focus`] next.
         pub fn open(&mut self, cx: &mut EventCx, data: &W::Data, parent: WidgetId) -> bool {
             if self.win_id.is_some() {
                 return false;
