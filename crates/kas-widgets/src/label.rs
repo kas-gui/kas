@@ -12,8 +12,10 @@ use kas::text::Text;
 use kas::theme::TextClass;
 
 /// Construct a [`Label`] which accepts any data
+///
+/// This is just a shortcut for `Label::new(text).map_any()`.
 #[inline]
-pub fn label<A, T: FormattableText + 'static>(label: T) -> MapAny<A, Label<T>> {
+pub fn label_any<A, T: FormattableText + 'static>(label: T) -> MapAny<A, Label<T>> {
     MapAny::new(Label::new(label))
 }
 
