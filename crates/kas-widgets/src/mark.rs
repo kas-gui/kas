@@ -102,7 +102,7 @@ impl_scope! {
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             event.on_activate(cx, self.id(), |cx| {
                 cx.push(self.msg.clone());
-                Response::Used
+                Used
             })
         }
     }

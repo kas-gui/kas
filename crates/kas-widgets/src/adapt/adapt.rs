@@ -46,7 +46,7 @@ impl_scope! {
 
         /// Set a custom event handler
         ///
-        /// The closure should return [`Response::Used`] if state was updated.
+        /// The closure should return [`Used`] if state was updated.
         pub fn on_event<H>(mut self, handler: H) -> Self
         where
             H: Fn(&mut EventCx, &A, &mut S, Event) -> Response + 'static,
@@ -118,7 +118,7 @@ impl_scope! {
                 }
                 r
             } else {
-                Response::Unused
+                Unused
             }
         }
 

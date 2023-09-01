@@ -145,9 +145,9 @@ impl_scope! {
                     log::info!("Requesting update in {}ns", ns);
                     cx.request_timer_update(self.id(), 0, Duration::new(0, ns), true);
                     *cx |= Action::REDRAW;
-                    Response::Used
+                    Used
                 }
-                _ => Response::Unused,
+                _ => Unused,
             }
         }
     }

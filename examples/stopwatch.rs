@@ -7,7 +7,7 @@
 
 use std::time::{Duration, Instant};
 
-use kas::event::{ConfigCx, Event, EventCx, Response};
+use kas::event::{ConfigCx, Event, EventCx, Response, Unused, Used};
 use kas::widgets::{format_data, Button};
 use kas::{Decorations, Events, Layout, LayoutExt, Widget, Window};
 
@@ -48,9 +48,9 @@ fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
                             cx.update(self.as_node(data));
                             cx.request_timer_update(self.id(), 0, Duration::new(0, 1), true);
                         }
-                        Response::Used
+                        Used
                     }
-                    _ => Response::Unused,
+                    _ => Unused,
                 }
             }
             fn handle_messages(&mut self, cx: &mut EventCx, data: &()) {

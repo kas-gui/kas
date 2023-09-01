@@ -8,8 +8,8 @@
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-#[allow(unused)]
-use super::{EventCx, EventState, GrabMode, Response}; // for doc-links
+use super::{EventCx, Response, Unused, Used};
+#[allow(unused)] use super::{EventState, GrabMode};
 use super::{Key, KeyCode, KeyEvent, Press};
 use crate::geom::{DVec2, Offset};
 use crate::{dir::Direction, WidgetId, WindowId};
@@ -50,7 +50,7 @@ pub enum Event {
     /// only when `event.state == ElementState::Pressed && !is_synthetic`), use
     /// `cx.config().shortcuts(|s| s.try_match(cx.modifiers(), &event.logical_key)`
     /// or (omitting shortcut matching) `Command::new(event.logical_key)`.
-    /// Note that if the handler returns [`Response::Unused`] the widget might
+    /// Note that if the handler returns [`Unused`] the widget might
     /// then receive [`Event::Command`] for the same key press, but this is not
     /// guaranteed (behaviour may change in future versions).
     ///
@@ -138,7 +138,7 @@ pub enum Event {
     ///
     /// 1.  When a [`Popup`] is open. A [`Popup`] will close itself if
     ///     `press.id` is not a descendant of itself, but will still return
-    ///     [`Response::Unused`]. The parent (or an ancestor) of the
+    ///     [`Unused`]. The parent (or an ancestor) of the
     ///     [`Popup`] should handle this event.
     /// 2.  If a widget is found under the mouse when pressed or where a touch
     ///     event starts, this event is sent to the widget.
@@ -180,7 +180,7 @@ pub enum Event {
     /// Notification that a popup has been closed
     ///
     /// This is sent to the popup when closed.
-    /// Since popups may be removed directly by the EventCx, the parent should
+    /// Since popups may be removed directly by the [`EventCx`], the parent should
     /// clean up any associated state here.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
@@ -195,7 +195,7 @@ pub enum Event {
     ///
     /// With [`FocusSource::Key`], [`EventCx::set_scroll`] is
     /// called automatically (to ensure that the widget is visible) and the
-    /// response will be forced to [`Response::Used`].
+    /// response will be forced to [`Used`].
     ///
     /// The widget may wish to call [`EventState::request_key_focus`], but
     /// likely only when [`FocusSource::key_or_synthetic`].
@@ -278,10 +278,10 @@ impl Event {
                 if success && id == press.id {
                     f(cx)
                 } else {
-                    Response::Used
+                    Used
                 }
             }
-            _ => Response::Unused,
+            _ => Unused,
         }
     }
 
@@ -345,7 +345,7 @@ pub enum Command {
     ///
     /// Each press of this key should somehow relax control. It is expected that
     /// widgets receiving this key repeatedly eventually (soon) have no more
-    /// use for this themselves and return it via [`Response::Unused`].
+    /// use for this themselves and return it via [`Unused`].
     ///
     /// This is in some cases remapped to [`Command::Deselect`].
     Escape,

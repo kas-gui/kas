@@ -331,9 +331,9 @@ impl_scope! {
             match event {
                 Event::Command(cmd, code) if cmd.is_activate() => {
                     cx.push(kas::message::Activate(code));
-                    Response::Used
+                    Used
                 }
-                _ => Response::Unused
+                _ => Unused
             }
         }
     }

@@ -313,7 +313,7 @@ impl_scope! {
                         }
                         SpinBtn::Up
                     }
-                    _ => return Response::Unused,
+                    _ => return Unused,
                 },
                 Event::Scroll(ScrollDelta::LineDelta(_, y)) => {
                     if *y > 0.0 {
@@ -321,10 +321,10 @@ impl_scope! {
                     } else if *y < 0.0 {
                         SpinBtn::Down
                     } else {
-                        return Response::Unused;
+                        return Unused;
                     }
                 }
-                _ => return Response::Unused,
+                _ => return Unused,
             };
 
             if let Some(value) = self.edit.guard.handle_btn(cx, data, btn) {
@@ -332,7 +332,7 @@ impl_scope! {
                     f(cx, data, value);
                 }
             }
-            Response::Used
+            Used
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {

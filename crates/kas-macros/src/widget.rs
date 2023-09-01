@@ -757,7 +757,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 #[inline]
                 fn handle_hover(&mut self, cx: &mut EventCx, _: bool) -> ::kas::event::Response {
                     cx.redraw(self.id());
-                    ::kas::event::Response::Used
+                    ::kas::event::Used
                 }
             },
             (false, Some(icon_expr)) => quote! {
@@ -766,7 +766,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     if state {
                         cx.set_cursor_icon(#icon_expr);
                     }
-                    ::kas::event::Response::Used
+                    ::kas::event::Used
                 }
             },
             (true, Some(icon_expr)) => quote! {
@@ -776,7 +776,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     if state {
                         cx.set_cursor_icon(#icon_expr);
                     }
-                    ::kas::event::Response::Used
+                    ::kas::event::Used
                 }
             },
         };

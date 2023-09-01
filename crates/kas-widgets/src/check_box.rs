@@ -45,7 +45,7 @@ impl_scope! {
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> Response {
             event.on_activate(cx, self.id(), |cx| {
                 self.toggle(cx, data);
-                Response::Used
+                Used
             })
         }
     }

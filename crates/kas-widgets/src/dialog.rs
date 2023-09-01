@@ -122,7 +122,7 @@ impl_scope! {
             } else {
                 TextEditResult::Cancel
             });
-            Response::Used
+            Used
         }
     }
 
@@ -143,7 +143,7 @@ impl_scope! {
             match event {
                 Event::Command(Command::Escape, _) => self.close(cx, false),
                 Event::Command(Command::Enter, _) => self.close(cx, true),
-                _ => Response::Unused,
+                _ => Unused,
             }
         }
 

@@ -77,9 +77,9 @@ impl_scope! {
                     if let Some(code) = code {
                         cx.depress_with_key(self.id(), code);
                     }
-                    Response::Used
+                    Used
                 }
-                _ => Response::Unused,
+                _ => Unused,
             }
         }
 

@@ -90,7 +90,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
 
         fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Data) -> Response {
             cx.push(Item::Edit(edit.get_string()));
-            Response::Used
+            Used
         }
 
         fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Data) {

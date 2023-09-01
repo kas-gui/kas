@@ -325,14 +325,14 @@ impl_scope! {
                 Event::TimerUpdate(_) => {
                     self.force_visible = false;
                     *cx |= Action::REDRAW;
-                    Response::Used
+                    Used
                 }
                 Event::PressStart { press } => {
                     let offset = self.handle.handle_press_on_track(cx, &press);
                     self.apply_grip_offset(cx, offset);
-                    Response::Used
+                    Used
                 }
-                _ => Response::Unused,
+                _ => Unused,
             }
         }
 

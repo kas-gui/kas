@@ -71,7 +71,7 @@ impl_scope! {
         fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> Response {
             event.on_activate(cx, self.id(), |cx| {
                 cx.push(Select);
-                Response::Used
+                Used
             })
         }
 

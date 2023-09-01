@@ -94,9 +94,9 @@ impl_scope! {
             match event {
                 Event::PressStart { .. } => {
                     cx.drag_resize_window(self.direction);
-                    Response::Used
+                    Used
                 }
-                _ => Response::Unused,
+                _ => Unused,
             }
         }
     }
@@ -206,7 +206,7 @@ impl_scope! {
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
             event.on_activate(cx, self.id(), |cx| {
                 cx.push(self.msg.clone());
-                Response::Used
+                Used
             })
         }
     }
@@ -265,9 +265,9 @@ impl_scope! {
             match event {
                 Event::PressStart { .. } => {
                     cx.drag_window();
-                    Response::Used
+                    Used
                 }
-                _ => Response::Unused,
+                _ => Unused,
             }
         }
 

@@ -78,14 +78,14 @@ pub trait EditGuard: Sized {
     /// The default implementation:
     ///
     /// -   If the field is editable, calls [`Self::focus_lost`] and returns
-    ///     returns [`Response::Used`].
-    /// -   If the field is not editable, returns [`Response::Unused`].
+    ///     returns [`Used`].
+    /// -   If the field is not editable, returns [`Unused`].
     fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Self::Data) -> Response {
         if edit.editable {
             Self::focus_lost(edit, cx, data);
-            Response::Used
+            Used
         } else {
-            Response::Unused
+            Unused
         }
     }
 
@@ -672,26 +672,26 @@ impl_scope! {
                         self.selection.set_edit_pos(self.text.str_len());
                         cx.redraw(self.id());
                     }
-                    Response::Used
+                    Used
                 }
-                Event::NavFocus(_) => Response::Used,
+                Event::NavFocus(_) => Used,
                 Event::LostNavFocus => {
                     if !self.class.multi_line() {
                         self.selection.set_empty();
                         cx.redraw(self.id());
                     }
-                    Response::Used
+                    Used
                 }
                 Event::LostKeyFocus => {
                     self.has_key_focus = false;
                     cx.redraw(self.id());
                     G::focus_lost(self, cx, data);
-                    Response::Used
+                    Used
                 }
                 Event::LostSelFocus => {
                     self.selection.set_empty();
                     cx.redraw(self.id());
-                    Response::Used
+                    Used
                 }
                 Event::Command(cmd, code) => {
                     // Note: we can receive a Command without key focus, but should
@@ -700,10 +700,10 @@ impl_scope! {
                     if self.has_key_focus {
                         match self.control_key(cx, data, cmd, code) {
                             Ok(r) => r,
-                            Err(NotReady) => Response::Used,
+                            Err(NotReady) => Used,
                         }
                     } else {
-                        Response::Unused
+                        Unused
                     }
                 }
                 Event::Key(event, false) if event.state == ElementState::Pressed => {
@@ -713,10 +713,10 @@ impl_scope! {
                         if let Some(cmd) = cx.config().shortcuts(|s| s.try_match(cx.modifiers(), &event.logical_key)) {
                             match self.control_key(cx, data, cmd, Some(event.physical_key)) {
                                 Ok(r) => r,
-                                Err(NotReady) => Response::Used,
+                                Err(NotReady) => Used,
                             }
                         } else {
-                            Response::Unused
+                            Unused
                         }
                     }
                 }
@@ -750,15 +750,15 @@ impl_scope! {
 
                         G::edit(self, cx, data);
                     }
-                    Response::Used
+                    Used
                 }
                 event => match self.input_handler.handle(cx, self.id(), event) {
-                    TextInputAction::None => Response::Used,
-                    TextInputAction::Unused => Response::Unused,
+                    TextInputAction::None => Used,
+                    TextInputAction::Unused => Unused,
                     TextInputAction::Pan(delta) => self.pan_delta(cx, delta),
                     TextInputAction::Focus => {
                         request_focus(self, cx, data);
-                        Response::Used
+                        Used
                     }
                     TextInputAction::Cursor(coord, anchor, clear, repeats) => {
                         request_focus(self, cx, data);
@@ -775,7 +775,7 @@ impl_scope! {
                             }
                             self.set_primary(cx);
                         }
-                        Response::Used
+                        Used
                     }
                 },
             }
@@ -1102,7 +1102,7 @@ impl<G: EditGuard> EditField<G> {
 
     fn received_text(&mut self, cx: &mut EventCx, data: &G::Data, text: &str) -> Response {
         if !self.editable {
-            return Response::Unused;
+            return Unused;
         }
 
         let pos = self.selection.edit_pos();
@@ -1129,7 +1129,7 @@ impl<G: EditGuard> EditField<G> {
         self.prepare_text(cx);
 
         G::edit(self, cx, data);
-        Response::Used
+        Used
     }
 
     fn control_key(
@@ -1414,8 +1414,8 @@ impl<G: EditGuard> EditField<G> {
         self.prepare_text(cx);
 
         Ok(match result {
-            EditAction::None => Response::Used,
-            EditAction::Unused => Response::Unused,
+            EditAction::None => Used,
+            EditAction::Unused => Unused,
             EditAction::Activate => {
                 if let Some(code) = code {
                     cx.depress_with_key(self.id(), code);
@@ -1424,7 +1424,7 @@ impl<G: EditGuard> EditField<G> {
             }
             EditAction::Edit => {
                 G::edit(self, cx, data);
-                Response::Used
+                Used
             }
         })
     }
@@ -1448,7 +1448,7 @@ impl<G: EditGuard> EditField<G> {
         }
     }
 
-    // Pan by given delta. Return `Response::Scrolled` or `Response::Pan(remaining)`.
+    // Pan by given delta.
     fn pan_delta(&mut self, cx: &mut EventCx, mut delta: Offset) -> Response {
         let new_offset = (self.view_offset - delta)
             .min(self.max_scroll_offset())
@@ -1464,7 +1464,7 @@ impl<G: EditGuard> EditField<G> {
         } else {
             Scroll::Offset(delta)
         });
-        Response::Used
+        Used
     }
 
     /// Update view_offset after edit_pos changes

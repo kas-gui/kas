@@ -70,26 +70,26 @@ impl_scope! {
                     if dir.is_vertical() {
                         let rev = dir.is_reversed();
                         cx.next_nav_focus(None, rev, FocusSource::Key);
-                        Response::Used
+                        Used
                     } else if dir == self.popup.direction().reversed() {
                         self.popup.close(cx);
-                        Response::Used
+                        Used
                     } else {
-                        Response::Unused
+                        Unused
                     }
                 } else if matches!(cmd, Command::Home | Command::End) {
                     cx.clear_nav_focus();
                     let rev = cmd == Command::End;
                     cx.next_nav_focus(self.id(), rev, FocusSource::Key);
-                    Response::Used
+                    Used
                 } else {
-                    Response::Unused
+                    Unused
                 }
             } else if Some(self.popup.direction()) == cmd.as_direction() {
                 self.open_menu(cx, data, true);
-                Response::Used
+                Used
             } else {
-                Response::Unused
+                Unused
             }
         }
     }
@@ -127,10 +127,10 @@ impl_scope! {
                     if let Some(code) = code {
                         cx.depress_with_key(self.id(), code);
                     }
-                    Response::Used
+                    Used
                 }
                 Event::Command(cmd, _) => self.handle_dir_key(cx, data, cmd),
-                _ => Response::Unused,
+                _ => Unused,
             }
         }
 

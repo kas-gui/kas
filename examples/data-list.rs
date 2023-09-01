@@ -85,7 +85,7 @@ impl EditGuard for ListEntryGuard {
 
     fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Data) -> Response {
         cx.push(SelectEntry(edit.guard.0));
-        Response::Used
+        Used
     }
 
     fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Data) {

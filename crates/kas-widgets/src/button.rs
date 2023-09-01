@@ -106,7 +106,7 @@ impl_scope! {
                 if let Some(f) = self.on_press.as_ref() {
                     f(cx, data);
                 }
-                Response::Used
+                Used
             })
         }
 

@@ -342,7 +342,7 @@ impl_scope! {
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> Response {
             if self.on_move.is_none() {
-                return Response::Unused;
+                return Unused;
             }
 
             match event {
@@ -370,7 +370,7 @@ impl_scope! {
                         }
                         Command::Home => self.range.0,
                         Command::End => self.range.1,
-                        _ => return Response::Unused,
+                        _ => return Unused,
                     };
 
                     if let Some(code) = code {
@@ -389,9 +389,9 @@ impl_scope! {
                     let offset = self.grip.handle_press_on_track(cx, &press);
                     self.apply_grip_offset(cx, data, offset);
                 }
-                _ => return Response::Unused,
+                _ => return Unused,
             }
-            Response::Used
+            Used
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {

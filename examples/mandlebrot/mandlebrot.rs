@@ -382,7 +382,7 @@ impl_scope! {
                                 Command::Down => DVec2(0.0, d),
                                 Command::Left => DVec2(-d, 0.0),
                                 Command::Right => DVec2(d, 0.0),
-                                _ => return Response::Unused,
+                                _ => return Unused,
                             };
                             self.delta += self.alpha.complex_mul(delta);
                         }
@@ -420,9 +420,9 @@ impl_scope! {
                         .with_icon(event::CursorIcon::Grabbing)
                         .with_cx(cx);
                 }
-                _ => return Response::Unused,
+                _ => return Unused,
             }
-            Response::Used
+            Used
         }
     }
 }

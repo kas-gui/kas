@@ -51,9 +51,9 @@ impl_scope! {
                         cx.depress_with_key(self.id(), code);
                     }
                     cx.push(kas::message::Select);
-                    Response::Used
+                    Used
                 }
-                _ => Response::Unused,
+                _ => Unused,
             }
         }
     }

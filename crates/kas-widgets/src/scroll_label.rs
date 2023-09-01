@@ -140,7 +140,7 @@ impl_scope! {
             }
         }
 
-        // Pan by given delta. Return `Response::Scrolled` or `Response::Pan(remaining)`.
+        // Pan by given delta.
         fn pan_delta(&mut self, cx: &mut EventCx, mut delta: Offset) -> Response {
             let new_offset = (self.view_offset - delta)
                 .min(self.max_scroll_offset())
@@ -155,7 +155,7 @@ impl_scope! {
             } else {
                 Scroll::Offset(delta)
             });
-            Response::Used
+            Used
         }
 
         /// Update view_offset from edit_pos
@@ -220,27 +220,27 @@ impl_scope! {
                     Command::Escape | Command::Deselect if !self.selection.is_empty() => {
                         self.selection.set_empty();
                         cx.redraw(self.id());
-                        Response::Used
+                        Used
                     }
                     Command::SelectAll => {
                         self.selection.set_sel_pos(0);
                         self.selection.set_edit_pos(self.text.str_len());
                         self.set_primary(cx);
                         cx.redraw(self.id());
-                        Response::Used
+                        Used
                     }
                     Command::Cut | Command::Copy => {
                         let range = self.selection.range();
                         cx.set_clipboard((self.text.as_str()[range]).to_string());
-                        Response::Used
+                        Used
                     }
                     // TODO: scroll by command
-                    _ => Response::Unused,
+                    _ => Unused,
                 },
                 Event::LostSelFocus => {
                     self.selection.set_empty();
                     cx.redraw(self.id());
-                    Response::Used
+                    Used
                 }
                 Event::Scroll(delta) => {
                     let delta2 = match delta {
@@ -250,8 +250,8 @@ impl_scope! {
                     self.pan_delta(cx, delta2)
                 }
                 event => match self.input_handler.handle(cx, self.id(), event) {
-                    TextInputAction::None | TextInputAction::Focus => Response::Used,
-                    TextInputAction::Unused => Response::Unused,
+                    TextInputAction::None | TextInputAction::Focus => Used,
+                    TextInputAction::Unused => Unused,
                     TextInputAction::Pan(delta) => self.pan_delta(cx, delta),
                     TextInputAction::Cursor(coord, anchor, clear, repeats) => {
                         if (clear && repeats <= 1) || cx.request_sel_focus(self.id()) {
@@ -267,7 +267,7 @@ impl_scope! {
                             }
                             self.set_primary(cx);
                         }
-                        Response::Used
+                        Used
                     }
                 },
             }

@@ -610,13 +610,13 @@ impl_scope! {
                 Event::Command(cmd, _) => {
                     let last = data.len().wrapping_sub(1);
                     if last == usize::MAX {
-                        return Response::Unused;
+                        return Unused;
                     }
 
                     let solver = self.position_solver();
                     let cur = match cx.nav_focus().and_then(|id| self.find_child_index(id)) {
                         Some(index) => solver.child_to_data(index),
-                        None => return Response::Unused,
+                        None => return Unused,
                     };
                     let is_vert = self.direction.is_vertical();
                     let len = solver.cur_len;
@@ -641,9 +641,9 @@ impl_scope! {
                         }
                         let index = i_data % usize::conv(self.cur_len);
                         cx.next_nav_focus(self.widgets[index].widget.id(), false, FocusSource::Key);
-                        Response::Used
+                        Used
                     } else {
-                        Response::Unused
+                        Unused
                     };
                 }
                 Event::PressStart { ref press } if press.is_primary() && cx.config().mouse_nav_focus() => {
@@ -673,9 +673,9 @@ impl_scope! {
                             cx.push(kas::message::Select);
                         }
                     }
-                    Response::Used
+                    Used
                 }
-                _ => Response::Unused, // fall through to scroll handler
+                _ => Unused, // fall through to scroll handler
             };
 
             let (moved, sber_response) = self

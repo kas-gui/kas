@@ -177,7 +177,7 @@ impl EventState {
     /// Set/unset a widget as disabled
     ///
     /// Disabled status applies to all descendants and blocks reception of
-    /// events ([`Response::Unused`] is returned automatically when the
+    /// events ([`Unused`] is returned automatically when the
     /// recipient or any ancestor is disabled).
     pub fn set_disabled(&mut self, w_id: WidgetId, state: bool) {
         for (i, id) in self.disabled.iter().enumerate() {

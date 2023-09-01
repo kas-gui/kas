@@ -617,7 +617,7 @@ impl<'a> EventCx<'a> {
             }
         }
 
-        widget._send(self, id, disabled, event) == Response::Used
+        widget._send(self, id, disabled, event) == Used
     }
 
     fn send_popup_first(&mut self, mut widget: Node<'_>, id: Option<WidgetId>, event: Event) {

@@ -102,19 +102,19 @@ impl_scope! {
 
                     // Event delivery implies coord is over the grip.
                     self.press_coord = press.coord - self.offset();
-                    Response::Used
+                    Used
                 }
                 Event::PressMove { press, .. } => {
                     let offset = press.coord - self.press_coord;
                     let offset = offset.clamp(Offset::ZERO, self.max_offset());
                     cx.push(GripMsg::PressMove(offset));
-                    Response::Used
+                    Used
                 }
                 Event::PressEnd { success, .. } => {
                     cx.push(GripMsg::PressEnd(success));
-                    Response::Used
+                    Used
                 }
-                _ => Response::Unused,
+                _ => Unused,
             }
         }
     }

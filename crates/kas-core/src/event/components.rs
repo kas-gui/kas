@@ -6,7 +6,7 @@
 //! Event handling components
 
 use super::ScrollDelta::{LineDelta, PixelDelta};
-use super::{Command, CursorIcon, Event, EventCx, PressSource, Response, Scroll};
+use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
 #[allow(unused)] use crate::text::SelectionHelper;
@@ -287,7 +287,7 @@ impl ScrollComponent {
                             Command::Down => LineDelta(0.0, -1.0),
                             Command::PageUp => PixelDelta(Offset(0, window_rect.size.1 / 2)),
                             Command::PageDown => PixelDelta(Offset(0, -(window_rect.size.1 / 2))),
-                            _ => return (false, Response::Unused),
+                            _ => return (false, Unused),
                         };
                         let delta = match delta {
                             LineDelta(x, y) => cx.config().scroll_distance((x, y)),
@@ -347,9 +347,9 @@ impl ScrollComponent {
                     }
                 }
             }
-            _ => return (false, Response::Unused),
+            _ => return (false, Unused),
         }
-        (moved, Response::Used)
+        (moved, Used)
     }
 }
 

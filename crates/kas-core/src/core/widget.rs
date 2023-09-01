@@ -6,7 +6,7 @@
 //! Widget and Events traits
 
 use super::{Layout, Node};
-use crate::event::{ConfigCx, Event, EventCx, Response, Scroll};
+use crate::event::{ConfigCx, Event, EventCx, Response, Scroll, Unused};
 use crate::{Erased, WidgetId};
 use kas_macros::autoimpl;
 
@@ -133,7 +133,7 @@ pub trait Events: Layout + Sized {
     #[inline]
     fn handle_hover(&mut self, cx: &mut EventCx, state: bool) -> Response {
         let _ = (cx, state);
-        Response::Unused
+        Unused
     }
 
     /// Handle an [`Event`]
@@ -144,31 +144,31 @@ pub trait Events: Layout + Sized {
     /// [`EventCx::last_child`] returns `None`.
     ///
     /// This method may also be called on ancestors during unwinding (if the
-    /// event remains [unused](Response::Unused) and the event
+    /// event remains [unused](Unused) and the event
     /// [is reusable](Event::is_reusable)). In this case,
     /// [`EventCx::last_child`] returns `Some(index)` with the index of the
     /// child being unwound from.
     ///
     /// Default implementation of `handle_event`: do nothing; return
-    /// [`Response::Unused`].
+    /// [`Unused`].
     ///
     /// Use [`EventCx::send`] instead of calling this method.
     #[inline]
     fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> Response {
         let _ = (cx, data, event);
-        Response::Unused
+        Unused
     }
 
     /// Potentially steal an event before it reaches a child
     ///
     /// This is an optional event handler (see [documentation](crate::event)).
     ///
-    /// May cause a panic if this method returns [`Response::Unused`] but does
+    /// May cause a panic if this method returns [`Unused`] but does
     /// affect `cx` (e.g. by calling [`EventCx::set_scroll`] or leaving a
     /// message on the stack, possibly from [`EventCx::send`]).
     /// This is considered a corner-case and not currently supported.
     ///
-    /// Default implementation: return [`Response::Unused`].
+    /// Default implementation: return [`Unused`].
     #[inline]
     fn steal_event(
         &mut self,
@@ -178,7 +178,7 @@ pub trait Events: Layout + Sized {
         event: &Event,
     ) -> Response {
         let _ = (cx, data, id, event);
-        Response::Unused
+        Unused
     }
 
     /// Handler for messages from children/descendants
@@ -367,9 +367,9 @@ pub enum NavAdvance {
 ///             match event {
 ///                 Event::Command(cmd, code) if cmd.is_activate() => {
 ///                     cx.push(kas::message::Activate(code));
-///                     Response::Used
+///                     Used
 ///                 }
-///                 _ => Response::Unused
+///                 _ => Unused
 ///             }
 ///         }
 ///     }
@@ -406,7 +406,7 @@ pub enum NavAdvance {
 ///         fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> Response {
 ///             event.on_activate(cx, self.id(), |cx| {
 ///                 cx.push(self.message.clone());
-///                 Response::Used
+///                 Used
 ///             })
 ///         }
 ///
