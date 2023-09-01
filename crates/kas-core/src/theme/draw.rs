@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! "Handle" types used by themes
+//! Widget-facing high-level draw API
 
 use super::{FrameStyle, MarkStyle, SelectionStyle, SizeCx, TextClass, ThemeSize};
 use crate::dir::Direction;
@@ -304,15 +304,15 @@ impl<'a> DrawCx<'a> {
     }
 
     /// Draw UI element: scroll bar
-    pub fn scroll_bar<W: Layout>(&mut self, track_rect: Rect, handle: &W, dir: Direction) {
+    pub fn scroll_bar<W: Layout>(&mut self, track_rect: Rect, grip: &W, dir: Direction) {
         self.h
-            .scroll_bar(&self.id, handle.id_ref(), track_rect, handle.rect(), dir);
+            .scroll_bar(&self.id, grip.id_ref(), track_rect, grip.rect(), dir);
     }
 
     /// Draw UI element: slider
-    pub fn slider<W: Layout>(&mut self, track_rect: Rect, handle: &W, dir: Direction) {
+    pub fn slider<W: Layout>(&mut self, track_rect: Rect, grip: &W, dir: Direction) {
         self.h
-            .slider(&self.id, handle.id_ref(), track_rect, handle.rect(), dir);
+            .slider(&self.id, grip.id_ref(), track_rect, grip.rect(), dir);
     }
 
     /// Draw UI element: progress bar
@@ -480,27 +480,34 @@ pub trait ThemeDraw {
     /// Draw UI element: scroll bar
     ///
     /// -   `id`: [`WidgetId`] of the bar
-    /// -   `id2`: [`WidgetId`] of the handle
+    /// -   `grip_id`: [`WidgetId`] of the grip
     /// -   `rect`: area of whole widget (slider track)
-    /// -   `h_rect`: area of slider handle
+    /// -   `grip_rect`: area of slider grip
     /// -   `dir`: direction of bar
     fn scroll_bar(
         &mut self,
         id: &WidgetId,
-        id2: &WidgetId,
+        grip_id: &WidgetId,
         rect: Rect,
-        h_rect: Rect,
+        grip_rect: Rect,
         dir: Direction,
     );
 
     /// Draw UI element: slider
     ///
     /// -   `id`: [`WidgetId`] of the bar
-    /// -   `id2`: [`WidgetId`] of the handle
+    /// -   `grip_id`: [`WidgetId`] of the grip
     /// -   `rect`: area of whole widget (slider track)
-    /// -   `h_rect`: area of slider handle
+    /// -   `grip_rect`: area of slider grip
     /// -   `dir`: direction of slider (currently only LTR or TTB)
-    fn slider(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction);
+    fn slider(
+        &mut self,
+        id: &WidgetId,
+        grip_id: &WidgetId,
+        rect: Rect,
+        grip_rect: Rect,
+        dir: Direction,
+    );
 
     /// Draw UI element: progress bar
     ///

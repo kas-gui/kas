@@ -554,20 +554,20 @@ where
         let track = Quad::conv(rect);
         self.draw.rect(track, self.cols.frame);
 
-        let handle = Quad::conv(h_rect);
+        let grip = Quad::conv(h_rect);
         let state = InputState::new2(self.ev, id, id2);
         let col = self.cols.accent_soft_state(state);
-        self.draw.rect(handle, col);
+        self.draw.rect(grip, col);
     }
 
     fn slider(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, _: Direction) {
         let track = Quad::conv(rect);
         self.draw.rect(track, self.cols.frame);
 
-        let handle = Quad::conv(h_rect);
+        let grip = Quad::conv(h_rect);
         let state = InputState::new2(self.ev, id, id2);
         let col = self.cols.accent_soft_state(state);
-        self.draw.rect(handle, col);
+        self.draw.rect(grip, col);
     }
 
     fn progress_bar(&mut self, _: &WidgetId, rect: Rect, dir: Direction, value: f32) {

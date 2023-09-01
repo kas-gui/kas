@@ -311,7 +311,7 @@ impl_scope! {
             self.core.rect = rect;
             self.grip.set_rect(cx, rect);
             let mut size = rect.size;
-            size.set_component(self.direction, cx.size_cx().handle_len());
+            size.set_component(self.direction, cx.size_cx().grip_len());
             let _ = self.grip.set_size_and_offset(size, self.offset());
         }
 

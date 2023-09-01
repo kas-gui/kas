@@ -19,7 +19,7 @@ impl_scope! {
     /// A scroll bar
     ///
     /// Scroll bars allow user-input of a value between 0 and a defined maximum,
-    /// and allow the size of the handle to be specified.
+    /// and allow the size of the grip to be specified.
     ///
     /// # Messages
     ///
@@ -35,15 +35,16 @@ impl_scope! {
         align: AlignPair,
         direction: D,
         // Terminology assumes vertical orientation:
-        min_handle_len: i32,
-        handle_len: i32,
-        handle_value: i32, // contract: > 0
+        min_grip_len: i32, // units: px
+        grip_len: i32, // units: px
+        // grip_size, max_value and value are all in arbitrary (user-provided) units:
+        grip_size: i32, // contract: > 0; relative to max_value
         max_value: i32,
         value: i32,
         invisible: bool,
         force_visible: bool,
         #[widget]
-        handle: GripPart,
+        grip: GripPart,
     }
 
     impl Self
@@ -85,14 +86,14 @@ impl_scope! {
                 core: Default::default(),
                 align: Default::default(),
                 direction,
-                min_handle_len: 0,
-                handle_len: 0,
-                handle_value: 1,
+                min_grip_len: 0,
+                grip_len: 0,
+                grip_size: 1,
                 max_value: 0,
                 value: 0,
                 invisible: false,
                 force_visible: false,
-                handle: GripPart::new(),
+                grip: GripPart::new(),
             }
         }
 
@@ -124,8 +125,8 @@ impl_scope! {
         /// See [`ScrollBar::set_limits`].
         #[inline]
         #[must_use]
-        pub fn with_limits(mut self, max_value: i32, handle_value: i32) -> Self {
-            let _ = self.set_limits(max_value, handle_value);
+        pub fn with_limits(mut self, max_value: i32, grip_size: i32) -> Self {
+            let _ = self.set_limits(max_value, grip_size);
             self
         }
 
@@ -143,9 +144,9 @@ impl_scope! {
         /// (The minimum is always 0.) For a scroll region, this should correspond
         /// to the maximum possible offset.
         ///
-        /// The `handle_value` parameter specifies the size of the handle relative to
-        /// the maximum value: the handle size relative to the length of the scroll
-        /// bar is `handle_value / (max_value + handle_value)`. For a scroll region,
+        /// The `grip_size` parameter specifies the size of the grip relative to
+        /// the maximum value: the grip size relative to the length of the scroll
+        /// bar is `grip_size / (max_value + grip_size)`. For a scroll region,
         /// this should correspond to the size of the visible region.
         /// The minimum value is 1.
         ///
@@ -153,9 +154,9 @@ impl_scope! {
         /// so long as both parameters use the same units.
         ///
         /// Returns [`Action::REDRAW`] if a redraw is required.
-        pub fn set_limits(&mut self, max_value: i32, handle_value: i32) -> Action {
+        pub fn set_limits(&mut self, max_value: i32, grip_size: i32) -> Action {
             // We should gracefully handle zero, though appearance may be wrong.
-            self.handle_value = handle_value.max(1);
+            self.grip_size = grip_size.max(1);
 
             self.max_value = max_value.max(0);
             self.value = self.value.clamp(0, self.max_value);
@@ -170,12 +171,12 @@ impl_scope! {
             self.max_value
         }
 
-        /// Read the current handle value
+        /// Read the current grip value
         ///
         /// See also the [`ScrollBar::set_limits`] documentation.
         #[inline]
-        pub fn handle_value(&self) -> i32 {
-            self.handle_value
+        pub fn grip_size(&self) -> i32 {
+            self.grip_size
         }
 
         /// Get the current value
@@ -192,7 +193,7 @@ impl_scope! {
             let changed = value != self.value;
             if changed {
                 self.value = value;
-                *cx |= self.handle.set_offset(self.offset()).1;
+                *cx |= self.grip.set_offset(self.offset()).1;
             }
             self.force_visible(cx);
             changed
@@ -214,21 +215,21 @@ impl_scope! {
 
         fn update_widgets(&mut self) -> Action {
             let len = self.bar_len();
-            let total = 1i64.max(i64::from(self.max_value) + i64::from(self.handle_value));
-            let handle_len = i64::from(self.handle_value) * i64::conv(len) / total;
-            self.handle_len = i32::conv(handle_len).max(self.min_handle_len).min(len);
+            let total = 1i64.max(i64::from(self.max_value) + i64::from(self.grip_size));
+            let grip_len = i64::from(self.grip_size) * i64::conv(len) / total;
+            self.grip_len = i32::conv(grip_len).max(self.min_grip_len).min(len);
             let mut size = self.core.rect.size;
             if self.direction.is_horizontal() {
-                size.0 = self.handle_len;
+                size.0 = self.grip_len;
             } else {
-                size.1 = self.handle_len;
+                size.1 = self.grip_len;
             }
-            self.handle.set_size_and_offset(size, self.offset())
+            self.grip.set_size_and_offset(size, self.offset())
         }
 
         // translate value to offset in local coordinates
         fn offset(&self) -> Offset {
-            let len = self.bar_len() - self.handle_len;
+            let len = self.bar_len() - self.grip_len;
             let lhs = i64::from(self.value) * i64::conv(len);
             let rhs = i64::from(self.max_value);
             let mut pos = if rhs == 0 {
@@ -247,10 +248,10 @@ impl_scope! {
 
         // true if not equal to old value
         fn apply_grip_offset(&mut self, cx: &mut EventCx, offset: Offset) {
-            let (offset, action) = self.handle.set_offset(offset);
+            let (offset, action) = self.grip.set_offset(offset);
             *cx |= action;
 
-            let len = self.bar_len() - self.handle_len;
+            let len = self.bar_len() - self.grip_len;
             let mut offset = match self.direction.is_vertical() {
                 false => offset.0,
                 true => offset.1,
@@ -287,8 +288,8 @@ impl_scope! {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             let rect = cx.align_feature(Feature::ScrollBar(self.direction()), rect, self.align);
             self.core.rect = rect;
-            self.handle.set_rect(cx, rect);
-            self.min_handle_len = cx.size_cx().handle_len();
+            self.grip.set_rect(cx, rect);
+            self.min_grip_len = cx.size_cx().grip_len();
             let _ = self.update_widgets();
         }
 
@@ -299,7 +300,7 @@ impl_scope! {
             if self.invisible && self.max_value == 0 {
                 return None;
             }
-            self.handle.find_id(coord).or_else(|| Some(self.id()))
+            self.grip.find_id(coord).or_else(|| Some(self.id()))
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
@@ -309,10 +310,10 @@ impl_scope! {
 
             if !self.invisible
                 || (self.max_value != 0 && self.force_visible)
-                || draw.ev_state().is_depressed(self.handle.id_ref())
+                || draw.ev_state().is_depressed(self.grip.id_ref())
             {
                 let dir = self.direction.as_direction();
-                draw.scroll_bar(self.rect(), &self.handle, dir);
+                draw.scroll_bar(self.rect(), &self.grip, dir);
             }
         }
     }
@@ -328,7 +329,7 @@ impl_scope! {
                     Used
                 }
                 Event::PressStart { press } => {
-                    let offset = self.handle.handle_press_on_track(cx, &press);
+                    let offset = self.grip.handle_press_on_track(cx, &press);
                     self.apply_grip_offset(cx, offset);
                     Used
                 }

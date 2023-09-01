@@ -69,7 +69,7 @@ fn dimensions() -> dim::Parameters {
         button_inner: 3.0,
         check_box: 24.0,
         mark: 9.0,
-        handle_len: 8.0,
+        grip_len: 8.0,
         shadow_size: Vec2::splat(6.0),
         shadow_rel_offset: Vec2::ZERO,
         ..Default::default()
@@ -208,8 +208,8 @@ where
         inner
     }
 
-    /// Draw a handle (for slider, scroll bar)
-    fn draw_handle(&mut self, rect: Rect, state: InputState) {
+    /// Draw a grip (for slider, scroll bar)
+    fn draw_grip(&mut self, rect: Rect, state: InputState) {
         let outer = Quad::conv(rect);
         let thickness = outer.size().min_comp() / 2.0;
         let inner = outer.shrink(thickness);
@@ -379,9 +379,9 @@ where
         let col = self.cols.background;
         self.draw.shaded_round_frame(outer, inner, NORMS_TRACK, col);
 
-        // handle
+        // grip
         let state = InputState::new2(self.ev, id, id2);
-        self.draw_handle(h_rect, state);
+        self.draw_grip(h_rect, state);
     }
 
     fn slider(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
@@ -395,9 +395,9 @@ where
         let col = self.cols.background;
         self.draw.shaded_round_frame(outer, inner, NORMS_TRACK, col);
 
-        // handle
+        // grip
         let state = InputState::new2(self.ev, id, id2);
-        self.draw_handle(h_rect, state);
+        self.draw_grip(h_rect, state);
     }
 
     fn progress_bar(&mut self, _: &WidgetId, rect: Rect, dir: Direction, value: f32) {
