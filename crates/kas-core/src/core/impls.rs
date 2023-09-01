@@ -54,21 +54,21 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
     disabled: bool,
     event: Event,
 ) -> IsUsed {
-    let mut response = Unused;
+    let mut is_used = Unused;
     let do_handle_event;
 
     if id == widget.id_ref() {
         if disabled {
-            return response;
+            return is_used;
         }
 
         match &event {
             Event::MouseHover(state) => {
-                response |= widget.handle_hover(cx, *state);
+                is_used |= widget.handle_hover(cx, *state);
             }
             Event::NavFocus(FocusSource::Key) => {
                 cx.set_scroll(Scroll::Rect(widget.rect()));
-                response |= Used;
+                is_used |= Used;
             }
             _ => (),
         }
@@ -76,16 +76,16 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
         do_handle_event = true;
     } else {
         if event.is_reusable() {
-            response = widget.steal_event(cx, data, &id, &event);
+            is_used = widget.steal_event(cx, data, &id, &event);
         }
-        if response.is_unused() {
+        if !is_used {
             cx.assert_post_steal_unused();
 
             if let Some(index) = widget.find_child_index(&id) {
                 let translation = widget.translation();
                 let mut _found = false;
                 widget.as_node(data).for_child(index, |mut node| {
-                    response = node._send(cx, id.clone(), disabled, event.clone() + translation);
+                    is_used = node._send(cx, id.clone(), disabled, event.clone() + translation);
                     _found = true;
                 });
 
@@ -105,18 +105,18 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
             }
         }
 
-        do_handle_event = response.is_unused() && event.is_reusable();
+        do_handle_event = !is_used && event.is_reusable();
     }
 
     if do_handle_event {
-        response = widget.handle_event(cx, data, event);
+        is_used = widget.handle_event(cx, data, event);
     }
 
     if cx.has_msg() {
         widget.handle_messages(cx, data);
     }
 
-    response
+    is_used
 }
 
 /// Generic implementation of [`Widget::_replay`]

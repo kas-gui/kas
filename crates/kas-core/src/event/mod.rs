@@ -77,4 +77,4 @@ pub use winit::window::{CursorIcon, ResizeDirection}; // used by Key
 pub use cx::*;
 #[cfg(not(winit))] pub use enums::*;
 pub use events::*;
-pub use response::{IsUsed, IsUsed::Unused, IsUsed::Used, Scroll};
+pub use response::{IsUsed, Scroll, Unused, Used};

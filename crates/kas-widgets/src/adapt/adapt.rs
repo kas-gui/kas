@@ -112,11 +112,11 @@ impl_scope! {
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> IsUsed {
             if let Some(handler) = self.event_handler.as_ref() {
-                let r = handler(cx, data, &mut self.state, event);
-                if r.is_used() {
+                let is_used = handler(cx, data, &mut self.state, event);
+                if is_used.into() {
                     cx.update(self.as_node(data));
                 }
-                r
+                is_used
             } else {
                 Unused
             }

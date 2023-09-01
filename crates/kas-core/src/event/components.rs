@@ -264,7 +264,7 @@ impl ScrollComponent {
     /// `PressMove` is used to scroll by the motion delta and to track speed;
     /// `PressEnd` initiates momentum-scrolling if the speed is high enough.
     ///
-    /// Returns `(moved, response)` where `moved` means *this component
+    /// Returns `(moved, is_used)` where `moved` means *this component
     /// scrolled* (scrolling of a parent is possible even if `!moved`).
     pub fn scroll_by_event(
         &mut self,

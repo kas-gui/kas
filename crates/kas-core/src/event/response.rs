@@ -3,13 +3,20 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Event handling: IsUsed type
+//! Event handling: IsUsed and Scroll types
 
 use crate::geom::{Offset, Rect};
 
-/// IsUsed from [`Events::handle_event`]
+pub use IsUsed::{Unused, Used};
+
+/// Return type of event-handling methods
 ///
-/// [`Events::handle_event`]: crate::Events::handle_event
+/// This type is convertible to/from `bool` and supports the expected bit-wise
+/// OR operator (`a | b`, `*a |= b`).
+///
+/// The type also implements negation with output type `bool`, thus allowing
+/// `if is_used.into() { ... }` and `if !is_used { ... }`. An implementation of
+/// `Deref` would be preferred, but the trait can only output a reference.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum IsUsed {
     /// Event was unused
@@ -21,19 +28,18 @@ pub enum IsUsed {
     Used,
 }
 
-// Unfortunately we cannot write generic `From` / `TryFrom` impls
-// due to trait coherence rules, so we impl `from` etc. directly.
-impl IsUsed {
-    /// True if variant is `Used`
-    #[inline]
-    pub fn is_used(&self) -> bool {
-        matches!(self, IsUsed::Used)
+impl From<bool> for IsUsed {
+    fn from(is_used: bool) -> Self {
+        match is_used {
+            false => Self::Unused,
+            true => Self::Used,
+        }
     }
+}
 
-    /// True if variant is `Unused`
-    #[inline]
-    pub fn is_unused(&self) -> bool {
-        matches!(self, IsUsed::Unused)
+impl From<IsUsed> for bool {
+    fn from(is_used: IsUsed) -> bool {
+        is_used == Used
     }
 }
 
@@ -41,7 +47,6 @@ impl std::ops::BitOr for IsUsed {
     type Output = Self;
     #[inline]
     fn bitor(self, rhs: Self) -> Self {
-        use IsUsed::{Unused, Used};
         match (self, rhs) {
             (Unused, Unused) => Unused,
             _ => Used,
@@ -52,6 +57,14 @@ impl std::ops::BitOrAssign for IsUsed {
     #[inline]
     fn bitor_assign(&mut self, rhs: Self) {
         *self = *self | rhs;
+    }
+}
+
+impl std::ops::Not for IsUsed {
+    type Output = bool;
+    #[inline]
+    fn not(self) -> bool {
+        self != Used
     }
 }
 

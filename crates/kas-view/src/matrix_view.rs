@@ -561,7 +561,7 @@ impl_scope! {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
-            let response = match event {
+            let is_used = match event {
                 Event::Command(cmd, _) => {
                     if data.is_empty() {
                         return Unused;
@@ -655,13 +655,13 @@ impl_scope! {
                 _ => Unused, // fall through to scroll handler
             };
 
-            let (moved, sber_response) = self
+            let (moved, used_by_sber) = self
                 .scroll
                 .scroll_by_event(cx, event, self.id(), self.core.rect);
             if moved {
                 cx.config_cx(|cx| self.update_widgets(cx, data));
             }
-            response | sber_response
+            is_used | used_by_sber
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
