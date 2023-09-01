@@ -64,7 +64,7 @@ impl_scope! {
             }
         }
 
-        fn handle_dir_key(&mut self, cx: &mut EventCx, data: &Data, cmd: Command) -> Response {
+        fn handle_dir_key(&mut self, cx: &mut EventCx, data: &Data, cmd: Command) -> IsUsed {
             if self.menu_is_open() {
                 if let Some(dir) = cmd.as_direction() {
                     if dir.is_vertical() {
@@ -120,7 +120,7 @@ impl_scope! {
             self.navigable
         }
 
-        fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> IsUsed {
             match event {
                 Event::Command(cmd, code) if cmd.is_activate() => {
                     self.open_menu(cx, data, true);

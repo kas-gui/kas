@@ -3,15 +3,15 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Event handling: Response type
+//! Event handling: IsUsed type
 
 use crate::geom::{Offset, Rect};
 
-/// Response from [`Events::handle_event`]
+/// IsUsed from [`Events::handle_event`]
 ///
 /// [`Events::handle_event`]: crate::Events::handle_event
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Response {
+pub enum IsUsed {
     /// Event was unused
     ///
     /// Unused events may be used by a parent/ancestor widget or passed to
@@ -23,32 +23,32 @@ pub enum Response {
 
 // Unfortunately we cannot write generic `From` / `TryFrom` impls
 // due to trait coherence rules, so we impl `from` etc. directly.
-impl Response {
+impl IsUsed {
     /// True if variant is `Used`
     #[inline]
     pub fn is_used(&self) -> bool {
-        matches!(self, Response::Used)
+        matches!(self, IsUsed::Used)
     }
 
     /// True if variant is `Unused`
     #[inline]
     pub fn is_unused(&self) -> bool {
-        matches!(self, Response::Unused)
+        matches!(self, IsUsed::Unused)
     }
 }
 
-impl std::ops::BitOr for Response {
+impl std::ops::BitOr for IsUsed {
     type Output = Self;
     #[inline]
     fn bitor(self, rhs: Self) -> Self {
-        use Response::{Unused, Used};
+        use IsUsed::{Unused, Used};
         match (self, rhs) {
             (Unused, Unused) => Unused,
             _ => Used,
         }
     }
 }
-impl std::ops::BitOrAssign for Response {
+impl std::ops::BitOrAssign for IsUsed {
     #[inline]
     fn bitor_assign(&mut self, rhs: Self) {
         *self = *self | rhs;

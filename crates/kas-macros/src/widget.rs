@@ -575,7 +575,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     id: ::kas::WidgetId,
                     disabled: bool,
                     event: ::kas::event::Event,
-                ) -> ::kas::event::Response {
+                ) -> ::kas::event::IsUsed {
                     self.#inner._send(cx, data, id, disabled, event)
                 }
 
@@ -755,14 +755,14 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             (false, None) => quote! {},
             (true, None) => quote! {
                 #[inline]
-                fn handle_hover(&mut self, cx: &mut EventCx, _: bool) -> ::kas::event::Response {
+                fn handle_hover(&mut self, cx: &mut EventCx, _: bool) -> ::kas::event::IsUsed {
                     cx.redraw(self.id());
                     ::kas::event::Used
                 }
             },
             (false, Some(icon_expr)) => quote! {
                 #[inline]
-                fn handle_hover(&mut self, cx: &mut EventCx, state: bool) -> ::kas::event::Response {
+                fn handle_hover(&mut self, cx: &mut EventCx, state: bool) -> ::kas::event::IsUsed {
                     if state {
                         cx.set_cursor_icon(#icon_expr);
                     }
@@ -771,7 +771,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             },
             (true, Some(icon_expr)) => quote! {
                 #[inline]
-                fn handle_hover(&mut self, cx: &mut EventCx, state: bool) -> ::kas::event::Response {
+                fn handle_hover(&mut self, cx: &mut EventCx, state: bool) -> ::kas::event::IsUsed {
                     cx.redraw(self.id());
                     if state {
                         cx.set_cursor_icon(#icon_expr);
@@ -1004,7 +1004,7 @@ fn widget_recursive_methods() -> Toks {
             id: ::kas::WidgetId,
             disabled: bool,
             event: ::kas::event::Event,
-        ) -> ::kas::event::Response {
+        ) -> ::kas::event::IsUsed {
             ::kas::impls::_send(self, cx, data, id, disabled, event)
         }
 

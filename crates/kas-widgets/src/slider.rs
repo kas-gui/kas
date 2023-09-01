@@ -340,7 +340,7 @@ impl_scope! {
             *cx |= self.set_value((self.state_fn)(cx, data));
         }
 
-        fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
             if self.on_move.is_none() {
                 return Unused;
             }

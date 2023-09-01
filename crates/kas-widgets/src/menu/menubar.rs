@@ -131,7 +131,7 @@ impl_scope! {
     impl<Data, D: Directional> Events for MenuBar<Data, D> {
         type Data = Data;
 
-        fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> IsUsed {
             match event {
                 Event::TimerUpdate(id_code) => {
                     if let Some(id) = self.delayed_open.clone() {

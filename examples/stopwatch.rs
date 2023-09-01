@@ -7,7 +7,7 @@
 
 use std::time::{Duration, Instant};
 
-use kas::event::{ConfigCx, Event, EventCx, Response, Unused, Used};
+use kas::event::{ConfigCx, Event, EventCx, IsUsed, Unused, Used};
 use kas::widgets::{format_data, Button};
 use kas::{Decorations, Events, Layout, LayoutExt, Widget, Window};
 
@@ -38,7 +38,7 @@ fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
             fn configure(&mut self, cx: &mut ConfigCx) {
                 cx.enable_alt_bypass(self.id_ref(), true);
             }
-            fn handle_event(&mut self, cx: &mut EventCx, data: &(), event: Event) -> Response {
+            fn handle_event(&mut self, cx: &mut EventCx, data: &(), event: Event) -> IsUsed {
                 match event {
                     Event::TimerUpdate(0) => {
                         if let Some(last) = self.last {

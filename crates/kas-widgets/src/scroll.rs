@@ -141,7 +141,7 @@ impl_scope! {
             cx.register_nav_fallback(self.id());
         }
 
-        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             self.scroll
                 .scroll_by_event(cx, event, self.id(), self.core.rect)
                 .1

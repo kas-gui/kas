@@ -116,7 +116,7 @@ impl_scope! {
             Window::new(self.map_any(), title)
         }
 
-        fn close(&mut self, cx: &mut EventCx, commit: bool) -> Response {
+        fn close(&mut self, cx: &mut EventCx, commit: bool) -> IsUsed {
             cx.push(if commit {
                 TextEditResult::Ok(self.edit.get_string())
             } else {
@@ -139,7 +139,7 @@ impl_scope! {
             }
         }*/
 
-        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
                 Event::Command(Command::Escape, _) => self.close(cx, false),
                 Event::Command(Command::Enter, _) => self.close(cx, true),

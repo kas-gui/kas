@@ -6,7 +6,7 @@
 //! Popup root
 
 use crate::dir::Direction;
-use crate::event::{ConfigCx, Event, EventCx, Response, Unused, Used};
+use crate::event::{ConfigCx, Event, EventCx, IsUsed, Unused, Used};
 use crate::{Events, Layout, LayoutExt, Widget, WidgetId, WindowId};
 use kas_macros::{autoimpl, impl_scope, widget_index};
 
@@ -58,7 +58,7 @@ impl_scope! {
             cx.new_access_layer(self.id(), true);
         }
 
-        fn handle_event(&mut self, cx: &mut EventCx, _: &W::Data, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &W::Data, event: Event) -> IsUsed {
             match event {
                 Event::PressStart { press } => {
                     if press.id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {

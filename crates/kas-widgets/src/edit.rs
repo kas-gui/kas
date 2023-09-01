@@ -80,7 +80,7 @@ pub trait EditGuard: Sized {
     /// -   If the field is editable, calls [`Self::focus_lost`] and returns
     ///     returns [`Used`].
     /// -   If the field is not editable, returns [`Unused`].
-    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Self::Data) -> Response {
+    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Self::Data) -> IsUsed {
         if edit.editable {
             Self::focus_lost(edit, cx, data);
             Used
@@ -655,7 +655,7 @@ impl_scope! {
             G::update(self, cx, data);
         }
 
-        fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> IsUsed {
             fn request_focus<G: EditGuard>(s: &mut EditField<G>, cx: &mut EventCx, data: &G::Data) {
                 if !s.has_key_focus && cx.request_key_focus(s.id()) {
                     s.has_key_focus = true;
@@ -1100,7 +1100,7 @@ impl<G: EditGuard> EditField<G> {
         0..end
     }
 
-    fn received_text(&mut self, cx: &mut EventCx, data: &G::Data, text: &str) -> Response {
+    fn received_text(&mut self, cx: &mut EventCx, data: &G::Data, text: &str) -> IsUsed {
         if !self.editable {
             return Unused;
         }
@@ -1138,7 +1138,7 @@ impl<G: EditGuard> EditField<G> {
         data: &G::Data,
         cmd: Command,
         code: Option<KeyCode>,
-    ) -> Result<Response, NotReady> {
+    ) -> Result<IsUsed, NotReady> {
         let editable = self.editable;
         let mut shift = cx.modifiers().shift_key();
         let mut buf = [0u8; 4];
@@ -1449,7 +1449,7 @@ impl<G: EditGuard> EditField<G> {
     }
 
     // Pan by given delta.
-    fn pan_delta(&mut self, cx: &mut EventCx, mut delta: Offset) -> Response {
+    fn pan_delta(&mut self, cx: &mut EventCx, mut delta: Offset) -> IsUsed {
         let new_offset = (self.view_offset - delta)
             .min(self.max_scroll_offset())
             .max(Offset::ZERO);

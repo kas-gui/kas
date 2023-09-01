@@ -368,7 +368,7 @@ impl_scope! {
             true
         }
 
-        fn handle_event(&mut self, cx: &mut EventCx, _: &i32, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &i32, event: Event) -> IsUsed {
             match event {
                 Event::Command(cmd, _) => {
                     match cmd {

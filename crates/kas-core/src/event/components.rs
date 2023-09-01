@@ -272,7 +272,7 @@ impl ScrollComponent {
         event: Event,
         id: WidgetId,
         window_rect: Rect,
-    ) -> (bool, Response) {
+    ) -> (bool, IsUsed) {
         let mut moved = false;
         match event {
             Event::Command(cmd, _) => {

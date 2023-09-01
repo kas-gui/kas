@@ -88,7 +88,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
     impl EditGuard for Guard {
         type Data = Data;
 
-        fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Data) -> Response {
+        fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Data) -> IsUsed {
             cx.push(Item::Edit(edit.get_string()));
             Used
         }

@@ -298,7 +298,7 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn steal_event(&mut self, cx: &mut EventCx, data: &A, _: &WidgetId, event: &Event) -> Response {
+        fn steal_event(&mut self, cx: &mut EventCx, data: &A, _: &WidgetId, event: &Event) -> IsUsed {
             let btn = match event {
                 Event::Command(cmd, code) => match cmd {
                     Command::Down => {

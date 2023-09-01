@@ -6,7 +6,7 @@
 //! Event handling: events
 
 #[allow(unused)] use super::{Event, EventState}; // for doc-links
-use super::{EventCx, GrabMode, MouseGrab, Pending, Response, TouchGrab};
+use super::{EventCx, GrabMode, IsUsed, MouseGrab, Pending, TouchGrab};
 use crate::event::{CursorIcon, MouseButton, Used};
 use crate::geom::{Coord, Offset};
 use crate::{Action, WidgetId};
@@ -152,7 +152,7 @@ impl GrabBuilder {
     }
 
     /// Complete the grab, providing the [`EventCx`]
-    pub fn with_cx(self, cx: &mut EventCx) -> Response {
+    pub fn with_cx(self, cx: &mut EventCx) -> IsUsed {
         let GrabBuilder {
             id,
             source,

@@ -141,7 +141,7 @@ impl_scope! {
         }
 
         // Pan by given delta.
-        fn pan_delta(&mut self, cx: &mut EventCx, mut delta: Offset) -> Response {
+        fn pan_delta(&mut self, cx: &mut EventCx, mut delta: Offset) -> IsUsed {
             let new_offset = (self.view_offset - delta)
                 .min(self.max_scroll_offset())
                 .max(Offset::ZERO);
@@ -214,7 +214,7 @@ impl_scope! {
     impl Events for Self {
         type Data = ();
 
-        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
                 Event::Command(cmd, _) => match cmd {
                     Command::Escape | Command::Deselect if !self.selection.is_empty() => {

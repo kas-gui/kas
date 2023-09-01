@@ -71,7 +71,7 @@ impl_scope! {
             };
         }
 
-        fn handle_event(&mut self, cx: &mut EventCx, _: &A, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &A, event: Event) -> IsUsed {
             let open_popup = |s: &mut Self, cx: &mut EventCx, source: FocusSource| {
                 if s.popup.open(cx, &(), s.id()) {
                     if let Some(w) = s.popup.get_child(s.active) {

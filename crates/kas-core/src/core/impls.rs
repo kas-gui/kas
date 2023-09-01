@@ -5,7 +5,7 @@
 
 //! Widget method implementations
 
-use crate::event::{ConfigCx, Event, EventCx, FocusSource, Response, Scroll, Unused, Used};
+use crate::event::{ConfigCx, Event, EventCx, FocusSource, IsUsed, Scroll, Unused, Used};
 #[cfg(debug_assertions)] use crate::util::IdentifyWidget;
 use crate::{Erased, Events, Layout, NavAdvance, Node, Widget, WidgetId};
 
@@ -53,7 +53,7 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
     id: WidgetId,
     disabled: bool,
     event: Event,
-) -> Response {
+) -> IsUsed {
     let mut response = Unused;
     let do_handle_event;
 

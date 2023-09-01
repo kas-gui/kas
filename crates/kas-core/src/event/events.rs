@@ -8,7 +8,7 @@
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use super::{EventCx, Response, Unused, Used};
+use super::{EventCx, IsUsed, Unused, Used};
 #[allow(unused)] use super::{EventState, GrabMode};
 use super::{Key, KeyCode, KeyEvent, Press};
 use crate::geom::{DVec2, Offset};
@@ -260,12 +260,12 @@ impl Event {
     /// -   `Event::Command(cmd, _)` where [`cmd.is_activate()`](Command::is_activate)
     ///
     /// The method calls [`EventState::depress_with_key`] on activation.
-    pub fn on_activate<F: FnOnce(&mut EventCx) -> Response>(
+    pub fn on_activate<F: FnOnce(&mut EventCx) -> IsUsed>(
         self,
         cx: &mut EventCx,
         id: WidgetId,
         f: F,
-    ) -> Response {
+    ) -> IsUsed {
         match self {
             Event::Command(cmd, code) if cmd.is_activate() => {
                 if let Some(code) = code {

@@ -6,7 +6,7 @@
 //! Widget and Events traits
 
 use super::{Layout, Node};
-use crate::event::{ConfigCx, Event, EventCx, Response, Scroll, Unused};
+use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused};
 use crate::{Erased, WidgetId};
 use kas_macros::autoimpl;
 
@@ -131,7 +131,7 @@ pub trait Events: Layout + Sized {
     ///
     /// [`#widget`]: macros::widget
     #[inline]
-    fn handle_hover(&mut self, cx: &mut EventCx, state: bool) -> Response {
+    fn handle_hover(&mut self, cx: &mut EventCx, state: bool) -> IsUsed {
         let _ = (cx, state);
         Unused
     }
@@ -154,7 +154,7 @@ pub trait Events: Layout + Sized {
     ///
     /// Use [`EventCx::send`] instead of calling this method.
     #[inline]
-    fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> Response {
+    fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> IsUsed {
         let _ = (cx, data, event);
         Unused
     }
@@ -176,7 +176,7 @@ pub trait Events: Layout + Sized {
         data: &Self::Data,
         id: &WidgetId,
         event: &Event,
-    ) -> Response {
+    ) -> IsUsed {
         let _ = (cx, data, id, event);
         Unused
     }
@@ -363,7 +363,7 @@ pub enum NavAdvance {
 ///             }
 ///         }
 ///
-///         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+///         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
 ///             match event {
 ///                 Event::Command(cmd, code) if cmd.is_activate() => {
 ///                     cx.push(kas::message::Activate(code));
@@ -403,7 +403,7 @@ pub enum NavAdvance {
 ///     impl Events for Self {
 ///         type Data = ();
 ///
-///         fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> Response {
+///         fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> IsUsed {
 ///             event.on_activate(cx, self.id(), |cx| {
 ///                 cx.push(self.message.clone());
 ///                 Used
@@ -477,7 +477,7 @@ pub trait Widget: Layout {
         id: WidgetId,
         disabled: bool,
         event: Event,
-    ) -> Response;
+    ) -> IsUsed;
 
     /// Internal method: replay recursively
     ///

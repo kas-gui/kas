@@ -560,7 +560,7 @@ impl_scope! {
             self.update_widgets(cx, data);
         }
 
-        fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
             let response = match event {
                 Event::Command(cmd, _) => {
                     if data.is_empty() {
@@ -746,7 +746,7 @@ impl_scope! {
             id: WidgetId,
             disabled: bool,
             event: Event,
-        ) -> Response {
+        ) -> IsUsed {
             kas::impls::_send(self, cx, data, id, disabled, event)
         }
 

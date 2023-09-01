@@ -324,7 +324,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// [`Layout`]: https://docs.rs/kas/latest/kas/trait.Layout.html
 /// [`Events`]: https://docs.rs/kas/latest/kas/trait.Events.html
 /// [`CursorIcon`]: https://docs.rs/kas/latest/kas/event/enum.CursorIcon.html
-/// [`Response`]: https://docs.rs/kas/latest/kas/event/enum.Response.html
+/// [`IsUsed`]: https://docs.rs/kas/latest/kas/event/enum.IsUsed.html
 /// [`CoreData`]: https://docs.rs/kas/latest/kas/struct.CoreData.html
 #[proc_macro_attribute]
 #[proc_macro_error]
