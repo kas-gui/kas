@@ -64,7 +64,7 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
 
         match &event {
             Event::MouseHover(state) => {
-                response |= widget.mouse_hover(cx, *state);
+                response |= widget.handle_hover(cx, *state);
             }
             Event::NavFocus(FocusSource::Key) => {
                 cx.set_scroll(Scroll::Rect(widget.rect()));

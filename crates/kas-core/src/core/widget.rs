@@ -117,22 +117,21 @@ pub trait Events: Layout + Sized {
 
     /// Mouse focus handler
     ///
-    /// Called on [`Event::MouseHover`] before [`Self::handle_event`]. If this
-    /// returns [`Response::Used`], then `handle_event` is not called.
+    /// Called on [`Event::MouseHover`] before [`Self::handle_event`].
+    /// `state` is true when hovered.
     ///
     /// When the [`#widget`] macro properties `hover_highlight` or `cursor_icon`
     /// are used, an instance of this method is generated. Otherwise, the
-    /// default implementation of this method does nothing.
+    /// default implementation of this method does nothing and equivalent
+    /// functionality could be implemented in [`Events::handle_event`] instead.
     ///
-    /// To implement this functionality directly (instead of using the
-    /// properties), `hover_highlight` should call `cx.redraw(self.id());` on
-    /// focus gain and loss while `cursor_icon` should call
-    /// `cx.set_cursor_icon(EXPR);` on focus gain. (Such code may be implemented
-    /// in this method or in [`Self::handle_event`]).
+    /// Note: to implement `hover_highlight`, simply request a redraw on
+    /// focus gain and loss. To implement `cursor_icon`, call
+    /// `cx.set_cursor_icon(EXPR);` on focus gain.
     ///
     /// [`#widget`]: macros::widget
     #[inline]
-    fn mouse_hover(&mut self, cx: &mut EventCx, state: bool) -> Response {
+    fn handle_hover(&mut self, cx: &mut EventCx, state: bool) -> Response {
         let _ = (cx, state);
         Response::Unused
     }
