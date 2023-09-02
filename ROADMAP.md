@@ -219,6 +219,20 @@ incomplete translations). Widgets could translate their strings in the
 `configure` method when `fluent` integration is enabled with labels treating
 their input as a message key.
 
+### Embedded video
+
+To investigate. Gstreamer integration should be viable when using a (new) OpenGL
+shell.
+
+Integrating any video player as a child window should be possible (see Winit's
+`WindowBuilder::with_parent_window`, which is not yet supported everywhere).
+
+### Embedded web browser
+
+To investigate. Possibly use Servo (components), though it may not matter much.
+
+The browser should probably be integrated via a child window (see Winit's `WindowBuilder::with_parent_window`, which is not yet supported everywhere).
+
 
 External dependencies
 ----------------------
