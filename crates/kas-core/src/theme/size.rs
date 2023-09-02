@@ -93,13 +93,13 @@ impl<'a> SizeCx<'a> {
         self.0.min_scroll_size(axis.is_vertical())
     }
 
-    /// The length of a dragable handle for a scroll bar or slider
+    /// The length of the grip (draggable handle) on a scroll bar or slider
     ///
     /// This is the length in line with the control. The size on the opposite
     /// axis is assumed to be equal to the feature size as reported by
     /// [`Self::feature`].
-    pub fn handle_len(&self) -> i32 {
-        self.0.handle_len()
+    pub fn grip_len(&self) -> i32 {
+        self.0.grip_len()
     }
 
     /// The width of a vertical scroll bar
@@ -204,8 +204,8 @@ pub trait ThemeSize {
     /// The minimum size of a scrollable area
     fn min_scroll_size(&self, axis_is_vertical: bool) -> i32;
 
-    /// The length of a dragable handle for a scroll bar or slider
-    fn handle_len(&self) -> i32;
+    /// The length of the grip (draggable handle) on a scroll bar or slider
+    fn grip_len(&self) -> i32;
 
     /// The width of a vertical scroll bar
     fn scroll_bar_width(&self) -> i32;

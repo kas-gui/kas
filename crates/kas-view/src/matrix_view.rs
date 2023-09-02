@@ -560,11 +560,11 @@ impl_scope! {
             self.update_widgets(cx, data);
         }
 
-        fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> Response {
-            let response = match event {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
+            let is_used = match event {
                 Event::Command(cmd, _) => {
                     if data.is_empty() {
-                        return Response::Unused;
+                        return Unused;
                     }
                     let (d_cols, d_rows) = data.len();
                     let (last_col, last_row) = (d_cols.wrapping_sub(1), d_rows.wrapping_sub(1));
@@ -573,7 +573,7 @@ impl_scope! {
                     let mut solver = self.position_solver();
                     let (ci, ri) = match cx.nav_focus().and_then(|id| self.find_child_index(id)) {
                         Some(index) => solver.child_to_data(index),
-                        None => return Response::Unused,
+                        None => return Unused,
                     };
 
                     use Command as C;
@@ -618,9 +618,9 @@ impl_scope! {
                         }
 
                         cx.next_nav_focus(self.widgets[index].widget.id(), false, FocusSource::Key);
-                        Response::Used
+                        Used
                     } else {
-                        Response::Unused
+                        Unused
                     };
                 }
                 Event::PressStart { ref press } if press.is_primary() && cx.config().mouse_nav_focus() => {
@@ -650,18 +650,18 @@ impl_scope! {
                             cx.push(kas::message::Select);
                         }
                     }
-                    Response::Used
+                    Used
                 }
-                _ => Response::Unused, // fall through to scroll handler
+                _ => Unused, // fall through to scroll handler
             };
 
-            let (moved, sber_response) = self
+            let (moved, used_by_sber) = self
                 .scroll
                 .scroll_by_event(cx, event, self.id(), self.core.rect);
             if moved {
                 cx.config_cx(|cx| self.update_widgets(cx, data));
             }
-            response | sber_response
+            is_used | used_by_sber
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
@@ -746,7 +746,7 @@ impl_scope! {
             id: WidgetId,
             disabled: bool,
             event: Event,
-        ) -> Response {
+        ) -> IsUsed {
             kas::impls::_send(self, cx, data, id, disabled, event)
         }
 

@@ -35,7 +35,7 @@
 //!
 //!     -   If a non-empty scroll action is [set](EventCx::set_scroll),
 //!         call [`Events::handle_scroll`]
-//!     -   If the event has not yet been [used](Response::Used),
+//!     -   If the event has not yet been [used](Used),
 //!         call [`Events::handle_event`]
 //!     -   If the message stack is non-empty (see [`EventCx::push`]),
 //!         call [`Events::handle_messages`].
@@ -56,7 +56,6 @@
 //! not greyed-out should be interactive.
 //!
 //! [`WidgetId`]: crate::WidgetId
-//! [`Unused`]: Response::Unused
 
 pub mod components;
 pub mod config;
@@ -78,4 +77,4 @@ pub use winit::window::{CursorIcon, ResizeDirection}; // used by Key
 pub use cx::*;
 #[cfg(not(winit))] pub use enums::*;
 pub use events::*;
-pub use response::{Response, Scroll};
+pub use response::{IsUsed, Scroll, Unused, Used};

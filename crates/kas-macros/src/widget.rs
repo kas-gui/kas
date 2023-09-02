@@ -575,7 +575,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     id: ::kas::WidgetId,
                     disabled: bool,
                     event: ::kas::event::Event,
-                ) -> ::kas::event::Response {
+                ) -> ::kas::event::IsUsed {
                     self.#inner._send(cx, data, id, disabled, event)
                 }
 
@@ -751,32 +751,32 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             .map(|tok| tok.lit.value)
             .unwrap_or(false);
         let icon_expr = args.cursor_icon.map(|tok| tok.expr);
-        let fn_mouse_hover = match (hover_highlight, icon_expr) {
+        let fn_handle_hover = match (hover_highlight, icon_expr) {
             (false, None) => quote! {},
             (true, None) => quote! {
                 #[inline]
-                fn mouse_hover(&mut self, cx: &mut EventCx, _: bool) -> ::kas::event::Response {
+                fn handle_hover(&mut self, cx: &mut EventCx, _: bool) -> ::kas::event::IsUsed {
                     cx.redraw(self.id());
-                    ::kas::event::Response::Used
+                    ::kas::event::Used
                 }
             },
             (false, Some(icon_expr)) => quote! {
                 #[inline]
-                fn mouse_hover(&mut self, cx: &mut EventCx, state: bool) -> ::kas::event::Response {
+                fn handle_hover(&mut self, cx: &mut EventCx, state: bool) -> ::kas::event::IsUsed {
                     if state {
                         cx.set_cursor_icon(#icon_expr);
                     }
-                    ::kas::event::Response::Used
+                    ::kas::event::Used
                 }
             },
             (true, Some(icon_expr)) => quote! {
                 #[inline]
-                fn mouse_hover(&mut self, cx: &mut EventCx, state: bool) -> ::kas::event::Response {
+                fn handle_hover(&mut self, cx: &mut EventCx, state: bool) -> ::kas::event::IsUsed {
                     cx.redraw(self.id());
                     if state {
                         cx.set_cursor_icon(#icon_expr);
                     }
-                    ::kas::event::Response::Used
+                    ::kas::event::Used
                 }
             },
         };
@@ -798,14 +798,14 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             if let Some(method) = fn_navigable {
                 events_impl.items.push(Verbatim(method));
             }
-            events_impl.items.push(Verbatim(fn_mouse_hover));
+            events_impl.items.push(Verbatim(fn_handle_hover));
         } else {
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::Events for #impl_target {
                     type Data = #data_ty;
                     #fn_pre_configure
                     #fn_navigable
-                    #fn_mouse_hover
+                    #fn_handle_hover
                 }
             });
         }
@@ -1004,7 +1004,7 @@ fn widget_recursive_methods() -> Toks {
             id: ::kas::WidgetId,
             disabled: bool,
             event: ::kas::event::Event,
-        ) -> ::kas::event::Response {
+        ) -> ::kas::event::IsUsed {
             ::kas::impls::_send(self, cx, data, id, disabled, event)
         }
 

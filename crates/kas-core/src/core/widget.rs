@@ -6,7 +6,7 @@
 //! Widget and Events traits
 
 use super::{Layout, Node};
-use crate::event::{ConfigCx, Event, EventCx, Response, Scroll};
+use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused};
 use crate::{Erased, WidgetId};
 use kas_macros::autoimpl;
 
@@ -117,24 +117,23 @@ pub trait Events: Layout + Sized {
 
     /// Mouse focus handler
     ///
-    /// Called on [`Event::MouseHover`] before [`Self::handle_event`]. If this
-    /// returns [`Response::Used`], then `handle_event` is not called.
+    /// Called on [`Event::MouseHover`] before [`Self::handle_event`].
+    /// `state` is true when hovered.
     ///
     /// When the [`#widget`] macro properties `hover_highlight` or `cursor_icon`
     /// are used, an instance of this method is generated. Otherwise, the
-    /// default implementation of this method does nothing.
+    /// default implementation of this method does nothing and equivalent
+    /// functionality could be implemented in [`Events::handle_event`] instead.
     ///
-    /// To implement this functionality directly (instead of using the
-    /// properties), `hover_highlight` should call `cx.redraw(self.id());` on
-    /// focus gain and loss while `cursor_icon` should call
-    /// `cx.set_cursor_icon(EXPR);` on focus gain. (Such code may be implemented
-    /// in this method or in [`Self::handle_event`]).
+    /// Note: to implement `hover_highlight`, simply request a redraw on
+    /// focus gain and loss. To implement `cursor_icon`, call
+    /// `cx.set_cursor_icon(EXPR);` on focus gain.
     ///
     /// [`#widget`]: macros::widget
     #[inline]
-    fn mouse_hover(&mut self, cx: &mut EventCx, state: bool) -> Response {
+    fn handle_hover(&mut self, cx: &mut EventCx, state: bool) -> IsUsed {
         let _ = (cx, state);
-        Response::Unused
+        Unused
     }
 
     /// Handle an [`Event`]
@@ -145,31 +144,31 @@ pub trait Events: Layout + Sized {
     /// [`EventCx::last_child`] returns `None`.
     ///
     /// This method may also be called on ancestors during unwinding (if the
-    /// event remains [unused](Response::Unused) and the event
+    /// event remains [unused](Unused) and the event
     /// [is reusable](Event::is_reusable)). In this case,
     /// [`EventCx::last_child`] returns `Some(index)` with the index of the
     /// child being unwound from.
     ///
     /// Default implementation of `handle_event`: do nothing; return
-    /// [`Response::Unused`].
+    /// [`Unused`].
     ///
     /// Use [`EventCx::send`] instead of calling this method.
     #[inline]
-    fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> Response {
+    fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> IsUsed {
         let _ = (cx, data, event);
-        Response::Unused
+        Unused
     }
 
     /// Potentially steal an event before it reaches a child
     ///
     /// This is an optional event handler (see [documentation](crate::event)).
     ///
-    /// May cause a panic if this method returns [`Response::Unused`] but does
+    /// May cause a panic if this method returns [`Unused`] but does
     /// affect `cx` (e.g. by calling [`EventCx::set_scroll`] or leaving a
     /// message on the stack, possibly from [`EventCx::send`]).
     /// This is considered a corner-case and not currently supported.
     ///
-    /// Default implementation: return [`Response::Unused`].
+    /// Default implementation: return [`Unused`].
     #[inline]
     fn steal_event(
         &mut self,
@@ -177,9 +176,9 @@ pub trait Events: Layout + Sized {
         data: &Self::Data,
         id: &WidgetId,
         event: &Event,
-    ) -> Response {
+    ) -> IsUsed {
         let _ = (cx, data, id, event);
-        Response::Unused
+        Unused
     }
 
     /// Handler for messages from children/descendants
@@ -364,13 +363,13 @@ pub enum NavAdvance {
 ///             }
 ///         }
 ///
-///         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+///         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
 ///             match event {
 ///                 Event::Command(cmd, code) if cmd.is_activate() => {
 ///                     cx.push(kas::message::Activate(code));
-///                     Response::Used
+///                     Used
 ///                 }
-///                 _ => Response::Unused
+///                 _ => Unused
 ///             }
 ///         }
 ///     }
@@ -404,10 +403,10 @@ pub enum NavAdvance {
 ///     impl Events for Self {
 ///         type Data = ();
 ///
-///         fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> Response {
+///         fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> IsUsed {
 ///             event.on_activate(cx, self.id(), |cx| {
 ///                 cx.push(self.message.clone());
-///                 Response::Used
+///                 Used
 ///             })
 ///         }
 ///
@@ -478,7 +477,7 @@ pub trait Widget: Layout {
         id: WidgetId,
         disabled: bool,
         event: Event,
-    ) -> Response;
+    ) -> IsUsed;
 
     /// Internal method: replay recursively
     ///

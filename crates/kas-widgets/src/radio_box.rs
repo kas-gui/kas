@@ -41,10 +41,10 @@ impl_scope! {
             }
         }
 
-        fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> IsUsed {
             event.on_activate(cx, self.id(), |cx| {
                 self.select(cx, data);
-                Response::Used
+                Used
             })
         }
     }

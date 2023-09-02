@@ -131,7 +131,7 @@ impl_scope! {
     impl<Data, D: Directional> Events for MenuBar<Data, D> {
         type Data = Data;
 
-        fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> IsUsed {
             match event {
                 Event::TimerUpdate(id_code) => {
                     if let Some(id) = self.delayed_open.clone() {
@@ -139,7 +139,7 @@ impl_scope! {
                             self.set_menu_path(cx, data, Some(&id), false);
                         }
                     }
-                    Response::Used
+                    Used
                 }
                 Event::PressStart { press } => {
                     if press.id
@@ -167,13 +167,13 @@ impl_scope! {
                                 }
                             }
                         }
-                        Response::Used
+                        Used
                     } else {
                         // Click happened out of the menubar or submenus,
                         // while one or more submenus are opened.
                         self.delayed_open = None;
                         self.set_menu_path(cx, data, None, false);
-                        Response::Unused
+                        Unused
                     }
                 }
                 Event::CursorMove { press } | Event::PressMove { press, .. } => {
@@ -181,7 +181,7 @@ impl_scope! {
 
                     let id = match press.id {
                         Some(x) => x,
-                        None => return Response::Used,
+                        None => return Used,
                     };
 
                     if self.is_strict_ancestor_of(&id) {
@@ -200,7 +200,7 @@ impl_scope! {
                     } else {
                         self.delayed_open = None;
                     }
-                    Response::Used
+                    Used
                 }
                 Event::PressEnd {
                     press,
@@ -209,7 +209,7 @@ impl_scope! {
                 } if success => {
                     let id = match press.id {
                         Some(x) => x,
-                        None => return Response::Used,
+                        None => return Used,
                     };
 
                     if !self.rect().contains(press.coord) {
@@ -217,7 +217,7 @@ impl_scope! {
                         self.delayed_open = None;
                         cx.send(id, Event::Command(Command::Activate, None));
                     }
-                    Response::Used
+                    Used
                 }
                 Event::Command(cmd, _) => {
                     // Arrow keys can switch to the next / previous menu
@@ -238,16 +238,16 @@ impl_scope! {
                                     break;
                                 }
                             }
-                            Response::Used
+                            Used
                         }
                         Some(_) => {
                             cx.next_nav_focus(self.id(), reverse, FocusSource::Key);
-                            Response::Used
+                            Used
                         }
-                        None => Response::Unused,
+                        None => Unused,
                     }
                 }
-                _ => Response::Unused,
+                _ => Unused,
             }
         }
     }

@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Asynchronous event demo
+//! Asynchronous events using a proxy
 //!
 //! This is a copy-cat of Druid's async event example, demonstrating usage of
 //! shell.create_proxy(). For a more integrated approach to async, see

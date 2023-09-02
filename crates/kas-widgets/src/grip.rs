@@ -92,7 +92,7 @@ impl_scope! {
     impl Events for GripPart {
         type Data = ();
 
-        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
                 Event::PressStart { press, .. } => {
                     cx.push(GripMsg::PressStart);
@@ -102,19 +102,19 @@ impl_scope! {
 
                     // Event delivery implies coord is over the grip.
                     self.press_coord = press.coord - self.offset();
-                    Response::Used
+                    Used
                 }
                 Event::PressMove { press, .. } => {
                     let offset = press.coord - self.press_coord;
                     let offset = offset.clamp(Offset::ZERO, self.max_offset());
                     cx.push(GripMsg::PressMove(offset));
-                    Response::Used
+                    Used
                 }
                 Event::PressEnd { success, .. } => {
                     cx.push(GripMsg::PressEnd(success));
-                    Response::Used
+                    Used
                 }
-                _ => Response::Unused,
+                _ => Unused,
             }
         }
     }
@@ -166,9 +166,9 @@ impl GripPart {
     /// not directly responsible for drawing, so this may not be accurate).
     pub fn set_offset(&mut self, offset: Offset) -> (Offset, Action) {
         let offset = offset.min(self.max_offset()).max(Offset::ZERO);
-        let handle_pos = self.track.pos + offset;
-        if handle_pos != self.core.rect.pos {
-            self.core.rect.pos = handle_pos;
+        let grip_pos = self.track.pos + offset;
+        if grip_pos != self.core.rect.pos {
+            self.core.rect.pos = grip_pos;
             (offset, Action::REDRAW)
         } else {
             (offset, Action::empty())

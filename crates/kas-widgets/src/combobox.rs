@@ -71,7 +71,7 @@ impl_scope! {
             };
         }
 
-        fn handle_event(&mut self, cx: &mut EventCx, _: &A, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &A, event: Event) -> IsUsed {
             let open_popup = |s: &mut Self, cx: &mut EventCx, source: FocusSource| {
                 if s.popup.open(cx, &(), s.id()) {
                     if let Some(w) = s.popup.get_child(s.active) {
@@ -100,7 +100,7 @@ impl_scope! {
                             Command::Down => next(cx, false, false),
                             Command::Home => next(cx, true, false),
                             Command::End => next(cx, true, true),
-                            _ => return Response::Unused,
+                            _ => return Unused,
                         }
                     } else {
                         let last = self.len().saturating_sub(1);
@@ -115,10 +115,10 @@ impl_scope! {
                             Command::Down => *cx |= self.set_active((self.active + 1).min(last)),
                             Command::Home => *cx |= self.set_active(0),
                             Command::End => *cx |= self.set_active(last),
-                            _ => return Response::Unused,
+                            _ => return Unused,
                         }
                     }
-                    Response::Used
+                    Used
                 }
                 Event::Scroll(ScrollDelta::LineDelta(_, y)) if !self.popup.is_open() => {
                     if y > 0.0 {
@@ -127,7 +127,7 @@ impl_scope! {
                         let last = self.len().saturating_sub(1);
                         *cx |= self.set_active((self.active + 1).min(last));
                     }
-                    Response::Used
+                    Used
                 }
                 Event::PressStart { press } => {
                     if press.id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
@@ -136,9 +136,9 @@ impl_scope! {
                             cx.set_grab_depress(*press, press.id);
                             self.opening = !self.popup.is_open();
                         }
-                        Response::Used
+                        Used
                     } else {
-                        Response::Unused
+                        Unused
                     }
                 }
                 Event::CursorMove { press } | Event::PressMove { press, .. } => {
@@ -149,24 +149,24 @@ impl_scope! {
                     if let Some(id) = target {
                         cx.set_nav_focus(id, FocusSource::Pointer);
                     }
-                    Response::Used
+                    Used
                 }
                 Event::PressEnd { press, success } if success => {
                     if let Some(id) = press.id {
                         if self.eq_id(&id) {
                             if self.opening {
                                 open_popup(self, cx, FocusSource::Pointer);
-                                return Response::Used;
+                                return Used;
                             }
                         } else if self.popup.is_open() && self.popup.is_ancestor_of(&id) {
                             cx.send(id, Event::Command(Command::Activate, None));
-                            return Response::Used;
+                            return Used;
                         }
                     }
                     self.popup.close(cx);
-                    Response::Used
+                    Used
                 }
-                _ => Response::Unused,
+                _ => Unused,
             }
         }
 

@@ -10,7 +10,7 @@
 //! not supported (i.e. **changes are not considered breaking**).
 
 use crate::class::HasStr;
-use crate::event::{ConfigCx, Event, EventCx, Response};
+use crate::event::{ConfigCx, Event, EventCx, IsUsed};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::{Text, TextApi};
@@ -186,7 +186,7 @@ impl_scope! {
 
         fn _update(&mut self, _: &mut ConfigCx, _: &A) {}
 
-        fn _send(&mut self, cx: &mut EventCx, _: &A, id: WidgetId, disabled: bool, event: Event) -> Response {
+        fn _send(&mut self, cx: &mut EventCx, _: &A, id: WidgetId, disabled: bool, event: Event) -> IsUsed {
             self.inner._send(cx, &(), id, disabled, event)
         }
 

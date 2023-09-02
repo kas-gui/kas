@@ -515,7 +515,7 @@ where
         col.a = 0.5; // HACK
         self.draw.rounded_frame(outer, inner, 0.0, col);
 
-        // handle
+        // grip
         let outer = Quad::conv(h_rect);
         let r = outer.size().min_comp() * 0.125;
         let outer = outer.shrink(r);
@@ -551,7 +551,7 @@ where
         self.draw
             .rounded_frame(second, inner, 1.0 / 3.0, self.cols.frame);
 
-        // handle; force it to be square
+        // grip; force it to be square
         let size = Size::splat(h_rect.size.0.min(h_rect.size.1));
         let offset = Offset::conv((h_rect.size - size) / 2);
         let outer = Quad::conv(Rect::new(h_rect.pos + offset, size));

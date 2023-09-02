@@ -311,7 +311,7 @@ impl_scope! {
             self.core.rect = rect;
             self.grip.set_rect(cx, rect);
             let mut size = rect.size;
-            size.set_component(self.direction, cx.size_cx().handle_len());
+            size.set_component(self.direction, cx.size_cx().grip_len());
             let _ = self.grip.set_size_and_offset(size, self.offset());
         }
 
@@ -340,9 +340,9 @@ impl_scope! {
             *cx |= self.set_value((self.state_fn)(cx, data));
         }
 
-        fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
             if self.on_move.is_none() {
-                return Response::Unused;
+                return Unused;
             }
 
             match event {
@@ -370,7 +370,7 @@ impl_scope! {
                         }
                         Command::Home => self.range.0,
                         Command::End => self.range.1,
-                        _ => return Response::Unused,
+                        _ => return Unused,
                     };
 
                     if let Some(code) = code {
@@ -389,9 +389,9 @@ impl_scope! {
                     let offset = self.grip.handle_press_on_track(cx, &press);
                     self.apply_grip_offset(cx, data, offset);
                 }
-                _ => return Response::Unused,
+                _ => return Unused,
             }
-            Response::Used
+            Used
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {

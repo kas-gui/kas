@@ -8,7 +8,7 @@
 use crate::cast::Cast;
 use crate::decorations::{Border, Decorations, TitleBar};
 use crate::dir::Directional;
-use crate::event::{ConfigCx, Event, EventCx, ResizeDirection, Response, Scroll};
+use crate::event::{ConfigCx, Event, EventCx, IsUsed, ResizeDirection, Scroll, Unused, Used};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
@@ -200,13 +200,13 @@ impl_scope! {
             }
         }
 
-        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
                 Event::PressStart { .. } if self.drag_anywhere => {
                     cx.drag_window();
-                    Response::Used
+                    Used
                 }
-                _ => Response::Unused,
+                _ => Unused,
             }
         }
 

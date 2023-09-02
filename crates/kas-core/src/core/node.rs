@@ -6,7 +6,7 @@
 //! Node API for widgets
 
 use super::Widget;
-use crate::event::{ConfigCx, Event, EventCx, Response};
+use crate::event::{ConfigCx, Event, EventCx, IsUsed};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx};
@@ -34,7 +34,7 @@ trait NodeT {
     fn _configure(&mut self, cx: &mut ConfigCx, id: WidgetId);
     fn _update(&mut self, cx: &mut ConfigCx);
 
-    fn _send(&mut self, cx: &mut EventCx, id: WidgetId, disabled: bool, event: Event) -> Response;
+    fn _send(&mut self, cx: &mut EventCx, id: WidgetId, disabled: bool, event: Event) -> IsUsed;
     fn _replay(&mut self, cx: &mut EventCx, id: WidgetId, msg: Erased);
     fn _nav_next(
         &mut self,
@@ -94,7 +94,7 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
         self.0._update(cx, self.1);
     }
 
-    fn _send(&mut self, cx: &mut EventCx, id: WidgetId, disabled: bool, event: Event) -> Response {
+    fn _send(&mut self, cx: &mut EventCx, id: WidgetId, disabled: bool, event: Event) -> IsUsed {
         self.0._send(cx, self.1, id, disabled, event)
     }
     fn _replay(&mut self, cx: &mut EventCx, id: WidgetId, msg: Erased) {
@@ -344,7 +344,7 @@ impl<'a> Node<'a> {
         id: WidgetId,
         disabled: bool,
         event: Event,
-    ) -> Response {
+    ) -> IsUsed {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
                 self.0._send(cx, self.1, id, disabled, event)

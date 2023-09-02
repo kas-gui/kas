@@ -194,10 +194,10 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         let Some(ref mut window) = self.window else {
             return;
         };
-        // Note: resize must be handled here to re-configure self.surface.
         match event {
             WindowEvent::Destroyed => (),
             WindowEvent::Resized(size) => {
+                // TODO: maybe enqueue to allow skipping of obsolete resizes
                 if window
                     .surface
                     .do_resize(&mut shared.shell.draw.draw, size.cast())
@@ -380,8 +380,6 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             &shared.data,
         );
 
-        window.solve_cache.invalidate_rule_cache();
-        self.apply_size(shared, false);
         log::trace!(target: "kas_perf::wgpu::window", "reconfigure: {}µs", time.elapsed().as_micros());
     }
 

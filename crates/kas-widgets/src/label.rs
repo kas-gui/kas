@@ -12,8 +12,10 @@ use kas::text::Text;
 use kas::theme::TextClass;
 
 /// Construct a [`Label`] which accepts any data
+///
+/// This is just a shortcut for `Label::new(text).map_any()`.
 #[inline]
-pub fn label<A, T: FormattableText + 'static>(label: T) -> MapAny<A, Label<T>> {
+pub fn label_any<A, T: FormattableText + 'static>(label: T) -> MapAny<A, Label<T>> {
     MapAny::new(Label::new(label))
 }
 
@@ -327,13 +329,13 @@ impl_scope! {
             }
         }
 
-        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
                 Event::Command(cmd, code) if cmd.is_activate() => {
                     cx.push(kas::message::Activate(code));
-                    Response::Used
+                    Used
                 }
-                _ => Response::Unused
+                _ => Unused
             }
         }
     }

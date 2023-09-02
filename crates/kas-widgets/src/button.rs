@@ -101,12 +101,12 @@ impl_scope! {
             }
         }
 
-        fn handle_event(&mut self, cx: &mut EventCx, data: &W::Data, event: Event) -> Response {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &W::Data, event: Event) -> IsUsed {
             event.on_activate(cx, self.id(), |cx| {
                 if let Some(f) = self.on_press.as_ref() {
                     f(cx, data);
                 }
-                Response::Used
+                Used
             })
         }
 

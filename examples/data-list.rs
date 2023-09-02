@@ -83,9 +83,9 @@ struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
     type Data = Data;
 
-    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Data) -> Response {
+    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Data) -> IsUsed {
         cx.push(SelectEntry(edit.guard.0));
-        Response::Used
+        Used
     }
 
     fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Data) {

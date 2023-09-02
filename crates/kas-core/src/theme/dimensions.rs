@@ -65,8 +65,8 @@ crate::impl_scope! {
         pub check_box: f32 = 18.0,
         /// Larger size of a mark
         pub mark: f32 = 10.0,
-        /// Length of a slider handle; minimum length of a scroll bar handle
-        pub handle_len: f32 = 16.0,
+        /// Length of a slider grip (handle); minimum length of a scroll bar grip
+        pub grip_len: f32 = 16.0,
         /// Minimum size for a horizontal scroll bar
         pub scroll_bar_size: Vec2 = Vec2(24.0, 8.0),
         /// Minimum size for a horizontal slider
@@ -101,7 +101,7 @@ pub struct Dimensions {
     pub button_inner: u16,
     pub check_box: i32,
     pub mark: i32,
-    pub handle_len: i32,
+    pub grip_len: i32,
     pub scroll_bar: Size,
     pub slider: Size,
     pub progress_bar: Size,
@@ -138,7 +138,7 @@ impl Dimensions {
             button_inner: (params.button_inner * scale).cast_nearest(),
             check_box: i32::conv_nearest(params.check_box * scale),
             mark: i32::conv_nearest(params.mark * scale),
-            handle_len: i32::conv_nearest(params.handle_len * scale),
+            grip_len: i32::conv_nearest(params.grip_len * scale),
             scroll_bar: Size::conv_nearest(params.scroll_bar_size * scale),
             slider: Size::conv_nearest(params.slider_size * scale),
             progress_bar: Size::conv_nearest(params.progress_bar * scale),
@@ -201,8 +201,8 @@ impl<D: 'static> ThemeSize for Window<D> {
         }
     }
 
-    fn handle_len(&self) -> i32 {
-        self.dims.handle_len
+    fn grip_len(&self) -> i32 {
+        self.dims.grip_len
     }
 
     fn scroll_bar_width(&self) -> i32 {

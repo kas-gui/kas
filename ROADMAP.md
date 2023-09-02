@@ -129,6 +129,36 @@ This release responds to three key criticisms of KAS: (1) slow compile times,
 not fully solved, they are significantly improved. Additionally,
 the latest version of WGPU now gives us a working OpenGL backend.
 
+### 0.11.0 — September 2022
+
+Widget trait revision: remove `Handler::Msg` associated type, replacing with a
+variadic message stack: `EventMgr::push_msg` and `try_pop_msg`. Notify of data
+model updates via broadcast.
+
+New `#[autoimpl]` and `impl_scope!` macros, published in the
+[impl-tools crate](https://crates.io/crates/impl-tools).
+
+Added a domain-specific macro-driven language for widget layout, thus permitting
+complex layout from a single widget.
+
+Support sub-tree configuration. Make `WidgetId` a path.
+
+Support theme- and widget-driven animations. Support momentum scrolling.
+
+### 0.12.0 — December 2022
+
+Stabilised support for Generic Associated Types, allowing some changes to data
+models.
+
+### 0.13.0 — February 2023
+
+Async rendering for `Canvas` and `Svg` widgets.
+
+Support Linux's primary buffer. Support transparent and borderless windows
+with very basic support for a toolkit-drawn titlebar.
+
+Removal of `kas-theme` crate (most contents merged into `kas-core`).
+
 
 Future work
 -----------
@@ -140,25 +170,6 @@ Each should be a decently sized work item (roughly one release).
 
 KAS has ad-hoc geometry types. *Possibly* it would be useful to use third-party
 types instead. See [#95](https://github.com/kas-gui/kas/issues/95).
-
-### Images and icons
-
-Support display of images in the GUI:
-
--   image display using a target size and multiple rastered versions, with
-    the option of scaling to the target size or using the nearest size
-
-Possibly as part of this topic, implement colour management
-[#59](https://github.com/kas-gui/kas/issues/59).
-
-### Standard resource sets
-
-Ideally, KAS should provide an identifier for common icons and either map these
-to a system-provided icon set or provide its own, so that apps can use icons
-like "save" or "undo" without having to provide the icon themselves.
-
-Colour schemes and short-cuts are similar in that potentially they can be
-inherited from the desktop, but otherwise KAS should provide them.
 
 ### Context menu and undo
 
@@ -173,36 +184,6 @@ stored in some shared state.
 Slightly related to this is support for global and standard shortcuts such as
 undo, copy selection, save file, quit app.
 
-### Script-driven UIs
-
-So far, KAS only supports statically defined widgets and (more limited, without
-event handlers) programmatically added widgets. We should aim to support
-script-driven UIs: support all layouts with dynamic containers, add direct
-integration with a Rust-centric scripting language for building UIs, and add
-support for event handlers using dynamic typing.
-
-This should aim both to allow rapid prototyping of UIs and to make KAS easier
-to use (especially for those less familiar with Rust's traits, generics and
-macros).
-
-### Widget identifiers
-
-Currently widgets are identified simply by enumerating all widgets. See
-[#91](https://github.com/kas-gui/kas/issues/91).
-
-### Widget library
-
-Although the current widget set covers a good portion of the "full complement"
-mentioned by [#2](https://github.com/kas-gui/kas/issues/2), its primary purpose
-is to prototype requirements for other APIs
-(including the widget trait family, event handling, draw model).
-
-Once other APIs are more stable, this focus should shift to providing the full
-complement of standard GUI widgets, likely within a dedicated crate.
-
-Additionally, several standard dialog boxes / pop-ups should be added, e.g. a
-colour picker, a date picker, and a file-open dialog.
-
 ### Desktop integration
 
 This is less a separate work item than it is a long-term goal, one which will
@@ -216,19 +197,45 @@ also security (e.g. a container may not let an app explore the filesystem).
 Such dialogs should automatically use desktop-provided equivalents where
 available.
 
+### Input Method Editors and virtual keyboards
+
+Winit has at least partial support for IME now. Kas should add support for this
+(mostly this means an additional `Event` variant, one or two API calls to
+enable IME input for the current widget, and adjusting `EditField`).
+
+### Accessibility tools
+
+`AccessKit` would appear to be the defacto Rust API for accessibility tools with
+(limited) support from egui and Xilem toolkits. Widgets could support this via
+additional code in the `update` method, possibly with additional tracking to
+avoid unnecessarily replacing nodes.
+
+### Internationalisation (i18n)
+
+[Project Fluent](https://projectfluent.org/) offers the core functionality
+required for localisation (l10n). We may need additional code for loading
+resources and selecting languages; potentially also for fallbacks (in case of
+incomplete translations). Widgets could translate their strings in the
+`configure` method when `fluent` integration is enabled with labels treating
+their input as a message key.
+
+### Embedded video
+
+To investigate. Gstreamer integration should be viable when using a (new) OpenGL
+shell.
+
+Integrating any video player as a child window should be possible (see Winit's
+`WindowBuilder::with_parent_window`, which is not yet supported everywhere).
+
+### Embedded web browser
+
+To investigate. Possibly use Servo (components), though it may not matter much.
+
+The browser should probably be integrated via a child window (see Winit's `WindowBuilder::with_parent_window`, which is not yet supported everywhere).
+
 
 External dependencies
 ----------------------
-
-### WGPU and CPU rasterisation
-
-Currently, KAS can only draw via `wgpu`, which currently does not support OpenGL
-or CPU-rendered graphics, making KAS unusable on many older systems.
-
-It seems likely that `wgpu` will support OpenGL in the future.
-
-Additionally, KAS should provide a CPU-based renderer. See
-[#33](https://github.com/kas-gui/kas/issues/33).
 
 ### Clipboard support
 
@@ -250,9 +257,3 @@ its current event model it is difficult or impossible to determine the widget
 receiving a drop or under a hovered drop.
 See [#98](https://github.com/kas-gui/kas/issues/98) and
 [winit#1550](https://github.com/rust-windowing/winit/issues/1550).
-
-### (winit) key-bindings and text input
-
-This needs revision, allowing more generic key bindings and supporting Input
-Method Editors (IME). Winit has an on-going effort here which will require
-support in KAS: <https://github.com/rust-windowing/winit/issues/1806>.

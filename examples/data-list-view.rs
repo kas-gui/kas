@@ -99,9 +99,9 @@ impl EditGuard for ListEntryGuard {
         }
     }
 
-    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Item) -> Response {
+    fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Item) -> IsUsed {
         cx.push(SelectEntry(edit.guard.0));
-        Response::Used
+        Used
     }
 
     fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Item) {

@@ -6,8 +6,8 @@
 //! Event handling: events
 
 #[allow(unused)] use super::{Event, EventState}; // for doc-links
-use super::{EventCx, GrabMode, MouseGrab, Pending, Response, TouchGrab};
-use crate::event::{CursorIcon, MouseButton};
+use super::{EventCx, GrabMode, IsUsed, MouseGrab, Pending, TouchGrab};
+use crate::event::{CursorIcon, MouseButton, Used};
 use crate::geom::{Coord, Offset};
 use crate::{Action, WidgetId};
 
@@ -103,9 +103,9 @@ impl Press {
     /// grab's depress target. (This is done automatically for
     /// [`GrabMode::Click`], and ends automatically when the grab ends.)
     ///
-    /// This method uses the builder pattern. On completion, [`Response::Used`]
+    /// This method uses the builder pattern. On completion, [`Used`]
     /// is returned. It is expected that the requested press/pan events are all
-    /// "used" ([`Response::Used`]).
+    /// "used" ([`Used`]).
     #[inline]
     pub fn grab(&self, id: WidgetId) -> GrabBuilder {
         GrabBuilder {
@@ -152,7 +152,7 @@ impl GrabBuilder {
     }
 
     /// Complete the grab, providing the [`EventCx`]
-    pub fn with_cx(self, cx: &mut EventCx) -> Response {
+    pub fn with_cx(self, cx: &mut EventCx) -> IsUsed {
         let GrabBuilder {
             id,
             source,
@@ -207,6 +207,6 @@ impl GrabBuilder {
         }
 
         cx.send_action(Action::REDRAW);
-        Response::Used
+        Used
     }
 }
