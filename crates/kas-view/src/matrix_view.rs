@@ -264,7 +264,8 @@ impl_scope! {
             let row_len = (data_len.1 - first_row).min(self.alloc_len.rows.cast());
             first_col = first_col.min(data_len.0 - col_len);
             first_row = first_row.min(data_len.1 - row_len);
-            self.cur_len = (u32::conv(col_len), row_len.cast());
+            self.cur_len = (col_len.cast(), row_len.cast());
+            debug_assert!(self.num_children() <= self.widgets.len());
             self.first_data = (first_row.cast(), first_col.cast());
 
             let solver = self.position_solver();
@@ -470,8 +471,10 @@ impl_scope! {
                 // Free memory (rarely useful?)
                 self.widgets.truncate(req_widgets);
             }
+            debug_assert!(self.widgets.len() >= req_widgets);
 
             // Widgets need configuring and updating: do so by updating self.
+            self.cur_len = (0, 0); // hack: prevent drawing in the mean-time
             cx.request_update(self.id());
         }
 

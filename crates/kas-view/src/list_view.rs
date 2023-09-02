@@ -324,6 +324,7 @@ impl_scope! {
             cur_len = cur_len.min(data_len - first_data);
             first_data = first_data.min(data_len - cur_len);
             self.cur_len = cur_len.cast();
+            debug_assert!(self.num_children() <= self.widgets.len());
             self.first_data = first_data.cast();
 
             let solver = self.position_solver();
@@ -520,8 +521,10 @@ impl_scope! {
                 // Free memory (rarely useful?)
                 self.widgets.truncate(req_widgets);
             }
+            debug_assert!(self.widgets.len() >= req_widgets);
 
             // Widgets need configuring and updating: do so by updating self.
+            self.cur_len = 0; // hack: prevent drawing in the mean-time
             cx.request_update(self.id());
         }
 
