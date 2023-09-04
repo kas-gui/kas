@@ -38,6 +38,10 @@ impl Icon {
 pub struct CoreData {
     pub rect: Rect,
     pub id: WidgetId,
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg(debug_assertions)]
+    pub status: WidgetStatus,
 }
 
 /// Note: the clone has default-initialised identifier.
@@ -46,7 +50,82 @@ impl Clone for CoreData {
     fn clone(&self) -> Self {
         CoreData {
             rect: self.rect,
-            id: WidgetId::default(),
+            ..CoreData::default()
+        }
+    }
+}
+
+/// Widget state tracker
+///
+/// This struct is used to track status of widget operations and panic in case
+/// of inappropriate call order (such cases are memory safe but may cause
+/// incorrect widget behaviour).
+///
+/// It is not used in release builds.
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[cfg(debug_assertions)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub enum WidgetStatus {
+    #[default]
+    New,
+    Configured,
+    SizeRulesX,
+    SizeRulesY,
+    SetRect,
+}
+
+#[cfg(debug_assertions)]
+impl WidgetStatus {
+    /// Configure
+    pub fn configure(&mut self) {
+        // re-configure does not require repeating other actions
+        *self = (*self).max(WidgetStatus::Configured);
+    }
+
+    /// Update
+    pub fn update(&self) {
+        if *self < WidgetStatus::Configured {
+            panic!("WidgetStatus: configure must be called before update!");
+        }
+
+        // Update-after-configure is already guaranteed (see impls module).
+        // NOTE: Update-after-data-change should be required but is hard to
+        // detect; we could store a data hash but draw does not receive data.
+        // As such we don't bother recording this operation.
+    }
+
+    /// Size rules
+    pub fn size_rules(&mut self, axis: crate::layout::AxisInfo) {
+        match self {
+            WidgetStatus::New => {
+                panic!("WidgetStatus: configure must be called before size_rules!")
+            }
+            WidgetStatus::Configured if axis.is_vertical() => {
+                panic!("WidgetStatus: size_rules(horizontal) must be called before size_rules(vertical)!");
+            }
+            _ => (),
+        }
+
+        // Re-calling size_rules requires re-calling set_rect
+        if axis.is_horizontal() {
+            *self = WidgetStatus::SizeRulesX;
+        } else {
+            *self = WidgetStatus::SizeRulesY;
+        }
+    }
+
+    /// Set rect
+    pub fn set_rect(&mut self) {
+        if *self < WidgetStatus::SizeRulesY {
+            panic!("WidgetStatus: set_rect called before size_rules(vertical)!");
+        }
+        *self = WidgetStatus::SetRect;
+    }
+
+    pub fn require_rect(&self) {
+        if *self < WidgetStatus::SetRect {
+            panic!("WidgetStatus: set_rect must be called before this method!");
         }
     }
 }

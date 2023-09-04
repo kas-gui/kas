@@ -79,9 +79,7 @@ pub trait Events: Layout + Sized {
     /// [`Layout::size_rules`] but not repeated configuration.
     ///
     /// The default implementation does nothing.
-    fn configure(&mut self, cx: &mut ConfigCx) {
-        let _ = cx;
-    }
+    fn configure(&mut self, cx: &mut ConfigCx);
 
     /// Update data
     ///
@@ -97,9 +95,7 @@ pub trait Events: Layout + Sized {
     /// Widgets should be updated even if their data is `()` or is unchanged.
     ///
     /// The default implementation does nothing.
-    fn update(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-        let _ = (cx, data);
-    }
+    fn update(&mut self, cx: &mut ConfigCx, data: &Self::Data);
 
     /// Is this widget navigable via <kbd>Tab</kbd> key?
     ///
@@ -153,11 +149,7 @@ pub trait Events: Layout + Sized {
     /// [`Unused`].
     ///
     /// Use [`EventCx::send`] instead of calling this method.
-    #[inline]
-    fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> IsUsed {
-        let _ = (cx, data, event);
-        Unused
-    }
+    fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> IsUsed;
 
     /// Potentially steal an event before it reaches a child
     ///
@@ -169,17 +161,13 @@ pub trait Events: Layout + Sized {
     /// This is considered a corner-case and not currently supported.
     ///
     /// Default implementation: return [`Unused`].
-    #[inline]
     fn steal_event(
         &mut self,
         cx: &mut EventCx,
         data: &Self::Data,
         id: &WidgetId,
         event: &Event,
-    ) -> IsUsed {
-        let _ = (cx, data, id, event);
-        Unused
-    }
+    ) -> IsUsed;
 
     /// Handler for messages from children/descendants
     ///
