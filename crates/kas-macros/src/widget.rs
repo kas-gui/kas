@@ -931,14 +931,18 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "size_rules") {
             if let Some(ref core) = core_data {
                 if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
-                    if let Some(FnArg::Typed(arg)) = f.sig.inputs.iter().nth(3) {
+                    if let Some(FnArg::Typed(arg)) = f.sig.inputs.iter().nth(2) {
                         if let Pat::Ident(ref pat_ident) = *arg.pat {
                             let axis = &pat_ident.ident;
                             f.block.stmts.insert(0, parse_quote! {
                                 #[cfg(debug_assertions)]
                                 self.#core.status.size_rules(&self.#core.id, #axis);
                             });
+                        } else {
+                            emit_error!(arg.pat, "hidden shenanigans require this parameter to have a name; suggestion: `_axis`");
                         }
+                    } else {
+                        panic!("size_rules misses args!");
                     }
                 }
             }

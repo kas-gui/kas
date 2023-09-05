@@ -70,7 +70,7 @@ impl_scope! {
         }
     }
     impl Layout for ColourSquare {
-        fn size_rules(&mut self, sizer: SizeCx, _: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, _axis: AxisInfo) -> SizeRules {
             SizeRules::fixed_scaled(100.0, 10.0, sizer.scale_factor())
         }
 
