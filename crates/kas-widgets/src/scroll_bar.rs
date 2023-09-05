@@ -282,6 +282,7 @@ impl_scope! {
                     true => axis.align_or_stretch(),
                 },
             );
+            let _ = self.grip.size_rules(sizer.re(), axis);
             sizer.feature(Feature::ScrollBar(self.direction()), axis)
         }
 
@@ -461,15 +462,17 @@ impl_scope! {
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let mut rules = self.inner.size_rules(sizer.re(), axis);
+            let vert_rules = self.vert_bar.size_rules(sizer.re(), axis);
+            let horiz_rules = self.horiz_bar.size_rules(sizer.re(), axis);
             let (use_horiz, use_vert) = match self.mode {
                 ScrollBarMode::Fixed => self.show_bars,
                 ScrollBarMode::Auto => (true, true),
                 ScrollBarMode::Invisible => (false, false),
             };
             if axis.is_horizontal() && use_horiz {
-                rules.append(self.vert_bar.size_rules(sizer.re(), axis));
+                rules.append(vert_rules);
             } else if axis.is_vertical() && use_vert {
-                rules.append(self.horiz_bar.size_rules(sizer.re(), axis));
+                rules.append(horiz_rules);
             }
             rules
         }
@@ -499,12 +502,17 @@ impl_scope! {
                 let size = Size::new(child_size.0, bar_width);
                 self.horiz_bar.set_rect(cx, Rect { pos, size });
                 let _ = self.horiz_bar.set_limits(max_scroll_offset.0, rect.size.0);
+            } else {
+                self.horiz_bar.set_rect(cx, Rect::ZERO);
             }
+
             if self.show_bars.1 {
                 let pos = Coord(rect.pos2().0 - bar_width, pos.1);
                 let size = Size::new(bar_width, self.core.rect.size.1);
                 self.vert_bar.set_rect(cx, Rect { pos, size });
                 let _ = self.vert_bar.set_limits(max_scroll_offset.1, rect.size.1);
+            } else {
+                self.vert_bar.set_rect(cx, Rect::ZERO);
             }
         }
 

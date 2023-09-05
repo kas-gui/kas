@@ -38,6 +38,7 @@ impl_scope! {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let class = TextClass::LabelScroll;
             let mut rules = sizer.text_rules(&mut self.text, class, axis);
+            let _ = self.bar.size_rules(sizer.re(), axis);
             if axis.is_vertical() {
                 rules.reduce_min_to(sizer.line_height(class) * 4);
             }

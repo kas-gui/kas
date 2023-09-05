@@ -165,7 +165,11 @@ impl_scope! {
                 if n >= self.handles.len() {
                     break;
                 }
-                solver.for_child(&mut self.data, (n << 1) + 1, |_axis| handle_rules);
+                let handles = &mut self.handles;
+                solver.for_child(&mut self.data, (n << 1) + 1, |axis| {
+                    handles[n].size_rules(sizer.re(), axis);
+                    handle_rules
+                });
                 n += 1;
             }
             solver.finish(&mut self.data)

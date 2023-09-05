@@ -96,8 +96,18 @@ impl_scope! {
                     self.bar_h = bar.min_size();
                 }
             }
+
+            // These methods don't return anything useful, but we are required to call them:
+            let _ = self.b_w.size_rules(sizer.re(), axis);
+            let _ = self.b_e.size_rules(sizer.re(), axis);
+            let _ = self.b_n.size_rules(sizer.re(), axis);
+            let _ = self.b_s.size_rules(sizer.re(), axis);
+            let _ = self.b_nw.size_rules(sizer.re(), axis);
+            let _ = self.b_ne.size_rules(sizer.re(), axis);
+            let _ = self.b_se.size_rules(sizer.re(), axis);
+            let _ = self.b_sw.size_rules(sizer.re(), axis);
+
             if matches!(self.decorations, Decorations::Border | Decorations::Toolkit) {
-                // We would call size_rules on Border widgets here if it did anything
                 let frame = sizer.frame(FrameStyle::Window, axis);
                 let (rules, offset, size) = frame.surround(inner);
                 self.dec_offset.set_component(axis, offset);

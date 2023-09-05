@@ -285,8 +285,8 @@ impl_scope! {
             axis.sub_other(self.frame_size.extract(axis.flipped()));
 
             let mut rules = self.inner.size_rules(sizer.re(), axis);
+            let bar_rules = self.bar.size_rules(sizer.re(), axis);
             if axis.is_horizontal() && self.multi_line() {
-                let bar_rules = self.bar.size_rules(sizer.re(), axis);
                 self.inner_margin = rules.margins_i32().1.max(bar_rules.margins_i32().0);
                 rules.append(bar_rules);
             }
@@ -303,14 +303,17 @@ impl_scope! {
             let mut rect = outer_rect;
             rect.pos += self.frame_offset;
             rect.size -= self.frame_size;
+
+            let mut bar_rect = Rect::ZERO;
             if self.multi_line() {
                 let bar_width = cx.size_cx().scroll_bar_width();
                 let x1 = rect.pos.0 + rect.size.0;
                 let x0 = x1 - bar_width;
-                let bar_rect = Rect::new(Coord(x0, rect.pos.1), Size(bar_width, rect.size.1));
-                self.bar.set_rect(cx, bar_rect);
+                bar_rect = Rect::new(Coord(x0, rect.pos.1), Size(bar_width, rect.size.1));
                 rect.size.0 = (rect.size.0 - bar_width - self.inner_margin).max(0);
             }
+            self.bar.set_rect(cx, bar_rect);
+
             self.inner.set_rect(cx, rect);
             self.inner.set_outer_rect(outer_rect, FrameStyle::EditBox);
             self.update_scroll_bar(cx);

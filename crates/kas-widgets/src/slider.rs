@@ -303,6 +303,7 @@ impl_scope! {
                     true => axis.align_or_stretch(),
                 },
             );
+            let _ = self.grip.size_rules(sizer.re(), axis);
             sizer.feature(Feature::Slider(self.direction()), axis)
         }
 
