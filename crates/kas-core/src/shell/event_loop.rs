@@ -154,81 +154,7 @@ where
             Event::Resumed => (),
 
             Event::AboutToWait => {
-                while let Some(pending) = self.shared.shell.pending.pop() {
-                    match pending {
-                        PendingAction::AddPopup(parent_id, id, popup) => {
-                            log::debug!("Pending: adding overlay");
-                            // TODO: support pop-ups as a special window, where available
-                            self.windows.get_mut(&parent_id).unwrap().add_popup(
-                                &mut self.shared,
-                                id,
-                                popup,
-                            );
-                            self.popups.insert(id, parent_id);
-                        }
-                        PendingAction::AddWindow(id, widget) => {
-                            log::debug!("Pending: adding window {}", widget.title());
-                            let mut window = Window::new(&self.shared, id, widget);
-                            if !self.suspended {
-                                match window.resume(&mut self.shared, elwt) {
-                                    Ok(winit_id) => {
-                                        self.id_map.insert(winit_id, id);
-                                    }
-                                    Err(e) => {
-                                        log::error!("Unable to create window: {}", e);
-                                    }
-                                }
-                            }
-                            self.windows.insert(id, window);
-                        }
-                        PendingAction::CloseWindow(target) => {
-                            let mut win_id = target;
-                            if let Some(id) = self.popups.remove(&target) {
-                                win_id = id;
-                            }
-                            if let Some(window) = self.windows.get_mut(&win_id) {
-                                window.send_close(&mut self.shared, target);
-                            }
-                        }
-                        PendingAction::Action(action) => {
-                            if action.contains(Action::CLOSE | Action::EXIT) {
-                                self.windows.clear();
-                                self.id_map.clear();
-                                *control_flow = ControlFlow::Poll;
-                            } else {
-                                for (_, window) in self.windows.iter_mut() {
-                                    window.handle_action(&mut self.shared, action);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                let mut close_all = false;
-                self.resumes.clear();
-                self.windows.retain(|window_id, window| {
-                    let (action, resume) = window.flush_pending(&mut self.shared);
-                    if let Some(instant) = resume {
-                        self.resumes.push((instant, *window_id));
-                    }
-                    if action.contains(Action::EXIT) {
-                        close_all = true;
-                        true
-                    } else if action.contains(Action::CLOSE) {
-                        self.id_map.retain(|_, v| v != window_id);
-                        false
-                    } else {
-                        true
-                    }
-                });
-
-                if close_all {
-                    for (_, mut window) in self.windows.drain() {
-                        window.suspend();
-                    }
-                    self.id_map.clear();
-                }
-
+                self.flush_pending(elwt, control_flow);
                 self.resumes.sort_by_key(|item| item.0);
 
                 let is_exit = matches!(control_flow, ControlFlow::ExitWithCode(_));
@@ -246,6 +172,9 @@ where
             }
 
             Event::RedrawRequested(id) => {
+                // We must conclude pending actions (such as resize) before drawing.
+                self.flush_pending(elwt, control_flow);
+
                 if let Some(id) = self.id_map.get(&id) {
                     if let Some(window) = self.windows.get_mut(id) {
                         if window.do_draw(&mut self.shared).is_err() {
@@ -265,6 +194,87 @@ where
             }
 
             Event::LoopExiting => (),
+        }
+    }
+
+    fn flush_pending(
+        &mut self,
+        elwt: &EventLoopWindowTarget<ProxyAction>,
+        control_flow: &mut ControlFlow,
+    ) {
+        while let Some(pending) = self.shared.shell.pending.pop() {
+            match pending {
+                PendingAction::AddPopup(parent_id, id, popup) => {
+                    log::debug!("Pending: adding overlay");
+                    // TODO: support pop-ups as a special window, where available
+                    self.windows.get_mut(&parent_id).unwrap().add_popup(
+                        &mut self.shared,
+                        id,
+                        popup,
+                    );
+                    self.popups.insert(id, parent_id);
+                }
+                PendingAction::AddWindow(id, widget) => {
+                    log::debug!("Pending: adding window {}", widget.title());
+                    let mut window = Window::new(&self.shared, id, widget);
+                    if !self.suspended {
+                        match window.resume(&mut self.shared, elwt) {
+                            Ok(winit_id) => {
+                                self.id_map.insert(winit_id, id);
+                            }
+                            Err(e) => {
+                                log::error!("Unable to create window: {}", e);
+                            }
+                        }
+                    }
+                    self.windows.insert(id, window);
+                }
+                PendingAction::CloseWindow(target) => {
+                    let mut win_id = target;
+                    if let Some(id) = self.popups.remove(&target) {
+                        win_id = id;
+                    }
+                    if let Some(window) = self.windows.get_mut(&win_id) {
+                        window.send_close(&mut self.shared, target);
+                    }
+                }
+                PendingAction::Action(action) => {
+                    if action.contains(Action::CLOSE | Action::EXIT) {
+                        self.windows.clear();
+                        self.id_map.clear();
+                        *control_flow = ControlFlow::Poll;
+                    } else {
+                        for (_, window) in self.windows.iter_mut() {
+                            window.handle_action(&mut self.shared, action);
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut close_all = false;
+        self.resumes.clear();
+        self.windows.retain(|window_id, window| {
+            let (action, resume) = window.flush_pending(&mut self.shared);
+            if let Some(instant) = resume {
+                self.resumes.push((instant, *window_id));
+            }
+            if action.contains(Action::EXIT) {
+                close_all = true;
+                true
+            } else if action.contains(Action::CLOSE) {
+                self.id_map.retain(|_, v| v != window_id);
+                false
+            } else {
+                true
+            }
+        });
+
+        if close_all {
+            for (_, mut window) in self.windows.drain() {
+                window.suspend();
+            }
+            self.id_map.clear();
         }
     }
 }
