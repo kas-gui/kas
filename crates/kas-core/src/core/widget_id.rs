@@ -547,6 +547,19 @@ impl PartialEq for WidgetId {
 }
 impl Eq for WidgetId {}
 
+impl PartialEq<str> for WidgetId {
+    fn eq(&self, rhs: &str) -> bool {
+        // TODO(opt): we don't have to format to test this
+        let formatted = format!("{self}");
+        formatted == rhs
+    }
+}
+impl PartialEq<&str> for WidgetId {
+    fn eq(&self, rhs: &&str) -> bool {
+        self == *rhs
+    }
+}
+
 impl PartialOrd for WidgetId {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
         Some(self.cmp(rhs))
@@ -661,7 +674,6 @@ mod test {
         let c2 = WidgetId::ROOT.make_child(1).make_child(15);
         let c3 = WidgetId::ROOT.make_child(0).make_child(14);
         let c4 = WidgetId::ROOT.make_child(0).make_child(15);
-        println!("c1: {c1}");
         assert!(c1 != c2);
         assert!(c1 != c3);
         assert!(c2 != c3);
@@ -692,6 +704,17 @@ mod test {
     #[should_panic]
     fn test_partial_eq_invalid_3() {
         let _ = WidgetId::INVALID == WidgetId::ROOT;
+    }
+
+    #[test]
+    fn test_partial_eq_str() {
+        assert_eq!(WidgetId::ROOT, "#");
+        assert!(WidgetId::ROOT != "#0");
+        assert_eq!(WidgetId::ROOT.make_child(0).make_child(15), "#097");
+        assert_eq!(WidgetId::ROOT.make_child(1).make_child(15), "#197");
+        let c3 = WidgetId::ROOT.make_child(0).make_child(14);
+        assert_eq!(c3, "#096");
+        assert!(c3 != "#097");
     }
 
     #[test]
