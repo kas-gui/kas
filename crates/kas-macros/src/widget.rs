@@ -1023,7 +1023,11 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         });
     }
 
-    // println!("{}", scope.to_token_stream());
+    if let Ok(val) = std::env::var("KAS_DEBUG_WIDGET") {
+        if name == val.as_str() {
+            println!("{}", scope.to_token_stream());
+        }
+    }
     Ok(())
 }
 

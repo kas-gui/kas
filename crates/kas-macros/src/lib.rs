@@ -319,6 +319,16 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// available. Only [`Layout`] methods may be specified (overriding those from
 /// the derived widget); everything else is derived.
 ///
+/// ## Debugging
+///
+/// To inspect the output of this macro, set the environment variable
+/// `KAS_DEBUG_WIDGET` to the name of the widget concerned, dump the output to
+/// a temporary file and format. For example:
+/// ```sh
+/// KAS_DEBUG_WIDGET=Border cargo build > temp.rs
+/// rustfmt temp.rs
+/// ```
+///
 /// [`Widget`]: https://docs.rs/kas/latest/kas/trait.Widget.html
 /// [`Widget::get_child`]: https://docs.rs/kas/latest/kas/trait.Widget.html#method.get_child
 /// [`Layout`]: https://docs.rs/kas/latest/kas/trait.Layout.html
