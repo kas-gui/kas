@@ -631,15 +631,15 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
         let configure_status = parse_quote! {
             #[cfg(debug_assertions)]
-            #core_path.status.configure();
+            #core_path.status.configure(&#core_path.id);
         };
         let update_status = parse_quote! {
             #[cfg(debug_assertions)]
-            #core_path.status.update();
+            #core_path.status.update(&#core_path.id);
         };
         let require_rect: syn::Stmt = parse_quote! {
             #[cfg(debug_assertions)]
-            #core_path.status.require_rect();
+            #core_path.status.require_rect(&#core_path.id);
         };
 
         required_layout_methods = impl_core_methods(&widget_name, &core_path);
@@ -728,7 +728,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     axis: ::kas::layout::AxisInfo,
                 ) -> ::kas::layout::SizeRules {
                     #[cfg(debug_assertions)]
-                    #core_path.status.size_rules(axis);
+                    #core_path.status.size_rules(&#core_path.id, axis);
                     <Self as ::kas::layout::AutoLayout>::size_rules(self, sizer, axis)
                 }
             });
@@ -739,7 +739,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             fn_draw = Some(quote! {
                 fn draw(&mut self, draw: ::kas::theme::DrawCx) {
                     #[cfg(debug_assertions)]
-                    #core_path.status.require_rect();
+                    #core_path.status.require_rect(&#core_path.id);
 
                     <Self as ::kas::layout::AutoLayout>::draw(self, draw);
                 }
@@ -758,14 +758,14 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 rect: ::kas::geom::Rect,
             ) {
                 #[cfg(debug_assertions)]
-                #core_path.status.set_rect();
+                #core_path.status.set_rect(&#core_path.id);
                 #set_rect
             }
         };
         fn_find_id = quote! {
             fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
                 #[cfg(debug_assertions)]
-                #core_path.status.require_rect();
+                #core_path.status.require_rect(&#core_path.id);
 
                 #find_id
             }
@@ -936,7 +936,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                             let axis = &pat_ident.ident;
                             f.block.stmts.insert(0, parse_quote! {
                                 #[cfg(debug_assertions)]
-                                self.#core.status.size_rules(#axis);
+                                self.#core.status.size_rules(&self.#core.id, #axis);
                             });
                         }
                     }
@@ -951,7 +951,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
                     f.block.stmts.insert(0, parse_quote! {
                         #[cfg(debug_assertions)]
-                        self.#core.status.set_rect();
+                        self.#core.status.set_rect(&self.#core.id);
                     });
                 }
             }
@@ -985,7 +985,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
                     f.block.stmts.insert(0, parse_quote! {
                         #[cfg(debug_assertions)]
-                        self.#core.status.require_rect();
+                        self.#core.status.require_rect(&self.#core.id);
                     });
                 }
             }
@@ -998,7 +998,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
                     f.block.stmts.insert(0, parse_quote! {
                         #[cfg(debug_assertions)]
-                        self.#core.status.require_rect();
+                        self.#core.status.require_rect(&self.#core.id);
                     });
                 }
             }

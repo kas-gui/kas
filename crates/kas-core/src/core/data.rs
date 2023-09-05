@@ -78,15 +78,18 @@ pub enum WidgetStatus {
 #[cfg(debug_assertions)]
 impl WidgetStatus {
     /// Configure
-    pub fn configure(&mut self) {
+    pub fn configure(&mut self, id: &WidgetId) {
+        if !id.is_valid() {
+            panic!("WidgetStatus: pre_configure must be called before configure!");
+        }
         // re-configure does not require repeating other actions
         *self = (*self).max(WidgetStatus::Configured);
     }
 
     /// Update
-    pub fn update(&self) {
+    pub fn update(&self, id: &WidgetId) {
         if *self < WidgetStatus::Configured {
-            panic!("WidgetStatus: configure must be called before update!");
+            panic!("WidgetStatus of {id}: configure must be called before update!");
         }
 
         // Update-after-configure is already guaranteed (see impls module).
@@ -96,13 +99,13 @@ impl WidgetStatus {
     }
 
     /// Size rules
-    pub fn size_rules(&mut self, axis: crate::layout::AxisInfo) {
+    pub fn size_rules(&mut self, id: &WidgetId, axis: crate::layout::AxisInfo) {
         match self {
             WidgetStatus::New => {
-                panic!("WidgetStatus: configure must be called before size_rules!")
+                panic!("WidgetStatus of {id}: configure must be called before size_rules!")
             }
             WidgetStatus::Configured if axis.is_vertical() => {
-                panic!("WidgetStatus: size_rules(horizontal) must be called before size_rules(vertical)!");
+                panic!("WidgetStatus of {id}: size_rules(horizontal) must be called before size_rules(vertical)!");
             }
             _ => (),
         }
@@ -116,16 +119,16 @@ impl WidgetStatus {
     }
 
     /// Set rect
-    pub fn set_rect(&mut self) {
+    pub fn set_rect(&mut self, id: &WidgetId) {
         if *self < WidgetStatus::SizeRulesY {
-            panic!("WidgetStatus: set_rect called before size_rules(vertical)!");
+            panic!("WidgetStatus of {id}: size_rules(vertical) must be called before set_rect!");
         }
         *self = WidgetStatus::SetRect;
     }
 
-    pub fn require_rect(&self) {
+    pub fn require_rect(&self, id: &WidgetId) {
         if *self < WidgetStatus::SetRect {
-            panic!("WidgetStatus: set_rect must be called before this method!");
+            panic!("WidgetStatus of {id}: set_rect must be called before this method!");
         }
     }
 }
