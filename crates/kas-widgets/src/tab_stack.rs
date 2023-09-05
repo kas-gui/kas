@@ -308,8 +308,8 @@ impl<W: Widget> TabStack<W> {
 
     /// Append a page
     ///
-    /// The new page is configured immediately. If it becomes the active page
-    /// and then [`Action::RESIZE`] will be triggered.
+    /// The new page is not made active (the active index may be changed to
+    /// avoid this). Consider calling [`Self::set_active`].
     ///
     /// Returns the new page's index.
     pub fn push(&mut self, cx: &mut ConfigCx, data: &W::Data, tab: Tab, widget: W) -> usize {
@@ -321,7 +321,8 @@ impl<W: Widget> TabStack<W> {
 
     /// Remove the last child widget (if any) and return
     ///
-    /// If this page was active then the previous page becomes active.
+    /// If this page was active then no page will be left active.
+    /// Consider also calling [`Self::set_active`].
     pub fn pop(&mut self, cx: &mut EventState) -> Option<(Tab, W)> {
         let tab = self.tabs.pop(cx);
         let w = self.stack.pop(cx);
@@ -333,8 +334,7 @@ impl<W: Widget> TabStack<W> {
     ///
     /// Panics if `index > len`.
     ///
-    /// The new child is configured immediately. The active page does not
-    /// change.
+    /// The active page does not change (the index of the active page may change instead).
     pub fn insert(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, tab: Tab, widget: W) {
         self.tabs.insert(cx, &(), index, tab);
         self.stack.insert(cx, data, index, widget);
@@ -344,8 +344,8 @@ impl<W: Widget> TabStack<W> {
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// If the active page is removed then the previous page (if any) becomes
-    /// active.
+    /// If this page was active then no page will be left active.
+    /// Consider also calling [`Self::set_active`].
     pub fn remove(&mut self, cx: &mut EventState, index: usize) -> (Tab, W) {
         let tab = self.tabs.remove(cx, index);
         let stack = self.stack.remove(cx, index);
@@ -356,16 +356,15 @@ impl<W: Widget> TabStack<W> {
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// The new child is configured immediately. If it replaces the active page,
-    /// then [`Action::RESIZE`] is triggered.
+    /// If the new child replaces the active page then [`Action::RESIZE`] is triggered.
     pub fn replace(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, w: W) -> W {
         self.stack.replace(cx, data, index, w)
     }
 
     /// Append child widgets from an iterator
     ///
-    /// New children are configured immediately. If a new page becomes active,
-    /// then [`Action::RESIZE`] is triggered.
+    /// The new pages are not made active (the active index may be changed to
+    /// avoid this). Consider calling [`Self::set_active`].
     pub fn extend<T: IntoIterator<Item = (Tab, W)>>(
         &mut self,
         cx: &mut ConfigCx,

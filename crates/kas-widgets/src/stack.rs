@@ -294,8 +294,9 @@ impl<W: Widget> Stack<W> {
 
     /// Append a page
     ///
-    /// The new page is configured immediately. If it becomes the active page
-    /// and then [`Action::RESIZE`] will be triggered.
+    /// The new page is configured immediately.
+    /// The new page is not made active (the active index may be changed to
+    /// avoid this). Consider calling [`Self::set_active`].
     ///
     /// Returns the new page's index.
     pub fn push(&mut self, cx: &mut ConfigCx, data: &W::Data, mut widget: W) -> usize {
@@ -306,7 +307,7 @@ impl<W: Widget> Stack<W> {
         self.widgets.push(widget);
 
         if index == self.active {
-            *cx |= Action::RESIZE;
+            self.active = usize::MAX;
         }
 
         self.sized_range.end = self.sized_range.end.min(index);
@@ -315,17 +316,13 @@ impl<W: Widget> Stack<W> {
 
     /// Remove the last child widget (if any) and return
     ///
-    /// If this page was active then the previous page becomes active.
+    /// If this page was active then no page will be left active.
+    /// Consider also calling [`Self::set_active`].
     pub fn pop(&mut self, cx: &mut EventState) -> Option<W> {
         let result = self.widgets.pop();
         if let Some(w) = result.as_ref() {
             if self.active > 0 && self.active == self.widgets.len() {
-                self.active -= 1;
-                if self.sized_range.contains(&self.active) {
-                    cx.request_set_rect(self.widgets[self.active].id());
-                } else {
-                    *cx |= Action::RESIZE;
-                }
+                *cx |= Action::REGION_MOVED;
             }
 
             if w.id_ref().is_valid() {
@@ -342,7 +339,7 @@ impl<W: Widget> Stack<W> {
     /// Panics if `index > len`.
     ///
     /// The new child is configured immediately. The active page does not
-    /// change.
+    /// change (the index of the active page may change instead).
     pub fn insert(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, mut widget: W) {
         if self.active < index {
             self.sized_range.end = self.sized_range.end.min(index);
@@ -368,8 +365,8 @@ impl<W: Widget> Stack<W> {
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// If the active page is removed then the previous page (if any) becomes
-    /// active.
+    /// If this page was active then no page will be left active.
+    /// Consider also calling [`Self::set_active`].
     pub fn remove(&mut self, cx: &mut EventState, index: usize) -> W {
         let w = self.widgets.remove(index);
         if w.id_ref().is_valid() {
@@ -379,12 +376,8 @@ impl<W: Widget> Stack<W> {
         }
 
         if self.active == index {
-            self.active = self.active.saturating_sub(1);
-            if self.sized_range.contains(&self.active) {
-                cx.request_set_rect(self.widgets[self.active].id());
-            } else {
-                *cx |= Action::RESIZE;
-            }
+            self.active = usize::MAX;
+            *cx |= Action::REGION_MOVED;
         }
         if index < self.sized_range.end {
             self.sized_range.end -= 1;
@@ -433,8 +426,9 @@ impl<W: Widget> Stack<W> {
 
     /// Append child widgets from an iterator
     ///
-    /// New children are configured immediately. If a new page becomes active,
-    /// then [`Action::RESIZE`] is triggered.
+    /// New children are configured immediately.
+    /// The new pages are not made active (the active index may be changed to
+    /// avoid this). Consider calling [`Self::set_active`].
     pub fn extend<T: IntoIterator<Item = W>>(
         &mut self,
         cx: &mut ConfigCx,
@@ -453,14 +447,15 @@ impl<W: Widget> Stack<W> {
         }
 
         if (old_len..self.widgets.len()).contains(&self.active) {
-            *cx |= Action::RESIZE;
+            self.active = usize::MAX;
         }
     }
 
     /// Resize, using the given closure to construct new widgets
     ///
-    /// New children are configured immediately. If a new page becomes active,
-    /// then [`Action::RESIZE`] is triggered.
+    /// New children are configured immediately.
+    /// The new pages are not made active (the active index may be changed to
+    /// avoid this). Consider calling [`Self::set_active`].
     pub fn resize_with<F: Fn(usize) -> W>(
         &mut self,
         cx: &mut ConfigCx,
@@ -495,7 +490,7 @@ impl<W: Widget> Stack<W> {
             }
 
             if (old_len..len).contains(&self.active) {
-                *cx |= Action::RESIZE;
+                self.active = usize::MAX;
             }
         }
     }
