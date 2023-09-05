@@ -56,9 +56,6 @@ impl_scope! {
         frame_offset: Offset,
         frame_size: Size,
         driver: V,
-        /// Empty widget used for sizing; this must be stored between horiz and vert size rule
-        /// calculations for correct line wrapping/layout.
-        default_widget: V::Widget,
         widgets: Vec<WidgetData<A::Key, V::Widget>>,
         align_hints: AlignHints,
         ideal_len: Dim,
@@ -81,14 +78,12 @@ impl_scope! {
 
     impl Self {
         /// Construct a new instance
-        pub fn new(mut driver: V) -> Self {
-            let default_widget = driver.make(&A::Key::default());
+        pub fn new(driver: V) -> Self {
             MatrixView {
                 core: Default::default(),
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
                 driver,
-                default_widget,
                 widgets: Default::default(),
                 align_hints: Default::default(),
                 ideal_len: Dim { cols: 3, rows: 5 },
@@ -405,17 +400,18 @@ impl_scope! {
             });
             axis = AxisInfo::new(axis.is_vertical(), other, axis.align());
 
-            let mut rules = self.default_widget.size_rules(sizer.re(), axis);
-            self.child_size_min.set_component(axis, rules.min_size());
-
-            if !self.widgets.is_empty() {
-                for w in self.widgets.iter_mut() {
-                    rules = rules.max(w.widget.size_rules(sizer.re(), axis));
+            let mut child_size_min = i32::MAX;
+            let mut rules = SizeRules::EMPTY;
+            for w in self.widgets.iter_mut() {
+                if w.key.is_some() {
+                    let child_rules = w.widget.size_rules(sizer.re(), axis);
+                    child_size_min = child_size_min.min(child_rules.min_size());
+                    rules = rules.max(child_rules);
                 }
             }
+            self.child_size_min.set_component(axis, child_size_min);
+            self.child_size_ideal.set_component(axis, rules.ideal_size());
 
-            self.child_size_ideal
-                .set_component(axis, rules.ideal_size());
             let m = rules.margins();
             self.child_inter_margin.set_component(
                 axis,
@@ -829,6 +825,7 @@ impl_scope! {
     }
 }
 
+#[derive(Debug)]
 struct PositionSolver {
     pos_start: Coord,
     skip: Size,
