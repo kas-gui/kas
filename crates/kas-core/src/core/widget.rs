@@ -40,47 +40,44 @@ use kas_macros::autoimpl;
 ///
 /// [`#widget`]: macros::widget
 pub trait Events: Widget + Sized {
-    /// Recursion range
-    ///
-    /// Methods `pre_configure`, `configure` and `update` all recurse over the
-    /// widget tree. This method may be used to limit that recursion to a range
-    /// of children.
-    ///
-    /// Widgets do not need to be configured or updated if not visible, but in
-    /// this case must be configured when made visible (for example, the `Stack`
-    /// widget configures only the visible page).
-    ///
-    /// Default implementation: `0..self.num_children()`.
-    fn recurse_range(&self) -> std::ops::Range<usize> {
-        0..self.num_children()
-    }
-
     /// Pre-configuration
     ///
-    /// This method is called before children are configured to assign a
-    /// [`WidgetId`], therefore implementations should not access child state
+    /// This method is called before [`Self::configure_recurse`], therefore
+    /// implementations should not access child state
     /// (`child.id()` will be invalid the first time this method is called).
     ///
     /// This method must set `self.core.id = id`.
-    /// The default (macro-provided) impl does so.
+    /// It may perform preparation for [`Layout::make_child_id`].
     fn pre_configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
         let _ = (cx, id);
         unimplemented!() // make rustdoc show that this is a provided method
     }
 
-    /// Configure widget
+    /// Configure children
     ///
-    /// Widgets are *configured* on window creation or dynamically via the
-    /// parent calling [`ConfigCx::configure`]. Parent widgets are responsible
-    /// for ensuring that children are configured before calling
-    /// [`Layout::size_rules`] or [`Layout::set_rect`]. Configuration may be
-    /// repeated and may be used as a mechanism to change a child's [`WidgetId`].
+    /// This method is called after [`Self::pre_configure`] and before
+    /// [`Self::configure`]. It usually configures all children.
     ///
-    /// It is possible to limit which children get configured via
-    /// [`Self::recurse_range`].
+    /// The default implementation suffices except where children should *not*
+    /// be configured (for example, to delay configuration of hidden children).
     ///
-    /// This method may be used to configure event handling and to load
-    /// resources, including resources affecting [`Layout::size_rules`].
+    /// Use [`Layout::make_child_id`] and [`ConfigCx::configure`].
+    fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+        for index in 0..self.num_children() {
+            let id = self.make_child_id(index);
+            if id.is_valid() {
+                self.as_node(data)
+                    .for_child(index, |node| cx.configure(node, id));
+            }
+        }
+    }
+
+    /// Configure self
+    ///
+    /// Widgets are *configured* before sizing, drawing and event handling (see
+    /// [widget lifecycle](Widget#widget-lifecycle)). Configuration may be
+    /// repeated at any time. [`Self::update`] is always called immediately
+    /// after this method.
     ///
     /// The window's scale factor (and thus any sizes available through
     /// [`ConfigCx::size_cx`]) may not be correct initially (some platforms
@@ -93,22 +90,34 @@ pub trait Events: Widget + Sized {
         let _ = cx;
     }
 
-    /// Update data
+    /// Update self using input data
     ///
     /// This method is called immediately after [`Self::configure`] and after
     /// any input data is updated, before [`Layout::draw`] is called.
     /// Typically this method is called immediately after the data is updated
     /// but the call may be delayed until when the widget becomes visible.
     ///
-    /// This method is called on the parent widget before children get updated.
-    ///
-    /// It is possible to limit which children get updated via
-    /// [`Self::recurse_range`].
-    /// Widgets should be updated even if their data is `()` or is unchanged.
+    /// This method is called before [`Self::update_recurse`].
     ///
     /// The default implementation does nothing.
     fn update(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
         let _ = (cx, data);
+    }
+
+    /// Update children
+    ///
+    /// This method is called after [`Self::update`]. It usually configures all
+    /// children. Children should be updated even if their data is `()` or is
+    /// unchanged.
+    ///
+    /// The default implementation suffices except where children should *not*
+    /// be updated (for example, to delay update of hidden children).
+    ///
+    /// Use [`ConfigCx::update`].
+    fn update_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+        for index in 0..self.num_children() {
+            self.as_node(data).for_child(index, |node| cx.update(node));
+        }
     }
 
     /// Is this widget navigable via <kbd>Tab</kbd> key?

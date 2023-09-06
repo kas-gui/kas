@@ -78,10 +78,7 @@ pub enum WidgetStatus {
 #[cfg(debug_assertions)]
 impl WidgetStatus {
     /// Configure
-    pub fn configure(&mut self, id: &WidgetId) {
-        if !id.is_valid() {
-            panic!("WidgetStatus: pre_configure must be called before configure!");
-        }
+    pub fn configure(&mut self, _id: &WidgetId) {
         // re-configure does not require repeating other actions
         *self = (*self).max(WidgetStatus::Configured);
     }

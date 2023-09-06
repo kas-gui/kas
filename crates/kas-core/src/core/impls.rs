@@ -5,41 +5,9 @@
 
 //! Widget method implementations
 
-use crate::event::{ConfigCx, Event, EventCx, FocusSource, IsUsed, Scroll, Unused, Used};
+use crate::event::{Event, EventCx, FocusSource, IsUsed, Scroll, Unused, Used};
 #[cfg(debug_assertions)] use crate::util::IdentifyWidget;
 use crate::{Erased, Events, Layout, NavAdvance, Node, Widget, WidgetId};
-
-/// Generic implementation of [`Widget::_configure`]
-pub fn _configure<W: Events>(
-    widget: &mut W,
-    cx: &mut ConfigCx,
-    data: &<W as Widget>::Data,
-    id: WidgetId,
-) {
-    widget.pre_configure(cx, id);
-
-    for index in widget.recurse_range() {
-        let id = widget.make_child_id(index);
-        if id.is_valid() {
-            widget
-                .as_node(data)
-                .for_child(index, |mut node| node._configure(cx, id));
-        }
-    }
-
-    widget.configure(cx);
-    widget.update(cx, data);
-}
-
-/// Generic implementation of [`Widget::_update`]
-pub fn _update<W: Events>(widget: &mut W, cx: &mut ConfigCx, data: &<W as Widget>::Data) {
-    widget.update(cx, data);
-    let range = widget.recurse_range();
-    let mut node = widget.as_node(data);
-    for index in range {
-        node.for_child(index, |mut node| node._update(cx));
-    }
-}
 
 /// Generic implementation of [`Widget::_send`]
 pub fn _send<W: Events>(

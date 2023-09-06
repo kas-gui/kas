@@ -629,14 +629,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         };
         let core_path = quote! { self.#core };
 
-        let configure_status = parse_quote! {
-            #[cfg(debug_assertions)]
-            #core_path.status.configure(&#core_path.id);
-        };
-        let update_status = parse_quote! {
-            #[cfg(debug_assertions)]
-            #core_path.status.update(&#core_path.id);
-        };
         let require_rect: syn::Stmt = parse_quote! {
             #[cfg(debug_assertions)]
             #core_path.status.require_rect(&#core_path.id);
@@ -679,7 +671,9 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
             widget_impl.items.push(Verbatim(widget_as_node()));
             if !has_item("_send") {
-                widget_impl.items.push(Verbatim(widget_recursive_methods()));
+                widget_impl
+                    .items
+                    .push(Verbatim(widget_recursive_methods(&core_path)));
             }
         } else {
             scope.generated.push(impl_widget(
@@ -770,16 +764,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 self.#core.id = id;
             }
         };
-        let fn_configure = quote! {
-            fn configure(&mut self, cx: &mut ::kas::event::ConfigCx) {
-                #configure_status
-            }
-        };
-        let fn_update = quote! {
-            fn update(&mut self, cx: &mut ::kas::event::ConfigCx, data: &Self::Data) {
-                #update_status
-            }
-        };
 
         let fn_navigable = args.navigable;
         let hover_highlight = args
@@ -850,22 +834,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 events_impl.items.push(Verbatim(fn_pre_configure));
             }
 
-            if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "configure") {
-                if let ImplItem::Fn(f) = &mut events_impl.items[*index] {
-                    f.block.stmts.insert(0, configure_status);
-                }
-            } else {
-                events_impl.items.push(Verbatim(fn_configure));
-            }
-
-            if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "update") {
-                if let ImplItem::Fn(f) = &mut events_impl.items[*index] {
-                    f.block.stmts.insert(0, update_status);
-                }
-            } else {
-                events_impl.items.push(Verbatim(fn_update));
-            }
-
             if let Some(method) = fn_navigable {
                 events_impl.items.push(Verbatim(method));
             }
@@ -903,8 +871,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::Events for #impl_target {
                     #fn_pre_configure
-                    #fn_configure
-                    #fn_update
                     #fn_navigable
                     #fn_handle_hover
                     #fn_steal_event
@@ -1111,7 +1077,7 @@ pub fn impl_widget(
         quote! {}
     };
 
-    let fns_recurse = widget_recursive_methods();
+    let fns_recurse = widget_recursive_methods(core_path);
 
     quote! {
         impl #impl_generics ::kas::Widget for #impl_target {
@@ -1132,7 +1098,7 @@ fn widget_as_node() -> Toks {
     }
 }
 
-fn widget_recursive_methods() -> Toks {
+fn widget_recursive_methods(core_path: &Toks) -> Toks {
     quote! {
         fn _configure(
             &mut self,
@@ -1140,7 +1106,13 @@ fn widget_recursive_methods() -> Toks {
             data: &Self::Data,
             id: ::kas::WidgetId,
         ) {
-            ::kas::impls::_configure(self, cx, data, id);
+            #[cfg(debug_assertions)]
+            #core_path.status.configure(&#core_path.id);
+
+            ::kas::Events::pre_configure(self, cx, id);
+            ::kas::Events::configure_recurse(self, cx, data);
+            ::kas::Events::configure(self, cx);
+            ::kas::Events::update(self, cx, data);
         }
 
         fn _update(
@@ -1148,7 +1120,11 @@ fn widget_recursive_methods() -> Toks {
             cx: &mut ::kas::event::ConfigCx,
             data: &Self::Data,
         ) {
-            ::kas::impls::_update(self, cx, data);
+            #[cfg(debug_assertions)]
+            #core_path.status.update(&#core_path.id);
+
+            ::kas::Events::update(self, cx, data);
+            ::kas::Events::update_recurse(self, cx, data);
         }
 
         fn _send(

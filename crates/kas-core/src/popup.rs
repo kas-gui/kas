@@ -49,13 +49,22 @@ impl_scope! {
     impl Events for Self {
         type Data = W::Data;
 
-        fn recurse_range(&self) -> std::ops::Range<usize> {
-            if self.win_id.is_none() { 0..0 } else { 0..1 }
-        }
-
         fn pre_configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
             self.core.id = id;
             cx.new_access_layer(self.id(), true);
+        }
+
+        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+            if self.win_id.is_some() {
+                let id = self.make_child_id(widget_index!(self.inner));
+                cx.configure(self.inner.as_node(data), id)
+            }
+        }
+
+        fn update_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+            if self.win_id.is_some() {
+                cx.update(self.inner.as_node(data))
+            }
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &W::Data, event: Event) -> IsUsed {

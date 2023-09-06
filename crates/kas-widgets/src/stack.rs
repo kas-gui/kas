@@ -137,13 +137,22 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn recurse_range(&self) -> std::ops::Range<usize> {
-            self.active..(self.active + 1)
-        }
-
         fn pre_configure(&mut self, _: &mut ConfigCx, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();
+        }
+
+        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+            let id = self.make_child_id(self.active);
+            if let Some(w) = self.widgets.get_mut(self.active) {
+                cx.configure(w.as_node(data), id)
+            }
+        }
+
+        fn update_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+            if let Some(w) = self.widgets.get_mut(self.active) {
+                cx.update(w.as_node(data))
+            }
         }
     }
 

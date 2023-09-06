@@ -564,10 +564,6 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn recurse_range(&self) -> std::ops::Range<usize> {
-            0..0
-        }
-
         fn configure(&mut self, cx: &mut ConfigCx) {
             if self.widgets.is_empty() {
                 // Initial configure: ensure some widgets are loaded to allow
@@ -586,6 +582,8 @@ impl_scope! {
 
             cx.register_nav_fallback(self.id());
         }
+
+        fn configure_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             self.selection.retain(|key| data.contains_key(key));
@@ -606,6 +604,8 @@ impl_scope! {
 
             self.update_widgets(cx, data);
         }
+
+        fn update_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
             let is_used = match event {
