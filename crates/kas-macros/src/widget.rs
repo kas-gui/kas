@@ -169,6 +169,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let mut num_children = None;
     let mut get_child = None;
     let mut for_child_node = None;
+    let mut find_child_index = None;
+    let mut make_child_id = None;
     for (index, impl_) in scope.impls.iter().enumerate() {
         if let Some((_, ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::Widget }
@@ -203,8 +205,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     layout_impl = Some(index);
                 }
 
-                let mut find_child_index = None;
-                let mut make_child_id = None;
                 for item in &impl_.items {
                     if let ImplItem::Fn(ref item) = item {
                         if item.sig.ident == "num_children" {
@@ -213,17 +213,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                             get_child = Some(item.sig.ident.clone());
                         } else if item.sig.ident == "find_child_index" {
                             find_child_index = Some(item.sig.ident.clone());
-                        } else if item.sig.ident == "make_child_id" {
-                            make_child_id = Some(item.sig.ident.clone());
                         }
                     }
-                }
-                if let Some(ref span) = find_child_index {
-                    if make_child_id.is_none() {
-                        emit_warning!(span, "fn find_child_index without fn make_child_id");
-                    }
-                } else if let Some(ref span) = make_child_id {
-                    emit_warning!(span, "fn make_child_id without fn find_child_index");
                 }
             } else if *path == parse_quote! { ::kas::Events }
                 || *path == parse_quote! { kas::Events }
@@ -252,10 +243,22 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                                 data_ty = Some(item.ty.clone());
                             }
                         }
+                    } else if let ImplItem::Fn(ref item) = item {
+                        if item.sig.ident == "make_child_id" {
+                            make_child_id = Some(item.sig.ident.clone());
+                        }
                     }
                 }
             }
         }
+    }
+
+    if let Some(ref span) = find_child_index {
+        if make_child_id.is_none() {
+            emit_warning!(span, "fn find_child_index without fn make_child_id");
+        }
+    } else if let Some(ref span) = make_child_id {
+        emit_warning!(span, "fn make_child_id without fn find_child_index");
     }
 
     let fields = match &mut scope.item {
@@ -493,10 +496,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             #[inline]
             fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
                 self.#inner.find_child_index(id)
-            }
-            #[inline]
-            fn make_child_id(&mut self, index: usize) -> ::kas::WidgetId {
-                self.#inner.make_child_id(index)
             }
         };
 

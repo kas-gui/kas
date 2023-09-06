@@ -119,11 +119,6 @@ impl_scope! {
                 .and_then(|k| self.id_map.get(&k).cloned())
         }
 
-        fn make_child_id(&mut self, child_index: usize) -> WidgetId {
-            let is_handle = (child_index & 1) != 0;
-            self.make_next_id(is_handle, child_index / 2)
-        }
-
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             if self.widgets.is_empty() {
                 return SizeRules::EMPTY;
@@ -249,6 +244,11 @@ impl_scope! {
     }
 
     impl Events for Self {
+        fn make_child_id(&mut self, child_index: usize) -> WidgetId {
+            let is_handle = (child_index & 1) != 0;
+            self.make_next_id(is_handle, child_index / 2)
+        }
+
         fn pre_configure(&mut self, _: &mut ConfigCx, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();

@@ -419,11 +419,6 @@ impl_scope! {
                 None
             }
         }
-        #[inline]
-        fn make_child_id(&mut self, _: usize) -> WidgetId {
-            // We configure children in update_widgets and do not want this method to be called
-            unimplemented!()
-        }
 
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
@@ -564,6 +559,12 @@ impl_scope! {
     }
 
     impl Events for Self {
+        #[inline]
+        fn make_child_id(&mut self, _: usize) -> WidgetId {
+            // We configure children in update_widgets and do not want this method to be called
+            unimplemented!()
+        }
+
         fn configure(&mut self, cx: &mut ConfigCx) {
             if self.widgets.is_empty() {
                 // Initial configure: ensure some widgets are loaded to allow

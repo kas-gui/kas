@@ -113,22 +113,10 @@ pub trait Layout {
     ///
     /// The default implementation simply uses [`WidgetId::next_key_after`].
     /// Widgets may choose to assign children custom keys by overriding this
-    /// method and [`Self::make_child_id`].
+    /// method and [`Events::make_child_id`].
     #[inline]
     fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
         id.next_key_after(self.id_ref())
-    }
-
-    /// Make an identifier for a child
-    ///
-    /// This is used to configure children. It may return [`WidgetId::default`]
-    /// in order to avoid configuring the child, but in this case the widget
-    /// must configure via another means.
-    ///
-    /// Default impl: `self.id_ref().make_child(index)`
-    #[inline]
-    fn make_child_id(&mut self, index: usize) -> WidgetId {
-        self.id_ref().make_child(index)
     }
 
     /// Get size rules for the given axis

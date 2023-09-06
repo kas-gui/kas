@@ -40,6 +40,21 @@ use kas_macros::autoimpl;
 ///
 /// [`#widget`]: macros::widget
 pub trait Events: Widget + Sized {
+    /// Make an identifier for a child
+    ///
+    /// This is used to assign children identifiers. It may return
+    /// [`WidgetId::default`] in order to avoid configuring the child, but in
+    /// this case the widget must configure via another means.
+    ///
+    /// If this is implemented explicitly then [`Layout::find_child_index`] must
+    /// be too.
+    ///
+    /// Default impl: `self.id_ref().make_child(index)`
+    #[inline]
+    fn make_child_id(&mut self, index: usize) -> WidgetId {
+        self.id_ref().make_child(index)
+    }
+
     /// Pre-configuration
     ///
     /// This method is called before [`Self::configure_recurse`], therefore
@@ -47,7 +62,7 @@ pub trait Events: Widget + Sized {
     /// (`child.id()` will be invalid the first time this method is called).
     ///
     /// This method must set `self.core.id = id`.
-    /// It may perform preparation for [`Layout::make_child_id`].
+    /// It may perform preparation for [`Events::make_child_id`].
     fn pre_configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
         let _ = (cx, id);
         unimplemented!() // make rustdoc show that this is a provided method
@@ -61,7 +76,7 @@ pub trait Events: Widget + Sized {
     /// The default implementation suffices except where children should *not*
     /// be configured (for example, to delay configuration of hidden children).
     ///
-    /// Use [`Layout::make_child_id`] and [`ConfigCx::configure`].
+    /// Use [`Events::make_child_id`] and [`ConfigCx::configure`].
     fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
         for index in 0..self.num_children() {
             let id = self.make_child_id(index);
@@ -327,7 +342,7 @@ pub enum NavAdvance {
 ///     in most cases: child widgets embedded within a layout descriptor or
 ///     included as fields marked with `#[widget]` are enumerated.
 /// -   **Introspection** methods [`Layout::find_child_index`] and
-///     [`Layout::make_child_id`] have default implementations which *usually*
+///     [`Events::make_child_id`] have default implementations which *usually*
 ///     suffice.
 /// -   **Layout** is specified either via [layout syntax](macros::widget#layout-1)
 ///     or via implementation of at least [`Layout::size_rules`] and

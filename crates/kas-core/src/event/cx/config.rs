@@ -87,7 +87,7 @@ impl<'a> ConfigCx<'a> {
     /// [`Events::configure`] and finally [`Events::update`].
     ///
     /// Pass the `id` to assign to the widget. This is usually constructed with
-    /// [`Layout::make_child_id`].
+    /// [`Events::make_child_id`].
     #[inline]
     pub fn configure(&mut self, mut widget: Node<'_>, id: WidgetId) {
         widget._configure(self, id);
