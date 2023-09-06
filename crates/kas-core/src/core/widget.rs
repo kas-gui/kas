@@ -18,8 +18,7 @@ use kas_macros::autoimpl;
 /// It is used by the [`#widget`] macro to generate hidden [`Widget`] methods.
 ///
 /// The implementation of this method may be omitted where no event-handling is
-/// required. All methods have a default trivial implementation except
-/// [`Events::pre_configure`] which assigns `self.core.id = id`.
+/// required. All methods have a default implementation.
 ///
 /// # Widget lifecycle
 ///
@@ -55,23 +54,30 @@ pub trait Events: Widget + Sized {
         self.id_ref().make_child(index)
     }
 
-    /// Pre-configuration
+    /// Configure self
     ///
-    /// This method is called before [`Self::configure_recurse`], therefore
-    /// implementations should not access child state
-    /// (`child.id()` will be invalid the first time this method is called).
+    /// Widgets are *configured* before sizing, drawing and event handling (see
+    /// [widget lifecycle](Widget#widget-lifecycle)). Configuration may be
+    /// repeated at any time.
     ///
-    /// This method must set `self.core.id = id`.
-    /// It may perform preparation for [`Events::make_child_id`].
-    fn pre_configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
-        let _ = (cx, id);
-        unimplemented!() // make rustdoc show that this is a provided method
+    /// [`Self::update`] is always called immediately after this method,
+    /// followed by [`Self::configure_recurse`].
+    ///
+    /// The window's scale factor (and thus any sizes available through
+    /// [`ConfigCx::size_cx`]) may not be correct initially (some platforms
+    /// construct all windows using scale factor 1) and/or may change in the
+    /// future. Changes to the scale factor result in recalculation of
+    /// [`Layout::size_rules`] but not repeated configuration.
+    ///
+    /// The default implementation does nothing.
+    fn configure(&mut self, cx: &mut ConfigCx) {
+        let _ = cx;
     }
 
     /// Configure children
     ///
-    /// This method is called after [`Self::pre_configure`] and before
-    /// [`Self::configure`]. It usually configures all children.
+    /// This method is called after [`Self::configure`].
+    /// It usually configures all children.
     ///
     /// The default implementation suffices except where children should *not*
     /// be configured (for example, to delay configuration of hidden children).
@@ -85,24 +91,6 @@ pub trait Events: Widget + Sized {
                     .for_child(index, |node| cx.configure(node, id));
             }
         }
-    }
-
-    /// Configure self
-    ///
-    /// Widgets are *configured* before sizing, drawing and event handling (see
-    /// [widget lifecycle](Widget#widget-lifecycle)). Configuration may be
-    /// repeated at any time. [`Self::update`] is always called immediately
-    /// after this method.
-    ///
-    /// The window's scale factor (and thus any sizes available through
-    /// [`ConfigCx::size_cx`]) may not be correct initially (some platforms
-    /// construct all windows using scale factor 1) and/or may change in the
-    /// future. Changes to the scale factor result in recalculation of
-    /// [`Layout::size_rules`] but not repeated configuration.
-    ///
-    /// The default implementation does nothing.
-    fn configure(&mut self, cx: &mut ConfigCx) {
-        let _ = cx;
     }
 
     /// Update self using input data

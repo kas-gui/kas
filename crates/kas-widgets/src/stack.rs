@@ -173,8 +173,7 @@ impl_scope! {
             }
         }
 
-        fn pre_configure(&mut self, _: &mut ConfigCx, id: WidgetId) {
-            self.core.id = id;
+        fn configure(&mut self, _: &mut ConfigCx) {
             self.id_map.clear();
         }
 

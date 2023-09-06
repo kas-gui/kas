@@ -249,8 +249,7 @@ impl_scope! {
             self.make_next_id(is_handle, child_index / 2)
         }
 
-        fn pre_configure(&mut self, _: &mut ConfigCx, id: WidgetId) {
-            self.core.id = id;
+        fn configure(&mut self, _: &mut ConfigCx) {
             self.id_map.clear();
         }
 

@@ -758,12 +758,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             }
         };
 
-        let fn_pre_configure = quote! {
-            fn pre_configure(&mut self, _: &mut ::kas::event::ConfigCx, id: ::kas::WidgetId) {
-                self.#core.id = id;
-            }
-        };
-
         let fn_navigable = args.navigable;
         let hover_highlight = args
             .hover_highlight
@@ -827,11 +821,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         if let Some(index) = events_impl {
             let events_impl = &mut scope.impls[index];
             let item_idents = collect_idents(events_impl);
-            let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
-
-            if opt_derive.is_some() || !has_item("pre_configure") {
-                events_impl.items.push(Verbatim(fn_pre_configure));
-            }
 
             if let Some(method) = fn_navigable {
                 events_impl.items.push(Verbatim(method));
@@ -869,7 +858,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         } else {
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::Events for #impl_target {
-                    #fn_pre_configure
                     #fn_navigable
                     #fn_handle_hover
                     #fn_steal_event
@@ -1105,13 +1093,13 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             data: &Self::Data,
             id: ::kas::WidgetId,
         ) {
+            #core_path.id = id;
             #[cfg(debug_assertions)]
             #core_path.status.configure(&#core_path.id);
 
-            ::kas::Events::pre_configure(self, cx, id);
-            ::kas::Events::configure_recurse(self, cx, data);
             ::kas::Events::configure(self, cx);
             ::kas::Events::update(self, cx, data);
+            ::kas::Events::configure_recurse(self, cx, data);
         }
 
         fn _update(

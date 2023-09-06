@@ -239,24 +239,6 @@ impl Tree {
             }
 
             impl #impl_generics ::kas::Events for #impl_target {
-                fn pre_configure(
-                    &mut self,
-                    _: &mut ::kas::event::ConfigCx,
-                    id: ::kas::WidgetId,
-                ) {
-                    self.id = id;
-                }
-
-                fn configure(&mut self, cx: &mut ::kas::event::ConfigCx) {
-                    #[cfg(debug_assertions)]
-                    #core_path.status.configure(&#core_path.id);
-                }
-
-                fn update(&mut self, cx: &mut ::kas::event::ConfigCx, data: &Self::Data) {
-                    #[cfg(debug_assertions)]
-                    #core_path.status.update(&#core_path.id);
-                }
-
                 fn steal_event(
                     &mut self,
                     _: &mut ::kas::event::EventCx,

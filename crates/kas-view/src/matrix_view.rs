@@ -737,10 +737,10 @@ impl_scope! {
         }
 
         fn _configure(&mut self, cx: &mut ConfigCx, data: &A, id: WidgetId) {
+            self.core.id = id;
             #[cfg(debug_assertions)]
             self.core.status.configure(&self.core.id);
 
-            self.pre_configure(cx, id);
             self.configure(cx);
             self.update(cx, data);
         }

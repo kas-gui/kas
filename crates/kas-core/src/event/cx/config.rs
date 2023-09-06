@@ -83,8 +83,7 @@ impl<'a> ConfigCx<'a> {
     /// All widgets must be configured after construction (see
     /// [widget lifecycle](Widget#widget-lifecycle)).
     /// This method performs complete configuration of the widget by calling
-    /// [`Events::pre_configure`], [`Events::configure_recurse`],
-    /// [`Events::configure`] and finally [`Events::update`].
+    /// [`Events::configure`], [`Events::update`], [`Events::configure_recurse`].
     ///
     /// Pass the `id` to assign to the widget. This is usually constructed with
     /// [`Events::make_child_id`].

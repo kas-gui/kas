@@ -49,8 +49,7 @@ impl_scope! {
     impl Events for Self {
         type Data = W::Data;
 
-        fn pre_configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
-            self.core.id = id;
+        fn configure(&mut self, cx: &mut ConfigCx) {
             cx.new_access_layer(self.id(), true);
         }
 
