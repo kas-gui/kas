@@ -136,7 +136,7 @@ impl_scope! {
                 child_size_min: 0,
                 child_size_ideal: 0,
                 child_inter_margin: 0,
-                skip: 0,
+                skip: 1,
                 child_size: Size::ZERO,
                 scroll: Default::default(),
                 sel_mode: SelectionMode::None,
@@ -477,25 +477,34 @@ impl_scope! {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
 
+            // Widgets need configuring and updating: do so by updating self.
+            self.cur_len = 0; // hack: prevent drawing in the mean-time
+            cx.request_update(self.id());
+
             let mut child_size = rect.size - self.frame_size;
-            let skip;
-            let req_widgets;
+            let (size, skip);
             if self.direction.is_horizontal() {
                 child_size.0 = (child_size.0 / self.ideal_visible)
                     .min(self.child_size_ideal)
                     .max(self.child_size_min);
+                size = rect.size.0;
                 skip = child_size.0 + self.child_inter_margin;
-                req_widgets = usize::conv((rect.size.0 + skip - 1) / skip + 1);
             } else {
                 child_size.1 = (child_size.1 / self.ideal_visible)
                     .min(self.child_size_ideal)
                     .max(self.child_size_min);
+                size = rect.size.1;
                 skip = child_size.1 + self.child_inter_margin;
-                req_widgets = usize::conv((rect.size.1 + skip - 1) / skip + 1);
             }
 
             self.child_size = child_size;
             self.skip = skip;
+
+            if skip == 0 {
+                self.skip = 1; // avoid divide by 0
+                return;
+            }
+            let req_widgets = usize::conv((size + skip - 1) / skip + 1);
 
             let avail_widgets = self.widgets.len();
             if avail_widgets < req_widgets {
@@ -516,10 +525,6 @@ impl_scope! {
                 self.widgets.truncate(req_widgets);
             }
             debug_assert!(self.widgets.len() >= req_widgets);
-
-            // Widgets need configuring and updating: do so by updating self.
-            self.cur_len = 0; // hack: prevent drawing in the mean-time
-            cx.request_update(self.id());
         }
 
         #[inline]
@@ -592,7 +597,10 @@ impl_scope! {
             let data_len = data.len().cast();
             if data_len != self.data_len {
                 self.data_len = data_len;
-                *cx |= Action::SET_RECT; // update scrollable region
+                // We must call at least SET_RECT to update scrollable region
+                // RESIZE allows recalculation of child widget size which may
+                // have been zero if no data was initially available!
+                *cx |= Action::RESIZE;
             }
             let data_len: i32 = data_len.cast();
             let view_size = self.rect().size - self.frame_size;
@@ -756,12 +764,18 @@ impl_scope! {
         }
 
         fn _configure(&mut self, cx: &mut ConfigCx, data: &A, id: WidgetId) {
+            #[cfg(debug_assertions)]
+            self.core.status.configure(&self.core.id);
+
             self.pre_configure(cx, id);
             self.configure(cx);
             self.update(cx, data);
         }
 
         fn _update(&mut self, cx: &mut ConfigCx, data: &A) {
+            #[cfg(debug_assertions)]
+            self.core.status.update(&self.core.id);
+
             self.update(cx, data);
         }
 
