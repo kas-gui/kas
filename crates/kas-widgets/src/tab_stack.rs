@@ -132,6 +132,8 @@ impl_scope! {
 
     impl Self {
         /// Construct a new, empty instance
+        ///
+        /// See also [`TabStack::from`].
         pub fn new() -> Self {
             Self {
                 core: Default::default(),

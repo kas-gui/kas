@@ -21,6 +21,23 @@ use kas_macros::autoimpl;
 /// required. All methods have a default trivial implementation except
 /// [`Events::pre_configure`] which assigns `self.core.id = id`.
 ///
+/// # Widget lifecycle
+///
+/// 1.  The widget is configured ([`Events::configure`]) and immediately updated
+///     ([`Events::update`]).
+/// 2.  The widget has its size-requirements checked by calling
+///     [`Layout::size_rules`] for each axis.
+/// 3.  [`Layout::set_rect`] is called to position elements. This may use data
+///     cached by `size_rules`.
+/// 4.  The widget is updated again after any data change (see [`ConfigCx::update`]).
+/// 5.  The widget is ready for event-handling and drawing
+///     ([`Events::handle_event`], [`Layout::find_id`], [`Layout::draw`]).
+///
+/// Widgets are responsible for ensuring that their children may observe this
+/// lifecycle. Usually this simply involves inclusion of the child in layout
+/// operations. Steps of the lifecycle may be postponed until a widget becomes
+/// visible.
+///
 /// [`#widget`]: macros::widget
 pub trait Events: Layout + Sized {
     /// Input data type
@@ -56,7 +73,10 @@ pub trait Events: Layout + Sized {
     ///
     /// This method must set `self.core.id = id`.
     /// The default (macro-provided) impl does so.
-    fn pre_configure(&mut self, cx: &mut ConfigCx, id: WidgetId);
+    fn pre_configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
+        let _ = (cx, id);
+        unimplemented!() // make rustdoc show that this is a provided method
+    }
 
     /// Configure widget
     ///
@@ -79,7 +99,9 @@ pub trait Events: Layout + Sized {
     /// [`Layout::size_rules`] but not repeated configuration.
     ///
     /// The default implementation does nothing.
-    fn configure(&mut self, cx: &mut ConfigCx);
+    fn configure(&mut self, cx: &mut ConfigCx) {
+        let _ = cx;
+    }
 
     /// Update data
     ///
@@ -95,7 +117,9 @@ pub trait Events: Layout + Sized {
     /// Widgets should be updated even if their data is `()` or is unchanged.
     ///
     /// The default implementation does nothing.
-    fn update(&mut self, cx: &mut ConfigCx, data: &Self::Data);
+    fn update(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+        let _ = (cx, data);
+    }
 
     /// Is this widget navigable via <kbd>Tab</kbd> key?
     ///
@@ -149,7 +173,10 @@ pub trait Events: Layout + Sized {
     /// [`Unused`].
     ///
     /// Use [`EventCx::send`] instead of calling this method.
-    fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> IsUsed;
+    fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> IsUsed {
+        let _ = (cx, data, event);
+        Unused
+    }
 
     /// Potentially steal an event before it reaches a child
     ///
@@ -167,7 +194,10 @@ pub trait Events: Layout + Sized {
         data: &Self::Data,
         id: &WidgetId,
         event: &Event,
-    ) -> IsUsed;
+    ) -> IsUsed {
+        let _ = (cx, data, id, event);
+        Unused
+    }
 
     /// Handler for messages from children/descendants
     ///
@@ -239,11 +269,33 @@ pub enum NavAdvance {
 /// [`Layout`] is dyn-safe without a type parameter. [`Node`] is a dyn-safe
 /// abstraction over a `&dyn Widget<Data = T>` plus a `&T` data parameter.
 ///
+/// # Widget lifecycle
+///
+/// 1.  The widget is configured ([`Events::configure`]) and immediately updated
+///     ([`Events::update`]).
+/// 2.  The widget has its size-requirements checked by calling
+///     [`Layout::size_rules`] for each axis.
+/// 3.  [`Layout::set_rect`] is called to position elements. This may use data
+///     cached by `size_rules`.
+/// 4.  The widget is updated again after any data change (see [`ConfigCx::update`]).
+/// 5.  The widget is ready for event-handling and drawing
+///     ([`Events::handle_event`], [`Layout::find_id`], [`Layout::draw`]).
+///
+/// Widgets are responsible for ensuring that their children may observe this
+/// lifecycle. Usually this simply involves inclusion of the child in layout
+/// operations. Steps of the lifecycle may be postponed until a widget becomes
+/// visible.
+///
 /// # Implementing Widget
 ///
 /// To implement a widget, use the [`#widget`] macro within an
 /// [`impl_scope`](macros::impl_scope). **This is the only supported method of
-/// implementing `Widget`.** Synopsis:
+/// implementing `Widget`.**
+///
+/// Explicit (partial) implementations of [`Widget`], [`Layout`] and [`Events`]
+/// are optional. The [`#widget`] macro completes implementations.
+///
+/// Synopsis:
 /// ```ignore
 /// impl_scope! {
 ///     #[widget {
@@ -284,131 +336,10 @@ pub enum NavAdvance {
 ///     and `find_id`).
 ///-    **Event handling** is optional, implemented through [`Events`].
 ///
-/// Some simple examples follow. See also
-/// [examples apps](https://github.com/kas-gui/kas/tree/master/examples)
-/// and [`kas_widgets` code](https://github.com/kas-gui/kas/tree/master/crates/kas-widgets).
-/// ```
-/// # extern crate kas_core as kas;
-/// use kas::event;
-/// use kas::prelude::*;
-/// use kas::text::Text;
-/// use kas::theme::TextClass;
-/// use std::fmt::Debug;
-///
-/// impl_scope! {
-///     /// A text label
-///     #[widget]
-///     pub struct AccessLabel {
-///         core: widget_core!(),
-///         class: TextClass,
-///         label: Text<AccessString>,
-///     }
-///
-///     impl Self {
-///         /// Construct from `label`
-///         pub fn new(label: impl Into<AccessString>) -> Self {
-///             AccessLabel {
-///                 core: Default::default(),
-///                 class: TextClass::AccessLabel(true),
-///                 label: Text::new(label.into()),
-///             }
-///         }
-///
-///         /// Set text class (inline)
-///         pub fn with_class(mut self, class: TextClass) -> Self {
-///             self.class = class;
-///             self
-///         }
-///
-///         /// Get the access key
-///         pub fn access_key(&self) -> Option<&event::Key> {
-///             self.label.text().key()
-///         }
-///     }
-///
-///     impl Layout for Self {
-///         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
-///             axis.set_default_align_hv(Align::Default, Align::Center);
-///             sizer.text_rules(&mut self.label, self.class, axis)
-///         }
-///
-///         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
-///             self.core.rect = rect;
-///             cx.text_set_size(&mut self.label, self.class, rect.size, None);
-///         }
-///
-///         fn draw(&mut self, mut draw: DrawCx) {
-///             draw.text_effects(self.rect(), &self.label, self.class);
-///         }
-///     }
-///
-///     impl Events for Self {
-///         type Data = ();
-///
-///         fn configure(&mut self, cx: &mut ConfigCx) {
-///             if let Some(key) = self.label.text().key() {
-///                 cx.add_access_key(self.id_ref(), key.clone());
-///             }
-///         }
-///
-///         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
-///             match event {
-///                 Event::Command(cmd, code) if cmd.is_activate() => {
-///                     cx.push(kas::message::Activate(code));
-///                     Used
-///                 }
-///                 _ => Unused
-///             }
-///         }
-///     }
-/// }
-///
-/// impl_scope! {
-///     /// A push-button with a text label
-///     #[widget {
-///         layout = button!(self.label);
-///         navigable = true;
-///         hover_highlight = true;
-///     }]
-///     pub struct TextButton<M: Clone + Debug + 'static> {
-///         core: widget_core!(),
-///         #[widget]
-///         label: AccessLabel,
-///         message: M,
-///     }
-///
-///     impl Self {
-///         /// Construct a button with given `label`
-///         pub fn new(label: impl Into<AccessString>, message: M) -> Self {
-///             TextButton {
-///                 core: Default::default(),
-///                 label: AccessLabel::new(label).with_class(TextClass::Button),
-///                 message,
-///             }
-///         }
-///     }
-///
-///     impl Events for Self {
-///         type Data = ();
-///
-///         fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> IsUsed {
-///             event.on_activate(cx, self.id(), |cx| {
-///                 cx.push(self.message.clone());
-///                 Used
-///             })
-///         }
-///
-///         fn handle_messages(&mut self, cx: &mut EventCx, _: &()) {
-///             if let Some(kas::message::Activate(code)) = cx.try_pop() {
-///                 cx.push(self.message.clone());
-///                 if let Some(code) = code {
-///                     cx.depress_with_key(self.id(), code);
-///                 }
-///             }
-///         }
-///     }
-/// }
-/// ```
+/// For examples, check the source code of widgets in the widgets library
+/// or [examples apps](https://github.com/kas-gui/kas/tree/master/examples).
+/// (Check that the code uses the same Kas version since the widget traits are
+/// not yet stable.)
 ///
 /// [`#widget`]: macros::widget
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
@@ -424,7 +355,12 @@ pub trait Widget: Layout {
     type Data;
 
     /// Erase type
-    fn as_node<'a>(&'a mut self, data: &'a Self::Data) -> Node<'a>;
+    ///
+    /// This method is implemented by the `#[widget]` macro.
+    fn as_node<'a>(&'a mut self, data: &'a Self::Data) -> Node<'a> {
+        let _ = data;
+        unimplemented!() // make rustdoc show that this is a provided method
+    }
 
     /// Call closure on child with given `index`, if `index < self.num_children()`.
     ///
@@ -439,7 +375,10 @@ pub trait Widget: Layout {
         data: &Self::Data,
         index: usize,
         closure: Box<dyn FnOnce(Node<'_>) + '_>,
-    );
+    ) {
+        let _ = (data, index, closure);
+        unimplemented!() // make rustdoc show that this is a provided method
+    }
 
     /// Internal method: configure recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]

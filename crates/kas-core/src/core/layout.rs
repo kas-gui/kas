@@ -19,41 +19,35 @@ use kas_macros::autoimpl;
 
 /// Positioning and drawing routines for [`Widget`]s
 ///
-/// `Layout` is an unparameterised dyn-safe super-trait of [`Widget`].
-/// `Layout` covers sizing and drawing, child enumeration (introspection) and
-/// identification via [`WidgetId`].
+/// `Layout` is a super-trait of [`Widget`] which:
+///
+/// -   Has no [`Data`](Widget::Data) parameter
+/// -   Supports read-only tree reflection: [`Self::get_child`]
+/// -   Provides some basic operations: [`Self::id_ref`], [`Self::rect`]
+/// -   Covers sizing and drawing operations ("layout")
 ///
 /// # Implementing Layout
 ///
-/// Currently `Layout` may only be implemented alongside [`Widget`] via the
-/// [`#widget`] macro. See also [`Widget`] documentation.
+/// See [`Widget`] documentation and the [`#widget`] macro.
+/// `Layout` may not be implemented independently.
 ///
-/// Methods may be categorised as follows:
+/// # Widget lifecycle
 ///
-/// -   **Core** methods `as_dyn`, `id_ref`, `rect` and `widget_name` are
-///     *always* implemented via the [`#widget`] macro.
-/// -   **Introspection** methods `num_children` and `get_child`, are *usually*
-///     implemented by [`#widget`] but sometimes must be implemented manually
-///     (as a pair). Likewise, the pair `find_child_index` and `make_child_id`
-///     usually do not require an explicit implementation.
-/// -   **Layout** methods `size_rules`, `set_rect`, `nav_next`, `translation`,
-///     `find_id` and `draw` may be implemented manually, left at their defaults
-///     (except `size_rules` and `draw`) or implemented via
-///     [layout syntax](macros::widget#layout-1).
+/// 1.  The widget is configured ([`Events::configure`]) and immediately updated
+///     ([`Events::update`]).
+/// 2.  The widget has its size-requirements checked by calling [`Self::size_rules`]
+///     for each axis (usually via recursion, sometimes via [`layout::solve_size_rules`]
+///     or [`layout::SolveCache`]).
+/// 3.  [`Self::set_rect`] is called to position elements. This may use data
+///     cached by `size_rules`.
+/// 4.  The widget is updated again after any data change (see [`ConfigCx::update`]).
+/// 5.  The widget is ready for event-handling and drawing ([`Events`],
+///     [`Self::find_id`], [`Self::draw`]).
 ///
-/// # Solving layout
-///
-/// Layout is resolved as follows:
-///
-/// 1.  [`Events::configure`] is called (widgets only), and may be used to load assets
-/// 2.  [`Self::size_rules`] is called at least once for each axis
-/// 3.  [`Self::set_rect`] is called to position elements. This may use data cached by `size_rules`.
-/// 4.  [`Self::find_id`] may be used to find the widget under the mouse and [`Self::draw`] to draw
-///     elements.
-///
-/// Usually, [`Layout::size_rules`] methods are called recursively. To instead
-/// solve layout for a single widget/layout object, it may be useful to use
-/// [`layout::solve_size_rules`] or [`layout::SolveCache`].
+/// Widgets are responsible for ensuring that their children may observe this
+/// lifecycle. Usually this simply involves inclusion of the child in layout
+/// operations. Steps of the lifecycle may be postponed until a widget becomes
+/// visible.
 ///
 /// [`#widget`]: macros::widget
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
@@ -61,7 +55,9 @@ pub trait Layout {
     /// Get as a `dyn Layout`
     ///
     /// This method is implemented by the `#[widget]` macro.
-    fn as_layout(&self) -> &dyn Layout;
+    fn as_layout(&self) -> &dyn Layout {
+        unimplemented!() // make rustdoc show that this is a provided method
+    }
 
     /// Get the widget's identifier
     ///
@@ -70,17 +66,23 @@ pub trait Layout {
     /// assigned by [`Events::pre_configure`].
     ///
     /// This method is implemented by the `#[widget]` macro.
-    fn id_ref(&self) -> &WidgetId;
+    fn id_ref(&self) -> &WidgetId {
+        unimplemented!() // make rustdoc show that this is a provided method
+    }
 
     /// Get the widget's region, relative to its parent.
     ///
     /// This method is implemented by the `#[widget]` macro.
-    fn rect(&self) -> Rect;
+    fn rect(&self) -> Rect {
+        unimplemented!() // make rustdoc show that this is a provided method
+    }
 
     /// Get the name of the widget struct
     ///
     /// This method is implemented by the `#[widget]` macro.
-    fn widget_name(&self) -> &'static str;
+    fn widget_name(&self) -> &'static str {
+        unimplemented!() // make rustdoc show that this is a provided method
+    }
 
     /// Get the number of child widgets
     ///
@@ -91,13 +93,18 @@ pub trait Layout {
     /// macro. It should be implemented directly if and only if
     /// [`Layout::get_child`] and [`Widget::for_child_node`] are
     /// implemented directly.
-    fn num_children(&self) -> usize;
+    fn num_children(&self) -> usize {
+        unimplemented!() // make rustdoc show that this is a provided method
+    }
 
     /// Access a child as a `dyn Layout`
     ///
     /// This method is usually implemented automatically by the `#[widget]`
     /// macro.
-    fn get_child(&self, index: usize) -> Option<&dyn Layout>;
+    fn get_child(&self, index: usize) -> Option<&dyn Layout> {
+        let _ = index;
+        unimplemented!() // make rustdoc show that this is a provided method
+    }
 
     /// Find the child which is an ancestor of this `id`, if any
     ///
@@ -140,6 +147,12 @@ pub trait Layout {
     ///
     /// For row/column/grid layouts, a [`crate::layout::RulesSolver`] engine
     /// may be useful.
+    ///
+    /// Required: `self` is configured ([`ConfigCx::configure`]) before this
+    /// method is called, and that `size_rules` is called for the
+    /// horizontal axis before it is called for the vertical axis.
+    /// Further, [`Self::set_rect`] must be called after this method before
+    /// drawing or event handling.
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
 
     /// Set size and position
@@ -164,11 +177,19 @@ pub trait Layout {
     /// Another example: `Label` uses a `Text` object which handles alignment
     /// internally.
     ///
+    /// Required: [`Self::size_rules`] is called for both axes before this
+    /// method is called, and that this method has been called *after* the last
+    /// call to [`Self::size_rules`] *before* any of the following methods:
+    /// [`Layout::find_id`], [`Layout::draw`], [`Events::handle_event`].
+    ///
     /// Default implementation when not using the `layout` property: set `rect`
     /// field of `widget_core!()` to the input `rect`.
     ///
     /// [`Stretch`]: crate::layout::Stretch
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect);
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        let _ = (cx, rect);
+        unimplemented!() // make rustdoc show that this is a provided method
+    }
 
     /// Navigation in spatial order
     ///
@@ -188,7 +209,10 @@ pub trait Layout {
     ///
     /// -   Generated from `#[widget]`'s layout property, if used (not always possible!)
     /// -   Otherwise, iterate through children in order of definition
-    fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize>;
+    fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+        let _ = (reverse, from);
+        unimplemented!() // make rustdoc show that this is a provided method
+    }
 
     /// Get translation of children relative to this widget
     ///
@@ -254,7 +278,10 @@ pub trait Layout {
     /// }
     /// Some(self.id())
     /// ```
-    fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
+    fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        let _ = coord;
+        unimplemented!() // make rustdoc show that this is a provided method
+    }
 
     /// Draw a widget and its children
     ///
