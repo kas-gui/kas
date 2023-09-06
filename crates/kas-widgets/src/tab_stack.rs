@@ -138,7 +138,7 @@ impl_scope! {
             Self {
                 core: Default::default(),
                 direction: Direction::Up,
-                stack: Stack::new([]),
+                stack: Stack::new(),
                 tabs: Row::new([]).on_messages(|cx, index| {
                     if let Some(Select) = cx.try_pop() {
                         cx.push(MsgSelectIndex(index));
@@ -204,18 +204,27 @@ impl_scope! {
 }
 
 impl<W: Widget> TabStack<W> {
-    /// Limit the number of pages considered by [`Layout::size_rules`]
+    /// Limit the number of pages considered and sized
     ///
-    /// By default, this is `usize::MAX`: all pages affect the result. If
-    /// this is set to 1 then only the active page will affect the result. If
-    /// this is `n > 1`, then `min(n, num_pages)` pages (including active)
-    /// will be used. (If this is set to 0 it is silently replaced with 1.)
+    /// By default, this is `usize::MAX`: all pages are configured and affect
+    /// the stack's size requirements.
     ///
-    /// Using a limit lower than the number of pages has two effects:
-    /// (1) resizing is faster and (2) calling [`Self::set_active`] may cause a
-    /// full-window resize.
+    /// Set this to 0 to avoid configuring all hidden pages.
+    /// Set this to `n` to configure the active page *and* the first `n` pages.
     pub fn set_size_limit(&mut self, limit: usize) {
         self.stack.set_size_limit(limit);
+    }
+
+    /// Limit the number of pages configured and sized (inline)
+    ///
+    /// By default, this is `usize::MAX`: all pages are configured and affect
+    /// the stack's size requirements.
+    ///
+    /// Set this to 0 to avoid configuring all hidden pages.
+    /// Set this to `n` to configure the active page *and* the first `n` pages.
+    pub fn with_size_limit(mut self, limit: usize) -> Self {
+        self.stack.set_size_limit(limit);
+        self
     }
 
     /// Get the index of the active page
@@ -235,16 +244,6 @@ impl<W: Widget> TabStack<W> {
     }
 
     /// Set the active page
-    ///
-    /// Behaviour depends on whether [`SizeRules`] were already solved for
-    /// `index` (see [`Self::set_size_limit`] and note that methods like
-    /// [`Self::push`] do not solve rules for new pages). Case:
-    ///
-    /// -   `index >= num_pages`: no page displayed
-    /// -   `index == active` and `SizeRules` were solved: nothing happens
-    /// -   `SizeRules` were solved: set layout ([`Layout::set_rect`]) and
-    ///     update mouse-cursor target ([`Action::REGION_MOVED`])
-    /// -   Otherwise: resize the whole window ([`Action::RESIZE`])
     pub fn set_active(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize) {
         self.stack.set_active(cx, data, index);
     }
@@ -290,22 +289,6 @@ impl<W: Widget> TabStack<W> {
     /// Get a tab
     pub fn get_tab_mut(&mut self, index: usize) -> Option<&mut Tab> {
         self.tabs.get_mut(index)
-    }
-
-    /// Append a page (inline)
-    ///
-    /// Does not configure or size child.
-    pub fn with_tab(mut self, tab: Tab, widget: W) -> Self {
-        let _ = self.stack.edit(|widgets| widgets.push(widget));
-        let _ = self.tabs.edit(|tabs| tabs.push(tab));
-        self
-    }
-
-    /// Append a page (inline)
-    ///
-    /// Does not configure or size child.
-    pub fn with_title(self, title: impl Into<AccessString>, widget: W) -> Self {
-        self.with_tab(Tab::new(title), widget)
     }
 
     /// Append a page
@@ -400,7 +383,7 @@ where
             tabs.push(Tab::from(tab));
         }
         Self {
-            stack: Stack::new(stack),
+            stack: Stack::from(stack),
             tabs: Row::new(tabs).on_messages(|cx, index| {
                 if let Some(Select) = cx.try_pop() {
                     cx.push(MsgSelectIndex(index));
