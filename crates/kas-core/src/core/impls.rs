@@ -10,7 +10,7 @@ use crate::event::{ConfigCx, Event, EventCx, FocusSource, IsUsed, Scroll, Unused
 use crate::{Erased, Events, Layout, NavAdvance, Node, Widget, WidgetId};
 
 /// Generic implementation of [`Widget::_configure`]
-pub fn _configure<W: Widget + Events<Data = <W as Widget>::Data>>(
+pub fn _configure<W: Events>(
     widget: &mut W,
     cx: &mut ConfigCx,
     data: &<W as Widget>::Data,
@@ -32,11 +32,7 @@ pub fn _configure<W: Widget + Events<Data = <W as Widget>::Data>>(
 }
 
 /// Generic implementation of [`Widget::_update`]
-pub fn _update<W: Widget + Events<Data = <W as Widget>::Data>>(
-    widget: &mut W,
-    cx: &mut ConfigCx,
-    data: &<W as Widget>::Data,
-) {
+pub fn _update<W: Events>(widget: &mut W, cx: &mut ConfigCx, data: &<W as Widget>::Data) {
     widget.update(cx, data);
     let range = widget.recurse_range();
     let mut node = widget.as_node(data);
@@ -46,7 +42,7 @@ pub fn _update<W: Widget + Events<Data = <W as Widget>::Data>>(
 }
 
 /// Generic implementation of [`Widget::_send`]
-pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
+pub fn _send<W: Events>(
     widget: &mut W,
     cx: &mut EventCx,
     data: &<W as Widget>::Data,
@@ -120,7 +116,7 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
 }
 
 /// Generic implementation of [`Widget::_replay`]
-pub fn _replay<W: Widget + Events<Data = <W as Widget>::Data>>(
+pub fn _replay<W: Events>(
     widget: &mut W,
     cx: &mut EventCx,
     data: &<W as Widget>::Data,
@@ -166,7 +162,7 @@ pub fn _replay<W: Widget + Events<Data = <W as Widget>::Data>>(
 }
 
 /// Generic implementation of [`Widget::_nav_next`]
-pub fn _nav_next<W: Widget + Events<Data = <W as Widget>::Data>>(
+pub fn _nav_next<W: Events>(
     widget: &mut W,
     cx: &mut EventCx,
     data: &<W as Widget>::Data,

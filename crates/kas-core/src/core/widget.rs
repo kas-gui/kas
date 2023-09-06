@@ -39,17 +39,7 @@ use kas_macros::autoimpl;
 /// visible.
 ///
 /// [`#widget`]: macros::widget
-pub trait Events: Layout + Sized {
-    /// Input data type
-    ///
-    /// This type must match [`Widget::Data`]. When using the `#widget` macro,
-    /// the type must be specified exactly once in one of three places: here,
-    /// in the implementation of [`Widget`], or via the `Data` property of
-    /// [`#widget`].
-    ///
-    /// [`#widget`]: macros::widget
-    type Data;
-
+pub trait Events: Widget + Sized {
     /// Recursion range
     ///
     /// Methods `pre_configure`, `configure` and `update` all recurse over the
@@ -349,9 +339,10 @@ pub trait Widget: Layout {
     /// Widget expects data of this type to be provided by reference when
     /// calling any event-handling operation on this widget.
     ///
-    /// This type must match [`Events::Data`] if `Events` is implemented when
-    /// using the `#[widget]` macro. The type only needs to be specified once,
-    /// here, in the implementation of [`Events`], or via the `Data` property.
+    /// This type may be specified using a [`#widget`] macro property in case
+    /// this trait is not explicitly implemented.
+    ///
+    /// [`#widget`]: macros::widget
     type Data;
 
     /// Erase type

@@ -298,7 +298,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         };
         return Err(Error::new(
             span,
-            "expected a definition of Data in Events, Widget or via #[widget] property",
+            "expected a definition of Data in Widget, Events or via #[widget { Data = ...; }]",
         ));
     };
 
@@ -677,12 +677,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             let item_idents = collect_idents(widget_impl);
             let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
 
-            let widget_impl = &mut scope.impls[index];
-            if !has_item("Data") {
-                widget_impl.items.push(Verbatim(quote! {
-                    type Data = #data_ty;
-                }));
-            }
             widget_impl.items.push(Verbatim(widget_as_node()));
             if !has_item("_send") {
                 widget_impl.items.push(Verbatim(widget_recursive_methods()));
@@ -852,12 +846,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             let item_idents = collect_idents(events_impl);
             let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
 
-            if !has_item("Data") {
-                events_impl
-                    .items
-                    .push(Verbatim(quote! { type Data = #data_ty; }));
-            }
-
             if opt_derive.is_some() || !has_item("pre_configure") {
                 events_impl.items.push(Verbatim(fn_pre_configure));
             }
@@ -905,10 +893,15 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             } else {
                 events_impl.items.push(Verbatim(fn_handle_event));
             }
+
+            if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "Data") {
+                // Remove "type Data" item; it belongs in Widget impl.
+                // Do this last to avoid affecting item indices.
+                events_impl.items.remove(*index);
+            }
         } else {
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::Events for #impl_target {
-                    type Data = #data_ty;
                     #fn_pre_configure
                     #fn_configure
                     #fn_update

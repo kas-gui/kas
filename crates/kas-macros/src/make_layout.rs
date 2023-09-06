@@ -239,8 +239,6 @@ impl Tree {
             }
 
             impl #impl_generics ::kas::Events for #impl_target {
-                type Data = #data_ty;
-
                 fn pre_configure(
                     &mut self,
                     _: &mut ::kas::event::ConfigCx,

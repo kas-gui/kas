@@ -101,25 +101,6 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
-        fn for_child_node(
-            &mut self,
-            data: &W::Data,
-            index: usize,
-            closure: Box<dyn FnOnce(Node<'_>) + '_>,
-        ) {
-            if (index & 1) != 0 {
-                if let Some(w) = self.handles.get_mut(index >> 1) {
-                    closure(w.as_node(&()));
-                }
-            } else {
-                if let Some(w) = self.widgets.get_mut(index >> 1) {
-                    closure(w.as_node(data));
-                }
-            }
-        }
-    }
-
     impl Layout for Self {
         #[inline]
         fn num_children(&self) -> usize {
@@ -246,9 +227,28 @@ impl_scope! {
         }
     }
 
-    impl Events for Self {
+    impl Widget for Self {
         type Data = W::Data;
 
+        fn for_child_node(
+            &mut self,
+            data: &W::Data,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
+            if (index & 1) != 0 {
+                if let Some(w) = self.handles.get_mut(index >> 1) {
+                    closure(w.as_node(&()));
+                }
+            } else {
+                if let Some(w) = self.widgets.get_mut(index >> 1) {
+                    closure(w.as_node(data));
+                }
+            }
+        }
+    }
+
+    impl Events for Self {
         fn pre_configure(&mut self, _: &mut ConfigCx, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();
