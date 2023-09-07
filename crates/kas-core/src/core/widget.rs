@@ -322,7 +322,7 @@ pub enum NavAdvance {
 ///
 /// -   **Data**: the type [`Widget::Data`] must be specified exactly once, but
 ///     this type may be given in any of three locations: as a property of the
-///     [`#widget`] macro, as [`Events::Data`] or as [`Widget::Data`].
+///     [`#widget`] macro or as [`Widget::Data`].
 /// -   **Core** methods of [`Layout`] are *always* implemented via the [`#widget`]
 ///     macro, whether or not an `impl Layout { ... }` item is present.
 /// -   **Introspection** methods [`Layout::num_children`], [`Layout::get_child`]
