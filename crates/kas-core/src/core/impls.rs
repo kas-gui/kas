@@ -148,9 +148,14 @@ fn nav_next(
     advance: NavAdvance,
     navigable: bool,
 ) -> Option<WidgetId> {
-    if cx.is_disabled(widget.id_ref()) {
+    let id = widget.id_ref();
+    if !id.is_valid() {
+        log::warn!("nav_next: encountered unconfigured node!");
+        return None;
+    } else if cx.is_disabled(id) {
         return None;
     }
+    let is_focus = *id == focus;
 
     let mut child = focus.and_then(|id| widget.find_child_index(id));
 
@@ -166,7 +171,7 @@ fn nav_next(
         let can_match_self = match advance {
             NavAdvance::None => true,
             NavAdvance::Forward(true) => true,
-            NavAdvance::Forward(false) => *widget.id_ref() != focus,
+            NavAdvance::Forward(false) => is_focus,
             _ => false,
         };
         if can_match_self {
@@ -192,7 +197,7 @@ fn nav_next(
     if navigable {
         let can_match_self = match advance {
             NavAdvance::Reverse(true) => true,
-            NavAdvance::Reverse(false) => *widget.id_ref() != focus,
+            NavAdvance::Reverse(false) => is_focus,
             _ => false,
         };
         if can_match_self {
