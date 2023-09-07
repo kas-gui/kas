@@ -492,7 +492,7 @@ impl<Data: 'static> Window<Data> {
         let (c, t) = find_rect(self.inner.as_layout(), popup.parent.clone(), Offset::ZERO).unwrap();
         *translation = t;
         let r = r + t; // work in translated coordinate space
-        self.inner.as_node(data).find_node(&popup.id, |mut node| {
+        let result = self.inner.as_node(data).find_node(&popup.id, |mut node| {
             let mut cache = layout::SolveCache::find_constraints(node.re(), cx.size_cx());
             let ideal = cache.ideal(false);
             let m = cache.margins();
@@ -510,5 +510,9 @@ impl<Data: 'static> Window<Data> {
             cache.apply_rect(node.re(), cx, rect, false);
             cache.print_widget_heirarchy(node.as_layout());
         });
+
+        // Event handlers expect that the popup's rect is now assigned.
+        // If we were to try recovering we should remove the popup.
+        assert!(result.is_some());
     }
 }
