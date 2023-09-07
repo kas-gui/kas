@@ -77,6 +77,12 @@ pub enum WidgetStatus {
 
 #[cfg(debug_assertions)]
 impl WidgetStatus {
+    fn require(&self, id: &WidgetId, expected: Self) {
+        if *self < expected {
+            panic!("WidgetStatus of {id}: require {expected:?}, found {self:?}");
+        }
+    }
+
     /// Configure
     pub fn configure(&mut self, _id: &WidgetId) {
         // re-configure does not require repeating other actions
@@ -85,9 +91,7 @@ impl WidgetStatus {
 
     /// Update
     pub fn update(&self, id: &WidgetId) {
-        if *self < WidgetStatus::Configured {
-            panic!("WidgetStatus of {id}: configure must be called before update!");
-        }
+        self.require(id, WidgetStatus::Configured);
 
         // Update-after-configure is already guaranteed (see impls module).
         // NOTE: Update-after-data-change should be required but is hard to
@@ -97,35 +101,24 @@ impl WidgetStatus {
 
     /// Size rules
     pub fn size_rules(&mut self, id: &WidgetId, axis: crate::layout::AxisInfo) {
-        match self {
-            WidgetStatus::New => {
-                panic!("WidgetStatus of {id}: configure must be called before size_rules!")
-            }
-            WidgetStatus::Configured if axis.is_vertical() => {
-                panic!("WidgetStatus of {id}: size_rules(horizontal) must be called before size_rules(vertical)!");
-            }
-            _ => (),
-        }
-
-        // Re-calling size_rules requires re-calling set_rect
+        // NOTE: Possibly this is too strict and we should not require
+        // re-running size_rules(vert) or set_rect afterwards?
         if axis.is_horizontal() {
+            self.require(id, WidgetStatus::Configured);
             *self = WidgetStatus::SizeRulesX;
         } else {
+            self.require(id, WidgetStatus::SizeRulesX);
             *self = WidgetStatus::SizeRulesY;
         }
     }
 
     /// Set rect
     pub fn set_rect(&mut self, id: &WidgetId) {
-        if *self < WidgetStatus::SizeRulesY {
-            panic!("WidgetStatus of {id}: size_rules(vertical) must be called before set_rect!");
-        }
+        self.require(id, WidgetStatus::SizeRulesY);
         *self = WidgetStatus::SetRect;
     }
 
     pub fn require_rect(&self, id: &WidgetId) {
-        if *self < WidgetStatus::SetRect {
-            panic!("WidgetStatus of {id}: set_rect must be called before this method!");
-        }
+        self.require(id, WidgetStatus::SetRect);
     }
 }
