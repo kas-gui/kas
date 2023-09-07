@@ -99,6 +99,8 @@ where
             }
 
             Event::WindowEvent { window_id, event } => {
+                self.flush_pending(elwt, control_flow);
+
                 if let Some(id) = self.id_map.get(&window_id) {
                     if let Some(window) = self.windows.get_mut(id) {
                         window.handle_event(&mut self.shared, event);
