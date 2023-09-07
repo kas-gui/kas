@@ -80,7 +80,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, _: SizeCx, _: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, _: SizeCx, _axis: AxisInfo) -> SizeRules {
             SizeRules::EMPTY
         }
 

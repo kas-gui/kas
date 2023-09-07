@@ -38,6 +38,10 @@ impl Icon {
 pub struct CoreData {
     pub rect: Rect,
     pub id: WidgetId,
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg(debug_assertions)]
+    pub status: WidgetStatus,
 }
 
 /// Note: the clone has default-initialised identifier.
@@ -46,7 +50,75 @@ impl Clone for CoreData {
     fn clone(&self) -> Self {
         CoreData {
             rect: self.rect,
-            id: WidgetId::default(),
+            ..CoreData::default()
         }
+    }
+}
+
+/// Widget state tracker
+///
+/// This struct is used to track status of widget operations and panic in case
+/// of inappropriate call order (such cases are memory safe but may cause
+/// incorrect widget behaviour).
+///
+/// It is not used in release builds.
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[cfg(debug_assertions)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub enum WidgetStatus {
+    #[default]
+    New,
+    Configured,
+    SizeRulesX,
+    SizeRulesY,
+    SetRect,
+}
+
+#[cfg(debug_assertions)]
+impl WidgetStatus {
+    fn require(&self, id: &WidgetId, expected: Self) {
+        if *self < expected {
+            panic!("WidgetStatus of {id}: require {expected:?}, found {self:?}");
+        }
+    }
+
+    /// Configure
+    pub fn configure(&mut self, _id: &WidgetId) {
+        // re-configure does not require repeating other actions
+        *self = (*self).max(WidgetStatus::Configured);
+    }
+
+    /// Update
+    pub fn update(&self, id: &WidgetId) {
+        self.require(id, WidgetStatus::Configured);
+
+        // Update-after-configure is already guaranteed (see impls module).
+        // NOTE: Update-after-data-change should be required but is hard to
+        // detect; we could store a data hash but draw does not receive data.
+        // As such we don't bother recording this operation.
+    }
+
+    /// Size rules
+    pub fn size_rules(&mut self, id: &WidgetId, axis: crate::layout::AxisInfo) {
+        // NOTE: Possibly this is too strict and we should not require
+        // re-running size_rules(vert) or set_rect afterwards?
+        if axis.is_horizontal() {
+            self.require(id, WidgetStatus::Configured);
+            *self = WidgetStatus::SizeRulesX;
+        } else {
+            self.require(id, WidgetStatus::SizeRulesX);
+            *self = WidgetStatus::SizeRulesY;
+        }
+    }
+
+    /// Set rect
+    pub fn set_rect(&mut self, id: &WidgetId) {
+        self.require(id, WidgetStatus::SizeRulesY);
+        *self = WidgetStatus::SetRect;
+    }
+
+    pub fn require_rect(&self, id: &WidgetId) {
+        self.require(id, WidgetStatus::SetRect);
     }
 }

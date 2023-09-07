@@ -5,48 +5,12 @@
 
 //! Widget method implementations
 
-use crate::event::{ConfigCx, Event, EventCx, FocusSource, IsUsed, Scroll, Unused, Used};
+use crate::event::{Event, EventCx, FocusSource, IsUsed, Scroll, Unused, Used};
 #[cfg(debug_assertions)] use crate::util::IdentifyWidget;
 use crate::{Erased, Events, Layout, NavAdvance, Node, Widget, WidgetId};
 
-/// Generic implementation of [`Widget::_configure`]
-pub fn _configure<W: Widget + Events<Data = <W as Widget>::Data>>(
-    widget: &mut W,
-    cx: &mut ConfigCx,
-    data: &<W as Widget>::Data,
-    id: WidgetId,
-) {
-    widget.pre_configure(cx, id);
-
-    for index in widget.recurse_range() {
-        let id = widget.make_child_id(index);
-        if id.is_valid() {
-            widget
-                .as_node(data)
-                .for_child(index, |mut node| node._configure(cx, id));
-        }
-    }
-
-    widget.configure(cx);
-    widget.update(cx, data);
-}
-
-/// Generic implementation of [`Widget::_update`]
-pub fn _update<W: Widget + Events<Data = <W as Widget>::Data>>(
-    widget: &mut W,
-    cx: &mut ConfigCx,
-    data: &<W as Widget>::Data,
-) {
-    widget.update(cx, data);
-    let range = widget.recurse_range();
-    let mut node = widget.as_node(data);
-    for index in range {
-        node.for_child(index, |mut node| node._update(cx));
-    }
-}
-
 /// Generic implementation of [`Widget::_send`]
-pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
+pub fn _send<W: Events>(
     widget: &mut W,
     cx: &mut EventCx,
     data: &<W as Widget>::Data,
@@ -120,7 +84,7 @@ pub fn _send<W: Widget + Events<Data = <W as Widget>::Data>>(
 }
 
 /// Generic implementation of [`Widget::_replay`]
-pub fn _replay<W: Widget + Events<Data = <W as Widget>::Data>>(
+pub fn _replay<W: Events>(
     widget: &mut W,
     cx: &mut EventCx,
     data: &<W as Widget>::Data,
@@ -166,7 +130,7 @@ pub fn _replay<W: Widget + Events<Data = <W as Widget>::Data>>(
 }
 
 /// Generic implementation of [`Widget::_nav_next`]
-pub fn _nav_next<W: Widget + Events<Data = <W as Widget>::Data>>(
+pub fn _nav_next<W: Events>(
     widget: &mut W,
     cx: &mut EventCx,
     data: &<W as Widget>::Data,
@@ -184,9 +148,14 @@ fn nav_next(
     advance: NavAdvance,
     navigable: bool,
 ) -> Option<WidgetId> {
-    if cx.is_disabled(widget.id_ref()) {
+    let id = widget.id_ref();
+    if !id.is_valid() {
+        log::warn!("nav_next: encountered unconfigured node!");
+        return None;
+    } else if cx.is_disabled(id) {
         return None;
     }
+    let is_focus = *id == focus;
 
     let mut child = focus.and_then(|id| widget.find_child_index(id));
 
@@ -202,7 +171,7 @@ fn nav_next(
         let can_match_self = match advance {
             NavAdvance::None => true,
             NavAdvance::Forward(true) => true,
-            NavAdvance::Forward(false) => *widget.id_ref() != focus,
+            NavAdvance::Forward(false) => is_focus,
             _ => false,
         };
         if can_match_self {
@@ -228,7 +197,7 @@ fn nav_next(
     if navigable {
         let can_match_self = match advance {
             NavAdvance::Reverse(true) => true,
-            NavAdvance::Reverse(false) => *widget.id_ref() != focus,
+            NavAdvance::Reverse(false) => is_focus,
             _ => false,
         };
         if can_match_self {

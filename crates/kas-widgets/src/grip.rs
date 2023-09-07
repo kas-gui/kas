@@ -44,7 +44,8 @@ impl_scope! {
     /// This widget is unusual in several ways:
     ///
     /// 1.  [`Layout::size_rules`] does not request any size; the parent is expected
-    ///     to do this.
+    ///     to do this. (Calling this method is still required to comply with
+    ///     widget model.)
     /// 2.  [`Layout::set_rect`] sets the *track* within which this grip may move;
     ///     the parent should always call [`GripPart::set_size_and_offset`]
     ///     afterwards to set the grip position.
@@ -78,7 +79,7 @@ impl_scope! {
     ///     `set_rect` (otherwise the grip's position will not be updated)
     /// 3.  `draw` does nothing: the parent is expected to do all drawing
     impl Layout for GripPart {
-        fn size_rules(&mut self, _: SizeCx, _: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, _: SizeCx, _axis: AxisInfo) -> SizeRules {
             SizeRules::EMPTY
         }
 

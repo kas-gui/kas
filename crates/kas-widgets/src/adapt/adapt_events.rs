@@ -6,7 +6,7 @@
 //! Event adapters
 
 use kas::event::ConfigCx;
-use kas::{autoimpl, impl_scope, Events, Widget};
+use kas::{autoimpl, impl_scope, widget_index, Events, Widget};
 
 impl_scope! {
     /// Wrapper to call a closure on update
@@ -63,13 +63,22 @@ impl_scope! {
     impl Events for Self {
         type Data = W::Data;
 
-        fn configure(&mut self, cx: &mut ConfigCx) {
+        // This is a little bit hacky: the closures operate on self.inner, so we
+        // need to ensure that is configured / updated first!
+
+        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+            let id = self.make_child_id(widget_index!(self.inner));
+            cx.configure(self.inner.as_node(data), id);
             if let Some(ref f) = self.on_configure {
                 f(cx, &mut self.inner);
             }
+            if let Some(ref f) = self.on_update {
+                f(cx, &mut self.inner, data);
+            }
         }
 
-        fn update(&mut self, cx: &mut ConfigCx, data: &W::Data) {
+        fn update_recurse(&mut self, cx: &mut ConfigCx, data: &W::Data) {
+            cx.update(self.inner.as_node(data));
             if let Some(ref f) = self.on_update {
                 f(cx, &mut self.inner, data);
             }

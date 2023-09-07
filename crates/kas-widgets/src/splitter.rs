@@ -101,25 +101,6 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
-        fn for_child_node(
-            &mut self,
-            data: &W::Data,
-            index: usize,
-            closure: Box<dyn FnOnce(Node<'_>) + '_>,
-        ) {
-            if (index & 1) != 0 {
-                if let Some(w) = self.handles.get_mut(index >> 1) {
-                    closure(w.as_node(&()));
-                }
-            } else {
-                if let Some(w) = self.widgets.get_mut(index >> 1) {
-                    closure(w.as_node(data));
-                }
-            }
-        }
-    }
-
     impl Layout for Self {
         #[inline]
         fn num_children(&self) -> usize {
@@ -136,11 +117,6 @@ impl_scope! {
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
             id.next_key_after(self.id_ref())
                 .and_then(|k| self.id_map.get(&k).cloned())
-        }
-
-        fn make_child_id(&mut self, child_index: usize) -> WidgetId {
-            let is_handle = (child_index & 1) != 0;
-            self.make_next_id(is_handle, child_index / 2)
         }
 
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
@@ -165,7 +141,11 @@ impl_scope! {
                 if n >= self.handles.len() {
                     break;
                 }
-                solver.for_child(&mut self.data, (n << 1) + 1, |_axis| handle_rules);
+                let handles = &mut self.handles;
+                solver.for_child(&mut self.data, (n << 1) + 1, |axis| {
+                    handles[n].size_rules(sizer.re(), axis);
+                    handle_rules
+                });
                 n += 1;
             }
             solver.finish(&mut self.data)
@@ -242,11 +222,34 @@ impl_scope! {
         }
     }
 
-    impl Events for Self {
+    impl Widget for Self {
         type Data = W::Data;
 
-        fn pre_configure(&mut self, _: &mut ConfigCx, id: WidgetId) {
-            self.core.id = id;
+        fn for_child_node(
+            &mut self,
+            data: &W::Data,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
+            if (index & 1) != 0 {
+                if let Some(w) = self.handles.get_mut(index >> 1) {
+                    closure(w.as_node(&()));
+                }
+            } else {
+                if let Some(w) = self.widgets.get_mut(index >> 1) {
+                    closure(w.as_node(data));
+                }
+            }
+        }
+    }
+
+    impl Events for Self {
+        fn make_child_id(&mut self, child_index: usize) -> WidgetId {
+            let is_handle = (child_index & 1) != 0;
+            self.make_next_id(is_handle, child_index / 2)
+        }
+
+        fn configure(&mut self, _: &mut ConfigCx) {
             self.id_map.clear();
         }
 

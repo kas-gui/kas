@@ -67,6 +67,7 @@ impl std::fmt::Debug for Erased {
 }
 
 /// Like Erased, but supporting Send
+#[derive(Debug)]
 pub(crate) struct SendErased {
     any: Box<dyn Any + Send>,
     #[cfg(debug_assertions)]

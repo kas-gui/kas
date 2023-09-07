@@ -128,11 +128,6 @@ impl_scope! {
         }
 
         #[inline]
-        fn make_child_id(&mut self, index: usize) -> WidgetId {
-            self.inner.make_child_id(index)
-        }
-
-        #[inline]
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             self.inner.size_rules(sizer, axis)
         }

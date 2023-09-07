@@ -223,7 +223,7 @@ fn main() -> kas::shell::Result<()> {
         .map_any(),
     ];
 
-    let data = Data::new(3);
+    let data = Data::new(5);
 
     let list = ListView::new(MyDriver).on_update(|cx, list, data| {
         *cx |= list.set_direction(data.dir);

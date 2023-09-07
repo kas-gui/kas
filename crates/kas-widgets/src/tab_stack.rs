@@ -132,11 +132,13 @@ impl_scope! {
 
     impl Self {
         /// Construct a new, empty instance
+        ///
+        /// See also [`TabStack::from`].
         pub fn new() -> Self {
             Self {
                 core: Default::default(),
                 direction: Direction::Up,
-                stack: Stack::new([]),
+                stack: Stack::new(),
                 tabs: Row::new([]).on_messages(|cx, index| {
                     if let Some(Select) = cx.try_pop() {
                         cx.push(MsgSelectIndex(index));
@@ -202,18 +204,27 @@ impl_scope! {
 }
 
 impl<W: Widget> TabStack<W> {
-    /// Limit the number of pages considered by [`Layout::size_rules`]
+    /// Limit the number of pages considered and sized
     ///
-    /// By default, this is `usize::MAX`: all pages affect the result. If
-    /// this is set to 1 then only the active page will affect the result. If
-    /// this is `n > 1`, then `min(n, num_pages)` pages (including active)
-    /// will be used. (If this is set to 0 it is silently replaced with 1.)
+    /// By default, this is `usize::MAX`: all pages are configured and affect
+    /// the stack's size requirements.
     ///
-    /// Using a limit lower than the number of pages has two effects:
-    /// (1) resizing is faster and (2) calling [`Self::set_active`] may cause a
-    /// full-window resize.
+    /// Set this to 0 to avoid configuring all hidden pages.
+    /// Set this to `n` to configure the active page *and* the first `n` pages.
     pub fn set_size_limit(&mut self, limit: usize) {
         self.stack.set_size_limit(limit);
+    }
+
+    /// Limit the number of pages configured and sized (inline)
+    ///
+    /// By default, this is `usize::MAX`: all pages are configured and affect
+    /// the stack's size requirements.
+    ///
+    /// Set this to 0 to avoid configuring all hidden pages.
+    /// Set this to `n` to configure the active page *and* the first `n` pages.
+    pub fn with_size_limit(mut self, limit: usize) -> Self {
+        self.stack.set_size_limit(limit);
+        self
     }
 
     /// Get the index of the active page
@@ -233,16 +244,6 @@ impl<W: Widget> TabStack<W> {
     }
 
     /// Set the active page
-    ///
-    /// Behaviour depends on whether [`SizeRules`] were already solved for
-    /// `index` (see [`Self::set_size_limit`] and note that methods like
-    /// [`Self::push`] do not solve rules for new pages). Case:
-    ///
-    /// -   `index >= num_pages`: no page displayed
-    /// -   `index == active` and `SizeRules` were solved: nothing happens
-    /// -   `SizeRules` were solved: set layout ([`Layout::set_rect`]) and
-    ///     update mouse-cursor target ([`Action::REGION_MOVED`])
-    /// -   Otherwise: resize the whole window ([`Action::RESIZE`])
     pub fn set_active(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize) {
         self.stack.set_active(cx, data, index);
     }
@@ -290,26 +291,10 @@ impl<W: Widget> TabStack<W> {
         self.tabs.get_mut(index)
     }
 
-    /// Append a page (inline)
-    ///
-    /// Does not configure or size child.
-    pub fn with_tab(mut self, tab: Tab, widget: W) -> Self {
-        let _ = self.stack.edit(|widgets| widgets.push(widget));
-        let _ = self.tabs.edit(|tabs| tabs.push(tab));
-        self
-    }
-
-    /// Append a page (inline)
-    ///
-    /// Does not configure or size child.
-    pub fn with_title(self, title: impl Into<AccessString>, widget: W) -> Self {
-        self.with_tab(Tab::new(title), widget)
-    }
-
     /// Append a page
     ///
-    /// The new page is configured immediately. If it becomes the active page
-    /// and then [`Action::RESIZE`] will be triggered.
+    /// The new page is not made active (the active index may be changed to
+    /// avoid this). Consider calling [`Self::set_active`].
     ///
     /// Returns the new page's index.
     pub fn push(&mut self, cx: &mut ConfigCx, data: &W::Data, tab: Tab, widget: W) -> usize {
@@ -321,7 +306,8 @@ impl<W: Widget> TabStack<W> {
 
     /// Remove the last child widget (if any) and return
     ///
-    /// If this page was active then the previous page becomes active.
+    /// If this page was active then no page will be left active.
+    /// Consider also calling [`Self::set_active`].
     pub fn pop(&mut self, cx: &mut EventState) -> Option<(Tab, W)> {
         let tab = self.tabs.pop(cx);
         let w = self.stack.pop(cx);
@@ -333,8 +319,7 @@ impl<W: Widget> TabStack<W> {
     ///
     /// Panics if `index > len`.
     ///
-    /// The new child is configured immediately. The active page does not
-    /// change.
+    /// The active page does not change (the index of the active page may change instead).
     pub fn insert(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, tab: Tab, widget: W) {
         self.tabs.insert(cx, &(), index, tab);
         self.stack.insert(cx, data, index, widget);
@@ -344,8 +329,8 @@ impl<W: Widget> TabStack<W> {
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// If the active page is removed then the previous page (if any) becomes
-    /// active.
+    /// If this page was active then no page will be left active.
+    /// Consider also calling [`Self::set_active`].
     pub fn remove(&mut self, cx: &mut EventState, index: usize) -> (Tab, W) {
         let tab = self.tabs.remove(cx, index);
         let stack = self.stack.remove(cx, index);
@@ -356,16 +341,15 @@ impl<W: Widget> TabStack<W> {
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// The new child is configured immediately. If it replaces the active page,
-    /// then [`Action::RESIZE`] is triggered.
+    /// If the new child replaces the active page then [`Action::RESIZE`] is triggered.
     pub fn replace(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, w: W) -> W {
         self.stack.replace(cx, data, index, w)
     }
 
     /// Append child widgets from an iterator
     ///
-    /// New children are configured immediately. If a new page becomes active,
-    /// then [`Action::RESIZE`] is triggered.
+    /// The new pages are not made active (the active index may be changed to
+    /// avoid this). Consider calling [`Self::set_active`].
     pub fn extend<T: IntoIterator<Item = (Tab, W)>>(
         &mut self,
         cx: &mut ConfigCx,
@@ -399,7 +383,7 @@ where
             tabs.push(Tab::from(tab));
         }
         Self {
-            stack: Stack::new(stack),
+            stack: Stack::from(stack),
             tabs: Row::new(tabs).on_messages(|cx, index| {
                 if let Some(Select) = cx.try_pop() {
                     cx.push(MsgSelectIndex(index));

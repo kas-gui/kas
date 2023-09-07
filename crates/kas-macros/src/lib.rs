@@ -192,10 +192,10 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///
 /// The struct must contain a field of type `widget_core!()` (usually named
 /// `core`). The macro `widget_core!()` is a placeholder, expanded by
-/// `#[widget]` and used to identify the field used (name may be anything).
-/// This field *may* have type [`CoreData`] or may be a generated
-/// type; either way it has fields `id: WidgetId` (assigned by
-/// `Events::pre_configure`) and `rect: Rect` (usually assigned by
+/// `#[widget]` and used to identify the field used (any name may be used).
+/// This field *might* have type [`CoreData`] or might use a special generated
+/// type; either way it has fields `id: WidgetId` (assigned by during configure)
+/// and `rect: Rect` (usually assigned by
 /// `Layout::set_rect`). It may contain additional fields for layout data. The
 /// type supports `Default` and `Clone` (although `Clone` actually
 /// default-initializes all fields other than `rect` since clones of widgets
@@ -318,6 +318,16 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// This is a special mode where most features of `#[widget]` are not
 /// available. Only [`Layout`] methods may be specified (overriding those from
 /// the derived widget); everything else is derived.
+///
+/// ## Debugging
+///
+/// To inspect the output of this macro, set the environment variable
+/// `KAS_DEBUG_WIDGET` to the name of the widget concerned, dump the output to
+/// a temporary file and format. For example:
+/// ```sh
+/// KAS_DEBUG_WIDGET=Border cargo build > temp.rs
+/// rustfmt temp.rs
+/// ```
 ///
 /// [`Widget`]: https://docs.rs/kas/latest/kas/trait.Widget.html
 /// [`Widget::get_child`]: https://docs.rs/kas/latest/kas/trait.Widget.html#method.get_child

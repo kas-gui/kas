@@ -81,11 +81,12 @@ impl<'a> ConfigCx<'a> {
     /// Configure a widget
     ///
     /// All widgets must be configured after construction (see
-    /// [`Events::configure`]). This method may be used to configure a new
-    /// child widget without requiring the whole window to be reconfigured.
+    /// [widget lifecycle](Widget#widget-lifecycle)).
+    /// This method performs complete configuration of the widget by calling
+    /// [`Events::configure`], [`Events::update`], [`Events::configure_recurse`].
     ///
     /// Pass the `id` to assign to the widget. This is usually constructed with
-    /// [`Layout::make_child_id`].
+    /// [`Events::make_child_id`].
     #[inline]
     pub fn configure(&mut self, mut widget: Node<'_>, id: WidgetId) {
         widget._configure(self, id);
@@ -93,9 +94,9 @@ impl<'a> ConfigCx<'a> {
 
     /// Update a widget
     ///
-    /// [`Events::update`] will be called recursively on each child and finally
-    /// `self`. If a widget stores state which it passes to children as input
-    /// data, it should call this after mutating the state.
+    /// All widgets must be updated after input data changes.
+    /// This method recursively updates the widget by calling
+    /// [`Events::update`] and [`Events::update_recurse`].
     #[inline]
     pub fn update(&mut self, mut widget: Node<'_>) {
         widget._update(self);

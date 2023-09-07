@@ -61,20 +61,6 @@ impl_scope! {
             }
         }
     }
-
-    impl Widget for Self {
-        fn for_child_node(
-            &mut self,
-            data: &Data,
-            index: usize,
-            closure: Box<dyn FnOnce(Node<'_>) + '_>,
-        ) {
-            if let Some(w) = self.widgets.get_mut(index) {
-                closure(w.as_node(data));
-            }
-        }
-    }
-
     impl Layout for Self {
         #[inline]
         fn num_children(&self) -> usize {
@@ -128,9 +114,22 @@ impl_scope! {
         }
     }
 
-    impl<Data, D: Directional> Events for MenuBar<Data, D> {
+    impl Widget for Self {
         type Data = Data;
 
+        fn for_child_node(
+            &mut self,
+            data: &Data,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
+            if let Some(w) = self.widgets.get_mut(index) {
+                closure(w.as_node(data));
+            }
+        }
+    }
+
+    impl<Data, D: Directional> Events for MenuBar<Data, D> {
         fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> IsUsed {
             match event {
                 Event::TimerUpdate(id_code) => {

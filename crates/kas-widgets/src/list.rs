@@ -90,7 +90,24 @@ impl_scope! {
             id.next_key_after(self.id_ref())
                 .and_then(|k| self.id_map.get(&k).cloned())
         }
+    }
 
+    impl Widget for Self {
+        type Data = W::Data;
+
+        fn for_child_node(
+            &mut self,
+            data: &W::Data,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
+            if let Some(w) = self.widgets.get_mut(index) {
+                closure(w.as_node(data));
+            }
+        }
+    }
+
+    impl Events for Self {
         /// Make a fresh id based on `self.next` then insert into `self.id_map`
         fn make_child_id(&mut self, index: usize) -> WidgetId {
             if let Some(child) = self.widgets.get(index) {
@@ -114,26 +131,8 @@ impl_scope! {
                 }
             }
         }
-    }
 
-    impl Widget for Self {
-        type Data = W::Data;
-
-        fn for_child_node(
-            &mut self,
-            data: &W::Data,
-            index: usize,
-            closure: Box<dyn FnOnce(Node<'_>) + '_>,
-        ) {
-            if let Some(w) = self.widgets.get_mut(index) {
-                closure(w.as_node(data));
-            }
-        }
-    }
-
-    impl Events for Self {
-        fn pre_configure(&mut self, _: &mut ConfigCx, id: WidgetId) {
-            self.core.id = id;
+        fn configure(&mut self, _: &mut ConfigCx) {
             self.id_map.clear();
         }
 

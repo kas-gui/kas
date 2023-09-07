@@ -77,6 +77,10 @@ impl Tree {
                 axis: ::kas::layout::AxisInfo,
             ) -> ::kas::layout::SizeRules {
                 use ::kas::{Layout, layout};
+
+                #[cfg(debug_assertions)]
+                #core_path.status.size_rules(&#core_path.id, axis);
+
                 (#layout).size_rules(sizer, axis)
             }
 
@@ -86,12 +90,20 @@ impl Tree {
                 rect: ::kas::geom::Rect,
             ) {
                 use ::kas::{Layout, layout};
+
+                #[cfg(debug_assertions)]
+                #core_path.status.set_rect(&#core_path.id);
+
                 #core_path.rect = rect;
                 (#layout).set_rect(cx, rect);
             }
 
             fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
                 use ::kas::{layout, Layout, LayoutExt};
+
+                #[cfg(debug_assertions)]
+                #core_path.status.require_rect(&#core_path.id);
+
                 if !self.rect().contains(coord) {
                     return None;
                 }
@@ -101,6 +113,10 @@ impl Tree {
 
             fn draw(&mut self, draw: ::kas::theme::DrawCx) {
                 use ::kas::{Layout, layout};
+
+                #[cfg(debug_assertions)]
+                #core_path.status.require_rect(&#core_path.id);
+
                 (#layout).draw(draw);
             }
         })
@@ -202,6 +218,8 @@ impl Tree {
             struct #name #impl_generics {
                 rect: ::kas::geom::Rect,
                 id: ::kas::WidgetId,
+                #[cfg(debug_assertions)]
+                status: ::kas::WidgetStatus,
                 #stor_ty
             }
 
@@ -221,14 +239,27 @@ impl Tree {
             }
 
             impl #impl_generics ::kas::Events for #impl_target {
-                type Data = #data_ty;
-
-                fn pre_configure(
+                fn steal_event(
                     &mut self,
-                    _: &mut ::kas::event::ConfigCx,
-                    id: ::kas::WidgetId,
-                ) {
-                    self.id = id;
+                    _: &mut ::kas::event::EventCx,
+                    _: &Self::Data,
+                    _: &::kas::WidgetId,
+                    _: &::kas::event::Event,
+                ) -> ::kas::event::IsUsed {
+                    #[cfg(debug_assertions)]
+                    #core_path.status.require_rect(&#core_path.id);
+                    ::kas::event::Unused
+                }
+
+                fn handle_event(
+                    &mut self,
+                    _: &mut ::kas::event::EventCx,
+                    _: &Self::Data,
+                    _: ::kas::event::Event,
+                ) -> ::kas::event::IsUsed {
+                    #[cfg(debug_assertions)]
+                    #core_path.status.require_rect(&#core_path.id);
+                    ::kas::event::Unused
                 }
             }
 
@@ -237,6 +268,8 @@ impl Tree {
             #name {
                 rect: Default::default(),
                 id: Default::default(),
+                #[cfg(debug_assertions)]
+                status: Default::default(),
                 #stor_def
             }
         }};

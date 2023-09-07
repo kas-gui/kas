@@ -55,9 +55,6 @@ impl_scope! {
         frame_offset: Offset,
         frame_size: Size,
         driver: V,
-        /// Empty widget used for sizing; this must be stored between horiz and vert size rule
-        /// calculations for correct line wrapping/layout.
-        default_widget: V::Widget,
         widgets: Vec<WidgetData<A::Key, V::Widget>>,
         data_len: u32,
         /// The number of widgets in use (cur_len ≤ widgets.len())
@@ -123,14 +120,12 @@ impl_scope! {
 
     impl Self {
         /// Construct a new instance
-        pub fn new_dir(mut driver: V, direction: D) -> Self {
-            let default_widget = driver.make(&A::Key::default());
+        pub fn new_dir(driver: V, direction: D) -> Self {
             ListView {
                 core: Default::default(),
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
                 driver,
-                default_widget,
                 widgets: Default::default(),
                 data_len: 0,
                 cur_len: 0,
@@ -141,7 +136,7 @@ impl_scope! {
                 child_size_min: 0,
                 child_size_ideal: 0,
                 child_inter_margin: 0,
-                skip: 0,
+                skip: 1,
                 child_size: Size::ZERO,
                 scroll: Default::default(),
                 sel_mode: SelectionMode::None,
@@ -324,6 +319,7 @@ impl_scope! {
             cur_len = cur_len.min(data_len - first_data);
             first_data = first_data.min(data_len - cur_len);
             self.cur_len = cur_len.cast();
+            debug_assert!(self.num_children() <= self.widgets.len());
             self.first_data = first_data.cast();
 
             let solver = self.position_solver();
@@ -423,11 +419,6 @@ impl_scope! {
                 None
             }
         }
-        #[inline]
-        fn make_child_id(&mut self, _: usize) -> WidgetId {
-            // We configure children in update_widgets and do not want this method to be called
-            unimplemented!()
-        }
 
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
@@ -451,15 +442,19 @@ impl_scope! {
             });
             axis = AxisInfo::new(axis.is_vertical(), other, axis.align());
 
-            let mut rules = self.default_widget.size_rules(sizer.re(), axis);
-            if axis.is_vertical() == self.direction.is_vertical() {
-                self.child_size_min = rules.min_size();
-            }
-
-            if !self.widgets.is_empty() {
-                for w in self.widgets.iter_mut() {
-                    rules = rules.max(w.widget.size_rules(sizer.re(), axis));
+            self.child_size_min = i32::MAX;
+            let mut rules = SizeRules::EMPTY;
+            for w in self.widgets.iter_mut() {
+                if w.key.is_some() {
+                    let child_rules = w.widget.size_rules(sizer.re(), axis);
+                    if axis.is_vertical() == self.direction.is_vertical() {
+                        self.child_size_min = self.child_size_min.min(child_rules.min_size());
+                    }
+                    rules = rules.max(child_rules);
                 }
+            }
+            if self.child_size_min == i32::MAX {
+                self.child_size_min = 0;
             }
 
             if axis.is_vertical() == self.direction.is_vertical() {
@@ -482,25 +477,34 @@ impl_scope! {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
 
+            // Widgets need configuring and updating: do so by updating self.
+            self.cur_len = 0; // hack: prevent drawing in the mean-time
+            cx.request_update(self.id());
+
             let mut child_size = rect.size - self.frame_size;
-            let skip;
-            let req_widgets;
+            let (size, skip);
             if self.direction.is_horizontal() {
                 child_size.0 = (child_size.0 / self.ideal_visible)
                     .min(self.child_size_ideal)
                     .max(self.child_size_min);
+                size = rect.size.0;
                 skip = child_size.0 + self.child_inter_margin;
-                req_widgets = usize::conv((rect.size.0 + skip - 1) / skip + 1);
             } else {
                 child_size.1 = (child_size.1 / self.ideal_visible)
                     .min(self.child_size_ideal)
                     .max(self.child_size_min);
+                size = rect.size.1;
                 skip = child_size.1 + self.child_inter_margin;
-                req_widgets = usize::conv((rect.size.1 + skip - 1) / skip + 1);
             }
 
             self.child_size = child_size;
             self.skip = skip;
+
+            if skip == 0 {
+                self.skip = 1; // avoid divide by 0
+                return;
+            }
+            let req_widgets = usize::conv((size + skip - 1) / skip + 1);
 
             let avail_widgets = self.widgets.len();
             if avail_widgets < req_widgets {
@@ -520,9 +524,7 @@ impl_scope! {
                 // Free memory (rarely useful?)
                 self.widgets.truncate(req_widgets);
             }
-
-            // Widgets need configuring and updating: do so by updating self.
-            cx.request_update(self.id());
+            debug_assert!(self.widgets.len() >= req_widgets);
         }
 
         #[inline]
@@ -562,8 +564,10 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn recurse_range(&self) -> std::ops::Range<usize> {
-            0..0
+        #[inline]
+        fn make_child_id(&mut self, _: usize) -> WidgetId {
+            // We configure children in update_widgets and do not want this method to be called
+            unimplemented!()
         }
 
         fn configure(&mut self, cx: &mut ConfigCx) {
@@ -585,13 +589,18 @@ impl_scope! {
             cx.register_nav_fallback(self.id());
         }
 
+        fn configure_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
+
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             self.selection.retain(|key| data.contains_key(key));
 
             let data_len = data.len().cast();
             if data_len != self.data_len {
                 self.data_len = data_len;
-                *cx |= Action::SET_RECT; // update scrollable region
+                // We must call at least SET_RECT to update scrollable region
+                // RESIZE allows recalculation of child widget size which may
+                // have been zero if no data was initially available!
+                *cx |= Action::RESIZE;
             }
             let data_len: i32 = data_len.cast();
             let view_size = self.rect().size - self.frame_size;
@@ -604,6 +613,8 @@ impl_scope! {
 
             self.update_widgets(cx, data);
         }
+
+        fn update_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
             let is_used = match event {
@@ -753,12 +764,18 @@ impl_scope! {
         }
 
         fn _configure(&mut self, cx: &mut ConfigCx, data: &A, id: WidgetId) {
-            self.pre_configure(cx, id);
+            self.core.id = id;
+            #[cfg(debug_assertions)]
+            self.core.status.configure(&self.core.id);
+
             self.configure(cx);
             self.update(cx, data);
         }
 
         fn _update(&mut self, cx: &mut ConfigCx, data: &A) {
+            #[cfg(debug_assertions)]
+            self.core.status.update(&self.core.id);
+
             self.update(cx, data);
         }
 
@@ -840,6 +857,7 @@ impl_scope! {
     }
 }
 
+#[derive(Debug)]
 struct PositionSolver {
     pos_start: Coord,
     skip: Offset,

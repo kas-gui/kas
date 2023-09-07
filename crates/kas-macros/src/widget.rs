@@ -14,7 +14,7 @@ use syn::spanned::Spanned;
 use syn::token::Eq;
 use syn::ImplItem::{self, Verbatim};
 use syn::{parse2, parse_quote};
-use syn::{Expr, Ident, Index, ItemImpl, MacroDelimiter, Member, Meta, Token, Type};
+use syn::{Expr, FnArg, Ident, Index, ItemImpl, MacroDelimiter, Member, Meta, Pat, Token, Type};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -151,6 +151,11 @@ impl ScopeAttr for AttrImplWidget {
     }
 }
 
+/// Custom widget definition
+///
+/// This macro may inject impls and inject items into existing impls.
+/// It may also inject code into existing methods such that the only observable
+/// behaviour is a panic.
 pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     scope.expand_impl_self();
     let name = &scope.ident;
@@ -164,6 +169,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let mut num_children = None;
     let mut get_child = None;
     let mut for_child_node = None;
+    let mut find_child_index = None;
+    let mut make_child_id = None;
     for (index, impl_) in scope.impls.iter().enumerate() {
         if let Some((_, ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::Widget }
@@ -198,8 +205,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     layout_impl = Some(index);
                 }
 
-                let mut find_child_index = None;
-                let mut make_child_id = None;
                 for item in &impl_.items {
                     if let ImplItem::Fn(ref item) = item {
                         if item.sig.ident == "num_children" {
@@ -208,17 +213,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                             get_child = Some(item.sig.ident.clone());
                         } else if item.sig.ident == "find_child_index" {
                             find_child_index = Some(item.sig.ident.clone());
-                        } else if item.sig.ident == "make_child_id" {
-                            make_child_id = Some(item.sig.ident.clone());
                         }
                     }
-                }
-                if let Some(ref span) = find_child_index {
-                    if make_child_id.is_none() {
-                        emit_warning!(span, "fn find_child_index without fn make_child_id");
-                    }
-                } else if let Some(ref span) = make_child_id {
-                    emit_warning!(span, "fn make_child_id without fn find_child_index");
                 }
             } else if *path == parse_quote! { ::kas::Events }
                 || *path == parse_quote! { kas::Events }
@@ -247,10 +243,22 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                                 data_ty = Some(item.ty.clone());
                             }
                         }
+                    } else if let ImplItem::Fn(ref item) = item {
+                        if item.sig.ident == "make_child_id" {
+                            make_child_id = Some(item.sig.ident.clone());
+                        }
                     }
                 }
             }
         }
+    }
+
+    if let Some(ref span) = find_child_index {
+        if make_child_id.is_none() {
+            emit_warning!(span, "fn find_child_index without fn make_child_id");
+        }
+    } else if let Some(ref span) = make_child_id {
+        emit_warning!(span, "fn make_child_id without fn find_child_index");
     }
 
     let fields = match &mut scope.item {
@@ -293,7 +301,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         };
         return Err(Error::new(
             span,
-            "expected a definition of Data in Events, Widget or via #[widget] property",
+            "expected a definition of Data in Widget, Events or via #[widget { Data = ...; }]",
         ));
     };
 
@@ -335,6 +343,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     struct #core_type {
                         rect: ::kas::geom::Rect,
                         id: ::kas::WidgetId,
+                        #[cfg(debug_assertions)]
+                        status: ::kas::WidgetStatus,
                         #stor_ty
                     }
 
@@ -343,6 +353,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                             #core_type {
                                 rect: Default::default(),
                                 id: Default::default(),
+                                #[cfg(debug_assertions)]
+                                status: ::kas::WidgetStatus::New,
                                 #stor_def
                             }
                         }
@@ -485,10 +497,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
                 self.#inner.find_child_index(id)
             }
-            #[inline]
-            fn make_child_id(&mut self, index: usize) -> ::kas::WidgetId {
-                self.#inner.make_child_id(index)
-            }
         };
 
         fn_size_rules = Some(quote! {
@@ -601,7 +609,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             }
         });
     } else {
-        let Some(core) = core_data else {
+        let Some(core) = core_data.clone() else {
             let span = match scope.item {
                 ScopeItem::Struct {
                     fields: Fields::Named(ref fields),
@@ -619,6 +627,11 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             ));
         };
         let core_path = quote! { self.#core };
+
+        let require_rect: syn::Stmt = parse_quote! {
+            #[cfg(debug_assertions)]
+            #core_path.status.require_rect(&#core_path.id);
+        };
 
         required_layout_methods = impl_core_methods(&widget_name, &core_path);
 
@@ -653,17 +666,13 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         if let Some(index) = widget_impl {
             let widget_impl = &mut scope.impls[index];
             let item_idents = collect_idents(widget_impl);
-            let has_item = |name| item_idents.iter().any(|ident| ident == name);
+            let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
 
-            let widget_impl = &mut scope.impls[index];
-            if !has_item("Data") {
-                widget_impl.items.push(Verbatim(quote! {
-                    type Data = #data_ty;
-                }));
-            }
             widget_impl.items.push(Verbatim(widget_as_node()));
             if !has_item("_send") {
-                widget_impl.items.push(Verbatim(widget_recursive_methods()));
+                widget_impl
+                    .items
+                    .push(Verbatim(widget_recursive_methods(&core_path)));
             }
         } else {
             scope.generated.push(impl_widget(
@@ -705,6 +714,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     sizer: ::kas::theme::SizeCx,
                     axis: ::kas::layout::AxisInfo,
                 ) -> ::kas::layout::SizeRules {
+                    #[cfg(debug_assertions)]
+                    #core_path.status.size_rules(&#core_path.id, axis);
                     <Self as ::kas::layout::AutoLayout>::size_rules(self, sizer, axis)
                 }
             });
@@ -714,6 +725,9 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             find_id = quote! { <Self as ::kas::layout::AutoLayout>::find_id(self, coord) };
             fn_draw = Some(quote! {
                 fn draw(&mut self, draw: ::kas::theme::DrawCx) {
+                    #[cfg(debug_assertions)]
+                    #core_path.status.require_rect(&#core_path.id);
+
                     <Self as ::kas::layout::AutoLayout>::draw(self, draw);
                 }
             });
@@ -730,18 +744,17 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 cx: &mut ::kas::event::ConfigCx,
                 rect: ::kas::geom::Rect,
             ) {
+                #[cfg(debug_assertions)]
+                #core_path.status.set_rect(&#core_path.id);
                 #set_rect
             }
         };
         fn_find_id = quote! {
             fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-                #find_id
-            }
-        };
+                #[cfg(debug_assertions)]
+                #core_path.status.require_rect(&#core_path.id);
 
-        let fn_pre_configure = quote! {
-            fn pre_configure(&mut self, _: &mut ::kas::event::ConfigCx, id: ::kas::WidgetId) {
-                self.#core.id = id;
+                #find_id
             }
         };
 
@@ -781,31 +794,74 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             },
         };
 
+        let fn_steal_event = quote! {
+            fn steal_event(
+                &mut self,
+                _: &mut ::kas::event::EventCx,
+                _: &Self::Data,
+                _: &::kas::WidgetId,
+                _: &::kas::event::Event,
+            ) -> ::kas::event::IsUsed {
+                #require_rect
+                ::kas::event::Unused
+            }
+        };
+        let fn_handle_event = quote! {
+                fn handle_event(
+                &mut self,
+                _: &mut ::kas::event::EventCx,
+                _: &Self::Data,
+                _: ::kas::event::Event,
+            ) -> ::kas::event::IsUsed {
+                #require_rect
+                ::kas::event::Unused
+            }
+        };
+
         if let Some(index) = events_impl {
             let events_impl = &mut scope.impls[index];
             let item_idents = collect_idents(events_impl);
-            let has_item = |name| item_idents.iter().any(|ident| ident == name);
 
-            if !has_item("Data") {
-                events_impl
-                    .items
-                    .push(Verbatim(quote! { type Data = #data_ty; }));
-            }
-
-            if opt_derive.is_some() || !has_item("pre_configure") {
-                events_impl.items.push(Verbatim(fn_pre_configure));
-            }
             if let Some(method) = fn_navigable {
                 events_impl.items.push(Verbatim(method));
             }
+
             events_impl.items.push(Verbatim(fn_handle_hover));
+
+            if let Some((index, _)) = item_idents
+                .iter()
+                .find(|(_, ident)| *ident == "steal_event")
+            {
+                if let ImplItem::Fn(f) = &mut events_impl.items[*index] {
+                    f.block.stmts.insert(0, require_rect.clone());
+                }
+            } else {
+                events_impl.items.push(Verbatim(fn_steal_event));
+            }
+
+            if let Some((index, _)) = item_idents
+                .iter()
+                .find(|(_, ident)| *ident == "handle_event")
+            {
+                if let ImplItem::Fn(f) = &mut events_impl.items[*index] {
+                    f.block.stmts.insert(0, require_rect);
+                }
+            } else {
+                events_impl.items.push(Verbatim(fn_handle_event));
+            }
+
+            if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "Data") {
+                // Remove "type Data" item; it belongs in Widget impl.
+                // Do this last to avoid affecting item indices.
+                events_impl.items.remove(*index);
+            }
         } else {
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::Events for #impl_target {
-                    type Data = #data_ty;
-                    #fn_pre_configure
                     #fn_navigable
                     #fn_handle_hover
+                    #fn_steal_event
+                    #fn_handle_event
                 }
             });
         }
@@ -814,16 +870,42 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     if let Some(index) = layout_impl {
         let layout_impl = &mut scope.impls[index];
         let item_idents = collect_idents(layout_impl);
-        let has_item = |name| item_idents.iter().any(|ident| ident == name);
+        let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
 
         layout_impl.items.push(Verbatim(required_layout_methods));
 
-        if let Some(method) = fn_size_rules {
-            if !has_item("size_rules") {
-                layout_impl.items.push(Verbatim(method));
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "size_rules") {
+            if let Some(ref core) = core_data {
+                if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
+                    if let Some(FnArg::Typed(arg)) = f.sig.inputs.iter().nth(2) {
+                        if let Pat::Ident(ref pat_ident) = *arg.pat {
+                            let axis = &pat_ident.ident;
+                            f.block.stmts.insert(0, parse_quote! {
+                                #[cfg(debug_assertions)]
+                                self.#core.status.size_rules(&self.#core.id, #axis);
+                            });
+                        } else {
+                            emit_error!(arg.pat, "hidden shenanigans require this parameter to have a name; suggestion: `_axis`");
+                        }
+                    } else {
+                        panic!("size_rules misses args!");
+                    }
+                }
             }
+        } else if let Some(method) = fn_size_rules {
+            layout_impl.items.push(Verbatim(method));
         }
-        if !has_item("set_rect") {
+
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "set_rect") {
+            if let Some(ref core) = core_data {
+                if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
+                    f.block.stmts.insert(0, parse_quote! {
+                        #[cfg(debug_assertions)]
+                        self.#core.status.set_rect(&self.#core.id);
+                    });
+                }
+            }
+        } else {
             layout_impl.items.push(Verbatim(fn_set_rect));
         }
 
@@ -837,7 +919,10 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             }
         }
 
-        if let Some(ident) = item_idents.iter().find(|ident| *ident == "translation") {
+        if let Some(ident) = item_idents
+            .iter()
+            .find_map(|(_, ident)| (*ident == "translation").then_some(ident))
+        {
             if opt_derive.is_some() {
                 emit_error!(ident, "method not supported in derive mode");
             }
@@ -845,13 +930,30 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             layout_impl.items.push(Verbatim(method));
         }
 
-        if !has_item("find_id") {
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "find_id") {
+            if let Some(ref core) = core_data {
+                if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
+                    f.block.stmts.insert(0, parse_quote! {
+                        #[cfg(debug_assertions)]
+                        self.#core.status.require_rect(&self.#core.id);
+                    });
+                }
+            }
+        } else {
             layout_impl.items.push(Verbatim(fn_find_id));
         }
-        if let Some(method) = fn_draw {
-            if !has_item("draw") {
-                layout_impl.items.push(Verbatim(method));
+
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "draw") {
+            if let Some(ref core) = core_data {
+                if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
+                    f.block.stmts.insert(0, parse_quote! {
+                        #[cfg(debug_assertions)]
+                        self.#core.status.require_rect(&self.#core.id);
+                    });
+                }
             }
+        } else if let Some(method) = fn_draw {
+            layout_impl.items.push(Verbatim(method));
         }
     } else if let Some(fn_size_rules) = fn_size_rules {
         scope.generated.push(quote! {
@@ -867,17 +969,22 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         });
     }
 
-    // println!("{}", scope.to_token_stream());
+    if let Ok(val) = std::env::var("KAS_DEBUG_WIDGET") {
+        if name == val.as_str() {
+            println!("{}", scope.to_token_stream());
+        }
+    }
     Ok(())
 }
 
-fn collect_idents(item_impl: &ItemImpl) -> Vec<Ident> {
+fn collect_idents(item_impl: &ItemImpl) -> Vec<(usize, Ident)> {
     item_impl
         .items
         .iter()
-        .filter_map(|item| match item {
-            ImplItem::Fn(m) => Some(m.sig.ident.clone()),
-            ImplItem::Type(t) => Some(t.ident.clone()),
+        .enumerate()
+        .filter_map(|(i, item)| match item {
+            ImplItem::Fn(m) => Some((i, m.sig.ident.clone())),
+            ImplItem::Type(t) => Some((i, t.ident.clone())),
             _ => None,
         })
         .collect()
@@ -957,7 +1064,7 @@ pub fn impl_widget(
         quote! {}
     };
 
-    let fns_recurse = widget_recursive_methods();
+    let fns_recurse = widget_recursive_methods(core_path);
 
     quote! {
         impl #impl_generics ::kas::Widget for #impl_target {
@@ -978,7 +1085,7 @@ fn widget_as_node() -> Toks {
     }
 }
 
-fn widget_recursive_methods() -> Toks {
+fn widget_recursive_methods(core_path: &Toks) -> Toks {
     quote! {
         fn _configure(
             &mut self,
@@ -986,7 +1093,13 @@ fn widget_recursive_methods() -> Toks {
             data: &Self::Data,
             id: ::kas::WidgetId,
         ) {
-            ::kas::impls::_configure(self, cx, data, id);
+            #core_path.id = id;
+            #[cfg(debug_assertions)]
+            #core_path.status.configure(&#core_path.id);
+
+            ::kas::Events::configure(self, cx);
+            ::kas::Events::update(self, cx, data);
+            ::kas::Events::configure_recurse(self, cx, data);
         }
 
         fn _update(
@@ -994,7 +1107,11 @@ fn widget_recursive_methods() -> Toks {
             cx: &mut ::kas::event::ConfigCx,
             data: &Self::Data,
         ) {
-            ::kas::impls::_update(self, cx, data);
+            #[cfg(debug_assertions)]
+            #core_path.status.update(&#core_path.id);
+
+            ::kas::Events::update(self, cx, data);
+            ::kas::Events::update_recurse(self, cx, data);
         }
 
         fn _send(

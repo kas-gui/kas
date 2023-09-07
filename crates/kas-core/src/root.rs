@@ -96,8 +96,18 @@ impl_scope! {
                     self.bar_h = bar.min_size();
                 }
             }
+
+            // These methods don't return anything useful, but we are required to call them:
+            let _ = self.b_w.size_rules(sizer.re(), axis);
+            let _ = self.b_e.size_rules(sizer.re(), axis);
+            let _ = self.b_n.size_rules(sizer.re(), axis);
+            let _ = self.b_s.size_rules(sizer.re(), axis);
+            let _ = self.b_nw.size_rules(sizer.re(), axis);
+            let _ = self.b_ne.size_rules(sizer.re(), axis);
+            let _ = self.b_se.size_rules(sizer.re(), axis);
+            let _ = self.b_sw.size_rules(sizer.re(), axis);
+
             if matches!(self.decorations, Decorations::Border | Decorations::Toolkit) {
-                // We would call size_rules on Border widgets here if it did anything
                 let frame = sizer.frame(FrameStyle::Window, axis);
                 let (rules, offset, size) = frame.surround(inner);
                 self.dec_offset.set_component(axis, offset);
@@ -155,8 +165,12 @@ impl_scope! {
                     return Some(id);
                 }
             }
+            if self.bar_h > 0 {
+                if let Some(id) = self.title_bar.find_id(coord) {
+                    return Some(id);
+                }
+            }
             self.inner.find_id(coord)
-                .or_else(|| self.title_bar.find_id(coord))
                 .or_else(|| self.b_w.find_id(coord))
                 .or_else(|| self.b_e.find_id(coord))
                 .or_else(|| self.b_n.find_id(coord))
@@ -482,7 +496,7 @@ impl<Data: 'static> Window<Data> {
         let (c, t) = find_rect(self.inner.as_layout(), popup.parent.clone(), Offset::ZERO).unwrap();
         *translation = t;
         let r = r + t; // work in translated coordinate space
-        self.inner.as_node(data).find_node(&popup.id, |mut node| {
+        let result = self.inner.as_node(data).find_node(&popup.id, |mut node| {
             let mut cache = layout::SolveCache::find_constraints(node.re(), cx.size_cx());
             let ideal = cache.ideal(false);
             let m = cache.margins();
@@ -500,5 +514,9 @@ impl<Data: 'static> Window<Data> {
             cache.apply_rect(node.re(), cx, rect, false);
             cache.print_widget_heirarchy(node.as_layout());
         });
+
+        // Event handlers expect that the popup's rect is now assigned.
+        // If we were to try recovering we should remove the popup.
+        assert!(result.is_some());
     }
 }

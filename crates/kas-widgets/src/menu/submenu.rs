@@ -23,6 +23,7 @@ impl_scope! {
         pub(crate) navigable: bool,
         #[widget(&())]
         label: AccessLabel,
+        // mark is not used in layout but may be used by sub_items
         #[widget(&())]
         mark: Mark,
         #[widget]
@@ -255,7 +256,6 @@ impl_scope! {
             let mut solver = layout::GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, store);
 
             let frame_rules = sizer.frame(FrameStyle::MenuEntry, axis);
-            let is_horiz = axis.is_horizontal();
 
             // Assumption: frame inner margin is at least as large as content margins
             let child_rules = SizeRules::EMPTY;
@@ -272,42 +272,36 @@ impl_scope! {
             for (row, child) in self.list.iter_mut().enumerate() {
                 let row = u32::conv(row);
                 let info = menu_view_row_info(row);
-                if is_horiz {
-                    // Note: we are required to call child.size_rules even if sub_items are used
-                    // Note: axis is not modified by the solver in this case
-                    let row_rules = child.size_rules(sizer.re(), axis);
 
-                    if let Some(items) = child.sub_items() {
-                        if let Some(w) = items.toggle {
-                            let info = layout::GridChildInfo::new(0, row);
-                            solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
-                        }
-                        if let Some(w) = items.icon {
-                            let info = layout::GridChildInfo::new(1, row);
-                            solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
-                        }
-                        if let Some(w) = items.label {
-                            let info = layout::GridChildInfo::new(2, row);
-                            solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
-                        }
-                        if let Some(w) = items.label2 {
-                            let info = layout::GridChildInfo::new(3, row);
-                            solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
-                        }
-                        if let Some(w) = items.submenu {
-                            let info = layout::GridChildInfo::new(4, row);
-                            solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
-                        }
-                    } else {
-                        solver.for_child(store, info, |_| row_rules);
+                // Note: we are required to call child.size_rules even if sub_items are used
+                // Note: axis is not modified by the solver in this case
+                let rules = child.size_rules(sizer.re(), axis);
+
+                // Note: if we use sub-items, we are required to call size_rules
+                // on these for both axes
+                if let Some(items) = child.sub_items() {
+                    if let Some(w) = items.toggle {
+                        let info = layout::GridChildInfo::new(0, row);
+                        solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
+                    }
+                    if let Some(w) = items.icon {
+                        let info = layout::GridChildInfo::new(1, row);
+                        solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
+                    }
+                    if let Some(w) = items.label {
+                        let info = layout::GridChildInfo::new(2, row);
+                        solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
+                    }
+                    if let Some(w) = items.label2 {
+                        let info = layout::GridChildInfo::new(3, row);
+                        solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
+                    }
+                    if let Some(w) = items.submenu {
+                        let info = layout::GridChildInfo::new(4, row);
+                        solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
                     }
                 } else {
-                    // axis is vertical
-                    if child.sub_items().is_some() {
-                        solver.for_child(store, info, |axis| child_rules(sizer.re(), child, axis))
-                    } else {
-                        solver.for_child(store, info, |axis| child.size_rules(sizer.re(), axis))
-                    }
+                    solver.for_child(store, info, |_| rules);
                 }
             }
             solver.finish(store)
