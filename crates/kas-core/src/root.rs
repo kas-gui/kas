@@ -165,8 +165,12 @@ impl_scope! {
                     return Some(id);
                 }
             }
+            if self.bar_h > 0 {
+                if let Some(id) = self.title_bar.find_id(coord) {
+                    return Some(id);
+                }
+            }
             self.inner.find_id(coord)
-                .or_else(|| self.title_bar.find_id(coord))
                 .or_else(|| self.b_w.find_id(coord))
                 .or_else(|| self.b_e.find_id(coord))
                 .or_else(|| self.b_n.find_id(coord))
