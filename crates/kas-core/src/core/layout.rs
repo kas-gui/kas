@@ -49,6 +49,15 @@ use kas_macros::autoimpl;
 /// operations. Steps of the lifecycle may be postponed until a widget becomes
 /// visible.
 ///
+/// # Tree reflection
+///
+/// `Layout` offers a reflection API over the widget tree via
+/// [`Layout::get_child`]. This is limited to read-only functions, and thus
+/// cannot directly violate the widget lifecycle, however note that the
+/// [`id_ref`](Self::id_ref) could be invalid or could be valid but refer to a
+/// node which has not yet been sized and positioned (and thus which it is not
+/// valid to send events to).
+///
 /// [`#widget`]: macros::widget
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait Layout {
