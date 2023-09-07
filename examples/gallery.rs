@@ -102,7 +102,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
     #[derive(Clone, Debug)]
     struct MsgEdit;
 
-    let popup_edit_box = singleton! {
+    let popup_edit_box = impl_anon! {
         #[widget{
             layout = row! [
                 format_data!(data: &Data, "{}", &data.text),
@@ -295,7 +295,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 ```
 ";
 
-    Box::new(singleton! {
+    Box::new(impl_anon! {
         #[widget{
             layout = float! [
                 pack!(right top, Button::label_msg("↻", MsgDirection).map_any()),
@@ -569,7 +569,7 @@ fn main() -> kas::shell::Result<()> {
         })
         .build();
 
-    let ui = singleton! {
+    let ui = impl_anon! {
         #[widget{
             layout = column! [
                 self.menubar,
