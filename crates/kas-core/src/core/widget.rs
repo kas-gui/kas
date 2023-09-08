@@ -253,11 +253,11 @@ pub enum NavAdvance {
     None,
     /// Walk children forwards, self first
     ///
-    /// May match `focus` only if `allow_focus: bool`.
+    /// Parameter: whether this can match self (in addition to other widgets).
     Forward(bool),
     /// Walk children backwards, self last
     ///
-    /// May match `focus` only if `allow_focus: bool`.
+    /// Parameter: whether this can match self (in addition to other widgets).
     Reverse(bool),
 }
 
