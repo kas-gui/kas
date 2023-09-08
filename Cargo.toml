@@ -1,6 +1,6 @@
 [package]
 name = "kas"
-version = "0.13.0"
+version = "0.14.0-alpha"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -11,7 +11,7 @@ keywords = ["gui"]
 categories = ["gui"]
 repository = "https://github.com/kas-gui/kas"
 exclude = ["/examples"]
-rust-version = "1.65.0"
+rust-version = "1.66.0"
 
 [package.metadata.docs.rs]
 features = ["nightly"]
@@ -31,7 +31,7 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 # markdown, resvg. Recommended also: clipboard, yaml (or some config format).
 minimal = ["wgpu", "winit", "wayland", "x11"]
 # All recommended features for optimal experience
-default = ["minimal", "view", "yaml", "image", "resvg", "clipboard", "markdown", "shaping", "dark-light", "spawn"]
+default = ["minimal", "view", "yaml", "image", "resvg", "clipboard", "markdown", "shaping", "spawn"]
 # All standard test target features
 # NOTE: dynamic is excluded due to linker problems on Windows
 stable = ["default", "serde", "json", "ron", "macros_log"]
@@ -92,6 +92,8 @@ resvg = ["dep:kas-resvg", "kas-resvg?/svg", "kas-dylib?/resvg"]
 tiny-skia = ["dep:kas-resvg"]
 
 # Automatically detect usage of dark theme
+#
+# Not a default dependency; see https://github.com/emilk/egui/issues/2388
 dark-light = ["kas-core/dark-light"]
 
 # Support spawning async tasks
@@ -115,14 +117,14 @@ x11 = ["kas-core/x11"]
 unsafe_node = ["kas-core/unsafe_node"]
 
 [dependencies]
-kas-core = { version = "0.13.0", path = "crates/kas-core" }
-kas-dylib = { version = "0.13.0", path = "crates/kas-dylib", optional = true }
-kas-widgets = { version = "0.13.0", path = "crates/kas-widgets" }
-kas-view = { version = "0.13.0", path = "crates/kas-view", optional = true }
-kas-resvg = { version = "0.13.0", path = "crates/kas-resvg", optional = true }
+kas-core = { version = "0.14.0-alpha", path = "crates/kas-core" }
+kas-dylib = { version = "0.14.0-alpha", path = "crates/kas-dylib", optional = true }
+kas-widgets = { version = "0.14.0-alpha", path = "crates/kas-widgets" }
+kas-view = { version = "0.14.0-alpha", path = "crates/kas-view", optional = true }
+kas-resvg = { version = "0.14.0-alpha", path = "crates/kas-resvg", optional = true }
 
 [dependencies.kas-wgpu]
-version = "0.13.0"
+version = "0.14.0-alpha"
 path = "crates/kas-wgpu"
 optional = true
 default-features = false

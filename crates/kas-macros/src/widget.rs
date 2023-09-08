@@ -5,7 +5,8 @@
 
 use crate::make_layout;
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
-use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
+use impl_tools_lib::scope::{Scope, ScopeAttr, ScopeItem};
+use impl_tools_lib::SimplePath;
 use proc_macro2::{Span, TokenStream as Toks};
 use proc_macro_error::{emit_error, emit_warning};
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};

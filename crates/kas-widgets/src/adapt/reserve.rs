@@ -7,35 +7,6 @@
 
 use kas::prelude::*;
 
-/// Requirements on parameter to [`Reserve`]
-///
-/// Note: this type is implemented for the expected [`FnMut`],
-/// i.e. methods and closures are supported.
-/// A trait is used to support custom *named* objects since currently closures
-/// can't be named and trait methods cannot return unnamed objects (impl Trait
-/// is only supported on functions and inherent methods).
-pub trait FnSizeRules {
-    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
-}
-
-impl<F> FnSizeRules for F
-where
-    for<'a> F: FnMut(SizeCx<'a>, AxisInfo) -> SizeRules,
-{
-    #[inline]
-    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        self(sizer, axis)
-    }
-}
-
-/// Parameterisation of [`Reserve`] using a function pointer
-///
-/// Since it is impossible to name closures, using [`Reserve`] where a type is
-/// required (e.g. in a struct field) is only possible by making the containing
-/// struct generic over this field, which may be undesirable. As an alternative
-/// a function pointer may be preferred.
-pub type ReserveP<W> = Reserve<W, fn(SizeCx, AxisInfo) -> SizeRules>;
-
 impl_scope! {
     /// A generic widget for size reservations
     ///
@@ -47,29 +18,17 @@ impl_scope! {
     /// [`AdaptWidget`](crate::adapt::AdaptWidget).
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
-    #[derive(Clone, Default)]
     #[widget{ derive = self.inner; }]
-    pub struct Reserve<W: Widget, R: FnSizeRules> {
+    pub struct Reserve<W: Widget> {
         pub inner: W,
-        reserve: R,
+        reserve: Box<dyn Fn(SizeCx, AxisInfo) -> SizeRules + 'static>,
     }
 
     impl Self {
         /// Construct a reserve
         ///
         /// The closure `reserve` should generate `SizeRules` on request, just like
-        /// [`Layout::size_rules`]. This can be done by instantiating a temporary
-        /// widget, for example:
-        ///```
-        /// use kas_widgets::adapt::Reserve;
-        /// use kas_widgets::Label;
-        /// use kas::prelude::*;
-        ///
-        /// let label = Reserve::new(Label::new("0"), |sizer: SizeCx<'_>, axis| {
-        ///     Label::new("00000").size_rules(sizer, axis)
-        /// });
-        ///```
-        /// Alternatively one may use virtual pixels:
+        /// [`Layout::size_rules`]. For example:
         ///```
         /// use kas_widgets::adapt::Reserve;
         /// use kas_widgets::Filler;
@@ -83,7 +42,8 @@ impl_scope! {
         /// The resulting `SizeRules` will be the max of those for the inner widget
         /// and the result of the `reserve` closure.
         #[inline]
-        pub fn new(inner: W, reserve: R) -> Self {
+        pub fn new(inner: W, reserve: impl Fn(SizeCx, AxisInfo) -> SizeRules + 'static) -> Self {
+            let reserve = Box::new(reserve);
             Reserve { inner, reserve }
         }
     }
@@ -91,7 +51,7 @@ impl_scope! {
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let inner_rules = self.inner.size_rules(sizer.re(), axis);
-            let reserve_rules = self.reserve.size_rules(sizer.re(), axis);
+            let reserve_rules = (self.reserve)(sizer.re(), axis);
             inner_rules.max(reserve_rules)
         }
     }

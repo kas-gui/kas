@@ -2,6 +2,13 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] — 2023-09?
+
+Add input data: widgets now have a `Data` associated type, passed by reference
+to event handlers and a new `update` method. This replaces the old data models.
+
+There are *lots* more changes. TODO: write changelog.
+
 ## [0.13.0] — 2023-02-26
 
 ### Changed behaviour

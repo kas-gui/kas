@@ -5,7 +5,7 @@
 
 //! Widget extension traits
 
-use super::{FnSizeRules, Map, MapAny, OnUpdate, Reserve, WithLabel};
+use super::{Map, MapAny, OnUpdate, Reserve, WithLabel};
 use kas::cast::{Cast, CastFloat};
 use kas::dir::Directional;
 use kas::event::ConfigCx;
@@ -15,24 +15,6 @@ use kas::text::AccessString;
 use kas::theme::SizeCx;
 use kas::Widget;
 #[allow(unused)] use kas::{Events, Layout};
-
-/// Support type for [`AdaptWidget::with_min_size_px`]
-pub struct WithMinSizePx(Vec2);
-impl FnSizeRules for WithMinSizePx {
-    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        let size = self.0.extract(axis) * sizer.scale_factor();
-        SizeRules::fixed(size.cast_ceil(), (0, 0))
-    }
-}
-
-/// Support type for [`AdaptWidget::with_min_size_em`]
-pub struct WithMinSizeEm(Vec2);
-impl FnSizeRules for WithMinSizeEm {
-    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        let size = self.0.extract(axis) * sizer.dpem();
-        SizeRules::fixed(size.cast_ceil(), (0, 0))
-    }
-}
 
 /// Provides `.map_any()`
 ///
@@ -84,50 +66,18 @@ pub trait AdaptWidget: Widget + Sized {
         OnUpdate::new(self).on_update(f)
     }
 
-    /// Construct a wrapper widget which reserves extra space
-    ///
-    /// The closure `reserve` should generate `SizeRules` on request, just like
-    /// [`Layout::size_rules`]. This can be done by instantiating a temporary
-    /// widget, for example:
-    ///```
-    /// # use kas_widgets::adapt::AdaptWidget;
-    /// use kas::prelude::*;
-    /// use kas_widgets::Label;
-    ///
-    /// let label = Label::new("0")
-    ///     .with_reserve(|sizer, axis| Label::new("00000").size_rules(sizer, axis));
-    /// ```
-    /// Alternatively one may use virtual pixels:
-    ///```
-    /// # use kas_widgets::adapt::AdaptWidget;
-    /// use kas::prelude::*;
-    /// use kas_widgets::Filler;
-    ///
-    /// let label = Filler::new().with_reserve(|cx, axis| {
-    ///     kas::layout::LogicalSize(5.0, 5.0).to_rules(axis, cx.scale_factor())
-    /// });
-    /// ```
-    /// The resulting `SizeRules` will be the max of those for the inner widget
-    /// and the result of the `reserve` closure.
-    ///
-    /// Returns a wrapper around the input widget.
-    #[must_use]
-    fn with_reserve<R>(self, r: R) -> Reserve<Self, R>
-    where
-        R: FnMut(SizeCx, AxisInfo) -> SizeRules,
-    {
-        Reserve::new(self, r)
-    }
-
     /// Construct a wrapper, setting minimum size in pixels
     ///
     /// The input size is scaled by the scale factor.
     ///
     /// Returns a wrapper around the input widget.
     #[must_use]
-    fn with_min_size_px(self, w: i32, h: i32) -> Reserve<Self, WithMinSizePx> {
+    fn with_min_size_px(self, w: i32, h: i32) -> Reserve<Self> {
         let size = Vec2(w.cast(), h.cast());
-        Reserve::new(self, WithMinSizePx(size))
+        Reserve::new(self, move |sizer: SizeCx, axis: AxisInfo| {
+            let size = size.extract(axis) * sizer.scale_factor();
+            SizeRules::fixed(size.cast_ceil(), (0, 0))
+        })
     }
 
     /// Construct a wrapper, setting minimum size in Em
@@ -136,9 +86,12 @@ pub trait AdaptWidget: Widget + Sized {
     ///
     /// Returns a wrapper around the input widget.
     #[must_use]
-    fn with_min_size_em(self, w: f32, h: f32) -> Reserve<Self, WithMinSizeEm> {
+    fn with_min_size_em(self, w: f32, h: f32) -> Reserve<Self> {
         let size = Vec2(w, h);
-        Reserve::new(self, WithMinSizeEm(size))
+        Reserve::new(self, move |sizer: SizeCx, axis: AxisInfo| {
+            let size = size.extract(axis) * sizer.dpem();
+            SizeRules::fixed(size.cast_ceil(), (0, 0))
+        })
     }
 
     /// Construct a wrapper widget adding a label

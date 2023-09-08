@@ -15,5 +15,5 @@ pub use adapt::{Adapt, Map};
 pub use adapt_events::OnUpdate;
 pub use adapt_widget::*;
 #[doc(inline)] pub use kas::hidden::MapAny;
-pub use reserve::{FnSizeRules, Reserve, ReserveP};
+pub use reserve::Reserve;
 pub use with_label::WithLabel;

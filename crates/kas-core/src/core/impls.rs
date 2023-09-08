@@ -155,7 +155,7 @@ fn nav_next(
     } else if cx.is_disabled(id) {
         return None;
     }
-    let is_focus = *id == focus;
+    let is_not_focus = *id != focus;
 
     let mut child = focus.and_then(|id| widget.find_child_index(id));
 
@@ -171,7 +171,7 @@ fn nav_next(
         let can_match_self = match advance {
             NavAdvance::None => true,
             NavAdvance::Forward(true) => true,
-            NavAdvance::Forward(false) => is_focus,
+            NavAdvance::Forward(false) => is_not_focus,
             _ => false,
         };
         if can_match_self {
@@ -197,7 +197,7 @@ fn nav_next(
     if navigable {
         let can_match_self = match advance {
             NavAdvance::Reverse(true) => true,
-            NavAdvance::Reverse(false) => is_focus,
+            NavAdvance::Reverse(false) => is_not_focus,
             _ => false,
         };
         if can_match_self {

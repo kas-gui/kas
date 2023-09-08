@@ -7,7 +7,7 @@
 
 use super::{BoxedMenu, Menu, SubItems};
 use crate::{AccessLabel, Mark};
-use kas::event::{Command, FocusSource, Scroll};
+use kas::event::{Command, FocusSource};
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::theme::{FrameStyle, MarkStyle, TextClass};
@@ -144,10 +144,6 @@ impl_scope! {
             } else {
                 self.popup.close(cx);
             }
-        }
-
-        fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, _: Scroll) {
-            cx.set_scroll(Scroll::None);
         }
     }
 

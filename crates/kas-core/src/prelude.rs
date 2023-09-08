@@ -25,7 +25,7 @@ pub use crate::text::{EditableTextApi, TextApi, TextApiExt};
 #[doc(no_inline)] pub use crate::Action;
 #[doc(no_inline)] pub use crate::WidgetId;
 #[doc(no_inline)]
-pub use crate::{autoimpl, impl_default, impl_scope, singleton, widget, widget_index};
+pub use crate::{autoimpl, impl_anon, impl_default, impl_scope, widget, widget_index};
 #[doc(no_inline)]
 pub use crate::{Events, Layout, LayoutExt, Widget, Window, WindowCommand};
 #[doc(no_inline)]

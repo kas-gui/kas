@@ -9,7 +9,7 @@
 
 extern crate proc_macro;
 
-use impl_tools_lib::{self as lib, autoimpl};
+use impl_tools_lib::{anon, autoimpl, scope};
 use proc_macro::TokenStream;
 use proc_macro_error::{emit_call_site_error, proc_macro_error};
 use syn::parse_macro_input;
@@ -29,7 +29,7 @@ mod widget_index;
 #[proc_macro_error]
 pub fn impl_default(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut toks = item.clone();
-    match syn::parse::<lib::ImplDefault>(attr) {
+    match syn::parse::<impl_tools_lib::ImplDefault>(attr) {
         Ok(attr) => toks.extend(TokenStream::from(attr.expand(item.into()))),
         Err(err) => {
             emit_call_site_error!(err);
@@ -110,9 +110,10 @@ pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
     toks
 }
 
-const IMPL_SCOPE_RULES: [&dyn lib::ScopeAttr; 2] = [&lib::AttrImplDefault, &widget::AttrImplWidget];
+const IMPL_SCOPE_RULES: [&dyn scope::ScopeAttr; 2] =
+    [&scope::AttrImplDefault, &widget::AttrImplWidget];
 
-fn find_attr(path: &syn::Path) -> Option<&'static dyn lib::ScopeAttr> {
+fn find_attr(path: &syn::Path) -> Option<&'static dyn scope::ScopeAttr> {
     IMPL_SCOPE_RULES
         .iter()
         .cloned()
@@ -147,7 +148,7 @@ fn find_attr(path: &syn::Path) -> Option<&'static dyn lib::ScopeAttr> {
 #[proc_macro_error]
 #[proc_macro]
 pub fn impl_scope(input: TokenStream) -> TokenStream {
-    let mut scope = parse_macro_input!(input as lib::Scope);
+    let mut scope = parse_macro_input!(input as scope::Scope);
     scope.apply_attrs(find_attr);
     scope.expand().into()
 }
@@ -354,7 +355,7 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// use std::fmt;
 /// fn main() {
 ///     let world = "world";
-///     let says_hello_world = kas::singleton! {
+///     let says_hello_world = kas::impl_anon! {
 ///         struct(&'static str = world);
 ///         impl fmt::Display for Self {
 ///             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -379,11 +380,11 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// The field name, `ident`, may be `_` (anonymous field).
 ///
-/// Refer to [examples](https://github.com/search?q=singleton+repo%3Akas-gui%2Fkas+path%3Aexamples&type=Code) for usage.
+/// Refer to [examples](https://github.com/search?q=impl_anon+repo%3Akas-gui%2Fkas+path%3Aexamples&type=Code) for usage.
 #[proc_macro_error]
 #[proc_macro]
-pub fn singleton(input: TokenStream) -> TokenStream {
-    let mut input = parse_macro_input!(input as lib::Singleton);
+pub fn impl_anon(input: TokenStream) -> TokenStream {
+    let mut input = parse_macro_input!(input as anon::Anon);
     for field in input.fields.iter_mut() {
         if matches!(&field.ty, syn::Type::Infer(_)) {
             let span = if let Some(ref ident) = field.ident {

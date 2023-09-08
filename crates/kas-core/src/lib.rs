@@ -8,7 +8,7 @@
 //! Re-exports:
 //!
 //! -   [`kas::cast`] is a re-export of [`easy-cast`](https://crates.io/crates/easy-cast)
-//! -   [`impl_scope!`], [`singleton!`], [`autoimpl`] and [`impl_default`] are
+//! -   [`impl_scope!`], [`impl_anon!`], [`autoimpl`] and [`impl_default`] are
 //!     re-implementations of [`impl-tools`](https://crates.io/crates/impl-tools) macros
 
 #![cfg_attr(doc_cfg, feature(doc_cfg))]

@@ -11,8 +11,8 @@ use kas::draw::{Draw, DrawIface, PassId};
 use kas::event::{self, Command};
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
-use kas::widgets::adapt::ReserveP;
-use kas::widgets::{format_data, format_value, Label, Slider, Text};
+use kas::widgets::adapt::Reserve;
+use kas::widgets::{format_data, format_value, Slider, Text};
 use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawPipe};
 use kas_wgpu::wgpu;
 use std::mem::size_of;
@@ -441,7 +441,7 @@ impl_scope! {
         #[widget(&self.mbrot)]
         label: Text<Mandlebrot, String>,
         #[widget(&self.iters)]
-        iters_label: ReserveP<Text<i32, String>>,
+        iters_label: Reserve<Text<i32, String>>,
         #[widget(&self.iters)]
         slider: Slider<i32, i32, kas::dir::Up>,
         // extra col span allows use of Label's margin
@@ -456,7 +456,7 @@ impl_scope! {
                 core: Default::default(),
                 label: format_data!(mbrot: &Mandlebrot, "{}", mbrot.loc()),
                 iters_label: format_value!("{}")
-                    .with_reserve(|sizer, axis| Label::new("000").size_rules(sizer, axis)),
+                    .with_min_size_em(3.0, 0.0),
                 slider: Slider::up(0..=256, |_, iters| *iters)
                     .with_msg(|iters| iters),
                 mbrot: Mandlebrot::new(),

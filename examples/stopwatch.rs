@@ -17,7 +17,7 @@ struct MsgReset;
 struct MsgStart;
 
 fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
-    Box::new(kas::singleton! {
+    Box::new(kas::impl_anon! {
         #[widget{
             layout = row! [
                 self.display,

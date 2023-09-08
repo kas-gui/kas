@@ -6,7 +6,7 @@
 //! Combobox
 
 use super::{menu::MenuEntry, Column, Mark, StringLabel};
-use kas::event::{Command, FocusSource, Scroll, ScrollDelta};
+use kas::event::{Command, FocusSource, ScrollDelta};
 use kas::prelude::*;
 use kas::theme::{MarkStyle, TextClass};
 use kas::Popup;
@@ -180,10 +180,6 @@ impl_scope! {
                     }
                 }
             }
-        }
-
-        fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, _: Scroll) {
-            cx.set_scroll(Scroll::None);
         }
     }
 }
