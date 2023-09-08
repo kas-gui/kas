@@ -6,7 +6,7 @@
 //! Popup root
 
 use crate::dir::Direction;
-use crate::event::{ConfigCx, Event, EventCx, IsUsed, Unused, Used};
+use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};
 use crate::{Events, LayoutExt, Widget, WidgetId, WindowId};
 use kas_macros::{autoimpl, impl_scope, widget_index};
 
@@ -83,6 +83,11 @@ impl_scope! {
                 }
                 _ => Unused,
             }
+        }
+
+        fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, _: Scroll) {
+            // Scroll of the popup does not affect ancestor nodes
+            cx.set_scroll(Scroll::None);
         }
     }
 
