@@ -8,6 +8,7 @@
 use crate::event::EventCx;
 use crate::geom::{Offset, Size};
 use crate::{Action, Widget};
+#[allow(unused)] use crate::{Events, Layout};
 
 /// Additional functionality on scrollable widgets
 ///
@@ -17,11 +18,17 @@ use crate::{Action, Widget};
 /// If the widget scrolls itself it should set a scroll action via [`EventCx::set_scroll`].
 pub trait Scrollable: Widget {
     /// Given size `size`, returns whether `(horiz, vert)` scrolling is required
+    ///
+    /// Note: this is called *before* [`Layout::set_rect`], thus must may need
+    /// to perform independent calculation of the content size.
     fn scroll_axes(&self, size: Size) -> (bool, bool);
 
     /// Get the maximum scroll offset
     ///
     /// Note: the minimum scroll offset is always zero.
+    ///
+    /// Note: this is called immediately after [`Layout::set_rect`], thus should
+    /// be updated there (as well as by [`Events::update`] if appropriate).
     fn max_scroll_offset(&self) -> Offset;
 
     /// Get the current scroll offset

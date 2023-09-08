@@ -366,19 +366,36 @@ impl_scope! {
             let dur = (Instant::now() - time).as_micros();
             log::trace!(target: "kas_perf::view::list_view", "update_widgets: {dur}μs");
         }
+
+        fn update_content_size(&mut self, cx: &mut ConfigCx) {
+            let data_len: i32 = self.data_len.cast();
+            let view_size = self.rect().size - self.frame_size;
+            let mut content_size = view_size;
+            content_size.set_component(
+                self.direction,
+                (self.skip * data_len - self.child_inter_margin).max(0),
+            );
+            *cx |= self.scroll.set_sizes(view_size, content_size);
+        }
     }
 
     impl Scrollable for Self {
         fn scroll_axes(&self, size: Size) -> (bool, bool) {
-            // TODO: maybe we should support a scroll bar on the other axis?
-            // We would need to report a fake min-child-size to enable scrolling.
+            // TODO: support scrolling on the other axis by clamping the min size like ScrollRegion?
+
             let data_len: i32 = self.data_len.cast();
-            let item_min = self.child_size_min + self.child_inter_margin;
-            let min_size = (item_min * data_len - self.child_inter_margin).max(0);
-            (
-                self.direction.is_horizontal() && min_size > size.0,
-                self.direction.is_vertical() && min_size > size.1,
-            )
+            let inner_size = (size - self.frame_size).extract(self.direction());
+            let child_size = (inner_size / self.ideal_visible)
+                .min(self.child_size_ideal)
+                .max(self.child_size_min);
+            let m = self.child_inter_margin;
+            let step = child_size + m;
+            let content_size = (step * data_len - m).max(0);
+            if self.direction.is_horizontal() {
+                (content_size > inner_size, false)
+            } else {
+                (false, content_size > inner_size)
+            }
         }
 
         #[inline]
@@ -499,6 +516,7 @@ impl_scope! {
 
             self.child_size = child_size;
             self.skip = skip;
+            self.update_content_size(cx);
 
             if skip == 0 {
                 self.skip = 1; // avoid divide by 0
@@ -602,16 +620,9 @@ impl_scope! {
                 // have been zero if no data was initially available!
                 *cx |= Action::RESIZE;
             }
-            let data_len: i32 = data_len.cast();
-            let view_size = self.rect().size - self.frame_size;
-            let mut content_size = view_size;
-            content_size.set_component(
-                self.direction,
-                (self.skip * data_len - self.child_inter_margin).max(0),
-            );
-            *cx |= self.scroll.set_sizes(view_size, content_size);
 
             self.update_widgets(cx, data);
+            self.update_content_size(cx);
         }
 
         fn update_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
