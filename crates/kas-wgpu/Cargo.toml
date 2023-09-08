@@ -1,6 +1,6 @@
 [package]
 name = "kas-wgpu"
-version = "0.13.0"
+version = "0.14.0-alpha"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -36,7 +36,7 @@ rustc-hash = "1.0"
 
 [dependencies.kas]
 # Rename package purely for convenience:
-version = "0.13.0"
+version = "0.14.0-alpha"
 package = "kas-core"
 path = "../kas-core"
 

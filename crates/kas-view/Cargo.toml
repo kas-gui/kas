@@ -1,6 +1,6 @@
 [package]
 name = "kas-view"
-version = "0.13.0"
+version = "0.14.0-alpha"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -19,9 +19,9 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 # RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --no-deps --open
 
 [dependencies]
-kas-widgets = { version = "0.13.0", path = "../kas-widgets" }
+kas-widgets = { version = "0.14.0-alpha", path = "../kas-widgets" }
 log = "0.4"
 linear-map = "1.2.0"
 
 # We must rename this package since macros expect kas to be in scope:
-kas = { version = "0.13.0", package = "kas-core", path = "../kas-core" }
+kas = { version = "0.14.0-alpha", package = "kas-core", path = "../kas-core" }
