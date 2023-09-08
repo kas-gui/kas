@@ -461,10 +461,8 @@ impl<W: Widget> Stack<W> {
             self.configure_and_size(cx, data, index);
         }
 
-        if self.active >= index {
-            if index == self.active {
-                *cx |= Action::RESIZE;
-            }
+        if index == self.active {
+            *cx |= Action::RESIZE;
         }
 
         widget
