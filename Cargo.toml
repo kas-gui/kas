@@ -31,7 +31,7 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 # markdown, resvg. Recommended also: clipboard, yaml (or some config format).
 minimal = ["wgpu", "winit", "wayland", "x11"]
 # All recommended features for optimal experience
-default = ["minimal", "view", "yaml", "image", "resvg", "clipboard", "markdown", "shaping", "dark-light", "spawn"]
+default = ["minimal", "view", "yaml", "image", "resvg", "clipboard", "markdown", "shaping", "spawn"]
 # All standard test target features
 # NOTE: dynamic is excluded due to linker problems on Windows
 stable = ["default", "serde", "json", "ron", "macros_log"]
@@ -92,6 +92,8 @@ resvg = ["dep:kas-resvg", "kas-resvg?/svg", "kas-dylib?/resvg"]
 tiny-skia = ["dep:kas-resvg"]
 
 # Automatically detect usage of dark theme
+#
+# Not a default dependency; see https://github.com/emilk/egui/issues/2388
 dark-light = ["kas-core/dark-light"]
 
 # Support spawning async tasks
