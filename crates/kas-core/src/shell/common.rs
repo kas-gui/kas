@@ -293,14 +293,7 @@ pub(crate) trait ShellWindow {
     fn adjust_theme<'s>(&'s mut self, f: Box<dyn FnOnce(&mut dyn ThemeControl) -> Action + 's>);
 
     /// Access [`ThemeSize`] and [`DrawShared`] objects
-    ///
-    /// Implementations should call the given function argument once; not doing
-    /// so is memory-safe but will cause panics in `EventCx` methods.
-    /// User-code *must not* depend on `f` being called for memory safety.
-    fn size_and_draw_shared<'s>(
-        &'s mut self,
-        f: Box<dyn FnOnce(&dyn ThemeSize, &mut dyn DrawShared) + 's>,
-    );
+    fn size_and_draw_shared<'s>(&'s mut self) -> (&'s dyn ThemeSize, &'s mut dyn DrawShared);
 
     /// Set the mouse cursor
     fn set_cursor_icon(&mut self, icon: CursorIcon);

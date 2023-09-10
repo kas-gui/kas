@@ -193,7 +193,7 @@ impl_scope! {
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &W::Data) {
             if let Some(MsgSelectIndex(index)) = cx.try_pop() {
-                cx.config_cx(|cx| self.set_active(cx, data, index));
+                self.set_active(&mut cx.config_cx(), data, index);
                 if let Some(ref f) = self.on_change {
                     let title = self.tabs[index].get_str();
                     f(cx, data, index, title);

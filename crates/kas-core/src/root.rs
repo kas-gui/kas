@@ -252,7 +252,7 @@ impl_scope! {
 
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &Data, _: Scroll) {
             // Something was scrolled; update pop-up translations
-            cx.config_cx(|cx| self.resize_popups(cx, data));
+            self.resize_popups(&mut cx.config_cx(), data);
         }
     }
 }
@@ -403,7 +403,7 @@ impl<Data: 'static> Window<Data> {
     ) {
         let index = self.popups.len();
         self.popups.push((id, popup, Offset::ZERO));
-        cx.config_cx(|cx| self.resize_popup(cx, data, index));
+        self.resize_popup(&mut cx.config_cx(), data, index);
         cx.send_action(Action::REDRAW);
     }
 

@@ -609,11 +609,8 @@ impl<'a, A: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellWindow for TkWi
         self.shared.pending.push(PendingAction::Action(action));
     }
 
-    fn size_and_draw_shared<'s>(
-        &'s mut self,
-        f: Box<dyn FnOnce(&dyn ThemeSize, &mut dyn DrawShared) + 's>,
-    ) {
-        f(self.window.theme_window.size(), &mut self.shared.draw);
+    fn size_and_draw_shared<'s>(&'s mut self) -> (&'s dyn ThemeSize, &'s mut dyn DrawShared) {
+        (self.window.theme_window.size(), &mut self.shared.draw)
     }
 
     #[inline]

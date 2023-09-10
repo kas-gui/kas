@@ -617,7 +617,7 @@ impl<'a> EventCx<'a> {
     /// This is a shortcut to [`ConfigCx::configure`].
     #[inline]
     pub fn configure(&mut self, mut widget: Node<'_>, id: WidgetId) {
-        self.config_cx(|cx| widget._configure(cx, id));
+        widget._configure(&mut self.config_cx(), id);
     }
 
     /// Update a widget
@@ -627,7 +627,7 @@ impl<'a> EventCx<'a> {
     /// data, it should call this (or [`ConfigCx::update`]) after mutating the state.
     #[inline]
     pub fn update(&mut self, mut widget: Node<'_>) {
-        self.config_cx(|cx| widget._update(cx));
+        widget._update(&mut self.config_cx());
     }
 
     /// Get the index of the last child visited
@@ -849,38 +849,27 @@ impl<'a> EventCx<'a> {
         self.shell.adjust_theme(Box::new(f));
     }
 
-    /// Access a [`SizeCx`]
+    /// Get a [`SizeCx`]
     ///
     /// Warning: sizes are calculated using the window's current scale factor.
     /// This may change, even without user action, since some platforms
     /// always initialize windows with scale factor 1.
     /// See also notes on [`Events::configure`].
-    pub fn size_cx<F: FnOnce(SizeCx) -> T, T>(&mut self, f: F) -> T {
-        let mut result = None;
-        self.shell.size_and_draw_shared(Box::new(|size, _| {
-            result = Some(f(SizeCx::new(size)));
-        }));
-        result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
+    //
+    // NOTE: we could implement this using only &self if required.
+    pub fn size_cx(&mut self) -> SizeCx<'_> {
+        SizeCx::new(self.shell.size_and_draw_shared().0)
     }
 
-    /// Access a [`ConfigCx`]
-    pub fn config_cx<F: FnOnce(&mut ConfigCx) -> T, T>(&mut self, f: F) -> T {
-        let mut result = None;
-        self.shell
-            .size_and_draw_shared(Box::new(|size, draw_shared| {
-                let mut cx = ConfigCx::new(size, draw_shared, self.state);
-                result = Some(f(&mut cx));
-            }));
-        result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
+    /// Get a [`ConfigCx`]
+    pub fn config_cx(&mut self) -> ConfigCx<'_> {
+        let (size, draw_shared) = self.shell.size_and_draw_shared();
+        ConfigCx::new(size, draw_shared, self.state)
     }
 
-    /// Access a [`DrawShared`]
-    pub fn draw_shared<F: FnOnce(&mut dyn DrawShared) -> T, T>(&mut self, f: F) -> T {
-        let mut result = None;
-        self.shell.size_and_draw_shared(Box::new(|_, draw_shared| {
-            result = Some(f(draw_shared));
-        }));
-        result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
+    /// Get a [`DrawShared`]
+    pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
+        self.shell.size_and_draw_shared().1
     }
 
     /// Directly access Winit Window

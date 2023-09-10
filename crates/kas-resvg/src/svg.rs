@@ -259,23 +259,23 @@ impl_scope! {
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(pixmap) = cx.try_pop::<Pixmap>() {
                 let size = (pixmap.width(), pixmap.height());
-                cx.draw_shared(|ds| {
-                    if let Some(im_size) = self.image.as_ref().and_then(|h| ds.image_size(h)) {
-                        if im_size != Size::conv(size) {
-                            if let Some(handle) = self.image.take() {
-                                ds.image_free(handle);
-                            }
+                let ds = cx.draw_shared();
+
+                if let Some(im_size) = self.image.as_ref().and_then(|h| ds.image_size(h)) {
+                    if im_size != Size::conv(size) {
+                        if let Some(handle) = self.image.take() {
+                            ds.image_free(handle);
                         }
                     }
+                }
 
-                    if self.image.is_none() {
-                        self.image = ds.image_alloc(size).ok();
-                    }
+                if self.image.is_none() {
+                    self.image = ds.image_alloc(size).ok();
+                }
 
-                    if let Some(handle) = self.image.as_ref() {
-                        ds.image_upload(handle, pixmap.data(), ImageFormat::Rgba8);
-                    }
-                });
+                if let Some(handle) = self.image.as_ref() {
+                    ds.image_upload(handle, pixmap.data(), ImageFormat::Rgba8);
+                }
 
                 cx.redraw(self.id());
                 let inner = std::mem::replace(&mut self.inner, State::None);

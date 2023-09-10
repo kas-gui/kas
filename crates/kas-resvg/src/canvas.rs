@@ -191,24 +191,23 @@ impl_scope! {
             if let Some((program, mut pixmap)) = cx.try_pop::<(P, Pixmap)>() {
                 debug_assert!(matches!(self.inner, State::Rendering));
                 let size = (pixmap.width(), pixmap.height());
+                let ds = cx.draw_shared();
 
-                cx.draw_shared(|ds| {
-                    if let Some(im_size) = self.image.as_ref().and_then(|h| ds.image_size(h)) {
-                        if im_size != Size::conv(size) {
-                            if let Some(handle) = self.image.take() {
-                                ds.image_free(handle);
-                            }
+                if let Some(im_size) = self.image.as_ref().and_then(|h| ds.image_size(h)) {
+                    if im_size != Size::conv(size) {
+                        if let Some(handle) = self.image.take() {
+                            ds.image_free(handle);
                         }
                     }
+                }
 
-                    if self.image.is_none() {
-                        self.image = ds.image_alloc(size).ok();
-                    }
+                if self.image.is_none() {
+                    self.image = ds.image_alloc(size).ok();
+                }
 
-                    if let Some(handle) = self.image.as_ref() {
-                        ds.image_upload(handle, pixmap.data(), ImageFormat::Rgba8);
-                    }
-                });
+                if let Some(handle) = self.image.as_ref() {
+                    ds.image_upload(handle, pixmap.data(), ImageFormat::Rgba8);
+                }
 
                 cx.redraw(self.id());
 
