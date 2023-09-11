@@ -228,10 +228,6 @@ impl EventState {
                     }
                     cx.send_event(win.as_node(data), id, event);
                 }
-                Pending::SetRect(_id) => {
-                    // TODO(opt): set only this child
-                    cx.send_action(Action::SET_RECT);
-                }
                 Pending::NextNavFocus {
                     target,
                     reverse,

@@ -172,7 +172,6 @@ enum Pending {
     Configure(WidgetId),
     Update(WidgetId),
     Send(WidgetId, Event),
-    SetRect(WidgetId),
     NextNavFocus {
         target: Option<WidgetId>,
         reverse: bool,
