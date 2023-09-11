@@ -62,7 +62,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             _data: std::marker::PhantomData,
             widget,
             window_id,
-            ev_state: EventState::new(config),
+            ev_state: EventState::new(config, shared.shell.platform),
             window: None,
         }
     }
@@ -90,7 +90,6 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         self.ev_state.update_config(scale_factor, dpem);
         self.ev_state.full_configure(
             theme_window.size(),
-            &mut shared.shell.draw,
             self.window_id,
             &mut self.widget,
             &shared.data,
@@ -369,7 +368,6 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
 
         self.ev_state.full_configure(
             window.theme_window.size(),
-            &mut shared.shell.draw,
             self.window_id,
             &mut self.widget,
             &shared.data,
@@ -385,7 +383,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         };
 
         let size = window.theme_window.size();
-        let mut cx = ConfigCx::new(&size, &mut shared.shell.draw, &mut self.ev_state);
+        let mut cx = ConfigCx::new(&size, &mut self.ev_state);
         cx.update(self.widget.as_node(&shared.data));
 
         log::trace!(target: "kas_perf::wgpu::window", "update: {}µs", time.elapsed().as_micros());
@@ -400,11 +398,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         log::debug!("apply_size: rect={rect:?}");
 
         let solve_cache = &mut window.solve_cache;
-        let mut cx = ConfigCx::new(
-            window.theme_window.size(),
-            &mut shared.shell.draw,
-            &mut self.ev_state,
-        );
+        let mut cx = ConfigCx::new(window.theme_window.size(), &mut self.ev_state);
         solve_cache.apply_rect(self.widget.as_node(&shared.data), &mut cx, rect, true);
         if first {
             solve_cache.print_widget_heirarchy(self.widget.as_layout());

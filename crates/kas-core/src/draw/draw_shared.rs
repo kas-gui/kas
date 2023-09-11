@@ -9,7 +9,6 @@ use super::color::Rgba;
 use super::{DrawImpl, PassId};
 use crate::cast::Cast;
 use crate::geom::{Quad, Rect, Size};
-use crate::shell::Platform;
 use crate::text::{Effect, TextDisplay};
 use crate::theme::RasterConfig;
 use std::any::Any;
@@ -76,15 +75,14 @@ pub struct AllocError;
 pub struct SharedState<DS: DrawSharedImpl> {
     /// The shell's [`DrawSharedImpl`] object
     pub draw: DS,
-    platform: Platform,
 }
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl<DS: DrawSharedImpl> SharedState<DS> {
     /// Construct (this is only called by the shell)
-    pub fn new(draw: DS, platform: Platform) -> Self {
-        SharedState { draw, platform }
+    pub fn new(draw: DS) -> Self {
+        SharedState { draw }
     }
 }
 
@@ -92,9 +90,6 @@ impl<DS: DrawSharedImpl> SharedState<DS> {
 ///
 /// All methods concern management of resources for drawing.
 pub trait DrawShared {
-    /// Get the platform
-    fn platform(&self) -> Platform;
-
     /// Allocate an image
     ///
     /// Use [`SharedState::image_upload`] to set contents of the new image.
@@ -121,11 +116,6 @@ pub trait DrawShared {
 }
 
 impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
-    #[inline]
-    fn platform(&self) -> Platform {
-        self.platform
-    }
-
     #[inline]
     fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageHandle, AllocError> {
         self.draw

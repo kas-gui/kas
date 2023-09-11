@@ -55,7 +55,7 @@ where
         config: Rc<RefCell<kas::event::Config>>,
     ) -> Result<Self, Error> {
         let platform = pw.platform();
-        let mut draw = kas::draw::SharedState::new(draw_shared, platform);
+        let mut draw = kas::draw::SharedState::new(draw_shared);
         theme.init(&mut draw);
 
         #[cfg(feature = "clipboard")]

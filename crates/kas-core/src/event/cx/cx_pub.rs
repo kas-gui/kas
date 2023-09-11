@@ -34,6 +34,11 @@ impl std::ops::BitOrAssign<Action> for EventState {
 
 /// Public API
 impl EventState {
+    /// Get the platform
+    pub fn platform(&self) -> Platform {
+        self.platform
+    }
+
     /// True when the window has focus
     #[inline]
     pub fn window_has_focus(&self) -> bool {
@@ -863,8 +868,8 @@ impl<'a> EventCx<'a> {
 
     /// Get a [`ConfigCx`]
     pub fn config_cx(&mut self) -> ConfigCx<'_> {
-        let (size, draw_shared) = self.shell.size_and_draw_shared();
-        ConfigCx::new(size, draw_shared, self.state)
+        let (size, _) = self.shell.size_and_draw_shared();
+        ConfigCx::new(size, self.state)
     }
 
     /// Get a [`DrawShared`]

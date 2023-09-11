@@ -11,7 +11,6 @@ use std::time::{Duration, Instant};
 
 use super::*;
 use crate::cast::traits::*;
-use crate::draw::DrawShared;
 use crate::geom::{Coord, DVec2};
 use crate::shell::ShellWindow;
 use crate::theme::ThemeSize;
@@ -28,9 +27,10 @@ const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 impl EventState {
     /// Construct per-window event state
     #[inline]
-    pub(crate) fn new(config: WindowConfig) -> Self {
+    pub(crate) fn new(config: WindowConfig, platform: Platform) -> Self {
         EventState {
             config,
+            platform,
             disabled: vec![],
             window_has_focus: false,
             modifiers: ModifiersState::empty(),
@@ -75,7 +75,6 @@ impl EventState {
     pub(crate) fn full_configure<A>(
         &mut self,
         sizer: &dyn ThemeSize,
-        draw_shared: &mut dyn DrawShared,
         wid: WindowId,
         win: &mut Window<A>,
         data: &A,
@@ -91,7 +90,7 @@ impl EventState {
 
         self.new_access_layer(id.clone(), false);
 
-        ConfigCx::new(sizer, draw_shared, self).configure(win.as_node(data), id);
+        ConfigCx::new(sizer, self).configure(win.as_node(data), id);
 
         let hover = win.find_id(data, self.last_mouse_coord);
         self.set_hover(hover);

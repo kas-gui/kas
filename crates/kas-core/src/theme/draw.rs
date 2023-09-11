@@ -99,8 +99,8 @@ impl<'a> DrawCx<'a> {
 
     /// Access a [`ConfigCx`]
     pub fn config_cx<F: FnOnce(&mut ConfigCx) -> T, T>(&mut self, f: F) -> T {
-        let (sh, draw, ev) = self.h.components();
-        let mut cx = ConfigCx::new(sh, draw.shared(), ev);
+        let (sh, _, ev) = self.h.components();
+        let mut cx = ConfigCx::new(sh, ev);
         f(&mut cx)
     }
 

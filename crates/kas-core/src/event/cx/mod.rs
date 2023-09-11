@@ -21,7 +21,7 @@ use super::config::WindowConfig;
 use super::*;
 use crate::cast::Cast;
 use crate::geom::{Coord, Offset};
-use crate::shell::ShellWindow;
+use crate::shell::{Platform, ShellWindow};
 use crate::util::WidgetHierarchy;
 use crate::LayoutExt;
 use crate::{Action, Erased, ErasedStack, NavAdvance, Node, Widget, WidgetId, WindowId};
@@ -201,6 +201,7 @@ type AccessLayer = (bool, HashMap<Key, WidgetId>);
 // `SmallVec` is used to keep contents in local memory.
 pub struct EventState {
     config: WindowConfig,
+    platform: Platform,
     disabled: Vec<WidgetId>,
     window_has_focus: bool,
     modifiers: ModifiersState,
