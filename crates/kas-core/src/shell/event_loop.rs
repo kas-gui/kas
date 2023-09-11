@@ -204,7 +204,7 @@ where
         elwt: &EventLoopWindowTarget<ProxyAction>,
         control_flow: &mut ControlFlow,
     ) {
-        while let Some(pending) = self.shared.shell.pending.pop() {
+        while let Some(pending) = self.shared.shell.pending.pop_front() {
             match pending {
                 PendingAction::AddPopup(parent_id, id, popup) => {
                     log::debug!("Pending: adding overlay");

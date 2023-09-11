@@ -5,9 +5,6 @@
 
 //! Shared state
 
-use std::num::NonZeroU32;
-use std::task::Waker;
-
 use super::{PendingAction, Platform, WindowSurface};
 use kas::config::Options;
 use kas::shell::Error;
@@ -15,7 +12,10 @@ use kas::theme::Theme;
 use kas::util::warn_about_error;
 use kas::{draw, AppData, ErasedStack, WindowId};
 use std::cell::RefCell;
+use std::collections::VecDeque;
+use std::num::NonZeroU32;
 use std::rc::Rc;
+use std::task::Waker;
 
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
@@ -26,7 +26,7 @@ pub(super) struct ShellShared<Data: AppData, S: kas::draw::DrawSharedImpl, T> {
     clipboard: Option<Clipboard>,
     pub(super) draw: draw::SharedState<S>,
     pub(super) theme: T,
-    pub(super) pending: Vec<PendingAction<Data>>,
+    pub(super) pending: VecDeque<PendingAction<Data>>,
     pub(super) waker: Waker,
     window_id: u32,
 }
@@ -74,7 +74,7 @@ where
                 clipboard,
                 draw,
                 theme,
-                pending: vec![],
+                pending: Default::default(),
                 waker: pw.create_waker(),
                 window_id: 0,
             },
@@ -89,7 +89,7 @@ where
     pub(crate) fn handle_messages(&mut self, messages: &mut ErasedStack) {
         if messages.reset_and_has_any() {
             let action = self.data.handle_messages(messages);
-            self.shell.pending.push(PendingAction::Action(action));
+            self.shell.pending.push_back(PendingAction::Action(action));
         }
     }
 
