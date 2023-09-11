@@ -301,11 +301,6 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         } else if action.contains(Action::SET_RECT) {
             self.apply_size(shared, false);
         }
-        /*if action.contains(Action::Popup) {
-            let widget = &mut self.widget;
-            self.ev_state.with(&mut tkw, |cx| widget.resize_popups(cx));
-            self.ev_state.region_moved(&mut *self.widget);
-        } else*/
         if action.contains(Action::REGION_MOVED) {
             self.ev_state.region_moved(&mut self.widget, &shared.data);
         }
