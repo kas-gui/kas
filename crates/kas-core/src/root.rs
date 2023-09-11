@@ -255,6 +255,15 @@ impl_scope! {
             self.resize_popups(&mut cx.config_cx(), data);
         }
     }
+
+    impl std::fmt::Debug for Self {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("Window")
+                .field("core", &self.core)
+                .field("title", &self.title_bar.title())
+                .finish()
+        }
+    }
 }
 
 impl<Data: 'static> Window<Data> {
