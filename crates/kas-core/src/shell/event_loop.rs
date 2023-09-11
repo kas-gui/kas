@@ -12,7 +12,7 @@ use winit::event::{Event, StartCause};
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 use winit::window as ww;
 
-use super::{PendingAction, SharedState};
+use super::{Pending, SharedState};
 use super::{ProxyAction, Window, WindowSurface};
 use kas::theme::Theme;
 use kas::{Action, AppData, WindowId};
@@ -206,7 +206,7 @@ where
     ) {
         while let Some(pending) = self.shared.shell.pending.pop_front() {
             match pending {
-                PendingAction::AddPopup(parent_id, id, popup) => {
+                Pending::AddPopup(parent_id, id, popup) => {
                     log::debug!("Pending: adding overlay");
                     // TODO: support pop-ups as a special window, where available
                     self.windows.get_mut(&parent_id).unwrap().add_popup(
@@ -216,7 +216,7 @@ where
                     );
                     self.popups.insert(id, parent_id);
                 }
-                PendingAction::AddWindow(id, widget) => {
+                Pending::AddWindow(id, widget) => {
                     log::debug!("Pending: adding window {}", widget.title());
                     let mut window = Window::new(&self.shared, id, widget);
                     if !self.suspended {
@@ -231,7 +231,7 @@ where
                     }
                     self.windows.insert(id, window);
                 }
-                PendingAction::CloseWindow(target) => {
+                Pending::CloseWindow(target) => {
                     let mut win_id = target;
                     if let Some(id) = self.popups.remove(&target) {
                         win_id = id;
@@ -240,7 +240,7 @@ where
                         window.send_close(&mut self.shared, target);
                     }
                 }
-                PendingAction::Action(action) => {
+                Pending::Action(action) => {
                     if action.contains(Action::CLOSE | Action::EXIT) {
                         self.windows.clear();
                         self.id_map.clear();

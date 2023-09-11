@@ -30,7 +30,7 @@ pub extern crate raw_window_handle;
 // around (also applies when constructing a shell::Window).
 #[allow(clippy::large_enum_variant)]
 #[cfg(winit)]
-enum PendingAction<A: crate::AppData> {
+enum Pending<A: crate::AppData> {
     AddPopup(WindowId, WindowId, kas::PopupDescriptor),
     AddWindow(WindowId, kas::Window<A>),
     CloseWindow(WindowId),
@@ -38,18 +38,18 @@ enum PendingAction<A: crate::AppData> {
 }
 
 #[cfg(winit)]
-impl<A: crate::AppData> std::fmt::Debug for PendingAction<A> {
+impl<A: crate::AppData> std::fmt::Debug for Pending<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PendingAction::AddPopup(parent_id, id, popup) => f
+            Pending::AddPopup(parent_id, id, popup) => f
                 .debug_tuple("AddPopup")
                 .field(&parent_id)
                 .field(&id)
                 .field(&popup)
                 .finish(),
-            PendingAction::AddWindow(id, _) => f.debug_tuple("AddWindow").field(&id).finish(),
-            PendingAction::CloseWindow(id) => f.debug_tuple("CloseWindow").field(&id).finish(),
-            PendingAction::Action(action) => f.debug_tuple("Action").field(&action).finish(),
+            Pending::AddWindow(id, _) => f.debug_tuple("AddWindow").field(&id).finish(),
+            Pending::CloseWindow(id) => f.debug_tuple("CloseWindow").field(&id).finish(),
+            Pending::Action(action) => f.debug_tuple("Action").field(&action).finish(),
         }
     }
 }

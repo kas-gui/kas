@@ -5,7 +5,7 @@
 
 //! Window types
 
-use super::{PendingAction, Platform, ProxyAction};
+use super::{Pending, Platform, ProxyAction};
 use super::{SharedState, ShellShared, ShellWindow, WindowSurface};
 use kas::cast::Cast;
 use kas::draw::{color::Rgba, AnimationState, DrawShared};
@@ -510,7 +510,7 @@ impl<'a, A: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellWindow for TkWi
         let id = self.shared.next_window_id();
         self.shared
             .pending
-            .push_back(PendingAction::AddPopup(parent_id, id, popup));
+            .push_back(Pending::AddPopup(parent_id, id, popup));
         id
     }
 
@@ -531,14 +531,12 @@ impl<'a, A: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellWindow for TkWi
         let id = self.shared.next_window_id();
         self.shared
             .pending
-            .push_back(PendingAction::AddWindow(id, window));
+            .push_back(Pending::AddWindow(id, window));
         id
     }
 
     fn close_window(&mut self, id: WindowId) {
-        self.shared
-            .pending
-            .push_back(PendingAction::CloseWindow(id));
+        self.shared.pending.push_back(Pending::CloseWindow(id));
     }
 
     #[inline]
@@ -597,7 +595,7 @@ impl<'a, A: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellWindow for TkWi
 
     fn adjust_theme<'s>(&'s mut self, f: Box<dyn FnOnce(&mut dyn ThemeControl) -> Action + 's>) {
         let action = f(&mut self.shared.theme);
-        self.shared.pending.push_back(PendingAction::Action(action));
+        self.shared.pending.push_back(Pending::Action(action));
     }
 
     fn size_and_draw_shared<'s>(&'s mut self) -> (&'s dyn ThemeSize, &'s mut dyn DrawShared) {

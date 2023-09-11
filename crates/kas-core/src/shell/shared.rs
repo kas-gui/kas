@@ -5,7 +5,7 @@
 
 //! Shared state
 
-use super::{PendingAction, Platform, WindowSurface};
+use super::{Pending, Platform, WindowSurface};
 use kas::config::Options;
 use kas::shell::Error;
 use kas::theme::Theme;
@@ -26,7 +26,7 @@ pub(super) struct ShellShared<Data: AppData, S: kas::draw::DrawSharedImpl, T> {
     clipboard: Option<Clipboard>,
     pub(super) draw: draw::SharedState<S>,
     pub(super) theme: T,
-    pub(super) pending: VecDeque<PendingAction<Data>>,
+    pub(super) pending: VecDeque<Pending<Data>>,
     pub(super) waker: Waker,
     window_id: u32,
 }
@@ -89,7 +89,7 @@ where
     pub(crate) fn handle_messages(&mut self, messages: &mut ErasedStack) {
         if messages.reset_and_has_any() {
             let action = self.data.handle_messages(messages);
-            self.shell.pending.push_back(PendingAction::Action(action));
+            self.shell.pending.push_back(Pending::Action(action));
         }
     }
 
