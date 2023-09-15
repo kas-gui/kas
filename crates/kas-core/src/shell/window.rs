@@ -5,8 +5,8 @@
 
 //! Window types
 
-use super::{Pending, ProxyAction};
-use super::{SharedState, ShellShared, ShellWindow, WindowSurface};
+use super::ProxyAction;
+use super::{SharedState, ShellSharedErased, ShellWindow, WindowSurface};
 use kas::cast::Cast;
 use kas::draw::{color::Rgba, AnimationState, DrawShared};
 use kas::event::{config::WindowConfig, ConfigCx, CursorIcon, EventState};
@@ -493,50 +493,29 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     }
 }
 
-struct TkWindow<'a, A: AppData, S: WindowSurface, T: Theme<S::Shared>> {
-    shared: &'a mut ShellShared<A, S::Shared, T>,
+struct TkWindow<'a, S: WindowSurface, T: Theme<S::Shared>> {
+    shared: &'a mut dyn ShellSharedErased,
     window: &'a WindowData<S, T>,
 }
 
-impl<'a, A: AppData, S: WindowSurface, T: Theme<S::Shared>> TkWindow<'a, A, S, T> {
-    fn new(shared: &'a mut ShellShared<A, S::Shared, T>, window: &'a WindowData<S, T>) -> Self {
+impl<'a, S: WindowSurface, T: Theme<S::Shared>> TkWindow<'a, S, T> {
+    fn new(shared: &'a mut dyn ShellSharedErased, window: &'a WindowData<S, T>) -> Self {
         TkWindow { shared, window }
     }
 }
 
-impl<'a, A: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellWindow for TkWindow<'a, A, S, T> {
+impl<'a, S: WindowSurface, T: Theme<S::Shared>> ShellWindow for TkWindow<'a, S, T> {
     fn add_popup(&mut self, popup: kas::PopupDescriptor) -> WindowId {
         let parent_id = self.window.window_id;
-        let id = self.shared.next_window_id();
-        self.shared
-            .pending
-            .push_back(Pending::AddPopup(parent_id, id, popup));
-        id
+        self.shared.add_popup(parent_id, popup)
     }
 
     unsafe fn add_window(&mut self, window: kas::Window<()>, data_type_id: TypeId) -> WindowId {
-        // Safety: the window should be `Window<A>`. We cast to that.
-        if data_type_id != TypeId::of::<A>() {
-            // If this fails it is not safe to add the window (though we could just return).
-            panic!("add_window: window has wrong Data type!");
-        }
-        let window: kas::Window<A> = std::mem::transmute(window);
-
-        // By far the simplest way to implement this is to let our call
-        // anscestor, event::Loop::handle, do the work.
-        //
-        // In theory we could pass the EventLoopWindowTarget for *each* event
-        // handled to create the winit window here or use statics to generate
-        // errors now, but user code can't do much with this error anyway.
-        let id = self.shared.next_window_id();
-        self.shared
-            .pending
-            .push_back(Pending::AddWindow(id, window));
-        id
+        self.shared.add_window(window, data_type_id)
     }
 
     fn close_window(&mut self, id: WindowId) {
-        self.shared.pending.push_back(Pending::CloseWindow(id));
+        self.shared.close_window(id);
     }
 
     #[inline]
@@ -594,8 +573,7 @@ impl<'a, A: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellWindow for TkWi
     }
 
     fn adjust_theme<'s>(&'s mut self, f: Box<dyn FnOnce(&mut dyn ThemeControl) -> Action + 's>) {
-        let action = f(&mut self.shared.theme);
-        self.shared.pending.push_back(Pending::Action(action));
+        self.shared.adjust_theme(f);
     }
 
     fn theme_size(&self) -> &dyn ThemeSize {
@@ -603,7 +581,7 @@ impl<'a, A: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellWindow for TkWi
     }
 
     fn draw_shared(&mut self) -> &mut dyn DrawShared {
-        &mut self.shared.draw
+        self.shared.draw_shared()
     }
 
     #[inline]
@@ -619,6 +597,6 @@ impl<'a, A: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellWindow for TkWi
 
     #[inline]
     fn waker(&self) -> &std::task::Waker {
-        &self.shared.waker
+        self.shared.waker()
     }
 }

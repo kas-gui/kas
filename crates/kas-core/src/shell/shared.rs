@@ -7,10 +7,12 @@
 
 use super::{Pending, Platform, WindowSurface};
 use kas::config::Options;
+use kas::draw::DrawShared;
 use kas::shell::Error;
-use kas::theme::Theme;
+use kas::theme::{Theme, ThemeControl};
 use kas::util::warn_about_error;
-use kas::{draw, AppData, ErasedStack, WindowId};
+use kas::{draw, Action, AppData, ErasedStack, WindowId};
+use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::num::NonZeroU32;
@@ -20,7 +22,7 @@ use std::task::Waker;
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
 /// Shell interface state
-pub(super) struct ShellShared<Data: AppData, S: kas::draw::DrawSharedImpl, T> {
+pub(super) struct ShellShared<Data: AppData, S: kas::draw::DrawSharedImpl, T: Theme<S>> {
     pub(super) platform: Platform,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Clipboard>,
@@ -32,7 +34,7 @@ pub(super) struct ShellShared<Data: AppData, S: kas::draw::DrawSharedImpl, T> {
 }
 
 /// State shared between windows
-pub struct SharedState<Data: AppData, S: WindowSurface, T> {
+pub struct SharedState<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> {
     pub(super) shell: ShellShared<Data, S::Shared, T>,
     pub(super) data: Data,
     pub(super) config: Rc<RefCell<kas::event::Config>>,
@@ -104,7 +106,7 @@ where
     }
 }
 
-impl<Data: AppData, S: kas::draw::DrawSharedImpl, T> ShellShared<Data, S, T> {
+impl<Data: AppData, S: kas::draw::DrawSharedImpl, T: Theme<S>> ShellShared<Data, S, T> {
     /// Return the next window identifier
     ///
     /// TODO(opt): this should recycle used identifiers since WidgetId does not
@@ -114,9 +116,110 @@ impl<Data: AppData, S: kas::draw::DrawSharedImpl, T> ShellShared<Data, S, T> {
         self.window_id = id;
         WindowId::new(NonZeroU32::new(id).unwrap())
     }
+}
 
-    #[inline]
-    pub fn get_clipboard(&mut self) -> Option<String> {
+pub(super) trait ShellSharedErased {
+    /// Add a pop-up
+    ///
+    /// A pop-up may be presented as an overlay layer in the current window or
+    /// via a new borderless window.
+    ///
+    /// Pop-ups support position hints: they are placed *next to* the specified
+    /// `rect`, preferably in the given `direction`.
+    ///
+    /// Returns `None` if window creation is not currently available (but note
+    /// that `Some` result does not guarantee the operation succeeded).
+    fn add_popup(&mut self, parent_id: WindowId, popup: crate::PopupDescriptor) -> WindowId;
+
+    /// Add a window
+    ///
+    /// Toolkits typically allow windows to be added directly, before start of
+    /// the event loop (e.g. `kas_wgpu::Toolkit::add`).
+    ///
+    /// This method is an alternative allowing a window to be added from an
+    /// event handler, albeit without error handling.
+    ///
+    /// Safety: this method *should* require generic parameter `Data` (data type
+    /// passed to the `Shell`). Realising this would require adding this type
+    /// parameter to `EventCx` and thus to all widgets (not necessarily the
+    /// type accepted by the widget as input). As an alternative we require the
+    /// caller to type-cast `Window<Data>` to `Window<()>` and pass in
+    /// `TypeId::of::<Data>()`.
+    unsafe fn add_window(&mut self, window: kas::Window<()>, data_type_id: TypeId) -> WindowId;
+
+    /// Close a window
+    fn close_window(&mut self, id: WindowId);
+
+    /// Attempt to get clipboard contents
+    ///
+    /// In case of failure, paste actions will simply fail. The implementation
+    /// may wish to log an appropriate warning message.
+    fn get_clipboard(&mut self) -> Option<String>;
+
+    /// Attempt to set clipboard contents
+    fn set_clipboard(&mut self, content: String);
+
+    /// Get contents of primary buffer
+    ///
+    /// Linux has a "primary buffer" with implicit copy on text selection and
+    /// paste on middle-click. This method does nothing on other platforms.
+    fn get_primary(&mut self) -> Option<String>;
+
+    /// Set contents of primary buffer
+    ///
+    /// Linux has a "primary buffer" with implicit copy on text selection and
+    /// paste on middle-click. This method does nothing on other platforms.
+    fn set_primary(&mut self, content: String);
+
+    /// Adjust the theme
+    ///
+    /// Note: theme adjustments apply to all windows, as does the [`Action`]
+    /// returned from the closure.
+    //
+    // TODO(opt): pass f by value, not boxed
+    fn adjust_theme<'s>(&'s mut self, f: Box<dyn FnOnce(&mut dyn ThemeControl) -> Action + 's>);
+
+    /// Access the [`DrawShared`] object
+    fn draw_shared(&mut self) -> &mut dyn DrawShared;
+
+    /// Access a Waker
+    fn waker(&self) -> &std::task::Waker;
+}
+
+impl<Data: AppData, S: kas::draw::DrawSharedImpl, T: Theme<S>> ShellSharedErased
+    for ShellShared<Data, S, T>
+{
+    fn add_popup(&mut self, parent_id: WindowId, popup: kas::PopupDescriptor) -> WindowId {
+        let id = self.next_window_id();
+        self.pending
+            .push_back(Pending::AddPopup(parent_id, id, popup));
+        id
+    }
+
+    unsafe fn add_window(&mut self, window: kas::Window<()>, data_type_id: TypeId) -> WindowId {
+        // Safety: the window should be `Window<Data>`. We cast to that.
+        if data_type_id != TypeId::of::<Data>() {
+            // If this fails it is not safe to add the window (though we could just return).
+            panic!("add_window: window has wrong Data type!");
+        }
+        let window: kas::Window<Data> = std::mem::transmute(window);
+
+        // By far the simplest way to implement this is to let our call
+        // anscestor, event::Loop::handle, do the work.
+        //
+        // In theory we could pass the EventLoopWindowTarget for *each* event
+        // handled to create the winit window here or use statics to generate
+        // errors now, but user code can't do much with this error anyway.
+        let id = self.next_window_id();
+        self.pending.push_back(Pending::AddWindow(id, window));
+        id
+    }
+
+    fn close_window(&mut self, id: WindowId) {
+        self.pending.push_back(Pending::CloseWindow(id));
+    }
+
+    fn get_clipboard(&mut self) -> Option<String> {
         #[cfg(feature = "clipboard")]
         {
             if let Some(cb) = self.clipboard.as_mut() {
@@ -130,8 +233,7 @@ impl<Data: AppData, S: kas::draw::DrawSharedImpl, T> ShellShared<Data, S, T> {
         None
     }
 
-    #[inline]
-    pub fn set_clipboard(&mut self, _content: String) {
+    fn set_clipboard<'c>(&mut self, _content: String) {
         #[cfg(feature = "clipboard")]
         if let Some(cb) = self.clipboard.as_mut() {
             match cb.set_text(_content) {
@@ -141,8 +243,7 @@ impl<Data: AppData, S: kas::draw::DrawSharedImpl, T> ShellShared<Data, S, T> {
         }
     }
 
-    #[inline]
-    pub fn get_primary(&mut self) -> Option<String> {
+    fn get_primary(&mut self) -> Option<String> {
         #[cfg(all(
             unix,
             not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
@@ -161,8 +262,7 @@ impl<Data: AppData, S: kas::draw::DrawSharedImpl, T> ShellShared<Data, S, T> {
         None
     }
 
-    #[inline]
-    pub fn set_primary(&mut self, _content: String) {
+    fn set_primary(&mut self, _content: String) {
         #[cfg(all(
             unix,
             not(any(target_os = "macos", target_os = "android", target_os = "emscripten")),
@@ -179,5 +279,19 @@ impl<Data: AppData, S: kas::draw::DrawSharedImpl, T> ShellShared<Data, S, T> {
                 Err(e) => warn_about_error("Failed to set clipboard contents", &e),
             }
         }
+    }
+
+    fn adjust_theme<'s>(&'s mut self, f: Box<dyn FnOnce(&mut dyn ThemeControl) -> Action + 's>) {
+        let action = f(&mut self.theme);
+        self.pending.push_back(Pending::Action(action));
+    }
+
+    fn draw_shared(&mut self) -> &mut dyn DrawShared {
+        &mut self.draw
+    }
+
+    #[inline]
+    fn waker(&self) -> &std::task::Waker {
+        &self.waker
     }
 }
