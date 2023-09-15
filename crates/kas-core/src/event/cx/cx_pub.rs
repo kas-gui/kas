@@ -855,21 +855,19 @@ impl<'a> EventCx<'a> {
     /// This may change, even without user action, since some platforms
     /// always initialize windows with scale factor 1.
     /// See also notes on [`Events::configure`].
-    //
-    // NOTE: we could implement this using only &self if required.
-    pub fn size_cx(&mut self) -> SizeCx<'_> {
-        SizeCx::new(self.shell.size_and_draw_shared().0)
+    pub fn size_cx(&self) -> SizeCx<'_> {
+        SizeCx::new(self.shell.theme_size())
     }
 
     /// Get a [`ConfigCx`]
     pub fn config_cx(&mut self) -> ConfigCx<'_> {
-        let (size, _) = self.shell.size_and_draw_shared();
+        let size = self.shell.theme_size();
         ConfigCx::new(size, self.state)
     }
 
     /// Get a [`DrawShared`]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
-        self.shell.size_and_draw_shared().1
+        self.shell.draw_shared()
     }
 
     /// Directly access Winit Window

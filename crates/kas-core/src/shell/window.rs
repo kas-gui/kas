@@ -5,7 +5,7 @@
 
 //! Window types
 
-use super::{Pending, Platform, ProxyAction};
+use super::{Pending, ProxyAction};
 use super::{SharedState, ShellShared, ShellWindow, WindowSurface};
 use kas::cast::Cast;
 use kas::draw::{color::Rgba, AnimationState, DrawShared};
@@ -598,17 +598,17 @@ impl<'a, A: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellWindow for TkWi
         self.shared.pending.push_back(Pending::Action(action));
     }
 
-    fn size_and_draw_shared<'s>(&'s mut self) -> (&'s dyn ThemeSize, &'s mut dyn DrawShared) {
-        (self.window.theme_window.size(), &mut self.shared.draw)
+    fn theme_size(&self) -> &dyn ThemeSize {
+        self.window.theme_window.size()
+    }
+
+    fn draw_shared(&mut self) -> &mut dyn DrawShared {
+        &mut self.shared.draw
     }
 
     #[inline]
     fn set_cursor_icon(&mut self, icon: CursorIcon) {
         self.window.set_cursor_icon(icon);
-    }
-
-    fn platform(&self) -> Platform {
-        self.shared.platform
     }
 
     #[cfg(winit)]

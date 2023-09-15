@@ -292,14 +292,14 @@ pub(crate) trait ShellWindow {
     // TODO(opt): pass f by value, not boxed
     fn adjust_theme<'s>(&'s mut self, f: Box<dyn FnOnce(&mut dyn ThemeControl) -> Action + 's>);
 
-    /// Access [`ThemeSize`] and [`DrawShared`] objects
-    fn size_and_draw_shared<'s>(&'s mut self) -> (&'s dyn ThemeSize, &'s mut dyn DrawShared);
+    /// Access the [`ThemeSize`] object
+    fn theme_size(&self) -> &dyn ThemeSize;
+
+    /// Access the [`DrawShared`] object
+    fn draw_shared(&mut self) -> &mut dyn DrawShared;
 
     /// Set the mouse cursor
     fn set_cursor_icon(&mut self, icon: CursorIcon);
-
-    /// Get the platform
-    fn platform(&self) -> Platform;
 
     /// Directly access Winit Window
     ///
