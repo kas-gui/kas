@@ -15,6 +15,8 @@ use crate::draw::DrawShared;
 use crate::event::config::ChangeConfig;
 use crate::geom::{Offset, Vec2};
 use crate::theme::{SizeCx, ThemeControl};
+#[cfg(all(wayland_platform, feature = "clipboard"))]
+use crate::util::warn_about_error;
 use crate::{Action, Erased, WidgetId, Window, WindowId};
 #[allow(unused)] use crate::{Events, Layout}; // for doc-links
 
@@ -735,7 +737,8 @@ impl<'a> EventCx<'a> {
     pub(crate) fn add_popup(&mut self, popup: crate::PopupDescriptor) -> WindowId {
         log::trace!(target: "kas_core::event", "add_popup: {popup:?}");
 
-        let id = self.shell.add_popup(popup.clone());
+        let parent_id = self.window.window_id();
+        let id = self.shell.add_popup(parent_id, popup.clone());
         let nav_focus = self.nav_focus.clone();
         self.popups.push((id, popup, nav_focus));
         self.clear_nav_focus();
@@ -791,7 +794,7 @@ impl<'a> EventCx<'a> {
     /// This calls [`winit::window::Window::drag_window`](https://docs.rs/winit/latest/winit/window/struct.Window.html#method.drag_window). Errors are ignored.
     pub fn drag_window(&self) {
         #[cfg(winit)]
-        if let Some(ww) = self.shell.winit_window() {
+        if let Some(ww) = self.window.winit_window() {
             if let Err(e) = ww.drag_window() {
                 log::warn!("EventCx::drag_window: {e}");
             }
@@ -803,7 +806,7 @@ impl<'a> EventCx<'a> {
     /// This calls [`winit::window::Window::drag_resize_window`](https://docs.rs/winit/latest/winit/window/struct.Window.html#method.drag_resize_window). Errors are ignored.
     pub fn drag_resize_window(&self, direction: ResizeDirection) {
         #[cfg(winit)]
-        if let Some(ww) = self.shell.winit_window() {
+        if let Some(ww) = self.window.winit_window() {
             if let Err(e) = ww.drag_resize_window(direction) {
                 log::warn!("EventCx::drag_resize_window: {e}");
             }
@@ -816,12 +819,29 @@ impl<'a> EventCx<'a> {
     /// may wish to log an appropriate warning message.
     #[inline]
     pub fn get_clipboard(&mut self) -> Option<String> {
+        #[cfg(all(wayland_platform, feature = "clipboard"))]
+        if let Some(cb) = self.window.wayland_clipboard() {
+            return match cb.load() {
+                Ok(s) => Some(s),
+                Err(e) => {
+                    warn_about_error("Failed to get clipboard contents", &e);
+                    None
+                }
+            };
+        }
+
         self.shell.get_clipboard()
     }
 
     /// Attempt to set clipboard contents
     #[inline]
     pub fn set_clipboard(&mut self, content: String) {
+        #[cfg(all(wayland_platform, feature = "clipboard"))]
+        if let Some(cb) = self.window.wayland_clipboard() {
+            cb.store(content);
+            return;
+        }
+
         self.shell.set_clipboard(content)
     }
 
@@ -831,6 +851,17 @@ impl<'a> EventCx<'a> {
     /// paste on middle-click. This method does nothing on other platforms.
     #[inline]
     pub fn get_primary(&mut self) -> Option<String> {
+        #[cfg(all(wayland_platform, feature = "clipboard"))]
+        if let Some(cb) = self.window.wayland_clipboard() {
+            return match cb.load_primary() {
+                Ok(s) => Some(s),
+                Err(e) => {
+                    warn_about_error("Failed to get clipboard contents", &e);
+                    None
+                }
+            };
+        }
+
         self.shell.get_primary()
     }
 
@@ -840,6 +871,12 @@ impl<'a> EventCx<'a> {
     /// paste on middle-click. This method does nothing on other platforms.
     #[inline]
     pub fn set_primary(&mut self, content: String) {
+        #[cfg(all(wayland_platform, feature = "clipboard"))]
+        if let Some(cb) = self.window.wayland_clipboard() {
+            cb.store_primary(content);
+            return;
+        }
+
         self.shell.set_primary(content)
     }
 
@@ -856,12 +893,12 @@ impl<'a> EventCx<'a> {
     /// always initialize windows with scale factor 1.
     /// See also notes on [`Events::configure`].
     pub fn size_cx(&self) -> SizeCx<'_> {
-        SizeCx::new(self.shell.theme_size())
+        SizeCx::new(self.window.theme_size())
     }
 
     /// Get a [`ConfigCx`]
     pub fn config_cx(&mut self) -> ConfigCx<'_> {
-        let size = self.shell.theme_size();
+        let size = self.window.theme_size();
         ConfigCx::new(size, self.state)
     }
 
@@ -875,7 +912,7 @@ impl<'a> EventCx<'a> {
     /// This is a temporary API, allowing e.g. to minimize the window.
     #[cfg(winit)]
     pub fn winit_window(&self) -> Option<&winit::window::Window> {
-        self.shell.winit_window()
+        self.window.winit_window()
     }
 
     /// Update the mouse cursor used during a grab
@@ -886,7 +923,7 @@ impl<'a> EventCx<'a> {
     pub fn update_grab_cursor(&mut self, id: WidgetId, icon: CursorIcon) {
         if let Some(ref grab) = self.mouse_grab {
             if grab.start_id == id {
-                self.shell.set_cursor_icon(icon);
+                self.window.set_cursor_icon(icon);
             }
         }
     }

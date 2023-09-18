@@ -13,11 +13,12 @@ mod common;
 
 #[cfg(winit)] use crate::WindowId;
 #[cfg(winit)] use event_loop::Loop as EventLoop;
-#[cfg(winit)] use shared::{SharedState, ShellSharedErased};
+#[cfg(winit)]
+pub(crate) use shared::{SharedState, ShellSharedErased};
 #[cfg(winit)] use shell::PlatformWrapper;
-#[cfg(winit)] use window::Window;
+#[cfg(winit)]
+pub(crate) use window::{Window, WindowDataErased};
 
-pub(crate) use common::ShellWindow;
 pub use common::{Error, Platform, Result};
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 pub use common::{GraphicalShell, WindowSurface};

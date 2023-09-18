@@ -12,7 +12,6 @@ use std::time::{Duration, Instant};
 use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
-use crate::shell::ShellWindow;
 use crate::theme::ThemeSize;
 use crate::{Action, NavAdvance, WidgetId, Window};
 
@@ -119,13 +118,17 @@ impl EventState {
     ///
     /// Invokes the given closure on this [`EventCx`].
     #[inline]
-    pub(crate) fn with<F>(&mut self, shell: &mut dyn ShellWindow, messages: &mut ErasedStack, f: F)
-    where
-        F: FnOnce(&mut EventCx),
-    {
+    pub(crate) fn with<'a, F: FnOnce(&mut EventCx)>(
+        &'a mut self,
+        shell: &'a mut dyn ShellSharedErased,
+        window: &'a dyn WindowDataErased,
+        messages: &'a mut ErasedStack,
+        f: F,
+    ) {
         let mut cx = EventCx {
             state: self,
             shell,
+            window,
             messages,
             last_child: None,
             scroll: Scroll::None,
@@ -134,118 +137,113 @@ impl EventState {
     }
 
     /// Handle all pending items before event loop sleeps
-    pub(crate) fn flush_pending<A>(
-        &mut self,
-        shell: &mut dyn ShellWindow,
-        messages: &mut ErasedStack,
+    pub(crate) fn flush_pending<'a, A>(
+        &'a mut self,
+        shell: &'a mut dyn ShellSharedErased,
+        window: &'a dyn WindowDataErased,
+        messages: &'a mut ErasedStack,
         win: &mut Window<A>,
         data: &A,
     ) -> Action {
         let old_hover_icon = self.hover_icon;
 
-        let mut cx = EventCx {
-            state: self,
-            shell,
-            messages,
-            last_child: None,
-            scroll: Scroll::None,
-        };
-
-        while let Some((id, wid)) = cx.popup_removed.pop() {
-            cx.send_event(win.as_node(data), id, Event::PopupClosed(wid));
-        }
-
-        cx.flush_mouse_grab_motion(win.as_node(data));
-        for i in 0..cx.touch_grab.len() {
-            let action = cx.touch_grab[i].flush_click_move();
-            cx.state.action |= action;
-            if let Some((id, event)) = cx.touch_grab[i].flush_grab_move() {
-                cx.send_event(win.as_node(data), id, event);
-            }
-        }
-
-        for gi in 0..cx.pan_grab.len() {
-            let grab = &mut cx.pan_grab[gi];
-            debug_assert!(grab.mode != GrabMode::Grab);
-            assert!(grab.n > 0);
-
-            // Terminology: pi are old coordinates, qi are new coords
-            let (p1, q1) = (DVec2::conv(grab.coords[0].0), DVec2::conv(grab.coords[0].1));
-            grab.coords[0].0 = grab.coords[0].1;
-
-            let alpha;
-            let delta;
-
-            if grab.mode == GrabMode::PanOnly || grab.n == 1 {
-                alpha = DVec2(1.0, 0.0);
-                delta = q1 - p1;
-            } else {
-                // We don't use more than two touches: information would be
-                // redundant (although it could be averaged).
-                let (p2, q2) = (DVec2::conv(grab.coords[1].0), DVec2::conv(grab.coords[1].1));
-                grab.coords[1].0 = grab.coords[1].1;
-                let (pd, qd) = (p2 - p1, q2 - q1);
-
-                alpha = match grab.mode {
-                    GrabMode::PanFull => qd.complex_div(pd),
-                    GrabMode::PanScale => DVec2((qd.sum_square() / pd.sum_square()).sqrt(), 0.0),
-                    GrabMode::PanRotate => {
-                        let a = qd.complex_div(pd);
-                        a / a.sum_square().sqrt()
-                    }
-                    _ => unreachable!(),
-                };
-
-                // Average delta from both movements:
-                delta = (q1 - alpha.complex_mul(p1) + q2 - alpha.complex_mul(p2)) * 0.5;
+        self.with(shell, window, messages, |cx| {
+            while let Some((id, wid)) = cx.popup_removed.pop() {
+                cx.send_event(win.as_node(data), id, Event::PopupClosed(wid));
             }
 
-            let id = grab.id.clone();
-            if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
-                let event = Event::Pan { alpha, delta };
-                cx.send_event(win.as_node(data), id, event);
-            }
-        }
-
-        // Warning: infinite loops are possible here if widgets always queue a
-        // new pending event when evaluating one of these:
-        while let Some(item) = cx.pending.pop_front() {
-            log::trace!(target: "kas_core::event", "update: handling Pending::{item:?}");
-            match item {
-                Pending::Configure(id) => {
-                    win.as_node(data)
-                        .find_node(&id, |node| cx.configure(node, id.clone()));
-
-                    let hover = win.find_id(data, cx.state.last_mouse_coord);
-                    cx.state.set_hover(hover);
-                }
-                Pending::Update(id) => {
-                    win.as_node(data).find_node(&id, |node| cx.update(node));
-                }
-                Pending::Send(id, event) => {
-                    if matches!(&event, &Event::MouseHover(false)) {
-                        cx.hover_icon = Default::default();
-                    }
+            cx.flush_mouse_grab_motion(win.as_node(data));
+            for i in 0..cx.touch_grab.len() {
+                let action = cx.touch_grab[i].flush_click_move();
+                cx.state.action |= action;
+                if let Some((id, event)) = cx.touch_grab[i].flush_grab_move() {
                     cx.send_event(win.as_node(data), id, event);
                 }
-                Pending::NextNavFocus {
-                    target,
-                    reverse,
-                    source,
-                } => {
-                    cx.next_nav_focus_impl(win.as_node(data), target, reverse, source);
+            }
+
+            for gi in 0..cx.pan_grab.len() {
+                let grab = &mut cx.pan_grab[gi];
+                debug_assert!(grab.mode != GrabMode::Grab);
+                assert!(grab.n > 0);
+
+                // Terminology: pi are old coordinates, qi are new coords
+                let (p1, q1) = (DVec2::conv(grab.coords[0].0), DVec2::conv(grab.coords[0].1));
+                grab.coords[0].0 = grab.coords[0].1;
+
+                let alpha;
+                let delta;
+
+                if grab.mode == GrabMode::PanOnly || grab.n == 1 {
+                    alpha = DVec2(1.0, 0.0);
+                    delta = q1 - p1;
+                } else {
+                    // We don't use more than two touches: information would be
+                    // redundant (although it could be averaged).
+                    let (p2, q2) = (DVec2::conv(grab.coords[1].0), DVec2::conv(grab.coords[1].1));
+                    grab.coords[1].0 = grab.coords[1].1;
+                    let (pd, qd) = (p2 - p1, q2 - q1);
+
+                    alpha = match grab.mode {
+                        GrabMode::PanFull => qd.complex_div(pd),
+                        GrabMode::PanScale => {
+                            DVec2((qd.sum_square() / pd.sum_square()).sqrt(), 0.0)
+                        }
+                        GrabMode::PanRotate => {
+                            let a = qd.complex_div(pd);
+                            a / a.sum_square().sqrt()
+                        }
+                        _ => unreachable!(),
+                    };
+
+                    // Average delta from both movements:
+                    delta = (q1 - alpha.complex_mul(p1) + q2 - alpha.complex_mul(p2)) * 0.5;
+                }
+
+                let id = grab.id.clone();
+                if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
+                    let event = Event::Pan { alpha, delta };
+                    cx.send_event(win.as_node(data), id, event);
                 }
             }
-        }
 
-        // Poll futures last. This means that any newly pushed future should
-        // get polled from the same update() call.
-        cx.poll_futures(win.as_node(data));
+            // Warning: infinite loops are possible here if widgets always queue a
+            // new pending event when evaluating one of these:
+            while let Some(item) = cx.pending.pop_front() {
+                log::trace!(target: "kas_core::event", "update: handling Pending::{item:?}");
+                match item {
+                    Pending::Configure(id) => {
+                        win.as_node(data)
+                            .find_node(&id, |node| cx.configure(node, id.clone()));
 
-        drop(cx);
+                        let hover = win.find_id(data, cx.state.last_mouse_coord);
+                        cx.state.set_hover(hover);
+                    }
+                    Pending::Update(id) => {
+                        win.as_node(data).find_node(&id, |node| cx.update(node));
+                    }
+                    Pending::Send(id, event) => {
+                        if matches!(&event, &Event::MouseHover(false)) {
+                            cx.hover_icon = Default::default();
+                        }
+                        cx.send_event(win.as_node(data), id, event);
+                    }
+                    Pending::NextNavFocus {
+                        target,
+                        reverse,
+                        source,
+                    } => {
+                        cx.next_nav_focus_impl(win.as_node(data), target, reverse, source);
+                    }
+                }
+            }
+
+            // Poll futures last. This means that any newly pushed future should
+            // get polled from the same update() call.
+            cx.poll_futures(win.as_node(data));
+        });
 
         if self.hover_icon != old_hover_icon && self.mouse_grab.is_none() {
-            shell.set_cursor_icon(self.hover_icon);
+            window.set_cursor_icon(self.hover_icon);
         }
 
         std::mem::take(&mut self.action)

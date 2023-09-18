@@ -22,7 +22,7 @@ use std::task::Waker;
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
 /// Shell interface state
-pub(super) struct ShellShared<Data: AppData, S: kas::draw::DrawSharedImpl, T: Theme<S>> {
+pub struct ShellShared<Data: AppData, S: kas::draw::DrawSharedImpl, T: Theme<S>> {
     pub(super) platform: Platform,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Clipboard>,
@@ -118,7 +118,7 @@ impl<Data: AppData, S: kas::draw::DrawSharedImpl, T: Theme<S>> ShellShared<Data,
     }
 }
 
-pub(super) trait ShellSharedErased {
+pub trait ShellSharedErased {
     /// Add a pop-up
     ///
     /// A pop-up may be presented as an overlay layer in the current window or
@@ -154,21 +154,37 @@ pub(super) trait ShellSharedErased {
     ///
     /// In case of failure, paste actions will simply fail. The implementation
     /// may wish to log an appropriate warning message.
+    ///
+    /// NOTE: on Wayland, use `WindowDataErased::wayland_clipboard` instead.
+    /// This split API probably can't be resolved until Winit integrates
+    /// clipboard support.
     fn get_clipboard(&mut self) -> Option<String>;
 
     /// Attempt to set clipboard contents
+    ///
+    /// NOTE: on Wayland, use `WindowDataErased::wayland_clipboard` instead.
+    /// This split API probably can't be resolved until Winit integrates
+    /// clipboard support.
     fn set_clipboard(&mut self, content: String);
 
     /// Get contents of primary buffer
     ///
     /// Linux has a "primary buffer" with implicit copy on text selection and
     /// paste on middle-click. This method does nothing on other platforms.
+    ///
+    /// NOTE: on Wayland, use `WindowDataErased::wayland_clipboard` instead.
+    /// This split API probably can't be resolved until Winit integrates
+    /// clipboard support.
     fn get_primary(&mut self) -> Option<String>;
 
     /// Set contents of primary buffer
     ///
     /// Linux has a "primary buffer" with implicit copy on text selection and
     /// paste on middle-click. This method does nothing on other platforms.
+    ///
+    /// NOTE: on Wayland, use `WindowDataErased::wayland_clipboard` instead.
+    /// This split API probably can't be resolved until Winit integrates
+    /// clipboard support.
     fn set_primary(&mut self, content: String);
 
     /// Adjust the theme

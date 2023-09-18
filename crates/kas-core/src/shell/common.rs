@@ -6,13 +6,9 @@
 //! Public shell stuff common to all backends
 
 use crate::draw::{color::Rgba, DrawIface, WindowCommon};
-use crate::draw::{DrawImpl, DrawShared, DrawSharedImpl};
-use crate::event::CursorIcon;
+use crate::draw::{DrawImpl, DrawSharedImpl};
 use crate::geom::Size;
-use crate::theme::{ThemeControl, ThemeSize};
-use crate::{Action, Window, WindowId};
 use raw_window_handle as raw;
-use std::any::TypeId;
 use thiserror::Error;
 
 /// Possible failures from constructing a [`Shell`](super::Shell)
@@ -224,89 +220,4 @@ pub trait WindowSurface {
 
     /// Present frame
     fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba);
-}
-
-/// Window management interface
-///
-/// Note: previously, this was implemented by a dependent crate. Now, it is not,
-/// which might suggest this trait is no longer needed, however `EventCx` still
-/// needs type erasure over `S: WindowSurface` and `T: Theme`.
-pub(crate) trait ShellWindow {
-    /// Add a pop-up
-    ///
-    /// A pop-up may be presented as an overlay layer in the current window or
-    /// via a new borderless window.
-    ///
-    /// Pop-ups support position hints: they are placed *next to* the specified
-    /// `rect`, preferably in the given `direction`.
-    ///
-    /// Returns `None` if window creation is not currently available (but note
-    /// that `Some` result does not guarantee the operation succeeded).
-    fn add_popup(&mut self, popup: crate::PopupDescriptor) -> WindowId;
-
-    /// Add a window
-    ///
-    /// Toolkits typically allow windows to be added directly, before start of
-    /// the event loop (e.g. `kas_wgpu::Toolkit::add`).
-    ///
-    /// This method is an alternative allowing a window to be added from an
-    /// event handler, albeit without error handling.
-    ///
-    /// Safety: this method *should* require generic parameter `Data` (data type
-    /// passed to the `Shell`). Realising this would require adding this type
-    /// parameter to `EventCx` and thus to all widgets (not necessarily the
-    /// type accepted by the widget as input). As an alternative we require the
-    /// caller to type-cast `Window<Data>` to `Window<()>` and pass in
-    /// `TypeId::of::<Data>()`.
-    unsafe fn add_window(&mut self, window: Window<()>, data_type_id: TypeId) -> WindowId;
-
-    /// Close a window
-    fn close_window(&mut self, id: WindowId);
-
-    /// Attempt to get clipboard contents
-    ///
-    /// In case of failure, paste actions will simply fail. The implementation
-    /// may wish to log an appropriate warning message.
-    fn get_clipboard(&mut self) -> Option<String>;
-
-    /// Attempt to set clipboard contents
-    fn set_clipboard(&mut self, content: String);
-
-    /// Get contents of primary buffer
-    ///
-    /// Linux has a "primary buffer" with implicit copy on text selection and
-    /// paste on middle-click. This method does nothing on other platforms.
-    fn get_primary(&mut self) -> Option<String>;
-
-    /// Set contents of primary buffer
-    ///
-    /// Linux has a "primary buffer" with implicit copy on text selection and
-    /// paste on middle-click. This method does nothing on other platforms.
-    fn set_primary(&mut self, content: String);
-
-    /// Adjust the theme
-    ///
-    /// Note: theme adjustments apply to all windows, as does the [`Action`]
-    /// returned from the closure.
-    //
-    // TODO(opt): pass f by value, not boxed
-    fn adjust_theme<'s>(&'s mut self, f: Box<dyn FnOnce(&mut dyn ThemeControl) -> Action + 's>);
-
-    /// Access the [`ThemeSize`] object
-    fn theme_size(&self) -> &dyn ThemeSize;
-
-    /// Access the [`DrawShared`] object
-    fn draw_shared(&mut self) -> &mut dyn DrawShared;
-
-    /// Set the mouse cursor
-    fn set_cursor_icon(&mut self, icon: CursorIcon);
-
-    /// Directly access Winit Window
-    ///
-    /// This is a temporary API, allowing e.g. to minimize the window.
-    #[cfg(winit)]
-    fn winit_window(&self) -> Option<&winit::window::Window>;
-
-    /// Access a Waker
-    fn waker(&self) -> &std::task::Waker;
 }

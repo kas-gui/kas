@@ -21,7 +21,7 @@ use super::config::WindowConfig;
 use super::*;
 use crate::cast::Cast;
 use crate::geom::{Coord, Offset};
-use crate::shell::{Platform, ShellWindow};
+use crate::shell::{Platform, ShellSharedErased, WindowDataErased};
 use crate::util::WidgetHierarchy;
 use crate::LayoutExt;
 use crate::{Action, Erased, ErasedStack, NavAdvance, Node, Widget, WidgetId, WindowId};
@@ -418,7 +418,8 @@ impl EventState {
 #[must_use]
 pub struct EventCx<'a> {
     state: &'a mut EventState,
-    shell: &'a mut dyn ShellWindow,
+    shell: &'a mut dyn ShellSharedErased,
+    window: &'a dyn WindowDataErased,
     messages: &'a mut ErasedStack,
     last_child: Option<usize>,
     scroll: Scroll,
@@ -543,7 +544,7 @@ impl<'a> EventCx<'a> {
     fn remove_mouse_grab(&mut self, success: bool) -> Option<(WidgetId, Event)> {
         if let Some(grab) = self.mouse_grab.take() {
             log::trace!("remove_mouse_grab: start_id={}", grab.start_id);
-            self.shell.set_cursor_icon(self.hover_icon);
+            self.window.set_cursor_icon(self.hover_icon);
             self.send_action(Action::REDRAW); // redraw(..)
             if grab.mode.is_pan() {
                 self.remove_pan_grab(grab.pan_grab);

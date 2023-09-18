@@ -182,7 +182,7 @@ impl GrabBuilder {
                     delta: Offset::ZERO,
                 });
                 if let Some(icon) = cursor {
-                    cx.shell.set_cursor_icon(icon);
+                    cx.window.set_cursor_icon(icon);
                 }
             }
             PressSource::Touch(touch_id) => {

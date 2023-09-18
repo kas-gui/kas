@@ -6,18 +6,15 @@
 //! Window types
 
 use super::ProxyAction;
-use super::{SharedState, ShellSharedErased, ShellWindow, WindowSurface};
+use super::{SharedState, WindowSurface};
 use kas::cast::Cast;
-use kas::draw::{color::Rgba, AnimationState, DrawShared};
+use kas::draw::{color::Rgba, AnimationState};
 use kas::event::{config::WindowConfig, ConfigCx, CursorIcon, EventState};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
-use kas::theme::{DrawCx, SizeCx, ThemeControl, ThemeSize};
+use kas::theme::{DrawCx, SizeCx, ThemeSize};
 use kas::theme::{Theme, Window as _};
-#[cfg(all(wayland_platform, feature = "clipboard"))]
-use kas::util::warn_about_error;
 use kas::{Action, AppData, ErasedStack, Layout, LayoutExt, Widget, WindowId};
-use std::any::TypeId;
 use std::mem::take;
 use std::time::Instant;
 use winit::event::WindowEvent;
@@ -217,11 +214,11 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                 window.solve_cache.invalidate_rule_cache();
             }
             event => {
-                let mut tkw = TkWindow::new(&mut shared.shell, window);
                 let mut messages = ErasedStack::new();
-                self.ev_state.with(&mut tkw, &mut messages, |cx| {
-                    cx.handle_winit(&shared.data, &mut self.widget, event);
-                });
+                self.ev_state
+                    .with(&mut shared.shell, window, &mut messages, |cx| {
+                        cx.handle_winit(&shared.data, &mut self.widget, event);
+                    });
                 shared.handle_messages(&mut messages);
 
                 if self.ev_state.action.contains(Action::RECONFIGURE) {
@@ -241,11 +238,14 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         let Some(ref window) = self.window else {
             return (Action::empty(), None);
         };
-        let mut tkw = TkWindow::new(&mut shared.shell, window);
         let mut messages = ErasedStack::new();
-        let action =
-            self.ev_state
-                .flush_pending(&mut tkw, &mut messages, &mut self.widget, &shared.data);
+        let action = self.ev_state.flush_pending(
+            &mut shared.shell,
+            window,
+            &mut messages,
+            &mut self.widget,
+            &shared.data,
+        );
         shared.handle_messages(&mut messages);
 
         if action.contains(Action::CLOSE | Action::EXIT) {
@@ -314,11 +314,12 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         let Some(ref window) = self.window else {
             return None;
         };
-        let mut tkw = TkWindow::new(&mut shared.shell, window);
         let widget = self.widget.as_node(&shared.data);
         let mut messages = ErasedStack::new();
         self.ev_state
-            .with(&mut tkw, &mut messages, |cx| cx.update_timer(widget));
+            .with(&mut shared.shell, window, &mut messages, |cx| {
+                cx.update_timer(widget)
+            });
         shared.handle_messages(&mut messages);
         self.next_resume()
     }
@@ -332,11 +333,11 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         let Some(ref window) = self.window else {
             return;
         };
-        let mut tkw = TkWindow::new(&mut shared.shell, window);
         let mut messages = ErasedStack::new();
-        self.ev_state.with(&mut tkw, &mut messages, |cx| {
-            self.widget.add_popup(cx, &shared.data, id, popup)
-        });
+        self.ev_state
+            .with(&mut shared.shell, window, &mut messages, |cx| {
+                self.widget.add_popup(cx, &shared.data, id, popup)
+            });
         shared.handle_messages(&mut messages);
     }
 
@@ -348,11 +349,12 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         if id == self.window_id {
             self.ev_state.send_action(Action::CLOSE);
         } else if let Some(window) = self.window.as_ref() {
-            let mut tkw = TkWindow::new(&mut shared.shell, window);
             let widget = &mut self.widget;
             let mut messages = ErasedStack::new();
             self.ev_state
-                .with(&mut tkw, &mut messages, |cx| widget.remove_popup(cx, id));
+                .with(&mut shared.shell, window, &mut messages, |cx| {
+                    widget.remove_popup(cx, id)
+                });
             shared.handle_messages(&mut messages);
         }
     }
@@ -493,110 +495,49 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     }
 }
 
-struct TkWindow<'a, S: WindowSurface, T: Theme<S::Shared>> {
-    shared: &'a mut dyn ShellSharedErased,
-    window: &'a WindowData<S, T>,
+pub(crate) trait WindowDataErased {
+    /// Get the window identifier
+    fn window_id(&self) -> WindowId;
+
+    /// Access the wayland clipboard object, if available
+    #[cfg(all(wayland_platform, feature = "clipboard"))]
+    fn wayland_clipboard(&self) -> Option<&smithay_clipboard::Clipboard>;
+
+    /// Access the [`ThemeSize`] object
+    fn theme_size(&self) -> &dyn ThemeSize;
+
+    /// Set the mouse cursor
+    fn set_cursor_icon(&self, icon: CursorIcon);
+
+    /// Directly access Winit Window
+    ///
+    /// This is a temporary API, allowing e.g. to minimize the window.
+    #[cfg(winit)]
+    fn winit_window(&self) -> Option<&winit::window::Window>;
 }
 
-impl<'a, S: WindowSurface, T: Theme<S::Shared>> TkWindow<'a, S, T> {
-    fn new(shared: &'a mut dyn ShellSharedErased, window: &'a WindowData<S, T>) -> Self {
-        TkWindow { shared, window }
-    }
-}
-
-impl<'a, S: WindowSurface, T: Theme<S::Shared>> ShellWindow for TkWindow<'a, S, T> {
-    fn add_popup(&mut self, popup: kas::PopupDescriptor) -> WindowId {
-        let parent_id = self.window.window_id;
-        self.shared.add_popup(parent_id, popup)
+impl<S: WindowSurface, T: Theme<S::Shared>> WindowDataErased for WindowData<S, T> {
+    fn window_id(&self) -> WindowId {
+        self.window_id
     }
 
-    unsafe fn add_window(&mut self, window: kas::Window<()>, data_type_id: TypeId) -> WindowId {
-        self.shared.add_window(window, data_type_id)
-    }
-
-    fn close_window(&mut self, id: WindowId) {
-        self.shared.close_window(id);
-    }
-
-    #[inline]
-    fn get_clipboard(&mut self) -> Option<String> {
-        #[cfg(all(wayland_platform, feature = "clipboard"))]
-        if let Some(cb) = self.window.wayland_clipboard.as_ref() {
-            return match cb.load() {
-                Ok(s) => Some(s),
-                Err(e) => {
-                    warn_about_error("Failed to get clipboard contents", &e);
-                    None
-                }
-            };
-        }
-
-        self.shared.get_clipboard()
-    }
-
-    #[inline]
-    fn set_clipboard<'c>(&mut self, content: String) {
-        #[cfg(all(wayland_platform, feature = "clipboard"))]
-        if let Some(cb) = self.window.wayland_clipboard.as_ref() {
-            cb.store(content);
-            return;
-        }
-
-        self.shared.set_clipboard(content);
-    }
-
-    #[inline]
-    fn get_primary(&mut self) -> Option<String> {
-        #[cfg(all(wayland_platform, feature = "clipboard"))]
-        if let Some(cb) = self.window.wayland_clipboard.as_ref() {
-            return match cb.load_primary() {
-                Ok(s) => Some(s),
-                Err(e) => {
-                    warn_about_error("Failed to get clipboard contents", &e);
-                    None
-                }
-            };
-        }
-
-        self.shared.get_primary()
-    }
-
-    #[inline]
-    fn set_primary<'c>(&mut self, content: String) {
-        #[cfg(all(wayland_platform, feature = "clipboard"))]
-        if let Some(cb) = self.window.wayland_clipboard.as_ref() {
-            cb.store_primary(content);
-            return;
-        }
-
-        self.shared.set_primary(content);
-    }
-
-    fn adjust_theme<'s>(&'s mut self, f: Box<dyn FnOnce(&mut dyn ThemeControl) -> Action + 's>) {
-        self.shared.adjust_theme(f);
+    #[cfg(all(wayland_platform, feature = "clipboard"))]
+    fn wayland_clipboard(&self) -> Option<&smithay_clipboard::Clipboard> {
+        self.wayland_clipboard.as_ref()
     }
 
     fn theme_size(&self) -> &dyn ThemeSize {
-        self.window.theme_window.size()
-    }
-
-    fn draw_shared(&mut self) -> &mut dyn DrawShared {
-        self.shared.draw_shared()
+        self.theme_window.size()
     }
 
     #[inline]
-    fn set_cursor_icon(&mut self, icon: CursorIcon) {
+    fn set_cursor_icon(&self, icon: CursorIcon) {
         self.window.set_cursor_icon(icon);
     }
 
     #[cfg(winit)]
     #[inline]
     fn winit_window(&self) -> Option<&winit::window::Window> {
-        Some(self.window)
-    }
-
-    #[inline]
-    fn waker(&self) -> &std::task::Waker {
-        self.shared.waker()
+        Some(&self.window)
     }
 }
