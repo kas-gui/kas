@@ -27,7 +27,7 @@ use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 /// been initialised first.
 pub struct Shell<Data: AppData, G: GraphicalShell, T: Theme<G::Shared>> {
     el: EventLoop<ProxyAction>,
-    windows: Vec<super::Window<Data, G::Surface, T>>,
+    windows: Vec<Box<super::Window<Data, G::Surface, T>>>,
     shared: SharedState<Data, G::Surface, T>,
 }
 
@@ -156,7 +156,7 @@ where
     #[inline]
     pub fn add(&mut self, window: Window<Data>) -> WindowId {
         let id = self.shared.shell.next_window_id();
-        let win = super::Window::new(&self.shared, id, window);
+        let win = Box::new(super::Window::new(&self.shared.shell, id, window));
         self.windows.push(win);
         id
     }

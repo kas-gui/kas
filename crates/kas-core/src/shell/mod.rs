@@ -32,9 +32,11 @@ pub extern crate raw_window_handle;
 #[allow(clippy::large_enum_variant)]
 #[crate::autoimpl(Debug)]
 #[cfg(winit)]
-enum Pending<A: crate::AppData> {
+enum Pending<A: kas::AppData, S: WindowSurface, T: kas::theme::Theme<S::Shared>> {
     AddPopup(WindowId, WindowId, kas::PopupDescriptor),
-    AddWindow(WindowId, kas::Window<A>),
+    // NOTE: we don't need S, T here if we construct the Window later.
+    // But this way we can pass a single boxed value.
+    AddWindow(WindowId, Box<Window<A, S, T>>),
     CloseWindow(WindowId),
     Action(kas::Action),
 }

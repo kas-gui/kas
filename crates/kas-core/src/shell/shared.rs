@@ -22,22 +22,22 @@ use std::task::Waker;
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
 /// Shell interface state
-pub struct ShellShared<Data: AppData, S: kas::draw::DrawSharedImpl, T: Theme<S>> {
+pub struct ShellShared<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> {
     pub(super) platform: Platform,
+    pub(super) config: Rc<RefCell<kas::event::Config>>,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Clipboard>,
-    pub(super) draw: draw::SharedState<S>,
+    pub(super) draw: draw::SharedState<S::Shared>,
     pub(super) theme: T,
-    pub(super) pending: VecDeque<Pending<Data>>,
+    pub(super) pending: VecDeque<Pending<Data, S, T>>,
     pub(super) waker: Waker,
     window_id: u32,
 }
 
 /// State shared between windows
 pub struct SharedState<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> {
-    pub(super) shell: ShellShared<Data, S::Shared, T>,
+    pub(super) shell: ShellShared<Data, S, T>,
     pub(super) data: Data,
-    pub(super) config: Rc<RefCell<kas::event::Config>>,
     /// Estimated scale factor (from last window constructed or available screens)
     pub(super) scale_factor: f64,
     options: Options,
@@ -72,6 +72,7 @@ where
         Ok(SharedState {
             shell: ShellShared {
                 platform,
+                config,
                 #[cfg(feature = "clipboard")]
                 clipboard,
                 draw,
@@ -81,7 +82,6 @@ where
                 window_id: 0,
             },
             data,
-            config,
             scale_factor: pw.guess_scale_factor(),
             options,
         })
@@ -98,7 +98,7 @@ where
     pub fn on_exit(&self) {
         match self
             .options
-            .write_config(&self.config.borrow(), &self.shell.theme)
+            .write_config(&self.shell.config.borrow(), &self.shell.theme)
         {
             Ok(()) => (),
             Err(error) => warn_about_error("Failed to save config", &error),
@@ -106,7 +106,7 @@ where
     }
 }
 
-impl<Data: AppData, S: kas::draw::DrawSharedImpl, T: Theme<S>> ShellShared<Data, S, T> {
+impl<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellShared<Data, S, T> {
     /// Return the next window identifier
     ///
     /// TODO(opt): this should recycle used identifiers since WidgetId does not
@@ -202,7 +202,7 @@ pub trait ShellSharedErased {
     fn waker(&self) -> &std::task::Waker;
 }
 
-impl<Data: AppData, S: kas::draw::DrawSharedImpl, T: Theme<S>> ShellSharedErased
+impl<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellSharedErased
     for ShellShared<Data, S, T>
 {
     fn add_popup(&mut self, parent_id: WindowId, popup: kas::PopupDescriptor) -> WindowId {
@@ -227,6 +227,7 @@ impl<Data: AppData, S: kas::draw::DrawSharedImpl, T: Theme<S>> ShellSharedErased
         // handled to create the winit window here or use statics to generate
         // errors now, but user code can't do much with this error anyway.
         let id = self.next_window_id();
+        let window = Box::new(super::Window::new(&self, id, window));
         self.pending.push_back(Pending::AddWindow(id, window));
         id
     }

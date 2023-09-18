@@ -25,7 +25,7 @@ where
     /// State is suspended until we receive Event::Resumed
     suspended: bool,
     /// Window states
-    windows: HashMap<WindowId, Window<A, S, T>>,
+    windows: HashMap<WindowId, Box<Window<A, S, T>>>,
     popups: HashMap<WindowId, WindowId>,
     /// Translates our WindowId to winit's
     id_map: HashMap<ww::WindowId, WindowId>,
@@ -41,7 +41,10 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Loop<A, S, T>
 where
     T::Window: kas::theme::Window,
 {
-    pub(super) fn new(mut windows: Vec<Window<A, S, T>>, shared: SharedState<A, S, T>) -> Self {
+    pub(super) fn new(
+        mut windows: Vec<Box<Window<A, S, T>>>,
+        shared: SharedState<A, S, T>,
+    ) -> Self {
         Loop {
             suspended: true,
             windows: windows.drain(..).map(|w| (w.window_id, w)).collect(),
@@ -216,9 +219,8 @@ where
                     );
                     self.popups.insert(id, parent_id);
                 }
-                Pending::AddWindow(id, widget) => {
-                    log::debug!("Pending: adding window {}", widget.title());
-                    let mut window = Window::new(&self.shared, id, widget);
+                Pending::AddWindow(id, mut window) => {
+                    log::debug!("Pending: adding window {}", window.widget.title());
                     if !self.suspended {
                         match window.resume(&mut self.shared, elwt) {
                             Ok(winit_id) => {

@@ -5,8 +5,9 @@
 
 //! Window types
 
+use super::common::WindowSurface;
+use super::shared::{SharedState, ShellShared};
 use super::ProxyAction;
-use super::{SharedState, WindowSurface};
 use kas::cast::Cast;
 use kas::draw::{color::Rgba, AnimationState};
 use kas::event::{config::WindowConfig, ConfigCx, CursorIcon, EventState};
@@ -14,7 +15,7 @@ use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::theme::{DrawCx, SizeCx, ThemeSize};
 use kas::theme::{Theme, Window as _};
-use kas::{Action, AppData, ErasedStack, Layout, LayoutExt, Widget, WindowId};
+use kas::{autoimpl, Action, AppData, ErasedStack, Layout, LayoutExt, Widget, WindowId};
 use std::mem::take;
 use std::time::Instant;
 use winit::event::WindowEvent;
@@ -38,9 +39,10 @@ struct WindowData<S: WindowSurface, T: Theme<S::Shared>> {
 }
 
 /// Per-window data
+#[autoimpl(Debug ignore self._data, self.widget, self.ev_state, self.window)]
 pub struct Window<A: AppData, S: WindowSurface, T: Theme<S::Shared>> {
     _data: std::marker::PhantomData<A>,
-    widget: kas::Window<A>,
+    pub(super) widget: kas::Window<A>,
     pub(super) window_id: WindowId,
     ev_state: EventState,
     window: Option<WindowData<S, T>>,
@@ -50,7 +52,7 @@ pub struct Window<A: AppData, S: WindowSurface, T: Theme<S::Shared>> {
 impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     /// Construct window state (widget)
     pub(super) fn new(
-        shared: &SharedState<A, S, T>,
+        shared: &ShellShared<A, S, T>,
         window_id: WindowId,
         widget: kas::Window<A>,
     ) -> Self {
@@ -59,7 +61,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             _data: std::marker::PhantomData,
             widget,
             window_id,
-            ev_state: EventState::new(config, shared.shell.platform),
+            ev_state: EventState::new(config, shared.platform),
             window: None,
         }
     }
