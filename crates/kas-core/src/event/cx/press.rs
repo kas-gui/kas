@@ -9,7 +9,7 @@
 use super::{EventCx, GrabMode, IsUsed, MouseGrab, Pending, TouchGrab};
 use crate::event::cx::GrabDetails;
 use crate::event::{CursorIcon, MouseButton, Used};
-use crate::geom::{Coord, Offset};
+use crate::geom::Coord;
 use crate::{Action, WidgetId};
 
 /// Source of `EventChild::Press`
@@ -169,7 +169,9 @@ impl GrabBuilder {
                     cx.pending.push_back(Pending::Send(id, event));
                 }
                 let details = match mode {
-                    GrabMode::Click => GrabDetails::Click,
+                    GrabMode::Click => GrabDetails::Click {
+                        cur_id: Some(id.clone()),
+                    },
                     GrabMode::Grab => GrabDetails::Grab,
                     mode => {
                         assert!(mode.is_pan());
@@ -181,11 +183,8 @@ impl GrabBuilder {
                     button,
                     repetitions,
                     start_id: id.clone(),
-                    cur_id: Some(id.clone()),
                     depress: Some(id),
                     details,
-                    coord,
-                    delta: Offset::ZERO,
                 });
                 if let Some(icon) = cursor {
                     cx.window.set_cursor_icon(icon);

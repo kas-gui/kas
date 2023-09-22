@@ -152,7 +152,7 @@ impl EventState {
                 cx.send_event(win.as_node(data), id, Event::PopupClosed(wid));
             }
 
-            cx.flush_mouse_grab_motion(win.as_node(data));
+            cx.flush_mouse_grab_motion();
             for i in 0..cx.touch_grab.len() {
                 let action = cx.touch_grab[i].flush_click_move();
                 cx.state.action |= action;
@@ -376,16 +376,24 @@ impl<'a> EventCx<'a> {
                 let coord = position.cast_approx();
 
                 // Update hovered win
-                let cur_id = win.find_id(data, coord);
-                let delta = coord - self.last_mouse_coord;
-                self.set_hover(cur_id.clone());
+                let id = win.find_id(data, coord);
+                self.set_hover(id.clone());
 
                 if let Some(grab) = self.state.mouse_grab.as_mut() {
                     match grab.details {
-                        GrabDetails::Click | GrabDetails::Grab => {
-                            grab.cur_id = cur_id;
-                            grab.coord = coord;
-                            grab.delta += delta;
+                        GrabDetails::Click { ref mut cur_id } => {
+                            *cur_id = id;
+                        }
+                        GrabDetails::Grab => {
+                            let target = grab.start_id.clone();
+                            let press = Press {
+                                source: PressSource::Mouse(grab.button, grab.repetitions),
+                                id,
+                                coord,
+                            };
+                            let delta = coord - self.last_mouse_coord;
+                            let event = Event::PressMove { press, delta };
+                            self.send_event(win.as_node(data), target, event);
                         }
                         GrabDetails::Pan(g) => {
                             if let Some(pan) = self.state.pan_grab.get_mut(usize::conv(g.0)) {
@@ -393,14 +401,14 @@ impl<'a> EventCx<'a> {
                             }
                         }
                     }
-                } else if let Some(id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
+                } else if let Some(popup_id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
                     let press = Press {
                         source: PressSource::Mouse(FAKE_MOUSE_BUTTON, 0),
-                        id: cur_id,
+                        id,
                         coord,
                     };
                     let event = Event::CursorMove { press };
-                    self.send_event(win.as_node(data), id, event);
+                    self.send_event(win.as_node(data), popup_id, event);
                 } else {
                     // We don't forward move events without a grab
                 }
@@ -419,8 +427,6 @@ impl<'a> EventCx<'a> {
                 }
             }
             MouseWheel { delta, .. } => {
-                self.flush_mouse_grab_motion(win.as_node(data));
-
                 self.last_click_button = FAKE_MOUSE_BUTTON;
 
                 let event = Event::Scroll(match delta {
@@ -437,8 +443,6 @@ impl<'a> EventCx<'a> {
                 }
             }
             MouseInput { state, button, .. } => {
-                self.flush_mouse_grab_motion(win.as_node(data));
-
                 let coord = self.last_mouse_coord;
 
                 if state == ElementState::Pressed {

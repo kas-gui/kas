@@ -20,7 +20,7 @@ use std::u16;
 use super::config::WindowConfig;
 use super::*;
 use crate::cast::Cast;
-use crate::geom::{Coord, Offset};
+use crate::geom::Coord;
 use crate::shell::{Platform, ShellSharedErased, WindowDataErased};
 use crate::util::WidgetHierarchy;
 use crate::LayoutExt;
@@ -60,7 +60,7 @@ impl GrabMode {
 
 #[derive(Clone, Debug)]
 enum GrabDetails {
-    Click,
+    Click { cur_id: Option<WidgetId> },
     Grab,
     Pan((u16, u16)),
 }
@@ -70,43 +70,24 @@ struct MouseGrab {
     button: MouseButton,
     repetitions: u32,
     start_id: WidgetId,
-    cur_id: Option<WidgetId>,
     depress: Option<WidgetId>,
     details: GrabDetails,
-    coord: Coord,
-    delta: Offset,
 }
 
 impl<'a> EventCx<'a> {
-    fn flush_mouse_grab_motion(&mut self, widget: Node<'_>) {
+    fn flush_mouse_grab_motion(&mut self) {
         if let Some(grab) = self.mouse_grab.as_mut() {
-            let delta = grab.delta;
-            if delta == Offset::ZERO {
-                return;
-            }
-            grab.delta = Offset::ZERO;
-
             match grab.details {
-                GrabDetails::Click => {
-                    if grab.start_id == grab.cur_id {
-                        if grab.depress != grab.cur_id {
-                            grab.depress = grab.cur_id.clone();
+                GrabDetails::Click { ref cur_id } => {
+                    if grab.start_id == cur_id {
+                        if grab.depress != *cur_id {
+                            grab.depress = cur_id.clone();
                             self.action |= Action::REDRAW;
                         }
                     } else if grab.depress.is_some() {
                         grab.depress = None;
                         self.action |= Action::REDRAW;
                     }
-                }
-                GrabDetails::Grab => {
-                    let target = grab.start_id.clone();
-                    let press = Press {
-                        source: PressSource::Mouse(grab.button, grab.repetitions),
-                        id: grab.cur_id.clone(),
-                        coord: grab.coord,
-                    };
-                    let event = Event::PressMove { press, delta };
-                    self.send_event(widget, target, event);
                 }
                 _ => (),
             }
