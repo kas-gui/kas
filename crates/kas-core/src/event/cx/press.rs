@@ -7,6 +7,7 @@
 
 #[allow(unused)] use super::{Event, EventState}; // for doc-links
 use super::{EventCx, GrabMode, IsUsed, MouseGrab, Pending, TouchGrab};
+use crate::event::cx::GrabDetails;
 use crate::event::{CursorIcon, MouseButton, Used};
 use crate::geom::{Coord, Offset};
 use crate::{Action, WidgetId};
@@ -167,17 +168,22 @@ impl GrabBuilder {
                 if let Some((id, event)) = cx.remove_mouse_grab(false) {
                     cx.pending.push_back(Pending::Send(id, event));
                 }
-                if mode.is_pan() {
-                    pan_grab = cx.set_pan_on(id.clone(), mode, false, coord);
-                }
+                let details = match mode {
+                    GrabMode::Click => GrabDetails::Click,
+                    GrabMode::Grab => GrabDetails::Grab,
+                    mode => {
+                        assert!(mode.is_pan());
+                        let g = cx.set_pan_on(id.clone(), mode, false, coord);
+                        GrabDetails::Pan(g)
+                    }
+                };
                 cx.mouse_grab = Some(MouseGrab {
                     button,
                     repetitions,
                     start_id: id.clone(),
                     cur_id: Some(id.clone()),
                     depress: Some(id),
-                    mode,
-                    pan_grab,
+                    details,
                     coord,
                     delta: Offset::ZERO,
                 });

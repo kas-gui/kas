@@ -381,14 +381,17 @@ impl<'a> EventCx<'a> {
                 self.set_hover(cur_id.clone());
 
                 if let Some(grab) = self.state.mouse_grab.as_mut() {
-                    if !grab.mode.is_pan() {
-                        grab.cur_id = cur_id;
-                        grab.coord = coord;
-                        grab.delta += delta;
-                    } else if let Some(pan) =
-                        self.state.pan_grab.get_mut(usize::conv(grab.pan_grab.0))
-                    {
-                        pan.coords[usize::conv(grab.pan_grab.1)].1 = coord;
+                    match grab.details {
+                        GrabDetails::Click | GrabDetails::Grab => {
+                            grab.cur_id = cur_id;
+                            grab.coord = coord;
+                            grab.delta += delta;
+                        }
+                        GrabDetails::Pan(g) => {
+                            if let Some(pan) = self.state.pan_grab.get_mut(usize::conv(g.0)) {
+                                pan.coords[usize::conv(g.1)].1 = coord;
+                            }
+                        }
                     }
                 } else if let Some(id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
                     let press = Press {

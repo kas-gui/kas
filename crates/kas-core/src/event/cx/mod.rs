@@ -59,14 +59,20 @@ impl GrabMode {
 }
 
 #[derive(Clone, Debug)]
+enum GrabDetails {
+    Click,
+    Grab,
+    Pan((u16, u16)),
+}
+
+#[derive(Clone, Debug)]
 struct MouseGrab {
     button: MouseButton,
     repetitions: u32,
     start_id: WidgetId,
     cur_id: Option<WidgetId>,
     depress: Option<WidgetId>,
-    mode: GrabMode,
-    pan_grab: (u16, u16),
+    details: GrabDetails,
     coord: Coord,
     delta: Offset,
 }
@@ -80,8 +86,8 @@ impl<'a> EventCx<'a> {
             }
             grab.delta = Offset::ZERO;
 
-            match grab.mode {
-                GrabMode::Click => {
+            match grab.details {
+                GrabDetails::Click => {
                     if grab.start_id == grab.cur_id {
                         if grab.depress != grab.cur_id {
                             grab.depress = grab.cur_id.clone();
@@ -92,7 +98,7 @@ impl<'a> EventCx<'a> {
                         self.action |= Action::REDRAW;
                     }
                 }
-                GrabMode::Grab => {
+                GrabDetails::Grab => {
                     let target = grab.start_id.clone();
                     let press = Press {
                         source: PressSource::Mouse(grab.button, grab.repetitions),
@@ -286,9 +292,10 @@ impl EventState {
         log::trace!("remove_pan: index={index}");
         self.pan_grab.remove(index);
         if let Some(grab) = &mut self.mouse_grab {
-            let p0 = grab.pan_grab.0;
-            if usize::from(p0) >= index && p0 != u16::MAX {
-                grab.pan_grab.0 = p0 - 1;
+            if let GrabDetails::Pan(ref mut g) = grab.details {
+                if usize::from(g.0) >= index {
+                    g.0 -= 1;
+                }
             }
         }
         for grab in self.touch_grab.iter_mut() {
@@ -546,8 +553,8 @@ impl<'a> EventCx<'a> {
             log::trace!("remove_mouse_grab: start_id={}", grab.start_id);
             self.window.set_cursor_icon(self.hover_icon);
             self.send_action(Action::REDRAW); // redraw(..)
-            if grab.mode.is_pan() {
-                self.remove_pan_grab(grab.pan_grab);
+            if let GrabDetails::Pan(g) = grab.details {
+                self.remove_pan_grab(g);
                 // Pan grabs do not receive Event::PressEnd
                 None
             } else {
