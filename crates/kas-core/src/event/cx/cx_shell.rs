@@ -156,9 +156,6 @@ impl EventState {
             for i in 0..cx.touch_grab.len() {
                 let action = cx.touch_grab[i].flush_click_move();
                 cx.state.action |= action;
-                if let Some((id, event)) = cx.touch_grab[i].flush_grab_move() {
-                    cx.send_event(win.as_node(data), id, event);
-                }
             }
 
             for gi in 0..cx.pan_grab.len() {
@@ -527,6 +524,19 @@ impl<'a> EventCx<'a> {
 
                                 grab.cur_id = cur_id;
                                 grab.coord = coord;
+
+                                if grab.last_move != grab.coord {
+                                    let delta = grab.coord - grab.last_move;
+                                    let target = grab.start_id.clone();
+                                    let press = Press {
+                                        source: PressSource::Touch(grab.id),
+                                        id: grab.cur_id.clone(),
+                                        coord: grab.coord,
+                                    };
+                                    let event = Event::PressMove { press, delta };
+                                    grab.last_move = grab.coord;
+                                    self.send_event(win.as_node(data), target, event);
+                                }
                             } else {
                                 pan_grab = Some(grab.pan_grab);
                             }
@@ -545,9 +555,6 @@ impl<'a> EventCx<'a> {
                     ev @ (TouchPhase::Ended | TouchPhase::Cancelled) => {
                         if let Some(mut grab) = self.remove_touch(touch.id) {
                             self.send_action(grab.flush_click_move());
-                            if let Some((id, event)) = grab.flush_grab_move() {
-                                self.send_event(win.as_node(data), id, event);
-                            }
 
                             if grab.mode == GrabMode::Grab {
                                 let id = grab.cur_id.clone();

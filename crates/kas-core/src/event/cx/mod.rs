@@ -123,23 +123,6 @@ impl TouchGrab {
         }
         Action::empty()
     }
-
-    fn flush_grab_move(&mut self) -> Option<(WidgetId, Event)> {
-        if self.mode == GrabMode::Grab && self.last_move != self.coord {
-            let delta = self.coord - self.last_move;
-            let target = self.start_id.clone();
-            let press = Press {
-                source: PressSource::Touch(self.id),
-                id: self.cur_id.clone(),
-                coord: self.coord,
-            };
-            let event = Event::PressMove { press, delta };
-            self.last_move = self.coord;
-            Some((target, event))
-        } else {
-            None
-        }
-    }
 }
 
 const MAX_PAN_GRABS: usize = 2;
