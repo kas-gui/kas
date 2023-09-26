@@ -533,8 +533,9 @@ impl EventState {
     /// cases, calling this method may be ineffective. The cursor is
     /// automatically "unset" when the widget is no longer hovered.
     ///
-    /// If a mouse grab ([`Press::grab`]) is active, its icon takes precedence.
-    pub fn set_cursor_icon(&mut self, icon: CursorIcon) {
+    /// See also [`Self::update_grab_cursor`]: if a mouse grab
+    /// ([`Press::grab`]) is active, its icon takes precedence.
+    pub fn set_hover_cursor(&mut self, icon: CursorIcon) {
         // Note: this is acted on by EventState::update
         self.hover_icon = icon;
     }
@@ -920,9 +921,9 @@ impl<'a> EventCx<'a> {
     /// This only succeeds if widget `id` has an active mouse-grab (see
     /// [`Press::grab`]). The cursor will be reset when the mouse-grab
     /// ends.
-    pub fn update_grab_cursor(&mut self, id: WidgetId, icon: CursorIcon) {
+    pub fn set_grab_cursor(&mut self, id: &WidgetId, icon: CursorIcon) {
         if let Some(ref grab) = self.mouse_grab {
-            if grab.start_id == id {
+            if grab.start_id == *id {
                 self.window.set_cursor_icon(icon);
             }
         }
