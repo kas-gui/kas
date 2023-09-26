@@ -35,20 +35,20 @@ pub use config::ConfigCx;
 pub use press::{GrabBuilder, Press, PressSource};
 
 /// Controls the types of events delivered by [`Press::grab`]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum GrabMode {
     /// Deliver [`Event::PressEnd`] only for each grabbed press
     Click,
     /// Deliver [`Event::PressMove`] and [`Event::PressEnd`] for each grabbed press
     Grab,
-    /// Deliver [`Event::Pan`] events, with scaling and rotation
-    PanFull,
-    /// Deliver [`Event::Pan`] events, with scaling
-    PanScale,
-    /// Deliver [`Event::Pan`] events, with rotation
-    PanRotate,
     /// Deliver [`Event::Pan`] events, without scaling or rotation
     PanOnly,
+    /// Deliver [`Event::Pan`] events, with rotation
+    PanRotate,
+    /// Deliver [`Event::Pan`] events, with scaling
+    PanScale,
+    /// Deliver [`Event::Pan`] events, with scaling and rotation
+    PanFull,
 }
 
 impl GrabMode {
@@ -63,6 +63,12 @@ enum GrabDetails {
     Click { cur_id: Option<WidgetId> },
     Grab,
     Pan((u16, u16)),
+}
+
+impl GrabDetails {
+    fn is_pan(&self) -> bool {
+        matches!(self, GrabDetails::Pan(_))
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -227,6 +233,8 @@ impl EventState {
                     self.remove_pan(gi);
                     break;
                 }
+
+                debug_assert_eq!(grab.mode, mode);
 
                 let index = grab.n;
                 if usize::from(index) < MAX_PAN_GRABS {
