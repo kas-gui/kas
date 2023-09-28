@@ -60,12 +60,11 @@ where
         &mut self,
         event: Event<ProxyAction>,
         elwt: &EventLoopWindowTarget<ProxyAction>,
-        control_flow: &mut ControlFlow,
     ) {
         match event {
             Event::NewEvents(cause) => {
                 // MainEventsCleared will reset control_flow (but not when it is Poll)
-                *control_flow = ControlFlow::Wait;
+                elwt.set_control_flow(ControlFlow::Wait);
 
                 match cause {
                     StartCause::ResumeTimeReached {
@@ -101,8 +100,33 @@ where
                 }
             }
 
+            Event::WindowEvent {
+                window_id,
+                event: winit::event::WindowEvent::RedrawRequested,
+            } => {
+                // We must conclude pending actions (such as resize) before drawing.
+                self.flush_pending(elwt);
+
+                if let Some(id) = self.id_map.get(&window_id) {
+                    if let Some(window) = self.windows.get_mut(id) {
+                        if window.do_draw(&mut self.shared).is_err() {
+                            elwt.set_control_flow(ControlFlow::Poll);
+                        }
+                    }
+                }
+
+                const SECOND: Duration = Duration::from_secs(1);
+                self.frame_count.1 += 1;
+                let now = Instant::now();
+                if self.frame_count.0 + SECOND <= now {
+                    log::debug!("Frame rate: {} per second", self.frame_count.1);
+                    self.frame_count.0 = now;
+                    self.frame_count.1 = 0;
+                }
+            }
+
             Event::WindowEvent { window_id, event } => {
-                self.flush_pending(elwt, control_flow);
+                self.flush_pending(elwt);
 
                 if let Some(id) = self.id_map.get(&window_id) {
                     if let Some(window) = self.windows.get_mut(id) {
@@ -159,54 +183,26 @@ where
             Event::Resumed => (),
 
             Event::AboutToWait => {
-                self.flush_pending(elwt, control_flow);
+                self.flush_pending(elwt);
                 self.resumes.sort_by_key(|item| item.0);
 
-                let is_exit = matches!(control_flow, ControlFlow::ExitWithCode(_));
-                *control_flow = if is_exit || self.windows.is_empty() {
-                    self.shared.on_exit();
-                    debug_assert!(!is_exit || matches!(control_flow, ControlFlow::ExitWithCode(0)));
-                    ControlFlow::ExitWithCode(0)
-                } else if *control_flow == ControlFlow::Poll {
-                    ControlFlow::Poll
+                if self.windows.is_empty() {
+                    elwt.exit();
+                } else if matches!(elwt.control_flow(), ControlFlow::Poll) {
                 } else if let Some((instant, _)) = self.resumes.first() {
-                    ControlFlow::WaitUntil(*instant)
+                    elwt.set_control_flow(ControlFlow::WaitUntil(*instant));
                 } else {
-                    ControlFlow::Wait
+                    elwt.set_control_flow(ControlFlow::Wait);
                 };
             }
 
-            Event::RedrawRequested(id) => {
-                // We must conclude pending actions (such as resize) before drawing.
-                self.flush_pending(elwt, control_flow);
-
-                if let Some(id) = self.id_map.get(&id) {
-                    if let Some(window) = self.windows.get_mut(id) {
-                        if window.do_draw(&mut self.shared).is_err() {
-                            *control_flow = ControlFlow::Poll;
-                        }
-                    }
-                }
-
-                const SECOND: Duration = Duration::from_secs(1);
-                self.frame_count.1 += 1;
-                let now = Instant::now();
-                if self.frame_count.0 + SECOND <= now {
-                    log::debug!("Frame rate: {} per second", self.frame_count.1);
-                    self.frame_count.0 = now;
-                    self.frame_count.1 = 0;
-                }
+            Event::LoopExiting => {
+                self.shared.on_exit();
             }
-
-            Event::LoopExiting => (),
         }
     }
 
-    fn flush_pending(
-        &mut self,
-        elwt: &EventLoopWindowTarget<ProxyAction>,
-        control_flow: &mut ControlFlow,
-    ) {
+    fn flush_pending(&mut self, elwt: &EventLoopWindowTarget<ProxyAction>) {
         while let Some(pending) = self.shared.shell.pending.pop_front() {
             match pending {
                 Pending::AddPopup(parent_id, id, popup) => {
@@ -246,7 +242,7 @@ where
                     if action.contains(Action::CLOSE | Action::EXIT) {
                         self.windows.clear();
                         self.id_map.clear();
-                        *control_flow = ControlFlow::Poll;
+                        elwt.set_control_flow(ControlFlow::Poll);
                     } else {
                         for (_, window) in self.windows.iter_mut() {
                             window.handle_action(&mut self.shared, action);

@@ -177,8 +177,7 @@ where
     #[inline]
     pub fn run(self) -> Result<()> {
         let mut el = super::EventLoop::new(self.windows, self.shared);
-        self.el
-            .run(move |event, elwt, control_flow| el.handle(event, elwt, control_flow))?;
+        self.el.run(move |event, elwt| el.handle(event, elwt))?;
         Ok(())
     }
 }
