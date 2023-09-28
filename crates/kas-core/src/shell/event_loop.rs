@@ -5,17 +5,15 @@
 
 //! Event loop and handling
 
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
-
-use winit::event::{Event, StartCause};
-use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
-use winit::window as ww;
-
 use super::{Pending, SharedState};
 use super::{ProxyAction, Window, WindowSurface};
 use kas::theme::Theme;
 use kas::{Action, AppData, WindowId};
+use std::collections::HashMap;
+use std::time::Instant;
+use winit::event::{Event, StartCause};
+use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
+use winit::window as ww;
 
 /// Event-loop data structure (i.e. all run-time state)
 pub(super) struct Loop<A: AppData, S: WindowSurface, T: Theme<S::Shared>>
@@ -33,8 +31,6 @@ where
     shared: SharedState<A, S, T>,
     /// Timer resumes: (time, window identifier)
     resumes: Vec<(Instant, WindowId)>,
-    /// Frame rate counter
-    frame_count: (Instant, u32),
 }
 
 impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Loop<A, S, T>
@@ -52,7 +48,6 @@ where
             id_map: Default::default(),
             shared,
             resumes: vec![],
-            frame_count: (Instant::now(), 0),
         }
     }
 
@@ -100,37 +95,14 @@ where
                 }
             }
 
-            Event::WindowEvent {
-                window_id,
-                event: winit::event::WindowEvent::RedrawRequested,
-            } => {
-                // We must conclude pending actions (such as resize) before drawing.
-                self.flush_pending(elwt);
-
-                if let Some(id) = self.id_map.get(&window_id) {
-                    if let Some(window) = self.windows.get_mut(id) {
-                        if window.do_draw(&mut self.shared).is_err() {
-                            elwt.set_control_flow(ControlFlow::Poll);
-                        }
-                    }
-                }
-
-                const SECOND: Duration = Duration::from_secs(1);
-                self.frame_count.1 += 1;
-                let now = Instant::now();
-                if self.frame_count.0 + SECOND <= now {
-                    log::debug!("Frame rate: {} per second", self.frame_count.1);
-                    self.frame_count.0 = now;
-                    self.frame_count.1 = 0;
-                }
-            }
-
             Event::WindowEvent { window_id, event } => {
                 self.flush_pending(elwt);
 
                 if let Some(id) = self.id_map.get(&window_id) {
                     if let Some(window) = self.windows.get_mut(id) {
-                        window.handle_event(&mut self.shared, event);
+                        if window.handle_event(&mut self.shared, event) {
+                            elwt.set_control_flow(ControlFlow::Poll);
+                        }
                     }
                 }
             }

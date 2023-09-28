@@ -17,7 +17,7 @@ use kas::theme::{DrawCx, SizeCx, ThemeSize};
 use kas::theme::{Theme, Window as _};
 use kas::{autoimpl, Action, AppData, ErasedStack, Layout, LayoutExt, Widget, WindowId};
 use std::mem::take;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use winit::event::WindowEvent;
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::WindowBuilder;
@@ -29,6 +29,8 @@ struct WindowData<S: WindowSurface, T: Theme<S::Shared>> {
     #[cfg(all(wayland_platform, feature = "clipboard"))]
     wayland_clipboard: Option<smithay_clipboard::Clipboard>,
     surface: S,
+    /// Frame rate counter
+    frame_count: (Instant, u32),
 
     // NOTE: cached components could be here or in Window
     window_id: WindowId,
@@ -167,6 +169,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             #[cfg(all(wayland_platform, feature = "clipboard"))]
             wayland_clipboard,
             surface,
+            frame_count: (Instant::now(), 0),
 
             window_id: self.window_id,
             solve_cache,
@@ -188,12 +191,18 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     }
 
     /// Handle an event
-    pub(super) fn handle_event(&mut self, shared: &mut SharedState<A, S, T>, event: WindowEvent) {
+    ///
+    /// Returns `true` to force polling temporarily.
+    pub(super) fn handle_event(
+        &mut self,
+        shared: &mut SharedState<A, S, T>,
+        event: WindowEvent,
+    ) -> bool {
         let Some(ref mut window) = self.window else {
-            return;
+            return false;
         };
         match event {
-            WindowEvent::Destroyed => (),
+            WindowEvent::Moved(_) | WindowEvent::Destroyed => false,
             WindowEvent::Resized(size) => {
                 // TODO: maybe enqueue to allow skipping of obsolete resizes
                 if window
@@ -202,6 +211,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                 {
                     self.apply_size(shared, false);
                 }
+                false
             }
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 // Note: API allows us to set new window size here.
@@ -214,7 +224,9 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                 let dpem = window.theme_window.size().dpem();
                 self.ev_state.update_config(scale_factor, dpem);
                 window.solve_cache.invalidate_rule_cache();
+                false
             }
+            WindowEvent::RedrawRequested => self.do_draw(shared).is_err(),
             event => {
                 let mut messages = ErasedStack::new();
                 self.ev_state
@@ -228,6 +240,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                     self.reconfigure(shared);
                     self.ev_state.action.remove(Action::RECONFIGURE);
                 }
+                false
             }
         }
     }
@@ -482,6 +495,20 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             text_dur_micros.as_micros(),
             (end - time2).as_micros()
         );
+
+        const SECOND: Duration = Duration::from_secs(1);
+        window.frame_count.1 += 1;
+        let now = Instant::now();
+        if window.frame_count.0 + SECOND <= now {
+            log::debug!(
+                "Window {:?}: {} frames in last second",
+                window.window_id,
+                window.frame_count.1
+            );
+            window.frame_count.0 = now;
+            window.frame_count.1 = 0;
+        }
+
         Ok(())
     }
 
