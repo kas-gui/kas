@@ -22,7 +22,7 @@ use std::task::Waker;
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
 /// Shell interface state
-pub struct ShellShared<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> {
+pub(crate) struct ShellShared<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> {
     pub(super) platform: Platform,
     pub(super) config: Rc<RefCell<kas::event::Config>>,
     #[cfg(feature = "clipboard")]
@@ -35,7 +35,7 @@ pub struct ShellShared<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> {
 }
 
 /// State shared between windows
-pub struct SharedState<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> {
+pub(crate) struct SharedState<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> {
     pub(super) shell: ShellShared<Data, S, T>,
     pub(super) data: Data,
     /// Estimated scale factor (from last window constructed or available screens)
@@ -95,7 +95,7 @@ where
         }
     }
 
-    pub fn on_exit(&self) {
+    pub(crate) fn on_exit(&self) {
         match self
             .options
             .write_config(&self.shell.config.borrow(), &self.shell.theme)
@@ -111,14 +111,14 @@ impl<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellShared<Data, S, 
     ///
     /// TODO(opt): this should recycle used identifiers since WidgetId does not
     /// efficiently represent large numbers.
-    pub fn next_window_id(&mut self) -> WindowId {
+    pub(crate) fn next_window_id(&mut self) -> WindowId {
         let id = self.window_id + 1;
         self.window_id = id;
         WindowId::new(NonZeroU32::new(id).unwrap())
     }
 }
 
-pub trait ShellSharedErased {
+pub(crate) trait ShellSharedErased {
     /// Add a pop-up
     ///
     /// A pop-up may be presented as an overlay layer in the current window or
