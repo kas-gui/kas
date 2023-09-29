@@ -778,7 +778,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 #[inline]
                 fn handle_hover(&mut self, cx: &mut EventCx, state: bool) -> ::kas::event::IsUsed {
                     if state {
-                        cx.set_cursor_icon(#icon_expr);
+                        cx.set_hover_cursor(#icon_expr);
                     }
                     ::kas::event::Used
                 }
@@ -788,7 +788,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 fn handle_hover(&mut self, cx: &mut EventCx, state: bool) -> ::kas::event::IsUsed {
                     cx.redraw(self.id());
                     if state {
-                        cx.set_cursor_icon(#icon_expr);
+                        cx.set_hover_cursor(#icon_expr);
                     }
                     ::kas::event::Used
                 }

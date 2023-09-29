@@ -6,11 +6,9 @@
 //! Configuration context
 
 use super::Pending;
-use crate::draw::DrawShared;
 use crate::event::EventState;
 use crate::geom::{Rect, Size};
 use crate::layout::AlignPair;
-use crate::shell::Platform;
 use crate::text::TextApi;
 use crate::theme::{Feature, SizeCx, TextClass, ThemeSize};
 use crate::{Action, Node, WidgetId};
@@ -26,7 +24,6 @@ use std::ops::{Deref, DerefMut};
 #[must_use]
 pub struct ConfigCx<'a> {
     sh: &'a dyn ThemeSize,
-    ds: &'a mut dyn DrawShared,
     pub(crate) ev: &'a mut EventState,
 }
 
@@ -34,25 +31,14 @@ impl<'a> ConfigCx<'a> {
     /// Construct
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(sh: &'a dyn ThemeSize, ds: &'a mut dyn DrawShared, ev: &'a mut EventState) -> Self {
-        ConfigCx { sh, ds, ev }
-    }
-
-    /// Get the platform
-    pub fn platform(&self) -> Platform {
-        self.ds.platform()
+    pub fn new(sh: &'a dyn ThemeSize, ev: &'a mut EventState) -> Self {
+        ConfigCx { sh, ev }
     }
 
     /// Access a [`SizeCx`]
     #[inline]
     pub fn size_cx(&self) -> SizeCx<'a> {
         SizeCx::new(self.sh)
-    }
-
-    /// Access [`DrawShared`]
-    #[inline]
-    pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
-        self.ds
     }
 
     /// Access [`EventState`]

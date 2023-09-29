@@ -260,7 +260,7 @@ impl_scope! {
                     let n = index >> 1;
                     assert!(n < self.handles.len());
                     *cx |= self.handles[n].set_offset(offset).1;
-                    cx.config_cx(|cx| self.adjust_size(cx, n));
+                    self.adjust_size(&mut cx.config_cx(), n);
                 }
             }
         }

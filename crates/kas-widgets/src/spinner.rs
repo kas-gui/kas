@@ -112,7 +112,7 @@ impl<A, T: SpinnerValue> SpinnerGuard<A, T> {
 
     /// Returns new value if different
     fn handle_btn(&self, cx: &mut EventCx, data: &A, btn: SpinBtn) -> Option<T> {
-        let old_value = cx.config_cx(|cx| (self.state_fn)(cx, data));
+        let old_value = (self.state_fn)(&cx.config_cx(), data);
         let value = match btn {
             SpinBtn::Down => old_value.sub_step(self.step, self.start),
             SpinBtn::Up => old_value.add_step(self.step, self.end),
@@ -134,7 +134,7 @@ impl<A, T: SpinnerValue> EditGuard for SpinnerGuard<A, T> {
         if let Some(value) = edit.guard.parsed.take() {
             cx.push(ValueMsg(value));
         } else {
-            let value = cx.config_cx(|cx| (edit.guard.state_fn)(cx, data));
+            let value = (edit.guard.state_fn)(&cx.config_cx(), data);
             *cx |= edit.set_string(value.to_string());
         }
     }

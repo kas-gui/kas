@@ -35,10 +35,6 @@ bitflags! {
         ///
         /// Implies window redraw.
         const REGION_MOVED = 1 << 4;
-        /*
-        /// A pop-up opened/closed/needs resizing
-        Popup,
-        */
         /// Reset size of all widgets without recalculating requirements
         const SET_RECT = 1 << 8;
         /// Resize all widgets in the window

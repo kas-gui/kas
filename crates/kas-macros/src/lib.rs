@@ -187,7 +187,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// -   <code>hover_highlight = <em>bool</em></code> — if true, generate
 ///     `Events::handle_hover` to request a redraw on focus gained/lost
 /// -   <code>cursor_icon = <em>expr</em></code> — if used, generate
-///     `Event::handle_hover`, calling `cx.set_cursor_icon(expr)`
+///     `Event::handle_hover`, calling `cx.set_hover_cursor(expr)`
 /// -   <code>layout = <em>layout</em></code> — defines widget layout via an
 ///     expression; [see below for documentation](#layout)
 ///

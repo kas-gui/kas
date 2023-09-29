@@ -20,8 +20,8 @@ use std::u16;
 use super::config::WindowConfig;
 use super::*;
 use crate::cast::Cast;
-use crate::geom::{Coord, Offset};
-use crate::shell::ShellWindow;
+use crate::geom::Coord;
+use crate::shell::{Platform, ShellSharedErased, WindowDataErased};
 use crate::util::WidgetHierarchy;
 use crate::LayoutExt;
 use crate::{Action, Erased, ErasedStack, NavAdvance, Node, Widget, WidgetId, WindowId};
@@ -35,20 +35,20 @@ pub use config::ConfigCx;
 pub use press::{GrabBuilder, Press, PressSource};
 
 /// Controls the types of events delivered by [`Press::grab`]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum GrabMode {
     /// Deliver [`Event::PressEnd`] only for each grabbed press
     Click,
     /// Deliver [`Event::PressMove`] and [`Event::PressEnd`] for each grabbed press
     Grab,
-    /// Deliver [`Event::Pan`] events, with scaling and rotation
-    PanFull,
-    /// Deliver [`Event::Pan`] events, with scaling
-    PanScale,
-    /// Deliver [`Event::Pan`] events, with rotation
-    PanRotate,
     /// Deliver [`Event::Pan`] events, without scaling or rotation
     PanOnly,
+    /// Deliver [`Event::Pan`] events, with rotation
+    PanRotate,
+    /// Deliver [`Event::Pan`] events, with scaling
+    PanScale,
+    /// Deliver [`Event::Pan`] events, with scaling and rotation
+    PanFull,
 }
 
 impl GrabMode {
@@ -59,48 +59,41 @@ impl GrabMode {
 }
 
 #[derive(Clone, Debug)]
+enum GrabDetails {
+    Click { cur_id: Option<WidgetId> },
+    Grab,
+    Pan((u16, u16)),
+}
+
+impl GrabDetails {
+    fn is_pan(&self) -> bool {
+        matches!(self, GrabDetails::Pan(_))
+    }
+}
+
+#[derive(Clone, Debug)]
 struct MouseGrab {
     button: MouseButton,
     repetitions: u32,
     start_id: WidgetId,
-    cur_id: Option<WidgetId>,
     depress: Option<WidgetId>,
-    mode: GrabMode,
-    pan_grab: (u16, u16),
-    coord: Coord,
-    delta: Offset,
+    details: GrabDetails,
 }
 
 impl<'a> EventCx<'a> {
-    fn flush_mouse_grab_motion(&mut self, widget: Node<'_>) {
+    fn flush_mouse_grab_motion(&mut self) {
         if let Some(grab) = self.mouse_grab.as_mut() {
-            let delta = grab.delta;
-            if delta == Offset::ZERO {
-                return;
-            }
-            grab.delta = Offset::ZERO;
-
-            match grab.mode {
-                GrabMode::Click => {
-                    if grab.start_id == grab.cur_id {
-                        if grab.depress != grab.cur_id {
-                            grab.depress = grab.cur_id.clone();
+            match grab.details {
+                GrabDetails::Click { ref cur_id } => {
+                    if grab.start_id == cur_id {
+                        if grab.depress != *cur_id {
+                            grab.depress = cur_id.clone();
                             self.action |= Action::REDRAW;
                         }
                     } else if grab.depress.is_some() {
                         grab.depress = None;
                         self.action |= Action::REDRAW;
                     }
-                }
-                GrabMode::Grab => {
-                    let target = grab.start_id.clone();
-                    let press = Press {
-                        source: PressSource::Mouse(grab.button, grab.repetitions),
-                        id: grab.cur_id.clone(),
-                        coord: grab.coord,
-                    };
-                    let event = Event::PressMove { press, delta };
-                    self.send_event(widget, target, event);
                 }
                 _ => (),
             }
@@ -136,23 +129,6 @@ impl TouchGrab {
         }
         Action::empty()
     }
-
-    fn flush_grab_move(&mut self) -> Option<(WidgetId, Event)> {
-        if self.mode == GrabMode::Grab && self.last_move != self.coord {
-            let delta = self.coord - self.last_move;
-            let target = self.start_id.clone();
-            let press = Press {
-                source: PressSource::Touch(self.id),
-                id: self.cur_id.clone(),
-                coord: self.coord,
-            };
-            let event = Event::PressMove { press, delta };
-            self.last_move = self.coord;
-            Some((target, event))
-        } else {
-            None
-        }
-    }
 }
 
 const MAX_PAN_GRABS: usize = 2;
@@ -172,7 +148,6 @@ enum Pending {
     Configure(WidgetId),
     Update(WidgetId),
     Send(WidgetId, Event),
-    SetRect(WidgetId),
     NextNavFocus {
         target: Option<WidgetId>,
         reverse: bool,
@@ -201,6 +176,7 @@ type AccessLayer = (bool, HashMap<Key, WidgetId>);
 // `SmallVec` is used to keep contents in local memory.
 pub struct EventState {
     config: WindowConfig,
+    platform: Platform,
     disabled: Vec<WidgetId>,
     window_has_focus: bool,
     modifiers: ModifiersState,
@@ -258,6 +234,8 @@ impl EventState {
                     break;
                 }
 
+                debug_assert_eq!(grab.mode, mode);
+
                 let index = grab.n;
                 if usize::from(index) < MAX_PAN_GRABS {
                     grab.coords[usize::from(index)] = (coord, coord);
@@ -286,9 +264,10 @@ impl EventState {
         log::trace!("remove_pan: index={index}");
         self.pan_grab.remove(index);
         if let Some(grab) = &mut self.mouse_grab {
-            let p0 = grab.pan_grab.0;
-            if usize::from(p0) >= index && p0 != u16::MAX {
-                grab.pan_grab.0 = p0 - 1;
+            if let GrabDetails::Pan(ref mut g) = grab.details {
+                if usize::from(g.0) >= index {
+                    g.0 -= 1;
+                }
             }
         }
         for grab in self.touch_grab.iter_mut() {
@@ -418,7 +397,8 @@ impl EventState {
 #[must_use]
 pub struct EventCx<'a> {
     state: &'a mut EventState,
-    shell: &'a mut dyn ShellWindow,
+    shell: &'a mut dyn ShellSharedErased,
+    window: &'a dyn WindowDataErased,
     messages: &'a mut ErasedStack,
     last_child: Option<usize>,
     scroll: Scroll,
@@ -543,10 +523,10 @@ impl<'a> EventCx<'a> {
     fn remove_mouse_grab(&mut self, success: bool) -> Option<(WidgetId, Event)> {
         if let Some(grab) = self.mouse_grab.take() {
             log::trace!("remove_mouse_grab: start_id={}", grab.start_id);
-            self.shell.set_cursor_icon(self.hover_icon);
+            self.window.set_cursor_icon(self.hover_icon);
             self.send_action(Action::REDRAW); // redraw(..)
-            if grab.mode.is_pan() {
-                self.remove_pan_grab(grab.pan_grab);
+            if let GrabDetails::Pan(g) = grab.details {
+                self.remove_pan_grab(g);
                 // Pan grabs do not receive Event::PressEnd
                 None
             } else {

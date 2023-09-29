@@ -608,7 +608,7 @@ impl_scope! {
                     return if let Some((ci, ri)) = data_index {
                         // Set nav focus and update scroll position
                         if self.scroll.focus_rect(cx, solver.rect(ci, ri), self.core.rect) {
-                            solver = cx.config_cx(|cx| self.update_widgets(cx, data));
+                            solver = self.update_widgets(&mut cx.config_cx(), data);
                         }
 
                         let index = solver.data_to_child(ci, ri);
@@ -671,7 +671,7 @@ impl_scope! {
                 .scroll
                 .scroll_by_event(cx, event, self.id(), self.core.rect);
             if moved {
-                cx.config_cx(|cx| self.update_widgets(cx, data));
+                self.update_widgets(&mut cx.config_cx(), data);
             }
             is_used | used_by_sber
         }
@@ -718,7 +718,7 @@ impl_scope! {
 
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &A, scroll: Scroll) {
             self.scroll.scroll(cx, self.rect(), scroll);
-            cx.config_cx(|cx| self.update_widgets(cx, data));
+            self.update_widgets(&mut cx.config_cx(), data);
         }
     }
 
@@ -829,7 +829,7 @@ impl_scope! {
                 };
 
                 if self.scroll.focus_rect(cx, solver.rect(ci, ri), self.core.rect) {
-                    solver = cx.config_cx(|cx| self.update_widgets(cx, data));
+                    solver = self.update_widgets(&mut cx.config_cx(), data);
                 }
 
                 let index = solver.data_to_child(ci, ri);

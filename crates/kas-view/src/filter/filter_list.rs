@@ -91,7 +91,7 @@ impl_scope! {
     impl Events for Self {
         fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
             if let Some(SetFilter(value)) = cx.try_pop() {
-                cx.config_cx(|cx| self.list.set_filter(cx, data, value));
+                self.list.set_filter(&mut cx.config_cx(), data, value);
             }
         }
     }
@@ -163,7 +163,7 @@ impl_scope! {
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
             if let Some(SetFilter(value)) = cx.try_pop() {
-                cx.config_cx(|cx| self.set_filter(cx, data, value));
+                self.set_filter(&mut cx.config_cx(), data, value);
             }
         }
     }

@@ -149,7 +149,7 @@ pub trait Events: Widget + Sized {
     ///
     /// Note: to implement `hover_highlight`, simply request a redraw on
     /// focus gain and loss. To implement `cursor_icon`, call
-    /// `cx.set_cursor_icon(EXPR);` on focus gain.
+    /// `cx.set_hover_cursor(EXPR);` on focus gain.
     ///
     /// [`#widget`]: macros::widget
     #[inline]

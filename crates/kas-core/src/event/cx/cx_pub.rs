@@ -15,6 +15,8 @@ use crate::draw::DrawShared;
 use crate::event::config::ChangeConfig;
 use crate::geom::{Offset, Vec2};
 use crate::theme::{SizeCx, ThemeControl};
+#[cfg(all(wayland_platform, feature = "clipboard"))]
+use crate::util::warn_about_error;
 use crate::{Action, Erased, WidgetId, Window, WindowId};
 #[allow(unused)] use crate::{Events, Layout}; // for doc-links
 
@@ -34,6 +36,11 @@ impl std::ops::BitOrAssign<Action> for EventState {
 
 /// Public API
 impl EventState {
+    /// Get the platform
+    pub fn platform(&self) -> Platform {
+        self.platform
+    }
+
     /// True when the window has focus
     #[inline]
     pub fn window_has_focus(&self) -> bool {
@@ -526,8 +533,9 @@ impl EventState {
     /// cases, calling this method may be ineffective. The cursor is
     /// automatically "unset" when the widget is no longer hovered.
     ///
-    /// If a mouse grab ([`Press::grab`]) is active, its icon takes precedence.
-    pub fn set_cursor_icon(&mut self, icon: CursorIcon) {
+    /// See also [`Self::update_grab_cursor`]: if a mouse grab
+    /// ([`Press::grab`]) is active, its icon takes precedence.
+    pub fn set_hover_cursor(&mut self, icon: CursorIcon) {
         // Note: this is acted on by EventState::update
         self.hover_icon = icon;
     }
@@ -601,11 +609,6 @@ impl EventState {
     pub fn request_update(&mut self, id: WidgetId) {
         self.pending.push_back(Pending::Update(id));
     }
-
-    /// Request set_rect of the given path
-    pub fn request_set_rect(&mut self, id: WidgetId) {
-        self.pending.push_back(Pending::SetRect(id));
-    }
 }
 
 /// Public API
@@ -617,7 +620,7 @@ impl<'a> EventCx<'a> {
     /// This is a shortcut to [`ConfigCx::configure`].
     #[inline]
     pub fn configure(&mut self, mut widget: Node<'_>, id: WidgetId) {
-        self.config_cx(|cx| widget._configure(cx, id));
+        widget._configure(&mut self.config_cx(), id);
     }
 
     /// Update a widget
@@ -627,7 +630,7 @@ impl<'a> EventCx<'a> {
     /// data, it should call this (or [`ConfigCx::update`]) after mutating the state.
     #[inline]
     pub fn update(&mut self, mut widget: Node<'_>) {
-        self.config_cx(|cx| widget._update(cx));
+        widget._update(&mut self.config_cx());
     }
 
     /// Get the index of the last child visited
@@ -735,7 +738,8 @@ impl<'a> EventCx<'a> {
     pub(crate) fn add_popup(&mut self, popup: crate::PopupDescriptor) -> WindowId {
         log::trace!(target: "kas_core::event", "add_popup: {popup:?}");
 
-        let id = self.shell.add_popup(popup.clone());
+        let parent_id = self.window.window_id();
+        let id = self.shell.add_popup(parent_id, popup.clone());
         let nav_focus = self.nav_focus.clone();
         self.popups.push((id, popup, nav_focus));
         self.clear_nav_focus();
@@ -791,7 +795,7 @@ impl<'a> EventCx<'a> {
     /// This calls [`winit::window::Window::drag_window`](https://docs.rs/winit/latest/winit/window/struct.Window.html#method.drag_window). Errors are ignored.
     pub fn drag_window(&self) {
         #[cfg(winit)]
-        if let Some(ww) = self.shell.winit_window() {
+        if let Some(ww) = self.window.winit_window() {
             if let Err(e) = ww.drag_window() {
                 log::warn!("EventCx::drag_window: {e}");
             }
@@ -803,7 +807,7 @@ impl<'a> EventCx<'a> {
     /// This calls [`winit::window::Window::drag_resize_window`](https://docs.rs/winit/latest/winit/window/struct.Window.html#method.drag_resize_window). Errors are ignored.
     pub fn drag_resize_window(&self, direction: ResizeDirection) {
         #[cfg(winit)]
-        if let Some(ww) = self.shell.winit_window() {
+        if let Some(ww) = self.window.winit_window() {
             if let Err(e) = ww.drag_resize_window(direction) {
                 log::warn!("EventCx::drag_resize_window: {e}");
             }
@@ -816,12 +820,29 @@ impl<'a> EventCx<'a> {
     /// may wish to log an appropriate warning message.
     #[inline]
     pub fn get_clipboard(&mut self) -> Option<String> {
+        #[cfg(all(wayland_platform, feature = "clipboard"))]
+        if let Some(cb) = self.window.wayland_clipboard() {
+            return match cb.load() {
+                Ok(s) => Some(s),
+                Err(e) => {
+                    warn_about_error("Failed to get clipboard contents", &e);
+                    None
+                }
+            };
+        }
+
         self.shell.get_clipboard()
     }
 
     /// Attempt to set clipboard contents
     #[inline]
     pub fn set_clipboard(&mut self, content: String) {
+        #[cfg(all(wayland_platform, feature = "clipboard"))]
+        if let Some(cb) = self.window.wayland_clipboard() {
+            cb.store(content);
+            return;
+        }
+
         self.shell.set_clipboard(content)
     }
 
@@ -831,6 +852,17 @@ impl<'a> EventCx<'a> {
     /// paste on middle-click. This method does nothing on other platforms.
     #[inline]
     pub fn get_primary(&mut self) -> Option<String> {
+        #[cfg(all(wayland_platform, feature = "clipboard"))]
+        if let Some(cb) = self.window.wayland_clipboard() {
+            return match cb.load_primary() {
+                Ok(s) => Some(s),
+                Err(e) => {
+                    warn_about_error("Failed to get clipboard contents", &e);
+                    None
+                }
+            };
+        }
+
         self.shell.get_primary()
     }
 
@@ -840,6 +872,12 @@ impl<'a> EventCx<'a> {
     /// paste on middle-click. This method does nothing on other platforms.
     #[inline]
     pub fn set_primary(&mut self, content: String) {
+        #[cfg(all(wayland_platform, feature = "clipboard"))]
+        if let Some(cb) = self.window.wayland_clipboard() {
+            cb.store_primary(content);
+            return;
+        }
+
         self.shell.set_primary(content)
     }
 
@@ -849,38 +887,25 @@ impl<'a> EventCx<'a> {
         self.shell.adjust_theme(Box::new(f));
     }
 
-    /// Access a [`SizeCx`]
+    /// Get a [`SizeCx`]
     ///
     /// Warning: sizes are calculated using the window's current scale factor.
     /// This may change, even without user action, since some platforms
     /// always initialize windows with scale factor 1.
     /// See also notes on [`Events::configure`].
-    pub fn size_cx<F: FnOnce(SizeCx) -> T, T>(&mut self, f: F) -> T {
-        let mut result = None;
-        self.shell.size_and_draw_shared(Box::new(|size, _| {
-            result = Some(f(SizeCx::new(size)));
-        }));
-        result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
+    pub fn size_cx(&self) -> SizeCx<'_> {
+        SizeCx::new(self.window.theme_size())
     }
 
-    /// Access a [`ConfigCx`]
-    pub fn config_cx<F: FnOnce(&mut ConfigCx) -> T, T>(&mut self, f: F) -> T {
-        let mut result = None;
-        self.shell
-            .size_and_draw_shared(Box::new(|size, draw_shared| {
-                let mut cx = ConfigCx::new(size, draw_shared, self.state);
-                result = Some(f(&mut cx));
-            }));
-        result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
+    /// Get a [`ConfigCx`]
+    pub fn config_cx(&mut self) -> ConfigCx<'_> {
+        let size = self.window.theme_size();
+        ConfigCx::new(size, self.state)
     }
 
-    /// Access a [`DrawShared`]
-    pub fn draw_shared<F: FnOnce(&mut dyn DrawShared) -> T, T>(&mut self, f: F) -> T {
-        let mut result = None;
-        self.shell.size_and_draw_shared(Box::new(|_, draw_shared| {
-            result = Some(f(draw_shared));
-        }));
-        result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
+    /// Get a [`DrawShared`]
+    pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
+        self.shell.draw_shared()
     }
 
     /// Directly access Winit Window
@@ -888,7 +913,7 @@ impl<'a> EventCx<'a> {
     /// This is a temporary API, allowing e.g. to minimize the window.
     #[cfg(winit)]
     pub fn winit_window(&self) -> Option<&winit::window::Window> {
-        self.shell.winit_window()
+        self.window.winit_window()
     }
 
     /// Update the mouse cursor used during a grab
@@ -896,10 +921,10 @@ impl<'a> EventCx<'a> {
     /// This only succeeds if widget `id` has an active mouse-grab (see
     /// [`Press::grab`]). The cursor will be reset when the mouse-grab
     /// ends.
-    pub fn update_grab_cursor(&mut self, id: WidgetId, icon: CursorIcon) {
+    pub fn set_grab_cursor(&mut self, id: &WidgetId, icon: CursorIcon) {
         if let Some(ref grab) = self.mouse_grab {
-            if grab.start_id == id {
-                self.shell.set_cursor_icon(icon);
+            if grab.start_id == *id {
+                self.window.set_cursor_icon(icon);
             }
         }
     }

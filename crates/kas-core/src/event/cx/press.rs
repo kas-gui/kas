@@ -6,9 +6,10 @@
 //! Event handling: events
 
 #[allow(unused)] use super::{Event, EventState}; // for doc-links
-use super::{EventCx, GrabMode, IsUsed, MouseGrab, Pending, TouchGrab};
-use crate::event::{CursorIcon, MouseButton, Used};
-use crate::geom::{Coord, Offset};
+use super::{EventCx, GrabMode, IsUsed, MouseGrab, TouchGrab};
+use crate::event::cx::GrabDetails;
+use crate::event::{CursorIcon, MouseButton, Unused, Used};
+use crate::geom::Coord;
 use crate::{Action, WidgetId};
 
 /// Source of `EventChild::Press`
@@ -152,6 +153,21 @@ impl GrabBuilder {
     }
 
     /// Complete the grab, providing the [`EventCx`]
+    ///
+    /// In case of an existing grab for the same [`source`](Press::source),
+    /// - If the [`WidgetId`] differs this fails (returns [`Unused`])
+    /// - If the [`MouseButton`] differs this fails (technically this is a
+    ///   different `source`, but simultaneous grabs of multiple mouse buttons
+    ///   are not supported).
+    /// - If one grab is a [pan](GrabMode::is_pan) and the other is not, this fails
+    /// - [`GrabMode::Click`] may be upgraded to [`GrabMode::Grab`]
+    /// - Changing from one pan mode to another is an error
+    /// - Mouse button repetitions may be increased; decreasing is an error
+    /// - A [`CursorIcon`] may be set
+    /// - The depress target is re-set to the grabbing widget
+    ///
+    /// Note: error conditions are only checked in debug builds. These cases
+    /// may need revision.
     pub fn with_cx(self, cx: &mut EventCx) -> IsUsed {
         let GrabBuilder {
             id,
@@ -161,48 +177,71 @@ impl GrabBuilder {
             cursor,
         } = self;
         log::trace!(target: "kas_core::event", "grab_press: start_id={id}, source={source:?}");
-        let mut pan_grab = (u16::MAX, 0);
         match source {
             PressSource::Mouse(button, repetitions) => {
-                if let Some((id, event)) = cx.remove_mouse_grab(false) {
-                    cx.pending.push_back(Pending::Send(id, event));
+                let details = match mode {
+                    GrabMode::Click => GrabDetails::Click {
+                        cur_id: Some(id.clone()),
+                    },
+                    GrabMode::Grab => GrabDetails::Grab,
+                    mode => {
+                        assert!(mode.is_pan());
+                        let g = cx.set_pan_on(id.clone(), mode, false, coord);
+                        GrabDetails::Pan(g)
+                    }
+                };
+                if let Some(ref mut grab) = cx.mouse_grab {
+                    if grab.start_id != id
+                        || grab.button != button
+                        || grab.details.is_pan() != mode.is_pan()
+                    {
+                        return Unused;
+                    }
+
+                    debug_assert!(repetitions >= grab.repetitions);
+                    grab.repetitions = repetitions;
+                    grab.depress = Some(id);
+                    grab.details = details;
+                } else {
+                    cx.mouse_grab = Some(MouseGrab {
+                        button,
+                        repetitions,
+                        start_id: id.clone(),
+                        depress: Some(id),
+                        details,
+                    });
                 }
-                if mode.is_pan() {
-                    pan_grab = cx.set_pan_on(id.clone(), mode, false, coord);
-                }
-                cx.mouse_grab = Some(MouseGrab {
-                    button,
-                    repetitions,
-                    start_id: id.clone(),
-                    cur_id: Some(id.clone()),
-                    depress: Some(id),
-                    mode,
-                    pan_grab,
-                    coord,
-                    delta: Offset::ZERO,
-                });
                 if let Some(icon) = cursor {
-                    cx.shell.set_cursor_icon(icon);
+                    cx.window.set_cursor_icon(icon);
                 }
             }
             PressSource::Touch(touch_id) => {
-                if cx.remove_touch(touch_id).is_some() {
-                    #[cfg(debug_assertions)]
-                    log::error!(target: "kas_core::event", "grab_press: touch_id conflict!");
+                if let Some(grab) = cx.get_touch(touch_id) {
+                    if grab.mode.is_pan() != mode.is_pan() {
+                        return Unused;
+                    }
+
+                    grab.depress = Some(id.clone());
+                    grab.cur_id = Some(id);
+                    grab.last_move = coord;
+                    grab.coord = coord;
+                    grab.mode = grab.mode.max(mode);
+                } else {
+                    let mut pan_grab = (u16::MAX, 0);
+                    if mode.is_pan() {
+                        pan_grab = cx.set_pan_on(id.clone(), mode, true, coord);
+                    }
+                    cx.touch_grab.push(TouchGrab {
+                        id: touch_id,
+                        start_id: id.clone(),
+                        depress: Some(id.clone()),
+                        cur_id: Some(id),
+                        last_move: coord,
+                        coord,
+                        mode,
+                        pan_grab,
+                    });
                 }
-                if mode.is_pan() {
-                    pan_grab = cx.set_pan_on(id.clone(), mode, true, coord);
-                }
-                cx.touch_grab.push(TouchGrab {
-                    id: touch_id,
-                    start_id: id.clone(),
-                    depress: Some(id.clone()),
-                    cur_id: Some(id),
-                    last_move: coord,
-                    coord,
-                    mode,
-                    pan_grab,
-                });
             }
         }
 
