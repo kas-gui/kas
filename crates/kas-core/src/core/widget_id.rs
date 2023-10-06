@@ -144,6 +144,29 @@ impl Drop for IntOrPtr {
     }
 }
 
+impl PartialEq for IntOrPtr {
+    fn eq(&self, rhs: &Self) -> bool {
+        let (x, y) = (self.0.get(), rhs.0.get());
+        if x == INVALID || y == INVALID {
+            panic!("OwnedId::eq: invalid id");
+        } else if x == y {
+            // No need to unpack variants when values are bit-equal
+            return true;
+        }
+        match (self.get(), rhs.get()) {
+            (Variant::Int(_), Variant::Int(_)) => false,
+            (Variant::Slice(l), Variant::Slice(r)) => l == r,
+            (Variant::Int(x), Variant::Slice(path)) | (Variant::Slice(path), Variant::Int(x)) => {
+                let p = WidgetPathIter(PathIter::Bits(BitsIter::new(x)));
+                let q = WidgetPathIter(PathIter::Slice(path.iter().cloned()));
+                p.eq(q)
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+impl Eq for IntOrPtr {}
+
 enum PathIter<'a> {
     Bits(BitsIter),
     Slice(std::iter::Cloned<std::slice::Iter<'a, usize>>),
@@ -259,7 +282,7 @@ impl Iterator for BitsIter {
 /// last digit, then read as base-8: `[1, 2, 8, 20]`.
 ///
 /// [`Display`]: std::fmt::Display
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct OwnedId(IntOrPtr);
 
 impl OwnedId {
@@ -479,17 +502,6 @@ impl OwnedId {
 ///
 /// [`EventState`]: crate::event::EventState
 pub type WidgetId = OwnedId;
-
-impl PartialEq for OwnedId {
-    fn eq(&self, rhs: &Self) -> bool {
-        match (self.0.get(), rhs.0.get()) {
-            (Variant::Invalid, _) | (_, Variant::Invalid) => panic!("OwnedId::eq: invalid id"),
-            (Variant::Int(x), Variant::Int(y)) => x == y,
-            _ => self.iter().eq(rhs.iter()),
-        }
-    }
-}
-impl Eq for OwnedId {}
 
 impl PartialEq<str> for OwnedId {
     fn eq(&self, rhs: &str) -> bool {
