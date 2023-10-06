@@ -23,23 +23,17 @@ const INVALID: u64 = !0;
 
 /// `x & USE_BITS != 0`: rest is a sequence of 4-bit blocks; len is number of blocks used
 const USE_BITS: u64 = 0x01;
-/// Set when using a pointer as a safety feature.
-const USE_PTR: usize = 0x02;
+/// Combination of all flag bits (must be zero for pointers)
+const FLAG_BITS: u64 = 0x03;
 
 const MASK_LEN: u64 = 0xF0;
 const SHIFT_LEN: u8 = 4;
 const BLOCKS: u8 = 14;
 const MASK_BITS: u64 = 0xFFFF_FFFF_FFFF_FF00;
 
-#[cfg(target_pointer_width = "32")]
-const MASK_PTR: usize = 0xFFFF_FFFC;
-#[cfg(target_pointer_width = "64")]
-const MASK_PTR: usize = 0xFFFF_FFFF_FFFF_FFFC;
-
 /// Integer or pointer to a reference-counted slice.
 ///
-/// Use `Self::get_ptr` to determine the variant used. When reading a pointer,
-/// mask with MASK_PTR.
+/// Use `Self::get_ptr` to determine the variant used.
 ///
 /// `self.0 & USE_BITS` is the "flag bit" determining the variant used. This
 /// overlaps with the pointer's lowest bit (which must be zero due to alignment).
@@ -61,8 +55,8 @@ impl IntOrPtr {
 
     #[inline]
     fn get_ptr(&self) -> Option<*mut usize> {
-        if self.0.get() & USE_BITS == 0 {
-            let p = usize::conv(self.0.get()) & MASK_PTR;
+        if self.0.get() & FLAG_BITS == 0 {
+            let p = usize::conv(self.0.get());
             Some(p as *mut usize)
         } else {
             None
@@ -71,12 +65,12 @@ impl IntOrPtr {
 
     /// Construct from an integer
     ///
-    /// Note: requires `x & USE_BITS != 0`.
+    /// Note: requires `x & FLAG_BITS != 0`.
     fn new_int(x: u64) -> Self {
-        assert!(x & USE_BITS != 0);
+        debug_assert!(x & FLAG_BITS != 0);
         let x = NonZeroU64::new(x).unwrap();
         let u = IntOrPtr(x, PhantomData);
-        assert!(u.get_ptr().is_none());
+        debug_assert!(u.get_ptr().is_none());
         u
     }
 
@@ -87,11 +81,10 @@ impl IntOrPtr {
         let v: Vec<usize> = once(ref_count).chain(once(len)).chain(iter).collect();
         let b = v.into_boxed_slice();
         let p = Box::leak(b) as *mut [usize] as *mut usize;
-        let p = p as usize;
-        debug_assert_eq!(p & 3, 0);
-        let p = p | USE_PTR;
-        let u = IntOrPtr(NonZeroU64::new(p.cast()).unwrap(), PhantomData);
-        assert!(u.get_ptr().is_some());
+        let p = u64::conv(p as usize);
+        debug_assert_eq!(p & FLAG_BITS, 0);
+        let u = IntOrPtr(NonZeroU64::new(p).unwrap(), PhantomData);
+        debug_assert!(u.get_ptr().is_some());
         u
     }
 
