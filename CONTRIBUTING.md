@@ -44,7 +44,7 @@ Usage of `unsafe` is allowed, but not preferred. Current use cases:
 -   To get around lifetime restrictions on the theme API's `Theme::draw` and `Window::size`
     methods; this will no longer require `unsafe` once the
     `generic_associated_types` feature is stabilised.
--   `WidgetId` uses `unsafe` code to support both inline and heap-allocated
+-   `OwnedId` uses `unsafe` code to support both inline and heap-allocated
     variants.
 -   Implementing `bytemuck::Pod` and `Zeroable`, as required to assert that
     values may be copied to the GPU.

@@ -13,7 +13,7 @@ use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
 use crate::theme::ThemeSize;
-use crate::{Action, NavAdvance, WidgetId, Window};
+use crate::{Action, NavAdvance, OwnedId, Window};
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
@@ -68,7 +68,7 @@ impl EventState {
     /// is created (before or after resizing).
     ///
     /// This method calls [`ConfigCx::configure`] in order to assign
-    /// [`WidgetId`] identifiers and call widgets' [`Events::configure`]
+    /// [`OwnedId`] identifiers and call widgets' [`Events::configure`]
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
     pub(crate) fn full_configure<A>(
@@ -78,7 +78,7 @@ impl EventState {
         win: &mut Window<A>,
         data: &A,
     ) {
-        let id = WidgetId::ROOT.make_child(wid.get().cast());
+        let id = OwnedId::ROOT.make_child(wid.get().cast());
 
         log::debug!(target: "kas_core::event", "full_configure of Window{id}");
         self.action.remove(Action::RECONFIGURE);

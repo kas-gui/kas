@@ -10,11 +10,11 @@ use crate::event::{ConfigCx, Event, EventCx, IsUsed};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx};
-use crate::{Erased, Layout, NavAdvance, WidgetId};
+use crate::{Erased, Layout, NavAdvance, OwnedId, WidgetId};
 
 #[cfg(not(feature = "unsafe_node"))]
 trait NodeT {
-    fn id_ref(&self) -> &WidgetId;
+    fn id_ref(&self) -> &OwnedId;
     fn rect(&self) -> Rect;
 
     fn clone_node(&mut self) -> Node<'_>;
@@ -45,7 +45,7 @@ trait NodeT {
 }
 #[cfg(not(feature = "unsafe_node"))]
 impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
-    fn id_ref(&self) -> &WidgetId {
+    fn id_ref(&self) -> &OwnedId {
         self.0.id_ref()
     }
     fn rect(&self) -> Rect {
@@ -87,7 +87,7 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
         draw.recurse(&mut self.0);
     }
 
-    fn _configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
+    fn _configure(&mut self, cx: &mut ConfigCx, id: OwnedId) {
         self.0._configure(cx, self.1, id);
     }
     fn _update(&mut self, cx: &mut ConfigCx) {
@@ -163,7 +163,7 @@ impl<'a> Node<'a> {
 
     /// Get the widget's identifier
     #[inline]
-    pub fn id_ref(&self) -> &WidgetId {
+    pub fn id_ref(&self) -> &OwnedId {
         self.0.id_ref()
     }
 
@@ -316,7 +316,7 @@ impl<'a> Node<'a> {
     }
 
     /// Internal method: configure recursively
-    pub(crate) fn _configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
+    pub(crate) fn _configure(&mut self, cx: &mut ConfigCx, id: OwnedId) {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
                 self.0._configure(cx, self.1, id);

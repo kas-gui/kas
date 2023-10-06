@@ -6,13 +6,13 @@
 //! Utilities
 
 use crate::geom::Coord;
-use crate::{Layout, LayoutExt, WidgetId};
+use crate::{Layout, LayoutExt, OwnedId};
 use std::fmt;
 
 /// Helper to display widget identification (e.g. `MyWidget#01`)
 ///
 /// Constructed by [`crate::LayoutExt::identify`].
-pub struct IdentifyWidget<'a>(pub(crate) &'static str, pub(crate) &'a WidgetId);
+pub struct IdentifyWidget<'a>(pub(crate) &'static str, pub(crate) &'a OwnedId);
 impl<'a> fmt::Display for IdentifyWidget<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{}{}", self.0, self.1)

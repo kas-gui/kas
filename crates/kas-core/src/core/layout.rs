@@ -10,7 +10,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx};
 use crate::util::IdentifyWidget;
-use crate::WidgetId;
+use crate::{OwnedId, WidgetId};
 use kas_macros::autoimpl;
 
 #[allow(unused)] use super::{Events, Widget};
@@ -70,13 +70,13 @@ pub trait Layout {
 
     /// Get the widget's identifier
     ///
-    /// Note that the default-constructed [`WidgetId`] is *invalid*: any
+    /// Note that the default-constructed [`OwnedId`] is *invalid*: any
     /// operations on this value will cause a panic. A valid identifier is
     /// assigned when the widget is configured (immediately before calling
     /// [`Events::configure`]).
     ///
     /// This method is implemented by the `#[widget]` macro.
-    fn id_ref(&self) -> &WidgetId {
+    fn id_ref(&self) -> &OwnedId {
         unimplemented!() // make rustdoc show that this is a provided method
     }
 

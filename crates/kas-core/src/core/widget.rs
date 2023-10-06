@@ -7,7 +7,7 @@
 
 use super::{Layout, Node};
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused};
-use crate::{Erased, WidgetId};
+use crate::{Erased, OwnedId, WidgetId};
 use kas_macros::autoimpl;
 
 #[allow(unused)] use kas_macros as macros;
@@ -42,7 +42,7 @@ pub trait Events: Widget + Sized {
     /// Make an identifier for a child
     ///
     /// This is used to assign children identifiers. It may return
-    /// [`WidgetId::default`] in order to avoid configuring the child, but in
+    /// [`OwnedId::default`] in order to avoid configuring the child, but in
     /// this case the widget must configure via another means.
     ///
     /// If this is implemented explicitly then [`Layout::find_child_index`] must
@@ -50,7 +50,7 @@ pub trait Events: Widget + Sized {
     ///
     /// Default impl: `self.id_ref().make_child(index)`
     #[inline]
-    fn make_child_id(&mut self, index: usize) -> WidgetId {
+    fn make_child_id(&mut self, index: usize) -> OwnedId {
         self.id_ref().make_child(index)
     }
 
@@ -386,7 +386,7 @@ pub trait Widget: Layout {
     /// Internal method: configure recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn _configure(&mut self, cx: &mut ConfigCx, data: &Self::Data, id: WidgetId);
+    fn _configure(&mut self, cx: &mut ConfigCx, data: &Self::Data, id: OwnedId);
 
     /// Internal method: update recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]

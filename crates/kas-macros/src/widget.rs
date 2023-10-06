@@ -343,7 +343,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 scope.generated.push(quote! {
                     struct #core_type {
                         rect: ::kas::geom::Rect,
-                        id: ::kas::WidgetId,
+                        id: ::kas::OwnedId,
                         #[cfg(debug_assertions)]
                         status: ::kas::WidgetStatus,
                         #stor_ty
@@ -473,7 +473,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 self
             }
             #[inline]
-            fn id_ref(&self) -> &::kas::WidgetId {
+            fn id_ref(&self) -> &::kas::OwnedId {
                 self.#inner.id_ref()
             }
             #[inline]
@@ -564,7 +564,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     &mut self,
                     cx: &mut ::kas::event::ConfigCx,
                     data: &Self::Data,
-                    id: ::kas::WidgetId,
+                    id: ::kas::OwnedId,
                 ) {
                     self.#inner._configure(cx, data, id);
                 }
@@ -998,7 +998,7 @@ pub fn impl_core_methods(name: &str, core_path: &Toks) -> Toks {
             self
         }
         #[inline]
-        fn id_ref(&self) -> &::kas::WidgetId {
+        fn id_ref(&self) -> &::kas::OwnedId {
             &#core_path.id
         }
         #[inline]
@@ -1092,7 +1092,7 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             &mut self,
             cx: &mut ::kas::event::ConfigCx,
             data: &Self::Data,
-            id: ::kas::WidgetId,
+            id: ::kas::OwnedId,
         ) {
             #core_path.id = id;
             #[cfg(debug_assertions)]

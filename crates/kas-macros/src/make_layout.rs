@@ -217,7 +217,7 @@ impl Tree {
         let toks = quote! {{
             struct #name #impl_generics {
                 rect: ::kas::geom::Rect,
-                id: ::kas::WidgetId,
+                id: ::kas::OwnedId,
                 #[cfg(debug_assertions)]
                 status: ::kas::WidgetStatus,
                 #stor_ty

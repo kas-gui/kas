@@ -76,7 +76,7 @@ impl_scope! {
         }
 
         // Assumption: index is a valid entry of self.widgets
-        fn make_next_id(&mut self, is_handle: bool, index: usize) -> WidgetId {
+        fn make_next_id(&mut self, is_handle: bool, index: usize) -> OwnedId {
             let child_index = (2 * index) + (is_handle as usize);
             if !is_handle {
                 if let Some(child) = self.widgets.get(index) {
@@ -244,7 +244,7 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn make_child_id(&mut self, child_index: usize) -> WidgetId {
+        fn make_child_id(&mut self, child_index: usize) -> OwnedId {
             let is_handle = (child_index & 1) != 0;
             self.make_next_id(is_handle, child_index / 2)
         }

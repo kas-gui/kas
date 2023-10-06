@@ -6,7 +6,7 @@
 //! Widget data types
 
 #[allow(unused)] use super::Widget;
-use super::WidgetId;
+use super::{OwnedId, WidgetId};
 use crate::geom::Rect;
 
 #[cfg(feature = "winit")] pub use winit::window::Icon;
@@ -37,7 +37,7 @@ impl Icon {
 #[derive(Default, Debug)]
 pub struct CoreData {
     pub rect: Rect,
-    pub id: WidgetId,
+    pub id: OwnedId,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     #[cfg(debug_assertions)]

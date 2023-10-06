@@ -17,7 +17,7 @@ use crate::geom::{Offset, Vec2};
 use crate::theme::{SizeCx, ThemeControl};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
-use crate::{Action, Erased, WidgetId, Window, WindowId};
+use crate::{Action, Erased, OwnedId, WidgetId, Window, WindowId};
 #[allow(unused)] use crate::{Events, Layout}; // for doc-links
 
 impl<'a> std::ops::BitOrAssign<Action> for EventCx<'a> {
@@ -619,7 +619,7 @@ impl<'a> EventCx<'a> {
     ///
     /// This is a shortcut to [`ConfigCx::configure`].
     #[inline]
-    pub fn configure(&mut self, mut widget: Node<'_>, id: WidgetId) {
+    pub fn configure(&mut self, mut widget: Node<'_>, id: OwnedId) {
         widget._configure(&mut self.config_cx(), id);
     }
 

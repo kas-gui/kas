@@ -142,7 +142,7 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn make_child_id(&mut self, index: usize) -> WidgetId {
+        fn make_child_id(&mut self, index: usize) -> OwnedId {
             if let Some((child, state)) = self.widgets.get(index) {
                 if state.is_configured() {
                     debug_assert!(child.id_ref().is_valid());

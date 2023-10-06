@@ -527,7 +527,7 @@ impl_scope! {
 
     impl Events for Self {
         #[inline]
-        fn make_child_id(&mut self, _: usize) -> WidgetId {
+        fn make_child_id(&mut self, _: usize) -> OwnedId {
             // We configure children in update_widgets and do not want this method to be called
             unimplemented!()
         }
@@ -741,7 +741,7 @@ impl_scope! {
             }
         }
 
-        fn _configure(&mut self, cx: &mut ConfigCx, data: &A, id: WidgetId) {
+        fn _configure(&mut self, cx: &mut ConfigCx, data: &A, id: OwnedId) {
             self.core.id = id;
             #[cfg(debug_assertions)]
             self.core.status.configure(&self.core.id);

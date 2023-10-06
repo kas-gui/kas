@@ -49,10 +49,10 @@ bitflags! {
         const EVENT_CONFIG = 1 << 11;
         /// Reconfigure all widgets of the window
         ///
-        /// *Configuring* widgets assigns [`WidgetId`] identifiers and calls
+        /// *Configuring* widgets assigns [`OwnedId`] identifiers and calls
         /// [`crate::Events::configure`].
         ///
-        /// [`WidgetId`]: crate::WidgetId
+        /// [`OwnedId`]: crate::OwnedId
         const RECONFIGURE = 1 << 16;
         /// Update all widgets
         ///

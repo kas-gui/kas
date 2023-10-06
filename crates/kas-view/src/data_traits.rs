@@ -5,7 +5,7 @@
 
 //! Traits for shared data objects
 
-use kas::{autoimpl, WidgetId};
+use kas::{autoimpl, OwnedId, WidgetId};
 use std::borrow::Borrow;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
@@ -13,29 +13,29 @@ use std::fmt::Debug;
 
 /// Bounds on the key type
 pub trait DataKey: Clone + Debug + Default + PartialEq + Eq + 'static {
-    /// Make a [`WidgetId`] for a key
+    /// Make an [`OwnedId`] for a key
     ///
     /// The result must be distinct from `parent`.
-    /// Use [`WidgetId::make_child`].
-    fn make_id(&self, parent: &WidgetId) -> WidgetId;
+    /// Use [`OwnedId::make_child`].
+    fn make_id(&self, parent: &OwnedId) -> OwnedId;
 
-    /// Reconstruct a key from a [`WidgetId`]
+    /// Reconstruct a key from a [`OwnedId`]
     ///
     /// Where `child` is the output of [`Self::make_id`] for the same `parent`
-    /// *or any [`WidgetId`] descended from that*, this should return a copy of
+    /// *or any [`OwnedId`] descended from that*, this should return a copy of
     /// the `key` passed to `make_id`.
     ///
-    /// See: [`WidgetId::next_key_after`], [`WidgetId::iter_keys_after`]
-    fn reconstruct_key(parent: &WidgetId, child: &WidgetId) -> Option<Self>;
+    /// See: [`OwnedId::next_key_after`], [`OwnedId::iter_keys_after`]
+    fn reconstruct_key(parent: &OwnedId, child: &WidgetId) -> Option<Self>;
 }
 
 impl DataKey for () {
-    fn make_id(&self, parent: &WidgetId) -> WidgetId {
+    fn make_id(&self, parent: &OwnedId) -> OwnedId {
         // We need a distinct child, so use index 0
         parent.make_child(0)
     }
 
-    fn reconstruct_key(parent: &WidgetId, child: &WidgetId) -> Option<Self> {
+    fn reconstruct_key(parent: &OwnedId, child: &WidgetId) -> Option<Self> {
         if child.next_key_after(parent) == Some(0) {
             Some(())
         } else {
@@ -47,21 +47,21 @@ impl DataKey for () {
 // NOTE: we cannot use this blanket impl without specialisation / negative impls
 // impl<Key: Cast<usize> + Clone + Debug + PartialEq + Eq + 'static> DataKey for Key
 impl DataKey for usize {
-    fn make_id(&self, parent: &WidgetId) -> WidgetId {
+    fn make_id(&self, parent: &OwnedId) -> OwnedId {
         parent.make_child(*self)
     }
 
-    fn reconstruct_key(parent: &WidgetId, child: &WidgetId) -> Option<Self> {
+    fn reconstruct_key(parent: &OwnedId, child: &WidgetId) -> Option<Self> {
         child.next_key_after(parent)
     }
 }
 
 impl DataKey for (usize, usize) {
-    fn make_id(&self, parent: &WidgetId) -> WidgetId {
+    fn make_id(&self, parent: &OwnedId) -> OwnedId {
         parent.make_child(self.0).make_child(self.1)
     }
 
-    fn reconstruct_key(parent: &WidgetId, child: &WidgetId) -> Option<Self> {
+    fn reconstruct_key(parent: &OwnedId, child: &WidgetId) -> Option<Self> {
         let mut iter = child.iter_keys_after(parent);
         let col = iter.next();
         let row = iter.next();

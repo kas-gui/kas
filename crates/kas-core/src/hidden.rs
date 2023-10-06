@@ -15,7 +15,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::{Text, TextApi};
 use crate::theme::{DrawCx, SizeCx, TextClass};
-use crate::{Erased, Layout, NavAdvance, Node, Widget, WidgetId};
+use crate::{Erased, Layout, NavAdvance, Node, OwnedId, Widget, WidgetId};
 use kas_macros::{autoimpl, impl_scope};
 
 impl_scope! {
@@ -99,7 +99,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn id_ref(&self) -> &WidgetId {
+        fn id_ref(&self) -> &OwnedId {
             self.inner.id_ref()
         }
 
@@ -175,7 +175,7 @@ impl_scope! {
             self.inner.for_child_node(&(), index, closure)
         }
 
-        fn _configure(&mut self, cx: &mut ConfigCx, _: &A, id: WidgetId) {
+        fn _configure(&mut self, cx: &mut ConfigCx, _: &A, id: OwnedId) {
             self.inner._configure(cx, &(), id);
         }
 

@@ -109,7 +109,7 @@ impl_scope! {
 
     impl Events for Self {
         /// Make a fresh id based on `self.next` then insert into `self.id_map`
-        fn make_child_id(&mut self, index: usize) -> WidgetId {
+        fn make_child_id(&mut self, index: usize) -> OwnedId {
             if let Some(child) = self.widgets.get(index) {
                 // Use the widget's existing identifier, if any
                 if child.id_ref().is_valid() {
