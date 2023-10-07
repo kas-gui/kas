@@ -234,10 +234,32 @@ impl EventState {
 
     /// Notify that a widget must be redrawn
     ///
-    /// This is equivalent to: `cx.action(self, Action::REDRAW);`
+    /// This is equivalent to calling [`Self::action`] with [`Action::REDRAW`].
     #[inline]
     pub fn redraw(&mut self, id: impl HasId) {
         self.action(id, Action::REDRAW);
+    }
+
+    /// Notify that a widget must be resized
+    ///
+    /// This is equivalent to calling [`Self::action`] with [`Action::RESIZE`].
+    #[inline]
+    pub fn resize(&mut self, id: impl HasId) {
+        self.action(id, Action::RESIZE);
+    }
+
+    /// Notify that widgets under self may have moved
+    ///
+    /// This is equivalent to calling [`Self::action`] with [`Action::REGION_MOVED`].
+    #[inline]
+    pub fn region_moved(&mut self, id: impl HasId) {
+        self.action(id, Action::REGION_MOVED);
+    }
+
+    /// Terminate the GUI
+    #[inline]
+    pub fn exit(&mut self) {
+        self.action |= Action::EXIT;
     }
 
     /// Notify that a [`Action`] action should happen

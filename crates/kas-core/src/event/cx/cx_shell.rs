@@ -96,7 +96,7 @@ impl EventState {
     }
 
     /// Update the widgets under the cursor and touch events
-    pub(crate) fn region_moved<A>(&mut self, win: &mut Window<A>, data: &A) {
+    pub(crate) fn handle_region_moved<A>(&mut self, win: &mut Window<A>, data: &A) {
         log::trace!(target: "kas_core::event", "region_moved");
         // Note: redraw is already implied.
 

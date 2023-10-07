@@ -165,11 +165,12 @@ fn main() -> kas::shell::Result<()> {
     };
 
     let list = List::new([]).on_update(|cx, list, data: &Data| {
-        *cx |= list.set_direction(data.dir);
+        let act = list.set_direction(data.dir);
         let len = data.len;
         if len != list.len() {
             list.resize_with(cx, data, len, ListEntry::new);
         }
+        cx.action(list, act);
     });
     let tree = kas::column![
         "Demonstration of dynamic widget creation / deletion",

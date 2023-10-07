@@ -64,7 +64,7 @@ impl_scope! {
             {
                 if index != self.active {
                     self.active = index;
-                    *cx |= Action::REDRAW;
+                    cx.redraw(&self);
                 }
             } else {
                 log::warn!("ComboBox::update: unknown entry {msg:?}");
@@ -104,28 +104,32 @@ impl_scope! {
                         }
                     } else {
                         let last = self.len().saturating_sub(1);
-                        match cmd {
+                        let action = match cmd {
                             cmd if cmd.is_activate() => {
                                 open_popup(self, cx, FocusSource::Key);
                                 if let Some(code) = code {
                                     cx.depress_with_key(self.id(), code);
                                 }
+                                Action::empty()
                             }
-                            Command::Up => *cx |= self.set_active(self.active.saturating_sub(1)),
-                            Command::Down => *cx |= self.set_active((self.active + 1).min(last)),
-                            Command::Home => *cx |= self.set_active(0),
-                            Command::End => *cx |= self.set_active(last),
+                            Command::Up => self.set_active(self.active.saturating_sub(1)),
+                            Command::Down => self.set_active((self.active + 1).min(last)),
+                            Command::Home => self.set_active(0),
+                            Command::End => self.set_active(last),
                             _ => return Unused,
-                        }
+                        };
+                        cx.action(self, action);
                     }
                     Used
                 }
                 Event::Scroll(ScrollDelta::LineDelta(_, y)) if !self.popup.is_open() => {
                     if y > 0.0 {
-                        *cx |= self.set_active(self.active.saturating_sub(1));
+                        let action = self.set_active(self.active.saturating_sub(1));
+                        cx.action(&self, action);
                     } else if y < 0.0 {
                         let last = self.len().saturating_sub(1);
-                        *cx |= self.set_active((self.active + 1).min(last));
+                        let action = self.set_active((self.active + 1).min(last));
+                        cx.action(&self, action);
                     }
                     Used
                 }
@@ -172,7 +176,8 @@ impl_scope! {
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(IndexMsg(index)) = cx.try_pop() {
-                *cx |= self.set_active(index);
+                let action = self.set_active(index);
+                cx.action(&self, action);
                 self.popup.close(cx);
                 if let Some(ref f) = self.on_select {
                     if let Some(msg) = cx.try_pop() {

@@ -316,7 +316,8 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             self.apply_size(shared, false);
         }
         if action.contains(Action::REGION_MOVED) {
-            self.ev_state.region_moved(&mut self.widget, &shared.data);
+            self.ev_state
+                .handle_region_moved(&mut self.widget, &shared.data);
         }
         if !action.is_empty() {
             if let Some(ref mut window) = self.window {

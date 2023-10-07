@@ -193,7 +193,8 @@ impl_scope! {
             let changed = value != self.value;
             if changed {
                 self.value = value;
-                *cx |= self.grip.set_offset(self.offset()).1;
+                let action = self.grip.set_offset(self.offset()).1;
+                cx.action(&self, action);
             }
             self.force_visible(cx);
             changed
@@ -249,7 +250,7 @@ impl_scope! {
         // true if not equal to old value
         fn apply_grip_offset(&mut self, cx: &mut EventCx, offset: Offset) {
             let (offset, action) = self.grip.set_offset(offset);
-            *cx |= action;
+            cx.action(&self, action);
 
             let len = self.bar_len() - self.grip_len;
             let mut offset = match self.direction.is_vertical() {
@@ -326,7 +327,7 @@ impl_scope! {
             match event {
                 Event::TimerUpdate(_) => {
                     self.force_visible = false;
-                    *cx |= Action::REDRAW;
+                    cx.redraw(self);
                     Used
                 }
                 Event::PressStart { press } => {

@@ -259,7 +259,8 @@ impl_scope! {
                 if let Some(GripMsg::PressMove(offset)) = cx.try_pop() {
                     let n = index >> 1;
                     assert!(n < self.handles.len());
-                    *cx |= self.handles[n].set_offset(offset).1;
+                    let action = self.handles[n].set_offset(offset).1;
+                    cx.action(&self, action);
                     self.adjust_size(&mut cx.config_cx(), n);
                 }
             }
@@ -379,7 +380,7 @@ impl<W: Widget, D: Directional> Splitter<W, D> {
         self.widgets.push(widget);
 
         self.size_solved = false;
-        *cx |= Action::RESIZE;
+        cx.resize(self);
         index
     }
 
@@ -389,7 +390,7 @@ impl<W: Widget, D: Directional> Splitter<W, D> {
     pub fn pop(&mut self, cx: &mut EventState) -> Option<W> {
         let result = self.widgets.pop();
         if let Some(w) = result.as_ref() {
-            *cx |= Action::RESIZE;
+            cx.resize(&self);
 
             if w.id_ref().is_valid() {
                 if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
@@ -433,7 +434,7 @@ impl<W: Widget, D: Directional> Splitter<W, D> {
         self.widgets.insert(index, widget);
 
         self.size_solved = false;
-        *cx |= Action::RESIZE;
+        cx.resize(self);
     }
 
     /// Removes the child widget at position `index`
@@ -457,7 +458,7 @@ impl<W: Widget, D: Directional> Splitter<W, D> {
             }
         }
 
-        *cx |= Action::RESIZE;
+        cx.resize(&self);
 
         for v in self.id_map.values_mut() {
             if *v > index {
@@ -484,7 +485,7 @@ impl<W: Widget, D: Directional> Splitter<W, D> {
         }
 
         self.size_solved = false;
-        *cx |= Action::RESIZE;
+        cx.resize(self);
 
         w
     }
@@ -519,7 +520,7 @@ impl<W: Widget, D: Directional> Splitter<W, D> {
         }
 
         self.size_solved = false;
-        *cx |= Action::RESIZE;
+        cx.resize(self);
     }
 
     /// Resize, using the given closure to construct new widgets
@@ -535,12 +536,10 @@ impl<W: Widget, D: Directional> Splitter<W, D> {
         let old_len = self.widgets.len();
 
         if len < old_len {
-            *cx |= Action::RESIZE;
+            cx.resize(&self);
             loop {
                 let result = self.widgets.pop();
                 if let Some(w) = result.as_ref() {
-                    *cx |= Action::RESIZE;
-
                     if w.id_ref().is_valid() {
                         if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
                             self.id_map.remove(&key);
@@ -579,7 +578,7 @@ impl<W: Widget, D: Directional> Splitter<W, D> {
             }
 
             self.size_solved = false;
-            *cx |= Action::RESIZE;
+            cx.resize(self);
         }
     }
 }

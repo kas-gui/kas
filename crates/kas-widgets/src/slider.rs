@@ -286,7 +286,7 @@ impl_scope! {
             }
             let action = self.set_value(a + self.range.0);
             if !action.is_empty() {
-                *cx |= action;
+                cx.action(&self, action);
                 if let Some(ref f) = self.on_move {
                     f(cx, data, self.value);
                 }
@@ -338,7 +338,8 @@ impl_scope! {
         type Data = A;
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
-            *cx |= self.set_value((self.state_fn)(cx, data));
+            let action = self.set_value((self.state_fn)(cx, data));
+            cx.action(self, action);
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
@@ -380,7 +381,7 @@ impl_scope! {
 
                     let action = self.set_value(value);
                     if !action.is_empty() {
-                        *cx |= action;
+                        cx.action(&self, action);
                         if let Some(ref f) = self.on_move {
                             f(cx, data, self.value);
                         }

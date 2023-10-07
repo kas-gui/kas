@@ -95,7 +95,8 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
 
         fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Data) {
             // 7a is the colour of *magic*!
-            *cx |= edit.set_error_state(edit.get_str().len() % (7 + 1) == 0);
+            let act = edit.set_error_state(edit.get_str().len() % (7 + 1) == 0);
+            cx.action(edit, act);
         }
     }
 
@@ -120,11 +121,12 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
                 if let Some(MsgEdit) = cx.try_pop() {
                     // TODO: do not always set text: if this is a true pop-up it
                     // should not normally lose data.
-                    *cx |= self.popup.set_text(data.text.clone());
+                    let act = self.popup.set_text(data.text.clone());
                     // let ed = TextEdit::new(text, true);
                     // cx.add_window::<()>(ed.into_window("Edit text"));
                     // TODO: cx.add_modal(..)
                     self.popup.open(cx, &(), self.id());
+                    cx.action(self, act);
                 } else if let Some(result) = cx.try_pop() {
                     match result {
                         TextEditResult::Cancel => (),
@@ -272,7 +274,8 @@ fn editor() -> Box<dyn Widget<Data = AppData>> {
 
         fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &AppData) {
             let result = Markdown::new(edit.get_str());
-            *cx |= edit.set_error_state(result.is_err());
+            let act = edit.set_error_state(result.is_err());
+            cx.action(edit, act);
             cx.push(result.unwrap_or_else(|err| Markdown::new(&format!("{err}")).unwrap()));
         }
     }
@@ -323,9 +326,10 @@ Demonstration of *as-you-type* formatting from **Markdown**.
                         Direction::Up => Direction::Right,
                         _ => Direction::Up,
                     };
-                    *cx |= Action::RESIZE;
+                    cx.resize(self);
                 } else if let Some(md) = cx.try_pop::<Markdown>() {
-                    *cx |= self.label.set_text(md);
+                    let act = self.label.set_text(md);
+                    cx.action(self, act);
                 }
             }
         }
@@ -375,7 +379,8 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
     let list_view = filter::FilterBoxList::new(ListView::down(ListGuard), filter, guard)
         .map(|data: &Data| &data.list)
         .on_update(|cx, list, data| {
-            *cx |= list.set_selection_mode(data.mode);
+            let act = list.set_selection_mode(data.mode);
+            cx.action(list, act);
         });
 
     let ui = kas::column![
@@ -608,7 +613,7 @@ fn main() -> kas::shell::Result<()> {
                             cx.update(self.as_node(&()));
                         }
                         Menu::Quit => {
-                            *cx |= Action::EXIT;
+                            cx.exit();
                         }
                     }
                 }

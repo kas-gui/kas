@@ -178,13 +178,15 @@ impl_scope! {
             // Reset data on focus loss (update is inhibited with focus).
             // No need if we just sent a message (should cause an update).
             let string = (edit.guard.value_fn)(data);
-            *cx |= edit.set_string(string);
+            let action = edit.set_string(string);
+            cx.action(edit, action);
         }
 
         fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
             if !edit.has_edit_focus() {
                 let string = (edit.guard.value_fn)(data);
-                *cx |= edit.set_string(string);
+                let action = edit.set_string(string);
+                cx.action(edit, action);
             }
         }
 
@@ -239,19 +241,22 @@ impl_scope! {
                 // Reset data on focus loss (update is inhibited with focus).
                 // No need if we just sent a message (should cause an update).
                 let value = (edit.guard.value_fn)(data);
-                *cx |= edit.set_string(format!("{}", value));
+                let action = edit.set_string(format!("{}", value));
+                cx.action(edit, action);
             }
         }
 
         fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &A) {
             edit.guard.parsed = edit.get_str().parse().ok();
-            *cx |= edit.set_error_state(edit.guard.parsed.is_none());
+            let action = edit.set_error_state(edit.guard.parsed.is_none());
+            cx.action(edit, action);
         }
 
         fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
             if !edit.has_edit_focus() {
                 let value = (edit.guard.value_fn)(data);
-                *cx |= edit.set_string(format!("{}", value));
+                let action = edit.set_string(format!("{}", value));
+                cx.action(&edit, action);
                 edit.guard.parsed = None;
             }
         }
@@ -384,7 +389,8 @@ impl_scope! {
     impl Self {
         fn update_scroll_bar(&mut self, cx: &mut EventState) {
             let max_offset = self.inner.max_scroll_offset().1;
-            *cx |= self.bar.set_limits(max_offset, self.inner.rect().size.1);
+            let action = self.bar.set_limits(max_offset, self.inner.rect().size.1);
+            cx.action(&self, action);
             self.bar.set_value(cx, self.inner.view_offset.1);
         }
     }
@@ -687,7 +693,7 @@ impl_scope! {
                 }
                 Event::LostKeyFocus => {
                     self.has_key_focus = false;
-                    cx.redraw(self);
+                    cx.redraw(&self);
                     G::focus_lost(self, cx, data);
                     Used
                 }
@@ -1083,7 +1089,7 @@ impl<G: EditGuard> EditField<G> {
             );
         }
 
-        cx.redraw(self);
+        cx.redraw(&self);
         self.set_view_offset_from_edit_pos(cx);
     }
 
@@ -1165,7 +1171,7 @@ impl<G: EditGuard> EditField<G> {
         let action = match cmd {
             Command::Escape | Command::Deselect if !selection.is_empty() => {
                 self.selection.set_empty();
-                cx.redraw(self);
+                cx.redraw(&self);
                 Action::None
             }
             Command::Activate => Action::Activate,
@@ -1409,7 +1415,7 @@ impl<G: EditGuard> EditField<G> {
                     self.set_primary(cx);
                 }
                 self.edit_x_coord = x_coord;
-                cx.redraw(self);
+                cx.redraw(&self);
                 EditAction::None
             }
         };

@@ -375,7 +375,8 @@ impl_scope! {
                 self.direction,
                 (self.skip * data_len - self.child_inter_margin).max(0),
             );
-            *cx |= self.scroll.set_sizes(view_size, content_size);
+            let action = self.scroll.set_sizes(view_size, content_size);
+            cx.action(self, action);
         }
     }
 
@@ -410,7 +411,8 @@ impl_scope! {
 
         #[inline]
         fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
-            *cx |= self.scroll.set_offset(offset);
+            let act = self.scroll.set_offset(offset);
+            cx.action(&self, act);
             cx.request_update(self.id());
             self.scroll.offset()
         }
@@ -618,7 +620,7 @@ impl_scope! {
                 // We must call at least SET_RECT to update scrollable region
                 // RESIZE allows recalculation of child widget size which may
                 // have been zero if no data was initially available!
-                *cx |= Action::RESIZE;
+                cx.resize(&self);
             }
 
             self.update_widgets(cx, data);
@@ -658,7 +660,9 @@ impl_scope! {
                     };
                     return if let Some(i_data) = data_index {
                         // Set nav focus to i_data and update scroll position
-                        if self.scroll.focus_rect(cx, solver.rect(i_data), self.core.rect) {
+                        let act = self.scroll.focus_rect(cx, solver.rect(i_data), self.core.rect);
+                        if !act.is_empty() {
+                            cx.action(&self, act);
                             self.update_widgets(&mut cx.config_cx(), data);
                         }
                         let index = i_data % usize::conv(self.cur_len);
@@ -710,19 +714,19 @@ impl_scope! {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
-            let key;
+            let key: A::Key;
             if let Some(index) = cx.last_child() {
                 let w = &mut self.widgets[index];
                 key = match w.key.as_ref() {
-                    Some(k) => k,
+                    Some(k) => k.clone(),
                     None => return,
                 };
 
-                self.driver.on_messages(cx, data, key, &mut w.widget);
+                self.driver.on_messages(cx, data, &key, &mut w.widget);
             } else {
                 // Message is from self
                 key = match self.press_target.as_ref() {
-                    Some((_, k)) => k,
+                    Some((_, k)) => k.clone(),
                     None => return,
                 };
             }
@@ -731,18 +735,18 @@ impl_scope! {
                 match self.sel_mode {
                     SelectionMode::None => (),
                     SelectionMode::Single => {
-                        cx.redraw(self);
+                        cx.redraw(&self);
                         self.selection.clear();
                         self.selection.insert(key.clone());
-                        cx.push(SelectionMsg::Select(key.clone()));
+                        cx.push(SelectionMsg::Select(key));
                     }
                     SelectionMode::Multiple => {
-                        cx.redraw(self);
-                        if self.selection.remove(key) {
+                        cx.redraw(&self);
+                        if self.selection.remove(&key) {
                             cx.push(SelectionMsg::Deselect(key.clone()));
                         } else {
                             self.selection.insert(key.clone());
-                            cx.push(SelectionMsg::Select(key.clone()));
+                            cx.push(SelectionMsg::Select(key));
                         }
                     }
                 }
@@ -750,8 +754,9 @@ impl_scope! {
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &A, scroll: Scroll) {
-            self.scroll.scroll(cx, self.rect(), scroll);
+            let act = self.scroll.scroll(cx, self.rect(), scroll);
             self.update_widgets(&mut cx.config_cx(), data);
+            cx.action(self, act);
         }
     }
 
@@ -851,7 +856,9 @@ impl_scope! {
                     last_data
                 };
 
-                if self.scroll.focus_rect(cx, solver.rect(data_index), self.core.rect) {
+                let act = self.scroll.focus_rect(cx, solver.rect(data_index), self.core.rect);
+                if !act.is_empty() {
+                    cx.action(&self, act);
                     self.update_widgets(&mut cx.config_cx(), data);
                 }
 

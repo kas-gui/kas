@@ -142,10 +142,11 @@ impl_scope! {
             if self.label.env().bounds.1.is_finite() {
                 // NOTE: bounds are initially infinite. Alignment results in
                 // infinite offset and thus infinite measured height.
-                match self.label.try_prepare() {
-                    Ok(true) => *cx |= Action::RESIZE,
-                    _ => cx.redraw(self),
-                }
+                let action = match self.label.try_prepare() {
+                    Ok(true) => Action::RESIZE,
+                    _ => Action::REDRAW,
+                };
+                cx.action(self, action);
             }
         }
     }

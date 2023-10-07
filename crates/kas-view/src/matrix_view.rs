@@ -331,7 +331,8 @@ impl_scope! {
             let skip = self.child_size + self.child_inter_margin;
             let content_size = (skip.cwise_mul(self.data_len) - self.child_inter_margin)
                 .max(Size::ZERO);
-            *cx |= self.scroll.set_sizes(view_size, content_size);
+            let action = self.scroll.set_sizes(view_size, content_size);
+            cx.action(self, action);
         }
     }
 
@@ -355,7 +356,8 @@ impl_scope! {
 
         #[inline]
         fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
-            *cx |= self.scroll.set_offset(offset);
+            let action = self.scroll.set_offset(offset);
+            cx.action(&self, action);
             cx.request_update(self.id());
             self.scroll.offset()
         }
@@ -563,7 +565,7 @@ impl_scope! {
                 // We must call at least SET_RECT to update scrollable region
                 // RESIZE allows recalculation of child widget size which may
                 // have been zero if no data was initially available!
-                *cx |= Action::RESIZE;
+                cx.resize(&self);
             }
 
             self.update_widgets(cx, data);
@@ -607,7 +609,9 @@ impl_scope! {
                     };
                     return if let Some((ci, ri)) = data_index {
                         // Set nav focus and update scroll position
-                        if self.scroll.focus_rect(cx, solver.rect(ci, ri), self.core.rect) {
+                        let action = self.scroll.focus_rect(cx, solver.rect(ci, ri), self.core.rect);
+                        if !action.is_empty() {
+                            cx.action(&self, action);
                             solver = self.update_widgets(&mut cx.config_cx(), data);
                         }
 
@@ -698,13 +702,13 @@ impl_scope! {
                 match self.sel_mode {
                     SelectionMode::None => (),
                     SelectionMode::Single => {
-                        cx.redraw(self);
+                        cx.redraw(&self);
                         self.selection.clear();
                         self.selection.insert(key.clone());
                         cx.push(SelectionMsg::Select(key));
                     }
                     SelectionMode::Multiple => {
-                        cx.redraw(self);
+                        cx.redraw(&self);
                         if self.selection.remove(&key) {
                             cx.push(SelectionMsg::Deselect(key));
                         } else {
@@ -717,8 +721,9 @@ impl_scope! {
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &A, scroll: Scroll) {
-            self.scroll.scroll(cx, self.rect(), scroll);
+            let act = self.scroll.scroll(cx, self.rect(), scroll);
             self.update_widgets(&mut cx.config_cx(), data);
+            cx.action(self, act);
         }
     }
 
@@ -828,7 +833,9 @@ impl_scope! {
                     (d_cols - 1, d_rows - 1)
                 };
 
-                if self.scroll.focus_rect(cx, solver.rect(ci, ri), self.core.rect) {
+                let action = self.scroll.focus_rect(cx, solver.rect(ci, ri), self.core.rect);
+                if !action.is_empty() {
+                    cx.action(&self, action);
                     solver = self.update_widgets(&mut cx.config_cx(), data);
                 }
 

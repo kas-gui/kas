@@ -127,7 +127,8 @@ impl<A, T: SpinnerValue> EditGuard for SpinnerGuard<A, T> {
 
     fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
         let value = (edit.guard.state_fn)(cx, data);
-        *cx |= edit.set_string(value.to_string());
+        let action = edit.set_string(value.to_string());
+        cx.action(edit, action);
     }
 
     fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, data: &A) {
@@ -135,7 +136,8 @@ impl<A, T: SpinnerValue> EditGuard for SpinnerGuard<A, T> {
             cx.push(ValueMsg(value));
         } else {
             let value = (edit.guard.state_fn)(&cx.config_cx(), data);
-            *cx |= edit.set_string(value.to_string());
+            let action = edit.set_string(value.to_string());
+            cx.action(edit, action);
         }
     }
 
@@ -147,7 +149,8 @@ impl<A, T: SpinnerValue> EditGuard for SpinnerGuard<A, T> {
         } else {
             is_err = true;
         };
-        *cx |= edit.set_error_state(is_err);
+        let action = edit.set_error_state(is_err);
+        cx.action(edit, action);
     }
 }
 

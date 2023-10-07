@@ -282,7 +282,7 @@ impl_scope! {
             cx.configure(widget.as_node(data), id);
             self.widgets.push(widget);
 
-            *cx |= Action::RESIZE;
+            cx.resize(self);
             index
         }
 
@@ -292,7 +292,7 @@ impl_scope! {
         pub fn pop(&mut self, cx: &mut EventState) -> Option<W> {
             let result = self.widgets.pop();
             if let Some(w) = result.as_ref() {
-                *cx |= Action::RESIZE;
+                cx.resize(&self);
 
                 if w.id_ref().is_valid() {
                     if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
@@ -318,7 +318,7 @@ impl_scope! {
             let id = self.make_child_id(index);
             cx.configure(widget.as_node(data), id);
             self.widgets.insert(index, widget);
-            *cx |= Action::RESIZE;
+            cx.resize(self);
         }
 
         /// Removes the child widget at position `index`
@@ -334,7 +334,7 @@ impl_scope! {
                 }
             }
 
-            *cx |= Action::RESIZE;
+            cx.resize(&self);
 
             for v in self.id_map.values_mut() {
                 if *v > index {
@@ -360,7 +360,7 @@ impl_scope! {
                 }
             }
 
-            *cx |= Action::RESIZE;
+            cx.resize(self);
 
             w
         }
@@ -382,7 +382,7 @@ impl_scope! {
                 self.widgets.push(w);
             }
 
-            *cx |= Action::RESIZE;
+            cx.resize(self);
         }
 
         /// Resize, using the given closure to construct new widgets
@@ -395,7 +395,7 @@ impl_scope! {
             let old_len = self.widgets.len();
 
             if len < old_len {
-                *cx |= Action::RESIZE;
+                cx.resize(&self);
                 loop {
                     let w = self.widgets.pop().unwrap();
                     if w.id_ref().is_valid() {
@@ -417,7 +417,7 @@ impl_scope! {
                     cx.configure(w.as_node(data), id);
                     self.widgets.push(w);
                 }
-                *cx |= Action::RESIZE;
+                cx.resize(self);
             }
         }
 
