@@ -315,8 +315,7 @@ impl_scope! {
             let mut first_data = usize::conv(offset / u64::conv(self.skip));
 
             let data_len: usize = self.data_len.cast();
-            let mut cur_len: usize = self.widgets.len();
-            cur_len = cur_len.min(data_len - first_data);
+            let cur_len: usize = self.widgets.len().min(data_len);
             first_data = first_data.min(data_len - cur_len);
             self.cur_len = cur_len.cast();
             debug_assert!(self.num_children() <= self.widgets.len());

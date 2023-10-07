@@ -252,13 +252,13 @@ impl_scope! {
 
             let offset = self.scroll_offset();
             let skip = (self.child_size + self.child_inter_margin).max(Size(1, 1));
-            let mut first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
-            let mut first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
             let data_len = data.len();
-            let col_len = (data_len.0 - first_col).min(self.alloc_len.cols.cast());
-            let row_len = (data_len.1 - first_row).min(self.alloc_len.rows.cast());
-            first_col = first_col.min(data_len.0 - col_len);
-            first_row = first_row.min(data_len.1 - row_len);
+            let col_len = data_len.0.min(self.alloc_len.cols.cast());
+            let row_len = data_len.1.min(self.alloc_len.rows.cast());
+            let first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0))
+                .min(data_len.0 - col_len);
+            let first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1))
+                .min(data_len.1 - row_len);
             self.cur_len = (col_len.cast(), row_len.cast());
             debug_assert!(self.num_children() <= self.widgets.len());
             self.first_data = (first_row.cast(), first_col.cast());
