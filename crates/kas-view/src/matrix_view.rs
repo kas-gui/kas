@@ -39,7 +39,7 @@ impl_scope! {
     /// required when the matrix is scrolled, keeping the number of widgets in
     /// use roughly proportional to the number of data items within the view.
     ///
-    /// Each view widget has a [`WidgetId`] corresponding to its current data
+    /// Each view widget has an [`Id`] corresponding to its current data
     /// item, and may handle events and emit messages like other widegts.
     /// See [`Driver`] documentation for more on event handling.
     ///
@@ -371,7 +371,7 @@ impl_scope! {
         fn get_child(&self, index: usize) -> Option<&dyn Layout> {
             self.widgets.get(index).map(|w| w.widget.as_layout())
         }
-        fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+        fn find_child_index(&self, id: &Id) -> Option<usize> {
             let num = self.num_children();
             let key = A::Key::reconstruct_key(self.id_ref(), id);
             if key.is_some() {
@@ -489,7 +489,7 @@ impl_scope! {
             self.scroll_offset()
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }
@@ -529,7 +529,7 @@ impl_scope! {
 
     impl Events for Self {
         #[inline]
-        fn make_child_id(&mut self, _: usize) -> WidgetId {
+        fn make_child_id(&mut self, _: usize) -> Id {
             // We configure children in update_widgets and do not want this method to be called
             unimplemented!()
         }
@@ -746,7 +746,7 @@ impl_scope! {
             }
         }
 
-        fn _configure(&mut self, cx: &mut ConfigCx, data: &A, id: WidgetId) {
+        fn _configure(&mut self, cx: &mut ConfigCx, data: &A, id: Id) {
             self.core.id = id;
             #[cfg(debug_assertions)]
             self.core.status.configure(&self.core.id);
@@ -766,14 +766,14 @@ impl_scope! {
             &mut self,
             cx: &mut EventCx,
             data: &A,
-            id: WidgetId,
+            id: Id,
             disabled: bool,
             event: Event,
         ) -> IsUsed {
             kas::impls::_send(self, cx, data, id, disabled, event)
         }
 
-        fn _replay(&mut self, cx: &mut EventCx, data: &A, id: WidgetId, msg: kas::Erased) {
+        fn _replay(&mut self, cx: &mut EventCx, data: &A, id: Id, msg: kas::Erased) {
             kas::impls::_replay(self, cx, data, id, msg);
         }
 
@@ -782,9 +782,9 @@ impl_scope! {
             &mut self,
             cx: &mut EventCx,
             data: &A,
-            focus: Option<&WidgetId>,
+            focus: Option<&Id>,
             advance: NavAdvance,
-        ) -> Option<WidgetId> {
+        ) -> Option<Id> {
             if cx.is_disabled(self.id_ref()) || self.cur_len == (0, 0) {
                 return None;
             }

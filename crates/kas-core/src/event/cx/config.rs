@@ -11,7 +11,7 @@ use crate::geom::{Rect, Size};
 use crate::layout::AlignPair;
 use crate::text::TextApi;
 use crate::theme::{Feature, SizeCx, TextClass, ThemeSize};
-use crate::{Node, WidgetId};
+use crate::{Id, Node};
 use std::ops::{Deref, DerefMut};
 
 #[allow(unused)] use crate::{event::Event, Events, Layout};
@@ -74,7 +74,7 @@ impl<'a> ConfigCx<'a> {
     /// Pass the `id` to assign to the widget. This is usually constructed with
     /// [`Events::make_child_id`].
     #[inline]
-    pub fn configure(&mut self, mut widget: Node<'_>, id: WidgetId) {
+    pub fn configure(&mut self, mut widget: Node<'_>, id: Id) {
         widget._configure(self, id);
     }
 

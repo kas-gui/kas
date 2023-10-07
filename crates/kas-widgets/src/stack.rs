@@ -51,7 +51,7 @@ impl_scope! {
         active: usize,
         size_limit: usize,
         next: usize,
-        id_map: HashMap<usize, usize>, // map key of WidgetId to index
+        id_map: HashMap<usize, usize>, // map key of Id to index
     }
 
     impl Widget for Self {
@@ -78,7 +78,7 @@ impl_scope! {
             self.widgets.get(index).map(|(w, _)| w.as_layout())
         }
 
-        fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+        fn find_child_index(&self, id: &Id) -> Option<usize> {
             id.next_key_after(self.id_ref())
                 .and_then(|k| self.id_map.get(&k).cloned())
         }
@@ -125,7 +125,7 @@ impl_scope! {
             }
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             if let Some(entry) = self.widgets.get_mut(self.active) {
                 debug_assert_eq!(entry.1, State::Sized);
                 return entry.0.find_id(coord);
@@ -142,7 +142,7 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn make_child_id(&mut self, index: usize) -> WidgetId {
+        fn make_child_id(&mut self, index: usize) -> Id {
             if let Some((child, state)) = self.widgets.get(index) {
                 if state.is_configured() {
                     debug_assert!(child.id_ref().is_valid());

@@ -24,7 +24,7 @@ use crate::geom::Coord;
 use crate::shell::{Platform, ShellSharedErased, WindowDataErased};
 use crate::util::WidgetHierarchy;
 use crate::LayoutExt;
-use crate::{Action, Erased, ErasedStack, NavAdvance, Node, Widget, WidgetId, WindowId};
+use crate::{Action, Erased, ErasedStack, Id, NavAdvance, Node, Widget, WindowId};
 
 mod config;
 mod cx_pub;
@@ -60,7 +60,7 @@ impl GrabMode {
 
 #[derive(Clone, Debug)]
 enum GrabDetails {
-    Click { cur_id: Option<WidgetId> },
+    Click { cur_id: Option<Id> },
     Grab,
     Pan((u16, u16)),
 }
@@ -75,8 +75,8 @@ impl GrabDetails {
 struct MouseGrab {
     button: MouseButton,
     repetitions: u32,
-    start_id: WidgetId,
-    depress: Option<WidgetId>,
+    start_id: Id,
+    depress: Option<Id>,
     details: GrabDetails,
 }
 
@@ -104,9 +104,9 @@ impl<'a> EventCx<'a> {
 #[derive(Clone, Debug)]
 struct TouchGrab {
     id: u64,
-    start_id: WidgetId,
-    depress: Option<WidgetId>,
-    cur_id: Option<WidgetId>,
+    start_id: Id,
+    depress: Option<Id>,
+    cur_id: Option<Id>,
     last_move: Coord,
     coord: Coord,
     mode: GrabMode,
@@ -135,7 +135,7 @@ const MAX_PAN_GRABS: usize = 2;
 
 #[derive(Clone, Debug)]
 struct PanGrab {
-    id: WidgetId,
+    id: Id,
     mode: GrabMode,
     source_is_touch: bool,
     n: u16,
@@ -145,17 +145,17 @@ struct PanGrab {
 #[derive(Clone, Debug)]
 #[allow(clippy::enum_variant_names)] // they all happen to be about Focus
 enum Pending {
-    Configure(WidgetId),
-    Update(WidgetId),
-    Send(WidgetId, Event),
+    Configure(Id),
+    Update(Id),
+    Send(Id, Event),
     NextNavFocus {
-        target: Option<WidgetId>,
+        target: Option<Id>,
         reverse: bool,
         source: FocusSource,
     },
 }
 
-type AccessLayer = (bool, HashMap<Key, WidgetId>);
+type AccessLayer = (bool, HashMap<Key, Id>);
 
 /// Event context state
 ///
@@ -177,17 +177,17 @@ type AccessLayer = (bool, HashMap<Key, WidgetId>);
 pub struct EventState {
     config: WindowConfig,
     platform: Platform,
-    disabled: Vec<WidgetId>,
+    disabled: Vec<Id>,
     window_has_focus: bool,
     modifiers: ModifiersState,
     /// key focus is on same widget as sel_focus; otherwise its value is ignored
     key_focus: bool,
-    sel_focus: Option<WidgetId>,
-    nav_focus: Option<WidgetId>,
-    nav_fallback: Option<WidgetId>,
-    hover: Option<WidgetId>,
+    sel_focus: Option<Id>,
+    nav_focus: Option<Id>,
+    nav_fallback: Option<Id>,
+    hover: Option<Id>,
     hover_icon: CursorIcon,
-    key_depress: LinearMap<KeyCode, WidgetId>,
+    key_depress: LinearMap<KeyCode, Id>,
     last_mouse_coord: Coord,
     last_click_button: MouseButton,
     last_click_repetitions: u32,
@@ -195,13 +195,13 @@ pub struct EventState {
     mouse_grab: Option<MouseGrab>,
     touch_grab: SmallVec<[TouchGrab; 8]>,
     pan_grab: SmallVec<[PanGrab; 4]>,
-    access_layers: BTreeMap<WidgetId, AccessLayer>,
+    access_layers: BTreeMap<Id, AccessLayer>,
     // For each: (WindowId of popup, popup descriptor, old nav focus)
-    popups: SmallVec<[(WindowId, crate::PopupDescriptor, Option<WidgetId>); 16]>,
-    popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
-    time_updates: Vec<(Instant, WidgetId, u64)>,
+    popups: SmallVec<[(WindowId, crate::PopupDescriptor, Option<Id>); 16]>,
+    popup_removed: SmallVec<[(Id, WindowId); 16]>,
+    time_updates: Vec<(Instant, Id, u64)>,
     // Set of futures of messages together with id of sending widget
-    fut_messages: Vec<(WidgetId, Pin<Box<dyn Future<Output = Erased>>>)>,
+    fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Erased>>>)>,
     // FIFO queue of events pending handling
     pending: VecDeque<Pending>,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -212,7 +212,7 @@ pub struct EventState {
 /// internals
 impl EventState {
     #[inline]
-    fn key_focus(&self) -> Option<WidgetId> {
+    fn key_focus(&self) -> Option<Id> {
         if self.key_focus {
             self.sel_focus.clone()
         } else {
@@ -222,7 +222,7 @@ impl EventState {
 
     fn set_pan_on(
         &mut self,
-        id: WidgetId,
+        id: Id,
         mode: GrabMode,
         source_is_touch: bool,
         coord: Coord,
@@ -337,7 +337,7 @@ impl EventState {
     }
 
     // Set selection focus to `wid`; if `key_focus` also set that
-    fn set_sel_focus(&mut self, wid: WidgetId, key_focus: bool) {
+    fn set_sel_focus(&mut self, wid: Id, key_focus: bool) {
         log::trace!("set_sel_focus: wid={wid}, key_focus={key_focus}");
         // The widget probably already has nav focus, but anyway:
         self.set_nav_focus(wid.clone(), FocusSource::Synthetic);
@@ -365,7 +365,7 @@ impl EventState {
 
     // Clear old hover, set new hover, send events.
     // If there is a popup, only permit descendands of that.
-    fn set_hover(&mut self, mut w_id: Option<WidgetId>) {
+    fn set_hover(&mut self, mut w_id: Option<Id>) {
         if let Some(ref id) = w_id {
             if let Some(popup) = self.popups.last() {
                 if !popup.1.id.is_ancestor_of(id) {
@@ -430,7 +430,7 @@ impl<'a> EventCx<'a> {
 
         if let Some(cmd) = opt_command {
             let mut targets = vec![];
-            let mut send = |_self: &mut Self, id: WidgetId, cmd| -> bool {
+            let mut send = |_self: &mut Self, id: Id, cmd| -> bool {
                 if !targets.contains(&id) {
                     let event = Event::Command(cmd, Some(code));
                     let used = _self.send_event(widget.re(), id.clone(), event);
@@ -520,7 +520,7 @@ impl<'a> EventCx<'a> {
     }
 
     // Clears mouse grab and pan grab, resets cursor and redraws
-    fn remove_mouse_grab(&mut self, success: bool) -> Option<(WidgetId, Event)> {
+    fn remove_mouse_grab(&mut self, success: bool) -> Option<(Id, Event)> {
         if let Some(grab) = self.mouse_grab.take() {
             log::trace!("remove_mouse_grab: start_id={}", grab.start_id);
             self.window.set_cursor_icon(self.hover_icon);
@@ -555,7 +555,7 @@ impl<'a> EventCx<'a> {
     }
 
     /// Replay a message as if it was pushed by `id`
-    fn replay(&mut self, mut widget: Node<'_>, id: WidgetId, msg: Erased) {
+    fn replay(&mut self, mut widget: Node<'_>, id: Id, msg: Erased) {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         self.messages.set_base();
@@ -568,7 +568,7 @@ impl<'a> EventCx<'a> {
 
     // Wrapper around Self::send; returns true when event is used
     #[inline]
-    fn send_event(&mut self, widget: Node<'_>, id: WidgetId, event: Event) -> bool {
+    fn send_event(&mut self, widget: Node<'_>, id: Id, event: Event) -> bool {
         self.messages.set_base();
         let used = self.send_event_impl(widget, id, event);
         self.last_child = None;
@@ -577,7 +577,7 @@ impl<'a> EventCx<'a> {
     }
 
     // Send an event; possibly leave messages on the stack
-    fn send_event_impl(&mut self, mut widget: Node<'_>, mut id: WidgetId, event: Event) -> bool {
+    fn send_event_impl(&mut self, mut widget: Node<'_>, mut id: Id, event: Event) -> bool {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         self.messages.set_base();
@@ -600,7 +600,7 @@ impl<'a> EventCx<'a> {
         widget._send(self, id, disabled, event) == Used
     }
 
-    fn send_popup_first(&mut self, mut widget: Node<'_>, id: Option<WidgetId>, event: Event) {
+    fn send_popup_first(&mut self, mut widget: Node<'_>, id: Option<Id>, event: Event) {
         while let Some(pid) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
             let mut target = pid;
             if let Some(id) = id.clone() {
@@ -622,7 +622,7 @@ impl<'a> EventCx<'a> {
     pub fn next_nav_focus_impl(
         &mut self,
         mut widget: Node,
-        target: Option<WidgetId>,
+        target: Option<Id>,
         reverse: bool,
         source: FocusSource,
     ) {

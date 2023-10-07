@@ -98,7 +98,7 @@ impl Tree {
                 (#layout).set_rect(cx, rect);
             }
 
-            fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+            fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
                 use ::kas::{layout, Layout, LayoutExt};
 
                 #[cfg(debug_assertions)]
@@ -217,7 +217,7 @@ impl Tree {
         let toks = quote! {{
             struct #name #impl_generics {
                 rect: ::kas::geom::Rect,
-                id: ::kas::WidgetId,
+                id: ::kas::Id,
                 #[cfg(debug_assertions)]
                 status: ::kas::WidgetStatus,
                 #stor_ty
@@ -243,7 +243,7 @@ impl Tree {
                     &mut self,
                     _: &mut ::kas::event::EventCx,
                     _: &Self::Data,
-                    _: &::kas::WidgetId,
+                    _: &::kas::Id,
                     _: &::kas::event::Event,
                 ) -> ::kas::event::IsUsed {
                     #[cfg(debug_assertions)]

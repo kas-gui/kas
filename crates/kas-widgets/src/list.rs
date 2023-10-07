@@ -73,7 +73,7 @@ impl_scope! {
         widgets: Vec<W>,
         direction: D,
         next: usize,
-        id_map: HashMap<usize, usize>, // map key of WidgetId to index
+        id_map: HashMap<usize, usize>, // map key of Id to index
         on_messages: Option<Box<dyn Fn(&mut EventCx, usize)>>,
     }
 
@@ -86,7 +86,7 @@ impl_scope! {
             self.widgets.get(index).map(|w| w.as_layout())
         }
 
-        fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+        fn find_child_index(&self, id: &Id) -> Option<usize> {
             id.next_key_after(self.id_ref())
                 .and_then(|k| self.id_map.get(&k).cloned())
         }
@@ -109,7 +109,7 @@ impl_scope! {
 
     impl Events for Self {
         /// Make a fresh id based on `self.next` then insert into `self.id_map`
-        fn make_child_id(&mut self, index: usize) -> WidgetId {
+        fn make_child_id(&mut self, index: usize) -> Id {
             if let Some(child) = self.widgets.get(index) {
                 // Use the widget's existing identifier, if any
                 if child.id_ref().is_valid() {

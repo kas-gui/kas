@@ -61,7 +61,7 @@ impl_scope! {
             self.bar.set_value(cx, self.view_offset.1);
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }

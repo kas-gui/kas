@@ -285,7 +285,7 @@ impl_scope! {
             self.edit.set_outer_rect(rect, FrameStyle::EditBox);
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             self.b_up.find_id(coord)
                 .or_else(|| self.b_down.find_id(coord))
                 .or_else(|| self.edit.find_id(coord))
@@ -301,7 +301,7 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn steal_event(&mut self, cx: &mut EventCx, data: &A, _: &WidgetId, event: &Event) -> IsUsed {
+        fn steal_event(&mut self, cx: &mut EventCx, data: &A, _: &Id, event: &Event) -> IsUsed {
             let btn = match event {
                 Event::Command(cmd, code) => match cmd {
                     Command::Down => {

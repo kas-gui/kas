@@ -27,6 +27,6 @@ pub use crate::text::{EditableTextApi, TextApi, TextApiExt};
 pub use crate::{autoimpl, impl_anon, impl_default, impl_scope, widget, widget_index};
 #[doc(no_inline)]
 pub use crate::{Events, Layout, LayoutExt, Widget, Window, WindowCommand};
-#[doc(no_inline)] pub use crate::{HasId, WidgetId};
+#[doc(no_inline)] pub use crate::{HasId, Id};
 #[doc(no_inline)]
 pub use crate::{HasScrollBars, Node, ScrollBarMode, Scrollable};

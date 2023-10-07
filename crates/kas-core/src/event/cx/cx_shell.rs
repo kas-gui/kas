@@ -13,7 +13,7 @@ use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
 use crate::theme::ThemeSize;
-use crate::{Action, NavAdvance, WidgetId, Window};
+use crate::{Action, Id, NavAdvance, Window};
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
@@ -68,7 +68,7 @@ impl EventState {
     /// is created (before or after resizing).
     ///
     /// This method calls [`ConfigCx::configure`] in order to assign
-    /// [`WidgetId`] identifiers and call widgets' [`Events::configure`]
+    /// [`Id`] identifiers and call widgets' [`Events::configure`]
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
     pub(crate) fn full_configure<A>(
@@ -78,7 +78,7 @@ impl EventState {
         win: &mut Window<A>,
         data: &A,
     ) {
-        let id = WidgetId::ROOT.make_child(wid.get().cast());
+        let id = Id::ROOT.make_child(wid.get().cast());
 
         log::debug!(target: "kas_core::event", "full_configure of Window{id}");
         self.action.remove(Action::RECONFIGURE);
@@ -304,7 +304,7 @@ impl<'a> EventCx<'a> {
         use winit::event::{MouseScrollDelta, TouchPhase, WindowEvent::*};
 
         match event {
-            CloseRequested => self.action(WidgetId::ROOT, Action::CLOSE),
+            CloseRequested => self.action(Id::ROOT, Action::CLOSE),
             /* Not yet supported: see #98
             DroppedFile(path) => ,
             HoveredFile(path) => ,
@@ -314,7 +314,7 @@ impl<'a> EventCx<'a> {
                 self.window_has_focus = state;
                 if state {
                     // Required to restart theme animations
-                    self.action(WidgetId::ROOT, Action::REDRAW);
+                    self.action(Id::ROOT, Action::REDRAW);
                 } else {
                     // Window focus lost: close all popups
                     while let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
@@ -364,7 +364,7 @@ impl<'a> EventCx<'a> {
                 let state = modifiers.state();
                 if state.alt_key() != self.modifiers.alt_key() {
                     // This controls drawing of access key indicators
-                    self.action(WidgetId::ROOT, Action::REDRAW);
+                    self.action(Id::ROOT, Action::REDRAW);
                 }
                 self.modifiers = state;
             }
@@ -543,7 +543,7 @@ impl<'a> EventCx<'a> {
                         }
 
                         if redraw {
-                            self.action(WidgetId::ROOT, Action::REDRAW);
+                            self.action(Id::ROOT, Action::REDRAW);
                         } else if let Some(pan_grab) = pan_grab {
                             if usize::conv(pan_grab.1) < MAX_PAN_GRABS {
                                 if let Some(pan) = self.pan_grab.get_mut(usize::conv(pan_grab.0)) {
@@ -554,7 +554,7 @@ impl<'a> EventCx<'a> {
                     }
                     ev @ (TouchPhase::Ended | TouchPhase::Cancelled) => {
                         if let Some(mut grab) = self.remove_touch(touch.id) {
-                            self.action(WidgetId::ROOT, grab.flush_click_move());
+                            self.action(Id::ROOT, grab.flush_click_move());
 
                             if grab.mode == GrabMode::Grab {
                                 let id = grab.cur_id.clone();

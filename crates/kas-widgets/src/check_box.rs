@@ -194,7 +194,7 @@ impl_scope! {
             shrink_to_text(&mut self.core.rect, dir, &self.label);
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             self.rect().contains(coord).then(|| self.inner.id())
         }
     }

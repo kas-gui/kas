@@ -39,7 +39,7 @@
 /// using widgets in a GUI.
 pub mod prelude {
     // Note: using #[doc(no_inline)] here causes doc issues in this crate:
-    // - kas::WidgetId appears to have no methods
+    // - kas::Id appears to have no methods
     // - doc_cfg annotations appear to be attached to the wrong items
 
     #[doc(no_inline)] pub use kas_core::prelude::*;

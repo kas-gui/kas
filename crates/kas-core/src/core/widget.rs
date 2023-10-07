@@ -7,7 +7,7 @@
 
 use super::{Layout, Node};
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused};
-use crate::{Erased, WidgetId};
+use crate::{Erased, Id};
 use kas_macros::autoimpl;
 
 #[allow(unused)] use kas_macros as macros;
@@ -42,7 +42,7 @@ pub trait Events: Widget + Sized {
     /// Make an identifier for a child
     ///
     /// This is used to assign children identifiers. It may return
-    /// [`WidgetId::default`] in order to avoid configuring the child, but in
+    /// [`Id::default`] in order to avoid configuring the child, but in
     /// this case the widget must configure via another means.
     ///
     /// If this is implemented explicitly then [`Layout::find_child_index`] must
@@ -50,7 +50,7 @@ pub trait Events: Widget + Sized {
     ///
     /// Default impl: `self.id_ref().make_child(index)`
     #[inline]
-    fn make_child_id(&mut self, index: usize) -> WidgetId {
+    fn make_child_id(&mut self, index: usize) -> Id {
         self.id_ref().make_child(index)
     }
 
@@ -194,7 +194,7 @@ pub trait Events: Widget + Sized {
         &mut self,
         cx: &mut EventCx,
         data: &Self::Data,
-        id: &WidgetId,
+        id: &Id,
         event: &Event,
     ) -> IsUsed {
         let _ = (cx, data, id, event);
@@ -386,7 +386,7 @@ pub trait Widget: Layout {
     /// Internal method: configure recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn _configure(&mut self, cx: &mut ConfigCx, data: &Self::Data, id: WidgetId);
+    fn _configure(&mut self, cx: &mut ConfigCx, data: &Self::Data, id: Id);
 
     /// Internal method: update recursively
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -404,7 +404,7 @@ pub trait Widget: Layout {
         &mut self,
         cx: &mut EventCx,
         data: &Self::Data,
-        id: WidgetId,
+        id: Id,
         disabled: bool,
         event: Event,
     ) -> IsUsed;
@@ -415,7 +415,7 @@ pub trait Widget: Layout {
     /// `msg` to the message stack. Widget `id` or any ancestor may handle.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn _replay(&mut self, cx: &mut EventCx, data: &Self::Data, id: WidgetId, msg: Erased);
+    fn _replay(&mut self, cx: &mut EventCx, data: &Self::Data, id: Id, msg: Erased);
 
     /// Internal method: search for the previous/next navigation target
     ///
@@ -426,7 +426,7 @@ pub trait Widget: Layout {
         &mut self,
         cx: &mut EventCx,
         data: &Self::Data,
-        focus: Option<&WidgetId>,
+        focus: Option<&Id>,
         advance: NavAdvance,
-    ) -> Option<WidgetId>;
+    ) -> Option<Id>;
 }

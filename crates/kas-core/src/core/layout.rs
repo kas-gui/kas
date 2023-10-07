@@ -10,7 +10,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx};
 use crate::util::IdentifyWidget;
-use crate::{HasId, WidgetId};
+use crate::{HasId, Id};
 use kas_macros::autoimpl;
 
 #[allow(unused)] use super::{Events, Widget};
@@ -70,13 +70,13 @@ pub trait Layout {
 
     /// Get the widget's identifier
     ///
-    /// Note that the default-constructed [`WidgetId`] is *invalid*: any
+    /// Note that the default-constructed [`Id`] is *invalid*: any
     /// operations on this value will cause a panic. A valid identifier is
     /// assigned when the widget is configured (immediately before calling
     /// [`Events::configure`]).
     ///
     /// This method is implemented by the `#[widget]` macro.
-    fn id_ref(&self) -> &WidgetId {
+    fn id_ref(&self) -> &Id {
         unimplemented!() // make rustdoc show that this is a provided method
     }
 
@@ -121,11 +121,11 @@ pub trait Layout {
     /// If `Some(index)` is returned, this is *probably* but not guaranteed
     /// to be a valid child index.
     ///
-    /// The default implementation simply uses [`WidgetId::next_key_after`].
+    /// The default implementation simply uses [`Id::next_key_after`].
     /// Widgets may choose to assign children custom keys by overriding this
     /// method and [`Events::make_child_id`].
     #[inline]
-    fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+    fn find_child_index(&self, id: &Id) -> Option<usize> {
         id.next_key_after(self.id_ref())
     }
 
@@ -228,7 +228,7 @@ pub trait Layout {
         Offset::ZERO
     }
 
-    /// Translate a coordinate to a [`WidgetId`]
+    /// Translate a coordinate to an [`Id`]
     ///
     /// This method is used to determine which widget reacts to the mouse cursor
     /// or a touch event. The result affects mouse-hover highlighting, event
@@ -258,7 +258,7 @@ pub trait Layout {
     ///
     /// -   Widgets should test `self.rect().contains(coord)`, returning `None`
     ///     if this test is `false`; otherwise, they should always return *some*
-    ///     [`WidgetId`], either a childs or their own.
+    ///     [`Id`], either a childs or their own.
     /// -   If the Widget uses a translated coordinate space (i.e.
     ///     `self.translation() != Offset::ZERO`) then pass
     ///     `coord + self.translation()` to children.
@@ -276,7 +276,7 @@ pub trait Layout {
     /// }
     /// Some(self.id())
     /// ```
-    fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+    fn find_id(&mut self, coord: Coord) -> Option<Id> {
         let _ = coord;
         unimplemented!() // make rustdoc show that this is a provided method
     }
@@ -290,7 +290,7 @@ pub trait Layout {
     /// but failure to do so should not cause a fatal error.
     ///
     /// The `draw` parameter is pre-parameterized with this widget's
-    /// [`WidgetId`], allowing drawn components to react to input state. This
+    /// [`Id`], allowing drawn components to react to input state. This
     /// implies that when calling `draw` on children, the child's `id` must be
     /// supplied via [`DrawCx::re_id`] or [`DrawCx::recurse`].
     fn draw(&mut self, draw: DrawCx);
@@ -298,14 +298,14 @@ pub trait Layout {
 
 impl<W: Layout + ?Sized> HasId for &W {
     #[inline]
-    fn has_id(self) -> WidgetId {
+    fn has_id(self) -> Id {
         self.id_ref().clone()
     }
 }
 
 impl<W: Layout + ?Sized> HasId for &mut W {
     #[inline]
-    fn has_id(self) -> WidgetId {
+    fn has_id(self) -> Id {
         self.id_ref().clone()
     }
 }
@@ -314,27 +314,27 @@ impl<W: Layout + ?Sized> HasId for &mut W {
 pub trait LayoutExt: Layout {
     /// Get the widget's identifier
     ///
-    /// Note that the default-constructed [`WidgetId`] is *invalid*: any
+    /// Note that the default-constructed [`Id`] is *invalid*: any
     /// operations on this value will cause a panic. Valid identifiers are
     /// assigned during configure.
     #[inline]
-    fn id(&self) -> WidgetId {
+    fn id(&self) -> Id {
         self.id_ref().clone()
     }
 
     /// Test widget identifier for equality
     ///
-    /// This method may be used to test against `WidgetId`, `Option<WidgetId>`
-    /// and `Option<&WidgetId>`.
+    /// This method may be used to test against `Id`, `Option<Id>`
+    /// and `Option<&Id>`.
     #[inline]
     fn eq_id<T>(&self, rhs: T) -> bool
     where
-        WidgetId: PartialEq<T>,
+        Id: PartialEq<T>,
     {
         *self.id_ref() == rhs
     }
 
-    /// Display as "StructName#WidgetId"
+    /// Display as "StructName#Id"
     #[inline]
     fn identify(&self) -> IdentifyWidget {
         IdentifyWidget(self.widget_name(), self.id_ref())
@@ -344,7 +344,7 @@ pub trait LayoutExt: Layout {
     ///
     /// This function assumes that `id` is a valid widget.
     #[inline]
-    fn is_ancestor_of(&self, id: &WidgetId) -> bool {
+    fn is_ancestor_of(&self, id: &Id) -> bool {
         self.id_ref().is_ancestor_of(id)
     }
 
@@ -352,7 +352,7 @@ pub trait LayoutExt: Layout {
     ///
     /// This function assumes that `id` is a valid widget.
     #[inline]
-    fn is_strict_ancestor_of(&self, id: &WidgetId) -> bool {
+    fn is_strict_ancestor_of(&self, id: &Id) -> bool {
         !self.eq_id(id) && self.id_ref().is_ancestor_of(id)
     }
 
@@ -388,7 +388,7 @@ pub trait LayoutExt: Layout {
     ///
     /// Since `id` represents a path, this operation is normally `O(d)` where
     /// `d` is the depth of the path (depending on widget implementations).
-    fn find_widget(&self, id: &WidgetId) -> Option<&dyn Layout> {
+    fn find_widget(&self, id: &Id) -> Option<&dyn Layout> {
         if let Some(child) = self.find_child_index(id).and_then(|i| self.get_child(i)) {
             child.find_widget(id)
         } else if self.eq_id(id) {

@@ -35,7 +35,7 @@ impl_scope! {
         direction: D,
         size_solved: bool,
         next: usize,
-        id_map: HashMap<usize, usize>, // map key of WidgetId to index
+        id_map: HashMap<usize, usize>, // map key of Id to index
     }
 
     impl Self where D: Default {
@@ -76,7 +76,7 @@ impl_scope! {
         }
 
         // Assumption: index is a valid entry of self.widgets
-        fn make_next_id(&mut self, is_handle: bool, index: usize) -> WidgetId {
+        fn make_next_id(&mut self, is_handle: bool, index: usize) -> Id {
             let child_index = (2 * index) + (is_handle as usize);
             if !is_handle {
                 if let Some(child) = self.widgets.get(index) {
@@ -114,7 +114,7 @@ impl_scope! {
             }
         }
 
-        fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+        fn find_child_index(&self, id: &Id) -> Option<usize> {
             id.next_key_after(self.id_ref())
                 .and_then(|k| self.id_map.get(&k).cloned())
         }
@@ -182,7 +182,7 @@ impl_scope! {
             }
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) || !self.size_solved {
                 return None;
             }
@@ -244,7 +244,7 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn make_child_id(&mut self, child_index: usize) -> WidgetId {
+        fn make_child_id(&mut self, child_index: usize) -> Id {
             let is_handle = (child_index & 1) != 0;
             self.make_next_id(is_handle, child_index / 2)
         }

@@ -10,7 +10,7 @@ use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
 #[allow(unused)] use crate::text::SelectionHelper;
-use crate::{Action, WidgetId};
+use crate::{Action, Id};
 use kas_macros::impl_default;
 use std::time::{Duration, Instant};
 
@@ -266,7 +266,7 @@ impl ScrollComponent {
         &mut self,
         cx: &mut EventCx,
         event: Event,
-        id: WidgetId,
+        id: Id,
         window_rect: Rect,
     ) -> (bool, IsUsed) {
         let mut action = Action::empty();
@@ -406,7 +406,7 @@ impl TextInput {
     ///
     /// Implements scrolling and text selection behaviour, excluding handling of
     /// [`Event::Scroll`].
-    pub fn handle(&mut self, cx: &mut EventCx, w_id: WidgetId, event: Event) -> TextInputAction {
+    pub fn handle(&mut self, cx: &mut EventCx, w_id: Id, event: Event) -> TextInputAction {
         use TextInputAction as Action;
         match event {
             Event::PressStart { press } if press.is_primary() => {
