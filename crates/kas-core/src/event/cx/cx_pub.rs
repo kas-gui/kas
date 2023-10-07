@@ -243,11 +243,10 @@ impl EventState {
     }
 
     /// Notify that widgets under self may have moved
-    ///
-    /// This is equivalent to calling [`Self::action`] with [`Action::REGION_MOVED`].
     #[inline]
-    pub fn region_moved(&mut self, id: impl HasId) {
-        self.action(id, Action::REGION_MOVED);
+    pub fn region_moved(&mut self) {
+        // Do not take id: this always applies to the whole window
+        self.action |= Action::REGION_MOVED;
     }
 
     /// Terminate the GUI

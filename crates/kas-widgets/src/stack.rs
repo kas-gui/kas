@@ -296,11 +296,11 @@ impl<W: Widget> Stack<W> {
             } else {
                 debug_assert_eq!(entry.1, State::Sized);
                 entry.0.set_rect(cx, self.core.rect);
-                cx.region_moved(self);
+                cx.region_moved();
             }
         } else {
             if old_index < self.widgets.len() {
-                cx.region_moved(self);
+                cx.region_moved();
             }
         }
     }
@@ -379,7 +379,7 @@ impl<W: Widget> Stack<W> {
         let result = self.widgets.pop().map(|(w, _)| w);
         if let Some(w) = result.as_ref() {
             if self.active > 0 && self.active == self.widgets.len() {
-                cx.region_moved(&self);
+                cx.region_moved();
             }
 
             if w.id_ref().is_valid() {
@@ -430,7 +430,7 @@ impl<W: Widget> Stack<W> {
 
         if self.active == index {
             self.active = usize::MAX;
-            cx.region_moved(&self);
+            cx.region_moved();
         }
 
         for v in self.id_map.values_mut() {
