@@ -35,7 +35,7 @@ impl_scope! {
         direction: D,
         size_solved: bool,
         next: usize,
-        id_map: HashMap<usize, usize>, // map key of WidgetId to index
+        id_map: HashMap<usize, usize>, // map key of Id to index
     }
 
     impl Self where D: Default {
@@ -114,7 +114,7 @@ impl_scope! {
             }
         }
 
-        fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+        fn find_child_index(&self, id: Id) -> Option<usize> {
             id.next_key_after(self.id_ref())
                 .and_then(|k| self.id_map.get(&k).cloned())
         }
@@ -182,7 +182,7 @@ impl_scope! {
             }
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) || !self.size_solved {
                 return None;
             }

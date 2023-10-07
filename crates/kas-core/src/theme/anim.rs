@@ -6,7 +6,7 @@
 //! Animation helpers
 
 use crate::draw::DrawImpl;
-use crate::WidgetId;
+use crate::Id;
 use std::marker::PhantomData;
 use std::time::{Duration, Instant};
 
@@ -69,7 +69,7 @@ impl<D: DrawImpl> AnimState<D> {
     /// Flashing text cursor: return true to draw
     ///
     /// Assumption: only one widget may draw a text cursor at any time.
-    pub fn text_cursor(&mut self, draw: &mut D, id: &WidgetId, byte: usize) -> bool {
+    pub fn text_cursor(&mut self, draw: &mut D, id: Id, byte: usize) -> bool {
         let entry = &mut self.text_cursor;
         if entry.widget == id.as_u64() && entry.byte == byte {
             if entry.time < self.now {

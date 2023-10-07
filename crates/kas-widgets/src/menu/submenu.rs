@@ -101,7 +101,7 @@ impl_scope! {
             None
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             self.rect().contains(coord).then(|| self.id())
         }
 
@@ -164,7 +164,7 @@ impl_scope! {
             &mut self,
             cx: &mut EventCx,
             data: &Data,
-            target: Option<&WidgetId>,
+            target: Option<Id>,
             set_focus: bool,
         ) {
             if !self.id_ref().is_valid() {
@@ -357,7 +357,7 @@ impl_scope! {
             }
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }

@@ -319,7 +319,7 @@ impl_scope! {
             self.update_scroll_bar(cx);
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }
@@ -607,7 +607,7 @@ impl_scope! {
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             self.outer_rect.contains(coord).then_some(self.id())
         }
 

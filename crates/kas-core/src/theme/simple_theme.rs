@@ -21,7 +21,7 @@ use kas::theme::dimensions as dim;
 use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use kas::theme::{ColorsLinear, Config, InputState, Theme};
 use kas::theme::{SelectionStyle, ThemeControl, ThemeDraw, ThemeSize};
-use kas::{Action, WidgetId};
+use kas::{Action, Id};
 
 /// A simple theme
 ///
@@ -216,7 +216,7 @@ where
         inner
     }
 
-    pub fn edit_box(&mut self, id: &WidgetId, outer: Quad, bg: Background) {
+    pub fn edit_box(&mut self, id: Id, outer: Quad, bg: Background) {
         let state = InputState::new_except_depress(self.ev, id);
         let col_bg = self.cols.from_edit_bg(bg, state);
         if col_bg != self.cols.background {
@@ -316,7 +316,7 @@ where
         self.draw.get_clip_rect()
     }
 
-    fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle, bg: Background) {
+    fn frame(&mut self, id: Id, rect: Rect, style: FrameStyle, bg: Background) {
         let outer = Quad::conv(rect);
         match style {
             FrameStyle::None => {
@@ -387,7 +387,7 @@ where
         }
     }
 
-    fn text(&mut self, id: &WidgetId, rect: Rect, text: &TextDisplay, _: TextClass) {
+    fn text(&mut self, id: Id, rect: Rect, text: &TextDisplay, _: TextClass) {
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
@@ -396,7 +396,7 @@ where
         self.draw.text(rect, text, col);
     }
 
-    fn text_effects(&mut self, id: &WidgetId, rect: Rect, text: &dyn TextApi, class: TextClass) {
+    fn text_effects(&mut self, id: Id, rect: Rect, text: &dyn TextApi, class: TextClass) {
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
@@ -412,7 +412,7 @@ where
 
     fn text_selected_range(
         &mut self,
-        id: &WidgetId,
+        id: Id,
         rect: Rect,
         text: &TextDisplay,
         range: Range<usize>,
@@ -460,7 +460,7 @@ where
 
     fn text_cursor(
         &mut self,
-        id: &WidgetId,
+        id: Id,
         rect: Rect,
         text: &TextDisplay,
         _: TextClass,
@@ -500,7 +500,7 @@ where
         }
     }
 
-    fn check_box(&mut self, id: &WidgetId, rect: Rect, checked: bool, _: Option<Instant>) {
+    fn check_box(&mut self, id: Id, rect: Rect, checked: bool, _: Option<Instant>) {
         let state = InputState::new_all(self.ev, id);
         let outer = Quad::conv(rect);
 
@@ -517,7 +517,7 @@ where
 
     fn radio_box(
         &mut self,
-        id: &WidgetId,
+        id: Id,
         rect: Rect,
         checked: bool,
         last_change: Option<Instant>,
@@ -525,7 +525,7 @@ where
         self.check_box(id, rect, checked, last_change);
     }
 
-    fn mark(&mut self, id: &WidgetId, rect: Rect, style: MarkStyle) {
+    fn mark(&mut self, id: Id, rect: Rect, style: MarkStyle) {
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
@@ -545,8 +545,8 @@ where
 
     fn scroll_bar(
         &mut self,
-        id: &WidgetId,
-        id2: &WidgetId,
+        id: Id,
+        id2: Id,
         rect: Rect,
         h_rect: Rect,
         _: Direction,
@@ -560,7 +560,7 @@ where
         self.draw.rect(grip, col);
     }
 
-    fn slider(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, _: Direction) {
+    fn slider(&mut self, id: Id, id2: Id, rect: Rect, h_rect: Rect, _: Direction) {
         let track = Quad::conv(rect);
         self.draw.rect(track, self.cols.frame);
 
@@ -570,7 +570,7 @@ where
         self.draw.rect(grip, col);
     }
 
-    fn progress_bar(&mut self, _: &WidgetId, rect: Rect, dir: Direction, value: f32) {
+    fn progress_bar(&mut self, _: Id, rect: Rect, dir: Direction, value: f32) {
         let mut outer = Quad::conv(rect);
         self.draw.rect(outer, self.cols.frame);
 

@@ -122,7 +122,7 @@ impl_scope! {
             self.scroll_offset()
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }

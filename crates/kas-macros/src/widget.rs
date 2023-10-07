@@ -495,7 +495,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 self.#inner.get_child(index)
             }
             #[inline]
-            fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
+            fn find_child_index(&self, id: ::kas::Id) -> Option<usize> {
                 self.#inner.find_child_index(id)
             }
         };
@@ -532,7 +532,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         });
         fn_find_id = quote! {
             #[inline]
-            fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+            fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
                 self.#inner.find_id(coord)
             }
         };
@@ -581,7 +581,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     &mut self,
                     cx: &mut ::kas::event::EventCx,
                     data: &Self::Data,
-                    id: ::kas::WidgetId,
+                    id: ::kas::Id,
                     disabled: bool,
                     event: ::kas::event::Event,
                 ) -> ::kas::event::IsUsed {
@@ -592,7 +592,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     &mut self,
                     cx: &mut ::kas::event::EventCx,
                     data: &Self::Data,
-                    id: ::kas::WidgetId,
+                    id: ::kas::Id,
                     msg: ::kas::Erased,
                 ) {
                     self.#inner._replay(cx, data, id, msg);
@@ -602,9 +602,9 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     &mut self,
                     cx: &mut ::kas::event::EventCx,
                     data: &Self::Data,
-                    focus: Option<&::kas::WidgetId>,
+                    focus: Option<::kas::Id>,
                     advance: ::kas::NavAdvance,
-                ) -> Option<::kas::WidgetId> {
+                ) -> Option<::kas::Id> {
                     self.#inner._nav_next(cx, data, focus, advance)
                 }
             }
@@ -631,7 +631,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
         let require_rect: syn::Stmt = parse_quote! {
             #[cfg(debug_assertions)]
-            #core_path.status.require_rect(&#core_path.id);
+            #core_path.status.require_rect(#core_path.id.as_id());
         };
 
         required_layout_methods = impl_core_methods(&widget_name, &core_path);
@@ -716,7 +716,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     axis: ::kas::layout::AxisInfo,
                 ) -> ::kas::layout::SizeRules {
                     #[cfg(debug_assertions)]
-                    #core_path.status.size_rules(&#core_path.id, axis);
+                    #core_path.status.size_rules(#core_path.id.as_id(), axis);
                     <Self as ::kas::layout::AutoLayout>::size_rules(self, sizer, axis)
                 }
             });
@@ -727,7 +727,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             fn_draw = Some(quote! {
                 fn draw(&mut self, draw: ::kas::theme::DrawCx) {
                     #[cfg(debug_assertions)]
-                    #core_path.status.require_rect(&#core_path.id);
+                    #core_path.status.require_rect(#core_path.id.as_id());
 
                     <Self as ::kas::layout::AutoLayout>::draw(self, draw);
                 }
@@ -751,9 +751,9 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             }
         };
         fn_find_id = quote! {
-            fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+            fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
                 #[cfg(debug_assertions)]
-                #core_path.status.require_rect(&#core_path.id);
+                #core_path.status.require_rect(#core_path.id.as_id());
 
                 #find_id
             }
@@ -800,7 +800,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 &mut self,
                 _: &mut ::kas::event::EventCx,
                 _: &Self::Data,
-                _: &::kas::WidgetId,
+                _: ::kas::Id,
                 _: &::kas::event::Event,
             ) -> ::kas::event::IsUsed {
                 #require_rect
@@ -883,7 +883,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                             let axis = &pat_ident.ident;
                             f.block.stmts.insert(0, parse_quote! {
                                 #[cfg(debug_assertions)]
-                                self.#core.status.size_rules(&self.#core.id, #axis);
+                                self.#core.status.size_rules(self.#core.id.as_id(), #axis);
                             });
                         } else {
                             emit_error!(arg.pat, "hidden shenanigans require this parameter to have a name; suggestion: `_axis`");
@@ -902,7 +902,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
                     f.block.stmts.insert(0, parse_quote! {
                         #[cfg(debug_assertions)]
-                        self.#core.status.set_rect(&self.#core.id);
+                        self.#core.status.set_rect(self.#core.id.as_id());
                     });
                 }
             }
@@ -936,7 +936,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
                     f.block.stmts.insert(0, parse_quote! {
                         #[cfg(debug_assertions)]
-                        self.#core.status.require_rect(&self.#core.id);
+                        self.#core.status.require_rect(self.#core.id.as_id());
                     });
                 }
             }
@@ -949,7 +949,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
                     f.block.stmts.insert(0, parse_quote! {
                         #[cfg(debug_assertions)]
-                        self.#core.status.require_rect(&self.#core.id);
+                        self.#core.status.require_rect(self.#core.id.as_id());
                     });
                 }
             }
@@ -1096,7 +1096,7 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
         ) {
             #core_path.id = id;
             #[cfg(debug_assertions)]
-            #core_path.status.configure(&#core_path.id);
+            #core_path.status.configure(#core_path.id.as_id());
 
             ::kas::Events::configure(self, cx);
             ::kas::Events::update(self, cx, data);
@@ -1109,7 +1109,7 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             data: &Self::Data,
         ) {
             #[cfg(debug_assertions)]
-            #core_path.status.update(&#core_path.id);
+            #core_path.status.update(#core_path.id.as_id());
 
             ::kas::Events::update(self, cx, data);
             ::kas::Events::update_recurse(self, cx, data);
@@ -1119,7 +1119,7 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             &mut self,
             cx: &mut ::kas::event::EventCx,
             data: &Self::Data,
-            id: ::kas::WidgetId,
+            id: ::kas::Id,
             disabled: bool,
             event: ::kas::event::Event,
         ) -> ::kas::event::IsUsed {
@@ -1130,7 +1130,7 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             &mut self,
             cx: &mut ::kas::event::EventCx,
             data: &Self::Data,
-            id: ::kas::WidgetId,
+            id: ::kas::Id,
             msg: ::kas::Erased,
         ) {
             ::kas::impls::_replay(self, cx, data, id, msg);
@@ -1140,9 +1140,9 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             &mut self,
             cx: &mut ::kas::event::EventCx,
             data: &Self::Data,
-            focus: Option<&::kas::WidgetId>,
+            focus: Option<::kas::Id>,
             advance: ::kas::NavAdvance,
-        ) -> Option<::kas::WidgetId> {
+        ) -> Option<::kas::Id> {
             ::kas::impls::_nav_next(self, cx, data, focus, advance)
         }
     }

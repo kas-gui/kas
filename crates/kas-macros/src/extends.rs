@@ -64,7 +64,7 @@ impl Extends {
                 (#base).get_clip_rect()
             }
 
-            fn frame(&mut self, id: &WidgetId, rect: Rect, style: ::kas::theme::FrameStyle, bg: Background) {
+            fn frame(&mut self, id: Id, rect: Rect, style: ::kas::theme::FrameStyle, bg: Background) {
                 (#base).frame(id, rect, style, bg);
             }
 
@@ -76,17 +76,17 @@ impl Extends {
                 (#base).selection(rect, style);
             }
 
-            fn text(&mut self, id: &WidgetId, rect: Rect, text: &TextDisplay, class: TextClass) {
+            fn text(&mut self, id: Id, rect: Rect, text: &TextDisplay, class: TextClass) {
                 (#base).text(id, rect, text, class);
             }
 
-            fn text_effects(&mut self, id: &WidgetId, rect: Rect, text: &dyn TextApi, class: TextClass) {
+            fn text_effects(&mut self, id: Id, rect: Rect, text: &dyn TextApi, class: TextClass) {
                 (#base).text_effects(id, rect, text, class);
             }
 
             fn text_selected_range(
                 &mut self,
-                id: &WidgetId,
+                id: Id,
                 rect: Rect,
                 text: &TextDisplay,
                 range: Range<usize>,
@@ -97,7 +97,7 @@ impl Extends {
 
             fn text_cursor(
                 &mut self,
-                id: &WidgetId,
+                id: Id,
                 rect: Rect,
                 text: &TextDisplay,
                 class: TextClass,
@@ -106,22 +106,22 @@ impl Extends {
                 (#base).text_cursor(id, rect, text, class, byte);
             }
 
-            fn check_box(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>) {
+            fn check_box(&mut self, id: Id, rect: Rect, checked: bool, last_change: Option<Instant>) {
                 (#base).check_box(id, rect, checked, last_change);
             }
 
-            fn radio_box(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>) {
+            fn radio_box(&mut self, id: Id, rect: Rect, checked: bool, last_change: Option<Instant>) {
                 (#base).radio_box(id, rect, checked, last_change);
             }
 
-            fn mark(&mut self, id: &WidgetId, rect: Rect, style: MarkStyle) {
+            fn mark(&mut self, id: Id, rect: Rect, style: MarkStyle) {
                 (#base).mark(id, rect, style);
             }
 
             fn scroll_bar(
                 &mut self,
-                id: &WidgetId,
-                id2: &WidgetId,
+                id: Id,
+                id2: Id,
                 rect: Rect,
                 h_rect: Rect,
                 dir: Direction,
@@ -129,11 +129,11 @@ impl Extends {
                 (#base).scroll_bar(id, id2, rect, h_rect, dir);
             }
 
-            fn slider(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
+            fn slider(&mut self, id: Id, id2: Id, rect: Rect, h_rect: Rect, dir: Direction) {
                 (#base).slider(id, id2, rect, h_rect, dir);
             }
 
-            fn progress_bar(&mut self, id: &WidgetId, rect: Rect, dir: Direction, value: f32) {
+            fn progress_bar(&mut self, id: Id, rect: Rect, dir: Direction, value: f32) {
                 (#base).progress_bar(id, rect, dir, value);
             }
 

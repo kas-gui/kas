@@ -12,7 +12,7 @@ use super::{EventCx, IsUsed, Unused, Used};
 #[allow(unused)] use super::{EventState, GrabMode};
 use super::{Key, KeyCode, KeyEvent, Press};
 use crate::geom::{DVec2, Offset};
-use crate::{dir::Direction, WidgetId, WindowId};
+use crate::{dir::Direction, Id, WindowId};
 #[allow(unused)] use crate::{Events, Popup};
 
 /// Events addressed to a widget
@@ -263,7 +263,7 @@ impl Event {
     pub fn on_activate<F: FnOnce(&mut EventCx) -> IsUsed>(
         self,
         cx: &mut EventCx,
-        id: WidgetId,
+        id: Id,
         f: F,
     ) -> IsUsed {
         match self {

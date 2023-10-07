@@ -5,7 +5,7 @@
 
 //! Traits for shared data objects
 
-use kas::{autoimpl, OwnedId, WidgetId};
+use kas::{autoimpl, OwnedId, Id};
 use std::borrow::Borrow;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
@@ -26,7 +26,7 @@ pub trait DataKey: Clone + Debug + Default + PartialEq + Eq + 'static {
     /// the `key` passed to `make_id`.
     ///
     /// See: [`OwnedId::next_key_after`], [`OwnedId::iter_keys_after`]
-    fn reconstruct_key(parent: &OwnedId, child: &WidgetId) -> Option<Self>;
+    fn reconstruct_key(parent: &OwnedId, child: Id) -> Option<Self>;
 }
 
 impl DataKey for () {
@@ -35,7 +35,7 @@ impl DataKey for () {
         parent.make_child(0)
     }
 
-    fn reconstruct_key(parent: &OwnedId, child: &WidgetId) -> Option<Self> {
+    fn reconstruct_key(parent: &OwnedId, child: Id) -> Option<Self> {
         if child.next_key_after(parent) == Some(0) {
             Some(())
         } else {
@@ -51,7 +51,7 @@ impl DataKey for usize {
         parent.make_child(*self)
     }
 
-    fn reconstruct_key(parent: &OwnedId, child: &WidgetId) -> Option<Self> {
+    fn reconstruct_key(parent: &OwnedId, child: Id) -> Option<Self> {
         child.next_key_after(parent)
     }
 }
@@ -61,7 +61,7 @@ impl DataKey for (usize, usize) {
         parent.make_child(self.0).make_child(self.1)
     }
 
-    fn reconstruct_key(parent: &OwnedId, child: &WidgetId) -> Option<Self> {
+    fn reconstruct_key(parent: &OwnedId, child: Id) -> Option<Self> {
         let mut iter = child.iter_keys_after(parent);
         let col = iter.next();
         let row = iter.next();

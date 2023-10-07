@@ -102,7 +102,7 @@ pub trait Menu: Widget {
         &mut self,
         cx: &mut EventCx,
         data: &Self::Data,
-        target: Option<&WidgetId>,
+        target: Option<Id>,
         set_focus: bool,
     ) {
         let _ = (cx, data, target, set_focus);
@@ -122,7 +122,7 @@ impl<A, W: Menu<Data = ()>> Menu for MapAny<A, W> {
         &mut self,
         cx: &mut EventCx,
         _: &A,
-        target: Option<&WidgetId>,
+        target: Option<Id>,
         set_focus: bool,
     ) {
         self.inner.set_menu_path(cx, &(), target, set_focus);

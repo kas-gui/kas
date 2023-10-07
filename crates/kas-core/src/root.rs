@@ -12,7 +12,7 @@ use crate::event::{ConfigCx, Event, EventCx, IsUsed, ResizeDirection, Scroll, Un
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
-use crate::{Action, Events, Icon, Layout, LayoutExt, Widget, WidgetId};
+use crate::{Action, Events, Icon, Layout, LayoutExt, Widget, Id};
 use kas_macros::impl_scope;
 use smallvec::SmallVec;
 use std::num::NonZeroU32;
@@ -146,7 +146,7 @@ impl_scope! {
             self.inner.set_rect(cx, Rect::new(p_in, s_in));
         }
 
-        fn find_id(&mut self, _: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, _: Coord) -> Option<Id> {
             unimplemented!()
         }
 
@@ -156,7 +156,7 @@ impl_scope! {
     }
 
     impl Self {
-        pub(crate) fn find_id(&mut self, data: &Data, coord: Coord) -> Option<WidgetId> {
+        pub(crate) fn find_id(&mut self, data: &Data, coord: Coord) -> Option<Id> {
             if !self.core.rect.contains(coord) {
                 return None;
             }
@@ -442,7 +442,7 @@ impl<Data: 'static> Window<Data> {
 
 // Search for a widget by `id`. On success, return that widget's [`Rect`] and
 // the translation of its children.
-fn find_rect(widget: &dyn Layout, id: WidgetId, mut translation: Offset) -> Option<(Rect, Offset)> {
+fn find_rect(widget: &dyn Layout, id: Id, mut translation: Offset) -> Option<(Rect, Offset)> {
     let mut widget = widget;
     loop {
         if widget.eq_id(&id) {

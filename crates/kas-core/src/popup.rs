@@ -7,15 +7,15 @@
 
 use crate::dir::Direction;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};
-use crate::{Events, LayoutExt, Widget, WidgetId, WindowId};
+use crate::{Events, LayoutExt, Widget, Id, WindowId};
 use kas_macros::{autoimpl, impl_scope, widget_index};
 
 #[allow(unused)] use crate::event::EventState;
 
 #[derive(Clone, Debug)]
 pub(crate) struct PopupDescriptor {
-    pub id: WidgetId,
-    pub parent: WidgetId,
+    pub id: Id,
+    pub parent: Id,
     pub direction: Direction,
 }
 
@@ -127,7 +127,7 @@ impl_scope! {
         ///
         /// Returns `true` when the popup is newly opened. In this case, the
         /// caller may wish to call [`EventState::next_nav_focus`] next.
-        pub fn open(&mut self, cx: &mut EventCx, data: &W::Data, parent: WidgetId) -> bool {
+        pub fn open(&mut self, cx: &mut EventCx, data: &W::Data, parent: Id) -> bool {
             if self.win_id.is_some() {
                 return false;
             }

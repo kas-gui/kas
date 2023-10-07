@@ -7,14 +7,14 @@
 
 use crate::event::{Event, EventCx, FocusSource, IsUsed, Scroll, Unused, Used};
 #[cfg(debug_assertions)] use crate::util::IdentifyWidget;
-use crate::{Erased, Events, Layout, NavAdvance, Node, Widget, WidgetId};
+use crate::{Erased, Events, Layout, NavAdvance, Node, Widget, Id};
 
 /// Generic implementation of [`Widget::_send`]
 pub fn _send<W: Events>(
     widget: &mut W,
     cx: &mut EventCx,
     data: &<W as Widget>::Data,
-    id: WidgetId,
+    id: Id,
     disabled: bool,
     event: Event,
 ) -> IsUsed {
@@ -88,7 +88,7 @@ pub fn _replay<W: Events>(
     widget: &mut W,
     cx: &mut EventCx,
     data: &<W as Widget>::Data,
-    id: WidgetId,
+    id: Id,
     msg: Erased,
 ) {
     if let Some(index) = widget.find_child_index(&id) {
@@ -134,9 +134,9 @@ pub fn _nav_next<W: Events>(
     widget: &mut W,
     cx: &mut EventCx,
     data: &<W as Widget>::Data,
-    focus: Option<&WidgetId>,
+    focus: Option<Id>,
     advance: NavAdvance,
-) -> Option<WidgetId> {
+) -> Option<Id> {
     let navigable = widget.navigable();
     nav_next(widget.as_node(data), cx, focus, advance, navigable)
 }
@@ -144,10 +144,10 @@ pub fn _nav_next<W: Events>(
 fn nav_next(
     mut widget: Node<'_>,
     cx: &mut EventCx,
-    focus: Option<&WidgetId>,
+    focus: Option<Id>,
     advance: NavAdvance,
     navigable: bool,
-) -> Option<WidgetId> {
+) -> Option<Id> {
     let id = widget.id_ref();
     if !id.is_valid() {
         log::warn!("nav_next: encountered unconfigured node!");
@@ -175,7 +175,7 @@ fn nav_next(
             _ => false,
         };
         if can_match_self {
-            return Some(widget.id_ref().clone());
+            return Some(widget.id());
         }
     }
 
@@ -201,7 +201,7 @@ fn nav_next(
             _ => false,
         };
         if can_match_self {
-            return Some(widget.id_ref().clone());
+            return Some(widget.id());
         }
     }
 

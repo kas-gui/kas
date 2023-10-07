@@ -8,7 +8,7 @@
 use crate::draw::color::{Rgba, Rgba8Srgb};
 use crate::event::EventState;
 use crate::theme::Background;
-use crate::WidgetId;
+use crate::Id;
 use std::str::FromStr;
 
 const MULT_DEPRESS: f32 = 0.75;
@@ -46,7 +46,7 @@ bitflags::bitflags! {
 
 impl InputState {
     /// Construct, setting all components
-    pub fn new_all(ev: &EventState, id: &WidgetId) -> Self {
+    pub fn new_all(ev: &EventState, id: Id) -> Self {
         let mut state = Self::new_except_depress(ev, id);
         if ev.is_depressed(id) {
             state |= InputState::DEPRESS;
@@ -55,7 +55,7 @@ impl InputState {
     }
 
     /// Construct, setting all but depress status
-    pub fn new_except_depress(ev: &EventState, id: &WidgetId) -> Self {
+    pub fn new_except_depress(ev: &EventState, id: Id) -> Self {
         let (key_focus, sel_focus) = ev.has_key_focus(id);
         let mut state = InputState::empty();
         if ev.is_disabled(id) {
@@ -77,7 +77,7 @@ impl InputState {
     }
 
     /// Construct, setting all components, also setting hover from `id2`
-    pub fn new2(ev: &EventState, id: &WidgetId, id2: &WidgetId) -> Self {
+    pub fn new2(ev: &EventState, id: Id, id2: Id) -> Self {
         let mut state = Self::new_all(ev, id);
         if ev.is_hovered(id2) {
             state |= InputState::HOVER;

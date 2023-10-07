@@ -29,7 +29,7 @@ use std::default::Default;
 /// "view widgets".
 /// A few simple implementations are provided: [`View`], [`NavView`].
 ///
-/// Each view widget has a [`WidgetId`] corresponding to its data item, and
+/// Each view widget has an [`Id`] corresponding to its data item, and
 /// handles events like any other widget. In order to associate a returned
 /// message with a [`SharedData::Key`], either embed that key while constructing
 /// the widget with [`Driver::make`] or intercept the message in

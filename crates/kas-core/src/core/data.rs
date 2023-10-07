@@ -6,7 +6,7 @@
 //! Widget data types
 
 #[allow(unused)] use super::Widget;
-use super::{OwnedId, WidgetId};
+use super::{OwnedId, Id};
 use crate::geom::Rect;
 
 #[cfg(feature = "winit")] pub use winit::window::Icon;
@@ -77,20 +77,20 @@ pub enum WidgetStatus {
 
 #[cfg(debug_assertions)]
 impl WidgetStatus {
-    fn require(&self, id: &WidgetId, expected: Self) {
+    fn require(&self, id: Id, expected: Self) {
         if *self < expected {
             panic!("WidgetStatus of {id}: require {expected:?}, found {self:?}");
         }
     }
 
     /// Configure
-    pub fn configure(&mut self, _id: &WidgetId) {
+    pub fn configure(&mut self, _id: Id) {
         // re-configure does not require repeating other actions
         *self = (*self).max(WidgetStatus::Configured);
     }
 
     /// Update
-    pub fn update(&self, id: &WidgetId) {
+    pub fn update(&self, id: Id) {
         self.require(id, WidgetStatus::Configured);
 
         // Update-after-configure is already guaranteed (see impls module).
@@ -100,7 +100,7 @@ impl WidgetStatus {
     }
 
     /// Size rules
-    pub fn size_rules(&mut self, id: &WidgetId, axis: crate::layout::AxisInfo) {
+    pub fn size_rules(&mut self, id: Id, axis: crate::layout::AxisInfo) {
         // NOTE: Possibly this is too strict and we should not require
         // re-running size_rules(vert) or set_rect afterwards?
         if axis.is_horizontal() {
@@ -113,12 +113,12 @@ impl WidgetStatus {
     }
 
     /// Set rect
-    pub fn set_rect(&mut self, id: &WidgetId) {
+    pub fn set_rect(&mut self, id: Id) {
         self.require(id, WidgetStatus::SizeRulesY);
         *self = WidgetStatus::SetRect;
     }
 
-    pub fn require_rect(&self, id: &WidgetId) {
+    pub fn require_rect(&self, id: Id) {
         self.require(id, WidgetStatus::SetRect);
     }
 }

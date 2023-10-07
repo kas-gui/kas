@@ -20,7 +20,7 @@ use kas::theme::dimensions as dim;
 use kas::theme::{Background, ThemeControl, ThemeDraw, ThemeSize};
 use kas::theme::{ColorsLinear, Config, FlatTheme, InputState, SimpleTheme, Theme};
 use kas::theme::{FrameStyle, MarkStyle, TextClass};
-use kas::{Action, WidgetId};
+use kas::{Action, Id};
 
 /// A theme using simple shading to give apparent depth to elements
 #[derive(Clone, Debug)]
@@ -267,7 +267,7 @@ where
         f(&mut handle);
     }
 
-    fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle, bg: Background) {
+    fn frame(&mut self, id: Id, rect: Rect, style: FrameStyle, bg: Background) {
         match style {
             FrameStyle::Frame => {
                 let outer = Quad::conv(rect);
@@ -328,7 +328,7 @@ where
 
     fn check_box(
         &mut self,
-        id: &WidgetId,
+        id: Id,
         rect: Rect,
         checked: bool,
         last_change: Option<Instant>,
@@ -343,7 +343,7 @@ where
 
     fn radio_box(
         &mut self,
-        id: &WidgetId,
+        id: Id,
         rect: Rect,
         checked: bool,
         last_change: Option<Instant>,
@@ -367,8 +367,8 @@ where
 
     fn scroll_bar(
         &mut self,
-        id: &WidgetId,
-        id2: &WidgetId,
+        id: Id,
+        id2: Id,
         rect: Rect,
         h_rect: Rect,
         _: Direction,
@@ -384,7 +384,7 @@ where
         self.draw_grip(h_rect, state);
     }
 
-    fn slider(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
+    fn slider(&mut self, id: Id, id2: Id, rect: Rect, h_rect: Rect, dir: Direction) {
         // track
         let mut outer = Quad::conv(rect);
         outer = match dir.is_horizontal() {
@@ -400,7 +400,7 @@ where
         self.draw_grip(h_rect, state);
     }
 
-    fn progress_bar(&mut self, _: &WidgetId, rect: Rect, dir: Direction, value: f32) {
+    fn progress_bar(&mut self, _: Id, rect: Rect, dir: Direction, value: f32) {
         let mut outer = Quad::conv(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
         let col = self.cols.frame;

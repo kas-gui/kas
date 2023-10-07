@@ -17,6 +17,7 @@ use std::mem::size_of;
 use std::num::NonZeroU64;
 use std::rc::Rc;
 use std::{fmt, slice};
+use std::collections::HashSet;
 
 /// Invalid (default) identifier
 const INVALID: u64 = !0;
@@ -47,6 +48,75 @@ enum Variant<'a> {
     Invalid,
     Int(u64),
     Slice(&'a [usize]),
+}
+
+impl<'a> Variant<'a> {
+    fn next_key_after(self, id: Self) -> Option<usize> {
+        match (id, self) {
+            (Variant::Invalid, _) | (_, Variant::Invalid) => {
+                panic!("OwnedId::next_key_after: invalid")
+            }
+            (Variant::Slice(_), Variant::Int(_)) => None,
+            (Variant::Int(parent_x), Variant::Int(child_x)) => {
+                let parent_blocks = block_len(parent_x);
+                let child_blocks = block_len(child_x);
+                if parent_blocks >= child_blocks {
+                    return None;
+                }
+
+                // parent_blocks == 0 for ROOT, otherwise > 0
+                let shift = 4 * (BLOCKS - parent_blocks) + 8;
+                if shift != 64 && parent_x >> shift != child_x >> shift {
+                    return None;
+                }
+
+                debug_assert!(child_blocks > 0);
+                let next_bits = (child_x & MASK_BITS) << (4 * parent_blocks);
+                Some(next_from_bits(next_bits).0)
+            }
+            (Variant::Int(parent_x), Variant::Slice(child_path)) => {
+                let iter = BitsIter::new(parent_x);
+                let mut child_iter = child_path.iter();
+                if iter.zip(&mut child_iter).all(|(a, b)| a == *b) {
+                    child_iter.next().cloned()
+                } else {
+                    None
+                }
+            }
+            (Variant::Slice(parent_path), Variant::Slice(child_path)) => {
+                if child_path.starts_with(parent_path) {
+                    child_path[parent_path.len()..].iter().next().cloned()
+                } else {
+                    None
+                }
+            }
+        }
+    }
+}
+
+impl<'a> fmt::Display for Variant<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match self {
+            Variant::Invalid => write!(f, "#INVALID"),
+            Variant::Int(x) => {
+                let len = block_len(x);
+                if len == 0 {
+                    write!(f, "#")
+                } else {
+                    let bits = x >> (4 * (BLOCKS - len) + 8);
+                    write!(f, "#{1:0>0$x}", len as usize, bits)
+                }
+            }
+            Variant::Slice(path) => {
+                write!(f, "#")?;
+                for key in path {
+                    let (bits, bit_len) = encode(*key);
+                    write!(f, "{1:0>0$x}", bit_len as usize / 4, bits)?;
+                }
+                Ok(())
+            }
+        }
+    }
 }
 
 impl IntOrPtr {
@@ -267,12 +337,24 @@ impl Iterator for BitsIter {
     }
 }
 
+thread_local! {
+    /// Garbage-collected heap of (recently used) allocated paths
+    ///
+    /// This allows safe path look-up for (recently used) non-owning
+    /// identifiers using allocated paths.
+    ///
+    /// Garbage collection strategy: none.
+    /// TODO: implement periodic collection using some freshness stat and
+    /// maintaining everything used by `EventState`.
+    static OWNED: HashSet<IntOrPtr> = HashSet::new();
+}
+
 /// An owning widget identifier
 ///
 /// All widgets are assigned a unique identifier, using a path. This type is
 /// small (64-bit and non-zero), sometimes allocated (longer paths only),
 /// and cheap to copy (using reference counting).
-/// It is neither [`Send`] nor [`Sync`]. See also [`WidgetId`].
+/// It is neither [`Send`] nor [`Sync`]. See also [`Id`].
 ///
 /// Formatting an `OwnedId` via [`Display`] prints the the path, for example
 /// `#1290a4`. Here, `#` represents the root; each following hexadecimal digit
@@ -298,6 +380,15 @@ impl OwnedId {
     /// This method may be used to check an identifier's validity.
     pub fn is_valid(&self) -> bool {
         self.0.get() != Variant::Invalid
+    }
+
+    /// Convert to an [`Id`]
+    ///
+    /// This will panic if not [`Self::is_valid`].
+    #[inline]
+    pub fn as_id(&self) -> Id {
+        OWNED.insert(self.clone());
+        Id(self.as_u64())
     }
 
     /// Iterate over path components
@@ -363,45 +454,7 @@ impl OwnedId {
     /// (`id.is_ancestor_of(self)`) then this returns the *next* key in
     /// `self`'s path (if any). Otherwise, this returns `None`.
     pub fn next_key_after(&self, id: &Self) -> Option<usize> {
-        match (id.0.get(), self.0.get()) {
-            (Variant::Invalid, _) | (_, Variant::Invalid) => {
-                panic!("OwnedId::next_key_after: invalid")
-            }
-            (Variant::Slice(_), Variant::Int(_)) => None,
-            (Variant::Int(parent_x), Variant::Int(child_x)) => {
-                let parent_blocks = block_len(parent_x);
-                let child_blocks = block_len(child_x);
-                if parent_blocks >= child_blocks {
-                    return None;
-                }
-
-                // parent_blocks == 0 for ROOT, otherwise > 0
-                let shift = 4 * (BLOCKS - parent_blocks) + 8;
-                if shift != 64 && parent_x >> shift != child_x >> shift {
-                    return None;
-                }
-
-                debug_assert!(child_blocks > 0);
-                let next_bits = (child_x & MASK_BITS) << (4 * parent_blocks);
-                Some(next_from_bits(next_bits).0)
-            }
-            (Variant::Int(parent_x), Variant::Slice(child_path)) => {
-                let iter = BitsIter::new(parent_x);
-                let mut child_iter = child_path.iter();
-                if iter.zip(&mut child_iter).all(|(a, b)| a == *b) {
-                    child_iter.next().cloned()
-                } else {
-                    None
-                }
-            }
-            (Variant::Slice(parent_path), Variant::Slice(child_path)) => {
-                if child_path.starts_with(parent_path) {
-                    child_path[parent_path.len()..].iter().next().cloned()
-                } else {
-                    None
-                }
-            }
-        }
+        self.0.get().next_key_after(id.0.get())
     }
 
     /// Get the parent widget's identifier, if not root
@@ -494,14 +547,108 @@ impl OwnedId {
 /// -   There is a chance that equality tests will result in a false positive.
 ///     This should be rare and only occur when the identifier is *not* used in
 ///     [`EventState`]. (This requires that an [`OwnedId`] `a` is
-///     constructed for some longer path `p`, a [`WidgetId`] `b` is consrtucted
+///     constructed for some longer path `p`, an [`Id`] `b` is consrtucted
 ///     from `a`, `a` is freed, then a new [`OwnedId`] `c` is constructed from
 ///     the same path `p`.)
 /// -   The path may not be available. As above, this should be rare and may
 ///     only occur when the identifier is not used by [`EventState`].
 ///
 /// [`EventState`]: crate::event::EventState
-pub type WidgetId = OwnedId;
+#[derive(Copy, Clone, Hash)]
+pub struct Id(u64);
+
+impl Id {
+    #[inline]
+    fn is_int(self) -> bool {
+        self.0 & USE_BITS != 0
+    }
+
+    fn try_get(&self) -> Result<Variant, ()> {
+        if self.is_int() {
+            Ok(Variant::Int(self.0))
+        } else {
+            OWNED.get(&self).map(|owned| owned.get()).ok()
+        }
+    }
+
+    /// Iterate over path components
+    ///
+    /// Fails on allocated variants which have been garbage-collected.
+    pub fn try_iter(&self) -> Result<WidgetPathIter, ()> {
+        OWNED.get(self).map(|id| id.iter()).ok()
+    }
+
+    /// Get first key in path of `self` path after `id`
+    ///
+    /// If the path of `self` starts with the path of `id`
+    /// (`id.is_ancestor_of(self)`) then this returns the *next* key in
+    /// `self`'s path (if any). Otherwise, this returns `None`.
+    pub fn next_key_after(self, id: Self) -> Option<usize> {
+        self.0.get().next_key_after(id.0.get())
+    }
+
+    /// Convert to a `u64`
+    ///
+    /// This `u64` is non-zero and may be used as an equality check.
+    /// Caveat: if two separate [`OwnedId`]s are allocated for the same
+    /// (longer) path, it is possible that the values derived from them via this
+    /// method will compare unequal. This may be a problem for view widgets
+    /// of e.g. `ListView` since widget identifiers are re-assigned during
+    /// scrolling.
+    pub fn as_u64(&self) -> u64 {
+        self.0
+    }
+}
+
+// impl From<&OwnedId> for Id {
+//     fn from(owned: &OwnedId) -> Id {
+//         Id(owned.as_u64())
+//     }
+// }
+
+// TODO: which of the below should we impl for Id?
+
+impl PartialEq for Id {
+    fn eq(&self, rhs: &Self) -> bool {
+        if self.0 == rhs.0 {
+            return true;
+        } else if self.is_int() && rhs.is_int() {
+            return false
+        } else if let (Ok(l), Ok(r)) = (self.try_iter(), rhs.try_iter()) {
+            l.eq(r)
+        } else {
+            // At this point we just take a guess
+            false
+        }
+    }
+}
+
+impl PartialEq<Id> for OwnedId {
+    fn eq(&self, rhs: &Id) -> bool {
+        if !self.is_valid() {
+            panic!("OwnedId::eq: invalid id");
+        } else if self.as_u64() == rhs.0 {
+            return true;
+        }
+        match (self.0.get(), rhs.try_get()) {
+            (_, Err(())) => false, // assumption
+            (Variant::Int(_), Ok(Variant::Int(_))) => false,
+            (Variant::Slice(l), Ok(Variant::Slice(r))) => l == r,
+            (Variant::Int(x), Ok(Variant::Slice(path))) | (Variant::Slice(path), Ok(Variant::Int(x))) => {
+                let p = WidgetPathIter(PathIter::Bits(BitsIter::new(x)));
+                let q = WidgetPathIter(PathIter::Slice(path.iter().cloned()));
+                p.eq(q)
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+impl PartialEq<OwnedId> for Id {
+    #[inline]
+    fn eq(&self, rhs: &OwnedId) -> bool {
+        rhs == self
+    }
+}
 
 impl PartialEq<str> for OwnedId {
     fn eq(&self, rhs: &str) -> bool {
@@ -516,11 +663,27 @@ impl PartialEq<&str> for OwnedId {
     }
 }
 
+// impl PartialEq<str> for Id {
+//     fn eq(&self, rhs: &str) -> bool {
+//         todo!()
+//     }
+// }
+// impl PartialEq<&str> for Id {
+//     fn eq(&self, rhs: &str) -> bool {
+//         todo!()
+//     }
+// }
+
 impl PartialOrd for OwnedId {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
         Some(self.cmp(rhs))
     }
 }
+// impl PartialOrd for Id {
+//     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+//         todo!()
+//     }
+// }
 
 impl Ord for OwnedId {
     fn cmp(&self, rhs: &Self) -> Ordering {
@@ -531,6 +694,11 @@ impl Ord for OwnedId {
         }
     }
 }
+// impl Ord for Id {
+//     fn cmp(&self, rhs: &Self) -> Ordering {
+//         todo!()
+//     }
+// }
 
 impl Hash for OwnedId {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -575,6 +743,7 @@ impl<'a> PartialEq<&'a Option<OwnedId>> for OwnedId {
 }
 
 impl Default for OwnedId {
+    #[inline]
     fn default() -> Self {
         OwnedId::INVALID
     }
@@ -586,28 +755,24 @@ impl fmt::Debug for OwnedId {
         write!(f, "OwnedId({self})")
     }
 }
+impl fmt::Debug for Id {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "Id({self})")
+    }
+}
 
 impl fmt::Display for OwnedId {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        match self.0.get() {
-            Variant::Invalid => write!(f, "#INVALID"),
-            Variant::Int(x) => {
-                let len = block_len(x);
-                if len == 0 {
-                    write!(f, "#")
-                } else {
-                    let bits = x >> (4 * (BLOCKS - len) + 8);
-                    write!(f, "#{1:0>0$x}", len as usize, bits)
-                }
-            }
-            Variant::Slice(path) => {
-                write!(f, "#")?;
-                for key in path {
-                    let (bits, bit_len) = encode(*key);
-                    write!(f, "{1:0>0$x}", bit_len as usize / 4, bits)?;
-                }
-                Ok(())
-            }
+        self.0.get().fmt(f)
+    }
+}
+impl fmt::Display for Id {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match self.try_get() {
+            Ok(var) => var.fmt(f),
+            Err(()) => write!(f, "#EXPIRED"),
         }
     }
 }

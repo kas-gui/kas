@@ -49,7 +49,7 @@ use crate::dir::{Direction, Directional, Directions};
 use crate::event::ConfigCx;
 use crate::geom::{Coord, Rect};
 use crate::theme::{DrawCx, SizeCx};
-use crate::WidgetId;
+use crate::Id;
 
 #[allow(unused)] use crate::Layout;
 
@@ -260,10 +260,10 @@ pub trait AutoLayout {
     /// This functions identically to [`Layout::set_rect`].
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect);
 
-    /// Translate a coordinate to a [`WidgetId`]
+    /// Translate a coordinate to an [`Id`]
     ///
     /// This functions identically to [`Layout::find_id`].
-    fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
+    fn find_id(&mut self, coord: Coord) -> Option<Id>;
 
     /// Draw a widget and its children
     ///

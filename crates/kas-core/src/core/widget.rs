@@ -7,7 +7,7 @@
 
 use super::{Layout, Node};
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused};
-use crate::{Erased, OwnedId, WidgetId};
+use crate::{Erased, OwnedId, Id};
 use kas_macros::autoimpl;
 
 #[allow(unused)] use kas_macros as macros;
@@ -194,7 +194,7 @@ pub trait Events: Widget + Sized {
         &mut self,
         cx: &mut EventCx,
         data: &Self::Data,
-        id: &WidgetId,
+        id: Id,
         event: &Event,
     ) -> IsUsed {
         let _ = (cx, data, id, event);
@@ -404,7 +404,7 @@ pub trait Widget: Layout {
         &mut self,
         cx: &mut EventCx,
         data: &Self::Data,
-        id: WidgetId,
+        id: Id,
         disabled: bool,
         event: Event,
     ) -> IsUsed;
@@ -415,7 +415,7 @@ pub trait Widget: Layout {
     /// `msg` to the message stack. Widget `id` or any ancestor may handle.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn _replay(&mut self, cx: &mut EventCx, data: &Self::Data, id: WidgetId, msg: Erased);
+    fn _replay(&mut self, cx: &mut EventCx, data: &Self::Data, id: Id, msg: Erased);
 
     /// Internal method: search for the previous/next navigation target
     ///
@@ -426,7 +426,7 @@ pub trait Widget: Layout {
         &mut self,
         cx: &mut EventCx,
         data: &Self::Data,
-        focus: Option<&WidgetId>,
+        focus: Option<Id>,
         advance: NavAdvance,
-    ) -> Option<WidgetId>;
+    ) -> Option<Id>;
 }
