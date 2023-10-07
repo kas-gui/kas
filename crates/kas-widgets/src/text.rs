@@ -144,7 +144,7 @@ impl_scope! {
                 // infinite offset and thus infinite measured height.
                 match self.label.try_prepare() {
                     Ok(true) => *cx |= Action::RESIZE,
-                    _ => cx.redraw(self.id()),
+                    _ => cx.redraw(self),
                 }
             }
         }

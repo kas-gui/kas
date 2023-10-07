@@ -17,7 +17,7 @@ use crate::geom::{Offset, Vec2};
 use crate::theme::{SizeCx, ThemeControl};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
-use crate::{Action, Erased, WidgetId, Window, WindowId};
+use crate::{Action, Erased, HasId, WidgetId, Window, WindowId};
 #[allow(unused)] use crate::{Events, Layout}; // for doc-links
 
 /// Public API
@@ -183,7 +183,7 @@ impl EventState {
             }
         }
         if state {
-            self.action(w_id.clone(), Action::REDRAW);
+            self.action(&w_id, Action::REDRAW);
             self.disabled.push(w_id);
         }
     }
@@ -234,9 +234,9 @@ impl EventState {
 
     /// Notify that a widget must be redrawn
     ///
-    /// This is equivalent to: `cx.action(self.id(), Action::REDRAW);`
+    /// This is equivalent to: `cx.action(self, Action::REDRAW);`
     #[inline]
-    pub fn redraw(&mut self, id: WidgetId) {
+    pub fn redraw(&mut self, id: impl HasId) {
         self.action(id, Action::REDRAW);
     }
 
@@ -248,7 +248,7 @@ impl EventState {
     /// required. Should a widget's size requirements change, these will only
     /// affect the UI after a reconfigure action.
     #[inline]
-    pub fn action(&mut self, id: WidgetId, action: Action) {
+    pub fn action(&mut self, id: impl HasId, action: Action) {
         // TODO: make handling more specific via id
         let _ = id;
         self.action |= action;
@@ -487,14 +487,14 @@ impl EventState {
         }
 
         if let Some(old_id) = self.nav_focus.take() {
-            self.action(old_id.clone(), Action::REDRAW);
+            self.action(&old_id, Action::REDRAW);
             self.pending
                 .push_back(Pending::Send(old_id, Event::LostNavFocus));
         }
         if id != self.sel_focus {
             self.clear_key_focus();
         }
-        self.action(id.clone(), Action::REDRAW);
+        self.action(&id, Action::REDRAW);
         self.nav_focus = Some(id.clone());
         log::debug!(target: "kas_core::event", "nav_focus = Some({id})");
         self.pending

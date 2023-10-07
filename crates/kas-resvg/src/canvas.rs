@@ -209,7 +209,7 @@ impl_scope! {
                     ds.image_upload(handle, pixmap.data(), ImageFormat::Rgba8);
                 }
 
-                cx.redraw(self.id());
+                cx.redraw(self);
 
                 let rect_size: (u32, u32) = self.rect().size.cast();
                 if rect_size != size {

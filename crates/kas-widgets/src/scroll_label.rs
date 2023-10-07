@@ -129,7 +129,7 @@ impl_scope! {
                     self.selection.set_edit_pos(pos);
                     self.set_view_offset_from_edit_pos(cx, pos);
                     self.bar.set_value(cx, self.view_offset.1);
-                    cx.redraw(self.id());
+                    cx.redraw(self);
                 }
             }
         }
@@ -190,7 +190,7 @@ impl_scope! {
         /// Set offset, updating the scroll bar
         fn set_offset(&mut self, cx: &mut EventState, offset: Offset) {
             self.view_offset = offset;
-            // unnecessary: cx.redraw(self.id());
+            // unnecessary: cx.redraw(self);
             self.bar.set_value(cx, offset.1);
         }
     }
@@ -220,14 +220,14 @@ impl_scope! {
                 Event::Command(cmd, _) => match cmd {
                     Command::Escape | Command::Deselect if !self.selection.is_empty() => {
                         self.selection.set_empty();
-                        cx.redraw(self.id());
+                        cx.redraw(self);
                         Used
                     }
                     Command::SelectAll => {
                         self.selection.set_sel_pos(0);
                         self.selection.set_edit_pos(self.text.str_len());
                         self.set_primary(cx);
-                        cx.redraw(self.id());
+                        cx.redraw(self);
                         Used
                     }
                     Command::Cut | Command::Copy => {
@@ -240,7 +240,7 @@ impl_scope! {
                 },
                 Event::LostSelFocus => {
                     self.selection.set_empty();
-                    cx.redraw(self.id());
+                    cx.redraw(self);
                     Used
                 }
                 Event::Scroll(delta) => {
@@ -278,7 +278,7 @@ impl_scope! {
             if let Some(ScrollMsg(y)) = cx.try_pop() {
                 let y = y.clamp(0, self.max_scroll_offset().1);
                 self.view_offset.1 = y;
-                cx.redraw(self.id());
+                cx.redraw(self);
             }
         }
     }

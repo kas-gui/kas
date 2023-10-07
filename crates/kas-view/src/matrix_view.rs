@@ -698,13 +698,13 @@ impl_scope! {
                 match self.sel_mode {
                     SelectionMode::None => (),
                     SelectionMode::Single => {
-                        cx.redraw(self.id());
+                        cx.redraw(self);
                         self.selection.clear();
                         self.selection.insert(key.clone());
                         cx.push(SelectionMsg::Select(key));
                     }
                     SelectionMode::Multiple => {
-                        cx.redraw(self.id());
+                        cx.redraw(self);
                         if self.selection.remove(&key) {
                             cx.push(SelectionMsg::Deselect(key));
                         } else {

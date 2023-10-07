@@ -731,13 +731,13 @@ impl_scope! {
                 match self.sel_mode {
                     SelectionMode::None => (),
                     SelectionMode::Single => {
-                        cx.redraw(self.core.id.clone());
+                        cx.redraw(self);
                         self.selection.clear();
                         self.selection.insert(key.clone());
                         cx.push(SelectionMsg::Select(key.clone()));
                     }
                     SelectionMode::Multiple => {
-                        cx.redraw(self.core.id.clone());
+                        cx.redraw(self);
                         if self.selection.remove(key) {
                             cx.push(SelectionMsg::Deselect(key.clone()));
                         } else {

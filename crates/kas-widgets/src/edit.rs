@@ -673,7 +673,7 @@ impl_scope! {
                     if !self.class.multi_line() {
                         self.selection.clear();
                         self.selection.set_edit_pos(self.text.str_len());
-                        cx.redraw(self.id());
+                        cx.redraw(self);
                     }
                     Used
                 }
@@ -681,19 +681,19 @@ impl_scope! {
                 Event::LostNavFocus => {
                     if !self.class.multi_line() {
                         self.selection.set_empty();
-                        cx.redraw(self.id());
+                        cx.redraw(self);
                     }
                     Used
                 }
                 Event::LostKeyFocus => {
                     self.has_key_focus = false;
-                    cx.redraw(self.id());
+                    cx.redraw(self);
                     G::focus_lost(self, cx, data);
                     Used
                 }
                 Event::LostSelFocus => {
                     self.selection.set_empty();
-                    cx.redraw(self.id());
+                    cx.redraw(self);
                     Used
                 }
                 Event::Command(cmd, code) => {
@@ -806,7 +806,7 @@ impl_scope! {
             if new_offset != self.view_offset {
                 self.view_offset = new_offset;
                 // No widget moves so do not need to report Action::REGION_MOVED
-                cx.redraw(self.id());
+                cx.redraw(self);
             }
             new_offset
         }
@@ -1083,7 +1083,7 @@ impl<G: EditGuard> EditField<G> {
             );
         }
 
-        cx.redraw(self.id());
+        cx.redraw(self);
         self.set_view_offset_from_edit_pos(cx);
     }
 
@@ -1165,7 +1165,7 @@ impl<G: EditGuard> EditField<G> {
         let action = match cmd {
             Command::Escape | Command::Deselect if !selection.is_empty() => {
                 self.selection.set_empty();
-                cx.redraw(self.id());
+                cx.redraw(self);
                 Action::None
             }
             Command::Activate => Action::Activate,
@@ -1409,7 +1409,7 @@ impl<G: EditGuard> EditField<G> {
                     self.set_primary(cx);
                 }
                 self.edit_x_coord = x_coord;
-                cx.redraw(self.id());
+                cx.redraw(self);
                 EditAction::None
             }
         };
@@ -1439,7 +1439,7 @@ impl<G: EditGuard> EditField<G> {
                 self.selection.set_edit_pos(pos);
                 self.set_view_offset_from_edit_pos(cx);
                 self.edit_x_coord = None;
-                cx.redraw(self.id());
+                cx.redraw(self);
             }
         }
     }
@@ -1459,7 +1459,7 @@ impl<G: EditGuard> EditField<G> {
         if new_offset != self.view_offset {
             delta -= self.view_offset - new_offset;
             self.view_offset = new_offset;
-            cx.redraw(self.id());
+            cx.redraw(self);
         }
 
         cx.set_scroll(if delta == Offset::ZERO {

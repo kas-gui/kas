@@ -37,7 +37,7 @@ impl_scope! {
             if self.state != new_state {
                 self.state = new_state;
                 self.last_change = Some(Instant::now());
-                cx.redraw(self.id());
+                cx.redraw(self);
             }
         }
 
@@ -127,7 +127,7 @@ impl_scope! {
             }
 
             self.last_change = Some(Instant::now());
-            cx.redraw(self.id());
+            cx.redraw(self);
         }
     }
 }

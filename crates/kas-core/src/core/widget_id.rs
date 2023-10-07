@@ -656,6 +656,39 @@ impl fmt::Display for WidgetId {
     }
 }
 
+/// Types supporting conversion to [`WidgetId`]
+///
+/// A method taking an `id: impl HasId` parameter supports an [`Id`],
+/// a reference to an [`Id`] (which is thus cloned),
+/// or a (mutable) reference to a widget.
+///
+/// Note: in some cases attempting to pass a widget reference does not pass
+/// borrow checks. In this case pass `widget.id()` explicitly.
+pub trait HasId {
+    fn has_id(self) -> WidgetId;
+}
+
+impl HasId for WidgetId {
+    #[inline]
+    fn has_id(self) -> WidgetId {
+        self
+    }
+}
+
+impl HasId for &WidgetId {
+    #[inline]
+    fn has_id(self) -> WidgetId {
+        self.clone()
+    }
+}
+
+impl HasId for &mut WidgetId {
+    #[inline]
+    fn has_id(self) -> WidgetId {
+        self.clone()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

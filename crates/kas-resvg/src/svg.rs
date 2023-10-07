@@ -277,7 +277,7 @@ impl_scope! {
                     ds.image_upload(handle, pixmap.data(), ImageFormat::Rgba8);
                 }
 
-                cx.redraw(self.id());
+                cx.redraw(self);
                 let inner = std::mem::replace(&mut self.inner, State::None);
                 self.inner = match inner {
                     State::None => State::None,

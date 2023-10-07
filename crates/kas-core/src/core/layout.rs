@@ -10,7 +10,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx};
 use crate::util::IdentifyWidget;
-use crate::WidgetId;
+use crate::{HasId, WidgetId};
 use kas_macros::autoimpl;
 
 #[allow(unused)] use super::{Events, Widget};
@@ -296,6 +296,20 @@ pub trait Layout {
     fn draw(&mut self, draw: DrawCx);
 }
 
+impl<W: Layout + ?Sized> HasId for &W {
+    #[inline]
+    fn has_id(self) -> WidgetId {
+        self.id_ref().clone()
+    }
+}
+
+impl<W: Layout + ?Sized> HasId for &mut W {
+    #[inline]
+    fn has_id(self) -> WidgetId {
+        self.id_ref().clone()
+    }
+}
+
 /// Extension trait over widgets
 pub trait LayoutExt: Layout {
     /// Get the widget's identifier
@@ -331,7 +345,7 @@ pub trait LayoutExt: Layout {
     /// This function assumes that `id` is a valid widget.
     #[inline]
     fn is_ancestor_of(&self, id: &WidgetId) -> bool {
-        self.id().is_ancestor_of(id)
+        self.id_ref().is_ancestor_of(id)
     }
 
     /// Check whether `id` is not self and is a descendant
@@ -339,7 +353,7 @@ pub trait LayoutExt: Layout {
     /// This function assumes that `id` is a valid widget.
     #[inline]
     fn is_strict_ancestor_of(&self, id: &WidgetId) -> bool {
-        !self.eq_id(id) && self.id().is_ancestor_of(id)
+        !self.eq_id(id) && self.id_ref().is_ancestor_of(id)
     }
 
     /// Run a closure on all children
