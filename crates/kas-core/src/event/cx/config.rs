@@ -11,7 +11,7 @@ use crate::geom::{Rect, Size};
 use crate::layout::AlignPair;
 use crate::text::TextApi;
 use crate::theme::{Feature, SizeCx, TextClass, ThemeSize};
-use crate::{Action, Node, WidgetId};
+use crate::{Node, WidgetId};
 use std::ops::{Deref, DerefMut};
 
 #[allow(unused)] use crate::{event::Event, Events, Layout};
@@ -113,13 +113,6 @@ impl<'a> ConfigCx<'a> {
         align: Option<AlignPair>,
     ) {
         self.sh.text_set_size(text, class, size, align)
-    }
-}
-
-impl<'a> std::ops::BitOrAssign<Action> for ConfigCx<'a> {
-    #[inline]
-    fn bitor_assign(&mut self, action: Action) {
-        self.ev.send_action(action);
     }
 }
 

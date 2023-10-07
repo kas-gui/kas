@@ -200,14 +200,14 @@ impl GrabBuilder {
 
                     debug_assert!(repetitions >= grab.repetitions);
                     grab.repetitions = repetitions;
-                    grab.depress = Some(id);
+                    grab.depress = Some(id.clone());
                     grab.details = details;
                 } else {
                     cx.mouse_grab = Some(MouseGrab {
                         button,
                         repetitions,
                         start_id: id.clone(),
-                        depress: Some(id),
+                        depress: Some(id.clone()),
                         details,
                     });
                 }
@@ -222,7 +222,7 @@ impl GrabBuilder {
                     }
 
                     grab.depress = Some(id.clone());
-                    grab.cur_id = Some(id);
+                    grab.cur_id = Some(id.clone());
                     grab.last_move = coord;
                     grab.coord = coord;
                     grab.mode = grab.mode.max(mode);
@@ -235,7 +235,7 @@ impl GrabBuilder {
                         id: touch_id,
                         start_id: id.clone(),
                         depress: Some(id.clone()),
-                        cur_id: Some(id),
+                        cur_id: Some(id.clone()),
                         last_move: coord,
                         coord,
                         mode,
@@ -245,7 +245,7 @@ impl GrabBuilder {
             }
         }
 
-        cx.send_action(Action::REDRAW);
+        cx.action(id, Action::REDRAW);
         Used
     }
 }

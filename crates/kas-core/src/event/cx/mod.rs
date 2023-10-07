@@ -318,7 +318,7 @@ impl EventState {
                     "remove_touch: touch_id={touch_id}, start_id={}",
                     grab.start_id
                 );
-                self.send_action(Action::REDRAW); // redraw(..)
+                self.opt_action(grab.depress.clone(), Action::REDRAW);
                 self.remove_pan_grab(grab.pan_grab);
                 return Some(grab);
             }
@@ -524,7 +524,7 @@ impl<'a> EventCx<'a> {
         if let Some(grab) = self.mouse_grab.take() {
             log::trace!("remove_mouse_grab: start_id={}", grab.start_id);
             self.window.set_cursor_icon(self.hover_icon);
-            self.send_action(Action::REDRAW); // redraw(..)
+            self.opt_action(grab.depress.clone(), Action::REDRAW);
             if let GrabDetails::Pan(g) = grab.details {
                 self.remove_pan_grab(g);
                 // Pan grabs do not receive Event::PressEnd
@@ -646,10 +646,6 @@ impl<'a> EventCx<'a> {
             }
         }
 
-        // We redraw in all cases. Since this is not part of widget event
-        // processing, we can push directly to self.action.
-        self.send_action(Action::REDRAW);
-
         let advance = if !reverse {
             NavAdvance::Forward(target.is_some())
         } else {
@@ -673,7 +669,8 @@ impl<'a> EventCx<'a> {
             return;
         }
 
-        if let Some(id) = self.nav_focus.clone() {
+        if let Some(id) = self.nav_focus.take() {
+            self.redraw(id.clone());
             self.pending
                 .push_back(Pending::Send(id, Event::LostNavFocus));
         }
@@ -684,6 +681,7 @@ impl<'a> EventCx<'a> {
         self.nav_focus = opt_id.clone();
         if let Some(id) = opt_id {
             log::debug!(target: "kas_core::event", "nav_focus = Some({id})");
+            self.redraw(id.clone());
             self.pending
                 .push_back(Pending::Send(id, Event::NavFocus(source)));
         } else {

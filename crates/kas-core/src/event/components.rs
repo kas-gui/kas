@@ -195,49 +195,45 @@ impl ScrollComponent {
     ///
     /// Sets [`Scroll::Rect`] to ensure correct scrolling of parents.
     ///
-    /// Returns `true` when the scroll offset changes.
-    pub fn focus_rect(&mut self, cx: &mut EventCx, rect: Rect, window_rect: Rect) -> bool {
+    /// Returns [`Action::REGION_MOVED`] when the scroll offset changes.
+    pub fn focus_rect(&mut self, cx: &mut EventCx, rect: Rect, window_rect: Rect) -> Action {
         self.glide.stop();
         let v = rect.pos - window_rect.pos;
         let off = Offset::conv(rect.size) - Offset::conv(window_rect.size);
         let offset = self.offset.max(v + off).min(v);
         let action = self.set_offset(offset);
         cx.set_scroll(Scroll::Rect(rect - self.offset));
-        if action.is_empty() {
-            false
-        } else {
-            *cx |= action;
-            true
-        }
+        action
     }
 
     /// Handle a [`Scroll`] action
-    pub fn scroll(&mut self, cx: &mut EventCx, window_rect: Rect, scroll: Scroll) {
+    pub fn scroll(&mut self, cx: &mut EventCx, window_rect: Rect, scroll: Scroll) -> Action {
         match scroll {
-            Scroll::None | Scroll::Scrolled => (),
+            Scroll::None | Scroll::Scrolled => Action::empty(),
             Scroll::Offset(delta) => {
                 let old_offset = self.offset;
-                *cx |= self.set_offset(old_offset - delta);
+                let action = self.set_offset(old_offset - delta);
                 cx.set_scroll(match delta - old_offset + self.offset {
                     delta if delta == Offset::ZERO => Scroll::Scrolled,
                     delta => Scroll::Offset(delta),
                 });
+                action
             }
-            Scroll::Rect(rect) => {
-                self.focus_rect(cx, rect, window_rect);
-            }
+            Scroll::Rect(rect) => self.focus_rect(cx, rect, window_rect),
         }
     }
 
-    fn scroll_by_delta(&mut self, cx: &mut EventCx, d: Offset) -> bool {
+    // Returns Action::REGION_MOVED or Action::empty()
+    fn scroll_by_delta(&mut self, cx: &mut EventCx, d: Offset) -> Action {
         let mut delta = d;
-        let mut moved = false;
+        let action;
         let offset = (self.offset - d).clamp(Offset::ZERO, self.max_offset);
         if offset != self.offset {
-            moved = true;
             delta = d - (self.offset - offset);
             self.offset = offset;
-            *cx |= Action::REGION_MOVED;
+            action = Action::REGION_MOVED;
+        } else {
+            action = Action::empty();
         }
 
         cx.set_scroll(if delta != Offset::ZERO {
@@ -246,7 +242,7 @@ impl ScrollComponent {
             Scroll::Scrolled
         });
 
-        moved
+        action
     }
 
     /// Use an event to scroll, if possible
@@ -273,7 +269,7 @@ impl ScrollComponent {
         id: WidgetId,
         window_rect: Rect,
     ) -> (bool, IsUsed) {
-        let mut moved = false;
+        let mut action = Action::empty();
         match event {
             Event::Command(cmd, _) => {
                 let offset = match cmd {
@@ -296,11 +292,7 @@ impl ScrollComponent {
                         self.offset - delta
                     }
                 };
-                let action = self.set_offset(offset);
-                if !action.is_empty() {
-                    moved = true;
-                    *cx |= action;
-                }
+                action = self.set_offset(offset);
                 cx.set_scroll(Scroll::Rect(window_rect));
             }
             Event::Scroll(delta) => {
@@ -309,19 +301,22 @@ impl ScrollComponent {
                     PixelDelta(d) => d,
                 };
                 self.glide.stop();
-                moved = self.scroll_by_delta(cx, delta);
+                action = self.scroll_by_delta(cx, delta);
             }
             Event::PressStart { press, .. }
                 if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>
             {
-                let _ = press.grab(id).with_icon(CursorIcon::Grabbing).with_cx(cx);
+                let _ = press
+                    .grab(id.clone())
+                    .with_icon(CursorIcon::Grabbing)
+                    .with_cx(cx);
                 self.glide.press_start();
             }
             Event::PressMove { press, delta, .. }
                 if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>
             {
                 if self.glide.press_move(delta) {
-                    moved = self.scroll_by_delta(cx, delta);
+                    action = self.scroll_by_delta(cx, delta);
                 }
             }
             Event::PressEnd { press, .. }
@@ -330,7 +325,7 @@ impl ScrollComponent {
                 let timeout = cx.config().scroll_flick_timeout();
                 let pan_dist_thresh = cx.config().pan_dist_thresh();
                 if self.glide.press_end(timeout, pan_dist_thresh) {
-                    cx.request_timer_update(id, PAYLOAD_GLIDE, Duration::new(0, 0), true);
+                    cx.request_timer_update(id.clone(), PAYLOAD_GLIDE, Duration::new(0, 0), true);
                 }
             }
             Event::TimerUpdate(pl) if pl == PAYLOAD_GLIDE => {
@@ -338,18 +333,23 @@ impl ScrollComponent {
                 let timeout = cx.config().scroll_flick_timeout();
                 let decay = cx.config().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(timeout, decay) {
-                    moved = self.scroll_by_delta(cx, delta);
+                    action = self.scroll_by_delta(cx, delta);
 
                     if self.glide.vel != Vec2::ZERO {
                         let dur = Duration::from_millis(GLIDE_POLL_MS);
-                        cx.request_timer_update(id, PAYLOAD_GLIDE, dur, true);
+                        cx.request_timer_update(id.clone(), PAYLOAD_GLIDE, dur, true);
                         cx.set_scroll(Scroll::Scrolled);
                     }
                 }
             }
             _ => return (false, Unused),
         }
-        (moved, Used)
+        if !action.is_empty() {
+            cx.action(id, action);
+            (true, Used)
+        } else {
+            (false, Used)
+        }
     }
 }
 

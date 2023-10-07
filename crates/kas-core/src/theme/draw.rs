@@ -12,7 +12,7 @@ use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType
 use crate::event::{ConfigCx, EventState};
 use crate::geom::{Offset, Rect};
 use crate::text::{TextApi, TextDisplay};
-use crate::{autoimpl, Action, Layout, WidgetId};
+use crate::{autoimpl, Layout, WidgetId};
 use std::convert::AsRef;
 use std::ops::{Bound, Range, RangeBounds};
 use std::time::Instant;
@@ -328,13 +328,6 @@ impl<'a> DrawCx<'a> {
     /// Draw an image
     pub fn image(&mut self, rect: Rect, id: ImageId) {
         self.h.image(id, rect);
-    }
-}
-
-impl<'a> std::ops::BitOrAssign<Action> for DrawCx<'a> {
-    #[inline]
-    fn bitor_assign(&mut self, action: Action) {
-        self.h.components().2.send_action(action);
     }
 }
 

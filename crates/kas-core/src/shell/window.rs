@@ -15,7 +15,7 @@ use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::theme::{DrawCx, SizeCx, ThemeSize};
 use kas::theme::{Theme, Window as _};
-use kas::{autoimpl, Action, AppData, ErasedStack, Layout, LayoutExt, Widget, WindowId};
+use kas::{autoimpl, Action, AppData, ErasedStack, Layout, LayoutExt, Widget, WidgetId, WindowId};
 use std::mem::take;
 use std::time::{Duration, Instant};
 use winit::event::WindowEvent;
@@ -357,12 +357,12 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     }
 
     pub(super) fn send_action(&mut self, action: Action) {
-        self.ev_state.send_action(action);
+        self.ev_state.action(WidgetId::ROOT, action);
     }
 
     pub(super) fn send_close(&mut self, shared: &mut SharedState<A, S, T>, id: WindowId) {
         if id == self.window_id {
-            self.ev_state.send_action(Action::CLOSE);
+            self.ev_state.action(WidgetId::ROOT, Action::CLOSE);
         } else if let Some(window) = self.window.as_ref() {
             let widget = &mut self.widget;
             let mut messages = ErasedStack::new();

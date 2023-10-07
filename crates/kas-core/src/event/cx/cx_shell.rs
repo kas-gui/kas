@@ -304,7 +304,7 @@ impl<'a> EventCx<'a> {
         use winit::event::{MouseScrollDelta, TouchPhase, WindowEvent::*};
 
         match event {
-            CloseRequested => self.send_action(Action::CLOSE),
+            CloseRequested => self.action(WidgetId::ROOT, Action::CLOSE),
             /* Not yet supported: see #98
             DroppedFile(path) => ,
             HoveredFile(path) => ,
@@ -314,7 +314,7 @@ impl<'a> EventCx<'a> {
                 self.window_has_focus = state;
                 if state {
                     // Required to restart theme animations
-                    self.send_action(Action::REDRAW);
+                    self.action(WidgetId::ROOT, Action::REDRAW);
                 } else {
                     // Window focus lost: close all popups
                     while let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
@@ -364,7 +364,7 @@ impl<'a> EventCx<'a> {
                 let state = modifiers.state();
                 if state.alt_key() != self.modifiers.alt_key() {
                     // This controls drawing of access key indicators
-                    self.send_action(Action::REDRAW);
+                    self.action(WidgetId::ROOT, Action::REDRAW);
                 }
                 self.modifiers = state;
             }
@@ -543,7 +543,7 @@ impl<'a> EventCx<'a> {
                         }
 
                         if redraw {
-                            self.send_action(Action::REDRAW);
+                            self.action(WidgetId::ROOT, Action::REDRAW);
                         } else if let Some(pan_grab) = pan_grab {
                             if usize::conv(pan_grab.1) < MAX_PAN_GRABS {
                                 if let Some(pan) = self.pan_grab.get_mut(usize::conv(pan_grab.0)) {
@@ -554,7 +554,7 @@ impl<'a> EventCx<'a> {
                     }
                     ev @ (TouchPhase::Ended | TouchPhase::Cancelled) => {
                         if let Some(mut grab) = self.remove_touch(touch.id) {
-                            self.send_action(grab.flush_click_move());
+                            self.action(WidgetId::ROOT, grab.flush_click_move());
 
                             if grab.mode == GrabMode::Grab {
                                 let id = grab.cur_id.clone();

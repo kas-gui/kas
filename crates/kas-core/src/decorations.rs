@@ -286,7 +286,7 @@ impl_scope! {
                             w.set_maximized(!w.is_maximized());
                         }
                     }
-                    TitleBarButton::Close => cx.send_action(Action::CLOSE),
+                    TitleBarButton::Close => cx.action(self.id(), Action::CLOSE),
                 }
             }
         }

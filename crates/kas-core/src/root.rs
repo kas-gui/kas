@@ -228,7 +228,7 @@ impl_scope! {
             if let Some(cmd) = cx.try_pop() {
                 match cmd {
                     WindowCommand::SetTitle(title) => {
-                        *cx |= self.title_bar.set_title(title);
+                        cx.action(self.id(), self.title_bar.set_title(title));
                         #[cfg(winit)]
                         if self.decorations == Decorations::Server {
                             if let Some(w) = cx.winit_window() {
@@ -413,7 +413,7 @@ impl<Data: 'static> Window<Data> {
         let index = self.popups.len();
         self.popups.push((id, popup, Offset::ZERO));
         self.resize_popup(&mut cx.config_cx(), data, index);
-        cx.send_action(Action::REDRAW);
+        cx.action(WidgetId::ROOT, Action::REDRAW);
     }
 
     /// Trigger closure of a pop-up
@@ -423,7 +423,7 @@ impl<Data: 'static> Window<Data> {
         for i in 0..self.popups.len() {
             if id == self.popups[i].0 {
                 self.popups.remove(i);
-                cx.send_action(Action::REGION_MOVED);
+                cx.action(WidgetId::ROOT, Action::REGION_MOVED);
                 return;
             }
         }

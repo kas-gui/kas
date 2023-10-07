@@ -20,20 +20,6 @@ use crate::util::warn_about_error;
 use crate::{Action, Erased, WidgetId, Window, WindowId};
 #[allow(unused)] use crate::{Events, Layout}; // for doc-links
 
-impl<'a> std::ops::BitOrAssign<Action> for EventCx<'a> {
-    #[inline]
-    fn bitor_assign(&mut self, action: Action) {
-        self.send_action(action);
-    }
-}
-
-impl std::ops::BitOrAssign<Action> for EventState {
-    #[inline]
-    fn bitor_assign(&mut self, action: Action) {
-        self.send_action(action);
-    }
-}
-
 /// Public API
 impl EventState {
     /// Get the platform
@@ -197,7 +183,7 @@ impl EventState {
             }
         }
         if state {
-            self.send_action(Action::REDRAW);
+            self.action(w_id.clone(), Action::REDRAW);
             self.disabled.push(w_id);
         }
     }
@@ -248,27 +234,32 @@ impl EventState {
 
     /// Notify that a widget must be redrawn
     ///
-    /// Note: currently, only full-window redraws are supported, thus this is
-    /// equivalent to: `cx.send_action(Action::REDRAW);`
+    /// This is equivalent to: `cx.action(self.id(), Action::REDRAW);`
     #[inline]
-    pub fn redraw(&mut self, _id: WidgetId) {
-        // Theoretically, notifying by WidgetId allows selective redrawing
-        // (damage events). This is not yet implemented.
-        self.send_action(Action::REDRAW);
+    pub fn redraw(&mut self, id: WidgetId) {
+        self.action(id, Action::REDRAW);
     }
 
     /// Notify that a [`Action`] action should happen
     ///
     /// This causes the given action to happen after event handling.
     ///
-    /// Calling `cx.send_action(action)` is equivalent to `*cx |= action`.
-    ///
     /// Whenever a widget is added, removed or replaced, a reconfigure action is
     /// required. Should a widget's size requirements change, these will only
     /// affect the UI after a reconfigure action.
     #[inline]
-    pub fn send_action(&mut self, action: Action) {
+    pub fn action(&mut self, id: WidgetId, action: Action) {
+        // TODO: make handling more specific via id
+        let _ = id;
         self.action |= action;
+    }
+
+    /// Pass an [action](Self::action) given some `id`
+    #[inline]
+    pub(crate) fn opt_action(&mut self, id: Option<WidgetId>, action: Action) {
+        if let Some(id) = id {
+            self.action(id, action);
+        }
     }
 
     /// Attempts to set a fallback to receive [`Event::Command`]
@@ -364,8 +355,8 @@ impl EventState {
             return;
         }
 
-        self.key_depress.insert(code, id);
-        self.send_action(Action::REDRAW);
+        self.key_depress.insert(code, id.clone());
+        self.action(id, Action::REDRAW);
     }
 
     /// Request keyboard input focus
@@ -420,24 +411,28 @@ impl EventState {
     /// Queues a redraw and returns `true` if the depress target changes,
     /// otherwise returns `false`.
     pub fn set_grab_depress(&mut self, source: PressSource, target: Option<WidgetId>) -> bool {
+        let mut old = None;
         let mut redraw = false;
         match source {
             PressSource::Mouse(_, _) => {
                 if let Some(grab) = self.mouse_grab.as_mut() {
                     redraw = grab.depress != target;
+                    old = grab.depress.take();
                     grab.depress = target.clone();
                 }
             }
             PressSource::Touch(id) => {
                 if let Some(grab) = self.get_touch(id) {
                     redraw = grab.depress != target;
+                    old = grab.depress.take();
                     grab.depress = target.clone();
                 }
             }
         }
         if redraw {
             log::trace!(target: "kas_core::event", "set_grab_depress: target={target:?}");
-            self.send_action(Action::REDRAW);
+            self.opt_action(old, Action::REDRAW);
+            self.opt_action(target, Action::REDRAW);
         }
         redraw
     }
@@ -469,7 +464,7 @@ impl EventState {
     /// Clear navigation focus
     pub fn clear_nav_focus(&mut self) {
         if let Some(id) = self.nav_focus.take() {
-            self.send_action(Action::REDRAW);
+            self.action(id.clone(), Action::REDRAW);
             self.pending
                 .push_back(Pending::Send(id, Event::LostNavFocus));
             log::debug!(target: "kas_core::event", "nav_focus = None");
@@ -491,14 +486,15 @@ impl EventState {
             return;
         }
 
-        self.send_action(Action::REDRAW);
         if let Some(old_id) = self.nav_focus.take() {
+            self.action(old_id.clone(), Action::REDRAW);
             self.pending
                 .push_back(Pending::Send(old_id, Event::LostNavFocus));
         }
         if id != self.sel_focus {
             self.clear_key_focus();
         }
+        self.action(id.clone(), Action::REDRAW);
         self.nav_focus = Some(id.clone());
         log::debug!(target: "kas_core::event", "nav_focus = Some({id})");
         self.pending

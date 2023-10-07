@@ -8,17 +8,14 @@
 bitflags! {
     /// Action required after processing
     ///
-    /// This type is returned by many widgets on modification to self and is tracked
-    /// internally by [`event::EventCx`] to determine which updates are needed to
-    /// the UI.
+    /// Some methods operate directly on a context ([`ConfigCx`] or [`EventCx`])
+    /// while others don't reqiure a context but do require that some *action*
+    /// is performed afterwards. This enum is used to convey that action.
     ///
-    /// Two `Action` values may be combined via bit-or (`a | b`). Bit-or
-    /// assignments are supported by both `Action` and [`event::EventCx`].
+    /// An `Action` should be passed to a context: `cx.action(self.id(), action)`
+    /// (assuming `self` is a widget).
     ///
-    /// Users receiving a value of this type from a widget update method should
-    /// usually handle with `*cx |= action;`. Before the event loop starts
-    /// (`toolkit.run()`) or if the widget in question is not part of a UI these
-    /// values can be ignored.
+    /// Two `Action` values may be combined via bit-or (`a | b`).
     #[must_use]
     #[derive(Copy, Clone, Debug, Default)]
     pub struct Action: u32 {
