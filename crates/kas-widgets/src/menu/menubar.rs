@@ -214,7 +214,7 @@ impl_scope! {
                     if !self.rect().contains(press.coord) {
                         // not on the menubar
                         self.delayed_open = None;
-                        cx.send(id, Event::Command(Command::Activate, None));
+                        cx.send_command(id, Command::Activate);
                     }
                     Used
                 }

@@ -656,23 +656,19 @@ impl<'a> EventCx<'a> {
         self.last_child
     }
 
-    /// Send an event to a widget
+    /// Send a command to a widget
     ///
-    /// Sends `event` to widget `id`. The event is queued to send later, thus
-    /// any actions by the receiving widget will not be immediately visible to
-    /// the caller of this method.
+    /// Sends [`Event::Command`] to widget `id`. The event is queued to send
+    /// later, thus any actions by the receiving widget will not be immediately
+    /// visible to the caller of this method.
     ///
-    /// When calling this method, be aware that:
-    ///
-    /// -   Some widgets use an inner component to handle events, thus calling
-    ///     with the outer widget's `id` may not have the desired effect.
-    ///     [`Layout::find_id`] and [`EventState::next_nav_focus`] are able to find
-    ///     the appropriate event-handling target.
-    ///     (TODO: do we need another method to find this target?)
-    /// -   Some events such as [`Event::PressMove`] contain embedded widget
-    ///     identifiers which may affect handling of the event.
-    pub fn send(&mut self, id: Id, event: Event) {
-        self.pending.push_back(Pending::Send(id, event));
+    /// When calling this method, be aware that some widgets use an inner
+    /// component to handle events, thus calling with the outer widget's `id`
+    /// may not have the desired effect. [`Layout::find_id`] and
+    /// [`EventState::next_nav_focus`] are usually able to find the appropriate
+    /// event-handling target.
+    pub fn send_command(&mut self, id: Id, cmd: Command) {
+        self.pending_cmds.push_back((id, cmd));
     }
 
     /// Push a message to the stack

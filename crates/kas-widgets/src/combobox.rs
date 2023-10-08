@@ -163,7 +163,7 @@ impl_scope! {
                                 return Used;
                             }
                         } else if self.popup.is_open() && self.popup.is_ancestor_of(&id) {
-                            cx.send(id, Event::Command(Command::Activate, None));
+                            cx.send_command(id, Command::Activate);
                             return Used;
                         }
                     }

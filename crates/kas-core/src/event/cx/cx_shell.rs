@@ -53,6 +53,7 @@ impl EventState {
             time_updates: vec![],
             fut_messages: vec![],
             pending: Default::default(),
+            pending_cmds: Default::default(),
             action: Action::empty(),
         }
     }
@@ -232,6 +233,11 @@ impl EventState {
                         cx.next_nav_focus_impl(win.as_node(data), target, reverse, source);
                     }
                 }
+            }
+
+            while let Some((id, cmd)) = cx.pending_cmds.pop_front() {
+                log::trace!(target: "kas_core::event", "sending pending command {cmd:?} to {id}");
+                cx.send_event(win.as_node(data), id, Event::Command(cmd, None));
             }
 
             // Poll futures last. This means that any newly pushed future should
