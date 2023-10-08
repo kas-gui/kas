@@ -271,7 +271,7 @@ impl_scope! {
     ///
     /// By default, the editor supports a single-line only;
     /// [`Self::with_multi_line`] and [`Self::with_class`] can be used to change this.
-    #[autoimpl(Deref, DerefMut, HasStr, HasString using self.inner)]
+    #[autoimpl(Deref, DerefMut, HasStr using self.inner)]
     #[autoimpl(Clone, Default, Debug where G: trait)]
     #[widget]
     pub struct EditBox<G: EditGuard = DefaultGuard<()>> {
@@ -363,35 +363,24 @@ impl_scope! {
         }
     }
 
-    impl Scrollable for Self {
-        #[inline]
-        fn scroll_axes(&self, size: Size) -> (bool, bool) {
-            self.inner.scroll_axes(size)
-        }
-
-        #[inline]
-        fn max_scroll_offset(&self) -> Offset {
-            self.inner.max_scroll_offset()
-        }
-
-        #[inline]
-        fn scroll_offset(&self) -> Offset {
-            self.inner.scroll_offset()
-        }
-
-        fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
-            let offset = self.inner.set_scroll_offset(cx, offset);
-            self.update_scroll_bar(cx);
-            offset
-        }
-    }
-
     impl Self {
         fn update_scroll_bar(&mut self, cx: &mut EventState) {
             let max_offset = self.inner.max_scroll_offset().1;
             let action = self.bar.set_limits(max_offset, self.inner.rect().size.1);
             cx.action(&self, action);
             self.bar.set_value(cx, self.inner.view_offset.1);
+        }
+    }
+
+    impl HasString for Self {
+        fn set_string(&mut self, string: String) -> Action {
+            let mut action = self.inner.set_string(string);
+            if action.contains(Action::SCROLLED) {
+                action.remove(Action::SCROLLED);
+                let max_offset = self.inner.max_scroll_offset().1;
+                action |= self.bar.set_limits(max_offset, self.inner.rect().size.1);
+            }
+            action
         }
     }
 
@@ -837,8 +826,7 @@ impl_scope! {
             if self.text.try_prepare().is_ok() {
                 self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
                 self.view_offset = self.view_offset.min(self.max_scroll_offset());
-                // We use SET_RECT just to set the outer scroll bar position:
-                action = Action::SET_RECT;
+                action = Action::SCROLLED;
             }
             action | self.set_error_state(false)
         }

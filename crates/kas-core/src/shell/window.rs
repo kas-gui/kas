@@ -312,7 +312,10 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                 window.solve_cache.invalidate_rule_cache();
             }
             self.apply_size(shared, false);
-        } else if action.contains(Action::SET_RECT) {
+        } else if !action
+            .intersection(Action::SET_RECT | Action::SCROLLED)
+            .is_empty()
+        {
             self.apply_size(shared, false);
         }
         if action.contains(Action::REGION_MOVED) {

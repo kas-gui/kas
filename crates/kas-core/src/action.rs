@@ -32,6 +32,11 @@ bitflags! {
         ///
         /// Implies window redraw.
         const REGION_MOVED = 1 << 4;
+        /// A widget was scrolled
+        ///
+        /// This is used for inter-widget communication (see `EditBox`). If not
+        /// handled locally, it is handled identially to [`Self::SET_RECT`].
+        const SCROLLED = 1 << 6;
         /// Reset size of all widgets without recalculating requirements
         const SET_RECT = 1 << 8;
         /// Resize all widgets in the window
