@@ -148,7 +148,22 @@ enum Pending {
     Configure(Id),
     Update(Id),
     Send(Id, Event),
-    NextNavFocus {
+}
+
+struct PendingSelFocus {
+    target: Id,
+    key_focus: bool,
+    source: FocusSource,
+}
+
+#[crate::impl_default(PendingNavFocus::None)]
+enum PendingNavFocus {
+    None,
+    Set {
+        target: Option<Id>,
+        source: FocusSource,
+    },
+    Next {
         target: Option<Id>,
         reverse: bool,
         source: FocusSource,
@@ -204,6 +219,9 @@ pub struct EventState {
     fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Erased>>>)>,
     // FIFO queue of events pending handling
     pending: VecDeque<Pending>,
+    // Optional new target for selection focus. bool is true if this also gains key focus.
+    pending_sel_focus: Option<PendingSelFocus>,
+    pending_nav_focus: PendingNavFocus,
     pending_cmds: VecDeque<(Id, Command)>,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
@@ -325,43 +343,6 @@ impl EventState {
             }
         }
         None
-    }
-
-    fn clear_key_focus(&mut self) {
-        if let Some(id) = self.key_focus() {
-            log::trace!("clear_key_focus");
-            // If widget has key focus, this is lost
-            self.key_focus = false;
-            self.pending
-                .push_back(Pending::Send(id, Event::LostKeyFocus));
-        }
-    }
-
-    // Set selection focus to `wid`; if `key_focus` also set that
-    fn set_sel_focus(&mut self, wid: Id, key_focus: bool) {
-        log::trace!("set_sel_focus: wid={wid}, key_focus={key_focus}");
-        // The widget probably already has nav focus, but anyway:
-        self.set_nav_focus(wid.clone(), FocusSource::Synthetic);
-
-        if wid == self.sel_focus {
-            self.key_focus = self.key_focus || key_focus;
-            return;
-        }
-
-        if let Some(id) = self.sel_focus.clone() {
-            if self.key_focus {
-                // If widget has key focus, this is lost
-                self.pending
-                    .push_back(Pending::Send(id.clone(), Event::LostKeyFocus));
-            }
-
-            // Selection focus is lost if another widget receives key focus
-            self.pending
-                .push_back(Pending::Send(id, Event::LostSelFocus));
-        }
-
-        self.key_focus = key_focus;
-        self.sel_focus = Some(wid);
     }
 
     // Clear old hover, set new hover, send events.
@@ -510,7 +491,6 @@ impl<'a> EventCx<'a> {
             let event = Event::Command(Command::Activate, Some(code));
             self.send_event(widget, id, event);
         } else if self.config.nav_focus && vkey == Key::Tab {
-            self.clear_key_focus();
             let shift = self.modifiers.shift_key();
             self.next_nav_focus_impl(widget.re(), None, shift, FocusSource::Key);
         } else if vkey == Key::Escape {
@@ -619,8 +599,68 @@ impl<'a> EventCx<'a> {
         }
     }
 
-    /// Advance the keyboard navigation focus
-    pub fn next_nav_focus_impl(
+    // Set selection focus to `wid` immediately; if `key_focus` also set that
+    fn set_sel_focus(&mut self, mut widget: Node<'_>, pending: PendingSelFocus) {
+        let PendingSelFocus {
+            target,
+            key_focus,
+            source,
+        } = pending;
+
+        log::trace!("set_sel_focus: target={target}, key_focus={key_focus}");
+        // The widget probably already has nav focus, but anyway:
+        self.set_nav_focus(target.clone(), FocusSource::Synthetic);
+
+        if target == self.sel_focus {
+            self.key_focus = self.key_focus || key_focus;
+            return;
+        }
+
+        if let Some(id) = self.sel_focus.clone() {
+            if self.key_focus {
+                // If widget has key focus, this is lost
+                self.send_event(widget.re(), id.clone(), Event::LostKeyFocus);
+            }
+
+            // Selection focus is lost if another widget receives key focus
+            self.send_event(widget.re(), id, Event::LostSelFocus);
+        }
+
+        self.key_focus = key_focus;
+        self.sel_focus = Some(target.clone());
+
+        self.send_event(widget.re(), target.clone(), Event::SelFocus(source));
+        if key_focus {
+            self.send_event(widget, target, Event::KeyFocus);
+        }
+    }
+
+    /// Set navigation focus immediately
+    fn set_nav_focus_impl(&mut self, mut widget: Node, target: Option<Id>, source: FocusSource) {
+        if target == self.nav_focus || !self.config.nav_focus {
+            return;
+        }
+
+        if let Some(old) = self.nav_focus.take() {
+            self.action(&old, Action::REDRAW);
+            self.send_event(widget.re(), old, Event::LostNavFocus);
+        }
+
+        if let Some(id) = self.key_focus() {
+            self.key_focus = false;
+            self.send_event(widget.re(), id, Event::LostKeyFocus);
+        }
+
+        self.nav_focus = target.clone();
+        log::debug!(target: "kas_core::event", "nav_focus = {target:?}");
+        if let Some(id) = target {
+            self.action(&id, Action::REDRAW);
+            self.send_event(widget, id, Event::NavFocus(source));
+        }
+    }
+
+    /// Advance the keyboard navigation focus immediately
+    fn next_nav_focus_impl(
         &mut self,
         mut widget: Node,
         target: Option<Id>,
@@ -670,21 +710,21 @@ impl<'a> EventCx<'a> {
             return;
         }
 
-        if let Some(id) = self.nav_focus.take() {
-            self.redraw(id.clone());
-            self.pending
-                .push_back(Pending::Send(id, Event::LostNavFocus));
+        if let Some(old) = self.nav_focus.take() {
+            self.redraw(&old);
+            self.send_event(widget.re(), old, Event::LostNavFocus);
         }
-        if self.sel_focus != opt_id {
-            self.clear_key_focus();
+
+        if let Some(id) = self.key_focus() {
+            self.key_focus = false;
+            self.send_event(widget.re(), id, Event::LostKeyFocus);
         }
 
         self.nav_focus = opt_id.clone();
         if let Some(id) = opt_id {
             log::debug!(target: "kas_core::event", "nav_focus = Some({id})");
             self.redraw(id.clone());
-            self.pending
-                .push_back(Pending::Send(id, Event::NavFocus(source)));
+            self.send_event(widget, id, Event::NavFocus(source));
         } else {
             log::debug!(target: "kas_core::event", "nav_focus = None");
             // Most likely an error occurred

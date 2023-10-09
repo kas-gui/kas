@@ -53,6 +53,8 @@ impl EventState {
             time_updates: vec![],
             fut_messages: vec![],
             pending: Default::default(),
+            pending_sel_focus: None,
+            pending_nav_focus: PendingNavFocus::None,
             pending_cmds: Default::default(),
             action: Action::empty(),
         }
@@ -225,14 +227,23 @@ impl EventState {
                         }
                         cx.send_event(win.as_node(data), id, event);
                     }
-                    Pending::NextNavFocus {
-                        target,
-                        reverse,
-                        source,
-                    } => {
-                        cx.next_nav_focus_impl(win.as_node(data), target, reverse, source);
-                    }
                 }
+            }
+
+            if let Some(pending) = cx.pending_sel_focus.take() {
+                cx.set_sel_focus(win.as_node(data), pending);
+            }
+
+            match std::mem::take(&mut cx.pending_nav_focus) {
+                PendingNavFocus::None => (),
+                PendingNavFocus::Set { target, source } => {
+                    cx.set_nav_focus_impl(win.as_node(data), target, source)
+                }
+                PendingNavFocus::Next {
+                    target,
+                    reverse,
+                    source,
+                } => cx.next_nav_focus_impl(win.as_node(data), target, reverse, source),
             }
 
             while let Some((id, cmd)) = cx.pending_cmds.pop_front() {

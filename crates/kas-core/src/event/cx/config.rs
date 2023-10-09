@@ -5,8 +5,8 @@
 
 //! Configuration context
 
-use super::Pending;
-use crate::event::EventState;
+use super::PendingNavFocus;
+use crate::event::{EventState, FocusSource};
 use crate::geom::{Rect, Size};
 use crate::layout::AlignPair;
 use crate::text::TextApi;
@@ -57,10 +57,10 @@ impl<'a> ConfigCx<'a> {
     pub fn disable_nav_focus(&mut self, disabled: bool) {
         self.ev.config.nav_focus = !disabled;
         if disabled {
-            if let Some(id) = self.ev.nav_focus.take() {
-                self.pending
-                    .push_back(Pending::Send(id, Event::LostNavFocus));
-            }
+            self.pending_nav_focus = PendingNavFocus::Set {
+                target: None,
+                source: FocusSource::Synthetic,
+            };
         }
     }
 

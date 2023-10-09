@@ -7,7 +7,7 @@
 
 use crate::{ScrollBar, ScrollMsg};
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{Command, CursorIcon, ElementState, KeyCode, Scroll, ScrollDelta};
+use kas::event::{Command, CursorIcon, ElementState, FocusSource, KeyCode, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::{NotReady, SelectionHelper, Text};
@@ -654,17 +654,11 @@ impl_scope! {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> IsUsed {
-            fn request_focus<G: EditGuard>(s: &mut EditField<G>, cx: &mut EventCx, data: &G::Data) {
-                if !s.has_key_focus && cx.request_key_focus(s.id()) {
-                    s.has_key_focus = true;
-                    cx.set_scroll(Scroll::Rect(s.rect()));
-                    G::focus_gained(s, cx, data);
-                }
-            }
-
             match event {
                 Event::NavFocus(source) if source.key_or_synthetic() => {
-                    request_focus(self, cx, data);
+                    if !self.has_key_focus {
+                        cx.request_key_focus(self.id(), source);
+                    }
                     if !self.class.multi_line() {
                         self.selection.clear();
                         self.selection.set_edit_pos(self.text.str_len());
@@ -678,6 +672,21 @@ impl_scope! {
                         self.selection.set_empty();
                         cx.redraw(self);
                     }
+                    Used
+                }
+                Event::SelFocus(source) => {
+                    // NOTE: sel focus implies key focus since we only request
+                    // the latter. We must set before calling self.set_primary.
+                    self.has_key_focus = true;
+                    if source == FocusSource::Pointer {
+                        self.set_primary(cx);
+                    }
+                    Used
+                }
+                Event::KeyFocus => {
+                    self.has_key_focus = true;
+                    cx.set_scroll(Scroll::Rect(self.rect()));
+                    G::focus_gained(self, cx, data);
                     Used
                 }
                 Event::LostKeyFocus => {
@@ -751,24 +760,16 @@ impl_scope! {
                     TextInputAction::None => Used,
                     TextInputAction::Unused => Unused,
                     TextInputAction::Pan(delta) => self.pan_delta(cx, delta),
-                    TextInputAction::Focus => {
-                        request_focus(self, cx, data);
-                        Used
-                    }
-                    TextInputAction::Cursor(coord, anchor, clear, repeats) => {
-                        request_focus(self, cx, data);
-                        if self.has_key_focus {
+                    TextInputAction::Focus { coord, action } => {
+                        if let Some(coord) = coord {
                             self.set_edit_pos_from_coord(cx, coord);
-                            if anchor {
-                                self.selection.set_anchor();
-                            }
-                            if clear {
-                                self.selection.set_empty();
-                            }
-                            if repeats > 1 {
-                                self.selection.expand(&self.text, repeats);
-                            }
+                        }
+                        self.selection.action(&self.text, action);
+
+                        if self.has_key_focus {
                             self.set_primary(cx);
+                        } else {
+                            cx.request_key_focus(self.id(), FocusSource::Pointer);
                         }
                         Used
                     }
@@ -1436,7 +1437,7 @@ impl<G: EditGuard> EditField<G> {
     }
 
     fn set_primary(&self, cx: &mut EventCx) {
-        if !self.selection.is_empty() {
+        if self.has_key_focus && !self.selection.is_empty() && cx.has_primary() {
             let range = self.selection.range();
             cx.set_primary(String::from(&self.text.as_str()[range]));
         }

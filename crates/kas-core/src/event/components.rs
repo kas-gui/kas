@@ -9,7 +9,8 @@ use super::ScrollDelta::{LineDelta, PixelDelta};
 use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
-#[allow(unused)] use crate::text::SelectionHelper;
+#[allow(unused)]
+use crate::text::{SelectionAction, SelectionHelper};
 use crate::{Action, Id};
 use kas_macros::impl_default;
 use std::time::{Duration, Instant};
@@ -377,24 +378,21 @@ pub enum TextInputAction {
     Unused,
     /// Pan text using the given `delta`
     Pan(Offset),
-    /// Keyboard focus should be requested (if not already active)
+    /// Focus, optionally updating position and selection
     ///
-    /// This is also the case for variant `Cursor(_, true, _, _)` (i.e. if
-    /// `anchor == true`).
-    Focus,
-    /// Update cursor and/or selection: `(coord, anchor, clear, repeats)`
+    /// To handle:
     ///
-    /// The cursor position should be moved to `coord`.
-    ///
-    /// If `anchor`, the anchor position (used for word and line selection mode)
-    /// should be set to the new cursor position.
-    ///
-    /// If `clear`, the selection should be cleared (move selection position to
-    /// edit position).
-    ///
-    /// If `repeats > 1`, [`SelectionHelper::expand`] should be called with
-    /// this parameter to enable word/line selection mode.
-    Cursor(Coord, bool, bool, u32),
+    /// 1.  If a `coord` is included, translate to a text index then call
+    ///     [`SelectionHelper::set_edit_pos`].
+    /// 2.  Call [`SelectionHelper::action`].
+    /// 3.  If supporting the primary buffer (Unix), set its contents now if the
+    ///     widget has selection focus or otherwise when handling
+    ///     [`Event::SelFocus`] for a pointer source.
+    /// 4.  Request keyboard or selection focus if not already gained.
+    Focus {
+        coord: Option<Coord>,
+        action: SelectionAction,
+    },
 }
 
 impl TextInput {
@@ -410,20 +408,31 @@ impl TextInput {
         use TextInputAction as Action;
         match event {
             Event::PressStart { press } if press.is_primary() => {
-                let (action, icon) = match *press {
+                let mut action = Action::Focus {
+                    coord: None,
+                    action: SelectionAction::default(),
+                };
+                let icon = match *press {
                     PressSource::Touch(touch_id) => {
                         self.touch_phase = TouchPhase::Start(touch_id, press.coord);
                         let delay = cx.config().touch_select_delay();
                         cx.request_timer_update(w_id.clone(), PAYLOAD_SELECT, delay, false);
-                        (Action::Focus, None)
+                        None
                     }
                     PressSource::Mouse(..) if cx.config_enable_mouse_text_pan() => {
-                        (Action::Focus, Some(CursorIcon::Grabbing))
+                        Some(CursorIcon::Grabbing)
                     }
-                    PressSource::Mouse(_, repeats) => (
-                        Action::Cursor(press.coord, true, !cx.modifiers().shift_key(), repeats),
-                        None,
-                    ),
+                    PressSource::Mouse(_, repeats) => {
+                        action = Action::Focus {
+                            coord: Some(press.coord),
+                            action: SelectionAction {
+                                anchor: true,
+                                clear: !cx.modifiers().shift_key(),
+                                repeats,
+                            },
+                        };
+                        None
+                    }
                 };
                 press.grab(w_id).with_opt_icon(icon).with_cx(cx);
                 self.glide.press_start();
@@ -443,14 +452,18 @@ impl TextInput {
                             }
                         }
                         TouchPhase::Pan(id) if id == touch_id => Action::Pan(delta),
-                        _ => Action::Cursor(press.coord, false, false, 1),
+                        _ => Action::Focus {
+                            coord: Some(press.coord),
+                            action: SelectionAction::new(false, false, 1),
+                        },
                     },
                     PressSource::Mouse(..) if cx.config_enable_mouse_text_pan() => {
                         Action::Pan(delta)
                     }
-                    PressSource::Mouse(_, repeats) => {
-                        Action::Cursor(press.coord, false, false, repeats)
-                    }
+                    PressSource::Mouse(_, repeats) => Action::Focus {
+                        coord: Some(press.coord),
+                        action: SelectionAction::new(false, false, repeats),
+                    },
                 }
             }
             Event::PressEnd { press, .. } if press.is_primary() => {
@@ -469,7 +482,10 @@ impl TextInput {
                 match self.touch_phase {
                     TouchPhase::Start(touch_id, coord) => {
                         self.touch_phase = TouchPhase::Cursor(touch_id);
-                        Action::Cursor(coord, true, !cx.modifiers().shift_key(), 1)
+                        Action::Focus {
+                            coord: Some(coord),
+                            action: SelectionAction::new(true, !cx.modifiers().shift_key(), 1),
+                        }
                     }
                     // Note: if the TimerUpdate were from another requester it
                     // should technically be Unused, but it doesn't matter

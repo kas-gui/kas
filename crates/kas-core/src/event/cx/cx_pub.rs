@@ -376,25 +376,25 @@ impl EventState {
 
     /// Request keyboard input focus
     ///
-    /// When granted, the widget will receive [`Event::Key`] on key presses
-    /// and releases. It will not receive [`Event::Command`] for these events
-    /// (though it may still receive [`Event::Command`] from other sources).
+    /// When granted, the widget will receive [`Event::KeyFocus`] followed by
+    /// [`Event::Key`] for each key press / release. Note that this disables
+    /// translation of key events to [`Event::Command`] while key focus is
+    /// active.
+    ///
+    /// The `source` parameter is used by [`Event::SelFocus`].
     ///
     /// Key focus implies sel focus (see [`Self::request_sel_focus`]) and
     /// navigation focus.
-    ///
-    /// Returns true on success or when the widget already had key focus.
-    ///
-    /// When key focus is lost, [`Event::LostKeyFocus`] is sent.
     #[inline]
-    pub fn request_key_focus(&mut self, id: Id) -> bool {
-        self.set_sel_focus(id, true);
-        true
+    pub fn request_key_focus(&mut self, target: Id, source: FocusSource) {
+        self.pending_sel_focus = Some(PendingSelFocus {
+            target,
+            key_focus: true,
+            source,
+        });
     }
 
     /// Request selection focus
-    ///
-    /// Returns true on success or when the widget already had sel focus.
     ///
     /// To prevent multiple simultaneous selections (e.g. of text) in the UI,
     /// only widgets with "selection focus" are allowed to select things.
@@ -402,13 +402,24 @@ impl EventState {
     /// is sent when selection focus is lost; in this case any existing
     /// selection should be cleared.
     ///
+    /// The `source` parameter is used by [`Event::SelFocus`].
+    ///
     /// Selection focus implies navigation focus.
     ///
     /// When key focus is lost, [`Event::LostSelFocus`] is sent.
     #[inline]
-    pub fn request_sel_focus(&mut self, id: Id) -> bool {
-        self.set_sel_focus(id, false);
-        true
+    pub fn request_sel_focus(&mut self, target: Id, source: FocusSource) {
+        if let Some(ref pending) = self.pending_sel_focus {
+            if pending.target == target {
+                return;
+            }
+        }
+
+        self.pending_sel_focus = Some(PendingSelFocus {
+            target,
+            key_focus: false,
+            source,
+        });
     }
 
     /// Set a grab's depress target
@@ -471,6 +482,10 @@ impl EventState {
     /// Get the current navigation focus, if any
     ///
     /// This is the widget selected by navigating the UI with the Tab key.
+    ///
+    /// Note: changing navigation focus (e.g. via [`Self::clear_nav_focus`],
+    /// [`Self::set_nav_focus`] or [`Self::next_nav_focus`]) does not
+    /// immediately affect the result of this method.
     #[inline]
     pub fn nav_focus(&self) -> Option<&Id> {
         self.nav_focus.as_ref()
@@ -478,13 +493,10 @@ impl EventState {
 
     /// Clear navigation focus
     pub fn clear_nav_focus(&mut self) {
-        if let Some(id) = self.nav_focus.take() {
-            self.action(id.clone(), Action::REDRAW);
-            self.pending
-                .push_back(Pending::Send(id, Event::LostNavFocus));
-            log::debug!(target: "kas_core::event", "nav_focus = None");
-        }
-        self.clear_key_focus();
+        self.pending_nav_focus = PendingNavFocus::Set {
+            target: None,
+            source: FocusSource::Synthetic,
+        };
     }
 
     /// Set navigation focus directly
@@ -497,23 +509,10 @@ impl EventState {
     /// is not checked or required. For example, a `ScrollLabel` can receive
     /// focus on text selection with the mouse.
     pub fn set_nav_focus(&mut self, id: Id, source: FocusSource) {
-        if id == self.nav_focus || !self.config.nav_focus {
-            return;
-        }
-
-        if let Some(old_id) = self.nav_focus.take() {
-            self.action(&old_id, Action::REDRAW);
-            self.pending
-                .push_back(Pending::Send(old_id, Event::LostNavFocus));
-        }
-        if id != self.sel_focus {
-            self.clear_key_focus();
-        }
-        self.action(&id, Action::REDRAW);
-        self.nav_focus = Some(id.clone());
-        log::debug!(target: "kas_core::event", "nav_focus = Some({id})");
-        self.pending
-            .push_back(Pending::Send(id, Event::NavFocus(source)));
+        self.pending_nav_focus = PendingNavFocus::Set {
+            target: Some(id),
+            source,
+        };
     }
 
     /// Advance the navigation focus
@@ -531,11 +530,11 @@ impl EventState {
         reverse: bool,
         source: FocusSource,
     ) {
-        self.pending.push_back(Pending::NextNavFocus {
+        self.pending_nav_focus = PendingNavFocus::Next {
             target: target.into(),
             reverse,
             source,
-        });
+        };
     }
 
     /// Set the cursor icon
@@ -851,6 +850,18 @@ impl<'a> EventCx<'a> {
         }
 
         self.shell.set_clipboard(content)
+    }
+
+    /// True if the primary buffer is enabled
+    #[inline]
+    pub fn has_primary(&self) -> bool {
+        cfg_if::cfg_if! {
+            if #[cfg(unix)] {
+                true
+            } else {
+                false
+            }
+        }
     }
 
     /// Get contents of primary buffer
