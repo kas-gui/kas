@@ -692,9 +692,6 @@ impl_scope! {
                     Used
                 }
                 Event::Command(cmd, code) => {
-                    // Note: we can receive a Command without key focus, but should
-                    // ensure we have focus before acting on it.
-                    request_focus(self, cx, data);
                     if self.has_key_focus {
                         match self.control_key(cx, data, cmd, code) {
                             Ok(r) => r,
