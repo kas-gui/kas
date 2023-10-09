@@ -39,6 +39,7 @@ impl EventState {
             nav_fallback: None,
             hover: None,
             hover_icon: CursorIcon::Default,
+            old_hover_icon: CursorIcon::Default,
             key_depress: Default::default(),
             last_mouse_coord: Coord::ZERO,
             last_click_button: FAKE_MOUSE_BUTTON,
@@ -53,6 +54,7 @@ impl EventState {
             time_updates: vec![],
             fut_messages: vec![],
             pending: Default::default(),
+            region_moved: false,
             pending_sel_focus: None,
             pending_nav_focus: PendingNavFocus::None,
             pending_cmds: Default::default(),
@@ -93,23 +95,7 @@ impl EventState {
         self.new_access_layer(id.clone(), false);
 
         ConfigCx::new(sizer, self).configure(win.as_node(data), id);
-
-        let hover = win.find_id(data, self.last_mouse_coord);
-        self.set_hover(hover);
-    }
-
-    /// Update the widgets under the cursor and touch events
-    pub(crate) fn handle_region_moved<A>(&mut self, win: &mut Window<A>, data: &A) {
-        log::trace!(target: "kas_core::event", "region_moved");
-        // Note: redraw is already implied.
-
-        // Update hovered widget
-        let hover = win.find_id(data, self.last_mouse_coord);
-        self.set_hover(hover);
-
-        for grab in self.touch_grab.iter_mut() {
-            grab.cur_id = win.find_id(data, grab.coord);
-        }
+        self.region_moved = true;
     }
 
     /// Get the next resume time
@@ -148,7 +134,10 @@ impl EventState {
         win: &mut Window<A>,
         data: &A,
     ) -> Action {
-        let old_hover_icon = self.hover_icon;
+        if self.action.contains(Action::REGION_MOVED) {
+            self.region_moved = true;
+            self.action.remove(Action::REGION_MOVED);
+        }
 
         self.with(shell, window, messages, |cx| {
             while let Some((id, wid)) = cx.popup_removed.pop() {
@@ -215,18 +204,23 @@ impl EventState {
                         win.as_node(data)
                             .find_node(&id, |node| cx.configure(node, id.clone()));
 
-                        let hover = win.find_id(data, cx.state.last_mouse_coord);
-                        cx.state.set_hover(hover);
+                        cx.region_moved = true;
                     }
                     Pending::Update(id) => {
                         win.as_node(data).find_node(&id, |node| cx.update(node));
                     }
-                    Pending::Send(id, event) => {
-                        if matches!(&event, &Event::MouseHover(false)) {
-                            cx.hover_icon = Default::default();
-                        }
-                        cx.send_event(win.as_node(data), id, event);
-                    }
+                }
+            }
+
+            if cx.region_moved {
+                cx.region_moved = false;
+
+                // Update hovered widget
+                let hover = win.find_id(data, cx.last_mouse_coord);
+                cx.set_hover(win.as_node(data), hover);
+
+                for grab in cx.touch_grab.iter_mut() {
+                    grab.cur_id = win.find_id(data, grab.coord);
                 }
             }
 
@@ -256,9 +250,10 @@ impl EventState {
             cx.poll_futures(win.as_node(data));
         });
 
-        if self.hover_icon != old_hover_icon && self.mouse_grab.is_none() {
+        if self.hover_icon != self.old_hover_icon && self.mouse_grab.is_none() {
             window.set_cursor_icon(self.hover_icon);
         }
+        self.old_hover_icon = self.hover_icon;
 
         std::mem::take(&mut self.action)
     }
@@ -314,8 +309,8 @@ impl<'a> EventCx<'a> {
     #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
     pub(crate) fn handle_winit<A>(
         &mut self,
-        data: &A,
         win: &mut Window<A>,
+        data: &A,
         event: winit::event::WindowEvent,
     ) {
         use winit::event::{MouseScrollDelta, TouchPhase, WindowEvent::*};
@@ -391,7 +386,7 @@ impl<'a> EventCx<'a> {
 
                 // Update hovered win
                 let id = win.find_id(data, coord);
-                self.set_hover(id.clone());
+                self.set_hover(win.as_node(data), id.clone());
 
                 if let Some(grab) = self.state.mouse_grab.as_mut() {
                     match grab.details {
@@ -437,7 +432,7 @@ impl<'a> EventCx<'a> {
                     // If there's a mouse grab, we will continue to receive
                     // coordinates; if not, set a fake coordinate off the window
                     self.last_mouse_coord = Coord(-1, -1);
-                    self.set_hover(None);
+                    self.set_hover(win.as_node(data), None);
                 }
             }
             MouseWheel { delta, .. } => {

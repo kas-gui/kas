@@ -231,7 +231,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                 let mut messages = ErasedStack::new();
                 self.ev_state
                     .with(&mut shared.shell, window, &mut messages, |cx| {
-                        cx.handle_winit(&shared.data, &mut self.widget, event);
+                        cx.handle_winit(&mut self.widget, &shared.data, event);
                     });
                 shared.handle_messages(&mut messages);
 
@@ -318,10 +318,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         {
             self.apply_size(shared, false);
         }
-        if action.contains(Action::REGION_MOVED) {
-            self.ev_state
-                .handle_region_moved(&mut self.widget, &shared.data);
-        }
+        debug_assert!(!action.contains(Action::REGION_MOVED));
         if !action.is_empty() {
             if let Some(ref mut window) = self.window {
                 window.queued_frame_time = Some(window.next_avail_frame_time);

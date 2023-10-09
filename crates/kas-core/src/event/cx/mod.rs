@@ -147,7 +147,6 @@ struct PanGrab {
 enum Pending {
     Configure(Id),
     Update(Id),
-    Send(Id, Event),
 }
 
 struct PendingSelFocus {
@@ -202,6 +201,7 @@ pub struct EventState {
     nav_fallback: Option<Id>,
     hover: Option<Id>,
     hover_icon: CursorIcon,
+    old_hover_icon: CursorIcon,
     key_depress: LinearMap<KeyCode, Id>,
     last_mouse_coord: Coord,
     last_click_button: MouseButton,
@@ -219,6 +219,7 @@ pub struct EventState {
     fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Erased>>>)>,
     // FIFO queue of events pending handling
     pending: VecDeque<Pending>,
+    region_moved: bool,
     // Optional new target for selection focus. bool is true if this also gains key focus.
     pending_sel_focus: Option<PendingSelFocus>,
     pending_nav_focus: PendingNavFocus,
@@ -343,32 +344,6 @@ impl EventState {
             }
         }
         None
-    }
-
-    // Clear old hover, set new hover, send events.
-    // If there is a popup, only permit descendands of that.
-    fn set_hover(&mut self, mut w_id: Option<Id>) {
-        if let Some(ref id) = w_id {
-            if let Some(popup) = self.popups.last() {
-                if !popup.1.id.is_ancestor_of(id) {
-                    w_id = None;
-                }
-            }
-        }
-
-        if self.hover != w_id {
-            log::trace!("set_hover: w_id={w_id:?}");
-            if let Some(id) = self.hover.take() {
-                self.pending
-                    .push_back(Pending::Send(id, Event::MouseHover(false)));
-            }
-            self.hover = w_id.clone();
-
-            if let Some(id) = w_id {
-                self.pending
-                    .push_back(Pending::Send(id, Event::MouseHover(true)));
-            }
-        }
     }
 }
 
@@ -596,6 +571,31 @@ impl<'a> EventCx<'a> {
         }
         if let Some(id) = id {
             self.send_event(widget, id, event);
+        }
+    }
+
+    // Clear old hover, set new hover, send events.
+    // If there is a popup, only permit descendands of that.
+    fn set_hover(&mut self, mut widget: Node<'_>, mut w_id: Option<Id>) {
+        if let Some(ref id) = w_id {
+            if let Some(popup) = self.popups.last() {
+                if !popup.1.id.is_ancestor_of(id) {
+                    w_id = None;
+                }
+            }
+        }
+
+        if self.hover != w_id {
+            log::trace!("set_hover: w_id={w_id:?}");
+            self.hover_icon = Default::default();
+            if let Some(id) = self.hover.take() {
+                self.send_event(widget.re(), id, Event::MouseHover(false));
+            }
+            self.hover = w_id.clone();
+
+            if let Some(id) = w_id {
+                self.send_event(widget, id, Event::MouseHover(true));
+            }
         }
     }
 
