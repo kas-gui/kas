@@ -202,7 +202,6 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         match event {
             WindowEvent::Moved(_) | WindowEvent::Destroyed => false,
             WindowEvent::Resized(size) => {
-                // TODO: maybe enqueue to allow skipping of obsolete resizes
                 if window
                     .surface
                     .do_resize(&mut shared.shell.draw.draw, size.cast())
