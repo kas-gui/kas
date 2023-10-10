@@ -258,7 +258,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(clear_color),
-                store: true,
+                store: wgpu::StoreOp::Store,
             },
         })];
 
@@ -274,6 +274,8 @@ impl<C: CustomPipe> DrawPipe<C> {
                     label: Some("kas-wgpu render pass"),
                     color_attachments: &color_attachments,
                     depth_stencil_attachment: None,
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
                 });
                 rpass.set_scissor_rect(
                     rect.pos.0.cast(),

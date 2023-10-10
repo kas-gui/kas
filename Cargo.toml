@@ -150,3 +150,7 @@ members = [
 [patch.crates-io.winit]
 git = "https://github.com/rust-windowing/winit.git"
 rev = "cb58c49a90f17734e0405627130674d47c0b8f40"
+
+[patch.crates-io.wgpu]
+git = "https://github.com/gfx-rs/wgpu.git"
+rev = "152c23903123b74db49153e332e896c0b8f9bc8c"
