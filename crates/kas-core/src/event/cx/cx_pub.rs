@@ -264,9 +264,20 @@ impl EventState {
     /// affect the UI after a reconfigure action.
     #[inline]
     pub fn action(&mut self, id: impl HasId, action: Action) {
-        // TODO: make handling more specific via id
-        let _ = id;
-        self.action |= action;
+        fn inner(cx: &mut EventState, id: Id, mut action: Action) {
+            const RE_UP: Action = Action::RECONFIGURE.union(Action::UPDATE);
+            if !(action & RE_UP).is_empty() {
+                cx.request_update(id, action.contains(Action::RECONFIGURE));
+                action.remove(RE_UP);
+            }
+
+            // TODO(opt): handle sub-tree SET_RECT and RESIZE.
+            // NOTE: our draw system is incompatible with partial redraws, and
+            // in any case redrawing is extremely fast.
+
+            cx.action |= action;
+        }
+        inner(self, id.has_id(), action)
     }
 
     /// Pass an [action](Self::action) given some `id`
@@ -602,29 +613,15 @@ impl EventState {
         self.push_async(id, async_global_executor::spawn(fut.into_future()));
     }
 
-    /// Request re-configure of widget `id`
+    /// Request update and optionally configure to widget `id`
     ///
-    /// This method requires that `id` is a valid path to an already-configured
-    /// widget. E.g. if widget `w` adds a new child, it may call
-    /// `request_reconfigure(self.id())` but not
-    /// `request_reconfigure(child_id)` (which would cause a panic:
-    /// `'Id::next_key_after: invalid'`).
-    pub fn request_reconfigure(&mut self, id: Id) {
-        self.pending_update = if let Some((id2, _)) = self.pending_update.take() {
-            Some((id.common_ancestor(&id2), true))
+    /// If `reconf`, widget `id` will be [configured](Events::configure)
+    /// (includes update), otherwise `id` will only be [updated](Events::update).
+    pub fn request_update(&mut self, id: Id, reconf: bool) {
+        self.pending_update = if let Some((id2, rc2)) = self.pending_update.take() {
+            Some((id.common_ancestor(&id2), reconf || rc2))
         } else {
-            Some((id, true))
-        };
-    }
-
-    /// Request update to widget `id`
-    ///
-    /// Schedules a call to [`Events::update`] on widget `id`.
-    pub fn request_update(&mut self, id: Id) {
-        self.pending_update = if let Some((id2, reconf)) = self.pending_update.take() {
-            Some((id.common_ancestor(&id2), reconf))
-        } else {
-            Some((id, false))
+            Some((id, reconf))
         };
     }
 }

@@ -358,7 +358,7 @@ impl_scope! {
         fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
             let action = self.scroll.set_offset(offset);
             cx.action(&self, action);
-            cx.request_update(self.id());
+            cx.request_update(self.id(), false);
             self.scroll.offset()
         }
     }
@@ -442,7 +442,7 @@ impl_scope! {
 
             // Widgets need configuring and updating: do so by updating self.
             self.cur_len = (0, 0); // hack: prevent drawing in the mean-time
-            cx.request_update(self.id());
+            cx.request_update(self.id(), false);
 
             let avail = rect.size - self.frame_size;
             let child_size = Size(avail.0 / self.ideal_len.cols, avail.1 / self.ideal_len.rows)
