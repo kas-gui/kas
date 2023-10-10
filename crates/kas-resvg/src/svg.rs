@@ -285,6 +285,13 @@ impl_scope! {
                     State::Rendering(source) |
                     State::Ready(source, _) => State::Ready(source, pixmap),
                 };
+
+                let own_size: (u32, u32) = self.core.rect.size.cast();
+                if size != own_size {
+                    if let Some(fut) = self.inner.resize(size) {
+                        cx.push_spawn(self.id(), fut);
+                    }
+                }
             }
         }
     }
