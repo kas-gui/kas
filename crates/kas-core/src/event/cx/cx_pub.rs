@@ -610,14 +610,22 @@ impl EventState {
     /// `request_reconfigure(child_id)` (which would cause a panic:
     /// `'Id::next_key_after: invalid'`).
     pub fn request_reconfigure(&mut self, id: Id) {
-        self.pending.push_back(Pending::Configure(id));
+        self.pending_update = if let Some((id2, _)) = self.pending_update.take() {
+            Some((id.common_ancestor(&id2), true))
+        } else {
+            Some((id, true))
+        };
     }
 
     /// Request update to widget `id`
     ///
     /// Schedules a call to [`Events::update`] on widget `id`.
     pub fn request_update(&mut self, id: Id) {
-        self.pending.push_back(Pending::Update(id));
+        self.pending_update = if let Some((id2, reconf)) = self.pending_update.take() {
+            Some((id.common_ancestor(&id2), reconf))
+        } else {
+            Some((id, false))
+        };
     }
 }
 

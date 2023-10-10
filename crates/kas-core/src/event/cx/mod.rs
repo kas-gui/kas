@@ -142,13 +142,6 @@ struct PanGrab {
     coords: [(Coord, Coord); MAX_PAN_GRABS],
 }
 
-#[derive(Clone, Debug)]
-#[allow(clippy::enum_variant_names)] // they all happen to be about Focus
-enum Pending {
-    Configure(Id),
-    Update(Id),
-}
-
 struct PendingSelFocus {
     target: Id,
     key_focus: bool,
@@ -217,8 +210,8 @@ pub struct EventState {
     time_updates: Vec<(Instant, Id, u64)>,
     // Set of futures of messages together with id of sending widget
     fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Erased>>>)>,
-    // FIFO queue of events pending handling
-    pending: VecDeque<Pending>,
+    // Widget requiring update (and optionally configure)
+    pending_update: Option<(Id, bool)>,
     region_moved: bool,
     // Optional new target for selection focus. bool is true if this also gains key focus.
     pending_sel_focus: Option<PendingSelFocus>,

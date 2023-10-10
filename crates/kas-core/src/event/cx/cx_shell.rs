@@ -53,7 +53,7 @@ impl EventState {
             popup_removed: Default::default(),
             time_updates: vec![],
             fut_messages: vec![],
-            pending: Default::default(),
+            pending_update: None,
             region_moved: false,
             pending_sel_focus: None,
             pending_nav_focus: PendingNavFocus::None,
@@ -195,20 +195,14 @@ impl EventState {
                 }
             }
 
-            // Warning: infinite loops are possible here if widgets always queue a
-            // new pending event when evaluating one of these:
-            while let Some(item) = cx.pending.pop_front() {
-                log::trace!(target: "kas_core::event", "update: handling Pending::{item:?}");
-                match item {
-                    Pending::Configure(id) => {
-                        win.as_node(data)
-                            .find_node(&id, |node| cx.configure(node, id.clone()));
+            if let Some((id, reconf)) = cx.pending_update.take() {
+                if reconf {
+                    win.as_node(data)
+                        .find_node(&id, |node| cx.configure(node, id.clone()));
 
-                        cx.region_moved = true;
-                    }
-                    Pending::Update(id) => {
-                        win.as_node(data).find_node(&id, |node| cx.update(node));
-                    }
+                    cx.region_moved = true;
+                } else {
+                    win.as_node(data).find_node(&id, |node| cx.update(node));
                 }
             }
 
