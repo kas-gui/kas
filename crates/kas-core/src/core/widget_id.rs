@@ -360,6 +360,18 @@ impl Id {
         }
     }
 
+    /// Find the most-derived common ancestor
+    pub fn common_ancestor(&self, id: &Self) -> Self {
+        let mut r = Id::ROOT;
+        for (a, b) in self.iter().zip(id.iter()) {
+            if a != b {
+                break;
+            }
+            r = r.make_child(a);
+        }
+        r
+    }
+
     pub fn iter_keys_after(&self, id: &Self) -> WidgetPathIter {
         let mut self_iter = self.iter();
         for v in id.iter() {
@@ -689,6 +701,14 @@ impl HasId for &mut Id {
 mod test {
     use super::*;
 
+    fn make_id(seq: &[usize]) -> Id {
+        let mut id = Id::ROOT;
+        for x in seq {
+            id = id.make_child(*x);
+        }
+        id
+    }
+
     #[test]
     fn size_of_option_widget_id() {
         use std::mem::size_of;
@@ -800,12 +820,8 @@ mod test {
     #[test]
     fn test_parent() {
         fn test(seq: &[usize]) {
-            println!("seq: {seq:?}");
-            let mut id = Id::ROOT;
             let len = seq.len();
-            for key in &seq[..len - 1] {
-                id = id.make_child(*key);
-            }
+            let id = make_id(&seq[..len - 1]);
 
             if len == 0 {
                 assert_eq!(id.parent(), None);
@@ -827,10 +843,7 @@ mod test {
     #[test]
     fn test_make_child() {
         fn test(seq: &[usize], x: u64) {
-            let mut id = Id::ROOT;
-            for key in seq {
-                id = id.make_child(*key);
-            }
+            let id = make_id(seq);
             let v = id.as_u64();
             if v != x {
                 panic!("test({seq:?}, {x:x}): found {v:x}");
@@ -850,11 +863,7 @@ mod test {
     #[test]
     fn test_display() {
         fn from_seq(seq: &[usize]) -> String {
-            let mut id = Id::ROOT;
-            for x in seq {
-                id = id.make_child(*x);
-            }
-            format!("{id}")
+            format!("{}", make_id(seq))
         }
 
         assert_eq!(from_seq(&[]), "#");
@@ -871,16 +880,11 @@ mod test {
     #[test]
     fn test_is_ancestor() {
         fn test(seq: &[usize], seq2: &[usize]) {
-            let mut id = Id::ROOT;
-            for x in seq {
-                id = id.make_child(*x);
-            }
-            println!("id={} val={:x} from {:?}", id, id.as_u64(), seq);
+            let id = make_id(seq);
             let mut id2 = id.clone();
             for x in seq2 {
                 id2 = id2.make_child(*x);
             }
-            println!("id2={} val={:x} from {:?}", id2, id2.as_u64(), seq2);
             let next = seq2.iter().next().cloned();
             assert_eq!(id.is_ancestor_of(&id2), next.is_some() || id == id2);
             assert_eq!(id2.next_key_after(&id), next);
@@ -901,16 +905,8 @@ mod test {
     #[test]
     fn test_not_ancestor() {
         fn test(seq: &[usize], seq2: &[usize]) {
-            let mut id = Id::ROOT;
-            for x in seq {
-                id = id.make_child(*x);
-            }
-            println!("id={} val={:x} from {:?}", id, id.as_u64(), seq);
-            let mut id2 = Id::ROOT;
-            for x in seq2 {
-                id2 = id2.make_child(*x);
-            }
-            println!("id2={} val={:x} from {:?}", id2, id2.as_u64(), seq2);
+            let id = make_id(seq);
+            let id2 = make_id(seq2);
             assert_eq!(id.is_ancestor_of(&id2), false);
             assert_eq!(id2.next_key_after(&id), None);
         }
@@ -919,5 +915,20 @@ mod test {
         test(&[0], &[1]);
         test(&[2, 10, 1], &[2, 10]);
         test(&[0, 5, 2], &[0, 1, 5]);
+    }
+
+    #[test]
+    fn common_ancestor() {
+        fn test(seq: &[usize], seq2: &[usize], seq3: &[usize]) {
+            let id = make_id(seq);
+            let id2 = make_id(seq2);
+            assert_eq!(id.common_ancestor(&id2), make_id(seq3));
+        }
+
+        test(&[0], &[], &[]);
+        test(&[0], &[1, 2], &[]);
+        test(&[0], &[0, 2], &[0]);
+        test(&[2, 10, 1], &[2, 10], &[2, 10]);
+        test(&[0, 5, 2], &[0, 5, 1], &[0, 5]);
     }
 }
