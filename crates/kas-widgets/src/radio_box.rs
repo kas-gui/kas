@@ -37,7 +37,7 @@ impl_scope! {
             if self.state != new_state {
                 self.state = new_state;
                 self.last_change = Some(Instant::now());
-                cx.redraw(self.id());
+                cx.redraw(self);
             }
         }
 
@@ -127,7 +127,7 @@ impl_scope! {
             }
 
             self.last_change = Some(Instant::now());
-            cx.redraw(self.id());
+            cx.redraw(self);
         }
     }
 }
@@ -154,7 +154,7 @@ impl_scope! {
             crate::check_box::shrink_to_text(&mut self.core.rect, dir, &self.label);
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             self.rect().contains(coord).then(|| self.inner.id())
         }
     }

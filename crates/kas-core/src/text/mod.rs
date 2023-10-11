@@ -20,7 +20,7 @@
 pub use kas_text::*;
 
 mod selection;
-pub use selection::SelectionHelper;
+pub use selection::{SelectionAction, SelectionHelper};
 
 mod string;
 pub use string::AccessString;

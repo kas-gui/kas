@@ -343,7 +343,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 scope.generated.push(quote! {
                     struct #core_type {
                         rect: ::kas::geom::Rect,
-                        id: ::kas::WidgetId,
+                        id: ::kas::Id,
                         #[cfg(debug_assertions)]
                         status: ::kas::WidgetStatus,
                         #stor_ty
@@ -473,7 +473,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 self
             }
             #[inline]
-            fn id_ref(&self) -> &::kas::WidgetId {
+            fn id_ref(&self) -> &::kas::Id {
                 self.#inner.id_ref()
             }
             #[inline]
@@ -495,7 +495,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 self.#inner.get_child(index)
             }
             #[inline]
-            fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
+            fn find_child_index(&self, id: &::kas::Id) -> Option<usize> {
                 self.#inner.find_child_index(id)
             }
         };
@@ -532,7 +532,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         });
         fn_find_id = quote! {
             #[inline]
-            fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+            fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
                 self.#inner.find_id(coord)
             }
         };
@@ -564,7 +564,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     &mut self,
                     cx: &mut ::kas::event::ConfigCx,
                     data: &Self::Data,
-                    id: ::kas::WidgetId,
+                    id: ::kas::Id,
                 ) {
                     self.#inner._configure(cx, data, id);
                 }
@@ -581,7 +581,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     &mut self,
                     cx: &mut ::kas::event::EventCx,
                     data: &Self::Data,
-                    id: ::kas::WidgetId,
+                    id: ::kas::Id,
                     disabled: bool,
                     event: ::kas::event::Event,
                 ) -> ::kas::event::IsUsed {
@@ -592,7 +592,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     &mut self,
                     cx: &mut ::kas::event::EventCx,
                     data: &Self::Data,
-                    id: ::kas::WidgetId,
+                    id: ::kas::Id,
                     msg: ::kas::Erased,
                 ) {
                     self.#inner._replay(cx, data, id, msg);
@@ -602,9 +602,9 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     &mut self,
                     cx: &mut ::kas::event::EventCx,
                     data: &Self::Data,
-                    focus: Option<&::kas::WidgetId>,
+                    focus: Option<&::kas::Id>,
                     advance: ::kas::NavAdvance,
-                ) -> Option<::kas::WidgetId> {
+                ) -> Option<::kas::Id> {
                     self.#inner._nav_next(cx, data, focus, advance)
                 }
             }
@@ -751,7 +751,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             }
         };
         fn_find_id = quote! {
-            fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+            fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
                 #[cfg(debug_assertions)]
                 #core_path.status.require_rect(&#core_path.id);
 
@@ -770,7 +770,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             (true, None) => quote! {
                 #[inline]
                 fn handle_hover(&mut self, cx: &mut EventCx, _: bool) -> ::kas::event::IsUsed {
-                    cx.redraw(self.id());
+                    cx.redraw(self);
                     ::kas::event::Used
                 }
             },
@@ -786,7 +786,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             (true, Some(icon_expr)) => quote! {
                 #[inline]
                 fn handle_hover(&mut self, cx: &mut EventCx, state: bool) -> ::kas::event::IsUsed {
-                    cx.redraw(self.id());
+                    cx.redraw(self);
                     if state {
                         cx.set_hover_cursor(#icon_expr);
                     }
@@ -800,7 +800,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 &mut self,
                 _: &mut ::kas::event::EventCx,
                 _: &Self::Data,
-                _: &::kas::WidgetId,
+                _: &::kas::Id,
                 _: &::kas::event::Event,
             ) -> ::kas::event::IsUsed {
                 #require_rect
@@ -998,7 +998,7 @@ pub fn impl_core_methods(name: &str, core_path: &Toks) -> Toks {
             self
         }
         #[inline]
-        fn id_ref(&self) -> &::kas::WidgetId {
+        fn id_ref(&self) -> &::kas::Id {
             &#core_path.id
         }
         #[inline]
@@ -1092,7 +1092,7 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             &mut self,
             cx: &mut ::kas::event::ConfigCx,
             data: &Self::Data,
-            id: ::kas::WidgetId,
+            id: ::kas::Id,
         ) {
             #core_path.id = id;
             #[cfg(debug_assertions)]
@@ -1119,7 +1119,7 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             &mut self,
             cx: &mut ::kas::event::EventCx,
             data: &Self::Data,
-            id: ::kas::WidgetId,
+            id: ::kas::Id,
             disabled: bool,
             event: ::kas::event::Event,
         ) -> ::kas::event::IsUsed {
@@ -1130,7 +1130,7 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             &mut self,
             cx: &mut ::kas::event::EventCx,
             data: &Self::Data,
-            id: ::kas::WidgetId,
+            id: ::kas::Id,
             msg: ::kas::Erased,
         ) {
             ::kas::impls::_replay(self, cx, data, id, msg);
@@ -1140,9 +1140,9 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             &mut self,
             cx: &mut ::kas::event::EventCx,
             data: &Self::Data,
-            focus: Option<&::kas::WidgetId>,
+            focus: Option<&::kas::Id>,
             advance: ::kas::NavAdvance,
-        ) -> Option<::kas::WidgetId> {
+        ) -> Option<::kas::Id> {
             ::kas::impls::_nav_next(self, cx, data, focus, advance)
         }
     }

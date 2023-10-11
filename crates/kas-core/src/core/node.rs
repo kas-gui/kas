@@ -10,42 +10,42 @@ use crate::event::{ConfigCx, Event, EventCx, IsUsed};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx};
-use crate::{Erased, Layout, NavAdvance, WidgetId};
+use crate::{Erased, Id, Layout, NavAdvance};
 
 #[cfg(not(feature = "unsafe_node"))]
 trait NodeT {
-    fn id_ref(&self) -> &WidgetId;
+    fn id_ref(&self) -> &Id;
     fn rect(&self) -> Rect;
 
     fn clone_node(&mut self) -> Node<'_>;
     fn as_layout(&self) -> &dyn Layout;
 
     fn num_children(&self) -> usize;
-    fn find_child_index(&self, id: &WidgetId) -> Option<usize>;
+    fn find_child_index(&self, id: &Id) -> Option<usize>;
     fn for_child_node(&mut self, index: usize, f: Box<dyn FnOnce(Node<'_>) + '_>);
 
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect);
 
     fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize>;
-    fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
+    fn find_id(&mut self, coord: Coord) -> Option<Id>;
     fn _draw(&mut self, draw: DrawCx);
 
-    fn _configure(&mut self, cx: &mut ConfigCx, id: WidgetId);
+    fn _configure(&mut self, cx: &mut ConfigCx, id: Id);
     fn _update(&mut self, cx: &mut ConfigCx);
 
-    fn _send(&mut self, cx: &mut EventCx, id: WidgetId, disabled: bool, event: Event) -> IsUsed;
-    fn _replay(&mut self, cx: &mut EventCx, id: WidgetId, msg: Erased);
+    fn _send(&mut self, cx: &mut EventCx, id: Id, disabled: bool, event: Event) -> IsUsed;
+    fn _replay(&mut self, cx: &mut EventCx, id: Id, msg: Erased);
     fn _nav_next(
         &mut self,
         cx: &mut EventCx,
-        focus: Option<&WidgetId>,
+        focus: Option<&Id>,
         advance: NavAdvance,
-    ) -> Option<WidgetId>;
+    ) -> Option<Id>;
 }
 #[cfg(not(feature = "unsafe_node"))]
 impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
-    fn id_ref(&self) -> &WidgetId {
+    fn id_ref(&self) -> &Id {
         self.0.id_ref()
     }
     fn rect(&self) -> Rect {
@@ -62,7 +62,7 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
     fn num_children(&self) -> usize {
         self.0.num_children()
     }
-    fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+    fn find_child_index(&self, id: &Id) -> Option<usize> {
         self.0.find_child_index(id)
     }
 
@@ -80,32 +80,32 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
     fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
         self.0.nav_next(reverse, from)
     }
-    fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+    fn find_id(&mut self, coord: Coord) -> Option<Id> {
         self.0.find_id(coord)
     }
     fn _draw(&mut self, mut draw: DrawCx) {
         draw.recurse(&mut self.0);
     }
 
-    fn _configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
+    fn _configure(&mut self, cx: &mut ConfigCx, id: Id) {
         self.0._configure(cx, self.1, id);
     }
     fn _update(&mut self, cx: &mut ConfigCx) {
         self.0._update(cx, self.1);
     }
 
-    fn _send(&mut self, cx: &mut EventCx, id: WidgetId, disabled: bool, event: Event) -> IsUsed {
+    fn _send(&mut self, cx: &mut EventCx, id: Id, disabled: bool, event: Event) -> IsUsed {
         self.0._send(cx, self.1, id, disabled, event)
     }
-    fn _replay(&mut self, cx: &mut EventCx, id: WidgetId, msg: Erased) {
+    fn _replay(&mut self, cx: &mut EventCx, id: Id, msg: Erased) {
         self.0._replay(cx, self.1, id, msg);
     }
     fn _nav_next(
         &mut self,
         cx: &mut EventCx,
-        focus: Option<&WidgetId>,
+        focus: Option<&Id>,
         advance: NavAdvance,
-    ) -> Option<WidgetId> {
+    ) -> Option<Id> {
         self.0._nav_next(cx, self.1, focus, advance)
     }
 }
@@ -163,24 +163,24 @@ impl<'a> Node<'a> {
 
     /// Get the widget's identifier
     #[inline]
-    pub fn id_ref(&self) -> &WidgetId {
+    pub fn id_ref(&self) -> &Id {
         self.0.id_ref()
     }
 
     /// Get the widget's identifier
     #[inline]
-    pub fn id(&self) -> WidgetId {
+    pub fn id(&self) -> Id {
         self.id_ref().clone()
     }
 
     /// Test widget identifier for equality
     ///
-    /// This method may be used to test against `WidgetId`, `Option<WidgetId>`
-    /// and `Option<&WidgetId>`.
+    /// This method may be used to test against `Id`, `Option<Id>`
+    /// and `Option<&Id>`.
     #[inline]
     pub fn eq_id<T>(&self, rhs: T) -> bool
     where
-        WidgetId: PartialEq<T>,
+        Id: PartialEq<T>,
     {
         *self.id_ref() == rhs
     }
@@ -189,7 +189,7 @@ impl<'a> Node<'a> {
     ///
     /// This function assumes that `id` is a valid widget.
     #[inline]
-    pub fn is_ancestor_of(&self, id: &WidgetId) -> bool {
+    pub fn is_ancestor_of(&self, id: &Id) -> bool {
         self.id().is_ancestor_of(id)
     }
 
@@ -197,7 +197,7 @@ impl<'a> Node<'a> {
     ///
     /// This function assumes that `id` is a valid widget.
     #[inline]
-    pub fn is_strict_ancestor_of(&self, id: &WidgetId) -> bool {
+    pub fn is_strict_ancestor_of(&self, id: &Id) -> bool {
         !self.eq_id(id) && self.id().is_ancestor_of(id)
     }
 
@@ -259,14 +259,14 @@ impl<'a> Node<'a> {
     /// If `Some(index)` is returned, this is *probably* but not guaranteed
     /// to be a valid child index.
     #[inline]
-    pub fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+    pub fn find_child_index(&self, id: &Id) -> Option<usize> {
         self.0.find_child_index(id)
     }
 
     /// Find the descendant with this `id`, if any, and call `cb` on it
     ///
     /// Returns `Some(result)` if and only if node `id` was found.
-    pub fn find_node<F: FnOnce(Node<'_>) -> T, T>(&mut self, id: &WidgetId, cb: F) -> Option<T> {
+    pub fn find_node<F: FnOnce(Node<'_>) -> T, T>(&mut self, id: &Id, cb: F) -> Option<T> {
         if let Some(index) = self.find_child_index(id) {
             self.for_child(index, |mut node| node.find_node(id, cb))
                 .unwrap()
@@ -296,8 +296,8 @@ impl<'a> Node<'a> {
         self.0.nav_next(reverse, from)
     }
 
-    /// Translate a coordinate to a [`WidgetId`]
-    pub(crate) fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+    /// Translate a coordinate to an [`Id`]
+    pub(crate) fn find_id(&mut self, coord: Coord) -> Option<Id> {
         self.0.find_id(coord)
     }
 
@@ -316,7 +316,7 @@ impl<'a> Node<'a> {
     }
 
     /// Internal method: configure recursively
-    pub(crate) fn _configure(&mut self, cx: &mut ConfigCx, id: WidgetId) {
+    pub(crate) fn _configure(&mut self, cx: &mut ConfigCx, id: Id) {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
                 self.0._configure(cx, self.1, id);
@@ -341,7 +341,7 @@ impl<'a> Node<'a> {
     pub(crate) fn _send(
         &mut self,
         cx: &mut EventCx,
-        id: WidgetId,
+        id: Id,
         disabled: bool,
         event: Event,
     ) -> IsUsed {
@@ -355,7 +355,7 @@ impl<'a> Node<'a> {
     }
 
     /// Internal method: replay recursively
-    pub(crate) fn _replay(&mut self, cx: &mut EventCx, id: WidgetId, msg: Erased) {
+    pub(crate) fn _replay(&mut self, cx: &mut EventCx, id: Id, msg: Erased) {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
                 self.0._replay(cx, self.1, id, msg);
@@ -370,9 +370,9 @@ impl<'a> Node<'a> {
     pub fn _nav_next(
         &mut self,
         cx: &mut EventCx,
-        focus: Option<&WidgetId>,
+        focus: Option<&Id>,
         advance: NavAdvance,
-    ) -> Option<WidgetId> {
+    ) -> Option<Id> {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
                 self.0._nav_next(cx, self.1, focus, advance)

@@ -8,13 +8,13 @@
 //! ## Event handling model
 //!
 //! Note: widgets are represented as an acyclic tree, with the *root* at the
-//! "top" of the tree. Each tree node is a [`Widget`] and has a [`WidgetId`].
-//! A [`WidgetId`] represents a *path* and may be used to find the most
+//! "top" of the tree. Each tree node is a [`Widget`] and has an [`Id`].
+//! An [`Id`] represents a *path* and may be used to find the most
 //! direct root from the root to the target.
 //!
 //! An [`Event`] is [sent](EventCx::send) to a target widget as follows:
 //!
-//! 1.  Determine the target's [`WidgetId`]. For example, this may be
+//! 1.  Determine the target's [`Id`]. For example, this may be
 //!     the [`nav_focus`](EventState::nav_focus) or may be determined from
 //!     from mouse/touch coordinates by calling [`find_id`](crate::Layout::find_id).
 //! 2.  If the target is [disabled](EventState::is_disabled), then find the
@@ -22,7 +22,7 @@
 //!     inhibit calling of [`Events::handle_event`] on this widget (but still
 //!     unwind, calling [`Events::handle_event`] on ancestors)).
 //! 3.  Traverse *down* the widget tree from its root to the target according to
-//!     the [`WidgetId`]. On each node (excluding the target),
+//!     the [`Id`]. On each node (excluding the target),
 //!
 //!     -   Call [`Events::steal_event`]; if this method "steals" the event,
 //!         skip to step 5.
@@ -55,7 +55,7 @@
 //! widgets under a menu. This should be intuitive: UI which is in focus and
 //! not greyed-out should be interactive.
 //!
-//! [`WidgetId`]: crate::WidgetId
+//! [`Id`]: crate::Id
 
 pub mod components;
 pub mod config;

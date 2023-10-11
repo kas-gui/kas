@@ -95,7 +95,8 @@ impl EditGuard for ListEntryGuard {
 
     fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &Item) {
         if !edit.has_edit_focus() {
-            *cx |= edit.set_string(data.1.clone());
+            let act = edit.set_string(data.1.clone());
+            cx.action(edit, act);
         }
     }
 
@@ -226,7 +227,8 @@ fn main() -> kas::shell::Result<()> {
     let data = Data::new(5);
 
     let list = ListView::new(MyDriver).on_update(|cx, list, data| {
-        *cx |= list.set_direction(data.dir);
+        let act = list.set_direction(data.dir);
+        cx.action(list, act);
     });
     let tree = kas::column![
         "Demonstration of dynamic widget creation / deletion",

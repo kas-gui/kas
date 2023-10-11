@@ -13,7 +13,7 @@ use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
 use crate::theme::ThemeSize;
-use crate::{Action, NavAdvance, WidgetId, Window};
+use crate::{Action, Id, NavAdvance, Window};
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
@@ -39,6 +39,7 @@ impl EventState {
             nav_fallback: None,
             hover: None,
             hover_icon: CursorIcon::Default,
+            old_hover_icon: CursorIcon::Default,
             key_depress: Default::default(),
             last_mouse_coord: Coord::ZERO,
             last_click_button: FAKE_MOUSE_BUTTON,
@@ -52,7 +53,11 @@ impl EventState {
             popup_removed: Default::default(),
             time_updates: vec![],
             fut_messages: vec![],
-            pending: Default::default(),
+            pending_update: None,
+            region_moved: false,
+            pending_sel_focus: None,
+            pending_nav_focus: PendingNavFocus::None,
+            pending_cmds: Default::default(),
             action: Action::empty(),
         }
     }
@@ -68,7 +73,7 @@ impl EventState {
     /// is created (before or after resizing).
     ///
     /// This method calls [`ConfigCx::configure`] in order to assign
-    /// [`WidgetId`] identifiers and call widgets' [`Events::configure`]
+    /// [`Id`] identifiers and call widgets' [`Events::configure`]
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
     pub(crate) fn full_configure<A>(
@@ -78,7 +83,7 @@ impl EventState {
         win: &mut Window<A>,
         data: &A,
     ) {
-        let id = WidgetId::ROOT.make_child(wid.get().cast());
+        let id = Id::ROOT.make_child(wid.get().cast());
 
         log::debug!(target: "kas_core::event", "full_configure of Window{id}");
         self.action.remove(Action::RECONFIGURE);
@@ -90,23 +95,7 @@ impl EventState {
         self.new_access_layer(id.clone(), false);
 
         ConfigCx::new(sizer, self).configure(win.as_node(data), id);
-
-        let hover = win.find_id(data, self.last_mouse_coord);
-        self.set_hover(hover);
-    }
-
-    /// Update the widgets under the cursor and touch events
-    pub(crate) fn region_moved<A>(&mut self, win: &mut Window<A>, data: &A) {
-        log::trace!(target: "kas_core::event", "region_moved");
-        // Note: redraw is already implied.
-
-        // Update hovered widget
-        let hover = win.find_id(data, self.last_mouse_coord);
-        self.set_hover(hover);
-
-        for grab in self.touch_grab.iter_mut() {
-            grab.cur_id = win.find_id(data, grab.coord);
-        }
+        self.region_moved = true;
     }
 
     /// Get the next resume time
@@ -145,7 +134,10 @@ impl EventState {
         win: &mut Window<A>,
         data: &A,
     ) -> Action {
-        let old_hover_icon = self.hover_icon;
+        if self.action.contains(Action::REGION_MOVED) {
+            self.region_moved = true;
+            self.action.remove(Action::REGION_MOVED);
+        }
 
         self.with(shell, window, messages, |cx| {
             while let Some((id, wid)) = cx.popup_removed.pop() {
@@ -203,35 +195,48 @@ impl EventState {
                 }
             }
 
-            // Warning: infinite loops are possible here if widgets always queue a
-            // new pending event when evaluating one of these:
-            while let Some(item) = cx.pending.pop_front() {
-                log::trace!(target: "kas_core::event", "update: handling Pending::{item:?}");
-                match item {
-                    Pending::Configure(id) => {
-                        win.as_node(data)
-                            .find_node(&id, |node| cx.configure(node, id.clone()));
+            if let Some((id, reconf)) = cx.pending_update.take() {
+                if reconf {
+                    win.as_node(data)
+                        .find_node(&id, |node| cx.configure(node, id.clone()));
 
-                        let hover = win.find_id(data, cx.state.last_mouse_coord);
-                        cx.state.set_hover(hover);
-                    }
-                    Pending::Update(id) => {
-                        win.as_node(data).find_node(&id, |node| cx.update(node));
-                    }
-                    Pending::Send(id, event) => {
-                        if matches!(&event, &Event::MouseHover(false)) {
-                            cx.hover_icon = Default::default();
-                        }
-                        cx.send_event(win.as_node(data), id, event);
-                    }
-                    Pending::NextNavFocus {
-                        target,
-                        reverse,
-                        source,
-                    } => {
-                        cx.next_nav_focus_impl(win.as_node(data), target, reverse, source);
-                    }
+                    cx.region_moved = true;
+                } else {
+                    win.as_node(data).find_node(&id, |node| cx.update(node));
                 }
+            }
+
+            if cx.region_moved {
+                cx.region_moved = false;
+
+                // Update hovered widget
+                let hover = win.find_id(data, cx.last_mouse_coord);
+                cx.set_hover(win.as_node(data), hover);
+
+                for grab in cx.touch_grab.iter_mut() {
+                    grab.cur_id = win.find_id(data, grab.coord);
+                }
+            }
+
+            if let Some(pending) = cx.pending_sel_focus.take() {
+                cx.set_sel_focus(win.as_node(data), pending);
+            }
+
+            match std::mem::take(&mut cx.pending_nav_focus) {
+                PendingNavFocus::None => (),
+                PendingNavFocus::Set { target, source } => {
+                    cx.set_nav_focus_impl(win.as_node(data), target, source)
+                }
+                PendingNavFocus::Next {
+                    target,
+                    reverse,
+                    source,
+                } => cx.next_nav_focus_impl(win.as_node(data), target, reverse, source),
+            }
+
+            while let Some((id, cmd)) = cx.pending_cmds.pop_front() {
+                log::trace!(target: "kas_core::event", "sending pending command {cmd:?} to {id}");
+                cx.send_event(win.as_node(data), id, Event::Command(cmd, None));
             }
 
             // Poll futures last. This means that any newly pushed future should
@@ -239,9 +244,10 @@ impl EventState {
             cx.poll_futures(win.as_node(data));
         });
 
-        if self.hover_icon != old_hover_icon && self.mouse_grab.is_none() {
+        if self.hover_icon != self.old_hover_icon && self.mouse_grab.is_none() {
             window.set_cursor_icon(self.hover_icon);
         }
+        self.old_hover_icon = self.hover_icon;
 
         std::mem::take(&mut self.action)
     }
@@ -297,14 +303,14 @@ impl<'a> EventCx<'a> {
     #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
     pub(crate) fn handle_winit<A>(
         &mut self,
-        data: &A,
         win: &mut Window<A>,
+        data: &A,
         event: winit::event::WindowEvent,
     ) {
         use winit::event::{MouseScrollDelta, TouchPhase, WindowEvent::*};
 
         match event {
-            CloseRequested => self.send_action(Action::CLOSE),
+            CloseRequested => self.action(Id::ROOT, Action::CLOSE),
             /* Not yet supported: see #98
             DroppedFile(path) => ,
             HoveredFile(path) => ,
@@ -314,7 +320,7 @@ impl<'a> EventCx<'a> {
                 self.window_has_focus = state;
                 if state {
                     // Required to restart theme animations
-                    self.send_action(Action::REDRAW);
+                    self.action(Id::ROOT, Action::REDRAW);
                 } else {
                     // Window focus lost: close all popups
                     while let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
@@ -364,7 +370,7 @@ impl<'a> EventCx<'a> {
                 let state = modifiers.state();
                 if state.alt_key() != self.modifiers.alt_key() {
                     // This controls drawing of access key indicators
-                    self.send_action(Action::REDRAW);
+                    self.action(Id::ROOT, Action::REDRAW);
                 }
                 self.modifiers = state;
             }
@@ -374,7 +380,7 @@ impl<'a> EventCx<'a> {
 
                 // Update hovered win
                 let id = win.find_id(data, coord);
-                self.set_hover(id.clone());
+                self.set_hover(win.as_node(data), id.clone());
 
                 if let Some(grab) = self.state.mouse_grab.as_mut() {
                     match grab.details {
@@ -420,7 +426,7 @@ impl<'a> EventCx<'a> {
                     // If there's a mouse grab, we will continue to receive
                     // coordinates; if not, set a fake coordinate off the window
                     self.last_mouse_coord = Coord(-1, -1);
-                    self.set_hover(None);
+                    self.set_hover(win.as_node(data), None);
                 }
             }
             MouseWheel { delta, .. } => {
@@ -543,7 +549,7 @@ impl<'a> EventCx<'a> {
                         }
 
                         if redraw {
-                            self.send_action(Action::REDRAW);
+                            self.action(Id::ROOT, Action::REDRAW);
                         } else if let Some(pan_grab) = pan_grab {
                             if usize::conv(pan_grab.1) < MAX_PAN_GRABS {
                                 if let Some(pan) = self.pan_grab.get_mut(usize::conv(pan_grab.0)) {
@@ -554,7 +560,7 @@ impl<'a> EventCx<'a> {
                     }
                     ev @ (TouchPhase::Ended | TouchPhase::Cancelled) => {
                         if let Some(mut grab) = self.remove_touch(touch.id) {
-                            self.send_action(grab.flush_click_move());
+                            self.action(Id::ROOT, grab.flush_click_move());
 
                             if grab.mode == GrabMode::Grab {
                                 let id = grab.cur_id.clone();

@@ -144,7 +144,7 @@ impl_scope! {
                     let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                     log::info!("Requesting update in {}ns", ns);
                     cx.request_timer_update(self.id(), 0, Duration::new(0, ns), true);
-                    *cx |= Action::REDRAW;
+                    cx.redraw(self);
                     Used
                 }
                 _ => Unused,

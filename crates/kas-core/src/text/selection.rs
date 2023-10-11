@@ -9,6 +9,25 @@ use super::{TextApi, TextApiExt};
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
+/// Action used by [`crate::event::components::TextInput`]
+#[derive(Default)]
+pub struct SelectionAction {
+    pub anchor: bool,
+    pub clear: bool,
+    pub repeats: u32,
+}
+
+impl SelectionAction {
+    /// Construct
+    pub fn new(anchor: bool, clear: bool, repeats: u32) -> Self {
+        SelectionAction {
+            anchor,
+            clear,
+            repeats,
+        }
+    }
+}
+
 /// Text-selection logic
 ///
 /// This struct holds an "edit pos" and a "selection pos", which together form
@@ -151,5 +170,18 @@ impl SelectionHelper {
         }
         self.sel_pos = start;
         self.edit_pos = end;
+    }
+
+    /// Handle an action
+    pub fn action<T: TextApi>(&mut self, text: &T, action: SelectionAction) {
+        if action.anchor {
+            self.set_anchor();
+        }
+        if action.clear {
+            self.set_empty();
+        }
+        if action.repeats > 1 {
+            self.expand(text, action.repeats);
+        }
     }
 }

@@ -24,7 +24,7 @@ use crate::geom::Coord;
 use crate::shell::{Platform, ShellSharedErased, WindowDataErased};
 use crate::util::WidgetHierarchy;
 use crate::LayoutExt;
-use crate::{Action, Erased, ErasedStack, NavAdvance, Node, Widget, WidgetId, WindowId};
+use crate::{Action, Erased, ErasedStack, Id, NavAdvance, Node, Widget, WindowId};
 
 mod config;
 mod cx_pub;
@@ -60,7 +60,7 @@ impl GrabMode {
 
 #[derive(Clone, Debug)]
 enum GrabDetails {
-    Click { cur_id: Option<WidgetId> },
+    Click { cur_id: Option<Id> },
     Grab,
     Pan((u16, u16)),
 }
@@ -75,8 +75,8 @@ impl GrabDetails {
 struct MouseGrab {
     button: MouseButton,
     repetitions: u32,
-    start_id: WidgetId,
-    depress: Option<WidgetId>,
+    start_id: Id,
+    depress: Option<Id>,
     details: GrabDetails,
 }
 
@@ -104,9 +104,9 @@ impl<'a> EventCx<'a> {
 #[derive(Clone, Debug)]
 struct TouchGrab {
     id: u64,
-    start_id: WidgetId,
-    depress: Option<WidgetId>,
-    cur_id: Option<WidgetId>,
+    start_id: Id,
+    depress: Option<Id>,
+    cur_id: Option<Id>,
     last_move: Coord,
     coord: Coord,
     mode: GrabMode,
@@ -135,27 +135,34 @@ const MAX_PAN_GRABS: usize = 2;
 
 #[derive(Clone, Debug)]
 struct PanGrab {
-    id: WidgetId,
+    id: Id,
     mode: GrabMode,
     source_is_touch: bool,
     n: u16,
     coords: [(Coord, Coord); MAX_PAN_GRABS],
 }
 
-#[derive(Clone, Debug)]
-#[allow(clippy::enum_variant_names)] // they all happen to be about Focus
-enum Pending {
-    Configure(WidgetId),
-    Update(WidgetId),
-    Send(WidgetId, Event),
-    NextNavFocus {
-        target: Option<WidgetId>,
+struct PendingSelFocus {
+    target: Id,
+    key_focus: bool,
+    source: FocusSource,
+}
+
+#[crate::impl_default(PendingNavFocus::None)]
+enum PendingNavFocus {
+    None,
+    Set {
+        target: Option<Id>,
+        source: FocusSource,
+    },
+    Next {
+        target: Option<Id>,
         reverse: bool,
         source: FocusSource,
     },
 }
 
-type AccessLayer = (bool, HashMap<Key, WidgetId>);
+type AccessLayer = (bool, HashMap<Key, Id>);
 
 /// Event context state
 ///
@@ -177,17 +184,18 @@ type AccessLayer = (bool, HashMap<Key, WidgetId>);
 pub struct EventState {
     config: WindowConfig,
     platform: Platform,
-    disabled: Vec<WidgetId>,
+    disabled: Vec<Id>,
     window_has_focus: bool,
     modifiers: ModifiersState,
     /// key focus is on same widget as sel_focus; otherwise its value is ignored
     key_focus: bool,
-    sel_focus: Option<WidgetId>,
-    nav_focus: Option<WidgetId>,
-    nav_fallback: Option<WidgetId>,
-    hover: Option<WidgetId>,
+    sel_focus: Option<Id>,
+    nav_focus: Option<Id>,
+    nav_fallback: Option<Id>,
+    hover: Option<Id>,
     hover_icon: CursorIcon,
-    key_depress: LinearMap<KeyCode, WidgetId>,
+    old_hover_icon: CursorIcon,
+    key_depress: LinearMap<KeyCode, Id>,
     last_mouse_coord: Coord,
     last_click_button: MouseButton,
     last_click_repetitions: u32,
@@ -195,15 +203,20 @@ pub struct EventState {
     mouse_grab: Option<MouseGrab>,
     touch_grab: SmallVec<[TouchGrab; 8]>,
     pan_grab: SmallVec<[PanGrab; 4]>,
-    access_layers: BTreeMap<WidgetId, AccessLayer>,
+    access_layers: BTreeMap<Id, AccessLayer>,
     // For each: (WindowId of popup, popup descriptor, old nav focus)
-    popups: SmallVec<[(WindowId, crate::PopupDescriptor, Option<WidgetId>); 16]>,
-    popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
-    time_updates: Vec<(Instant, WidgetId, u64)>,
+    popups: SmallVec<[(WindowId, crate::PopupDescriptor, Option<Id>); 16]>,
+    popup_removed: SmallVec<[(Id, WindowId); 16]>,
+    time_updates: Vec<(Instant, Id, u64)>,
     // Set of futures of messages together with id of sending widget
-    fut_messages: Vec<(WidgetId, Pin<Box<dyn Future<Output = Erased>>>)>,
-    // FIFO queue of events pending handling
-    pending: VecDeque<Pending>,
+    fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Erased>>>)>,
+    // Widget requiring update (and optionally configure)
+    pending_update: Option<(Id, bool)>,
+    region_moved: bool,
+    // Optional new target for selection focus. bool is true if this also gains key focus.
+    pending_sel_focus: Option<PendingSelFocus>,
+    pending_nav_focus: PendingNavFocus,
+    pending_cmds: VecDeque<(Id, Command)>,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub action: Action,
@@ -212,7 +225,7 @@ pub struct EventState {
 /// internals
 impl EventState {
     #[inline]
-    fn key_focus(&self) -> Option<WidgetId> {
+    fn key_focus(&self) -> Option<Id> {
         if self.key_focus {
             self.sel_focus.clone()
         } else {
@@ -222,7 +235,7 @@ impl EventState {
 
     fn set_pan_on(
         &mut self,
-        id: WidgetId,
+        id: Id,
         mode: GrabMode,
         source_is_touch: bool,
         coord: Coord,
@@ -318,75 +331,12 @@ impl EventState {
                     "remove_touch: touch_id={touch_id}, start_id={}",
                     grab.start_id
                 );
-                self.send_action(Action::REDRAW); // redraw(..)
+                self.opt_action(grab.depress.clone(), Action::REDRAW);
                 self.remove_pan_grab(grab.pan_grab);
                 return Some(grab);
             }
         }
         None
-    }
-
-    fn clear_key_focus(&mut self) {
-        if let Some(id) = self.key_focus() {
-            log::trace!("clear_key_focus");
-            // If widget has key focus, this is lost
-            self.key_focus = false;
-            self.pending
-                .push_back(Pending::Send(id, Event::LostKeyFocus));
-        }
-    }
-
-    // Set selection focus to `wid`; if `key_focus` also set that
-    fn set_sel_focus(&mut self, wid: WidgetId, key_focus: bool) {
-        log::trace!("set_sel_focus: wid={wid}, key_focus={key_focus}");
-        // The widget probably already has nav focus, but anyway:
-        self.set_nav_focus(wid.clone(), FocusSource::Synthetic);
-
-        if wid == self.sel_focus {
-            self.key_focus = self.key_focus || key_focus;
-            return;
-        }
-
-        if let Some(id) = self.sel_focus.clone() {
-            if self.key_focus {
-                // If widget has key focus, this is lost
-                self.pending
-                    .push_back(Pending::Send(id.clone(), Event::LostKeyFocus));
-            }
-
-            // Selection focus is lost if another widget receives key focus
-            self.pending
-                .push_back(Pending::Send(id, Event::LostSelFocus));
-        }
-
-        self.key_focus = key_focus;
-        self.sel_focus = Some(wid);
-    }
-
-    // Clear old hover, set new hover, send events.
-    // If there is a popup, only permit descendands of that.
-    fn set_hover(&mut self, mut w_id: Option<WidgetId>) {
-        if let Some(ref id) = w_id {
-            if let Some(popup) = self.popups.last() {
-                if !popup.1.id.is_ancestor_of(id) {
-                    w_id = None;
-                }
-            }
-        }
-
-        if self.hover != w_id {
-            log::trace!("set_hover: w_id={w_id:?}");
-            if let Some(id) = self.hover.take() {
-                self.pending
-                    .push_back(Pending::Send(id, Event::MouseHover(false)));
-            }
-            self.hover = w_id.clone();
-
-            if let Some(id) = w_id {
-                self.pending
-                    .push_back(Pending::Send(id, Event::MouseHover(true)));
-            }
-        }
     }
 }
 
@@ -430,7 +380,7 @@ impl<'a> EventCx<'a> {
 
         if let Some(cmd) = opt_command {
             let mut targets = vec![];
-            let mut send = |_self: &mut Self, id: WidgetId, cmd| -> bool {
+            let mut send = |_self: &mut Self, id: Id, cmd| -> bool {
                 if !targets.contains(&id) {
                     let event = Event::Command(cmd, Some(code));
                     let used = _self.send_event(widget.re(), id.clone(), event);
@@ -509,7 +459,6 @@ impl<'a> EventCx<'a> {
             let event = Event::Command(Command::Activate, Some(code));
             self.send_event(widget, id, event);
         } else if self.config.nav_focus && vkey == Key::Tab {
-            self.clear_key_focus();
             let shift = self.modifiers.shift_key();
             self.next_nav_focus_impl(widget.re(), None, shift, FocusSource::Key);
         } else if vkey == Key::Escape {
@@ -520,11 +469,11 @@ impl<'a> EventCx<'a> {
     }
 
     // Clears mouse grab and pan grab, resets cursor and redraws
-    fn remove_mouse_grab(&mut self, success: bool) -> Option<(WidgetId, Event)> {
+    fn remove_mouse_grab(&mut self, success: bool) -> Option<(Id, Event)> {
         if let Some(grab) = self.mouse_grab.take() {
             log::trace!("remove_mouse_grab: start_id={}", grab.start_id);
             self.window.set_cursor_icon(self.hover_icon);
-            self.send_action(Action::REDRAW); // redraw(..)
+            self.opt_action(grab.depress.clone(), Action::REDRAW);
             if let GrabDetails::Pan(g) = grab.details {
                 self.remove_pan_grab(g);
                 // Pan grabs do not receive Event::PressEnd
@@ -555,7 +504,7 @@ impl<'a> EventCx<'a> {
     }
 
     /// Replay a message as if it was pushed by `id`
-    fn replay(&mut self, mut widget: Node<'_>, id: WidgetId, msg: Erased) {
+    fn replay(&mut self, mut widget: Node<'_>, id: Id, msg: Erased) {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         self.messages.set_base();
@@ -568,7 +517,7 @@ impl<'a> EventCx<'a> {
 
     // Wrapper around Self::send; returns true when event is used
     #[inline]
-    fn send_event(&mut self, widget: Node<'_>, id: WidgetId, event: Event) -> bool {
+    fn send_event(&mut self, widget: Node<'_>, id: Id, event: Event) -> bool {
         self.messages.set_base();
         let used = self.send_event_impl(widget, id, event);
         self.last_child = None;
@@ -577,7 +526,7 @@ impl<'a> EventCx<'a> {
     }
 
     // Send an event; possibly leave messages on the stack
-    fn send_event_impl(&mut self, mut widget: Node<'_>, mut id: WidgetId, event: Event) -> bool {
+    fn send_event_impl(&mut self, mut widget: Node<'_>, mut id: Id, event: Event) -> bool {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         self.messages.set_base();
@@ -600,7 +549,7 @@ impl<'a> EventCx<'a> {
         widget._send(self, id, disabled, event) == Used
     }
 
-    fn send_popup_first(&mut self, mut widget: Node<'_>, id: Option<WidgetId>, event: Event) {
+    fn send_popup_first(&mut self, mut widget: Node<'_>, id: Option<Id>, event: Event) {
         while let Some(pid) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
             let mut target = pid;
             if let Some(id) = id.clone() {
@@ -618,11 +567,96 @@ impl<'a> EventCx<'a> {
         }
     }
 
-    /// Advance the keyboard navigation focus
-    pub fn next_nav_focus_impl(
+    // Clear old hover, set new hover, send events.
+    // If there is a popup, only permit descendands of that.
+    fn set_hover(&mut self, mut widget: Node<'_>, mut w_id: Option<Id>) {
+        if let Some(ref id) = w_id {
+            if let Some(popup) = self.popups.last() {
+                if !popup.1.id.is_ancestor_of(id) {
+                    w_id = None;
+                }
+            }
+        }
+
+        if self.hover != w_id {
+            log::trace!("set_hover: w_id={w_id:?}");
+            self.hover_icon = Default::default();
+            if let Some(id) = self.hover.take() {
+                self.send_event(widget.re(), id, Event::MouseHover(false));
+            }
+            self.hover = w_id.clone();
+
+            if let Some(id) = w_id {
+                self.send_event(widget, id, Event::MouseHover(true));
+            }
+        }
+    }
+
+    // Set selection focus to `wid` immediately; if `key_focus` also set that
+    fn set_sel_focus(&mut self, mut widget: Node<'_>, pending: PendingSelFocus) {
+        let PendingSelFocus {
+            target,
+            key_focus,
+            source,
+        } = pending;
+
+        log::trace!("set_sel_focus: target={target}, key_focus={key_focus}");
+        // The widget probably already has nav focus, but anyway:
+        self.set_nav_focus(target.clone(), FocusSource::Synthetic);
+
+        if target == self.sel_focus {
+            self.key_focus = self.key_focus || key_focus;
+            return;
+        }
+
+        if let Some(id) = self.sel_focus.clone() {
+            if self.key_focus {
+                // If widget has key focus, this is lost
+                self.send_event(widget.re(), id.clone(), Event::LostKeyFocus);
+            }
+
+            // Selection focus is lost if another widget receives key focus
+            self.send_event(widget.re(), id, Event::LostSelFocus);
+        }
+
+        self.key_focus = key_focus;
+        self.sel_focus = Some(target.clone());
+
+        self.send_event(widget.re(), target.clone(), Event::SelFocus(source));
+        if key_focus {
+            self.send_event(widget, target, Event::KeyFocus);
+        }
+    }
+
+    /// Set navigation focus immediately
+    fn set_nav_focus_impl(&mut self, mut widget: Node, target: Option<Id>, source: FocusSource) {
+        if target == self.nav_focus || !self.config.nav_focus {
+            return;
+        }
+
+        if let Some(old) = self.nav_focus.take() {
+            self.action(&old, Action::REDRAW);
+            self.send_event(widget.re(), old, Event::LostNavFocus);
+        }
+
+        if let Some(id) = self.key_focus() {
+            self.key_focus = false;
+            self.send_event(widget.re(), id, Event::LostKeyFocus);
+        }
+
+        self.nav_focus = target.clone();
+        log::debug!(target: "kas_core::event", "nav_focus = {target:?}");
+        if let Some(id) = target {
+            self.action(&id, Action::REDRAW);
+            self.send_event(widget, id, Event::NavFocus(source));
+        }
+    }
+
+    /// Advance the keyboard navigation focus immediately
+    fn next_nav_focus_impl(
         &mut self,
         mut widget: Node,
-        target: Option<WidgetId>,
+        target: Option<Id>,
         reverse: bool,
         source: FocusSource,
     ) {
@@ -645,10 +679,6 @@ impl<'a> EventCx<'a> {
                 return;
             }
         }
-
-        // We redraw in all cases. Since this is not part of widget event
-        // processing, we can push directly to self.action.
-        self.send_action(Action::REDRAW);
 
         let advance = if !reverse {
             NavAdvance::Forward(target.is_some())
@@ -673,19 +703,21 @@ impl<'a> EventCx<'a> {
             return;
         }
 
-        if let Some(id) = self.nav_focus.clone() {
-            self.pending
-                .push_back(Pending::Send(id, Event::LostNavFocus));
+        if let Some(old) = self.nav_focus.take() {
+            self.redraw(&old);
+            self.send_event(widget.re(), old, Event::LostNavFocus);
         }
-        if self.sel_focus != opt_id {
-            self.clear_key_focus();
+
+        if let Some(id) = self.key_focus() {
+            self.key_focus = false;
+            self.send_event(widget.re(), id, Event::LostKeyFocus);
         }
 
         self.nav_focus = opt_id.clone();
         if let Some(id) = opt_id {
             log::debug!(target: "kas_core::event", "nav_focus = Some({id})");
-            self.pending
-                .push_back(Pending::Send(id, Event::NavFocus(source)));
+            self.redraw(id.clone());
+            self.send_event(widget, id, Event::NavFocus(source));
         } else {
             log::debug!(target: "kas_core::event", "nav_focus = None");
             // Most likely an error occurred

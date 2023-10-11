@@ -22,7 +22,7 @@ impl_scope! {
         direction: D,
         widgets: Vec<SubMenu<Data>>,
         layout_store: layout::DynRowStorage,
-        delayed_open: Option<WidgetId>,
+        delayed_open: Option<Id>,
     }
 
     impl Self
@@ -97,7 +97,7 @@ impl_scope! {
             }
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }
@@ -214,7 +214,7 @@ impl_scope! {
                     if !self.rect().contains(press.coord) {
                         // not on the menubar
                         self.delayed_open = None;
-                        cx.send(id, Event::Command(Command::Activate, None));
+                        cx.send_command(id, Command::Activate);
                     }
                     Used
                 }
@@ -256,7 +256,7 @@ impl_scope! {
             &mut self,
             cx: &mut EventCx,
             data: &Data,
-            target: Option<&WidgetId>,
+            target: Option<&Id>,
             set_focus: bool,
         ) {
             log::trace!(

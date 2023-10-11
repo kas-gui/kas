@@ -120,7 +120,7 @@ impl Shortcuts {
             (Key::Character("v".into()), Command::Paste),
             (Key::Character("]".into()), Command::Paste),
             (Key::Character("w".into()), Command::Close),
-            (Key::Character("w".into()), Command::Cut),
+            (Key::Character("x".into()), Command::Cut),
             (Key::Character("z".into()), Command::Undo),
             (Key::Tab, Command::TabNext),
         ];

@@ -17,22 +17,8 @@ use crate::geom::{Offset, Vec2};
 use crate::theme::{SizeCx, ThemeControl};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
-use crate::{Action, Erased, WidgetId, Window, WindowId};
+use crate::{Action, Erased, HasId, Id, Window, WindowId};
 #[allow(unused)] use crate::{Events, Layout}; // for doc-links
-
-impl<'a> std::ops::BitOrAssign<Action> for EventCx<'a> {
-    #[inline]
-    fn bitor_assign(&mut self, action: Action) {
-        self.send_action(action);
-    }
-}
-
-impl std::ops::BitOrAssign<Action> for EventState {
-    #[inline]
-    fn bitor_assign(&mut self, action: Action) {
-        self.send_action(action);
-    }
-}
 
 /// Public API
 impl EventState {
@@ -64,26 +50,26 @@ impl EventState {
     ///
     /// Note that `key_focus` implies `sel_focus`.
     #[inline]
-    pub fn has_key_focus(&self, w_id: &WidgetId) -> (bool, bool) {
+    pub fn has_key_focus(&self, w_id: &Id) -> (bool, bool) {
         let sel_focus = *w_id == self.sel_focus;
         (sel_focus && self.key_focus, sel_focus)
     }
 
     /// Get whether this widget has navigation focus
     #[inline]
-    pub fn has_nav_focus(&self, w_id: &WidgetId) -> bool {
+    pub fn has_nav_focus(&self, w_id: &Id) -> bool {
         *w_id == self.nav_focus
     }
 
     /// Get whether the widget is under the mouse cursor
     #[inline]
-    pub fn is_hovered(&self, w_id: &WidgetId) -> bool {
+    pub fn is_hovered(&self, w_id: &Id) -> bool {
         self.mouse_grab.is_none() && *w_id == self.hover
     }
 
     /// Get whether widget `id` or any of its descendants are under the mouse cursor
     #[inline]
-    pub fn is_hovered_recursive(&self, id: &WidgetId) -> bool {
+    pub fn is_hovered_recursive(&self, id: &Id) -> bool {
         self.mouse_grab.is_none()
             && self
                 .hover
@@ -93,7 +79,7 @@ impl EventState {
     }
 
     /// Check whether the given widget is visually depressed
-    pub fn is_depressed(&self, w_id: &WidgetId) -> bool {
+    pub fn is_depressed(&self, w_id: &Id) -> bool {
         for (_, id) in &self.key_depress {
             if *id == w_id {
                 return true;
@@ -124,7 +110,7 @@ impl EventState {
     ///
     /// A widget is disabled if any ancestor is.
     #[inline]
-    pub fn is_disabled(&self, w_id: &WidgetId) -> bool {
+    pub fn is_disabled(&self, w_id: &Id) -> bool {
         // TODO(opt): we should be able to use binary search here
         for id in &self.disabled {
             if id.is_ancestor_of(w_id) {
@@ -186,7 +172,7 @@ impl EventState {
     /// Disabled status applies to all descendants and blocks reception of
     /// events ([`Unused`] is returned automatically when the
     /// recipient or any ancestor is disabled).
-    pub fn set_disabled(&mut self, w_id: WidgetId, state: bool) {
+    pub fn set_disabled(&mut self, w_id: Id, state: bool) {
         for (i, id) in self.disabled.iter().enumerate() {
             if w_id == id {
                 if !state {
@@ -197,7 +183,7 @@ impl EventState {
             }
         }
         if state {
-            self.send_action(Action::REDRAW);
+            self.action(&w_id, Action::REDRAW);
             self.disabled.push(w_id);
         }
     }
@@ -216,13 +202,7 @@ impl EventState {
     ///
     /// If multiple updates with the same `id` and `payload` are requested,
     /// these are merged (using the earliest time if `first` is true).
-    pub fn request_timer_update(
-        &mut self,
-        id: WidgetId,
-        payload: u64,
-        delay: Duration,
-        first: bool,
-    ) {
+    pub fn request_timer_update(&mut self, id: Id, payload: u64, delay: Duration, first: bool) {
         let time = Instant::now() + delay;
         if let Some(row) = self
             .time_updates
@@ -248,27 +228,64 @@ impl EventState {
 
     /// Notify that a widget must be redrawn
     ///
-    /// Note: currently, only full-window redraws are supported, thus this is
-    /// equivalent to: `cx.send_action(Action::REDRAW);`
+    /// This is equivalent to calling [`Self::action`] with [`Action::REDRAW`].
     #[inline]
-    pub fn redraw(&mut self, _id: WidgetId) {
-        // Theoretically, notifying by WidgetId allows selective redrawing
-        // (damage events). This is not yet implemented.
-        self.send_action(Action::REDRAW);
+    pub fn redraw(&mut self, id: impl HasId) {
+        self.action(id, Action::REDRAW);
+    }
+
+    /// Notify that a widget must be resized
+    ///
+    /// This is equivalent to calling [`Self::action`] with [`Action::RESIZE`].
+    #[inline]
+    pub fn resize(&mut self, id: impl HasId) {
+        self.action(id, Action::RESIZE);
+    }
+
+    /// Notify that widgets under self may have moved
+    #[inline]
+    pub fn region_moved(&mut self) {
+        // Do not take id: this always applies to the whole window
+        self.action |= Action::REGION_MOVED;
+    }
+
+    /// Terminate the GUI
+    #[inline]
+    pub fn exit(&mut self) {
+        self.action |= Action::EXIT;
     }
 
     /// Notify that a [`Action`] action should happen
     ///
     /// This causes the given action to happen after event handling.
     ///
-    /// Calling `cx.send_action(action)` is equivalent to `*cx |= action`.
-    ///
     /// Whenever a widget is added, removed or replaced, a reconfigure action is
     /// required. Should a widget's size requirements change, these will only
     /// affect the UI after a reconfigure action.
     #[inline]
-    pub fn send_action(&mut self, action: Action) {
-        self.action |= action;
+    pub fn action(&mut self, id: impl HasId, action: Action) {
+        fn inner(cx: &mut EventState, id: Id, mut action: Action) {
+            const RE_UP: Action = Action::RECONFIGURE.union(Action::UPDATE);
+            if !(action & RE_UP).is_empty() {
+                cx.request_update(id, action.contains(Action::RECONFIGURE));
+                action.remove(RE_UP);
+            }
+
+            // TODO(opt): handle sub-tree SET_RECT and RESIZE.
+            // NOTE: our draw system is incompatible with partial redraws, and
+            // in any case redrawing is extremely fast.
+
+            cx.action |= action;
+        }
+        inner(self, id.has_id(), action)
+    }
+
+    /// Pass an [action](Self::action) given some `id`
+    #[inline]
+    pub(crate) fn opt_action(&mut self, id: Option<Id>, action: Action) {
+        if let Some(id) = id {
+            self.action(id, action);
+        }
     }
 
     /// Attempts to set a fallback to receive [`Event::Command`]
@@ -280,15 +297,15 @@ impl EventState {
     /// Only one widget can be a fallback, and the *first* to set itself wins.
     /// This is primarily used to allow scroll-region widgets to
     /// respond to navigation keys when no widget has focus.
-    pub fn register_nav_fallback(&mut self, id: WidgetId) {
+    pub fn register_nav_fallback(&mut self, id: Id) {
         if self.nav_fallback.is_none() {
             log::debug!(target: "kas_core::event","register_nav_fallback: id={id}");
             self.nav_fallback = Some(id);
         }
     }
 
-    fn access_layer_for_id(&mut self, id: &WidgetId) -> Option<&mut AccessLayer> {
-        let root = &WidgetId::ROOT;
+    fn access_layer_for_id(&mut self, id: &Id) -> Option<&mut AccessLayer> {
+        let root = &Id::ROOT;
         for (k, v) in self.access_layers.range_mut(root..=id).rev() {
             if k.is_ancestor_of(id) {
                 return Some(v);
@@ -309,7 +326,7 @@ impl EventState {
     ///
     /// If `alt_bypass` is true, then this layer's access keys will be
     /// active even without Alt pressed (but only highlighted with Alt pressed).
-    pub fn new_access_layer(&mut self, id: WidgetId, alt_bypass: bool) {
+    pub fn new_access_layer(&mut self, id: Id, alt_bypass: bool) {
         self.access_layers.insert(id, (alt_bypass, HashMap::new()));
     }
 
@@ -319,7 +336,7 @@ impl EventState {
     /// disable alt-bypass for the access-key layer containing its access keys.
     /// This allows access keys to be used as shortcuts without the Alt
     /// key held. See also [`EventState::new_access_layer`].
-    pub fn enable_alt_bypass(&mut self, id: &WidgetId, alt_bypass: bool) {
+    pub fn enable_alt_bypass(&mut self, id: &Id, alt_bypass: bool) {
         if let Some(layer) = self.access_layer_for_id(id) {
             layer.0 = alt_bypass;
         }
@@ -343,7 +360,7 @@ impl EventState {
     ///
     /// This should only be called from [`Events::configure`].
     #[inline]
-    pub fn add_access_key(&mut self, id: &WidgetId, key: Key) {
+    pub fn add_access_key(&mut self, id: &Id, key: Key) {
         if let Some(layer) = self.access_layer_for_id(id) {
             layer.1.entry(key).or_insert_with(|| id.clone());
         }
@@ -359,36 +376,36 @@ impl EventState {
     /// Note that keyboard shortcuts and mnemonics should usually match against
     /// the "logical key". [`KeyCode`] is used here since the the logical key
     /// may be changed by modifier keys.
-    pub fn depress_with_key(&mut self, id: WidgetId, code: KeyCode) {
+    pub fn depress_with_key(&mut self, id: Id, code: KeyCode) {
         if self.key_depress.values().any(|v| *v == id) {
             return;
         }
 
-        self.key_depress.insert(code, id);
-        self.send_action(Action::REDRAW);
+        self.key_depress.insert(code, id.clone());
+        self.action(id, Action::REDRAW);
     }
 
     /// Request keyboard input focus
     ///
-    /// When granted, the widget will receive [`Event::Key`] on key presses
-    /// and releases. It will not receive [`Event::Command`] for these events
-    /// (though it may still receive [`Event::Command`] from other sources).
+    /// When granted, the widget will receive [`Event::KeyFocus`] followed by
+    /// [`Event::Key`] for each key press / release. Note that this disables
+    /// translation of key events to [`Event::Command`] while key focus is
+    /// active.
+    ///
+    /// The `source` parameter is used by [`Event::SelFocus`].
     ///
     /// Key focus implies sel focus (see [`Self::request_sel_focus`]) and
     /// navigation focus.
-    ///
-    /// Returns true on success or when the widget already had key focus.
-    ///
-    /// When key focus is lost, [`Event::LostKeyFocus`] is sent.
     #[inline]
-    pub fn request_key_focus(&mut self, id: WidgetId) -> bool {
-        self.set_sel_focus(id, true);
-        true
+    pub fn request_key_focus(&mut self, target: Id, source: FocusSource) {
+        self.pending_sel_focus = Some(PendingSelFocus {
+            target,
+            key_focus: true,
+            source,
+        });
     }
 
     /// Request selection focus
-    ///
-    /// Returns true on success or when the widget already had sel focus.
     ///
     /// To prevent multiple simultaneous selections (e.g. of text) in the UI,
     /// only widgets with "selection focus" are allowed to select things.
@@ -396,13 +413,24 @@ impl EventState {
     /// is sent when selection focus is lost; in this case any existing
     /// selection should be cleared.
     ///
+    /// The `source` parameter is used by [`Event::SelFocus`].
+    ///
     /// Selection focus implies navigation focus.
     ///
     /// When key focus is lost, [`Event::LostSelFocus`] is sent.
     #[inline]
-    pub fn request_sel_focus(&mut self, id: WidgetId) -> bool {
-        self.set_sel_focus(id, false);
-        true
+    pub fn request_sel_focus(&mut self, target: Id, source: FocusSource) {
+        if let Some(ref pending) = self.pending_sel_focus {
+            if pending.target == target {
+                return;
+            }
+        }
+
+        self.pending_sel_focus = Some(PendingSelFocus {
+            target,
+            key_focus: false,
+            source,
+        });
     }
 
     /// Set a grab's depress target
@@ -419,31 +447,35 @@ impl EventState {
     ///
     /// Queues a redraw and returns `true` if the depress target changes,
     /// otherwise returns `false`.
-    pub fn set_grab_depress(&mut self, source: PressSource, target: Option<WidgetId>) -> bool {
+    pub fn set_grab_depress(&mut self, source: PressSource, target: Option<Id>) -> bool {
+        let mut old = None;
         let mut redraw = false;
         match source {
             PressSource::Mouse(_, _) => {
                 if let Some(grab) = self.mouse_grab.as_mut() {
                     redraw = grab.depress != target;
+                    old = grab.depress.take();
                     grab.depress = target.clone();
                 }
             }
             PressSource::Touch(id) => {
                 if let Some(grab) = self.get_touch(id) {
                     redraw = grab.depress != target;
+                    old = grab.depress.take();
                     grab.depress = target.clone();
                 }
             }
         }
         if redraw {
             log::trace!(target: "kas_core::event", "set_grab_depress: target={target:?}");
-            self.send_action(Action::REDRAW);
+            self.opt_action(old, Action::REDRAW);
+            self.opt_action(target, Action::REDRAW);
         }
         redraw
     }
 
     /// Returns true if `id` or any descendant has a mouse or touch grab
-    pub fn any_pin_on(&self, id: &WidgetId) -> bool {
+    pub fn any_pin_on(&self, id: &Id) -> bool {
         if self
             .mouse_grab
             .as_ref()
@@ -461,20 +493,21 @@ impl EventState {
     /// Get the current navigation focus, if any
     ///
     /// This is the widget selected by navigating the UI with the Tab key.
+    ///
+    /// Note: changing navigation focus (e.g. via [`Self::clear_nav_focus`],
+    /// [`Self::set_nav_focus`] or [`Self::next_nav_focus`]) does not
+    /// immediately affect the result of this method.
     #[inline]
-    pub fn nav_focus(&self) -> Option<&WidgetId> {
+    pub fn nav_focus(&self) -> Option<&Id> {
         self.nav_focus.as_ref()
     }
 
     /// Clear navigation focus
     pub fn clear_nav_focus(&mut self) {
-        if let Some(id) = self.nav_focus.take() {
-            self.send_action(Action::REDRAW);
-            self.pending
-                .push_back(Pending::Send(id, Event::LostNavFocus));
-            log::debug!(target: "kas_core::event", "nav_focus = None");
-        }
-        self.clear_key_focus();
+        self.pending_nav_focus = PendingNavFocus::Set {
+            target: None,
+            source: FocusSource::Synthetic,
+        };
     }
 
     /// Set navigation focus directly
@@ -486,23 +519,11 @@ impl EventState {
     /// Normally, [`Events::navigable`] will be true for widget `id` but this
     /// is not checked or required. For example, a `ScrollLabel` can receive
     /// focus on text selection with the mouse.
-    pub fn set_nav_focus(&mut self, id: WidgetId, source: FocusSource) {
-        if id == self.nav_focus || !self.config.nav_focus {
-            return;
-        }
-
-        self.send_action(Action::REDRAW);
-        if let Some(old_id) = self.nav_focus.take() {
-            self.pending
-                .push_back(Pending::Send(old_id, Event::LostNavFocus));
-        }
-        if id != self.sel_focus {
-            self.clear_key_focus();
-        }
-        self.nav_focus = Some(id.clone());
-        log::debug!(target: "kas_core::event", "nav_focus = Some({id})");
-        self.pending
-            .push_back(Pending::Send(id, Event::NavFocus(source)));
+    pub fn set_nav_focus(&mut self, id: Id, source: FocusSource) {
+        self.pending_nav_focus = PendingNavFocus::Set {
+            target: Some(id),
+            source,
+        };
     }
 
     /// Advance the navigation focus
@@ -516,15 +537,15 @@ impl EventState {
     /// If `reverse`, instead search for the previous or last navigable widget.
     pub fn next_nav_focus(
         &mut self,
-        target: impl Into<Option<WidgetId>>,
+        target: impl Into<Option<Id>>,
         reverse: bool,
         source: FocusSource,
     ) {
-        self.pending.push_back(Pending::NextNavFocus {
+        self.pending_nav_focus = PendingNavFocus::Next {
             target: target.into(),
             reverse,
             source,
-        });
+        };
     }
 
     /// Set the cursor icon
@@ -552,7 +573,7 @@ impl EventState {
     /// [`Events::handle_messages`].
     //
     // TODO: Can we identify the calling widget `id` via the context (EventCx)?
-    pub fn push_async<Fut, M>(&mut self, id: WidgetId, fut: Fut)
+    pub fn push_async<Fut, M>(&mut self, id: Id, fut: Fut)
     where
         Fut: IntoFuture<Output = M> + 'static,
         M: Debug + 'static,
@@ -563,7 +584,7 @@ impl EventState {
     /// Asynchronously push a type-erased message to the stack via a [`Future`]
     ///
     /// This is a low-level variant of [`Self::push_async`].
-    pub fn push_async_erased<Fut>(&mut self, id: WidgetId, fut: Fut)
+    pub fn push_async_erased<Fut>(&mut self, id: Id, fut: Fut)
     where
         Fut: IntoFuture<Output = Erased> + 'static,
     {
@@ -583,7 +604,7 @@ impl EventState {
     /// documentation of configuration.
     #[cfg(feature = "spawn")]
     #[cfg_attr(doc_cfg, doc(cfg(feature = "spawn")))]
-    pub fn push_spawn<Fut, M>(&mut self, id: WidgetId, fut: Fut)
+    pub fn push_spawn<Fut, M>(&mut self, id: Id, fut: Fut)
     where
         Fut: IntoFuture<Output = M> + 'static,
         Fut::IntoFuture: Send,
@@ -592,22 +613,16 @@ impl EventState {
         self.push_async(id, async_global_executor::spawn(fut.into_future()));
     }
 
-    /// Request re-configure of widget `id`
+    /// Request update and optionally configure to widget `id`
     ///
-    /// This method requires that `id` is a valid path to an already-configured
-    /// widget. E.g. if widget `w` adds a new child, it may call
-    /// `request_reconfigure(self.id())` but not
-    /// `request_reconfigure(child_id)` (which would cause a panic:
-    /// `'WidgetId::next_key_after: invalid'`).
-    pub fn request_reconfigure(&mut self, id: WidgetId) {
-        self.pending.push_back(Pending::Configure(id));
-    }
-
-    /// Request update to widget `id`
-    ///
-    /// Schedules a call to [`Events::update`] on widget `id`.
-    pub fn request_update(&mut self, id: WidgetId) {
-        self.pending.push_back(Pending::Update(id));
+    /// If `reconf`, widget `id` will be [configured](Events::configure)
+    /// (includes update), otherwise `id` will only be [updated](Events::update).
+    pub fn request_update(&mut self, id: Id, reconf: bool) {
+        self.pending_update = if let Some((id2, rc2)) = self.pending_update.take() {
+            Some((id.common_ancestor(&id2), reconf || rc2))
+        } else {
+            Some((id, reconf))
+        };
     }
 }
 
@@ -619,7 +634,7 @@ impl<'a> EventCx<'a> {
     ///
     /// This is a shortcut to [`ConfigCx::configure`].
     #[inline]
-    pub fn configure(&mut self, mut widget: Node<'_>, id: WidgetId) {
+    pub fn configure(&mut self, mut widget: Node<'_>, id: Id) {
         widget._configure(&mut self.config_cx(), id);
     }
 
@@ -645,23 +660,19 @@ impl<'a> EventCx<'a> {
         self.last_child
     }
 
-    /// Send an event to a widget
+    /// Send a command to a widget
     ///
-    /// Sends `event` to widget `id`. The event is queued to send later, thus
-    /// any actions by the receiving widget will not be immediately visible to
-    /// the caller of this method.
+    /// Sends [`Event::Command`] to widget `id`. The event is queued to send
+    /// later, thus any actions by the receiving widget will not be immediately
+    /// visible to the caller of this method.
     ///
-    /// When calling this method, be aware that:
-    ///
-    /// -   Some widgets use an inner component to handle events, thus calling
-    ///     with the outer widget's `id` may not have the desired effect.
-    ///     [`Layout::find_id`] and [`EventState::next_nav_focus`] are able to find
-    ///     the appropriate event-handling target.
-    ///     (TODO: do we need another method to find this target?)
-    /// -   Some events such as [`Event::PressMove`] contain embedded widget
-    ///     identifiers which may affect handling of the event.
-    pub fn send(&mut self, id: WidgetId, event: Event) {
-        self.pending.push_back(Pending::Send(id, event));
+    /// When calling this method, be aware that some widgets use an inner
+    /// component to handle events, thus calling with the outer widget's `id`
+    /// may not have the desired effect. [`Layout::find_id`] and
+    /// [`EventState::next_nav_focus`] are usually able to find the appropriate
+    /// event-handling target.
+    pub fn send_command(&mut self, id: Id, cmd: Command) {
+        self.pending_cmds.push_back((id, cmd));
     }
 
     /// Push a message to the stack
@@ -846,6 +857,18 @@ impl<'a> EventCx<'a> {
         self.shell.set_clipboard(content)
     }
 
+    /// True if the primary buffer is enabled
+    #[inline]
+    pub fn has_primary(&self) -> bool {
+        cfg_if::cfg_if! {
+            if #[cfg(unix)] {
+                true
+            } else {
+                false
+            }
+        }
+    }
+
     /// Get contents of primary buffer
     ///
     /// Linux has a "primary buffer" with implicit copy on text selection and
@@ -921,7 +944,7 @@ impl<'a> EventCx<'a> {
     /// This only succeeds if widget `id` has an active mouse-grab (see
     /// [`Press::grab`]). The cursor will be reset when the mouse-grab
     /// ends.
-    pub fn set_grab_cursor(&mut self, id: &WidgetId, icon: CursorIcon) {
+    pub fn set_grab_cursor(&mut self, id: &Id, icon: CursorIcon) {
         if let Some(ref grab) = self.mouse_grab {
             if grab.start_id == *id {
                 self.window.set_cursor_icon(icon);

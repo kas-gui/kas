@@ -57,7 +57,7 @@ impl_scope! {
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(MessageBoxOk) = cx.try_pop() {
-                cx.send_action(Action::CLOSE);
+                cx.action(self, Action::CLOSE);
             }
         }
 

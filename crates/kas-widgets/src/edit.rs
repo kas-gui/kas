@@ -7,7 +7,7 @@
 
 use crate::{ScrollBar, ScrollMsg};
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{Command, CursorIcon, ElementState, KeyCode, Scroll, ScrollDelta};
+use kas::event::{Command, CursorIcon, ElementState, FocusSource, KeyCode, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::{NotReady, SelectionHelper, Text};
@@ -178,13 +178,15 @@ impl_scope! {
             // Reset data on focus loss (update is inhibited with focus).
             // No need if we just sent a message (should cause an update).
             let string = (edit.guard.value_fn)(data);
-            *cx |= edit.set_string(string);
+            let action = edit.set_string(string);
+            cx.action(edit, action);
         }
 
         fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
             if !edit.has_edit_focus() {
                 let string = (edit.guard.value_fn)(data);
-                *cx |= edit.set_string(string);
+                let action = edit.set_string(string);
+                cx.action(edit, action);
             }
         }
 
@@ -239,19 +241,22 @@ impl_scope! {
                 // Reset data on focus loss (update is inhibited with focus).
                 // No need if we just sent a message (should cause an update).
                 let value = (edit.guard.value_fn)(data);
-                *cx |= edit.set_string(format!("{}", value));
+                let action = edit.set_string(format!("{}", value));
+                cx.action(edit, action);
             }
         }
 
         fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &A) {
             edit.guard.parsed = edit.get_str().parse().ok();
-            *cx |= edit.set_error_state(edit.guard.parsed.is_none());
+            let action = edit.set_error_state(edit.guard.parsed.is_none());
+            cx.action(edit, action);
         }
 
         fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
             if !edit.has_edit_focus() {
                 let value = (edit.guard.value_fn)(data);
-                *cx |= edit.set_string(format!("{}", value));
+                let action = edit.set_string(format!("{}", value));
+                cx.action(&edit, action);
                 edit.guard.parsed = None;
             }
         }
@@ -266,7 +271,7 @@ impl_scope! {
     ///
     /// By default, the editor supports a single-line only;
     /// [`Self::with_multi_line`] and [`Self::with_class`] can be used to change this.
-    #[autoimpl(Deref, DerefMut, HasStr, HasString using self.inner)]
+    #[autoimpl(Deref, DerefMut, HasStr using self.inner)]
     #[autoimpl(Clone, Default, Debug where G: trait)]
     #[widget]
     pub struct EditBox<G: EditGuard = DefaultGuard<()>> {
@@ -319,7 +324,7 @@ impl_scope! {
             self.update_scroll_bar(cx);
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }
@@ -358,34 +363,24 @@ impl_scope! {
         }
     }
 
-    impl Scrollable for Self {
-        #[inline]
-        fn scroll_axes(&self, size: Size) -> (bool, bool) {
-            self.inner.scroll_axes(size)
-        }
-
-        #[inline]
-        fn max_scroll_offset(&self) -> Offset {
-            self.inner.max_scroll_offset()
-        }
-
-        #[inline]
-        fn scroll_offset(&self) -> Offset {
-            self.inner.scroll_offset()
-        }
-
-        fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
-            let offset = self.inner.set_scroll_offset(cx, offset);
-            self.update_scroll_bar(cx);
-            offset
-        }
-    }
-
     impl Self {
         fn update_scroll_bar(&mut self, cx: &mut EventState) {
             let max_offset = self.inner.max_scroll_offset().1;
-            *cx |= self.bar.set_limits(max_offset, self.inner.rect().size.1);
+            let action = self.bar.set_limits(max_offset, self.inner.rect().size.1);
+            cx.action(&self, action);
             self.bar.set_value(cx, self.inner.view_offset.1);
+        }
+    }
+
+    impl HasString for Self {
+        fn set_string(&mut self, string: String) -> Action {
+            let mut action = self.inner.set_string(string);
+            if action.contains(Action::SCROLLED) {
+                action.remove(Action::SCROLLED);
+                let max_offset = self.inner.max_scroll_offset().1;
+                action |= self.bar.set_limits(max_offset, self.inner.rect().size.1);
+            }
+            action
         }
     }
 
@@ -607,7 +602,7 @@ impl_scope! {
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             self.outer_rect.contains(coord).then_some(self.id())
         }
 
@@ -659,21 +654,15 @@ impl_scope! {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> IsUsed {
-            fn request_focus<G: EditGuard>(s: &mut EditField<G>, cx: &mut EventCx, data: &G::Data) {
-                if !s.has_key_focus && cx.request_key_focus(s.id()) {
-                    s.has_key_focus = true;
-                    cx.set_scroll(Scroll::Rect(s.rect()));
-                    G::focus_gained(s, cx, data);
-                }
-            }
-
             match event {
                 Event::NavFocus(source) if source.key_or_synthetic() => {
-                    request_focus(self, cx, data);
+                    if !self.has_key_focus {
+                        cx.request_key_focus(self.id(), source);
+                    }
                     if !self.class.multi_line() {
                         self.selection.clear();
                         self.selection.set_edit_pos(self.text.str_len());
-                        cx.redraw(self.id());
+                        cx.redraw(self);
                     }
                     Used
                 }
@@ -681,25 +670,37 @@ impl_scope! {
                 Event::LostNavFocus => {
                     if !self.class.multi_line() {
                         self.selection.set_empty();
-                        cx.redraw(self.id());
+                        cx.redraw(self);
                     }
+                    Used
+                }
+                Event::SelFocus(source) => {
+                    // NOTE: sel focus implies key focus since we only request
+                    // the latter. We must set before calling self.set_primary.
+                    self.has_key_focus = true;
+                    if source == FocusSource::Pointer {
+                        self.set_primary(cx);
+                    }
+                    Used
+                }
+                Event::KeyFocus => {
+                    self.has_key_focus = true;
+                    cx.set_scroll(Scroll::Rect(self.rect()));
+                    G::focus_gained(self, cx, data);
                     Used
                 }
                 Event::LostKeyFocus => {
                     self.has_key_focus = false;
-                    cx.redraw(self.id());
+                    cx.redraw(&self);
                     G::focus_lost(self, cx, data);
                     Used
                 }
                 Event::LostSelFocus => {
                     self.selection.set_empty();
-                    cx.redraw(self.id());
+                    cx.redraw(self);
                     Used
                 }
                 Event::Command(cmd, code) => {
-                    // Note: we can receive a Command without key focus, but should
-                    // ensure we have focus before acting on it.
-                    request_focus(self, cx, data);
                     if self.has_key_focus {
                         match self.control_key(cx, data, cmd, code) {
                             Ok(r) => r,
@@ -759,24 +760,16 @@ impl_scope! {
                     TextInputAction::None => Used,
                     TextInputAction::Unused => Unused,
                     TextInputAction::Pan(delta) => self.pan_delta(cx, delta),
-                    TextInputAction::Focus => {
-                        request_focus(self, cx, data);
-                        Used
-                    }
-                    TextInputAction::Cursor(coord, anchor, clear, repeats) => {
-                        request_focus(self, cx, data);
-                        if self.has_key_focus {
+                    TextInputAction::Focus { coord, action } => {
+                        if let Some(coord) = coord {
                             self.set_edit_pos_from_coord(cx, coord);
-                            if anchor {
-                                self.selection.set_anchor();
-                            }
-                            if clear {
-                                self.selection.set_empty();
-                            }
-                            if repeats > 1 {
-                                self.selection.expand(&self.text, repeats);
-                            }
+                        }
+                        self.selection.action(&self.text, action);
+
+                        if self.has_key_focus {
                             self.set_primary(cx);
+                        } else {
+                            cx.request_key_focus(self.id(), FocusSource::Pointer);
                         }
                         Used
                     }
@@ -806,7 +799,7 @@ impl_scope! {
             if new_offset != self.view_offset {
                 self.view_offset = new_offset;
                 // No widget moves so do not need to report Action::REGION_MOVED
-                cx.redraw(self.id());
+                cx.redraw(self);
             }
             new_offset
         }
@@ -831,8 +824,7 @@ impl_scope! {
             if self.text.try_prepare().is_ok() {
                 self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
                 self.view_offset = self.view_offset.min(self.max_scroll_offset());
-                // We use SET_RECT just to set the outer scroll bar position:
-                action = Action::SET_RECT;
+                action = Action::SCROLLED;
             }
             action | self.set_error_state(false)
         }
@@ -1083,7 +1075,7 @@ impl<G: EditGuard> EditField<G> {
             );
         }
 
-        cx.redraw(self.id());
+        cx.redraw(&self);
         self.set_view_offset_from_edit_pos(cx);
     }
 
@@ -1165,7 +1157,7 @@ impl<G: EditGuard> EditField<G> {
         let action = match cmd {
             Command::Escape | Command::Deselect if !selection.is_empty() => {
                 self.selection.set_empty();
-                cx.redraw(self.id());
+                cx.redraw(&self);
                 Action::None
             }
             Command::Activate => Action::Activate,
@@ -1409,7 +1401,7 @@ impl<G: EditGuard> EditField<G> {
                     self.set_primary(cx);
                 }
                 self.edit_x_coord = x_coord;
-                cx.redraw(self.id());
+                cx.redraw(&self);
                 EditAction::None
             }
         };
@@ -1439,13 +1431,13 @@ impl<G: EditGuard> EditField<G> {
                 self.selection.set_edit_pos(pos);
                 self.set_view_offset_from_edit_pos(cx);
                 self.edit_x_coord = None;
-                cx.redraw(self.id());
+                cx.redraw(self);
             }
         }
     }
 
     fn set_primary(&self, cx: &mut EventCx) {
-        if !self.selection.is_empty() {
+        if self.has_key_focus && !self.selection.is_empty() && cx.has_primary() {
             let range = self.selection.range();
             cx.set_primary(String::from(&self.text.as_str()[range]));
         }
@@ -1459,7 +1451,7 @@ impl<G: EditGuard> EditField<G> {
         if new_offset != self.view_offset {
             delta -= self.view_offset - new_offset;
             self.view_offset = new_offset;
-            cx.redraw(self.id());
+            cx.redraw(self);
         }
 
         cx.set_scroll(if delta == Offset::ZERO {

@@ -57,7 +57,7 @@ impl_scope! {
             Visitor::frame(&mut self.frame, label, FrameStyle::Tab).set_rect(cx, rect)
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             self.rect().contains(coord).then_some(self.id())
         }
 

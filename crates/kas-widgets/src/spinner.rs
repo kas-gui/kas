@@ -127,7 +127,8 @@ impl<A, T: SpinnerValue> EditGuard for SpinnerGuard<A, T> {
 
     fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
         let value = (edit.guard.state_fn)(cx, data);
-        *cx |= edit.set_string(value.to_string());
+        let action = edit.set_string(value.to_string());
+        cx.action(edit, action);
     }
 
     fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, data: &A) {
@@ -135,7 +136,8 @@ impl<A, T: SpinnerValue> EditGuard for SpinnerGuard<A, T> {
             cx.push(ValueMsg(value));
         } else {
             let value = (edit.guard.state_fn)(&cx.config_cx(), data);
-            *cx |= edit.set_string(value.to_string());
+            let action = edit.set_string(value.to_string());
+            cx.action(edit, action);
         }
     }
 
@@ -147,7 +149,8 @@ impl<A, T: SpinnerValue> EditGuard for SpinnerGuard<A, T> {
         } else {
             is_err = true;
         };
-        *cx |= edit.set_error_state(is_err);
+        let action = edit.set_error_state(is_err);
+        cx.action(edit, action);
     }
 }
 
@@ -282,7 +285,7 @@ impl_scope! {
             self.edit.set_outer_rect(rect, FrameStyle::EditBox);
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             self.b_up.find_id(coord)
                 .or_else(|| self.b_down.find_id(coord))
                 .or_else(|| self.edit.find_id(coord))
@@ -298,7 +301,7 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn steal_event(&mut self, cx: &mut EventCx, data: &A, _: &WidgetId, event: &Event) -> IsUsed {
+        fn steal_event(&mut self, cx: &mut EventCx, data: &A, _: &Id, event: &Event) -> IsUsed {
             let btn = match event {
                 Event::Command(cmd, code) => match cmd {
                     Command::Down => {

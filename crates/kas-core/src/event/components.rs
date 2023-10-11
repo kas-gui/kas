@@ -9,8 +9,9 @@ use super::ScrollDelta::{LineDelta, PixelDelta};
 use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
-#[allow(unused)] use crate::text::SelectionHelper;
-use crate::{Action, WidgetId};
+#[allow(unused)]
+use crate::text::{SelectionAction, SelectionHelper};
+use crate::{Action, Id};
 use kas_macros::impl_default;
 use std::time::{Duration, Instant};
 
@@ -195,49 +196,45 @@ impl ScrollComponent {
     ///
     /// Sets [`Scroll::Rect`] to ensure correct scrolling of parents.
     ///
-    /// Returns `true` when the scroll offset changes.
-    pub fn focus_rect(&mut self, cx: &mut EventCx, rect: Rect, window_rect: Rect) -> bool {
+    /// Returns [`Action::REGION_MOVED`] when the scroll offset changes.
+    pub fn focus_rect(&mut self, cx: &mut EventCx, rect: Rect, window_rect: Rect) -> Action {
         self.glide.stop();
         let v = rect.pos - window_rect.pos;
         let off = Offset::conv(rect.size) - Offset::conv(window_rect.size);
         let offset = self.offset.max(v + off).min(v);
         let action = self.set_offset(offset);
         cx.set_scroll(Scroll::Rect(rect - self.offset));
-        if action.is_empty() {
-            false
-        } else {
-            *cx |= action;
-            true
-        }
+        action
     }
 
     /// Handle a [`Scroll`] action
-    pub fn scroll(&mut self, cx: &mut EventCx, window_rect: Rect, scroll: Scroll) {
+    pub fn scroll(&mut self, cx: &mut EventCx, window_rect: Rect, scroll: Scroll) -> Action {
         match scroll {
-            Scroll::None | Scroll::Scrolled => (),
+            Scroll::None | Scroll::Scrolled => Action::empty(),
             Scroll::Offset(delta) => {
                 let old_offset = self.offset;
-                *cx |= self.set_offset(old_offset - delta);
+                let action = self.set_offset(old_offset - delta);
                 cx.set_scroll(match delta - old_offset + self.offset {
                     delta if delta == Offset::ZERO => Scroll::Scrolled,
                     delta => Scroll::Offset(delta),
                 });
+                action
             }
-            Scroll::Rect(rect) => {
-                self.focus_rect(cx, rect, window_rect);
-            }
+            Scroll::Rect(rect) => self.focus_rect(cx, rect, window_rect),
         }
     }
 
-    fn scroll_by_delta(&mut self, cx: &mut EventCx, d: Offset) -> bool {
+    // Returns Action::REGION_MOVED or Action::empty()
+    fn scroll_by_delta(&mut self, cx: &mut EventCx, d: Offset) -> Action {
         let mut delta = d;
-        let mut moved = false;
+        let action;
         let offset = (self.offset - d).clamp(Offset::ZERO, self.max_offset);
         if offset != self.offset {
-            moved = true;
             delta = d - (self.offset - offset);
             self.offset = offset;
-            *cx |= Action::REGION_MOVED;
+            action = Action::REGION_MOVED;
+        } else {
+            action = Action::empty();
         }
 
         cx.set_scroll(if delta != Offset::ZERO {
@@ -246,7 +243,7 @@ impl ScrollComponent {
             Scroll::Scrolled
         });
 
-        moved
+        action
     }
 
     /// Use an event to scroll, if possible
@@ -270,10 +267,10 @@ impl ScrollComponent {
         &mut self,
         cx: &mut EventCx,
         event: Event,
-        id: WidgetId,
+        id: Id,
         window_rect: Rect,
     ) -> (bool, IsUsed) {
-        let mut moved = false;
+        let mut action = Action::empty();
         match event {
             Event::Command(cmd, _) => {
                 let offset = match cmd {
@@ -296,11 +293,7 @@ impl ScrollComponent {
                         self.offset - delta
                     }
                 };
-                let action = self.set_offset(offset);
-                if !action.is_empty() {
-                    moved = true;
-                    *cx |= action;
-                }
+                action = self.set_offset(offset);
                 cx.set_scroll(Scroll::Rect(window_rect));
             }
             Event::Scroll(delta) => {
@@ -309,19 +302,22 @@ impl ScrollComponent {
                     PixelDelta(d) => d,
                 };
                 self.glide.stop();
-                moved = self.scroll_by_delta(cx, delta);
+                action = self.scroll_by_delta(cx, delta);
             }
             Event::PressStart { press, .. }
                 if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>
             {
-                let _ = press.grab(id).with_icon(CursorIcon::Grabbing).with_cx(cx);
+                let _ = press
+                    .grab(id.clone())
+                    .with_icon(CursorIcon::Grabbing)
+                    .with_cx(cx);
                 self.glide.press_start();
             }
             Event::PressMove { press, delta, .. }
                 if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>
             {
                 if self.glide.press_move(delta) {
-                    moved = self.scroll_by_delta(cx, delta);
+                    action = self.scroll_by_delta(cx, delta);
                 }
             }
             Event::PressEnd { press, .. }
@@ -330,7 +326,7 @@ impl ScrollComponent {
                 let timeout = cx.config().scroll_flick_timeout();
                 let pan_dist_thresh = cx.config().pan_dist_thresh();
                 if self.glide.press_end(timeout, pan_dist_thresh) {
-                    cx.request_timer_update(id, PAYLOAD_GLIDE, Duration::new(0, 0), true);
+                    cx.request_timer_update(id.clone(), PAYLOAD_GLIDE, Duration::new(0, 0), true);
                 }
             }
             Event::TimerUpdate(pl) if pl == PAYLOAD_GLIDE => {
@@ -338,18 +334,23 @@ impl ScrollComponent {
                 let timeout = cx.config().scroll_flick_timeout();
                 let decay = cx.config().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(timeout, decay) {
-                    moved = self.scroll_by_delta(cx, delta);
+                    action = self.scroll_by_delta(cx, delta);
 
                     if self.glide.vel != Vec2::ZERO {
                         let dur = Duration::from_millis(GLIDE_POLL_MS);
-                        cx.request_timer_update(id, PAYLOAD_GLIDE, dur, true);
+                        cx.request_timer_update(id.clone(), PAYLOAD_GLIDE, dur, true);
                         cx.set_scroll(Scroll::Scrolled);
                     }
                 }
             }
             _ => return (false, Unused),
         }
-        (moved, Used)
+        if !action.is_empty() {
+            cx.action(id, action);
+            (true, Used)
+        } else {
+            (false, Used)
+        }
     }
 }
 
@@ -377,24 +378,21 @@ pub enum TextInputAction {
     Unused,
     /// Pan text using the given `delta`
     Pan(Offset),
-    /// Keyboard focus should be requested (if not already active)
+    /// Focus, optionally updating position and selection
     ///
-    /// This is also the case for variant `Cursor(_, true, _, _)` (i.e. if
-    /// `anchor == true`).
-    Focus,
-    /// Update cursor and/or selection: `(coord, anchor, clear, repeats)`
+    /// To handle:
     ///
-    /// The cursor position should be moved to `coord`.
-    ///
-    /// If `anchor`, the anchor position (used for word and line selection mode)
-    /// should be set to the new cursor position.
-    ///
-    /// If `clear`, the selection should be cleared (move selection position to
-    /// edit position).
-    ///
-    /// If `repeats > 1`, [`SelectionHelper::expand`] should be called with
-    /// this parameter to enable word/line selection mode.
-    Cursor(Coord, bool, bool, u32),
+    /// 1.  If a `coord` is included, translate to a text index then call
+    ///     [`SelectionHelper::set_edit_pos`].
+    /// 2.  Call [`SelectionHelper::action`].
+    /// 3.  If supporting the primary buffer (Unix), set its contents now if the
+    ///     widget has selection focus or otherwise when handling
+    ///     [`Event::SelFocus`] for a pointer source.
+    /// 4.  Request keyboard or selection focus if not already gained.
+    Focus {
+        coord: Option<Coord>,
+        action: SelectionAction,
+    },
 }
 
 impl TextInput {
@@ -406,24 +404,35 @@ impl TextInput {
     ///
     /// Implements scrolling and text selection behaviour, excluding handling of
     /// [`Event::Scroll`].
-    pub fn handle(&mut self, cx: &mut EventCx, w_id: WidgetId, event: Event) -> TextInputAction {
+    pub fn handle(&mut self, cx: &mut EventCx, w_id: Id, event: Event) -> TextInputAction {
         use TextInputAction as Action;
         match event {
             Event::PressStart { press } if press.is_primary() => {
-                let (action, icon) = match *press {
+                let mut action = Action::Focus {
+                    coord: None,
+                    action: SelectionAction::default(),
+                };
+                let icon = match *press {
                     PressSource::Touch(touch_id) => {
                         self.touch_phase = TouchPhase::Start(touch_id, press.coord);
                         let delay = cx.config().touch_select_delay();
                         cx.request_timer_update(w_id.clone(), PAYLOAD_SELECT, delay, false);
-                        (Action::Focus, None)
+                        None
                     }
                     PressSource::Mouse(..) if cx.config_enable_mouse_text_pan() => {
-                        (Action::Focus, Some(CursorIcon::Grabbing))
+                        Some(CursorIcon::Grabbing)
                     }
-                    PressSource::Mouse(_, repeats) => (
-                        Action::Cursor(press.coord, true, !cx.modifiers().shift_key(), repeats),
-                        None,
-                    ),
+                    PressSource::Mouse(_, repeats) => {
+                        action = Action::Focus {
+                            coord: Some(press.coord),
+                            action: SelectionAction {
+                                anchor: true,
+                                clear: !cx.modifiers().shift_key(),
+                                repeats,
+                            },
+                        };
+                        None
+                    }
                 };
                 press.grab(w_id).with_opt_icon(icon).with_cx(cx);
                 self.glide.press_start();
@@ -443,14 +452,18 @@ impl TextInput {
                             }
                         }
                         TouchPhase::Pan(id) if id == touch_id => Action::Pan(delta),
-                        _ => Action::Cursor(press.coord, false, false, 1),
+                        _ => Action::Focus {
+                            coord: Some(press.coord),
+                            action: SelectionAction::new(false, false, 1),
+                        },
                     },
                     PressSource::Mouse(..) if cx.config_enable_mouse_text_pan() => {
                         Action::Pan(delta)
                     }
-                    PressSource::Mouse(_, repeats) => {
-                        Action::Cursor(press.coord, false, false, repeats)
-                    }
+                    PressSource::Mouse(_, repeats) => Action::Focus {
+                        coord: Some(press.coord),
+                        action: SelectionAction::new(false, false, repeats),
+                    },
                 }
             }
             Event::PressEnd { press, .. } if press.is_primary() => {
@@ -469,7 +482,10 @@ impl TextInput {
                 match self.touch_phase {
                     TouchPhase::Start(touch_id, coord) => {
                         self.touch_phase = TouchPhase::Cursor(touch_id);
-                        Action::Cursor(coord, true, !cx.modifiers().shift_key(), 1)
+                        Action::Focus {
+                            coord: Some(coord),
+                            action: SelectionAction::new(true, !cx.modifiers().shift_key(), 1),
+                        }
                     }
                     // Note: if the TimerUpdate were from another requester it
                     // should technically be Unused, but it doesn't matter

@@ -86,7 +86,8 @@ impl_scope! {
 
         #[inline]
         fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
-            *cx |= self.scroll.set_offset(offset);
+            let action = self.scroll.set_offset(offset);
+            cx.action(&self, action);
             self.scroll.offset()
         }
     }
@@ -122,7 +123,7 @@ impl_scope! {
             self.scroll_offset()
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }
@@ -148,7 +149,8 @@ impl_scope! {
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, scroll: Scroll) {
-            self.scroll.scroll(cx, self.rect(), scroll);
+            let action = self.scroll.scroll(cx, self.rect(), scroll);
+            cx.action(self, action);
         }
     }
 }

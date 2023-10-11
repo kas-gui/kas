@@ -5,13 +5,13 @@
 
 //! Configuration context
 
-use super::Pending;
-use crate::event::EventState;
+use super::PendingNavFocus;
+use crate::event::{EventState, FocusSource};
 use crate::geom::{Rect, Size};
 use crate::layout::AlignPair;
 use crate::text::TextApi;
 use crate::theme::{Feature, SizeCx, TextClass, ThemeSize};
-use crate::{Action, Node, WidgetId};
+use crate::{Id, Node};
 use std::ops::{Deref, DerefMut};
 
 #[allow(unused)] use crate::{event::Event, Events, Layout};
@@ -57,10 +57,10 @@ impl<'a> ConfigCx<'a> {
     pub fn disable_nav_focus(&mut self, disabled: bool) {
         self.ev.config.nav_focus = !disabled;
         if disabled {
-            if let Some(id) = self.ev.nav_focus.take() {
-                self.pending
-                    .push_back(Pending::Send(id, Event::LostNavFocus));
-            }
+            self.pending_nav_focus = PendingNavFocus::Set {
+                target: None,
+                source: FocusSource::Synthetic,
+            };
         }
     }
 
@@ -74,7 +74,7 @@ impl<'a> ConfigCx<'a> {
     /// Pass the `id` to assign to the widget. This is usually constructed with
     /// [`Events::make_child_id`].
     #[inline]
-    pub fn configure(&mut self, mut widget: Node<'_>, id: WidgetId) {
+    pub fn configure(&mut self, mut widget: Node<'_>, id: Id) {
         widget._configure(self, id);
     }
 
@@ -113,13 +113,6 @@ impl<'a> ConfigCx<'a> {
         align: Option<AlignPair>,
     ) {
         self.sh.text_set_size(text, class, size, align)
-    }
-}
-
-impl<'a> std::ops::BitOrAssign<Action> for ConfigCx<'a> {
-    #[inline]
-    fn bitor_assign(&mut self, action: Action) {
-        self.ev.send_action(action);
     }
 }
 

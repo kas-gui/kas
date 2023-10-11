@@ -12,7 +12,7 @@ use super::{EventCx, IsUsed, Unused, Used};
 #[allow(unused)] use super::{EventState, GrabMode};
 use super::{Key, KeyCode, KeyEvent, Press};
 use crate::geom::{DVec2, Offset};
-use crate::{dir::Direction, WidgetId, WindowId};
+use crate::{dir::Direction, Id, WindowId};
 #[allow(unused)] use crate::{Events, Popup};
 
 /// Events addressed to a widget
@@ -185,10 +185,12 @@ pub enum Event {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     PopupClosed(WindowId),
-    /// Sent when a widget receives navigation focus
+    /// Notification that a widget has gained navigation focus
     ///
     /// Navigation focus implies that the widget is highlighted and will be the
-    /// primary target of [`Event::Command`].
+    /// primary target of [`Event::Command`], and is thus able to receive basic
+    /// keyboard input (e.g. arrow keys). To receive full keyboard input
+    /// ([`Event::Key`]), call [`EventState::request_key_focus`].
     ///
     /// With [`FocusSource::Pointer`] the widget should already have received
     /// [`Event::PressStart`].
@@ -196,28 +198,33 @@ pub enum Event {
     /// With [`FocusSource::Key`], [`EventCx::set_scroll`] is
     /// called automatically (to ensure that the widget is visible) and the
     /// response will be forced to [`Used`].
-    ///
-    /// The widget may wish to call [`EventState::request_key_focus`], but
-    /// likely only when [`FocusSource::key_or_synthetic`].
     NavFocus(FocusSource),
-    /// Sent when a widget becomes the mouse hover target
-    ///
-    /// The payload is `true` when focus is gained, `false` when lost.
-    MouseHover(bool),
-    /// Sent when a widget loses navigation focus
+    /// Notification that a widget has lost navigation focus
     LostNavFocus,
-    /// Widget lost keyboard input focus
+    /// Notification that a widget has gained selection focus
     ///
-    /// This focus is gained through the widget calling [`EventState::request_key_focus`].
-    LostKeyFocus,
-    /// Widget lost selection focus
-    ///
-    /// This focus is gained through the widget calling [`EventState::request_sel_focus`]
-    /// or [`EventState::request_key_focus`].
+    /// This focus must be requested by calling
+    /// [`EventState::request_sel_focus`] or [`EventState::request_key_focus`].
+    SelFocus(FocusSource),
+    /// Notification that a widget has lost selection focus
     ///
     /// In the case the widget also had character focus, [`Event::LostKeyFocus`] is
     /// received first.
     LostSelFocus,
+    /// Notification that a widget has gained keyboard input focus
+    ///
+    /// This focus must be requested by calling
+    /// [`EventState::request_key_focus`].
+    ///
+    /// This is always preceeded by [`Event::SelFocus`] and is received prior to
+    /// [`Event::Key`] events.
+    KeyFocus,
+    /// Notification that a widget has lost keyboard input focus
+    LostKeyFocus,
+    /// Notification that a widget gains or loses mouse hover
+    ///
+    /// The payload is `true` when focus is gained, `false` when lost.
+    MouseHover(bool),
 }
 
 impl std::ops::Add<Offset> for Event {
@@ -263,7 +270,7 @@ impl Event {
     pub fn on_activate<F: FnOnce(&mut EventCx) -> IsUsed>(
         self,
         cx: &mut EventCx,
-        id: WidgetId,
+        id: Id,
         f: F,
     ) -> IsUsed {
         match self {
@@ -296,7 +303,7 @@ impl Event {
             Key(_, _) | Scroll(_) | Pan { .. } => false,
             CursorMove { .. } | PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | PopupClosed(_) => true,
-            NavFocus { .. } | MouseHover(_) => false,
+            NavFocus { .. } | SelFocus(_) | KeyFocus | MouseHover(_) => false,
             LostNavFocus | LostKeyFocus | LostSelFocus => true,
         }
     }
@@ -317,8 +324,10 @@ impl Event {
             CursorMove { .. } | PressStart { .. } => true,
             PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | PopupClosed(_) => false,
-            NavFocus { .. } | MouseHover(_) | LostNavFocus => false,
-            LostKeyFocus | LostSelFocus => false,
+            NavFocus { .. } | LostNavFocus => false,
+            SelFocus(_) | LostSelFocus => false,
+            KeyFocus | LostKeyFocus => false,
+            MouseHover(_) => false,
         }
     }
 }

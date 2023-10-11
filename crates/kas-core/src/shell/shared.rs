@@ -109,7 +109,7 @@ where
 impl<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellShared<Data, S, T> {
     /// Return the next window identifier
     ///
-    /// TODO(opt): this should recycle used identifiers since WidgetId does not
+    /// TODO(opt): this should recycle used identifiers since Id does not
     /// efficiently represent large numbers.
     pub(crate) fn next_window_id(&mut self) -> WindowId {
         let id = self.window_id + 1;

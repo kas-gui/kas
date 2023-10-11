@@ -12,7 +12,7 @@ use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType
 use crate::event::{ConfigCx, EventState};
 use crate::geom::{Offset, Rect};
 use crate::text::{TextApi, TextDisplay};
-use crate::{autoimpl, Action, Layout, WidgetId};
+use crate::{autoimpl, Id, Layout};
 use std::convert::AsRef;
 use std::ops::{Bound, Range, RangeBounds};
 use std::time::Instant;
@@ -41,7 +41,7 @@ pub enum Background {
 ///     `&W` from `&mut W`, since the latter would cause borrow conflicts
 pub struct DrawCx<'a> {
     h: &'a mut dyn ThemeDraw,
-    id: WidgetId,
+    id: Id,
 }
 
 impl<'a> DrawCx<'a> {
@@ -51,7 +51,7 @@ impl<'a> DrawCx<'a> {
     /// coercion: essentially, the pointer is copied under a new, shorter, lifetime.
     /// Until rfcs#1403 lands, reborrows on user types require a method call.
     #[inline(always)]
-    pub fn re_id<'b>(&'b mut self, id: WidgetId) -> DrawCx<'b>
+    pub fn re_id<'b>(&'b mut self, id: Id) -> DrawCx<'b>
     where
         'a: 'b,
     {
@@ -83,7 +83,7 @@ impl<'a> DrawCx<'a> {
     /// Construct from a [`DrawCx`] and [`EventState`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(h: &'a mut dyn ThemeDraw, id: WidgetId) -> Self {
+    pub fn new(h: &'a mut dyn ThemeDraw, id: Id) -> Self {
         DrawCx { h, id }
     }
 
@@ -331,13 +331,6 @@ impl<'a> DrawCx<'a> {
     }
 }
 
-impl<'a> std::ops::BitOrAssign<Action> for DrawCx<'a> {
-    #[inline]
-    fn bitor_assign(&mut self, action: Action) {
-        self.h.components().2.send_action(action);
-    }
-}
-
 /// Theme drawing implementation
 ///
 /// # Theme extension
@@ -407,7 +400,7 @@ pub trait ThemeDraw {
     /// Draw a frame inside the given `rect`
     ///
     /// The frame dimensions are given by [`ThemeSize::frame`].
-    fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle, bg: Background);
+    fn frame(&mut self, id: &Id, rect: Rect, style: FrameStyle, bg: Background);
 
     /// Draw a separator in the given `rect`
     fn separator(&mut self, rect: Rect);
@@ -419,7 +412,7 @@ pub trait ThemeDraw {
     ///
     /// [`ConfigCx::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text(&mut self, id: &WidgetId, rect: Rect, text: &TextDisplay, class: TextClass);
+    fn text(&mut self, id: &Id, rect: Rect, text: &TextDisplay, class: TextClass);
 
     /// Draw text with effects
     ///
@@ -429,12 +422,12 @@ pub trait ThemeDraw {
     ///
     /// [`ConfigCx::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text_effects(&mut self, id: &WidgetId, rect: Rect, text: &dyn TextApi, class: TextClass);
+    fn text_effects(&mut self, id: &Id, rect: Rect, text: &dyn TextApi, class: TextClass);
 
     /// Method used to implement [`DrawCx::text_selected`]
     fn text_selected_range(
         &mut self,
-        id: &WidgetId,
+        id: &Id,
         rect: Rect,
         text: &TextDisplay,
         range: Range<usize>,
@@ -447,7 +440,7 @@ pub trait ThemeDraw {
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text_cursor(
         &mut self,
-        id: &WidgetId,
+        id: &Id,
         rect: Rect,
         text: &TextDisplay,
         class: TextClass,
@@ -462,7 +455,7 @@ pub trait ThemeDraw {
     /// The theme may animate transitions. To achieve this, `last_change` should be
     /// the time of the last state change caused by the user, or none when the
     /// last state change was programmatic.
-    fn check_box(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>);
+    fn check_box(&mut self, id: &Id, rect: Rect, checked: bool, last_change: Option<Instant>);
 
     /// Draw UI element: radio button
     ///
@@ -472,50 +465,36 @@ pub trait ThemeDraw {
     /// The theme may animate transitions. To achieve this, `last_change` should be
     /// the time of the last state change caused by the user, or none when the
     /// last state change was programmatic.
-    fn radio_box(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>);
+    fn radio_box(&mut self, id: &Id, rect: Rect, checked: bool, last_change: Option<Instant>);
 
     /// Draw UI element: mark
-    fn mark(&mut self, id: &WidgetId, rect: Rect, style: MarkStyle);
+    fn mark(&mut self, id: &Id, rect: Rect, style: MarkStyle);
 
     /// Draw UI element: scroll bar
     ///
-    /// -   `id`: [`WidgetId`] of the bar
-    /// -   `grip_id`: [`WidgetId`] of the grip
+    /// -   `id`: [`Id`] of the bar
+    /// -   `grip_id`: [`Id`] of the grip
     /// -   `rect`: area of whole widget (slider track)
     /// -   `grip_rect`: area of slider grip
     /// -   `dir`: direction of bar
-    fn scroll_bar(
-        &mut self,
-        id: &WidgetId,
-        grip_id: &WidgetId,
-        rect: Rect,
-        grip_rect: Rect,
-        dir: Direction,
-    );
+    fn scroll_bar(&mut self, id: &Id, grip_id: &Id, rect: Rect, grip_rect: Rect, dir: Direction);
 
     /// Draw UI element: slider
     ///
-    /// -   `id`: [`WidgetId`] of the bar
-    /// -   `grip_id`: [`WidgetId`] of the grip
+    /// -   `id`: [`Id`] of the bar
+    /// -   `grip_id`: [`Id`] of the grip
     /// -   `rect`: area of whole widget (slider track)
     /// -   `grip_rect`: area of slider grip
     /// -   `dir`: direction of slider (currently only LTR or TTB)
-    fn slider(
-        &mut self,
-        id: &WidgetId,
-        grip_id: &WidgetId,
-        rect: Rect,
-        grip_rect: Rect,
-        dir: Direction,
-    );
+    fn slider(&mut self, id: &Id, grip_id: &Id, rect: Rect, grip_rect: Rect, dir: Direction);
 
     /// Draw UI element: progress bar
     ///
-    /// -   `id`: [`WidgetId`] of the bar
+    /// -   `id`: [`Id`] of the bar
     /// -   `rect`: area of whole widget
     /// -   `dir`: direction of progress bar
     /// -   `value`: progress value, between 0.0 and 1.0
-    fn progress_bar(&mut self, id: &WidgetId, rect: Rect, dir: Direction, value: f32);
+    fn progress_bar(&mut self, id: &Id, rect: Rect, dir: Direction, value: f32);
 
     /// Draw an image
     fn image(&mut self, id: ImageId, rect: Rect);

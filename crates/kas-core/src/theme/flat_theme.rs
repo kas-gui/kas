@@ -20,7 +20,7 @@ use kas::theme::dimensions as dim;
 use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use kas::theme::{ColorsLinear, Config, InputState, Theme};
 use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
-use kas::{Action, WidgetId};
+use kas::{Action, Id};
 
 // Used to ensure a rectangular background is inside a circular corner.
 // Also the maximum inner radius of circular borders to overlap with this rect.
@@ -242,7 +242,7 @@ where
         inner
     }
 
-    pub fn edit_box(&mut self, id: &WidgetId, outer: Quad, bg: Background) {
+    pub fn edit_box(&mut self, id: &Id, outer: Quad, bg: Background) {
         let state = InputState::new_except_depress(self.ev, id);
         let col_bg = self.cols.from_edit_bg(bg, state);
         if col_bg != self.cols.background {
@@ -351,7 +351,7 @@ where
         f(&mut handle);
     }
 
-    fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle, bg: Background) {
+    fn frame(&mut self, id: &Id, rect: Rect, style: FrameStyle, bg: Background) {
         let outer = Quad::conv(rect);
         match style {
             FrameStyle::None => {
@@ -430,13 +430,7 @@ where
         }
     }
 
-    fn check_box(
-        &mut self,
-        id: &WidgetId,
-        rect: Rect,
-        checked: bool,
-        last_change: Option<Instant>,
-    ) {
+    fn check_box(&mut self, id: &Id, rect: Rect, checked: bool, last_change: Option<Instant>) {
         let state = InputState::new_all(self.ev, id);
         let outer = Quad::conv(rect);
         let inner = outer.shrink(self.w.dims.button_frame as f32);
@@ -455,13 +449,7 @@ where
         self.check_mark(inner, state, checked, last_change);
     }
 
-    fn radio_box(
-        &mut self,
-        id: &WidgetId,
-        rect: Rect,
-        checked: bool,
-        last_change: Option<Instant>,
-    ) {
+    fn radio_box(&mut self, id: &Id, rect: Rect, checked: bool, last_change: Option<Instant>) {
         let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
 
         let state = InputState::new_all(self.ev, id);
@@ -500,14 +488,7 @@ where
         }
     }
 
-    fn scroll_bar(
-        &mut self,
-        id: &WidgetId,
-        id2: &WidgetId,
-        rect: Rect,
-        h_rect: Rect,
-        _: Direction,
-    ) {
+    fn scroll_bar(&mut self, id: &Id, id2: &Id, rect: Rect, h_rect: Rect, _: Direction) {
         // track
         let outer = Quad::conv(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
@@ -525,7 +506,7 @@ where
         self.draw.rounded_frame(outer, inner, 0.0, col);
     }
 
-    fn slider(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
+    fn slider(&mut self, id: &Id, id2: &Id, rect: Rect, h_rect: Rect, dir: Direction) {
         let state = InputState::new2(self.ev, id, id2);
 
         // track
@@ -583,7 +564,7 @@ where
         self.draw.circle(outer, 14.0 / 16.0, col);
     }
 
-    fn progress_bar(&mut self, _: &WidgetId, rect: Rect, dir: Direction, value: f32) {
+    fn progress_bar(&mut self, _: &Id, rect: Rect, dir: Direction, value: f32) {
         let mut outer = Quad::conv(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
         self.draw.rounded_frame(outer, inner, 0.75, self.cols.frame);

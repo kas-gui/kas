@@ -15,7 +15,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::{Text, TextApi};
 use crate::theme::{DrawCx, SizeCx, TextClass};
-use crate::{Erased, Layout, NavAdvance, Node, Widget, WidgetId};
+use crate::{Erased, Id, Layout, NavAdvance, Node, Widget};
 use kas_macros::{autoimpl, impl_scope};
 
 impl_scope! {
@@ -99,7 +99,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn id_ref(&self) -> &WidgetId {
+        fn id_ref(&self) -> &Id {
             self.inner.id_ref()
         }
 
@@ -123,7 +123,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+        fn find_child_index(&self, id: &Id) -> Option<usize> {
             self.inner.find_child_index(id)
         }
 
@@ -148,7 +148,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             self.inner.find_id(coord)
         }
 
@@ -175,17 +175,17 @@ impl_scope! {
             self.inner.for_child_node(&(), index, closure)
         }
 
-        fn _configure(&mut self, cx: &mut ConfigCx, _: &A, id: WidgetId) {
+        fn _configure(&mut self, cx: &mut ConfigCx, _: &A, id: Id) {
             self.inner._configure(cx, &(), id);
         }
 
         fn _update(&mut self, _: &mut ConfigCx, _: &A) {}
 
-        fn _send(&mut self, cx: &mut EventCx, _: &A, id: WidgetId, disabled: bool, event: Event) -> IsUsed {
+        fn _send(&mut self, cx: &mut EventCx, _: &A, id: Id, disabled: bool, event: Event) -> IsUsed {
             self.inner._send(cx, &(), id, disabled, event)
         }
 
-        fn _replay(&mut self, cx: &mut EventCx, _: &A, id: WidgetId, msg: Erased) {
+        fn _replay(&mut self, cx: &mut EventCx, _: &A, id: Id, msg: Erased) {
             self.inner._replay(cx, &(), id, msg);
         }
 
@@ -193,9 +193,9 @@ impl_scope! {
             &mut self,
             cx: &mut EventCx,
             _: &A,
-            focus: Option<&WidgetId>,
+            focus: Option<&Id>,
             advance: NavAdvance,
-        ) -> Option<WidgetId> {
+        ) -> Option<Id> {
             self.inner._nav_next(cx, &(), focus, advance)
         }
     }

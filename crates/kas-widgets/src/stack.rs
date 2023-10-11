@@ -51,7 +51,7 @@ impl_scope! {
         active: usize,
         size_limit: usize,
         next: usize,
-        id_map: HashMap<usize, usize>, // map key of WidgetId to index
+        id_map: HashMap<usize, usize>, // map key of Id to index
     }
 
     impl Widget for Self {
@@ -78,7 +78,7 @@ impl_scope! {
             self.widgets.get(index).map(|(w, _)| w.as_layout())
         }
 
-        fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+        fn find_child_index(&self, id: &Id) -> Option<usize> {
             id.next_key_after(self.id_ref())
                 .and_then(|k| self.id_map.get(&k).cloned())
         }
@@ -125,7 +125,7 @@ impl_scope! {
             }
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             if let Some(entry) = self.widgets.get_mut(self.active) {
                 debug_assert_eq!(entry.1, State::Sized);
                 return entry.0.find_id(coord);
@@ -142,7 +142,7 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn make_child_id(&mut self, index: usize) -> WidgetId {
+        fn make_child_id(&mut self, index: usize) -> Id {
             if let Some((child, state)) = self.widgets.get(index) {
                 if state.is_configured() {
                     debug_assert!(child.id_ref().is_valid());
@@ -292,15 +292,15 @@ impl<W: Widget> Stack<W> {
             }
 
             if entry.1 == State::Configured {
-                *cx |= Action::RESIZE;
+                cx.resize(self);
             } else {
                 debug_assert_eq!(entry.1, State::Sized);
                 entry.0.set_rect(cx, self.core.rect);
-                *cx |= Action::REGION_MOVED;
+                cx.region_moved();
             }
         } else {
             if old_index < self.widgets.len() {
-                *cx |= Action::REGION_MOVED;
+                cx.region_moved();
             }
         }
     }
@@ -379,7 +379,7 @@ impl<W: Widget> Stack<W> {
         let result = self.widgets.pop().map(|(w, _)| w);
         if let Some(w) = result.as_ref() {
             if self.active > 0 && self.active == self.widgets.len() {
-                *cx |= Action::REGION_MOVED;
+                cx.region_moved();
             }
 
             if w.id_ref().is_valid() {
@@ -430,7 +430,7 @@ impl<W: Widget> Stack<W> {
 
         if self.active == index {
             self.active = usize::MAX;
-            *cx |= Action::REGION_MOVED;
+            cx.region_moved();
         }
 
         for v in self.id_map.values_mut() {
@@ -462,7 +462,7 @@ impl<W: Widget> Stack<W> {
         }
 
         if index == self.active {
-            *cx |= Action::RESIZE;
+            cx.resize(self);
         }
 
         widget

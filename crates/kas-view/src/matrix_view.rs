@@ -39,7 +39,7 @@ impl_scope! {
     /// required when the matrix is scrolled, keeping the number of widgets in
     /// use roughly proportional to the number of data items within the view.
     ///
-    /// Each view widget has a [`WidgetId`] corresponding to its current data
+    /// Each view widget has an [`Id`] corresponding to its current data
     /// item, and may handle events and emit messages like other widegts.
     /// See [`Driver`] documentation for more on event handling.
     ///
@@ -252,13 +252,13 @@ impl_scope! {
 
             let offset = self.scroll_offset();
             let skip = (self.child_size + self.child_inter_margin).max(Size(1, 1));
-            let mut first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
-            let mut first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
             let data_len = data.len();
-            let col_len = (data_len.0 - first_col).min(self.alloc_len.cols.cast());
-            let row_len = (data_len.1 - first_row).min(self.alloc_len.rows.cast());
-            first_col = first_col.min(data_len.0 - col_len);
-            first_row = first_row.min(data_len.1 - row_len);
+            let col_len = data_len.0.min(self.alloc_len.cols.cast());
+            let row_len = data_len.1.min(self.alloc_len.rows.cast());
+            let first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0))
+                .min(data_len.0 - col_len);
+            let first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1))
+                .min(data_len.1 - row_len);
             self.cur_len = (col_len.cast(), row_len.cast());
             debug_assert!(self.num_children() <= self.widgets.len());
             self.first_data = (first_row.cast(), first_col.cast());
@@ -331,7 +331,8 @@ impl_scope! {
             let skip = self.child_size + self.child_inter_margin;
             let content_size = (skip.cwise_mul(self.data_len) - self.child_inter_margin)
                 .max(Size::ZERO);
-            *cx |= self.scroll.set_sizes(view_size, content_size);
+            let action = self.scroll.set_sizes(view_size, content_size);
+            cx.action(self, action);
         }
     }
 
@@ -355,8 +356,9 @@ impl_scope! {
 
         #[inline]
         fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
-            *cx |= self.scroll.set_offset(offset);
-            cx.request_update(self.id());
+            let action = self.scroll.set_offset(offset);
+            cx.action(&self, action);
+            cx.request_update(self.id(), false);
             self.scroll.offset()
         }
     }
@@ -369,7 +371,7 @@ impl_scope! {
         fn get_child(&self, index: usize) -> Option<&dyn Layout> {
             self.widgets.get(index).map(|w| w.widget.as_layout())
         }
-        fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+        fn find_child_index(&self, id: &Id) -> Option<usize> {
             let num = self.num_children();
             let key = A::Key::reconstruct_key(self.id_ref(), id);
             if key.is_some() {
@@ -440,7 +442,7 @@ impl_scope! {
 
             // Widgets need configuring and updating: do so by updating self.
             self.cur_len = (0, 0); // hack: prevent drawing in the mean-time
-            cx.request_update(self.id());
+            cx.request_update(self.id(), false);
 
             let avail = rect.size - self.frame_size;
             let child_size = Size(avail.0 / self.ideal_len.cols, avail.1 / self.ideal_len.rows)
@@ -487,7 +489,7 @@ impl_scope! {
             self.scroll_offset()
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }
@@ -527,7 +529,7 @@ impl_scope! {
 
     impl Events for Self {
         #[inline]
-        fn make_child_id(&mut self, _: usize) -> WidgetId {
+        fn make_child_id(&mut self, _: usize) -> Id {
             // We configure children in update_widgets and do not want this method to be called
             unimplemented!()
         }
@@ -563,7 +565,7 @@ impl_scope! {
                 // We must call at least SET_RECT to update scrollable region
                 // RESIZE allows recalculation of child widget size which may
                 // have been zero if no data was initially available!
-                *cx |= Action::RESIZE;
+                cx.resize(&self);
             }
 
             self.update_widgets(cx, data);
@@ -607,7 +609,9 @@ impl_scope! {
                     };
                     return if let Some((ci, ri)) = data_index {
                         // Set nav focus and update scroll position
-                        if self.scroll.focus_rect(cx, solver.rect(ci, ri), self.core.rect) {
+                        let action = self.scroll.focus_rect(cx, solver.rect(ci, ri), self.core.rect);
+                        if !action.is_empty() {
+                            cx.action(&self, action);
                             solver = self.update_widgets(&mut cx.config_cx(), data);
                         }
 
@@ -698,13 +702,13 @@ impl_scope! {
                 match self.sel_mode {
                     SelectionMode::None => (),
                     SelectionMode::Single => {
-                        cx.redraw(self.id());
+                        cx.redraw(&self);
                         self.selection.clear();
                         self.selection.insert(key.clone());
                         cx.push(SelectionMsg::Select(key));
                     }
                     SelectionMode::Multiple => {
-                        cx.redraw(self.id());
+                        cx.redraw(&self);
                         if self.selection.remove(&key) {
                             cx.push(SelectionMsg::Deselect(key));
                         } else {
@@ -717,8 +721,9 @@ impl_scope! {
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &A, scroll: Scroll) {
-            self.scroll.scroll(cx, self.rect(), scroll);
+            let act = self.scroll.scroll(cx, self.rect(), scroll);
             self.update_widgets(&mut cx.config_cx(), data);
+            cx.action(self, act);
         }
     }
 
@@ -741,7 +746,7 @@ impl_scope! {
             }
         }
 
-        fn _configure(&mut self, cx: &mut ConfigCx, data: &A, id: WidgetId) {
+        fn _configure(&mut self, cx: &mut ConfigCx, data: &A, id: Id) {
             self.core.id = id;
             #[cfg(debug_assertions)]
             self.core.status.configure(&self.core.id);
@@ -761,14 +766,14 @@ impl_scope! {
             &mut self,
             cx: &mut EventCx,
             data: &A,
-            id: WidgetId,
+            id: Id,
             disabled: bool,
             event: Event,
         ) -> IsUsed {
             kas::impls::_send(self, cx, data, id, disabled, event)
         }
 
-        fn _replay(&mut self, cx: &mut EventCx, data: &A, id: WidgetId, msg: kas::Erased) {
+        fn _replay(&mut self, cx: &mut EventCx, data: &A, id: Id, msg: kas::Erased) {
             kas::impls::_replay(self, cx, data, id, msg);
         }
 
@@ -777,9 +782,9 @@ impl_scope! {
             &mut self,
             cx: &mut EventCx,
             data: &A,
-            focus: Option<&WidgetId>,
+            focus: Option<&Id>,
             advance: NavAdvance,
-        ) -> Option<WidgetId> {
+        ) -> Option<Id> {
             if cx.is_disabled(self.id_ref()) || self.cur_len == (0, 0) {
                 return None;
             }
@@ -828,7 +833,9 @@ impl_scope! {
                     (d_cols - 1, d_rows - 1)
                 };
 
-                if self.scroll.focus_rect(cx, solver.rect(ci, ri), self.core.rect) {
+                let action = self.scroll.focus_rect(cx, solver.rect(ci, ri), self.core.rect);
+                if !action.is_empty() {
+                    cx.action(&self, action);
                     solver = self.update_widgets(&mut cx.config_cx(), data);
                 }
 

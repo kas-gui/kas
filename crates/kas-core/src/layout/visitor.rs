@@ -16,7 +16,7 @@ use crate::draw::color::Rgb;
 use crate::event::ConfigCx;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::theme::{Background, DrawCx, FrameStyle, MarginStyle, SizeCx};
-use crate::WidgetId;
+use crate::Id;
 use crate::{dir::Directional, dir::Directions, Layout};
 use std::iter::ExactSizeIterator;
 
@@ -35,12 +35,12 @@ pub trait Visitable {
     /// This method is identical to [`Layout::set_rect`].
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect);
 
-    /// Translate a coordinate to a [`WidgetId`]
+    /// Translate a coordinate to an [`Id`]
     ///
     /// Implementations should recursively call `find_id` on children, returning
-    /// `None` if no child returns a `WidgetId`.
+    /// `None` if no child returns an `Id`.
     /// This method is simplified relative to [`Layout::find_id`].
-    fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
+    fn find_id(&mut self, coord: Coord) -> Option<Id>;
 
     /// Draw a widget and its children
     ///
@@ -263,10 +263,10 @@ impl<'a> Visitor<'a> {
     /// Does not return the widget's own identifier. See example usage in
     /// [`Visitor::find_id`].
     #[inline]
-    pub fn find_id(mut self, coord: Coord) -> Option<WidgetId> {
+    pub fn find_id(mut self, coord: Coord) -> Option<Id> {
         self.find_id_(coord)
     }
-    fn find_id_(&mut self, coord: Coord) -> Option<WidgetId> {
+    fn find_id_(&mut self, coord: Coord) -> Option<Id> {
         match &mut self.layout {
             LayoutType::BoxComponent(layout) => layout.find_id(coord),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.find_id(coord),
@@ -336,7 +336,7 @@ where
         }
     }
 
-    fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+    fn find_id(&mut self, coord: Coord) -> Option<Id> {
         // TODO(opt): more efficient search strategy?
         self.children.find_map(|child| child.find_id(coord))
     }
@@ -374,7 +374,7 @@ where
         }
     }
 
-    fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+    fn find_id(&mut self, coord: Coord) -> Option<Id> {
         self.children.find_map(|child| child.find_id(coord))
     }
 
@@ -415,7 +415,7 @@ impl<'a, W: Layout, D: Directional> Visitable for Slice<'a, W, D> {
         }
     }
 
-    fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+    fn find_id(&mut self, coord: Coord) -> Option<Id> {
         let solver = RowPositionSolver::new(self.direction);
         solver
             .find_child_mut(self.children, coord)
@@ -454,7 +454,7 @@ where
         }
     }
 
-    fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+    fn find_id(&mut self, coord: Coord) -> Option<Id> {
         // TODO(opt): more efficient search strategy?
         self.children.find_map(|(_, child)| child.find_id(coord))
     }

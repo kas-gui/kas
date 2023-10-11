@@ -121,7 +121,7 @@ impl IntOrPtr {
         } else {
             // We expect either USE_BITS or USE_PTR here; anything else indicates an error
             let v = n & 3;
-            assert!(v == 1 || v == 2, "WidgetId::opt_from_u64: invalid value");
+            assert!(v == 1 || v == 2, "Id::opt_from_u64: invalid value");
             let x = NonZeroU64::new(n).unwrap();
             Some(IntOrPtr(x, PhantomData))
         }
@@ -189,7 +189,7 @@ impl<'a> Iterator for PathIter<'a> {
     }
 }
 
-/// Iterator over [`WidgetId`] path components
+/// Iterator over [`Id`] path components
 pub struct WidgetPathIter<'a>(PathIter<'a>);
 impl<'a> Iterator for WidgetPathIter<'a> {
     type Item = usize;
@@ -211,20 +211,20 @@ impl<'a> Iterator for WidgetPathIter<'a> {
 /// This type may be tested for equality and order and may be iterated over as
 /// a "path" of "key" values.
 ///
-/// Formatting a `WidgetId` via [`Display`] prints the the path, for example
+/// Formatting an `Id` via [`Display`] prints the the path, for example
 /// `#1290a4`. Here, `#` represents the root; each following hexadecimal digit
 /// represents a path component except that digits `8-f` are combined with the
 /// following digit(s). Hence, the above path has components `1`, `2`, `90`,
 /// `a4`. To interpret these values, first subtract 8 from each digit but the
 /// last digit, then read as base-8: `[1, 2, 8, 20]`.
 ///
-/// This type is small (64-bit) and non-zero: `Option<WidgetId>` has the same
-/// size as `WidgetId`. It is also very cheap to `Clone`: usually only one `if`
+/// This type is small (64-bit) and non-zero: `Option<Id>` has the same
+/// size as `Id`. It is also very cheap to `Clone`: usually only one `if`
 /// check, and in the worst case a pointer dereference and ref-count increment.
 /// Paths up to 14 digits long (as printed) are represented internally;
 /// beyond this limit a reference-counted stack allocation is used.
 ///
-/// `WidgetId` is neither `Send` nor `Sync`.
+/// `Id` is neither `Send` nor `Sync`.
 ///
 /// Identifiers are assigned when configured and when re-configured
 /// (via [`Action::RECONFIGURE`] or [`ConfigCx::configure`]).
@@ -237,7 +237,7 @@ impl<'a> Iterator for WidgetPathIter<'a> {
 /// [`Action::RECONFIGURE`]: crate::Action::RECONFIGURE
 /// [`ConfigCx::configure`]: crate::event::ConfigCx::configure
 #[derive(Clone)]
-pub struct WidgetId(IntOrPtr);
+pub struct Id(IntOrPtr);
 
 // Encode lowest 48 bits of key into the low bits of a u64, returning also the encoded bit-length
 fn encode(key: usize) -> (u64, u8) {
@@ -298,11 +298,11 @@ impl Iterator for BitsIter {
     }
 }
 
-impl WidgetId {
+impl Id {
     /// Identifier of the window
-    pub(crate) const ROOT: Self = WidgetId(IntOrPtr::ROOT);
+    pub(crate) const ROOT: Self = Id(IntOrPtr::ROOT);
 
-    const INVALID: Self = WidgetId(IntOrPtr::INVALID);
+    const INVALID: Self = Id(IntOrPtr::INVALID);
 
     /// Is the identifier valid?
     ///
@@ -316,7 +316,7 @@ impl WidgetId {
     /// Iterate over path components
     pub fn iter(&self) -> WidgetPathIter {
         match self.0.get() {
-            Variant::Invalid => panic!("WidgetId::iter: invalid"),
+            Variant::Invalid => panic!("Id::iter: invalid"),
             Variant::Int(x) => WidgetPathIter(PathIter::Bits(BitsIter::new(x))),
             Variant::Slice(path) => WidgetPathIter(PathIter::Slice(path.iter().cloned())),
         }
@@ -325,7 +325,7 @@ impl WidgetId {
     /// Get the path len (number of indices, not storage length)
     pub fn path_len(&self) -> usize {
         match self.0.get() {
-            Variant::Invalid => panic!("WidgetId::path_len: invalid"),
+            Variant::Invalid => panic!("Id::path_len: invalid"),
             Variant::Int(x) => BitsIter::new(x).count(),
             Variant::Slice(path) => path.len(),
         }
@@ -335,7 +335,7 @@ impl WidgetId {
     pub fn is_ancestor_of(&self, id: &Self) -> bool {
         match (self.0.get(), id.0.get()) {
             (Variant::Invalid, _) | (_, Variant::Invalid) => {
-                panic!("WidgetId::is_ancestor_of: invalid")
+                panic!("Id::is_ancestor_of: invalid")
             }
             (Variant::Slice(_), Variant::Int(_)) => {
                 // This combo will never be created where id is a child.
@@ -360,6 +360,18 @@ impl WidgetId {
         }
     }
 
+    /// Find the most-derived common ancestor
+    pub fn common_ancestor(&self, id: &Self) -> Self {
+        let mut r = Id::ROOT;
+        for (a, b) in self.iter().zip(id.iter()) {
+            if a != b {
+                break;
+            }
+            r = r.make_child(a);
+        }
+        r
+    }
+
     pub fn iter_keys_after(&self, id: &Self) -> WidgetPathIter {
         let mut self_iter = self.iter();
         for v in id.iter() {
@@ -378,7 +390,7 @@ impl WidgetId {
     pub fn next_key_after(&self, id: &Self) -> Option<usize> {
         match (id.0.get(), self.0.get()) {
             (Variant::Invalid, _) | (_, Variant::Invalid) => {
-                panic!("WidgetId::next_key_after: invalid")
+                panic!("Id::next_key_after: invalid")
             }
             (Variant::Slice(_), Variant::Int(_)) => None,
             (Variant::Int(parent_x), Variant::Int(child_x)) => {
@@ -421,7 +433,7 @@ impl WidgetId {
     ///
     /// Note: there is no guarantee that [`Self::as_u64`] on the result will
     /// match that of the original parent identifier.
-    pub fn parent(&self) -> Option<WidgetId> {
+    pub fn parent(&self) -> Option<Id> {
         match self.0.get() {
             Variant::Invalid => None,
             Variant::Int(x) => {
@@ -435,7 +447,7 @@ impl WidgetId {
                     let len = ((bit_len / 4) as u64) << SHIFT_LEN;
                     let mask = MASK_BITS << (56 - bit_len);
                     let id = (x & mask) | len | USE_BITS;
-                    return Some(WidgetId(IntOrPtr::new_int(id)));
+                    return Some(Id(IntOrPtr::new_int(id)));
                 }
                 None
             }
@@ -443,9 +455,7 @@ impl WidgetId {
                 let len = path.len();
                 if len > 1 {
                     // TODO(opt): in some cases we could make Variant::Int
-                    Some(WidgetId(IntOrPtr::new_iter(
-                        path[0..len - 1].iter().cloned(),
-                    )))
+                    Some(Id(IntOrPtr::new_iter(path[0..len - 1].iter().cloned())))
                 } else {
                     None
                 }
@@ -460,7 +470,7 @@ impl WidgetId {
     #[must_use]
     pub fn make_child(&self, key: usize) -> Self {
         match self.0.get() {
-            Variant::Invalid => panic!("WidgetId::make_child: invalid"),
+            Variant::Invalid => panic!("Id::make_child: invalid"),
             Variant::Int(self_x) => {
                 // TODO(opt): this bit-packing approach is designed for space-optimisation, but it may
                 // be better to use a simpler, less-compressed approach, possibly with u128 type.
@@ -475,14 +485,12 @@ impl WidgetId {
                     let len = (block_len as u64 + used_blocks as u64) << SHIFT_LEN;
                     let rest = bits << 4 * avail_blocks - bit_len + 8;
                     let id = (self_x & MASK_BITS) | rest | len | USE_BITS;
-                    WidgetId(IntOrPtr::new_int(id))
+                    Id(IntOrPtr::new_int(id))
                 } else {
-                    WidgetId(IntOrPtr::new_iter(BitsIter::new(self_x).chain(once(key))))
+                    Id(IntOrPtr::new_iter(BitsIter::new(self_x).chain(once(key))))
                 }
             }
-            Variant::Slice(path) => {
-                WidgetId(IntOrPtr::new_iter(path.iter().cloned().chain(once(key))))
-            }
+            Variant::Slice(path) => Id(IntOrPtr::new_iter(path.iter().cloned().chain(once(key)))),
         }
     }
 
@@ -493,31 +501,31 @@ impl WidgetId {
     /// -   it is guaranteed non-zero
     /// -   it may be passed to [`Self::opt_from_u64`]
     /// -   comparing two `u64` values generated this way will mostly work as
-    ///     an equality check of the source [`WidgetId`], but can return false
+    ///     an equality check of the source [`Id`], but can return false
     ///     negatives (only if each id was generated through separate calls to
     ///     [`Self::make_child`])
     pub fn as_u64(&self) -> u64 {
         self.0.as_u64()
     }
 
-    /// Convert `Option<WidgetId>` to `u64`
+    /// Convert `Option<Id>` to `u64`
     ///
     /// This value should not be interpreted, except as follows:
     ///
     /// -   it is zero if and only if `id == None`
     /// -   it may be passed to [`Self::opt_from_u64`]
     /// -   comparing two `u64` values generated this way will mostly work as
-    ///     an equality check of the source [`WidgetId`], but can return false
+    ///     an equality check of the source [`Id`], but can return false
     ///     negatives (only if each id was generated through separate calls to
     ///     [`Self::make_child`])
-    pub fn opt_to_u64(id: Option<&WidgetId>) -> u64 {
+    pub fn opt_to_u64(id: Option<&Id>) -> u64 {
         match id {
             None => 0,
             Some(id) => id.0.as_u64(),
         }
     }
 
-    /// Convert `u64` to `Option<WidgetId>`
+    /// Convert `u64` to `Option<Id>`
     ///
     /// Returns `None` if and only if `n == 0`.
     ///
@@ -531,52 +539,52 @@ impl WidgetId {
     /// or it is but the source instance of `Self` and all clones have been
     /// destroyed, then some operations on the result of this method will
     /// attempt to dereference an invalid pointer.
-    pub unsafe fn opt_from_u64(n: u64) -> Option<WidgetId> {
-        IntOrPtr::opt_from_u64(n).map(WidgetId)
+    pub unsafe fn opt_from_u64(n: u64) -> Option<Id> {
+        IntOrPtr::opt_from_u64(n).map(Id)
     }
 }
 
-impl PartialEq for WidgetId {
+impl PartialEq for Id {
     fn eq(&self, rhs: &Self) -> bool {
         match (self.0.get(), rhs.0.get()) {
-            (Variant::Invalid, _) | (_, Variant::Invalid) => panic!("WidgetId::eq: invalid id"),
+            (Variant::Invalid, _) | (_, Variant::Invalid) => panic!("Id::eq: invalid id"),
             (Variant::Int(x), Variant::Int(y)) => x == y,
             _ => self.iter().eq(rhs.iter()),
         }
     }
 }
-impl Eq for WidgetId {}
+impl Eq for Id {}
 
-impl PartialEq<str> for WidgetId {
+impl PartialEq<str> for Id {
     fn eq(&self, rhs: &str) -> bool {
         // TODO(opt): we don't have to format to test this
         let formatted = format!("{self}");
         formatted == rhs
     }
 }
-impl PartialEq<&str> for WidgetId {
+impl PartialEq<&str> for Id {
     fn eq(&self, rhs: &&str) -> bool {
         self == *rhs
     }
 }
 
-impl PartialOrd for WidgetId {
+impl PartialOrd for Id {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
         Some(self.cmp(rhs))
     }
 }
 
-impl Ord for WidgetId {
+impl Ord for Id {
     fn cmp(&self, rhs: &Self) -> Ordering {
         match (self.0.get(), rhs.0.get()) {
-            (Variant::Invalid, _) | (_, Variant::Invalid) => panic!("WidgetId::cmp: invalid id"),
+            (Variant::Invalid, _) | (_, Variant::Invalid) => panic!("Id::cmp: invalid id"),
             (Variant::Int(x), Variant::Int(y)) => x.cmp(&y),
             _ => self.iter().cmp(rhs.iter()),
         }
     }
 }
 
-impl Hash for WidgetId {
+impl Hash for Id {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self.0.get() {
             Variant::Invalid => (),
@@ -590,48 +598,48 @@ impl Hash for WidgetId {
     }
 }
 
-impl PartialEq<Option<WidgetId>> for WidgetId {
+impl PartialEq<Option<Id>> for Id {
     #[inline]
-    fn eq(&self, rhs: &Option<WidgetId>) -> bool {
+    fn eq(&self, rhs: &Option<Id>) -> bool {
         rhs.as_ref().map(|id| id == self).unwrap_or(false)
     }
 }
 
-impl<'a> PartialEq<Option<&'a WidgetId>> for WidgetId {
+impl<'a> PartialEq<Option<&'a Id>> for Id {
     #[inline]
-    fn eq(&self, rhs: &Option<&'a WidgetId>) -> bool {
+    fn eq(&self, rhs: &Option<&'a Id>) -> bool {
         rhs.map(|id| id == self).unwrap_or(false)
     }
 }
 
-impl<'a> PartialEq<&'a WidgetId> for WidgetId {
+impl<'a> PartialEq<&'a Id> for Id {
     #[inline]
-    fn eq(&self, rhs: &&WidgetId) -> bool {
+    fn eq(&self, rhs: &&Id) -> bool {
         self == *rhs
     }
 }
 
-impl<'a> PartialEq<&'a Option<WidgetId>> for WidgetId {
+impl<'a> PartialEq<&'a Option<Id>> for Id {
     #[inline]
-    fn eq(&self, rhs: &&Option<WidgetId>) -> bool {
+    fn eq(&self, rhs: &&Option<Id>) -> bool {
         self == *rhs
     }
 }
 
-impl Default for WidgetId {
+impl Default for Id {
     fn default() -> Self {
-        WidgetId::INVALID
+        Id::INVALID
     }
 }
 
-impl fmt::Debug for WidgetId {
+impl fmt::Debug for Id {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "WidgetId({self})")
+        write!(f, "Id({self})")
     }
 }
 
-impl fmt::Display for WidgetId {
+impl fmt::Display for Id {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self.0.get() {
             Variant::Invalid => write!(f, "#INVALID"),
@@ -656,70 +664,111 @@ impl fmt::Display for WidgetId {
     }
 }
 
+/// Types supporting conversion to [`Id`]
+///
+/// A method taking an `id: impl HasId` parameter supports an [`Id`],
+/// a reference to an [`Id`] (which is thus cloned),
+/// or a (mutable) reference to a widget.
+///
+/// Note: in some cases attempting to pass a widget reference does not pass
+/// borrow checks. In this case pass `widget.id()` explicitly.
+pub trait HasId {
+    fn has_id(self) -> Id;
+}
+
+impl HasId for Id {
+    #[inline]
+    fn has_id(self) -> Id {
+        self
+    }
+}
+
+impl HasId for &Id {
+    #[inline]
+    fn has_id(self) -> Id {
+        self.clone()
+    }
+}
+
+impl HasId for &mut Id {
+    #[inline]
+    fn has_id(self) -> Id {
+        self.clone()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
+    fn make_id(seq: &[usize]) -> Id {
+        let mut id = Id::ROOT;
+        for x in seq {
+            id = id.make_child(*x);
+        }
+        id
+    }
+
     #[test]
     fn size_of_option_widget_id() {
         use std::mem::size_of;
-        assert_eq!(size_of::<WidgetId>(), 8);
-        assert_eq!(size_of::<WidgetId>(), size_of::<Option<WidgetId>>());
+        assert_eq!(size_of::<Id>(), 8);
+        assert_eq!(size_of::<Id>(), size_of::<Option<Id>>());
     }
 
     #[test]
     fn test_partial_eq() {
-        assert_eq!(WidgetId::ROOT, WidgetId::ROOT);
-        let c1 = WidgetId::ROOT.make_child(0).make_child(15);
-        let c2 = WidgetId::ROOT.make_child(1).make_child(15);
-        let c3 = WidgetId::ROOT.make_child(0).make_child(14);
-        let c4 = WidgetId::ROOT.make_child(0).make_child(15);
+        assert_eq!(Id::ROOT, Id::ROOT);
+        let c1 = Id::ROOT.make_child(0).make_child(15);
+        let c2 = Id::ROOT.make_child(1).make_child(15);
+        let c3 = Id::ROOT.make_child(0).make_child(14);
+        let c4 = Id::ROOT.make_child(0).make_child(15);
         assert!(c1 != c2);
         assert!(c1 != c3);
         assert!(c2 != c3);
         assert_eq!(c1, c4);
-        assert!(c1 != WidgetId::ROOT);
+        assert!(c1 != Id::ROOT);
 
-        let d1 = WidgetId(IntOrPtr::new_iter([0, 15].iter().cloned()));
-        let d2 = WidgetId(IntOrPtr::new_iter([1, 15].iter().cloned()));
+        let d1 = Id(IntOrPtr::new_iter([0, 15].iter().cloned()));
+        let d2 = Id(IntOrPtr::new_iter([1, 15].iter().cloned()));
         assert_eq!(c1, d1);
         assert_eq!(c2, d2);
         assert!(d1 != d2);
-        assert!(d1 != WidgetId::ROOT);
+        assert!(d1 != Id::ROOT);
     }
 
     #[test]
     #[should_panic]
     fn test_partial_eq_invalid_1() {
-        let _ = WidgetId::INVALID == WidgetId::INVALID;
+        let _ = Id::INVALID == Id::INVALID;
     }
 
     #[test]
     #[should_panic]
     fn test_partial_eq_invalid_2() {
-        let _ = WidgetId::ROOT == WidgetId::INVALID;
+        let _ = Id::ROOT == Id::INVALID;
     }
 
     #[test]
     #[should_panic]
     fn test_partial_eq_invalid_3() {
-        let _ = WidgetId::INVALID == WidgetId::ROOT;
+        let _ = Id::INVALID == Id::ROOT;
     }
 
     #[test]
     fn test_partial_eq_str() {
-        assert_eq!(WidgetId::ROOT, "#");
-        assert!(WidgetId::ROOT != "#0");
-        assert_eq!(WidgetId::ROOT.make_child(0).make_child(15), "#097");
-        assert_eq!(WidgetId::ROOT.make_child(1).make_child(15), "#197");
-        let c3 = WidgetId::ROOT.make_child(0).make_child(14);
+        assert_eq!(Id::ROOT, "#");
+        assert!(Id::ROOT != "#0");
+        assert_eq!(Id::ROOT.make_child(0).make_child(15), "#097");
+        assert_eq!(Id::ROOT.make_child(1).make_child(15), "#197");
+        let c3 = Id::ROOT.make_child(0).make_child(14);
         assert_eq!(c3, "#096");
         assert!(c3 != "#097");
     }
 
     #[test]
     fn test_ord() {
-        let root = WidgetId::ROOT;
+        let root = Id::ROOT;
         let c_0 = root.make_child(0);
         let c_0_0 = c_0.make_child(0);
         assert!(root < c_0);
@@ -729,9 +778,9 @@ mod test {
         assert!(c_0_0 < c_1);
         assert!(c_1 < root.make_child(8));
 
-        let d_0 = WidgetId(IntOrPtr::new_iter([0].iter().cloned()));
-        let d_0_0 = WidgetId(IntOrPtr::new_iter([0, 0].iter().cloned()));
-        let d_1 = WidgetId(IntOrPtr::new_iter([1].iter().cloned()));
+        let d_0 = Id(IntOrPtr::new_iter([0].iter().cloned()));
+        let d_0_0 = Id(IntOrPtr::new_iter([0, 0].iter().cloned()));
+        let d_1 = Id(IntOrPtr::new_iter([1].iter().cloned()));
         assert_eq!(d_0.cmp(&c_0), Ordering::Equal);
         assert_eq!(d_0_0.cmp(&c_0_0), Ordering::Equal);
         assert_eq!(d_1.cmp(&c_1), Ordering::Equal);
@@ -742,7 +791,7 @@ mod test {
     #[test]
     #[should_panic]
     fn test_ord_invalid() {
-        let _ = WidgetId::INVALID < WidgetId::ROOT;
+        let _ = Id::INVALID < Id::ROOT;
     }
 
     #[test]
@@ -771,12 +820,8 @@ mod test {
     #[test]
     fn test_parent() {
         fn test(seq: &[usize]) {
-            println!("seq: {seq:?}");
-            let mut id = WidgetId::ROOT;
             let len = seq.len();
-            for key in &seq[..len - 1] {
-                id = id.make_child(*key);
-            }
+            let id = make_id(&seq[..len - 1]);
 
             if len == 0 {
                 assert_eq!(id.parent(), None);
@@ -798,10 +843,7 @@ mod test {
     #[test]
     fn test_make_child() {
         fn test(seq: &[usize], x: u64) {
-            let mut id = WidgetId::ROOT;
-            for key in seq {
-                id = id.make_child(*key);
-            }
+            let id = make_id(seq);
             let v = id.as_u64();
             if v != x {
                 panic!("test({seq:?}, {x:x}): found {v:x}");
@@ -821,11 +863,7 @@ mod test {
     #[test]
     fn test_display() {
         fn from_seq(seq: &[usize]) -> String {
-            let mut id = WidgetId::ROOT;
-            for x in seq {
-                id = id.make_child(*x);
-            }
-            format!("{id}")
+            format!("{}", make_id(seq))
         }
 
         assert_eq!(from_seq(&[]), "#");
@@ -842,16 +880,11 @@ mod test {
     #[test]
     fn test_is_ancestor() {
         fn test(seq: &[usize], seq2: &[usize]) {
-            let mut id = WidgetId::ROOT;
-            for x in seq {
-                id = id.make_child(*x);
-            }
-            println!("id={} val={:x} from {:?}", id, id.as_u64(), seq);
+            let id = make_id(seq);
             let mut id2 = id.clone();
             for x in seq2 {
                 id2 = id2.make_child(*x);
             }
-            println!("id2={} val={:x} from {:?}", id2, id2.as_u64(), seq2);
             let next = seq2.iter().next().cloned();
             assert_eq!(id.is_ancestor_of(&id2), next.is_some() || id == id2);
             assert_eq!(id2.next_key_after(&id), next);
@@ -872,16 +905,8 @@ mod test {
     #[test]
     fn test_not_ancestor() {
         fn test(seq: &[usize], seq2: &[usize]) {
-            let mut id = WidgetId::ROOT;
-            for x in seq {
-                id = id.make_child(*x);
-            }
-            println!("id={} val={:x} from {:?}", id, id.as_u64(), seq);
-            let mut id2 = WidgetId::ROOT;
-            for x in seq2 {
-                id2 = id2.make_child(*x);
-            }
-            println!("id2={} val={:x} from {:?}", id2, id2.as_u64(), seq2);
+            let id = make_id(seq);
+            let id2 = make_id(seq2);
             assert_eq!(id.is_ancestor_of(&id2), false);
             assert_eq!(id2.next_key_after(&id), None);
         }
@@ -890,5 +915,20 @@ mod test {
         test(&[0], &[1]);
         test(&[2, 10, 1], &[2, 10]);
         test(&[0, 5, 2], &[0, 1, 5]);
+    }
+
+    #[test]
+    fn common_ancestor() {
+        fn test(seq: &[usize], seq2: &[usize], seq3: &[usize]) {
+            let id = make_id(seq);
+            let id2 = make_id(seq2);
+            assert_eq!(id.common_ancestor(&id2), make_id(seq3));
+        }
+
+        test(&[0], &[], &[]);
+        test(&[0], &[1, 2], &[]);
+        test(&[0], &[0, 2], &[0]);
+        test(&[2, 10, 1], &[2, 10], &[2, 10]);
+        test(&[0, 5, 2], &[0, 5, 1], &[0, 5]);
     }
 }

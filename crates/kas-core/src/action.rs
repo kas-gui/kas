@@ -8,17 +8,14 @@
 bitflags! {
     /// Action required after processing
     ///
-    /// This type is returned by many widgets on modification to self and is tracked
-    /// internally by [`event::EventCx`] to determine which updates are needed to
-    /// the UI.
+    /// Some methods operate directly on a context ([`ConfigCx`] or [`EventCx`])
+    /// while others don't reqiure a context but do require that some *action*
+    /// is performed afterwards. This enum is used to convey that action.
     ///
-    /// Two `Action` values may be combined via bit-or (`a | b`). Bit-or
-    /// assignments are supported by both `Action` and [`event::EventCx`].
+    /// An `Action` should be passed to a context: `cx.action(self.id(), action)`
+    /// (assuming `self` is a widget).
     ///
-    /// Users receiving a value of this type from a widget update method should
-    /// usually handle with `*cx |= action;`. Before the event loop starts
-    /// (`toolkit.run()`) or if the widget in question is not part of a UI these
-    /// values can be ignored.
+    /// Two `Action` values may be combined via bit-or (`a | b`).
     #[must_use]
     #[derive(Copy, Clone, Debug, Default)]
     pub struct Action: u32 {
@@ -35,6 +32,11 @@ bitflags! {
         ///
         /// Implies window redraw.
         const REGION_MOVED = 1 << 4;
+        /// A widget was scrolled
+        ///
+        /// This is used for inter-widget communication (see `EditBox`). If not
+        /// handled locally, it is handled identially to [`Self::SET_RECT`].
+        const SCROLLED = 1 << 6;
         /// Reset size of all widgets without recalculating requirements
         const SET_RECT = 1 << 8;
         /// Resize all widgets in the window
@@ -49,10 +51,8 @@ bitflags! {
         const EVENT_CONFIG = 1 << 11;
         /// Reconfigure all widgets of the window
         ///
-        /// *Configuring* widgets assigns [`WidgetId`] identifiers and calls
-        /// [`crate::Events::configure`].
-        ///
-        /// [`WidgetId`]: crate::WidgetId
+        /// *Configuring* widgets assigns [`Id`](crate::Id) identifiers and calls
+        /// [`Events::configure`](crate::Events::configure).
         const RECONFIGURE = 1 << 16;
         /// Update all widgets
         ///

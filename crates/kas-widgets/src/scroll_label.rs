@@ -7,7 +7,7 @@
 
 use super::{ScrollBar, ScrollMsg};
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{Command, CursorIcon, Scroll, ScrollDelta};
+use kas::event::{Command, CursorIcon, FocusSource, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
@@ -29,6 +29,7 @@ impl_scope! {
         text: Text<T>,
         text_size: Size,
         selection: SelectionHelper,
+        has_sel_focus: bool,
         input_handler: TextInput,
         #[widget]
         bar: ScrollBar<kas::dir::Down>,
@@ -61,7 +62,7 @@ impl_scope! {
             self.bar.set_value(cx, self.view_offset.1);
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }
@@ -98,6 +99,7 @@ impl_scope! {
                 text: Text::new(text),
                 text_size: Size::ZERO,
                 selection: SelectionHelper::new(0, 0),
+                has_sel_focus: false,
                 input_handler: Default::default(),
                 bar: ScrollBar::new().with_invisible(true),
             }
@@ -129,13 +131,13 @@ impl_scope! {
                     self.selection.set_edit_pos(pos);
                     self.set_view_offset_from_edit_pos(cx, pos);
                     self.bar.set_value(cx, self.view_offset.1);
-                    cx.redraw(self.id());
+                    cx.redraw(self);
                 }
             }
         }
 
         fn set_primary(&self, cx: &mut EventCx) {
-            if !self.selection.is_empty() {
+            if self.has_sel_focus && !self.selection.is_empty() && cx.has_primary() {
                 let range = self.selection.range();
                 cx.set_primary(String::from(&self.text.as_str()[range]));
             }
@@ -190,7 +192,7 @@ impl_scope! {
         /// Set offset, updating the scroll bar
         fn set_offset(&mut self, cx: &mut EventState, offset: Offset) {
             self.view_offset = offset;
-            // unnecessary: cx.redraw(self.id());
+            // unnecessary: cx.redraw(self);
             self.bar.set_value(cx, offset.1);
         }
     }
@@ -220,14 +222,14 @@ impl_scope! {
                 Event::Command(cmd, _) => match cmd {
                     Command::Escape | Command::Deselect if !self.selection.is_empty() => {
                         self.selection.set_empty();
-                        cx.redraw(self.id());
+                        cx.redraw(self);
                         Used
                     }
                     Command::SelectAll => {
                         self.selection.set_sel_pos(0);
                         self.selection.set_edit_pos(self.text.str_len());
                         self.set_primary(cx);
-                        cx.redraw(self.id());
+                        cx.redraw(self);
                         Used
                     }
                     Command::Cut | Command::Copy => {
@@ -238,9 +240,17 @@ impl_scope! {
                     // TODO: scroll by command
                     _ => Unused,
                 },
+                Event::SelFocus(source) => {
+                    self.has_sel_focus = true;
+                    if source == FocusSource::Pointer {
+                        self.set_primary(cx);
+                    }
+                    Used
+                }
                 Event::LostSelFocus => {
+                    self.has_sel_focus = false;
                     self.selection.set_empty();
-                    cx.redraw(self.id());
+                    cx.redraw(self);
                     Used
                 }
                 Event::Scroll(delta) => {
@@ -251,22 +261,19 @@ impl_scope! {
                     self.pan_delta(cx, delta2)
                 }
                 event => match self.input_handler.handle(cx, self.id(), event) {
-                    TextInputAction::None | TextInputAction::Focus => Used,
+                    TextInputAction::None => Used,
                     TextInputAction::Unused => Unused,
                     TextInputAction::Pan(delta) => self.pan_delta(cx, delta),
-                    TextInputAction::Cursor(coord, anchor, clear, repeats) => {
-                        if (clear && repeats <= 1) || cx.request_sel_focus(self.id()) {
+                    TextInputAction::Focus { coord, action } => {
+                        if let Some(coord) = coord {
                             self.set_edit_pos_from_coord(cx, coord);
-                            if anchor {
-                                self.selection.set_anchor();
-                            }
-                            if clear {
-                                self.selection.set_empty();
-                            }
-                            if repeats > 1 {
-                                self.selection.expand(&self.text, repeats);
-                            }
+                        }
+                        self.selection.action(&self.text, action);
+
+                        if self.has_sel_focus {
                             self.set_primary(cx);
+                        } else {
+                            cx.request_sel_focus(self.id(), FocusSource::Pointer);
                         }
                         Used
                     }
@@ -278,7 +285,7 @@ impl_scope! {
             if let Some(ScrollMsg(y)) = cx.try_pop() {
                 let y = y.clamp(0, self.max_scroll_offset().1);
                 self.view_offset.1 = y;
-                cx.redraw(self.id());
+                cx.redraw(self);
             }
         }
     }

@@ -15,7 +15,7 @@ use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::theme::{DrawCx, SizeCx, ThemeSize};
 use kas::theme::{Theme, Window as _};
-use kas::{autoimpl, Action, AppData, ErasedStack, Layout, LayoutExt, Widget, WindowId};
+use kas::{autoimpl, Action, AppData, ErasedStack, Id, Layout, LayoutExt, Widget, WindowId};
 use std::mem::take;
 use std::time::{Duration, Instant};
 use winit::event::WindowEvent;
@@ -231,7 +231,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                 let mut messages = ErasedStack::new();
                 self.ev_state
                     .with(&mut shared.shell, window, &mut messages, |cx| {
-                        cx.handle_winit(&shared.data, &mut self.widget, event);
+                        cx.handle_winit(&mut self.widget, &shared.data, event);
                     });
                 shared.handle_messages(&mut messages);
 
@@ -312,12 +312,10 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                 window.solve_cache.invalidate_rule_cache();
             }
             self.apply_size(shared, false);
-        } else if action.contains(Action::SET_RECT) {
+        } else if !(action & (Action::SET_RECT | Action::SCROLLED)).is_empty() {
             self.apply_size(shared, false);
         }
-        if action.contains(Action::REGION_MOVED) {
-            self.ev_state.region_moved(&mut self.widget, &shared.data);
-        }
+        debug_assert!(!action.contains(Action::REGION_MOVED));
         if !action.is_empty() {
             if let Some(ref mut window) = self.window {
                 window.queued_frame_time = Some(window.next_avail_frame_time);
@@ -357,12 +355,12 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     }
 
     pub(super) fn send_action(&mut self, action: Action) {
-        self.ev_state.send_action(action);
+        self.ev_state.action(Id::ROOT, action);
     }
 
     pub(super) fn send_close(&mut self, shared: &mut SharedState<A, S, T>, id: WindowId) {
         if id == self.window_id {
-            self.ev_state.send_action(Action::CLOSE);
+            self.ev_state.action(Id::ROOT, Action::CLOSE);
         } else if let Some(window) = self.window.as_ref() {
             let widget = &mut self.widget;
             let mut messages = ErasedStack::new();

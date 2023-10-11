@@ -10,7 +10,7 @@ use super::{EventCx, GrabMode, IsUsed, MouseGrab, TouchGrab};
 use crate::event::cx::GrabDetails;
 use crate::event::{CursorIcon, MouseButton, Unused, Used};
 use crate::geom::Coord;
-use crate::{Action, WidgetId};
+use crate::{Action, Id};
 
 /// Source of `EventChild::Press`
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -80,7 +80,7 @@ pub struct Press {
     /// Source
     pub source: PressSource,
     /// Identifier of current widget
-    pub id: Option<WidgetId>,
+    pub id: Option<Id>,
     /// Current coordinate
     pub coord: Coord,
 }
@@ -108,7 +108,7 @@ impl Press {
     /// is returned. It is expected that the requested press/pan events are all
     /// "used" ([`Used`]).
     #[inline]
-    pub fn grab(&self, id: WidgetId) -> GrabBuilder {
+    pub fn grab(&self, id: Id) -> GrabBuilder {
         GrabBuilder {
             id,
             source: self.source,
@@ -124,7 +124,7 @@ impl Press {
 /// Conclude by calling [`Self::with_cx`].
 #[must_use]
 pub struct GrabBuilder {
-    id: WidgetId,
+    id: Id,
     source: PressSource,
     coord: Coord,
     mode: GrabMode,
@@ -155,7 +155,7 @@ impl GrabBuilder {
     /// Complete the grab, providing the [`EventCx`]
     ///
     /// In case of an existing grab for the same [`source`](Press::source),
-    /// - If the [`WidgetId`] differs this fails (returns [`Unused`])
+    /// - If the [`Id`] differs this fails (returns [`Unused`])
     /// - If the [`MouseButton`] differs this fails (technically this is a
     ///   different `source`, but simultaneous grabs of multiple mouse buttons
     ///   are not supported).
@@ -200,14 +200,14 @@ impl GrabBuilder {
 
                     debug_assert!(repetitions >= grab.repetitions);
                     grab.repetitions = repetitions;
-                    grab.depress = Some(id);
+                    grab.depress = Some(id.clone());
                     grab.details = details;
                 } else {
                     cx.mouse_grab = Some(MouseGrab {
                         button,
                         repetitions,
                         start_id: id.clone(),
-                        depress: Some(id),
+                        depress: Some(id.clone()),
                         details,
                     });
                 }
@@ -222,7 +222,7 @@ impl GrabBuilder {
                     }
 
                     grab.depress = Some(id.clone());
-                    grab.cur_id = Some(id);
+                    grab.cur_id = Some(id.clone());
                     grab.last_move = coord;
                     grab.coord = coord;
                     grab.mode = grab.mode.max(mode);
@@ -235,7 +235,7 @@ impl GrabBuilder {
                         id: touch_id,
                         start_id: id.clone(),
                         depress: Some(id.clone()),
-                        cur_id: Some(id),
+                        cur_id: Some(id.clone()),
                         last_move: coord,
                         coord,
                         mode,
@@ -245,7 +245,7 @@ impl GrabBuilder {
             }
         }
 
-        cx.send_action(Action::REDRAW);
+        cx.action(id, Action::REDRAW);
         Used
     }
 }

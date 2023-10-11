@@ -73,7 +73,7 @@ impl_scope! {
         widgets: Vec<W>,
         direction: D,
         next: usize,
-        id_map: HashMap<usize, usize>, // map key of WidgetId to index
+        id_map: HashMap<usize, usize>, // map key of Id to index
         on_messages: Option<Box<dyn Fn(&mut EventCx, usize)>>,
     }
 
@@ -86,7 +86,7 @@ impl_scope! {
             self.widgets.get(index).map(|w| w.as_layout())
         }
 
-        fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+        fn find_child_index(&self, id: &Id) -> Option<usize> {
             id.next_key_after(self.id_ref())
                 .and_then(|k| self.id_map.get(&k).cloned())
         }
@@ -109,7 +109,7 @@ impl_scope! {
 
     impl Events for Self {
         /// Make a fresh id based on `self.next` then insert into `self.id_map`
-        fn make_child_id(&mut self, index: usize) -> WidgetId {
+        fn make_child_id(&mut self, index: usize) -> Id {
             if let Some(child) = self.widgets.get(index) {
                 // Use the widget's existing identifier, if any
                 if child.id_ref().is_valid() {
@@ -282,7 +282,7 @@ impl_scope! {
             cx.configure(widget.as_node(data), id);
             self.widgets.push(widget);
 
-            *cx |= Action::RESIZE;
+            cx.resize(self);
             index
         }
 
@@ -292,7 +292,7 @@ impl_scope! {
         pub fn pop(&mut self, cx: &mut EventState) -> Option<W> {
             let result = self.widgets.pop();
             if let Some(w) = result.as_ref() {
-                *cx |= Action::RESIZE;
+                cx.resize(&self);
 
                 if w.id_ref().is_valid() {
                     if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
@@ -318,7 +318,7 @@ impl_scope! {
             let id = self.make_child_id(index);
             cx.configure(widget.as_node(data), id);
             self.widgets.insert(index, widget);
-            *cx |= Action::RESIZE;
+            cx.resize(self);
         }
 
         /// Removes the child widget at position `index`
@@ -334,7 +334,7 @@ impl_scope! {
                 }
             }
 
-            *cx |= Action::RESIZE;
+            cx.resize(&self);
 
             for v in self.id_map.values_mut() {
                 if *v > index {
@@ -360,7 +360,7 @@ impl_scope! {
                 }
             }
 
-            *cx |= Action::RESIZE;
+            cx.resize(self);
 
             w
         }
@@ -382,7 +382,7 @@ impl_scope! {
                 self.widgets.push(w);
             }
 
-            *cx |= Action::RESIZE;
+            cx.resize(self);
         }
 
         /// Resize, using the given closure to construct new widgets
@@ -395,7 +395,7 @@ impl_scope! {
             let old_len = self.widgets.len();
 
             if len < old_len {
-                *cx |= Action::RESIZE;
+                cx.resize(&self);
                 loop {
                     let w = self.widgets.pop().unwrap();
                     if w.id_ref().is_valid() {
@@ -417,7 +417,7 @@ impl_scope! {
                     cx.configure(w.as_node(data), id);
                     self.widgets.push(w);
                 }
-                *cx |= Action::RESIZE;
+                cx.resize(self);
             }
         }
 
