@@ -476,7 +476,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         } else {
             shared.shell.theme.clear_color()
         };
-        window
+        let time3 = window
             .surface
             .present(&mut shared.shell.draw.draw, clear_color);
 
@@ -484,10 +484,11 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         let end = Instant::now();
         log::trace!(
             target: "kas_perf::wgpu::window",
-            "do_draw: {}µs ({}μs widgets, {}µs text, {}µs render)",
+            "do_draw: {}μs ({}μs widgets, {}μs text, {}μs render, {}μs present)",
             (end - start).as_micros(),
             (time2 - start).as_micros(),
             text_dur_micros.as_micros(),
+            (time3 - time2).as_micros(),
             (end - time2).as_micros()
         );
 

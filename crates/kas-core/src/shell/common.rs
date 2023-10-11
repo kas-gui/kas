@@ -10,6 +10,7 @@ use crate::draw::{color::Rgba, DrawIface, WindowCommon};
 use crate::geom::Size;
 use crate::theme::Theme;
 use raw_window_handle as raw;
+use std::time::Instant;
 use thiserror::Error;
 
 /// Possible failures from constructing a [`Shell`](super::Shell)
@@ -220,5 +221,7 @@ pub trait WindowSurface {
     fn common_mut(&mut self) -> &mut WindowCommon;
 
     /// Present frame
-    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba);
+    ///
+    /// Return time at which render finishes
+    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) -> Instant;
 }

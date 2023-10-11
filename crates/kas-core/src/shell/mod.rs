@@ -53,6 +53,7 @@ enum ProxyAction {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::time::Instant;
 
     struct Draw;
     impl crate::draw::DrawImpl for Draw {
@@ -254,7 +255,7 @@ mod test {
             todo!()
         }
 
-        fn present(&mut self, _: &mut Self::Shared, _: crate::draw::color::Rgba) {
+        fn present(&mut self, _: &mut Self::Shared, _: crate::draw::color::Rgba) -> Instant {
             todo!()
         }
     }

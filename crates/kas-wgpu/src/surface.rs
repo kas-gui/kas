@@ -90,14 +90,15 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
         &mut self.draw.common
     }
 
-    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) {
+    /// Return time at which render finishes
+    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) -> Instant {
         let frame = match self.surface.get_current_texture() {
             Ok(frame) => frame,
             Err(e) => {
                 // This error has not been observed. Can it be fixed by
                 // re-configuring the surface? Does it ever occur anyway?
                 log::error!("WindowSurface::present: failed to get frame texture: {}", e);
-                return;
+                return Instant::now();
             }
         };
 
@@ -112,7 +113,9 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
         let clear_color = to_wgpu_color(clear_color);
         shared.render(&mut self.draw, &view, clear_color);
 
+        let pre_present = Instant::now();
         frame.present();
+        pre_present
     }
 }
 
