@@ -20,7 +20,7 @@ use std::ops::{Deref, DerefMut};
 ///
 /// This type supports easy access to [`EventState`] (via [`Deref`],
 /// [`DerefMut`] and [`Self::ev_state`]) as well as [`SizeCx`]
-/// ([`Self::size_cx`]) and [`DrawShared`] ([`Self::draw_shared`]).
+/// ([`Self::size_cx`]).
 #[must_use]
 pub struct ConfigCx<'a> {
     sh: &'a dyn ThemeSize,

@@ -52,7 +52,8 @@ pub enum GrabMode {
 }
 
 impl GrabMode {
-    fn is_pan(self) -> bool {
+    /// True for "pan" variants
+    pub fn is_pan(self) -> bool {
         use GrabMode::*;
         matches!(self, PanFull | PanScale | PanRotate | PanOnly)
     }

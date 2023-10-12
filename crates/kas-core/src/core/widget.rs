@@ -6,6 +6,7 @@
 //! Widget and Events traits
 
 use super::{Layout, Node};
+#[allow(unused)] use crate::event::Used;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused};
 use crate::{Erased, Id};
 use kas_macros::autoimpl;
@@ -173,8 +174,6 @@ pub trait Events: Widget + Sized {
     ///
     /// Default implementation of `handle_event`: do nothing; return
     /// [`Unused`].
-    ///
-    /// Use [`EventCx::send`] instead of calling this method.
     fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> IsUsed {
         let _ = (cx, data, event);
         Unused
@@ -184,10 +183,10 @@ pub trait Events: Widget + Sized {
     ///
     /// This is an optional event handler (see [documentation](crate::event)).
     ///
-    /// May cause a panic if this method returns [`Unused`] but does
-    /// affect `cx` (e.g. by calling [`EventCx::set_scroll`] or leaving a
-    /// message on the stack, possibly from [`EventCx::send`]).
-    /// This is considered a corner-case and not currently supported.
+    /// The method should *either* return [`Used`] or return [`Unused`] without
+    /// modifying `cx`; attempting to do otherwise (e.g. by calling
+    /// [`EventCx::set_scroll`] or leaving a message on the stack when returning
+    /// [`Unused`]) will result in a panic.
     ///
     /// Default implementation: return [`Unused`].
     fn steal_event(

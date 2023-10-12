@@ -12,7 +12,7 @@
 //! An [`Id`] represents a *path* and may be used to find the most
 //! direct root from the root to the target.
 //!
-//! An [`Event`] is [sent](EventCx::send) to a target widget as follows:
+//! An [`Event`] is sent to a target widget as follows:
 //!
 //! 1.  Determine the target's [`Id`]. For example, this may be
 //!     the [`nav_focus`](EventState::nav_focus) or may be determined from
