@@ -25,8 +25,7 @@ use kas::prelude::*;
 use kas::shell::ShellAssoc;
 use kas::text::Text;
 
-type Theme = kas::theme::FlatTheme;
-type Shell = kas::shell::DefaultShell<(), Theme>;
+type Shell = kas::shell::Default<(), kas::theme::FlatTheme>;
 
 impl_scope! {
     #[derive(Clone)]
@@ -179,5 +178,5 @@ fn main() -> kas::shell::Result<()> {
         .with_decorations(kas::Decorations::None)
         .with_transparent(true);
 
-    Shell::new((), Theme::new())?.with(window).run()
+    Shell::new(())?.with(window).run()
 }

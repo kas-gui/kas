@@ -71,7 +71,8 @@ fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let theme = kas_wgpu::ShadedTheme::new().with_font_size(16.0);
-    kas::shell::DefaultShell::new((), theme)?
+    kas::shell::Default::with_theme(theme)
+        .build(())?
         .with(calc_ui())
         .run()
 }

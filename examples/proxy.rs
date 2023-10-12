@@ -39,8 +39,7 @@ fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let data = AppData { color: None };
-    let theme = kas::theme::FlatTheme::new();
-    let shell = kas::shell::DefaultShell::new(data, theme)?;
+    let shell = kas::shell::Default::new(data)?;
 
     // We construct a proxy from the shell to enable cross-thread communication.
     let proxy = shell.create_proxy();

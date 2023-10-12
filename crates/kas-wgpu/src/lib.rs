@@ -27,7 +27,8 @@ mod shaded_theme;
 mod surface;
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
-use kas::shell::{GraphicalShell, Result};
+use kas::shell::{GraphicalShell, Result, ShellBuilder};
+use kas::theme::{FlatTheme, Theme};
 
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
 pub use options::Options;
@@ -35,11 +36,13 @@ pub use shaded_theme::ShadedTheme;
 pub extern crate wgpu;
 
 /// Builder for a KAS shell using WGPU
-pub struct WgpuShellBuilder<CB: CustomPipeBuilder>(CB, Options);
+pub struct WgpuBuilder<CB: CustomPipeBuilder>(CB, Options);
 
-impl<CB: CustomPipeBuilder> GraphicalShell for WgpuShellBuilder<CB> {
+impl<CB: CustomPipeBuilder> GraphicalShell for WgpuBuilder<CB> {
+    type DefaultTheme = FlatTheme;
+
     type Shared = DrawPipe<CB::Pipe>;
-    type Window = draw::DrawWindow<<CB::Pipe as draw::CustomPipe>::Window>;
+
     type Surface = surface::Surface<CB::Pipe>;
 
     fn build(self) -> Result<Self::Shared> {
@@ -47,17 +50,29 @@ impl<CB: CustomPipeBuilder> GraphicalShell for WgpuShellBuilder<CB> {
     }
 }
 
-impl Default for WgpuShellBuilder<()> {
+impl Default for WgpuBuilder<()> {
     fn default() -> Self {
-        WgpuShellBuilder((), Options::from_env())
+        WgpuBuilder::new(())
     }
 }
 
-impl<CB: CustomPipeBuilder> From<CB> for WgpuShellBuilder<CB> {
-    fn from(cb: CB) -> Self {
-        WgpuShellBuilder(cb, Options::from_env())
+impl<CB: CustomPipeBuilder> WgpuBuilder<CB> {
+    /// Construct with the given pipe builder
+    ///
+    /// Pass `()` or use [`Self::default`] when not using a custom pipe.
+    pub fn new(cb: CB) -> Self {
+        WgpuBuilder(cb, Options::from_env())
+    }
+
+    /// Convert to a [`ShellBuilder`] using the default theme
+    #[inline]
+    pub fn with_default_theme(self) -> ShellBuilder<Self, FlatTheme> {
+        ShellBuilder::new(self, FlatTheme::new())
+    }
+
+    /// Convert to a [`ShellBuilder`] using the specified `theme`
+    #[inline]
+    pub fn with_theme<T: Theme<DrawPipe<CB::Pipe>>>(self, theme: T) -> ShellBuilder<Self, T> {
+        ShellBuilder::new(self, theme)
     }
 }
-
-/// The default (unparameterised) implementation of [`WgpuShellBuilder`]
-pub type DefaultGraphicalShell = WgpuShellBuilder<()>;

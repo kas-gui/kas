@@ -23,7 +23,7 @@ pub use common::{Error, Platform, Result};
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 pub use common::{GraphicalShell, WindowSurface};
 #[cfg(winit)]
-pub use shell::{ClosedError, Proxy, Shell, ShellAssoc};
+pub use shell::{ClosedError, Proxy, Shell, ShellAssoc, ShellBuilder};
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 pub extern crate raw_window_handle;
 

@@ -485,8 +485,9 @@ fn main() -> kas::shell::Result<()> {
 
     let window = Window::new(MandlebrotUI::new(), "Mandlebrot");
     let theme = kas::theme::FlatTheme::new().with_colours("dark");
-    let options = kas::config::Options::from_env();
-    kas::shell::WgpuShell::new_custom((), PipeBuilder, theme, options)?
+    kas::shell::WgpuBuilder::new(PipeBuilder)
+        .with_theme(theme)
+        .build(())?
         .with(window)
         .run()
 }
