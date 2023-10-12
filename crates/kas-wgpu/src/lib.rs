@@ -36,7 +36,11 @@ pub use shaded_theme::ShadedTheme;
 pub extern crate wgpu;
 
 /// Builder for a KAS shell using WGPU
-pub struct WgpuBuilder<CB: CustomPipeBuilder>(CB, Options);
+pub struct WgpuBuilder<CB: CustomPipeBuilder> {
+    custom: CB,
+    options: Options,
+    read_env_vars: bool,
+}
 
 impl<CB: CustomPipeBuilder> GraphicalShell for WgpuBuilder<CB> {
     type DefaultTheme = FlatTheme;
@@ -46,7 +50,11 @@ impl<CB: CustomPipeBuilder> GraphicalShell for WgpuBuilder<CB> {
     type Surface = surface::Surface<CB::Pipe>;
 
     fn build(self) -> Result<Self::Shared> {
-        DrawPipe::new(self.0, &self.1)
+        let mut options = self.options;
+        if self.read_env_vars {
+            options.load_from_env();
+        }
+        DrawPipe::new(self.custom, &options)
     }
 }
 
@@ -60,8 +68,33 @@ impl<CB: CustomPipeBuilder> WgpuBuilder<CB> {
     /// Construct with the given pipe builder
     ///
     /// Pass `()` or use [`Self::default`] when not using a custom pipe.
+    #[inline]
     pub fn new(cb: CB) -> Self {
-        WgpuBuilder(cb, Options::from_env())
+        WgpuBuilder {
+            custom: cb,
+            options: Options::default(),
+            read_env_vars: true,
+        }
+    }
+
+    /// Specify the default WGPU options
+    ///
+    /// These options serve as a default, but may still be replaced by values
+    /// read from env vars unless disabled via [`Self::read_env_vars`].
+    #[inline]
+    pub fn with_wgpu_options(mut self, options: Options) -> Self {
+        self.options = options;
+        self
+    }
+
+    /// En/dis-able reading options from environment variables
+    ///
+    /// Default: `true`. If enabled, options will be read from env vars where
+    /// present (see [`Options::load_from_env`]).
+    #[inline]
+    pub fn read_env_vars(mut self, read_env_vars: bool) -> Self {
+        self.read_env_vars = read_env_vars;
+        self
     }
 
     /// Convert to a [`ShellBuilder`] using the default theme
