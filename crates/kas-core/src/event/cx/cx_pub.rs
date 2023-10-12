@@ -571,8 +571,6 @@ impl EventState {
     /// pushed to the message stack as if it were pushed with [`EventCx::push`]
     /// from widget `id`, allowing this widget or any ancestor to handle it in
     /// [`Events::handle_messages`].
-    //
-    // TODO: Can we identify the calling widget `id` via the context (EventCx)?
     pub fn push_async<Fut, M>(&mut self, id: Id, fut: Fut)
     where
         Fut: IntoFuture<Output = M> + 'static,
