@@ -150,24 +150,26 @@ impl Format {
     #[cfg(feature = "serde")]
     pub fn write_path<T: Serialize>(self, path: &Path, value: &T) -> Result<(), Error> {
         log::info!("write_path: path={}, format={:?}", path.display(), self);
+        // Note: we use to_string*, not to_writer*, since the latter may
+        // generate incomplete documents on failure.
         match self {
             #[cfg(feature = "json")]
             Format::Json => {
-                let w = std::io::BufWriter::new(std::fs::File::create(path)?);
-                serde_json::to_writer_pretty(w, value)?;
+                let text = serde_json::to_string_pretty(value)?;
+                std::fs::write(path, &text)?;
                 Ok(())
             }
             #[cfg(feature = "yaml")]
             Format::Yaml => {
-                let w = std::io::BufWriter::new(std::fs::File::create(path)?);
-                serde_yaml::to_writer(w, value)?;
+                let text = serde_yaml::to_string(value)?;
+                std::fs::write(path, &text)?;
                 Ok(())
             }
             #[cfg(feature = "ron")]
             Format::Ron => {
-                let w = std::io::BufWriter::new(std::fs::File::create(path)?);
                 let pretty = ron::ser::PrettyConfig::default();
-                ron::ser::to_writer_pretty(w, value, pretty)?;
+                let text = ron::ser::to_string_pretty(value, pretty)?;
+                std::fs::write(path, &text)?;
                 Ok(())
             }
             // NOTE: Toml is not supported since the `toml` crate does not support enums as map keys
