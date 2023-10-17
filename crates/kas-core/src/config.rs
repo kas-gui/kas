@@ -7,6 +7,7 @@
 
 use crate::draw::DrawSharedImpl;
 use crate::theme::{Theme, ThemeConfig};
+#[cfg(feature = "serde")] use crate::util::warn_about_error;
 #[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Serialize};
 use std::env::var;
@@ -17,7 +18,7 @@ use thiserror::Error;
 /// Config mode
 ///
 /// See [`Options::from_env`] documentation.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ConfigMode {
     /// Read-only mode
     Read,
@@ -195,7 +196,7 @@ impl Format {
 }
 
 /// Shell options
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Options {
     /// Config file path. Default: empty. See `KAS_CONFIG` doc.
     pub config_path: PathBuf,
@@ -284,8 +285,7 @@ impl Options {
         match self.config_mode {
             #[cfg(feature = "serde")]
             ConfigMode::Read | ConfigMode::ReadWrite if self.theme_config_path.is_file() => {
-                let config: T::Config =
-                    kas::config::Format::guess_and_read_path(&self.theme_config_path)?;
+                let config: T::Config = Format::guess_and_read_path(&self.theme_config_path)?;
                 config.apply_startup();
                 // Ignore Action: UI isn't built yet
                 let _ = theme.apply_config(&config);
@@ -294,10 +294,11 @@ impl Options {
             ConfigMode::WriteDefault if !self.theme_config_path.as_os_str().is_empty() => {
                 let config = theme.config();
                 config.apply_startup();
-                kas::config::Format::guess_and_write_path(
-                    &self.theme_config_path,
-                    config.as_ref(),
-                )?;
+                if let Err(error) =
+                    Format::guess_and_write_path(&self.theme_config_path, config.as_ref())
+                {
+                    warn_about_error("failed to write default config: ", &error);
+                }
             }
             _ => theme.config().apply_startup(),
         }
@@ -314,12 +315,14 @@ impl Options {
             return match self.config_mode {
                 #[cfg(feature = "serde")]
                 ConfigMode::Read | ConfigMode::ReadWrite => {
-                    Ok(kas::config::Format::guess_and_read_path(&self.config_path)?)
+                    Ok(Format::guess_and_read_path(&self.config_path)?)
                 }
                 #[cfg(feature = "serde")]
                 ConfigMode::WriteDefault => {
                     let config: kas::event::Config = Default::default();
-                    kas::config::Format::guess_and_write_path(&self.config_path, &config)?;
+                    if let Err(error) = Format::guess_and_write_path(&self.config_path, &config) {
+                        warn_about_error("failed to write default config: ", &error);
+                    }
                     Ok(config)
                 }
             };
@@ -339,14 +342,11 @@ impl Options {
         #[cfg(feature = "serde")]
         if self.config_mode == ConfigMode::ReadWrite {
             if !self.config_path.as_os_str().is_empty() && _config.is_dirty() {
-                kas::config::Format::guess_and_write_path(&self.config_path, &_config)?;
+                Format::guess_and_write_path(&self.config_path, &_config)?;
             }
             let theme_config = _theme.config();
             if !self.theme_config_path.as_os_str().is_empty() && theme_config.is_dirty() {
-                kas::config::Format::guess_and_write_path(
-                    &self.theme_config_path,
-                    theme_config.as_ref(),
-                )?;
+                Format::guess_and_write_path(&self.theme_config_path, theme_config.as_ref())?;
             }
         }
 
