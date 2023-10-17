@@ -83,6 +83,9 @@ json = ["serde", "kas-core/json"]
 # Enable support for RON (de)serialisation
 ron = ["serde", "kas-core/ron"]
 
+# Enable support for TOML (de)serialisation
+toml = ["serde", "kas-core/toml"]
+
 # Support image loading and decoding
 image = ["kas-widgets/image"]
 

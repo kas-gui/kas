@@ -48,6 +48,9 @@ json = ["serde", "dep:serde_json"]
 # Enable support for RON (de)serialisation
 ron = ["serde", "dep:ron"]
 
+# Enable support for TOML (de)serialisation
+toml = ["serde", "dep:toml"]
+
 # Enables clipboard read/write
 clipboard = ["dep:arboard", "dep:smithay-clipboard"]
 
@@ -90,6 +93,7 @@ serde = { version = "1.0.123", features = ["derive"], optional = true }
 serde_json = { version = "1.0.61", optional = true }
 serde_yaml = { version = "0.9.9", optional = true }
 ron = { version = "0.8.0", package = "ron", optional = true }
+toml = { version = "0.8.2", package = "toml", optional = true }
 num_enum = "0.7.0"
 dark-light = { version = "1.0", optional = true }
 raw-window-handle = "0.5.0"

@@ -55,6 +55,16 @@ pub enum Error {
     #[error("config deserialisation from RON failed")]
     RonSpanned(#[from] ron::error::SpannedError),
 
+    #[cfg(feature = "toml")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "toml")))]
+    #[error("config deserialisation from TOML failed")]
+    TomlDe(#[from] toml::de::Error),
+
+    #[cfg(feature = "toml")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "toml")))]
+    #[error("config serialisation to TOML failed")]
+    TomlSer(#[from] toml::ser::Error),
+
     #[error("error reading / writing config file")]
     IoError(#[from] std::io::Error),
 
@@ -139,6 +149,11 @@ impl Format {
                 let r = std::io::BufReader::new(std::fs::File::open(path)?);
                 Ok(ron::de::from_reader(r)?)
             }
+            #[cfg(feature = "toml")]
+            Format::Toml => {
+                let contents = std::fs::read_to_string(path)?;
+                Ok(toml::from_str(&contents)?)
+            }
             _ => {
                 let _ = path; // squelch unused warning
                 Err(Error::UnsupportedFormat(self))
@@ -172,7 +187,12 @@ impl Format {
                 std::fs::write(path, &text)?;
                 Ok(())
             }
-            // NOTE: Toml is not supported since the `toml` crate does not support enums as map keys
+            #[cfg(feature = "toml")]
+            Format::Toml => {
+                let content = toml::to_string(value)?;
+                std::fs::write(path, &content)?;
+                Ok(())
+            }
             _ => {
                 let _ = (path, value); // squelch unused warnings
                 Err(Error::UnsupportedFormat(self))
