@@ -269,18 +269,25 @@ impl Serialize for Shortcuts {
     where
         S: Serializer,
     {
-        let mut map = s.serialize_map(Some(self.map.len()))?;
-        for (state, bindings) in &self.map {
-            map.serialize_key(state_to_string(*state))?;
-
-            // Sort items in the hash-map to ensure stable order
-            // NOTE: We need a "map type" to ensure entries are serialised as
-            // a map, not as a list. BTreeMap is easier than a shim over a Vec.
-            // TODO: winit::keyboard::Key does not support Ord!
-            // let bindings: std::collections::BTreeMap<_, _> = bindings.iter().collect();
-            map.serialize_value(&bindings)?;
+        // Use BTreeMap for stable order of output
+        use std::collections::BTreeMap;
+        let mut map = BTreeMap::new();
+        for (mods, key_cmds) in self.map.iter() {
+            for (key, cmd) in key_cmds.iter() {
+                let mods = state_to_string(*mods);
+                map.entry(cmd)
+                    .or_insert_with(|| Vec::new())
+                    .push((mods, key));
+            }
         }
-        map.end()
+
+        let mut serializer = s.serialize_map(Some(map.len()))?;
+        for (cmd, mut keys) in map.into_iter() {
+            serializer.serialize_key(&cmd)?;
+            keys.sort();
+            serializer.serialize_value(&keys)?;
+        }
+        serializer.end()
     }
 }
 
@@ -358,7 +365,7 @@ impl<'de> Visitor<'de> for ShortcutsVisitor {
     type Value = Shortcuts;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("{ <modifiers> : { <key> : <command> } }")
+        formatter.write_str("{ <command> : [ ( <modifiers>, <key> ),* ] }")
     }
 
     fn visit_map<A>(self, mut reader: A) -> Result<Self::Value, A::Error>
@@ -366,9 +373,13 @@ impl<'de> Visitor<'de> for ShortcutsVisitor {
         A: MapAccess<'de>,
     {
         let mut map = LinearMap::<ModifiersState, HashMap<Key, Command>>::new();
-        while let Some(key) = reader.next_key::<ModifierStateVisitor>()? {
-            let value = reader.next_value()?;
-            map.insert(key.0, value);
+        while let Some(cmd) = reader.next_key::<Command>()? {
+            let values = reader.next_value::<Vec<(ModifierStateVisitor, Key)>>()?;
+            for v in values {
+                map.entry(v.0 .0)
+                    .or_insert_with(|| Default::default())
+                    .insert(v.1, cmd);
+            }
         }
         Ok(Shortcuts { map })
     }

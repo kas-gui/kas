@@ -346,7 +346,7 @@ impl Event {
 /// *Most* `Command` entries represent an action (such as `Copy` or `FindNext`)
 /// but some represent an important key whose action may be context-dependent
 /// (e.g. `Escape`, `Space`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[non_exhaustive]
 pub enum Command {
