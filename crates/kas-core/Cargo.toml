@@ -79,6 +79,8 @@ spawn = ["dep:async-global-executor"]
 # Optimise Node using unsafe code
 unsafe_node = []
 
+rwh_05 = ["winit?/rwh_05"]
+
 [build-dependencies]
 cfg_aliases = "0.1.1"
 
@@ -120,6 +122,6 @@ version = "0.5.0" # used in doc links
 
 [dependencies.winit]
 # Provides translations for several winit types
-version = "0.29.1-beta"
+version = "0.29.2"
 optional = true
 default-features = false

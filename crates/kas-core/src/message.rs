@@ -7,7 +7,7 @@
 //!
 //! These are messages that may be sent via [`EventCx::push`](crate::event::EventCx::push).
 
-use crate::event::KeyCode;
+use crate::event::PhysicalKey;
 
 /// Message: activate
 ///
@@ -16,7 +16,7 @@ use crate::event::KeyCode;
 ///
 /// Payload: the key press which caused this message to be emitted, if any.
 #[derive(Copy, Clone, Debug)]
-pub struct Activate(pub Option<KeyCode>);
+pub struct Activate(pub Option<PhysicalKey>);
 
 /// Message: select child
 ///

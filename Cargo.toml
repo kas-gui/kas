@@ -52,7 +52,7 @@ spec = ["min_spec", "kas-core/spec"]
 view = ["dep:kas-view"]
 
 #Enable WGPU backend:
-wgpu = ["dep:kas-wgpu"]
+wgpu = ["dep:kas-wgpu", "kas-core/rwh_05"]
 
 # Enables documentation of APIs for shells and internal usage.
 # This API is not intended for use by end-user applications and
@@ -149,7 +149,3 @@ members = [
     "crates/kas-view",
     "examples/mandlebrot",
 ]
-
-[patch.crates-io.winit]
-git = "https://github.com/rust-windowing/winit.git"
-rev = "cb58c49a90f17734e0405627130674d47c0b8f40"

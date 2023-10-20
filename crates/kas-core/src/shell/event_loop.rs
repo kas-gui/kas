@@ -171,6 +171,8 @@ where
             Event::LoopExiting => {
                 self.shared.on_exit();
             }
+
+            Event::MemoryWarning => (), // TODO ?
         }
     }
 

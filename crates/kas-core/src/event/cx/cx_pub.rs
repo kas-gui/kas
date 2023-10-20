@@ -374,9 +374,9 @@ impl EventState {
     /// redrawn automatically.
     ///
     /// Note that keyboard shortcuts and mnemonics should usually match against
-    /// the "logical key". [`KeyCode`] is used here since the the logical key
+    /// the "logical key". [`PhysicalKey`] is used here since the the logical key
     /// may be changed by modifier keys.
-    pub fn depress_with_key(&mut self, id: Id, code: KeyCode) {
+    pub fn depress_with_key(&mut self, id: Id, code: PhysicalKey) {
         if self.key_depress.values().any(|v| *v == id) {
             return;
         }

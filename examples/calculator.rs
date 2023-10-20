@@ -8,6 +8,7 @@
 use std::num::ParseFloatError;
 use std::str::FromStr;
 
+use kas::event::NamedKey;
 use kas::prelude::*;
 use kas::widgets::{AccessLabel, Adapt, Button, EditBox};
 
@@ -32,10 +33,11 @@ fn calc_ui() -> Window<()> {
     // We use map_any to avoid passing input data (not wanted by buttons):
     let buttons = kas::grid! {
         // Key bindings: C, Del
-        (0, 0) => Button::label_msg("&clear", Key::Clear).with_access_key(Key::Delete),
+        (0, 0) => Button::label_msg("&clear", Key::Named(NamedKey::Clear))
+            .with_access_key(NamedKey::Delete.into()),
         // Widget is hidden but has key binding.
         // TODO(opt): exclude from layout & drawing.
-        (0, 0) => key_button_with("", Key::Backspace),
+        (0, 0) => key_button_with("", NamedKey::Backspace.into()),
         (1, 0) => key_button_with("&÷", Key::Character("/".into())),
         (2, 0) => key_button_with("&×", Key::Character("*".into())),
         (3, 0) => key_button_with("&−", Key::Character("-".into())),
@@ -49,7 +51,7 @@ fn calc_ui() -> Window<()> {
         (0, 3) => key_button("&1"),
         (1, 3) => key_button("&2"),
         (2, 3) => key_button("&3"),
-        (3, 3..5) => key_button_with("&=", Key::Enter),
+        (3, 3..5) => key_button_with("&=", NamedKey::Enter.into()),
         (0..2, 4) => key_button("&0"),
         (2, 4) => key_button("&."),
     }
@@ -130,19 +132,19 @@ impl Calculator {
 
     fn handle(&mut self, key: Key) {
         match key {
-            Key::Clear | Key::Delete => {
+            Key::Named(NamedKey::Clear) | Key::Named(NamedKey::Delete) => {
                 self.state = Ok(0.0);
                 self.op = Op::None;
                 self.line_buf.clear();
             }
-            Key::Backspace => {
+            Key::Named(NamedKey::Backspace) => {
                 self.line_buf.pop();
             }
             Key::Character(s) if s == "/" => self.do_op(Op::Divide),
             Key::Character(s) if s == "*" => self.do_op(Op::Multiply),
             Key::Character(s) if s == "-" => self.do_op(Op::Subtract),
             Key::Character(s) if s == "+" => self.do_op(Op::Add),
-            Key::Enter => self.do_op(Op::None),
+            Key::Named(NamedKey::Enter) => self.do_op(Op::None),
             Key::Character(s) if s.len() == 1 => {
                 let c = s.chars().next().unwrap();
                 if ('0'..='9').contains(&c) || c == '.' {

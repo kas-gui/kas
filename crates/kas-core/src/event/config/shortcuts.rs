@@ -8,6 +8,7 @@
 use crate::event::{Command, Key, ModifiersState};
 use linear_map::LinearMap;
 use std::collections::HashMap;
+use winit::keyboard::NamedKey;
 
 /// Shortcut manager
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -47,14 +48,14 @@ impl Shortcuts {
             let modifiers = ModifiersState::empty();
             let map = self.map.entry(modifiers).or_insert_with(Default::default);
             let shortcuts = [
-                (Key::F1, Command::Help),
-                (Key::F2, Command::Rename),
-                (Key::F3, Command::FindNext),
-                (Key::F5, Command::Refresh),
-                (Key::F7, Command::SpellCheck),
-                (Key::F8, Command::Debug),
-                (Key::F10, Command::Menu),
-                (Key::F11, Command::Fullscreen),
+                (NamedKey::F1.into(), Command::Help),
+                (NamedKey::F2.into(), Command::Rename),
+                (NamedKey::F3.into(), Command::FindNext),
+                (NamedKey::F5.into(), Command::Refresh),
+                (NamedKey::F7.into(), Command::SpellCheck),
+                (NamedKey::F8.into(), Command::Debug),
+                (NamedKey::F10.into(), Command::Menu),
+                (NamedKey::F11.into(), Command::Fullscreen),
             ];
             map.extend(shortcuts.iter().cloned());
         }
@@ -64,7 +65,7 @@ impl Shortcuts {
         {
             let modifiers = ModifiersState::SHIFT;
             let map = self.map.entry(modifiers).or_insert_with(Default::default);
-            map.insert(Key::F3, Command::FindPrevious);
+            map.insert(NamedKey::F3.into(), Command::FindPrevious);
         }
 
         // Alt (Option on MacOS)
@@ -73,11 +74,11 @@ impl Shortcuts {
         #[cfg(not(target_os = "macos"))]
         {
             let shortcuts = [
-                (Key::F4, Command::Close),
-                (Key::ArrowLeft, Command::NavPrevious),
-                (Key::ArrowRight, Command::NavNext),
-                (Key::ArrowUp, Command::NavParent),
-                (Key::ArrowDown, Command::NavDown),
+                (NamedKey::F4.into(), Command::Close),
+                (NamedKey::ArrowLeft.into(), Command::NavPrevious),
+                (NamedKey::ArrowRight.into(), Command::NavNext),
+                (NamedKey::ArrowUp.into(), Command::NavParent),
+                (NamedKey::ArrowDown.into(), Command::NavDown),
             ];
             map.extend(shortcuts.iter().cloned());
         }
@@ -85,11 +86,11 @@ impl Shortcuts {
         {
             // Missing functionality: move to start/end of paragraph on (Shift)+Alt+Up/Down
             let shortcuts = [
-                (Key::ArrowLeft, Command::WordLeft),
-                (Key::ArrowRight, Command::WordRight),
+                (NamedKey::ArrowLeft.into(), Command::WordLeft),
+                (NamedKey::ArrowRight.into(), Command::WordRight),
             ];
 
-            map.insert(Key::Delete, Command::DelWordBack);
+            map.insert(NamedKey::Delete.into(), Command::DelWordBack);
             map.extend(shortcuts.iter().cloned());
 
             // Shift + Option
@@ -117,17 +118,17 @@ impl Shortcuts {
             (Key::Character("w".into()), Command::Close),
             (Key::Character("x".into()), Command::Cut),
             (Key::Character("z".into()), Command::Undo),
-            (Key::Tab, Command::TabNext),
+            (NamedKey::Tab.into(), Command::TabNext),
         ];
         map.extend(shortcuts.iter().cloned());
         #[cfg(target_os = "macos")]
         {
             let shortcuts = [
                 (Key::Character("g".into()), Command::FindNext),
-                (Key::ArrowUp, Command::DocHome),
-                (Key::ArrowDown, Command::DocEnd),
-                (Key::ArrowLeft, Command::Home),
-                (Key::ArrowRight, Command::End),
+                (NamedKey::ArrowUp.into(), Command::DocHome),
+                (NamedKey::ArrowDown.into(), Command::DocEnd),
+                (NamedKey::ArrowLeft.into(), Command::Home),
+                (NamedKey::ArrowRight.into(), Command::End),
             ];
             map.extend(shortcuts.iter().cloned());
         }
@@ -140,16 +141,16 @@ impl Shortcuts {
             map.extend(shortcuts.iter().cloned());
 
             let shortcuts = [
-                (Key::ArrowUp, Command::ViewUp),
-                (Key::ArrowDown, Command::ViewDown),
-                (Key::ArrowLeft, Command::WordLeft),
-                (Key::ArrowRight, Command::WordRight),
-                (Key::Backspace, Command::DelWordBack),
-                (Key::Delete, Command::DelWord),
-                (Key::Home, Command::DocHome),
-                (Key::End, Command::DocEnd),
-                (Key::PageUp, Command::TabPrevious),
-                (Key::PageDown, Command::TabNext),
+                (NamedKey::ArrowUp.into(), Command::ViewUp),
+                (NamedKey::ArrowDown.into(), Command::ViewDown),
+                (NamedKey::ArrowLeft.into(), Command::WordLeft),
+                (NamedKey::ArrowRight.into(), Command::WordRight),
+                (NamedKey::Backspace.into(), Command::DelWordBack),
+                (NamedKey::Delete.into(), Command::DelWord),
+                (NamedKey::Home.into(), Command::DocHome),
+                (NamedKey::End.into(), Command::DocEnd),
+                (NamedKey::PageUp.into(), Command::TabPrevious),
+                (NamedKey::PageDown.into(), Command::TabNext),
             ];
             map.extend(shortcuts.iter().cloned());
 
@@ -173,7 +174,7 @@ impl Shortcuts {
         let shortcuts = [
             (Key::Character("a".into()), Command::Deselect),
             (Key::Character("z".into()), Command::Redo),
-            (Key::Tab, Command::TabPrevious),
+            (NamedKey::Tab.into(), Command::TabPrevious),
         ];
         map.extend(shortcuts.iter().cloned());
         #[cfg(target_os = "macos")]
@@ -181,10 +182,10 @@ impl Shortcuts {
             let shortcuts = [
                 (Key::Character("g".into()), Command::FindPrevious),
                 (Key::Character(":".into()), Command::SpellCheck),
-                (Key::ArrowUp, Command::DocHome),
-                (Key::ArrowDown, Command::DocEnd),
-                (Key::ArrowLeft, Command::Home),
-                (Key::ArrowRight, Command::End),
+                (NamedKey::ArrowUp.into(), Command::DocHome),
+                (NamedKey::ArrowDown.into(), Command::DocEnd),
+                (NamedKey::ArrowLeft.into(), Command::Home),
+                (NamedKey::ArrowRight.into(), Command::End),
             ];
             map.extend(shortcuts.iter().cloned());
         }
@@ -218,11 +219,10 @@ impl Shortcuts {
 
 #[cfg(feature = "serde")]
 mod common {
-    use super::{Command, Key, ModifiersState};
+    use super::{Command, Key, ModifiersState, NamedKey};
     use serde::de::{self, Visitor};
     use serde::ser::Serializer;
     use serde::{Deserialize, Serialize};
-    use std::cmp::{Ord, Ordering, PartialOrd};
     use std::fmt;
     use winit::keyboard::{NativeKey, SmolStr};
 
@@ -230,15 +230,15 @@ mod common {
     #[derive(Deserialize)]
     #[serde(untagged)]
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-    pub(super) enum SimpleKey<Str = SmolStr> {
-        Named(Key<Str>),
+    pub(super) enum SimpleKey {
+        Named(NamedKey),
         Char(char),
     }
 
-    impl From<SimpleKey<SmolStr>> for Key<SmolStr> {
-        fn from(sk: SimpleKey<SmolStr>) -> Self {
+    impl From<SimpleKey> for Key<SmolStr> {
+        fn from(sk: SimpleKey) -> Self {
             match sk {
-                SimpleKey::Named(key) => key,
+                SimpleKey::Named(key) => Key::Named(key),
                 SimpleKey::Char(c) => {
                     let mut buf = [0; 4];
                     let s = c.encode_utf8(&mut buf);
@@ -250,7 +250,7 @@ mod common {
 
     // NOTE: the only reason we don't use derive is that TOML does not support char as a map key,
     // thus we must convrt with char::encode_utf8. See toml-lang/toml#1001
-    impl<Str: Serialize> Serialize for SimpleKey<Str> {
+    impl Serialize for SimpleKey {
         fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer,
@@ -285,20 +285,8 @@ mod common {
         }
     }
 
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
     pub(super) struct ModifiersStateDeser(pub ModifiersState);
-
-    // NOTE: can be derived once winit#3166 is merged
-    impl PartialOrd for ModifiersStateDeser {
-        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-            self.0.bits().partial_cmp(&other.0.bits())
-        }
-    }
-    impl Ord for ModifiersStateDeser {
-        fn cmp(&self, other: &Self) -> Ordering {
-            self.0.bits().cmp(&other.0.bits())
-        }
-    }
 
     impl Serialize for ModifiersStateDeser {
         fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -406,8 +394,9 @@ mod ser {
     use super::{Key, Shortcuts};
     use serde::ser::{Serialize, SerializeMap, Serializer};
 
-    fn unpack_key<'a>(key: Key<&'a str>) -> Result<SimpleKey<&'a str>, ComplexKey<&'a str>> {
+    fn unpack_key<'a>(key: Key<&'a str>) -> Result<SimpleKey, ComplexKey<&'a str>> {
         match key {
+            Key::Named(named) => Ok(SimpleKey::Named(named)),
             Key::Character(c) => {
                 let mut iter = c.chars();
                 if let Some(c) = iter.next() {
@@ -420,7 +409,6 @@ mod ser {
             Key::Unidentified(code) => Err(ComplexKey::Unidentified(code)),
             Key::Dead(None) => panic!("invalid shortcut"),
             Key::Dead(Some(c)) => Err(ComplexKey::Dead(c)),
-            named => Ok(SimpleKey::Named(named)),
         }
     }
 

@@ -149,9 +149,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         }
 
         #[cfg(all(wayland_platform, feature = "clipboard"))]
-        use winit::window::raw_window_handle::{
-            HasRawDisplayHandle, RawDisplayHandle, WaylandDisplayHandle,
-        };
+        use raw_window_handle::{HasRawDisplayHandle, RawDisplayHandle, WaylandDisplayHandle};
         #[cfg(all(wayland_platform, feature = "clipboard"))]
         let wayland_clipboard = match window.raw_display_handle() {
             RawDisplayHandle::Wayland(WaylandDisplayHandle { display, .. }) => {
