@@ -7,17 +7,13 @@
 
 use crate::event::{Command, Key, ModifiersState};
 use linear_map::LinearMap;
-#[cfg(feature = "serde")]
-use serde::de::{self, Deserialize, Deserializer, MapAccess, Unexpected, Visitor};
-#[cfg(feature = "serde")]
-use serde::ser::{Serialize, SerializeMap, Serializer};
 use std::collections::HashMap;
-#[cfg(feature = "serde")] use std::fmt;
 
 /// Shortcut manager
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Shortcuts {
+    // NOTE: we do not permit Key::Dead(None) here
     map: LinearMap<ModifiersState, HashMap<Key, Command>>,
 }
 
@@ -118,7 +114,6 @@ impl Shortcuts {
             (Key::Character("t".into()), Command::TabNew),
             (Key::Character("u".into()), Command::Underline),
             (Key::Character("v".into()), Command::Paste),
-            (Key::Character("]".into()), Command::Paste),
             (Key::Character("w".into()), Command::Close),
             (Key::Character("x".into()), Command::Cut),
             (Key::Character("z".into()), Command::Undo),
@@ -222,175 +217,401 @@ impl Shortcuts {
 }
 
 #[cfg(feature = "serde")]
-fn state_to_string(state: ModifiersState) -> &'static str {
-    const SHIFT: ModifiersState = ModifiersState::SHIFT;
-    const CONTROL: ModifiersState = ModifiersState::CONTROL;
-    const ALT: ModifiersState = ModifiersState::ALT;
-    const SUPER: ModifiersState = ModifiersState::SUPER;
-    // we can't use match since OR patterns are unstable (rust#54883)
-    if state == ModifiersState::empty() {
-        "none"
-    } else if state == SUPER {
-        "super"
-    } else if state == ALT {
-        "alt"
-    } else if state == ALT | SUPER {
-        "alt-super"
-    } else if state == CONTROL {
-        "ctrl"
-    } else if state == CONTROL | SUPER {
-        "ctrl-super"
-    } else if state == CONTROL | ALT {
-        "ctrl-alt"
-    } else if state == CONTROL | ALT | SUPER {
-        "ctrl-alt-super"
-    } else if state == SHIFT {
-        "shift"
-    } else if state == SHIFT | SUPER {
-        "shift-super"
-    } else if state == SHIFT | ALT {
-        "alt-shift"
-    } else if state == SHIFT | ALT | SUPER {
-        "alt-shift-super"
-    } else if state == SHIFT | CONTROL {
-        "ctrl-shift"
-    } else if state == SHIFT | CONTROL | SUPER {
-        "ctrl-shift-super"
-    } else if state == SHIFT | CONTROL | ALT {
-        "ctrl-alt-shift"
-    } else {
-        "ctrl-alt-shift-super"
-    }
-}
+mod common {
+    use super::{Command, Key, ModifiersState};
+    use serde::de::{self, Visitor};
+    use serde::ser::Serializer;
+    use serde::{Deserialize, Serialize};
+    use std::cmp::{Ord, Ordering, PartialOrd};
+    use std::fmt;
+    use winit::keyboard::{NativeKey, SmolStr};
 
-#[cfg(feature = "serde")]
-impl Serialize for Shortcuts {
-    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        // Use BTreeMap for stable order of output
-        use std::collections::BTreeMap;
-        let mut map = BTreeMap::new();
-        for (mods, key_cmds) in self.map.iter() {
-            for (key, cmd) in key_cmds.iter() {
-                let mods = state_to_string(*mods);
-                map.entry(cmd)
-                    .or_insert_with(|| Vec::new())
-                    .push((mods, key));
+    /// A subset of [`Key`] which serialises to a simple value usable as a map key
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+    pub(super) enum SimpleKey<Str = SmolStr> {
+        Named(Key<Str>),
+        Char(char),
+    }
+
+    impl From<SimpleKey<SmolStr>> for Key<SmolStr> {
+        fn from(sk: SimpleKey<SmolStr>) -> Self {
+            match sk {
+                SimpleKey::Named(key) => key,
+                SimpleKey::Char(c) => {
+                    let mut buf = [0; 4];
+                    let s = c.encode_utf8(&mut buf);
+                    Key::Character(SmolStr::new(s))
+                }
             }
         }
-
-        let mut serializer = s.serialize_map(Some(map.len()))?;
-        for (cmd, mut keys) in map.into_iter() {
-            serializer.serialize_key(&cmd)?;
-            keys.sort();
-            serializer.serialize_value(&keys)?;
-        }
-        serializer.end()
-    }
-}
-
-// #[derive(Error, Debug)]
-// pub enum DeError {
-//     #[error("invalid modifier state: {0}")]
-//     State(String),
-// }
-
-#[cfg(feature = "serde")]
-struct ModifierStateVisitor(ModifiersState);
-#[cfg(feature = "serde")]
-impl<'de> Visitor<'de> for ModifierStateVisitor {
-    type Value = ModifierStateVisitor;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("none or ctrl or alt-shift-super etc.")
     }
 
-    fn visit_str<E: de::Error>(self, u: &str) -> Result<Self::Value, E> {
-        let mut v = u;
-        let mut state = ModifiersState::empty();
-
-        if v.starts_with("ctrl") {
-            state |= ModifiersState::CONTROL;
-            v = &v[v.len().min(4)..];
-        }
-        if v.starts_with('-') {
-            v = &v[1..];
-        }
-        if v.starts_with("alt") {
-            state |= ModifiersState::ALT;
-            v = &v[v.len().min(3)..];
-        }
-        if v.starts_with('-') {
-            v = &v[1..];
-        }
-        if v.starts_with("shift") {
-            state |= ModifiersState::SHIFT;
-            v = &v[v.len().min(5)..];
-        }
-        if v.starts_with('-') {
-            v = &v[1..];
-        }
-        if v.starts_with("super") {
-            state |= ModifiersState::SUPER;
-            v = &v[v.len().min(5)..];
-        }
-
-        if v.is_empty() || u == "none" {
-            Ok(ModifierStateVisitor(state))
-        } else {
-            Err(E::invalid_value(
-                Unexpected::Str(u),
-                &"none or ctrl or alt-shift-super etc.",
-            ))
-        }
-    }
-}
-
-#[cfg(feature = "serde")]
-impl<'de> Deserialize<'de> for ModifierStateVisitor {
-    fn deserialize<D>(d: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        d.deserialize_str(ModifierStateVisitor(Default::default()))
-    }
-}
-
-#[cfg(feature = "serde")]
-struct ShortcutsVisitor;
-#[cfg(feature = "serde")]
-impl<'de> Visitor<'de> for ShortcutsVisitor {
-    type Value = Shortcuts;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("{ <command> : [ ( <modifiers>, <key> ),* ] }")
-    }
-
-    fn visit_map<A>(self, mut reader: A) -> Result<Self::Value, A::Error>
-    where
-        A: MapAccess<'de>,
-    {
-        let mut map = LinearMap::<ModifiersState, HashMap<Key, Command>>::new();
-        while let Some(cmd) = reader.next_key::<Command>()? {
-            let values = reader.next_value::<Vec<(ModifierStateVisitor, Key)>>()?;
-            for v in values {
-                map.entry(v.0 .0)
-                    .or_insert_with(|| Default::default())
-                    .insert(v.1, cmd);
+    // NOTE: the only reason we don't use derive is that TOML does not support char as a map key,
+    // thus we must convrt with char::encode_utf8. See toml-lang/toml#1001
+    impl<Str: Serialize> Serialize for SimpleKey<Str> {
+        fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            match self {
+                SimpleKey::Named(key) => key.serialize(s),
+                SimpleKey::Char(c) => {
+                    let mut buf = [0; 4];
+                    let cs = c.encode_utf8(&mut buf);
+                    s.serialize_str(cs)
+                }
             }
         }
-        Ok(Shortcuts { map })
+    }
+
+    /// A subset of [`Key`], excluding anything which is a [`SimpleKey`]
+    #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    pub(super) enum ComplexKey<Str> {
+        Character(Str),
+        Dead(char),
+        #[serde(untagged)]
+        Unidentified(NativeKey),
+    }
+
+    impl From<ComplexKey<SmolStr>> for Key<SmolStr> {
+        fn from(ck: ComplexKey<SmolStr>) -> Self {
+            match ck {
+                ComplexKey::Character(c) => Key::Character(c),
+                ComplexKey::Dead(c) => Key::Dead(Some(c)),
+                ComplexKey::Unidentified(code) => Key::Unidentified(code),
+            }
+        }
+    }
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub(super) struct ModifiersStateDeser(pub ModifiersState);
+
+    // NOTE: can be derived once winit#3166 is merged
+    impl PartialOrd for ModifiersStateDeser {
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            self.0.bits().partial_cmp(&other.0.bits())
+        }
+    }
+    impl Ord for ModifiersStateDeser {
+        fn cmp(&self, other: &Self) -> Ordering {
+            self.0.bits().cmp(&other.0.bits())
+        }
+    }
+
+    impl Serialize for ModifiersStateDeser {
+        fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+            const SHIFT: ModifiersState = ModifiersState::SHIFT;
+            const CONTROL: ModifiersState = ModifiersState::CONTROL;
+            const ALT: ModifiersState = ModifiersState::ALT;
+            const SUPER: ModifiersState = ModifiersState::SUPER;
+
+            let s = match self.0 {
+                state if state == ModifiersState::empty() => "none",
+                SUPER => "super",
+                ALT => "alt",
+                state if state == ALT | SUPER => "alt-super",
+                state if state == CONTROL => "ctrl",
+                state if state == CONTROL | SUPER => "ctrl-super",
+                state if state == CONTROL | ALT => "ctrl-alt",
+                state if state == CONTROL | ALT | SUPER => "ctrl-alt-super",
+                SHIFT => "shift",
+                state if state == SHIFT | SUPER => "shift-super",
+                state if state == SHIFT | ALT => "alt-shift",
+                state if state == SHIFT | ALT | SUPER => "alt-shift-super",
+                state if state == SHIFT | CONTROL => "ctrl-shift",
+                state if state == SHIFT | CONTROL | SUPER => "ctrl-shift-super",
+                state if state == SHIFT | CONTROL | ALT => "ctrl-alt-shift",
+                _ => "ctrl-alt-shift-super",
+            };
+
+            serializer.serialize_str(s)
+        }
+    }
+
+    impl<'de> Visitor<'de> for ModifiersStateDeser {
+        type Value = ModifiersStateDeser;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("none or (sub-set of) ctrl-alt-shift-super")
+        }
+
+        fn visit_str<E: de::Error>(self, u: &str) -> Result<Self::Value, E> {
+            let mut v = u;
+            let mut state = ModifiersState::empty();
+
+            let adv_dash_if_not_empty = |v: &mut &str| {
+                if !v.is_empty() {
+                    if v.starts_with('-') {
+                        *v = &v[1..];
+                    }
+                }
+            };
+
+            if v.starts_with("ctrl") {
+                state |= ModifiersState::CONTROL;
+                v = &v[v.len().min(4)..];
+                adv_dash_if_not_empty(&mut v);
+            }
+            if v.starts_with("alt") {
+                state |= ModifiersState::ALT;
+                v = &v[v.len().min(3)..];
+                adv_dash_if_not_empty(&mut v);
+            }
+            if v.starts_with("shift") {
+                state |= ModifiersState::SHIFT;
+                v = &v[v.len().min(5)..];
+                adv_dash_if_not_empty(&mut v);
+            }
+            if v.starts_with("super") {
+                state |= ModifiersState::SUPER;
+                v = &v[v.len().min(5)..];
+            }
+
+            if v.is_empty() || u == "none" {
+                Ok(ModifiersStateDeser(state))
+            } else {
+                Err(E::invalid_value(
+                    de::Unexpected::Str(u),
+                    &"none or (sub-set of) ctrl-alt-shift-super",
+                ))
+            }
+        }
+    }
+
+    impl<'de> Deserialize<'de> for ModifiersStateDeser {
+        fn deserialize<D>(d: D) -> Result<Self, D::Error>
+        where
+            D: de::Deserializer<'de>,
+        {
+            d.deserialize_str(ModifiersStateDeser(Default::default()))
+        }
+    }
+
+    #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    pub(super) struct MiscRule<Str = SmolStr> {
+        #[serde(rename = "modifiers")]
+        pub(super) mods: ModifiersStateDeser,
+        #[serde(flatten)]
+        pub(super) key: ComplexKey<Str>,
+        #[serde(rename = "command")]
+        pub(super) cmd: Command,
     }
 }
 
 #[cfg(feature = "serde")]
-impl<'de> Deserialize<'de> for Shortcuts {
-    fn deserialize<D>(d: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        d.deserialize_map(ShortcutsVisitor)
+mod ser {
+    use super::common::{ComplexKey, MiscRule, ModifiersStateDeser, SimpleKey};
+    use super::{Key, Shortcuts};
+    use serde::ser::{Serialize, SerializeMap, Serializer};
+
+    fn unpack_key<'a>(key: Key<&'a str>) -> Result<SimpleKey<&'a str>, ComplexKey<&'a str>> {
+        match key {
+            Key::Character(c) => {
+                let mut iter = c.chars();
+                if let Some(c) = iter.next() {
+                    if iter.next().is_none() {
+                        return Ok(SimpleKey::Char(c));
+                    }
+                }
+                Err(ComplexKey::Character(c))
+            }
+            Key::Unidentified(code) => Err(ComplexKey::Unidentified(code)),
+            Key::Dead(None) => panic!("invalid shortcut"),
+            Key::Dead(Some(c)) => Err(ComplexKey::Dead(c)),
+            named => Ok(SimpleKey::Named(named)),
+        }
+    }
+
+    impl Serialize for Shortcuts {
+        fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            // Use BTreeMap for stable order of output
+            use std::collections::BTreeMap;
+
+            let mut serializer = s.serialize_map(Some(self.map.len() + 1))?;
+            let mut misc = Vec::new();
+
+            for (state, key_cmds) in self.map.iter() {
+                let mods = ModifiersStateDeser(*state);
+                let mut map = BTreeMap::new();
+
+                for (key, cmd) in key_cmds.iter() {
+                    match unpack_key(key.as_ref()) {
+                        Ok(sk) => {
+                            map.insert(sk, *cmd);
+                        }
+                        Err(key) => {
+                            let cmd = *cmd;
+                            misc.push(MiscRule { mods, key, cmd });
+                        }
+                    }
+                }
+
+                // Keys are now sorted and filtered
+                if !map.is_empty() {
+                    serializer.serialize_key(&mods)?;
+                    serializer.serialize_value(&map)?;
+                }
+            }
+
+            if !misc.is_empty() {
+                serializer.serialize_key("other")?;
+                misc.sort();
+                serializer.serialize_value(&misc)?;
+            }
+            serializer.end()
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+mod deser {
+    use super::common::{MiscRule, ModifiersStateDeser, SimpleKey};
+    use super::{Command, Key, ModifiersState, Shortcuts};
+    use linear_map::LinearMap;
+    use serde::de::{self, Deserialize, DeserializeSeed, Deserializer, MapAccess, Visitor};
+    use std::collections::HashMap;
+    use std::fmt;
+
+    enum OptModifiersStateDeser {
+        State(ModifiersStateDeser),
+        Other,
+    }
+
+    impl<'de> Deserialize<'de> for OptModifiersStateDeser {
+        fn deserialize<D>(d: D) -> Result<Self, D::Error>
+        where
+            D: de::Deserializer<'de>,
+        {
+            d.deserialize_str(OptModifiersStateDeser::Other)
+        }
+    }
+
+    impl<'de> Visitor<'de> for OptModifiersStateDeser {
+        type Value = OptModifiersStateDeser;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("none or (sub-set of) ctrl-alt-shift-super or other")
+        }
+
+        fn visit_str<E: de::Error>(self, u: &str) -> Result<Self::Value, E> {
+            if u == "other" {
+                Ok(OptModifiersStateDeser::Other)
+            } else {
+                ModifiersStateDeser::visit_str(ModifiersStateDeser(Default::default()), u)
+                    .map(OptModifiersStateDeser::State)
+            }
+        }
+    }
+
+    struct DeserSimple<'a>(&'a mut HashMap<Key, Command>);
+
+    impl<'a, 'de> DeserializeSeed<'de> for DeserSimple<'a> {
+        type Value = ();
+
+        fn deserialize<D>(self, d: D) -> Result<Self::Value, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            d.deserialize_map(self)
+        }
+    }
+
+    impl<'a, 'de> Visitor<'de> for DeserSimple<'a> {
+        type Value = ();
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a map")
+        }
+
+        fn visit_map<A>(self, mut reader: A) -> Result<Self::Value, A::Error>
+        where
+            A: de::MapAccess<'de>,
+        {
+            while let Some(sk) = reader.next_key::<SimpleKey>()? {
+                let key: Key = sk.into();
+                let cmd: Command = reader.next_value()?;
+                self.0.insert(key, cmd);
+            }
+
+            Ok(())
+        }
+    }
+
+    struct DeserComplex<'a>(&'a mut LinearMap<ModifiersState, HashMap<Key, Command>>);
+
+    impl<'a, 'de> DeserializeSeed<'de> for DeserComplex<'a> {
+        type Value = ();
+
+        fn deserialize<D>(self, d: D) -> Result<Self::Value, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            d.deserialize_seq(self)
+        }
+    }
+
+    impl<'a, 'de> Visitor<'de> for DeserComplex<'a> {
+        type Value = ();
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a sequence")
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: de::SeqAccess<'de>,
+        {
+            while let Some(rule) = seq.next_element::<MiscRule>()? {
+                let ModifiersStateDeser(state) = rule.mods;
+                let sub = self.0.entry(state).or_insert_with(|| Default::default());
+                sub.insert(rule.key.into(), rule.cmd);
+            }
+
+            Ok(())
+        }
+    }
+
+    struct ShortcutsVisitor;
+
+    impl<'de> Visitor<'de> for ShortcutsVisitor {
+        type Value = Shortcuts;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a map")
+        }
+
+        fn visit_map<A>(self, mut reader: A) -> Result<Self::Value, A::Error>
+        where
+            A: MapAccess<'de>,
+        {
+            let mut map = LinearMap::<ModifiersState, HashMap<Key, Command>>::new();
+            while let Some(opt_state) = reader.next_key::<OptModifiersStateDeser>()? {
+                match opt_state {
+                    OptModifiersStateDeser::State(ModifiersStateDeser(state)) => {
+                        let sub = map.entry(state).or_insert_with(|| Default::default());
+                        reader.next_value_seed(DeserSimple(sub))?;
+                    }
+                    OptModifiersStateDeser::Other => {
+                        reader.next_value_seed(DeserComplex(&mut map))?;
+                    }
+                }
+            }
+
+            Ok(Shortcuts { map })
+        }
+    }
+
+    impl<'de> Deserialize<'de> for Shortcuts {
+        fn deserialize<D>(d: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            d.deserialize_map(ShortcutsVisitor)
+        }
     }
 }
