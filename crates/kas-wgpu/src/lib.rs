@@ -14,7 +14,7 @@
 //! (see the [Mandlebrot example](https://github.com/kas-gui/kas/blob/master/kas-wgpu/examples/mandlebrot.rs)).
 //!
 //! By default, some environment variables are read for configuration.
-//! See [`options::Options::from_env`] for documentation.
+//! See [`options::Options::load_from_env`] for documentation.
 //!
 //! [WGPU]: https://github.com/gfx-rs/wgpu
 

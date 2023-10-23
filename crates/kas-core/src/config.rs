@@ -177,7 +177,7 @@ impl Format {
             #[cfg(feature = "yaml")]
             Format::Yaml => {
                 let text = serde_yaml::to_string(value)?;
-                std::fs::write(path, &text)?;
+                std::fs::write(path, text)?;
                 Ok(())
             }
             #[cfg(feature = "ron")]

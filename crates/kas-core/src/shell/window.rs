@@ -282,7 +282,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     }
 
     /// Handle an action (excludes handling of CLOSE and EXIT)
-    pub(super) fn handle_action(&mut self, shared: &mut SharedState<A, S, T>, mut action: Action) {
+    pub(super) fn handle_action(&mut self, shared: &SharedState<A, S, T>, mut action: Action) {
         if action.contains(Action::EVENT_CONFIG) {
             if let Some(ref mut window) = self.window {
                 let scale_factor = window.scale_factor() as f32;
@@ -373,7 +373,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
 
 // Internal functions
 impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
-    fn reconfigure(&mut self, shared: &mut SharedState<A, S, T>) {
+    fn reconfigure(&mut self, shared: &SharedState<A, S, T>) {
         let time = Instant::now();
         let Some(ref mut window) = self.window else {
             return;
@@ -389,7 +389,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         log::trace!(target: "kas_perf::wgpu::window", "reconfigure: {}µs", time.elapsed().as_micros());
     }
 
-    fn update(&mut self, shared: &mut SharedState<A, S, T>) {
+    fn update(&mut self, shared: &SharedState<A, S, T>) {
         let time = Instant::now();
         let Some(ref mut window) = self.window else {
             return;
@@ -402,7 +402,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         log::trace!(target: "kas_perf::wgpu::window", "update: {}µs", time.elapsed().as_micros());
     }
 
-    fn apply_size(&mut self, shared: &mut SharedState<A, S, T>, first: bool) {
+    fn apply_size(&mut self, shared: &SharedState<A, S, T>, first: bool) {
         let time = Instant::now();
         let Some(ref mut window) = self.window else {
             return;

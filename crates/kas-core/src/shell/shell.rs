@@ -78,7 +78,7 @@ impl_scope! {
         pub fn build<Data: AppData>(self, data: Data) -> Result<Shell<Data, G, T>> {
             let mut theme = self.theme;
 
-            let options = self.options.unwrap_or_else(|| Options::from_env());
+            let options = self.options.unwrap_or_else(Options::from_env);
             options.init_theme_config(&mut theme)?;
 
             let config = self.config.unwrap_or_else(|| match options.read_config() {

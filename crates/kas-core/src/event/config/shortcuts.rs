@@ -538,7 +538,7 @@ mod deser {
         {
             while let Some(rule) = seq.next_element::<MiscRule>()? {
                 let ModifiersStateDeser(state) = rule.mods;
-                let sub = self.0.entry(state).or_insert_with(|| Default::default());
+                let sub = self.0.entry(state).or_insert_with(Default::default);
                 sub.insert(rule.key.into(), rule.cmd);
             }
 
@@ -563,7 +563,7 @@ mod deser {
             while let Some(opt_state) = reader.next_key::<OptModifiersStateDeser>()? {
                 match opt_state {
                     OptModifiersStateDeser::State(ModifiersStateDeser(state)) => {
-                        let sub = map.entry(state).or_insert_with(|| Default::default());
+                        let sub = map.entry(state).or_insert_with(Default::default);
                         reader.next_value_seed(DeserSimple(sub))?;
                     }
                     OptModifiersStateDeser::Other => {
