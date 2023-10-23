@@ -52,7 +52,7 @@ spec = ["min_spec", "kas-core/spec"]
 view = ["dep:kas-view"]
 
 #Enable WGPU backend:
-wgpu = ["dep:kas-wgpu", "kas-core/rwh_05"]
+wgpu = ["dep:kas-wgpu"]
 
 # Enables documentation of APIs for shells and internal usage.
 # This API is not intended for use by end-user applications and
