@@ -220,7 +220,7 @@ impl Shortcuts {
 #[cfg(feature = "serde")]
 mod common {
     use super::{Command, Key, ModifiersState, NamedKey};
-    use serde::de::{self, Visitor};
+    use serde::de::{self, Deserializer, Visitor};
     use serde::ser::Serializer;
     use serde::{Deserialize, Serialize};
     use std::fmt;
@@ -251,10 +251,7 @@ mod common {
     // NOTE: the only reason we don't use derive is that TOML does not support char as a map key,
     // thus we must convrt with char::encode_utf8. See toml-lang/toml#1001
     impl Serialize for SimpleKey {
-        fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
+        fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
             match self {
                 SimpleKey::Named(key) => key.serialize(s),
                 SimpleKey::Char(c) => {
@@ -369,10 +366,7 @@ mod common {
     }
 
     impl<'de> Deserialize<'de> for ModifiersStateDeser {
-        fn deserialize<D>(d: D) -> Result<Self, D::Error>
-        where
-            D: de::Deserializer<'de>,
-        {
+        fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
             d.deserialize_str(ModifiersStateDeser(Default::default()))
         }
     }
@@ -413,10 +407,7 @@ mod ser {
     }
 
     impl Serialize for Shortcuts {
-        fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
+        fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
             // Use BTreeMap for stable order of output
             use std::collections::BTreeMap;
 
@@ -471,10 +462,7 @@ mod deser {
     }
 
     impl<'de> Deserialize<'de> for OptModifiersStateDeser {
-        fn deserialize<D>(d: D) -> Result<Self, D::Error>
-        where
-            D: de::Deserializer<'de>,
-        {
+        fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
             d.deserialize_str(OptModifiersStateDeser::Other)
         }
     }
@@ -501,10 +489,7 @@ mod deser {
     impl<'a, 'de> DeserializeSeed<'de> for DeserSimple<'a> {
         type Value = ();
 
-        fn deserialize<D>(self, d: D) -> Result<Self::Value, D::Error>
-        where
-            D: Deserializer<'de>,
-        {
+        fn deserialize<D: Deserializer<'de>>(self, d: D) -> Result<Self::Value, D::Error> {
             d.deserialize_map(self)
         }
     }
@@ -535,10 +520,7 @@ mod deser {
     impl<'a, 'de> DeserializeSeed<'de> for DeserComplex<'a> {
         type Value = ();
 
-        fn deserialize<D>(self, d: D) -> Result<Self::Value, D::Error>
-        where
-            D: Deserializer<'de>,
-        {
+        fn deserialize<D: Deserializer<'de>>(self, d: D) -> Result<Self::Value, D::Error> {
             d.deserialize_seq(self)
         }
     }
@@ -595,10 +577,7 @@ mod deser {
     }
 
     impl<'de> Deserialize<'de> for Shortcuts {
-        fn deserialize<D>(d: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
-        {
+        fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
             d.deserialize_map(ShortcutsVisitor)
         }
     }
