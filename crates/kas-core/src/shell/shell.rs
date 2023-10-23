@@ -7,11 +7,11 @@
 
 use super::{GraphicalShell, Platform, ProxyAction, Result, SharedState};
 use crate::config::Options;
-use crate::draw::{DrawImpl, DrawShared, DrawSharedImpl};
+use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::event;
 use crate::theme::{self, Theme, ThemeConfig};
 use crate::util::warn_about_error;
-use crate::{AppData, Window, WindowId};
+use crate::{impl_scope, AppData, Window, WindowId};
 use std::cell::RefCell;
 use std::rc::Rc;
 use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
@@ -19,16 +19,91 @@ use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 /// The KAS shell
 ///
 /// The "shell" is the layer over widgets, windows, events and graphics.
-///
-/// Constructing with [`Shell::new`] or [`Shell::new_custom`]
-/// reads configuration (depending on passed options or environment variables)
-/// and initialises the font database. Note that this database is a global
-/// singleton and some widgets and other library code may expect fonts to have
-/// been initialised first.
 pub struct Shell<Data: AppData, G: GraphicalShell, T: Theme<G::Shared>> {
     el: EventLoop<ProxyAction>,
     windows: Vec<Box<super::Window<Data, G::Surface, T>>>,
     shared: SharedState<Data, G::Surface, T>,
+}
+
+impl_scope! {
+    pub struct ShellBuilder<G: GraphicalShell, T: Theme<G::Shared>> {
+        graphical: G,
+        theme: T,
+        options: Option<Options>,
+        config: Option<Rc<RefCell<event::Config>>>,
+    }
+
+    impl Self {
+        /// Construct from a graphical shell and a theme
+        #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+        #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+        pub fn new(graphical: G, theme: T) -> Self {
+            ShellBuilder {
+                graphical,
+                theme,
+                options: None,
+                config: None,
+            }
+        }
+
+        /// Use the specified `options`
+        ///
+        /// If omitted, options are provided by [`Options::from_env`].
+        #[inline]
+        pub fn with_options(mut self, options: Options) -> Self {
+            self.options = Some(options);
+            self
+        }
+
+        /// Use the specified event `config`
+        ///
+        /// This is a wrapper around [`Self::with_event_config_rc`].
+        ///
+        /// If omitted, config is provided by [`Options::read_config`].
+        #[inline]
+        pub fn with_event_config(self, config: event::Config) -> Self {
+            self.with_event_config_rc(Rc::new(RefCell::new(config)))
+        }
+
+        /// Use the specified event `config`
+        ///
+        /// If omitted, config is provided by [`Options::read_config`].
+        #[inline]
+        pub fn with_event_config_rc(mut self, config: Rc<RefCell<event::Config>>) -> Self {
+            self.config = Some(config);
+            self
+        }
+
+        /// Build with `data`
+        pub fn build<Data: AppData>(self, data: Data) -> Result<Shell<Data, G, T>> {
+            let mut theme = self.theme;
+
+            let options = self.options.unwrap_or_else(Options::from_env);
+            options.init_theme_config(&mut theme)?;
+
+            let config = self.config.unwrap_or_else(|| match options.read_config() {
+                Ok(config) => Rc::new(RefCell::new(config)),
+                Err(error) => {
+                    warn_about_error("Shell::new_custom: failed to read config", &error);
+                    Default::default()
+                }
+            });
+
+            let el = EventLoopBuilder::with_user_event().build()?;
+
+            let mut draw_shared = self.graphical.build()?;
+            draw_shared.set_raster_config(theme.config().raster());
+
+            let pw = PlatformWrapper(&el);
+            let shared = SharedState::new(data, pw, draw_shared, theme, options, config)?;
+
+            Ok(Shell {
+                el,
+                windows: vec![],
+                shared,
+            })
+        }
+    }
 }
 
 /// Shell associated types
@@ -37,9 +112,6 @@ pub struct Shell<Data: AppData, G: GraphicalShell, T: Theme<G::Shared>> {
 pub trait ShellAssoc {
     /// Shared draw state type
     type DrawShared: DrawSharedImpl;
-
-    /// Per-window draw state
-    type Draw: DrawImpl;
 }
 
 impl<A: AppData, G: GraphicalShell, T> ShellAssoc for Shell<A, G, T>
@@ -48,17 +120,13 @@ where
     T::Window: theme::Window,
 {
     type DrawShared = G::Shared;
-
-    type Draw = G::Window;
 }
 
-impl<Data: AppData, G, T> Shell<Data, G, T>
+impl<Data: AppData, G> Shell<Data, G, G::DefaultTheme>
 where
     G: GraphicalShell + Default,
-    T: Theme<G::Shared> + 'static,
-    T::Window: theme::Window,
 {
-    /// Construct a new instance with default options.
+    /// Construct a new instance with default options and theme
     ///
     /// All user interfaces are expected to provide `data: Data`: widget data
     /// shared across all windows. If not required this may be `()`.
@@ -67,8 +135,26 @@ where
     /// of [`Options::from_env`]. KAS config is provided by
     /// [`Options::read_config`].
     #[inline]
-    pub fn new(data: Data, theme: T) -> Result<Self> {
-        Self::new_custom(data, G::default(), theme, Options::from_env())
+    pub fn new(data: Data) -> Result<Self> {
+        Self::with_default_theme().build(data)
+    }
+
+    /// Construct a builder with the default theme
+    #[inline]
+    pub fn with_default_theme() -> ShellBuilder<G, G::DefaultTheme> {
+        ShellBuilder::new(G::default(), G::DefaultTheme::default())
+    }
+}
+
+impl<G, T> Shell<(), G, T>
+where
+    G: GraphicalShell + Default,
+    T: Theme<G::Shared>,
+{
+    /// Construct a builder with the given `theme`
+    #[inline]
+    pub fn with_theme(theme: T) -> ShellBuilder<G, T> {
+        ShellBuilder::new(G::default(), theme)
     }
 }
 
@@ -77,63 +163,6 @@ where
     T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,
 {
-    /// Construct an instance with custom options
-    ///
-    /// The [`Options`] parameter allows direct specification of shell options;
-    /// usually, these are provided by [`Options::from_env`].
-    ///
-    /// KAS config is provided by [`Options::read_config`] and `theme` is
-    /// configured through [`Options::init_theme_config`].
-    #[inline]
-    pub fn new_custom(
-        data: Data,
-        graphical_shell: impl Into<G>,
-        mut theme: T,
-        options: Options,
-    ) -> Result<Self> {
-        options.init_theme_config(&mut theme)?;
-        let config = match options.read_config() {
-            Ok(config) => config,
-            Err(error) => {
-                warn_about_error("Shell::new_custom: failed to read config", &error);
-                Default::default()
-            }
-        };
-        let config = Rc::new(RefCell::new(config));
-
-        Self::new_custom_config(data, graphical_shell, theme, options, config)
-    }
-
-    /// Construct an instance with custom options and config
-    ///
-    /// This is like [`Shell::new_custom`], but allows KAS config to be
-    /// specified directly, instead of loading via [`Options::read_config`].
-    ///
-    /// Unlike other the constructors, this method does not configure the theme.
-    /// The user should call [`Options::init_theme_config`] before this method.
-    #[inline]
-    pub fn new_custom_config(
-        data: Data,
-        graphical_shell: impl Into<G>,
-        theme: T,
-        options: Options,
-        config: Rc<RefCell<event::Config>>,
-    ) -> Result<Self> {
-        let el = EventLoopBuilder::with_user_event().build()?;
-        let windows = vec![];
-
-        let mut draw_shared = graphical_shell.into().build()?;
-        draw_shared.set_raster_config(theme.config().raster());
-        let pw = PlatformWrapper(&el);
-        let shared = SharedState::new(data, pw, draw_shared, theme, options, config)?;
-
-        Ok(Shell {
-            el,
-            windows,
-            shared,
-        })
-    }
-
     /// Access shared draw state
     #[inline]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {

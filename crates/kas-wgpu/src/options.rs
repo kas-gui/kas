@@ -31,7 +31,10 @@ impl Default for Options {
 }
 
 impl Options {
-    /// Construct a new instance, reading from environment variables
+    /// Read values from environment variables
+    ///
+    /// This replaces values in self where specified via env vars.
+    /// Use e.g. `Options::default().load_from_env()`.
     ///
     /// The following environment variables are read, in case-insensitive mode.
     ///
@@ -62,12 +65,10 @@ impl Options {
     /// ```
     ///
     /// [API tracing]: https://github.com/gfx-rs/wgpu/wiki/Debugging-wgpu-Applications#tracing-infrastructure
-    pub fn from_env() -> Self {
-        let mut options = Options::default();
-
+    pub fn load_from_env(&mut self) {
         if let Ok(mut v) = var("KAS_POWER_PREFERENCE") {
             v.make_ascii_uppercase();
-            options.power_preference = match v.as_str() {
+            self.power_preference = match v.as_str() {
                 "DEFAULT" | "LOWPOWER" => PowerPreference::LowPower,
                 "HIGHPERFORMANCE" => PowerPreference::HighPerformance,
                 other => {
@@ -75,14 +76,14 @@ impl Options {
                     log::error!(
                         "from_env: supported power modes: DEFAULT, LOWPOWER, HIGHPERFORMANCE"
                     );
-                    options.power_preference
+                    self.power_preference
                 }
             }
         }
 
         if let Ok(mut v) = var("KAS_BACKENDS") {
             v.make_ascii_uppercase();
-            options.backends = match v.as_str() {
+            self.backends = match v.as_str() {
                 "VULKAN" => Backends::VULKAN,
                 "GL" => Backends::GL,
                 "METAL" => Backends::METAL,
@@ -95,16 +96,14 @@ impl Options {
                 other => {
                     log::error!("from_env: bad var KAS_BACKENDS={other}");
                     log::error!("from_env: supported backends: VULKAN, GL, METAL, DX11, DX12, BROWSER_WEBGPU, PRIMARY, SECONDARY, FALLBACK");
-                    options.backends
+                    self.backends
                 }
             }
         }
 
         if let Ok(v) = var("KAS_WGPU_TRACE_PATH") {
-            options.wgpu_trace_path = Some(v.into());
+            self.wgpu_trace_path = Some(v.into());
         }
-
-        options
     }
 
     pub(crate) fn adapter_options(&self) -> wgpu::RequestAdapterOptions {

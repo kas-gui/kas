@@ -31,10 +31,10 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 # markdown, resvg. Recommended also: clipboard, yaml (or some config format).
 minimal = ["wgpu", "winit", "wayland", "x11"]
 # All recommended features for optimal experience
-default = ["minimal", "view", "yaml", "image", "resvg", "clipboard", "markdown", "shaping", "spawn"]
+default = ["minimal", "view", "image", "resvg", "clipboard", "markdown", "shaping", "spawn"]
 # All standard test target features
 # NOTE: dynamic is excluded due to linker problems on Windows
-stable = ["default", "serde", "json", "ron", "macros_log"]
+stable = ["default", "serde", "toml", "yaml", "json", "ron", "macros_log"]
 # Enables "recommended" unstable features
 nightly = ["min_spec"]
 
@@ -82,6 +82,9 @@ json = ["serde", "kas-core/json"]
 
 # Enable support for RON (de)serialisation
 ron = ["serde", "kas-core/ron"]
+
+# Enable support for TOML (de)serialisation
+toml = ["serde", "kas-core/toml"]
 
 # Support image loading and decoding
 image = ["kas-widgets/image"]
@@ -146,7 +149,3 @@ members = [
     "crates/kas-view",
     "examples/mandlebrot",
 ]
-
-[patch.crates-io.winit]
-git = "https://github.com/rust-windowing/winit.git"
-rev = "cb58c49a90f17734e0405627130674d47c0b8f40"

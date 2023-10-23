@@ -14,7 +14,7 @@
 //! (see the [Mandlebrot example](https://github.com/kas-gui/kas/blob/master/kas-wgpu/examples/mandlebrot.rs)).
 //!
 //! By default, some environment variables are read for configuration.
-//! See [`options::Options::from_env`] for documentation.
+//! See [`options::Options::load_from_env`] for documentation.
 //!
 //! [WGPU]: https://github.com/gfx-rs/wgpu
 
@@ -27,7 +27,8 @@ mod shaded_theme;
 mod surface;
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
-use kas::shell::{GraphicalShell, Result};
+use kas::shell::{GraphicalShell, Result, ShellBuilder};
+use kas::theme::{FlatTheme, Theme};
 
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
 pub use options::Options;
@@ -35,29 +36,76 @@ pub use shaded_theme::ShadedTheme;
 pub extern crate wgpu;
 
 /// Builder for a KAS shell using WGPU
-pub struct WgpuShellBuilder<CB: CustomPipeBuilder>(CB, Options);
+pub struct WgpuBuilder<CB: CustomPipeBuilder> {
+    custom: CB,
+    options: Options,
+    read_env_vars: bool,
+}
 
-impl<CB: CustomPipeBuilder> GraphicalShell for WgpuShellBuilder<CB> {
+impl<CB: CustomPipeBuilder> GraphicalShell for WgpuBuilder<CB> {
+    type DefaultTheme = FlatTheme;
+
     type Shared = DrawPipe<CB::Pipe>;
-    type Window = draw::DrawWindow<<CB::Pipe as draw::CustomPipe>::Window>;
+
     type Surface = surface::Surface<CB::Pipe>;
 
     fn build(self) -> Result<Self::Shared> {
-        DrawPipe::new(self.0, &self.1)
+        let mut options = self.options;
+        if self.read_env_vars {
+            options.load_from_env();
+        }
+        DrawPipe::new(self.custom, &options)
     }
 }
 
-impl Default for WgpuShellBuilder<()> {
+impl Default for WgpuBuilder<()> {
     fn default() -> Self {
-        WgpuShellBuilder((), Options::from_env())
+        WgpuBuilder::new(())
     }
 }
 
-impl<CB: CustomPipeBuilder> From<CB> for WgpuShellBuilder<CB> {
-    fn from(cb: CB) -> Self {
-        WgpuShellBuilder(cb, Options::from_env())
+impl<CB: CustomPipeBuilder> WgpuBuilder<CB> {
+    /// Construct with the given pipe builder
+    ///
+    /// Pass `()` or use [`Self::default`] when not using a custom pipe.
+    #[inline]
+    pub fn new(cb: CB) -> Self {
+        WgpuBuilder {
+            custom: cb,
+            options: Options::default(),
+            read_env_vars: true,
+        }
+    }
+
+    /// Specify the default WGPU options
+    ///
+    /// These options serve as a default, but may still be replaced by values
+    /// read from env vars unless disabled via [`Self::read_env_vars`].
+    #[inline]
+    pub fn with_wgpu_options(mut self, options: Options) -> Self {
+        self.options = options;
+        self
+    }
+
+    /// En/dis-able reading options from environment variables
+    ///
+    /// Default: `true`. If enabled, options will be read from env vars where
+    /// present (see [`Options::load_from_env`]).
+    #[inline]
+    pub fn read_env_vars(mut self, read_env_vars: bool) -> Self {
+        self.read_env_vars = read_env_vars;
+        self
+    }
+
+    /// Convert to a [`ShellBuilder`] using the default theme
+    #[inline]
+    pub fn with_default_theme(self) -> ShellBuilder<Self, FlatTheme> {
+        ShellBuilder::new(self, FlatTheme::new())
+    }
+
+    /// Convert to a [`ShellBuilder`] using the specified `theme`
+    #[inline]
+    pub fn with_theme<T: Theme<DrawPipe<CB::Pipe>>>(self, theme: T) -> ShellBuilder<Self, T> {
+        ShellBuilder::new(self, theme)
     }
 }
-
-/// The default (unparameterised) implementation of [`WgpuShellBuilder`]
-pub type DefaultGraphicalShell = WgpuShellBuilder<()>;

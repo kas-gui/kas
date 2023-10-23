@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{EventCx, IsUsed, Unused, Used};
 #[allow(unused)] use super::{EventState, GrabMode};
-use super::{Key, KeyCode, KeyEvent, Press};
+use super::{Key, KeyEvent, NamedKey, PhysicalKey, Press};
 use crate::geom::{DVec2, Offset};
 use crate::{dir::Direction, Id, WindowId};
 #[allow(unused)] use crate::{Events, Popup};
@@ -27,14 +27,14 @@ pub enum Event {
     /// A generic "command". The source is often but not always a key press.
     /// In many cases (but not all) the target widget has navigation focus.
     ///
-    /// A [`KeyCode`] is attached when the command is caused by a key press.
+    /// A [`PhysicalKey`] is attached when the command is caused by a key press.
     /// The recipient may use this to call [`EventState::depress_with_key`].
     ///
     /// If a widget has keyboard input focus (see
     /// [`EventState::request_key_focus`]) it will instead receive
     /// [`Event::Key`] for key presses (but may still receive `Event::Command`
     /// from other sources).
-    Command(Command, Option<KeyCode>),
+    Command(Command, Option<PhysicalKey>),
     /// Keyboard input: `event, is_synthetic`
     ///
     /// This is only received by a widget with character focus (see
@@ -346,7 +346,7 @@ impl Event {
 /// *Most* `Command` entries represent an action (such as `Copy` or `FindNext`)
 /// but some represent an important key whose action may be context-dependent
 /// (e.g. `Escape`, `Space`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[non_exhaustive]
 pub enum Command {
@@ -515,48 +515,51 @@ pub enum Command {
 impl Command {
     /// Try constructing from a [`winit::keyboard::Key`]
     pub fn new(key: &Key) -> Option<Self> {
-        Some(match key {
-            Key::ScrollLock => Command::ScrollLock,
-            Key::Enter => Command::Enter,
-            Key::Tab => Command::Tab,
-            Key::Space => Command::Space,
-            Key::ArrowDown => Command::Down,
-            Key::ArrowLeft => Command::Left,
-            Key::ArrowRight => Command::Right,
-            Key::ArrowUp => Command::Up,
-            Key::End => Command::End,
-            Key::Home => Command::Home,
-            Key::PageDown => Command::PageDown,
-            Key::PageUp => Command::PageUp,
-            Key::Backspace => Command::DelBack,
-            Key::Clear => Command::Deselect,
-            Key::Copy => Command::Copy,
-            Key::Cut => Command::Cut,
-            Key::Delete => Command::Delete,
-            Key::Insert => Command::Insert,
-            Key::Paste => Command::Paste,
-            Key::Redo | Key::Again => Command::Redo,
-            Key::Undo => Command::Undo,
-            Key::ContextMenu => Command::ContextMenu,
-            Key::Escape => Command::Escape,
-            Key::Execute => Command::Activate,
-            Key::Find => Command::Find,
-            Key::Help => Command::Help,
-            Key::Pause => Command::Pause,
-            Key::Select => Command::SelectAll,
-            Key::PrintScreen => Command::Snapshot,
-            // Key::Close => CloseDocument ?
-            Key::New => Command::New,
-            Key::Open => Command::Open,
-            Key::Print => Command::Print,
-            Key::Save => Command::Save,
-            Key::SpellCheck => Command::SpellCheck,
-            Key::BrowserBack | Key::GoBack => Command::NavPrevious,
-            Key::BrowserForward => Command::NavNext,
-            Key::BrowserRefresh => Command::Refresh,
-            Key::Exit => Command::Exit,
-            _ => return None,
-        })
+        match key {
+            Key::Named(named) => Some(match named {
+                NamedKey::ScrollLock => Command::ScrollLock,
+                NamedKey::Enter => Command::Enter,
+                NamedKey::Tab => Command::Tab,
+                NamedKey::Space => Command::Space,
+                NamedKey::ArrowDown => Command::Down,
+                NamedKey::ArrowLeft => Command::Left,
+                NamedKey::ArrowRight => Command::Right,
+                NamedKey::ArrowUp => Command::Up,
+                NamedKey::End => Command::End,
+                NamedKey::Home => Command::Home,
+                NamedKey::PageDown => Command::PageDown,
+                NamedKey::PageUp => Command::PageUp,
+                NamedKey::Backspace => Command::DelBack,
+                NamedKey::Clear => Command::Deselect,
+                NamedKey::Copy => Command::Copy,
+                NamedKey::Cut => Command::Cut,
+                NamedKey::Delete => Command::Delete,
+                NamedKey::Insert => Command::Insert,
+                NamedKey::Paste => Command::Paste,
+                NamedKey::Redo | NamedKey::Again => Command::Redo,
+                NamedKey::Undo => Command::Undo,
+                NamedKey::ContextMenu => Command::ContextMenu,
+                NamedKey::Escape => Command::Escape,
+                NamedKey::Execute => Command::Activate,
+                NamedKey::Find => Command::Find,
+                NamedKey::Help => Command::Help,
+                NamedKey::Pause => Command::Pause,
+                NamedKey::Select => Command::SelectAll,
+                NamedKey::PrintScreen => Command::Snapshot,
+                // NamedKey::Close => CloseDocument ?
+                NamedKey::New => Command::New,
+                NamedKey::Open => Command::Open,
+                NamedKey::Print => Command::Print,
+                NamedKey::Save => Command::Save,
+                NamedKey::SpellCheck => Command::SpellCheck,
+                NamedKey::BrowserBack | NamedKey::GoBack => Command::NavPrevious,
+                NamedKey::BrowserForward => Command::NavNext,
+                NamedKey::BrowserRefresh => Command::Refresh,
+                NamedKey::Exit => Command::Exit,
+                _ => return None,
+            }),
+            _ => None,
+        }
     }
 
     /// True for "activation" commands

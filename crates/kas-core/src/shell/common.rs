@@ -5,9 +5,10 @@
 
 //! Public shell stuff common to all backends
 
+use crate::draw::DrawSharedImpl;
 use crate::draw::{color::Rgba, DrawIface, WindowCommon};
-use crate::draw::{DrawImpl, DrawSharedImpl};
 use crate::geom::Size;
+use crate::theme::Theme;
 use raw_window_handle as raw;
 use thiserror::Error;
 
@@ -172,11 +173,11 @@ impl Platform {
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait GraphicalShell {
+    /// The default theme
+    type DefaultTheme: Default + Theme<Self::Shared>;
+
     /// Shared draw state
     type Shared: DrawSharedImpl;
-
-    /// Per-window draw state
-    type Window: DrawImpl;
 
     /// Window surface
     type Surface: WindowSurface<Shared = Self::Shared> + 'static;

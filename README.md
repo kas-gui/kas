@@ -7,78 +7,50 @@ KAS GUI
 [![Docs](https://docs.rs/kas/badge.svg)](https://docs.rs/kas)
 ![Minimum rustc version](https://img.shields.io/badge/rustc-1.66+-lightgray.svg)
 
-KAS is a pure-Rust GUI toolkit with stateful widgets:
+KAS is a stateful, pure-Rust GUI toolkit supporting:
 
-- [x] Pure, portable Rust
-- [x] Very fast and CPU efficient
-- [x] Flexible event handling without data races
-- [x] Theme abstraction layer
-- [x] [Winit] + [WGPU] shell supporting embedded accelerated content
-- [ ] More portable shells: OpenGL, CPU-rendered, integration
-- [x] [Complex text](https://github.com/kas-gui/kas-text/)
-- [ ] OS integration: menus, fonts, IME
-- [ ] Accessibility: screen reader, translation
+- [x] Mostly declarative UI descriptions despite stateful widgets
+- [x] Custom widgets using state for caches and input state (e.g. selection range)
+- [x] Virtual scrolling (list or matrix), including support for external data sources
+- [x] Theme abstraction including theme-driven animations and sizing
+- [ ] Multiple renderer backends
+- [ ] Integrated i18n support
+- [ ] Accessibility tool integration
+- [ ] Platform integration: persistent configuration, theme discovery, external menus, IME
+- [x] Most of the basics you'd expect: complex text, fractional scaling, automatic margins
+- [x] Extremely fast, monolithic binaries
 
-![Animated](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/video/animations.apng)
-![Scalable](https://github.com/kas-gui/data-dump/blob/master/kas_0_10/image/scalable.png)
-
-[Winit]: https://github.com/rust-windowing/winit
-[WGPU]: https://github.com/gfx-rs/wgpu
-
-### Documentation
+### More
 
 -   Wiki: [Getting started](https://github.com/kas-gui/kas/wiki/Getting-started),
     [Configuration](https://github.com/kas-gui/kas/wiki/Configuration),
     [Troubleshooting](https://github.com/kas-gui/kas/wiki/Troubleshooting)
--   API docs: [kas](https://docs.rs/kas), [kas-core](https://docs.rs/kas-core),
-    [kas-widgets](https://docs.rs/kas-widgets),
-    [kas-wgpu](https://docs.rs/kas-wgpu)
--   Prose: [Tutorials](https://kas-gui.github.io/tutorials/),
-    [Blog](https://kas-gui.github.io/blog/)
-
-### Examples
-
-See the [`examples`](examples) directory and
-[kas-gui/7guis](https://github.com/kas-gui/7guis/).
-
-
-Design
-------
-
-### Data or widget first?
-
-KAS attempts to blend several GUI models:
-
--   Like many older GUIs, there is a persistent tree of widgets with state
--   Like Elm, event handling uses messages; unlike Elm, messages may be handled
-    anywhere in the widget tree (proceeding from leaf to root until handled)
--   Widgets have a stable identity using a path over optionally explicit
-    components
--   Like Model-View-Controller designs, data separation is possible; unlike Elm
-    this is not baked into the core of the design
-
-The results:
-
--   Natural support for multiple windows (there is no central data model)
--   Widget trees (without MVC) are static and pre-allocated, though efficient
-    enough that maintaining (*many*) thousands
-    of not-currently-visible widgets isn't a problem
--   Support for accessibility (only navigation aspects so far)
--   MVC supports virtual scrolling (including persistent IDs for unrealised
-    widgets)
--   MVC supports shared (`Rc` or `Arc`) data
--   MVC and stateful widget designs feel like two different architectures
-    forced into the same UI toolkit
+-   [API docs](https://docs.rs/kas)
+-   Docs: [Tutorials](https://kas-gui.github.io/tutorials/),
+    [Blog](https://kas-gui.github.io/blog/),
+    [Design](https://github.com/kas-gui/design)
+-   Examples: [`examples` dir](examples), [kas-gui/7guis](https://github.com/kas-gui/7guis/).
 
 
 Crates and features
 -------------------
 
-`kas` is a meta-package over the core (`kas-core`), widget library
-(`kas-widgets`), etc. [See here](https://kas-gui.github.io/tutorials/#kas).
+[kas] is a meta-package serving as the library's public API, yet
+containing no real code. Other crates in this repo:
 
-At this point in time, `kas-wgpu` is the only windowing/rendering implementation
-thus `kas` uses this crate by default, though it is optional.
+-   [kas-core](https://docs.rs/kas-core): the core library
+-   [kas-widgets](https://docs.rs/kas-widgets): the main widget library
+-   [kas-view](https://docs.rs/kas-view): view widgets supporting virtual scrolling
+-   [kas-resvg](https://docs.rs/kas-resvg): extra widgets over [resvg](https://crates.io/crates/resvg)
+-   [kas-dylib](https://crates.io/crates/kas-dylib): helper crate to support dynamic linking
+-   kas-macros: proc-macro crate
+
+Significant external dependencies:
+
+-   [kas-text](https://crates.io/crates/kas-text): complex text support
+-   [impl-tools](https://crates.io/crates/impl-tools): `autoimpl` and `impl_scope` (extensible) macros
+-   [winit](https://github.com/rust-windowing/winit): platform window integration
+-   [wgpu](https://github.com/gfx-rs/wgpu): modern accelerated graphics API
 
 ### Feature flags
 
@@ -86,10 +58,7 @@ The `kas` crate enables most important features by default, excepting those
 requiring nightly `rustc`. Other crates enable fewer features by default.
 See [Cargo.toml](https://github.com/kas-gui/kas/blob/master/Cargo.toml#L22).
 
-[KAS-text]: https://github.com/kas-gui/kas-text/
-[winit]: https://github.com/rust-windowing/winit/
-[WGPU]: https://github.com/gfx-rs/wgpu
-[`kas_wgpu::Options`]: https://docs.rs/kas-wgpu/latest/kas_wgpu/options/struct.Options.html
+[kas]: https://docs.rs/kas
 
 
 Copyright and Licence

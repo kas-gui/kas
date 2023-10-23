@@ -7,7 +7,9 @@
 
 use crate::{ScrollBar, ScrollMsg};
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{Command, CursorIcon, ElementState, FocusSource, KeyCode, Scroll, ScrollDelta};
+use kas::event::{
+    Command, CursorIcon, ElementState, FocusSource, PhysicalKey, Scroll, ScrollDelta,
+};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::{NotReady, SelectionHelper, Text};
@@ -1132,7 +1134,7 @@ impl<G: EditGuard> EditField<G> {
         cx: &mut EventCx,
         data: &G::Data,
         cmd: Command,
-        code: Option<KeyCode>,
+        code: Option<PhysicalKey>,
     ) -> Result<IsUsed, NotReady> {
         let editable = self.editable;
         let mut shift = cx.modifiers().shift_key();

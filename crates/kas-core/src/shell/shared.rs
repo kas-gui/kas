@@ -227,7 +227,7 @@ impl<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellSharedErased
         // handled to create the winit window here or use statics to generate
         // errors now, but user code can't do much with this error anyway.
         let id = self.next_window_id();
-        let window = Box::new(super::Window::new(&self, id, window));
+        let window = Box::new(super::Window::new(self, id, window));
         self.pending.push_back(Pending::AddWindow(id, window));
         id
     }

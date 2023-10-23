@@ -74,20 +74,16 @@ pub mod resvg {
 pub mod shell {
     //! Shell: window runtime environment
     //!
-    //! A [`Shell`] is used to manage a GUI. Most GUIs will use the
-    //! [`DefaultShell`] type-def (requires a backend be enabled, e.g. "wgpu").
+    //! A [`Shell`] is used to manage a GUI. Most GUIs will use the [`Default`](type@Default)
+    //! shell type-def (requires a backend be enabled, e.g. "wgpu").
 
     pub use kas_core::shell::*;
 
-    /// The WGPU shell
-    #[cfg(feature = "wgpu")]
-    pub type WgpuShell<Data, CB, T> =
-        kas_core::shell::Shell<Data, kas_wgpu::WgpuShellBuilder<CB>, T>;
+    #[cfg(feature = "wgpu")] pub use kas_wgpu::WgpuBuilder;
 
     /// The default (configuration-specific) shell
     #[cfg(feature = "wgpu")]
-    pub type DefaultShell<Data, T> =
-        kas_core::shell::Shell<Data, kas_wgpu::DefaultGraphicalShell, T>;
+    pub type Default<Data, T> = kas_core::shell::Shell<Data, kas_wgpu::WgpuBuilder<()>, T>;
 }
 
 #[cfg(feature = "dynamic")]

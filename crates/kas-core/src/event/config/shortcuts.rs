@@ -7,17 +7,14 @@
 
 use crate::event::{Command, Key, ModifiersState};
 use linear_map::LinearMap;
-#[cfg(feature = "serde")]
-use serde::de::{self, Deserialize, Deserializer, MapAccess, Unexpected, Visitor};
-#[cfg(feature = "serde")]
-use serde::ser::{Serialize, SerializeMap, Serializer};
 use std::collections::HashMap;
-#[cfg(feature = "serde")] use std::fmt;
+use winit::keyboard::NamedKey;
 
 /// Shortcut manager
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Shortcuts {
+    // NOTE: we do not permit Key::Dead(None) here
     map: LinearMap<ModifiersState, HashMap<Key, Command>>,
 }
 
@@ -51,14 +48,14 @@ impl Shortcuts {
             let modifiers = ModifiersState::empty();
             let map = self.map.entry(modifiers).or_insert_with(Default::default);
             let shortcuts = [
-                (Key::F1, Command::Help),
-                (Key::F2, Command::Rename),
-                (Key::F3, Command::FindNext),
-                (Key::F5, Command::Refresh),
-                (Key::F7, Command::SpellCheck),
-                (Key::F8, Command::Debug),
-                (Key::F10, Command::Menu),
-                (Key::F11, Command::Fullscreen),
+                (NamedKey::F1.into(), Command::Help),
+                (NamedKey::F2.into(), Command::Rename),
+                (NamedKey::F3.into(), Command::FindNext),
+                (NamedKey::F5.into(), Command::Refresh),
+                (NamedKey::F7.into(), Command::SpellCheck),
+                (NamedKey::F8.into(), Command::Debug),
+                (NamedKey::F10.into(), Command::Menu),
+                (NamedKey::F11.into(), Command::Fullscreen),
             ];
             map.extend(shortcuts.iter().cloned());
         }
@@ -68,7 +65,7 @@ impl Shortcuts {
         {
             let modifiers = ModifiersState::SHIFT;
             let map = self.map.entry(modifiers).or_insert_with(Default::default);
-            map.insert(Key::F3, Command::FindPrevious);
+            map.insert(NamedKey::F3.into(), Command::FindPrevious);
         }
 
         // Alt (Option on MacOS)
@@ -77,11 +74,11 @@ impl Shortcuts {
         #[cfg(not(target_os = "macos"))]
         {
             let shortcuts = [
-                (Key::F4, Command::Close),
-                (Key::ArrowLeft, Command::NavPrevious),
-                (Key::ArrowRight, Command::NavNext),
-                (Key::ArrowUp, Command::NavParent),
-                (Key::ArrowDown, Command::NavDown),
+                (NamedKey::F4.into(), Command::Close),
+                (NamedKey::ArrowLeft.into(), Command::NavPrevious),
+                (NamedKey::ArrowRight.into(), Command::NavNext),
+                (NamedKey::ArrowUp.into(), Command::NavParent),
+                (NamedKey::ArrowDown.into(), Command::NavDown),
             ];
             map.extend(shortcuts.iter().cloned());
         }
@@ -89,11 +86,11 @@ impl Shortcuts {
         {
             // Missing functionality: move to start/end of paragraph on (Shift)+Alt+Up/Down
             let shortcuts = [
-                (Key::ArrowLeft, Command::WordLeft),
-                (Key::ArrowRight, Command::WordRight),
+                (NamedKey::ArrowLeft.into(), Command::WordLeft),
+                (NamedKey::ArrowRight.into(), Command::WordRight),
             ];
 
-            map.insert(Key::Delete, Command::DelWordBack);
+            map.insert(NamedKey::Delete.into(), Command::DelWordBack);
             map.extend(shortcuts.iter().cloned());
 
             // Shift + Option
@@ -118,21 +115,20 @@ impl Shortcuts {
             (Key::Character("t".into()), Command::TabNew),
             (Key::Character("u".into()), Command::Underline),
             (Key::Character("v".into()), Command::Paste),
-            (Key::Character("]".into()), Command::Paste),
             (Key::Character("w".into()), Command::Close),
             (Key::Character("x".into()), Command::Cut),
             (Key::Character("z".into()), Command::Undo),
-            (Key::Tab, Command::TabNext),
+            (NamedKey::Tab.into(), Command::TabNext),
         ];
         map.extend(shortcuts.iter().cloned());
         #[cfg(target_os = "macos")]
         {
             let shortcuts = [
                 (Key::Character("g".into()), Command::FindNext),
-                (Key::ArrowUp, Command::DocHome),
-                (Key::ArrowDown, Command::DocEnd),
-                (Key::ArrowLeft, Command::Home),
-                (Key::ArrowRight, Command::End),
+                (NamedKey::ArrowUp.into(), Command::DocHome),
+                (NamedKey::ArrowDown.into(), Command::DocEnd),
+                (NamedKey::ArrowLeft.into(), Command::Home),
+                (NamedKey::ArrowRight.into(), Command::End),
             ];
             map.extend(shortcuts.iter().cloned());
         }
@@ -145,16 +141,16 @@ impl Shortcuts {
             map.extend(shortcuts.iter().cloned());
 
             let shortcuts = [
-                (Key::ArrowUp, Command::ViewUp),
-                (Key::ArrowDown, Command::ViewDown),
-                (Key::ArrowLeft, Command::WordLeft),
-                (Key::ArrowRight, Command::WordRight),
-                (Key::Backspace, Command::DelWordBack),
-                (Key::Delete, Command::DelWord),
-                (Key::Home, Command::DocHome),
-                (Key::End, Command::DocEnd),
-                (Key::PageUp, Command::TabPrevious),
-                (Key::PageDown, Command::TabNext),
+                (NamedKey::ArrowUp.into(), Command::ViewUp),
+                (NamedKey::ArrowDown.into(), Command::ViewDown),
+                (NamedKey::ArrowLeft.into(), Command::WordLeft),
+                (NamedKey::ArrowRight.into(), Command::WordRight),
+                (NamedKey::Backspace.into(), Command::DelWordBack),
+                (NamedKey::Delete.into(), Command::DelWord),
+                (NamedKey::Home.into(), Command::DocHome),
+                (NamedKey::End.into(), Command::DocEnd),
+                (NamedKey::PageUp.into(), Command::TabPrevious),
+                (NamedKey::PageDown.into(), Command::TabNext),
             ];
             map.extend(shortcuts.iter().cloned());
 
@@ -178,7 +174,7 @@ impl Shortcuts {
         let shortcuts = [
             (Key::Character("a".into()), Command::Deselect),
             (Key::Character("z".into()), Command::Redo),
-            (Key::Tab, Command::TabPrevious),
+            (NamedKey::Tab.into(), Command::TabPrevious),
         ];
         map.extend(shortcuts.iter().cloned());
         #[cfg(target_os = "macos")]
@@ -186,10 +182,10 @@ impl Shortcuts {
             let shortcuts = [
                 (Key::Character("g".into()), Command::FindPrevious),
                 (Key::Character(":".into()), Command::SpellCheck),
-                (Key::ArrowUp, Command::DocHome),
-                (Key::ArrowDown, Command::DocEnd),
-                (Key::ArrowLeft, Command::Home),
-                (Key::ArrowRight, Command::End),
+                (NamedKey::ArrowUp.into(), Command::DocHome),
+                (NamedKey::ArrowDown.into(), Command::DocEnd),
+                (NamedKey::ArrowLeft.into(), Command::Home),
+                (NamedKey::ArrowRight.into(), Command::End),
             ];
             map.extend(shortcuts.iter().cloned());
         }
@@ -222,164 +218,367 @@ impl Shortcuts {
 }
 
 #[cfg(feature = "serde")]
-fn state_to_string(state: ModifiersState) -> &'static str {
-    const SHIFT: ModifiersState = ModifiersState::SHIFT;
-    const CONTROL: ModifiersState = ModifiersState::CONTROL;
-    const ALT: ModifiersState = ModifiersState::ALT;
-    const SUPER: ModifiersState = ModifiersState::SUPER;
-    // we can't use match since OR patterns are unstable (rust#54883)
-    if state == ModifiersState::empty() {
-        "none"
-    } else if state == SUPER {
-        "super"
-    } else if state == ALT {
-        "alt"
-    } else if state == ALT | SUPER {
-        "alt-super"
-    } else if state == CONTROL {
-        "ctrl"
-    } else if state == CONTROL | SUPER {
-        "ctrl-super"
-    } else if state == CONTROL | ALT {
-        "ctrl-alt"
-    } else if state == CONTROL | ALT | SUPER {
-        "ctrl-alt-super"
-    } else if state == SHIFT {
-        "shift"
-    } else if state == SHIFT | SUPER {
-        "shift-super"
-    } else if state == SHIFT | ALT {
-        "alt-shift"
-    } else if state == SHIFT | ALT | SUPER {
-        "alt-shift-super"
-    } else if state == SHIFT | CONTROL {
-        "ctrl-shift"
-    } else if state == SHIFT | CONTROL | SUPER {
-        "ctrl-shift-super"
-    } else if state == SHIFT | CONTROL | ALT {
-        "ctrl-alt-shift"
-    } else {
-        "ctrl-alt-shift-super"
+mod common {
+    use super::{Command, Key, ModifiersState, NamedKey};
+    use serde::de::{self, Deserializer, Visitor};
+    use serde::ser::Serializer;
+    use serde::{Deserialize, Serialize};
+    use std::fmt;
+    use winit::keyboard::{NativeKey, SmolStr};
+
+    /// A subset of [`Key`] which serialises to a simple value usable as a map key
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+    pub(super) enum SimpleKey {
+        Named(NamedKey),
+        Char(char),
+    }
+
+    impl From<SimpleKey> for Key<SmolStr> {
+        fn from(sk: SimpleKey) -> Self {
+            match sk {
+                SimpleKey::Named(key) => Key::Named(key),
+                SimpleKey::Char(c) => {
+                    let mut buf = [0; 4];
+                    let s = c.encode_utf8(&mut buf);
+                    Key::Character(SmolStr::new(s))
+                }
+            }
+        }
+    }
+
+    // NOTE: the only reason we don't use derive is that TOML does not support char as a map key,
+    // thus we must convrt with char::encode_utf8. See toml-lang/toml#1001
+    impl Serialize for SimpleKey {
+        fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+            match self {
+                SimpleKey::Named(key) => key.serialize(s),
+                SimpleKey::Char(c) => {
+                    let mut buf = [0; 4];
+                    let cs = c.encode_utf8(&mut buf);
+                    s.serialize_str(cs)
+                }
+            }
+        }
+    }
+
+    /// A subset of [`Key`], excluding anything which is a [`SimpleKey`]
+    #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    pub(super) enum ComplexKey<Str> {
+        Character(Str),
+        Dead(char),
+        #[serde(untagged)]
+        Unidentified(NativeKey),
+    }
+
+    impl From<ComplexKey<SmolStr>> for Key<SmolStr> {
+        fn from(ck: ComplexKey<SmolStr>) -> Self {
+            match ck {
+                ComplexKey::Character(c) => Key::Character(c),
+                ComplexKey::Dead(c) => Key::Dead(Some(c)),
+                ComplexKey::Unidentified(code) => Key::Unidentified(code),
+            }
+        }
+    }
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    pub(super) struct ModifiersStateDeser(pub ModifiersState);
+
+    impl Serialize for ModifiersStateDeser {
+        fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+            const SHIFT: ModifiersState = ModifiersState::SHIFT;
+            const CONTROL: ModifiersState = ModifiersState::CONTROL;
+            const ALT: ModifiersState = ModifiersState::ALT;
+            const SUPER: ModifiersState = ModifiersState::SUPER;
+
+            let s = match self.0 {
+                state if state == ModifiersState::empty() => "none",
+                SUPER => "super",
+                ALT => "alt",
+                state if state == ALT | SUPER => "alt-super",
+                state if state == CONTROL => "ctrl",
+                state if state == CONTROL | SUPER => "ctrl-super",
+                state if state == CONTROL | ALT => "ctrl-alt",
+                state if state == CONTROL | ALT | SUPER => "ctrl-alt-super",
+                SHIFT => "shift",
+                state if state == SHIFT | SUPER => "shift-super",
+                state if state == SHIFT | ALT => "alt-shift",
+                state if state == SHIFT | ALT | SUPER => "alt-shift-super",
+                state if state == SHIFT | CONTROL => "ctrl-shift",
+                state if state == SHIFT | CONTROL | SUPER => "ctrl-shift-super",
+                state if state == SHIFT | CONTROL | ALT => "ctrl-alt-shift",
+                _ => "ctrl-alt-shift-super",
+            };
+
+            serializer.serialize_str(s)
+        }
+    }
+
+    impl<'de> Visitor<'de> for ModifiersStateDeser {
+        type Value = ModifiersStateDeser;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("none or (sub-set of) ctrl-alt-shift-super")
+        }
+
+        fn visit_str<E: de::Error>(self, u: &str) -> Result<Self::Value, E> {
+            let mut v = u;
+            let mut state = ModifiersState::empty();
+
+            let adv_dash_if_not_empty = |v: &mut &str| {
+                if !v.is_empty() {
+                    if v.starts_with('-') {
+                        *v = &v[1..];
+                    }
+                }
+            };
+
+            if v.starts_with("ctrl") {
+                state |= ModifiersState::CONTROL;
+                v = &v[v.len().min(4)..];
+                adv_dash_if_not_empty(&mut v);
+            }
+            if v.starts_with("alt") {
+                state |= ModifiersState::ALT;
+                v = &v[v.len().min(3)..];
+                adv_dash_if_not_empty(&mut v);
+            }
+            if v.starts_with("shift") {
+                state |= ModifiersState::SHIFT;
+                v = &v[v.len().min(5)..];
+                adv_dash_if_not_empty(&mut v);
+            }
+            if v.starts_with("super") {
+                state |= ModifiersState::SUPER;
+                v = &v[v.len().min(5)..];
+            }
+
+            if v.is_empty() || u == "none" {
+                Ok(ModifiersStateDeser(state))
+            } else {
+                Err(E::invalid_value(
+                    de::Unexpected::Str(u),
+                    &"none or (sub-set of) ctrl-alt-shift-super",
+                ))
+            }
+        }
+    }
+
+    impl<'de> Deserialize<'de> for ModifiersStateDeser {
+        fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+            d.deserialize_str(ModifiersStateDeser(Default::default()))
+        }
+    }
+
+    #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    pub(super) struct MiscRule<Str = SmolStr> {
+        #[serde(rename = "modifiers")]
+        pub(super) mods: ModifiersStateDeser,
+        #[serde(flatten)]
+        pub(super) key: ComplexKey<Str>,
+        #[serde(rename = "command")]
+        pub(super) cmd: Command,
     }
 }
 
 #[cfg(feature = "serde")]
-impl Serialize for Shortcuts {
-    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut map = s.serialize_map(Some(self.map.len()))?;
-        for (state, bindings) in &self.map {
-            map.serialize_key(state_to_string(*state))?;
+mod ser {
+    use super::common::{ComplexKey, MiscRule, ModifiersStateDeser, SimpleKey};
+    use super::{Key, Shortcuts};
+    use serde::ser::{Serialize, SerializeMap, Serializer};
 
-            // Sort items in the hash-map to ensure stable order
-            // NOTE: We need a "map type" to ensure entries are serialised as
-            // a map, not as a list. BTreeMap is easier than a shim over a Vec.
-            // TODO: winit::keyboard::Key does not support Ord!
-            // let bindings: std::collections::BTreeMap<_, _> = bindings.iter().collect();
-            map.serialize_value(&bindings)?;
+    fn unpack_key<'a>(key: Key<&'a str>) -> Result<SimpleKey, ComplexKey<&'a str>> {
+        match key {
+            Key::Named(named) => Ok(SimpleKey::Named(named)),
+            Key::Character(c) => {
+                let mut iter = c.chars();
+                if let Some(c) = iter.next() {
+                    if iter.next().is_none() {
+                        return Ok(SimpleKey::Char(c));
+                    }
+                }
+                Err(ComplexKey::Character(c))
+            }
+            Key::Unidentified(code) => Err(ComplexKey::Unidentified(code)),
+            Key::Dead(None) => panic!("invalid shortcut"),
+            Key::Dead(Some(c)) => Err(ComplexKey::Dead(c)),
         }
-        map.end()
-    }
-}
-
-// #[derive(Error, Debug)]
-// pub enum DeError {
-//     #[error("invalid modifier state: {0}")]
-//     State(String),
-// }
-
-#[cfg(feature = "serde")]
-struct ModifierStateVisitor(ModifiersState);
-#[cfg(feature = "serde")]
-impl<'de> Visitor<'de> for ModifierStateVisitor {
-    type Value = ModifierStateVisitor;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("none or ctrl or alt-shift-super etc.")
     }
 
-    fn visit_str<E: de::Error>(self, u: &str) -> Result<Self::Value, E> {
-        let mut v = u;
-        let mut state = ModifiersState::empty();
+    impl Serialize for Shortcuts {
+        fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+            // Use BTreeMap for stable order of output
+            use std::collections::BTreeMap;
 
-        if v.starts_with("ctrl") {
-            state |= ModifiersState::CONTROL;
-            v = &v[v.len().min(4)..];
-        }
-        if v.starts_with('-') {
-            v = &v[1..];
-        }
-        if v.starts_with("alt") {
-            state |= ModifiersState::ALT;
-            v = &v[v.len().min(3)..];
-        }
-        if v.starts_with('-') {
-            v = &v[1..];
-        }
-        if v.starts_with("shift") {
-            state |= ModifiersState::SHIFT;
-            v = &v[v.len().min(5)..];
-        }
-        if v.starts_with('-') {
-            v = &v[1..];
-        }
-        if v.starts_with("super") {
-            state |= ModifiersState::SUPER;
-            v = &v[v.len().min(5)..];
-        }
+            let mut serializer = s.serialize_map(Some(self.map.len() + 1))?;
+            let mut misc = Vec::new();
 
-        if v.is_empty() || u == "none" {
-            Ok(ModifierStateVisitor(state))
-        } else {
-            Err(E::invalid_value(
-                Unexpected::Str(u),
-                &"none or ctrl or alt-shift-super etc.",
-            ))
+            for (state, key_cmds) in self.map.iter() {
+                let mods = ModifiersStateDeser(*state);
+                let mut map = BTreeMap::new();
+
+                for (key, cmd) in key_cmds.iter() {
+                    match unpack_key(key.as_ref()) {
+                        Ok(sk) => {
+                            map.insert(sk, *cmd);
+                        }
+                        Err(key) => {
+                            let cmd = *cmd;
+                            misc.push(MiscRule { mods, key, cmd });
+                        }
+                    }
+                }
+
+                // Keys are now sorted and filtered
+                if !map.is_empty() {
+                    serializer.serialize_key(&mods)?;
+                    serializer.serialize_value(&map)?;
+                }
+            }
+
+            if !misc.is_empty() {
+                serializer.serialize_key("other")?;
+                misc.sort();
+                serializer.serialize_value(&misc)?;
+            }
+            serializer.end()
         }
     }
 }
 
 #[cfg(feature = "serde")]
-impl<'de> Deserialize<'de> for ModifierStateVisitor {
-    fn deserialize<D>(d: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        d.deserialize_str(ModifierStateVisitor(Default::default()))
-    }
-}
+mod deser {
+    use super::common::{MiscRule, ModifiersStateDeser, SimpleKey};
+    use super::{Command, Key, ModifiersState, Shortcuts};
+    use linear_map::LinearMap;
+    use serde::de::{self, Deserialize, DeserializeSeed, Deserializer, MapAccess, Visitor};
+    use std::collections::HashMap;
+    use std::fmt;
 
-#[cfg(feature = "serde")]
-struct ShortcutsVisitor;
-#[cfg(feature = "serde")]
-impl<'de> Visitor<'de> for ShortcutsVisitor {
-    type Value = Shortcuts;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("{ <modifiers> : { <key> : <command> } }")
+    enum OptModifiersStateDeser {
+        State(ModifiersStateDeser),
+        Other,
     }
 
-    fn visit_map<A>(self, mut reader: A) -> Result<Self::Value, A::Error>
-    where
-        A: MapAccess<'de>,
-    {
-        let mut map = LinearMap::<ModifiersState, HashMap<Key, Command>>::new();
-        while let Some(key) = reader.next_key::<ModifierStateVisitor>()? {
-            let value = reader.next_value()?;
-            map.insert(key.0, value);
+    impl<'de> Deserialize<'de> for OptModifiersStateDeser {
+        fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+            d.deserialize_str(OptModifiersStateDeser::Other)
         }
-        Ok(Shortcuts { map })
     }
-}
 
-#[cfg(feature = "serde")]
-impl<'de> Deserialize<'de> for Shortcuts {
-    fn deserialize<D>(d: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        d.deserialize_map(ShortcutsVisitor)
+    impl<'de> Visitor<'de> for OptModifiersStateDeser {
+        type Value = OptModifiersStateDeser;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("none or (sub-set of) ctrl-alt-shift-super or other")
+        }
+
+        fn visit_str<E: de::Error>(self, u: &str) -> Result<Self::Value, E> {
+            if u == "other" {
+                Ok(OptModifiersStateDeser::Other)
+            } else {
+                ModifiersStateDeser::visit_str(ModifiersStateDeser(Default::default()), u)
+                    .map(OptModifiersStateDeser::State)
+            }
+        }
+    }
+
+    struct DeserSimple<'a>(&'a mut HashMap<Key, Command>);
+
+    impl<'a, 'de> DeserializeSeed<'de> for DeserSimple<'a> {
+        type Value = ();
+
+        fn deserialize<D: Deserializer<'de>>(self, d: D) -> Result<Self::Value, D::Error> {
+            d.deserialize_map(self)
+        }
+    }
+
+    impl<'a, 'de> Visitor<'de> for DeserSimple<'a> {
+        type Value = ();
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a map")
+        }
+
+        fn visit_map<A>(self, mut reader: A) -> Result<Self::Value, A::Error>
+        where
+            A: de::MapAccess<'de>,
+        {
+            while let Some(sk) = reader.next_key::<SimpleKey>()? {
+                let key: Key = sk.into();
+                let cmd: Command = reader.next_value()?;
+                self.0.insert(key, cmd);
+            }
+
+            Ok(())
+        }
+    }
+
+    struct DeserComplex<'a>(&'a mut LinearMap<ModifiersState, HashMap<Key, Command>>);
+
+    impl<'a, 'de> DeserializeSeed<'de> for DeserComplex<'a> {
+        type Value = ();
+
+        fn deserialize<D: Deserializer<'de>>(self, d: D) -> Result<Self::Value, D::Error> {
+            d.deserialize_seq(self)
+        }
+    }
+
+    impl<'a, 'de> Visitor<'de> for DeserComplex<'a> {
+        type Value = ();
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a sequence")
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: de::SeqAccess<'de>,
+        {
+            while let Some(rule) = seq.next_element::<MiscRule>()? {
+                let ModifiersStateDeser(state) = rule.mods;
+                let sub = self.0.entry(state).or_insert_with(Default::default);
+                sub.insert(rule.key.into(), rule.cmd);
+            }
+
+            Ok(())
+        }
+    }
+
+    struct ShortcutsVisitor;
+
+    impl<'de> Visitor<'de> for ShortcutsVisitor {
+        type Value = Shortcuts;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a map")
+        }
+
+        fn visit_map<A>(self, mut reader: A) -> Result<Self::Value, A::Error>
+        where
+            A: MapAccess<'de>,
+        {
+            let mut map = LinearMap::<ModifiersState, HashMap<Key, Command>>::new();
+            while let Some(opt_state) = reader.next_key::<OptModifiersStateDeser>()? {
+                match opt_state {
+                    OptModifiersStateDeser::State(ModifiersStateDeser(state)) => {
+                        let sub = map.entry(state).or_insert_with(Default::default);
+                        reader.next_value_seed(DeserSimple(sub))?;
+                    }
+                    OptModifiersStateDeser::Other => {
+                        reader.next_value_seed(DeserComplex(&mut map))?;
+                    }
+                }
+            }
+
+            Ok(Shortcuts { map })
+        }
+    }
+
+    impl<'de> Deserialize<'de> for Shortcuts {
+        fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+            d.deserialize_map(ShortcutsVisitor)
+        }
     }
 }

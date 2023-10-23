@@ -374,9 +374,9 @@ impl EventState {
     /// redrawn automatically.
     ///
     /// Note that keyboard shortcuts and mnemonics should usually match against
-    /// the "logical key". [`KeyCode`] is used here since the the logical key
+    /// the "logical key". [`PhysicalKey`] is used here since the the logical key
     /// may be changed by modifier keys.
-    pub fn depress_with_key(&mut self, id: Id, code: KeyCode) {
+    pub fn depress_with_key(&mut self, id: Id, code: PhysicalKey) {
         if self.key_depress.values().any(|v| *v == id) {
             return;
         }
@@ -554,7 +554,7 @@ impl EventState {
     /// cases, calling this method may be ineffective. The cursor is
     /// automatically "unset" when the widget is no longer hovered.
     ///
-    /// See also [`Self::update_grab_cursor`]: if a mouse grab
+    /// See also [`EventCx::set_grab_cursor`]: if a mouse grab
     /// ([`Press::grab`]) is active, its icon takes precedence.
     pub fn set_hover_cursor(&mut self, icon: CursorIcon) {
         // Note: this is acted on by EventState::update
@@ -571,8 +571,6 @@ impl EventState {
     /// pushed to the message stack as if it were pushed with [`EventCx::push`]
     /// from widget `id`, allowing this widget or any ancestor to handle it in
     /// [`Events::handle_messages`].
-    //
-    // TODO: Can we identify the calling widget `id` via the context (EventCx)?
     pub fn push_async<Fut, M>(&mut self, id: Id, fut: Fut)
     where
         Fut: IntoFuture<Output = M> + 'static,

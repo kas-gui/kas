@@ -242,7 +242,7 @@ impl_scope! {
             let size: (u32, u32) = self.core.rect.size.cast();
 
             if let Some(fut) = self.inner.resize(size) {
-                cx.ev_state().push_spawn(self.id(), fut);
+                cx.push_spawn(self.id(), fut);
             }
         }
 

@@ -52,7 +52,8 @@ pub enum GrabMode {
 }
 
 impl GrabMode {
-    fn is_pan(self) -> bool {
+    /// True for "pan" variants
+    pub fn is_pan(self) -> bool {
         use GrabMode::*;
         matches!(self, PanFull | PanScale | PanRotate | PanOnly)
     }
@@ -195,7 +196,7 @@ pub struct EventState {
     hover: Option<Id>,
     hover_icon: CursorIcon,
     old_hover_icon: CursorIcon,
-    key_depress: LinearMap<KeyCode, Id>,
+    key_depress: LinearMap<PhysicalKey, Id>,
     last_mouse_coord: Coord,
     last_click_button: MouseButton,
     last_click_repetitions: u32,
@@ -368,7 +369,7 @@ impl<'a> DerefMut for EventCx<'a> {
 
 /// Internal methods
 impl<'a> EventCx<'a> {
-    fn start_key_event(&mut self, mut widget: Node<'_>, vkey: Key, code: KeyCode) {
+    fn start_key_event(&mut self, mut widget: Node<'_>, vkey: Key, code: PhysicalKey) {
         log::trace!(
             "start_key_event: widget={}, vkey={vkey:?}, physical_key={code:?}",
             widget.id()
@@ -458,10 +459,10 @@ impl<'a> EventCx<'a> {
             }
             let event = Event::Command(Command::Activate, Some(code));
             self.send_event(widget, id, event);
-        } else if self.config.nav_focus && vkey == Key::Tab {
+        } else if self.config.nav_focus && vkey == Key::Named(NamedKey::Tab) {
             let shift = self.modifiers.shift_key();
             self.next_nav_focus_impl(widget.re(), None, shift, FocusSource::Key);
-        } else if vkey == Key::Escape {
+        } else if vkey == Key::Named(NamedKey::Escape) {
             if let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
                 self.close_window(id);
             }
