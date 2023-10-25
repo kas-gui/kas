@@ -76,19 +76,11 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     ) -> super::Result<winit::window::WindowId> {
         let time = Instant::now();
 
-        // Wayland only supports windows constructed via logical size
-        let use_logical_size = shared.shell.platform.is_wayland();
-
-        let scale_factor = if use_logical_size {
-            1.0
-        } else {
-            shared.scale_factor as f32
-        };
-
-        let mut theme_window = shared.shell.theme.new_window(scale_factor);
+        // We cannot reliably determine the scale factor before window creation.
+        // A factor of 1.0 lets us estimate the size requirements (logical).
+        let mut theme_window = shared.shell.theme.new_window(1.0);
         let dpem = theme_window.size().dpem();
-
-        self.ev_state.update_config(scale_factor, dpem);
+        self.ev_state.update_config(1.0, dpem);
         self.ev_state.full_configure(
             theme_window.size(),
             self.window_id,
@@ -101,20 +93,12 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         let mut solve_cache = SolveCache::find_constraints(node, sizer);
 
         // Opening a zero-size window causes a crash, so force at least 1x1:
-        let ideal = solve_cache.ideal(true).max(Size(1, 1));
-        let ideal = match use_logical_size {
-            false => ideal.as_physical(),
-            true => ideal.as_logical(),
-        };
+        let ideal = solve_cache.ideal(true).max(Size(1, 1)).as_logical();
 
         let mut builder = WindowBuilder::new().with_inner_size(ideal);
         let (restrict_min, restrict_max) = self.widget.restrictions();
         if restrict_min {
-            let min = solve_cache.min(true);
-            let min = match use_logical_size {
-                false => min.as_physical(),
-                true => min.as_logical(),
-            };
+            let min = solve_cache.min(true).as_logical();
             builder = builder.with_min_inner_size(min);
         }
         if restrict_max {
@@ -137,7 +121,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         );
 
         // Now that we have a scale factor, we may need to resize:
-        if use_logical_size && scale_factor != 1.0 {
+        if scale_factor != 1.0 {
             let scale_factor = scale_factor as f32;
             shared
                 .shell
