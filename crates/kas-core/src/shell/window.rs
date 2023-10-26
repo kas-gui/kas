@@ -109,18 +109,12 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             .with_window_icon(self.widget.icon())
             .with_decorations(self.widget.decorations() == kas::Decorations::Server)
             .with_transparent(self.widget.transparent())
+            .with_visible(false)
             .build(elwt)?;
 
-        let scale_factor = window.scale_factor();
-        shared.scale_factor = scale_factor;
-        let size: Size = window.inner_size().cast();
-        log::info!(
-            "new: constructed with physical size {:?}, scale factor {}",
-            size,
-            scale_factor
-        );
-
         // Now that we have a scale factor, we may need to resize:
+        let scale_factor = window.scale_factor();
+        let apply_size;
         if scale_factor != 1.0 {
             let scale_factor = scale_factor as f32;
             shared
@@ -129,8 +123,28 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                 .update_window(&mut theme_window, scale_factor);
             let dpem = theme_window.size().dpem();
             self.ev_state.update_config(scale_factor, dpem);
-            solve_cache.invalidate_rule_cache();
+            let node = self.widget.as_node(&shared.data);
+            let sizer = SizeCx::new(theme_window.size());
+            solve_cache = SolveCache::find_constraints(node, sizer);
+
+            let ideal = solve_cache.ideal(true).max(Size(1, 1)).as_physical();
+            if let Some(size) = window.request_inner_size(ideal) {
+                debug_assert_eq!(size, window.inner_size());
+                apply_size = true;
+            } else {
+                // We will receive WindowEvent::Resized
+                apply_size = false;
+            }
+        } else {
+            apply_size = true;
         }
+
+        let size: Size = window.inner_size().cast();
+        log::info!(
+            "new: constructed with physical size {:?}, scale factor {}",
+            size,
+            scale_factor
+        );
 
         #[cfg(all(wayland_platform, feature = "clipboard"))]
         use raw_window_handle::{HasRawDisplayHandle, RawDisplayHandle, WaylandDisplayHandle};
@@ -160,7 +174,9 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             queued_frame_time: Some(time),
         });
 
-        self.apply_size(shared, true);
+        if apply_size {
+            self.apply_size(shared, true);
+        }
 
         log::trace!(target: "kas_perf::wgpu::window", "resume: {}µs", time.elapsed().as_micros());
         Ok(winit_id)
@@ -196,7 +212,6 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             }
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 // Note: API allows us to set new window size here.
-                shared.scale_factor = scale_factor;
                 let scale_factor = scale_factor as f32;
                 shared
                     .shell
@@ -204,6 +219,9 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                     .update_window(&mut window.theme_window, scale_factor);
                 let dpem = window.theme_window.size().dpem();
                 self.ev_state.update_config(scale_factor, dpem);
+
+                // NOTE: we could try resizing here in case the window is too
+                // small due to non-linear scaling, but it appears unnecessary.
                 window.solve_cache.invalidate_rule_cache();
                 false
             }
@@ -401,6 +419,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         }
         self.widget.resize_popups(&mut cx, &shared.data);
 
+        // Size restrictions may have changed due to content or size (line wrapping)
         let (restrict_min, restrict_max) = self.widget.restrictions();
         if restrict_min {
             let min = window.solve_cache.min(true).as_physical();
@@ -411,6 +430,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             window.set_max_inner_size(Some(ideal));
         };
 
+        window.set_visible(true);
         window.request_redraw();
         log::trace!(
             target: "kas_perf::wgpu::window",

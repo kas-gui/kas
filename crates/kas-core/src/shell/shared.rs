@@ -39,7 +39,6 @@ pub(crate) struct SharedState<Data: AppData, S: WindowSurface, T: Theme<S::Share
     pub(super) shell: ShellShared<Data, S, T>,
     pub(super) data: Data,
     /// Estimated scale factor (from last window constructed or available screens)
-    pub(super) scale_factor: f64,
     options: Options,
 }
 
@@ -82,7 +81,6 @@ where
                 window_id: 0,
             },
             data,
-            scale_factor: pw.guess_scale_factor(),
             options,
         })
     }
