@@ -8,8 +8,8 @@
 use super::common::WindowSurface;
 use super::shared::{SharedState, ShellShared};
 use super::ProxyAction;
-use kas::cast::Cast;
-use kas::draw::{color::Rgba, AnimationState};
+use kas::cast::{Cast, Conv};
+use kas::draw::{color::Rgba, AnimationState, DrawSharedImpl};
 use kas::event::{config::WindowConfig, ConfigCx, CursorIcon, EventState};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
@@ -93,7 +93,13 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         let mut solve_cache = SolveCache::find_constraints(node, sizer);
 
         // Opening a zero-size window causes a crash, so force at least 1x1:
-        let ideal = solve_cache.ideal(true).max(Size(1, 1)).as_logical();
+        let min_size = Size(1, 1);
+        let max_size = Size::splat(shared.shell.draw.draw.max_texture_dimension_2d().cast());
+
+        let ideal = solve_cache
+            .ideal(true)
+            .clamp(min_size, max_size)
+            .as_logical();
 
         let mut builder = WindowBuilder::new().with_inner_size(ideal);
         let (restrict_min, restrict_max) = self.widget.restrictions();
@@ -116,18 +122,23 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         let scale_factor = window.scale_factor();
         let apply_size;
         if scale_factor != 1.0 {
-            let scale_factor = scale_factor as f32;
-            shared
-                .shell
-                .theme
-                .update_window(&mut theme_window, scale_factor);
+            let sf32 = scale_factor as f32;
+            shared.shell.theme.update_window(&mut theme_window, sf32);
             let dpem = theme_window.size().dpem();
-            self.ev_state.update_config(scale_factor, dpem);
+            self.ev_state.update_config(sf32, dpem);
             let node = self.widget.as_node(&shared.data);
             let sizer = SizeCx::new(theme_window.size());
             solve_cache = SolveCache::find_constraints(node, sizer);
 
-            let ideal = solve_cache.ideal(true).max(Size(1, 1)).as_physical();
+            // NOTE: we would use .as_physical(), but we need to ensure rounding
+            // doesn't result in anything exceeding max_size which can happen
+            // otherwise (default rounding mode is to nearest, away from zero).
+            let ideal = solve_cache.ideal(true).max(min_size);
+            let ub = (f64::conv(max_size.0) / scale_factor).floor();
+            let w = ub.min(f64::conv(ideal.0) / scale_factor);
+            let h = ub.min(f64::conv(ideal.1) / scale_factor);
+            let ideal = winit::dpi::LogicalSize::new(w, h);
+
             if let Some(size) = window.request_inner_size(ideal) {
                 debug_assert_eq!(size, window.inner_size());
                 apply_size = true;
@@ -156,7 +167,10 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             _ => None,
         };
 
-        let surface = S::new(&mut shared.shell.draw.draw, size, &window)?;
+        let mut surface = S::new(&mut shared.shell.draw.draw, &window)?;
+        if apply_size {
+            surface.do_resize(&mut shared.shell.draw.draw, size);
+        }
 
         let winit_id = window.id();
 

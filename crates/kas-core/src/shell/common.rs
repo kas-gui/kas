@@ -195,12 +195,11 @@ pub trait WindowSurface {
     type Shared: kas::draw::DrawSharedImpl;
 
     /// Construct an instance from a window handle
-    fn new<W: raw::HasRawWindowHandle + raw::HasRawDisplayHandle>(
-        shared: &mut Self::Shared,
-        size: Size,
-        window: W,
-    ) -> Result<Self>
+    ///
+    /// It is required to call [`WindowSurface::do_resize`] after this.
+    fn new<W>(shared: &mut Self::Shared, window: W) -> Result<Self>
     where
+        W: raw::HasRawWindowHandle + raw::HasRawDisplayHandle,
         Self: Sized;
 
     /// Get current surface size

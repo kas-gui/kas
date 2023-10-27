@@ -149,6 +149,9 @@ impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
 pub trait DrawSharedImpl: Any {
     type Draw: DrawImpl;
 
+    /// Get the maximum 2D texture size
+    fn max_texture_dimension_2d(&self) -> u32;
+
     /// Set font raster config
     fn set_raster_config(&mut self, config: &RasterConfig);
 
