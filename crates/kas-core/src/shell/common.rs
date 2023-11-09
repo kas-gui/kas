@@ -10,6 +10,7 @@ use crate::draw::{color::Rgba, DrawIface, WindowCommon};
 use crate::geom::Size;
 use crate::theme::Theme;
 use raw_window_handle as raw;
+use std::time::Instant;
 use thiserror::Error;
 
 /// Possible failures from constructing a [`Shell`](super::Shell)
@@ -194,12 +195,11 @@ pub trait WindowSurface {
     type Shared: kas::draw::DrawSharedImpl;
 
     /// Construct an instance from a window handle
-    fn new<W: raw::HasRawWindowHandle + raw::HasRawDisplayHandle>(
-        shared: &mut Self::Shared,
-        size: Size,
-        window: W,
-    ) -> Result<Self>
+    ///
+    /// It is required to call [`WindowSurface::do_resize`] after this.
+    fn new<W>(shared: &mut Self::Shared, window: W) -> Result<Self>
     where
+        W: raw::HasWindowHandle + raw::HasDisplayHandle,
         Self: Sized;
 
     /// Get current surface size
@@ -220,5 +220,7 @@ pub trait WindowSurface {
     fn common_mut(&mut self) -> &mut WindowCommon;
 
     /// Present frame
-    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba);
+    ///
+    /// Return time at which render finishes
+    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) -> Instant;
 }

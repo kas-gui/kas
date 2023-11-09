@@ -8,8 +8,8 @@
 use super::common::WindowSurface;
 use super::shared::{SharedState, ShellShared};
 use super::ProxyAction;
-use kas::cast::Cast;
-use kas::draw::{color::Rgba, AnimationState};
+use kas::cast::{Cast, Conv};
+use kas::draw::{color::Rgba, AnimationState, DrawSharedImpl};
 use kas::event::{config::WindowConfig, ConfigCx, CursorIcon, EventState};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
@@ -76,19 +76,11 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     ) -> super::Result<winit::window::WindowId> {
         let time = Instant::now();
 
-        // Wayland only supports windows constructed via logical size
-        let use_logical_size = shared.shell.platform.is_wayland();
-
-        let scale_factor = if use_logical_size {
-            1.0
-        } else {
-            shared.scale_factor as f32
-        };
-
-        let mut theme_window = shared.shell.theme.new_window(scale_factor);
+        // We cannot reliably determine the scale factor before window creation.
+        // A factor of 1.0 lets us estimate the size requirements (logical).
+        let mut theme_window = shared.shell.theme.new_window(1.0);
         let dpem = theme_window.size().dpem();
-
-        self.ev_state.update_config(scale_factor, dpem);
+        self.ev_state.update_config(1.0, dpem);
         self.ev_state.full_configure(
             theme_window.size(),
             self.window_id,
@@ -101,20 +93,18 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         let mut solve_cache = SolveCache::find_constraints(node, sizer);
 
         // Opening a zero-size window causes a crash, so force at least 1x1:
-        let ideal = solve_cache.ideal(true).max(Size(1, 1));
-        let ideal = match use_logical_size {
-            false => ideal.as_physical(),
-            true => ideal.as_logical(),
-        };
+        let min_size = Size(1, 1);
+        let max_size = Size::splat(shared.shell.draw.draw.max_texture_dimension_2d().cast());
+
+        let ideal = solve_cache
+            .ideal(true)
+            .clamp(min_size, max_size)
+            .as_logical();
 
         let mut builder = WindowBuilder::new().with_inner_size(ideal);
         let (restrict_min, restrict_max) = self.widget.restrictions();
         if restrict_min {
-            let min = solve_cache.min(true);
-            let min = match use_logical_size {
-                false => min.as_physical(),
-                true => min.as_logical(),
-            };
+            let min = solve_cache.min(true).as_logical();
             builder = builder.with_min_inner_size(min);
         }
         if restrict_max {
@@ -125,10 +115,41 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             .with_window_icon(self.widget.icon())
             .with_decorations(self.widget.decorations() == kas::Decorations::Server)
             .with_transparent(self.widget.transparent())
+            .with_visible(false)
             .build(elwt)?;
 
+        // Now that we have a scale factor, we may need to resize:
         let scale_factor = window.scale_factor();
-        shared.scale_factor = scale_factor;
+        let apply_size;
+        if scale_factor != 1.0 {
+            let sf32 = scale_factor as f32;
+            shared.shell.theme.update_window(&mut theme_window, sf32);
+            let dpem = theme_window.size().dpem();
+            self.ev_state.update_config(sf32, dpem);
+            let node = self.widget.as_node(&shared.data);
+            let sizer = SizeCx::new(theme_window.size());
+            solve_cache = SolveCache::find_constraints(node, sizer);
+
+            // NOTE: we would use .as_physical(), but we need to ensure rounding
+            // doesn't result in anything exceeding max_size which can happen
+            // otherwise (default rounding mode is to nearest, away from zero).
+            let ideal = solve_cache.ideal(true).max(min_size);
+            let ub = (f64::conv(max_size.0) / scale_factor).floor();
+            let w = ub.min(f64::conv(ideal.0) / scale_factor);
+            let h = ub.min(f64::conv(ideal.1) / scale_factor);
+            let ideal = winit::dpi::LogicalSize::new(w, h);
+
+            if let Some(size) = window.request_inner_size(ideal) {
+                debug_assert_eq!(size, window.inner_size());
+                apply_size = true;
+            } else {
+                // We will receive WindowEvent::Resized
+                apply_size = false;
+            }
+        } else {
+            apply_size = true;
+        }
+
         let size: Size = window.inner_size().cast();
         log::info!(
             "new: constructed with physical size {:?}, scale factor {}",
@@ -136,29 +157,21 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             scale_factor
         );
 
-        // Now that we have a scale factor, we may need to resize:
-        if use_logical_size && scale_factor != 1.0 {
-            let scale_factor = scale_factor as f32;
-            shared
-                .shell
-                .theme
-                .update_window(&mut theme_window, scale_factor);
-            let dpem = theme_window.size().dpem();
-            self.ev_state.update_config(scale_factor, dpem);
-            solve_cache.invalidate_rule_cache();
-        }
-
         #[cfg(all(wayland_platform, feature = "clipboard"))]
-        use raw_window_handle::{HasRawDisplayHandle, RawDisplayHandle, WaylandDisplayHandle};
+        use raw_window_handle::{HasDisplayHandle, RawDisplayHandle, WaylandDisplayHandle};
+        // TODO: this shouldn't unwrap
         #[cfg(all(wayland_platform, feature = "clipboard"))]
-        let wayland_clipboard = match window.raw_display_handle() {
+        let wayland_clipboard = match window.display_handle().unwrap().as_raw() {
             RawDisplayHandle::Wayland(WaylandDisplayHandle { display, .. }) => {
-                Some(unsafe { smithay_clipboard::Clipboard::new(display) })
+                Some(unsafe { smithay_clipboard::Clipboard::new(display.as_ptr()) })
             }
             _ => None,
         };
 
-        let surface = S::new(&mut shared.shell.draw.draw, size, &window)?;
+        let mut surface = S::new(&mut shared.shell.draw.draw, &window)?;
+        if apply_size {
+            surface.do_resize(&mut shared.shell.draw.draw, size);
+        }
 
         let winit_id = window.id();
 
@@ -176,7 +189,9 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             queued_frame_time: Some(time),
         });
 
-        self.apply_size(shared, true);
+        if apply_size {
+            self.apply_size(shared, true);
+        }
 
         log::trace!(target: "kas_perf::wgpu::window", "resume: {}µs", time.elapsed().as_micros());
         Ok(winit_id)
@@ -202,7 +217,6 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         match event {
             WindowEvent::Moved(_) | WindowEvent::Destroyed => false,
             WindowEvent::Resized(size) => {
-                // TODO: maybe enqueue to allow skipping of obsolete resizes
                 if window
                     .surface
                     .do_resize(&mut shared.shell.draw.draw, size.cast())
@@ -213,7 +227,6 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             }
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 // Note: API allows us to set new window size here.
-                shared.scale_factor = scale_factor;
                 let scale_factor = scale_factor as f32;
                 shared
                     .shell
@@ -221,6 +234,9 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
                     .update_window(&mut window.theme_window, scale_factor);
                 let dpem = window.theme_window.size().dpem();
                 self.ev_state.update_config(scale_factor, dpem);
+
+                // NOTE: we could try resizing here in case the window is too
+                // small due to non-linear scaling, but it appears unnecessary.
                 window.solve_cache.invalidate_rule_cache();
                 false
             }
@@ -418,6 +434,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         }
         self.widget.resize_popups(&mut cx, &shared.data);
 
+        // Size restrictions may have changed due to content or size (line wrapping)
         let (restrict_min, restrict_max) = self.widget.restrictions();
         if restrict_min {
             let min = window.solve_cache.min(true).as_physical();
@@ -428,6 +445,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             window.set_max_inner_size(Some(ideal));
         };
 
+        window.set_visible(true);
         window.request_redraw();
         log::trace!(
             target: "kas_perf::wgpu::window",
@@ -477,7 +495,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         } else {
             shared.shell.theme.clear_color()
         };
-        window
+        let time3 = window
             .surface
             .present(&mut shared.shell.draw.draw, clear_color);
 
@@ -485,10 +503,11 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         let end = Instant::now();
         log::trace!(
             target: "kas_perf::wgpu::window",
-            "do_draw: {}µs ({}μs widgets, {}µs text, {}µs render)",
+            "do_draw: {}μs ({}μs widgets, {}μs text, {}μs render, {}μs present)",
             (end - start).as_micros(),
             (time2 - start).as_micros(),
             text_dur_micros.as_micros(),
+            (time3 - time2).as_micros(),
             (end - time2).as_micros()
         );
 

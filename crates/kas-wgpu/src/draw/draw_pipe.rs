@@ -47,7 +47,10 @@ impl<C: CustomPipe> DrawPipe<C> {
         };
         log::info!("Using graphics adapter: {}", adapter.get_info().name);
 
-        let desc = CB::device_descriptor();
+        // Use adapter texture size limits to support the largest window surface possible
+        let mut desc = CB::device_descriptor();
+        desc.limits = desc.limits.using_resolution(adapter.limits());
+
         let trace_path = options.wgpu_trace_path.as_deref();
         let req = adapter.request_device(&desc, trace_path);
         let (device, queue) = block_on(req).map_err(|e| Error::Graphics(Box::new(e)))?;
@@ -258,7 +261,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(clear_color),
-                store: true,
+                store: wgpu::StoreOp::Store,
             },
         })];
 
@@ -274,6 +277,8 @@ impl<C: CustomPipe> DrawPipe<C> {
                     label: Some("kas-wgpu render pass"),
                     color_attachments: &color_attachments,
                     depth_stencil_attachment: None,
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
                 });
                 rpass.set_scissor_rect(
                     rect.pos.0.cast(),
@@ -327,6 +332,10 @@ impl<C: CustomPipe> DrawPipe<C> {
 
 impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
     type Draw = DrawWindow<C::Window>;
+
+    fn max_texture_dimension_2d(&self) -> u32 {
+        self.device.limits().max_texture_dimension_2d
+    }
 
     fn set_raster_config(&mut self, config: &RasterConfig) {
         self.text.set_raster_config(config);

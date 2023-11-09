@@ -8,7 +8,7 @@
 use crate::draw::{CustomPipe, DrawPipe, DrawWindow};
 use kas::cast::Cast;
 use kas::draw::color::Rgba;
-use kas::draw::{DrawIface, WindowCommon};
+use kas::draw::{DrawIface, DrawSharedImpl, WindowCommon};
 use kas::geom::Size;
 use kas::shell::{raw_window_handle as raw, Error, WindowSurface};
 use std::time::Instant;
@@ -23,21 +23,18 @@ pub struct Surface<C: CustomPipe> {
 impl<C: CustomPipe> WindowSurface for Surface<C> {
     type Shared = DrawPipe<C>;
 
-    fn new<W: raw::HasRawWindowHandle + raw::HasRawDisplayHandle>(
-        shared: &mut Self::Shared,
-        size: Size,
-        window: W,
-    ) -> Result<Self, Error> {
-        let mut draw = shared.new_window();
-        shared.resize(&mut draw, size);
-
+    fn new<W>(shared: &mut Self::Shared, window: W) -> Result<Self, Error>
+    where
+        W: raw::HasWindowHandle + raw::HasDisplayHandle,
+        Self: Sized,
+    {
         let surface = unsafe { shared.instance.create_surface(&window) }
             .map_err(|e| Error::Graphics(Box::new(e)))?;
         let sc_desc = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: crate::draw::RENDER_TEX_FORMAT,
-            width: size.0.cast(),
-            height: size.1.cast(),
+            width: 0,
+            height: 0,
             present_mode: wgpu::PresentMode::Fifo,
             // FIXME: current output is for Opaque or PostMultiplied, depending
             // on window transparency. But we can't pick what we want since only
@@ -46,12 +43,11 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
             view_formats: vec![],
         };
-        surface.configure(&shared.device, &sc_desc);
 
         Ok(Surface {
             surface,
             sc_desc,
-            draw,
+            draw: shared.new_window(),
         })
     }
 
@@ -63,6 +59,8 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
         if size == self.size() {
             return false;
         }
+        let size = size.min(Size::splat(shared.max_texture_dimension_2d().cast()));
+
         let time = Instant::now();
 
         shared.resize(&mut self.draw, size);
@@ -90,14 +88,15 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
         &mut self.draw.common
     }
 
-    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) {
+    /// Return time at which render finishes
+    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) -> Instant {
         let frame = match self.surface.get_current_texture() {
             Ok(frame) => frame,
             Err(e) => {
                 // This error has not been observed. Can it be fixed by
                 // re-configuring the surface? Does it ever occur anyway?
                 log::error!("WindowSurface::present: failed to get frame texture: {}", e);
-                return;
+                return Instant::now();
             }
         };
 
@@ -112,7 +111,9 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
         let clear_color = to_wgpu_color(clear_color);
         shared.render(&mut self.draw, &view, clear_color);
 
+        let pre_present = Instant::now();
         frame.present();
+        pre_present
     }
 }
 

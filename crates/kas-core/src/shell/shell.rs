@@ -262,17 +262,6 @@ impl<'a> PlatformWrapper<'a> {
         // Otherwise platform is unsupported!
     }
 
-    /// Guess scale factor of first window
-    pub(super) fn guess_scale_factor(&self) -> f64 {
-        if let Some(mon) = self.0.primary_monitor() {
-            return mon.scale_factor();
-        }
-        if let Some(mon) = self.0.available_monitors().next() {
-            return mon.scale_factor();
-        }
-        1.0
-    }
-
     /// Create a waker
     ///
     /// This waker may be used by a [`Future`](std::future::Future) to revive

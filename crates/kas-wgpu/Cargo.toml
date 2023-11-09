@@ -29,7 +29,6 @@ raster = ["kas-text/raster"]
 bytemuck = "1.7.0"
 futures-lite = "1.12"
 log = "0.4"
-wgpu = { version = "0.17.0", features = ["spirv"] }
 thiserror = "1.0.23"
 guillotiere = "0.6.0"
 rustc-hash = "1.0"
@@ -42,6 +41,12 @@ path = "../kas-core"
 
 [dependencies.kas-text]
 version = "0.6.0"
+
+[dependencies.wgpu]
+version = "0.18.0"
+features = ["spirv"]
+git = "https://github.com/gfx-rs/wgpu.git"
+rev = "1dc5347b141f98392fa012ae3416901faf4249a5"
 
 [build-dependencies]
 glob = "0.3"

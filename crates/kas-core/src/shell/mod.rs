@@ -53,6 +53,7 @@ enum ProxyAction {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::time::Instant;
 
     struct Draw;
     impl crate::draw::DrawImpl for Draw {
@@ -152,6 +153,10 @@ mod test {
     impl crate::draw::DrawSharedImpl for DrawShared {
         type Draw = Draw;
 
+        fn max_texture_dimension_2d(&self) -> u32 {
+            todo!()
+        }
+
         fn set_raster_config(&mut self, _: &crate::theme::RasterConfig) {
             todo!()
         }
@@ -224,12 +229,9 @@ mod test {
     impl WindowSurface for Surface {
         type Shared = DrawShared;
 
-        fn new<W: raw_window_handle::HasRawWindowHandle + raw_window_handle::HasRawDisplayHandle>(
-            _: &mut Self::Shared,
-            _: crate::prelude::Size,
-            _: W,
-        ) -> Result<Self>
+        fn new<W>(_: &mut Self::Shared, _: W) -> Result<Self>
         where
+            W: raw_window_handle::HasRawWindowHandle + raw_window_handle::HasRawDisplayHandle,
             Self: Sized,
         {
             todo!()
@@ -254,7 +256,7 @@ mod test {
             todo!()
         }
 
-        fn present(&mut self, _: &mut Self::Shared, _: crate::draw::color::Rgba) {
+        fn present(&mut self, _: &mut Self::Shared, _: crate::draw::color::Rgba) -> Instant {
             todo!()
         }
     }
