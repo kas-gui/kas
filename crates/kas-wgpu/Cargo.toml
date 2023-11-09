@@ -43,10 +43,10 @@ path = "../kas-core"
 version = "0.6.0"
 
 [dependencies.wgpu]
-version = "0.17.0"
+version = "0.18.0"
 features = ["spirv"]
 git = "https://github.com/gfx-rs/wgpu.git"
-rev = "4e270b78b4d3c8ce04dd08284bd0e500a2f62d0b"
+rev = "1dc5347b141f98392fa012ae3416901faf4249a5"
 
 [build-dependencies]
 glob = "0.3"
