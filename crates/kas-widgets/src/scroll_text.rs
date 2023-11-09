@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Scrollable and selectable label
+//! Scrollable and selectable dynamic text
 
 use super::{ScrollBar, ScrollMsg};
 use kas::event::components::{TextInput, TextInputAction};
@@ -15,23 +15,23 @@ use kas::text::{SelectionHelper, Text};
 use kas::theme::TextClass;
 
 impl_scope! {
-    /// A static text label supporting scrolling and selection
+    /// A dynamic text label supporting scrolling and selection
     ///
     /// Line-wrapping is enabled; default alignment is derived from the script
     /// (usually top-left).
-    #[derive(Clone, Default, Debug)]
     #[widget{
         cursor_icon = CursorIcon::Text;
     }]
-    pub struct ScrollLabel<T: FormattableText + 'static> {
+    pub struct ScrollText<A, T: Default + FormattableText + 'static> {
         core: widget_core!(),
         view_offset: Offset,
         text: Text<T>,
+        text_fn: Box<dyn Fn(&ConfigCx, &A) -> T>,
         text_size: Size,
         selection: SelectionHelper,
         has_sel_focus: bool,
         input_handler: TextInput,
-        #[widget]
+        #[widget(&())]
         bar: ScrollBar<kas::dir::Down>,
     }
 
@@ -90,38 +90,20 @@ impl_scope! {
     }
 
     impl Self {
-        /// Construct an `ScrollLabel` with the given inital `text`
+        /// Construct an `ScrollText` with the given inital `text`
         #[inline]
-        pub fn new(text: T) -> Self {
-            ScrollLabel {
+        pub fn new(text_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+            ScrollText {
                 core: Default::default(),
                 view_offset: Default::default(),
-                text: Text::new(text),
+                text: Text::new(T::default()),
+                text_fn: Box::new(text_fn),
                 text_size: Size::ZERO,
                 selection: SelectionHelper::new(0, 0),
                 has_sel_focus: false,
                 input_handler: Default::default(),
                 bar: ScrollBar::new().with_invisible(true),
             }
-        }
-
-        /// Set text in an existing `Label`
-        ///
-        /// Note: this must not be called before fonts have been initialised
-        /// (usually done by the theme when the main loop starts).
-        pub fn set_text(&mut self, text: T) -> Action {
-            self.text
-                .set_and_try_prepare(text)
-                .expect("invalid font_id");
-
-            self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
-            let max_offset = self.max_scroll_offset();
-            let _ = self.bar.set_limits(max_offset.1, self.rect().size.1);
-            self.view_offset = self.view_offset.min(max_offset);
-
-            self.selection.set_max_len(self.text.str_len());
-
-            Action::REDRAW
         }
 
         fn set_edit_pos_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {
@@ -215,7 +197,26 @@ impl_scope! {
     }
 
     impl Events for Self {
-        type Data = ();
+        type Data = A;
+
+        fn update(&mut self, cx: &mut ConfigCx, data: &A) {
+            let text = (self.text_fn)(cx, data);
+            if text.as_str() == self.text.as_str() {
+                // NOTE(opt): avoiding re-preparation of text is a *huge*
+                // optimisation. Move into kas-text?
+                return;
+            }
+            self.text.set_text(text);
+            if self.text.env().bounds.1.is_finite() {
+                // NOTE: bounds are initially infinite. Alignment results in
+                // infinite offset and thus infinite measured height.
+                let action = match self.text.try_prepare() {
+                    Ok(true) => Action::RESIZE,
+                    _ => Action::REDRAW,
+                };
+                cx.action(self, action);
+            }
+        }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
