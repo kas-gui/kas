@@ -5,8 +5,9 @@
 
 //! Event adapters
 
-use kas::event::ConfigCx;
+use kas::event::{ConfigCx, EventCx};
 use kas::{autoimpl, impl_scope, widget_index, Events, Widget};
+use std::fmt::Debug;
 
 impl_scope! {
     /// Wrapper to call a closure on update
@@ -21,6 +22,7 @@ impl_scope! {
         pub inner: W,
         on_configure: Option<Box<dyn Fn(&mut ConfigCx, &mut W)>>,
         on_update: Option<Box<dyn Fn(&mut ConfigCx, &mut W, &W::Data)>>,
+        message_handlers: Vec<Box<dyn Fn(&mut EventCx, &mut W, &W::Data)>>,
     }
 
     impl Self {
@@ -32,12 +34,11 @@ impl_scope! {
                 inner,
                 on_configure: None,
                 on_update: None,
+                message_handlers: vec![],
             }
         }
 
         /// Call the given closure on [`Events::configure`]
-        ///
-        /// Returns a wrapper around the input widget.
         #[must_use]
         pub fn on_configure<F>(mut self, f: F) -> Self
         where
@@ -48,14 +49,36 @@ impl_scope! {
         }
 
         /// Call the given closure on [`Events::update`]
-        ///
-        /// Returns a wrapper around the input widget.
         #[must_use]
         pub fn on_update<F>(mut self, f: F) -> Self
         where
             F: Fn(&mut ConfigCx, &mut W, &W::Data) + 'static,
         {
             self.on_update = Some(Box::new(f));
+            self
+        }
+
+        /// Add a handler on message of type `M`
+        #[must_use]
+        pub fn on_message<M, H>(self, handler: H) -> Self
+        where
+            M: Debug + 'static,
+            H: Fn(&mut EventCx, &mut W, &W::Data, M) + 'static,
+        {
+            self.on_messages(move |cx, w, data| {
+                if let Some(m) = cx.try_pop() {
+                    handler(cx, w, data, m);
+                }
+            })
+        }
+
+        /// Add a generic message handler
+        #[must_use]
+        pub fn on_messages<H>(mut self, handler: H) -> Self
+        where
+            H: Fn(&mut EventCx, &mut W, &W::Data) + 'static,
+        {
+            self.message_handlers.push(Box::new(handler));
             self
         }
     }
@@ -81,6 +104,12 @@ impl_scope! {
             cx.update(self.inner.as_node(data));
             if let Some(ref f) = self.on_update {
                 f(cx, &mut self.inner, data);
+            }
+        }
+
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &W::Data) {
+            for handler in self.message_handlers.iter() {
+                handler(cx, &mut self.inner, data);
             }
         }
     }
