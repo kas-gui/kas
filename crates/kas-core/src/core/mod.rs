@@ -5,6 +5,7 @@
 
 //! Core widget types
 
+mod collection;
 mod data;
 mod layout;
 mod node;
@@ -16,6 +17,7 @@ mod widget_id;
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub mod impls;
 
+pub use collection::Collection;
 pub use data::*;
 pub use layout::*;
 pub use node::Node;
