@@ -200,6 +200,7 @@ impl_scope! {
         ///         }
         ///     });
         /// ```
+        #[inline]
         pub fn new(widgets: C) -> Self {
             Self::new_dir(widgets, D::default())
         }
@@ -207,24 +208,28 @@ impl_scope! {
 
     impl<C: Collection> List<C, kas::dir::Left> {
         /// Construct a new instance
+        #[inline]
         pub fn left(widgets: C) -> Self {
             Self::new(widgets)
         }
     }
     impl<C: Collection> List<C, kas::dir::Right> {
         /// Construct a new instance
+        #[inline]
         pub fn right(widgets: C) -> Self {
             Self::new(widgets)
         }
     }
     impl<C: Collection> List<C, kas::dir::Up> {
         /// Construct a new instance
+        #[inline]
         pub fn up(widgets: C) -> Self {
             Self::new(widgets)
         }
     }
     impl<C: Collection> List<C, kas::dir::Down> {
         /// Construct a new instance
+        #[inline]
         pub fn down(widgets: C) -> Self {
             Self::new(widgets)
         }

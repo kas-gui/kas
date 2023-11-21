@@ -119,7 +119,7 @@ pub use scroll_text::ScrollText;
 pub use separator::Separator;
 pub use slider::{Slider, SliderValue};
 pub use spinner::{Spinner, SpinnerValue};
-pub use splitter::*;
+pub use splitter::Splitter;
 pub use stack::{BoxStack, Stack};
 pub use tab_stack::{BoxTabStack, Tab, TabStack};
 pub use text::{StrText, StringText, Text};

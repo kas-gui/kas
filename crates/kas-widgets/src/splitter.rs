@@ -12,13 +12,7 @@ use super::{GripMsg, GripPart};
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::theme::Feature;
-
-/// A row/column of boxed widgets
-///
-/// Parameters: `Data`, `D` (direction).
-///
-/// See documentation of [`Splitter`] type.
-pub type BoxSplitter<Data, D> = Splitter<Box<dyn Widget<Data = Data>>, D>;
+use kas::Collection;
 
 impl_scope! {
     /// A resizable row/column widget
@@ -27,9 +21,9 @@ impl_scope! {
     // TODO: better doc
     #[derive(Clone, Default, Debug)]
     #[widget]
-    pub struct Splitter<W: Widget, D: Directional = Direction> {
+    pub struct Splitter<C: Collection, D: Directional = Direction> {
         core: widget_core!(),
-        widgets: Vec<W>,
+        widgets: C,
         handles: Vec<GripPart>,
         data: layout::DynRowStorage,
         direction: D,
@@ -40,27 +34,44 @@ impl_scope! {
 
     impl Self where D: Default {
         /// Construct a new instance
-        pub fn new(widgets: impl Into<Vec<W>>) -> Self {
+        #[inline]
+        pub fn new(widgets: C) -> Self {
             Self::new_dir(widgets, Default::default())
         }
     }
-    impl<W: Widget> Splitter<W, kas::dir::Right> {
+    impl<C: Collection> Splitter<C, kas::dir::Left> {
         /// Construct a new instance
-        pub fn right(widgets: impl Into<Vec<W>>) -> Self {
+        #[inline]
+        pub fn left(widgets: C) -> Self {
             Self::new(widgets)
         }
     }
-    impl<W: Widget> Splitter<W, kas::dir::Down> {
+    impl<C: Collection> Splitter<C, kas::dir::Right> {
         /// Construct a new instance
-        pub fn down(widgets: impl Into<Vec<W>>) -> Self {
+        #[inline]
+        pub fn right(widgets: C) -> Self {
+            Self::new(widgets)
+        }
+    }
+    impl<C: Collection> Splitter<C, kas::dir::Up> {
+        /// Construct a new instance
+        #[inline]
+        pub fn up(widgets: C) -> Self {
+            Self::new(widgets)
+        }
+    }
+    impl<C: Collection> Splitter<C, kas::dir::Down> {
+        /// Construct a new instance
+        #[inline]
+        pub fn down(widgets: C) -> Self {
             Self::new(widgets)
         }
     }
 
     impl Self {
         /// Construct a new instance with explicit direction
-        pub fn new_dir(widgets: impl Into<Vec<W>>, direction: D) -> Self {
-            let widgets = widgets.into();
+        #[inline]
+        pub fn new_dir(widgets: C, direction: D) -> Self {
             let mut handles = Vec::new();
             handles.resize_with(widgets.len().saturating_sub(1), GripPart::new);
             Splitter {
@@ -79,7 +90,7 @@ impl_scope! {
         fn make_next_id(&mut self, is_handle: bool, index: usize) -> Id {
             let child_index = (2 * index) + (is_handle as usize);
             if !is_handle {
-                if let Some(child) = self.widgets.get(index) {
+                if let Some(child) = self.widgets.get_layout(index) {
                     // Use the widget's existing identifier, if any
                     if child.id_ref().is_valid() {
                         if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
@@ -110,7 +121,7 @@ impl_scope! {
             if (index & 1) != 0 {
                 self.handles.get(index >> 1).map(|w| w.as_layout())
             } else {
-                self.widgets.get(index >> 1).map(|w| w.as_layout())
+                self.widgets.get_layout(index >> 1)
             }
         }
 
@@ -134,9 +145,11 @@ impl_scope! {
             loop {
                 assert!(n < self.widgets.len());
                 let widgets = &mut self.widgets;
-                solver.for_child(&mut self.data, n << 1, |axis| {
-                    widgets[n].size_rules(sizer.re(), axis)
-                });
+                if let Some(w) = widgets.get_mut_layout(n) {
+                    solver.for_child(&mut self.data, n << 1, |axis| {
+                        w.size_rules(sizer.re(), axis)
+                    });
+                }
 
                 if n >= self.handles.len() {
                     break;
@@ -165,7 +178,9 @@ impl_scope! {
             let mut n = 0;
             loop {
                 assert!(n < self.widgets.len());
-                self.widgets[n].set_rect(cx, setter.child_rect(&mut self.data, n << 1));
+                if let Some(w) = self.widgets.get_mut_layout(n) {
+                    w.set_rect(cx, setter.child_rect(&mut self.data, n << 1));
+                }
 
                 if n >= self.handles.len() {
                     break;
@@ -223,11 +238,11 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        type Data = W::Data;
+        type Data = C::Data;
 
         fn for_child_node(
             &mut self,
-            data: &W::Data,
+            data: &C::Data,
             index: usize,
             closure: Box<dyn FnOnce(Node<'_>) + '_>,
         ) {
@@ -236,9 +251,7 @@ impl_scope! {
                     closure(w.as_node(&()));
                 }
             } else {
-                if let Some(w) = self.widgets.get_mut(index >> 1) {
-                    closure(w.as_node(data));
-                }
+                self.widgets.for_node(data, index >> 1, closure);
             }
         }
     }
@@ -267,37 +280,9 @@ impl_scope! {
             }
         }
     }
-
-    impl Index<usize> for Self {
-        type Output = W;
-
-        fn index(&self, index: usize) -> &Self::Output {
-            &self.widgets[index]
-        }
-    }
-
-    impl IndexMut<usize> for Self {
-        fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-            &mut self.widgets[index]
-        }
-    }
 }
 
-impl<W: Widget, D: Directional> Splitter<W, D> {
-    /// Edit the list of children directly
-    ///
-    /// This may be used to edit children before window construction. It may
-    /// also be used from a running UI, but in this case a full reconfigure
-    /// of the window's widgets is required (triggered by the the return
-    /// value, [`Action::RECONFIGURE`]).
-    #[inline]
-    pub fn edit<F: FnOnce(&mut Vec<W>)>(&mut self, f: F) -> Action {
-        f(&mut self.widgets);
-        let len = self.widgets.len().saturating_sub(1);
-        self.handles.resize_with(len, GripPart::new);
-        Action::RECONFIGURE
-    }
-
+impl<C: Collection, D: Directional> Splitter<C, D> {
     fn adjust_size(&mut self, cx: &mut ConfigCx, n: usize) {
         assert!(n < self.handles.len());
         assert_eq!(self.widgets.len(), self.handles.len() + 1);
@@ -317,7 +302,9 @@ impl<W: Widget, D: Directional> Splitter<W, D> {
         let mut n = 0;
         loop {
             assert!(n < self.widgets.len());
-            self.widgets[n].set_rect(cx, setter.child_rect(&mut self.data, n << 1));
+            if let Some(w) = self.widgets.get_mut_layout(n) {
+                w.set_rect(cx, setter.child_rect(&mut self.data, n << 1));
+            }
 
             if n >= self.handles.len() {
                 break;
@@ -342,12 +329,35 @@ impl<W: Widget, D: Directional> Splitter<W, D> {
     pub fn len(&self) -> usize {
         self.widgets.len()
     }
+}
 
-    /// Remove all child widgets
-    pub fn clear(&mut self) {
-        self.widgets.clear();
-        self.handles.clear();
-        self.size_solved = false;
+impl<W: Widget, D: Directional> Index<usize> for Splitter<Vec<W>, D> {
+    type Output = W;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.widgets[index]
+    }
+}
+
+impl<W: Widget, D: Directional> IndexMut<usize> for Splitter<Vec<W>, D> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.widgets[index]
+    }
+}
+
+impl<W: Widget, D: Directional> Splitter<Vec<W>, D> {
+    /// Edit the list of children directly
+    ///
+    /// This may be used to edit children before window construction. It may
+    /// also be used from a running UI, but in this case a full reconfigure
+    /// of the window's widgets is required (triggered by the the return
+    /// value, [`Action::RECONFIGURE`]).
+    #[inline]
+    pub fn edit<F: FnOnce(&mut Vec<W>)>(&mut self, f: F) -> Action {
+        f(&mut self.widgets);
+        let len = self.widgets.len().saturating_sub(1);
+        self.handles.resize_with(len, GripPart::new);
+        Action::RECONFIGURE
     }
 
     /// Returns a reference to the child, if any
@@ -358,6 +368,13 @@ impl<W: Widget, D: Directional> Splitter<W, D> {
     /// Returns a mutable reference to the child, if any
     pub fn get_mut(&mut self, index: usize) -> Option<&mut W> {
         self.widgets.get_mut(index)
+    }
+
+    /// Remove all child widgets
+    pub fn clear(&mut self) {
+        self.widgets.clear();
+        self.handles.clear();
+        self.size_solved = false;
     }
 
     /// Append a child widget
