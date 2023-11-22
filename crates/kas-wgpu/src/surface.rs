@@ -25,7 +25,7 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
 
     fn new<W>(shared: &mut Self::Shared, window: W) -> Result<Self, Error>
     where
-        W: raw::HasWindowHandle + raw::HasDisplayHandle,
+        W: raw::HasRawWindowHandle + raw::HasRawDisplayHandle,
         Self: Sized,
     {
         let surface = unsafe { shared.instance.create_surface(&window) }

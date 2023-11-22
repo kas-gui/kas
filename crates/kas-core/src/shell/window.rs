@@ -158,12 +158,11 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         );
 
         #[cfg(all(wayland_platform, feature = "clipboard"))]
-        use raw_window_handle::{HasDisplayHandle, RawDisplayHandle, WaylandDisplayHandle};
-        // TODO: this shouldn't unwrap
+        use raw_window_handle::{HasRawDisplayHandle, RawDisplayHandle, WaylandDisplayHandle};
         #[cfg(all(wayland_platform, feature = "clipboard"))]
-        let wayland_clipboard = match window.display_handle().unwrap().as_raw() {
+        let wayland_clipboard = match window.raw_display_handle() {
             RawDisplayHandle::Wayland(WaylandDisplayHandle { display, .. }) => {
-                Some(unsafe { smithay_clipboard::Clipboard::new(display.as_ptr()) })
+                Some(unsafe { smithay_clipboard::Clipboard::new(display) })
             }
             _ => None,
         };
