@@ -8,13 +8,14 @@
 use super::{Map, MapAny, OnUpdate, Reserve, WithLabel};
 use kas::cast::{Cast, CastFloat};
 use kas::dir::Directional;
-use kas::event::ConfigCx;
+use kas::event::{ConfigCx, EventCx};
 use kas::geom::Vec2;
 use kas::layout::{AxisInfo, SizeRules};
 use kas::text::AccessString;
 use kas::theme::SizeCx;
+#[allow(unused)] use kas::Events;
 use kas::Widget;
-#[allow(unused)] use kas::{Events, Layout};
+use std::fmt::Debug;
 
 /// Provides `.map_any()`
 ///
@@ -64,6 +65,29 @@ pub trait AdaptWidget: Widget + Sized {
         F: Fn(&mut ConfigCx, &mut Self, &Self::Data) + 'static,
     {
         OnUpdate::new(self).on_update(f)
+    }
+
+    /// Add a handler on message of type `M`
+    ///
+    /// Returns a wrapper around the input widget.
+    #[must_use]
+    fn on_message<M, H>(self, handler: H) -> OnUpdate<Self>
+    where
+        M: Debug + 'static,
+        H: Fn(&mut EventCx, &mut Self, &Self::Data, M) + 'static,
+    {
+        OnUpdate::new(self).on_message(handler)
+    }
+
+    /// Add a generic message handler
+    ///
+    /// Returns a wrapper around the input widget.
+    #[must_use]
+    fn on_messages<H>(self, handler: H) -> OnUpdate<Self>
+    where
+        H: Fn(&mut EventCx, &mut Self, &Self::Data) + 'static,
+    {
+        OnUpdate::new(self).on_messages(handler)
     }
 
     /// Construct a wrapper, setting minimum size in pixels

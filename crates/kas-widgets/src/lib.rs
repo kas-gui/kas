@@ -44,8 +44,10 @@
 //! -   [`Filler`]: an empty widget, sometimes used to fill space
 //! -   [`Image`]: a pixmap image
 //! -   [`Label`], [`AccessLabel`]: are static text labels
+//! -   [`Text`]: a dynamic (input-data derived) text label
 //! -   [`Mark`]: a small mark
-//! -   [`ScrollLabel`]: text label supporting scrolling and selection
+//! -   [`ScrollLabel`]: static text label supporting scrolling and selection
+//! -   [`ScrollText`]: dynamic text label supporting scrolling and selection
 //! -   [`Separator`]: a visible bar to separate things
 //! -   [`format_value`] and [`format_data`] are constructors for [`Text`],
 //!     displaying a text label derived from input data
@@ -84,6 +86,7 @@ mod radio_box;
 mod scroll;
 mod scroll_bar;
 mod scroll_label;
+mod scroll_text;
 mod separator;
 mod slider;
 mod spinner;
@@ -111,6 +114,7 @@ pub use radio_box::{RadioBox, RadioButton};
 pub use scroll::ScrollRegion;
 pub use scroll_bar::{ScrollBar, ScrollBarRegion, ScrollBars, ScrollMsg};
 pub use scroll_label::ScrollLabel;
+pub use scroll_text::ScrollText;
 pub use separator::Separator;
 pub use slider::{Slider, SliderValue};
 pub use spinner::{Spinner, SpinnerValue};

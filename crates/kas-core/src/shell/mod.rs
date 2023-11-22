@@ -53,6 +53,7 @@ enum ProxyAction {
 #[cfg(test)]
 mod test {
     use super::*;
+    use raw_window_handle as raw;
     use std::time::Instant;
 
     struct Draw;
@@ -231,7 +232,7 @@ mod test {
 
         fn new<W>(_: &mut Self::Shared, _: W) -> Result<Self>
         where
-            W: raw_window_handle::HasRawWindowHandle + raw_window_handle::HasRawDisplayHandle,
+            W: raw::HasWindowHandle + raw::HasDisplayHandle,
             Self: Sized,
         {
             todo!()

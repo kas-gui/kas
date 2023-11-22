@@ -302,6 +302,9 @@ Demonstration of *as-you-type* formatting from **Markdown**.
         #[widget{
             layout = float! [
                 pack!(right top, Button::label_msg("↻", MsgDirection).map_any()),
+                // NOTE: non_navigable! is needed here to avoid requiring a
+                // nav_next impl on list! (not generable with non-static
+                // direction). TODO: find a more general solution.
                 list!(self.dir, [self.editor, non_navigable!(self.label)]),
             ];
         }]

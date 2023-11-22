@@ -18,7 +18,7 @@ pub struct Config {
     #[cfg_attr(feature = "serde", serde(skip))]
     dirty: bool,
 
-    /// Standard font size, in units of points-per-Em
+    /// Standard font size, in units of pixels-per-Em
     #[cfg_attr(feature = "serde", serde(default = "defaults::font_size"))]
     font_size: f32,
 
@@ -146,7 +146,9 @@ impl Default for RasterConfig {
 impl Config {
     /// Standard font size
     ///
-    /// Units: points per Em. Pixel size depends on the screen's scale factor.
+    /// Units: logical (unscaled) pixels per Em.
+    ///
+    /// To convert to Points, multiply by three quarters.
     #[inline]
     pub fn font_size(&self) -> f32 {
         self.font_size
@@ -279,7 +281,7 @@ mod defaults {
     }
 
     pub fn font_size() -> f32 {
-        10.0
+        14.0
     }
 
     pub fn color_schemes() -> BTreeMap<String, ColorsSrgb> {

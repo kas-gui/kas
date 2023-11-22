@@ -110,9 +110,8 @@ pub struct Dimensions {
 }
 
 impl Dimensions {
-    pub fn new(params: &Parameters, pt_size: f32, scale: f32) -> Self {
-        let dpp = scale * (96.0 / 72.0);
-        let dpem = dpp * pt_size;
+    pub fn new(params: &Parameters, font_size: f32, scale: f32) -> Self {
+        let dpem = scale * font_size;
 
         let text_m0 = (params.m_text.0 * scale).cast_nearest();
         let text_m1 = (params.m_text.1 * scale).cast_nearest();
