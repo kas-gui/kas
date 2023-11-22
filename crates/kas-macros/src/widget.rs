@@ -464,7 +464,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let (fn_set_rect, fn_nav_next, fn_find_id);
     let mut fn_nav_next_err = None;
     let mut fn_draw = None;
-    let mut gen_layout = false;
 
     if let Some(inner) = opt_derive {
         required_layout_methods = quote! {
@@ -693,7 +692,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             self.rect().contains(coord).then(|| self.id())
         };
         if let Some((_, layout)) = args.layout.take() {
-            gen_layout = true;
             fn_nav_next = match layout.nav_next(children.iter().map(|(ident, _, _)| ident)) {
                 Ok(toks) => Some(toks),
                 Err((span, msg)) => {
@@ -913,9 +911,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         if !has_item("nav_next") {
             if let Some(method) = fn_nav_next {
                 layout_impl.items.push(Verbatim(method));
-            } else if gen_layout {
+            } else if let Some((span, msg)) = fn_nav_next_err {
                 // We emit a warning here only if nav_next is not explicitly defined
-                let (span, msg) = fn_nav_next_err.unwrap();
                 emit_warning!(span, "unable to generate `fn Layout::nav_next`: {}", msg,);
             }
         }
@@ -957,6 +954,12 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             layout_impl.items.push(Verbatim(method));
         }
     } else if let Some(fn_size_rules) = fn_size_rules {
+        if fn_nav_next.is_none() {
+            if let Some((span, msg)) = fn_nav_next_err {
+                emit_warning!(span, "unable to generate `fn Layout::nav_next`: {}", msg,);
+            }
+        }
+
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Layout for #impl_target {
                 #required_layout_methods
