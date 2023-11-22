@@ -33,6 +33,10 @@ thiserror = "1.0.23"
 guillotiere = "0.6.0"
 rustc-hash = "1.0"
 
+# Force patch versions of naga and wgpu-core (otherwise not needed as direct dependencies)
+naga = "0.14.1"
+wgpu-core = "0.18.1"
+
 [dependencies.kas]
 # Rename package purely for convenience:
 version = "0.14.0-alpha"
@@ -45,8 +49,6 @@ version = "0.6.0"
 [dependencies.wgpu]
 version = "0.18.0"
 features = ["spirv"]
-git = "https://github.com/gfx-rs/wgpu.git"
-rev = "1dc5347b141f98392fa012ae3416901faf4249a5"
 
 [build-dependencies]
 glob = "0.3"

@@ -232,7 +232,7 @@ mod test {
 
         fn new<W>(_: &mut Self::Shared, _: W) -> Result<Self>
         where
-            W: raw::HasWindowHandle + raw::HasDisplayHandle,
+            W: raw::HasRawWindowHandle + raw::HasRawDisplayHandle,
             Self: Sized,
         {
             todo!()

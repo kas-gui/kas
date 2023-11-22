@@ -199,7 +199,7 @@ pub trait WindowSurface {
     /// It is required to call [`WindowSurface::do_resize`] after this.
     fn new<W>(shared: &mut Self::Shared, window: W) -> Result<Self>
     where
-        W: raw::HasWindowHandle + raw::HasDisplayHandle,
+        W: raw::HasRawWindowHandle + raw::HasRawDisplayHandle,
         Self: Sized;
 
     /// Get current surface size
