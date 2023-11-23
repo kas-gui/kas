@@ -326,7 +326,7 @@ impl ScrollComponent {
                 let timeout = cx.config().scroll_flick_timeout();
                 let pan_dist_thresh = cx.config().pan_dist_thresh();
                 if self.glide.press_end(timeout, pan_dist_thresh) {
-                    cx.request_timer_update(id.clone(), TIMER_GLIDE, Duration::new(0, 0), true);
+                    cx.request_timer_update(id.clone(), TIMER_GLIDE, Duration::new(0, 0));
                 }
             }
             Event::TimerUpdate(pl) if pl == TIMER_GLIDE => {
@@ -338,7 +338,7 @@ impl ScrollComponent {
 
                     if self.glide.vel != Vec2::ZERO {
                         let dur = Duration::from_millis(GLIDE_POLL_MS);
-                        cx.request_timer_update(id.clone(), TIMER_GLIDE, dur, true);
+                        cx.request_timer_update(id.clone(), TIMER_GLIDE, dur);
                         cx.set_scroll(Scroll::Scrolled);
                     }
                 }
@@ -416,7 +416,7 @@ impl TextInput {
                     PressSource::Touch(touch_id) => {
                         self.touch_phase = TouchPhase::Start(touch_id, press.coord);
                         let delay = cx.config().touch_select_delay();
-                        cx.request_timer_update(w_id.clone(), TIMER_SELECT, delay, false);
+                        cx.request_timer_update(w_id.clone(), TIMER_SELECT, delay);
                         None
                     }
                     PressSource::Mouse(..) if cx.config_enable_mouse_text_pan() => {
@@ -474,7 +474,7 @@ impl TextInput {
                         || matches!(press.source, PressSource::Mouse(..) if cx.config_enable_mouse_text_pan()))
                 {
                     self.touch_phase = TouchPhase::None;
-                    cx.request_timer_update(w_id, TIMER_GLIDE, Duration::new(0, 0), true);
+                    cx.request_timer_update(w_id, TIMER_GLIDE, Duration::new(0, 0));
                 }
                 Action::None
             }
@@ -499,7 +499,7 @@ impl TextInput {
                 let decay = cx.config().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(timeout, decay) {
                     let dur = Duration::from_millis(GLIDE_POLL_MS);
-                    cx.request_timer_update(w_id, TIMER_GLIDE, dur, true);
+                    cx.request_timer_update(w_id, TIMER_GLIDE, dur);
                     Action::Pan(delta)
                 } else {
                     Action::None

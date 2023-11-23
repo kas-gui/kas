@@ -46,7 +46,7 @@ fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
                             self.elapsed += now - last;
                             self.last = Some(now);
                             cx.update(self.as_node(data));
-                            cx.request_timer_update(self.id(), 0, Duration::new(0, 1), true);
+                            cx.request_timer_update(self.id(), 0, Duration::new(0, 1));
                         }
                         Used
                     }
@@ -64,7 +64,7 @@ fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
                         self.elapsed += now - last;
                     } else {
                         self.last = Some(now);
-                        cx.request_timer_update(self.id(), 0, Duration::new(0, 0), true);
+                        cx.request_timer_update(self.id(), 0, Duration::new(0, 0));
                     }
                 }
             }

@@ -200,16 +200,16 @@ impl EventState {
     /// Requesting an update with `delay == 0` is valid, except from an
     /// [`Event::TimerUpdate`] handler (where it may cause an infinite loop).
     ///
-    /// If multiple updates with the same `id` and `payload` are requested,
-    /// these are merged (using the earliest time if `first` is true).
-    pub fn request_timer_update(&mut self, id: Id, payload: u64, delay: Duration, first: bool) {
+    /// Multiple timer requests with the same `id` and `payload` are merged
+    /// (choosing the earliest time).
+    pub fn request_timer_update(&mut self, id: Id, payload: u64, delay: Duration) {
         let time = Instant::now() + delay;
         if let Some(row) = self
             .time_updates
             .iter_mut()
             .find(|row| row.1 == id && row.2 == payload)
         {
-            if (first && row.0 <= time) || (!first && row.0 >= time) {
+            if row.0 <= time {
                 return;
             }
 

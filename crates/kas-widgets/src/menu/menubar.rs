@@ -193,7 +193,7 @@ impl_scope! {
                         } else if id != self.delayed_open {
                             cx.set_nav_focus(id.clone(), FocusSource::Pointer);
                             let delay = cx.config().menu_delay();
-                            cx.request_timer_update(self.id(), id.as_u64(), delay, true);
+                            cx.request_timer_update(self.id(), id.as_u64(), delay);
                             self.delayed_open = Some(id);
                         }
                     } else {
