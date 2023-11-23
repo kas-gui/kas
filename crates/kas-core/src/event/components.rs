@@ -15,8 +15,8 @@ use crate::{Action, Id};
 use kas_macros::impl_default;
 use std::time::{Duration, Instant};
 
-const PAYLOAD_SELECT: u64 = 1 << 60;
-const PAYLOAD_GLIDE: u64 = (1 << 60) + 1;
+const TIMER_SELECT: u64 = 1 << 60;
+const TIMER_GLIDE: u64 = (1 << 60) + 1;
 const GLIDE_POLL_MS: u64 = 3;
 const GLIDE_MAX_SAMPLES: usize = 8;
 
@@ -326,10 +326,10 @@ impl ScrollComponent {
                 let timeout = cx.config().scroll_flick_timeout();
                 let pan_dist_thresh = cx.config().pan_dist_thresh();
                 if self.glide.press_end(timeout, pan_dist_thresh) {
-                    cx.request_timer_update(id.clone(), PAYLOAD_GLIDE, Duration::new(0, 0), true);
+                    cx.request_timer_update(id.clone(), TIMER_GLIDE, Duration::new(0, 0), true);
                 }
             }
-            Event::TimerUpdate(pl) if pl == PAYLOAD_GLIDE => {
+            Event::TimerUpdate(pl) if pl == TIMER_GLIDE => {
                 // Momentum/glide scrolling: update per arbitrary step time until movment stops.
                 let timeout = cx.config().scroll_flick_timeout();
                 let decay = cx.config().scroll_flick_decay();
@@ -338,7 +338,7 @@ impl ScrollComponent {
 
                     if self.glide.vel != Vec2::ZERO {
                         let dur = Duration::from_millis(GLIDE_POLL_MS);
-                        cx.request_timer_update(id.clone(), PAYLOAD_GLIDE, dur, true);
+                        cx.request_timer_update(id.clone(), TIMER_GLIDE, dur, true);
                         cx.set_scroll(Scroll::Scrolled);
                     }
                 }
@@ -416,7 +416,7 @@ impl TextInput {
                     PressSource::Touch(touch_id) => {
                         self.touch_phase = TouchPhase::Start(touch_id, press.coord);
                         let delay = cx.config().touch_select_delay();
-                        cx.request_timer_update(w_id.clone(), PAYLOAD_SELECT, delay, false);
+                        cx.request_timer_update(w_id.clone(), TIMER_SELECT, delay, false);
                         None
                     }
                     PressSource::Mouse(..) if cx.config_enable_mouse_text_pan() => {
@@ -474,11 +474,11 @@ impl TextInput {
                         || matches!(press.source, PressSource::Mouse(..) if cx.config_enable_mouse_text_pan()))
                 {
                     self.touch_phase = TouchPhase::None;
-                    cx.request_timer_update(w_id, PAYLOAD_GLIDE, Duration::new(0, 0), true);
+                    cx.request_timer_update(w_id, TIMER_GLIDE, Duration::new(0, 0), true);
                 }
                 Action::None
             }
-            Event::TimerUpdate(pl) if pl == PAYLOAD_SELECT => {
+            Event::TimerUpdate(pl) if pl == TIMER_SELECT => {
                 match self.touch_phase {
                     TouchPhase::Start(touch_id, coord) => {
                         self.touch_phase = TouchPhase::Cursor(touch_id);
@@ -493,13 +493,13 @@ impl TextInput {
                     _ => Action::None,
                 }
             }
-            Event::TimerUpdate(pl) if pl == PAYLOAD_GLIDE => {
+            Event::TimerUpdate(pl) if pl == TIMER_GLIDE => {
                 // Momentum/glide scrolling: update per arbitrary step time until movment stops.
                 let timeout = cx.config().scroll_flick_timeout();
                 let decay = cx.config().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(timeout, decay) {
                     let dur = Duration::from_millis(GLIDE_POLL_MS);
-                    cx.request_timer_update(w_id, PAYLOAD_GLIDE, dur, true);
+                    cx.request_timer_update(w_id, TIMER_GLIDE, dur, true);
                     Action::Pan(delta)
                 } else {
                     Action::None
