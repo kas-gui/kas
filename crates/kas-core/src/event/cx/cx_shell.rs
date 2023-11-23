@@ -268,7 +268,7 @@ impl<'a> EventCx<'a> {
             }
 
             let update = self.time_updates.pop().unwrap();
-            self.send_event(widget.re(), update.1, Event::TimerUpdate(update.2));
+            self.send_event(widget.re(), update.1, Event::Timer(update.2));
         }
 
         self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort

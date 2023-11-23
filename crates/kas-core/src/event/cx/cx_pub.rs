@@ -188,21 +188,21 @@ impl EventState {
         }
     }
 
-    /// Schedule an update
+    /// Schedule a timed update
     ///
     /// Widget updates may be used for animation and timed responses. See also
     /// [`Draw::animate`](crate::draw::Draw::animate) for animation.
     ///
-    /// Widget `id` will receive [`Event::TimerUpdate`] with this `payload` at
+    /// Widget `id` will receive [`Event::Timer`] with this `payload` at
     /// approximately `time = now + delay` (or possibly a little later due to
     /// frame-rate limiters and processing time).
     ///
     /// Requesting an update with `delay == 0` is valid, except from an
-    /// [`Event::TimerUpdate`] handler (where it may cause an infinite loop).
+    /// [`Event::Timer`] handler (where it may cause an infinite loop).
     ///
     /// Multiple timer requests with the same `id` and `payload` are merged
     /// (choosing the earliest time).
-    pub fn request_timer_update(&mut self, id: Id, payload: u64, delay: Duration) {
+    pub fn request_timer(&mut self, id: Id, payload: u64, delay: Duration) {
         let time = Instant::now() + delay;
         if let Some(row) = self
             .time_updates
@@ -216,7 +216,7 @@ impl EventState {
             row.0 = time;
             log::trace!(
                 target: "kas_core::event",
-                "request_timer_update: update {id} at now+{}ms",
+                "request_timer: update {id} at now+{}ms",
                 delay.as_millis()
             );
         } else {

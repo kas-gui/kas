@@ -40,13 +40,13 @@ fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
             }
             fn handle_event(&mut self, cx: &mut EventCx, data: &(), event: Event) -> IsUsed {
                 match event {
-                    Event::TimerUpdate(0) => {
+                    Event::Timer(0) => {
                         if let Some(last) = self.last {
                             let now = Instant::now();
                             self.elapsed += now - last;
                             self.last = Some(now);
                             cx.update(self.as_node(data));
-                            cx.request_timer_update(self.id(), 0, Duration::new(0, 1));
+                            cx.request_timer(self.id(), 0, Duration::new(0, 1));
                         }
                         Used
                     }
@@ -64,7 +64,7 @@ fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
                         self.elapsed += now - last;
                     } else {
                         self.last = Some(now);
-                        cx.request_timer_update(self.id(), 0, Duration::new(0, 0));
+                        cx.request_timer(self.id(), 0, Duration::new(0, 0));
                     }
                 }
             }

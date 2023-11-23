@@ -249,7 +249,7 @@ impl ScrollComponent {
     /// Use an event to scroll, if possible
     ///
     /// Consumes the following events: `Command`, `Scroll`, `PressStart`,
-    /// `PressMove`, `PressEnd`, `TimerUpdate(pl)` where `pl == (1<<60) + 1`.
+    /// `PressMove`, `PressEnd`, `Timer(pl)` where `pl == (1<<60) + 1`.
     /// May request timer updates.
     ///
     /// Implements scroll by Home/End, Page Up/Down and arrow keys, by mouse
@@ -326,10 +326,10 @@ impl ScrollComponent {
                 let timeout = cx.config().scroll_flick_timeout();
                 let pan_dist_thresh = cx.config().pan_dist_thresh();
                 if self.glide.press_end(timeout, pan_dist_thresh) {
-                    cx.request_timer_update(id.clone(), TIMER_GLIDE, Duration::new(0, 0));
+                    cx.request_timer(id.clone(), TIMER_GLIDE, Duration::new(0, 0));
                 }
             }
-            Event::TimerUpdate(pl) if pl == TIMER_GLIDE => {
+            Event::Timer(pl) if pl == TIMER_GLIDE => {
                 // Momentum/glide scrolling: update per arbitrary step time until movment stops.
                 let timeout = cx.config().scroll_flick_timeout();
                 let decay = cx.config().scroll_flick_decay();
@@ -338,7 +338,7 @@ impl ScrollComponent {
 
                     if self.glide.vel != Vec2::ZERO {
                         let dur = Duration::from_millis(GLIDE_POLL_MS);
-                        cx.request_timer_update(id.clone(), TIMER_GLIDE, dur);
+                        cx.request_timer(id.clone(), TIMER_GLIDE, dur);
                         cx.set_scroll(Scroll::Scrolled);
                     }
                 }
@@ -399,7 +399,7 @@ impl TextInput {
     /// Handle input events
     ///
     /// Consumes the following events: `PressStart`, `PressMove`, `PressEnd`,
-    /// `TimerUpdate(pl)` where `pl == 1<<60 || pl == (1<<60)+1`.
+    /// `Timer(pl)` where `pl == 1<<60 || pl == (1<<60)+1`.
     /// May request press grabs and timer updates.
     ///
     /// Implements scrolling and text selection behaviour, excluding handling of
@@ -416,7 +416,7 @@ impl TextInput {
                     PressSource::Touch(touch_id) => {
                         self.touch_phase = TouchPhase::Start(touch_id, press.coord);
                         let delay = cx.config().touch_select_delay();
-                        cx.request_timer_update(w_id.clone(), TIMER_SELECT, delay);
+                        cx.request_timer(w_id.clone(), TIMER_SELECT, delay);
                         None
                     }
                     PressSource::Mouse(..) if cx.config_enable_mouse_text_pan() => {
@@ -474,32 +474,27 @@ impl TextInput {
                         || matches!(press.source, PressSource::Mouse(..) if cx.config_enable_mouse_text_pan()))
                 {
                     self.touch_phase = TouchPhase::None;
-                    cx.request_timer_update(w_id, TIMER_GLIDE, Duration::new(0, 0));
+                    cx.request_timer(w_id, TIMER_GLIDE, Duration::new(0, 0));
                 }
                 Action::None
             }
-            Event::TimerUpdate(pl) if pl == TIMER_SELECT => {
-                match self.touch_phase {
-                    TouchPhase::Start(touch_id, coord) => {
-                        self.touch_phase = TouchPhase::Cursor(touch_id);
-                        Action::Focus {
-                            coord: Some(coord),
-                            action: SelectionAction::new(true, !cx.modifiers().shift_key(), 1),
-                        }
+            Event::Timer(pl) if pl == TIMER_SELECT => match self.touch_phase {
+                TouchPhase::Start(touch_id, coord) => {
+                    self.touch_phase = TouchPhase::Cursor(touch_id);
+                    Action::Focus {
+                        coord: Some(coord),
+                        action: SelectionAction::new(true, !cx.modifiers().shift_key(), 1),
                     }
-                    // Note: if the TimerUpdate were from another requester it
-                    // should technically be Unused, but it doesn't matter
-                    // so long as other consumers match this first.
-                    _ => Action::None,
                 }
-            }
-            Event::TimerUpdate(pl) if pl == TIMER_GLIDE => {
+                _ => Action::None,
+            },
+            Event::Timer(pl) if pl == TIMER_GLIDE => {
                 // Momentum/glide scrolling: update per arbitrary step time until movment stops.
                 let timeout = cx.config().scroll_flick_timeout();
                 let decay = cx.config().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(timeout, decay) {
                     let dur = Duration::from_millis(GLIDE_POLL_MS);
-                    cx.request_timer_update(w_id, TIMER_GLIDE, dur);
+                    cx.request_timer(w_id, TIMER_GLIDE, dur);
                     Action::Pan(delta)
                 } else {
                     Action::None

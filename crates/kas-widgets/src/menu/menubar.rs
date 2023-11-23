@@ -132,7 +132,7 @@ impl_scope! {
     impl<Data, D: Directional> Events for MenuBar<Data, D> {
         fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> IsUsed {
             match event {
-                Event::TimerUpdate(id_code) => {
+                Event::Timer(id_code) => {
                     if let Some(id) = self.delayed_open.clone() {
                         if id.as_u64() == id_code {
                             self.set_menu_path(cx, data, Some(&id), false);
@@ -193,7 +193,7 @@ impl_scope! {
                         } else if id != self.delayed_open {
                             cx.set_nav_focus(id.clone(), FocusSource::Pointer);
                             let delay = cx.config().menu_delay();
-                            cx.request_timer_update(self.id(), id.as_u64(), delay);
+                            cx.request_timer(self.id(), id.as_u64(), delay);
                             self.delayed_open = Some(id);
                         }
                     } else {

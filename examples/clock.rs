@@ -8,7 +8,7 @@
 //! Demonstrates low-level drawing and timer handling.
 //!
 //! Note that two forms of animation are possible: calling `draw.draw_device().animate();`
-//! in `fn Clock::draw`, or using `Event::TimerUpdate`. We use the latter since
+//! in `fn Clock::draw`, or using `Event::Timer`. We use the latter since
 //! it lets us draw at 1 FPS with exactly the right frame time.
 
 extern crate chrono;
@@ -125,12 +125,12 @@ impl_scope! {
         type Data = ();
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.request_timer_update(self.id(), 0, Duration::new(0, 0));
+            cx.request_timer(self.id(), 0, Duration::new(0, 0));
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
-                Event::TimerUpdate(0) => {
+                Event::Timer(0) => {
                     self.now = Local::now();
                     let date = self.now.format("%Y-%m-%d").to_string();
                     let time = self.now.format("%H:%M:%S").to_string();
@@ -142,7 +142,7 @@ impl_scope! {
                         .expect("invalid font_id");
                     let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                     log::info!("Requesting update in {}ns", ns);
-                    cx.request_timer_update(self.id(), 0, Duration::new(0, ns));
+                    cx.request_timer(self.id(), 0, Duration::new(0, ns));
                     cx.redraw(self);
                     Used
                 }
