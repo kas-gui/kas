@@ -454,7 +454,7 @@ impl<'a> EventCx<'a> {
         }
 
         if let Some(id) = target {
-            if let Some(id) = widget._nav_next(self, Some(&id), NavAdvance::None) {
+            if let Some(id) = self.nav_next(widget.re(), Some(&id), NavAdvance::None) {
                 self.set_nav_focus(id, FocusSource::Key);
             }
             let event = Event::Command(Command::Activate, Some(code));
@@ -516,18 +516,8 @@ impl<'a> EventCx<'a> {
         self.scroll = Scroll::None;
     }
 
-    // Wrapper around Self::send; returns true when event is used
-    #[inline]
-    fn send_event(&mut self, widget: Node<'_>, id: Id, event: Event) -> bool {
-        self.messages.set_base();
-        let used = self.send_event_impl(widget, id, event);
-        self.last_child = None;
-        self.scroll = Scroll::None;
-        used
-    }
-
-    // Send an event; possibly leave messages on the stack
-    fn send_event_impl(&mut self, mut widget: Node<'_>, mut id: Id, event: Event) -> bool {
+    // Call Widget::_send; returns true when event is used
+    fn send_event(&mut self, mut widget: Node<'_>, mut id: Id, event: Event) -> bool {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
         self.messages.set_base();
@@ -547,7 +537,11 @@ impl<'a> EventCx<'a> {
             }
         }
 
-        widget._send(self, id, disabled, event) == Used
+        let used = widget._send(self, id, disabled, event) == Used;
+
+        self.last_child = None;
+        self.scroll = Scroll::None;
+        used
     }
 
     fn send_popup_first(&mut self, mut widget: Node<'_>, id: Option<Id>, event: Event) {
@@ -566,6 +560,28 @@ impl<'a> EventCx<'a> {
         if let Some(id) = id {
             self.send_event(widget, id, event);
         }
+    }
+
+    // Call Widget::_nav_next
+    fn nav_next(
+        &mut self,
+        mut widget: Node<'_>,
+        focus: Option<&Id>,
+        advance: NavAdvance,
+    ) -> Option<Id> {
+        debug_assert!(self.scroll == Scroll::None);
+        debug_assert!(self.last_child.is_none());
+        self.messages.set_base();
+        log::trace!(target: "kas_core::event", "nav_next: focus={focus:?}, advance={advance:?}");
+
+        let result = widget._nav_next(self, focus, advance);
+
+        // Ignore residual values
+        self.last_child = None;
+        self.scroll = Scroll::None;
+        assert!(!self.messages.has_any());
+
+        result
     }
 
     // Clear old hover, set new hover, send events.
@@ -691,9 +707,9 @@ impl<'a> EventCx<'a> {
         // Whether to restart from the beginning on failure
         let restart = focus.is_some();
 
-        let mut opt_id = widget._nav_next(self, focus.as_ref(), advance);
+        let mut opt_id = self.nav_next(widget.re(), focus.as_ref(), advance);
         if restart && opt_id.is_none() {
-            opt_id = widget._nav_next(self, None, advance);
+            opt_id = self.nav_next(widget.re(), None, advance);
         }
 
         log::trace!(

@@ -474,7 +474,7 @@ impl<'a> EventCx<'a> {
                         // No mouse grab but have a hover target
                         if self.config.mouse_nav_focus() {
                             if let Some(id) =
-                                win._nav_next(self, data, Some(&start_id), NavAdvance::None)
+                                self.nav_next(win.as_node(data), Some(&start_id), NavAdvance::None)
                             {
                                 self.set_nav_focus(id, FocusSource::Pointer);
                             }
@@ -502,7 +502,7 @@ impl<'a> EventCx<'a> {
                         if let Some(id) = start_id.as_ref() {
                             if self.config.touch_nav_focus() {
                                 if let Some(id) =
-                                    win._nav_next(self, data, Some(id), NavAdvance::None)
+                                    self.nav_next(win.as_node(data), Some(id), NavAdvance::None)
                                 {
                                     self.set_nav_focus(id, FocusSource::Pointer);
                                 }
