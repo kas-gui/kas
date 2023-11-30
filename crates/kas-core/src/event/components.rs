@@ -198,13 +198,23 @@ impl ScrollComponent {
     ///
     /// Returns [`Action::REGION_MOVED`] when the scroll offset changes.
     pub fn focus_rect(&mut self, cx: &mut EventCx, rect: Rect, window_rect: Rect) -> Action {
+        let action = self.self_focus_rect(rect, window_rect);
+        cx.set_scroll(Scroll::Rect(rect - self.offset));
+        action
+    }
+
+    /// Scroll self to make the given `rect` visible
+    ///
+    /// This is identical to [`Self::focus_rect`] except that it does not call
+    /// [`EventCx::set_scroll`], thus will not affect ancestors.
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    pub fn self_focus_rect(&mut self, rect: Rect, window_rect: Rect) -> Action {
         self.glide.stop();
         let v = rect.pos - window_rect.pos;
         let off = Offset::conv(rect.size) - Offset::conv(window_rect.size);
         let offset = self.offset.max(v + off).min(v);
-        let action = self.set_offset(offset);
-        cx.set_scroll(Scroll::Rect(rect - self.offset));
-        action
+        self.set_offset(offset)
     }
 
     /// Handle a [`Scroll`] action

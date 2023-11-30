@@ -812,7 +812,7 @@ impl_scope! {
         // Non-standard implementation to allow mapping new children
         fn _nav_next(
             &mut self,
-            cx: &mut EventCx,
+            cx: &mut ConfigCx,
             data: &A,
             focus: Option<&Id>,
             advance: NavAdvance,
@@ -855,10 +855,10 @@ impl_scope! {
                     last_data
                 };
 
-                let act = self.scroll.focus_rect(cx, solver.rect(data_index), self.core.rect);
+                let act = self.scroll.self_focus_rect(solver.rect(data_index), self.core.rect);
                 if !act.is_empty() {
                     cx.action(&self, act);
-                    self.update_widgets(&mut cx.config_cx(), data);
+                    self.update_widgets(cx, data);
                 }
 
                 let index = data_index % usize::conv(self.cur_len);

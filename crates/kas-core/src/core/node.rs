@@ -38,7 +38,7 @@ trait NodeT {
     fn _replay(&mut self, cx: &mut EventCx, id: Id, msg: Erased);
     fn _nav_next(
         &mut self,
-        cx: &mut EventCx,
+        cx: &mut ConfigCx,
         focus: Option<&Id>,
         advance: NavAdvance,
     ) -> Option<Id>;
@@ -102,7 +102,7 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
     }
     fn _nav_next(
         &mut self,
-        cx: &mut EventCx,
+        cx: &mut ConfigCx,
         focus: Option<&Id>,
         advance: NavAdvance,
     ) -> Option<Id> {
@@ -369,7 +369,7 @@ impl<'a> Node<'a> {
     // NOTE: public on account of ListView
     pub fn _nav_next(
         &mut self,
-        cx: &mut EventCx,
+        cx: &mut ConfigCx,
         focus: Option<&Id>,
         advance: NavAdvance,
     ) -> Option<Id> {

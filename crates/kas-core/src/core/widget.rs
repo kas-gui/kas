@@ -433,7 +433,7 @@ pub trait Widget: Layout {
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn _nav_next(
         &mut self,
-        cx: &mut EventCx,
+        cx: &mut ConfigCx,
         data: &Self::Data,
         focus: Option<&Id>,
         advance: NavAdvance,

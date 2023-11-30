@@ -5,7 +5,7 @@
 
 //! Widget method implementations
 
-use crate::event::{Event, EventCx, FocusSource, IsUsed, Scroll, Unused, Used};
+use crate::event::{ConfigCx, Event, EventCx, FocusSource, IsUsed, Scroll, Unused, Used};
 #[cfg(debug_assertions)] use crate::util::IdentifyWidget;
 use crate::{Erased, Events, Id, Layout, NavAdvance, Node, Widget};
 
@@ -132,7 +132,7 @@ pub fn _replay<W: Events>(
 /// Generic implementation of [`Widget::_nav_next`]
 pub fn _nav_next<W: Events>(
     widget: &mut W,
-    cx: &mut EventCx,
+    cx: &mut ConfigCx,
     data: &<W as Widget>::Data,
     focus: Option<&Id>,
     advance: NavAdvance,
@@ -143,7 +143,7 @@ pub fn _nav_next<W: Events>(
 
 fn nav_next(
     mut widget: Node<'_>,
-    cx: &mut EventCx,
+    cx: &mut ConfigCx,
     focus: Option<&Id>,
     advance: NavAdvance,
     navigable: bool,

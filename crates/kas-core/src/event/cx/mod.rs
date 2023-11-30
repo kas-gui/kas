@@ -563,25 +563,16 @@ impl<'a> EventCx<'a> {
     }
 
     // Call Widget::_nav_next
+    #[inline]
     fn nav_next(
         &mut self,
         mut widget: Node<'_>,
         focus: Option<&Id>,
         advance: NavAdvance,
     ) -> Option<Id> {
-        debug_assert!(self.scroll == Scroll::None);
-        debug_assert!(self.last_child.is_none());
-        self.messages.set_base();
         log::trace!(target: "kas_core::event", "nav_next: focus={focus:?}, advance={advance:?}");
 
-        let result = widget._nav_next(self, focus, advance);
-
-        // Ignore residual values
-        self.last_child = None;
-        self.scroll = Scroll::None;
-        assert!(!self.messages.has_any());
-
-        result
+        widget._nav_next(&mut self.config_cx(), focus, advance)
     }
 
     // Clear old hover, set new hover, send events.
