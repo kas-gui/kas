@@ -59,11 +59,11 @@ fn calc_ui() -> Window<()> {
 
     let ui = Adapt::new(kas::column![display, buttons], Calculator::new())
         .on_message(|_, calc, key| calc.handle(key))
-        .on_configure(|cx, adapt| {
+        .on_configure(|cx, _| {
             cx.disable_nav_focus(true);
 
             // Enable key bindings without Alt held:
-            cx.enable_alt_bypass(adapt.id_ref(), true);
+            cx.enable_alt_bypass(true);
         });
 
     Window::new(ui, "Calculator")

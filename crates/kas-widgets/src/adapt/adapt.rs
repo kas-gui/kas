@@ -6,8 +6,111 @@
 //! Adapt widget
 
 use kas::prelude::*;
+use linear_map::LinearMap;
 use std::fmt::Debug;
 use std::marker::PhantomData;
+use std::time::Duration;
+
+/// An [`EventCx`] with embedded [`Id`]
+///
+/// NOTE: this is a temporary design: it may be expanded or integrated with
+/// `EventCx` in the future.
+#[autoimpl(Deref, DerefMut using self.cx)]
+pub struct AdaptEventCx<'a: 'b, 'b> {
+    cx: &'b mut EventCx<'a>,
+    id: Id,
+}
+
+impl<'a: 'b, 'b> AdaptEventCx<'a, 'b> {
+    #[inline]
+    fn new(cx: &'b mut EventCx<'a>, id: Id) -> Self {
+        AdaptEventCx { cx, id }
+    }
+
+    /// Check whether this widget is disabled
+    #[inline]
+    pub fn is_disabled(&self) -> bool {
+        self.cx.is_disabled(&self.id)
+    }
+
+    /// Set/unset disabled status for this widget
+    #[inline]
+    pub fn set_disabled(&mut self, state: bool) {
+        self.cx.set_disabled(self.id.clone(), state);
+    }
+
+    /// Schedule a timed update
+    ///
+    /// This widget will receive an update for timer `timer_id` at
+    /// approximately `time = now + delay` (or possibly a little later due to
+    /// frame-rate limiters and processing time).
+    ///
+    /// Requesting an update with `delay == 0` is valid except from a timer
+    /// handler where it might cause an infinite loop.
+    ///
+    /// Multiple timer requests with the same `timer_id` are merged
+    /// (choosing the earliest time).
+    #[inline]
+    pub fn request_timer(&mut self, timer_id: u64, delay: Duration) {
+        self.cx.request_timer(self.id.clone(), timer_id, delay);
+    }
+}
+
+/// A [`ConfigCx`] with embedded [`Id`]
+///
+/// NOTE: this is a temporary design: it may be expanded or integrated with
+/// `ConfigCx` in the future.
+#[autoimpl(Deref, DerefMut using self.cx)]
+pub struct AdaptConfigCx<'a: 'b, 'b> {
+    cx: &'b mut ConfigCx<'a>,
+    id: Id,
+}
+
+impl<'a: 'b, 'b> AdaptConfigCx<'a, 'b> {
+    #[inline]
+    fn new(cx: &'b mut ConfigCx<'a>, id: Id) -> Self {
+        AdaptConfigCx { cx, id }
+    }
+
+    /// Check whether this widget is disabled
+    #[inline]
+    pub fn is_disabled(&self) -> bool {
+        self.cx.is_disabled(&self.id)
+    }
+
+    /// Set/unset disabled status for this widget
+    #[inline]
+    pub fn set_disabled(&mut self, state: bool) {
+        self.cx.set_disabled(self.id.clone(), state);
+    }
+
+    /// Enable `alt_bypass` for layer
+    ///
+    /// This may be called by a child widget during configure to enable or
+    /// disable alt-bypass for the access-key layer containing its access keys.
+    /// This allows access keys to be used as shortcuts without the Alt
+    /// key held. See also [`EventState::new_access_layer`].
+    #[inline]
+    pub fn enable_alt_bypass(&mut self, alt_bypass: bool) {
+        self.cx.enable_alt_bypass(&self.id, alt_bypass);
+    }
+
+    /// Schedule a timed update
+    ///
+    /// This widget will receive an update for timer `timer_id` at
+    /// approximately `time = now + delay` (or possibly a little later due to
+    /// frame-rate limiters and processing time).
+    ///
+    /// Requesting an update with `delay == 0` is valid except from a timer
+    /// handler where it might cause an infinite loop.
+    ///
+    /// Multiple timer requests with the same `timer_id` are merged
+    /// (choosing the earliest time).
+    #[inline]
+    pub fn request_timer(&mut self, timer_id: u64, delay: Duration) {
+        self.cx.request_timer(self.id.clone(), timer_id, delay);
+    }
+}
 
 impl_scope! {
     /// Data adaption node
@@ -25,9 +128,10 @@ impl_scope! {
         state: S,
         #[widget(&self.state)]
         inner: W,
-        event_handler: Option<Box<dyn Fn(&mut EventCx, &A, &mut S, Event) -> IsUsed>>,
-        message_handlers: Vec<Box<dyn Fn(&mut EventCx, &A, &mut S) -> bool>>,
-        update_handler: Option<Box<dyn Fn(&mut ConfigCx, &A, &mut S)>>,
+        configure_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut S)>>,
+        update_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &A, &mut S)>>,
+        timer_handlers: LinearMap<u64, Box<dyn Fn(&mut AdaptEventCx, &A, &mut S) -> bool>>,
+        message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx, &A, &mut S) -> bool>>,
     }
 
     impl Self {
@@ -38,21 +142,44 @@ impl_scope! {
                 core: Default::default(),
                 state,
                 inner,
-                event_handler: None,
-                message_handlers: vec![],
+                configure_handler: None,
                 update_handler: None,
+                timer_handlers: LinearMap::new(),
+                message_handlers: vec![],
             }
         }
 
-        /// Set a custom event handler
-        ///
-        /// The closure should return [`Used`] if state was updated.
-        pub fn on_event<H>(mut self, handler: H) -> Self
+        /// Add a handler to be called on configuration
+        pub fn on_configure<F>(mut self, handler: F) -> Self
         where
-            H: Fn(&mut EventCx, &A, &mut S, Event) -> IsUsed + 'static,
+            F: Fn(&mut AdaptConfigCx, &mut S) + 'static,
         {
-            debug_assert!(self.event_handler.is_none());
-            self.event_handler = Some(Box::new(handler));
+            debug_assert!(self.configure_handler.is_none());
+            self.configure_handler = Some(Box::new(handler));
+            self
+        }
+
+        /// Add a handler to be called on update of input data
+        ///
+        /// Children will be updated after the handler is called.
+        pub fn on_update<F>(mut self, handler: F) -> Self
+        where
+            F: Fn(&mut AdaptConfigCx, &A, &mut S) + 'static,
+        {
+            debug_assert!(self.update_handler.is_none());
+            self.update_handler = Some(Box::new(handler));
+            self
+        }
+
+        /// Set a timer handler
+        ///
+        /// The closure should return `true` if state was updated.
+        pub fn on_timer<H>(mut self, timer_id: u64, handler: H) -> Self
+        where
+            H: Fn(&mut AdaptEventCx, &A, &mut S) -> bool + 'static,
+        {
+            debug_assert!(self.timer_handlers.get(&timer_id).is_none());
+            self.timer_handlers.insert(timer_id, Box::new(handler));
             self
         }
 
@@ -61,7 +188,7 @@ impl_scope! {
         /// Children will be updated whenever this handler is invoked.
         ///
         /// Where multiple message types must be handled or access to the
-        /// [`EventCx`] is required, use [`Self::on_messages`] instead.
+        /// [`AdaptEventCx`] is required, use [`Self::on_messages`] instead.
         pub fn on_message<M, H>(self, handler: H) -> Self
         where
             M: Debug + 'static,
@@ -82,21 +209,9 @@ impl_scope! {
         /// The closure should return `true` if state was updated.
         pub fn on_messages<H>(mut self, handler: H) -> Self
         where
-            H: Fn(&mut EventCx, &A, &mut S) -> bool + 'static,
+            H: Fn(&mut AdaptEventCx, &A, &mut S) -> bool + 'static,
         {
             self.message_handlers.push(Box::new(handler));
-            self
-        }
-
-        /// Add a handler to be called on update of input data
-        ///
-        /// Children will be updated after the handler is called.
-        pub fn on_update<F>(mut self, update_handler: F) -> Self
-        where
-            F: Fn(&mut ConfigCx, &A, &mut S) + 'static,
-        {
-            debug_assert!(self.update_handler.is_none());
-            self.update_handler = Some(Box::new(update_handler));
             self
         }
     }
@@ -104,28 +219,42 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            if let Some(handler) = self.configure_handler.as_ref() {
+                let mut cx = AdaptConfigCx::new(cx, self.id());
+                handler(&mut cx, &mut self.state);
+            }
+        }
+
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             if let Some(handler) = self.update_handler.as_ref() {
-                handler(cx, data, &mut self.state);
+                let mut cx = AdaptConfigCx::new(cx, self.id());
+                handler(&mut cx, data, &mut self.state);
             }
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &Self::Data, event: Event) -> IsUsed {
-            if let Some(handler) = self.event_handler.as_ref() {
-                let is_used = handler(cx, data, &mut self.state, event);
-                if is_used.into() {
-                    cx.update(self.as_node(data));
+            match event {
+                Event::Timer(timer_id) => {
+                    if let Some(handler) = self.timer_handlers.get(&timer_id) {
+                        let mut cx = AdaptEventCx::new(cx, self.id());
+                        if handler(&mut cx, data, &mut self.state) {
+                            cx.update(self.as_node(data));
+                        }
+                        Used
+                    } else {
+                        Unused
+                    }
                 }
-                is_used
-            } else {
-                Unused
+                _ => Unused,
             }
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
             let mut update = false;
+            let mut cx = AdaptEventCx::new(cx, self.id());
             for handler in self.message_handlers.iter() {
-                update |= handler(cx, data, &mut self.state);
+                update |= handler(&mut cx, data, &mut self.state);
             }
             if update {
                 cx.update(self.as_node(data));
