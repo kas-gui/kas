@@ -54,7 +54,6 @@ impl EventState {
             time_updates: vec![],
             fut_messages: vec![],
             pending_update: None,
-            region_moved: false,
             pending_sel_focus: None,
             pending_nav_focus: PendingNavFocus::None,
             pending_cmds: Default::default(),
@@ -95,7 +94,7 @@ impl EventState {
         self.new_access_layer(id.clone(), false);
 
         ConfigCx::new(sizer, self).configure(win.as_node(data), id);
-        self.region_moved = true;
+        self.action |= Action::REGION_MOVED;
     }
 
     /// Get the next resume time
@@ -134,11 +133,6 @@ impl EventState {
         win: &mut Window<A>,
         data: &A,
     ) -> Action {
-        if self.action.contains(Action::REGION_MOVED) {
-            self.region_moved = true;
-            self.action.remove(Action::REGION_MOVED);
-        }
-
         self.with(shell, window, messages, |cx| {
             while let Some((id, wid)) = cx.popup_removed.pop() {
                 cx.send_event(win.as_node(data), id, Event::PopupClosed(wid));
@@ -200,21 +194,9 @@ impl EventState {
                     win.as_node(data)
                         .find_node(&id, |node| cx.configure(node, id.clone()));
 
-                    cx.region_moved = true;
+                    cx.action |= Action::REGION_MOVED;
                 } else {
                     win.as_node(data).find_node(&id, |node| cx.update(node));
-                }
-            }
-
-            if cx.region_moved {
-                cx.region_moved = false;
-
-                // Update hovered widget
-                let hover = win.find_id(data, cx.last_mouse_coord);
-                cx.set_hover(win.as_node(data), hover);
-
-                for grab in cx.touch_grab.iter_mut() {
-                    grab.cur_id = win.find_id(data, grab.coord);
                 }
             }
 
@@ -239,9 +221,22 @@ impl EventState {
                 cx.send_event(win.as_node(data), id, Event::Command(cmd, None));
             }
 
-            // Poll futures last. This means that any newly pushed future should
-            // get polled from the same update() call.
+            // Poll futures almost last. This means that any newly pushed future
+            // should get polled from the same update() call.
             cx.poll_futures(win.as_node(data));
+
+            // Finally, clear the region_moved flag.
+            if cx.action.contains(Action::REGION_MOVED) {
+                cx.action.remove(Action::REGION_MOVED);
+
+                // Update hovered widget
+                let hover = win.find_id(data, cx.last_mouse_coord);
+                cx.set_hover(win.as_node(data), hover);
+
+                for grab in cx.touch_grab.iter_mut() {
+                    grab.cur_id = win.find_id(data, grab.coord);
+                }
+            }
         });
 
         if self.hover_icon != self.old_hover_icon && self.mouse_grab.is_none() {

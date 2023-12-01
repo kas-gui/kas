@@ -213,7 +213,6 @@ pub struct EventState {
     fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Erased>>>)>,
     // Widget requiring update (and optionally configure)
     pending_update: Option<(Id, bool)>,
-    region_moved: bool,
     // Optional new target for selection focus. bool is true if this also gains key focus.
     pending_sel_focus: Option<PendingSelFocus>,
     pending_nav_focus: PendingNavFocus,
