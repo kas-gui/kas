@@ -837,6 +837,7 @@ impl_scope! {
                 NavAdvance::Reverse(_) => true,
             };
 
+            let mut starting_child = child;
             loop {
                 let solver = self.position_solver();
                 let last_data = data.len() - 1;
@@ -869,6 +870,11 @@ impl_scope! {
                 }
 
                 child = Some(index);
+                if starting_child == child {
+                    return None;
+                } else if starting_child.is_none() {
+                    starting_child = child;
+                }
             }
         }
     }
