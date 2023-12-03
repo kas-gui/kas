@@ -200,10 +200,6 @@ impl EventState {
                 }
             }
 
-            if let Some(pending) = cx.pending_sel_focus.take() {
-                cx.set_sel_focus(win.as_node(data), pending);
-            }
-
             match std::mem::take(&mut cx.pending_nav_focus) {
                 PendingNavFocus::None => (),
                 PendingNavFocus::Set { target, source } => {
@@ -214,6 +210,11 @@ impl EventState {
                     reverse,
                     source,
                 } => cx.next_nav_focus_impl(win.as_node(data), target, reverse, source),
+            }
+
+            // Update sel focus after nav focus:
+            if let Some(pending) = cx.pending_sel_focus.take() {
+                cx.set_sel_focus(win.as_node(data), pending);
             }
 
             while let Some((id, cmd)) = cx.pending_cmds.pop_front() {

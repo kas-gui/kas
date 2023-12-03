@@ -399,7 +399,7 @@ impl EventState {
     #[inline]
     pub fn request_key_focus(&mut self, target: Id, source: FocusSource) {
         self.pending_sel_focus = Some(PendingSelFocus {
-            target,
+            target: Some(target),
             key_focus: true,
             source,
         });
@@ -421,13 +421,13 @@ impl EventState {
     #[inline]
     pub fn request_sel_focus(&mut self, target: Id, source: FocusSource) {
         if let Some(ref pending) = self.pending_sel_focus {
-            if pending.target == target {
+            if pending.target.as_ref() == Some(&target) {
                 return;
             }
         }
 
         self.pending_sel_focus = Some(PendingSelFocus {
-            target,
+            target: Some(target),
             key_focus: false,
             source,
         });

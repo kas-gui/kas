@@ -661,7 +661,7 @@ impl_scope! {
                     if !self.has_key_focus {
                         cx.request_key_focus(self.id(), source);
                     }
-                    if !self.class.multi_line() {
+                    if source == FocusSource::Key && !self.class.multi_line() {
                         self.selection.clear();
                         self.selection.set_edit_pos(self.text.str_len());
                         cx.redraw(self);

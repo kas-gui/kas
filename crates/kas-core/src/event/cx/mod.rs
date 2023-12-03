@@ -143,8 +143,9 @@ struct PanGrab {
     coords: [(Coord, Coord); MAX_PAN_GRABS],
 }
 
+#[derive(Debug)]
 struct PendingSelFocus {
-    target: Id,
+    target: Option<Id>,
     key_focus: bool,
     source: FocusSource,
 }
@@ -230,6 +231,22 @@ impl EventState {
             self.sel_focus.clone()
         } else {
             None
+        }
+    }
+
+    fn clear_key_focus(&mut self) {
+        if self.key_focus {
+            if let Some(ref mut pending) = self.pending_sel_focus {
+                if pending.target == self.sel_focus {
+                    pending.key_focus = false;
+                }
+            } else {
+                self.pending_sel_focus = Some(PendingSelFocus {
+                    target: None,
+                    key_focus: false,
+                    source: FocusSource::Synthetic,
+                });
+            }
         }
     }
 
@@ -607,12 +624,10 @@ impl<'a> EventCx<'a> {
             source,
         } = pending;
 
-        log::trace!("set_sel_focus: target={target}, key_focus={key_focus}");
-        // The widget probably already has nav focus, but anyway:
-        self.set_nav_focus(target.clone(), FocusSource::Synthetic);
+        log::trace!("set_sel_focus: target={target:?}, key_focus={key_focus}");
 
         if target == self.sel_focus {
-            self.key_focus = self.key_focus || key_focus;
+            self.key_focus = target.is_some() && (self.key_focus || key_focus);
             return;
         }
 
@@ -627,11 +642,16 @@ impl<'a> EventCx<'a> {
         }
 
         self.key_focus = key_focus;
-        self.sel_focus = Some(target.clone());
+        self.sel_focus = target.clone();
 
-        self.send_event(widget.re(), target.clone(), Event::SelFocus(source));
-        if key_focus {
-            self.send_event(widget, target, Event::KeyFocus);
+        if let Some(id) = target {
+            // The widget probably already has nav focus, but anyway:
+            self.set_nav_focus(id.clone(), FocusSource::Synthetic);
+
+            self.send_event(widget.re(), id.clone(), Event::SelFocus(source));
+            if key_focus {
+                self.send_event(widget, id, Event::KeyFocus);
+            }
         }
     }
 
@@ -641,14 +661,11 @@ impl<'a> EventCx<'a> {
             return;
         }
 
+        self.clear_key_focus();
+
         if let Some(old) = self.nav_focus.take() {
             self.action(&old, Action::REDRAW);
             self.send_event(widget.re(), old, Event::LostNavFocus);
-        }
-
-        if let Some(id) = self.key_focus() {
-            self.key_focus = false;
-            self.send_event(widget.re(), id, Event::LostKeyFocus);
         }
 
         self.nav_focus = target.clone();
@@ -702,32 +719,6 @@ impl<'a> EventCx<'a> {
             opt_id = self.nav_next(widget.re(), None, advance);
         }
 
-        log::trace!(
-            target: "kas_core::event",
-            "next_nav_focus: nav_focus={opt_id:?}",
-        );
-        if opt_id == self.nav_focus {
-            return;
-        }
-
-        if let Some(old) = self.nav_focus.take() {
-            self.redraw(&old);
-            self.send_event(widget.re(), old, Event::LostNavFocus);
-        }
-
-        if let Some(id) = self.key_focus() {
-            self.key_focus = false;
-            self.send_event(widget.re(), id, Event::LostKeyFocus);
-        }
-
-        self.nav_focus = opt_id.clone();
-        if let Some(id) = opt_id {
-            log::debug!(target: "kas_core::event", "nav_focus = Some({id})");
-            self.redraw(id.clone());
-            self.send_event(widget, id, Event::NavFocus(source));
-        } else {
-            log::debug!(target: "kas_core::event", "nav_focus = None");
-            // Most likely an error occurred
-        }
+        self.set_nav_focus_impl(widget, opt_id, source);
     }
 }
