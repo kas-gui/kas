@@ -18,9 +18,9 @@ mod common;
 #[cfg(winit)]
 pub(crate) use window::{Window, WindowDataErased};
 
-pub use common::{Error, Platform, Result};
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-pub use common::{GraphicalShell, WindowSurface};
+pub use common::{AppGraphicsBuilder, WindowSurface};
+pub use common::{Error, Platform, Result};
 #[cfg(winit)]
 pub use shell::{AppAssoc, AppBuilder, Application, ClosedError, Proxy};
 

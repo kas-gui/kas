@@ -27,7 +27,7 @@ mod shaded_theme;
 mod surface;
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
-use kas::shell::{AppBuilder, GraphicalShell, Result};
+use kas::shell::{AppBuilder, AppGraphicsBuilder, Result};
 use kas::theme::{FlatTheme, Theme};
 
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
@@ -42,7 +42,7 @@ pub struct WgpuBuilder<CB: CustomPipeBuilder> {
     read_env_vars: bool,
 }
 
-impl<CB: CustomPipeBuilder> GraphicalShell for WgpuBuilder<CB> {
+impl<CB: CustomPipeBuilder> AppGraphicsBuilder for WgpuBuilder<CB> {
     type DefaultTheme = FlatTheme;
 
     type Shared = DrawPipe<CB::Pipe>;

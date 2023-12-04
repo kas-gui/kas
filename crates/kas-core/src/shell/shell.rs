@@ -5,7 +5,7 @@
 
 //! [`Shell`] and supporting elements
 
-use super::{AppState, GraphicalShell, Platform, ProxyAction, Result};
+use super::{AppGraphicsBuilder, AppState, Platform, ProxyAction, Result};
 use crate::config::Options;
 use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::event;
@@ -19,14 +19,14 @@ use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 /// Application pre-launch state
 ///
 /// The "shell" is the layer over widgets, windows, events and graphics.
-pub struct Application<Data: AppData, G: GraphicalShell, T: Theme<G::Shared>> {
+pub struct Application<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
     el: EventLoop<ProxyAction>,
     windows: Vec<Box<super::Window<Data, G::Surface, T>>>,
     state: AppState<Data, G::Surface, T>,
 }
 
 impl_scope! {
-    pub struct AppBuilder<G: GraphicalShell, T: Theme<G::Shared>> {
+    pub struct AppBuilder<G: AppGraphicsBuilder, T: Theme<G::Shared>> {
         graphical: G,
         theme: T,
         options: Option<Options>,
@@ -114,7 +114,7 @@ pub trait AppAssoc {
     type DrawShared: DrawSharedImpl;
 }
 
-impl<A: AppData, G: GraphicalShell, T> AppAssoc for Application<A, G, T>
+impl<A: AppData, G: AppGraphicsBuilder, T> AppAssoc for Application<A, G, T>
 where
     T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,
@@ -124,7 +124,7 @@ where
 
 impl<Data: AppData, G> Application<Data, G, G::DefaultTheme>
 where
-    G: GraphicalShell + Default,
+    G: AppGraphicsBuilder + Default,
 {
     /// Construct a new instance with default options and theme
     ///
@@ -148,7 +148,7 @@ where
 
 impl<G, T> Application<(), G, T>
 where
-    G: GraphicalShell + Default,
+    G: AppGraphicsBuilder + Default,
     T: Theme<G::Shared>,
 {
     /// Construct a builder with the given `theme`
@@ -158,7 +158,7 @@ where
     }
 }
 
-impl<Data: AppData, G: GraphicalShell, T> Application<Data, G, T>
+impl<Data: AppData, G: AppGraphicsBuilder, T> Application<Data, G, T>
 where
     T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,
