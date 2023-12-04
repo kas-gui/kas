@@ -5,7 +5,7 @@
 
 //! [`Shell`] and supporting elements
 
-use super::{GraphicalShell, Platform, ProxyAction, Result, SharedState};
+use super::{AppState, GraphicalShell, Platform, ProxyAction, Result};
 use crate::config::Options;
 use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::event;
@@ -22,7 +22,7 @@ use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 pub struct Application<Data: AppData, G: GraphicalShell, T: Theme<G::Shared>> {
     el: EventLoop<ProxyAction>,
     windows: Vec<Box<super::Window<Data, G::Surface, T>>>,
-    shared: SharedState<Data, G::Surface, T>,
+    state: AppState<Data, G::Surface, T>,
 }
 
 impl_scope! {
@@ -95,12 +95,12 @@ impl_scope! {
             draw_shared.set_raster_config(theme.config().raster());
 
             let pw = PlatformWrapper(&el);
-            let shared = SharedState::new(data, pw, draw_shared, theme, options, config)?;
+            let state = AppState::new(data, pw, draw_shared, theme, options, config)?;
 
             Ok(Application {
                 el,
                 windows: vec![],
-                shared,
+                state,
             })
         }
     }
@@ -166,26 +166,26 @@ where
     /// Access shared draw state
     #[inline]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
-        &mut self.shared.shell.draw
+        &mut self.state.shared.draw
     }
 
     /// Access the theme by ref
     #[inline]
     pub fn theme(&self) -> &T {
-        &self.shared.shell.theme
+        &self.state.shared.theme
     }
 
     /// Access the theme by ref mut
     #[inline]
     pub fn theme_mut(&mut self) -> &mut T {
-        &mut self.shared.shell.theme
+        &mut self.state.shared.theme
     }
 
     /// Assume ownership of and display a window
     #[inline]
     pub fn add(&mut self, window: Window<Data>) -> WindowId {
-        let id = self.shared.shell.next_window_id();
-        let win = Box::new(super::Window::new(&self.shared.shell, id, window));
+        let id = self.state.shared.next_window_id();
+        let win = Box::new(super::Window::new(&self.state.shared, id, window));
         self.windows.push(win);
         id
     }
@@ -205,7 +205,7 @@ where
     /// Run the main loop.
     #[inline]
     pub fn run(self) -> Result<()> {
-        let mut el = super::EventLoop::new(self.windows, self.shared);
+        let mut el = super::EventLoop::new(self.windows, self.state);
         self.el.run(move |event, elwt| el.handle(event, elwt))?;
         Ok(())
     }

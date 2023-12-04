@@ -5,7 +5,7 @@
 
 //! Event loop and handling
 
-use super::{Pending, SharedState};
+use super::{AppState, Pending};
 use super::{ProxyAction, Window, WindowSurface};
 use kas::theme::Theme;
 use kas::{Action, AppData, WindowId};
@@ -27,8 +27,8 @@ where
     popups: HashMap<WindowId, WindowId>,
     /// Translates our WindowId to winit's
     id_map: HashMap<ww::WindowId, WindowId>,
-    /// Shared data passed from Toolkit
-    shared: SharedState<A, S, T>,
+    /// Application state passed from Toolkit
+    state: AppState<A, S, T>,
     /// Timer resumes: (time, window identifier)
     resumes: Vec<(Instant, WindowId)>,
 }
@@ -37,16 +37,13 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Loop<A, S, T>
 where
     T::Window: kas::theme::Window,
 {
-    pub(super) fn new(
-        mut windows: Vec<Box<Window<A, S, T>>>,
-        shared: SharedState<A, S, T>,
-    ) -> Self {
+    pub(super) fn new(mut windows: Vec<Box<Window<A, S, T>>>, state: AppState<A, S, T>) -> Self {
         Loop {
             suspended: true,
             windows: windows.drain(..).map(|w| (w.window_id, w)).collect(),
             popups: Default::default(),
             id_map: Default::default(),
-            shared,
+            state,
             resumes: vec![],
         }
     }
@@ -74,7 +71,7 @@ where
                         log::trace!("Wakeup: timer (window={:?})", item.1);
 
                         let resume = if let Some(w) = self.windows.get_mut(&item.1) {
-                            w.update_timer(&mut self.shared)
+                            w.update_timer(&mut self.state)
                         } else {
                             // presumably, some window with active timers was removed
                             None
@@ -100,7 +97,7 @@ where
 
                 if let Some(id) = self.id_map.get(&window_id) {
                     if let Some(window) = self.windows.get_mut(id) {
-                        if window.handle_event(&mut self.shared, event) {
+                        if window.handle_event(&mut self.state, event) {
                             elwt.set_control_flow(ControlFlow::Poll);
                         }
                     }
@@ -123,7 +120,7 @@ where
                 ProxyAction::Message(msg) => {
                     let mut stack = crate::ErasedStack::new();
                     stack.push_erased(msg.into_erased());
-                    self.shared.handle_messages(&mut stack);
+                    self.state.handle_messages(&mut stack);
                 }
                 ProxyAction::WakeAsync => {
                     // We don't need to do anything: MainEventsCleared will
@@ -141,7 +138,7 @@ where
             Event::Suspended => (),
             Event::Resumed if self.suspended => {
                 for window in self.windows.values_mut() {
-                    match window.resume(&mut self.shared, elwt) {
+                    match window.resume(&mut self.state, elwt) {
                         Ok(winit_id) => {
                             self.id_map.insert(winit_id, window.window_id);
                         }
@@ -169,7 +166,7 @@ where
             }
 
             Event::LoopExiting => {
-                self.shared.on_exit();
+                self.state.on_exit();
             }
 
             Event::MemoryWarning => (), // TODO ?
@@ -177,22 +174,21 @@ where
     }
 
     fn flush_pending(&mut self, elwt: &EventLoopWindowTarget<ProxyAction>) {
-        while let Some(pending) = self.shared.shell.pending.pop_front() {
+        while let Some(pending) = self.state.shared.pending.pop_front() {
             match pending {
                 Pending::AddPopup(parent_id, id, popup) => {
                     log::debug!("Pending: adding overlay");
                     // TODO: support pop-ups as a special window, where available
-                    self.windows.get_mut(&parent_id).unwrap().add_popup(
-                        &mut self.shared,
-                        id,
-                        popup,
-                    );
+                    self.windows
+                        .get_mut(&parent_id)
+                        .unwrap()
+                        .add_popup(&mut self.state, id, popup);
                     self.popups.insert(id, parent_id);
                 }
                 Pending::AddWindow(id, mut window) => {
                     log::debug!("Pending: adding window {}", window.widget.title());
                     if !self.suspended {
-                        match window.resume(&mut self.shared, elwt) {
+                        match window.resume(&mut self.state, elwt) {
                             Ok(winit_id) => {
                                 self.id_map.insert(winit_id, id);
                             }
@@ -209,7 +205,7 @@ where
                         win_id = id;
                     }
                     if let Some(window) = self.windows.get_mut(&win_id) {
-                        window.send_close(&mut self.shared, target);
+                        window.send_close(&mut self.state, target);
                     }
                 }
                 Pending::Action(action) => {
@@ -219,7 +215,7 @@ where
                         elwt.set_control_flow(ControlFlow::Poll);
                     } else {
                         for (_, window) in self.windows.iter_mut() {
-                            window.handle_action(&mut self.shared, action);
+                            window.handle_action(&mut self.state, action);
                         }
                     }
                 }
@@ -229,7 +225,7 @@ where
         let mut close_all = false;
         self.resumes.clear();
         self.windows.retain(|window_id, window| {
-            let (action, resume) = window.flush_pending(&mut self.shared);
+            let (action, resume) = window.flush_pending(&mut self.state);
             if let Some(instant) = resume {
                 self.resumes.push((instant, *window_id));
             }

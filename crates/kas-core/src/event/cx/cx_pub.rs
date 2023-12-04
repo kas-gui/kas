@@ -748,7 +748,7 @@ impl<'a> EventCx<'a> {
         log::trace!(target: "kas_core::event", "add_popup: {popup:?}");
 
         let parent_id = self.window.window_id();
-        let id = self.shell.add_popup(parent_id, popup.clone());
+        let id = self.shared.add_popup(parent_id, popup.clone());
         let nav_focus = self.nav_focus.clone();
         self.popups.push((id, popup, nav_focus));
         self.clear_nav_focus();
@@ -772,7 +772,7 @@ impl<'a> EventCx<'a> {
         let data_type_id = std::any::TypeId::of::<Data>();
         unsafe {
             let window: Window<()> = std::mem::transmute(window);
-            self.shell.add_window(window, data_type_id)
+            self.shared.add_window(window, data_type_id)
         }
     }
 
@@ -789,7 +789,7 @@ impl<'a> EventCx<'a> {
         {
             let (wid, popup, onf) = self.popups.remove(index);
             self.popup_removed.push((popup.id, wid));
-            self.shell.close_window(wid);
+            self.shared.close_window(wid);
 
             if let Some(id) = onf {
                 self.set_nav_focus(id, FocusSource::Synthetic);
@@ -797,7 +797,7 @@ impl<'a> EventCx<'a> {
             return;
         }
 
-        self.shell.close_window(id);
+        self.shared.close_window(id);
     }
 
     /// Enable window dragging for current click
@@ -841,7 +841,7 @@ impl<'a> EventCx<'a> {
             };
         }
 
-        self.shell.get_clipboard()
+        self.shared.get_clipboard()
     }
 
     /// Attempt to set clipboard contents
@@ -853,7 +853,7 @@ impl<'a> EventCx<'a> {
             return;
         }
 
-        self.shell.set_clipboard(content)
+        self.shared.set_clipboard(content)
     }
 
     /// True if the primary buffer is enabled
@@ -885,7 +885,7 @@ impl<'a> EventCx<'a> {
             };
         }
 
-        self.shell.get_primary()
+        self.shared.get_primary()
     }
 
     /// Set contents of primary buffer
@@ -900,13 +900,13 @@ impl<'a> EventCx<'a> {
             return;
         }
 
-        self.shell.set_primary(content)
+        self.shared.set_primary(content)
     }
 
     /// Adjust the theme
     #[inline]
     pub fn adjust_theme<F: FnOnce(&mut dyn ThemeControl) -> Action>(&mut self, f: F) {
-        self.shell.adjust_theme(Box::new(f));
+        self.shared.adjust_theme(Box::new(f));
     }
 
     /// Get a [`SizeCx`]
@@ -927,7 +927,7 @@ impl<'a> EventCx<'a> {
 
     /// Get a [`DrawShared`]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
-        self.shell.draw_shared()
+        self.shared.draw_shared()
     }
 
     /// Directly access Winit Window

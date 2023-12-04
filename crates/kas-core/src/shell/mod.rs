@@ -13,8 +13,7 @@ mod common;
 
 #[cfg(winit)] use crate::WindowId;
 #[cfg(winit)] use event_loop::Loop as EventLoop;
-#[cfg(winit)]
-pub(crate) use shared::{SharedState, ShellSharedErased};
+#[cfg(winit)] pub(crate) use shared::{AppShared, AppState};
 #[cfg(winit)] use shell::PlatformWrapper;
 #[cfg(winit)]
 pub(crate) use window::{Window, WindowDataErased};

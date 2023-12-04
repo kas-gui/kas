@@ -21,7 +21,7 @@ use super::config::WindowConfig;
 use super::*;
 use crate::cast::Cast;
 use crate::geom::Coord;
-use crate::shell::{Platform, ShellSharedErased, WindowDataErased};
+use crate::shell::{AppShared, Platform, WindowDataErased};
 use crate::util::WidgetHierarchy;
 use crate::LayoutExt;
 use crate::{Action, Erased, ErasedStack, Id, NavAdvance, Node, Widget, WindowId};
@@ -364,7 +364,7 @@ impl EventState {
 #[must_use]
 pub struct EventCx<'a> {
     state: &'a mut EventState,
-    shell: &'a mut dyn ShellSharedErased,
+    shared: &'a mut dyn AppShared,
     window: &'a dyn WindowDataErased,
     messages: &'a mut ErasedStack,
     last_child: Option<usize>,

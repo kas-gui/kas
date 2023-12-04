@@ -21,8 +21,8 @@ use std::task::Waker;
 
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
-/// Shell interface state
-pub(crate) struct ShellShared<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> {
+/// Application state used by [`AppShared`]
+pub(crate) struct AppSharedState<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> {
     pub(super) platform: Platform,
     pub(super) config: Rc<RefCell<kas::event::Config>>,
     #[cfg(feature = "clipboard")]
@@ -34,15 +34,15 @@ pub(crate) struct ShellShared<Data: AppData, S: WindowSurface, T: Theme<S::Share
     window_id: u32,
 }
 
-/// State shared between windows
-pub(crate) struct SharedState<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> {
-    pub(super) shell: ShellShared<Data, S, T>,
+/// Application state shared by all windows
+pub(crate) struct AppState<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> {
+    pub(super) shared: AppSharedState<Data, S, T>,
     pub(super) data: Data,
     /// Estimated scale factor (from last window constructed or available screens)
     options: Options,
 }
 
-impl<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> SharedState<Data, S, T>
+impl<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> AppState<Data, S, T>
 where
     T::Window: kas::theme::Window,
 {
@@ -68,8 +68,8 @@ where
             }
         };
 
-        Ok(SharedState {
-            shell: ShellShared {
+        Ok(AppState {
+            shared: AppSharedState {
                 platform,
                 config,
                 #[cfg(feature = "clipboard")]
@@ -89,14 +89,14 @@ where
     pub(crate) fn handle_messages(&mut self, messages: &mut ErasedStack) {
         if messages.reset_and_has_any() {
             let action = self.data.handle_messages(messages);
-            self.shell.pending.push_back(Pending::Action(action));
+            self.shared.pending.push_back(Pending::Action(action));
         }
     }
 
     pub(crate) fn on_exit(&self) {
         match self
             .options
-            .write_config(&self.shell.config.borrow(), &self.shell.theme)
+            .write_config(&self.shared.config.borrow(), &self.shared.theme)
         {
             Ok(()) => (),
             Err(error) => warn_about_error("Failed to save config", &error),
@@ -104,7 +104,7 @@ where
     }
 }
 
-impl<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellShared<Data, S, T> {
+impl<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> AppSharedState<Data, S, T> {
     /// Return the next window identifier
     ///
     /// TODO(opt): this should recycle used identifiers since Id does not
@@ -116,7 +116,10 @@ impl<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellShared<Data, S, 
     }
 }
 
-pub(crate) trait ShellSharedErased {
+/// Application shared-state type-erased interface
+///
+/// A `dyn AppShared` object is used by [crate::event::`EventCx`].
+pub(crate) trait AppShared {
     /// Add a pop-up
     ///
     /// A pop-up may be presented as an overlay layer in the current window or
@@ -200,8 +203,8 @@ pub(crate) trait ShellSharedErased {
     fn waker(&self) -> &std::task::Waker;
 }
 
-impl<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> ShellSharedErased
-    for ShellShared<Data, S, T>
+impl<Data: AppData, S: WindowSurface, T: Theme<S::Shared>> AppShared
+    for AppSharedState<Data, S, T>
 {
     fn add_popup(&mut self, parent_id: WindowId, popup: kas::PopupDescriptor) -> WindowId {
         let id = self.next_window_id();
