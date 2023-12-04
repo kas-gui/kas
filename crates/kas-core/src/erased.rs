@@ -178,10 +178,9 @@ impl Drop for ErasedStack {
 
 /// Application state
 ///
-/// Kas allows state to be stored in `Adapt` and user-defined widgets within
-/// windows, but sometimes you want top-level application state too (especially
-/// for data shared between windows). Such state implements this trait and is
-/// passed to the shell/runner's constructor.
+/// Kas allows application state to be stored both in the  widget tree (in
+/// `Adapt` nodes and user-defined widgets) and by the application root (shared
+/// across windows). This trait must be implemented by the latter.
 ///
 /// When no top-level data is required, use `()` which implements this trait.
 pub trait AppData: 'static {

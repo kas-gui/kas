@@ -14,7 +14,7 @@ enum Message {
     Incr,
 }
 
-fn main() -> kas::shell::Result<()> {
+fn main() -> kas::app::Result<()> {
     env_logger::init();
 
     let ui = kas::column![
@@ -38,7 +38,7 @@ fn main() -> kas::shell::Result<()> {
     let window = Window::new(adapt, "Slitter panes");
 
     let theme = kas_wgpu::ShadedTheme::new();
-    kas::shell::Default::with_theme(theme)
+    kas::app::Default::with_theme(theme)
         .build(())?
         .with(window)
         .run()

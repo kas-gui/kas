@@ -26,7 +26,7 @@ pub struct WindowId(NonZeroU32);
 impl WindowId {
     /// Construct a [`WindowId`]
     ///
-    /// Only for use by the shell!
+    /// Only for use by the graphics/platform backend!
     #[allow(unused)]
     pub(crate) fn new(n: NonZeroU32) -> WindowId {
         WindowId(n)

@@ -480,12 +480,12 @@ impl_scope! {
     }
 }
 
-fn main() -> kas::shell::Result<()> {
+fn main() -> kas::app::Result<()> {
     env_logger::init();
 
     let window = Window::new(MandlebrotUI::new(), "Mandlebrot");
     let theme = kas::theme::FlatTheme::new().with_colours("dark");
-    kas::shell::WgpuBuilder::new(PipeBuilder)
+    kas::app::WgpuBuilder::new(PipeBuilder)
         .with_theme(theme)
         .build(())?
         .with(window)

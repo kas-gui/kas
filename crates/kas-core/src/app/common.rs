@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Public shell stuff common to all backends
+//! Public items common to all backends
 
 use crate::draw::DrawSharedImpl;
 use crate::draw::{color::Rgba, DrawIface, WindowCommon};
@@ -13,7 +13,7 @@ use raw_window_handle as raw;
 use std::time::Instant;
 use thiserror::Error;
 
-/// Possible failures from constructing a [`Shell`](super::Shell)
+/// Possible failures from constructing an [`Application`](super::Application)
 ///
 /// Some variants are undocumented. Users should not match these variants since
 /// they are not considered part of the public API.
@@ -168,12 +168,12 @@ impl Platform {
     }
 }
 
-/// API for the graphical implementation of a shell
+/// Builder for a graphics backend
 ///
-/// See also [`Shell`](super::Shell).
+/// See also [`Application`](super::Application).
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-pub trait GraphicalShell {
+pub trait AppGraphicsBuilder {
     /// The default theme
     type DefaultTheme: Default + Theme<Self::Shared>;
 

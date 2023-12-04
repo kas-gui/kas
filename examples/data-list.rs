@@ -141,7 +141,7 @@ impl_scope! {
     }
 }
 
-fn main() -> kas::shell::Result<()> {
+fn main() -> kas::app::Result<()> {
     env_logger::init();
 
     let controls = row![
@@ -185,5 +185,5 @@ fn main() -> kas::shell::Result<()> {
 
     let window = Window::new(ui, "Dynamic widget demo");
 
-    kas::shell::Default::new(())?.with(window).run()
+    kas::app::Default::new(())?.with(window).run()
 }

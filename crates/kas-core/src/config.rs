@@ -217,7 +217,7 @@ impl Format {
     }
 }
 
-/// Shell options
+/// Application configuration options
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Options {
     /// Config file path. Default: empty. See `KAS_CONFIG` doc.

@@ -40,8 +40,8 @@ use std::time::Instant;
 /// }
 /// ```
 ///
-/// Note that this object is little more than a mutable reference to the shell's
-/// per-window draw state. As such, it is normal to pass *a new copy* created
+/// Note that this object is little more than a mutable reference to application
+/// shared draw state. As such, it is normal to pass *a new copy* created
 /// via [`DrawIface::re`] as a method argument. (Note that Rust automatically
 /// "reborrows" reference types passed as method arguments, but cannot do so
 /// automatically for structs containing references.)
@@ -60,7 +60,7 @@ pub struct DrawIface<'a, DS: DrawSharedImpl> {
 impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
     /// Construct a new instance
     ///
-    /// For usage by the (graphical) shell.
+    /// For usage by graphics backends.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn new(draw: &'a mut DS::Draw, shared: &'a mut SharedState<DS>) -> Self {
@@ -76,8 +76,8 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
     /// Note: Rust does not (yet) support trait-object-downcast: it not possible
     /// to cast from `&mut dyn Draw` to (for example) `&mut dyn DrawRounded`.
     /// Instead, the target type must be the implementing object, which is
-    /// provided by the shell (e.g. `kas_wgpu`). See documentation on this type
-    /// for an example, or see examine
+    /// provided by the graphics backend (e.g. `kas_wgpu`).
+    /// See documentation on this type for an example, or examine
     /// [`clock.rs`](https://github.com/kas-gui/kas/blob/master/examples/clock.rs).
     pub fn downcast_from(obj: &'a mut dyn Draw) -> Option<Self> {
         let pass = obj.get_pass();
@@ -130,7 +130,7 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
 /// and [`Self::new_dyn_pass`].
 ///
 /// Additional draw routines are available through extension traits, depending
-/// on the shell. Since Rust does not (yet) support trait-object-downcast,
+/// on the graphics backend. Since Rust does not (yet) support trait-object-downcast,
 /// accessing these requires reconstruction of the implementing type via
 /// [`DrawIface::downcast_from`].
 pub trait Draw {
@@ -305,7 +305,7 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
 /// Base abstraction over drawing
 ///
 /// This trait covers only the bare minimum of functionality which *must* be
-/// provided by the shell; extension traits such as [`DrawRoundedImpl`]
+/// provided by the graphics backend; extension traits such as [`DrawRoundedImpl`]
 /// optionally provide more functionality.
 ///
 /// Coordinates for many primitives are specified using floating-point types

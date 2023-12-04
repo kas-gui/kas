@@ -3,9 +3,9 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! [`Shell`] and supporting elements
+//! [`Application`] and supporting elements
 
-use super::{GraphicalShell, Platform, ProxyAction, Result, SharedState};
+use super::{AppGraphicsBuilder, AppState, Platform, ProxyAction, Result};
 use crate::config::Options;
 use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::event;
@@ -16,17 +16,15 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 
-/// The KAS shell
-///
-/// The "shell" is the layer over widgets, windows, events and graphics.
-pub struct Shell<Data: AppData, G: GraphicalShell, T: Theme<G::Shared>> {
+/// Application pre-launch state
+pub struct Application<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
     el: EventLoop<ProxyAction>,
     windows: Vec<Box<super::Window<Data, G::Surface, T>>>,
-    shared: SharedState<Data, G::Surface, T>,
+    state: AppState<Data, G::Surface, T>,
 }
 
 impl_scope! {
-    pub struct ShellBuilder<G: GraphicalShell, T: Theme<G::Shared>> {
+    pub struct AppBuilder<G: AppGraphicsBuilder, T: Theme<G::Shared>> {
         graphical: G,
         theme: T,
         options: Option<Options>,
@@ -34,11 +32,11 @@ impl_scope! {
     }
 
     impl Self {
-        /// Construct from a graphical shell and a theme
+        /// Construct from a graphics backend and a theme
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
         #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
         pub fn new(graphical: G, theme: T) -> Self {
-            ShellBuilder {
+            AppBuilder {
                 graphical,
                 theme,
                 options: None,
@@ -75,7 +73,7 @@ impl_scope! {
         }
 
         /// Build with `data`
-        pub fn build<Data: AppData>(self, data: Data) -> Result<Shell<Data, G, T>> {
+        pub fn build<Data: AppData>(self, data: Data) -> Result<Application<Data, G, T>> {
             let mut theme = self.theme;
 
             let options = self.options.unwrap_or_else(Options::from_env);
@@ -84,7 +82,7 @@ impl_scope! {
             let config = self.config.unwrap_or_else(|| match options.read_config() {
                 Ok(config) => Rc::new(RefCell::new(config)),
                 Err(error) => {
-                    warn_about_error("Shell::new_custom: failed to read config", &error);
+                    warn_about_error("AppBuilder::build: failed to read config", &error);
                     Default::default()
                 }
             });
@@ -95,26 +93,26 @@ impl_scope! {
             draw_shared.set_raster_config(theme.config().raster());
 
             let pw = PlatformWrapper(&el);
-            let shared = SharedState::new(data, pw, draw_shared, theme, options, config)?;
+            let state = AppState::new(data, pw, draw_shared, theme, options, config)?;
 
-            Ok(Shell {
+            Ok(Application {
                 el,
                 windows: vec![],
-                shared,
+                state,
             })
         }
     }
 }
 
-/// Shell associated types
+/// Application associated types
 ///
-/// Note: these could be inherent associated types of [`Shell`] when Rust#8995 is stable.
-pub trait ShellAssoc {
+/// Note: these could be inherent associated types of [`Application`] when Rust#8995 is stable.
+pub trait AppAssoc {
     /// Shared draw state type
     type DrawShared: DrawSharedImpl;
 }
 
-impl<A: AppData, G: GraphicalShell, T> ShellAssoc for Shell<A, G, T>
+impl<A: AppData, G: AppGraphicsBuilder, T> AppAssoc for Application<A, G, T>
 where
     T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,
@@ -122,9 +120,9 @@ where
     type DrawShared = G::Shared;
 }
 
-impl<Data: AppData, G> Shell<Data, G, G::DefaultTheme>
+impl<Data: AppData, G> Application<Data, G, G::DefaultTheme>
 where
-    G: GraphicalShell + Default,
+    G: AppGraphicsBuilder + Default,
 {
     /// Construct a new instance with default options and theme
     ///
@@ -141,24 +139,24 @@ where
 
     /// Construct a builder with the default theme
     #[inline]
-    pub fn with_default_theme() -> ShellBuilder<G, G::DefaultTheme> {
-        ShellBuilder::new(G::default(), G::DefaultTheme::default())
+    pub fn with_default_theme() -> AppBuilder<G, G::DefaultTheme> {
+        AppBuilder::new(G::default(), G::DefaultTheme::default())
     }
 }
 
-impl<G, T> Shell<(), G, T>
+impl<G, T> Application<(), G, T>
 where
-    G: GraphicalShell + Default,
+    G: AppGraphicsBuilder + Default,
     T: Theme<G::Shared>,
 {
     /// Construct a builder with the given `theme`
     #[inline]
-    pub fn with_theme(theme: T) -> ShellBuilder<G, T> {
-        ShellBuilder::new(G::default(), theme)
+    pub fn with_theme(theme: T) -> AppBuilder<G, T> {
+        AppBuilder::new(G::default(), theme)
     }
 }
 
-impl<Data: AppData, G: GraphicalShell, T> Shell<Data, G, T>
+impl<Data: AppData, G: AppGraphicsBuilder, T> Application<Data, G, T>
 where
     T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,
@@ -166,26 +164,26 @@ where
     /// Access shared draw state
     #[inline]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
-        &mut self.shared.shell.draw
+        &mut self.state.shared.draw
     }
 
     /// Access the theme by ref
     #[inline]
     pub fn theme(&self) -> &T {
-        &self.shared.shell.theme
+        &self.state.shared.theme
     }
 
     /// Access the theme by ref mut
     #[inline]
     pub fn theme_mut(&mut self) -> &mut T {
-        &mut self.shared.shell.theme
+        &mut self.state.shared.theme
     }
 
     /// Assume ownership of and display a window
     #[inline]
     pub fn add(&mut self, window: Window<Data>) -> WindowId {
-        let id = self.shared.shell.next_window_id();
-        let win = Box::new(super::Window::new(&self.shared.shell, id, window));
+        let id = self.state.shared.next_window_id();
+        let win = Box::new(super::Window::new(&self.state.shared, id, window));
         self.windows.push(win);
         id
     }
@@ -205,7 +203,7 @@ where
     /// Run the main loop.
     #[inline]
     pub fn run(self) -> Result<()> {
-        let mut el = super::EventLoop::new(self.windows, self.shared);
+        let mut el = super::EventLoop::new(self.windows, self.state);
         self.el.run(move |event, elwt| el.handle(event, elwt))?;
         Ok(())
     }
@@ -303,14 +301,14 @@ impl<'a> PlatformWrapper<'a> {
     }
 }
 
-/// A proxy allowing control of a [`Shell`] from another thread.
+/// A proxy allowing control of an application from another thread.
 ///
-/// Created by [`Shell::create_proxy`].
+/// Created by [`Application::create_proxy`].
 pub struct Proxy(EventLoopProxy<ProxyAction>);
 
 /// Error type returned by [`Proxy`] functions.
 ///
-/// This error occurs only if the [`Shell`] already terminated.
+/// This error occurs only if the application already terminated.
 pub struct ClosedError;
 
 impl Proxy {

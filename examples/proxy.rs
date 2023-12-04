@@ -6,8 +6,8 @@
 //! Asynchronous events using a proxy
 //!
 //! This is a copy-cat of Druid's async event example, demonstrating usage of
-//! shell.create_proxy(). For a more integrated approach to async, see
-//! EventState::push_async() and push_spawn().
+//! `Application::create_proxy()`. For a more integrated approach to async, see
+//! `EventState::push_async()` and `push_spawn()`.
 
 use std::thread;
 use std::time::{Duration, Instant};
@@ -35,20 +35,20 @@ impl kas::AppData for AppData {
     }
 }
 
-fn main() -> kas::shell::Result<()> {
+fn main() -> kas::app::Result<()> {
     env_logger::init();
 
     let data = AppData { color: None };
-    let shell = kas::shell::Default::new(data)?;
+    let app = kas::app::Default::new(data)?;
 
-    // We construct a proxy from the shell to enable cross-thread communication.
-    let proxy = shell.create_proxy();
+    // We construct a proxy from the app to enable cross-thread communication.
+    let proxy = app.create_proxy();
     thread::spawn(move || generate_colors(proxy));
 
     let widget = ColourSquare::new();
     let window = Window::new(widget, "Async event demo");
 
-    shell.with(window).run()
+    app.with(window).run()
 }
 
 impl_scope! {
@@ -103,7 +103,7 @@ impl_scope! {
     }
 }
 
-fn generate_colors(mut proxy: kas::shell::Proxy) {
+fn generate_colors(mut proxy: kas::app::Proxy) {
     // Loading takes time:
     thread::sleep(Duration::from_secs(1));
 

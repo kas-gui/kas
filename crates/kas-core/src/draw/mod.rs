@@ -11,7 +11,7 @@
 //!     [`DrawCx`]. This is the primary drawing interface for widgets.
 //! -   Basic drawing components (shapes) are available through [`DrawIface`]
 //!     in this module. This can be accessed via [`DrawCx::draw_device`].
-//! -   The shell may support custom graphics pipelines, for example
+//! -   The graphics backend may support custom pipelines, for example
 //!     [`kas-wgpu::draw::CustomPipe`](https://docs.rs/kas-wgpu/*/kas_wgpu/draw/trait.CustomPipe.html)
 //!     (used by the [Mandlebrot example](https://github.com/kas-gui/kas/tree/master/examples/mandlebrot)).
 //!
@@ -25,9 +25,10 @@
 //! [`DrawIface::new_pass`]). Draw passes are executed sequentially in the order
 //! defined.
 //!
-//! Within each pass, draw operations may be batched by the shell, thus draw
-//! operations may not happen in the order queued. In general, it may be
-//! expected that batches are executed in the following order:
+//! Within each pass, draw operations may be batched, thus draw operations may
+//! not happen in the order queued. Exact behaviour is defined by the graphics
+//! backend. In general, it may be expected that batches are executed in the
+//! following order:
 //!
 //! 1.  Square-edged primitives (e.g. [`Draw::rect`])
 //! 2.  Images

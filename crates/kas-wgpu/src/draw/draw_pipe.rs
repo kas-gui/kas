@@ -12,18 +12,15 @@ use wgpu::util::DeviceExt;
 use super::*;
 use crate::DrawShadedImpl;
 use crate::Options;
+use kas::app::Error;
 use kas::cast::traits::*;
 use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::geom::{Quad, Rect, Size, Vec2};
-use kas::shell::Error;
 use kas::text::{Effect, TextDisplay};
 use kas::theme::RasterConfig;
 
-/// Possible failures from constructing a [`Shell`]
-///
-/// Some variants are undocumented. Users should not match these variants since
-/// they are not considered part of the public API.
+/// Failure while constructing an [`Application`]: no graphics adapter found
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
 #[error("no graphics adapter found")]

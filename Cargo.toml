@@ -22,14 +22,12 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 [features]
 #########  meta / build features  #########
 
-# Include only "required" features.
-#
-#  A shell is required and wgpu is currently the only shell; this shell uses and
-#  requires theme support to function.
+# The minimal feature set needed to build basic applications (with assumptions
+# about target platforms).
 #
 # Note: only some examples build in this configuration; others need view,
 # markdown, resvg. Recommended also: clipboard, yaml (or some config format).
-minimal = ["wgpu", "winit", "wayland", "x11"]
+minimal = ["wgpu", "winit", "wayland"]
 # All recommended features for optimal experience
 default = ["minimal", "view", "image", "resvg", "clipboard", "markdown", "shaping", "spawn"]
 # All standard test target features
@@ -54,7 +52,7 @@ view = ["dep:kas-view"]
 #Enable WGPU backend:
 wgpu = ["dep:kas-wgpu"]
 
-# Enables documentation of APIs for shells and internal usage.
+# Enables documentation of APIs for graphics library and platform backends.
 # This API is not intended for use by end-user applications and
 # thus is omitted from built documentation by default.
 # This flag does not change the API, only built documentation.

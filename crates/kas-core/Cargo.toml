@@ -25,7 +25,7 @@ stable = ["winit", "x11", "wayland", "markdown", "yaml", "json", "ron", "shaping
 # Use full specialization
 spec = []
 
-# Enables documentation of APIs for shells and internal usage.
+# Enables documentation of APIs for graphics library and platform backends.
 # This API is not intended for use by end-user applications and
 # thus is omitted from built documentation by default.
 # This flag does not change the API, only built documentation.

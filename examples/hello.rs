@@ -7,8 +7,8 @@
 
 use kas::widgets::dialog::MessageBox;
 
-fn main() -> kas::shell::Result<()> {
+fn main() -> kas::app::Result<()> {
     let window = MessageBox::new("Message").into_window("Hello world");
 
-    kas::shell::Default::new(())?.with(window).run()
+    kas::app::Default::new(())?.with(window).run()
 }

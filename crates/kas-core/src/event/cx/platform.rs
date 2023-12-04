@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Event manager — shell API
+//! Event manager — platform API
 
 use smallvec::SmallVec;
 use std::task::Poll;
@@ -20,7 +20,7 @@ const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
 
 const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 
-/// Shell API
+/// Platform API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl EventState {
@@ -108,14 +108,14 @@ impl EventState {
     #[inline]
     pub(crate) fn with<'a, F: FnOnce(&mut EventCx)>(
         &'a mut self,
-        shell: &'a mut dyn ShellSharedErased,
+        shared: &'a mut dyn AppShared,
         window: &'a dyn WindowDataErased,
         messages: &'a mut ErasedStack,
         f: F,
     ) {
         let mut cx = EventCx {
             state: self,
-            shell,
+            shared,
             window,
             messages,
             last_child: None,
@@ -127,13 +127,13 @@ impl EventState {
     /// Handle all pending items before event loop sleeps
     pub(crate) fn flush_pending<'a, A>(
         &'a mut self,
-        shell: &'a mut dyn ShellSharedErased,
+        shared: &'a mut dyn AppShared,
         window: &'a dyn WindowDataErased,
         messages: &'a mut ErasedStack,
         win: &mut Window<A>,
         data: &A,
     ) -> Action {
-        self.with(shell, window, messages, |cx| {
+        self.with(shared, window, messages, |cx| {
             while let Some((id, wid)) = cx.popup_removed.pop() {
                 cx.send_event(win.as_node(data), id, Event::PopupClosed(wid));
             }
@@ -249,7 +249,7 @@ impl EventState {
     }
 }
 
-/// Shell API
+/// Platform API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl<'a> EventCx<'a> {
@@ -274,7 +274,7 @@ impl<'a> EventCx<'a> {
         let mut i = 0;
         while i < self.state.fut_messages.len() {
             let (_, fut) = &mut self.state.fut_messages[i];
-            let mut cx = std::task::Context::from_waker(self.shell.waker());
+            let mut cx = std::task::Context::from_waker(self.shared.waker());
             match fut.as_mut().poll(&mut cx) {
                 Poll::Pending => {
                     i += 1;
@@ -293,7 +293,7 @@ impl<'a> EventCx<'a> {
     /// Handle a winit `WindowEvent`.
     ///
     /// Note that some event types are not handled, since for these
-    /// events the shell must take direct action anyway:
+    /// events the graphics backend must take direct action anyway:
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
     #[cfg(winit)]
     #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]

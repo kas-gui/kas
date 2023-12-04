@@ -19,16 +19,16 @@ use std::u16;
 
 use super::config::WindowConfig;
 use super::*;
+use crate::app::{AppShared, Platform, WindowDataErased};
 use crate::cast::Cast;
 use crate::geom::Coord;
-use crate::shell::{Platform, ShellSharedErased, WindowDataErased};
 use crate::util::WidgetHierarchy;
 use crate::LayoutExt;
 use crate::{Action, Erased, ErasedStack, Id, NavAdvance, Node, Widget, WindowId};
 
 mod config;
 mod cx_pub;
-mod cx_shell;
+mod platform;
 mod press;
 
 pub use config::ConfigCx;
@@ -174,8 +174,9 @@ type AccessLayer = (bool, HashMap<Key, Id>);
 ///
 /// Besides event handling, this struct also configures widgets.
 ///
-/// Some methods are intended only for usage by KAS shells and are hidden from
-/// documentation unless the `internal_doc` feature is enabled. Only [winit]
+/// Some methods are intended only for usage by graphics and platform backends
+/// and are hidden from generated documentation unless the `internal_doc`
+/// feature is enabled. Only [winit]
 /// events are currently supported; changes will be required to generalise this.
 ///
 /// [winit]: https://github.com/rust-windowing/winit
@@ -364,7 +365,7 @@ impl EventState {
 #[must_use]
 pub struct EventCx<'a> {
     state: &'a mut EventState,
-    shell: &'a mut dyn ShellSharedErased,
+    shared: &'a mut dyn AppShared,
     window: &'a dyn WindowDataErased,
     messages: &'a mut ErasedStack,
     last_child: Option<usize>,

@@ -24,11 +24,11 @@ fn counter() -> impl Widget<Data = ()> {
     Adapt::new(tree, 0).on_message(|_, count, Increment(add)| *count += add)
 }
 
-fn main() -> kas::shell::Result<()> {
+fn main() -> kas::app::Result<()> {
     env_logger::init();
 
     let theme = kas::theme::SimpleTheme::new().with_font_size(24.0);
-    kas::shell::Default::with_theme(theme)
+    kas::app::Default::with_theme(theme)
         .build(())?
         .with(Window::new(counter(), "Counter"))
         .run()
