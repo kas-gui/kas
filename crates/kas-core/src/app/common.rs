@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Public shell stuff common to all backends
+//! Public items common to all backends
 
 use crate::draw::DrawSharedImpl;
 use crate::draw::{color::Rgba, DrawIface, WindowCommon};
@@ -168,7 +168,7 @@ impl Platform {
     }
 }
 
-/// API for the graphical implementation of a shell
+/// Builder for a graphics backend
 ///
 /// See also [`Application`](super::Application).
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]

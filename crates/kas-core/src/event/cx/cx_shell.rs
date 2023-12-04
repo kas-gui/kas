@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Event manager — shell API
+//! Event manager — platform API
 
 use smallvec::SmallVec;
 use std::task::Poll;
@@ -20,7 +20,7 @@ const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
 
 const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 
-/// Shell API
+/// Platform API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl EventState {
@@ -249,7 +249,7 @@ impl EventState {
     }
 }
 
-/// Shell API
+/// Platform API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl<'a> EventCx<'a> {
@@ -293,7 +293,7 @@ impl<'a> EventCx<'a> {
     /// Handle a winit `WindowEvent`.
     ///
     /// Note that some event types are not handled, since for these
-    /// events the shell must take direct action anyway:
+    /// events the graphics backend must take direct action anyway:
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
     #[cfg(winit)]
     #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]

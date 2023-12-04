@@ -174,8 +174,9 @@ type AccessLayer = (bool, HashMap<Key, Id>);
 ///
 /// Besides event handling, this struct also configures widgets.
 ///
-/// Some methods are intended only for usage by KAS shells and are hidden from
-/// documentation unless the `internal_doc` feature is enabled. Only [winit]
+/// Some methods are intended only for usage by graphics and platform backends
+/// and are hidden from generated documentation unless the `internal_doc`
+/// feature is enabled. Only [winit]
 /// events are currently supported; changes will be required to generalise this.
 ///
 /// [winit]: https://github.com/rust-windowing/winit

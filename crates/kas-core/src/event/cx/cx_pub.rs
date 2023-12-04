@@ -762,7 +762,7 @@ impl<'a> EventCx<'a> {
     /// available to a running UI. This method may be used instead.
     ///
     /// Requirement: the type `Data` must match the type of data passed to the
-    /// [`Application`](crate::shell::Application) and used by other windows.
+    /// [`Application`](crate::app::Application) and used by other windows.
     /// If not, a run-time error will result.
     ///
     /// Caveat: if an error occurs opening the new window it will not be

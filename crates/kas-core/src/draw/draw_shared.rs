@@ -65,7 +65,7 @@ pub struct AllocError;
 /// Shared draw state
 ///
 /// A single [`SharedState`] instance is shared by all windows and draw contexts.
-/// This struct is built over a [`DrawSharedImpl`] object provided by the shell,
+/// This struct is built over a [`DrawSharedImpl`] object provided by the graphics backend,
 /// which may be accessed directly for a lower-level API (though most methods
 /// are available through [`SharedState`] directly).
 ///
@@ -73,14 +73,14 @@ pub struct AllocError;
 /// allow usage where the `DS` type parameter is unknown. Some functionality is
 /// also implemented directly to avoid the need for downcasting.
 pub struct SharedState<DS: DrawSharedImpl> {
-    /// The shell's [`DrawSharedImpl`] object
+    /// The graphics backend's [`DrawSharedImpl`] object
     pub draw: DS,
 }
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl<DS: DrawSharedImpl> SharedState<DS> {
-    /// Construct (this is only called by the shell)
+    /// Construct (this is only called by the graphics backend)
     pub fn new(draw: DS) -> Self {
         SharedState { draw }
     }

@@ -222,7 +222,7 @@ their input as a message key.
 ### Embedded video
 
 To investigate. Gstreamer integration should be viable when using a (new) OpenGL
-shell.
+backend.
 
 Integrating any video player as a child window should be possible (see Winit's
 `WindowBuilder::with_parent_window`, which is not yet supported everywhere).
