@@ -12,11 +12,11 @@ use wgpu::util::DeviceExt;
 use super::*;
 use crate::DrawShadedImpl;
 use crate::Options;
+use kas::app::Error;
 use kas::cast::traits::*;
 use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::geom::{Quad, Rect, Size, Vec2};
-use kas::shell::Error;
 use kas::text::{Effect, TextDisplay};
 use kas::theme::RasterConfig;
 

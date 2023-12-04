@@ -35,11 +35,11 @@ impl kas::AppData for AppData {
     }
 }
 
-fn main() -> kas::shell::Result<()> {
+fn main() -> kas::app::Result<()> {
     env_logger::init();
 
     let data = AppData { color: None };
-    let shell = kas::shell::Default::new(data)?;
+    let shell = kas::app::Default::new(data)?;
 
     // We construct a proxy from the shell to enable cross-thread communication.
     let proxy = shell.create_proxy();
@@ -103,7 +103,7 @@ impl_scope! {
     }
 }
 
-fn generate_colors(mut proxy: kas::shell::Proxy) {
+fn generate_colors(mut proxy: kas::app::Proxy) {
     // Loading takes time:
     thread::sleep(Duration::from_secs(1));
 

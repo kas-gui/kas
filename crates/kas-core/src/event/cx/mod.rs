@@ -19,9 +19,9 @@ use std::u16;
 
 use super::config::WindowConfig;
 use super::*;
+use crate::app::{AppShared, Platform, WindowDataErased};
 use crate::cast::Cast;
 use crate::geom::Coord;
-use crate::shell::{AppShared, Platform, WindowDataErased};
 use crate::util::WidgetHierarchy;
 use crate::LayoutExt;
 use crate::{Action, Erased, ErasedStack, Id, NavAdvance, Node, Widget, WindowId};

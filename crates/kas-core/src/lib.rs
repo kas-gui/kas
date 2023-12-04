@@ -39,6 +39,7 @@ pub use kas_macros::*;
 pub use root::{Window, WindowCommand, WindowId};
 
 // public implementations:
+pub mod app;
 pub mod class;
 pub mod config;
 pub mod dir;
@@ -51,7 +52,6 @@ pub mod hidden;
 pub mod layout;
 pub mod message;
 pub mod prelude;
-pub mod shell;
 pub mod text;
 pub mod theme;
 pub mod util;

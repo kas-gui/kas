@@ -5,24 +5,24 @@
 
 //! Shell
 
+#[cfg(winit)] mod app;
 mod common;
 #[cfg(winit)] mod event_loop;
 #[cfg(winit)] mod shared;
-#[cfg(winit)] mod app;
 #[cfg(winit)] mod window;
 
 #[cfg(winit)] use crate::WindowId;
+#[cfg(winit)] use app::PlatformWrapper;
 #[cfg(winit)] use event_loop::Loop as EventLoop;
 #[cfg(winit)] pub(crate) use shared::{AppShared, AppState};
-#[cfg(winit)] use app::PlatformWrapper;
 #[cfg(winit)]
 pub(crate) use window::{Window, WindowDataErased};
 
+#[cfg(winit)]
+pub use app::{AppAssoc, AppBuilder, Application, ClosedError, Proxy};
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 pub use common::{AppGraphicsBuilder, WindowSurface};
 pub use common::{Error, Platform, Result};
-#[cfg(winit)]
-pub use app::{AppAssoc, AppBuilder, Application, ClosedError, Proxy};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 pub extern crate raw_window_handle;

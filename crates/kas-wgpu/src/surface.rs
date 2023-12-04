@@ -6,11 +6,11 @@
 //! WGPU window surface
 
 use crate::draw::{CustomPipe, DrawPipe, DrawWindow};
+use kas::app::{raw_window_handle as raw, Error, WindowSurface};
 use kas::cast::Cast;
 use kas::draw::color::Rgba;
 use kas::draw::{DrawIface, DrawSharedImpl, WindowCommon};
 use kas::geom::Size;
-use kas::shell::{raw_window_handle as raw, Error, WindowSurface};
 use std::time::Instant;
 
 /// Per-window data

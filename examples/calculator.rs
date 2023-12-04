@@ -69,11 +69,11 @@ fn calc_ui() -> Window<()> {
     Window::new(ui, "Calculator")
 }
 
-fn main() -> kas::shell::Result<()> {
+fn main() -> kas::app::Result<()> {
     env_logger::init();
 
     let theme = kas_wgpu::ShadedTheme::new().with_font_size(16.0);
-    kas::shell::Default::with_theme(theme)
+    kas::app::Default::with_theme(theme)
         .build(())?
         .with(calc_ui())
         .run()

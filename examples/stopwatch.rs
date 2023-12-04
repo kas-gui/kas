@@ -72,7 +72,7 @@ fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
     })
 }
 
-fn main() -> kas::shell::Result<()> {
+fn main() -> kas::app::Result<()> {
     env_logger::init();
 
     let window = Window::new_boxed(make_window(), "Stopwatch")
@@ -83,7 +83,7 @@ fn main() -> kas::shell::Result<()> {
     let theme = kas_wgpu::ShadedTheme::new()
         .with_colours("dark")
         .with_font_size(18.0);
-    kas::shell::Default::with_theme(theme)
+    kas::app::Default::with_theme(theme)
         .build(())?
         .with(window)
         .run()

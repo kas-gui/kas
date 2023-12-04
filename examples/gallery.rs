@@ -513,7 +513,7 @@ KAS_CONFIG_MODE=readwrite
     Box::new(ui)
 }
 
-fn main() -> kas::shell::Result<()> {
+fn main() -> kas::app::Result<()> {
     env_logger::init();
 
     let theme = kas::theme::MultiTheme::builder()
@@ -521,7 +521,7 @@ fn main() -> kas::shell::Result<()> {
         .add("simple", kas::theme::SimpleTheme::new())
         .add("shaded", kas_wgpu::ShadedTheme::new())
         .build();
-    let mut shell = kas::shell::Default::with_theme(theme).build(())?;
+    let mut app = kas::app::Default::with_theme(theme).build(())?;
 
     // TODO: use as logo of tab
     // let img_gallery = Svg::new(include_bytes!("../res/gallery-line.svg"));
@@ -545,9 +545,9 @@ fn main() -> kas::shell::Result<()> {
         })
         .menu("&Style", |menu| {
             menu.submenu("&Colours", |mut menu| {
-                // Enumerate colour schemes. Access through the shell since
+                // Enumerate colour schemes. Access through the app since
                 // this handles config loading.
-                for name in shell.theme().list_schemes().iter() {
+                for name in app.theme().list_schemes().iter() {
                     let mut title = String::with_capacity(name.len() + 1);
                     match name {
                         &"" => title.push_str("&Default"),
@@ -624,6 +624,6 @@ fn main() -> kas::shell::Result<()> {
         }
     };
 
-    shell.add(Window::new(ui, "Gallery — Widgets"));
-    shell.run()
+    app.add(Window::new(ui, "Gallery — Widgets"));
+    app.run()
 }

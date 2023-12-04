@@ -5,10 +5,9 @@
 
 //! Shared state
 
-use super::{Pending, Platform, WindowSurface};
+use super::{Error, Pending, Platform, WindowSurface};
 use kas::config::Options;
 use kas::draw::DrawShared;
-use kas::shell::Error;
 use kas::theme::{Theme, ThemeControl};
 use kas::util::warn_about_error;
 use kas::{draw, Action, AppData, ErasedStack, WindowId};

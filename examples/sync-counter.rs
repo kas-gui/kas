@@ -56,13 +56,13 @@ fn counter(title: &str) -> Window<Count> {
     Window::new(ui, title)
 }
 
-fn main() -> kas::shell::Result<()> {
+fn main() -> kas::app::Result<()> {
     env_logger::init();
 
     let count = Count(0);
     let theme = kas_wgpu::ShadedTheme::new().with_font_size(24.0);
 
-    kas::shell::Default::with_theme(theme)
+    kas::app::Default::with_theme(theme)
         .build(count)?
         .with(counter("Counter 1"))
         .with(counter("Counter 2"))

@@ -40,7 +40,7 @@ macro_rules! cursor {
     };
 }
 
-fn main() -> kas::shell::Result<()> {
+fn main() -> kas::app::Result<()> {
     env_logger::init();
 
     // These are winit::window::CursorIcon enum variants
@@ -82,5 +82,5 @@ fn main() -> kas::shell::Result<()> {
     ]);
 
     let window = Window::new(column, "Cursor gallery");
-    kas::shell::Default::new(())?.with(window).run()
+    kas::app::Default::new(())?.with(window).run()
 }

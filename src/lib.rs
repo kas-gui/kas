@@ -71,19 +71,19 @@ pub mod resvg {
     pub use kas_resvg::*;
 }
 
-pub mod shell {
+pub mod app {
     //! Shell: window runtime environment
     //!
     //! A [`Application`] is used to manage a GUI. Most GUIs will use the [`Default`](type@Default)
     //! shell type-def (requires a backend be enabled, e.g. "wgpu").
 
-    pub use kas_core::shell::*;
+    pub use kas_core::app::*;
 
     #[cfg(feature = "wgpu")] pub use kas_wgpu::WgpuBuilder;
 
     /// The default (configuration-specific) shell
     #[cfg(feature = "wgpu")]
-    pub type Default<Data, T> = kas_core::shell::Application<Data, kas_wgpu::WgpuBuilder<()>, T>;
+    pub type Default<Data, T> = kas_core::app::Application<Data, kas_wgpu::WgpuBuilder<()>, T>;
 }
 
 #[cfg(feature = "dynamic")]

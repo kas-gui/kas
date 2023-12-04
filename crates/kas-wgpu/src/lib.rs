@@ -27,7 +27,7 @@ mod shaded_theme;
 mod surface;
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
-use kas::shell::{AppBuilder, AppGraphicsBuilder, Result};
+use kas::app::{AppBuilder, AppGraphicsBuilder, Result};
 use kas::theme::{FlatTheme, Theme};
 
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
