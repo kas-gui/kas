@@ -599,7 +599,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
                 fn _nav_next(
                     &mut self,
-                    cx: &mut ::kas::event::EventCx,
+                    cx: &mut ::kas::event::ConfigCx,
                     data: &Self::Data,
                     focus: Option<&::kas::Id>,
                     advance: ::kas::NavAdvance,
@@ -1141,7 +1141,7 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
 
         fn _nav_next(
             &mut self,
-            cx: &mut ::kas::event::EventCx,
+            cx: &mut ::kas::event::ConfigCx,
             data: &Self::Data,
             focus: Option<&::kas::Id>,
             advance: ::kas::NavAdvance,

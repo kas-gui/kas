@@ -203,7 +203,7 @@ impl_scope! {
         fn force_visible(&mut self, cx: &mut EventState) {
             self.force_visible = true;
             let delay = cx.config().touch_select_delay();
-            cx.request_timer_update(self.id(), 0, delay, false);
+            cx.request_timer(self.id(), 0, delay);
         }
 
         #[inline]
@@ -325,7 +325,7 @@ impl_scope! {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
-                Event::TimerUpdate(_) => {
+                Event::Timer(_) => {
                     self.force_visible = false;
                     cx.redraw(self);
                     Used

@@ -383,11 +383,15 @@ pub trait Widget: Layout {
     }
 
     /// Internal method: configure recursively
+    ///
+    /// Do not implement this method directly!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn _configure(&mut self, cx: &mut ConfigCx, data: &Self::Data, id: Id);
 
     /// Internal method: update recursively
+    ///
+    /// Do not implement this method directly!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn _update(&mut self, cx: &mut ConfigCx, data: &Self::Data);
@@ -397,6 +401,8 @@ pub trait Widget: Layout {
     /// If `disabled`, widget `id` does not receive the `event`. Widget `id` is
     /// the first disabled widget (may be an ancestor of the original target);
     /// ancestors of `id` are not disabled.
+    ///
+    /// Do not implement this method directly!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn _send(
@@ -412,6 +418,8 @@ pub trait Widget: Layout {
     ///
     /// Behaves as if an event had been sent to `id`, then the widget had pushed
     /// `msg` to the message stack. Widget `id` or any ancestor may handle.
+    ///
+    /// Do not implement this method directly!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn _replay(&mut self, cx: &mut EventCx, data: &Self::Data, id: Id, msg: Erased);
@@ -419,11 +427,13 @@ pub trait Widget: Layout {
     /// Internal method: search for the previous/next navigation target
     ///
     /// `focus`: the current focus or starting point.
+    ///
+    /// Do not implement this method directly!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn _nav_next(
         &mut self,
-        cx: &mut EventCx,
+        cx: &mut ConfigCx,
         data: &Self::Data,
         focus: Option<&Id>,
         advance: NavAdvance,

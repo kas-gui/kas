@@ -173,9 +173,9 @@ pub trait ListData: SharedData {
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait MatrixData: SharedData {
     /// Column key type
-    type ColKey: DataKey;
+    type ColKey;
     /// Row key type
-    type RowKey: DataKey;
+    type RowKey;
 
     type ColKeyIter<'b>: Iterator<Item = Self::ColKey>
     where

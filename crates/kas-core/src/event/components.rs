@@ -15,8 +15,8 @@ use crate::{Action, Id};
 use kas_macros::impl_default;
 use std::time::{Duration, Instant};
 
-const PAYLOAD_SELECT: u64 = 1 << 60;
-const PAYLOAD_GLIDE: u64 = (1 << 60) + 1;
+const TIMER_SELECT: u64 = 1 << 60;
+const TIMER_GLIDE: u64 = (1 << 60) + 1;
 const GLIDE_POLL_MS: u64 = 3;
 const GLIDE_MAX_SAMPLES: usize = 8;
 
@@ -198,13 +198,23 @@ impl ScrollComponent {
     ///
     /// Returns [`Action::REGION_MOVED`] when the scroll offset changes.
     pub fn focus_rect(&mut self, cx: &mut EventCx, rect: Rect, window_rect: Rect) -> Action {
+        let action = self.self_focus_rect(rect, window_rect);
+        cx.set_scroll(Scroll::Rect(rect - self.offset));
+        action
+    }
+
+    /// Scroll self to make the given `rect` visible
+    ///
+    /// This is identical to [`Self::focus_rect`] except that it does not call
+    /// [`EventCx::set_scroll`], thus will not affect ancestors.
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    pub fn self_focus_rect(&mut self, rect: Rect, window_rect: Rect) -> Action {
         self.glide.stop();
         let v = rect.pos - window_rect.pos;
         let off = Offset::conv(rect.size) - Offset::conv(window_rect.size);
         let offset = self.offset.max(v + off).min(v);
-        let action = self.set_offset(offset);
-        cx.set_scroll(Scroll::Rect(rect - self.offset));
-        action
+        self.set_offset(offset)
     }
 
     /// Handle a [`Scroll`] action
@@ -249,7 +259,7 @@ impl ScrollComponent {
     /// Use an event to scroll, if possible
     ///
     /// Consumes the following events: `Command`, `Scroll`, `PressStart`,
-    /// `PressMove`, `PressEnd`, `TimerUpdate(pl)` where `pl == (1<<60) + 1`.
+    /// `PressMove`, `PressEnd`, `Timer(pl)` where `pl == (1<<60) + 1`.
     /// May request timer updates.
     ///
     /// Implements scroll by Home/End, Page Up/Down and arrow keys, by mouse
@@ -326,10 +336,10 @@ impl ScrollComponent {
                 let timeout = cx.config().scroll_flick_timeout();
                 let pan_dist_thresh = cx.config().pan_dist_thresh();
                 if self.glide.press_end(timeout, pan_dist_thresh) {
-                    cx.request_timer_update(id.clone(), PAYLOAD_GLIDE, Duration::new(0, 0), true);
+                    cx.request_timer(id.clone(), TIMER_GLIDE, Duration::new(0, 0));
                 }
             }
-            Event::TimerUpdate(pl) if pl == PAYLOAD_GLIDE => {
+            Event::Timer(pl) if pl == TIMER_GLIDE => {
                 // Momentum/glide scrolling: update per arbitrary step time until movment stops.
                 let timeout = cx.config().scroll_flick_timeout();
                 let decay = cx.config().scroll_flick_decay();
@@ -338,7 +348,7 @@ impl ScrollComponent {
 
                     if self.glide.vel != Vec2::ZERO {
                         let dur = Duration::from_millis(GLIDE_POLL_MS);
-                        cx.request_timer_update(id.clone(), PAYLOAD_GLIDE, dur, true);
+                        cx.request_timer(id.clone(), TIMER_GLIDE, dur);
                         cx.set_scroll(Scroll::Scrolled);
                     }
                 }
@@ -399,7 +409,7 @@ impl TextInput {
     /// Handle input events
     ///
     /// Consumes the following events: `PressStart`, `PressMove`, `PressEnd`,
-    /// `TimerUpdate(pl)` where `pl == 1<<60 || pl == (1<<60)+1`.
+    /// `Timer(pl)` where `pl == 1<<60 || pl == (1<<60)+1`.
     /// May request press grabs and timer updates.
     ///
     /// Implements scrolling and text selection behaviour, excluding handling of
@@ -416,7 +426,7 @@ impl TextInput {
                     PressSource::Touch(touch_id) => {
                         self.touch_phase = TouchPhase::Start(touch_id, press.coord);
                         let delay = cx.config().touch_select_delay();
-                        cx.request_timer_update(w_id.clone(), PAYLOAD_SELECT, delay, false);
+                        cx.request_timer(w_id.clone(), TIMER_SELECT, delay);
                         None
                     }
                     PressSource::Mouse(..) if cx.config_enable_mouse_text_pan() => {
@@ -474,32 +484,27 @@ impl TextInput {
                         || matches!(press.source, PressSource::Mouse(..) if cx.config_enable_mouse_text_pan()))
                 {
                     self.touch_phase = TouchPhase::None;
-                    cx.request_timer_update(w_id, PAYLOAD_GLIDE, Duration::new(0, 0), true);
+                    cx.request_timer(w_id, TIMER_GLIDE, Duration::new(0, 0));
                 }
                 Action::None
             }
-            Event::TimerUpdate(pl) if pl == PAYLOAD_SELECT => {
-                match self.touch_phase {
-                    TouchPhase::Start(touch_id, coord) => {
-                        self.touch_phase = TouchPhase::Cursor(touch_id);
-                        Action::Focus {
-                            coord: Some(coord),
-                            action: SelectionAction::new(true, !cx.modifiers().shift_key(), 1),
-                        }
+            Event::Timer(pl) if pl == TIMER_SELECT => match self.touch_phase {
+                TouchPhase::Start(touch_id, coord) => {
+                    self.touch_phase = TouchPhase::Cursor(touch_id);
+                    Action::Focus {
+                        coord: Some(coord),
+                        action: SelectionAction::new(true, !cx.modifiers().shift_key(), 1),
                     }
-                    // Note: if the TimerUpdate were from another requester it
-                    // should technically be Unused, but it doesn't matter
-                    // so long as other consumers match this first.
-                    _ => Action::None,
                 }
-            }
-            Event::TimerUpdate(pl) if pl == PAYLOAD_GLIDE => {
+                _ => Action::None,
+            },
+            Event::Timer(pl) if pl == TIMER_GLIDE => {
                 // Momentum/glide scrolling: update per arbitrary step time until movment stops.
                 let timeout = cx.config().scroll_flick_timeout();
                 let decay = cx.config().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(timeout, decay) {
                     let dur = Duration::from_millis(GLIDE_POLL_MS);
-                    cx.request_timer_update(w_id, PAYLOAD_GLIDE, dur, true);
+                    cx.request_timer(w_id, TIMER_GLIDE, dur);
                     Action::Pan(delta)
                 } else {
                     Action::None

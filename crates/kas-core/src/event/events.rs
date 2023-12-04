@@ -173,10 +173,10 @@ pub enum Event {
     /// Update from a timer
     ///
     /// This event is received after requesting timed wake-up(s)
-    /// (see [`EventState::request_timer_update`]).
+    /// (see [`EventState::request_timer`]).
     ///
-    /// The `u64` payload is copied from [`EventState::request_timer_update`].
-    TimerUpdate(u64),
+    /// The `u64` payload is copied from [`EventState::request_timer`].
+    Timer(u64),
     /// Notification that a popup has been closed
     ///
     /// This is sent to the popup when closed.
@@ -302,7 +302,7 @@ impl Event {
             Command(_, _) => false,
             Key(_, _) | Scroll(_) | Pan { .. } => false,
             CursorMove { .. } | PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
-            TimerUpdate(_) | PopupClosed(_) => true,
+            Timer(_) | PopupClosed(_) => true,
             NavFocus { .. } | SelFocus(_) | KeyFocus | MouseHover(_) => false,
             LostNavFocus | LostKeyFocus | LostSelFocus => true,
         }
@@ -323,7 +323,7 @@ impl Event {
             Command(_, _) | Scroll(_) | Pan { .. } => true,
             CursorMove { .. } | PressStart { .. } => true,
             PressMove { .. } | PressEnd { .. } => false,
-            TimerUpdate(_) | PopupClosed(_) => false,
+            Timer(_) | PopupClosed(_) => false,
             NavFocus { .. } | LostNavFocus => false,
             SelFocus(_) | LostSelFocus => false,
             KeyFocus | LostKeyFocus => false,

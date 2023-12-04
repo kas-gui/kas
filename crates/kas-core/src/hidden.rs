@@ -191,7 +191,7 @@ impl_scope! {
 
         fn _nav_next(
             &mut self,
-            cx: &mut EventCx,
+            cx: &mut ConfigCx,
             _: &A,
             focus: Option<&Id>,
             advance: NavAdvance,
