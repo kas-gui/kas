@@ -28,7 +28,7 @@ use crate::{Action, Erased, ErasedStack, Id, NavAdvance, Node, Widget, WindowId}
 
 mod config;
 mod cx_pub;
-mod cx_shell;
+mod platform;
 mod press;
 
 pub use config::ConfigCx;
