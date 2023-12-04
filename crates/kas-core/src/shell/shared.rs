@@ -138,7 +138,7 @@ pub(crate) trait ShellSharedErased {
     /// event handler, albeit without error handling.
     ///
     /// Safety: this method *should* require generic parameter `Data` (data type
-    /// passed to the `Shell`). Realising this would require adding this type
+    /// passed to the `Application`). Realising this would require adding this type
     /// parameter to `EventCx` and thus to all widgets (not necessarily the
     /// type accepted by the widget as input). As an alternative we require the
     /// caller to type-cast `Window<Data>` to `Window<()>` and pass in

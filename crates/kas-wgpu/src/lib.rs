@@ -27,7 +27,7 @@ mod shaded_theme;
 mod surface;
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
-use kas::shell::{GraphicalShell, Result, ShellBuilder};
+use kas::shell::{AppBuilder, GraphicalShell, Result};
 use kas::theme::{FlatTheme, Theme};
 
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
@@ -97,15 +97,15 @@ impl<CB: CustomPipeBuilder> WgpuBuilder<CB> {
         self
     }
 
-    /// Convert to a [`ShellBuilder`] using the default theme
+    /// Convert to a [`AppBuilder`] using the default theme
     #[inline]
-    pub fn with_default_theme(self) -> ShellBuilder<Self, FlatTheme> {
-        ShellBuilder::new(self, FlatTheme::new())
+    pub fn with_default_theme(self) -> AppBuilder<Self, FlatTheme> {
+        AppBuilder::new(self, FlatTheme::new())
     }
 
-    /// Convert to a [`ShellBuilder`] using the specified `theme`
+    /// Convert to a [`AppBuilder`] using the specified `theme`
     #[inline]
-    pub fn with_theme<T: Theme<DrawPipe<CB::Pipe>>>(self, theme: T) -> ShellBuilder<Self, T> {
-        ShellBuilder::new(self, theme)
+    pub fn with_theme<T: Theme<DrawPipe<CB::Pipe>>>(self, theme: T) -> AppBuilder<Self, T> {
+        AppBuilder::new(self, theme)
     }
 }

@@ -22,10 +22,10 @@ use kas::draw::color::{Rgba, Rgba8Srgb};
 use kas::draw::{Draw, DrawRounded};
 use kas::geom::{Offset, Quad, Rect, Vec2};
 use kas::prelude::*;
-use kas::shell::ShellAssoc;
+use kas::shell::AppAssoc;
 use kas::text::Text;
 
-type Shell = kas::shell::Default<(), kas::theme::FlatTheme>;
+type Application = kas::shell::Default<(), kas::theme::FlatTheme>;
 
 impl_scope! {
     #[derive(Clone)]
@@ -82,7 +82,7 @@ impl_scope! {
 
             // We use the low-level draw device to draw our clock. This means it is
             // not themeable, but gives us much more flexible draw routines.
-            let mut draw = draw.draw_iface::<<Shell as ShellAssoc>::DrawShared>().unwrap();
+            let mut draw = draw.draw_iface::<<Application as AppAssoc>::DrawShared>().unwrap();
 
             let rect = self.core.rect;
             let quad = Quad::conv(rect);
@@ -178,5 +178,5 @@ fn main() -> kas::shell::Result<()> {
         .with_decorations(kas::Decorations::None)
         .with_transparent(true);
 
-    Shell::new(())?.with(window).run()
+    Application::new(())?.with(window).run()
 }

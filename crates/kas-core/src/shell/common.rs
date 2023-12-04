@@ -13,7 +13,7 @@ use raw_window_handle as raw;
 use std::time::Instant;
 use thiserror::Error;
 
-/// Possible failures from constructing a [`Shell`](super::Shell)
+/// Possible failures from constructing an [`Application`](super::Application)
 ///
 /// Some variants are undocumented. Users should not match these variants since
 /// they are not considered part of the public API.
@@ -170,7 +170,7 @@ impl Platform {
 
 /// API for the graphical implementation of a shell
 ///
-/// See also [`Shell`](super::Shell).
+/// See also [`Application`](super::Application).
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait GraphicalShell {
