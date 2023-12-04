@@ -8,13 +8,13 @@
 mod common;
 #[cfg(winit)] mod event_loop;
 #[cfg(winit)] mod shared;
-#[cfg(winit)] mod shell;
+#[cfg(winit)] mod app;
 #[cfg(winit)] mod window;
 
 #[cfg(winit)] use crate::WindowId;
 #[cfg(winit)] use event_loop::Loop as EventLoop;
 #[cfg(winit)] pub(crate) use shared::{AppShared, AppState};
-#[cfg(winit)] use shell::PlatformWrapper;
+#[cfg(winit)] use app::PlatformWrapper;
 #[cfg(winit)]
 pub(crate) use window::{Window, WindowDataErased};
 
@@ -22,14 +22,11 @@ pub(crate) use window::{Window, WindowDataErased};
 pub use common::{AppGraphicsBuilder, WindowSurface};
 pub use common::{Error, Platform, Result};
 #[cfg(winit)]
-pub use shell::{AppAssoc, AppBuilder, Application, ClosedError, Proxy};
+pub use app::{AppAssoc, AppBuilder, Application, ClosedError, Proxy};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 pub extern crate raw_window_handle;
 
-// TODO(opt): Clippy is probably right that we shouldn't copy a large value
-// around (also applies when constructing a shell::Window).
-#[allow(clippy::large_enum_variant)]
 #[crate::autoimpl(Debug)]
 #[cfg(winit)]
 enum Pending<A: kas::AppData, S: WindowSurface, T: kas::theme::Theme<S::Shared>> {

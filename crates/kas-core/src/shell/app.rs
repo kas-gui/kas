@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! [`Shell`] and supporting elements
+//! [`Application`] and supporting elements
 
 use super::{AppGraphicsBuilder, AppState, Platform, ProxyAction, Result};
 use crate::config::Options;
