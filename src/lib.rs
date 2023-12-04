@@ -10,15 +10,12 @@
 //! (some optional, dependant on a feature flag) are re-exported by this crate:
 //!
 //! - [`kas_core`] is re-export at the top-level
-//! - [`easy-cast`](https://docs.rs/easy-cast/0.5) is re-export as [`kas::cast`](cast)
-//! - `kas_macros` is an extended version of [`impl-tools`](https://docs.rs/impl-tools/),
+//! - [`easy-cast`](https://crates.io/crates/easy-cast) is re-export as [`cast`]
+//! - `kas_macros` is an extended version of [`impl-tools`](https://crates.io/crates/impl-tools),
 //!     re-export at the top-level
-//! - [`kas_widgets`](https://docs.rs/kas-widgets/0.11) is re-export as [`kas::widgets`](mod@widgets)
-//! - [`kas_resvg`] is re-export as [`kas::resvg`](resvg) (`resvg` or `tiny-skia` feature)
-//! - [`kas_view`](https://docs.rs/kas-view/0.11) is re-export as [`kas::view`](view) (`view` feature)
-//! - [`kas_wgpu`](https://docs.rs/kas-wgpu/0.11) is re-export as [`kas::shell`](shell); in the current version
-//!     this is dependant on [WGPU](https://github.com/gfx-rs/wgpu), but in the
-//!     future this should become a shim over multiple back-ends
+//! - [`kas_widgets`](https://crates.io/crates/kas-widgets) is re-export as [`widgets`](mod@widgets)
+//! - [`kas_resvg`](https://crates.io/crates/kas-resvg) is re-export as [`resvg`] (`resvg` or `tiny-skia` feature)
+//! - [`kas_view`](https://crates.io/crates/kas-view) is re-export as [`view`] (`view` feature)
 //!
 //! Also refer to:
 //!
