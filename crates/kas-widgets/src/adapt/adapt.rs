@@ -16,15 +16,22 @@ use std::time::Duration;
 /// NOTE: this is a temporary design: it may be expanded or integrated with
 /// `EventCx` in the future.
 #[autoimpl(Deref, DerefMut using self.cx)]
-pub struct AdaptEventCx<'a: 'b, 'b> {
+pub struct AdaptEventCx<'a: 'b, 'b, A> {
     cx: &'b mut EventCx<'a>,
     id: Id,
+    data: &'b A,
 }
 
-impl<'a: 'b, 'b> AdaptEventCx<'a, 'b> {
+impl<'a: 'b, 'b, A> AdaptEventCx<'a, 'b, A> {
     #[inline]
-    fn new(cx: &'b mut EventCx<'a>, id: Id) -> Self {
-        AdaptEventCx { cx, id }
+    fn new(cx: &'b mut EventCx<'a>, id: Id, data: &'b A) -> Self {
+        AdaptEventCx { cx, id, data }
+    }
+
+    /// Access input data
+    #[inline]
+    pub fn data(&'b self) -> &'b A {
+        self.data
     }
 
     /// Check whether this widget is disabled
@@ -130,8 +137,8 @@ impl_scope! {
         inner: W,
         configure_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut S)>>,
         update_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &A, &mut S)>>,
-        timer_handlers: LinearMap<u64, Box<dyn Fn(&mut AdaptEventCx, &A, &mut S) -> bool>>,
-        message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx, &A, &mut S) -> bool>>,
+        timer_handlers: LinearMap<u64, Box<dyn Fn(&mut AdaptEventCx<A>, &mut S) -> bool>>,
+        message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx<A>, &mut S) -> bool>>,
     }
 
     impl Self {
@@ -176,7 +183,7 @@ impl_scope! {
         /// The closure should return `true` if state was updated.
         pub fn on_timer<H>(mut self, timer_id: u64, handler: H) -> Self
         where
-            H: Fn(&mut AdaptEventCx, &A, &mut S) -> bool + 'static,
+            H: Fn(&mut AdaptEventCx<A>, &mut S) -> bool + 'static,
         {
             debug_assert!(self.timer_handlers.get(&timer_id).is_none());
             self.timer_handlers.insert(timer_id, Box::new(handler));
@@ -192,11 +199,11 @@ impl_scope! {
         pub fn on_message<M, H>(self, handler: H) -> Self
         where
             M: Debug + 'static,
-            H: Fn(&A, &mut S, M) + 'static,
+            H: Fn(&mut AdaptEventCx<A>, &mut S, M) + 'static,
         {
-            self.on_messages(move |cx, data, state| {
+            self.on_messages(move |cx, state| {
                 if let Some(m) = cx.try_pop() {
-                    handler(data, state, m);
+                    handler(cx, state, m);
                     true
                 } else {
                     false
@@ -209,7 +216,7 @@ impl_scope! {
         /// The closure should return `true` if state was updated.
         pub fn on_messages<H>(mut self, handler: H) -> Self
         where
-            H: Fn(&mut AdaptEventCx, &A, &mut S) -> bool + 'static,
+            H: Fn(&mut AdaptEventCx<A>, &mut S) -> bool + 'static,
         {
             self.message_handlers.push(Box::new(handler));
             self
@@ -237,8 +244,8 @@ impl_scope! {
             match event {
                 Event::Timer(timer_id) => {
                     if let Some(handler) = self.timer_handlers.get(&timer_id) {
-                        let mut cx = AdaptEventCx::new(cx, self.id());
-                        if handler(&mut cx, data, &mut self.state) {
+                        let mut cx = AdaptEventCx::new(cx, self.id(), data);
+                        if handler(&mut cx, &mut self.state) {
                             cx.update(self.as_node(data));
                         }
                         Used
@@ -252,9 +259,9 @@ impl_scope! {
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
             let mut update = false;
-            let mut cx = AdaptEventCx::new(cx, self.id());
+            let mut cx = AdaptEventCx::new(cx, self.id(), data);
             for handler in self.message_handlers.iter() {
-                update |= handler(&mut cx, data, &mut self.state);
+                update |= handler(&mut cx, &mut self.state);
             }
             if update {
                 cx.update(self.as_node(data));

@@ -228,12 +228,12 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
         row!["Child window", popup_edit_box],
     ];
 
-    let ui = Adapt::new(widgets, data).on_messages(|cx, _, data| {
-        if let Some(ScrollMsg(value)) = cx.try_pop() {
+    let ui = Adapt::new(widgets, data)
+        .on_message(|_, data, ScrollMsg(value)| {
             println!("ScrollMsg({value})");
             data.ratio = value as f32 / 100.0;
-            true
-        } else if let Some(item) = cx.try_pop() {
+        })
+        .on_message(|cx, data, item| {
             println!("Message: {item:?}");
             match item {
                 Item::Check(v) => data.check = v,
@@ -246,11 +246,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
                 Item::Text(text) => data.text = text,
                 _ => (),
             }
-            true
-        } else {
-            false
-        }
-    });
+        });
 
     let ui = adapt::OnUpdate::new(ui)
         .on_update(|cx, w, data: &AppData| cx.set_disabled(w.id(), data.disabled));
