@@ -51,7 +51,7 @@ fn counter(title: &str) -> Window<Count> {
     ];
 
     let ui = Adapt::new(ui, initial)
-        .on_update(|_, count, state| state.0 = *count)
+        .on_update(|_, state, count| state.0 = *count)
         .on_message(|_, state, SetValue(v)| state.1 = v);
     Window::new(ui, title)
 }

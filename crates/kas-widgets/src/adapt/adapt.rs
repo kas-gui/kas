@@ -136,7 +136,7 @@ impl_scope! {
         #[widget(&self.state)]
         inner: W,
         configure_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut S)>>,
-        update_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &A, &mut S)>>,
+        update_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut S, &A)>>,
         timer_handlers: LinearMap<u64, Box<dyn Fn(&mut AdaptEventCx<A>, &mut S) -> bool>>,
         message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx<A>, &mut S) -> bool>>,
     }
@@ -171,7 +171,7 @@ impl_scope! {
         /// Children will be updated after the handler is called.
         pub fn on_update<F>(mut self, handler: F) -> Self
         where
-            F: Fn(&mut AdaptConfigCx, &A, &mut S) + 'static,
+            F: Fn(&mut AdaptConfigCx, &mut S, &A) + 'static,
         {
             debug_assert!(self.update_handler.is_none());
             self.update_handler = Some(Box::new(handler));
@@ -236,7 +236,7 @@ impl_scope! {
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             if let Some(handler) = self.update_handler.as_ref() {
                 let mut cx = AdaptConfigCx::new(cx, self.id());
-                handler(&mut cx, data, &mut self.state);
+                handler(&mut cx, &mut self.state, data);
             }
         }
 
