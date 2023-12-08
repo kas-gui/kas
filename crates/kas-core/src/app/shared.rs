@@ -10,7 +10,7 @@ use kas::config::Options;
 use kas::draw::DrawShared;
 use kas::theme::{Theme, ThemeControl};
 use kas::util::warn_about_error;
-use kas::{draw, Action, ErasedStack, WindowId};
+use kas::{draw, message::ErasedStack, Action, WindowId};
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::VecDeque;

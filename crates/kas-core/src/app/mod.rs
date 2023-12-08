@@ -70,7 +70,7 @@ enum Pending<A: AppData, S: WindowSurface, T: kas::theme::Theme<S::Shared>> {
 enum ProxyAction {
     CloseAll,
     Close(WindowId),
-    Message(kas::erased::SendErased),
+    Message(kas::message::SendErased),
     WakeAsync,
 }
 

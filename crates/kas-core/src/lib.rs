@@ -24,15 +24,14 @@ extern crate self as kas;
 mod action;
 mod core;
 mod decorations;
-mod erased;
 mod popup;
 mod root;
 
 pub use crate::core::*;
 pub use action::Action;
 pub use decorations::Decorations;
-pub use erased::{Erased, ErasedStack};
 pub use kas_macros::*;
+pub use message::ErasedStack;
 #[doc(inline)] pub use popup::Popup;
 #[doc(inline)] pub(crate) use popup::PopupDescriptor;
 #[doc(inline)]

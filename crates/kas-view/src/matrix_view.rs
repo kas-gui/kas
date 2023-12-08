@@ -773,7 +773,7 @@ impl_scope! {
             kas::impls::_send(self, cx, data, id, disabled, event)
         }
 
-        fn _replay(&mut self, cx: &mut EventCx, data: &A, id: Id, msg: kas::Erased) {
+        fn _replay(&mut self, cx: &mut EventCx, data: &A, id: Id, msg: kas::message::Erased) {
             kas::impls::_replay(self, cx, data, id, msg);
         }
 
