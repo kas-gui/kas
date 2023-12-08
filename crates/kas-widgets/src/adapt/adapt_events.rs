@@ -11,13 +11,15 @@ use kas::{autoimpl, impl_scope, widget_index, Events, LayoutExt, Widget};
 use std::fmt::Debug;
 
 impl_scope! {
-    /// Wrapper to call a closure on update
+    /// Wrapper with configure / update / message handling callbacks.
+    ///
+    /// This type is constructed by some [`AdaptWidget`](super::AdaptWidget) methods.
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(Scrollable using self.inner where W: trait)]
     #[widget {
         layout = self.inner;
     }]
-    pub struct OnUpdate<W: Widget> {
+    pub struct AdaptEvents<W: Widget> {
         core: widget_core!(),
         #[widget]
         pub inner: W,
@@ -30,7 +32,7 @@ impl_scope! {
         /// Construct
         #[inline]
         pub fn new(inner: W) -> Self {
-            OnUpdate {
+            AdaptEvents {
                 core: Default::default(),
                 inner,
                 on_configure: None,

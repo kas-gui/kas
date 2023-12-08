@@ -5,7 +5,7 @@
 
 //! Widget extension traits
 
-use super::{AdaptConfigCx, AdaptEventCx, Map, MapAny, OnUpdate, Reserve, WithLabel};
+use super::{AdaptConfigCx, AdaptEventCx, AdaptEvents, Map, MapAny, Reserve, WithLabel};
 use kas::cast::{Cast, CastFloat};
 use kas::dir::Directional;
 use kas::geom::Vec2;
@@ -48,22 +48,22 @@ pub trait AdaptWidget: Widget + Sized {
     ///
     /// Returns a wrapper around the input widget.
     #[must_use]
-    fn on_configure<F>(self, f: F) -> OnUpdate<Self>
+    fn on_configure<F>(self, f: F) -> AdaptEvents<Self>
     where
         F: Fn(&mut AdaptConfigCx, &mut Self) + 'static,
     {
-        OnUpdate::new(self).on_configure(f)
+        AdaptEvents::new(self).on_configure(f)
     }
 
     /// Call the given closure on [`Events::update`]
     ///
     /// Returns a wrapper around the input widget.
     #[must_use]
-    fn on_update<F>(self, f: F) -> OnUpdate<Self>
+    fn on_update<F>(self, f: F) -> AdaptEvents<Self>
     where
         F: Fn(&mut AdaptConfigCx, &mut Self, &Self::Data) + 'static,
     {
-        OnUpdate::new(self).on_update(f)
+        AdaptEvents::new(self).on_update(f)
     }
 
     /// Add a handler on message of type `M`
@@ -72,23 +72,23 @@ pub trait AdaptWidget: Widget + Sized {
     ///
     /// Returns a wrapper around the input widget.
     #[must_use]
-    fn on_message<M, H>(self, handler: H) -> OnUpdate<Self>
+    fn on_message<M, H>(self, handler: H) -> AdaptEvents<Self>
     where
         M: Debug + 'static,
         H: Fn(&mut AdaptEventCx, &mut Self, M) + 'static,
     {
-        OnUpdate::new(self).on_message(handler)
+        AdaptEvents::new(self).on_message(handler)
     }
 
     /// Add a generic message handler
     ///
     /// Returns a wrapper around the input widget.
     #[must_use]
-    fn on_messages<H>(self, handler: H) -> OnUpdate<Self>
+    fn on_messages<H>(self, handler: H) -> AdaptEvents<Self>
     where
         H: Fn(&mut AdaptEventCx, &mut Self, &Self::Data) + 'static,
     {
-        OnUpdate::new(self).on_messages(handler)
+        AdaptEvents::new(self).on_messages(handler)
     }
 
     /// Construct a wrapper, setting minimum size in pixels

@@ -248,8 +248,8 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
             }
         });
 
-    let ui =
-        adapt::OnUpdate::new(ui).on_update(|cx, _, data: &AppData| cx.set_disabled(data.disabled));
+    let ui = adapt::AdaptEvents::new(ui)
+        .on_update(|cx, _, data: &AppData| cx.set_disabled(data.disabled));
 
     Box::new(ScrollBarRegion::new(ui))
 }
@@ -398,8 +398,8 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
             SelectionMsg::Select(i) => println!("Selected: {}", &data.list[i]),
             _ => (),
         });
-    let ui =
-        adapt::OnUpdate::new(ui).on_update(|cx, _, data: &AppData| cx.set_disabled(data.disabled));
+    let ui = adapt::AdaptEvents::new(ui)
+        .on_update(|cx, _, data: &AppData| cx.set_disabled(data.disabled));
     Box::new(ui)
 }
 
