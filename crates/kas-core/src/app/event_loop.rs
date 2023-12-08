@@ -118,7 +118,7 @@ where
                     }
                 }
                 ProxyAction::Message(msg) => {
-                    let mut stack = crate::ErasedStack::new();
+                    let mut stack = crate::message::MessageStack::new();
                     stack.push_erased(msg.into_erased());
                     self.state.handle_messages(&mut stack);
                 }

@@ -10,7 +10,7 @@ use kas::config::Options;
 use kas::draw::DrawShared;
 use kas::theme::{Theme, ThemeControl};
 use kas::util::warn_about_error;
-use kas::{draw, message::ErasedStack, Action, WindowId};
+use kas::{draw, message::MessageStack, Action, WindowId};
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -85,7 +85,7 @@ where
     }
 
     #[inline]
-    pub(crate) fn handle_messages(&mut self, messages: &mut ErasedStack) {
+    pub(crate) fn handle_messages(&mut self, messages: &mut MessageStack) {
         if messages.reset_and_has_any() {
             let action = self.data.handle_messages(messages);
             self.shared.pending.push_back(Pending::Action(action));

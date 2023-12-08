@@ -120,16 +120,16 @@ impl SendErased {
 /// used through that, thus the interface here is incomplete.
 #[must_use]
 #[derive(Debug, Default)]
-pub struct ErasedStack {
+pub struct MessageStack {
     base: usize,
     stack: Vec<Erased>,
 }
 
-impl ErasedStack {
+impl MessageStack {
     /// Construct an empty stack
     #[inline]
     pub fn new() -> Self {
-        ErasedStack::default()
+        MessageStack::default()
     }
 
     /// Set the "stack base" to the current length
@@ -184,7 +184,7 @@ impl ErasedStack {
     }
 }
 
-impl Drop for ErasedStack {
+impl Drop for MessageStack {
     fn drop(&mut self) {
         for msg in self.stack.drain(..) {
             log::warn!(target: "kas_core::erased", "unhandled: {msg:?}");

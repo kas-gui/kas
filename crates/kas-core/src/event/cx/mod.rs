@@ -22,9 +22,10 @@ use super::*;
 use crate::app::{AppShared, Platform, WindowDataErased};
 use crate::cast::Cast;
 use crate::geom::Coord;
+use crate::message::{Erased, MessageStack};
 use crate::util::WidgetHierarchy;
 use crate::LayoutExt;
-use crate::{message::Erased, Action, ErasedStack, Id, NavAdvance, Node, Widget, WindowId};
+use crate::{Action, Id, NavAdvance, Node, Widget, WindowId};
 
 mod config;
 mod cx_pub;
@@ -367,7 +368,7 @@ pub struct EventCx<'a> {
     state: &'a mut EventState,
     shared: &'a mut dyn AppShared,
     window: &'a dyn WindowDataErased,
-    messages: &'a mut ErasedStack,
+    messages: &'a mut MessageStack,
     last_child: Option<usize>,
     scroll: Scroll,
 }

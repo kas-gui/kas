@@ -12,7 +12,7 @@ mod common;
 #[cfg(winit)] mod window;
 
 #[cfg(winit)] use crate::WindowId;
-use crate::{Action, ErasedStack};
+use crate::{message::MessageStack, Action};
 #[cfg(winit)] use app::PlatformWrapper;
 #[cfg(winit)] use event_loop::Loop as EventLoop;
 #[cfg(winit)] pub(crate) use shared::{AppShared, AppState};
@@ -45,11 +45,11 @@ pub trait AppData: 'static {
     /// The method returns an [`Action`], usually either [`Action::empty`]
     /// (nothing to do) or [`Action::UPDATE`] (to update widgets).
     /// This action affects all windows.
-    fn handle_messages(&mut self, messages: &mut ErasedStack) -> Action;
+    fn handle_messages(&mut self, messages: &mut MessageStack) -> Action;
 }
 
 impl AppData for () {
-    fn handle_messages(&mut self, _: &mut ErasedStack) -> Action {
+    fn handle_messages(&mut self, _: &mut MessageStack) -> Action {
         Action::empty()
     }
 }

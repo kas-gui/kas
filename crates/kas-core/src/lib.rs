@@ -31,7 +31,6 @@ pub use crate::core::*;
 pub use action::Action;
 pub use decorations::Decorations;
 pub use kas_macros::*;
-pub use message::ErasedStack;
 #[doc(inline)] pub use popup::Popup;
 #[doc(inline)] pub(crate) use popup::PopupDescriptor;
 #[doc(inline)]
