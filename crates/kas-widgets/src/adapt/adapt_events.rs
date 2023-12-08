@@ -5,8 +5,9 @@
 
 //! Event adapters
 
+use super::{AdaptConfigCx, AdaptEventCx};
 use kas::event::{ConfigCx, EventCx};
-use kas::{autoimpl, impl_scope, widget_index, Events, Widget};
+use kas::{autoimpl, impl_scope, widget_index, Events, LayoutExt, Widget};
 use std::fmt::Debug;
 
 impl_scope! {
@@ -20,9 +21,9 @@ impl_scope! {
         core: widget_core!(),
         #[widget]
         pub inner: W,
-        on_configure: Option<Box<dyn Fn(&mut ConfigCx, &mut W)>>,
-        on_update: Option<Box<dyn Fn(&mut ConfigCx, &mut W, &W::Data)>>,
-        message_handlers: Vec<Box<dyn Fn(&mut EventCx, &mut W, &W::Data)>>,
+        on_configure: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W)>>,
+        on_update: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W, &W::Data)>>,
+        message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx<W::Data>, &mut W)>>,
     }
 
     impl Self {
@@ -42,7 +43,7 @@ impl_scope! {
         #[must_use]
         pub fn on_configure<F>(mut self, f: F) -> Self
         where
-            F: Fn(&mut ConfigCx, &mut W) + 'static,
+            F: Fn(&mut AdaptConfigCx, &mut W) + 'static,
         {
             self.on_configure = Some(Box::new(f));
             self
@@ -52,7 +53,7 @@ impl_scope! {
         #[must_use]
         pub fn on_update<F>(mut self, f: F) -> Self
         where
-            F: Fn(&mut ConfigCx, &mut W, &W::Data) + 'static,
+            F: Fn(&mut AdaptConfigCx, &mut W, &W::Data) + 'static,
         {
             self.on_update = Some(Box::new(f));
             self
@@ -63,11 +64,11 @@ impl_scope! {
         pub fn on_message<M, H>(self, handler: H) -> Self
         where
             M: Debug + 'static,
-            H: Fn(&mut EventCx, &mut W, &W::Data, M) + 'static,
+            H: Fn(&mut AdaptEventCx<W::Data>, &mut W, M) + 'static,
         {
-            self.on_messages(move |cx, w, data| {
+            self.on_messages(move |cx, w| {
                 if let Some(m) = cx.try_pop() {
-                    handler(cx, w, data, m);
+                    handler(cx, w, m);
                 }
             })
         }
@@ -76,7 +77,7 @@ impl_scope! {
         #[must_use]
         pub fn on_messages<H>(mut self, handler: H) -> Self
         where
-            H: Fn(&mut EventCx, &mut W, &W::Data) + 'static,
+            H: Fn(&mut AdaptEventCx<W::Data>, &mut W) + 'static,
         {
             self.message_handlers.push(Box::new(handler));
             self
@@ -91,25 +92,29 @@ impl_scope! {
 
         fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
             let id = self.make_child_id(widget_index!(self.inner));
-            cx.configure(self.inner.as_node(data), id);
+            cx.configure(self.inner.as_node(data), id.clone());
             if let Some(ref f) = self.on_configure {
-                f(cx, &mut self.inner);
+                let mut cx = AdaptConfigCx::new(cx, id.clone());
+                f(&mut cx, &mut self.inner);
             }
             if let Some(ref f) = self.on_update {
-                f(cx, &mut self.inner, data);
+                let mut cx = AdaptConfigCx::new(cx, id);
+                f(&mut cx, &mut self.inner, data);
             }
         }
 
         fn update_recurse(&mut self, cx: &mut ConfigCx, data: &W::Data) {
             cx.update(self.inner.as_node(data));
             if let Some(ref f) = self.on_update {
-                f(cx, &mut self.inner, data);
+                let mut cx = AdaptConfigCx::new(cx, self.inner.id());
+                f(&mut cx, &mut self.inner, data);
             }
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &W::Data) {
+            let mut cx = AdaptEventCx::new(cx, self.inner.id(), data);
             for handler in self.message_handlers.iter() {
-                handler(cx, &mut self.inner, data);
+                handler(&mut cx, &mut self.inner);
             }
         }
     }

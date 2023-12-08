@@ -5,10 +5,9 @@
 
 //! Widget extension traits
 
-use super::{Map, MapAny, OnUpdate, Reserve, WithLabel};
+use super::{AdaptConfigCx, AdaptEventCx, Map, MapAny, OnUpdate, Reserve, WithLabel};
 use kas::cast::{Cast, CastFloat};
 use kas::dir::Directional;
-use kas::event::{ConfigCx, EventCx};
 use kas::geom::Vec2;
 use kas::layout::{AxisInfo, SizeRules};
 use kas::text::AccessString;
@@ -51,7 +50,7 @@ pub trait AdaptWidget: Widget + Sized {
     #[must_use]
     fn on_configure<F>(self, f: F) -> OnUpdate<Self>
     where
-        F: Fn(&mut ConfigCx, &mut Self) + 'static,
+        F: Fn(&mut AdaptConfigCx, &mut Self) + 'static,
     {
         OnUpdate::new(self).on_configure(f)
     }
@@ -62,7 +61,7 @@ pub trait AdaptWidget: Widget + Sized {
     #[must_use]
     fn on_update<F>(self, f: F) -> OnUpdate<Self>
     where
-        F: Fn(&mut ConfigCx, &mut Self, &Self::Data) + 'static,
+        F: Fn(&mut AdaptConfigCx, &mut Self, &Self::Data) + 'static,
     {
         OnUpdate::new(self).on_update(f)
     }
@@ -74,7 +73,7 @@ pub trait AdaptWidget: Widget + Sized {
     fn on_message<M, H>(self, handler: H) -> OnUpdate<Self>
     where
         M: Debug + 'static,
-        H: Fn(&mut EventCx, &mut Self, &Self::Data, M) + 'static,
+        H: Fn(&mut AdaptEventCx<Self::Data>, &mut Self, M) + 'static,
     {
         OnUpdate::new(self).on_message(handler)
     }
@@ -85,7 +84,7 @@ pub trait AdaptWidget: Widget + Sized {
     #[must_use]
     fn on_messages<H>(self, handler: H) -> OnUpdate<Self>
     where
-        H: Fn(&mut EventCx, &mut Self, &Self::Data) + 'static,
+        H: Fn(&mut AdaptEventCx<Self::Data>, &mut Self) + 'static,
     {
         OnUpdate::new(self).on_messages(handler)
     }
