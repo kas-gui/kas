@@ -76,7 +76,7 @@ impl_scope! {
         direction: D,
         next: usize,
         id_map: HashMap<usize, usize>, // map key of Id to index
-        on_messages: Option<Box<dyn Fn(&mut AdaptEventCx<W::Data>, usize)>>,
+        on_messages: Option<Box<dyn Fn(&mut AdaptEventCx, &W::Data, usize)>>,
     }
 
     impl Layout for Self {
@@ -141,8 +141,8 @@ impl_scope! {
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
             if let Some(ref f) = self.on_messages {
                 let index = cx.last_child().expect("message not sent from self");
-                let mut cx = AdaptEventCx::new(cx, self.id(), data);
-                f(&mut cx, index);
+                let mut cx = AdaptEventCx::new(cx, self.id());
+                f(&mut cx, data, index);
             }
         }
     }
@@ -220,7 +220,7 @@ impl_scope! {
         #[inline]
         pub fn on_messages(
             mut self,
-            f: impl Fn(&mut AdaptEventCx<W::Data>, usize) + 'static,
+            f: impl Fn(&mut AdaptEventCx, &W::Data, usize) + 'static,
         ) -> Self {
             self.on_messages = Some(Box::new(f));
             self

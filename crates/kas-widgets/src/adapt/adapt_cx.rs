@@ -13,23 +13,16 @@ use std::time::Duration;
 /// NOTE: this is a temporary design: it may be expanded or integrated with
 /// `EventCx` in the future.
 #[autoimpl(Deref, DerefMut using self.cx)]
-pub struct AdaptEventCx<'a: 'b, 'b, A> {
+pub struct AdaptEventCx<'a: 'b, 'b> {
     cx: &'b mut EventCx<'a>,
     id: Id,
-    data: &'b A,
 }
 
-impl<'a: 'b, 'b, A> AdaptEventCx<'a, 'b, A> {
+impl<'a: 'b, 'b> AdaptEventCx<'a, 'b> {
     /// Construct
     #[inline]
-    pub fn new(cx: &'b mut EventCx<'a>, id: Id, data: &'b A) -> Self {
-        AdaptEventCx { cx, id, data }
-    }
-
-    /// Access input data
-    #[inline]
-    pub fn data(&'b self) -> &'b A {
-        self.data
+    pub fn new(cx: &'b mut EventCx<'a>, id: Id) -> Self {
+        AdaptEventCx { cx, id }
     }
 
     /// Check whether this widget is disabled

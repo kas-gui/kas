@@ -139,7 +139,7 @@ impl_scope! {
                 core: Default::default(),
                 direction: Direction::Up,
                 stack: Stack::new(),
-                tabs: Row::new([]).on_messages(|cx, index| {
+                tabs: Row::new([]).on_messages(|cx, _, index| {
                     if let Some(Select) = cx.try_pop() {
                         cx.push(MsgSelectIndex(index));
                     }
@@ -384,7 +384,7 @@ where
         }
         Self {
             stack: Stack::from(stack),
-            tabs: Row::new(tabs).on_messages(|cx, index| {
+            tabs: Row::new(tabs).on_messages(|cx, _, index| {
                 if let Some(Select) = cx.try_pop() {
                     cx.push(MsgSelectIndex(index));
                 }

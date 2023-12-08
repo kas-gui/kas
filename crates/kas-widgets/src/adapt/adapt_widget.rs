@@ -68,12 +68,14 @@ pub trait AdaptWidget: Widget + Sized {
 
     /// Add a handler on message of type `M`
     ///
+    /// Where access to input data is required, use [`Self::on_messages`] instead.
+    ///
     /// Returns a wrapper around the input widget.
     #[must_use]
     fn on_message<M, H>(self, handler: H) -> OnUpdate<Self>
     where
         M: Debug + 'static,
-        H: Fn(&mut AdaptEventCx<Self::Data>, &mut Self, M) + 'static,
+        H: Fn(&mut AdaptEventCx, &mut Self, M) + 'static,
     {
         OnUpdate::new(self).on_message(handler)
     }
@@ -84,7 +86,7 @@ pub trait AdaptWidget: Widget + Sized {
     #[must_use]
     fn on_messages<H>(self, handler: H) -> OnUpdate<Self>
     where
-        H: Fn(&mut AdaptEventCx<Self::Data>, &mut Self) + 'static,
+        H: Fn(&mut AdaptEventCx, &mut Self, &Self::Data) + 'static,
     {
         OnUpdate::new(self).on_messages(handler)
     }

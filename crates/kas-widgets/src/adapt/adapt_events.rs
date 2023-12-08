@@ -23,7 +23,7 @@ impl_scope! {
         pub inner: W,
         on_configure: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W)>>,
         on_update: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W, &W::Data)>>,
-        message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx<W::Data>, &mut W)>>,
+        message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx, &mut W, &W::Data)>>,
     }
 
     impl Self {
@@ -60,13 +60,15 @@ impl_scope! {
         }
 
         /// Add a handler on message of type `M`
+        ///
+        /// Where access to input data is required, use [`Self::on_messages`] instead.
         #[must_use]
         pub fn on_message<M, H>(self, handler: H) -> Self
         where
             M: Debug + 'static,
-            H: Fn(&mut AdaptEventCx<W::Data>, &mut W, M) + 'static,
+            H: Fn(&mut AdaptEventCx, &mut W, M) + 'static,
         {
-            self.on_messages(move |cx, w| {
+            self.on_messages(move |cx, w, _data| {
                 if let Some(m) = cx.try_pop() {
                     handler(cx, w, m);
                 }
@@ -77,7 +79,7 @@ impl_scope! {
         #[must_use]
         pub fn on_messages<H>(mut self, handler: H) -> Self
         where
-            H: Fn(&mut AdaptEventCx<W::Data>, &mut W) + 'static,
+            H: Fn(&mut AdaptEventCx, &mut W, &W::Data) + 'static,
         {
             self.message_handlers.push(Box::new(handler));
             self
@@ -112,9 +114,9 @@ impl_scope! {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &W::Data) {
-            let mut cx = AdaptEventCx::new(cx, self.inner.id(), data);
+            let mut cx = AdaptEventCx::new(cx, self.inner.id());
             for handler in self.message_handlers.iter() {
-                handler(&mut cx, &mut self.inner);
+                handler(&mut cx, &mut self.inner, data);
             }
         }
     }
