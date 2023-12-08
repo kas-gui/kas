@@ -6,13 +6,15 @@
 //! Adapter widgets (wrappers)
 
 mod adapt;
+mod adapt_cx;
 mod adapt_events;
 mod adapt_widget;
 mod reserve;
 mod with_label;
 
-pub use adapt::{Adapt, AdaptConfigCx, AdaptEventCx, Map};
-pub use adapt_events::OnUpdate;
+pub use adapt::{Adapt, Map};
+pub use adapt_cx::{AdaptConfigCx, AdaptEventCx};
+pub use adapt_events::AdaptEvents;
 pub use adapt_widget::*;
 #[doc(inline)] pub use kas::hidden::MapAny;
 pub use reserve::Reserve;

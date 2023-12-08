@@ -139,11 +139,7 @@ impl_scope! {
                 core: Default::default(),
                 direction: Direction::Up,
                 stack: Stack::new(),
-                tabs: Row::new([]).on_messages(|cx, index| {
-                    if let Some(Select) = cx.try_pop() {
-                        cx.push(MsgSelectIndex(index));
-                    }
-                }),
+                tabs: Row::new([]).map_message(|index, Select| MsgSelectIndex(index)),
                 on_change: None,
             }
         }
@@ -384,11 +380,7 @@ where
         }
         Self {
             stack: Stack::from(stack),
-            tabs: Row::new(tabs).on_messages(|cx, index| {
-                if let Some(Select) = cx.try_pop() {
-                    cx.push(MsgSelectIndex(index));
-                }
-            }),
+            tabs: Row::new(tabs).map_message(|index, Select| MsgSelectIndex(index)),
             ..Default::default()
         }
     }

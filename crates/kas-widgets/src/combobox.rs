@@ -234,7 +234,10 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
             label,
             mark: Mark::new(MarkStyle::Point(Direction::Down)),
             popup: Popup::new(
-                Column::new(entries).on_messages(|cx, index| cx.push(IndexMsg(index))),
+                Column::new(entries).on_messages(|cx, _, index| {
+                    cx.push(IndexMsg(index));
+                    false
+                }),
                 Direction::Down,
             ),
             active: 0,
