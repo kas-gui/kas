@@ -5,6 +5,7 @@
 
 //! A grid widget
 
+use crate::adapt::AdaptEventCx;
 use kas::layout::{DynGridStorage, GridChildInfo, GridDimensions};
 use kas::layout::{GridSetter, GridSolver, RulesSetter, RulesSolver};
 use kas::{layout, prelude::*};
@@ -57,7 +58,7 @@ impl_scope! {
         widgets: Vec<(GridChildInfo, W)>,
         data: DynGridStorage,
         dim: GridDimensions,
-        on_messages: Option<Box<dyn Fn(&mut EventCx, usize)>>,
+        on_messages: Option<Box<dyn Fn(&mut AdaptEventCx<W::Data>, usize)>>,
     }
 
     impl Widget for Self {
@@ -119,10 +120,11 @@ impl_scope! {
     }
 
     impl Events for Self {
-        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
             if let Some(ref f) = self.on_messages {
                 let index = cx.last_child().expect("message not sent from self");
-                f(cx, index);
+                let mut cx = AdaptEventCx::new(cx, self.id(), data);
+                f(&mut cx, index);
             }
         }
     }
@@ -151,7 +153,7 @@ impl<W: Widget> Grid<W> {
     /// This handler is called when a child pushes a message:
     /// `f(cx, index)`, where `index` is the child's index.
     #[inline]
-    pub fn on_messages(mut self, f: impl Fn(&mut EventCx, usize) + 'static) -> Self {
+    pub fn on_messages(mut self, f: impl Fn(&mut AdaptEventCx<W::Data>, usize) + 'static) -> Self {
         self.on_messages = Some(Box::new(f));
         self
     }

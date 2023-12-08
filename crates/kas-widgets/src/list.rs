@@ -10,6 +10,8 @@ use kas::{layout, prelude::*};
 use std::collections::hash_map::{Entry, HashMap};
 use std::ops::{Index, IndexMut};
 
+use crate::adapt::AdaptEventCx;
+
 /// A generic row widget
 ///
 /// See documentation of [`List`] type.
@@ -74,7 +76,7 @@ impl_scope! {
         direction: D,
         next: usize,
         id_map: HashMap<usize, usize>, // map key of Id to index
-        on_messages: Option<Box<dyn Fn(&mut EventCx, usize)>>,
+        on_messages: Option<Box<dyn Fn(&mut AdaptEventCx<W::Data>, usize)>>,
     }
 
     impl Layout for Self {
@@ -136,10 +138,11 @@ impl_scope! {
             self.id_map.clear();
         }
 
-        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
             if let Some(ref f) = self.on_messages {
                 let index = cx.last_child().expect("message not sent from self");
-                f(cx, index);
+                let mut cx = AdaptEventCx::new(cx, self.id(), data);
+                f(&mut cx, index);
             }
         }
     }
@@ -215,7 +218,10 @@ impl_scope! {
         /// This handler is called when a child pushes a message:
         /// `f(cx, index)`, where `index` is the child's index.
         #[inline]
-        pub fn on_messages(mut self, f: impl Fn(&mut EventCx, usize) + 'static) -> Self {
+        pub fn on_messages(
+            mut self,
+            f: impl Fn(&mut AdaptEventCx<W::Data>, usize) + 'static,
+        ) -> Self {
             self.on_messages = Some(Box::new(f));
             self
         }
