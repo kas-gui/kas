@@ -97,7 +97,7 @@ pub mod app {
     /// Application pre-launch state, configured with the default graphics backend
     #[cfg(feature = "wgpu")]
     pub type Default<Data, T = crate::theme::FlatTheme> =
-        kas_core::app::Application<Data, kas_wgpu::WgpuBuilder<()>, T>;
+        Application<Data, kas_wgpu::WgpuBuilder<()>, T>;
 }
 
 #[cfg(feature = "dynamic")]

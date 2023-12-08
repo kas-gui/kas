@@ -25,7 +25,7 @@ use kas::geom::{Offset, Quad, Rect, Vec2};
 use kas::prelude::*;
 use kas::text::Text;
 
-type Application = kas::app::Default<(), kas::theme::FlatTheme>;
+type Application = kas::app::Default<(), kas::theme::SimpleTheme>;
 
 impl_scope! {
     #[derive(Clone)]
@@ -178,5 +178,8 @@ fn main() -> kas::app::Result<()> {
         .with_decorations(kas::Decorations::None)
         .with_transparent(true);
 
-    Application::new(())?.with(window).run()
+    Application::with_theme(Default::default())
+        .build(())?
+        .with(window)
+        .run()
 }
