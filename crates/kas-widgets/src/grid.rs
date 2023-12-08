@@ -161,7 +161,7 @@ impl<W: Widget> Grid<W> {
     /// # Example
     ///
     /// ```
-    /// use kas::message::Select;
+    /// use kas::messages::Select;
     /// use kas_widgets::{Row, Tab};
     ///
     /// #[derive(Clone, Debug)]

@@ -22,7 +22,7 @@ use super::*;
 use crate::app::{AppShared, Platform, WindowDataErased};
 use crate::cast::Cast;
 use crate::geom::Coord;
-use crate::message::{Erased, MessageStack};
+use crate::messages::{Erased, MessageStack};
 use crate::util::WidgetHierarchy;
 use crate::LayoutExt;
 use crate::{Action, Id, NavAdvance, Node, Widget, WindowId};

@@ -214,7 +214,7 @@ impl_scope! {
     /// An `AccessLabel` is a variant of [`Label`] supporting [`AccessString`],
     /// for example "&Edit" binds an action to <kbd>Alt+E</kbd>. When the
     /// corresponding key-sequence is pressed this widget sends the message
-    /// [`kas::message::Activate`] which should be handled by a parent.
+    /// [`kas::messages::Activate`] which should be handled by a parent.
     ///
     /// A text label. Vertical alignment defaults to centred, horizontal
     /// alignment depends on the script direction if not specified.
@@ -332,7 +332,7 @@ impl_scope! {
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
                 Event::Command(cmd, code) if cmd.is_activate() => {
-                    cx.push(kas::message::Activate(code));
+                    cx.push(kas::messages::Activate(code));
                     Used
                 }
                 _ => Unused

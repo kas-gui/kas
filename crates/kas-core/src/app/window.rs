@@ -15,7 +15,7 @@ use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::theme::{DrawCx, SizeCx, ThemeSize};
 use kas::theme::{Theme, Window as _};
-use kas::{autoimpl, message::MessageStack, Action, Id, Layout, LayoutExt, Widget, WindowId};
+use kas::{autoimpl, messages::MessageStack, Action, Id, Layout, LayoutExt, Widget, WindowId};
 use std::mem::take;
 use std::time::{Duration, Instant};
 use winit::event::WindowEvent;

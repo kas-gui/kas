@@ -17,7 +17,7 @@ impl_scope! {
     ///
     /// When activated, this widget pushes [`Select`] to the message stack.
     ///
-    /// [`Select`]: kas::message::Select
+    /// [`Select`]: kas::messages::Select
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Default)]
@@ -50,7 +50,7 @@ impl_scope! {
                     if let Some(code) = code {
                         cx.depress_with_key(self.id(), code);
                     }
-                    cx.push(kas::message::Select);
+                    cx.push(kas::messages::Select);
                     Used
                 }
                 _ => Unused,

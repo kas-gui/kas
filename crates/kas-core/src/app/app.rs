@@ -334,7 +334,7 @@ impl Proxy {
         msg: M,
     ) -> std::result::Result<(), ClosedError> {
         self.0
-            .send_event(ProxyAction::Message(kas::message::SendErased::new(msg)))
+            .send_event(ProxyAction::Message(kas::messages::SendErased::new(msg)))
             .map_err(|_| ClosedError)
     }
 

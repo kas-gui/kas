@@ -8,7 +8,7 @@
 use super::{Layout, Node};
 #[allow(unused)] use crate::event::Used;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused};
-use crate::{message::Erased, Id};
+use crate::{messages::Erased, Id};
 use kas_macros::autoimpl;
 
 #[allow(unused)] use kas_macros as macros;

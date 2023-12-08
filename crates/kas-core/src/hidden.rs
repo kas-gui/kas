@@ -15,7 +15,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::{Text, TextApi};
 use crate::theme::{DrawCx, SizeCx, TextClass};
-use crate::{message::Erased, Id, Layout, NavAdvance, Node, Widget};
+use crate::{messages::Erased, Id, Layout, NavAdvance, Node, Widget};
 use kas_macros::{autoimpl, impl_scope};
 
 impl_scope! {

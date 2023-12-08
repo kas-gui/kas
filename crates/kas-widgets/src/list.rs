@@ -226,7 +226,7 @@ impl_scope! {
         /// # Example
         ///
         /// ```
-        /// use kas::message::Select;
+        /// use kas::messages::Select;
         /// use kas_widgets::{Row, Tab};
         ///
         /// #[derive(Clone, Debug)]

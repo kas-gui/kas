@@ -7,7 +7,7 @@
 
 use crate::{AccessLabel, Row, Stack};
 use kas::layout::{FrameStorage, Visitor};
-use kas::message::Select;
+use kas::messages::Select;
 use kas::prelude::*;
 use kas::theme::FrameStyle;
 use std::fmt::Debug;
@@ -76,7 +76,7 @@ impl_scope! {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &()) {
-            if let Some(kas::message::Activate(code)) = cx.try_pop() {
+            if let Some(kas::messages::Activate(code)) = cx.try_pop() {
                 cx.push(Select);
                 if let Some(code) = code {
                     cx.depress_with_key(self.id(), code);

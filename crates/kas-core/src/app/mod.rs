@@ -12,7 +12,7 @@ mod common;
 #[cfg(winit)] mod window;
 
 #[cfg(winit)] use crate::WindowId;
-use crate::{message::MessageStack, Action};
+use crate::{messages::MessageStack, Action};
 #[cfg(winit)] use app::PlatformWrapper;
 #[cfg(winit)] use event_loop::Loop as EventLoop;
 #[cfg(winit)] pub(crate) use shared::{AppShared, AppState};
@@ -70,7 +70,7 @@ enum Pending<A: AppData, S: WindowSurface, T: kas::theme::Theme<S::Shared>> {
 enum ProxyAction {
     CloseAll,
     Close(WindowId),
-    Message(kas::message::SendErased),
+    Message(kas::messages::SendErased),
     WakeAsync,
 }
 
