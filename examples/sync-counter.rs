@@ -15,7 +15,7 @@ struct Increment(i32);
 
 #[derive(Clone, Copy, Debug)]
 struct Count(i32);
-impl kas::AppData for Count {
+impl kas::app::AppData for Count {
     fn handle_messages(&mut self, messages: &mut ErasedStack) -> Action {
         if let Some(Increment(add)) = messages.try_pop() {
             self.0 += add;

@@ -5,10 +5,10 @@
 
 //! Event loop and handling
 
-use super::{AppState, Pending};
+use super::{AppData, AppState, Pending};
 use super::{ProxyAction, Window, WindowSurface};
 use kas::theme::Theme;
-use kas::{Action, AppData, WindowId};
+use kas::{Action, WindowId};
 use std::collections::HashMap;
 use std::time::Instant;
 use winit::event::{Event, StartCause};

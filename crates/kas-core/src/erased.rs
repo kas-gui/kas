@@ -7,7 +7,6 @@
 
 #![cfg_attr(not(winit), allow(unused))]
 
-use crate::Action;
 #[allow(unused)] use crate::Events;
 use std::any::Any;
 use std::fmt::Debug;
@@ -173,31 +172,5 @@ impl Drop for ErasedStack {
         for msg in self.stack.drain(..) {
             log::warn!(target: "kas_core::erased", "unhandled: {msg:?}");
         }
-    }
-}
-
-/// Application state
-///
-/// Kas allows application state to be stored both in the  widget tree (in
-/// `Adapt` nodes and user-defined widgets) and by the application root (shared
-/// across windows). This trait must be implemented by the latter.
-///
-/// When no top-level data is required, use `()` which implements this trait.
-pub trait AppData: 'static {
-    /// Handle messages
-    ///
-    /// This is the last message handler: it is called when, after traversing
-    /// the widget tree (see [kas::event] module doc), a message is left on the
-    /// stack. Unhandled messages will result in warnings in the log.
-    ///
-    /// The method returns an [`Action`], usually either [`Action::empty`]
-    /// (nothing to do) or [`Action::UPDATE`] (to update widgets).
-    /// This action affects all windows.
-    fn handle_messages(&mut self, messages: &mut ErasedStack) -> Action;
-}
-
-impl AppData for () {
-    fn handle_messages(&mut self, _: &mut ErasedStack) -> Action {
-        Action::empty()
     }
 }

@@ -24,7 +24,7 @@ struct AppData {
     color: Option<Rgba>,
 }
 
-impl kas::AppData for AppData {
+impl kas::app::AppData for AppData {
     fn handle_messages(&mut self, messages: &mut kas::ErasedStack) -> Action {
         if let Some(SetColor(color)) = messages.try_pop() {
             self.color = Some(color);

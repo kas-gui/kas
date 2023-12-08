@@ -5,12 +5,12 @@
 
 //! Shared state
 
-use super::{Error, Pending, Platform, WindowSurface};
+use super::{AppData, Error, Pending, Platform, WindowSurface};
 use kas::config::Options;
 use kas::draw::DrawShared;
 use kas::theme::{Theme, ThemeControl};
 use kas::util::warn_about_error;
-use kas::{draw, Action, AppData, ErasedStack, WindowId};
+use kas::{draw, Action, ErasedStack, WindowId};
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::VecDeque;

@@ -7,7 +7,7 @@
 
 use super::common::WindowSurface;
 use super::shared::{AppSharedState, AppState};
-use super::ProxyAction;
+use super::{AppData, ProxyAction};
 use kas::cast::{Cast, Conv};
 use kas::draw::{color::Rgba, AnimationState, DrawSharedImpl};
 use kas::event::{config::WindowConfig, ConfigCx, CursorIcon, EventState};
@@ -15,7 +15,7 @@ use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::theme::{DrawCx, SizeCx, ThemeSize};
 use kas::theme::{Theme, Window as _};
-use kas::{autoimpl, Action, AppData, ErasedStack, Id, Layout, LayoutExt, Widget, WindowId};
+use kas::{autoimpl, Action, ErasedStack, Id, Layout, LayoutExt, Widget, WindowId};
 use std::mem::take;
 use std::time::{Duration, Instant};
 use winit::event::WindowEvent;
