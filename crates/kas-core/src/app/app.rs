@@ -16,7 +16,6 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 
-/// Application pre-launch state
 pub struct Application<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
     el: EventLoop<ProxyAction>,
     windows: Vec<Box<super::Window<Data, G::Surface, T>>>,
