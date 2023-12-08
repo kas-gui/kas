@@ -64,9 +64,9 @@ pub fn impl_default(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// | [`::core::marker::Copy`] | * | - | *allowed with `Clone` |
 /// | [`::core::ops::Deref`] | - | deref target | `type Target` is type of target field |
 /// | [`::core::ops::DerefMut`] | - | deref target | `type Target` is type of target field |
-/// | `::kas::class::HasBool` | - | deref target | |
-/// | `::kas::class::HasStr` | - | deref target | |
-/// | `::kas::class::HasString` | - | deref target | |
+/// | `::kas::classes::HasBool` | - | deref target | |
+/// | `::kas::classes::HasStr` | - | deref target | |
+/// | `::kas::classes::HasString` | - | deref target | |
 /// | `class_traits` | - | deref target | implements each `kas::class` trait |
 ///
 /// ### Examples

@@ -9,7 +9,7 @@
 //! this crate's prelude.
 
 #[doc(no_inline)] pub use crate::cast::traits::*;
-#[doc(no_inline)] pub use crate::class::*;
+#[doc(no_inline)] pub use crate::classes::*;
 #[doc(no_inline)]
 pub use crate::dir::{Direction, Directional};
 #[doc(no_inline)]

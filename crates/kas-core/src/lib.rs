@@ -38,7 +38,7 @@ pub use root::{Window, WindowCommand, WindowId};
 
 // public implementations:
 pub mod app;
-pub mod class;
+pub mod classes;
 pub mod config;
 pub mod dir;
 pub mod draw;

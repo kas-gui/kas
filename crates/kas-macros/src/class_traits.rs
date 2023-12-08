@@ -77,7 +77,7 @@ impl ImplTrait for ImplHasBool {
                     self.#using.set_bool(state)
                 }
             };
-            Ok((quote! { ::kas::class::HasBool }, methods))
+            Ok((quote! { ::kas::classes::HasBool }, methods))
         } else {
             Err(Error::RequireUsing)
         }
@@ -111,7 +111,7 @@ impl ImplTrait for ImplHasStr {
                     self.#using.get_string()
                 }
             };
-            Ok((quote! { ::kas::class::HasStr }, methods))
+            Ok((quote! { ::kas::classes::HasStr }, methods))
         } else {
             Err(Error::RequireUsing)
         }
@@ -145,7 +145,7 @@ impl ImplTrait for ImplHasString {
                     self.#using.set_string(text)
                 }
             };
-            Ok((quote! { ::kas::class::HasString }, methods))
+            Ok((quote! { ::kas::classes::HasString }, methods))
         } else {
             Err(Error::RequireUsing)
         }

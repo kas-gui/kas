@@ -9,7 +9,7 @@
 //! hidden by default and direct usage (outside of kas crates) is
 //! not supported (i.e. **changes are not considered breaking**).
 
-use crate::class::HasStr;
+use crate::classes::HasStr;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{Align, AxisInfo, SizeRules};
