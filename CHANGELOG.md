@@ -2,12 +2,127 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.14.0] — 2023-09?
+## [0.14.1] — 2023-12-12
 
-Add input data: widgets now have a `Data` associated type, passed by reference
-to event handlers and a new `update` method. This replaces the old data models.
+The focus of this version is *input data*: widgets now have a `Data` associated type, passed by reference
+to event handlers and to a new `update` method. The key advantages of this change are:
 
-There are *lots* more changes. TODO: write changelog.
+-   Declarative specification of trees with changeable widgets. For example, before this change a `counter` must construct a label displaying the initial count *and* explicitly update this label when the count changes; now the displayed label is effectively a function of the count.
+-   As a direct result of the above, it is no longer necessary for parent nodes to refer to children by name, thus it is no longer necessary to use structs with named fields (at least in the common cases).
+-   "View widgets" are now much more tightly integrated with other widgets, making the `SingleView` widget redundant.
+
+For more on *input data*, read the [design document](https://github.com/kas-gui/design/blob/input-data/widget/input-data.md).
+
+### Changes to macros
+
+-   New layout syntax: `row![a, b, c]` instead of `row: [a, b, c]` (#390)
+-   Support debugging of `#[widget]` macro via `KAS_DEBUG_WIDGET=WidgetName` (#410)
+
+### Changes to widget traits
+
+-   Merge `WidgetCore` into `Layout` (#398)
+-   Remove `Debug` bound on widgets (#389)
+-   Add `Event::is_reusable`, remove `Widget::handle_unused`, call `handle_event` instead but only for reusable events (#389)
+-   Add new `trait Events: Sized`, used to implement `Widget` (#391, #392)
+<!---   Add `trait Visitable` used for components; move `fn translation` to `Layout` (#391)-->
+-   Add fns `Widget::_configure`, `_send`, `_replay`, `_nav_next`, `_broadcast` as new dyn-safe API (#391, #392)
+-   Implement `Widget` for `&mut T` and `Box<T>` where `T: Widget + ?Sized` (#392)
+-   Add associated type `Widget::Data` and `Events::Data` (#395)
+-   Add `Node` type pairing a `&mut dyn Widget<Data = A>` with input data `&A` (#395, #396,#398)
+-   Add `trait AppData` for root-level shared data (#395, #396?)
+-   Add `Events::update` (#396)
+-   Rename `Events::handle_message` → `Events::handle_messages` (#396)
+-   Rename `WidgetExt` → `LayoutExt` (#398)
+-   Replace `Events::pre_handle_event` with `Events::mouse_hover` (#401)
+-   Remove `ConfigCx::restrict_recursion_to`, replacing with `Events::configure_recurse` and `update_recurse` (#405, #410)
+-   Do not require configuration of hidden widgets (#405)
+-   Remove `Events::pre_configure`; call `Events::configure` and `update` before recursion (#410)
+-   Add widget state tracking to catch invalid method call order (#410)
+
+### Changes to core event handling
+
+-   Rename `Action::SET_SIZE` → `SET_RECT` (#386)
+-   `next_nav_focus` is now always handled as a pending action (#386)
+-   Add `Event::CursorMove` for motion without a grab press (#389)
+-   Add `EventState::request_update` (#386, #396)
+-   Add `Action::EVENT_CONFIG`, `UPDATE`; remove `Action::EMPTY` (#396)
+-   Add `EventState::change_config` (#396)
+-   Replace `Event::ReceivedCharacter` with `Key` over Winit's new keyboard-input API (#400, #404)
+-   Revise `enum Command` (#400)
+-   Revise `enum Event`: remove `None`, change field style of `NavFocus` (#401)
+-   Rename `EventState::request_char_focus` → `request_key_focus` (#404)
+-   Add `enum FocusSource`, used by `Event::NavFocus` (#404)
+-   Add `fn EventState::depress_with_key` (#405)
+-   Rename `enum Response` → `IsUsed` and re-export `{Used, Unused}` (#406)
+-   Send `Event::PressMove` immediately instead of batching (#412)
+-   Change behaviour when `Press::grab` is used twice in a row (#412)
+-   Replace `*cx |= action` with `EventState::action(id, action)` (#413)
+-   Apply `Action::RECONFIGURE` and `Action::UPDATE` to sub-trees (#413)
+-   Rename `EventState::request_update` to `request_timer` and remove `first` paramameter (#421)
+
+### Changes to app, windowing, WGPU
+
+-   Use Winit's window suspend/resume cycle (#403)
+-   Adjust shell construction: replace custom constructors with `ShellBuilder`; tweak `WgpuBuilder` (#416)
+-   Use "logical pixel" window sizing on all platforms and improve initial window sizing (#417)
+-   Rename `Shell` → `Application` (#422)
+-   Remove usage of WGPU's "wgsl" feature (#425)
+
+### Other core changes
+
+-   Add `kas::messages` module (#385)
+-   Add `Command::Debug` to print widget heirarchy to log, temporarily activated via F8 (#389)
+-   Remove `Window` trait; rename `RootWidget` → `Window` (#393)
+-   Rename `ConfigMgr`, `DrawMgr`, `EventMgr`, `SizeMgr` → `ConfigCx`, ... (#399)
+-   Support dragging and drag-resizing of windows via border (#400)
+-   Add `enum WindowCommand` (#400)
+-   Add `Popup` widget as root of all popups (#405)
+-   Rename `AccelLabel`/`AccelString`/... → `AccessLabel`/`AccessString`/... (#405)
+-   Remove `dark-light` from being a default dependency (#411)
+-   Rename `struct WidgetId` → `Id` (#413)
+-   Event config: adjust serialization formats and support TOML (#416)
+-   Change font size unit from `Point / Em` to `Pixel / Em` (#419)
+-   Rename `mod kas::class` → `classes` (#424)
+
+### Changes to themes
+
+-   Add `FrameStyle::None`, `FrameStyle::Tab` (#399)
+
+### Changes to widget library
+
+-   Remove `MapMessage` adapter (#389)
+-   `Slider`, `Spinner` now have a default step size (#389)
+-   `EditField`: set selection on focus; change behaviour of left/right arrow keys given a selection without shift key pressed (#389)
+-   Revise `EditGuard` to use input data (#396)
+-   Revise `EditField` constructors and provided `EditGuard` implementations (#396)
+-   Add widget `Adapt` to store local data and handle messages (#396, #400)
+-   Add fns `AdaptWidget::map`, `map_any`, `on_update`, `on_configure` (#396, #397, #400)
+-   Revise `Stack`, `TabStack` widget constructors; add a `Tab` widget (#399, #410)
+-   Replace `TextButton` with `Button::label`, `label_msg` constructors (#399)
+-   Add `Text` widget (?)
+-   Add `ScrollText` widget (#419)
+-   Add `AdaptEventCx`, `AdaptConfigCx` (#421, #423)
+
+### Changes to view widgets
+
+-   Move fns `make_id`, `reconstruct_key` to trait `DataKey` (#389)
+-   Move all of `kas::model` to `kas-view` crate and revise to use input data (#396, #421)
+-   Revise filter-list (#397)
+-   `ListView` and `MatrixView` no longer use a default (unconfigured) view-widget for sizing. They may now have an initial size of zero and grow. (#410)
+
+### Fixes
+
+-   Fix animation of `RadioBox` (#385)
+-   Fix calling of `handle_scroll` (#386)
+-   Improved handling of pending actions (#386, #412, #413)
+-   Fix calls to prepare `EditField` text before setting bounds (#399)
+-   Fix Mandlebrot example's `shader64` feature (#400)
+-   Fix drag-opening of a `ComboBox` (#412)
+-   Fix infinite loop in `ListView::_nav_next` and `MatrixView::_nav_next` (#421)
+
+## [0.14.0-alpha] — 2023-09-08
+
+Alpha release; changelog omitted.
 
 ## [0.13.0] — 2023-02-26
 
