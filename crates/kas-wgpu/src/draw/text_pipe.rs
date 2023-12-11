@@ -290,7 +290,7 @@ impl Window {
         // Optimisation: use cheaper TextDisplay::glyphs method
         if effects.len() <= 1
             && effects
-                .get(0)
+                .first()
                 .map(|e| e.flags == Default::default())
                 .unwrap_or(true)
         {
@@ -312,7 +312,7 @@ impl Window {
 
         let result = if effects.len() > 1
             || effects
-                .get(0)
+                .first()
                 .map(|e| *e != Effect::default(()))
                 .unwrap_or(false)
         {
@@ -347,11 +347,11 @@ impl Window {
         // Optimisation: use cheaper TextDisplay::glyphs method
         if effects.len() <= 1
             && effects
-                .get(0)
+                .first()
                 .map(|e| e.flags == Default::default())
                 .unwrap_or(true)
         {
-            let col = effects.get(0).map(|e| e.aux).unwrap_or(Rgba::BLACK);
+            let col = effects.first().map(|e| e.aux).unwrap_or(Rgba::BLACK);
             self.text(pipe, pass, rect, text, col);
             return;
         }

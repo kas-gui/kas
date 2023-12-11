@@ -1021,7 +1021,7 @@ pub fn impl_widget(
     impl_target: &Toks,
     data_ty: &Type,
     core_path: &Toks,
-    children: &Vec<(Member, Span, Option<Expr>)>,
+    children: &[(Member, Span, Option<Expr>)],
     layout_children: Vec<Toks>,
     do_impl_widget_children: bool,
 ) -> Toks {

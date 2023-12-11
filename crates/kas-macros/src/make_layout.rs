@@ -200,7 +200,7 @@ impl Tree {
             &impl_target,
             &data_ty,
             &core_path,
-            &vec![],
+            &[],
             layout_children,
             true,
         );

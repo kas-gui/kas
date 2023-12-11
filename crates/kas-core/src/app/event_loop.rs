@@ -215,7 +215,7 @@ where
                         elwt.set_control_flow(ControlFlow::Poll);
                     } else {
                         for (_, window) in self.windows.iter_mut() {
-                            window.handle_action(&mut self.state, action);
+                            window.handle_action(&self.state, action);
                         }
                     }
                 }
