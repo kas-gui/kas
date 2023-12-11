@@ -277,6 +277,7 @@ impl Window {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn text_effects(
         &mut self,
         pipe: &mut Pipeline,
