@@ -1,6 +1,6 @@
 [package]
 name = "kas-widgets"
-version = "0.14.0-alpha"
+version = "0.14.1"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -28,8 +28,8 @@ smallvec = "1.6.1"
 unicode-segmentation = "1.7"
 thiserror = "1.0.23"
 image = { version = "0.24.1", optional = true }
-kas-macros = { version = "0.14.0-alpha", path = "../kas-macros" }
+kas-macros = { version = "0.14.1", path = "../kas-macros" }
 linear-map = "1.2.0"
 
 # We must rename this package since macros expect kas to be in scope:
-kas = { version = "0.14.0-alpha", package = "kas-core", path = "../kas-core" }
+kas = { version = "0.14.1", package = "kas-core", path = "../kas-core" }
