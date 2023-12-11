@@ -48,8 +48,8 @@ impl Pipeline {
             label: Some("SS render_pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &shaders.shaded_square,
-                entry_point: "vert",
+                module: &shaders.vert_shaded_square,
+                entry_point: "main",
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::VertexStepMode::Vertex,
@@ -72,8 +72,8 @@ impl Pipeline {
             depth_stencil: None,
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
-                module: &shaders.shaded_square,
-                entry_point: "frag",
+                module: &shaders.frag_shaded_square,
+                entry_point: "main",
                 targets: &[Some(wgpu::ColorTargetState {
                     format: super::RENDER_TEX_FORMAT,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
