@@ -48,6 +48,7 @@ version = "0.6.0"
 
 [dependencies.wgpu]
 version = "0.18.0"
+default-features = false
 features = ["spirv"]
 
 [build-dependencies]
