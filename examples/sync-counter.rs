@@ -8,15 +8,15 @@
 //! Each window shares the counter, but has its own increment step.
 
 use kas::widgets::{format_data, label_any, Adapt, Button, Slider};
-use kas::{Action, ErasedStack, Window};
+use kas::{messages::MessageStack, Action, Window};
 
 #[derive(Clone, Debug)]
 struct Increment(i32);
 
 #[derive(Clone, Copy, Debug)]
 struct Count(i32);
-impl kas::AppData for Count {
-    fn handle_messages(&mut self, messages: &mut ErasedStack) -> Action {
+impl kas::app::AppData for Count {
+    fn handle_messages(&mut self, messages: &mut MessageStack) -> Action {
         if let Some(Increment(add)) = messages.try_pop() {
             self.0 += add;
             Action::UPDATE

@@ -110,7 +110,7 @@ impl EventState {
         &'a mut self,
         shared: &'a mut dyn AppShared,
         window: &'a dyn WindowDataErased,
-        messages: &'a mut ErasedStack,
+        messages: &'a mut MessageStack,
         f: F,
     ) {
         let mut cx = EventCx {
@@ -129,7 +129,7 @@ impl EventState {
         &'a mut self,
         shared: &'a mut dyn AppShared,
         window: &'a dyn WindowDataErased,
-        messages: &'a mut ErasedStack,
+        messages: &'a mut MessageStack,
         win: &mut Window<A>,
         data: &A,
     ) -> Action {

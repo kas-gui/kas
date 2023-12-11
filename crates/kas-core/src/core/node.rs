@@ -10,7 +10,7 @@ use crate::event::{ConfigCx, Event, EventCx, IsUsed};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx};
-use crate::{Erased, Id, Layout, NavAdvance};
+use crate::{messages::Erased, Id, Layout, NavAdvance};
 
 #[cfg(not(feature = "unsafe_node"))]
 trait NodeT {

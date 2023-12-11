@@ -227,7 +227,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
         entries: Vec<MenuEntry<V>>,
         state_fn: impl Fn(&ConfigCx, &A) -> V + 'static,
     ) -> Self {
-        let label = entries.get(0).map(|entry| entry.get_string());
+        let label = entries.first().map(|entry| entry.get_string());
         let label = StringLabel::new(label.unwrap_or_default()).with_class(TextClass::Button);
         ComboBox {
             core: Default::default(),

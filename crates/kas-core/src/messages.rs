@@ -3,14 +3,30 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Erased type
+//! Standard messages
+//!
+//! These are messages that may be sent via [`EventCx::push`](crate::event::EventCx::push).
 
-#![cfg_attr(not(winit), allow(unused))]
-
-use crate::Action;
 #[allow(unused)] use crate::Events;
 use std::any::Any;
 use std::fmt::Debug;
+
+use crate::event::PhysicalKey;
+
+/// Message: activate
+///
+/// Example: a button's label has a keyboard shortcut; this message is sent by the label to
+/// trigger the button.
+///
+/// Payload: the key press which caused this message to be emitted, if any.
+#[derive(Copy, Clone, Debug)]
+pub struct Activate(pub Option<PhysicalKey>);
+
+/// Message: select child
+///
+/// Example: a list supports selection; a child emits this to cause itself to be selected.
+#[derive(Clone, Debug)]
+pub struct Select;
 
 /// A type-erased value
 ///
@@ -104,16 +120,16 @@ impl SendErased {
 /// used through that, thus the interface here is incomplete.
 #[must_use]
 #[derive(Debug, Default)]
-pub struct ErasedStack {
+pub struct MessageStack {
     base: usize,
     stack: Vec<Erased>,
 }
 
-impl ErasedStack {
+impl MessageStack {
     /// Construct an empty stack
     #[inline]
     pub fn new() -> Self {
-        ErasedStack::default()
+        MessageStack::default()
     }
 
     /// Set the "stack base" to the current length
@@ -168,36 +184,10 @@ impl ErasedStack {
     }
 }
 
-impl Drop for ErasedStack {
+impl Drop for MessageStack {
     fn drop(&mut self) {
         for msg in self.stack.drain(..) {
             log::warn!(target: "kas_core::erased", "unhandled: {msg:?}");
         }
-    }
-}
-
-/// Application state
-///
-/// Kas allows application state to be stored both in the  widget tree (in
-/// `Adapt` nodes and user-defined widgets) and by the application root (shared
-/// across windows). This trait must be implemented by the latter.
-///
-/// When no top-level data is required, use `()` which implements this trait.
-pub trait AppData: 'static {
-    /// Handle messages
-    ///
-    /// This is the last message handler: it is called when, after traversing
-    /// the widget tree (see [kas::event] module doc), a message is left on the
-    /// stack. Unhandled messages will result in warnings in the log.
-    ///
-    /// The method returns an [`Action`], usually either [`Action::empty`]
-    /// (nothing to do) or [`Action::UPDATE`] (to update widgets).
-    /// This action affects all windows.
-    fn handle_messages(&mut self, messages: &mut ErasedStack) -> Action;
-}
-
-impl AppData for () {
-    fn handle_messages(&mut self, _: &mut ErasedStack) -> Action {
-        Action::empty()
     }
 }

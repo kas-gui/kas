@@ -5,10 +5,10 @@
 
 //! Event loop and handling
 
-use super::{AppState, Pending};
+use super::{AppData, AppState, Pending};
 use super::{ProxyAction, Window, WindowSurface};
 use kas::theme::Theme;
-use kas::{Action, AppData, WindowId};
+use kas::{Action, WindowId};
 use std::collections::HashMap;
 use std::time::Instant;
 use winit::event::{Event, StartCause};
@@ -118,7 +118,7 @@ where
                     }
                 }
                 ProxyAction::Message(msg) => {
-                    let mut stack = crate::ErasedStack::new();
+                    let mut stack = crate::messages::MessageStack::new();
                     stack.push_erased(msg.into_erased());
                     self.state.handle_messages(&mut stack);
                 }
@@ -215,7 +215,7 @@ where
                         elwt.set_control_flow(ControlFlow::Poll);
                     } else {
                         for (_, window) in self.windows.iter_mut() {
-                            window.handle_action(&mut self.state, action);
+                            window.handle_action(&self.state, action);
                         }
                     }
                 }

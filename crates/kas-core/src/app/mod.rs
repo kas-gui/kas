@@ -12,6 +12,7 @@ mod common;
 #[cfg(winit)] mod window;
 
 #[cfg(winit)] use crate::WindowId;
+use crate::{messages::MessageStack, Action};
 #[cfg(winit)] use app::PlatformWrapper;
 #[cfg(winit)] use event_loop::Loop as EventLoop;
 #[cfg(winit)] pub(crate) use shared::{AppShared, AppState};
@@ -27,9 +28,35 @@ pub use common::{Error, Platform, Result};
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 pub extern crate raw_window_handle;
 
+/// Application state
+///
+/// Kas allows application state to be stored both in the  widget tree (in
+/// `Adapt` nodes and user-defined widgets) and by the application root (shared
+/// across windows). This trait must be implemented by the latter.
+///
+/// When no top-level data is required, use `()` which implements this trait.
+pub trait AppData: 'static {
+    /// Handle messages
+    ///
+    /// This is the last message handler: it is called when, after traversing
+    /// the widget tree (see [kas::event] module doc), a message is left on the
+    /// stack. Unhandled messages will result in warnings in the log.
+    ///
+    /// The method returns an [`Action`], usually either [`Action::empty`]
+    /// (nothing to do) or [`Action::UPDATE`] (to update widgets).
+    /// This action affects all windows.
+    fn handle_messages(&mut self, messages: &mut MessageStack) -> Action;
+}
+
+impl AppData for () {
+    fn handle_messages(&mut self, _: &mut MessageStack) -> Action {
+        Action::empty()
+    }
+}
+
 #[crate::autoimpl(Debug)]
 #[cfg(winit)]
-enum Pending<A: kas::AppData, S: WindowSurface, T: kas::theme::Theme<S::Shared>> {
+enum Pending<A: AppData, S: WindowSurface, T: kas::theme::Theme<S::Shared>> {
     AddPopup(WindowId, WindowId, kas::PopupDescriptor),
     // NOTE: we don't need S, T here if we construct the Window later.
     // But this way we can pass a single boxed value.
@@ -43,7 +70,7 @@ enum Pending<A: kas::AppData, S: WindowSurface, T: kas::theme::Theme<S::Shared>>
 enum ProxyAction {
     CloseAll,
     Close(WindowId),
-    Message(kas::erased::SendErased),
+    Message(kas::messages::SendErased),
     WakeAsync,
 }
 

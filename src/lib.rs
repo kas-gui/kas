@@ -74,6 +74,22 @@ pub mod app {
     //! Start by constructing an [`Application`] or its [`Default`](type@Default)
     //! type-def (requires a backend be enabled, e.g. "wgpu").
 
+    /// Application pre-launch state
+    ///
+    /// Suggested construction patterns:
+    ///
+    /// -   <code>kas::app::[Default](type@Default)::[new](Application::new)(data)?</code>
+    /// -   <code>kas::app::[Default](type@Default)::[with_theme](Application::with_theme)(theme).[build](AppBuilder::build)(data)?</code>
+    /// -   <code>kas::app::[WgpuBuilder]::[new](WgpuBuilder::new)(custom_wgpu_pipe).[with_theme](WgpuBuilder::with_theme)(theme).[build](AppBuilder::build)(data)?</code>
+    ///
+    /// Where:
+    ///
+    /// -   `data` is `()` or some object implementing [`AppData`]
+    /// -   `theme` is some object implementing [`Theme`](crate::theme::Theme)
+    /// -   `custom_wgpu_pipe` is a custom WGPU graphics pipeline
+    #[doc(inline)]
+    pub use kas_core::app::Application;
+
     pub use kas_core::app::*;
 
     #[cfg(feature = "wgpu")] pub use kas_wgpu::WgpuBuilder;
@@ -81,7 +97,7 @@ pub mod app {
     /// Application pre-launch state, configured with the default graphics backend
     #[cfg(feature = "wgpu")]
     pub type Default<Data, T = crate::theme::FlatTheme> =
-        kas_core::app::Application<Data, kas_wgpu::WgpuBuilder<()>, T>;
+        Application<Data, kas_wgpu::WgpuBuilder<()>, T>;
 }
 
 #[cfg(feature = "dynamic")]

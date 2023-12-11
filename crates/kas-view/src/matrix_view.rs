@@ -48,7 +48,7 @@ impl_scope! {
     ///
     /// Optionally, data items may be selected; see [`Self::set_selection_mode`].
     /// If enabled, [`SelectionMsg`] messages are reported; view widgets may
-    /// emit [`kas::message::Select`] to have themselves be selected.
+    /// emit [`kas::messages::Select`] to have themselves be selected.
     #[derive(Clone, Debug)]
     #[widget]
     pub struct MatrixView<A: MatrixData, V: Driver<A::Item, A>> {
@@ -120,7 +120,7 @@ impl_scope! {
         /// [`Driver::on_messages`]. The driver is not notified of selection
         /// except via [`Select`] from view widgets. (TODO: reconsider this.)
         ///
-        /// [`Select`]: kas::message::Select
+        /// [`Select`]: kas::messages::Select
         pub fn set_selection_mode(&mut self, mode: SelectionMode) -> Action {
             self.sel_mode = mode;
             match mode {
@@ -663,7 +663,7 @@ impl_scope! {
                             && w.key.as_ref().map(|k| k == key).unwrap_or(false)
                             && w.widget.rect().contains(press.coord + self.scroll.offset())
                         {
-                            cx.push(kas::message::Select);
+                            cx.push(kas::messages::Select);
                         }
                     }
                     Used
@@ -698,7 +698,7 @@ impl_scope! {
                 };
             }
 
-            if let Some(kas::message::Select) = cx.try_pop() {
+            if let Some(kas::messages::Select) = cx.try_pop() {
                 match self.sel_mode {
                     SelectionMode::None => (),
                     SelectionMode::Single => {
@@ -773,7 +773,7 @@ impl_scope! {
             kas::impls::_send(self, cx, data, id, disabled, event)
         }
 
-        fn _replay(&mut self, cx: &mut EventCx, data: &A, id: Id, msg: kas::Erased) {
+        fn _replay(&mut self, cx: &mut EventCx, data: &A, id: Id, msg: kas::messages::Erased) {
             kas::impls::_replay(self, cx, data, id, msg);
         }
 

@@ -1,7 +1,7 @@
 KAS WGPU
 ======
 
-[KAS] graphcis backend over [wgpu].
+[KAS] graphics backend over [wgpu].
 
 [KAS]: https://crates.io/crates/kas
 [wgpu]: https://github.com/gfx-rs/wgpu-rs

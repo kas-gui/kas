@@ -9,13 +9,13 @@
 //! hidden by default and direct usage (outside of kas crates) is
 //! not supported (i.e. **changes are not considered breaking**).
 
-use crate::class::HasStr;
+use crate::classes::HasStr;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::{Text, TextApi};
 use crate::theme::{DrawCx, SizeCx, TextClass};
-use crate::{Erased, Id, Layout, NavAdvance, Node, Widget};
+use crate::{messages::Erased, Id, Layout, NavAdvance, Node, Widget};
 use kas_macros::{autoimpl, impl_scope};
 
 impl_scope! {

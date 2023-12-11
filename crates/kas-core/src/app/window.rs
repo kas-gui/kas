@@ -7,7 +7,7 @@
 
 use super::common::WindowSurface;
 use super::shared::{AppSharedState, AppState};
-use super::ProxyAction;
+use super::{AppData, ProxyAction};
 use kas::cast::{Cast, Conv};
 use kas::draw::{color::Rgba, AnimationState, DrawSharedImpl};
 use kas::event::{config::WindowConfig, ConfigCx, CursorIcon, EventState};
@@ -15,7 +15,7 @@ use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::theme::{DrawCx, SizeCx, ThemeSize};
 use kas::theme::{Theme, Window as _};
-use kas::{autoimpl, Action, AppData, ErasedStack, Id, Layout, LayoutExt, Widget, WindowId};
+use kas::{autoimpl, messages::MessageStack, Action, Id, Layout, LayoutExt, Widget, WindowId};
 use std::mem::take;
 use std::time::{Duration, Instant};
 use winit::event::WindowEvent;
@@ -241,7 +241,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             }
             WindowEvent::RedrawRequested => self.do_draw(state).is_err(),
             event => {
-                let mut messages = ErasedStack::new();
+                let mut messages = MessageStack::new();
                 self.ev_state
                     .with(&mut state.shared, window, &mut messages, |cx| {
                         cx.handle_winit(&mut self.widget, &state.data, event);
@@ -266,7 +266,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         let Some(ref window) = self.window else {
             return (Action::empty(), None);
         };
-        let mut messages = ErasedStack::new();
+        let mut messages = MessageStack::new();
         let action = self.ev_state.flush_pending(
             &mut state.shared,
             window,
@@ -341,7 +341,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             return None;
         };
         let widget = self.widget.as_node(&state.data);
-        let mut messages = ErasedStack::new();
+        let mut messages = MessageStack::new();
         self.ev_state
             .with(&mut state.shared, window, &mut messages, |cx| {
                 cx.update_timer(widget)
@@ -359,7 +359,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         let Some(ref window) = self.window else {
             return;
         };
-        let mut messages = ErasedStack::new();
+        let mut messages = MessageStack::new();
         self.ev_state
             .with(&mut state.shared, window, &mut messages, |cx| {
                 self.widget.add_popup(cx, &state.data, id, popup)
@@ -376,7 +376,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             self.ev_state.action(Id::ROOT, Action::CLOSE);
         } else if let Some(window) = self.window.as_ref() {
             let widget = &mut self.widget;
-            let mut messages = ErasedStack::new();
+            let mut messages = MessageStack::new();
             self.ev_state
                 .with(&mut state.shared, window, &mut messages, |cx| {
                     widget.remove_popup(cx, id)

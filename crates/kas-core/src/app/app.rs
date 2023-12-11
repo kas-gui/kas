@@ -5,18 +5,17 @@
 
 //! [`Application`] and supporting elements
 
-use super::{AppGraphicsBuilder, AppState, Platform, ProxyAction, Result};
+use super::{AppData, AppGraphicsBuilder, AppState, Platform, ProxyAction, Result};
 use crate::config::Options;
 use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::event;
 use crate::theme::{self, Theme, ThemeConfig};
 use crate::util::warn_about_error;
-use crate::{impl_scope, AppData, Window, WindowId};
+use crate::{impl_scope, Window, WindowId};
 use std::cell::RefCell;
 use std::rc::Rc;
 use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 
-/// Application pre-launch state
 pub struct Application<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
     el: EventLoop<ProxyAction>,
     windows: Vec<Box<super::Window<Data, G::Surface, T>>>,
@@ -335,7 +334,7 @@ impl Proxy {
         msg: M,
     ) -> std::result::Result<(), ClosedError> {
         self.0
-            .send_event(ProxyAction::Message(kas::erased::SendErased::new(msg)))
+            .send_event(ProxyAction::Message(kas::messages::SendErased::new(msg)))
             .map_err(|_| ClosedError)
     }
 
