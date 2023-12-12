@@ -1,6 +1,6 @@
 [package]
 name = "kas-wgpu"
-version = "0.14.1"
+version = "0.14.2"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -10,6 +10,10 @@ categories = ["gui"]
 repository = "https://github.com/kas-gui/kas"
 readme = "README.md"
 documentation = "https://docs.rs/kas-wgpu/"
+
+[package.metadata.docs.rs]
+features = ["kas/winit", "kas/wayland"]
+rustdoc-args = ["--cfg", "doc_cfg"]
 
 [features]
 # WARNING: if "raster" is disabled, an alternative like "kas-text/fontdue" is required!

@@ -125,7 +125,7 @@ kas-view = { version = "0.14.2", path = "crates/kas-view", optional = true }
 kas-resvg = { version = "0.14.2", path = "crates/kas-resvg", optional = true }
 
 [dependencies.kas-wgpu]
-version = "0.14.1"
+version = "0.14.2"
 path = "crates/kas-wgpu"
 optional = true
 default-features = false
