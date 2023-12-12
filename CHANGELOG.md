@@ -2,6 +2,11 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.2] — 2023-12-12
+
+-   Add `kas-widgets::edit::InstantParseGuard` (#427)
+-   Fix doc builds for kas-widgets, kas-view, kas-resvg, kas-dylib (#427)
+
 ## [0.14.1] — 2023-12-12
 
 The focus of this version is *input data*: widgets now have a `Data` associated type, passed by reference

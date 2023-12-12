@@ -124,7 +124,11 @@ impl<A: 'static> EditGuard for DefaultGuard<A> {
 }
 
 impl_scope! {
-    /// An [`EditGuard`] impl for string input
+    /// An [`EditGuard`] for read-only strings
+    ///
+    /// This may be used with read-only edit fields, essentially resulting in a
+    /// fancier version of [`Text`](crate::Text) or
+    /// [`ScrollText`](crate::ScrollText).
     #[autoimpl(Debug ignore self.value_fn, self.on_afl)]
     pub struct StringGuard<A> {
         value_fn: Box<dyn Fn(&A) -> String>,
@@ -199,7 +203,11 @@ impl_scope! {
 }
 
 impl_scope! {
-    /// An [`EditGuard`] impl for simple parsable types (e.g. numbers)
+    /// An [`EditGuard`] for parsable types
+    ///
+    /// This guard displays a value formatted from input data, updates the error
+    /// state according to parse success on each keystroke, and sends a message
+    /// on focus loss (where successful parsing occurred).
     #[autoimpl(Debug ignore self.value_fn, self.on_afl)]
     pub struct ParseGuard<A, T: Debug + Display + FromStr> {
         parsed: Option<T>,
@@ -260,6 +268,68 @@ impl_scope! {
                 let action = edit.set_string(format!("{}", value));
                 cx.action(&edit, action);
                 edit.guard.parsed = None;
+            }
+        }
+    }
+}
+
+impl_scope! {
+    /// An as-you-type [`EditGuard`] for parsable types
+    ///
+    /// This guard displays a value formatted from input data, updates the error
+    /// state according to parse success on each keystroke, and sends a message
+    /// immediately (where successful parsing occurred).
+    #[autoimpl(Debug ignore self.value_fn, self.on_afl)]
+    pub struct InstantParseGuard<A, T: Debug + Display + FromStr> {
+        value_fn: Box<dyn Fn(&A) -> T>,
+        on_afl: Box<dyn Fn(&mut EventCx, T)>,
+    }
+
+    impl Self {
+        /// Construct
+        ///
+        /// On update, `value_fn` is used to extract a value from input data
+        /// which is then formatted as a string via [`Display`].
+        /// If, however, the input field has focus, the update is ignored.
+        ///
+        /// On every edit, the guard attempts to parse the field's input as type
+        /// `T` via [`FromStr`]. On success, the result is converted to a
+        /// message via `on_afl` then emitted via [`EventCx::push`].
+        pub fn new<M: Debug + 'static>(
+            value_fn: impl Fn(&A) -> T + 'static,
+            on_afl: impl Fn(T) -> M + 'static,
+        ) -> Self {
+            InstantParseGuard {
+                value_fn: Box::new(value_fn),
+                on_afl: Box::new(move |cx, value| cx.push(on_afl(value))),
+            }
+        }
+    }
+
+    impl EditGuard for Self {
+        type Data = A;
+
+        fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, data: &A) {
+            // Always reset data on focus loss
+            let value = (edit.guard.value_fn)(data);
+            let action = edit.set_string(format!("{}", value));
+            cx.action(edit, action);
+        }
+
+        fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &A) {
+            let result = edit.get_str().parse();
+            let action = edit.set_error_state(result.is_err());
+            cx.action(edit.id(), action);
+            if let Ok(value) = result {
+                (edit.guard.on_afl)(cx, value);
+            }
+        }
+
+        fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
+            if !edit.has_edit_focus() {
+                let value = (edit.guard.value_fn)(data);
+                let action = edit.set_string(format!("{}", value));
+                cx.action(&edit, action);
             }
         }
     }
@@ -418,22 +488,47 @@ impl<A: 'static> EditBox<DefaultGuard<A>> {
         }
     }
 
-    /// Construct an `EditField` displaying some `String` value
-    ///
-    /// The field is read-only. To make it read-write call [`Self::with_msg`]
-    /// or [`Self::with_editable`].
+    /// Construct a read-only `EditBox` displaying some `String` value
     #[inline]
     pub fn string(value_fn: impl Fn(&A) -> String + 'static) -> EditBox<StringGuard<A>> {
         EditBox::new(StringGuard::new(value_fn)).with_editable(false)
     }
 
     /// Construct an `EditBox` for a parsable value (e.g. a number)
+    ///
+    /// On update, `value_fn` is used to extract a value from input data
+    /// which is then formatted as a string via [`Display`].
+    /// If, however, the input field has focus, the update is ignored.
+    ///
+    /// On every edit, the guard attempts to parse the field's input as type
+    /// `T` via [`FromStr`], caching the result and setting the error state.
+    ///
+    /// On field activation and focus loss when a `T` value is cached (see
+    /// previous paragraph), `on_afl` is used to construct a message to be
+    /// emitted via [`EventCx::push`]. The cached value is then cleared to
+    /// avoid sending duplicate messages.
     #[inline]
     pub fn parser<T: Debug + Display + FromStr, M: Debug + 'static>(
         value_fn: impl Fn(&A) -> T + 'static,
         msg_fn: impl Fn(T) -> M + 'static,
     ) -> EditBox<ParseGuard<A, T>> {
         EditBox::new(ParseGuard::new(value_fn, msg_fn))
+    }
+
+    /// Construct an `EditBox` for a parsable value (e.g. a number)
+    ///
+    /// On update, `value_fn` is used to extract a value from input data
+    /// which is then formatted as a string via [`Display`].
+    /// If, however, the input field has focus, the update is ignored.
+    ///
+    /// On every edit, the guard attempts to parse the field's input as type
+    /// `T` via [`FromStr`]. On success, the result is converted to a
+    /// message via `on_afl` then emitted via [`EventCx::push`].
+    pub fn instant_parser<T: Debug + Display + FromStr, M: Debug + 'static>(
+        value_fn: impl Fn(&A) -> T + 'static,
+        msg_fn: impl Fn(T) -> M + 'static,
+    ) -> EditBox<InstantParseGuard<A, T>> {
+        EditBox::new(InstantParseGuard::new(value_fn, msg_fn))
     }
 }
 
@@ -882,22 +977,47 @@ impl<A: 'static> EditField<DefaultGuard<A>> {
         }
     }
 
-    /// Construct an `EditField` displaying some `String` value
-    ///
-    /// The field is read-only. To make it read-write call [`Self::with_msg`]
-    /// or [`Self::with_editable`].
+    /// Construct a read-only `EditField` displaying some `String` value
     #[inline]
     pub fn string(value_fn: impl Fn(&A) -> String + 'static) -> EditField<StringGuard<A>> {
         EditField::new(StringGuard::new(value_fn)).with_editable(false)
     }
 
     /// Construct an `EditField` for a parsable value (e.g. a number)
+    ///
+    /// On update, `value_fn` is used to extract a value from input data
+    /// which is then formatted as a string via [`Display`].
+    /// If, however, the input field has focus, the update is ignored.
+    ///
+    /// On every edit, the guard attempts to parse the field's input as type
+    /// `T` via [`FromStr`], caching the result and setting the error state.
+    ///
+    /// On field activation and focus loss when a `T` value is cached (see
+    /// previous paragraph), `on_afl` is used to construct a message to be
+    /// emitted via [`EventCx::push`]. The cached value is then cleared to
+    /// avoid sending duplicate messages.
     #[inline]
     pub fn parser<T: Debug + Display + FromStr, M: Debug + 'static>(
         value_fn: impl Fn(&A) -> T + 'static,
         msg_fn: impl Fn(T) -> M + 'static,
     ) -> EditField<ParseGuard<A, T>> {
         EditField::new(ParseGuard::new(value_fn, msg_fn))
+    }
+
+    /// Construct an `EditField` for a parsable value (e.g. a number)
+    ///
+    /// On update, `value_fn` is used to extract a value from input data
+    /// which is then formatted as a string via [`Display`].
+    /// If, however, the input field has focus, the update is ignored.
+    ///
+    /// On every edit, the guard attempts to parse the field's input as type
+    /// `T` via [`FromStr`]. On success, the result is converted to a
+    /// message via `on_afl` then emitted via [`EventCx::push`].
+    pub fn instant_parser<T: Debug + Display + FromStr, M: Debug + 'static>(
+        value_fn: impl Fn(&A) -> T + 'static,
+        msg_fn: impl Fn(T) -> M + 'static,
+    ) -> EditField<InstantParseGuard<A, T>> {
+        EditField::new(InstantParseGuard::new(value_fn, msg_fn))
     }
 }
 
@@ -939,7 +1059,7 @@ impl<G: EditGuard> EditField<G> {
 
     /// Set the initial text (inline)
     ///
-    /// This method should only be used on a new `EditBox`.
+    /// This method should only be used on a new `EditField`.
     #[inline]
     #[must_use]
     pub fn with_text(mut self, text: impl ToString) -> Self {
