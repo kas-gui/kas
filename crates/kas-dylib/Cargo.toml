@@ -24,6 +24,6 @@ resvg = ["dep:kas-resvg"]
 
 [dependencies]
 kas-core = { version = "0.14.1", path = "../kas-core" }
-kas-widgets = { version = "0.14.1", path = "../kas-widgets" }
-kas-resvg = { version = "0.14.1", path = "../kas-resvg", optional = true }
+kas-widgets = { version = "0.14.2", path = "../kas-widgets" }
+kas-resvg = { version = "0.14.2", path = "../kas-resvg", optional = true }
 kas-wgpu = { version = "0.14.1", path = "../kas-wgpu", default-features = false }
