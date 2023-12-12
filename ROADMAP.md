@@ -159,6 +159,17 @@ with very basic support for a toolkit-drawn titlebar.
 
 Removal of `kas-theme` crate (most contents merged into `kas-core`).
 
+### 0.14.0 — December 2023
+
+Add *input data*: widgets now have a `Data` associated type, passed by reference
+to event handlers and to a new `update` method. The key advantages of this change are:
+
+-   Declarative specification of trees with changeable widgets. For example, before this change a `counter` must construct a label displaying the initial count *and* explicitly update this label when the count changes; now the displayed label is effectively a function of the count.
+-   As a direct result of the above, it is no longer necessary for parent nodes to refer to children by name, thus it is no longer necessary to use structs with named fields (at least in the common cases).
+-   "View widgets" are now much more tightly integrated with other widgets, making the `SingleView` widget redundant.
+
+For more on *input data*, read the [design document](https://github.com/kas-gui/design/blob/input-data/widget/input-data.md).
+
 
 Future work
 -----------

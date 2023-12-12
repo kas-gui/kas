@@ -110,14 +110,20 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
     }
 }
 
-/// Public API over a contextualized mutable widget
+/// Type-erased widget with input data
 ///
-/// Note: this type has no publically supported utility over [`Node`].
-/// It is, however, required for Kas's internals.
-#[cfg(feature = "unsafe_node")]
-pub struct Node<'a>(&'a mut dyn Widget<Data = ()>, &'a ());
-#[cfg(not(feature = "unsafe_node"))]
-pub struct Node<'a>(Box<dyn NodeT + 'a>);
+/// This type is a `&mut dyn Widget<Data = A>` paired with input data `&A`,
+/// where the type `A` is erased.
+///
+/// The default implementation of this type uses a boxed trait object.
+/// The `unsafe_node` feature enables a more efficient unboxed implementation
+/// (this must make assumptions about VTables beyond what Rust specifies, thus
+/// lacks even the usual programmer-provided verification of `unsafe` code).
+pub struct Node<'a>(
+    #[cfg(not(feature = "unsafe_node"))] Box<dyn NodeT + 'a>,
+    #[cfg(feature = "unsafe_node")] &'a mut dyn Widget<Data = ()>,
+    #[cfg(feature = "unsafe_node")] &'a (),
+);
 
 impl<'a> Node<'a> {
     /// Construct

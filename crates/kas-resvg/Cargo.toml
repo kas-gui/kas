@@ -1,6 +1,6 @@
 [package]
 name = "kas-resvg"
-version = "0.14.0-alpha"
+version = "0.14.1"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -31,7 +31,7 @@ thiserror = "1.0.23"
 
 [dependencies.kas]
 # We must rename this package since macros expect kas to be in scope:
-version = "0.14.0-alpha"
+version = "0.14.1"
 package = "kas-core"
 path = "../kas-core"
 features = ["spawn"]
