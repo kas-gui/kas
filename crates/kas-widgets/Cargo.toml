@@ -15,8 +15,6 @@ exclude = ["/screenshots"]
 [package.metadata.docs.rs]
 features = ["min_spec", "kas/winit", "kas/wayland"]
 rustdoc-args = ["--cfg", "doc_cfg"]
-# To build locally:
-# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --no-deps --open
 
 [features]
 # Use min_specialization (enables access key underlining for AccessLabel)

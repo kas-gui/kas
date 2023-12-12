@@ -15,8 +15,6 @@ exclude = ["/screenshots"]
 [package.metadata.docs.rs]
 features = ["kas/winit", "kas/wayland"]
 rustdoc-args = ["--cfg", "doc_cfg"]
-# To build locally:
-# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --no-deps --open
 
 [dependencies]
 kas-widgets = { version = "0.14.1", path = "../kas-widgets" }

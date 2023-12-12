@@ -1,6 +1,6 @@
 [package]
 name = "kas"
-version = "0.14.2"
+version = "0.14.3"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -14,10 +14,10 @@ exclude = ["/examples"]
 rust-version = "1.66.0"
 
 [package.metadata.docs.rs]
-features = ["nightly"]
+features = ["stable"]
 rustdoc-args = ["--cfg", "doc_cfg"]
 # To build locally:
-# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=nightly,internal_doc --all --no-deps --open
+# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=stable,internal_doc --all --no-deps --open
 
 [features]
 #########  meta / build features  #########

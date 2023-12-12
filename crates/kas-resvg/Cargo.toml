@@ -14,10 +14,7 @@ exclude = ["/screenshots"]
 
 [package.metadata.docs.rs]
 features = ["svg", "kas/winit", "kas/wayland"]
-all-features = true
 rustdoc-args = ["--cfg", "doc_cfg"]
-# To build locally:
-# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --all-features --no-deps --open
 
 [features]
 # Support SVG images
