@@ -1,6 +1,6 @@
 [package]
 name = "kas-resvg"
-version = "0.14.1"
+version = "0.14.2"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -13,6 +13,7 @@ repository = "https://github.com/kas-gui/kas"
 exclude = ["/screenshots"]
 
 [package.metadata.docs.rs]
+features = ["svg", "kas/winit", "kas/wayland"]
 all-features = true
 rustdoc-args = ["--cfg", "doc_cfg"]
 # To build locally:
