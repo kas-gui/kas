@@ -9,8 +9,8 @@ KAS GUI
 
 KAS is a stateful, pure-Rust GUI toolkit supporting:
 
-- [x] Mostly declarative UI descriptions despite stateful widgets
-- [x] Custom widgets using state for caches and input state (e.g. selection range)
+- [x] Mostly declarative UI descriptions
+- [x] Stateful widgets (e.g. selection range or a pure-UI counter)
 - [x] Virtual scrolling (list or matrix), including support for external data sources
 - [x] Theme abstraction including theme-driven animations and sizing
 - [ ] Multiple renderer backends
@@ -22,21 +22,18 @@ KAS is a stateful, pure-Rust GUI toolkit supporting:
 
 ### More
 
--   Wiki: [Getting started](https://github.com/kas-gui/kas/wiki/Getting-started),
-    [Configuration](https://github.com/kas-gui/kas/wiki/Configuration),
-    [Troubleshooting](https://github.com/kas-gui/kas/wiki/Troubleshooting)
--   [API docs](https://docs.rs/kas)
 -   Docs: [Tutorials](https://kas-gui.github.io/tutorials/),
-    [Blog](https://kas-gui.github.io/blog/),
+    [Wiki: Getting started](https://github.com/kas-gui/kas/wiki/Getting-started)
+-   Prose: [Blog](https://kas-gui.github.io/blog/),
     [Design](https://github.com/kas-gui/design)
+-   [API docs](https://docs.rs/kas)
 -   Examples: [`examples` dir](examples), [kas-gui/7guis](https://github.com/kas-gui/7guis/).
 
 
 Crates and features
 -------------------
 
-[kas] is a meta-package serving as the library's public API, yet
-containing no real code. Other crates in this repo:
+[kas] is a meta-package serving as the library's public API, but containing no real code. Other crates in this repo:
 
 -   [kas-core](https://docs.rs/kas-core): the core library
 -   [kas-widgets](https://docs.rs/kas-widgets): the main widget library
