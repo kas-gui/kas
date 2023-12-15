@@ -96,6 +96,7 @@ mod tab_stack;
 mod text;
 
 pub use crate::image::Image;
+#[cfg(feature = "image")] pub use crate::image::ImageError;
 pub use button::Button;
 pub use check_box::{CheckBox, CheckButton};
 pub use combobox::ComboBox;
