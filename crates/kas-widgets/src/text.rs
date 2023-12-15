@@ -16,12 +16,12 @@ impl_scope! {
     /// `Text` derives its contents from input data. Use [`Label`](crate::Label)
     /// instead for fixed contents.
     ///
-    /// A text label. Vertical alignment defaults to centred, horizontal
-    /// alignment depends on the script direction if not specified.
-    /// Line-wrapping is enabled by default.
+    /// See also macros [`format_data`] and [`format_value`] which construct a
+    /// `Text` widget. See also parameterizations [`StrText`], [`StringText`].
     ///
-    /// This type is generic over the text type.
-    /// See also: [`StrText`], [`StringText`].
+    /// Vertical alignment defaults to centred, horizontal alignment depends on
+    /// the script direction if not specified. Line-wrapping is enabled by
+    /// default.
     #[widget]
     pub struct Text<A, T: Default + FormattableText + 'static> {
         core: widget_core!(),
