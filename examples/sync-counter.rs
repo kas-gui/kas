@@ -27,19 +27,18 @@ impl kas::app::AppData for Count {
 }
 
 fn counter(title: &str) -> Window<Count> {
-    // Per window state: (count, step).
+    // Per window state: (count, increment).
     // We must store a local copy of the count in order to have a Data instance
     // to pass by reference.
     // (Eventually we may be able to support Adapt forwarding data by reference,
     // but this would require Rust to support object-safe GATs.)
     type Data = (Count, i32);
-    // Initial count is replaced during configure, but initial step is used.
+    // Initial count is replaced during configure, but initial increment is used.
     let initial: Data = (Count(0), 1);
 
     #[derive(Clone, Debug)]
     struct SetValue(i32);
 
-    // let slider = Slider::<_, _>::new_msg(1..=10, |data: &Data| data.1, SetValue);
     let slider = Slider::right(1..=10, |_, data: &Data| data.1).with_msg(SetValue);
     let ui = kas::column![
         format_data!(data: &Data, "Count: {}", data.0.0),
