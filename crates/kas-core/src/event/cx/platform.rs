@@ -119,6 +119,7 @@ impl EventState {
             shared,
             window,
             messages,
+            target_is_disabled: false,
             last_child: None,
             scroll: Scroll::None,
         };

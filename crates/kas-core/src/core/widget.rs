@@ -398,21 +398,10 @@ pub trait Widget: Layout {
 
     /// Internal method: send recursively
     ///
-    /// If `disabled`, widget `id` does not receive the `event`. Widget `id` is
-    /// the first disabled widget (may be an ancestor of the original target);
-    /// ancestors of `id` are not disabled.
-    ///
     /// Do not implement this method directly!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn _send(
-        &mut self,
-        cx: &mut EventCx,
-        data: &Self::Data,
-        id: Id,
-        disabled: bool,
-        event: Event,
-    ) -> IsUsed;
+    fn _send(&mut self, cx: &mut EventCx, data: &Self::Data, id: Id, event: Event) -> IsUsed;
 
     /// Internal method: replay recursively
     ///

@@ -34,7 +34,7 @@ trait NodeT {
     fn _configure(&mut self, cx: &mut ConfigCx, id: Id);
     fn _update(&mut self, cx: &mut ConfigCx);
 
-    fn _send(&mut self, cx: &mut EventCx, id: Id, disabled: bool, event: Event) -> IsUsed;
+    fn _send(&mut self, cx: &mut EventCx, id: Id, event: Event) -> IsUsed;
     fn _replay(&mut self, cx: &mut EventCx, id: Id, msg: Erased);
     fn _nav_next(
         &mut self,
@@ -94,8 +94,8 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
         self.0._update(cx, self.1);
     }
 
-    fn _send(&mut self, cx: &mut EventCx, id: Id, disabled: bool, event: Event) -> IsUsed {
-        self.0._send(cx, self.1, id, disabled, event)
+    fn _send(&mut self, cx: &mut EventCx, id: Id, event: Event) -> IsUsed {
+        self.0._send(cx, self.1, id, event)
     }
     fn _replay(&mut self, cx: &mut EventCx, id: Id, msg: Erased) {
         self.0._replay(cx, self.1, id, msg);
@@ -344,18 +344,12 @@ impl<'a> Node<'a> {
     }
 
     /// Internal method: send recursively
-    pub(crate) fn _send(
-        &mut self,
-        cx: &mut EventCx,
-        id: Id,
-        disabled: bool,
-        event: Event,
-    ) -> IsUsed {
+    pub(crate) fn _send(&mut self, cx: &mut EventCx, id: Id, event: Event) -> IsUsed {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
-                self.0._send(cx, self.1, id, disabled, event)
+                self.0._send(cx, self.1, id, event)
             } else {
-                self.0._send(cx, id, disabled, event)
+                self.0._send(cx, id, event)
             }
         }
     }

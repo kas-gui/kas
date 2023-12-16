@@ -15,14 +15,13 @@ pub fn _send<W: Events>(
     cx: &mut EventCx,
     data: &<W as Widget>::Data,
     id: Id,
-    disabled: bool,
     event: Event,
 ) -> IsUsed {
     let mut is_used = Unused;
     let do_handle_event;
 
     if id == widget.id_ref() {
-        if disabled {
+        if cx.target_is_disabled {
             return is_used;
         }
 
@@ -49,7 +48,7 @@ pub fn _send<W: Events>(
                 let translation = widget.translation();
                 let mut _found = false;
                 widget.as_node(data).for_child(index, |mut node| {
-                    is_used = node._send(cx, id.clone(), disabled, event.clone() + translation);
+                    is_used = node._send(cx, id.clone(), event.clone() + translation);
                     _found = true;
                 });
 

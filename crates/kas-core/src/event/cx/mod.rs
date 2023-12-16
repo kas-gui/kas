@@ -371,6 +371,7 @@ pub struct EventCx<'a> {
     shared: &'a mut dyn AppShared,
     window: &'a dyn WindowDataErased,
     messages: &'a mut MessageStack,
+    pub(crate) target_is_disabled: bool,
     last_child: Option<usize>,
     scroll: Scroll,
 }
@@ -531,6 +532,7 @@ impl<'a> EventCx<'a> {
         self.messages.set_base();
         log::trace!(target: "kas_core::event", "replay: id={id}: {msg:?}");
 
+        self.target_is_disabled = false;
         widget._replay(self, id, msg);
         self.last_child = None;
         self.scroll = Scroll::None;
@@ -556,8 +558,9 @@ impl<'a> EventCx<'a> {
                 log::trace!(target: "kas_core::event", "target is disabled; sending to ancestor {id}");
             }
         }
+        self.target_is_disabled = disabled;
 
-        let used = widget._send(self, id, disabled, event) == Used;
+        let used = widget._send(self, id, event) == Used;
 
         self.last_child = None;
         self.scroll = Scroll::None;

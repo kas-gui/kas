@@ -581,10 +581,9 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     cx: &mut ::kas::event::EventCx,
                     data: &Self::Data,
                     id: ::kas::Id,
-                    disabled: bool,
                     event: ::kas::event::Event,
                 ) -> ::kas::event::IsUsed {
-                    self.#inner._send(cx, data, id, disabled, event)
+                    self.#inner._send(cx, data, id, event)
                 }
 
                 fn _replay(
@@ -1123,10 +1122,9 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             cx: &mut ::kas::event::EventCx,
             data: &Self::Data,
             id: ::kas::Id,
-            disabled: bool,
             event: ::kas::event::Event,
         ) -> ::kas::event::IsUsed {
-            ::kas::impls::_send(self, cx, data, id, disabled, event)
+            ::kas::impls::_send(self, cx, data, id, event)
         }
 
         fn _replay(

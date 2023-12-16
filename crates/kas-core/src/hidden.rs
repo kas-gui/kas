@@ -181,8 +181,8 @@ impl_scope! {
 
         fn _update(&mut self, _: &mut ConfigCx, _: &A) {}
 
-        fn _send(&mut self, cx: &mut EventCx, _: &A, id: Id, disabled: bool, event: Event) -> IsUsed {
-            self.inner._send(cx, &(), id, disabled, event)
+        fn _send(&mut self, cx: &mut EventCx, _: &A, id: Id, event: Event) -> IsUsed {
+            self.inner._send(cx, &(), id, event)
         }
 
         fn _replay(&mut self, cx: &mut EventCx, _: &A, id: Id, msg: Erased) {
