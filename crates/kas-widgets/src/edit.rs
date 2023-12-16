@@ -1534,9 +1534,7 @@ impl<G: EditGuard> EditField<G> {
             EditAction::None => Used,
             EditAction::Unused => Unused,
             EditAction::Activate => {
-                if let Some(code) = code {
-                    cx.depress_with_key(self.id(), code);
-                }
+                cx.depress_with_key(self.id(), code);
                 G::activate(self, cx, data)
             }
             EditAction::Edit => {

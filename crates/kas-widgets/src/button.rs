@@ -115,9 +115,7 @@ impl_scope! {
                 if let Some(f) = self.on_press.as_ref() {
                     f(cx, data);
                 }
-                if let Some(code) = code {
-                    cx.depress_with_key(self.id(), code);
-                }
+                cx.depress_with_key(self.id(), code);
             }
         }
     }

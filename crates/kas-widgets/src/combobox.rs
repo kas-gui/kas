@@ -92,9 +92,7 @@ impl_scope! {
                         match cmd {
                             cmd if cmd.is_activate() => {
                                 self.popup.close(cx);
-                                if let Some(code) = code {
-                                    cx.depress_with_key(self.id(), code);
-                                }
+                                cx.depress_with_key(self.id(), code);
                             }
                             Command::Up => next(cx, false, true),
                             Command::Down => next(cx, false, false),
@@ -107,9 +105,7 @@ impl_scope! {
                         let action = match cmd {
                             cmd if cmd.is_activate() => {
                                 open_popup(self, cx, FocusSource::Key);
-                                if let Some(code) = code {
-                                    cx.depress_with_key(self.id(), code);
-                                }
+                                cx.depress_with_key(self.id(), code);
                                 Action::empty()
                             }
                             Command::Up => self.set_active(self.active.saturating_sub(1)),

@@ -78,9 +78,7 @@ impl_scope! {
         fn handle_messages(&mut self, cx: &mut EventCx, _: &()) {
             if let Some(kas::messages::Activate(code)) = cx.try_pop() {
                 cx.push(Select);
-                if let Some(code) = code {
-                    cx.depress_with_key(self.id(), code);
-                }
+                cx.depress_with_key(self.id(), code);
             }
         }
     }

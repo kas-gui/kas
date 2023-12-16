@@ -125,9 +125,7 @@ impl_scope! {
             match event {
                 Event::Command(cmd, code) if cmd.is_activate() => {
                     self.open_menu(cx, data, true);
-                    if let Some(code) = code {
-                        cx.depress_with_key(self.id(), code);
-                    }
+                    cx.depress_with_key(self.id(), code);
                     Used
                 }
                 Event::Command(cmd, _) => self.handle_dir_key(cx, data, cmd),
@@ -138,9 +136,7 @@ impl_scope! {
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Data) {
             if let Some(kas::messages::Activate(code)) = cx.try_pop() {
                 self.popup.open(cx, data, self.id());
-                if let Some(code) = code {
-                    cx.depress_with_key(self.id(), code);
-                }
+                cx.depress_with_key(self.id(), code);
             } else {
                 self.popup.close(cx);
             }

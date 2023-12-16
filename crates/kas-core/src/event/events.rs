@@ -275,9 +275,7 @@ impl Event {
     ) -> IsUsed {
         match self {
             Event::Command(cmd, code) if cmd.is_activate() => {
-                if let Some(code) = code {
-                    cx.depress_with_key(id, code);
-                }
+                cx.depress_with_key(id, code);
                 f(cx)
             }
             Event::PressStart { press, .. } if press.is_primary() => press.grab(id).with_cx(cx),

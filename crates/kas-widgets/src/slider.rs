@@ -375,9 +375,7 @@ impl_scope! {
                         _ => return Unused,
                     };
 
-                    if let Some(code) = code {
-                        cx.depress_with_key(self.id(), code);
-                    }
+                    cx.depress_with_key(self.id(), code);
 
                     let action = self.set_value(value);
                     if !action.is_empty() {
