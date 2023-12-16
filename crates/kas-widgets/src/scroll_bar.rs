@@ -559,13 +559,13 @@ impl_scope! {
 
     impl Events for Self {
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-            let index = cx.last_child().expect("message not sent from self");
-            if index == widget_index![self.horiz_bar] {
+            let index = cx.last_child();
+            if index == Some(widget_index![self.horiz_bar]) {
                 if let Some(ScrollMsg(x)) = cx.try_pop() {
                     let offset = Offset(x, self.inner.scroll_offset().1);
                     self.inner.set_scroll_offset(cx, offset);
                 }
-            } else if index == widget_index![self.vert_bar] {
+            } else if index == Some(widget_index![self.vert_bar]) {
                 if let Some(ScrollMsg(y)) = cx.try_pop() {
                     let offset = Offset(self.inner.scroll_offset().0, y);
                     self.inner.set_scroll_offset(cx, offset);
