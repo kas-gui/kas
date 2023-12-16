@@ -310,20 +310,35 @@ impl Event {
 
     /// Can the event be received by [`Events::handle_event`] during unwinding?
     ///
-    /// Events which may be sent to the widget under the mouse or to the
-    /// keyboard navigation target may be acted on by an ancestor if unused.
-    /// Other events may not be; e.g. [`Event::PressMove`] and
-    /// [`Event::PressEnd`] are only received by the widget requesting them
-    /// while [`Event::LostKeyFocus`] (and similar events) are only sent to a
-    /// specific widget.
+    /// Some events are sent to the widget with navigation focus (e.g.
+    /// [`Event::Command`]). Others are sent to the widget under the mouse (e.g.
+    /// [`Event::PressStart`]). All these events may be "reused" by an ancestor
+    /// widget if not [`Used`] by the original target.
+    ///
+    /// Other events are sent to a specific widget as a result of a request
+    /// (e.g. [`Event::Key`], [`Event::PressEnd`]), or as a notification of
+    /// focus change (e.g. [`Event::LostKeyFocus`]). These events may never be
+    /// "reused".
+    ///
+    /// Note: this could alternatively be seen as a property of the addressing
+    /// mechanism, currently just an [`Id`].
     pub fn is_reusable(&self) -> bool {
         use Event::*;
         match self {
-            Key(_, _) => false,
-            Command(_, _) | Scroll(_) | Pan { .. } => true,
+            // Events sent to navigation focus
+            Command(_, _) => true,
+
+            // Events sent to mouse focus
+            Scroll(_) | Pan { .. } => true,
             CursorMove { .. } | PressStart { .. } => true,
+
+            // Events sent to requester
+            Key(_, _) => false,
             PressMove { .. } | PressEnd { .. } => false,
-            Timer(_) | PopupClosed(_) => false,
+            Timer(_) => false,
+
+            // Notifications of focus/status change
+            PopupClosed(_) => false,
             NavFocus { .. } | LostNavFocus => false,
             SelFocus(_) | LostSelFocus => false,
             KeyFocus | LostKeyFocus => false,
