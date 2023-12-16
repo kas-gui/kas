@@ -10,7 +10,7 @@ use crate::event::{ConfigCx, Event, EventCx, IsUsed};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx};
-use crate::{messages::Erased, Id, Layout, NavAdvance};
+use crate::{Id, Layout, NavAdvance};
 
 #[cfg(not(feature = "unsafe_node"))]
 trait NodeT {
@@ -35,7 +35,7 @@ trait NodeT {
     fn _update(&mut self, cx: &mut ConfigCx);
 
     fn _send(&mut self, cx: &mut EventCx, id: Id, event: Event) -> IsUsed;
-    fn _replay(&mut self, cx: &mut EventCx, id: Id, msg: Erased);
+    fn _replay(&mut self, cx: &mut EventCx, id: Id);
     fn _nav_next(
         &mut self,
         cx: &mut ConfigCx,
@@ -97,8 +97,8 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
     fn _send(&mut self, cx: &mut EventCx, id: Id, event: Event) -> IsUsed {
         self.0._send(cx, self.1, id, event)
     }
-    fn _replay(&mut self, cx: &mut EventCx, id: Id, msg: Erased) {
-        self.0._replay(cx, self.1, id, msg);
+    fn _replay(&mut self, cx: &mut EventCx, id: Id) {
+        self.0._replay(cx, self.1, id);
     }
     fn _nav_next(
         &mut self,
@@ -355,12 +355,12 @@ impl<'a> Node<'a> {
     }
 
     /// Internal method: replay recursively
-    pub(crate) fn _replay(&mut self, cx: &mut EventCx, id: Id, msg: Erased) {
+    pub(crate) fn _replay(&mut self, cx: &mut EventCx, id: Id) {
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
-                self.0._replay(cx, self.1, id, msg);
+                self.0._replay(cx, self.1, id);
             } else {
-                self.0._replay(cx, id, msg);
+                self.0._replay(cx, id);
             }
         }
     }

@@ -533,7 +533,8 @@ impl<'a> EventCx<'a> {
         log::trace!(target: "kas_core::event", "replay: id={id}: {msg:?}");
 
         self.target_is_disabled = false;
-        widget._replay(self, id, msg);
+        self.push_erased(msg);
+        widget._replay(self, id);
         self.last_child = None;
         self.scroll = Scroll::None;
     }

@@ -591,9 +591,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     cx: &mut ::kas::event::EventCx,
                     data: &Self::Data,
                     id: ::kas::Id,
-                    msg: ::kas::messages::Erased,
                 ) {
-                    self.#inner._replay(cx, data, id, msg);
+                    self.#inner._replay(cx, data, id);
                 }
 
                 fn _nav_next(
@@ -1129,9 +1128,8 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             cx: &mut ::kas::event::EventCx,
             data: &Self::Data,
             id: ::kas::Id,
-            msg: ::kas::messages::Erased,
         ) {
-            ::kas::impls::_replay(self, cx, data, id, msg);
+            ::kas::impls::_replay(self, cx, data, id);
         }
 
         fn _nav_next(

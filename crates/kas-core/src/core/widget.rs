@@ -8,7 +8,7 @@
 use super::{Layout, Node};
 #[allow(unused)] use crate::event::Used;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused};
-use crate::{messages::Erased, Id};
+use crate::Id;
 use kas_macros::autoimpl;
 
 #[allow(unused)] use kas_macros as macros;
@@ -402,13 +402,13 @@ pub trait Widget: Layout {
 
     /// Internal method: replay recursively
     ///
-    /// Behaves as if an event had been sent to `id`, then the widget had pushed
-    /// `msg` to the message stack. Widget `id` or any ancestor may handle.
+    /// Traverses the widget tree to `id`, then unwinds.
+    /// It is expected that some message is available on the stack.
     ///
     /// Do not implement this method directly!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn _replay(&mut self, cx: &mut EventCx, data: &Self::Data, id: Id, msg: Erased);
+    fn _replay(&mut self, cx: &mut EventCx, data: &Self::Data, id: Id);
 
     /// Internal method: search for the previous/next navigation target
     ///
