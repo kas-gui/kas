@@ -13,7 +13,6 @@ use kas::event::Key;
 use kas::prelude::*;
 use kas::resvg::Svg;
 use kas::theme::{MarginStyle, ThemeControl};
-use kas::widgets::adapt::AdaptEvents;
 use kas::widgets::*;
 
 #[derive(Debug, Default)]
@@ -287,7 +286,7 @@ fn editor() -> Box<dyn Widget<Data = AppData>> {
         }
     }
 
-    let doc = r"# Formatted text editing
+    const DOC: &'static str = r"# Formatted text editing
 
 Demonstration of *as-you-type* formatting from **Markdown**.
 
@@ -312,7 +311,16 @@ Demonstration of *as-you-type* formatting from **Markdown**.
                 // NOTE: non_navigable! is needed here to avoid requiring a
                 // nav_next impl on list! (not generable with non-static
                 // direction). TODO: find a more general solution.
-                list!(self.dir, [self.editor, non_navigable!(self.label)]),
+                list!(self.dir, [self.editor, non_navigable!(
+                    ScrollLabel::new(Markdown::new(DOC).unwrap())
+                        .on_configure(|cx, label| {
+                            cx.push(label.id(), SetLabelId(label.id()));
+                        })
+                        .on_message(|cx, label, text| {
+                            let act = label.set_text(text);
+                            cx.action(label, act);
+                        }).map_any()
+                )]),
             ];
         }]
         struct {
@@ -323,16 +331,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
                 EditBox::new(Guard)
                     .with_multi_line(true)
                     .with_lines(4, 12)
-                    .with_text(doc),
-            #[widget(&())] label: AdaptEvents<ScrollLabel<Markdown>> =
-                ScrollLabel::new(Markdown::new(doc).unwrap())
-                .on_configure(|cx, label| {
-                    cx.push(label.id(), SetLabelId(label.id()));
-                })
-                .on_message(|cx, label, text| {
-                    let act = label.set_text(text);
-                    cx.action(label, act);
-                }),
+                    .with_text(DOC),
         }
 
         impl Events for Self {
