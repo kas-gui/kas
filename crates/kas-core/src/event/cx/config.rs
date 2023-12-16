@@ -9,9 +9,11 @@ use super::PendingNavFocus;
 use crate::event::{EventState, FocusSource};
 use crate::geom::{Rect, Size};
 use crate::layout::AlignPair;
+use crate::messages::Erased;
 use crate::text::TextApi;
 use crate::theme::{Feature, SizeCx, TextClass, ThemeSize};
 use crate::{Id, Node};
+use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
 #[allow(unused)] use crate::{event::Event, Events, Layout};
@@ -86,6 +88,28 @@ impl<'a> ConfigCx<'a> {
     #[inline]
     pub fn update(&mut self, mut widget: Node<'_>) {
         widget._update(self);
+    }
+
+    /// Push a message (replay)
+    ///
+    /// Unlike [`EventCx::push`], this is not handled while unwinding
+    /// from event sending, but via a fresh traversal of the widget tree.
+    ///
+    /// TODO: `id` should not be part of the function signature?
+    pub fn push<M: Debug + 'static>(&mut self, id: Id, msg: M) {
+        self.send(id, msg);
+    }
+
+    /// Push a type-erased message (replay)
+    ///
+    /// Unlike [`EventCx::push_erased`], this is not handled while unwinding
+    /// from event sending, but via a fresh traversal of the widget tree.
+    ///
+    /// The message may be [popped](EventCx::try_pop) or
+    /// [observed](EventCx::try_observe) from [`Events::handle_messages`]
+    /// by the widget itself, its parent, or any ancestor.
+    pub fn push_erased(&mut self, id: Id, msg: Erased) {
+        self.send_erased(id, msg);
     }
 
     /// Align a feature's rect
