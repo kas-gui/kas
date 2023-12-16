@@ -574,6 +574,16 @@ impl EventState {
         self.hover_icon = icon;
     }
 
+    /// Send a message to `id`
+    pub fn send<M: Debug + 'static>(&mut self, id: Id, msg: M) {
+        self.send_erased(id, Erased::new(msg));
+    }
+
+    /// Send an erased message to `id`
+    pub fn send_erased(&mut self, id: Id, msg: Erased) {
+        self.send_queue.push_back((id, msg));
+    }
+
     /// Asynchronously push a message to the stack via a [`Future`]
     ///
     /// The future is polled after event handling and after drawing and is able

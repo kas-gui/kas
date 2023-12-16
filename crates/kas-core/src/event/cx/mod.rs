@@ -212,6 +212,8 @@ pub struct EventState {
     popups: SmallVec<[(WindowId, crate::PopupDescriptor, Option<Id>); 16]>,
     popup_removed: SmallVec<[(Id, WindowId); 16]>,
     time_updates: Vec<(Instant, Id, u64)>,
+    // Set of messages awaiting sending
+    send_queue: VecDeque<(Id, Erased)>,
     // Set of futures of messages together with id of sending widget
     fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Erased>>>)>,
     // Widget requiring update (and optionally configure)
