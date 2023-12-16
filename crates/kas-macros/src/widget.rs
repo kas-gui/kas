@@ -766,28 +766,25 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             (false, None) => quote! {},
             (true, None) => quote! {
                 #[inline]
-                fn handle_hover(&mut self, cx: &mut EventCx, _: bool) -> ::kas::event::IsUsed {
+                fn handle_hover(&mut self, cx: &mut EventCx, _: bool) {
                     cx.redraw(self);
-                    ::kas::event::Used
                 }
             },
             (false, Some(icon_expr)) => quote! {
                 #[inline]
-                fn handle_hover(&mut self, cx: &mut EventCx, state: bool) -> ::kas::event::IsUsed {
+                fn handle_hover(&mut self, cx: &mut EventCx, state: bool) {
                     if state {
                         cx.set_hover_cursor(#icon_expr);
                     }
-                    ::kas::event::Used
                 }
             },
             (true, Some(icon_expr)) => quote! {
                 #[inline]
-                fn handle_hover(&mut self, cx: &mut EventCx, state: bool) -> ::kas::event::IsUsed {
+                fn handle_hover(&mut self, cx: &mut EventCx, state: bool) {
                     cx.redraw(self);
                     if state {
                         cx.set_hover_cursor(#icon_expr);
                     }
-                    ::kas::event::Used
                 }
             },
         };

@@ -27,7 +27,8 @@ pub fn _send<W: Events>(
 
         match &event {
             Event::MouseHover(state) => {
-                is_used |= widget.handle_hover(cx, *state);
+                widget.handle_hover(cx, *state);
+                return Used;
             }
             Event::NavFocus(FocusSource::Key) => {
                 cx.set_scroll(Scroll::Rect(widget.rect()));
