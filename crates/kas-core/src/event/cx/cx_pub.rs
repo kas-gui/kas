@@ -380,7 +380,12 @@ impl EventState {
     /// Does nothing when `code` is `None`.
     pub fn depress_with_key(&mut self, id: Id, code: impl Into<Option<PhysicalKey>>) {
         fn inner(state: &mut EventState, id: Id, code: PhysicalKey) {
-            if state.key_depress.values().any(|v| *v == id) {
+            if state
+                .key_depress
+                .get(&code)
+                .map(|target| *target == id)
+                .unwrap_or(false)
+            {
                 return;
             }
 
