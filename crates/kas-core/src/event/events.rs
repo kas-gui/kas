@@ -325,8 +325,9 @@ impl Event {
     pub fn is_reusable(&self) -> bool {
         use Event::*;
         match self {
-            // Events sent to navigation focus
-            Command(_, _) => true,
+            // Events sent to navigation focus given some code,
+            // otherwise sent to a specific target.
+            Command(_, code) => code.is_some(),
 
             // Events sent to mouse focus
             Scroll(_) | Pan { .. } => true,
