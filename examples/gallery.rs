@@ -310,7 +310,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 
     let ui = kas::float![
         pack!(right top, Button::label_msg("↻", MsgDirection).map_any()),
-        List::new(kas::collection![
+        Splitter::new(kas::collection![
             EditBox::new(Guard)
                 .with_multi_line(true)
                 .with_lines(4, 12)

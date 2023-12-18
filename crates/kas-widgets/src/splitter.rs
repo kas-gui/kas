@@ -33,38 +33,51 @@ impl_scope! {
     }
 
     impl Self where D: Default {
-        /// Construct a new instance
+        /// Construct a new instance with default-constructed direction
         #[inline]
         pub fn new(widgets: C) -> Self {
             Self::new_dir(widgets, Default::default())
         }
     }
     impl<C: Collection> Splitter<C, kas::dir::Left> {
-        /// Construct a new instance
+        /// Construct a new instance with fixed direction
         #[inline]
         pub fn left(widgets: C) -> Self {
             Self::new(widgets)
         }
     }
     impl<C: Collection> Splitter<C, kas::dir::Right> {
-        /// Construct a new instance
+        /// Construct a new instance with fixed direction
         #[inline]
         pub fn right(widgets: C) -> Self {
             Self::new(widgets)
         }
     }
     impl<C: Collection> Splitter<C, kas::dir::Up> {
-        /// Construct a new instance
+        /// Construct a new instance with fixed direction
         #[inline]
         pub fn up(widgets: C) -> Self {
             Self::new(widgets)
         }
     }
     impl<C: Collection> Splitter<C, kas::dir::Down> {
-        /// Construct a new instance
+        /// Construct a new instance with fixed direction
         #[inline]
         pub fn down(widgets: C) -> Self {
             Self::new(widgets)
+        }
+    }
+
+    impl<C: Collection> Splitter<C, Direction> {
+        /// Set the direction of contents
+        pub fn set_direction(&mut self, direction: Direction) -> Action {
+            if direction == self.direction {
+                return Action::empty();
+            }
+
+            self.direction = direction;
+            // Note: most of the time SET_RECT would be enough, but margins can be different
+            Action::RESIZE
         }
     }
 

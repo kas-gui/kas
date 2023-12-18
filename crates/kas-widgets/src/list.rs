@@ -156,7 +156,7 @@ impl_scope! {
     where
         D: Default,
     {
-        /// Construct a new instance
+        /// Construct a new instance with default-constructed direction
         ///
         /// This constructor is available where the direction is determined by the
         /// type: for `D: Directional + Default`. In other cases, use
@@ -207,28 +207,28 @@ impl_scope! {
     }
 
     impl<C: Collection> List<C, kas::dir::Left> {
-        /// Construct a new instance
+        /// Construct a new instance with fixed direction
         #[inline]
         pub fn left(widgets: C) -> Self {
             Self::new(widgets)
         }
     }
     impl<C: Collection> List<C, kas::dir::Right> {
-        /// Construct a new instance
+        /// Construct a new instance with fixed direction
         #[inline]
         pub fn right(widgets: C) -> Self {
             Self::new(widgets)
         }
     }
     impl<C: Collection> List<C, kas::dir::Up> {
-        /// Construct a new instance
+        /// Construct a new instance with fixed direction
         #[inline]
         pub fn up(widgets: C) -> Self {
             Self::new(widgets)
         }
     }
     impl<C: Collection> List<C, kas::dir::Down> {
-        /// Construct a new instance
+        /// Construct a new instance with fixed direction
         #[inline]
         pub fn down(widgets: C) -> Self {
             Self::new(widgets)
