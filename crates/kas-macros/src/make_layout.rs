@@ -3,6 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
+use crate::collection::{NameGenerator, StorIdent};
 use crate::widget;
 use proc_macro2::{Span, TokenStream as Toks};
 use proc_macro_error::emit_error;
@@ -10,7 +11,7 @@ use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::{braced, bracketed, parenthesized};
-use syn::{Expr, Ident, Lifetime, LitInt, LitStr, Member, Token, Type};
+use syn::{Expr, Ident, LitInt, LitStr, Member, Token, Type};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -374,26 +375,6 @@ impl Tree {
 }
 
 #[derive(Debug)]
-enum StorIdent {
-    Named(Ident, Span),
-    Generated(String, Span),
-}
-impl From<Lifetime> for StorIdent {
-    fn from(lt: Lifetime) -> StorIdent {
-        let span = lt.span();
-        StorIdent::Named(lt.ident, span)
-    }
-}
-impl ToTokens for StorIdent {
-    fn to_tokens(&self, toks: &mut Toks) {
-        match self {
-            StorIdent::Named(ident, _) => ident.to_tokens(toks),
-            StorIdent::Generated(string, span) => Ident::new(string, *span).to_tokens(toks),
-        }
-    }
-}
-
-#[derive(Debug)]
 enum Layout {
     Align(Box<Layout>, AlignHints),
     AlignSingle(ExprMember, AlignHints),
@@ -532,24 +513,6 @@ impl GridDimensions {
         self.rows = self.rows.max(cell.row_end);
         if cell.row_end - cell.row > 1 {
             self.row_spans += 1;
-        }
-    }
-}
-
-#[derive(Default)]
-struct NameGenerator(usize);
-impl NameGenerator {
-    fn next(&mut self) -> StorIdent {
-        let name = format!("_stor{}", self.0);
-        self.0 += 1;
-        StorIdent::Generated(name, Span::call_site())
-    }
-
-    fn parse_or_next(&mut self, input: ParseStream) -> Result<StorIdent> {
-        if input.peek(Lifetime) {
-            Ok(input.parse::<Lifetime>()?.into())
-        } else {
-            Ok(self.next())
         }
     }
 }
