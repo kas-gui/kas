@@ -263,21 +263,25 @@ fn editor() -> Box<dyn Widget<Data = AppData>> {
     #[derive(Clone, Debug)]
     struct SetLabelId(Id);
 
-    #[derive(Debug, Default)]
-    struct GuardData {
-        disabled: bool,
-        label_id: Id,
+    impl_scope! {
+        #[derive(Debug)]
+        #[impl_default]
+        struct Data {
+            dir: Direction = Direction::Up,
+            disabled: bool,
+            label_id: Id,
+        }
     }
 
     struct Guard;
     impl EditGuard for Guard {
-        type Data = GuardData;
+        type Data = Data;
 
-        fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &GuardData) {
+        fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &Data) {
             cx.set_disabled(edit.id(), data.disabled);
         }
 
-        fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, data: &GuardData) {
+        fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Data) {
             let result = Markdown::new(edit.get_str());
             let act = edit.set_error_state(result.is_err());
             cx.action(edit, act);
@@ -304,56 +308,40 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 ```
 ";
 
-    Box::new(impl_anon! {
-        #[widget{
-            layout = float! [
-                pack!(right top, Button::label_msg("↻", MsgDirection).map_any()),
-                // NOTE: non_navigable! is needed here to avoid requiring a
-                // nav_next impl on list! (not generable with non-static
-                // direction). TODO: find a more general solution.
-                list!(self.dir, [self.editor, non_navigable!(
-                    ScrollLabel::new(Markdown::new(DOC).unwrap())
-                        .on_configure(|cx, label| {
-                            cx.push(label.id(), SetLabelId(label.id()));
-                        })
-                        .on_message(|cx, label, text| {
-                            let act = label.set_text(text);
-                            cx.action(label, act);
-                        }).map_any()
-                )]),
-            ];
-        }]
-        struct {
-            core: widget_core!(),
-            dir: Direction = Direction::Up,
-            guard_data: GuardData = GuardData::default(),
-            #[widget(&self.guard_data)] editor: EditBox<Guard> =
-                EditBox::new(Guard)
-                    .with_multi_line(true)
-                    .with_lines(4, 12)
-                    .with_text(DOC),
-        }
+    let ui = kas::float![
+        pack!(right top, Button::label_msg("↻", MsgDirection).map_any()),
+        List::new(kas::collection![
+            EditBox::new(Guard)
+                .with_multi_line(true)
+                .with_lines(4, 12)
+                .with_text(DOC),
+            ScrollLabel::new(Markdown::new(DOC).unwrap())
+                .on_configure(|cx, label| {
+                    cx.push(label.id(), SetLabelId(label.id()));
+                })
+                .on_message(|cx, label, text| {
+                    let act = label.set_text(text);
+                    cx.action(label, act);
+                })
+                .map_any()
+        ])
+        .on_update(|cx, list, data: &Data| {
+            let act = list.set_direction(data.dir);
+            cx.action(list, act);
+        }),
+    ];
 
-        impl Events for Self {
-            type Data = AppData;
+    let ui = Adapt::new(ui, Data::default())
+        .on_update(|_, data, app_data: &AppData| data.disabled = app_data.disabled)
+        .on_message(|_, data, MsgDirection| {
+            data.dir = match data.dir {
+                Direction::Up => Direction::Right,
+                _ => Direction::Up,
+            };
+        })
+        .on_message(|_, data, SetLabelId(id)| data.label_id = id);
 
-            fn update(&mut self, _: &mut ConfigCx, data: &AppData) {
-                self.guard_data.disabled = data.disabled;
-            }
-
-            fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-                if let Some(MsgDirection) = cx.try_pop() {
-                    self.dir = match self.dir {
-                        Direction::Up => Direction::Right,
-                        _ => Direction::Up,
-                    };
-                    cx.resize(self);
-                } else if let Some(SetLabelId(id)) = cx.try_pop() {
-                    self.guard_data.label_id = id;
-                }
-            }
-        }
-    })
+    Box::new(ui)
 }
 
 fn filter_list() -> Box<dyn Widget<Data = AppData>> {
