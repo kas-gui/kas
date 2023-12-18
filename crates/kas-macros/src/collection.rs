@@ -8,7 +8,9 @@
 use proc_macro2::{Span, TokenStream as Toks};
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Parse, ParseStream, Result};
+use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
+use syn::token::Comma;
 use syn::{Expr, Ident, Lifetime, LitStr, Token};
 
 #[derive(Debug)]
@@ -85,71 +87,74 @@ impl Parse for Collection {
     }
 }
 
-#[derive(Default)]
-pub struct StorageFields {
-    pub ty_toks: Toks,
-    pub def_toks: Toks,
-}
-
 impl Collection {
-    fn storage_fields(
-        &self,
-        children: &mut Vec<Toks>,
-        no_data: bool,
-        data_ty: &Toks,
-    ) -> StorageFields {
-        let (mut ty_toks, mut def_toks) = (Toks::new(), Toks::new());
-        for item in &self.0 {
+    pub fn expand(&self) -> Toks {
+        let name = Ident::new("_Collection", Span::call_site());
+
+        let mut data_ty = None;
+        for (index, item) in self.0.iter().enumerate() {
+            if let Item::Widget(_, expr) = item {
+                let ty = Ident::new(&format!("_W{}", index), expr.span());
+                data_ty = Some(quote! {<#ty as ::kas::Widget>::Data});
+                break;
+            }
+        }
+
+        let mut item_names = Vec::with_capacity(self.0.len());
+        let mut ty_generics = Punctuated::<Ident, Comma>::new();
+        let mut stor_ty = quote! {};
+        let mut stor_def = quote! {};
+        for (index, item) in self.0.iter().enumerate() {
             match item {
                 Item::Label(stor, text) => {
-                    children.push(stor.to_token_stream());
+                    item_names.push(stor.to_token_stream());
                     let span = text.span();
-                    if no_data {
-                        ty_toks.append_all(quote! { #stor: ::kas::hidden::StrLabel, });
-                        def_toks.append_all(
-                            quote_spanned! {span=> #stor: ::kas::hidden::StrLabel::new(#text), },
-                        );
-                    } else {
-                        ty_toks.append_all(
+                    if let Some(ref data_ty) = data_ty {
+                        stor_ty.append_all(
                             quote! { #stor: ::kas::hidden::MapAny<#data_ty, ::kas::hidden::StrLabel>, },
                         );
-                        def_toks.append_all(
+                        stor_def.append_all(
                             quote_spanned! {span=> #stor: ::kas::hidden::MapAny::new(::kas::hidden::StrLabel::new(#text)), },
+                        );
+                    } else {
+                        stor_ty.append_all(quote! { #stor: ::kas::hidden::StrLabel, });
+                        stor_def.append_all(
+                            quote_spanned! {span=> #stor: ::kas::hidden::StrLabel::new(#text), },
                         );
                     }
                 }
                 Item::Widget(stor, expr) => {
-                    children.push(stor.to_token_stream());
-                    ty_toks.append_all(quote! { #stor: Box<dyn ::kas::Widget<Data = #data_ty>>, });
                     let span = expr.span();
-                    def_toks.append_all(quote_spanned! {span=> #stor: Box::new(#expr), });
+                    item_names.push(stor.to_token_stream());
+                    let ty = Ident::new(&format!("_W{}", index), span);
+                    stor_ty.append_all(quote! { #stor: #ty, });
+                    stor_def.append_all(quote_spanned! {span=> #stor: Box::new(#expr), });
+                    ty_generics.push(ty);
                 }
             }
         }
 
-        StorageFields { ty_toks, def_toks }
-    }
+        let data_ty = data_ty
+            .map(|ty| quote! { #ty })
+            .unwrap_or_else(|| quote! { () });
 
-    pub fn expand(&self) -> Toks {
-        let any_widgets = self.0.iter().any(|item| matches!(item, Item::Widget(_, _)));
-
-        let name = Ident::new("_Collection", Span::call_site());
-        let (data_ty, impl_generics, impl_target) = if any_widgets {
-            (
-                quote! { _Data },
-                quote! { <_Data> },
-                quote! { #name <_Data> },
-            )
+        let (impl_generics, ty_generics) = if ty_generics.is_empty() {
+            (quote! {}, quote! {})
         } else {
-            (quote! { () }, quote! {}, quote! { #name })
+            let mut toks = quote! {};
+            let mut iter = ty_generics.iter();
+            if let Some(ty) = iter.next() {
+                toks = quote! { #ty: ::kas::Widget, }
+            }
+            for ty in iter {
+                toks.append_all(quote!(
+                    #ty: ::kas::Widget<Data = #data_ty>,
+                ));
+            }
+            (quote! { <#toks> }, quote! { <#ty_generics> })
         };
 
-        let mut children = Vec::new();
-        let stor_defs = self.storage_fields(&mut children, !any_widgets, &data_ty);
-        let stor_ty = &stor_defs.ty_toks;
-        let stor_def = &stor_defs.def_toks;
-
-        let len = children.len();
+        let len = item_names.len();
         let is_empty = match len {
             0 => quote! { true },
             _ => quote! { false },
@@ -158,7 +163,7 @@ impl Collection {
         let mut get_layout_rules = quote! {};
         let mut get_mut_layout_rules = quote! {};
         let mut for_node_rules = quote! {};
-        for (index, path) in children.iter().enumerate() {
+        for (index, path) in item_names.iter().enumerate() {
             get_layout_rules.append_all(quote! {
                 #index => Some(&self.#path),
             });
@@ -175,7 +180,7 @@ impl Collection {
                 #stor_ty
             }
 
-            impl #impl_generics ::kas::Collection for #impl_target {
+            impl #impl_generics ::kas::Collection for #name #ty_generics {
                 type Data = #data_ty;
 
                 fn is_empty(&self) -> bool { #is_empty }
