@@ -260,23 +260,33 @@ fn editor() -> Box<dyn Widget<Data = AppData>> {
     #[derive(Clone, Debug)]
     struct MsgDirection;
 
+    #[derive(Clone, Debug)]
+    struct SetLabelId(Id);
+
+    #[derive(Debug, Default)]
+    struct GuardData {
+        disabled: bool,
+        label_id: Id,
+    }
+
     struct Guard;
     impl EditGuard for Guard {
-        type Data = AppData;
+        type Data = GuardData;
 
-        fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &AppData) {
+        fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &GuardData) {
             cx.set_disabled(edit.id(), data.disabled);
         }
 
-        fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &AppData) {
+        fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, data: &GuardData) {
             let result = Markdown::new(edit.get_str());
             let act = edit.set_error_state(result.is_err());
             cx.action(edit, act);
-            cx.push(result.unwrap_or_else(|err| Markdown::new(&format!("{err}")).unwrap()));
+            let text = result.unwrap_or_else(|err| Markdown::new(&format!("{err}")).unwrap());
+            cx.send(data.label_id.clone(), text);
         }
     }
 
-    let doc = r"# Formatted text editing
+    const DOC: &'static str = r"# Formatted text editing
 
 Demonstration of *as-you-type* formatting from **Markdown**.
 
@@ -301,23 +311,35 @@ Demonstration of *as-you-type* formatting from **Markdown**.
                 // NOTE: non_navigable! is needed here to avoid requiring a
                 // nav_next impl on list! (not generable with non-static
                 // direction). TODO: find a more general solution.
-                list!(self.dir, [self.editor, non_navigable!(self.label)]),
+                list!(self.dir, [self.editor, non_navigable!(
+                    ScrollLabel::new(Markdown::new(DOC).unwrap())
+                        .on_configure(|cx, label| {
+                            cx.push(label.id(), SetLabelId(label.id()));
+                        })
+                        .on_message(|cx, label, text| {
+                            let act = label.set_text(text);
+                            cx.action(label, act);
+                        }).map_any()
+                )]),
             ];
         }]
         struct {
             core: widget_core!(),
             dir: Direction = Direction::Up,
-            #[widget] editor: EditBox<Guard> =
+            guard_data: GuardData = GuardData::default(),
+            #[widget(&self.guard_data)] editor: EditBox<Guard> =
                 EditBox::new(Guard)
                     .with_multi_line(true)
                     .with_lines(4, 12)
-                    .with_text(doc),
-            #[widget(&())] label: ScrollLabel<Markdown> =
-                ScrollLabel::new(Markdown::new(doc).unwrap()),
+                    .with_text(DOC),
         }
 
         impl Events for Self {
             type Data = AppData;
+
+            fn update(&mut self, _: &mut ConfigCx, data: &AppData) {
+                self.guard_data.disabled = data.disabled;
+            }
 
             fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
                 if let Some(MsgDirection) = cx.try_pop() {
@@ -326,9 +348,8 @@ Demonstration of *as-you-type* formatting from **Markdown**.
                         _ => Direction::Up,
                     };
                     cx.resize(self);
-                } else if let Some(md) = cx.try_pop::<Markdown>() {
-                    let act = self.label.set_text(md);
-                    cx.action(self, act);
+                } else if let Some(SetLabelId(id)) = cx.try_pop() {
+                    self.guard_data.label_id = id;
                 }
             }
         }

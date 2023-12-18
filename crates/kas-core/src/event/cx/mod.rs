@@ -212,6 +212,8 @@ pub struct EventState {
     popups: SmallVec<[(WindowId, crate::PopupDescriptor, Option<Id>); 16]>,
     popup_removed: SmallVec<[(Id, WindowId); 16]>,
     time_updates: Vec<(Instant, Id, u64)>,
+    // Set of messages awaiting sending
+    send_queue: VecDeque<(Id, Erased)>,
     // Set of futures of messages together with id of sending widget
     fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Erased>>>)>,
     // Widget requiring update (and optionally configure)
@@ -369,6 +371,7 @@ pub struct EventCx<'a> {
     shared: &'a mut dyn AppShared,
     window: &'a dyn WindowDataErased,
     messages: &'a mut MessageStack,
+    pub(crate) target_is_disabled: bool,
     last_child: Option<usize>,
     scroll: Scroll,
 }
@@ -529,7 +532,9 @@ impl<'a> EventCx<'a> {
         self.messages.set_base();
         log::trace!(target: "kas_core::event", "replay: id={id}: {msg:?}");
 
-        widget._replay(self, id, msg);
+        self.target_is_disabled = false;
+        self.push_erased(msg);
+        widget._replay(self, id);
         self.last_child = None;
         self.scroll = Scroll::None;
     }
@@ -554,8 +559,9 @@ impl<'a> EventCx<'a> {
                 log::trace!(target: "kas_core::event", "target is disabled; sending to ancestor {id}");
             }
         }
+        self.target_is_disabled = disabled;
 
-        let used = widget._send(self, id, disabled, event) == Used;
+        let used = widget._send(self, id, event) == Used;
 
         self.last_child = None;
         self.scroll = Scroll::None;

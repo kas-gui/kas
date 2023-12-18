@@ -15,7 +15,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::{Text, TextApi};
 use crate::theme::{DrawCx, SizeCx, TextClass};
-use crate::{messages::Erased, Id, Layout, NavAdvance, Node, Widget};
+use crate::{Id, Layout, NavAdvance, Node, Widget};
 use kas_macros::{autoimpl, impl_scope};
 
 impl_scope! {
@@ -181,12 +181,12 @@ impl_scope! {
 
         fn _update(&mut self, _: &mut ConfigCx, _: &A) {}
 
-        fn _send(&mut self, cx: &mut EventCx, _: &A, id: Id, disabled: bool, event: Event) -> IsUsed {
-            self.inner._send(cx, &(), id, disabled, event)
+        fn _send(&mut self, cx: &mut EventCx, _: &A, id: Id, event: Event) -> IsUsed {
+            self.inner._send(cx, &(), id, event)
         }
 
-        fn _replay(&mut self, cx: &mut EventCx, _: &A, id: Id, msg: Erased) {
-            self.inner._replay(cx, &(), id, msg);
+        fn _replay(&mut self, cx: &mut EventCx, _: &A, id: Id) {
+            self.inner._replay(cx, &(), id);
         }
 
         fn _nav_next(

@@ -799,14 +799,13 @@ impl_scope! {
             cx: &mut EventCx,
             data: &A,
             id: Id,
-            disabled: bool,
             event: Event,
         ) -> IsUsed {
-            kas::impls::_send(self, cx, data, id, disabled, event)
+            kas::impls::_send(self, cx, data, id, event)
         }
 
-        fn _replay(&mut self, cx: &mut EventCx, data: &A, id: Id, msg: kas::messages::Erased) {
-            kas::impls::_replay(self, cx, data, id, msg);
+        fn _replay(&mut self, cx: &mut EventCx, data: &A, id: Id) {
+            kas::impls::_replay(self, cx, data, id);
         }
 
         // Non-standard implementation to allow mapping new children

@@ -8,7 +8,7 @@
 use super::{Layout, Node};
 #[allow(unused)] use crate::event::Used;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused};
-use crate::{messages::Erased, Id};
+use crate::Id;
 use kas_macros::autoimpl;
 
 #[allow(unused)] use kas_macros as macros;
@@ -140,13 +140,11 @@ pub trait Events: Widget + Sized {
 
     /// Mouse focus handler
     ///
-    /// Called on [`Event::MouseHover`] before [`Self::handle_event`].
-    /// `state` is true when hovered.
+    /// Called when mouse hover state changes.
     ///
     /// When the [`#widget`] macro properties `hover_highlight` or `cursor_icon`
     /// are used, an instance of this method is generated. Otherwise, the
-    /// default implementation of this method does nothing and equivalent
-    /// functionality could be implemented in [`Events::handle_event`] instead.
+    /// default implementation of this method does nothing.
     ///
     /// Note: to implement `hover_highlight`, simply request a redraw on
     /// focus gain and loss. To implement `cursor_icon`, call
@@ -154,9 +152,8 @@ pub trait Events: Widget + Sized {
     ///
     /// [`#widget`]: macros::widget
     #[inline]
-    fn handle_hover(&mut self, cx: &mut EventCx, state: bool) -> IsUsed {
+    fn handle_hover(&mut self, cx: &mut EventCx, state: bool) {
         let _ = (cx, state);
-        Unused
     }
 
     /// Handle an [`Event`]
@@ -398,31 +395,20 @@ pub trait Widget: Layout {
 
     /// Internal method: send recursively
     ///
-    /// If `disabled`, widget `id` does not receive the `event`. Widget `id` is
-    /// the first disabled widget (may be an ancestor of the original target);
-    /// ancestors of `id` are not disabled.
-    ///
     /// Do not implement this method directly!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn _send(
-        &mut self,
-        cx: &mut EventCx,
-        data: &Self::Data,
-        id: Id,
-        disabled: bool,
-        event: Event,
-    ) -> IsUsed;
+    fn _send(&mut self, cx: &mut EventCx, data: &Self::Data, id: Id, event: Event) -> IsUsed;
 
     /// Internal method: replay recursively
     ///
-    /// Behaves as if an event had been sent to `id`, then the widget had pushed
-    /// `msg` to the message stack. Widget `id` or any ancestor may handle.
+    /// Traverses the widget tree to `id`, then unwinds.
+    /// It is expected that some message is available on the stack.
     ///
     /// Do not implement this method directly!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn _replay(&mut self, cx: &mut EventCx, data: &Self::Data, id: Id, msg: Erased);
+    fn _replay(&mut self, cx: &mut EventCx, data: &Self::Data, id: Id);
 
     /// Internal method: search for the previous/next navigation target
     ///

@@ -52,6 +52,7 @@ impl EventState {
             popups: Default::default(),
             popup_removed: Default::default(),
             time_updates: vec![],
+            send_queue: Default::default(),
             fut_messages: vec![],
             pending_update: None,
             pending_sel_focus: None,
@@ -118,6 +119,7 @@ impl EventState {
             shared,
             window,
             messages,
+            target_is_disabled: false,
             last_child: None,
             scroll: Scroll::None,
         };
@@ -220,6 +222,11 @@ impl EventState {
             while let Some((id, cmd)) = cx.pending_cmds.pop_front() {
                 log::trace!(target: "kas_core::event", "sending pending command {cmd:?} to {id}");
                 cx.send_event(win.as_node(data), id, Event::Command(cmd, None));
+            }
+
+            while let Some((id, msg)) = cx.send_queue.pop_front() {
+                log::trace!(target: "kas_core::event", "sending message {msg:?} to {id}");
+                cx.replay(win.as_node(data), id, msg);
             }
 
             // Poll futures almost last. This means that any newly pushed future

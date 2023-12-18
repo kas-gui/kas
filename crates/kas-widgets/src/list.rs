@@ -143,14 +143,15 @@ impl_scope! {
             if self.message_handlers.is_empty() {
                 return;
             }
-            let mut update = false;
-            let mut cx = AdaptEventCx::new(cx, self.id());
-            let index = cx.last_child().expect("message not sent from self");
-            for handler in self.message_handlers.iter() {
-                update |= handler(&mut cx, data, index);
-            }
-            if update {
-                cx.update(self.as_node(data));
+            if let Some(index) = cx.last_child() {
+                let mut update = false;
+                let mut cx = AdaptEventCx::new(cx, self.id());
+                for handler in self.message_handlers.iter() {
+                    update |= handler(&mut cx, data, index);
+                }
+                if update {
+                    cx.update(self.as_node(data));
+                }
             }
         }
     }

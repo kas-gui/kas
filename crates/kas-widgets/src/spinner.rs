@@ -305,15 +305,11 @@ impl_scope! {
             let btn = match event {
                 Event::Command(cmd, code) => match cmd {
                     Command::Down => {
-                        if let Some(code) = code {
-                            cx.depress_with_key(self.b_down.id(), *code);
-                        }
+                        cx.depress_with_key(self.b_down.id(), *code);
                         SpinBtn::Down
                     }
                     Command::Up => {
-                        if let Some(code) = code {
-                            cx.depress_with_key(self.b_up.id(), *code);
-                        }
+                        cx.depress_with_key(self.b_up.id(), *code);
                         SpinBtn::Up
                     }
                     _ => return Unused,

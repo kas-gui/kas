@@ -7,7 +7,7 @@
 
 use crate::event::{ConfigCx, Event, EventCx, FocusSource, IsUsed, Scroll, Unused, Used};
 #[cfg(debug_assertions)] use crate::util::IdentifyWidget;
-use crate::{messages::Erased, Events, Id, Layout, NavAdvance, Node, Widget};
+use crate::{Events, Id, Layout, NavAdvance, Node, Widget};
 
 /// Generic implementation of [`Widget::_send`]
 pub fn _send<W: Events>(
@@ -15,20 +15,20 @@ pub fn _send<W: Events>(
     cx: &mut EventCx,
     data: &<W as Widget>::Data,
     id: Id,
-    disabled: bool,
     event: Event,
 ) -> IsUsed {
     let mut is_used = Unused;
     let do_handle_event;
 
     if id == widget.id_ref() {
-        if disabled {
+        if cx.target_is_disabled {
             return is_used;
         }
 
         match &event {
             Event::MouseHover(state) => {
-                is_used |= widget.handle_hover(cx, *state);
+                widget.handle_hover(cx, *state);
+                return Used;
             }
             Event::NavFocus(FocusSource::Key) => {
                 cx.set_scroll(Scroll::Rect(widget.rect()));
@@ -49,7 +49,7 @@ pub fn _send<W: Events>(
                 let translation = widget.translation();
                 let mut _found = false;
                 widget.as_node(data).for_child(index, |mut node| {
-                    is_used = node._send(cx, id.clone(), disabled, event.clone() + translation);
+                    is_used = node._send(cx, id.clone(), event.clone() + translation);
                     _found = true;
                 });
 
@@ -84,17 +84,11 @@ pub fn _send<W: Events>(
 }
 
 /// Generic implementation of [`Widget::_replay`]
-pub fn _replay<W: Events>(
-    widget: &mut W,
-    cx: &mut EventCx,
-    data: &<W as Widget>::Data,
-    id: Id,
-    msg: Erased,
-) {
+pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>::Data, id: Id) {
     if let Some(index) = widget.find_child_index(&id) {
         let mut _found = false;
         widget.as_node(data).for_child(index, |mut node| {
-            node._replay(cx, id.clone(), msg);
+            node._replay(cx, id.clone());
             _found = true;
         });
 
@@ -116,7 +110,6 @@ pub fn _replay<W: Events>(
             widget.handle_messages(cx, data);
         }
     } else if id == widget.id_ref() {
-        cx.push_erased(msg);
         widget.handle_messages(cx, data);
     } else {
         // This implies use of push_async / push_spawn from a widget which was

@@ -376,13 +376,26 @@ impl EventState {
     /// Note that keyboard shortcuts and mnemonics should usually match against
     /// the "logical key". [`PhysicalKey`] is used here since the the logical key
     /// may be changed by modifier keys.
-    pub fn depress_with_key(&mut self, id: Id, code: PhysicalKey) {
-        if self.key_depress.values().any(|v| *v == id) {
-            return;
+    ///
+    /// Does nothing when `code` is `None`.
+    pub fn depress_with_key(&mut self, id: Id, code: impl Into<Option<PhysicalKey>>) {
+        fn inner(state: &mut EventState, id: Id, code: PhysicalKey) {
+            if state
+                .key_depress
+                .get(&code)
+                .map(|target| *target == id)
+                .unwrap_or(false)
+            {
+                return;
+            }
+
+            state.key_depress.insert(code, id.clone());
+            state.action(id, Action::REDRAW);
         }
 
-        self.key_depress.insert(code, id.clone());
-        self.action(id, Action::REDRAW);
+        if let Some(code) = code.into() {
+            inner(self, id, code);
+        }
     }
 
     /// Request keyboard input focus
@@ -559,6 +572,16 @@ impl EventState {
     pub fn set_hover_cursor(&mut self, icon: CursorIcon) {
         // Note: this is acted on by EventState::update
         self.hover_icon = icon;
+    }
+
+    /// Send a message to `id`
+    pub fn send<M: Debug + 'static>(&mut self, id: Id, msg: M) {
+        self.send_erased(id, Erased::new(msg));
+    }
+
+    /// Send an erased message to `id`
+    pub fn send_erased(&mut self, id: Id, msg: Erased) {
+        self.send_queue.push_back((id, msg));
     }
 
     /// Asynchronously push a message to the stack via a [`Future`]

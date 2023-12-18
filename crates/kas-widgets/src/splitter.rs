@@ -254,14 +254,15 @@ impl_scope! {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-            let index = cx.last_child().expect("message not sent from self");
-            if (index & 1) == 1 {
-                if let Some(GripMsg::PressMove(offset)) = cx.try_pop() {
-                    let n = index >> 1;
-                    assert!(n < self.handles.len());
-                    let action = self.handles[n].set_offset(offset).1;
-                    cx.action(&self, action);
-                    self.adjust_size(&mut cx.config_cx(), n);
+            if let Some(index) = cx.last_child() {
+                if (index & 1) == 1 {
+                    if let Some(GripMsg::PressMove(offset)) = cx.try_pop() {
+                        let n = index >> 1;
+                        assert!(n < self.handles.len());
+                        let action = self.handles[n].set_offset(offset).1;
+                        cx.action(&self, action);
+                        self.adjust_size(&mut cx.config_cx(), n);
+                    }
                 }
             }
         }

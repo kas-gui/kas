@@ -581,10 +581,9 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     cx: &mut ::kas::event::EventCx,
                     data: &Self::Data,
                     id: ::kas::Id,
-                    disabled: bool,
                     event: ::kas::event::Event,
                 ) -> ::kas::event::IsUsed {
-                    self.#inner._send(cx, data, id, disabled, event)
+                    self.#inner._send(cx, data, id, event)
                 }
 
                 fn _replay(
@@ -592,9 +591,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     cx: &mut ::kas::event::EventCx,
                     data: &Self::Data,
                     id: ::kas::Id,
-                    msg: ::kas::messages::Erased,
                 ) {
-                    self.#inner._replay(cx, data, id, msg);
+                    self.#inner._replay(cx, data, id);
                 }
 
                 fn _nav_next(
@@ -767,28 +765,25 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             (false, None) => quote! {},
             (true, None) => quote! {
                 #[inline]
-                fn handle_hover(&mut self, cx: &mut EventCx, _: bool) -> ::kas::event::IsUsed {
+                fn handle_hover(&mut self, cx: &mut EventCx, _: bool) {
                     cx.redraw(self);
-                    ::kas::event::Used
                 }
             },
             (false, Some(icon_expr)) => quote! {
                 #[inline]
-                fn handle_hover(&mut self, cx: &mut EventCx, state: bool) -> ::kas::event::IsUsed {
+                fn handle_hover(&mut self, cx: &mut EventCx, state: bool) {
                     if state {
                         cx.set_hover_cursor(#icon_expr);
                     }
-                    ::kas::event::Used
                 }
             },
             (true, Some(icon_expr)) => quote! {
                 #[inline]
-                fn handle_hover(&mut self, cx: &mut EventCx, state: bool) -> ::kas::event::IsUsed {
+                fn handle_hover(&mut self, cx: &mut EventCx, state: bool) {
                     cx.redraw(self);
                     if state {
                         cx.set_hover_cursor(#icon_expr);
                     }
-                    ::kas::event::Used
                 }
             },
         };
@@ -1123,10 +1118,9 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             cx: &mut ::kas::event::EventCx,
             data: &Self::Data,
             id: ::kas::Id,
-            disabled: bool,
             event: ::kas::event::Event,
         ) -> ::kas::event::IsUsed {
-            ::kas::impls::_send(self, cx, data, id, disabled, event)
+            ::kas::impls::_send(self, cx, data, id, event)
         }
 
         fn _replay(
@@ -1134,9 +1128,8 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             cx: &mut ::kas::event::EventCx,
             data: &Self::Data,
             id: ::kas::Id,
-            msg: ::kas::messages::Erased,
         ) {
-            ::kas::impls::_replay(self, cx, data, id, msg);
+            ::kas::impls::_replay(self, cx, data, id);
         }
 
         fn _nav_next(
