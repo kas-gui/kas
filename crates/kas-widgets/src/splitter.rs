@@ -282,11 +282,16 @@ impl_scope! {
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(index) = cx.last_child() {
                 if (index & 1) == 1 {
-                    if let Some(GripMsg::PressMove(offset)) = cx.try_pop() {
+                    if let Some(GripMsg::PressMove(mut offset)) = cx.try_pop() {
                         let n = index >> 1;
                         assert!(n < self.grips.len());
-                        let action = self.grips[n].set_offset(offset).1;
-                        cx.action(&self, action);
+                        if let Some(grip) = self.grips.get_mut(n) {
+                            if self.direction.is_reversed() {
+                                offset = Offset::conv(grip.track().size) - offset;
+                            }
+                            let action = grip.set_offset(offset).1;
+                            cx.action(&self, action);
+                        }
                         self.adjust_size(&mut cx.config_cx(), n);
                     }
                 }
