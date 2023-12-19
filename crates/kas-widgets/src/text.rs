@@ -16,7 +16,8 @@ impl_scope! {
     /// `Text` derives its contents from input data. Use [`Label`](crate::Label)
     /// instead for fixed contents.
     ///
-    /// See also macros [`format_data`] and [`format_value`] which construct a
+    /// See also macros [`format_data`](super::format_data) and
+    /// [`format_value`](super::format_value) which construct a
     /// `Text` widget. See also parameterizations [`StrText`], [`StringText`].
     ///
     /// Vertical alignment defaults to centred, horizontal alignment depends on
