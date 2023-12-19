@@ -5,12 +5,14 @@
 
 //! Combobox
 
-use super::{menu::MenuEntry, Column, Mark, StringLabel};
+use crate::adapt::AdaptEvents;
+use crate::{menu::MenuEntry, Column, Mark, StringLabel};
 use kas::event::{Command, FocusSource, ScrollDelta};
 use kas::prelude::*;
 use kas::theme::{MarkStyle, TextClass};
 use kas::Popup;
 use std::fmt::Debug;
+use std::ops::{Deref, DerefMut};
 
 #[derive(Clone, Debug)]
 struct IndexMsg(usize);
@@ -38,7 +40,7 @@ impl_scope! {
         #[widget(&())]
         mark: Mark,
         #[widget(&())]
-        popup: Popup<Column<MenuEntry<V>>>,
+        popup: Popup<AdaptEvents<Column<MenuEntry<V>>>>,
         active: usize,
         opening: bool,
         state_fn: Box<dyn Fn(&ConfigCx, &A) -> V>,
@@ -74,7 +76,7 @@ impl_scope! {
         fn handle_event(&mut self, cx: &mut EventCx, _: &A, event: Event) -> IsUsed {
             let open_popup = |s: &mut Self, cx: &mut EventCx, source: FocusSource| {
                 if s.popup.open(cx, &(), s.id()) {
-                    if let Some(w) = s.popup.get_child(s.active) {
+                    if let Some(w) = s.popup.deref().deref().get_child(s.active) {
                         cx.next_nav_focus(w.id(), false, source);
                     }
                 }
@@ -230,9 +232,12 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
             label,
             mark: Mark::new(MarkStyle::Point(Direction::Down)),
             popup: Popup::new(
-                Column::new(entries).on_messages(|cx, _, index| {
-                    cx.push(IndexMsg(index));
-                    false
+                AdaptEvents::new(Column::new(entries)).on_messages(|cx, _, _| {
+                    if let Some(_) = cx.try_observe::<V>() {
+                        if let Some(index) = cx.last_child() {
+                            cx.push(IndexMsg(index));
+                        }
+                    }
                 }),
                 Direction::Down,
             ),
@@ -335,7 +340,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
     // TODO(opt): these methods cause full-window resize. They don't need to
     // resize at all if the menu is closed!
     pub fn push<T: Into<AccessString>>(&mut self, cx: &mut ConfigCx, label: T, msg: V) -> usize {
-        let column = &mut self.popup;
+        let column = self.popup.deref_mut().deref_mut();
         column.push(cx, &(), MenuEntry::new_msg(label, msg))
     }
 
@@ -354,7 +359,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
         label: T,
         msg: V,
     ) {
-        let column = &mut self.popup;
+        let column = self.popup.deref_mut().deref_mut();
         column.insert(cx, &(), index, MenuEntry::new_msg(label, msg));
     }
 
