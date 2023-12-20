@@ -11,6 +11,12 @@ use kas::text::format::{EditableText, FormattableText};
 use kas::text::Text;
 use kas::theme::TextClass;
 
+/// Construct a [`Label`]
+#[inline]
+pub fn label<T: FormattableText + 'static>(label: T) -> Label<T> {
+    Label::new(label)
+}
+
 /// Construct a [`Label`] which accepts any data
 ///
 /// This is just a shortcut for `Label::new(text).map_any()`.
