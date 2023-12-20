@@ -70,9 +70,9 @@ pub trait Driver<Item, Data: SharedData<Item = Item>> {
     fn on_messages(
         &mut self,
         cx: &mut EventCx,
+        widget: &mut Self::Widget,
         data: &Data,
         key: &Data::Key,
-        widget: &mut Self::Widget,
     ) {
         let _ = (cx, data, key, widget);
     }

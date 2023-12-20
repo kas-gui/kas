@@ -698,7 +698,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 }
             };
 
-            let layout_methods = layout.layout_methods(&quote! { self.#core })?;
+            // Generated layout methods are wrapped, so we don't require debug assertions here.
+            let layout_methods = layout.layout_methods(&quote! { self.#core }, false)?;
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::layout::AutoLayout for #impl_target {
                     #layout_methods

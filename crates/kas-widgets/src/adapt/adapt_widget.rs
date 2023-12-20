@@ -80,6 +80,29 @@ pub trait AdaptWidget: Widget + Sized {
         AdaptEvents::new(self).on_message(handler)
     }
 
+    /// Add a child handler to map messages of type `M` to `N`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use kas::messages::Select;
+    /// use kas_widgets::{AdaptWidget, Row, Tab};
+    ///
+    /// #[derive(Clone, Debug)]
+    /// struct MsgSelectIndex(usize);
+    ///
+    /// let tabs = Row::new([Tab::new("A")])
+    ///     .map_message(|index, Select| MsgSelectIndex(index));
+    /// ```
+    fn map_message<M, N, H>(self, handler: H) -> AdaptEvents<Self>
+    where
+        M: Debug + 'static,
+        N: Debug + 'static,
+        H: Fn(usize, M) -> N + 'static,
+    {
+        AdaptEvents::new(self).map_message(handler)
+    }
+
     /// Add a generic message handler
     ///
     /// Returns a wrapper around the input widget.

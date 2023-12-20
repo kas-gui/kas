@@ -16,7 +16,8 @@ use crate::{Id, Node};
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
-#[allow(unused)] use crate::{event::Event, Events, Layout};
+#[allow(unused)] use crate::event::{Event, EventCx};
+#[allow(unused)] use crate::{Events, Layout};
 
 /// Widget configuration and update context
 ///
