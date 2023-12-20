@@ -5,11 +5,9 @@
 
 //! A grid widget
 
-use crate::adapt::AdaptEventCx;
 use kas::layout::{DynGridStorage, GridChildInfo, GridDimensions};
 use kas::layout::{GridSetter, GridSolver, RulesSetter, RulesSolver};
 use kas::{layout, prelude::*};
-use std::fmt::Debug;
 use std::ops::{Index, IndexMut};
 
 /// A grid of boxed widgets
@@ -47,11 +45,6 @@ impl_scope! {
     /// ## Performance
     ///
     /// Most operations are `O(n)` in the number of children.
-    ///
-    /// # Messages
-    ///
-    /// If a handler is specified via [`Self::on_messages`] then this handler is
-    /// called when a child pushes a message.
     #[autoimpl(Default)]
     #[widget]
     pub struct Grid<W: Widget> {
@@ -59,7 +52,6 @@ impl_scope! {
         widgets: Vec<(GridChildInfo, W)>,
         data: DynGridStorage,
         dim: GridDimensions,
-        message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx, &W::Data, usize) -> bool>>,
     }
 
     impl Widget for Self {
@@ -119,24 +111,6 @@ impl_scope! {
             }
         }
     }
-
-    impl Events for Self {
-        fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
-            if self.message_handlers.is_empty() {
-                return;
-            }
-            if let Some(index) = cx.last_child() {
-                let mut update = false;
-                let mut cx = AdaptEventCx::new(cx, self.id());
-                for handler in self.message_handlers.iter() {
-                    update |= handler(&mut cx, data, index);
-                }
-                if update {
-                    cx.update(self.as_node(data));
-                }
-            }
-        }
-    }
 }
 
 impl<W: Widget> Grid<W> {
@@ -155,65 +129,6 @@ impl<W: Widget> Grid<W> {
         };
         grid.calc_dim();
         grid
-    }
-
-    /// Add a child handler to map messages of type `M` to `N`
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use kas::messages::Select;
-    /// use kas_widgets::{Row, Tab};
-    ///
-    /// #[derive(Clone, Debug)]
-    /// struct MsgSelectIndex(usize);
-    ///
-    /// let tabs: Row<Tab> = Row::new([]).map_message(|index, Select| MsgSelectIndex(index));
-    /// ```
-    pub fn map_message<M, N, H>(self, handler: H) -> Self
-    where
-        M: Debug + 'static,
-        N: Debug + 'static,
-        H: Fn(usize, M) -> N + 'static,
-    {
-        self.on_messages(move |cx, _data, index| {
-            if let Some(m) = cx.try_pop() {
-                cx.push(handler(index, m));
-            }
-            false
-        })
-    }
-
-    /// Add a child handler for messages of type `M`
-    ///
-    /// Where multiple message types must be handled or access to the
-    /// [`AdaptEventCx`] is required, use [`Self::on_messages`] instead.
-    pub fn on_message<M, H>(self, handler: H) -> Self
-    where
-        M: Debug + 'static,
-        H: Fn(&mut AdaptEventCx, usize, M) + 'static,
-    {
-        self.on_messages(move |cx, _data, index| {
-            if let Some(m) = cx.try_pop() {
-                handler(cx, index, m);
-                true
-            } else {
-                false
-            }
-        })
-    }
-
-    /// Add a child message handler (inline style)
-    ///
-    /// This handler is called when a child pushes a message:
-    /// `f(cx, index)`, where `index` is the child's index.
-    #[inline]
-    pub fn on_messages<H>(mut self, handler: H) -> Self
-    where
-        H: Fn(&mut AdaptEventCx, &W::Data, usize) -> bool + 'static,
-    {
-        self.message_handlers.push(Box::new(handler));
-        self
     }
 
     /// Get grid dimensions

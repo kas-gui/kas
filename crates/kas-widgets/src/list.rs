@@ -8,10 +8,7 @@
 use kas::dir::{Down, Right};
 use kas::{layout, prelude::*};
 use std::collections::hash_map::{Entry, HashMap};
-use std::fmt::Debug;
 use std::ops::{Index, IndexMut};
-
-use crate::adapt::AdaptEventCx;
 
 /// A generic row widget
 ///
@@ -61,12 +58,6 @@ impl_scope! {
     /// Configuring and resizing elements is O(n) in the number of children.
     /// Drawing and event handling is O(log n) in the number of children (assuming
     /// only a small number are visible at any one time).
-    ///
-    /// # Messages
-    ///
-    /// If a handler is specified via [`Self::on_messages`] then this handler is
-    /// called when a child pushes a message. This allows associating the
-    /// child's index with a message.
     #[autoimpl(Default where D: Default)]
     #[widget {
         layout = slice! 'layout (self.direction, self.widgets);
@@ -77,7 +68,6 @@ impl_scope! {
         direction: D,
         next: usize,
         id_map: HashMap<usize, usize>, // map key of Id to index
-        message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx, &W::Data, usize) -> bool>>,
     }
 
     impl Layout for Self {
@@ -137,22 +127,6 @@ impl_scope! {
 
         fn configure(&mut self, _: &mut ConfigCx) {
             self.id_map.clear();
-        }
-
-        fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
-            if self.message_handlers.is_empty() {
-                return;
-            }
-            if let Some(index) = cx.last_child() {
-                let mut update = false;
-                let mut cx = AdaptEventCx::new(cx, self.id());
-                for handler in self.message_handlers.iter() {
-                    update |= handler(&mut cx, data, index);
-                }
-                if update {
-                    cx.update(self.as_node(data));
-                }
-            }
         }
     }
 
@@ -218,40 +192,7 @@ impl_scope! {
                 direction,
                 next: 0,
                 id_map: Default::default(),
-                message_handlers: vec![],
             }
-        }
-
-        /// Add a child handler for messages of type `M`
-        ///
-        /// Where multiple message types must be handled or access to the
-        /// [`AdaptEventCx`] is required, use [`Self::on_messages`] instead.
-        pub fn on_message<M, H>(self, handler: H) -> Self
-        where
-            M: Debug + 'static,
-            H: Fn(&mut AdaptEventCx, usize, M) + 'static,
-        {
-            self.on_messages(move |cx, _data, index| {
-                if let Some(m) = cx.try_pop() {
-                    handler(cx, index, m);
-                    true
-                } else {
-                    false
-                }
-            })
-        }
-
-        /// Add a child message handler (inline style)
-        ///
-        /// This handler is called when a child pushes a message:
-        /// `f(cx, index)`, where `index` is the child's index.
-        #[inline]
-        pub fn on_messages<H>(mut self, handler: H) -> Self
-        where
-            H: Fn(&mut AdaptEventCx, &W::Data, usize) -> bool + 'static,
-        {
-            self.message_handlers.push(Box::new(handler));
-            self
         }
 
         /// Edit the list of children directly
