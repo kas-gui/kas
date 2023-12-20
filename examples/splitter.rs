@@ -23,7 +23,7 @@ fn main() -> kas::app::Result<()> {
             Button::label_msg("+", Message::Incr),
         ]
         .map_any(),
-        Splitter::right([]).on_update(|cx, panes, len| panes.resize_with(len, cx, *len, |n| {
+        Splitter::right(vec![]).on_update(|cx, panes, len| panes.resize_with(len, cx, *len, |n| {
             EditField::text(format!("Pane {}", n + 1)).with_multi_line(true)
         })),
     ];

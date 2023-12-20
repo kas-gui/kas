@@ -123,7 +123,7 @@ impl_scope! {
         core: widget_core!(),
         direction: Direction,
         #[widget(&())]
-        tabs: AdaptEvents<Row<Tab>>, // TODO: want a TabBar widget for scrolling support?
+        tabs: AdaptEvents<Row<Vec<Tab>>>, // TODO: want a TabBar widget for scrolling support?
         #[widget]
         stack: Stack<W>,
         on_change: Option<Box<dyn Fn(&mut EventCx, &W::Data, usize, &str)>>,
@@ -138,7 +138,7 @@ impl_scope! {
                 core: Default::default(),
                 direction: Direction::Up,
                 stack: Stack::new(),
-                tabs: Row::new([]).map_message(|index, Select| MsgSelectIndex(index)),
+                tabs: Row::new(vec![]).map_message(|index, Select| MsgSelectIndex(index)),
                 on_change: None,
             }
         }

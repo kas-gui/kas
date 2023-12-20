@@ -164,7 +164,7 @@ fn main() -> kas::app::Result<()> {
         active_string: ListEntry::new(0).label.get_string(),
     };
 
-    let list = List::new([]).on_update(|cx, list, data: &Data| {
+    let list = List::new(vec![]).on_update(|cx, list, data: &Data| {
         let act = list.set_direction(data.dir);
         let len = data.len;
         if len != list.len() {

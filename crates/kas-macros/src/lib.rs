@@ -16,6 +16,7 @@ use syn::parse_macro_input;
 use syn::spanned::Spanned;
 
 mod class_traits;
+mod collection;
 mod extends;
 mod make_layout;
 mod widget;
@@ -230,10 +231,6 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > _Single_ :\
 /// > &nbsp;&nbsp; `self` `.` _Member_\
 /// > &nbsp;&nbsp; A named child: `self.foo` (more precisely, this matches any expression starting `self`, and uses `&mut (#expr)`)
-/// >
-/// > _Slice_ :\
-/// > &nbsp;&nbsp; `slice!` _Storage_? `(` _Direction_ `,` `self` `.` _Member_ `)`\
-/// > &nbsp;&nbsp; A field with type `[W]` for some `W: Layout`. (Note: this does not automatically register the slice widgets as children for the purpose of configuration and event-handling. An explicit implementation of `Widget::get_child` will be required.)
 /// >
 /// > _Frame_ :\
 /// > &nbsp;&nbsp; `frame!` _Storage_? `(` _Layout_ ( `,` `style` `=` _Expr_ )? `)`\
@@ -689,6 +686,29 @@ pub fn pack(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn margins(input: TokenStream) -> TokenStream {
     parse_macro_input!(input with make_layout::Tree::margins).expand_layout("_Margins")
+}
+
+/// Generate an anonymous struct which implements [`kas::Collection`]
+///
+/// Each item must be either a string literal (inferred as a static label) or a
+/// widget (implements [`kas::Widget`](https://docs.rs/kas/latest/kas/trait.Widget.html)).
+///
+/// # Example
+///
+/// ```ignore
+/// let list = kas::widgets::List::right(kas::collection![
+///     "A checkbox",
+///     kas::widgets::CheckBox::new(|_, _| false),
+/// ]);
+/// ```
+///
+/// [`kas::Collection`]: https://docs.rs/kas/latest/kas/trait.Collection.html
+#[proc_macro_error]
+#[proc_macro]
+pub fn collection(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input as collection::Collection)
+        .expand()
+        .into()
 }
 
 /// A trait implementation is an extension over some base

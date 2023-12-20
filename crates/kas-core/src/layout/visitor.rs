@@ -9,8 +9,8 @@
 #![allow(clippy::wrong_self_convention)]
 
 use super::{Align, AlignHints, AlignPair, AxisInfo, SizeRules};
-use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
+use super::{RowSetter, RowSolver, RowStorage};
 use super::{RulesSetter, RulesSolver};
 use crate::draw::color::Rgb;
 use crate::event::ConfigCx;
@@ -137,25 +137,6 @@ impl<'a> Visitor<'a> {
     {
         let layout = LayoutType::BoxComponent(Box::new(List {
             children: list,
-            direction,
-            data,
-        }));
-        Visitor { layout }
-    }
-
-    /// Construct a row/column layout over a slice of widgets
-    ///
-    /// In contrast to [`Visitor::list`], `slice` can only be used over a slice
-    /// of a single type of widget, enabling some optimisations: `O(log n)` for
-    /// `draw` and `find_id`. Some other methods, however, remain `O(n)`, thus
-    /// the optimisations are not (currently) so useful.
-    pub fn slice<W, D>(slice: &'a mut [W], direction: D, data: &'a mut DynRowStorage) -> Self
-    where
-        W: Layout,
-        D: Directional,
-    {
-        let layout = LayoutType::BoxComponent(Box::new(Slice {
-            children: slice,
             direction,
             data,
         }));
@@ -386,45 +367,6 @@ where
         for child in iter {
             draw.with_pass(|draw| child.draw(draw));
         }
-    }
-}
-
-/// A row/column over a slice
-struct Slice<'a, W: Layout, D: Directional> {
-    children: &'a mut [W],
-    direction: D,
-    data: &'a mut DynRowStorage,
-}
-
-impl<'a, W: Layout, D: Directional> Visitable for Slice<'a, W, D> {
-    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        let dim = (self.direction, self.children.len());
-        let mut solver = RowSolver::new(axis, dim, self.data);
-        for (n, child) in self.children.iter_mut().enumerate() {
-            solver.for_child(self.data, n, |axis| child.size_rules(sizer.re(), axis));
-        }
-        solver.finish(self.data)
-    }
-
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
-        let dim = (self.direction, self.children.len());
-        let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, self.data);
-
-        for (n, child) in self.children.iter_mut().enumerate() {
-            child.set_rect(cx, setter.child_rect(self.data, n));
-        }
-    }
-
-    fn find_id(&mut self, coord: Coord) -> Option<Id> {
-        let solver = RowPositionSolver::new(self.direction);
-        solver
-            .find_child_mut(self.children, coord)
-            .and_then(|child| child.find_id(coord))
-    }
-
-    fn draw(&mut self, mut draw: DrawCx) {
-        let solver = RowPositionSolver::new(self.direction);
-        solver.for_children(self.children, draw.get_clip_rect(), |w| draw.recurse(w));
     }
 }
 
