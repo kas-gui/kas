@@ -222,33 +222,6 @@ impl_scope! {
             }
         }
 
-        /// Add a child handler to map messages of type `M` to `N`
-        ///
-        /// # Example
-        ///
-        /// ```
-        /// use kas::messages::Select;
-        /// use kas_widgets::{Row, Tab};
-        ///
-        /// #[derive(Clone, Debug)]
-        /// struct MsgSelectIndex(usize);
-        ///
-        /// let tabs: Row<Tab> = Row::new([]).map_message(|index, Select| MsgSelectIndex(index));
-        /// ```
-        pub fn map_message<M, N, H>(self, handler: H) -> Self
-        where
-            M: Debug + 'static,
-            N: Debug + 'static,
-            H: Fn(usize, M) -> N + 'static,
-        {
-            self.on_messages(move |cx, _data, index| {
-                if let Some(m) = cx.try_pop() {
-                    cx.push(handler(index, m));
-                }
-                false
-            })
-        }
-
         /// Add a child handler for messages of type `M`
         ///
         /// Where multiple message types must be handled or access to the

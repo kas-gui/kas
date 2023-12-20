@@ -5,6 +5,7 @@
 
 //! A tabbed stack
 
+use crate::adapt::{AdaptEvents, AdaptWidget};
 use crate::{AccessLabel, Row, Stack};
 use kas::layout::{FrameStorage, Visitor};
 use kas::messages::Select;
@@ -122,7 +123,7 @@ impl_scope! {
         core: widget_core!(),
         direction: Direction,
         #[widget(&())]
-        tabs: Row<Tab>, // TODO: want a TabBar widget for scrolling support?
+        tabs: AdaptEvents<Row<Tab>>, // TODO: want a TabBar widget for scrolling support?
         #[widget]
         stack: Stack<W>,
         on_change: Option<Box<dyn Fn(&mut EventCx, &W::Data, usize, &str)>>,
