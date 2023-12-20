@@ -582,52 +582,35 @@ fn main() -> kas::app::Result<()> {
         })
         .build();
 
-    let ui = impl_anon! {
-        #[widget{
-            layout = column! [
-                self.menubar,
-                Separator::new(),
-                self.stack,
-            ];
-        }]
-        struct {
-            core: widget_core!(),
-            state: AppData,
-            #[widget(&self.state)] menubar: menu::MenuBar::<AppData, Right> = menubar,
-            #[widget(&self.state)] stack: TabStack<Box<dyn Widget<Data = AppData>>> = TabStack::from([
-                ("&Widgets", widgets()), //TODO: use img_gallery as logo
-                ("Te&xt editor", editor()),
-                ("&List", filter_list()),
-                ("Can&vas", canvas()),
-                ("Confi&g", config()),
-            ]).with_msg(|_, title| WindowCommand::SetTitle(format!("Gallery — {}", title))),
-        }
-        impl Events for Self {
-            type Data = ();
+    let ui = kas::column![
+        menubar,
+        Separator::new(),
+        TabStack::from([
+            ("&Widgets", widgets()), //TODO: use img_gallery as logo
+            ("Te&xt editor", editor()),
+            ("&List", filter_list()),
+            ("Can&vas", canvas()),
+            ("Confi&g", config()),
+        ])
+        .with_msg(|_, title| WindowCommand::SetTitle(format!("Gallery — {}", title))),
+    ];
 
-            fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-                if let Some(msg) = cx.try_pop::<Menu>() {
-                    match msg {
-                        Menu::Theme(name) => {
-                            println!("Theme: {name:?}");
-                            cx.adjust_theme(|theme| theme.set_theme(name));
-                        }
-                        Menu::Colour(name) => {
-                            println!("Colour scheme: {name:?}");
-                            cx.adjust_theme(|theme| theme.set_scheme(&name));
-                        }
-                        Menu::Disabled(state) => {
-                            self.state.disabled = state;
-                            cx.update(self.as_node(&()));
-                        }
-                        Menu::Quit => {
-                            cx.exit();
-                        }
-                    }
-                }
-            }
+    let ui = Adapt::new(ui, AppData::default()).on_message(|cx, state, msg| match msg {
+        Menu::Theme(name) => {
+            println!("Theme: {name:?}");
+            cx.adjust_theme(|theme| theme.set_theme(name));
         }
-    };
+        Menu::Colour(name) => {
+            println!("Colour scheme: {name:?}");
+            cx.adjust_theme(|theme| theme.set_scheme(&name));
+        }
+        Menu::Disabled(disabled) => {
+            state.disabled = disabled;
+        }
+        Menu::Quit => {
+            cx.exit();
+        }
+    });
 
     app.add(Window::new(ui, "Gallery — Widgets"));
     app.run()
