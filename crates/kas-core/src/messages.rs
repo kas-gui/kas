@@ -182,6 +182,26 @@ impl MessageStack {
             None
         }
     }
+
+    /// Try getting a debug representation of the last message on the stack
+    ///
+    /// Note: this method will always return `None` in release builds.
+    /// This may or may not change in future versions.
+    pub fn try_debug(&self) -> Option<&dyn Debug> {
+        cfg_if::cfg_if! {
+            if #[cfg(debug_assertions)] {
+                if let Some(m) = self.stack.last(){
+                    println!("message: {:?}", &m.fmt);
+                } else {
+                    println!("empty stack");
+                }
+                self.stack.last().map(|m| &m.fmt as &dyn Debug)
+            } else {
+                println!("release");
+                None
+            }
+        }
+    }
 }
 
 impl Drop for MessageStack {

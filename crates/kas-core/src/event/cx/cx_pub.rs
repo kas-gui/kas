@@ -738,6 +738,14 @@ impl<'a> EventCx<'a> {
         self.messages.try_observe()
     }
 
+    /// Try getting a debug representation of the last message on the stack
+    ///
+    /// Note: this method will always return `None` in release builds.
+    /// This may or may not change in future versions.
+    pub fn try_debug(&self) -> Option<&dyn Debug> {
+        self.messages.try_debug()
+    }
+
     /// Set a scroll action
     ///
     /// When setting [`Scroll::Rect`], use the widget's own coordinate space.
