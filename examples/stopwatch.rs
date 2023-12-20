@@ -7,75 +7,57 @@
 
 use std::time::{Duration, Instant};
 
-use kas::event::{ConfigCx, Event, EventCx, IsUsed, Unused, Used};
-use kas::widgets::{format_data, Button};
-use kas::{Decorations, Events, Layout, LayoutExt, Widget, Window};
+use kas::prelude::*;
+use kas::widgets::{format_data, Adapt, Button};
+use kas::Decorations;
 
 #[derive(Clone, Debug)]
 struct MsgReset;
 #[derive(Clone, Debug)]
 struct MsgStart;
 
-fn make_window() -> Box<dyn kas::Widget<Data = ()>> {
-    Box::new(kas::impl_anon! {
-        #[widget{
-            layout = row! [
-                self.display,
-                Button::label_msg("&reset", MsgReset),
-                Button::label_msg("&start / &stop", MsgStart),
-            ];
-        }]
-        struct {
-            core: widget_core!(),
-            #[widget(&self.elapsed)] display: impl Widget<Data = Duration> =
-                format_data!(dur: &Duration, "{}.{:03}", dur.as_secs(), dur.subsec_millis()),
-            last: Option<Instant>,
-            elapsed: Duration,
-        }
-        impl Events for Self {
-            type Data = ();
+#[derive(Debug, Default)]
+struct Timer {
+    elapsed: Duration,
+    last: Option<Instant>,
+}
 
-            fn configure(&mut self, cx: &mut ConfigCx) {
-                cx.enable_alt_bypass(self.id_ref(), true);
+fn make_window() -> impl Widget<Data = ()> {
+    let ui = kas::row![
+        format_data!(timer: &Timer, "{}.{:03}", timer.elapsed.as_secs(), timer.elapsed.subsec_millis()),
+        Button::label_msg("&reset", MsgReset).map_any(),
+        Button::label_msg("&start / &stop", MsgStart).map_any(),
+    ];
+
+    Adapt::new(ui, Timer::default())
+        .on_configure(|cx, _| cx.enable_alt_bypass(true))
+        .on_message(|_, timer, MsgReset| *timer = Timer::default())
+        .on_message(|cx, timer, MsgStart| {
+            let now = Instant::now();
+            if let Some(last) = timer.last.take() {
+                timer.elapsed += now - last;
+            } else {
+                timer.last = Some(now);
+                cx.request_timer(0, Duration::new(0, 0));
             }
-            fn handle_event(&mut self, cx: &mut EventCx, data: &(), event: Event) -> IsUsed {
-                match event {
-                    Event::Timer(0) => {
-                        if let Some(last) = self.last {
-                            let now = Instant::now();
-                            self.elapsed += now - last;
-                            self.last = Some(now);
-                            cx.update(self.as_node(data));
-                            cx.request_timer(self.id(), 0, Duration::new(0, 1));
-                        }
-                        Used
-                    }
-                    _ => Unused,
-                }
+        })
+        .on_timer(0, |cx, timer, _| {
+            if let Some(last) = timer.last {
+                let now = Instant::now();
+                timer.elapsed += now - last;
+                timer.last = Some(now);
+                cx.request_timer(0, Duration::new(0, 1));
+                true
+            } else {
+                false
             }
-            fn handle_messages(&mut self, cx: &mut EventCx, data: &()) {
-                if let Some(MsgReset) = cx.try_pop() {
-                    self.elapsed = Duration::default();
-                    self.last = None;
-                    cx.update(self.as_node(data));
-                } else if let Some(MsgStart) = cx.try_pop() {
-                    let now = Instant::now();
-                    if let Some(last) = self.last.take() {
-                        self.elapsed += now - last;
-                    } else {
-                        self.last = Some(now);
-                        cx.request_timer(self.id(), 0, Duration::new(0, 0));
-                    }
-                }
-            }
-        }
-    })
+        })
 }
 
 fn main() -> kas::app::Result<()> {
     env_logger::init();
 
-    let window = Window::new_boxed(make_window(), "Stopwatch")
+    let window = Window::new(make_window(), "Stopwatch")
         .with_decorations(Decorations::Border)
         .with_transparent(true)
         .with_restrictions(true, true);
