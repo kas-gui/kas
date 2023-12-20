@@ -11,8 +11,8 @@ mod common;
 #[cfg(winit)] mod shared;
 #[cfg(winit)] mod window;
 
+use crate::messages::MessageStack;
 #[cfg(winit)] use crate::WindowId;
-use crate::{messages::MessageStack, Action};
 #[cfg(winit)] use app::PlatformWrapper;
 #[cfg(winit)] use event_loop::Loop as EventLoop;
 #[cfg(winit)] pub(crate) use shared::{AppShared, AppState};
@@ -41,17 +41,11 @@ pub trait AppData: 'static {
     /// This is the last message handler: it is called when, after traversing
     /// the widget tree (see [kas::event] module doc), a message is left on the
     /// stack. Unhandled messages will result in warnings in the log.
-    ///
-    /// The method returns an [`Action`], usually either [`Action::empty`]
-    /// (nothing to do) or [`Action::UPDATE`] (to update widgets).
-    /// This action affects all windows.
-    fn handle_messages(&mut self, messages: &mut MessageStack) -> Action;
+    fn handle_messages(&mut self, messages: &mut MessageStack);
 }
 
 impl AppData for () {
-    fn handle_messages(&mut self, _: &mut MessageStack) -> Action {
-        Action::empty()
-    }
+    fn handle_messages(&mut self, _: &mut MessageStack) {}
 }
 
 #[crate::autoimpl(Debug)]

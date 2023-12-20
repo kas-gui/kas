@@ -122,6 +122,7 @@ impl SendErased {
 #[derive(Debug, Default)]
 pub struct MessageStack {
     base: usize,
+    count: usize,
     stack: Vec<Erased>,
 }
 
@@ -142,6 +143,14 @@ impl MessageStack {
         self.base = self.stack.len();
     }
 
+    /// Get the current operation count
+    ///
+    /// This is incremented every time the message stack is changed.
+    #[inline]
+    pub(crate) fn get_op_count(&self) -> usize {
+        self.count
+    }
+
     /// Reset the base; return true if messages are available after reset
     #[inline]
     pub(crate) fn reset_and_has_any(&mut self) -> bool {
@@ -158,6 +167,7 @@ impl MessageStack {
     /// Push a type-erased message to the stack
     #[inline]
     pub(crate) fn push_erased(&mut self, msg: Erased) {
+        self.count = self.count.wrapping_add(1);
         self.stack.push(msg);
     }
 
@@ -166,6 +176,7 @@ impl MessageStack {
     /// This method may be called from [`Events::handle_messages`].
     pub fn try_pop<M: Debug + 'static>(&mut self) -> Option<M> {
         if self.has_any() && self.stack.last().map(|m| m.is::<M>()).unwrap_or(false) {
+            self.count = self.count.wrapping_add(1);
             self.stack.pop().unwrap().downcast::<M>().ok().map(|m| *m)
         } else {
             None

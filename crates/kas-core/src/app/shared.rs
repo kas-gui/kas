@@ -87,8 +87,13 @@ where
     #[inline]
     pub(crate) fn handle_messages(&mut self, messages: &mut MessageStack) {
         if messages.reset_and_has_any() {
-            let action = self.data.handle_messages(messages);
-            self.shared.pending.push_back(Pending::Action(action));
+            let count = messages.get_op_count();
+            self.data.handle_messages(messages);
+            if messages.get_op_count() != count {
+                self.shared
+                    .pending
+                    .push_back(Pending::Action(Action::UPDATE));
+            }
         }
     }
 
