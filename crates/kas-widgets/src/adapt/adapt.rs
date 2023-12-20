@@ -29,8 +29,8 @@ impl_scope! {
         inner: W,
         configure_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut S)>>,
         update_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut S, &A)>>,
-        timer_handlers: LinearMap<u64, Box<dyn Fn(&mut AdaptEventCx, &mut S, &A) -> bool>>,
-        message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx, &mut S, &A) -> bool>>,
+        timer_handlers: LinearMap<u64, Box<dyn Fn(&mut AdaptEventCx, &mut S, &A)>>,
+        message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx, &mut S, &A)>>,
     }
 
     impl Self {
@@ -72,10 +72,12 @@ impl_scope! {
 
         /// Set a timer handler
         ///
-        /// The closure should return `true` if state was updated.
+        /// It is assumed that state is modified by this timer. Frequent usage
+        /// of timers which don't do anything may be inefficient; prefer usage
+        /// of [`EventState::push_async`](kas::event::EventState::push_async).
         pub fn on_timer<H>(mut self, timer_id: u64, handler: H) -> Self
         where
-            H: Fn(&mut AdaptEventCx, &mut S, &A) -> bool + 'static,
+            H: Fn(&mut AdaptEventCx, &mut S, &A) + 'static,
         {
             debug_assert!(self.timer_handlers.get(&timer_id).is_none());
             self.timer_handlers.insert(timer_id, Box::new(handler));
@@ -96,19 +98,14 @@ impl_scope! {
             self.on_messages(move |cx, state, _data| {
                 if let Some(m) = cx.try_pop() {
                     handler(cx, state, m);
-                    true
-                } else {
-                    false
                 }
             })
         }
 
         /// Add a generic message handler
-        ///
-        /// The closure should return `true` if state was updated.
         pub fn on_messages<H>(mut self, handler: H) -> Self
         where
-            H: Fn(&mut AdaptEventCx, &mut S, &A) -> bool + 'static,
+            H: Fn(&mut AdaptEventCx, &mut S, &A) + 'static,
         {
             self.message_handlers.push(Box::new(handler));
             self
@@ -137,9 +134,8 @@ impl_scope! {
                 Event::Timer(timer_id) => {
                     if let Some(handler) = self.timer_handlers.get(&timer_id) {
                         let mut cx = AdaptEventCx::new(cx, self.id());
-                        if handler(&mut cx, &mut self.state, data) {
-                            cx.update(self.as_node(data));
-                        }
+                        handler(&mut cx, &mut self.state, data);
+                        cx.update(self.as_node(data));
                         Used
                     } else {
                         Unused
@@ -150,12 +146,12 @@ impl_scope! {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
-            let mut update = false;
+            let count = cx.msg_op_count();
             let mut cx = AdaptEventCx::new(cx, self.id());
             for handler in self.message_handlers.iter() {
-                update |= handler(&mut cx, &mut self.state, data);
+                handler(&mut cx, &mut self.state, data);
             }
-            if update {
+            if cx.msg_op_count() != count {
                 cx.update(self.as_node(data));
             }
         }

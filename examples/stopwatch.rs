@@ -47,9 +47,6 @@ fn make_window() -> impl Widget<Data = ()> {
                 timer.elapsed += now - last;
                 timer.last = Some(now);
                 cx.request_timer(0, Duration::new(0, 1));
-                true
-            } else {
-                false
             }
         })
 }
