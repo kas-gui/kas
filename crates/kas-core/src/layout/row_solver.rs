@@ -12,7 +12,7 @@ use super::{AxisInfo, SizeRules};
 use super::{RowStorage, RowTemp, RulesSetter, RulesSolver};
 use crate::dir::{Direction, Directional};
 use crate::geom::{Coord, Rect};
-use crate::Layout;
+use crate::{Collection, Layout};
 
 /// A [`RulesSolver`] for rows (and, without loss of generality, for columns).
 ///
@@ -241,9 +241,7 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, 
 /// Allows efficient implementations of `draw` / event handlers based on the
 /// layout representation.
 ///
-/// This is only applicable where child widgets are contained in a slice of type
-/// `W: Layout` (which may be `Box<dyn Widget>`). In other cases, the naive
-/// implementation (test all items) must be used.
+/// This is only applicable where child widgets are contained in a [`Collection`].
 #[derive(Clone, Copy, Debug)]
 pub struct RowPositionSolver<D: Directional> {
     direction: D,
@@ -255,10 +253,14 @@ impl<D: Directional> RowPositionSolver<D> {
         RowPositionSolver { direction }
     }
 
-    fn binary_search<W: Layout>(self, widgets: &[W], coord: Coord) -> Result<usize, usize> {
+    fn binary_search<C: Collection + ?Sized>(
+        self,
+        widgets: &C,
+        coord: Coord,
+    ) -> Option<Result<usize, usize>> {
         match self.direction.as_direction() {
-            Direction::Right => widgets.binary_search_by_key(&coord.0, |w| w.rect().pos.0),
-            Direction::Down => widgets.binary_search_by_key(&coord.1, |w| w.rect().pos.1),
+            Direction::Right => widgets.binary_search_by(|w| w.rect().pos.0.cmp(&coord.0)),
+            Direction::Down => widgets.binary_search_by(|w| w.rect().pos.1.cmp(&coord.1)),
             Direction::Left => widgets.binary_search_by(|w| w.rect().pos.0.cmp(&coord.0).reverse()),
             Direction::Up => widgets.binary_search_by(|w| w.rect().pos.1.cmp(&coord.1).reverse()),
         }
@@ -268,18 +270,24 @@ impl<D: Directional> RowPositionSolver<D> {
     ///
     /// Returns `None` when the coordinates lie within the margin area or
     /// outside of the parent widget.
-    pub fn find_child_index<W: Layout>(self, widgets: &[W], coord: Coord) -> Option<usize> {
-        match self.binary_search(widgets, coord) {
+    /// Also returns `None` if [`Collection::get_layout`] returns `None` for
+    /// some index less than `len` (a theoretical but unexpected error case).
+    pub fn find_child_index<C: Collection + ?Sized>(
+        self,
+        widgets: &C,
+        coord: Coord,
+    ) -> Option<usize> {
+        match self.binary_search(widgets, coord)? {
             Ok(i) => Some(i),
             Err(i) if self.direction.is_reversed() => {
-                if i == widgets.len() || !widgets[i].rect().contains(coord) {
+                if i == widgets.len() || !widgets.get_layout(i)?.rect().contains(coord) {
                     None
                 } else {
                     Some(i)
                 }
             }
             Err(i) => {
-                if i == 0 || !widgets[i - 1].rect().contains(coord) {
+                if i == 0 || !widgets.get_layout(i - 1)?.rect().contains(coord) {
                     None
                 } else {
                     Some(i - 1)
@@ -292,25 +300,38 @@ impl<D: Directional> RowPositionSolver<D> {
     ///
     /// Returns `None` when the coordinates lie within the margin area or
     /// outside of the parent widget.
+    /// Also returns `None` if [`Collection::get_layout`] returns `None` for
+    /// some index less than `len` (a theoretical but unexpected error case).
     #[inline]
-    pub fn find_child<W: Layout>(self, widgets: &[W], coord: Coord) -> Option<&W> {
-        self.find_child_index(widgets, coord).map(|i| &widgets[i])
+    pub fn find_child<C: Collection + ?Sized>(
+        self,
+        widgets: &C,
+        coord: Coord,
+    ) -> Option<&dyn Layout> {
+        self.find_child_index(widgets, coord)
+            .and_then(|i| widgets.get_layout(i))
     }
 
     /// Find the child containing the given coordinates
     ///
     /// Returns `None` when the coordinates lie within the margin area or
     /// outside of the parent widget.
+    /// Also returns `None` if [`Collection::get_layout`] returns `None` for
+    /// some index less than `len` (a theoretical but unexpected error case).
     #[inline]
-    pub fn find_child_mut<W: Layout>(self, widgets: &mut [W], coord: Coord) -> Option<&mut W> {
+    pub fn find_child_mut<C: Collection + ?Sized>(
+        self,
+        widgets: &mut C,
+        coord: Coord,
+    ) -> Option<&mut dyn Layout> {
         self.find_child_index(widgets, coord)
-            .map(|i| &mut widgets[i])
+            .and_then(|i| widgets.get_mut_layout(i))
     }
 
     /// Call `f` on each child intersecting the given `rect`
-    pub fn for_children<W: Layout, F: FnMut(&mut W)>(
+    pub fn for_children_mut<C: Collection + ?Sized, F: FnMut(&mut dyn Layout)>(
         self,
-        widgets: &mut [W],
+        widgets: &mut C,
         rect: Rect,
         mut f: F,
     ) {
@@ -319,36 +340,38 @@ impl<D: Directional> RowPositionSolver<D> {
             true => (rect.pos2(), rect.pos),
         };
         let start = match self.binary_search(widgets, pos) {
-            Ok(i) => i,
-            Err(i) if i > 0 => {
-                let j = i - 1;
-                let rect = widgets[j].rect();
-                let cond = match self.direction.as_direction() {
-                    Direction::Right => pos.0 < rect.pos2().0,
-                    Direction::Down => pos.1 < rect.pos2().1,
-                    Direction::Left => rect.pos.0 <= pos.0,
-                    Direction::Up => rect.pos.1 <= pos.1,
-                };
-                if cond {
-                    j
-                } else {
-                    i
+            Some(Ok(i)) => i,
+            Some(Err(i)) if i > 0 => {
+                let mut j = i - 1;
+                if let Some(rect) = widgets.get_layout(j).map(|l| l.rect()) {
+                    let cond = match self.direction.as_direction() {
+                        Direction::Right => pos.0 < rect.pos2().0,
+                        Direction::Down => pos.1 < rect.pos2().1,
+                        Direction::Left => rect.pos.0 <= pos.0,
+                        Direction::Up => rect.pos.1 <= pos.1,
+                    };
+                    if !cond {
+                        j = i;
+                    }
                 }
+                j
             }
-            Err(_) => 0,
+            _ => 0,
         };
 
-        for child in widgets[start..].iter_mut() {
-            let do_break = match self.direction.as_direction() {
-                Direction::Right => child.rect().pos.0 >= end.0,
-                Direction::Down => child.rect().pos.1 >= end.1,
-                Direction::Left => child.rect().pos2().0 < end.0,
-                Direction::Up => child.rect().pos2().1 < end.1,
-            };
-            if do_break {
-                break;
+        for i in start..widgets.len() {
+            if let Some(child) = widgets.get_mut_layout(i) {
+                let do_break = match self.direction.as_direction() {
+                    Direction::Right => child.rect().pos.0 >= end.0,
+                    Direction::Down => child.rect().pos.1 >= end.1,
+                    Direction::Left => child.rect().pos2().0 < end.0,
+                    Direction::Up => child.rect().pos2().1 < end.1,
+                };
+                if do_break {
+                    break;
+                }
+                f(child);
             }
-            f(child);
         }
     }
 }

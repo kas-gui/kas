@@ -231,10 +231,6 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; `self` `.` _Member_\
 /// > &nbsp;&nbsp; A named child: `self.foo` (more precisely, this matches any expression starting `self`, and uses `&mut (#expr)`)
 /// >
-/// > _Slice_ :\
-/// > &nbsp;&nbsp; `slice!` _Storage_? `(` _Direction_ `,` `self` `.` _Member_ `)`\
-/// > &nbsp;&nbsp; A field with type `[W]` for some `W: Layout`. (Note: this does not automatically register the slice widgets as children for the purpose of configuration and event-handling. An explicit implementation of `Widget::get_child` will be required.)
-/// >
 /// > _Frame_ :\
 /// > &nbsp;&nbsp; `frame!` _Storage_? `(` _Layout_ ( `,` `style` `=` _Expr_ )? `)`\
 /// > &nbsp;&nbsp; Adds a frame of type _Expr_ around content, defaulting to `FrameStyle::Frame`.

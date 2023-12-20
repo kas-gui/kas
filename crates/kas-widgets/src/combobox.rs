@@ -40,7 +40,7 @@ impl_scope! {
         #[widget(&())]
         mark: Mark,
         #[widget(&())]
-        popup: Popup<AdaptEvents<Column<MenuEntry<V>>>>,
+        popup: Popup<AdaptEvents<Column<Vec<MenuEntry<V>>>>>,
         active: usize,
         opening: bool,
         state_fn: Box<dyn Fn(&ConfigCx, &A) -> V>,

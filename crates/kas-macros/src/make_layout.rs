@@ -29,7 +29,6 @@ mod kw {
     custom_keyword!(frame);
     custom_keyword!(button);
     custom_keyword!(list);
-    custom_keyword!(slice);
     custom_keyword!(grid);
     custom_keyword!(default);
     custom_keyword!(top);
@@ -137,12 +136,6 @@ impl Tree {
         children: I,
     ) -> std::result::Result<Toks, (Span, &'static str)> {
         match &self.0 {
-            Layout::Slice(_, dir, _) => Ok(quote! {
-                fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-                    let reverse = reverse ^ (#dir).is_reversed();
-                    kas::util::nav_next(reverse, from, self.num_children())
-                }
-            }),
             layout => {
                 let mut v = Vec::new();
                 let mut index = children.len();
@@ -412,7 +405,6 @@ enum Layout {
     Button(StorIdent, Box<Layout>, Expr),
     List(StorIdent, Direction, Vec<Layout>),
     Float(Vec<Layout>),
-    Slice(StorIdent, Direction, Expr),
     Grid(StorIdent, GridDimensions, Vec<(CellInfo, Layout)>),
     Label(StorIdent, LitStr),
     NonNavigable(Box<Layout>),
@@ -708,21 +700,6 @@ impl Layout {
             Ok(parse_grid_as_list_of_lists::<kw::column>(
                 stor, &inner, gen, false,
             )?)
-        } else if lookahead.peek(kw::slice) {
-            let _: kw::slice = input.parse()?;
-            let _: Token![!] = input.parse()?;
-            let stor = gen.parse_or_next(input)?;
-
-            let inner;
-            let _ = parenthesized!(inner in input);
-
-            let dir: Direction = inner.parse()?;
-            let _: Token![,] = inner.parse()?;
-            if inner.peek(Token![self]) {
-                Ok(Layout::Slice(stor, dir, inner.parse()?))
-            } else {
-                Err(Error::new(inner.span(), "expected `self`"))
-            }
         } else if lookahead.peek(kw::grid) {
             let _: kw::grid = input.parse()?;
             let _: Token![!] = input.parse()?;
@@ -1114,11 +1091,6 @@ impl Layout {
                 }
                 used_data_ty
             }
-            Layout::Slice(stor, _, _) => {
-                ty_toks.append_all(quote! { #stor: ::kas::layout::DynRowStorage, });
-                def_toks.append_all(quote! { #stor: Default::default(), });
-                false
-            }
             Layout::Grid(stor, dim, cells) => {
                 let (cols, rows) = (dim.cols as usize, dim.rows as usize);
                 ty_toks
@@ -1208,12 +1180,6 @@ impl Layout {
                     layout::Visitor::list(#iter, dir, &mut #core_path.#stor)
                 }}
             }
-            Layout::Slice(stor, dir, expr) => {
-                quote! {{
-                    let dir = #dir;
-                    layout::Visitor::slice(&mut #expr, dir, &mut #core_path.#stor)
-                }}
-            }
             Layout::Grid(stor, dim, cells) => {
                 let mut items = Toks::new();
                 for item in cells {
@@ -1300,9 +1266,6 @@ impl Layout {
                     Direction::Expr(_) => Err((dir.span(), "`list(dir)` with non-static `dir`")),
                 }
             }
-            Layout::Slice(_, _, expr) => {
-                Err((expr.span(), "`slice` combined with other layout components"))
-            }
             Layout::Grid(_, _, cells) => {
                 // TODO: sort using CellInfo?
                 for (_, item) in cells {
@@ -1338,7 +1301,6 @@ impl Layout {
             Layout::List(_, _, list) | Layout::Float(list) => {
                 list.iter().find_map(|layout| layout.span_in_layout(ident))
             }
-            Layout::Slice(..) => None,
             Layout::Grid(_, _, list) => list.iter().find_map(|cell| cell.1.span_in_layout(ident)),
             Layout::Label(..) => None,
         }

@@ -211,12 +211,12 @@ impl_scope! {
             // as with find_id, there's not much harm in invoking the solver twice
 
             let solver = layout::RowPositionSolver::new(self.direction);
-            solver.for_children(&mut self.widgets, draw.get_clip_rect(), |w| {
+            solver.for_children_mut(&mut self.widgets, draw.get_clip_rect(), |w| {
                 draw.recurse(w);
             });
 
             let solver = layout::RowPositionSolver::new(self.direction);
-            solver.for_children(&mut self.handles, draw.get_clip_rect(), |w| {
+            solver.for_children_mut(&mut self.handles, draw.get_clip_rect(), |w| {
                 draw.separator(w.rect())
             });
         }

@@ -6,65 +6,54 @@
 //! A row or column with run-time adjustable contents
 
 use kas::dir::{Down, Right};
-use kas::{layout, prelude::*};
+use kas::layout::{
+    DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage, RulesSetter, RulesSolver,
+};
+use kas::prelude::*;
+use kas::Collection;
 use std::collections::hash_map::{Entry, HashMap};
 use std::ops::{Index, IndexMut};
 
 /// A generic row widget
 ///
 /// See documentation of [`List`] type.
-pub type Row<W> = List<W, Right>;
+pub type Row<C> = List<C, Right>;
 
 /// A generic column widget
 ///
 /// See documentation of [`List`] type.
-pub type Column<W> = List<W, Down>;
-
-/// A row of boxed widgets
-///
-/// See documentation of [`List`] type.
-pub type BoxRow<Data> = BoxList<Data, Right>;
-
-/// A column of boxed widgets
-///
-/// See documentation of [`List`] type.
-pub type BoxColumn<Data> = BoxList<Data, Down>;
-
-/// A row/column of boxed widgets
-///
-/// This is parameterised over directionality.
-///
-/// See documentation of [`List`] type.
-pub type BoxList<Data, D> = List<Box<dyn Widget<Data = Data>>, D>;
+pub type Column<C> = List<C, Down>;
 
 impl_scope! {
     /// A generic row/column widget
     ///
-    /// This type is roughly [`Vec`] but for widgets. Generics:
+    /// A linear widget over a [`Collection`] of widgets, for example an array
+    /// `[W; N]` or a [`Vec<W>`][Vec] where `const N: usize, W: Widget`.
     ///
-    /// -   `W:` [`Widget`] — type of widget
-    /// -   `D:` [`Directional`] — fixed or run-time direction of layout
+    /// When the collection uses [`Vec`], various methods to insert/remove
+    /// elements are available.
     ///
-    /// ## Alternatives
+    /// The layout direction `D` may be compile-time fixed (e.g. [`Right`]) or
+    /// run-time mutable [`Direction`]); in the latter case
+    /// [`set_direction`][List::set_direction] is available.
+    ///
+    /// ## See also
     ///
     /// Some more specific type-defs are available:
     ///
     /// -   [`Row`] and [`Column`] fix the direction `D`
-    /// -   [`BoxList`] fixes the widget type to `Box<dyn Widget<Data = Data>>`
-    /// -   [`BoxRow`] and [`BoxColumn`] fix both type parameters
     ///
     /// ## Performance
     ///
     /// Configuring and resizing elements is O(n) in the number of children.
     /// Drawing and event handling is O(log n) in the number of children (assuming
     /// only a small number are visible at any one time).
-    #[autoimpl(Default where D: Default)]
-    #[widget {
-        layout = slice! 'layout (self.direction, self.widgets);
-    }]
-    pub struct List<W: Widget, D: Directional> {
+    #[autoimpl(Default where C: Default, D: Default)]
+    #[widget]
+    pub struct List<C: Collection, D: Directional> {
         core: widget_core!(),
-        widgets: Vec<W>,
+        layout: DynRowStorage,
+        widgets: C,
         direction: D,
         next: usize,
         id_map: HashMap<usize, usize>, // map key of Id to index
@@ -75,35 +64,68 @@ impl_scope! {
         fn num_children(&self) -> usize {
             self.widgets.len()
         }
+
         fn get_child(&self, index: usize) -> Option<&dyn Layout> {
-            self.widgets.get(index).map(|w| w.as_layout())
+            self.widgets.get_layout(index)
         }
 
         fn find_child_index(&self, id: &Id) -> Option<usize> {
             id.next_key_after(self.id_ref())
                 .and_then(|k| self.id_map.get(&k).cloned())
         }
+
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            let dim = (self.direction, self.widgets.len());
+            let mut solver = RowSolver::new(axis, dim, &mut self.layout);
+            for n in 0..self.widgets.len() {
+                if let Some(child) = self.widgets.get_mut_layout(n) {
+                    solver.for_child(&mut self.layout, n, |axis| child.size_rules(sizer.re(), axis));
+                }
+            }
+            solver.finish(&mut self.layout)
+        }
+
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+            let dim = (self.direction, self.widgets.len());
+            let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, &mut self.layout);
+
+            for n in 0..self.widgets.len() {
+                if let Some(child) = self.widgets.get_mut_layout(n) {
+                    child.set_rect(cx, setter.child_rect(&mut self.layout, n));
+                }
+            }
+        }
+
+        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+            let solver = RowPositionSolver::new(self.direction);
+            solver
+                .find_child_mut(&mut self.widgets, coord)
+                .and_then(|child| child.find_id(coord))
+        }
+
+        fn draw(&mut self, mut draw: DrawCx) {
+            let solver = RowPositionSolver::new(self.direction);
+            solver.for_children_mut(&mut self.widgets, draw.get_clip_rect(), |w| draw.recurse(w));
+        }
     }
 
     impl Widget for Self {
-        type Data = W::Data;
+        type Data = C::Data;
 
         fn for_child_node(
             &mut self,
-            data: &W::Data,
+            data: &C::Data,
             index: usize,
             closure: Box<dyn FnOnce(Node<'_>) + '_>,
         ) {
-            if let Some(w) = self.widgets.get_mut(index) {
-                closure(w.as_node(data));
-            }
+            self.widgets.for_node(data, index, closure);
         }
     }
 
     impl Events for Self {
         /// Make a fresh id based on `self.next` then insert into `self.id_map`
         fn make_child_id(&mut self, index: usize) -> Id {
-            if let Some(child) = self.widgets.get(index) {
+            if let Some(child) = self.widgets.get_layout(index) {
                 // Use the widget's existing identifier, if any
                 if child.id_ref().is_valid() {
                     if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
@@ -139,37 +161,76 @@ impl_scope! {
         /// This constructor is available where the direction is determined by the
         /// type: for `D: Directional + Default`. In other cases, use
         /// [`Self::new_dir`].
-        pub fn new(widgets: impl Into<Vec<W>>) -> Self {
+        ///
+        /// # Examples
+        ///
+        /// Where widgets have the same type and the length is fixed, an array
+        /// may be used:
+        /// ```
+        /// use kas_widgets::{label, Row};
+        /// let _ = Row::new([label("left"), label("right")]);
+        /// ```
+        ///
+        /// To support run-time insertion/deletion, use [`Vec`]:
+        /// ```
+        /// use kas_widgets::{AdaptWidget, Button, Row};
+        ///
+        /// #[derive(Clone, Debug)]
+        /// enum Msg {
+        ///     Add,
+        ///     Remove,
+        /// }
+        ///
+        /// let _ = Row::new(vec![Button::label_msg("Add", Msg::Add)])
+        ///     .on_messages(|cx, row, data| {
+        ///         if let Some(msg) = cx.try_pop() {
+        ///             match msg {
+        ///                 Msg::Add => {
+        ///                     let button = if row.len() % 2 == 0 {
+        ///                         Button::label_msg("Add", Msg::Add)
+        ///                     } else {
+        ///                         Button::label_msg("Remove", Msg::Remove)
+        ///                     };
+        ///                     row.push(&mut cx.config_cx(), data, button);
+        ///                 }
+        ///                 Msg::Remove => {
+        ///                     let _ = row.pop(&mut cx.config_cx());
+        ///                 }
+        ///             }
+        ///         }
+        ///     });
+        /// ```
+        pub fn new(widgets: C) -> Self {
             Self::new_dir(widgets, D::default())
         }
     }
 
-    impl<W: Widget> List<W, kas::dir::Left> {
+    impl<C: Collection> List<C, kas::dir::Left> {
         /// Construct a new instance
-        pub fn left(widgets: impl Into<Vec<W>>) -> Self {
+        pub fn left(widgets: C) -> Self {
             Self::new(widgets)
         }
     }
-    impl<W: Widget> List<W, kas::dir::Right> {
+    impl<C: Collection> List<C, kas::dir::Right> {
         /// Construct a new instance
-        pub fn right(widgets: impl Into<Vec<W>>) -> Self {
+        pub fn right(widgets: C) -> Self {
             Self::new(widgets)
         }
     }
-    impl<W: Widget> List<W, kas::dir::Up> {
+    impl<C: Collection> List<C, kas::dir::Up> {
         /// Construct a new instance
-        pub fn up(widgets: impl Into<Vec<W>>) -> Self {
+        pub fn up(widgets: C) -> Self {
             Self::new(widgets)
         }
     }
-    impl<W: Widget> List<W, kas::dir::Down> {
+    impl<C: Collection> List<C, kas::dir::Down> {
         /// Construct a new instance
-        pub fn down(widgets: impl Into<Vec<W>>) -> Self {
+        pub fn down(widgets: C) -> Self {
             Self::new(widgets)
         }
     }
 
-    impl<W: Widget> List<W, Direction> {
+    impl<C: Collection> List<C, Direction> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, direction: Direction) -> Action {
             if direction == self.direction {
@@ -185,14 +246,50 @@ impl_scope! {
     impl Self {
         /// Construct a new instance with explicit direction
         #[inline]
-        pub fn new_dir(widgets: impl Into<Vec<W>>, direction: D) -> Self {
+        pub fn new_dir(widgets: C, direction: D) -> Self {
             List {
                 core: Default::default(),
-                widgets: widgets.into(),
+                layout: Default::default(),
+                widgets,
                 direction,
                 next: 0,
                 id_map: Default::default(),
             }
+        }
+
+        /// Get the direction of contents
+        pub fn direction(&self) -> Direction {
+            self.direction.as_direction()
+        }
+
+        /// Access layout storage
+        ///
+        /// The number of columns/rows is [`Self.len`].
+        #[inline]
+        pub fn layout_storage(&mut self) -> &mut impl RowStorage {
+            &mut self.layout
+        }
+
+        /// True if there are no child widgets
+        pub fn is_empty(&self) -> bool {
+            self.widgets.is_empty()
+        }
+
+        /// Returns the number of child widgets
+        pub fn len(&self) -> usize {
+            self.widgets.len()
+        }
+    }
+
+    impl<W: Widget, D: Directional> List<Vec<W>, D> {
+        /// Returns a reference to the child, if any
+        pub fn get(&self, index: usize) -> Option<&W> {
+            self.widgets.get(index)
+        }
+
+        /// Returns a mutable reference to the child, if any
+        pub fn get_mut(&mut self, index: usize) -> Option<&mut W> {
+            self.widgets.get_mut(index)
         }
 
         /// Edit the list of children directly
@@ -207,42 +304,9 @@ impl_scope! {
             Action::RECONFIGURE
         }
 
-        /// Get the direction of contents
-        pub fn direction(&self) -> Direction {
-            self.direction.as_direction()
-        }
-
-        /// Access layout storage
-        ///
-        /// The number of columns/rows is [`Self.len`].
-        #[inline]
-        pub fn layout_storage(&mut self) -> &mut impl layout::RowStorage {
-            &mut self.core.layout
-        }
-
-        /// True if there are no child widgets
-        pub fn is_empty(&self) -> bool {
-            self.widgets.is_empty()
-        }
-
-        /// Returns the number of child widgets
-        pub fn len(&self) -> usize {
-            self.widgets.len()
-        }
-
         /// Remove all child widgets
         pub fn clear(&mut self) {
             self.widgets.clear();
-        }
-
-        /// Returns a reference to the child, if any
-        pub fn get(&self, index: usize) -> Option<&W> {
-            self.widgets.get(index)
-        }
-
-        /// Returns a mutable reference to the child, if any
-        pub fn get_mut(&mut self, index: usize) -> Option<&mut W> {
-            self.widgets.get_mut(index)
         }
 
         /// Append a child widget
@@ -411,7 +475,7 @@ impl_scope! {
         }
     }
 
-    impl Index<usize> for Self {
+    impl<W: Widget, D: Directional> Index<usize> for List<Vec<W>, D> {
         type Output = W;
 
         fn index(&self, index: usize) -> &Self::Output {
@@ -419,20 +483,10 @@ impl_scope! {
         }
     }
 
-    impl IndexMut<usize> for Self {
+    impl<W: Widget, D: Directional> IndexMut<usize> for List<Vec<W>, D> {
         fn index_mut(&mut self, index: usize) -> &mut Self::Output {
             &mut self.widgets[index]
         }
-    }
-}
-
-impl<W: Widget, D: Directional + Default> FromIterator<W> for List<W, D> {
-    #[inline]
-    fn from_iter<T>(iter: T) -> Self
-    where
-        T: IntoIterator<Item = W>,
-    {
-        Self::new(iter.into_iter().collect::<Vec<W>>())
     }
 }
 
