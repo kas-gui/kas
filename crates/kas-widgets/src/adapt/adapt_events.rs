@@ -8,7 +8,7 @@
 use super::{AdaptConfigCx, AdaptEventCx};
 use kas::autoimpl;
 use kas::event::{ConfigCx, Event, EventCx, IsUsed};
-use kas::geom::{Coord, Rect};
+use kas::geom::{Coord, Offset, Rect};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::theme::{DrawCx, SizeCx};
 #[allow(unused)] use kas::Events;
@@ -78,6 +78,35 @@ impl<W: Widget> AdaptEvents<W> {
         })
     }
 
+    /// Add a child handler to map messages of type `M` to `N`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use kas::messages::Select;
+    /// use kas_widgets::{AdaptWidget, Row, Tab};
+    ///
+    /// #[derive(Clone, Debug)]
+    /// struct MsgSelectIndex(usize);
+    ///
+    /// let tabs = Row::new([Tab::new("A")])
+    ///     .map_message(|index, Select| MsgSelectIndex(index));
+    /// ```
+    pub fn map_message<M, N, H>(self, handler: H) -> Self
+    where
+        M: Debug + 'static,
+        N: Debug + 'static,
+        H: Fn(usize, M) -> N + 'static,
+    {
+        self.on_messages(move |cx, _, _| {
+            if let Some(index) = cx.last_child() {
+                if let Some(m) = cx.try_pop() {
+                    cx.push(handler(index, m));
+                }
+            }
+        })
+    }
+
     /// Add a generic message handler
     ///
     /// The child index may be inferred via [`EventCx::last_child`].
@@ -137,9 +166,11 @@ impl<W: Widget> Widget for AdaptEvents<W> {
     fn _send(&mut self, cx: &mut EventCx, data: &Self::Data, id: Id, event: Event) -> IsUsed {
         let is_used = self.inner._send(cx, data, id, event);
 
-        let mut cx = AdaptEventCx::new(cx, self.inner.id());
-        for handler in self.message_handlers.iter() {
-            handler(&mut cx, &mut self.inner, data);
+        if cx.has_msg() {
+            let mut cx = AdaptEventCx::new(cx, self.inner.id());
+            for handler in self.message_handlers.iter() {
+                handler(&mut cx, &mut self.inner, data);
+            }
         }
 
         is_used
@@ -149,9 +180,11 @@ impl<W: Widget> Widget for AdaptEvents<W> {
     fn _replay(&mut self, cx: &mut EventCx, data: &Self::Data, id: Id) {
         self.inner._replay(cx, data, id);
 
-        let mut cx = AdaptEventCx::new(cx, self.inner.id());
-        for handler in self.message_handlers.iter() {
-            handler(&mut cx, &mut self.inner, data);
+        if cx.has_msg() {
+            let mut cx = AdaptEventCx::new(cx, self.inner.id());
+            for handler in self.message_handlers.iter() {
+                handler(&mut cx, &mut self.inner, data);
+            }
         }
     }
 
@@ -199,6 +232,11 @@ impl<W: Widget> Layout for AdaptEvents<W> {
     }
 
     #[inline]
+    fn find_child_index(&self, id: &Id) -> Option<usize> {
+        self.inner.find_child_index(id)
+    }
+
+    #[inline]
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         self.inner.size_rules(sizer, axis)
     }
@@ -211,6 +249,11 @@ impl<W: Widget> Layout for AdaptEvents<W> {
     #[inline]
     fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
         self.inner.nav_next(reverse, from)
+    }
+
+    #[inline]
+    fn translation(&self) -> Offset {
+        self.inner.translation()
     }
 
     #[inline]
