@@ -34,9 +34,17 @@ impl<T: Clone + Default> DefaultWithLen for Vec<T> {
 /// Grid dimensions
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct GridDimensions {
+    /// The number of columns
+    ///
+    /// This equals the maximum [`GridCellInfo::col_end`] of the colliection.
     pub cols: u32,
+    /// The number of cells spanning more than one column
     pub col_spans: u32,
+    /// The number of rows
+    ///
+    /// This equals the maximum [`GridCellInfo::row_end`] of the colliection.
     pub rows: u32,
+    /// The number of cells spanning more than one row
     pub row_spans: u32,
 }
 

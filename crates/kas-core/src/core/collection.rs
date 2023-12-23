@@ -5,7 +5,9 @@
 
 //! The [`Collection`] trait
 
+use crate::layout::{GridCellInfo, GridDimensions};
 use crate::{Layout, Node, Widget};
+use kas_macros::impl_scope;
 use std::ops::RangeBounds;
 
 /// A collection of (child) widgets
@@ -114,59 +116,142 @@ pub trait Collection {
     }
 }
 
-/// An iterator over a [`Collection`] as [`Layout`] elements
-pub struct CollectionIterLayout<'a, C: Collection + ?Sized> {
-    start: usize,
-    end: usize,
-    collection: &'a C,
-}
+/// A collection with attached cell info
+pub trait CellCollection: Collection {
+    /// Get row/column info associated with cell at `index`
+    fn cell_info(&self, index: usize) -> Option<GridCellInfo>;
 
-impl<'a, C: Collection + ?Sized> Iterator for CollectionIterLayout<'a, C> {
-    type Item = &'a dyn Layout;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let index = self.start;
-        if index < self.end {
-            self.start += 1;
-            self.collection.get_layout(index)
-        } else {
-            None
+    /// Iterate over [`GridCellInfo`] of elements within `range`
+    fn iter_cell_info(&self, range: impl RangeBounds<usize>) -> CollectionIterCellInfo<'_, Self> {
+        use std::ops::Bound::{Excluded, Included, Unbounded};
+        let start = match range.start_bound() {
+            Included(start) => *start,
+            Excluded(start) => *start + 1,
+            Unbounded => 0,
+        };
+        let end = match range.end_bound() {
+            Included(end) => *end + 1,
+            Excluded(end) => *end,
+            Unbounded => self.len(),
+        };
+        CollectionIterCellInfo {
+            start,
+            end,
+            collection: self,
         }
+    }
+
+    /// Get or calculate grid dimension info
+    ///
+    /// The default implementation calculates this from [`Self::cell_info`].
+    fn grid_dimensions(&self) -> GridDimensions {
+        let mut dim = GridDimensions::default();
+        for cell_info in self.iter_cell_info(..) {
+            dim.cols = dim.cols.max(cell_info.col_end);
+            dim.rows = dim.rows.max(cell_info.row_end);
+            if cell_info.col_end - cell_info.col > 1 {
+                dim.col_spans += 1;
+            }
+            if cell_info.row_end - cell_info.row > 1 {
+                dim.row_spans += 1;
+            }
+        }
+        dim
     }
 }
 
-impl<'a, C: Collection + ?Sized> DoubleEndedIterator for CollectionIterLayout<'a, C> {
-    fn next_back(&mut self) -> Option<Self::Item> {
-        if self.start < self.end {
-            let index = self.end - 1;
-            self.end = index;
-            self.collection.get_layout(index)
-        } else {
-            None
+impl_scope! {
+    /// An iterator over a [`Collection`] as [`Layout`] elements
+    pub struct CollectionIterLayout<'a, C: Collection + ?Sized> {
+        start: usize,
+        end: usize,
+        collection: &'a C,
+    }
+
+    impl Iterator for Self {
+        type Item = &'a dyn Layout;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            let index = self.start;
+            if index < self.end {
+                self.start += 1;
+                self.collection.get_layout(index)
+            } else {
+                None
+            }
         }
     }
+
+    impl DoubleEndedIterator for Self {
+        fn next_back(&mut self) -> Option<Self::Item> {
+            if self.start < self.end {
+                let index = self.end - 1;
+                self.end = index;
+                self.collection.get_layout(index)
+            } else {
+                None
+            }
+        }
+    }
+
+    impl ExactSizeIterator for Self {}
 }
 
-impl<'a, C: Collection + ?Sized> ExactSizeIterator for CollectionIterLayout<'a, C> {}
+impl_scope! {
+    /// An iterator over a [`Collection`] as [`GridCellInfo`] elements
+    pub struct CollectionIterCellInfo<'a, C: CellCollection + ?Sized> {
+        start: usize,
+        end: usize,
+        collection: &'a C,
+    }
+
+    impl Iterator for Self {
+        type Item = GridCellInfo;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            let index = self.start;
+            if index < self.end {
+                self.start += 1;
+                self.collection.cell_info(index)
+            } else {
+                None
+            }
+        }
+    }
+
+    impl DoubleEndedIterator for Self {
+        fn next_back(&mut self) -> Option<Self::Item> {
+            if self.start < self.end {
+                let index = self.end - 1;
+                self.end = index;
+                self.collection.cell_info(index)
+            } else {
+                None
+            }
+        }
+    }
+
+    impl ExactSizeIterator for Self {}
+}
 
 macro_rules! impl_slice {
-    (($($gg:tt)*) for $t:ty) => {
+    (($($gg:tt)*) for $t:ty as $w:ident in $pat:pat) => {
         impl<$($gg)*> Collection for $t {
             type Data = W::Data;
 
             #[inline]
             fn len(&self) -> usize {
-                <[W]>::len(self)
+                <[_]>::len(self)
             }
 
             #[inline]
             fn get_layout(&self, index: usize) -> Option<&dyn Layout> {
-                self.get(index).map(|w| w as &dyn Layout)
+                self.get(index).map(|$pat| $w as &dyn Layout)
             }
 
             #[inline]
             fn get_mut_layout(&mut self, index: usize) -> Option<&mut dyn Layout> {
-                self.get_mut(index).map(|w| w as &mut dyn Layout)
+                self.get_mut(index).map(|$pat| $w as &mut dyn Layout)
             }
 
             #[inline]
@@ -176,8 +261,8 @@ macro_rules! impl_slice {
                 index: usize,
                 closure: Box<dyn FnOnce(Node<'_>) + '_>,
             ) {
-                if let Some(w) = self.get_mut(index) {
-                    closure(w.as_node(data));
+                if let Some($pat) = self.get_mut(index) {
+                    closure($w.as_node(data));
                 }
             }
 
@@ -186,7 +271,7 @@ macro_rules! impl_slice {
             where
                 F: FnMut(&'a dyn Layout) -> std::cmp::Ordering,
             {
-                Some(<[W]>::binary_search_by(self, move |w| f(w.as_layout())))
+                Some(<[_]>::binary_search_by(self, move |$pat| f($w.as_layout())))
             }
         }
     };
@@ -195,6 +280,19 @@ macro_rules! impl_slice {
 // NOTE: If Rust had better lifetime analysis we could replace
 // the following impls with a single one:
 // impl<W: Widget, T: std::ops::Deref<Target = [W]> + ?Sized> Collection for T
-impl_slice!((const N: usize, W: Widget) for [W; N]);
-impl_slice!((W: Widget) for [W]);
-impl_slice!((W: Widget) for Vec<W>);
+impl_slice!((const N: usize, W: Widget) for [W; N] as w in w);
+impl_slice!((W: Widget) for [W] as w in w);
+impl_slice!((W: Widget) for Vec<W> as w in w);
+
+impl_slice!((const N: usize, W: Widget) for [(GridCellInfo, W); N] as w in (_, w));
+impl_slice!((W: Widget) for [(GridCellInfo, W)] as w in (_, w));
+impl_slice!((W: Widget) for Vec<(GridCellInfo, W)> as w in (_, w));
+
+impl<W: Widget, C: Collection> CellCollection for C
+where
+    C: std::ops::Deref<Target = [(GridCellInfo, W)]>,
+{
+    fn cell_info(&self, index: usize) -> Option<GridCellInfo> {
+        self.get(index).map(|(info, _)| *info)
+    }
+}
