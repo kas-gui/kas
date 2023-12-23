@@ -42,7 +42,7 @@ pub struct GridDimensions {
 
 /// Per-child information
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct GridChildInfo {
+pub struct GridCellInfo {
     /// Column index (first column when in a span)
     pub col: u32,
     /// One-past-last index of column span (`col_end = col + 1` without span)
@@ -53,10 +53,10 @@ pub struct GridChildInfo {
     pub row_end: u32,
 }
 
-impl GridChildInfo {
+impl GridCellInfo {
     /// Construct from row and column
     pub fn new(col: u32, row: u32) -> Self {
-        GridChildInfo {
+        GridCellInfo {
             col,
             col_end: col + 1,
             row,
@@ -132,7 +132,7 @@ where
     RSR: AsRef<[(SizeRules, u32, u32)]> + AsMut<[(SizeRules, u32, u32)]>,
 {
     type Storage = S;
-    type ChildInfo = GridChildInfo;
+    type ChildInfo = GridCellInfo;
 
     fn for_child<CR: FnOnce(AxisInfo) -> SizeRules>(
         &mut self,
@@ -285,7 +285,7 @@ impl<CT: RowTemp, RT: RowTemp, S: GridStorage> GridSetter<CT, RT, S> {
 
 impl<CT: RowTemp, RT: RowTemp, S: GridStorage> RulesSetter for GridSetter<CT, RT, S> {
     type Storage = S;
-    type ChildInfo = GridChildInfo;
+    type ChildInfo = GridCellInfo;
 
     fn child_rect(&mut self, storage: &mut Self::Storage, info: Self::ChildInfo) -> Rect {
         let x = self.w_offsets.as_mut()[usize::conv(info.col)];

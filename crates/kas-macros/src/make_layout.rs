@@ -351,7 +351,7 @@ impl GenerateItem for () {
 }
 impl GenerateItem for CellInfo {
     fn cell_info_type() -> Toks {
-        quote! { ::kas::layout::GridChildInfo }
+        quote! { ::kas::layout::GridCellInfo }
     }
 
     fn generate_item(item: &ListItem<CellInfo>, core_path: &Toks) -> Result<Toks> {
@@ -360,7 +360,7 @@ impl GenerateItem for CellInfo {
         let layout = item.layout.generate(core_path)?;
         Ok(quote! {
             (
-                layout::GridChildInfo {
+                layout::GridCellInfo {
                     col: #col,
                     col_end: #col_end,
                     row: #row,

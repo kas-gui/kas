@@ -188,8 +188,8 @@ impl_scope! {
 }
 
 const MENU_VIEW_COLS: u32 = 5;
-const fn menu_view_row_info(row: u32) -> layout::GridChildInfo {
-    layout::GridChildInfo {
+const fn menu_view_row_info(row: u32) -> layout::GridCellInfo {
+    layout::GridCellInfo {
         col: 0,
         col_end: MENU_VIEW_COLS,
         row,
@@ -273,23 +273,23 @@ impl_scope! {
                 // on these for both axes
                 if let Some(items) = child.sub_items() {
                     if let Some(w) = items.toggle {
-                        let info = layout::GridChildInfo::new(0, row);
+                        let info = layout::GridCellInfo::new(0, row);
                         solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
                     }
                     if let Some(w) = items.icon {
-                        let info = layout::GridChildInfo::new(1, row);
+                        let info = layout::GridCellInfo::new(1, row);
                         solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
                     }
                     if let Some(w) = items.label {
-                        let info = layout::GridChildInfo::new(2, row);
+                        let info = layout::GridCellInfo::new(2, row);
                         solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
                     }
                     if let Some(w) = items.label2 {
-                        let info = layout::GridChildInfo::new(3, row);
+                        let info = layout::GridCellInfo::new(3, row);
                         solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
                     }
                     if let Some(w) = items.submenu {
-                        let info = layout::GridChildInfo::new(4, row);
+                        let info = layout::GridCellInfo::new(4, row);
                         solver.for_child(store, info, |axis| child_rules(sizer.re(), w, axis));
                     }
                 } else {
@@ -330,23 +330,23 @@ impl_scope! {
 
                 if let Some(items) = child.sub_items() {
                     if let Some(w) = items.toggle {
-                        let info = layout::GridChildInfo::new(0, row);
+                        let info = layout::GridCellInfo::new(0, row);
                         w.set_rect(cx, subtract_frame(setter.child_rect(store, info)));
                     }
                     if let Some(w) = items.icon {
-                        let info = layout::GridChildInfo::new(1, row);
+                        let info = layout::GridCellInfo::new(1, row);
                         w.set_rect(cx, subtract_frame(setter.child_rect(store, info)));
                     }
                     if let Some(w) = items.label {
-                        let info = layout::GridChildInfo::new(2, row);
+                        let info = layout::GridCellInfo::new(2, row);
                         w.set_rect(cx, subtract_frame(setter.child_rect(store, info)));
                     }
                     if let Some(w) = items.label2 {
-                        let info = layout::GridChildInfo::new(3, row);
+                        let info = layout::GridCellInfo::new(3, row);
                         w.set_rect(cx, subtract_frame(setter.child_rect(store, info)));
                     }
                     if let Some(w) = items.submenu {
-                        let info = layout::GridChildInfo::new(4, row);
+                        let info = layout::GridCellInfo::new(4, row);
                         w.set_rect(cx, subtract_frame(setter.child_rect(store, info)));
                     }
                 }

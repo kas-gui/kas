@@ -50,7 +50,7 @@ use crate::dir::{Direction, Directional, Directions};
 #[allow(unused)] use crate::Layout;
 
 pub use align::{Align, AlignHints, AlignPair};
-pub use grid_solver::{DefaultWithLen, GridChildInfo, GridDimensions, GridSetter, GridSolver};
+pub use grid_solver::{DefaultWithLen, GridCellInfo, GridDimensions, GridSetter, GridSolver};
 pub use row_solver::{RowPositionSolver, RowSetter, RowSolver};
 pub use single_solver::{SingleSetter, SingleSolver};
 pub use size_rules::SizeRules;
