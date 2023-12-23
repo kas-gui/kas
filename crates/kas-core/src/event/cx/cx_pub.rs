@@ -746,6 +746,15 @@ impl<'a> EventCx<'a> {
         self.messages.try_debug()
     }
 
+    /// Get the message stack operation count
+    ///
+    /// This is incremented every time the message stack is changed, thus can be
+    /// used to test whether a message handler did anything.
+    #[inline]
+    pub fn msg_op_count(&self) -> usize {
+        self.messages.get_op_count()
+    }
+
     /// Set a scroll action
     ///
     /// When setting [`Scroll::Rect`], use the widget's own coordinate space.

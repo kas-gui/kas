@@ -281,7 +281,7 @@ mod defaults {
     }
 
     pub fn font_size() -> f32 {
-        14.0
+        16.0
     }
 
     pub fn color_schemes() -> BTreeMap<String, ColorsSrgb> {
