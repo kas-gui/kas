@@ -920,8 +920,11 @@ impl_scope! {
             self.selection.set_max_len(len);
             if self.text.try_prepare().is_ok() {
                 self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
-                self.view_offset = self.view_offset.min(self.max_scroll_offset());
-                action = Action::SCROLLED;
+                let view_offset = self.view_offset.min(self.max_scroll_offset());
+                if view_offset != self.view_offset {
+                    action = Action::SCROLLED;
+                    self.view_offset = view_offset;
+                }
             }
             action | self.set_error_state(false)
         }
