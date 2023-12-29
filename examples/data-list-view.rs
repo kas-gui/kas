@@ -141,27 +141,6 @@ impl_scope! {
     }
 }
 
-// Once RPITIT is stable we can replace this with range + map
-struct KeyIter {
-    start: usize,
-    end: usize,
-}
-impl Iterator for KeyIter {
-    type Item = usize;
-    fn next(&mut self) -> Option<Self::Item> {
-        let mut item = None;
-        if self.start < self.end {
-            item = Some(self.start);
-            self.start += 1;
-        }
-        item
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.end.saturating_sub(self.start);
-        (len, Some(len))
-    }
-}
-
 impl SharedData for Data {
     type Key = usize;
     type Item = Item;
@@ -175,17 +154,14 @@ impl SharedData for Data {
     }
 }
 impl ListData for Data {
-    type KeyIter<'b> = KeyIter;
-
     fn len(&self) -> usize {
         self.len
     }
 
-    fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_> {
-        KeyIter {
-            start: start.min(self.len),
-            end: (start + limit).min(self.len),
-        }
+    fn iter_from(&self, start: usize, limit: usize) -> impl Iterator<Item = usize> {
+        let start = start.min(self.len);
+        let end = (start + limit).min(self.len);
+        (start..end).into_iter()
     }
 }
 
