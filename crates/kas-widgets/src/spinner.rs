@@ -301,23 +301,23 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
-        fn steal_event(&mut self, cx: &mut EventCx, data: &A, _: &Id, event: &Event) -> IsUsed {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
             let btn = match event {
                 Event::Command(cmd, code) => match cmd {
                     Command::Down => {
-                        cx.depress_with_key(self.b_down.id(), *code);
+                        cx.depress_with_key(self.b_down.id(), code);
                         SpinBtn::Down
                     }
                     Command::Up => {
-                        cx.depress_with_key(self.b_up.id(), *code);
+                        cx.depress_with_key(self.b_up.id(), code);
                         SpinBtn::Up
                     }
                     _ => return Unused,
                 },
                 Event::Scroll(ScrollDelta::LineDelta(_, y)) => {
-                    if *y > 0.0 {
+                    if y > 0.0 {
                         SpinBtn::Up
-                    } else if *y < 0.0 {
+                    } else if y < 0.0 {
                         SpinBtn::Down
                     } else {
                         return Unused;
