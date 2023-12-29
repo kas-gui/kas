@@ -22,9 +22,6 @@ impl MatrixData for TableSize {
     type ColKey = usize;
     type RowKey = usize;
 
-    type ColKeyIter<'b> = std::ops::Range<usize>;
-    type RowKeyIter<'b> = std::ops::Range<usize>;
-
     fn is_empty(&self) -> bool {
         self.0 == 0
     }

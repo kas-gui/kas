@@ -171,13 +171,6 @@ pub trait MatrixData: SharedData {
     /// Row key type
     type RowKey;
 
-    type ColKeyIter<'b>: Iterator<Item = Self::ColKey>
-    where
-        Self: 'b;
-    type RowKeyIter<'b>: Iterator<Item = Self::RowKey>
-    where
-        Self: 'b;
-
     /// No data is available
     fn is_empty(&self) -> bool;
 
@@ -186,35 +179,19 @@ pub trait MatrixData: SharedData {
     /// Note: users may assume this is `O(1)`.
     fn len(&self) -> (usize, usize);
 
-    /// Iterate over column keys
+    /// Iterate over up to `limit` column keys from `start`
     ///
     /// The result will be in deterministic implementation-defined order, with
-    /// a length of `max(limit, data_len)` where `data_len` is the number of
+    /// a length of `max(limit, data_len - start)` where `data_len` is the number of
     /// items available.
-    #[inline]
-    fn col_iter_limit(&self, limit: usize) -> Self::ColKeyIter<'_> {
-        self.col_iter_from(0, limit)
-    }
+    fn col_iter_from(&self, start: usize, limit: usize) -> impl Iterator<Item = Self::ColKey>;
 
-    /// Iterate over column keys from an arbitrary start-point
-    ///
-    /// The result is the same as `self.iter_limit(start + limit).skip(start)`.
-    fn col_iter_from(&self, start: usize, limit: usize) -> Self::ColKeyIter<'_>;
-
-    /// Iterate over row keys
+    /// Iterate over up to `limit` row keys from `start`
     ///
     /// The result will be in deterministic implementation-defined order, with
-    /// a length of `max(limit, data_len)` where `data_len` is the number of
+    /// a length of `max(limit, data_len - start)` where `data_len` is the number of
     /// items available.
-    #[inline]
-    fn row_iter_limit(&self, limit: usize) -> Self::RowKeyIter<'_> {
-        self.row_iter_from(0, limit)
-    }
-
-    /// Iterate over row keys from an arbitrary start-point
-    ///
-    /// The result is the same as `self.iter_limit(start + limit).skip(start)`.
-    fn row_iter_from(&self, start: usize, limit: usize) -> Self::RowKeyIter<'_>;
+    fn row_iter_from(&self, start: usize, limit: usize) -> impl Iterator<Item = Self::RowKey>;
 
     /// Make a key from parts
     fn make_key(&self, col: &Self::ColKey, row: &Self::RowKey) -> Self::Key;
