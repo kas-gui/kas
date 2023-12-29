@@ -219,18 +219,6 @@ impl Tree {
             }
 
             impl #impl_generics ::kas::Events for #impl_target {
-                fn steal_event(
-                    &mut self,
-                    _: &mut ::kas::event::EventCx,
-                    _: &Self::Data,
-                    _: &::kas::Id,
-                    _: &::kas::event::Event,
-                ) -> ::kas::event::IsUsed {
-                    #[cfg(debug_assertions)]
-                    #core_path.status.require_rect(&#core_path.id);
-                    ::kas::event::Unused
-                }
-
                 fn handle_event(
                     &mut self,
                     _: &mut ::kas::event::EventCx,

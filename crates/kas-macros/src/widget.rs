@@ -846,18 +846,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             },
         };
 
-        let fn_steal_event = quote! {
-            fn steal_event(
-                &mut self,
-                _: &mut ::kas::event::EventCx,
-                _: &Self::Data,
-                _: &::kas::Id,
-                _: &::kas::event::Event,
-            ) -> ::kas::event::IsUsed {
-                #require_rect
-                ::kas::event::Unused
-            }
-        };
         let fn_handle_event = quote! {
                 fn handle_event(
                 &mut self,
@@ -882,17 +870,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
             if let Some((index, _)) = item_idents
                 .iter()
-                .find(|(_, ident)| *ident == "steal_event")
-            {
-                if let ImplItem::Fn(f) = &mut events_impl.items[*index] {
-                    f.block.stmts.insert(0, require_rect.clone());
-                }
-            } else {
-                events_impl.items.push(Verbatim(fn_steal_event));
-            }
-
-            if let Some((index, _)) = item_idents
-                .iter()
                 .find(|(_, ident)| *ident == "handle_event")
             {
                 if let ImplItem::Fn(f) = &mut events_impl.items[*index] {
@@ -912,7 +889,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 impl #impl_generics ::kas::Events for #impl_target {
                     #fn_navigable
                     #fn_handle_hover
-                    #fn_steal_event
                     #fn_handle_event
                 }
             });

@@ -506,12 +506,6 @@ impl<'a> EventCx<'a> {
         }
     }
 
-    pub(crate) fn assert_post_steal_unused(&self) {
-        if self.scroll != Scroll::None || self.messages.has_any() {
-            panic!("steal_event affected EventCx and returned Unused");
-        }
-    }
-
     pub(crate) fn post_send(&mut self, index: usize) -> Option<Scroll> {
         self.last_child = Some(index);
         (self.scroll != Scroll::None).then_some(self.scroll)

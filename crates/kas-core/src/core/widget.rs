@@ -176,27 +176,6 @@ pub trait Events: Widget + Sized {
         Unused
     }
 
-    /// Potentially steal an event before it reaches a child
-    ///
-    /// This is an optional event handler (see [documentation](crate::event)).
-    ///
-    /// The method should *either* return [`Used`] or return [`Unused`] without
-    /// modifying `cx`; attempting to do otherwise (e.g. by calling
-    /// [`EventCx::set_scroll`] or leaving a message on the stack when returning
-    /// [`Unused`]) will result in a panic.
-    ///
-    /// Default implementation: return [`Unused`].
-    fn steal_event(
-        &mut self,
-        cx: &mut EventCx,
-        data: &Self::Data,
-        id: &Id,
-        event: &Event,
-    ) -> IsUsed {
-        let _ = (cx, data, id, event);
-        Unused
-    }
-
     /// Handler for messages from children/descendants
     ///
     /// This is the secondary event handler (see [documentation](crate::event)).
