@@ -292,14 +292,21 @@ impl Event {
 
     /// Pass to disabled widgets?
     ///
-    /// Disabled status should disable input handling but not prevent other
-    /// notifications.
+    /// When a widget is disabled:
+    ///
+    /// -   New input events (`Command`, `PressStart`, `Scroll`) are not passed
+    /// -   Continuing input actions (`PressMove`, `PressEnd`) are passed (or
+    ///     the input sequence may be terminated).
+    /// -   New focus notifications are not passed
+    /// -   Focus-loss notifications are passed
+    /// -   Requested events like `Timer` are passed
     pub fn pass_when_disabled(&self) -> bool {
         use Event::*;
         match self {
             Command(_, _) => false,
-            Key(_, _) | Scroll(_) | Pan { .. } => false,
-            CursorMove { .. } | PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
+            Key(_, _) | Scroll(_) => false,
+            CursorMove { .. } | PressStart { .. } => false,
+            Pan { .. } | PressMove { .. } | PressEnd { .. } => true,
             Timer(_) | PopupClosed(_) => true,
             NavFocus { .. } | SelFocus(_) | KeyFocus | MouseHover(_) => false,
             LostNavFocus | LostKeyFocus | LostSelFocus => true,
