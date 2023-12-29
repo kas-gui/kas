@@ -147,6 +147,10 @@ impl_scope! {
         ///
         /// Default value: [`Direction::Up`]
         pub fn set_direction(&mut self, direction: Direction) -> Action {
+            if direction == self.direction {
+                return Action::empty();
+            }
+
             self.direction = direction;
             // Note: most of the time SET_RECT would be enough, but margins can be different
             Action::RESIZE

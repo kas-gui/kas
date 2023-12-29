@@ -113,6 +113,10 @@ impl_scope! {
     impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, Direction> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, direction: Direction) -> Action {
+            if direction == self.direction {
+                return Action::empty();
+            }
+
             self.direction = direction;
             Action::SET_RECT
         }
