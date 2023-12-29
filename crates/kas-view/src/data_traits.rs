@@ -138,10 +138,6 @@ pub trait SharedData: Debug {
 #[allow(clippy::len_without_is_empty)]
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait ListData: SharedData {
-    type KeyIter<'b>: Iterator<Item = Self::Key>
-    where
-        Self: 'b;
-
     /// No data is available
     fn is_empty(&self) -> bool {
         self.len() == 0
@@ -156,15 +152,13 @@ pub trait ListData: SharedData {
     ///
     /// An example where `type Key = usize`:
     /// ```ignore
-    /// type KeyIter<'b> = std::ops::Range<usize>;
-    ///
-    /// fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_> {
+    /// fn iter_from(&self, start: usize, limit: usize) -> impl Iterator<Item = usize> {
     ///     start.min(self.len)..(start + limit).min(self.len)
     /// }
     /// ```
     ///
     /// This method is called on every update so should be reasonably fast.
-    fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_>;
+    fn iter_from(&self, start: usize, limit: usize) -> impl Iterator<Item = Self::Key>;
 }
 
 /// Trait for viewable data matrices

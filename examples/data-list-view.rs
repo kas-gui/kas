@@ -175,13 +175,11 @@ impl SharedData for Data {
     }
 }
 impl ListData for Data {
-    type KeyIter<'b> = KeyIter;
-
     fn len(&self) -> usize {
         self.len
     }
 
-    fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_> {
+    fn iter_from(&self, start: usize, limit: usize) -> KeyIter {
         KeyIter {
             start: start.min(self.len),
             end: (start + limit).min(self.len),

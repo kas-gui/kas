@@ -26,8 +26,6 @@ macro_rules! impl_list_data {
             }
         }
         impl<T: Clone + Debug + 'static> ListData for $ty {
-            type KeyIter<'b> = std::ops::Range<usize>;
-
             fn is_empty(&self) -> bool {
                 (*self).is_empty()
             }
@@ -36,7 +34,7 @@ macro_rules! impl_list_data {
                 (*self).len()
             }
 
-            fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_> {
+            fn iter_from(&self, start: usize, limit: usize) -> impl Iterator<Item = Self::Key> {
                 let len = (*self).len();
                 start.min(len)..(start + limit).min(len)
             }

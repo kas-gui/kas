@@ -222,9 +222,6 @@ impl_scope! {
     }
 
     impl ListData for Self {
-        type KeyIter<'b> = KeyIter<'b, A::Key>
-        where Self: 'b;
-
         fn is_empty(&self) -> bool {
             self.view.is_empty()
         }
@@ -232,7 +229,7 @@ impl_scope! {
             self.view.len()
         }
 
-        fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_> {
+        fn iter_from(&self, start: usize, limit: usize) -> impl Iterator<Item = Self::Key> {
             let end = self.len().min(start + limit);
             KeyIter { list: &self.view[start..end], index: 0 }
         }
