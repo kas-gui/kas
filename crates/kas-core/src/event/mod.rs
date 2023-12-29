@@ -22,10 +22,7 @@
 //!     inhibit calling of [`Events::handle_event`] on this widget (but still
 //!     unwind, calling [`Events::handle_event`] on ancestors)).
 //! 3.  Traverse *down* the widget tree from its root to the target according to
-//!     the [`Id`]. On each node (excluding the target),
-//!
-//!     -   Call [`Events::steal_event`]; if this method "steals" the event,
-//!         skip to step 5.
+//!     the [`Id`].
 //! 4.  In the normal case (when the target is not disabled and the event is
 //!     not stolen), [`Events::handle_event`] is called on the target.
 //! 5.  If the message stack is not empty, call [`Events::handle_messages`] on

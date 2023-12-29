@@ -39,33 +39,26 @@ pub fn _send<W: Events>(
 
         do_handle_event = true;
     } else {
-        if event.is_reusable() {
-            is_used = widget.steal_event(cx, data, &id, &event);
-        }
-        if !is_used {
-            cx.assert_post_steal_unused();
+        if let Some(index) = widget.find_child_index(&id) {
+            let translation = widget.translation();
+            let mut _found = false;
+            widget.as_node(data).for_child(index, |mut node| {
+                is_used = node._send(cx, id.clone(), event.clone() + translation);
+                _found = true;
+            });
 
-            if let Some(index) = widget.find_child_index(&id) {
-                let translation = widget.translation();
-                let mut _found = false;
-                widget.as_node(data).for_child(index, |mut node| {
-                    is_used = node._send(cx, id.clone(), event.clone() + translation);
-                    _found = true;
-                });
+            #[cfg(debug_assertions)]
+            if !_found {
+                // This is an error in the widget. It's unlikely and not fatal
+                // so we ignore in release builds.
+                log::error!(
+                    "_send: {} found index {index} for {id} but not child",
+                    IdentifyWidget(widget.widget_name(), widget.id_ref())
+                );
+            }
 
-                #[cfg(debug_assertions)]
-                if !_found {
-                    // This is an error in the widget. It's unlikely and not fatal
-                    // so we ignore in release builds.
-                    log::error!(
-                        "_send: {} found index {index} for {id} but not child",
-                        IdentifyWidget(widget.widget_name(), widget.id_ref())
-                    );
-                }
-
-                if let Some(scroll) = cx.post_send(index) {
-                    widget.handle_scroll(cx, data, scroll);
-                }
+            if let Some(scroll) = cx.post_send(index) {
+                widget.handle_scroll(cx, data, scroll);
             }
         }
 
