@@ -56,61 +56,47 @@ pub trait Visitable {
 /// This is an internal API and may be subject to unexpected breaking changes.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-pub struct Visitor<'a> {
-    layout: LayoutType<'a>,
-}
-
-/// Items which can be placed in a layout
-enum LayoutType<'a> {
-    /// A boxed component
-    BoxComponent(Box<dyn Visitable + 'a>),
-}
+pub struct Visitor<'a>(Box<dyn Visitable + 'a>);
 
 impl<'a> Visitor<'a> {
     /// Construct a single-item layout
     pub fn single(widget: &'a mut dyn Layout) -> Self {
-        let layout = LayoutType::BoxComponent(Box::new(Single { widget }));
-        Visitor { layout }
+        Visitor(Box::new(Single { widget }))
     }
 
     /// Construct a single-item layout with alignment hints
     pub fn align_single(widget: &'a mut dyn Layout, hints: AlignHints) -> Self {
-        let layout = LayoutType::BoxComponent(Box::new(AlignSingle { widget, hints }));
-        Visitor { layout }
+        Visitor(Box::new(AlignSingle { widget, hints }))
     }
 
     /// Construct a sub-layout with alignment hints
     pub fn align(child: Self, hints: AlignHints) -> Self {
-        let layout = LayoutType::BoxComponent(Box::new(Align { child, hints }));
-        Visitor { layout }
+        Visitor(Box::new(Align { child, hints }))
     }
 
     /// Construct a sub-layout which is squashed and aligned
     pub fn pack(storage: &'a mut PackStorage, child: Self, hints: AlignHints) -> Self {
-        let layout = LayoutType::BoxComponent(Box::new(Pack {
+        Visitor(Box::new(Pack {
             child,
             storage,
             hints,
-        }));
-        Visitor { layout }
+        }))
     }
 
     /// Replace the margins of a sub-layout
     pub fn margins(child: Self, dirs: Directions, style: MarginStyle) -> Self {
-        let layout = LayoutType::BoxComponent(Box::new(Margins { child, dirs, style }));
-        Visitor { layout }
+        Visitor(Box::new(Margins { child, dirs, style }))
     }
 
     /// Construct a frame around a sub-layout
     ///
     /// This frame has dimensions according to [`SizeCx::frame`].
     pub fn frame(storage: &'a mut FrameStorage, child: Self, style: FrameStyle) -> Self {
-        let layout = LayoutType::BoxComponent(Box::new(Frame {
+        Visitor(Box::new(Frame {
             child,
             storage,
             style,
-        }));
-        Visitor { layout }
+        }))
     }
 
     /// Construct a button frame around a sub-layout
@@ -118,12 +104,11 @@ impl<'a> Visitor<'a> {
     /// Generates a button frame containing the child node. Mouse/touch input
     /// on the button reports input to `self`, not to the child node.
     pub fn button(storage: &'a mut FrameStorage, child: Self, color: Option<Rgb>) -> Self {
-        let layout = LayoutType::BoxComponent(Box::new(Button {
+        Visitor(Box::new(Button {
             child,
             storage,
             color,
-        }));
-        Visitor { layout }
+        }))
     }
 
     /// Construct a row/column layout over an iterator of layouts
@@ -133,26 +118,11 @@ impl<'a> Visitor<'a> {
         D: Directional,
         S: RowStorage,
     {
-        let layout = LayoutType::BoxComponent(Box::new(List {
+        Visitor(Box::new(List {
             children: list,
             direction,
             data,
-        }));
-        Visitor { layout }
-    }
-
-    /// Construct a grid layout over an iterator of `(cell, layout)` items
-    pub fn grid<I, S>(iter: I, dim: GridDimensions, data: &'a mut S) -> Self
-    where
-        I: DoubleEndedIterator<Item = (GridChildInfo, Visitor<'a>)> + 'a,
-        S: GridStorage,
-    {
-        let layout = LayoutType::BoxComponent(Box::new(Grid {
-            data,
-            dim,
-            children: iter,
-        }));
-        Visitor { layout }
+        }))
     }
 
     /// Construct a float of layouts
@@ -163,19 +133,31 @@ impl<'a> Visitor<'a> {
     where
         I: DoubleEndedIterator<Item = Visitor<'a>> + 'a,
     {
-        let layout = LayoutType::BoxComponent(Box::new(Float { children: list }));
-        Visitor { layout }
+        Visitor(Box::new(Float { children: list }))
     }
 
+    /// Construct a grid layout over an iterator of `(cell, layout)` items
+    pub fn grid<I, S>(iter: I, dim: GridDimensions, data: &'a mut S) -> Self
+    where
+        I: DoubleEndedIterator<Item = (GridChildInfo, Visitor<'a>)> + 'a,
+        S: GridStorage,
+    {
+        Visitor(Box::new(Grid {
+            data,
+            dim,
+            children: iter,
+        }))
+    }
+}
+
+impl<'a> Visitor<'a> {
     /// Get size rules for the given axis
     #[inline]
     pub fn size_rules(mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         self.size_rules_(sizer, axis)
     }
     fn size_rules_(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        match &mut self.layout {
-            LayoutType::BoxComponent(component) => component.size_rules(sizer, axis),
-        }
+        self.0.size_rules(sizer, axis)
     }
 
     /// Apply a given `rect` to self
@@ -184,9 +166,7 @@ impl<'a> Visitor<'a> {
         self.set_rect_(cx, rect);
     }
     fn set_rect_(&mut self, cx: &mut ConfigCx, rect: Rect) {
-        match &mut self.layout {
-            LayoutType::BoxComponent(layout) => layout.set_rect(cx, rect),
-        }
+        self.0.set_rect(cx, rect);
     }
 
     /// Find a widget by coordinate
@@ -198,9 +178,7 @@ impl<'a> Visitor<'a> {
         self.find_id_(coord)
     }
     fn find_id_(&mut self, coord: Coord) -> Option<Id> {
-        match &mut self.layout {
-            LayoutType::BoxComponent(layout) => layout.find_id(coord),
-        }
+        self.0.find_id(coord)
     }
 
     /// Draw a widget's children
@@ -209,9 +187,7 @@ impl<'a> Visitor<'a> {
         self.draw_(draw);
     }
     fn draw_(&mut self, draw: DrawCx) {
-        match &mut self.layout {
-            LayoutType::BoxComponent(layout) => layout.draw(draw),
-        }
+        self.0.draw(draw);
     }
 }
 
