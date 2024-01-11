@@ -707,41 +707,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                         #layout_visitor
                     }
                 }
-
-                impl #impl_generics ::kas::layout::AutoLayout for #impl_target {
-                    fn size_rules(
-                        &mut self,
-                        sizer: ::kas::theme::SizeCx,
-                        axis: ::kas::layout::AxisInfo,
-                    ) -> ::kas::layout::SizeRules {
-                        ::kas::layout::LayoutVisitor::layout_visitor(self).size_rules(sizer, axis)
-                    }
-
-                    fn set_rect(
-                        &mut self,
-                        cx: &mut ::kas::event::ConfigCx,
-                        rect: ::kas::geom::Rect,
-                    ) {
-                        #core_path.rect = rect;
-                        ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect);
-                    }
-
-                    fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-                        use ::kas::{Layout, LayoutExt, layout::LayoutVisitor};
-
-                        if !self.rect().contains(coord) {
-                            return None;
-                        }
-                        let coord = coord + self.translation();
-                        self.layout_visitor()
-                            .find_id(coord)
-                            .or_else(|| Some(self.id()))
-                    }
-
-                    fn draw(&mut self, draw: ::kas::theme::DrawCx) {
-                        ::kas::layout::LayoutVisitor::layout_visitor(self).draw(draw);
-                    }
-                }
             });
 
             fn_size_rules = Some(quote! {
@@ -752,19 +717,30 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 ) -> ::kas::layout::SizeRules {
                     #[cfg(debug_assertions)]
                     #core_path.status.size_rules(&#core_path.id, axis);
-                    <Self as ::kas::layout::AutoLayout>::size_rules(self, sizer, axis)
+                    ::kas::layout::LayoutVisitor::layout_visitor(self).size_rules(sizer, axis)
                 }
             });
             set_rect = quote! {
-                <Self as ::kas::layout::AutoLayout>::set_rect(self, cx, rect);
+                #core_path.rect = rect;
+                ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect);
             };
-            find_id = quote! { <Self as ::kas::layout::AutoLayout>::find_id(self, coord) };
+            find_id = quote! {
+                use ::kas::{Layout, LayoutExt, layout::LayoutVisitor};
+
+                if !self.rect().contains(coord) {
+                    return None;
+                }
+                let coord = coord + self.translation();
+                self.layout_visitor()
+                    .find_id(coord)
+                    .or_else(|| Some(self.id()))
+            };
             fn_draw = Some(quote! {
                 fn draw(&mut self, draw: ::kas::theme::DrawCx) {
                     #[cfg(debug_assertions)]
                     #core_path.status.require_rect(&#core_path.id);
 
-                    <Self as ::kas::layout::AutoLayout>::draw(self, draw);
+                    ::kas::layout::LayoutVisitor::layout_visitor(self).draw(draw);
                 }
             });
         } else {
