@@ -70,14 +70,6 @@ enum LayoutType<'a> {
     AlignSingle(&'a mut dyn Layout, AlignHints),
     /// Apply alignment hints to some sub-layout
     Align(Box<Visitor<'a>>, AlignHints),
-    /// Apply alignment and pack some sub-layout
-    Pack(Box<Visitor<'a>>, &'a mut PackStorage, AlignHints),
-    /// Replace (some) margins
-    Margins(Box<Visitor<'a>>, Directions, MarginStyle),
-    /// Frame around content
-    Frame(Box<Visitor<'a>>, &'a mut FrameStorage, FrameStyle),
-    /// Button frame around content
-    Button(Box<Visitor<'a>>, &'a mut FrameStorage, Option<Rgb>),
 }
 
 impl<'a> Visitor<'a> {
@@ -100,22 +92,30 @@ impl<'a> Visitor<'a> {
     }
 
     /// Construct a sub-layout which is squashed and aligned
-    pub fn pack(stor: &'a mut PackStorage, layout: Self, hints: AlignHints) -> Self {
-        let layout = LayoutType::Pack(Box::new(layout), stor, hints);
+    pub fn pack(storage: &'a mut PackStorage, child: Self, hints: AlignHints) -> Self {
+        let layout = LayoutType::BoxComponent(Box::new(Pack {
+            child,
+            storage,
+            hints,
+        }));
         Visitor { layout }
     }
 
     /// Replace the margins of a sub-layout
-    pub fn margins(layout: Self, dirs: Directions, margins: MarginStyle) -> Self {
-        let layout = LayoutType::Margins(Box::new(layout), dirs, margins);
+    pub fn margins(child: Self, dirs: Directions, style: MarginStyle) -> Self {
+        let layout = LayoutType::BoxComponent(Box::new(Margins { child, dirs, style }));
         Visitor { layout }
     }
 
     /// Construct a frame around a sub-layout
     ///
     /// This frame has dimensions according to [`SizeCx::frame`].
-    pub fn frame(data: &'a mut FrameStorage, child: Self, style: FrameStyle) -> Self {
-        let layout = LayoutType::Frame(Box::new(child), data, style);
+    pub fn frame(storage: &'a mut FrameStorage, child: Self, style: FrameStyle) -> Self {
+        let layout = LayoutType::BoxComponent(Box::new(Frame {
+            child,
+            storage,
+            style,
+        }));
         Visitor { layout }
     }
 
@@ -123,8 +123,12 @@ impl<'a> Visitor<'a> {
     ///
     /// Generates a button frame containing the child node. Mouse/touch input
     /// on the button reports input to `self`, not to the child node.
-    pub fn button(data: &'a mut FrameStorage, child: Self, color: Option<Rgb>) -> Self {
-        let layout = LayoutType::Button(Box::new(child), data, color);
+    pub fn button(storage: &'a mut FrameStorage, child: Self, color: Option<Rgb>) -> Self {
+        let layout = LayoutType::BoxComponent(Box::new(Button {
+            child,
+            storage,
+            color,
+        }));
         Visitor { layout }
     }
 
@@ -184,34 +188,6 @@ impl<'a> Visitor<'a> {
             LayoutType::Align(layout, hints) => {
                 layout.size_rules_(sizer, axis.with_align_hints(*hints))
             }
-            LayoutType::Pack(layout, stor, hints) => {
-                let rules = layout.size_rules_(sizer, stor.apply_align(axis, *hints));
-                stor.size.set_component(axis, rules.ideal_size());
-                rules
-            }
-            LayoutType::Margins(child, dirs, margins) => {
-                let mut child_rules = child.size_rules_(sizer.re(), axis);
-                if dirs.intersects(Directions::from(axis)) {
-                    let mut rule_margins = child_rules.margins();
-                    let margins = sizer.margins(*margins).extract(axis);
-                    if dirs.intersects(Directions::LEFT | Directions::UP) {
-                        rule_margins.0 = margins.0;
-                    }
-                    if dirs.intersects(Directions::RIGHT | Directions::DOWN) {
-                        rule_margins.1 = margins.1;
-                    }
-                    child_rules.set_margins(rule_margins);
-                }
-                child_rules
-            }
-            LayoutType::Frame(child, storage, style) => {
-                let child_rules = child.size_rules_(sizer.re(), storage.child_axis(axis));
-                storage.size_rules(sizer, axis, child_rules, *style)
-            }
-            LayoutType::Button(child, storage, _) => {
-                let child_rules = child.size_rules_(sizer.re(), storage.child_axis_centered(axis));
-                storage.size_rules(sizer, axis, child_rules, FrameStyle::Button)
-            }
         }
     }
 
@@ -226,16 +202,6 @@ impl<'a> Visitor<'a> {
             LayoutType::Single(child) => child.set_rect(cx, rect),
             LayoutType::Align(layout, _) => layout.set_rect_(cx, rect),
             LayoutType::AlignSingle(child, _) => child.set_rect(cx, rect),
-            LayoutType::Pack(layout, stor, _) => layout.set_rect_(cx, stor.aligned_rect(rect)),
-            LayoutType::Margins(child, _, _) => child.set_rect_(cx, rect),
-            LayoutType::Frame(child, storage, _) | LayoutType::Button(child, storage, _) => {
-                storage.rect = rect;
-                let child_rect = Rect {
-                    pos: rect.pos + storage.offset,
-                    size: rect.size - storage.size,
-                };
-                child.set_rect_(cx, child_rect);
-            }
         }
     }
 
@@ -252,11 +218,6 @@ impl<'a> Visitor<'a> {
             LayoutType::BoxComponent(layout) => layout.find_id(coord),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.find_id(coord),
             LayoutType::Align(layout, _) => layout.find_id_(coord),
-            LayoutType::Pack(layout, _, _) => layout.find_id_(coord),
-            LayoutType::Margins(layout, _, _) => layout.find_id_(coord),
-            LayoutType::Frame(child, _, _) => child.find_id_(coord),
-            // Buttons steal clicks, hence Button never returns ID of content
-            LayoutType::Button(_, _, _) => None,
         }
     }
 
@@ -270,20 +231,6 @@ impl<'a> Visitor<'a> {
             LayoutType::BoxComponent(layout) => layout.draw(draw),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => draw.recurse(*child),
             LayoutType::Align(layout, _) => layout.draw_(draw),
-            LayoutType::Pack(layout, _, _) => layout.draw_(draw),
-            LayoutType::Margins(layout, _, _) => layout.draw_(draw),
-            LayoutType::Frame(child, storage, style) => {
-                draw.frame(storage.rect, *style, Background::Default);
-                child.draw_(draw);
-            }
-            LayoutType::Button(child, storage, color) => {
-                let bg = match color {
-                    Some(rgb) => Background::Rgb(*rgb),
-                    None => Background::Default,
-                };
-                draw.frame(storage.rect, FrameStyle::Button, bg);
-                child.draw_(draw);
-            }
         }
     }
 }
@@ -303,6 +250,143 @@ impl<'a> Visitable for Visitor<'a> {
 
     fn draw(&mut self, draw: DrawCx) {
         self.draw_(draw);
+    }
+}
+
+struct Pack<'a, C: Visitable> {
+    child: C,
+    storage: &'a mut PackStorage,
+    hints: AlignHints,
+}
+
+impl<'a, C: Visitable> Visitable for Pack<'a, C> {
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        let rules = self
+            .child
+            .size_rules(sizer, self.storage.apply_align(axis, self.hints));
+        self.storage.size.set_component(axis, rules.ideal_size());
+        rules
+    }
+
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        self.child.set_rect(cx, self.storage.aligned_rect(rect));
+    }
+
+    fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        self.child.find_id(coord)
+    }
+
+    fn draw(&mut self, draw: DrawCx) {
+        self.child.draw(draw);
+    }
+}
+
+struct Margins<C: Visitable> {
+    child: C,
+    dirs: Directions,
+    style: MarginStyle,
+}
+
+impl<C: Visitable> Visitable for Margins<C> {
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        let mut child_rules = self.child.size_rules(sizer.re(), axis);
+        if self.dirs.intersects(Directions::from(axis)) {
+            let mut rule_margins = child_rules.margins();
+            let margins = sizer.margins(self.style).extract(axis);
+            if self.dirs.intersects(Directions::LEFT | Directions::UP) {
+                rule_margins.0 = margins.0;
+            }
+            if self.dirs.intersects(Directions::RIGHT | Directions::DOWN) {
+                rule_margins.1 = margins.1;
+            }
+            child_rules.set_margins(rule_margins);
+        }
+        child_rules
+    }
+
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        self.child.set_rect(cx, rect);
+    }
+
+    fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        self.child.find_id(coord)
+    }
+
+    fn draw(&mut self, draw: DrawCx) {
+        self.child.draw(draw);
+    }
+}
+
+struct Frame<'a, C: Visitable> {
+    child: C,
+    storage: &'a mut FrameStorage,
+    style: FrameStyle,
+}
+
+impl<'a, C: Visitable> Visitable for Frame<'a, C> {
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        let child_rules = self
+            .child
+            .size_rules(sizer.re(), self.storage.child_axis(axis));
+        self.storage
+            .size_rules(sizer, axis, child_rules, self.style)
+    }
+
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        self.storage.rect = rect;
+        let child_rect = Rect {
+            pos: rect.pos + self.storage.offset,
+            size: rect.size - self.storage.size,
+        };
+        self.child.set_rect(cx, child_rect);
+    }
+
+    fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        self.child.find_id(coord)
+    }
+
+    fn draw(&mut self, mut draw: DrawCx) {
+        draw.frame(self.storage.rect, self.style, Background::Default);
+        self.child.draw(draw);
+    }
+}
+
+struct Button<'a, C: Visitable> {
+    child: C,
+    storage: &'a mut FrameStorage,
+    color: Option<Rgb>,
+}
+
+impl<'a, C: Visitable> Visitable for Button<'a, C> {
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        let child_rules = self
+            .child
+            .size_rules(sizer.re(), self.storage.child_axis_centered(axis));
+        self.storage
+            .size_rules(sizer, axis, child_rules, FrameStyle::Button)
+    }
+
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        self.storage.rect = rect;
+        let child_rect = Rect {
+            pos: rect.pos + self.storage.offset,
+            size: rect.size - self.storage.size,
+        };
+        self.child.set_rect(cx, child_rect);
+    }
+
+    fn find_id(&mut self, _: Coord) -> Option<Id> {
+        // Buttons steal clicks, hence Button never returns ID of content
+        None
+    }
+
+    fn draw(&mut self, mut draw: DrawCx) {
+        let bg = match self.color {
+            Some(rgb) => Background::Rgb(rgb),
+            None => Background::Default,
+        };
+        draw.frame(self.storage.rect, FrameStyle::Button, bg);
+        self.child.draw(draw);
     }
 }
 
