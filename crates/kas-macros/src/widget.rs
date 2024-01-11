@@ -699,10 +699,48 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             };
 
             // Generated layout methods are wrapped, so we don't require debug assertions here.
-            let layout_methods = layout.layout_methods(&quote! { self.#core }, false)?;
+            let layout_visitor = layout.layout_visitor(&quote! { self.#core })?;
             scope.generated.push(quote! {
+                impl #impl_generics ::kas::layout::LayoutVisitor for #impl_target {
+                    fn layout_visitor(&mut self) -> ::kas::layout::Visitor<'_> {
+                        use ::kas::layout;
+                        #layout_visitor
+                    }
+                }
+
                 impl #impl_generics ::kas::layout::AutoLayout for #impl_target {
-                    #layout_methods
+                    fn size_rules(
+                        &mut self,
+                        sizer: ::kas::theme::SizeCx,
+                        axis: ::kas::layout::AxisInfo,
+                    ) -> ::kas::layout::SizeRules {
+                        ::kas::layout::LayoutVisitor::layout_visitor(self).size_rules(sizer, axis)
+                    }
+
+                    fn set_rect(
+                        &mut self,
+                        cx: &mut ::kas::event::ConfigCx,
+                        rect: ::kas::geom::Rect,
+                    ) {
+                        #core_path.rect = rect;
+                        ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect);
+                    }
+
+                    fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+                        use ::kas::{Layout, LayoutExt, layout::LayoutVisitor};
+
+                        if !self.rect().contains(coord) {
+                            return None;
+                        }
+                        let coord = coord + self.translation();
+                        self.layout_visitor()
+                            .find_id(coord)
+                            .or_else(|| Some(self.id()))
+                    }
+
+                    fn draw(&mut self, draw: ::kas::theme::DrawCx) {
+                        ::kas::layout::LayoutVisitor::layout_visitor(self).draw(draw);
+                    }
                 }
             });
 

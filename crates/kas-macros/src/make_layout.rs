@@ -67,26 +67,13 @@ impl Tree {
         }
     }
 
+    // Required: `::kas::layout` must be in scope.
+    pub fn layout_visitor(&self, core_path: &Toks) -> Result<Toks> {
+        self.0.generate(core_path)
+    }
+
     // Excludes: fn nav_next
-    pub fn layout_methods(&self, core_path: &Toks, debug_assertions: bool) -> Result<Toks> {
-        let (dbg_size, dbg_set, dbg_require) = if debug_assertions {
-            (
-                quote! {
-                    #[cfg(debug_assertions)]
-                    #core_path.status.size_rules(&#core_path.id, axis);
-                },
-                quote! {
-                    #[cfg(debug_assertions)]
-                    #core_path.status.set_rect(&#core_path.id);
-                },
-                quote! {
-                    #[cfg(debug_assertions)]
-                    #core_path.status.require_rect(&#core_path.id);
-                },
-            )
-        } else {
-            (quote! {}, quote! {}, quote! {})
-        };
+    pub fn layout_methods(&self, core_path: &Toks) -> Result<Toks> {
         let layout = self.0.generate(core_path)?;
         Ok(quote! {
             fn size_rules(
@@ -95,7 +82,8 @@ impl Tree {
                 axis: ::kas::layout::AxisInfo,
             ) -> ::kas::layout::SizeRules {
                 use ::kas::{Layout, layout};
-                #dbg_size
+                #[cfg(debug_assertions)]
+                #core_path.status.size_rules(&#core_path.id, axis);
 
                 (#layout).size_rules(sizer, axis)
             }
@@ -106,7 +94,8 @@ impl Tree {
                 rect: ::kas::geom::Rect,
             ) {
                 use ::kas::{Layout, layout};
-                #dbg_set
+                #[cfg(debug_assertions)]
+                #core_path.status.set_rect(&#core_path.id);
 
                 #core_path.rect = rect;
                 (#layout).set_rect(cx, rect);
@@ -114,7 +103,8 @@ impl Tree {
 
             fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
                 use ::kas::{layout, Layout, LayoutExt};
-                #dbg_require
+                #[cfg(debug_assertions)]
+                #core_path.status.require_rect(&#core_path.id);
 
                 if !self.rect().contains(coord) {
                     return None;
@@ -125,7 +115,8 @@ impl Tree {
 
             fn draw(&mut self, draw: ::kas::theme::DrawCx) {
                 use ::kas::{Layout, layout};
-                #dbg_require
+                #[cfg(debug_assertions)]
+                #core_path.status.require_rect(&#core_path.id);
 
                 (#layout).draw(draw);
             }
@@ -209,7 +200,7 @@ impl Tree {
             true,
         );
 
-        let layout_methods = self.layout_methods(&core_path, true)?;
+        let layout_methods = self.layout_methods(&core_path)?;
         let nav_next = match self.nav_next(std::iter::empty()) {
             Ok(result) => Some(result),
             Err((span, msg)) => {
