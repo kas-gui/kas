@@ -8,7 +8,7 @@
 // Methods have to take `&mut self`
 #![allow(clippy::wrong_self_convention)]
 
-use super::{Align, AlignHints, AlignPair, AxisInfo, SizeRules};
+use super::{AlignHints, AlignPair, AxisInfo, SizeRules};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
 use super::{RowSetter, RowSolver, RowStorage};
 use super::{RulesSetter, RulesSolver};
@@ -64,30 +64,24 @@ pub struct Visitor<'a> {
 enum LayoutType<'a> {
     /// A boxed component
     BoxComponent(Box<dyn Visitable + 'a>),
-    /// A single child widget
-    Single(&'a mut dyn Layout),
-    /// A single child widget with alignment
-    AlignSingle(&'a mut dyn Layout, AlignHints),
-    /// Apply alignment hints to some sub-layout
-    Align(Box<Visitor<'a>>, AlignHints),
 }
 
 impl<'a> Visitor<'a> {
     /// Construct a single-item layout
     pub fn single(widget: &'a mut dyn Layout) -> Self {
-        let layout = LayoutType::Single(widget);
+        let layout = LayoutType::BoxComponent(Box::new(Single { widget }));
         Visitor { layout }
     }
 
     /// Construct a single-item layout with alignment hints
     pub fn align_single(widget: &'a mut dyn Layout, hints: AlignHints) -> Self {
-        let layout = LayoutType::AlignSingle(widget, hints);
+        let layout = LayoutType::BoxComponent(Box::new(AlignSingle { widget, hints }));
         Visitor { layout }
     }
 
     /// Construct a sub-layout with alignment hints
-    pub fn align(layout: Self, hints: AlignHints) -> Self {
-        let layout = LayoutType::Align(Box::new(layout), hints);
+    pub fn align(child: Self, hints: AlignHints) -> Self {
+        let layout = LayoutType::BoxComponent(Box::new(Align { child, hints }));
         Visitor { layout }
     }
 
@@ -181,13 +175,6 @@ impl<'a> Visitor<'a> {
     fn size_rules_(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         match &mut self.layout {
             LayoutType::BoxComponent(component) => component.size_rules(sizer, axis),
-            LayoutType::Single(child) => child.size_rules(sizer, axis),
-            LayoutType::AlignSingle(child, hints) => {
-                child.size_rules(sizer, axis.with_align_hints(*hints))
-            }
-            LayoutType::Align(layout, hints) => {
-                layout.size_rules_(sizer, axis.with_align_hints(*hints))
-            }
         }
     }
 
@@ -199,9 +186,6 @@ impl<'a> Visitor<'a> {
     fn set_rect_(&mut self, cx: &mut ConfigCx, rect: Rect) {
         match &mut self.layout {
             LayoutType::BoxComponent(layout) => layout.set_rect(cx, rect),
-            LayoutType::Single(child) => child.set_rect(cx, rect),
-            LayoutType::Align(layout, _) => layout.set_rect_(cx, rect),
-            LayoutType::AlignSingle(child, _) => child.set_rect(cx, rect),
         }
     }
 
@@ -216,8 +200,6 @@ impl<'a> Visitor<'a> {
     fn find_id_(&mut self, coord: Coord) -> Option<Id> {
         match &mut self.layout {
             LayoutType::BoxComponent(layout) => layout.find_id(coord),
-            LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.find_id(coord),
-            LayoutType::Align(layout, _) => layout.find_id_(coord),
         }
     }
 
@@ -226,11 +208,9 @@ impl<'a> Visitor<'a> {
     pub fn draw(mut self, draw: DrawCx) {
         self.draw_(draw);
     }
-    fn draw_(&mut self, mut draw: DrawCx) {
+    fn draw_(&mut self, draw: DrawCx) {
         match &mut self.layout {
             LayoutType::BoxComponent(layout) => layout.draw(draw),
-            LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => draw.recurse(*child),
-            LayoutType::Align(layout, _) => layout.draw_(draw),
         }
     }
 }
@@ -250,6 +230,76 @@ impl<'a> Visitable for Visitor<'a> {
 
     fn draw(&mut self, draw: DrawCx) {
         self.draw_(draw);
+    }
+}
+
+struct Single<'a> {
+    widget: &'a mut dyn Layout,
+}
+
+impl<'a> Visitable for Single<'a> {
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        self.widget.size_rules(sizer, axis)
+    }
+
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        self.widget.set_rect(cx, rect);
+    }
+
+    fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        self.widget.find_id(coord)
+    }
+
+    fn draw(&mut self, mut draw: DrawCx) {
+        draw.recurse(self.widget)
+    }
+}
+
+struct AlignSingle<'a> {
+    widget: &'a mut dyn Layout,
+    hints: AlignHints,
+}
+
+impl<'a> Visitable for AlignSingle<'a> {
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        self.widget
+            .size_rules(sizer, axis.with_align_hints(self.hints))
+    }
+
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        self.widget.set_rect(cx, rect);
+    }
+
+    fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        self.widget.find_id(coord)
+    }
+
+    fn draw(&mut self, mut draw: DrawCx) {
+        draw.recurse(self.widget)
+    }
+}
+
+struct Align<C: Visitable> {
+    child: C,
+    hints: AlignHints,
+}
+
+impl<C: Visitable> Visitable for Align<C> {
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        self.child
+            .size_rules(sizer, axis.with_align_hints(self.hints))
+    }
+
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        self.child.set_rect(cx, rect);
+    }
+
+    fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        self.child.find_id(coord)
+    }
+
+    fn draw(&mut self, draw: DrawCx) {
+        self.child.draw(draw);
     }
 }
 
@@ -552,7 +602,7 @@ impl FrameStorage {
     /// Calculate child's "other axis" size, forcing center-alignment of content
     pub fn child_axis_centered(&self, mut axis: AxisInfo) -> AxisInfo {
         axis.sub_other(self.size.extract(axis.flipped()));
-        axis.set_align(Some(Align::Center));
+        axis.set_align(Some(super::Align::Center));
         axis
     }
 
