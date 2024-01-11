@@ -288,6 +288,24 @@ impl<'a> Visitor<'a> {
     }
 }
 
+impl<'a> Visitable for Visitor<'a> {
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        self.size_rules_(sizer, axis)
+    }
+
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        self.set_rect_(cx, rect);
+    }
+
+    fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        self.find_id_(coord)
+    }
+
+    fn draw(&mut self, draw: DrawCx) {
+        self.draw_(draw);
+    }
+}
+
 /// Implement row/column layout for children
 struct List<'a, I, D, S> {
     children: I,
