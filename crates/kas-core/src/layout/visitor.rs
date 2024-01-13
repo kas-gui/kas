@@ -24,6 +24,7 @@ use std::iter::ExactSizeIterator;
 ///
 /// Unlike when implementing a widget, all methods of this trait must be
 /// implemented directly.
+#[crate::autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait Visitable {
     /// Get size rules for the given axis
     ///
@@ -56,101 +57,145 @@ pub trait Visitable {
 /// This is an internal API and may be subject to unexpected breaking changes.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-pub struct Visitor<'a>(Box<dyn Visitable + 'a>);
+pub struct Visitor<V: Visitable>(V);
 
-impl<'a> Visitor<'a> {
+/// Visitor using a boxed dyn trait object
+pub type BoxVisitor<'a> = Visitor<Box<dyn Visitable + 'a>>;
+
+impl<'a, V: Visitable> Visitor<V>
+where
+    V: 'a,
+{
+    #[cfg(feature = "min_spec")]
+    #[inline]
+    pub default fn boxed(self) -> Visitor<Box<dyn Visitable + 'a>> {
+        Visitor(Box::new(self.0))
+    }
+    #[cfg(not(feature = "min_spec"))]
+    #[inline]
+    pub fn boxed(self) -> Visitor<Box<dyn Visitable + 'a>> {
+        Visitor(Box::new(self.0))
+    }
+}
+
+impl<'a> BoxVisitor<'a> {
+    #[cfg(feature = "min_spec")]
+    #[inline]
+    pub fn boxed(self) -> Visitor<Box<dyn Visitable + 'a>> {
+        self
+    }
+
     /// Construct a single-item layout
-    pub fn single(widget: &'a mut dyn Layout) -> Self {
-        Visitor(Box::new(Single { widget }))
+    pub fn single(widget: &'a mut dyn Layout) -> Visitor<impl Visitable + 'a> {
+        Visitor(Single { widget })
     }
 
     /// Construct a single-item layout with alignment hints
-    pub fn align_single(widget: &'a mut dyn Layout, hints: AlignHints) -> Self {
-        Visitor(Box::new(AlignSingle { widget, hints }))
+    pub fn align_single(
+        widget: &'a mut dyn Layout,
+        hints: AlignHints,
+    ) -> Visitor<impl Visitable + 'a> {
+        Visitor(AlignSingle { widget, hints })
     }
 
     /// Construct a sub-layout with alignment hints
-    pub fn align(child: Self, hints: AlignHints) -> Self {
-        Visitor(Box::new(Align { child, hints }))
+    pub fn align<C: Visitable + 'a>(child: C, hints: AlignHints) -> Visitor<impl Visitable + 'a> {
+        Visitor(Align { child, hints })
     }
 
     /// Construct a sub-layout which is squashed and aligned
-    pub fn pack(storage: &'a mut PackStorage, child: Self, hints: AlignHints) -> Self {
-        Visitor(Box::new(Pack {
+    pub fn pack<C: Visitable + 'a>(
+        storage: &'a mut PackStorage,
+        child: C,
+        hints: AlignHints,
+    ) -> Visitor<impl Visitable + 'a> {
+        Visitor(Pack {
             child,
             storage,
             hints,
-        }))
+        })
     }
 
     /// Replace the margins of a sub-layout
-    pub fn margins(child: Self, dirs: Directions, style: MarginStyle) -> Self {
-        Visitor(Box::new(Margins { child, dirs, style }))
+    pub fn margins<C: Visitable + 'a>(
+        child: C,
+        dirs: Directions,
+        style: MarginStyle,
+    ) -> Visitor<impl Visitable + 'a> {
+        Visitor(Margins { child, dirs, style })
     }
 
     /// Construct a frame around a sub-layout
     ///
     /// This frame has dimensions according to [`SizeCx::frame`].
-    pub fn frame(storage: &'a mut FrameStorage, child: Self, style: FrameStyle) -> Self {
-        Visitor(Box::new(Frame {
+    pub fn frame<C: Visitable + 'a>(
+        storage: &'a mut FrameStorage,
+        child: C,
+        style: FrameStyle,
+    ) -> Visitor<impl Visitable + 'a> {
+        Visitor(Frame {
             child,
             storage,
             style,
-        }))
+        })
     }
 
     /// Construct a button frame around a sub-layout
     ///
     /// Generates a button frame containing the child node. Mouse/touch input
     /// on the button reports input to `self`, not to the child node.
-    pub fn button(storage: &'a mut FrameStorage, child: Self, color: Option<Rgb>) -> Self {
-        Visitor(Box::new(Button {
+    pub fn button<C: Visitable + 'a>(
+        storage: &'a mut FrameStorage,
+        child: C,
+        color: Option<Rgb>,
+    ) -> Visitor<impl Visitable + 'a> {
+        Visitor(Button {
             child,
             storage,
             color,
-        }))
+        })
     }
 
     /// Construct a row/column layout over an iterator of layouts
-    pub fn list<I, D, S>(list: I, direction: D, data: &'a mut S) -> Self
+    pub fn list<I, D, S>(list: I, direction: D, data: &'a mut S) -> Visitor<impl Visitable + 'a>
     where
-        I: ExactSizeIterator<Item = Visitor<'a>> + 'a,
+        I: ExactSizeIterator<Item = BoxVisitor<'a>> + 'a,
         D: Directional,
         S: RowStorage,
     {
-        Visitor(Box::new(List {
+        Visitor(List {
             children: list,
             direction,
             data,
-        }))
+        })
     }
 
     /// Construct a float of layouts
     ///
     /// This is a stack, but showing all items simultaneously.
     /// The first item is drawn on top and has first input priority.
-    pub fn float<I>(list: I) -> Self
+    pub fn float<I>(list: I) -> Visitor<impl Visitable + 'a>
     where
-        I: DoubleEndedIterator<Item = Visitor<'a>> + 'a,
+        I: DoubleEndedIterator<Item = BoxVisitor<'a>> + 'a,
     {
-        Visitor(Box::new(Float { children: list }))
+        Visitor(Float { children: list })
     }
 
     /// Construct a grid layout over an iterator of `(cell, layout)` items
-    pub fn grid<I, S>(iter: I, dim: GridDimensions, data: &'a mut S) -> Self
+    pub fn grid<I, S>(iter: I, dim: GridDimensions, data: &'a mut S) -> Visitor<impl Visitable + 'a>
     where
-        I: DoubleEndedIterator<Item = (GridChildInfo, Visitor<'a>)> + 'a,
+        I: DoubleEndedIterator<Item = (GridChildInfo, BoxVisitor<'a>)> + 'a,
         S: GridStorage,
     {
-        Visitor(Box::new(Grid {
+        Visitor(Grid {
             data,
             dim,
             children: iter,
-        }))
+        })
     }
 }
 
-impl<'a> Visitor<'a> {
+impl<V: Visitable> Visitor<V> {
     /// Get size rules for the given axis
     #[inline]
     pub fn size_rules(mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
@@ -191,7 +236,7 @@ impl<'a> Visitor<'a> {
     }
 }
 
-impl<'a> Visitable for Visitor<'a> {
+impl<V: Visitable> Visitable for Visitor<V> {
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         self.size_rules_(sizer, axis)
     }
@@ -425,7 +470,7 @@ struct List<'a, I, D, S> {
 
 impl<'a, I, D: Directional, S: RowStorage> Visitable for List<'a, I, D, S>
 where
-    I: ExactSizeIterator<Item = Visitor<'a>>,
+    I: ExactSizeIterator<Item = BoxVisitor<'a>>,
 {
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         let dim = (self.direction, self.children.len());
@@ -460,14 +505,14 @@ where
 /// Float layout
 struct Float<'a, I>
 where
-    I: DoubleEndedIterator<Item = Visitor<'a>>,
+    I: DoubleEndedIterator<Item = BoxVisitor<'a>>,
 {
     children: I,
 }
 
 impl<'a, I> Visitable for Float<'a, I>
 where
-    I: DoubleEndedIterator<Item = Visitor<'a>>,
+    I: DoubleEndedIterator<Item = BoxVisitor<'a>>,
 {
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         let mut rules = SizeRules::EMPTY;
@@ -507,7 +552,7 @@ struct Grid<'a, S, I> {
 
 impl<'a, S: GridStorage, I> Visitable for Grid<'a, S, I>
 where
-    I: DoubleEndedIterator<Item = (GridChildInfo, Visitor<'a>)>,
+    I: DoubleEndedIterator<Item = (GridChildInfo, BoxVisitor<'a>)>,
 {
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, self.data);

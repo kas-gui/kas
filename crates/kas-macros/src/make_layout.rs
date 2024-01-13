@@ -1126,7 +1126,7 @@ impl Layout {
                 let mut items = Toks::new();
                 for item in list {
                     let item = item.generate(core_path)?;
-                    items.append_all(quote! {{ #item },});
+                    items.append_all(quote! { ::kas::layout::Visitor::boxed(#item), });
                 }
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
                 quote! {{
@@ -1148,7 +1148,7 @@ impl Layout {
                                 row: #row,
                                 row_end: #row_end,
                             },
-                            #layout,
+                            ::kas::layout::Visitor::boxed(#layout),
                         ),
                     });
                 }
@@ -1160,7 +1160,7 @@ impl Layout {
                 let mut items = Toks::new();
                 for item in list {
                     let item = item.generate(core_path)?;
-                    items.append_all(quote! {{ #item },});
+                    items.append_all(quote! { ::kas::layout::Visitor::boxed(#item), });
                 }
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
                 quote! { layout::Visitor::float(#iter) }

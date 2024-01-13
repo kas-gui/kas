@@ -702,7 +702,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             let layout_visitor = layout.layout_visitor(&quote! { self.#core })?;
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::layout::LayoutVisitor for #impl_target {
-                    fn layout_visitor(&mut self) -> ::kas::layout::Visitor<'_> {
+                    fn layout_visitor(&mut self) -> ::kas::layout::Visitor<impl ::kas::layout::Visitable> {
                         use ::kas::layout;
                         #layout_visitor
                     }

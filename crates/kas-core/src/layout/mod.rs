@@ -57,7 +57,7 @@ pub use size_rules::SizeRules;
 pub use size_types::*;
 pub use sizer::{solve_size_rules, RulesSetter, RulesSolver, SolveCache};
 pub use storage::*;
-pub use visitor::{FrameStorage, PackStorage, Visitor};
+pub use visitor::{FrameStorage, PackStorage, Visitable, Visitor};
 
 /// Information on which axis is being resized
 ///
@@ -252,7 +252,7 @@ impl From<AxisInfo> for Directions {
 /// [`layout`]: crate::widget#layout-1
 pub trait LayoutVisitor {
     /// Layout defined by a [`Visitor`]
-    fn layout_visitor(&mut self) -> Visitor<'_>;
+    fn layout_visitor(&mut self) -> Visitor<impl Visitable>;
 }
 
 #[cfg(test)]
