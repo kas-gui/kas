@@ -366,6 +366,40 @@ impl Tree {
 }
 
 #[derive(Debug)]
+struct ListItem<C> {
+    cell: C,
+    stor: StorIdent,
+    layout: Layout,
+}
+trait GenerateItem: Sized {
+    fn generate_item(item: &ListItem<Self>, core_path: &Toks) -> Result<Toks>;
+}
+impl GenerateItem for () {
+    fn generate_item(item: &ListItem<()>, core_path: &Toks) -> Result<Toks> {
+        let layout = item.layout.generate(core_path)?;
+        Ok(quote! { ::kas::layout::Visitor::boxed(#layout), })
+    }
+}
+impl GenerateItem for CellInfo {
+    fn generate_item(item: &ListItem<CellInfo>, core_path: &Toks) -> Result<Toks> {
+        let (col, col_end) = (item.cell.col, item.cell.col_end);
+        let (row, row_end) = (item.cell.row, item.cell.row_end);
+        let layout = item.layout.generate(core_path)?;
+        Ok(quote! {
+            (
+                layout::GridChildInfo {
+                    col: #col,
+                    col_end: #col_end,
+                    row: #row,
+                    row_end: #row_end,
+                },
+                ::kas::layout::Visitor::boxed(#layout),
+            ),
+        })
+    }
+}
+
+#[derive(Debug)]
 enum Layout {
     Align(Box<Layout>, AlignHints),
     AlignSingle(ExprMember, AlignHints),
@@ -375,9 +409,9 @@ enum Layout {
     Widget(StorIdent, Expr),
     Frame(StorIdent, Box<Layout>, Expr),
     Button(StorIdent, Box<Layout>, Expr),
-    List(StorIdent, Direction, Vec<Layout>),
-    Float(Vec<Layout>),
-    Grid(StorIdent, GridDimensions, Vec<(CellInfo, Layout)>),
+    List(StorIdent, Direction, Vec<ListItem<()>>),
+    Float(Vec<ListItem<()>>),
+    Grid(StorIdent, GridDimensions, Vec<ListItem<CellInfo>>),
     Label(StorIdent, LitStr),
     NonNavigable(Box<Layout>),
 }
@@ -789,16 +823,21 @@ fn parse_align(inner: ParseStream) -> Result<AlignHints> {
     Ok(AlignHints(first, second))
 }
 
-fn parse_layout_list(input: ParseStream, gen: &mut NameGenerator) -> Result<Vec<Layout>> {
+fn parse_layout_list(input: ParseStream, gen: &mut NameGenerator) -> Result<Vec<ListItem<()>>> {
     let inner;
     let _ = bracketed!(inner in input);
     parse_layout_items(&inner, gen)
 }
 
-fn parse_layout_items(inner: ParseStream, gen: &mut NameGenerator) -> Result<Vec<Layout>> {
+fn parse_layout_items(inner: ParseStream, gen: &mut NameGenerator) -> Result<Vec<ListItem<()>>> {
     let mut list = vec![];
+    let mut gen2 = NameGenerator::default();
     while !inner.is_empty() {
-        list.push(Layout::parse(inner, gen)?);
+        list.push(ListItem {
+            cell: (),
+            stor: gen2.next(),
+            layout: Layout::parse(inner, gen)?,
+        });
 
         if inner.is_empty() {
             break;
@@ -818,6 +857,7 @@ fn parse_grid_as_list_of_lists<KW: Parse>(
 ) -> Result<Layout> {
     let (mut col, mut row) = (0, 0);
     let mut dim = GridDimensions::default();
+    let mut gen2 = NameGenerator::default();
     let mut cells = vec![];
 
     while !inner.is_empty() {
@@ -828,10 +868,14 @@ fn parse_grid_as_list_of_lists<KW: Parse>(
         let _ = bracketed!(inner2 in inner);
 
         while !inner2.is_empty() {
-            let info = CellInfo::new(col, row);
-            dim.update(&info);
+            let cell = CellInfo::new(col, row);
+            dim.update(&cell);
             let layout = Layout::parse(&inner2, gen)?;
-            cells.push((info, layout));
+            cells.push(ListItem {
+                cell,
+                stor: gen2.next(),
+                layout,
+            });
 
             if inner2.is_empty() {
                 break;
@@ -864,10 +908,11 @@ fn parse_grid_as_list_of_lists<KW: Parse>(
 
 fn parse_grid(stor: StorIdent, inner: ParseStream, gen: &mut NameGenerator) -> Result<Layout> {
     let mut dim = GridDimensions::default();
+    let mut gen2 = NameGenerator::default();
     let mut cells = vec![];
     while !inner.is_empty() {
-        let info = parse_cell_info(inner)?;
-        dim.update(&info);
+        let cell = parse_cell_info(inner)?;
+        dim.update(&cell);
         let _: Token![=>] = inner.parse()?;
 
         let layout;
@@ -881,7 +926,11 @@ fn parse_grid(stor: StorIdent, inner: ParseStream, gen: &mut NameGenerator) -> R
             layout = Layout::parse(inner, gen)?;
             require_comma = true;
         }
-        cells.push((info, layout));
+        cells.push(ListItem {
+            cell,
+            stor: gen2.next(),
+            layout,
+        });
 
         if inner.is_empty() {
             break;
@@ -1034,14 +1083,18 @@ impl Layout {
                 });
                 let mut used_data_ty = false;
                 for item in vec {
-                    used_data_ty |= item.append_fields(ty_toks, def_toks, children, data_ty);
+                    used_data_ty |= item
+                        .layout
+                        .append_fields(ty_toks, def_toks, children, data_ty);
                 }
                 used_data_ty
             }
             Layout::Float(vec) => {
                 let mut used_data_ty = false;
                 for item in vec {
-                    used_data_ty |= item.append_fields(ty_toks, def_toks, children, data_ty);
+                    used_data_ty |= item
+                        .layout
+                        .append_fields(ty_toks, def_toks, children, data_ty);
                 }
                 used_data_ty
             }
@@ -1052,8 +1105,10 @@ impl Layout {
                 def_toks.append_all(quote! { #stor: Default::default(), });
 
                 let mut used_data_ty = false;
-                for (_info, layout) in cells {
-                    used_data_ty |= layout.append_fields(ty_toks, def_toks, children, data_ty);
+                for item in cells {
+                    used_data_ty |= item
+                        .layout
+                        .append_fields(ty_toks, def_toks, children, data_ty);
                 }
                 used_data_ty
             }
@@ -1125,8 +1180,7 @@ impl Layout {
             Layout::List(stor, dir, list) => {
                 let mut items = Toks::new();
                 for item in list {
-                    let item = item.generate(core_path)?;
-                    items.append_all(quote! { ::kas::layout::Visitor::boxed(#item), });
+                    items.append_all(GenerateItem::generate_item(item, core_path)?);
                 }
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
                 quote! {{
@@ -1137,20 +1191,7 @@ impl Layout {
             Layout::Grid(stor, dim, cells) => {
                 let mut items = Toks::new();
                 for item in cells {
-                    let (col, col_end) = (item.0.col, item.0.col_end);
-                    let (row, row_end) = (item.0.row, item.0.row_end);
-                    let layout = item.1.generate(core_path)?;
-                    items.append_all(quote! {
-                        (
-                            layout::GridChildInfo {
-                                col: #col,
-                                col_end: #col_end,
-                                row: #row,
-                                row_end: #row_end,
-                            },
-                            ::kas::layout::Visitor::boxed(#layout),
-                        ),
-                    });
+                    items.append_all(GenerateItem::generate_item(item, core_path)?);
                 }
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
 
@@ -1159,8 +1200,7 @@ impl Layout {
             Layout::Float(list) => {
                 let mut items = Toks::new();
                 for item in list {
-                    let item = item.generate(core_path)?;
-                    items.append_all(quote! { ::kas::layout::Visitor::boxed(#item), });
+                    items.append_all(GenerateItem::generate_item(item, core_path)?);
                 }
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
                 quote! { layout::Visitor::float(#iter) }
@@ -1211,7 +1251,7 @@ impl Layout {
             Layout::List(_, dir, list) => {
                 let start = output.len();
                 for item in list {
-                    item.nav_next(children.clone(), output, index)?;
+                    item.layout.nav_next(children.clone(), output, index)?;
                 }
                 match dir {
                     _ if output.len() <= start + 1 => Ok(()),
@@ -1222,14 +1262,14 @@ impl Layout {
             }
             Layout::Grid(_, _, cells) => {
                 // TODO: sort using CellInfo?
-                for (_, item) in cells {
-                    item.nav_next(children.clone(), output, index)?;
+                for item in cells {
+                    item.layout.nav_next(children.clone(), output, index)?;
                 }
                 Ok(())
             }
             Layout::Float(list) => {
                 for item in list {
-                    item.nav_next(children.clone(), output, index)?;
+                    item.layout.nav_next(children.clone(), output, index)?;
                 }
                 Ok(())
             }
@@ -1252,10 +1292,12 @@ impl Layout {
                 (expr.member == *ident).then(|| expr.span())
             }
             Layout::Widget(..) => None,
-            Layout::List(_, _, list) | Layout::Float(list) => {
-                list.iter().find_map(|layout| layout.span_in_layout(ident))
-            }
-            Layout::Grid(_, _, list) => list.iter().find_map(|cell| cell.1.span_in_layout(ident)),
+            Layout::List(_, _, list) | Layout::Float(list) => list
+                .iter()
+                .find_map(|item| item.layout.span_in_layout(ident)),
+            Layout::Grid(_, _, list) => list
+                .iter()
+                .find_map(|cell| cell.layout.span_in_layout(ident)),
             Layout::Label(..) => None,
         }
     }
