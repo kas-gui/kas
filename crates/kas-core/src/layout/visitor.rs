@@ -18,7 +18,6 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::theme::{Background, DrawCx, FrameStyle, MarginStyle, SizeCx};
 use crate::Id;
 use crate::{dir::Directional, dir::Directions, Layout};
-use std::iter::ExactSizeIterator;
 
 /// A sub-set of [`Layout`] used by [`Visitor`].
 ///
@@ -49,6 +48,34 @@ pub trait Visitable {
     fn draw(&mut self, draw: DrawCx);
 }
 
+/// A list of [`Visitable`]
+///
+/// This is templated over `cell_info: C` where `C = ()` for lists or
+/// `C = GridChildInfo` for grids.
+pub trait VisitableList<C> {
+    /// List length
+    fn len(&self) -> usize;
+
+    /// Access an item
+    fn get_item(&mut self, index: usize) -> Option<&mut dyn Visitable> {
+        self.get_info_item(index).map(|pair| pair.1)
+    }
+
+    fn get_info_item(&mut self, index: usize) -> Option<(C, &mut dyn Visitable)>;
+}
+
+impl<C> VisitableList<C> for () {
+    #[inline]
+    fn len(&self) -> usize {
+        0
+    }
+
+    #[inline]
+    fn get_info_item(&mut self, _index: usize) -> Option<(C, &mut dyn Visitable)> {
+        None
+    }
+}
+
 /// A layout visitor
 ///
 /// This constitutes a "visitor" which iterates over each child widget. Layout
@@ -59,32 +86,8 @@ pub trait Visitable {
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub struct Visitor<V: Visitable>(V);
 
-/// Visitor using a boxed dyn trait object
-pub type BoxVisitor<'a> = Visitor<Box<dyn Visitable + 'a>>;
-
-impl<'a, V: Visitable> Visitor<V>
-where
-    V: 'a,
-{
-    #[cfg(feature = "min_spec")]
-    #[inline]
-    pub default fn boxed(self) -> Visitor<Box<dyn Visitable + 'a>> {
-        Visitor(Box::new(self.0))
-    }
-    #[cfg(not(feature = "min_spec"))]
-    #[inline]
-    pub fn boxed(self) -> Visitor<Box<dyn Visitable + 'a>> {
-        Visitor(Box::new(self.0))
-    }
-}
-
-impl<'a> BoxVisitor<'a> {
-    #[cfg(feature = "min_spec")]
-    #[inline]
-    pub fn boxed(self) -> Visitor<Box<dyn Visitable + 'a>> {
-        self
-    }
-
+/// These methods would be free functions, but `Visitable` is a useful namespace
+impl<'a> Visitor<Box<dyn Visitable + 'a>> {
     /// Construct a single-item layout
     pub fn single(widget: &'a mut dyn Layout) -> Visitor<impl Visitable + 'a> {
         Visitor(Single { widget })
@@ -157,9 +160,9 @@ impl<'a> BoxVisitor<'a> {
     }
 
     /// Construct a row/column layout over an iterator of layouts
-    pub fn list<I, D, S>(list: I, direction: D, data: &'a mut S) -> Visitor<impl Visitable + 'a>
+    pub fn list<L, D, S>(list: L, direction: D, data: &'a mut S) -> Visitor<impl Visitable + 'a>
     where
-        I: ExactSizeIterator<Item = BoxVisitor<'a>> + 'a,
+        L: VisitableList<()> + 'a,
         D: Directional,
         S: RowStorage,
     {
@@ -174,23 +177,24 @@ impl<'a> BoxVisitor<'a> {
     ///
     /// This is a stack, but showing all items simultaneously.
     /// The first item is drawn on top and has first input priority.
-    pub fn float<I>(list: I) -> Visitor<impl Visitable + 'a>
-    where
-        I: DoubleEndedIterator<Item = BoxVisitor<'a>> + 'a,
-    {
+    pub fn float<L: VisitableList<()> + 'a>(list: L) -> Visitor<impl Visitable + 'a> {
         Visitor(Float { children: list })
     }
 
     /// Construct a grid layout over an iterator of `(cell, layout)` items
-    pub fn grid<I, S>(iter: I, dim: GridDimensions, data: &'a mut S) -> Visitor<impl Visitable + 'a>
+    pub fn grid<L, S>(
+        children: L,
+        dim: GridDimensions,
+        data: &'a mut S,
+    ) -> Visitor<impl Visitable + 'a>
     where
-        I: DoubleEndedIterator<Item = (GridChildInfo, BoxVisitor<'a>)> + 'a,
+        L: VisitableList<GridChildInfo> + 'a,
         S: GridStorage,
     {
         Visitor(Grid {
             data,
             dim,
-            children: iter,
+            children,
         })
     }
 }
@@ -438,21 +442,23 @@ impl<'a, C: Visitable> Visitable for Button<'a, C> {
 }
 
 /// Implement row/column layout for children
-struct List<'a, I, D, S> {
-    children: I,
+struct List<'a, L, D, S> {
+    children: L,
     direction: D,
     data: &'a mut S,
 }
 
-impl<'a, I, D: Directional, S: RowStorage> Visitable for List<'a, I, D, S>
+impl<'a, L, D: Directional, S: RowStorage> Visitable for List<'a, L, D, S>
 where
-    I: ExactSizeIterator<Item = BoxVisitor<'a>>,
+    L: VisitableList<()> + 'a,
 {
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         let dim = (self.direction, self.children.len());
         let mut solver = RowSolver::new(axis, dim, self.data);
-        for (n, child) in (&mut self.children).enumerate() {
-            solver.for_child(self.data, n, |axis| child.size_rules(sizer.re(), axis));
+        for i in 0..self.children.len() {
+            if let Some(child) = self.children.get_item(i) {
+                solver.for_child(self.data, i, |axis| child.size_rules(sizer.re(), axis));
+            }
         }
         solver.finish(self.data)
     }
@@ -461,98 +467,134 @@ where
         let dim = (self.direction, self.children.len());
         let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, self.data);
 
-        for (n, child) in (&mut self.children).enumerate() {
-            child.set_rect(cx, setter.child_rect(self.data, n));
+        for i in 0..self.children.len() {
+            if let Some(child) = self.children.get_item(i) {
+                child.set_rect(cx, setter.child_rect(self.data, i));
+            }
         }
     }
 
     fn find_id(&mut self, coord: Coord) -> Option<Id> {
         // TODO(opt): more efficient search strategy?
-        self.children.find_map(|child| child.find_id(coord))
+        for i in 0..self.children.len() {
+            if let Some(child) = self.children.get_item(i) {
+                if let Some(id) = child.find_id(coord) {
+                    return Some(id);
+                }
+            }
+        }
+        None
     }
 
     fn draw(&mut self, mut draw: DrawCx) {
-        for child in &mut self.children {
-            child.draw(draw.re_clone());
+        for i in 0..self.children.len() {
+            if let Some(child) = self.children.get_item(i) {
+                child.draw(draw.re_clone());
+            }
         }
     }
 }
 
 /// Float layout
-struct Float<'a, I>
-where
-    I: DoubleEndedIterator<Item = BoxVisitor<'a>>,
-{
-    children: I,
+struct Float<L> {
+    children: L,
 }
 
-impl<'a, I> Visitable for Float<'a, I>
+impl<L> Visitable for Float<L>
 where
-    I: DoubleEndedIterator<Item = BoxVisitor<'a>>,
+    L: VisitableList<()>,
 {
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         let mut rules = SizeRules::EMPTY;
-        for child in &mut self.children {
-            rules = rules.max(child.size_rules(sizer.re(), axis));
+        for i in 0..self.children.len() {
+            if let Some(child) = self.children.get_item(i) {
+                rules = rules.max(child.size_rules(sizer.re(), axis));
+            }
         }
         rules
     }
 
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
-        for child in &mut self.children {
-            child.set_rect(cx, rect);
+        for i in 0..self.children.len() {
+            if let Some(child) = self.children.get_item(i) {
+                child.set_rect(cx, rect);
+            }
         }
     }
 
     fn find_id(&mut self, coord: Coord) -> Option<Id> {
-        self.children.find_map(|child| child.find_id(coord))
+        for i in 0..self.children.len() {
+            if let Some(child) = self.children.get_item(i) {
+                if let Some(id) = child.find_id(coord) {
+                    return Some(id);
+                }
+            }
+        }
+        None
     }
 
     fn draw(&mut self, mut draw: DrawCx) {
-        let mut iter = (&mut self.children).rev();
+        let mut iter = (0..self.children.len()).rev();
         if let Some(first) = iter.next() {
-            first.draw(draw.re_clone());
+            if let Some(child) = self.children.get_item(first) {
+                child.draw(draw.re_clone());
+            }
         }
-        for child in iter {
-            draw.with_pass(|draw| child.draw(draw));
+        for i in iter {
+            if let Some(child) = self.children.get_item(i) {
+                draw.with_pass(|draw| child.draw(draw));
+            }
         }
     }
 }
 
 /// Implement grid layout for children
-struct Grid<'a, S, I> {
+struct Grid<'a, S, L> {
     data: &'a mut S,
     dim: GridDimensions,
-    children: I,
+    children: L,
 }
 
-impl<'a, S: GridStorage, I> Visitable for Grid<'a, S, I>
+impl<'a, S: GridStorage, L> Visitable for Grid<'a, S, L>
 where
-    I: DoubleEndedIterator<Item = (GridChildInfo, BoxVisitor<'a>)>,
+    L: VisitableList<GridChildInfo> + 'a,
 {
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, self.data);
-        for (info, child) in &mut self.children {
-            solver.for_child(self.data, info, |axis| child.size_rules(sizer.re(), axis));
+        for i in 0..self.children.len() {
+            if let Some((info, child)) = self.children.get_info_item(i) {
+                solver.for_child(self.data, info, |axis| child.size_rules(sizer.re(), axis));
+            }
         }
         solver.finish(self.data)
     }
 
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
         let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, self.data);
-        for (info, child) in &mut self.children {
-            child.set_rect(cx, setter.child_rect(self.data, info));
+        for i in 0..self.children.len() {
+            if let Some((info, child)) = self.children.get_info_item(i) {
+                child.set_rect(cx, setter.child_rect(self.data, info));
+            }
         }
     }
 
     fn find_id(&mut self, coord: Coord) -> Option<Id> {
         // TODO(opt): more efficient search strategy?
-        self.children.find_map(|(_, child)| child.find_id(coord))
+        for i in 0..self.children.len() {
+            if let Some(child) = self.children.get_item(i) {
+                if let Some(id) = child.find_id(coord) {
+                    return Some(id);
+                }
+            }
+        }
+        None
     }
 
     fn draw(&mut self, mut draw: DrawCx) {
-        for (_, child) in (&mut self.children).rev() {
-            child.draw(draw.re_clone());
+        for i in (0..self.children.len()).rev() {
+            if let Some(child) = self.children.get_item(i) {
+                child.draw(draw.re_clone());
+            }
         }
     }
 }

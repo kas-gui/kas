@@ -371,16 +371,27 @@ struct ListItem<C> {
     stor: StorIdent,
     layout: Layout,
 }
+#[derive(Debug)]
+struct VisitableList<C>(Vec<ListItem<C>>);
 trait GenerateItem: Sized {
+    fn cell_info_type() -> Toks;
     fn generate_item(item: &ListItem<Self>, core_path: &Toks) -> Result<Toks>;
 }
 impl GenerateItem for () {
+    fn cell_info_type() -> Toks {
+        quote! { () }
+    }
+
     fn generate_item(item: &ListItem<()>, core_path: &Toks) -> Result<Toks> {
         let layout = item.layout.generate(core_path)?;
-        Ok(quote! { ::kas::layout::Visitor::boxed(#layout), })
+        Ok(quote! { ((), #layout) })
     }
 }
 impl GenerateItem for CellInfo {
+    fn cell_info_type() -> Toks {
+        quote! { ::kas::layout::GridChildInfo }
+    }
+
     fn generate_item(item: &ListItem<CellInfo>, core_path: &Toks) -> Result<Toks> {
         let (col, col_end) = (item.cell.col, item.cell.col_end);
         let (row, row_end) = (item.cell.row, item.cell.row_end);
@@ -393,8 +404,8 @@ impl GenerateItem for CellInfo {
                     row: #row,
                     row_end: #row_end,
                 },
-                ::kas::layout::Visitor::boxed(#layout),
-            ),
+                #layout,
+            )
         })
     }
 }
@@ -409,9 +420,9 @@ enum Layout {
     Widget(StorIdent, Expr),
     Frame(StorIdent, Box<Layout>, Expr),
     Button(StorIdent, Box<Layout>, Expr),
-    List(StorIdent, Direction, Vec<ListItem<()>>),
-    Float(Vec<ListItem<()>>),
-    Grid(StorIdent, GridDimensions, Vec<ListItem<CellInfo>>),
+    List(StorIdent, Direction, VisitableList<()>),
+    Float(VisitableList<()>),
+    Grid(StorIdent, GridDimensions, VisitableList<CellInfo>),
     Label(StorIdent, LitStr),
     NonNavigable(Box<Layout>),
 }
@@ -823,13 +834,13 @@ fn parse_align(inner: ParseStream) -> Result<AlignHints> {
     Ok(AlignHints(first, second))
 }
 
-fn parse_layout_list(input: ParseStream, gen: &mut NameGenerator) -> Result<Vec<ListItem<()>>> {
+fn parse_layout_list(input: ParseStream, gen: &mut NameGenerator) -> Result<VisitableList<()>> {
     let inner;
     let _ = bracketed!(inner in input);
     parse_layout_items(&inner, gen)
 }
 
-fn parse_layout_items(inner: ParseStream, gen: &mut NameGenerator) -> Result<Vec<ListItem<()>>> {
+fn parse_layout_items(inner: ParseStream, gen: &mut NameGenerator) -> Result<VisitableList<()>> {
     let mut list = vec![];
     let mut gen2 = NameGenerator::default();
     while !inner.is_empty() {
@@ -846,7 +857,7 @@ fn parse_layout_items(inner: ParseStream, gen: &mut NameGenerator) -> Result<Vec
         let _: Token![,] = inner.parse()?;
     }
 
-    Ok(list)
+    Ok(VisitableList(list))
 }
 
 fn parse_grid_as_list_of_lists<KW: Parse>(
@@ -903,7 +914,7 @@ fn parse_grid_as_list_of_lists<KW: Parse>(
         }
     }
 
-    Ok(Layout::Grid(stor, dim, cells))
+    Ok(Layout::Grid(stor, dim, VisitableList(cells)))
 }
 
 fn parse_grid(stor: StorIdent, inner: ParseStream, gen: &mut NameGenerator) -> Result<Layout> {
@@ -943,7 +954,7 @@ fn parse_grid(stor: StorIdent, inner: ParseStream, gen: &mut NameGenerator) -> R
         }
     }
 
-    Ok(Layout::Grid(stor, dim, cells))
+    Ok(Layout::Grid(stor, dim, VisitableList(cells)))
 }
 
 impl Parse for ExprMember {
@@ -1072,40 +1083,40 @@ impl Layout {
                 def_toks.append_all(quote! { #stor: Default::default(), });
                 layout.append_fields(ty_toks, def_toks, children, data_ty)
             }
-            Layout::List(stor, _, vec) => {
+            Layout::List(stor, _, VisitableList(list)) => {
                 def_toks.append_all(quote! { #stor: Default::default(), });
 
-                let len = vec.len();
+                let len = list.len();
                 ty_toks.append_all(if len > 16 {
                     quote! { #stor: ::kas::layout::DynRowStorage, }
                 } else {
                     quote! { #stor: ::kas::layout::FixedRowStorage<#len>, }
                 });
                 let mut used_data_ty = false;
-                for item in vec {
+                for item in list {
                     used_data_ty |= item
                         .layout
                         .append_fields(ty_toks, def_toks, children, data_ty);
                 }
                 used_data_ty
             }
-            Layout::Float(vec) => {
+            Layout::Float(VisitableList(list)) => {
                 let mut used_data_ty = false;
-                for item in vec {
+                for item in list {
                     used_data_ty |= item
                         .layout
                         .append_fields(ty_toks, def_toks, children, data_ty);
                 }
                 used_data_ty
             }
-            Layout::Grid(stor, dim, cells) => {
+            Layout::Grid(stor, dim, VisitableList(list)) => {
                 let (cols, rows) = (dim.cols as usize, dim.rows as usize);
                 ty_toks
                     .append_all(quote! { #stor: ::kas::layout::FixedGridStorage<#cols, #rows>, });
                 def_toks.append_all(quote! { #stor: Default::default(), });
 
                 let mut used_data_ty = false;
-                for item in cells {
+                for item in list {
                     used_data_ty |= item
                         .layout
                         .append_fields(ty_toks, def_toks, children, data_ty);
@@ -1178,32 +1189,19 @@ impl Layout {
                 }
             }
             Layout::List(stor, dir, list) => {
-                let mut items = Toks::new();
-                for item in list {
-                    items.append_all(GenerateItem::generate_item(item, core_path)?);
-                }
-                let iter = quote! { { let arr = [#items]; arr.into_iter() } };
+                let list = list.expand(core_path)?;
                 quote! {{
                     let dir = #dir;
-                    layout::Visitor::list(#iter, dir, &mut #core_path.#stor)
+                    layout::Visitor::list(#list, dir, &mut #core_path.#stor)
                 }}
             }
-            Layout::Grid(stor, dim, cells) => {
-                let mut items = Toks::new();
-                for item in cells {
-                    items.append_all(GenerateItem::generate_item(item, core_path)?);
-                }
-                let iter = quote! { { let arr = [#items]; arr.into_iter() } };
-
-                quote! { layout::Visitor::grid(#iter, #dim, &mut #core_path.#stor) }
+            Layout::Grid(stor, dim, list) => {
+                let list = list.expand(core_path)?;
+                quote! { layout::Visitor::grid(#list, #dim, &mut #core_path.#stor) }
             }
             Layout::Float(list) => {
-                let mut items = Toks::new();
-                for item in list {
-                    items.append_all(GenerateItem::generate_item(item, core_path)?);
-                }
-                let iter = quote! { { let arr = [#items]; arr.into_iter() } };
-                quote! { layout::Visitor::float(#iter) }
+                let list = list.expand(core_path)?;
+                quote! { layout::Visitor::float(#list) }
             }
             Layout::Label(stor, _) => {
                 quote! { layout::Visitor::single(&mut #core_path.#stor) }
@@ -1248,7 +1246,7 @@ impl Layout {
                 *index += 1;
                 Ok(())
             }
-            Layout::List(_, dir, list) => {
+            Layout::List(_, dir, VisitableList(list)) => {
                 let start = output.len();
                 for item in list {
                     item.layout.nav_next(children.clone(), output, index)?;
@@ -1260,14 +1258,14 @@ impl Layout {
                     Direction::Expr(_) => Err((dir.span(), "`list(dir)` with non-static `dir`")),
                 }
             }
-            Layout::Grid(_, _, cells) => {
+            Layout::Grid(_, _, VisitableList(list)) => {
                 // TODO: sort using CellInfo?
-                for item in cells {
+                for item in list {
                     item.layout.nav_next(children.clone(), output, index)?;
                 }
                 Ok(())
             }
-            Layout::Float(list) => {
+            Layout::Float(VisitableList(list)) => {
                 for item in list {
                     item.layout.nav_next(children.clone(), output, index)?;
                 }
@@ -1292,13 +1290,77 @@ impl Layout {
                 (expr.member == *ident).then(|| expr.span())
             }
             Layout::Widget(..) => None,
-            Layout::List(_, _, list) | Layout::Float(list) => list
+            Layout::List(_, _, VisitableList(list)) | Layout::Float(VisitableList(list)) => list
                 .iter()
                 .find_map(|item| item.layout.span_in_layout(ident)),
-            Layout::Grid(_, _, list) => list
+            Layout::Grid(_, _, VisitableList(list)) => list
                 .iter()
                 .find_map(|cell| cell.layout.span_in_layout(ident)),
             Layout::Label(..) => None,
         }
+    }
+}
+
+impl<C: GenerateItem> VisitableList<C> {
+    pub fn expand(&self, core_path: &Toks) -> Result<Toks> {
+        if self.0.is_empty() {
+            return Ok(quote! { () });
+        }
+
+        let name = Ident::new("_VisitableList", Span::call_site());
+        let info_ty = C::cell_info_type();
+
+        let mut item_names = Vec::with_capacity(self.0.len());
+        let mut impl_generics = quote! {};
+        let mut ty_generics = quote! {};
+        let mut stor_ty = quote! {};
+        let mut stor_def = quote! {};
+        for (index, item) in self.0.iter().enumerate() {
+            let span = Span::call_site(); // TODO: span of layout item
+            item_names.push(item.stor.to_token_stream());
+
+            let ty = Ident::new(&format!("_L{}", index), span);
+            impl_generics.append_all(quote! {
+                #ty: ::kas::layout::Visitable,
+            });
+            ty_generics.append_all(quote! { #ty, });
+
+            let stor = &item.stor;
+            stor_ty.append_all(quote! { #stor: (#info_ty, ::kas::layout::Visitor<#ty>), });
+            let item = GenerateItem::generate_item(item, core_path)?;
+            stor_def.append_all(quote_spanned! {span=> #stor: #item, });
+        }
+
+        let len = item_names.len();
+
+        let mut get_mut_rules = quote! {};
+        for (index, path) in item_names.iter().enumerate() {
+            get_mut_rules.append_all(quote! {
+                #index => Some((self.#path.0, &mut self.#path.1)),
+            });
+        }
+
+        let toks = quote! {{
+            struct #name <#impl_generics> {
+                #stor_ty
+            }
+
+            impl<#impl_generics> ::kas::layout::VisitableList<#info_ty> for #name <#ty_generics> {
+                fn len(&self) -> usize { #len }
+
+                fn get_info_item(&mut self, index: usize) -> Option<(#info_ty, &mut dyn ::kas::layout::Visitable)> {
+                    match index {
+                        #get_mut_rules
+                        _ => None,
+                    }
+                }
+            }
+
+            #name {
+                #stor_def
+            }
+        }};
+        // println!("{}", toks);
+        Ok(toks)
     }
 }
