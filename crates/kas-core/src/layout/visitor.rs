@@ -95,7 +95,7 @@ impl<'a> BoxVisitor<'a> {
         widget: &'a mut dyn Layout,
         hints: AlignHints,
     ) -> Visitor<impl Visitable + 'a> {
-        Visitor(AlignSingle { widget, hints })
+        Self::align(Self::single(widget), hints)
     }
 
     /// Construct a sub-layout with alignment hints
@@ -261,30 +261,6 @@ struct Single<'a> {
 impl<'a> Visitable for Single<'a> {
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         self.widget.size_rules(sizer, axis)
-    }
-
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
-        self.widget.set_rect(cx, rect);
-    }
-
-    fn find_id(&mut self, coord: Coord) -> Option<Id> {
-        self.widget.find_id(coord)
-    }
-
-    fn draw(&mut self, mut draw: DrawCx) {
-        draw.recurse(self.widget)
-    }
-}
-
-struct AlignSingle<'a> {
-    widget: &'a mut dyn Layout,
-    hints: AlignHints,
-}
-
-impl<'a> Visitable for AlignSingle<'a> {
-    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        self.widget
-            .size_rules(sizer, axis.with_align_hints(self.hints))
     }
 
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
