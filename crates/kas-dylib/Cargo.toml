@@ -12,7 +12,7 @@ categories = ["gui"]
 repository = "https://github.com/kas-gui/kas"
 
 [package.metadata.docs.rs]
-features = ["kas-core/winit", "kas-core/wayland"]
+features = ["docs_rs"]
 
 [lib]
 crate-type = ["dylib"]
@@ -21,6 +21,10 @@ crate-type = ["dylib"]
 default = ["raster"]
 raster = ["kas-wgpu/raster"]
 resvg = ["dep:kas-resvg"]
+
+# Non-local features required for doc builds.
+# Note: docs.rs does not support direct usage of transitive features.
+docs_rs = ["kas-core/winit", "kas-core/wayland"]
 
 [dependencies]
 kas-core = { version = "0.14.1", path = "../kas-core" }

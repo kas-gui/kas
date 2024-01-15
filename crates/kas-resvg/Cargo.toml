@@ -13,10 +13,14 @@ repository = "https://github.com/kas-gui/kas"
 exclude = ["/screenshots"]
 
 [package.metadata.docs.rs]
-features = ["svg", "kas/winit", "kas/wayland"]
+features = ["docs_rs", "svg"]
 rustdoc-args = ["--cfg", "doc_cfg"]
 
 [features]
+# Non-local features required for doc builds.
+# Note: docs.rs does not support direct usage of transitive features.
+docs_rs = ["kas/winit", "kas/wayland"]
+
 # Support SVG images
 svg = ["dep:resvg", "dep:usvg"]
 
