@@ -7,8 +7,8 @@
 
 use super::{Menu, SubItems};
 use crate::{AccessLabel, CheckBox};
+use kas::prelude::*;
 use kas::theme::{FrameStyle, TextClass};
-use kas::{layout, prelude::*};
 use std::fmt::Debug;
 
 impl_scope! {
@@ -127,7 +127,7 @@ impl_scope! {
         fn draw(&mut self, mut draw: DrawCx) {
             let mut draw = draw.re_id(self.checkbox.id());
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
-            <Self as layout::AutoLayout>::draw(self, draw);
+            self.layout_visitor().draw(draw);
         }
     }
 

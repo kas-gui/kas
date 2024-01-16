@@ -17,7 +17,7 @@ pub use crate::event::{ConfigCx, Event, EventCx, EventState, IsUsed, Unused, Use
 #[doc(no_inline)]
 pub use crate::geom::{Coord, Offset, Rect, Size};
 #[doc(no_inline)]
-pub use crate::layout::{Align, AlignPair, AxisInfo, SizeRules, Stretch};
+pub use crate::layout::{Align, AlignPair, AxisInfo, LayoutVisitor, SizeRules, Stretch};
 #[doc(no_inline)] pub use crate::text::AccessString;
 #[doc(no_inline)]
 pub use crate::text::{EditableTextApi, TextApi, TextApiExt};

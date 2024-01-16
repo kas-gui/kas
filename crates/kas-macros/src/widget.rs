@@ -699,10 +699,13 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             };
 
             // Generated layout methods are wrapped, so we don't require debug assertions here.
-            let layout_methods = layout.layout_methods(&quote! { self.#core }, false)?;
+            let layout_visitor = layout.layout_visitor(&quote! { self.#core })?;
             scope.generated.push(quote! {
-                impl #impl_generics ::kas::layout::AutoLayout for #impl_target {
-                    #layout_methods
+                impl #impl_generics ::kas::layout::LayoutVisitor for #impl_target {
+                    fn layout_visitor(&mut self) -> ::kas::layout::Visitor<impl ::kas::layout::Visitable> {
+                        use ::kas::layout;
+                        #layout_visitor
+                    }
                 }
             });
 
@@ -714,19 +717,30 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 ) -> ::kas::layout::SizeRules {
                     #[cfg(debug_assertions)]
                     #core_path.status.size_rules(&#core_path.id, axis);
-                    <Self as ::kas::layout::AutoLayout>::size_rules(self, sizer, axis)
+                    ::kas::layout::LayoutVisitor::layout_visitor(self).size_rules(sizer, axis)
                 }
             });
             set_rect = quote! {
-                <Self as ::kas::layout::AutoLayout>::set_rect(self, cx, rect);
+                #core_path.rect = rect;
+                ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect);
             };
-            find_id = quote! { <Self as ::kas::layout::AutoLayout>::find_id(self, coord) };
+            find_id = quote! {
+                use ::kas::{Layout, LayoutExt, layout::LayoutVisitor};
+
+                if !self.rect().contains(coord) {
+                    return None;
+                }
+                let coord = coord + self.translation();
+                self.layout_visitor()
+                    .find_id(coord)
+                    .or_else(|| Some(self.id()))
+            };
             fn_draw = Some(quote! {
                 fn draw(&mut self, draw: ::kas::theme::DrawCx) {
                     #[cfg(debug_assertions)]
                     #core_path.status.require_rect(&#core_path.id);
 
-                    <Self as ::kas::layout::AutoLayout>::draw(self, draw);
+                    ::kas::layout::LayoutVisitor::layout_visitor(self).draw(draw);
                 }
             });
         } else {
