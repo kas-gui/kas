@@ -152,11 +152,35 @@ impl ScopeAttr for AttrImplWidget {
     }
 }
 
+#[derive(Debug)]
+pub enum ChildIdent {
+    /// Child is a direct field
+    Field(Member),
+    /// Child is a hidden field (under #core_path)
+    CoreField(Member),
+}
+impl ChildIdent {
+    pub fn get_rule(&self, core_path: &Toks, i: usize) -> Toks {
+        match self {
+            ChildIdent::Field(ident) => quote! { #i => Some(self.#ident.as_layout()), },
+            ChildIdent::CoreField(ident) => quote! { #i => Some(#core_path.#ident.as_layout()), },
+        }
+    }
+}
+
 pub struct Child {
-    /// Field identifier
-    ident: Member,
-    attr_span: Span,
-    data_binding: Option<Expr>,
+    pub ident: ChildIdent,
+    pub attr_span: Option<Span>,
+    pub data_binding: Option<Expr>,
+}
+impl Child {
+    pub fn new_core(ident: Member) -> Self {
+        Child {
+            ident: ChildIdent::CoreField(ident.into()),
+            attr_span: None,
+            data_binding: None,
+        }
+    }
 }
 
 /// Custom widget definition
@@ -315,7 +339,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
     let mut core_data: Option<Member> = None;
     let mut children = Vec::with_capacity(fields.len());
-    let mut layout_children = Vec::new();
+
     for (i, field) in fields.iter_mut().enumerate() {
         let ident = member(i, field.ident.clone());
 
@@ -340,7 +364,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
             let mut stor_defs = Default::default();
             if let Some((_, ref layout)) = args.layout {
-                stor_defs = layout.storage_fields(&mut layout_children, &data_ty);
+                stor_defs = layout.storage_fields(&mut children, &data_ty);
             }
             if !stor_defs.ty_toks.is_empty() {
                 let name = format!("_{name}CoreTy");
@@ -411,8 +435,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 }
                 is_widget = true;
                 children.push(Child {
-                    ident: ident.clone(),
-                    attr_span: attr.span(),
+                    ident: ChildIdent::Field(ident.clone()),
+                    attr_span: Some(attr.span()),
                     data_binding,
                 });
             } else {
@@ -435,7 +459,14 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         }
     }
 
-    crate::widget_index::visit_impls(children.iter().map(|child| &child.ident), &mut scope.impls);
+    let named_child_iter = children
+        .iter()
+        .enumerate()
+        .filter_map(|(i, child)| match child.ident {
+            ChildIdent::Field(ref member) => Some((i, member)),
+            ChildIdent::CoreField(_) => None,
+        });
+    crate::widget_index::visit_impls(named_child_iter, &mut scope.impls);
 
     if let Some(ref span) = num_children {
         if get_child.is_none() {
@@ -456,9 +487,14 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             emit_error!(span, "impl forbidden when using #[widget(derive=FIELD)]");
         }
         if !children.is_empty() {
-            emit_error!(span, "impl forbidden when using `#[widget]` on fields");
-        } else if !layout_children.is_empty() {
-            emit_error!(span, "impl forbidden when using layout-defined children");
+            if children
+                .iter()
+                .any(|child| matches!(child.ident, ChildIdent::Field(_)))
+            {
+                emit_error!(span, "impl forbidden when using `#[widget]` on fields");
+            } else {
+                emit_error!(span, "impl forbidden when using layout-defined children");
+            }
         }
     }
     let do_impl_widget_children = get_child.is_none() && for_child_node.is_none();
@@ -644,20 +680,12 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         required_layout_methods = impl_core_methods(&widget_name, &core_path);
 
         if do_impl_widget_children {
-            let count = children.len();
             let mut get_rules = quote! {};
-            for (i, child) in children.iter().enumerate() {
-                let ident = &child.ident;
-                get_rules.append_all(quote! { #i => Some(self.#ident.as_layout()), });
-            }
-            for (i, path) in layout_children.iter().enumerate() {
-                let index = count + i;
-                get_rules.append_all(quote! {
-                    #index => Some(#core_path.#path.as_layout()),
-                });
+            for (index, child) in children.iter().enumerate() {
+                get_rules.append_all(child.ident.get_rule(&core_path, index));
             }
 
-            let count = children.len() + layout_children.len();
+            let count = children.len();
             required_layout_methods.append_all(quote! {
                 fn num_children(&self) -> usize {
                     #count
@@ -690,7 +718,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 &data_ty,
                 &core_path,
                 &children,
-                layout_children,
                 do_impl_widget_children,
             ));
         }
@@ -701,7 +728,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             self.rect().contains(coord).then(|| self.id())
         };
         if let Some((_, layout)) = args.layout.take() {
-            fn_nav_next = match layout.nav_next(children.iter().map(|child| &child.ident)) {
+            fn_nav_next = match layout.nav_next(children.iter()) {
                 Ok(toks) => Some(toks),
                 Err((span, msg)) => {
                     fn_nav_next_err = Some((span, msg));
@@ -1048,16 +1075,17 @@ pub fn impl_widget(
     data_ty: &Type,
     core_path: &Toks,
     children: &[Child],
-    layout_children: Vec<Toks>,
     do_impl_widget_children: bool,
 ) -> Toks {
     let fns_as_node = widget_as_node();
 
     let fns_for_child = if do_impl_widget_children {
-        let count = children.len();
         let mut get_mut_rules = quote! {};
         for (i, child) in children.iter().enumerate() {
-            let ident = &child.ident;
+            let path = match &child.ident {
+                ChildIdent::Field(ident) => quote! { self.#ident },
+                ChildIdent::CoreField(ident) => quote! { #core_path.#ident },
+            };
             // TODO: incorrect or unconstrained data type of child causes a poor error
             // message here. Add a constaint like this (assuming no mapping fn):
             // <#ty as WidgetNode::Data> == Self::Data
@@ -1065,15 +1093,13 @@ pub fn impl_widget(
             // predicates.push(..);
 
             get_mut_rules.append_all(if let Some(ref data) = child.data_binding {
-                quote! { #i => closure(self.#ident.as_node(#data)), }
+                quote! { #i => closure(#path.as_node(#data)), }
             } else {
-                quote_spanned! {child.attr_span=> #i => closure(self.#ident.as_node(data)), }
-            });
-        }
-        for (i, path) in layout_children.iter().enumerate() {
-            let index = count + i;
-            get_mut_rules.append_all(quote! {
-                #index => closure(#core_path.#path.as_node(data)),
+                if let Some(ref span) = child.attr_span {
+                    quote_spanned! {*span=> #i => closure(#path.as_node(data)), }
+                } else {
+                    quote! { #i => closure(#path.as_node(data)), }
+                }
             });
         }
 

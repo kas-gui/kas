@@ -4,7 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use crate::collection::{NameGenerator, StorIdent};
-use crate::widget;
+use crate::widget::{self, Child, ChildIdent};
 use proc_macro2::{Span, TokenStream as Toks};
 use proc_macro_error::emit_error;
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
@@ -55,7 +55,7 @@ pub struct StorageFields {
 #[derive(Debug)]
 pub struct Tree(Layout);
 impl Tree {
-    pub fn storage_fields(&self, children: &mut Vec<Toks>, data_ty: &Type) -> StorageFields {
+    pub fn storage_fields(&self, children: &mut Vec<Child>, data_ty: &Type) -> StorageFields {
         let (mut ty_toks, mut def_toks) = (Toks::new(), Toks::new());
         let used_data_ty = self
             .0
@@ -123,15 +123,14 @@ impl Tree {
         })
     }
 
-    pub fn nav_next<'a, I: Clone + ExactSizeIterator<Item = &'a Member>>(
+    pub fn nav_next<'a, I: Clone + Iterator<Item = &'a Child>>(
         &self,
         children: I,
     ) -> std::result::Result<Toks, (Span, &'static str)> {
         match &self.0 {
             layout => {
                 let mut v = Vec::new();
-                let mut index = children.len();
-                layout.nav_next(children, &mut v, &mut index).map(|()| {
+                layout.nav_next(children, &mut v).map(|()| {
                     quote! {
                         fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
                             let mut iter = [#(#v),*].into_iter();
@@ -161,9 +160,9 @@ impl Tree {
 
     /// Synthesize an entire widget from the layout
     pub fn expand_as_widget(self, widget_name: &str) -> Result<Toks> {
-        let mut layout_children = Vec::new();
+        let mut children = Vec::new();
         let data_ty: syn::Type = syn::parse_quote! { _Data };
-        let stor_defs = self.storage_fields(&mut layout_children, &data_ty);
+        let stor_defs = self.storage_fields(&mut children, &data_ty);
         let stor_ty = &stor_defs.ty_toks;
         let stor_def = &stor_defs.def_toks;
 
@@ -175,7 +174,7 @@ impl Tree {
             (quote! {}, quote! { #name })
         };
 
-        let count = layout_children.len();
+        let count = children.len();
         let num_children = quote! {
             fn num_children(&self) -> usize {
                 #count
@@ -183,10 +182,8 @@ impl Tree {
         };
 
         let mut get_rules = quote! {};
-        for (index, path) in layout_children.iter().enumerate() {
-            get_rules.append_all(quote! {
-                #index => Some(#core_path.#path.as_layout()),
-            });
+        for (index, child) in children.iter().enumerate() {
+            get_rules.append_all(child.ident.get_rule(&core_path, index));
         }
 
         let core_impl = widget::impl_core_methods(widget_name, &core_path);
@@ -195,13 +192,12 @@ impl Tree {
             &impl_target,
             &data_ty,
             &core_path,
-            &[],
-            layout_children,
+            &children,
             true,
         );
 
         let layout_methods = self.layout_methods(&core_path)?;
-        let nav_next = match self.nav_next(std::iter::empty()) {
+        let nav_next = match self.nav_next(children.iter()) {
             Ok(result) => Some(result),
             Err((span, msg)) => {
                 emit_error!(span, "unable to generate `fn Layout::nav_next`: {}", msg);
@@ -1062,7 +1058,7 @@ impl Layout {
         &self,
         ty_toks: &mut Toks,
         def_toks: &mut Toks,
-        children: &mut Vec<Toks>,
+        children: &mut Vec<Child>,
         data_ty: &Type,
     ) -> bool {
         match self {
@@ -1078,7 +1074,7 @@ impl Layout {
                 layout.append_fields(ty_toks, def_toks, children, data_ty)
             }
             Layout::Widget(ident, expr) => {
-                children.push(ident.to_token_stream());
+                children.push(Child::new_core(ident.clone().into()));
                 ty_toks.append_all(quote! { #ident: Box<dyn ::kas::Widget<Data = #data_ty>>, });
                 let span = expr.span();
                 def_toks.append_all(quote_spanned! {span=> #ident: Box::new(#expr), });
@@ -1130,7 +1126,7 @@ impl Layout {
                 used_data_ty
             }
             Layout::Label(ident, text) => {
-                children.push(ident.to_token_stream());
+                children.push(Child::new_core(ident.clone().into()));
                 let span = text.span();
                 if *data_ty == syn::parse_quote! { () } {
                     ty_toks.append_all(quote! { #ident: ::kas::hidden::StrLabel, });
@@ -1220,42 +1216,48 @@ impl Layout {
     ///
     /// -   `output`: the result
     /// -   `index`: the next widget's index
-    fn nav_next<'a, I: Clone + Iterator<Item = &'a Member>>(
+    fn nav_next<'a, I: Clone + Iterator<Item = &'a Child>>(
         &self,
         children: I,
         output: &mut Vec<usize>,
-        index: &mut usize,
     ) -> std::result::Result<(), (Span, &'static str)> {
         match self {
             Layout::Align(layout, _)
             | Layout::Pack(_, layout, _)
             | Layout::Margins(layout, _, _)
-            | Layout::Frame(_, layout, _) => layout.nav_next(children, output, index),
-            Layout::Button(_, layout, _) | Layout::NonNavigable(layout) => {
-                // Internals of a button are not navigable, but we still need to increment index
-                let start = output.len();
-                layout.nav_next(children, output, index)?;
-                output.truncate(start);
+            | Layout::Frame(_, layout, _) => layout.nav_next(children, output),
+            Layout::Button(_, _, _) | Layout::NonNavigable(_) => {
+                // Internals of a button are not navigable
                 Ok(())
             }
             Layout::AlignSingle(m, _) | Layout::Single(m) => {
                 for (i, child) in children.enumerate() {
-                    if m.member == *child {
-                        output.push(i);
-                        return Ok(());
+                    if let ChildIdent::Field(ref ident) = child.ident {
+                        if m.member == *ident {
+                            output.push(i);
+                            return Ok(());
+                        }
                     }
                 }
                 Err((m.member.span(), "child not found"))
             }
-            Layout::Widget(_, _) => {
-                output.push(*index);
-                *index += 1;
-                Ok(())
+            Layout::Widget(ident, _) => {
+                for (i, child) in children.enumerate() {
+                    if let ChildIdent::CoreField(ref child_ident) = child.ident {
+                        if let Member::Named(ref ci) = child_ident {
+                            if *ident == *ci {
+                                output.push(i);
+                                return Ok(());
+                            }
+                        }
+                    }
+                }
+                panic!("generated child not found")
             }
             Layout::List(_, dir, VisitableList(list)) => {
                 let start = output.len();
                 for item in list {
-                    item.layout.nav_next(children.clone(), output, index)?;
+                    item.layout.nav_next(children.clone(), output)?;
                 }
                 match dir {
                     _ if output.len() <= start + 1 => Ok(()),
@@ -1267,20 +1269,17 @@ impl Layout {
             Layout::Grid(_, _, VisitableList(list)) => {
                 // TODO: sort using CellInfo?
                 for item in list {
-                    item.layout.nav_next(children.clone(), output, index)?;
+                    item.layout.nav_next(children.clone(), output)?;
                 }
                 Ok(())
             }
             Layout::Float(VisitableList(list)) => {
                 for item in list {
-                    item.layout.nav_next(children.clone(), output, index)?;
+                    item.layout.nav_next(children.clone(), output)?;
                 }
                 Ok(())
             }
-            Layout::Label(_, _) => {
-                *index += 1;
-                Ok(())
-            }
+            Layout::Label(_, _) => Ok(()),
         }
     }
 
