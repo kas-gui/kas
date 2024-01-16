@@ -34,14 +34,18 @@ pub trait Visitable {
 
     /// Set size and position
     ///
-    /// This method is identical to [`Layout::set_rect`].
+    /// The caller is expected to set `self.core.rect = rect;`.
+    /// In other respects, this functions identically to [`Layout::set_rect`].
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect);
 
     /// Translate a coordinate to an [`Id`]
     ///
-    /// Implementations should recursively call `find_id` on children, returning
-    /// `None` if no child returns an `Id`.
-    /// This method is simplified relative to [`Layout::find_id`].
+    /// The caller is expected to
+    ///
+    /// 1.  Return `None` if `!self.rect().contains(coord)`
+    /// 2.  Translate `coord`: `let coord = coord + self.translation();`
+    /// 3.  Call `find_id` (this method), returning its result if not `None`
+    /// 4.  Otherwise return `Some(self.id())`
     fn find_id(&mut self, coord: Coord) -> Option<Id>;
 
     /// Draw a widget and its children
@@ -204,6 +208,8 @@ impl<'a> Visitor<Box<dyn Visitable + 'a>> {
 
 impl<V: Visitable> Visitor<V> {
     /// Get size rules for the given axis
+    ///
+    /// This method is identical to [`Layout::size_rules`].
     #[inline]
     pub fn size_rules(mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         self.size_rules_(sizer, axis)
@@ -213,6 +219,9 @@ impl<V: Visitable> Visitor<V> {
     }
 
     /// Apply a given `rect` to self
+    ///
+    /// The caller is expected to set `self.core.rect = rect;`.
+    /// In other respects, this functions identically to [`Layout::set_rect`].
     #[inline]
     pub fn set_rect(mut self, cx: &mut ConfigCx, rect: Rect) {
         self.set_rect_(cx, rect);
@@ -221,10 +230,14 @@ impl<V: Visitable> Visitor<V> {
         self.0.set_rect(cx, rect);
     }
 
-    /// Find a widget by coordinate
+    /// Translate a coordinate to an [`Id`]
     ///
-    /// Does not return the widget's own identifier. See example usage in
-    /// [`Visitor::find_id`].
+    /// The caller is expected to
+    ///
+    /// 1.  Return `None` if `!self.rect().contains(coord)`
+    /// 2.  Translate `coord`: `let coord = coord + self.translation();`
+    /// 3.  Call `find_id` (this method), returning its result if not `None`
+    /// 4.  Otherwise return `Some(self.id())`
     #[inline]
     pub fn find_id(mut self, coord: Coord) -> Option<Id> {
         self.find_id_(coord)
@@ -233,7 +246,9 @@ impl<V: Visitable> Visitor<V> {
         self.0.find_id(coord)
     }
 
-    /// Draw a widget's children
+    /// Draw a widget and its children
+    ///
+    /// This method is identical to [`Layout::draw`].
     #[inline]
     pub fn draw(mut self, draw: DrawCx) {
         self.draw_(draw);
