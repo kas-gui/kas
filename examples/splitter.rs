@@ -18,7 +18,7 @@ fn main() -> kas::app::Result<()> {
     env_logger::init();
 
     let ui = kas::column![
-        kas::row![
+        row![
             Button::label_msg("−", Message::Decr),
             Button::label_msg("+", Message::Incr),
         ]

@@ -10,7 +10,7 @@ use proc_macro_error::emit_error;
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::{braced, bracketed, parenthesized};
+use syn::{braced, bracketed, parenthesized, parse_quote};
 use syn::{Expr, Ident, LitInt, LitStr, Member, Token, Type};
 
 #[allow(non_camel_case_types)]
@@ -43,6 +43,7 @@ mod kw {
     custom_keyword!(em);
     custom_keyword!(style);
     custom_keyword!(color);
+    custom_keyword!(map_any);
 }
 
 #[derive(Default)]
@@ -427,6 +428,7 @@ enum Layout {
     Grid(StorIdent, GridDimensions, VisitableList<CellInfo>),
     Label(Ident, LitStr),
     NonNavigable(Box<Layout>),
+    MapAny(Box<Layout>, Span),
 }
 
 #[derive(Debug)]
@@ -565,7 +567,17 @@ impl Parse for Tree {
 impl Layout {
     fn parse(input: ParseStream, gen: &mut NameGenerator) -> Result<Self> {
         if input.peek2(Token![!]) {
-            Self::parse_macro_like(input, gen)
+            let layout = Self::parse_macro_like(input, gen)?;
+
+            let fork = input.fork();
+            if let Ok(map_any) = MapAny::parse(&fork) {
+                use syn::parse::discouraged::Speculative;
+                input.advance_to(&fork);
+
+                Ok(Layout::MapAny(Box::new(layout), map_any.0))
+            } else {
+                Ok(layout)
+            }
         } else if input.peek(Token![self]) {
             Ok(Layout::Single(input.parse()?))
         } else if input.peek(LitStr) {
@@ -1053,6 +1065,17 @@ impl ToTokens for GridDimensions {
     }
 }
 
+struct MapAny(Span);
+impl Parse for MapAny {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let _ = input.parse::<Token![.]>()?;
+        let kw = input.parse::<kw::map_any>()?;
+        let _content;
+        parenthesized!(_content in input);
+        Ok(MapAny(kw.span()))
+    }
+}
+
 impl Layout {
     fn append_fields(
         &self,
@@ -1144,6 +1167,21 @@ impl Layout {
                     true
                 }
             }
+            Layout::MapAny(layout, span) => {
+                let start = children.len();
+                let ret = layout.append_fields(ty_toks, def_toks, children, &parse_quote! { () });
+                let map_any: Expr = parse_quote! { &() };
+                for child in &mut children[start..] {
+                    if let Some(ref expr) = child.data_binding {
+                        if *expr != map_any {
+                            emit_error!(span, "invalid data type mapping")
+                        }
+                    } else {
+                        child.data_binding = Some(map_any.clone());
+                    }
+                }
+                ret
+            }
         }
     }
 
@@ -1208,7 +1246,9 @@ impl Layout {
             Layout::Label(stor, _) => {
                 quote! { layout::Visitor::single(&mut #core_path.#stor) }
             }
-            Layout::NonNavigable(layout) => return layout.generate(core_path),
+            Layout::NonNavigable(layout) | Layout::MapAny(layout, _) => {
+                return layout.generate(core_path)
+            }
         })
     }
 
@@ -1225,7 +1265,8 @@ impl Layout {
             Layout::Align(layout, _)
             | Layout::Pack(_, layout, _)
             | Layout::Margins(layout, _, _)
-            | Layout::Frame(_, layout, _) => layout.nav_next(children, output),
+            | Layout::Frame(_, layout, _)
+            | Layout::MapAny(layout, _) => layout.nav_next(children, output),
             Layout::Button(_, _, _) | Layout::NonNavigable(_) => {
                 // Internals of a button are not navigable
                 Ok(())
@@ -1290,7 +1331,8 @@ impl Layout {
             | Layout::Margins(layout, _, _)
             | Layout::Frame(_, layout, _)
             | Layout::Button(_, layout, _)
-            | Layout::NonNavigable(layout) => layout.span_in_layout(ident),
+            | Layout::NonNavigable(layout)
+            | Layout::MapAny(layout, _) => layout.span_in_layout(ident),
             Layout::AlignSingle(expr, _) | Layout::Single(expr) => {
                 (expr.member == *ident).then(|| expr.span())
             }

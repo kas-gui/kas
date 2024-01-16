@@ -190,7 +190,7 @@ fn main() -> kas::app::Result<()> {
     let controls = row![
         "Number of rows:",
         EditBox::parser(|n| *n, Control::SetLen),
-        kas::row![
+        row![
             // This button is just a click target; it doesn't do anything!
             Button::label_msg("Set", Control::None),
             Button::label_msg("−", Control::DecrLen),

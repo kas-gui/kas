@@ -161,7 +161,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
             "Button (image)",
             pack!(
                 center,
-                kas::row![
+                row![
                     Button::new_msg(img_light.clone(), Item::Theme("light"))
                         .with_color("#B38DF9".parse().unwrap())
                         .with_access_key(Key::Character("h".into())),
