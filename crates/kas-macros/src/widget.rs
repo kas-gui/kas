@@ -152,6 +152,13 @@ impl ScopeAttr for AttrImplWidget {
     }
 }
 
+pub struct Child {
+    /// Field identifier
+    ident: Member,
+    attr_span: Span,
+    data_binding: Option<Expr>,
+}
+
 /// Custom widget definition
 ///
 /// This macro may inject impls and inject items into existing impls.
@@ -385,7 +392,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         let mut other_attrs = Vec::with_capacity(field.attrs.len());
         for attr in field.attrs.drain(..) {
             if *attr.path() == parse_quote! { widget } {
-                let data: Option<Expr> = match &attr.meta {
+                let data_binding = match &attr.meta {
                     Meta::Path(_) => None,
                     Meta::List(list) if matches!(&list.delimiter, MacroDelimiter::Paren(_)) => {
                         Some(parse2(list.tokens.clone())?)
@@ -403,8 +410,11 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     emit_error!(attr, "#[widget] must not be used on widget derive target");
                 }
                 is_widget = true;
-                let span = attr.span();
-                children.push((ident.clone(), span, data));
+                children.push(Child {
+                    ident: ident.clone(),
+                    attr_span: attr.span(),
+                    data_binding,
+                });
             } else {
                 other_attrs.push(attr);
             }
@@ -425,7 +435,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         }
     }
 
-    crate::widget_index::visit_impls(children.iter().map(|(ident, _, _)| ident), &mut scope.impls);
+    crate::widget_index::visit_impls(children.iter().map(|child| &child.ident), &mut scope.impls);
 
     if let Some(ref span) = num_children {
         if get_child.is_none() {
@@ -636,7 +646,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         if do_impl_widget_children {
             let count = children.len();
             let mut get_rules = quote! {};
-            for (i, (ident, _, _)) in children.iter().enumerate() {
+            for (i, child) in children.iter().enumerate() {
+                let ident = &child.ident;
                 get_rules.append_all(quote! { #i => Some(self.#ident.as_layout()), });
             }
             for (i, path) in layout_children.iter().enumerate() {
@@ -690,7 +701,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             self.rect().contains(coord).then(|| self.id())
         };
         if let Some((_, layout)) = args.layout.take() {
-            fn_nav_next = match layout.nav_next(children.iter().map(|(ident, _, _)| ident)) {
+            fn_nav_next = match layout.nav_next(children.iter().map(|child| &child.ident)) {
                 Ok(toks) => Some(toks),
                 Err((span, msg)) => {
                     fn_nav_next_err = Some((span, msg));
@@ -1036,7 +1047,7 @@ pub fn impl_widget(
     impl_target: &Toks,
     data_ty: &Type,
     core_path: &Toks,
-    children: &[(Member, Span, Option<Expr>)],
+    children: &[Child],
     layout_children: Vec<Toks>,
     do_impl_widget_children: bool,
 ) -> Toks {
@@ -1045,17 +1056,18 @@ pub fn impl_widget(
     let fns_for_child = if do_impl_widget_children {
         let count = children.len();
         let mut get_mut_rules = quote! {};
-        for (i, (ident, span, opt_data)) in children.iter().enumerate() {
+        for (i, child) in children.iter().enumerate() {
+            let ident = &child.ident;
             // TODO: incorrect or unconstrained data type of child causes a poor error
             // message here. Add a constaint like this (assuming no mapping fn):
             // <#ty as WidgetNode::Data> == Self::Data
             // But this is unsupported: rust#20041
             // predicates.push(..);
 
-            get_mut_rules.append_all(if let Some(data) = opt_data {
+            get_mut_rules.append_all(if let Some(ref data) = child.data_binding {
                 quote! { #i => closure(self.#ident.as_node(#data)), }
             } else {
-                quote_spanned! {*span=> #i => closure(self.#ident.as_node(data)), }
+                quote_spanned! {child.attr_span=> #i => closure(self.#ident.as_node(data)), }
             });
         }
         for (i, path) in layout_children.iter().enumerate() {
