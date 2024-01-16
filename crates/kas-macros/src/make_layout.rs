@@ -277,7 +277,7 @@ impl Tree {
         let mut gen = NameGenerator::default();
         let stor = gen.next();
         let list = parse_layout_items(inner, &mut gen)?;
-        Ok(Tree(Layout::List(stor, Direction::Down, list)))
+        Ok(Tree(Layout::List(stor.into(), Direction::Down, list)))
     }
 
     /// Parse a row (contents only)
@@ -285,7 +285,7 @@ impl Tree {
         let mut gen = NameGenerator::default();
         let stor = gen.next();
         let list = parse_layout_items(inner, &mut gen)?;
-        Ok(Tree(Layout::List(stor, Direction::Right, list)))
+        Ok(Tree(Layout::List(stor.into(), Direction::Right, list)))
     }
 
     /// Parse an aligned column (contents only)
@@ -293,7 +293,10 @@ impl Tree {
         let mut gen = NameGenerator::default();
         let stor = gen.next();
         Ok(Tree(parse_grid_as_list_of_lists::<kw::row>(
-            stor, inner, &mut gen, true,
+            stor.into(),
+            inner,
+            &mut gen,
+            true,
         )?))
     }
 
@@ -302,7 +305,10 @@ impl Tree {
         let mut gen = NameGenerator::default();
         let stor = gen.next();
         Ok(Tree(parse_grid_as_list_of_lists::<kw::column>(
-            stor, inner, &mut gen, false,
+            stor.into(),
+            inner,
+            &mut gen,
+            false,
         )?))
     }
 
@@ -313,7 +319,7 @@ impl Tree {
         let dir: Direction = inner.parse()?;
         let _: Token![,] = inner.parse()?;
         let list = parse_layout_list(inner, &mut gen)?;
-        Ok(Tree(Layout::List(stor, dir, list)))
+        Ok(Tree(Layout::List(stor.into(), dir, list)))
     }
 
     /// Parse a float (contents only)
@@ -327,7 +333,7 @@ impl Tree {
     pub fn grid(inner: ParseStream) -> Result<Self> {
         let mut gen = NameGenerator::default();
         let stor = gen.next();
-        Ok(Tree(parse_grid(stor, inner, &mut gen)?))
+        Ok(Tree(parse_grid(stor.into(), inner, &mut gen)?))
     }
 
     /// Parse align (contents only)
@@ -355,7 +361,7 @@ impl Tree {
         let _: Token![,] = inner.parse()?;
 
         let layout = Layout::parse(inner, &mut gen)?;
-        Ok(Tree(Layout::Pack(stor, Box::new(layout), align)))
+        Ok(Tree(Layout::Pack(stor.into(), Box::new(layout), align)))
     }
 
     /// Parse margins (contents only)
@@ -368,7 +374,7 @@ impl Tree {
 #[derive(Debug)]
 struct ListItem<C> {
     cell: C,
-    stor: StorIdent,
+    stor: Ident,
     layout: Layout,
 }
 #[derive(Debug)]
@@ -417,13 +423,13 @@ enum Layout {
     Pack(StorIdent, Box<Layout>, AlignHints),
     Margins(Box<Layout>, Directions, Toks),
     Single(ExprMember),
-    Widget(StorIdent, Expr),
+    Widget(Ident, Expr),
     Frame(StorIdent, Box<Layout>, Expr),
     Button(StorIdent, Box<Layout>, Expr),
     List(StorIdent, Direction, VisitableList<()>),
     Float(VisitableList<()>),
     Grid(StorIdent, GridDimensions, VisitableList<CellInfo>),
-    Label(StorIdent, LitStr),
+    Label(Ident, LitStr),
     NonNavigable(Box<Layout>),
 }
 
@@ -567,12 +573,12 @@ impl Layout {
         } else if input.peek(Token![self]) {
             Ok(Layout::Single(input.parse()?))
         } else if input.peek(LitStr) {
-            let stor = gen.next();
-            Ok(Layout::Label(stor, input.parse()?))
+            let ident = gen.next();
+            Ok(Layout::Label(ident, input.parse()?))
         } else {
-            let stor = gen.next();
+            let ident = gen.next();
             let expr = input.parse()?;
-            Ok(Layout::Widget(stor, expr))
+            Ok(Layout::Widget(ident, expr))
         }
     }
 
@@ -716,9 +722,9 @@ impl Layout {
             let layout = Layout::parse(&inner, gen)?;
             Ok(Layout::NonNavigable(Box::new(layout)))
         } else {
-            let stor = gen.next();
+            let ident = gen.next();
             let expr = input.parse()?;
-            Ok(Layout::Widget(stor, expr))
+            Ok(Layout::Widget(ident, expr))
         }
     }
 
@@ -1071,11 +1077,11 @@ impl Layout {
                 def_toks.append_all(quote! { #stor: Default::default(), });
                 layout.append_fields(ty_toks, def_toks, children, data_ty)
             }
-            Layout::Widget(stor, expr) => {
-                children.push(stor.to_token_stream());
-                ty_toks.append_all(quote! { #stor: Box<dyn ::kas::Widget<Data = #data_ty>>, });
+            Layout::Widget(ident, expr) => {
+                children.push(ident.to_token_stream());
+                ty_toks.append_all(quote! { #ident: Box<dyn ::kas::Widget<Data = #data_ty>>, });
                 let span = expr.span();
-                def_toks.append_all(quote_spanned! {span=> #stor: Box::new(#expr), });
+                def_toks.append_all(quote_spanned! {span=> #ident: Box::new(#expr), });
                 true
             }
             Layout::Frame(stor, layout, _) | Layout::Button(stor, layout, _) => {
@@ -1123,21 +1129,21 @@ impl Layout {
                 }
                 used_data_ty
             }
-            Layout::Label(stor, text) => {
-                children.push(stor.to_token_stream());
+            Layout::Label(ident, text) => {
+                children.push(ident.to_token_stream());
                 let span = text.span();
                 if *data_ty == syn::parse_quote! { () } {
-                    ty_toks.append_all(quote! { #stor: ::kas::hidden::StrLabel, });
+                    ty_toks.append_all(quote! { #ident: ::kas::hidden::StrLabel, });
                     def_toks.append_all(
-                        quote_spanned! {span=> #stor: ::kas::hidden::StrLabel::new(#text), },
+                        quote_spanned! {span=> #ident: ::kas::hidden::StrLabel::new(#text), },
                     );
                     false
                 } else {
                     ty_toks.append_all(
-                        quote! { #stor: ::kas::hidden::MapAny<#data_ty, ::kas::hidden::StrLabel>, },
+                        quote! { #ident: ::kas::hidden::MapAny<#data_ty, ::kas::hidden::StrLabel>, },
                     );
                     def_toks.append_all(
-                        quote_spanned! {span=> #stor: ::kas::hidden::MapAny::new(::kas::hidden::StrLabel::new(#text)), },
+                        quote_spanned! {span=> #ident: ::kas::hidden::MapAny::new(::kas::hidden::StrLabel::new(#text)), },
                     );
                     true
                 }
@@ -1173,8 +1179,8 @@ impl Layout {
             Layout::Single(expr) => quote! {
                 layout::Visitor::single(&mut #expr)
             },
-            Layout::Widget(stor, _) => quote! {
-                layout::Visitor::single(&mut #core_path.#stor)
+            Layout::Widget(ident, _) => quote! {
+                layout::Visitor::single(&mut #core_path.#ident)
             },
             Layout::Frame(stor, layout, style) => {
                 let inner = layout.generate(core_path)?;
