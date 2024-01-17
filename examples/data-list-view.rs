@@ -121,7 +121,7 @@ impl_scope! {
     struct ListEntry {
         core: widget_core!(),
         #[widget(&())]
-        label: StringLabel,
+        label: Label<String>,
         #[widget]
         radio: RadioButton<Item>,
         #[widget]

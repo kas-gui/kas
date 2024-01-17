@@ -22,9 +22,7 @@
 use kas::prelude::*;
 use kas::row;
 use kas::widgets::edit::{EditBox, EditField, EditGuard};
-use kas::widgets::{
-    Adapt, Button, Label, List, RadioButton, ScrollBarRegion, Separator, StringLabel, Text,
-};
+use kas::widgets::{Adapt, Button, Label, List, RadioButton, ScrollBarRegion, Separator, Text};
 
 #[derive(Debug)]
 struct SelectEntry(usize);
@@ -106,7 +104,7 @@ impl_scope! {
     struct ListEntry {
         core: widget_core!(),
         #[widget(&())]
-        label: StringLabel,
+        label: Label<String>,
         #[widget(&data.active)]
         radio: RadioButton<usize>,
         #[widget]

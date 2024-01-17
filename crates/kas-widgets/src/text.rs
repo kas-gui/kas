@@ -18,7 +18,7 @@ impl_scope! {
     ///
     /// See also macros [`format_data`](super::format_data) and
     /// [`format_value`](super::format_value) which construct a
-    /// `Text` widget. See also parameterizations [`StrText`], [`StringText`].
+    /// `Text` widget.
     ///
     /// Vertical alignment defaults to centred, horizontal alignment depends on
     /// the script direction if not specified. Line-wrapping is enabled by
@@ -161,7 +161,7 @@ impl<'a, A> Layout for Text<A, &'a str> {
     }
 }
 #[cfg(feature = "min_spec")]
-impl<A> Layout for StringText<A> {
+impl<A> Layout for Text<A, String> {
     fn draw(&mut self, mut draw: DrawCx) {
         draw.text(self.rect(), &self.label, self.class);
     }
@@ -174,12 +174,6 @@ impl<U, T: From<U> + FormattableText + 'static> From<U> for Text<T> {
         Text::new(text)
     }
 }*/
-
-/// Text with `&'static str` as backing type
-pub type StrText<A> = Text<A, &'static str>;
-
-/// Text with `String` as backing type
-pub type StringText<A> = Text<A, String>;
 
 /// A [`Text`] widget which formats a value from input
 ///

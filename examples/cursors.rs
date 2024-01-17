@@ -7,7 +7,7 @@
 
 use kas::event::CursorIcon;
 use kas::prelude::*;
-use kas::widgets::{Column, Label, StrLabel};
+use kas::widgets::{Column, Label};
 
 impl_scope! {
     #[widget{
@@ -18,7 +18,7 @@ impl_scope! {
     struct CursorWidget {
         core: widget_core!(),
         #[widget]
-        label: StrLabel,
+        label: Label<&'static str>,
         cursor: CursorIcon,
     }
     impl Layout for Self {
