@@ -59,7 +59,7 @@ fn main() -> kas::app::Result<()> {
             "From 1 to",
             EditBox::parser(|data: &TableSize| data.0, SetLen)
         ],
-        align!(right, table),
+        table.align(AlignHints::RIGHT),
     ];
     let ui = Adapt::new(ui, TableSize(12))
         .on_message(|_, data, SetLen(len)| data.0 = len)

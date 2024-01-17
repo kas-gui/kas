@@ -431,7 +431,7 @@ impl_scope! {
     #[widget{
         layout = grid! {
             (1, 0) => self.label,
-            (0, 1) => align!(center, self.iters_label),
+            (0, 1) => self.iters_label.align(AlignHints::CENTER),
             (0, 2) => self.slider,
             (1..3, 1..4) => self.mbrot,
         };

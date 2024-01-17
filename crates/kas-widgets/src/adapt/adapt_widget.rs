@@ -5,11 +5,11 @@
 
 //! Widget extension traits
 
-use super::{AdaptConfigCx, AdaptEventCx, AdaptEvents, Map, MapAny, Reserve, WithLabel};
+use super::*;
 use kas::cast::{Cast, CastFloat};
 use kas::dir::Directional;
 use kas::geom::Vec2;
-use kas::layout::{AxisInfo, SizeRules};
+use kas::layout::{AlignHints, AxisInfo, SizeRules};
 use kas::text::AccessString;
 use kas::theme::SizeCx;
 #[allow(unused)] use kas::Events;
@@ -33,6 +33,16 @@ impl<W: Widget<Data = ()>> AdaptWidgetAny for W {}
 
 /// Provides some convenience methods on widgets
 pub trait AdaptWidget: Widget + Sized {
+    /// Apply an alignment hint
+    ///
+    /// The inner widget chooses how to apply (or ignore) this hint.
+    ///
+    /// Returns a wrapper around the input widget.
+    #[must_use]
+    fn align(self, hints: AlignHints) -> Align<Self> {
+        Align::new(self, hints)
+    }
+
     /// Map data type via a function
     ///
     /// Returns a wrapper around the input widget.
