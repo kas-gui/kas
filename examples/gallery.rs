@@ -391,14 +391,14 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
             cx.action(list, act);
         });
 
+    let sel_buttons = kas::row![
+        "Selection:",
+        RadioButton::new_value("&n&one", SelectionMode::None),
+        RadioButton::new_value("s&ingle", SelectionMode::Single),
+        RadioButton::new_value("&multiple", SelectionMode::Multiple),
+    ];
     let ui = kas::column![
-        kas::row![
-            "Selection:",
-            RadioButton::new_value("&n&one", SelectionMode::None),
-            RadioButton::new_value("s&ingle", SelectionMode::Single),
-            RadioButton::new_value("&multiple", SelectionMode::Multiple),
-        ]
-        .map(|data: &Data| &data.mode),
+        sel_buttons.map(|data: &Data| &data.mode),
         ScrollBars::new(list_view),
     ];
     let ui = Adapt::new(ui, data)
