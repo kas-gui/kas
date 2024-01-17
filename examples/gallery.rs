@@ -221,7 +221,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
                 .with_scaling(|s| {
                     s.min_factor = 0.1;
                     s.ideal_factor = 0.2;
-                    s.stretch = kas::layout::Stretch::High;
+                    s.stretch = Stretch::High;
                 })
                 .map_any()
         ],

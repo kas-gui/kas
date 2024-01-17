@@ -39,8 +39,34 @@ impl AlignHints {
     /// No hints
     pub const NONE: AlignHints = AlignHints::new(None, None);
 
+    /// Top, no horizontal hint
+    pub const TOP: AlignHints = AlignHints::new(None, Some(Align::TL));
+    /// Bottom, no horizontal hint
+    pub const BOTTOM: AlignHints = AlignHints::new(None, Some(Align::BR));
+    /// Left, no vertical hint
+    pub const LEFT: AlignHints = AlignHints::new(Some(Align::TL), None);
+    /// Right, no vertical hint
+    pub const RIGHT: AlignHints = AlignHints::new(Some(Align::BR), None);
+
+    /// Top, left
+    pub const TOP_LEFT: AlignHints = AlignHints::new(Some(Align::TL), Some(Align::TL));
+    /// Top, right
+    pub const TOP_RIGHT: AlignHints = AlignHints::new(Some(Align::TL), Some(Align::BR));
+    /// Bottom, left
+    pub const BOTTOM_LEFT: AlignHints = AlignHints::new(Some(Align::BR), Some(Align::TL));
+    /// Bottom, right
+    pub const BOTTOM_RIGHT: AlignHints = AlignHints::new(Some(Align::BR), Some(Align::BR));
+
     /// Center on both axes
     pub const CENTER: AlignHints = AlignHints::new(Some(Align::Center), Some(Align::Center));
+    /// Top, center
+    pub const TOP_CENTER: AlignHints = AlignHints::new(Some(Align::Center), Some(Align::TL));
+    /// Bottom, center
+    pub const BOTTOM_CENTER: AlignHints = AlignHints::new(Some(Align::Center), Some(Align::BR));
+    /// Center, left
+    pub const CENTER_LEFT: AlignHints = AlignHints::new(Some(Align::TL), Some(Align::Center));
+    /// Center, right
+    pub const CENTER_RIGHT: AlignHints = AlignHints::new(Some(Align::BR), Some(Align::Center));
 
     /// Stretch on both axes
     pub const STRETCH: AlignHints = AlignHints::new(Some(Align::Stretch), Some(Align::Stretch));
