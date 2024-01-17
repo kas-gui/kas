@@ -9,9 +9,10 @@ use proc_macro2::{Span, TokenStream as Toks};
 use proc_macro_error::emit_error;
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
+use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::{braced, bracketed, parenthesized, parse_quote};
-use syn::{Expr, Ident, LitInt, LitStr, Member, Token, Type};
+use syn::{braced, bracketed, parenthesized, parse_quote, token};
+use syn::{AngleBracketedGenericArguments, Expr, Ident, LitInt, LitStr, Member, Token, Type};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -423,6 +424,7 @@ enum Layout {
     Label(Ident, LitStr),
     NonNavigable(Box<Layout>),
     MapAny(Box<Layout>, Span),
+    MethodCall(Box<Layout>, MethodCall),
 }
 
 #[derive(Debug)]
@@ -560,27 +562,30 @@ impl Parse for Tree {
 
 impl Layout {
     fn parse(input: ParseStream, gen: &mut NameGenerator) -> Result<Self> {
-        if input.peek2(Token![!]) {
-            let layout = Self::parse_macro_like(input, gen)?;
-
-            let fork = input.fork();
-            if let Ok(map_any) = MapAny::parse(&fork) {
-                use syn::parse::discouraged::Speculative;
-                input.advance_to(&fork);
-
-                Ok(Layout::MapAny(Box::new(layout), map_any.0))
-            } else {
-                Ok(layout)
-            }
+        let layout = if input.peek2(Token![!]) {
+            Self::parse_macro_like(input, gen)?
         } else if input.peek(Token![self]) {
-            Ok(Layout::Single(input.parse()?))
+            Layout::Single(input.parse()?)
         } else if input.peek(LitStr) {
             let ident = gen.next();
-            Ok(Layout::Label(ident, input.parse()?))
+            Layout::Label(ident, input.parse()?)
         } else {
             let ident = gen.next();
             let expr = input.parse()?;
-            Ok(Layout::Widget(ident, expr))
+            return Ok(Layout::Widget(ident, expr));
+        };
+
+        use syn::parse::discouraged::Speculative;
+        let fork = input.fork();
+        let fork2 = input.fork();
+        if let Ok(map_any) = MapAny::parse(&fork) {
+            input.advance_to(&fork);
+            Ok(Layout::MapAny(Box::new(layout), map_any.0))
+        } else if let Ok(method_call) = MethodCall::parse(&fork2) {
+            input.advance_to(&fork2);
+            Ok(Layout::MethodCall(Box::new(layout), method_call))
+        } else {
+            Ok(layout)
         }
     }
 
@@ -1070,12 +1075,49 @@ impl Parse for MapAny {
     }
 }
 
+// syn::ExprMethodCall without the receiver
+#[derive(Debug)]
+struct MethodCall {
+    pub dot_token: Token![.],
+    pub method: Ident,
+    pub turbofish: Option<AngleBracketedGenericArguments>,
+    pub paren_token: token::Paren,
+    pub args: Punctuated<Expr, Token![,]>,
+}
+impl Parse for MethodCall {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let content;
+        Ok(MethodCall {
+            dot_token: input.parse()?,
+            method: input.parse()?,
+            turbofish: if input.peek(Token![::]) {
+                Some(AngleBracketedGenericArguments::parse_turbofish(input)?)
+            } else {
+                None
+            },
+            paren_token: parenthesized!(content in input),
+            args: content.parse_terminated(Expr::parse, Token![,])?,
+        })
+    }
+}
+impl ToTokens for MethodCall {
+    fn to_tokens(&self, tokens: &mut Toks) {
+        self.dot_token.to_tokens(tokens);
+        self.method.to_tokens(tokens);
+        self.turbofish.to_tokens(tokens);
+        self.paren_token.surround(tokens, |tokens| {
+            self.args.to_tokens(tokens);
+        });
+    }
+}
+
 impl Layout {
     fn append_fields(&self, fields: &mut StorageFields, children: &mut Vec<Child>, data_ty: &Type) {
         match self {
             Layout::Align(layout, _)
             | Layout::Margins(layout, ..)
-            | Layout::NonNavigable(layout) => {
+            | Layout::NonNavigable(layout)
+            | Layout::MethodCall(layout, _) => {
                 layout.append_fields(fields, children, data_ty);
             }
             Layout::AlignSingle(..) | Layout::Single(_) => (),
@@ -1242,6 +1284,10 @@ impl Layout {
             Layout::NonNavigable(layout) | Layout::MapAny(layout, _) => {
                 return layout.generate(core_path)
             }
+            Layout::MethodCall(layout, method_call) => {
+                let inner = layout.generate(core_path)?;
+                quote! { #inner #method_call }
+            }
         })
     }
 
@@ -1259,7 +1305,8 @@ impl Layout {
             | Layout::Pack(_, layout, _)
             | Layout::Margins(layout, _, _)
             | Layout::Frame(_, layout, _)
-            | Layout::MapAny(layout, _) => layout.nav_next(children, output),
+            | Layout::MapAny(layout, _)
+            | Layout::MethodCall(layout, _) => layout.nav_next(children, output),
             Layout::Button(_, _, _) | Layout::NonNavigable(_) => {
                 // Internals of a button are not navigable
                 Ok(())
@@ -1325,7 +1372,8 @@ impl Layout {
             | Layout::Frame(_, layout, _)
             | Layout::Button(_, layout, _)
             | Layout::NonNavigable(layout)
-            | Layout::MapAny(layout, _) => layout.span_in_layout(ident),
+            | Layout::MapAny(layout, _)
+            | Layout::MethodCall(layout, _) => layout.span_in_layout(ident),
             Layout::AlignSingle(expr, _) | Layout::Single(expr) => {
                 (expr.member == *ident).then(|| expr.span())
             }
