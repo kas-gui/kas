@@ -57,15 +57,9 @@ pub struct StorageFields {
 pub struct Tree(Layout);
 impl Tree {
     pub fn storage_fields(&self, children: &mut Vec<Child>, data_ty: &Type) -> StorageFields {
-        let (mut ty_toks, mut def_toks) = (Toks::new(), Toks::new());
-        let used_data_ty = self
-            .0
-            .append_fields(&mut ty_toks, &mut def_toks, children, data_ty);
-        StorageFields {
-            ty_toks,
-            def_toks,
-            used_data_ty,
-        }
+        let mut fields = StorageFields::default();
+        self.0.append_fields(&mut fields, children, data_ty);
+        fields
     }
 
     // Required: `::kas::layout` must be in scope.
@@ -1077,99 +1071,99 @@ impl Parse for MapAny {
 }
 
 impl Layout {
-    fn append_fields(
-        &self,
-        ty_toks: &mut Toks,
-        def_toks: &mut Toks,
-        children: &mut Vec<Child>,
-        data_ty: &Type,
-    ) -> bool {
+    fn append_fields(&self, fields: &mut StorageFields, children: &mut Vec<Child>, data_ty: &Type) {
         match self {
             Layout::Align(layout, _)
             | Layout::Margins(layout, ..)
             | Layout::NonNavigable(layout) => {
-                layout.append_fields(ty_toks, def_toks, children, data_ty)
+                layout.append_fields(fields, children, data_ty);
             }
-            Layout::AlignSingle(..) | Layout::Single(_) => false,
+            Layout::AlignSingle(..) | Layout::Single(_) => (),
             Layout::Pack(stor, layout, _) => {
-                ty_toks.append_all(quote! { #stor: ::kas::layout::PackStorage, });
-                def_toks.append_all(quote! { #stor: Default::default(), });
-                layout.append_fields(ty_toks, def_toks, children, data_ty)
+                fields
+                    .ty_toks
+                    .append_all(quote! { #stor: ::kas::layout::PackStorage, });
+                fields
+                    .def_toks
+                    .append_all(quote! { #stor: Default::default(), });
+                layout.append_fields(fields, children, data_ty);
             }
             Layout::Widget(ident, expr) => {
                 children.push(Child::new_core(ident.clone().into()));
-                ty_toks.append_all(quote! { #ident: Box<dyn ::kas::Widget<Data = #data_ty>>, });
+                fields
+                    .ty_toks
+                    .append_all(quote! { #ident: Box<dyn ::kas::Widget<Data = #data_ty>>, });
                 let span = expr.span();
-                def_toks.append_all(quote_spanned! {span=> #ident: Box::new(#expr), });
-                true
+                fields
+                    .def_toks
+                    .append_all(quote_spanned! {span=> #ident: Box::new(#expr), });
+                fields.used_data_ty = true;
             }
             Layout::Frame(stor, layout, _) | Layout::Button(stor, layout, _) => {
-                ty_toks.append_all(quote! { #stor: ::kas::layout::FrameStorage, });
-                def_toks.append_all(quote! { #stor: Default::default(), });
-                layout.append_fields(ty_toks, def_toks, children, data_ty)
+                fields
+                    .ty_toks
+                    .append_all(quote! { #stor: ::kas::layout::FrameStorage, });
+                fields
+                    .def_toks
+                    .append_all(quote! { #stor: Default::default(), });
+                layout.append_fields(fields, children, data_ty);
             }
             Layout::List(stor, _, VisitableList(list)) => {
-                def_toks.append_all(quote! { #stor: Default::default(), });
+                fields
+                    .def_toks
+                    .append_all(quote! { #stor: Default::default(), });
 
                 let len = list.len();
-                ty_toks.append_all(if len > 16 {
+                fields.ty_toks.append_all(if len > 16 {
                     quote! { #stor: ::kas::layout::DynRowStorage, }
                 } else {
                     quote! { #stor: ::kas::layout::FixedRowStorage<#len>, }
                 });
-                let mut used_data_ty = false;
                 for item in list {
-                    used_data_ty |= item
-                        .layout
-                        .append_fields(ty_toks, def_toks, children, data_ty);
+                    item.layout.append_fields(fields, children, data_ty);
                 }
-                used_data_ty
             }
             Layout::Float(VisitableList(list)) => {
-                let mut used_data_ty = false;
                 for item in list {
-                    used_data_ty |= item
-                        .layout
-                        .append_fields(ty_toks, def_toks, children, data_ty);
+                    item.layout.append_fields(fields, children, data_ty);
                 }
-                used_data_ty
             }
             Layout::Grid(stor, dim, VisitableList(list)) => {
                 let (cols, rows) = (dim.cols as usize, dim.rows as usize);
-                ty_toks
+                fields
+                    .ty_toks
                     .append_all(quote! { #stor: ::kas::layout::FixedGridStorage<#cols, #rows>, });
-                def_toks.append_all(quote! { #stor: Default::default(), });
+                fields
+                    .def_toks
+                    .append_all(quote! { #stor: Default::default(), });
 
-                let mut used_data_ty = false;
                 for item in list {
-                    used_data_ty |= item
-                        .layout
-                        .append_fields(ty_toks, def_toks, children, data_ty);
+                    item.layout.append_fields(fields, children, data_ty);
                 }
-                used_data_ty
             }
             Layout::Label(ident, text) => {
                 children.push(Child::new_core(ident.clone().into()));
                 let span = text.span();
                 if *data_ty == syn::parse_quote! { () } {
-                    ty_toks.append_all(quote! { #ident: ::kas::hidden::StrLabel, });
-                    def_toks.append_all(
+                    fields
+                        .ty_toks
+                        .append_all(quote! { #ident: ::kas::hidden::StrLabel, });
+                    fields.def_toks.append_all(
                         quote_spanned! {span=> #ident: ::kas::hidden::StrLabel::new(#text), },
                     );
-                    false
                 } else {
-                    ty_toks.append_all(
+                    fields.ty_toks.append_all(
                         quote! { #ident: ::kas::hidden::MapAny<#data_ty, ::kas::hidden::StrLabel>, },
                     );
-                    def_toks.append_all(
+                    fields.def_toks.append_all(
                         quote_spanned! {span=> #ident: ::kas::hidden::MapAny::new(::kas::hidden::StrLabel::new(#text)), },
                     );
-                    true
+                    fields.used_data_ty = true;
                 }
             }
             Layout::MapAny(layout, span) => {
                 let start = children.len();
-                let ret = layout.append_fields(ty_toks, def_toks, children, &parse_quote! { () });
+                layout.append_fields(fields, children, &parse_quote! { () });
                 let map_any: Expr = parse_quote! { &() };
                 for child in &mut children[start..] {
                     if let Some(ref expr) = child.data_binding {
@@ -1180,7 +1174,6 @@ impl Layout {
                         child.data_binding = Some(map_any.clone());
                     }
                 }
-                ret
             }
         }
     }
