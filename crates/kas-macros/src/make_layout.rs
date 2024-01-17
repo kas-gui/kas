@@ -1235,7 +1235,7 @@ impl Layout {
             }
             Layout::Pack(stor, layout, align) => {
                 let inner = layout.generate(core_path)?;
-                quote! { #inner.pack(&mut #core_path.#stor, #align) }
+                quote! { #inner.pack(#align, &mut #core_path.#stor) }
             }
             Layout::Margins(layout, dirs, selector) => {
                 let inner = layout.generate(core_path)?;

@@ -189,16 +189,16 @@ impl<V: Visitable> Visitor<V> {
     /// Apply alignment and squash
     pub fn pack<'a>(
         self,
-        storage: &'a mut PackStorage,
         hints: AlignHints,
+        storage: &'a mut PackStorage,
     ) -> Visitor<impl Visitable + 'a>
     where
         V: 'a,
     {
         Visitor(Pack {
             child: self,
-            storage,
             hints,
+            storage,
         })
     }
 }
@@ -321,17 +321,14 @@ impl<C: Visitable> Visitable for Align<C> {
 
 struct Pack<'a, C: Visitable> {
     child: C,
-    storage: &'a mut PackStorage,
     hints: AlignHints,
+    storage: &'a mut PackStorage,
 }
 
 impl<'a, C: Visitable> Visitable for Pack<'a, C> {
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        let rules = self
-            .child
-            .size_rules(sizer, self.storage.apply_align(axis, self.hints));
-        self.storage.size.set_component(axis, rules.ideal_size());
-        rules
+        self.storage
+            .child_size_rules(self.hints, axis, |axis| self.child.size_rules(sizer, axis))
     }
 
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
@@ -614,36 +611,45 @@ where
     }
 }
 
-/// Layout storage for alignment
+/// Layout storage for pack
 #[derive(Clone, Default, Debug)]
 pub struct PackStorage {
     align: AlignPair,
     size: Size,
 }
 impl PackStorage {
-    /// Set alignment
-    fn apply_align(&mut self, axis: AxisInfo, hints: AlignHints) -> AxisInfo {
+    /// Calculate child's [`SizeRules`]
+    pub fn child_size_rules(
+        &mut self,
+        hints: AlignHints,
+        axis: AxisInfo,
+        size_child: impl FnOnce(AxisInfo) -> SizeRules,
+    ) -> SizeRules {
         let axis = axis.with_align_hints(hints);
         self.align.set_component(axis, axis.align_or_default());
-        axis
+        let rules = size_child(axis);
+        self.size.set_component(axis, rules.ideal_size());
+        rules
     }
 
     /// Align rect
-    fn aligned_rect(&self, rect: Rect) -> Rect {
+    pub fn aligned_rect(&self, rect: Rect) -> Rect {
         self.align.aligned_rect(self.size, rect)
     }
 }
 
-/// Layout storage for frame layout
+/// Layout storage for frame
 #[derive(Clone, Default, Debug)]
 pub struct FrameStorage {
     /// Size used by frame (sum of widths of borders)
     pub size: Size,
     /// Offset of frame contents from parent position
     pub offset: Offset,
-    // NOTE: potentially rect is redundant (e.g. with widget's rect) but if we
-    // want an alternative as a generic solution then all draw methods must
-    // calculate and pass the child's rect, which is probably worse.
+    /// [`Rect`] assigned to whole frame
+    ///
+    /// NOTE: for a top-level layout component this is redundant with the
+    /// widget's rect. For frames deeper within a widget's layout we *could*
+    /// instead recalculate this (in every draw call etc.).
     rect: Rect,
 }
 impl FrameStorage {
