@@ -1186,14 +1186,14 @@ impl Layout {
         Ok(match self {
             Layout::Align(layout, align) => {
                 let inner = layout.generate(core_path)?;
-                quote! { layout::Visitor::align(#inner, #align) }
+                quote! { #inner.align(#align) }
             }
             Layout::AlignSingle(expr, align) => {
-                quote! { layout::Visitor::align_single(&mut #expr, #align) }
+                quote! { layout::Visitor::single(&mut #expr).align(#align) }
             }
             Layout::Pack(stor, layout, align) => {
                 let inner = layout.generate(core_path)?;
-                quote! { layout::Visitor::pack(&mut #core_path.#stor, #inner, #align) }
+                quote! { #inner.pack(&mut #core_path.#stor, #align) }
             }
             Layout::Margins(layout, dirs, selector) => {
                 let inner = layout.generate(core_path)?;

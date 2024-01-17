@@ -100,32 +100,6 @@ impl<'a> Visitor<Box<dyn Visitable + 'a>> {
         Visitor(Single { widget })
     }
 
-    /// Construct a single-item layout with alignment hints
-    pub fn align_single(
-        widget: &'a mut dyn Layout,
-        hints: AlignHints,
-    ) -> Visitor<impl Visitable + 'a> {
-        Self::align(Self::single(widget), hints)
-    }
-
-    /// Construct a sub-layout with alignment hints
-    pub fn align<C: Visitable + 'a>(child: C, hints: AlignHints) -> Visitor<impl Visitable + 'a> {
-        Visitor(Align { child, hints })
-    }
-
-    /// Construct a sub-layout which is squashed and aligned
-    pub fn pack<C: Visitable + 'a>(
-        storage: &'a mut PackStorage,
-        child: C,
-        hints: AlignHints,
-    ) -> Visitor<impl Visitable + 'a> {
-        Visitor(Pack {
-            child,
-            storage,
-            hints,
-        })
-    }
-
     /// Replace the margins of a sub-layout
     pub fn margins<C: Visitable + 'a>(
         child: C,
@@ -202,6 +176,29 @@ impl<'a> Visitor<Box<dyn Visitable + 'a>> {
             data,
             dim,
             children,
+        })
+    }
+}
+
+impl<V: Visitable> Visitor<V> {
+    /// Apply alignment
+    pub fn align(self, hints: AlignHints) -> Visitor<impl Visitable> {
+        Visitor(Align { child: self, hints })
+    }
+
+    /// Apply alignment and squash
+    pub fn pack<'a>(
+        self,
+        storage: &'a mut PackStorage,
+        hints: AlignHints,
+    ) -> Visitor<impl Visitable + 'a>
+    where
+        V: 'a,
+    {
+        Visitor(Pack {
+            child: self,
+            storage,
+            hints,
         })
     }
 }
