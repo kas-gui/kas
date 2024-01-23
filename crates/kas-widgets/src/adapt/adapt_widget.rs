@@ -43,6 +43,18 @@ pub trait AdaptWidget: Widget + Sized {
         Align::new(self, hints)
     }
 
+    /// Apply an alignment hint, squash and align the result
+    ///
+    /// The inner widget chooses how to apply (or ignore) this hint.
+    /// The widget is then prevented from stretching beyond its ideal size,
+    /// aligning within the available rect.
+    ///
+    /// Returns a wrapper around the input widget.
+    #[must_use]
+    fn pack(self, hints: AlignHints) -> Pack<Self> {
+        Pack::new(self, hints)
+    }
+
     /// Map data type via a function
     ///
     /// Returns a wrapper around the input widget.

@@ -223,7 +223,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// implementation of `Events::nav_next`, with a couple of exceptions
 /// (where macro-time analysis is insufficient to implement this method).
 ///
-/// > [_Column_](macro@column), [_Row_](macro@row), [_List_](macro@list), [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_](macro@float), [_Pack_](macro@pack), [_Margins_](macro@margins) :\
+/// > [_Column_](macro@column), [_Row_](macro@row), [_List_](macro@list), [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_](macro@float), [_Margins_](macro@margins) :\
 /// > &nbsp;&nbsp; These stand-alone macros are explicitly supported in this position.\
 /// > &nbsp;&nbsp; Optionally, a _Storage_ specifier is supported immediately after the macro name, e.g.\
 /// > &nbsp;&nbsp; `column! 'storage_name ["one", "two"]`
@@ -501,7 +501,7 @@ pub fn list(input: TokenStream) -> TokenStream {
 /// All children occupy the same space with the first child on top.
 ///
 /// Size is determined as the maximum required by any child for each axis.
-/// All children are assigned this size. It is usually necessary to use [`pack!`]
+/// All children are assigned this size. It is usually necessary to use [`pack`]
 /// or a similar mechanism to constrain a child to avoid it hiding the content
 /// underneath (note that even if an unconstrained child does not *visually*
 /// hide everything beneath, it may still "occupy" the assigned area, preventing
@@ -515,11 +515,13 @@ pub fn list(input: TokenStream) -> TokenStream {
 ///
 /// ```ignore
 /// let my_widget = kas::float! [
-///     pack!(left top, "one"),
-///     pack!(right bottom, "two"),
+///     "one".pack(AlignHints::TOP_LEFT),
+///     "two".pack(AlignHints::BOTTOM_RIGHT),
 ///     "some text\nin the\nbackground"
 /// ];
 /// ```
+///
+/// [`pack`]: https://docs.rs/kas/latest/kas/widgets/trait.AdaptWidget.html#method.pack
 #[proc_macro_error]
 #[proc_macro]
 pub fn float(input: TokenStream) -> TokenStream {
@@ -605,26 +607,6 @@ pub fn aligned_column(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn aligned_row(input: TokenStream) -> TokenStream {
     parse_macro_input!(input with make_layout::Tree::aligned_row).expand_layout("_AlignedRow")
-}
-
-/// Make a pack widget
-///
-/// This is a small wrapper which adjusts the alignment of its contents and
-/// prevents its contents from stretching.
-///
-/// The alignment specifier may be one or two keywords (space-separated,
-/// horizontal component first): `default`, `center`, `stretch`, `left`,
-/// `right`, `top`, `bottom`.
-///
-/// # Example
-///
-/// ```ignore
-/// let my_widget = kas::pack!(right top, "132");
-/// ```
-#[proc_macro_error]
-#[proc_macro]
-pub fn pack(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input with make_layout::Tree::pack).expand_layout("_Pack")
 }
 
 /// Make a margin-adjustment widget wrapper

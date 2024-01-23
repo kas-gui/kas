@@ -159,21 +159,19 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
         ],
         row![
             "Button (image)",
-            pack!(
-                center,
-                row![
-                    Button::new_msg(img_light.clone(), Item::Theme("light"))
-                        .with_color("#B38DF9".parse().unwrap())
-                        .with_access_key(Key::Character("h".into())),
-                    Button::new_msg(img_light, Item::Theme("blue"))
-                        .with_color("#7CDAFF".parse().unwrap())
-                        .with_access_key(Key::Character("b".into())),
-                    Button::new_msg(img_dark, Item::Theme("dark"))
-                        .with_color("#E77346".parse().unwrap())
-                        .with_access_key(Key::Character("k".into())),
-                ]
-                .map_any()
-            )
+            row![
+                Button::new_msg(img_light.clone(), Item::Theme("light"))
+                    .with_color("#B38DF9".parse().unwrap())
+                    .with_access_key(Key::Character("h".into())),
+                Button::new_msg(img_light, Item::Theme("blue"))
+                    .with_color("#7CDAFF".parse().unwrap())
+                    .with_access_key(Key::Character("b".into())),
+                Button::new_msg(img_dark, Item::Theme("dark"))
+                    .with_color("#E77346".parse().unwrap())
+                    .with_access_key(Key::Character("k".into())),
+            ]
+            .map_any()
+            .pack(AlignHints::CENTER),
         ],
         row![
             "CheckButton",
@@ -309,7 +307,9 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 ";
 
     let ui = kas::float![
-        pack!(right top, Button::label_msg("↻", MsgDirection).map_any()),
+        Button::label_msg("↻", MsgDirection)
+            .map_any()
+            .pack(AlignHints::TOP_RIGHT),
         Splitter::new(kas::collection![
             EditBox::new(Guard)
                 .with_multi_line(true)

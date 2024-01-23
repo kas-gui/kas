@@ -328,18 +328,6 @@ impl Tree {
         Ok(Tree(parse_grid(stor.into(), inner, &mut gen)?))
     }
 
-    /// Parse pack (contents only)
-    pub fn pack(inner: ParseStream) -> Result<Self> {
-        let mut gen = NameGenerator::default();
-        let stor = gen.next();
-
-        let align = parse_align(inner)?;
-        let _: Token![,] = inner.parse()?;
-
-        let layout = Layout::parse(inner, &mut gen)?;
-        Ok(Tree(Layout::Pack(stor.into(), Box::new(layout), align)))
-    }
-
     /// Parse margins (contents only)
     pub fn margins(inner: ParseStream) -> Result<Self> {
         let mut gen = NameGenerator::default();
@@ -394,7 +382,7 @@ impl GenerateItem for CellInfo {
 
 #[derive(Debug)]
 enum Layout {
-    Pack(StorIdent, Box<Layout>, AlignHints),
+    Pack(Box<Layout>, Pack),
     Margins(Box<Layout>, Directions, Toks),
     Single(ExprMember),
     Widget(Ident, Expr),
@@ -435,19 +423,6 @@ bitflags::bitflags! {
         const DOWN = 0b1000;
     }
 }
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Align {
-    None,
-    Default,
-    TL,
-    Center,
-    BR,
-    Stretch,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-struct AlignHints(Align, Align);
 
 #[derive(Debug, Default)]
 struct GridDimensions {
@@ -562,6 +537,9 @@ impl Layout {
                 if input.peek(kw::map_any) {
                     let map_any = MapAny::parse(dot_token, input)?;
                     layout = Layout::MapAny(Box::new(layout), map_any);
+                } else if input.peek(kw::pack) {
+                    let pack = Pack::parse(dot_token, input, gen)?;
+                    layout = Layout::Pack(Box::new(layout), pack);
                 } else {
                     let method_call = MethodCall::parse(dot_token, input)?;
                     layout = Layout::MethodCall(Box::new(layout), method_call);
@@ -576,20 +554,7 @@ impl Layout {
 
     fn parse_macro_like(input: ParseStream, gen: &mut NameGenerator) -> Result<Self> {
         let lookahead = input.lookahead1();
-        if lookahead.peek(kw::pack) {
-            let _: kw::pack = input.parse()?;
-            let _: Token![!] = input.parse()?;
-            let stor = gen.parse_or_next(input)?;
-
-            let inner;
-            let _ = parenthesized!(inner in input);
-
-            let align = parse_align(&inner)?;
-            let _: Token![,] = inner.parse()?;
-
-            let layout = Layout::parse(&inner, gen)?;
-            Ok(Layout::Pack(stor, Box::new(layout), align))
-        } else if lookahead.peek(kw::margins) {
+        if lookahead.peek(kw::margins) {
             let _ = input.parse::<kw::margins>()?;
             let _: Token![!] = input.parse()?;
 
@@ -763,59 +728,6 @@ impl Layout {
     }
 }
 
-impl Align {
-    fn parse(inner: ParseStream, first: bool) -> Result<Option<Self>> {
-        let lookahead = inner.lookahead1();
-        Ok(Some(if lookahead.peek(kw::default) {
-            let _: kw::default = inner.parse()?;
-            Align::Default
-        } else if lookahead.peek(kw::center) {
-            let _: kw::center = inner.parse()?;
-            Align::Center
-        } else if lookahead.peek(kw::stretch) {
-            let _: kw::stretch = inner.parse()?;
-            Align::Stretch
-        } else if lookahead.peek(kw::top) {
-            if first {
-                return Ok(None);
-            }
-            let _: kw::top = inner.parse()?;
-            Align::TL
-        } else if lookahead.peek(kw::bottom) {
-            if first {
-                return Ok(None);
-            }
-            let _: kw::bottom = inner.parse()?;
-            Align::BR
-        } else if lookahead.peek(kw::left) && first {
-            let _: kw::left = inner.parse()?;
-            Align::TL
-        } else if lookahead.peek(kw::right) && first {
-            let _: kw::right = inner.parse()?;
-            Align::BR
-        } else {
-            return Err(lookahead.error());
-        }))
-    }
-}
-
-fn parse_align(inner: ParseStream) -> Result<AlignHints> {
-    if let Some(first) = Align::parse(inner, true)? {
-        let second = if !inner.is_empty() && !inner.peek(Token![,]) {
-            Align::parse(inner, false)?.unwrap()
-        } else if matches!(first, Align::TL | Align::BR) {
-            Align::None
-        } else {
-            first
-        };
-        return Ok(AlignHints(first, second));
-    }
-
-    let first = Align::None;
-    let second = Align::parse(inner, false)?.unwrap();
-    Ok(AlignHints(first, second))
-}
-
 fn parse_layout_list(input: ParseStream, gen: &mut NameGenerator) -> Result<VisitableList<()>> {
     let inner;
     let _ = bracketed!(inner in input);
@@ -987,27 +899,6 @@ impl ToTokens for Directions {
     }
 }
 
-impl ToTokens for AlignHints {
-    fn to_tokens(&self, toks: &mut Toks) {
-        fn align_toks(align: &Align) -> Toks {
-            match align {
-                Align::None => quote! { None },
-                Align::Default => quote! { Some(layout::Align::Default) },
-                Align::Center => quote! { Some(layout::Align::Center) },
-                Align::Stretch => quote! { Some(layout::Align::Stretch) },
-                Align::TL => quote! { Some(layout::Align::TL) },
-                Align::BR => quote! { Some(layout::Align::BR) },
-            }
-        }
-        let horiz = align_toks(&self.0);
-        let vert = align_toks(&self.1);
-
-        toks.append_all(quote! {
-            layout::AlignHints::new(#horiz, #vert)
-        });
-    }
-}
-
 impl ToTokens for Direction {
     fn to_tokens(&self, toks: &mut Toks) {
         match self {
@@ -1048,6 +939,40 @@ impl MapAny {
             kw: input.parse()?,
             paren_token: parenthesized!(_content in input),
         })
+    }
+}
+
+#[derive(Debug)]
+#[allow(unused)]
+struct Pack {
+    pub dot_token: Token![.],
+    pub kw: kw::pack,
+    pub paren_token: token::Paren,
+    pub hints: Expr,
+    pub stor: StorIdent,
+}
+impl Pack {
+    fn parse(dot_token: Token![.], input: ParseStream, gen: &mut NameGenerator) -> Result<Self> {
+        let kw = input.parse::<kw::pack>()?;
+        let content;
+        let paren_token = parenthesized!(content in input);
+        Ok(Pack {
+            dot_token,
+            kw,
+            paren_token,
+            hints: content.parse()?,
+            stor: gen.next().into(),
+        })
+    }
+
+    fn to_tokens(&self, tokens: &mut Toks, core_path: &Toks) {
+        self.dot_token.to_tokens(tokens);
+        self.kw.to_tokens(tokens);
+        self.paren_token.surround(tokens, |tokens| {
+            self.hints.to_tokens(tokens);
+            tokens.append_all(quote! { , &mut #core_path . });
+            self.stor.to_tokens(tokens);
+        });
     }
 }
 
@@ -1096,7 +1021,8 @@ impl Layout {
                 layout.append_fields(fields, children, data_ty);
             }
             Layout::Single(_) => (),
-            Layout::Pack(stor, layout, _) => {
+            Layout::Pack(layout, pack) => {
+                let stor = &pack.stor;
                 fields
                     .ty_toks
                     .append_all(quote! { #stor: ::kas::layout::PackStorage, });
@@ -1201,9 +1127,10 @@ impl Layout {
     // Required: `::kas::layout` must be in scope.
     fn generate(&self, core_path: &Toks) -> Result<Toks> {
         Ok(match self {
-            Layout::Pack(stor, layout, align) => {
-                let inner = layout.generate(core_path)?;
-                quote! { #inner.pack(#align, &mut #core_path.#stor) }
+            Layout::Pack(layout, pack) => {
+                let mut tokens = layout.generate(core_path)?;
+                pack.to_tokens(&mut tokens, core_path);
+                tokens
             }
             Layout::Margins(layout, dirs, selector) => {
                 let inner = layout.generate(core_path)?;
@@ -1269,7 +1196,7 @@ impl Layout {
         output: &mut Vec<usize>,
     ) -> std::result::Result<(), (Span, &'static str)> {
         match self {
-            Layout::Pack(_, layout, _)
+            Layout::Pack(layout, _)
             | Layout::Margins(layout, _, _)
             | Layout::Frame(_, layout, _)
             | Layout::MapAny(layout, _)
@@ -1333,7 +1260,7 @@ impl Layout {
 
     fn span_in_layout(&self, ident: &Member) -> Option<Span> {
         match self {
-            Layout::Pack(_, layout, _)
+            Layout::Pack(layout, _)
             | Layout::Margins(layout, _, _)
             | Layout::Frame(_, layout, _)
             | Layout::Button(_, layout, _)
