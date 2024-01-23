@@ -29,6 +29,7 @@ mod surface;
 use crate::draw::{CustomPipeBuilder, DrawPipe};
 use kas::app::{AppBuilder, AppGraphicsBuilder, Result};
 use kas::theme::{FlatTheme, Theme};
+use wgpu::rwh;
 
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
 pub use options::Options;
@@ -55,6 +56,17 @@ impl<CB: CustomPipeBuilder> AppGraphicsBuilder for WgpuBuilder<CB> {
             options.load_from_env();
         }
         DrawPipe::new(self.custom, &options)
+    }
+
+    fn new_surface<'window, W>(
+        shared: &mut Self::Shared,
+        window: W,
+    ) -> Result<Self::Surface<'window>>
+    where
+        W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
+        Self: Sized,
+    {
+        surface::Surface::new(shared, window)
     }
 }
 

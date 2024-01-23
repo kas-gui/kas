@@ -17,6 +17,7 @@ use kas::theme::{DrawCx, SizeCx, ThemeSize};
 use kas::theme::{Theme, Window as _};
 use kas::{autoimpl, messages::MessageStack, Action, Id, Layout, LayoutExt, Widget, WindowId};
 use std::mem::take;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use winit::event::WindowEvent;
 use winit::event_loop::EventLoopWindowTarget;
@@ -25,7 +26,7 @@ use winit::window::WindowBuilder;
 /// Window fields requiring a frame or surface
 #[crate::autoimpl(Deref, DerefMut using self.window)]
 struct WindowData<G: AppGraphicsBuilder, T: Theme<G::Shared>> {
-    window: winit::window::Window,
+    window: Arc<winit::window::Window>,
     #[cfg(all(wayland_platform, feature = "clipboard"))]
     wayland_clipboard: Option<smithay_clipboard::Clipboard>,
     surface: G::Surface<'static>,
@@ -170,7 +171,9 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             _ => None,
         };
 
-        let mut surface = G::Surface::new(&mut state.shared.draw.draw, &window)?;
+        // NOTE: usage of Arc is inelegant, but avoids lots of unsafe code
+        let window = Arc::new(window);
+        let mut surface = G::new_surface(&mut state.shared.draw.draw, window.clone())?;
         if apply_size {
             surface.do_resize(&mut state.shared.draw.draw, size);
         }

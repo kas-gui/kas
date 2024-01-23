@@ -6,7 +6,7 @@
 //! WGPU window surface
 
 use crate::draw::{CustomPipe, DrawPipe, DrawWindow};
-use kas::app::{raw_window_handle as raw, Error, WindowSurface};
+use kas::app::{raw_window_handle as rwh, Error, WindowSurface};
 use kas::cast::Cast;
 use kas::draw::color::Rgba;
 use kas::draw::{DrawIface, DrawSharedImpl, WindowCommon};
@@ -20,20 +20,16 @@ pub struct Surface<'a, C: CustomPipe> {
     draw: DrawWindow<C::Window>,
 }
 
-impl<'a, C: CustomPipe> WindowSurface for Surface<'a, C> {
-    type Shared = DrawPipe<C>;
-
-    fn new<W>(shared: &mut Self::Shared, window: W) -> Result<Self, Error>
+impl<'a, C: CustomPipe> Surface<'a, C> {
+    pub fn new<W>(shared: &mut <Self as WindowSurface>::Shared, window: W) -> Result<Self, Error>
     where
-        W: raw::HasWindowHandle + raw::HasDisplayHandle + Send + Sync,
+        W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'a,
         Self: Sized,
     {
-        let surface = unsafe {
-            // TODO: handle window lifetime safely
-            let target = wgpu::SurfaceTargetUnsafe::from_window(&window)?;
-            shared.instance.create_surface_unsafe(target)
-        }
-        .map_err(|e| Error::Graphics(Box::new(e)))?;
+        let surface = shared
+            .instance
+            .create_surface(window)
+            .map_err(|e| Error::Graphics(Box::new(e)))?;
         let sc_desc = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: crate::draw::RENDER_TEX_FORMAT,
@@ -55,6 +51,10 @@ impl<'a, C: CustomPipe> WindowSurface for Surface<'a, C> {
             draw: shared.new_window(),
         })
     }
+}
+
+impl<'a, C: CustomPipe> WindowSurface for Surface<'a, C> {
+    type Shared = DrawPipe<C>;
 
     fn size(&self) -> Size {
         Size::new(self.sc_desc.width.cast(), self.sc_desc.height.cast())
