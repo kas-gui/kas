@@ -78,7 +78,7 @@ spawn = ["dep:async-global-executor"]
 unsafe_node = []
 
 [build-dependencies]
-cfg_aliases = "0.1.1"
+cfg_aliases = "0.2.0"
 
 [dependencies]
 log = "0.4"
