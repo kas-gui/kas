@@ -423,7 +423,7 @@ enum Layout {
     Grid(StorIdent, GridDimensions, VisitableList<CellInfo>),
     Label(Ident, LitStr),
     NonNavigable(Box<Layout>),
-    MapAny(Box<Layout>, Span),
+    MapAny(Box<Layout>, MapAny),
     MethodCall(Box<Layout>, MethodCall),
 }
 
@@ -562,7 +562,7 @@ impl Parse for Tree {
 
 impl Layout {
     fn parse(input: ParseStream, gen: &mut NameGenerator) -> Result<Self> {
-        let layout = if input.peek2(Token![!]) {
+        let mut layout = if input.peek2(Token![!]) {
             Self::parse_macro_like(input, gen)?
         } else if input.peek(Token![self]) {
             Layout::Single(input.parse()?)
@@ -575,17 +575,20 @@ impl Layout {
             return Ok(Layout::Widget(ident, expr));
         };
 
-        use syn::parse::discouraged::Speculative;
-        let fork = input.fork();
-        let fork2 = input.fork();
-        if let Ok(map_any) = MapAny::parse(&fork) {
-            input.advance_to(&fork);
-            Ok(Layout::MapAny(Box::new(layout), map_any.0))
-        } else if let Ok(method_call) = MethodCall::parse(&fork2) {
-            input.advance_to(&fork2);
-            Ok(Layout::MethodCall(Box::new(layout), method_call))
-        } else {
-            Ok(layout)
+        loop {
+            if let Ok(dot_token) = input.parse::<Token![.]>() {
+                if input.peek(kw::map_any) {
+                    let map_any = MapAny::parse(dot_token, input)?;
+                    layout = Layout::MapAny(Box::new(layout), map_any);
+                } else {
+                    let method_call = MethodCall::parse(dot_token, input)?;
+                    layout = Layout::MethodCall(Box::new(layout), method_call);
+                }
+
+                continue;
+            }
+
+            return Ok(layout);
         }
     }
 
@@ -1064,14 +1067,21 @@ impl ToTokens for GridDimensions {
     }
 }
 
-struct MapAny(Span);
-impl Parse for MapAny {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let _ = input.parse::<Token![.]>()?;
-        let kw = input.parse::<kw::map_any>()?;
+#[derive(Debug)]
+#[allow(unused)]
+struct MapAny {
+    pub dot_token: Token![.],
+    pub kw: kw::map_any,
+    pub paren_token: token::Paren,
+}
+impl MapAny {
+    fn parse(dot_token: Token![.], input: ParseStream) -> Result<Self> {
         let _content;
-        parenthesized!(_content in input);
-        Ok(MapAny(kw.span()))
+        Ok(MapAny {
+            dot_token,
+            kw: input.parse()?,
+            paren_token: parenthesized!(_content in input),
+        })
     }
 }
 
@@ -1084,11 +1094,11 @@ struct MethodCall {
     pub paren_token: token::Paren,
     pub args: Punctuated<Expr, Token![,]>,
 }
-impl Parse for MethodCall {
-    fn parse(input: ParseStream) -> Result<Self> {
+impl MethodCall {
+    fn parse(dot_token: Token![.], input: ParseStream) -> Result<Self> {
         let content;
         Ok(MethodCall {
-            dot_token: input.parse()?,
+            dot_token,
             method: input.parse()?,
             turbofish: if input.peek(Token![::]) {
                 Some(AngleBracketedGenericArguments::parse_turbofish(input)?)
@@ -1203,17 +1213,17 @@ impl Layout {
                     fields.used_data_ty = true;
                 }
             }
-            Layout::MapAny(layout, span) => {
+            Layout::MapAny(layout, map_any) => {
                 let start = children.len();
                 layout.append_fields(fields, children, &parse_quote! { () });
-                let map_any: Expr = parse_quote! { &() };
+                let map_expr: Expr = parse_quote! { &() };
                 for child in &mut children[start..] {
                     if let Some(ref expr) = child.data_binding {
-                        if *expr != map_any {
-                            emit_error!(span, "invalid data type mapping")
+                        if *expr != map_expr {
+                            emit_error!(map_any.kw, "invalid data type mapping")
                         }
                     } else {
-                        child.data_binding = Some(map_any.clone());
+                        child.data_binding = Some(map_expr.clone());
                     }
                 }
             }
