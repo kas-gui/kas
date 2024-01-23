@@ -223,7 +223,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// implementation of `Events::nav_next`, with a couple of exceptions
 /// (where macro-time analysis is insufficient to implement this method).
 ///
-/// > [_Column_](macro@column), [_Row_](macro@row), [_List_](macro@list), [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_](macro@float), [_Align_](macro@align), [_Pack_](macro@pack), [_Margins_](macro@margins) :\
+/// > [_Column_](macro@column), [_Row_](macro@row), [_List_](macro@list), [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_](macro@float), [_Pack_](macro@pack), [_Margins_](macro@margins) :\
 /// > &nbsp;&nbsp; These stand-alone macros are explicitly supported in this position.\
 /// > &nbsp;&nbsp; Optionally, a _Storage_ specifier is supported immediately after the macro name, e.g.\
 /// > &nbsp;&nbsp; `column! 'storage_name ["one", "two"]`
@@ -605,26 +605,6 @@ pub fn aligned_column(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn aligned_row(input: TokenStream) -> TokenStream {
     parse_macro_input!(input with make_layout::Tree::aligned_row).expand_layout("_AlignedRow")
-}
-
-/// Make an align widget
-///
-/// This is a small wrapper which adjusts the alignment of its contents.
-///
-/// The alignment specifier may be one or two keywords (space-separated,
-/// horizontal component first): `default`, `center`, `stretch`, `left`,
-/// `right`, `top`, `bottom`.
-///
-/// # Example
-///
-/// ```ignore
-/// let a = kas::align!(right, "132");
-/// let b = kas::align!(left top, "abc");
-/// ```
-#[proc_macro_error]
-#[proc_macro]
-pub fn align(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input with make_layout::Tree::align).expand_layout("_Align")
 }
 
 /// Make a pack widget

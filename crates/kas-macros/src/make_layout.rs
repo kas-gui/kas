@@ -328,22 +328,6 @@ impl Tree {
         Ok(Tree(parse_grid(stor.into(), inner, &mut gen)?))
     }
 
-    /// Parse align (contents only)
-    // TODO: use WithAlign adapter?
-    pub fn align(inner: ParseStream) -> Result<Self> {
-        let mut gen = NameGenerator::default();
-
-        let align = parse_align(inner)?;
-        let _: Token![,] = inner.parse()?;
-
-        Ok(Tree(if inner.peek(Token![self]) {
-            Layout::AlignSingle(inner.parse()?, align)
-        } else {
-            let layout = Layout::parse(inner, &mut gen)?;
-            Layout::Align(Box::new(layout), align)
-        }))
-    }
-
     /// Parse pack (contents only)
     pub fn pack(inner: ParseStream) -> Result<Self> {
         let mut gen = NameGenerator::default();
@@ -410,8 +394,6 @@ impl GenerateItem for CellInfo {
 
 #[derive(Debug)]
 enum Layout {
-    Align(Box<Layout>, AlignHints),
-    AlignSingle(ExprMember, AlignHints),
     Pack(StorIdent, Box<Layout>, AlignHints),
     Margins(Box<Layout>, Directions, Toks),
     Single(ExprMember),
@@ -594,23 +576,7 @@ impl Layout {
 
     fn parse_macro_like(input: ParseStream, gen: &mut NameGenerator) -> Result<Self> {
         let lookahead = input.lookahead1();
-        if lookahead.peek(kw::align) {
-            let _: kw::align = input.parse()?;
-            let _: Token![!] = input.parse()?;
-
-            let inner;
-            let _ = parenthesized!(inner in input);
-
-            let align = parse_align(&inner)?;
-            let _: Token![,] = inner.parse()?;
-
-            if inner.peek(Token![self]) {
-                Ok(Layout::AlignSingle(inner.parse()?, align))
-            } else {
-                let layout = Layout::parse(&inner, gen)?;
-                Ok(Layout::Align(Box::new(layout), align))
-            }
-        } else if lookahead.peek(kw::pack) {
+        if lookahead.peek(kw::pack) {
             let _: kw::pack = input.parse()?;
             let _: Token![!] = input.parse()?;
             let stor = gen.parse_or_next(input)?;
@@ -1124,13 +1090,12 @@ impl ToTokens for MethodCall {
 impl Layout {
     fn append_fields(&self, fields: &mut StorageFields, children: &mut Vec<Child>, data_ty: &Type) {
         match self {
-            Layout::Align(layout, _)
-            | Layout::Margins(layout, ..)
+            Layout::Margins(layout, ..)
             | Layout::NonNavigable(layout)
             | Layout::MethodCall(layout, _) => {
                 layout.append_fields(fields, children, data_ty);
             }
-            Layout::AlignSingle(..) | Layout::Single(_) => (),
+            Layout::Single(_) => (),
             Layout::Pack(stor, layout, _) => {
                 fields
                     .ty_toks
@@ -1236,13 +1201,6 @@ impl Layout {
     // Required: `::kas::layout` must be in scope.
     fn generate(&self, core_path: &Toks) -> Result<Toks> {
         Ok(match self {
-            Layout::Align(layout, align) => {
-                let inner = layout.generate(core_path)?;
-                quote! { #inner.align(#align) }
-            }
-            Layout::AlignSingle(expr, align) => {
-                quote! { layout::Visitor::single(&mut #expr).align(#align) }
-            }
             Layout::Pack(stor, layout, align) => {
                 let inner = layout.generate(core_path)?;
                 quote! { #inner.pack(#align, &mut #core_path.#stor) }
@@ -1311,8 +1269,7 @@ impl Layout {
         output: &mut Vec<usize>,
     ) -> std::result::Result<(), (Span, &'static str)> {
         match self {
-            Layout::Align(layout, _)
-            | Layout::Pack(_, layout, _)
+            Layout::Pack(_, layout, _)
             | Layout::Margins(layout, _, _)
             | Layout::Frame(_, layout, _)
             | Layout::MapAny(layout, _)
@@ -1321,7 +1278,7 @@ impl Layout {
                 // Internals of a button are not navigable
                 Ok(())
             }
-            Layout::AlignSingle(m, _) | Layout::Single(m) => {
+            Layout::Single(m) => {
                 for (i, child) in children.enumerate() {
                     if let ChildIdent::Field(ref ident) = child.ident {
                         if m.member == *ident {
@@ -1376,17 +1333,14 @@ impl Layout {
 
     fn span_in_layout(&self, ident: &Member) -> Option<Span> {
         match self {
-            Layout::Align(layout, _)
-            | Layout::Pack(_, layout, _)
+            Layout::Pack(_, layout, _)
             | Layout::Margins(layout, _, _)
             | Layout::Frame(_, layout, _)
             | Layout::Button(_, layout, _)
             | Layout::NonNavigable(layout)
             | Layout::MapAny(layout, _)
             | Layout::MethodCall(layout, _) => layout.span_in_layout(ident),
-            Layout::AlignSingle(expr, _) | Layout::Single(expr) => {
-                (expr.member == *ident).then(|| expr.span())
-            }
+            Layout::Single(expr) => (expr.member == *ident).then(|| expr.span()),
             Layout::Widget(..) => None,
             Layout::List(_, _, VisitableList(list)) | Layout::Float(VisitableList(list)) => list
                 .iter()

@@ -50,12 +50,6 @@ fn aligned_row() {
 }
 
 #[test]
-fn align() {
-    use_widget(kas::align!(right, "132"));
-    use_widget(kas::align!(left top, "abc"));
-}
-
-#[test]
 fn pack() {
     use_widget(kas::pack!(right top, "132"));
 }
