@@ -11,7 +11,7 @@ publish = false
 kas = { version = "0.14.1", features = ["wgpu"], path = "../.." }
 kas-wgpu = { version = "0.14.1", path = "../../crates/kas-wgpu" }
 chrono = "0.4"
-env_logger = "0.10"
+env_logger = "0.11"
 log = "0.4"
 bytemuck = "1.7.0"
 
