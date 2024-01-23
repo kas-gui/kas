@@ -20,6 +20,10 @@ use thiserror::Error;
 #[non_exhaustive]
 #[derive(Error, Debug)]
 pub enum Error {
+    /// Window-handle error
+    #[error(transparent)]
+    Handle(#[from] raw::HandleError),
+
     /// Failure from the graphics sub-system
     #[error("error from graphics sub-system")]
     Graphics(Box<dyn std::error::Error + 'static>),
@@ -199,7 +203,7 @@ pub trait WindowSurface {
     /// It is required to call [`WindowSurface::do_resize`] after this.
     fn new<W>(shared: &mut Self::Shared, window: W) -> Result<Self>
     where
-        W: raw::HasRawWindowHandle + raw::HasRawDisplayHandle,
+        W: raw::HasWindowHandle + raw::HasDisplayHandle + Send + Sync,
         Self: Sized;
 
     /// Get current surface size

@@ -15,7 +15,7 @@ use std::time::Instant;
 
 /// Per-window data
 pub struct Surface<C: CustomPipe> {
-    surface: wgpu::Surface,
+    surface: wgpu::Surface<'static>,
     sc_desc: wgpu::SurfaceConfiguration,
     draw: DrawWindow<C::Window>,
 }
@@ -25,17 +25,22 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
 
     fn new<W>(shared: &mut Self::Shared, window: W) -> Result<Self, Error>
     where
-        W: raw::HasRawWindowHandle + raw::HasRawDisplayHandle,
+        W: raw::HasWindowHandle + raw::HasDisplayHandle + Send + Sync,
         Self: Sized,
     {
-        let surface = unsafe { shared.instance.create_surface(&window) }
-            .map_err(|e| Error::Graphics(Box::new(e)))?;
+        let surface = unsafe {
+            // TODO: handle window lifetime safely
+            let target = wgpu::SurfaceTargetUnsafe::from_window(&window)?;
+            shared.instance.create_surface_unsafe(target)
+        }
+        .map_err(|e| Error::Graphics(Box::new(e)))?;
         let sc_desc = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: crate::draw::RENDER_TEX_FORMAT,
             width: 0,
             height: 0,
             present_mode: wgpu::PresentMode::Fifo,
+            desired_maximum_frame_latency: 2,
             // FIXME: current output is for Opaque or PostMultiplied, depending
             // on window transparency. But we can't pick what we want since only
             // a sub-set of modes are supported (depending on target).
