@@ -86,11 +86,10 @@ enum State {
 
 async fn draw(svg: Source, mut pixmap: Pixmap) -> Pixmap {
     if let Ok(tree) = svg.tree() {
-        let tree = resvg::Tree::from_usvg(&tree);
         let w = f32::conv(pixmap.width()) / tree.size.width();
         let h = f32::conv(pixmap.height()) / tree.size.height();
         let transform = Transform::from_scale(w, h);
-        tree.render(transform, &mut pixmap.as_mut());
+        resvg::render(&tree, transform, &mut pixmap.as_mut());
     }
     pixmap
 }
