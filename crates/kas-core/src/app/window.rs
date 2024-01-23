@@ -7,7 +7,7 @@
 
 use super::common::WindowSurface;
 use super::shared::{AppSharedState, AppState};
-use super::{AppData, ProxyAction};
+use super::{AppData, AppGraphicsBuilder, ProxyAction};
 use kas::cast::{Cast, Conv};
 use kas::draw::{color::Rgba, AnimationState, DrawSharedImpl};
 use kas::event::{config::WindowConfig, ConfigCx, CursorIcon, EventState};
@@ -24,11 +24,11 @@ use winit::window::WindowBuilder;
 
 /// Window fields requiring a frame or surface
 #[crate::autoimpl(Deref, DerefMut using self.window)]
-struct WindowData<S: WindowSurface, T: Theme<S::Shared>> {
+struct WindowData<G: AppGraphicsBuilder, T: Theme<G::Shared>> {
     window: winit::window::Window,
     #[cfg(all(wayland_platform, feature = "clipboard"))]
     wayland_clipboard: Option<smithay_clipboard::Clipboard>,
-    surface: S,
+    surface: G::Surface<'static>,
     /// Frame rate counter
     frame_count: (Instant, u32),
 
@@ -42,19 +42,19 @@ struct WindowData<S: WindowSurface, T: Theme<S::Shared>> {
 
 /// Per-window data
 #[autoimpl(Debug ignore self._data, self.widget, self.ev_state, self.window)]
-pub struct Window<A: AppData, S: WindowSurface, T: Theme<S::Shared>> {
+pub struct Window<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
     _data: std::marker::PhantomData<A>,
     pub(super) widget: kas::Window<A>,
     pub(super) window_id: WindowId,
     ev_state: EventState,
-    window: Option<WindowData<S, T>>,
+    window: Option<WindowData<G, T>>,
 }
 
 // Public functions, for use by the toolkit
-impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
+impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
     /// Construct window state (widget)
     pub(super) fn new(
-        shared: &AppSharedState<A, S, T>,
+        shared: &AppSharedState<A, G, T>,
         window_id: WindowId,
         widget: kas::Window<A>,
     ) -> Self {
@@ -71,7 +71,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     /// Open (resume) a window
     pub(super) fn resume(
         &mut self,
-        state: &mut AppState<A, S, T>,
+        state: &mut AppState<A, G, T>,
         elwt: &EventLoopWindowTarget<ProxyAction>,
     ) -> super::Result<winit::window::WindowId> {
         let time = Instant::now();
@@ -170,7 +170,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
             _ => None,
         };
 
-        let mut surface = S::new(&mut state.shared.draw.draw, &window)?;
+        let mut surface = G::Surface::new(&mut state.shared.draw.draw, &window)?;
         if apply_size {
             surface.do_resize(&mut state.shared.draw.draw, size);
         }
@@ -210,7 +210,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     /// Returns `true` to force polling temporarily.
     pub(super) fn handle_event(
         &mut self,
-        state: &mut AppState<A, S, T>,
+        state: &mut AppState<A, G, T>,
         event: WindowEvent,
     ) -> bool {
         let Some(ref mut window) = self.window else {
@@ -264,7 +264,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     /// Handle all pending items before event loop sleeps
     pub(super) fn flush_pending(
         &mut self,
-        state: &mut AppState<A, S, T>,
+        state: &mut AppState<A, G, T>,
     ) -> (Action, Option<Instant>) {
         let Some(ref window) = self.window else {
             return (Action::empty(), None);
@@ -300,7 +300,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     }
 
     /// Handle an action (excludes handling of CLOSE and EXIT)
-    pub(super) fn handle_action(&mut self, state: &AppState<A, S, T>, mut action: Action) {
+    pub(super) fn handle_action(&mut self, state: &AppState<A, G, T>, mut action: Action) {
         if action.contains(Action::EVENT_CONFIG) {
             if let Some(ref mut window) = self.window {
                 let scale_factor = window.scale_factor() as f32;
@@ -339,7 +339,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         }
     }
 
-    pub(super) fn update_timer(&mut self, state: &mut AppState<A, S, T>) -> Option<Instant> {
+    pub(super) fn update_timer(&mut self, state: &mut AppState<A, G, T>) -> Option<Instant> {
         let Some(ref window) = self.window else {
             return None;
         };
@@ -355,7 +355,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
 
     pub(super) fn add_popup(
         &mut self,
-        state: &mut AppState<A, S, T>,
+        state: &mut AppState<A, G, T>,
         id: WindowId,
         popup: kas::PopupDescriptor,
     ) {
@@ -374,7 +374,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         self.ev_state.action(Id::ROOT, action);
     }
 
-    pub(super) fn send_close(&mut self, state: &mut AppState<A, S, T>, id: WindowId) {
+    pub(super) fn send_close(&mut self, state: &mut AppState<A, G, T>, id: WindowId) {
         if id == self.window_id {
             self.ev_state.action(Id::ROOT, Action::CLOSE);
         } else if let Some(window) = self.window.as_ref() {
@@ -390,8 +390,8 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
 }
 
 // Internal functions
-impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
-    fn reconfigure(&mut self, state: &AppState<A, S, T>) {
+impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
+    fn reconfigure(&mut self, state: &AppState<A, G, T>) {
         let time = Instant::now();
         let Some(ref mut window) = self.window else {
             return;
@@ -407,7 +407,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         log::trace!(target: "kas_perf::wgpu::window", "reconfigure: {}µs", time.elapsed().as_micros());
     }
 
-    fn update(&mut self, state: &AppState<A, S, T>) {
+    fn update(&mut self, state: &AppState<A, G, T>) {
         let time = Instant::now();
         let Some(ref mut window) = self.window else {
             return;
@@ -420,7 +420,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
         log::trace!(target: "kas_perf::wgpu::window", "update: {}µs", time.elapsed().as_micros());
     }
 
-    fn apply_size(&mut self, state: &AppState<A, S, T>, first: bool) {
+    fn apply_size(&mut self, state: &AppState<A, G, T>, first: bool) {
         let time = Instant::now();
         let Some(ref mut window) = self.window else {
             return;
@@ -459,7 +459,7 @@ impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Window<A, S, T> {
     ///
     /// Returns an error when drawing is aborted and further event handling may
     /// be needed before a redraw.
-    pub(super) fn do_draw(&mut self, state: &mut AppState<A, S, T>) -> Result<(), ()> {
+    pub(super) fn do_draw(&mut self, state: &mut AppState<A, G, T>) -> Result<(), ()> {
         let start = Instant::now();
         let Some(ref mut window) = self.window else {
             return Ok(());
@@ -562,7 +562,7 @@ pub(crate) trait WindowDataErased {
     fn winit_window(&self) -> Option<&winit::window::Window>;
 }
 
-impl<S: WindowSurface, T: Theme<S::Shared>> WindowDataErased for WindowData<S, T> {
+impl<G: AppGraphicsBuilder, T: Theme<G::Shared>> WindowDataErased for WindowData<G, T> {
     fn window_id(&self) -> WindowId {
         self.window_id
     }

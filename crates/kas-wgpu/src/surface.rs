@@ -14,13 +14,13 @@ use kas::geom::Size;
 use std::time::Instant;
 
 /// Per-window data
-pub struct Surface<C: CustomPipe> {
-    surface: wgpu::Surface<'static>,
+pub struct Surface<'a, C: CustomPipe> {
+    surface: wgpu::Surface<'a>,
     sc_desc: wgpu::SurfaceConfiguration,
     draw: DrawWindow<C::Window>,
 }
 
-impl<C: CustomPipe> WindowSurface for Surface<C> {
+impl<'a, C: CustomPipe> WindowSurface for Surface<'a, C> {
     type Shared = DrawPipe<C>;
 
     fn new<W>(shared: &mut Self::Shared, window: W) -> Result<Self, Error>

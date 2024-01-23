@@ -185,7 +185,7 @@ pub trait AppGraphicsBuilder {
     type Shared: DrawSharedImpl;
 
     /// Window surface
-    type Surface: WindowSurface<Shared = Self::Shared> + 'static;
+    type Surface<'a>: WindowSurface<Shared = Self::Shared>;
 
     /// Construct shared state
     fn build(self) -> Result<Self::Shared>;

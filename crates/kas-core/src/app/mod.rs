@@ -50,11 +50,11 @@ impl AppData for () {
 
 #[crate::autoimpl(Debug)]
 #[cfg(winit)]
-enum Pending<A: AppData, S: WindowSurface, T: kas::theme::Theme<S::Shared>> {
+enum Pending<A: AppData, G: AppGraphicsBuilder, T: kas::theme::Theme<G::Shared>> {
     AddPopup(WindowId, WindowId, kas::PopupDescriptor),
-    // NOTE: we don't need S, T here if we construct the Window later.
+    // NOTE: we don't need G, T here if we construct the Window later.
     // But this way we can pass a single boxed value.
-    AddWindow(WindowId, Box<Window<A, S, T>>),
+    AddWindow(WindowId, Box<Window<A, G, T>>),
     CloseWindow(WindowId),
     Action(kas::Action),
 }

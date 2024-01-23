@@ -5,8 +5,8 @@
 
 //! Event loop and handling
 
-use super::{AppData, AppState, Pending};
-use super::{ProxyAction, Window, WindowSurface};
+use super::{AppData, AppGraphicsBuilder, AppState, Pending};
+use super::{ProxyAction, Window};
 use kas::theme::Theme;
 use kas::{Action, WindowId};
 use std::collections::HashMap;
@@ -16,28 +16,28 @@ use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 use winit::window as ww;
 
 /// Event-loop data structure (i.e. all run-time state)
-pub(super) struct Loop<A: AppData, S: WindowSurface, T: Theme<S::Shared>>
+pub(super) struct Loop<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>>
 where
     T::Window: kas::theme::Window,
 {
     /// State is suspended until we receive Event::Resumed
     suspended: bool,
     /// Window states
-    windows: HashMap<WindowId, Box<Window<A, S, T>>>,
+    windows: HashMap<WindowId, Box<Window<A, G, T>>>,
     popups: HashMap<WindowId, WindowId>,
     /// Translates our WindowId to winit's
     id_map: HashMap<ww::WindowId, WindowId>,
     /// Application state passed from Toolkit
-    state: AppState<A, S, T>,
+    state: AppState<A, G, T>,
     /// Timer resumes: (time, window identifier)
     resumes: Vec<(Instant, WindowId)>,
 }
 
-impl<A: AppData, S: WindowSurface, T: Theme<S::Shared>> Loop<A, S, T>
+impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Loop<A, G, T>
 where
     T::Window: kas::theme::Window,
 {
-    pub(super) fn new(mut windows: Vec<Box<Window<A, S, T>>>, state: AppState<A, S, T>) -> Self {
+    pub(super) fn new(mut windows: Vec<Box<Window<A, G, T>>>, state: AppState<A, G, T>) -> Self {
         Loop {
             suspended: true,
             windows: windows.drain(..).map(|w| (w.window_id, w)).collect(),

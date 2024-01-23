@@ -47,7 +47,7 @@ impl<CB: CustomPipeBuilder> AppGraphicsBuilder for WgpuBuilder<CB> {
 
     type Shared = DrawPipe<CB::Pipe>;
 
-    type Surface = surface::Surface<CB::Pipe>;
+    type Surface<'a> = surface::Surface<'a, CB::Pipe>;
 
     fn build(self) -> Result<Self::Shared> {
         let mut options = self.options;

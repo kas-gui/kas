@@ -18,8 +18,8 @@ use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 
 pub struct Application<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
     el: EventLoop<ProxyAction>,
-    windows: Vec<Box<super::Window<Data, G::Surface, T>>>,
-    state: AppState<Data, G::Surface, T>,
+    windows: Vec<Box<super::Window<Data, G, T>>>,
+    state: AppState<Data, G, T>,
 }
 
 impl_scope! {
