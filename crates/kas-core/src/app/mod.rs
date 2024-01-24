@@ -248,14 +248,6 @@ mod test {
     impl WindowSurface for Surface {
         type Shared = DrawShared;
 
-        fn new<W>(_: &mut Self::Shared, _: W) -> Result<Self>
-        where
-            W: rwh::HasRawWindowHandle + rwh::HasRawDisplayHandle,
-            Self: Sized,
-        {
-            todo!()
-        }
-
         fn size(&self) -> crate::prelude::Size {
             todo!()
         }
@@ -280,10 +272,31 @@ mod test {
         }
     }
 
+    struct AGB;
+    impl AppGraphicsBuilder for AGB {
+        type DefaultTheme = crate::theme::SimpleTheme;
+
+        type Shared = DrawShared;
+
+        type Surface<'a> = Surface;
+
+        fn build(self) -> Result<Self::Shared> {
+            todo!()
+        }
+
+        fn new_surface<'window, W>(_: &mut Self::Shared, _: W) -> Result<Self::Surface<'window>>
+        where
+            W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
+            Self: Sized,
+        {
+            todo!()
+        }
+    }
+
     #[test]
     fn size_of_pending() {
         assert_eq!(
-            std::mem::size_of::<Pending<(), Surface, crate::theme::SimpleTheme>>(),
+            std::mem::size_of::<Pending<(), AGB, crate::theme::SimpleTheme>>(),
             32
         );
     }

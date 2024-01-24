@@ -101,8 +101,8 @@ impl CustomPipeBuilder for PipeBuilder {
     fn device_descriptor() -> wgpu::DeviceDescriptor<'static> {
         wgpu::DeviceDescriptor {
             label: None,
-            features: wgpu::Features::PUSH_CONSTANTS | SHADER_FLOAT64,
-            limits: wgpu::Limits {
+            required_features: wgpu::Features::PUSH_CONSTANTS | SHADER_FLOAT64,
+            required_limits: wgpu::Limits {
                 max_push_constant_size: size_of::<PushConstants>().cast(),
                 ..Default::default()
             },
