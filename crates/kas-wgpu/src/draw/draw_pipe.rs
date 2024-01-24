@@ -46,7 +46,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         // Use adapter texture size limits to support the largest window surface possible
         let mut desc = CB::device_descriptor();
-        desc.limits = desc.limits.using_resolution(adapter.limits());
+        desc.required_limits = desc.required_limits.using_resolution(adapter.limits());
 
         let trace_path = options.wgpu_trace_path.as_deref();
         let req = adapter.request_device(&desc, trace_path);

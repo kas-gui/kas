@@ -6,7 +6,7 @@
 //! WGPU window surface
 
 use crate::draw::{CustomPipe, DrawPipe, DrawWindow};
-use kas::app::{raw_window_handle as raw, Error, WindowSurface};
+use kas::app::{raw_window_handle as rwh, Error, WindowSurface};
 use kas::cast::Cast;
 use kas::draw::color::Rgba;
 use kas::draw::{DrawIface, DrawSharedImpl, WindowCommon};
@@ -14,21 +14,21 @@ use kas::geom::Size;
 use std::time::Instant;
 
 /// Per-window data
-pub struct Surface<C: CustomPipe> {
-    surface: wgpu::Surface,
+pub struct Surface<'a, C: CustomPipe> {
+    surface: wgpu::Surface<'a>,
     sc_desc: wgpu::SurfaceConfiguration,
     draw: DrawWindow<C::Window>,
 }
 
-impl<C: CustomPipe> WindowSurface for Surface<C> {
-    type Shared = DrawPipe<C>;
-
-    fn new<W>(shared: &mut Self::Shared, window: W) -> Result<Self, Error>
+impl<'a, C: CustomPipe> Surface<'a, C> {
+    pub fn new<W>(shared: &mut <Self as WindowSurface>::Shared, window: W) -> Result<Self, Error>
     where
-        W: raw::HasRawWindowHandle + raw::HasRawDisplayHandle,
+        W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'a,
         Self: Sized,
     {
-        let surface = unsafe { shared.instance.create_surface(&window) }
+        let surface = shared
+            .instance
+            .create_surface(window)
             .map_err(|e| Error::Graphics(Box::new(e)))?;
         let sc_desc = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -36,6 +36,7 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
             width: 0,
             height: 0,
             present_mode: wgpu::PresentMode::Fifo,
+            desired_maximum_frame_latency: 2,
             // FIXME: current output is for Opaque or PostMultiplied, depending
             // on window transparency. But we can't pick what we want since only
             // a sub-set of modes are supported (depending on target).
@@ -50,6 +51,10 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
             draw: shared.new_window(),
         })
     }
+}
+
+impl<'a, C: CustomPipe> WindowSurface for Surface<'a, C> {
+    type Shared = DrawPipe<C>;
 
     fn size(&self) -> Size {
         Size::new(self.sc_desc.width.cast(), self.sc_desc.height.cast())

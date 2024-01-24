@@ -29,7 +29,7 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 # markdown, resvg. Recommended also: clipboard, yaml (or some config format).
 minimal = ["wgpu", "winit", "wayland"]
 # All recommended features for optimal experience
-default = ["minimal", "view", "image", "resvg", "clipboard", "markdown", "shaping", "spawn"]
+default = ["minimal", "x11", "view", "image", "resvg", "clipboard", "markdown", "shaping", "spawn"]
 # All standard test target features
 # NOTE: dynamic is excluded due to linker problems on Windows
 stable = ["default", "serde", "toml", "yaml", "json", "ron", "macros_log"]
@@ -133,7 +133,7 @@ features = ["raster"]
 
 [dev-dependencies]
 chrono = "0.4"
-env_logger = "0.10"
+env_logger = "0.11"
 log = "0.4"
 
 [workspace]

@@ -9,7 +9,7 @@ use crate::draw::DrawSharedImpl;
 use crate::draw::{color::Rgba, DrawIface, WindowCommon};
 use crate::geom::Size;
 use crate::theme::Theme;
-use raw_window_handle as raw;
+use raw_window_handle as rwh;
 use std::time::Instant;
 use thiserror::Error;
 
@@ -20,6 +20,10 @@ use thiserror::Error;
 #[non_exhaustive]
 #[derive(Error, Debug)]
 pub enum Error {
+    /// Window-handle error
+    #[error(transparent)]
+    Handle(#[from] rwh::HandleError),
+
     /// Failure from the graphics sub-system
     #[error("error from graphics sub-system")]
     Graphics(Box<dyn std::error::Error + 'static>),
@@ -181,10 +185,21 @@ pub trait AppGraphicsBuilder {
     type Shared: DrawSharedImpl;
 
     /// Window surface
-    type Surface: WindowSurface<Shared = Self::Shared> + 'static;
+    type Surface<'a>: WindowSurface<Shared = Self::Shared>;
 
     /// Construct shared state
     fn build(self) -> Result<Self::Shared>;
+
+    /// Construct a window surface
+    ///
+    /// It is required to call [`WindowSurface::do_resize`] after this.
+    fn new_surface<'window, W>(
+        shared: &mut Self::Shared,
+        window: W,
+    ) -> Result<Self::Surface<'window>>
+    where
+        W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
+        Self: Sized;
 }
 
 /// Window graphical surface requirements
@@ -193,14 +208,6 @@ pub trait AppGraphicsBuilder {
 pub trait WindowSurface {
     /// Shared draw state
     type Shared: kas::draw::DrawSharedImpl;
-
-    /// Construct an instance from a window handle
-    ///
-    /// It is required to call [`WindowSurface::do_resize`] after this.
-    fn new<W>(shared: &mut Self::Shared, window: W) -> Result<Self>
-    where
-        W: raw::HasRawWindowHandle + raw::HasRawDisplayHandle,
-        Self: Sized;
 
     /// Get current surface size
     fn size(&self) -> Size;

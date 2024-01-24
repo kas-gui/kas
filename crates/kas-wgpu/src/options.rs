@@ -87,7 +87,6 @@ impl Options {
                 "VULKAN" => Backends::VULKAN,
                 "GL" => Backends::GL,
                 "METAL" => Backends::METAL,
-                "DX11" => Backends::DX11,
                 "DX12" => Backends::DX12,
                 "BROWSER_WEBGPU" => Backends::BROWSER_WEBGPU,
                 "PRIMARY" => Backends::PRIMARY,

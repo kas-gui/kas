@@ -50,11 +50,11 @@ impl AppData for () {
 
 #[crate::autoimpl(Debug)]
 #[cfg(winit)]
-enum Pending<A: AppData, S: WindowSurface, T: kas::theme::Theme<S::Shared>> {
+enum Pending<A: AppData, G: AppGraphicsBuilder, T: kas::theme::Theme<G::Shared>> {
     AddPopup(WindowId, WindowId, kas::PopupDescriptor),
-    // NOTE: we don't need S, T here if we construct the Window later.
+    // NOTE: we don't need G, T here if we construct the Window later.
     // But this way we can pass a single boxed value.
-    AddWindow(WindowId, Box<Window<A, S, T>>),
+    AddWindow(WindowId, Box<Window<A, G, T>>),
     CloseWindow(WindowId),
     Action(kas::Action),
 }
@@ -71,7 +71,7 @@ enum ProxyAction {
 #[cfg(test)]
 mod test {
     use super::*;
-    use raw_window_handle as raw;
+    use raw_window_handle as rwh;
     use std::time::Instant;
 
     struct Draw;
@@ -248,14 +248,6 @@ mod test {
     impl WindowSurface for Surface {
         type Shared = DrawShared;
 
-        fn new<W>(_: &mut Self::Shared, _: W) -> Result<Self>
-        where
-            W: raw::HasRawWindowHandle + raw::HasRawDisplayHandle,
-            Self: Sized,
-        {
-            todo!()
-        }
-
         fn size(&self) -> crate::prelude::Size {
             todo!()
         }
@@ -280,10 +272,31 @@ mod test {
         }
     }
 
+    struct AGB;
+    impl AppGraphicsBuilder for AGB {
+        type DefaultTheme = crate::theme::SimpleTheme;
+
+        type Shared = DrawShared;
+
+        type Surface<'a> = Surface;
+
+        fn build(self) -> Result<Self::Shared> {
+            todo!()
+        }
+
+        fn new_surface<'window, W>(_: &mut Self::Shared, _: W) -> Result<Self::Surface<'window>>
+        where
+            W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
+            Self: Sized,
+        {
+            todo!()
+        }
+    }
+
     #[test]
     fn size_of_pending() {
         assert_eq!(
-            std::mem::size_of::<Pending<(), Surface, crate::theme::SimpleTheme>>(),
+            std::mem::size_of::<Pending<(), AGB, crate::theme::SimpleTheme>>(),
             32
         );
     }

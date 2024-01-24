@@ -37,10 +37,6 @@ thiserror = "1.0.23"
 guillotiere = "0.6.0"
 rustc-hash = "1.0"
 
-# Force patch versions of naga and wgpu-core (otherwise not needed as direct dependencies)
-naga = "0.14.1"
-wgpu-core = "0.18.1"
-
 [dependencies.kas]
 # Rename package purely for convenience:
 version = "0.14.1"
@@ -51,7 +47,7 @@ path = "../kas-core"
 version = "0.6.0"
 
 [dependencies.wgpu]
-version = "0.18.0"
+version = "0.19.1"
 default-features = false
 features = ["spirv"]
 
