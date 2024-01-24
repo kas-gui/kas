@@ -49,7 +49,14 @@ fn load(data: &[u8], resources_dir: Option<&Path>) -> Result<Tree, usvg::Error> 
         image_href_resolver: Default::default(),
     };
 
-    Tree::from_data(data, &opts)
+    let mut tree = Tree::from_data(data, &opts)?;
+
+    // Postprocess. TODO: consider using usvg::Tree::postprocess instead:
+    // do we want to convert text to paths?
+    tree.calculate_abs_transforms();
+    tree.calculate_bounding_boxes();
+
+    Ok(tree)
 }
 
 #[derive(Clone)]
