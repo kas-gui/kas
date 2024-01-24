@@ -38,7 +38,6 @@ mod kw {
     custom_keyword!(aligned_column);
     custom_keyword!(aligned_row);
     custom_keyword!(float);
-    custom_keyword!(margins);
     custom_keyword!(non_navigable);
     custom_keyword!(px);
     custom_keyword!(em);
@@ -327,12 +326,6 @@ impl Tree {
         let stor = gen.next();
         Ok(Tree(parse_grid(stor.into(), inner, &mut gen)?))
     }
-
-    /// Parse margins (contents only)
-    pub fn margins(inner: ParseStream) -> Result<Self> {
-        let mut gen = NameGenerator::default();
-        Layout::margins_inner(inner, &mut gen).map(Tree)
-    }
 }
 
 #[derive(Debug)]
@@ -383,7 +376,6 @@ impl GenerateItem for CellInfo {
 #[derive(Debug)]
 enum Layout {
     Pack(Box<Layout>, Pack),
-    Margins(Box<Layout>, Directions, Toks),
     Single(ExprMember),
     Widget(Ident, Expr),
     Frame(StorIdent, Box<Layout>, Expr),
@@ -554,14 +546,7 @@ impl Layout {
 
     fn parse_macro_like(input: ParseStream, gen: &mut NameGenerator) -> Result<Self> {
         let lookahead = input.lookahead1();
-        if lookahead.peek(kw::margins) {
-            let _ = input.parse::<kw::margins>()?;
-            let _: Token![!] = input.parse()?;
-
-            let inner;
-            let _ = parenthesized!(inner in input);
-            Self::margins_inner(&inner, gen)
-        } else if lookahead.peek(kw::frame) {
+        if lookahead.peek(kw::frame) {
             let _: kw::frame = input.parse()?;
             let _: Token![!] = input.parse()?;
             let stor = gen.parse_or_next(input)?;
@@ -667,64 +652,6 @@ impl Layout {
             let expr = input.parse()?;
             Ok(Layout::Widget(ident, expr))
         }
-    }
-
-    fn margins_inner(inner: ParseStream, gen: &mut NameGenerator) -> Result<Self> {
-        let mut dirs = Directions::all();
-        if inner.peek2(Token![=]) {
-            let ident = inner.parse::<Ident>()?;
-            dirs = match ident {
-                id if id == "horiz" || id == "horizontal" => Directions::LEFT | Directions::RIGHT,
-                id if id == "vert" || id == "vertical" => Directions::UP | Directions::DOWN,
-                id if id == "left" => Directions::LEFT,
-                id if id == "right" => Directions::RIGHT,
-                id if id == "top" => Directions::UP,
-                id if id == "bottom" => Directions::DOWN,
-                _ => return Err(Error::new(
-                    ident.span(),
-                    "expected one of: horiz, horizontal, vert, vertical, left, right, top, bottom",
-                )),
-            };
-            let _ = inner.parse::<Token![=]>()?;
-        }
-
-        let lookahead = inner.lookahead1();
-        let margins = if lookahead.peek(syn::LitFloat) {
-            let val = inner.parse::<syn::LitFloat>()?;
-            let lookahead = inner.lookahead1();
-            if lookahead.peek(kw::px) {
-                let _ = inner.parse::<kw::px>()?;
-                quote! { Px(#val) }
-            } else if lookahead.peek(kw::em) {
-                let _ = inner.parse::<kw::em>()?;
-                quote! { Em(#val) }
-            } else {
-                return Err(lookahead.error());
-            }
-        } else if lookahead.peek(Ident) {
-            let ident = inner.parse::<Ident>()?;
-            match ident {
-                id if id == "none" => quote! { None },
-                id if id == "inner" => quote! { Inner },
-                id if id == "tiny" => quote! { Tiny },
-                id if id == "small" => quote! { Small },
-                id if id == "large" => quote! { Large },
-                id if id == "text" => quote! { Text },
-                _ => {
-                    return Err(Error::new(
-                        ident.span(),
-                        "expected one of: `none`, `inner`, `tiny`, `small`, `large`, `text` or a numeric value",
-                    ))
-                }
-            }
-        } else {
-            return Err(lookahead.error());
-        };
-
-        let _ = inner.parse::<Token![,]>()?;
-        let layout = Layout::parse(inner, gen)?;
-
-        Ok(Layout::Margins(Box::new(layout), dirs, margins))
     }
 }
 
@@ -1015,9 +942,7 @@ impl ToTokens for MethodCall {
 impl Layout {
     fn append_fields(&self, fields: &mut StorageFields, children: &mut Vec<Child>, data_ty: &Type) {
         match self {
-            Layout::Margins(layout, ..)
-            | Layout::NonNavigable(layout)
-            | Layout::MethodCall(layout, _) => {
+            Layout::NonNavigable(layout) | Layout::MethodCall(layout, _) => {
                 layout.append_fields(fields, children, data_ty);
             }
             Layout::Single(_) => (),
@@ -1132,14 +1057,6 @@ impl Layout {
                 pack.to_tokens(&mut tokens, core_path);
                 tokens
             }
-            Layout::Margins(layout, dirs, selector) => {
-                let inner = layout.generate(core_path)?;
-                quote! { layout::Visitor::margins(
-                    #inner,
-                    ::kas::dir::Directions::from_bits(#dirs).unwrap(),
-                    ::kas::theme::MarginStyle::#selector,
-                ) }
-            }
             Layout::Single(expr) => quote! {
                 layout::Visitor::single(&mut #expr)
             },
@@ -1197,7 +1114,6 @@ impl Layout {
     ) -> std::result::Result<(), (Span, &'static str)> {
         match self {
             Layout::Pack(layout, _)
-            | Layout::Margins(layout, _, _)
             | Layout::Frame(_, layout, _)
             | Layout::MapAny(layout, _)
             | Layout::MethodCall(layout, _) => layout.nav_next(children, output),
@@ -1261,7 +1177,6 @@ impl Layout {
     fn span_in_layout(&self, ident: &Member) -> Option<Span> {
         match self {
             Layout::Pack(layout, _)
-            | Layout::Margins(layout, _, _)
             | Layout::Frame(_, layout, _)
             | Layout::Button(_, layout, _)
             | Layout::NonNavigable(layout)

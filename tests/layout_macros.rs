@@ -49,9 +49,3 @@ fn aligned_row() {
         "three", "four"
     ],]);
 }
-
-#[test]
-fn margins() {
-    use_widget(kas::margins!(1.0 em, "abc"));
-    use_widget(kas::margins!(vert = none, "abc"));
-}

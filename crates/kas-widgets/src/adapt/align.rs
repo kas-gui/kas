@@ -5,8 +5,10 @@
 
 //! Alignment
 
+use kas::dir::Directions;
 use kas::layout::PackStorage;
 use kas::prelude::*;
+use kas::theme::MarginStyle;
 
 impl_scope! {
     /// Apply an alignment hint
@@ -36,8 +38,7 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        self.inner
-            .size_rules(sizer, axis.with_align_hints(self.hints))
+            self.inner.size_rules(sizer, axis.with_align_hints(self.hints))
         }
     }
 }
@@ -78,6 +79,49 @@ impl_scope! {
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.inner.set_rect(cx, self.storage.aligned_rect(rect));
+        }
+    }
+}
+
+impl_scope! {
+    /// Specify margins
+    ///
+    /// This replaces a widget's margins.
+    ///
+    /// Usually, this type will be constructed through one of the methods on
+    /// [`AdaptWidget`](crate::adapt::AdaptWidget).
+    #[autoimpl(Deref, DerefMut using self.inner)]
+    #[autoimpl(class_traits using self.inner where W: trait)]
+    #[widget{ derive = self.inner; }]
+    pub struct Margins<W: Widget> {
+        pub inner: W,
+        dirs: Directions,
+        style: MarginStyle,
+    }
+
+    impl Self {
+        /// Construct
+        #[inline]
+        pub fn new(inner: W, dirs: Directions, style: MarginStyle) -> Self {
+            Margins { inner, dirs, style }
+        }
+    }
+
+    impl Layout for Self {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut child_rules = self.inner.size_rules(sizer.re(), axis);
+            if self.dirs.intersects(Directions::from(axis)) {
+                let mut rule_margins = child_rules.margins();
+                let margins = sizer.margins(self.style).extract(axis);
+                if self.dirs.intersects(Directions::LEFT | Directions::UP) {
+                    rule_margins.0 = margins.0;
+                }
+                if self.dirs.intersects(Directions::RIGHT | Directions::DOWN) {
+                    rule_margins.1 = margins.1;
+                }
+                child_rules.set_margins(rule_margins);
+            }
+            child_rules
         }
     }
 }

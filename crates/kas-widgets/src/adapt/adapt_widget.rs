@@ -7,11 +7,11 @@
 
 use super::*;
 use kas::cast::{Cast, CastFloat};
-use kas::dir::Directional;
+use kas::dir::{Directional, Directions};
 use kas::geom::Vec2;
 use kas::layout::{AlignHints, AxisInfo, SizeRules};
 use kas::text::AccessString;
-use kas::theme::SizeCx;
+use kas::theme::{MarginStyle, SizeCx};
 #[allow(unused)] use kas::Events;
 use kas::Widget;
 use std::fmt::Debug;
@@ -53,6 +53,16 @@ pub trait AdaptWidget: Widget + Sized {
     #[must_use]
     fn pack(self, hints: AlignHints) -> Pack<Self> {
         Pack::new(self, hints)
+    }
+
+    /// Specify margins
+    ///
+    /// This replaces a widget's margins.
+    ///
+    /// Returns a wrapper around the input widget.
+    #[must_use]
+    fn margins(self, dirs: Directions, style: MarginStyle) -> Margins<Self> {
+        Margins::new(self, dirs, style)
     }
 
     /// Map data type via a function

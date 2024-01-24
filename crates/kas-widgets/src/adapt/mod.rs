@@ -17,7 +17,7 @@ pub use adapt::{Adapt, Map};
 pub use adapt_cx::{AdaptConfigCx, AdaptEventCx};
 pub use adapt_events::AdaptEvents;
 pub use adapt_widget::*;
-pub use align::{Align, Pack};
+pub use align::{Align, Margins, Pack};
 #[doc(inline)] pub use kas::hidden::MapAny;
 pub use reserve::Reserve;
 pub use with_label::WithLabel;
