@@ -223,7 +223,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// implementation of `Events::nav_next`, with a couple of exceptions
 /// (where macro-time analysis is insufficient to implement this method).
 ///
-/// > [_Column_](macro@column), [_Row_](macro@row), [_List_](macro@list), [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_](macro@float), [_Align_](macro@align), [_Pack_](macro@pack), [_Margins_](macro@margins) :\
+/// > [_Column_](macro@column), [_Row_](macro@row), [_List_](macro@list), [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_](macro@float) :\
 /// > &nbsp;&nbsp; These stand-alone macros are explicitly supported in this position.\
 /// > &nbsp;&nbsp; Optionally, a _Storage_ specifier is supported immediately after the macro name, e.g.\
 /// > &nbsp;&nbsp; `column! 'storage_name ["one", "two"]`
@@ -501,7 +501,7 @@ pub fn list(input: TokenStream) -> TokenStream {
 /// All children occupy the same space with the first child on top.
 ///
 /// Size is determined as the maximum required by any child for each axis.
-/// All children are assigned this size. It is usually necessary to use [`pack!`]
+/// All children are assigned this size. It is usually necessary to use [`pack`]
 /// or a similar mechanism to constrain a child to avoid it hiding the content
 /// underneath (note that even if an unconstrained child does not *visually*
 /// hide everything beneath, it may still "occupy" the assigned area, preventing
@@ -515,11 +515,13 @@ pub fn list(input: TokenStream) -> TokenStream {
 ///
 /// ```ignore
 /// let my_widget = kas::float! [
-///     pack!(left top, "one"),
-///     pack!(right bottom, "two"),
+///     "one".pack(AlignHints::TOP_LEFT),
+///     "two".pack(AlignHints::BOTTOM_RIGHT),
 ///     "some text\nin the\nbackground"
 /// ];
 /// ```
+///
+/// [`pack`]: https://docs.rs/kas/latest/kas/widgets/trait.AdaptWidget.html#method.pack
 #[proc_macro_error]
 #[proc_macro]
 pub fn float(input: TokenStream) -> TokenStream {
@@ -605,87 +607,6 @@ pub fn aligned_column(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn aligned_row(input: TokenStream) -> TokenStream {
     parse_macro_input!(input with make_layout::Tree::aligned_row).expand_layout("_AlignedRow")
-}
-
-/// Make an align widget
-///
-/// This is a small wrapper which adjusts the alignment of its contents.
-///
-/// The alignment specifier may be one or two keywords (space-separated,
-/// horizontal component first): `default`, `center`, `stretch`, `left`,
-/// `right`, `top`, `bottom`.
-///
-/// # Example
-///
-/// ```ignore
-/// let a = kas::align!(right, "132");
-/// let b = kas::align!(left top, "abc");
-/// ```
-#[proc_macro_error]
-#[proc_macro]
-pub fn align(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input with make_layout::Tree::align).expand_layout("_Align")
-}
-
-/// Make a pack widget
-///
-/// This is a small wrapper which adjusts the alignment of its contents and
-/// prevents its contents from stretching.
-///
-/// The alignment specifier may be one or two keywords (space-separated,
-/// horizontal component first): `default`, `center`, `stretch`, `left`,
-/// `right`, `top`, `bottom`.
-///
-/// # Example
-///
-/// ```ignore
-/// let my_widget = kas::pack!(right top, "132");
-/// ```
-#[proc_macro_error]
-#[proc_macro]
-pub fn pack(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input with make_layout::Tree::pack).expand_layout("_Pack")
-}
-
-/// Make a margin-adjustment widget wrapper
-///
-/// This is a small wrapper which adjusts the margins of its contents.
-///
-/// # Example
-///
-/// ```ignore
-/// let a = kas::margins!(1.0 em, "abc");
-/// let b = kas::margins!(vert = none, "abc");
-/// ```
-///
-/// # Syntax
-///
-/// The macro takes one of two forms:
-///
-/// > _Margins_:\
-/// > &nbsp;&nbsp; `margins!` `(` _MarginSpec_ `,` _Layout_ `)`\
-/// > &nbsp;&nbsp; `margins!` `(` _MarginDirection_ `=` _MarginSpec_ `,` _Layout_ `)`\
-/// >
-/// > _MarginDirection_ :\
-/// > &nbsp;&nbsp; `horiz` | `horizontal` | `vert` | `vertical` | `left` | `right` | `top` | `bottom`
-/// >
-/// > _MarginSpec_ :\
-/// > &nbsp;&nbsp; ( _LitFloat_ `px` ) | ( _LitFloat_ `em` ) | `none` | `inner` | `tiny` | `small` | `large` | `text`
-///
-/// | _MarginSpec_ | Description (guide size; theme-specified sizes may vary and may not scale linearly) |
-/// | --- | --- |
-/// | `none` | No margin (`0px`) |
-/// | `inner` | A very tiny theme-specified margin sometimes used to draw selection outlines (`1px`) |
-/// | `tiny` | A very small theme-specified margin (`2px`) |
-/// | `small` | A small theme-specified margin (`4px`) |
-/// | `large`| A large theme-specified margin (`7px`) |
-/// | `text` | Text-specific margins; often asymmetric |
-/// | _LitFloat_ `em` (e.g. `1.2 em`) | Using the typographic unit Em (`1Em` is the text height, excluding ascender and descender) |
-/// | _LitFloat_ `px` (e.g. `5.0 px`) | Using virtual pixels (affected by the scale factor) |
-#[proc_macro_error]
-#[proc_macro]
-pub fn margins(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input with make_layout::Tree::margins).expand_layout("_Margins")
 }
 
 /// Generate an anonymous struct which implements [`kas::Collection`]

@@ -5,7 +5,8 @@
 
 //! Demonstration of widget and text layouts
 
-use kas::widgets::{CheckBox, EditBox, ScrollLabel};
+use kas::layout::AlignHints;
+use kas::widgets::{AdaptWidget, CheckBox, EditBox, ScrollLabel};
 use kas::Window;
 
 const LIPSUM: &str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi nunc mi, consequat eget urna ut, auctor luctus mi. Sed molestie mi est. Sed non ligula ante. Curabitur ac molestie ante, nec sodales eros. In non arcu at turpis euismod bibendum ut tincidunt eros. Suspendisse blandit maximus nisi, viverra hendrerit elit efficitur et. Morbi ut facilisis eros. Vivamus dignissim, sapien sed mattis consectetur, libero leo imperdiet turpis, ac pulvinar libero purus eu lorem. Etiam quis sollicitudin urna. Integer vitae erat vel neque gravida blandit ac non quam.";
@@ -18,8 +19,8 @@ fn main() -> kas::app::Result<()> {
         (1, 0) => "Layout demo",
         (2, 0) => CheckBox::new(|_, _| true),
         (0..3, 1) => ScrollLabel::new(LIPSUM),
-        (0, 2) => align!(center, "abc אבג def"),
-        (1..3, 3) => align!(stretch, ScrollLabel::new(CRASIT)),
+        (0, 2) => "abc אבג def".align(AlignHints::CENTER),
+        (1..3, 3) => ScrollLabel::new(CRASIT).align(AlignHints::STRETCH),
         (0, 3) => EditBox::text("A small\nsample\nof text").with_multi_line(true),
     };
     let window = Window::new(ui, "Layout demo");

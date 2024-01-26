@@ -36,7 +36,7 @@ impl_scope! {
     /// Line-wrapping is enabled by default.
     ///
     /// This type is generic over the text type.
-    /// See also: [`StrLabel`], [`StringLabel`], [`AccessLabel`].
+    /// See also: [`AccessLabel`].
     #[impl_default(where T: Default)]
     #[derive(Clone, Debug)]
     #[widget {
@@ -173,7 +173,7 @@ impl<'a> Layout for Label<&'a str> {
     }
 }
 #[cfg(feature = "min_spec")]
-impl Layout for StringLabel {
+impl Layout for Label<String> {
     fn draw(&mut self, mut draw: DrawCx) {
         draw.text(self.rect(), &self.label, self.class);
     }
@@ -198,18 +198,6 @@ impl<'a> From<&'a str> for Label<String> {
         Label::new(label.to_string())
     }
 }
-
-/// Label with `&'static str` as backing type
-///
-/// Warning: this type does not support [`HasString`]. Assignment is possible
-/// via [`Label::set_text`], but only for `&'static str`, so most of the time
-/// [`StringLabel`] will be preferred when assignment is required.
-/// (Also note that the overhead of allocating and copying a `String` is
-/// irrelevant considering those used for text layout and drawing.)
-pub type StrLabel = Label<&'static str>;
-
-/// Label with `String` as backing type
-pub type StringLabel = Label<String>;
 
 // NOTE: AccessLabel requires a different text class. Once specialization is
 // stable we can simply replace the `draw` method, but for now we use a whole

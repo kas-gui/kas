@@ -5,13 +5,13 @@
 
 //! Widget extension traits
 
-use super::{AdaptConfigCx, AdaptEventCx, AdaptEvents, Map, MapAny, Reserve, WithLabel};
+use super::*;
 use kas::cast::{Cast, CastFloat};
-use kas::dir::Directional;
+use kas::dir::{Directional, Directions};
 use kas::geom::Vec2;
-use kas::layout::{AxisInfo, SizeRules};
+use kas::layout::{AlignHints, AxisInfo, SizeRules};
 use kas::text::AccessString;
-use kas::theme::SizeCx;
+use kas::theme::{MarginStyle, SizeCx};
 #[allow(unused)] use kas::Events;
 use kas::Widget;
 use std::fmt::Debug;
@@ -33,6 +33,38 @@ impl<W: Widget<Data = ()>> AdaptWidgetAny for W {}
 
 /// Provides some convenience methods on widgets
 pub trait AdaptWidget: Widget + Sized {
+    /// Apply an alignment hint
+    ///
+    /// The inner widget chooses how to apply (or ignore) this hint.
+    ///
+    /// Returns a wrapper around the input widget.
+    #[must_use]
+    fn align(self, hints: AlignHints) -> Align<Self> {
+        Align::new(self, hints)
+    }
+
+    /// Apply an alignment hint, squash and align the result
+    ///
+    /// The inner widget chooses how to apply (or ignore) this hint.
+    /// The widget is then prevented from stretching beyond its ideal size,
+    /// aligning within the available rect.
+    ///
+    /// Returns a wrapper around the input widget.
+    #[must_use]
+    fn pack(self, hints: AlignHints) -> Pack<Self> {
+        Pack::new(self, hints)
+    }
+
+    /// Specify margins
+    ///
+    /// This replaces a widget's margins.
+    ///
+    /// Returns a wrapper around the input widget.
+    #[must_use]
+    fn margins(self, dirs: Directions, style: MarginStyle) -> Margins<Self> {
+        Margins::new(self, dirs, style)
+    }
+
     /// Map data type via a function
     ///
     /// Returns a wrapper around the input widget.

@@ -10,9 +10,13 @@ use std::ops::RangeBounds;
 
 /// A collection of (child) widgets
 ///
-/// Essentially, implementating types are lists of widgets. Simple examples are
-/// `Vec<W>` and `[W; N]` where `W: Widget` and `const N: usize`. A more complex
-/// example would be a custom struct where each field is a widget.
+/// Essentially, a `Collection` is a list of widgets. Notable implementations are:
+///
+/// -   Slices `[W]` where `W: Widget`
+/// -   Arrays `[W; N]` where `W: Widget` and `const N: usize`
+/// -   [`Vec`]`<W>` where `W: Widget`
+/// -   The output of [`kas::collection!`]. This macro constructs an anonymous
+///     struct of widgets which implements `Collection`.
 pub trait Collection {
     /// The associated data type
     type Data;

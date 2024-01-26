@@ -6,7 +6,7 @@
 //! Combobox
 
 use crate::adapt::AdaptEvents;
-use crate::{menu::MenuEntry, Column, Mark, StringLabel};
+use crate::{menu::MenuEntry, Column, Label, Mark};
 use kas::event::{Command, FocusSource, ScrollDelta};
 use kas::prelude::*;
 use kas::theme::{MarkStyle, TextClass};
@@ -36,7 +36,7 @@ impl_scope! {
     pub struct ComboBox<A, V: Clone + Debug + Eq + 'static> {
         core: widget_core!(),
         #[widget(&())]
-        label: StringLabel,
+        label: Label<String>,
         #[widget(&())]
         mark: Mark,
         #[widget(&())]
@@ -226,7 +226,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
         state_fn: impl Fn(&ConfigCx, &A) -> V + 'static,
     ) -> Self {
         let label = entries.first().map(|entry| entry.get_string());
-        let label = StringLabel::new(label.unwrap_or_default()).with_class(TextClass::Button);
+        let label = Label::new(label.unwrap_or_default()).with_class(TextClass::Button);
         ComboBox {
             core: Default::default(),
             label,

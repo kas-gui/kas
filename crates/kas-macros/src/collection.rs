@@ -16,7 +16,7 @@ use syn::{Expr, Ident, Lifetime, LitStr, Token};
 #[derive(Debug)]
 pub enum StorIdent {
     Named(Ident, Span),
-    Generated(String, Span),
+    Generated(Ident, Span),
 }
 impl From<Lifetime> for StorIdent {
     fn from(lt: Lifetime) -> StorIdent {
@@ -24,11 +24,16 @@ impl From<Lifetime> for StorIdent {
         StorIdent::Named(lt.ident, span)
     }
 }
+impl From<Ident> for StorIdent {
+    fn from(ident: Ident) -> StorIdent {
+        let span = ident.span();
+        StorIdent::Generated(ident, span)
+    }
+}
 impl ToTokens for StorIdent {
     fn to_tokens(&self, toks: &mut Toks) {
         match self {
-            StorIdent::Named(ident, _) => ident.to_tokens(toks),
-            StorIdent::Generated(string, span) => Ident::new(string, *span).to_tokens(toks),
+            StorIdent::Named(ident, _) | StorIdent::Generated(ident, _) => ident.to_tokens(toks),
         }
     }
 }
@@ -36,24 +41,25 @@ impl ToTokens for StorIdent {
 #[derive(Default)]
 pub struct NameGenerator(usize);
 impl NameGenerator {
-    pub fn next(&mut self) -> StorIdent {
+    pub fn next(&mut self) -> Ident {
         let name = format!("_stor{}", self.0);
         self.0 += 1;
-        StorIdent::Generated(name, Span::call_site())
+        let span = Span::call_site();
+        Ident::new(&name, span)
     }
 
     pub fn parse_or_next(&mut self, input: ParseStream) -> Result<StorIdent> {
         if input.peek(Lifetime) {
             Ok(input.parse::<Lifetime>()?.into())
         } else {
-            Ok(self.next())
+            Ok(self.next().into())
         }
     }
 }
 
 pub enum Item {
-    Label(StorIdent, LitStr),
-    Widget(StorIdent, Expr),
+    Label(Ident, LitStr),
+    Widget(Ident, Expr),
 }
 
 impl Item {

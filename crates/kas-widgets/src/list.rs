@@ -27,27 +27,35 @@ pub type Column<C> = List<C, Down>;
 impl_scope! {
     /// A generic row/column widget
     ///
-    /// A linear widget over a [`Collection`] of widgets, for example an array
-    /// `[W; N]` or a [`Vec<W>`][Vec] where `const N: usize, W: Widget`.
+    /// A linear widget over a [`Collection`] of widgets.
     ///
     /// When the collection uses [`Vec`], various methods to insert/remove
     /// elements are available.
     ///
     /// The layout direction `D` may be compile-time fixed (e.g. [`Right`]) or
-    /// run-time mutable [`Direction`]); in the latter case
-    /// [`set_direction`][List::set_direction] is available.
+    /// run-time mutable ([`Direction`]); in the latter case
+    /// [`set_direction`] is available.
     ///
     /// ## See also
     ///
-    /// Some more specific type-defs are available:
+    /// [`Row`] and [`Column`] are type-defs to `List` which fix the direction `D`.
     ///
-    /// -   [`Row`] and [`Column`] fix the direction `D`
+    /// The macros [`kas::row`] and [`kas::column`] also create row/column
+    /// layouts, but are not fully equivalent:
+    ///
+    /// -   `row!` and `column!` generate anonymous layout widgets (or objects).
+    ///     These do not have a [`set_direction`] method or support adding or
+    ///     removing elements.
+    /// -   `row!` and `column!` generate layout objects which, when used within
+    ///     a custom widget, may refer to that widget's fields.
     ///
     /// ## Performance
     ///
     /// Configuring and resizing elements is O(n) in the number of children.
     /// Drawing and event handling is O(log n) in the number of children (assuming
     /// only a small number are visible at any one time).
+    ///
+    /// [`set_direction`]: List::set_direction
     #[autoimpl(Default where C: Default, D: Default)]
     #[widget]
     pub struct List<C: Collection, D: Directional> {

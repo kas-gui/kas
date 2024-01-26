@@ -4,14 +4,15 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use crate::collection::{NameGenerator, StorIdent};
-use crate::widget;
+use crate::widget::{self, Child, ChildIdent};
 use proc_macro2::{Span, TokenStream as Toks};
 use proc_macro_error::emit_error;
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
+use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::{braced, bracketed, parenthesized};
-use syn::{Expr, Ident, LitInt, LitStr, Member, Token, Type};
+use syn::{braced, bracketed, parenthesized, parse_quote, token};
+use syn::{AngleBracketedGenericArguments, Expr, Ident, LitInt, LitStr, Member, Token, Type};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -37,12 +38,12 @@ mod kw {
     custom_keyword!(aligned_column);
     custom_keyword!(aligned_row);
     custom_keyword!(float);
-    custom_keyword!(margins);
     custom_keyword!(non_navigable);
     custom_keyword!(px);
     custom_keyword!(em);
     custom_keyword!(style);
     custom_keyword!(color);
+    custom_keyword!(map_any);
 }
 
 #[derive(Default)]
@@ -55,16 +56,10 @@ pub struct StorageFields {
 #[derive(Debug)]
 pub struct Tree(Layout);
 impl Tree {
-    pub fn storage_fields(&self, children: &mut Vec<Toks>, data_ty: &Type) -> StorageFields {
-        let (mut ty_toks, mut def_toks) = (Toks::new(), Toks::new());
-        let used_data_ty = self
-            .0
-            .append_fields(&mut ty_toks, &mut def_toks, children, data_ty);
-        StorageFields {
-            ty_toks,
-            def_toks,
-            used_data_ty,
-        }
+    pub fn storage_fields(&self, children: &mut Vec<Child>, data_ty: &Type) -> StorageFields {
+        let mut fields = StorageFields::default();
+        self.0.append_fields(&mut fields, children, data_ty);
+        fields
     }
 
     // Required: `::kas::layout` must be in scope.
@@ -123,15 +118,14 @@ impl Tree {
         })
     }
 
-    pub fn nav_next<'a, I: Clone + ExactSizeIterator<Item = &'a Member>>(
+    pub fn nav_next<'a, I: Clone + Iterator<Item = &'a Child>>(
         &self,
         children: I,
     ) -> std::result::Result<Toks, (Span, &'static str)> {
         match &self.0 {
             layout => {
                 let mut v = Vec::new();
-                let mut index = children.len();
-                layout.nav_next(children, &mut v, &mut index).map(|()| {
+                layout.nav_next(children, &mut v).map(|()| {
                     quote! {
                         fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
                             let mut iter = [#(#v),*].into_iter();
@@ -161,9 +155,9 @@ impl Tree {
 
     /// Synthesize an entire widget from the layout
     pub fn expand_as_widget(self, widget_name: &str) -> Result<Toks> {
-        let mut layout_children = Vec::new();
+        let mut children = Vec::new();
         let data_ty: syn::Type = syn::parse_quote! { _Data };
-        let stor_defs = self.storage_fields(&mut layout_children, &data_ty);
+        let stor_defs = self.storage_fields(&mut children, &data_ty);
         let stor_ty = &stor_defs.ty_toks;
         let stor_def = &stor_defs.def_toks;
 
@@ -175,7 +169,7 @@ impl Tree {
             (quote! {}, quote! { #name })
         };
 
-        let count = layout_children.len();
+        let count = children.len();
         let num_children = quote! {
             fn num_children(&self) -> usize {
                 #count
@@ -183,10 +177,8 @@ impl Tree {
         };
 
         let mut get_rules = quote! {};
-        for (index, path) in layout_children.iter().enumerate() {
-            get_rules.append_all(quote! {
-                #index => Some(#core_path.#path.as_layout()),
-            });
+        for (index, child) in children.iter().enumerate() {
+            get_rules.append_all(child.ident.get_rule(&core_path, index));
         }
 
         let core_impl = widget::impl_core_methods(widget_name, &core_path);
@@ -195,13 +187,12 @@ impl Tree {
             &impl_target,
             &data_ty,
             &core_path,
-            &[],
-            layout_children,
+            &children,
             true,
         );
 
         let layout_methods = self.layout_methods(&core_path)?;
-        let nav_next = match self.nav_next(std::iter::empty()) {
+        let nav_next = match self.nav_next(children.iter()) {
             Ok(result) => Some(result),
             Err((span, msg)) => {
                 emit_error!(span, "unable to generate `fn Layout::nav_next`: {}", msg);
@@ -277,7 +268,7 @@ impl Tree {
         let mut gen = NameGenerator::default();
         let stor = gen.next();
         let list = parse_layout_items(inner, &mut gen)?;
-        Ok(Tree(Layout::List(stor, Direction::Down, list)))
+        Ok(Tree(Layout::List(stor.into(), Direction::Down, list)))
     }
 
     /// Parse a row (contents only)
@@ -285,7 +276,7 @@ impl Tree {
         let mut gen = NameGenerator::default();
         let stor = gen.next();
         let list = parse_layout_items(inner, &mut gen)?;
-        Ok(Tree(Layout::List(stor, Direction::Right, list)))
+        Ok(Tree(Layout::List(stor.into(), Direction::Right, list)))
     }
 
     /// Parse an aligned column (contents only)
@@ -293,7 +284,10 @@ impl Tree {
         let mut gen = NameGenerator::default();
         let stor = gen.next();
         Ok(Tree(parse_grid_as_list_of_lists::<kw::row>(
-            stor, inner, &mut gen, true,
+            stor.into(),
+            inner,
+            &mut gen,
+            true,
         )?))
     }
 
@@ -302,7 +296,10 @@ impl Tree {
         let mut gen = NameGenerator::default();
         let stor = gen.next();
         Ok(Tree(parse_grid_as_list_of_lists::<kw::column>(
-            stor, inner, &mut gen, false,
+            stor.into(),
+            inner,
+            &mut gen,
+            false,
         )?))
     }
 
@@ -313,7 +310,7 @@ impl Tree {
         let dir: Direction = inner.parse()?;
         let _: Token![,] = inner.parse()?;
         let list = parse_layout_list(inner, &mut gen)?;
-        Ok(Tree(Layout::List(stor, dir, list)))
+        Ok(Tree(Layout::List(stor.into(), dir, list)))
     }
 
     /// Parse a float (contents only)
@@ -327,48 +324,14 @@ impl Tree {
     pub fn grid(inner: ParseStream) -> Result<Self> {
         let mut gen = NameGenerator::default();
         let stor = gen.next();
-        Ok(Tree(parse_grid(stor, inner, &mut gen)?))
-    }
-
-    /// Parse align (contents only)
-    // TODO: use WithAlign adapter?
-    pub fn align(inner: ParseStream) -> Result<Self> {
-        let mut gen = NameGenerator::default();
-
-        let align = parse_align(inner)?;
-        let _: Token![,] = inner.parse()?;
-
-        Ok(Tree(if inner.peek(Token![self]) {
-            Layout::AlignSingle(inner.parse()?, align)
-        } else {
-            let layout = Layout::parse(inner, &mut gen)?;
-            Layout::Align(Box::new(layout), align)
-        }))
-    }
-
-    /// Parse pack (contents only)
-    pub fn pack(inner: ParseStream) -> Result<Self> {
-        let mut gen = NameGenerator::default();
-        let stor = gen.next();
-
-        let align = parse_align(inner)?;
-        let _: Token![,] = inner.parse()?;
-
-        let layout = Layout::parse(inner, &mut gen)?;
-        Ok(Tree(Layout::Pack(stor, Box::new(layout), align)))
-    }
-
-    /// Parse margins (contents only)
-    pub fn margins(inner: ParseStream) -> Result<Self> {
-        let mut gen = NameGenerator::default();
-        Layout::margins_inner(inner, &mut gen).map(Tree)
+        Ok(Tree(parse_grid(stor.into(), inner, &mut gen)?))
     }
 }
 
 #[derive(Debug)]
 struct ListItem<C> {
     cell: C,
-    stor: StorIdent,
+    stor: Ident,
     layout: Layout,
 }
 #[derive(Debug)]
@@ -412,19 +375,18 @@ impl GenerateItem for CellInfo {
 
 #[derive(Debug)]
 enum Layout {
-    Align(Box<Layout>, AlignHints),
-    AlignSingle(ExprMember, AlignHints),
-    Pack(StorIdent, Box<Layout>, AlignHints),
-    Margins(Box<Layout>, Directions, Toks),
+    Pack(Box<Layout>, Pack),
     Single(ExprMember),
-    Widget(StorIdent, Expr),
+    Widget(Ident, Expr),
     Frame(StorIdent, Box<Layout>, Expr),
     Button(StorIdent, Box<Layout>, Expr),
     List(StorIdent, Direction, VisitableList<()>),
     Float(VisitableList<()>),
     Grid(StorIdent, GridDimensions, VisitableList<CellInfo>),
-    Label(StorIdent, LitStr),
+    Label(Ident, LitStr),
     NonNavigable(Box<Layout>),
+    MapAny(Box<Layout>, MapAny),
+    MethodCall(Box<Layout>, MethodCall),
 }
 
 #[derive(Debug)]
@@ -453,19 +415,6 @@ bitflags::bitflags! {
         const DOWN = 0b1000;
     }
 }
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Align {
-    None,
-    Default,
-    TL,
-    Center,
-    BR,
-    Stretch,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-struct AlignHints(Align, Align);
 
 #[derive(Debug, Default)]
 struct GridDimensions {
@@ -562,59 +511,42 @@ impl Parse for Tree {
 
 impl Layout {
     fn parse(input: ParseStream, gen: &mut NameGenerator) -> Result<Self> {
-        if input.peek2(Token![!]) {
-            Self::parse_macro_like(input, gen)
+        let mut layout = if input.peek2(Token![!]) {
+            Self::parse_macro_like(input, gen)?
         } else if input.peek(Token![self]) {
-            Ok(Layout::Single(input.parse()?))
+            Layout::Single(input.parse()?)
         } else if input.peek(LitStr) {
-            let stor = gen.next();
-            Ok(Layout::Label(stor, input.parse()?))
+            let ident = gen.next();
+            Layout::Label(ident, input.parse()?)
         } else {
-            let stor = gen.next();
+            let ident = gen.next();
             let expr = input.parse()?;
-            Ok(Layout::Widget(stor, expr))
+            return Ok(Layout::Widget(ident, expr));
+        };
+
+        loop {
+            if let Ok(dot_token) = input.parse::<Token![.]>() {
+                if input.peek(kw::map_any) {
+                    let map_any = MapAny::parse(dot_token, input)?;
+                    layout = Layout::MapAny(Box::new(layout), map_any);
+                } else if input.peek(kw::pack) {
+                    let pack = Pack::parse(dot_token, input, gen)?;
+                    layout = Layout::Pack(Box::new(layout), pack);
+                } else {
+                    let method_call = MethodCall::parse(dot_token, input)?;
+                    layout = Layout::MethodCall(Box::new(layout), method_call);
+                }
+
+                continue;
+            }
+
+            return Ok(layout);
         }
     }
 
     fn parse_macro_like(input: ParseStream, gen: &mut NameGenerator) -> Result<Self> {
         let lookahead = input.lookahead1();
-        if lookahead.peek(kw::align) {
-            let _: kw::align = input.parse()?;
-            let _: Token![!] = input.parse()?;
-
-            let inner;
-            let _ = parenthesized!(inner in input);
-
-            let align = parse_align(&inner)?;
-            let _: Token![,] = inner.parse()?;
-
-            if inner.peek(Token![self]) {
-                Ok(Layout::AlignSingle(inner.parse()?, align))
-            } else {
-                let layout = Layout::parse(&inner, gen)?;
-                Ok(Layout::Align(Box::new(layout), align))
-            }
-        } else if lookahead.peek(kw::pack) {
-            let _: kw::pack = input.parse()?;
-            let _: Token![!] = input.parse()?;
-            let stor = gen.parse_or_next(input)?;
-
-            let inner;
-            let _ = parenthesized!(inner in input);
-
-            let align = parse_align(&inner)?;
-            let _: Token![,] = inner.parse()?;
-
-            let layout = Layout::parse(&inner, gen)?;
-            Ok(Layout::Pack(stor, Box::new(layout), align))
-        } else if lookahead.peek(kw::margins) {
-            let _ = input.parse::<kw::margins>()?;
-            let _: Token![!] = input.parse()?;
-
-            let inner;
-            let _ = parenthesized!(inner in input);
-            Self::margins_inner(&inner, gen)
-        } else if lookahead.peek(kw::frame) {
+        if lookahead.peek(kw::frame) {
             let _: kw::frame = input.parse()?;
             let _: Token![!] = input.parse()?;
             let stor = gen.parse_or_next(input)?;
@@ -716,122 +648,11 @@ impl Layout {
             let layout = Layout::parse(&inner, gen)?;
             Ok(Layout::NonNavigable(Box::new(layout)))
         } else {
-            let stor = gen.next();
+            let ident = gen.next();
             let expr = input.parse()?;
-            Ok(Layout::Widget(stor, expr))
+            Ok(Layout::Widget(ident, expr))
         }
     }
-
-    fn margins_inner(inner: ParseStream, gen: &mut NameGenerator) -> Result<Self> {
-        let mut dirs = Directions::all();
-        if inner.peek2(Token![=]) {
-            let ident = inner.parse::<Ident>()?;
-            dirs = match ident {
-                id if id == "horiz" || id == "horizontal" => Directions::LEFT | Directions::RIGHT,
-                id if id == "vert" || id == "vertical" => Directions::UP | Directions::DOWN,
-                id if id == "left" => Directions::LEFT,
-                id if id == "right" => Directions::RIGHT,
-                id if id == "top" => Directions::UP,
-                id if id == "bottom" => Directions::DOWN,
-                _ => return Err(Error::new(
-                    ident.span(),
-                    "expected one of: horiz, horizontal, vert, vertical, left, right, top, bottom",
-                )),
-            };
-            let _ = inner.parse::<Token![=]>()?;
-        }
-
-        let lookahead = inner.lookahead1();
-        let margins = if lookahead.peek(syn::LitFloat) {
-            let val = inner.parse::<syn::LitFloat>()?;
-            let lookahead = inner.lookahead1();
-            if lookahead.peek(kw::px) {
-                let _ = inner.parse::<kw::px>()?;
-                quote! { Px(#val) }
-            } else if lookahead.peek(kw::em) {
-                let _ = inner.parse::<kw::em>()?;
-                quote! { Em(#val) }
-            } else {
-                return Err(lookahead.error());
-            }
-        } else if lookahead.peek(Ident) {
-            let ident = inner.parse::<Ident>()?;
-            match ident {
-                id if id == "none" => quote! { None },
-                id if id == "inner" => quote! { Inner },
-                id if id == "tiny" => quote! { Tiny },
-                id if id == "small" => quote! { Small },
-                id if id == "large" => quote! { Large },
-                id if id == "text" => quote! { Text },
-                _ => {
-                    return Err(Error::new(
-                        ident.span(),
-                        "expected one of: `none`, `inner`, `tiny`, `small`, `large`, `text` or a numeric value",
-                    ))
-                }
-            }
-        } else {
-            return Err(lookahead.error());
-        };
-
-        let _ = inner.parse::<Token![,]>()?;
-        let layout = Layout::parse(inner, gen)?;
-
-        Ok(Layout::Margins(Box::new(layout), dirs, margins))
-    }
-}
-
-impl Align {
-    fn parse(inner: ParseStream, first: bool) -> Result<Option<Self>> {
-        let lookahead = inner.lookahead1();
-        Ok(Some(if lookahead.peek(kw::default) {
-            let _: kw::default = inner.parse()?;
-            Align::Default
-        } else if lookahead.peek(kw::center) {
-            let _: kw::center = inner.parse()?;
-            Align::Center
-        } else if lookahead.peek(kw::stretch) {
-            let _: kw::stretch = inner.parse()?;
-            Align::Stretch
-        } else if lookahead.peek(kw::top) {
-            if first {
-                return Ok(None);
-            }
-            let _: kw::top = inner.parse()?;
-            Align::TL
-        } else if lookahead.peek(kw::bottom) {
-            if first {
-                return Ok(None);
-            }
-            let _: kw::bottom = inner.parse()?;
-            Align::BR
-        } else if lookahead.peek(kw::left) && first {
-            let _: kw::left = inner.parse()?;
-            Align::TL
-        } else if lookahead.peek(kw::right) && first {
-            let _: kw::right = inner.parse()?;
-            Align::BR
-        } else {
-            return Err(lookahead.error());
-        }))
-    }
-}
-
-fn parse_align(inner: ParseStream) -> Result<AlignHints> {
-    if let Some(first) = Align::parse(inner, true)? {
-        let second = if !inner.is_empty() && !inner.peek(Token![,]) {
-            Align::parse(inner, false)?.unwrap()
-        } else if matches!(first, Align::TL | Align::BR) {
-            Align::None
-        } else {
-            first
-        };
-        return Ok(AlignHints(first, second));
-    }
-
-    let first = Align::None;
-    let second = Align::parse(inner, false)?.unwrap();
-    Ok(AlignHints(first, second))
 }
 
 fn parse_layout_list(input: ParseStream, gen: &mut NameGenerator) -> Result<VisitableList<()>> {
@@ -1005,27 +826,6 @@ impl ToTokens for Directions {
     }
 }
 
-impl ToTokens for AlignHints {
-    fn to_tokens(&self, toks: &mut Toks) {
-        fn align_toks(align: &Align) -> Toks {
-            match align {
-                Align::None => quote! { None },
-                Align::Default => quote! { Some(layout::Align::Default) },
-                Align::Center => quote! { Some(layout::Align::Center) },
-                Align::Stretch => quote! { Some(layout::Align::Stretch) },
-                Align::TL => quote! { Some(layout::Align::TL) },
-                Align::BR => quote! { Some(layout::Align::BR) },
-            }
-        }
-        let horiz = align_toks(&self.0);
-        let vert = align_toks(&self.1);
-
-        toks.append_all(quote! {
-            layout::AlignHints::new(#horiz, #vert)
-        });
-    }
-}
-
 impl ToTokens for Direction {
     fn to_tokens(&self, toks: &mut Toks) {
         match self {
@@ -1051,95 +851,196 @@ impl ToTokens for GridDimensions {
     }
 }
 
+#[derive(Debug)]
+#[allow(unused)]
+struct MapAny {
+    pub dot_token: Token![.],
+    pub kw: kw::map_any,
+    pub paren_token: token::Paren,
+}
+impl MapAny {
+    fn parse(dot_token: Token![.], input: ParseStream) -> Result<Self> {
+        let _content;
+        Ok(MapAny {
+            dot_token,
+            kw: input.parse()?,
+            paren_token: parenthesized!(_content in input),
+        })
+    }
+}
+
+#[derive(Debug)]
+#[allow(unused)]
+struct Pack {
+    pub dot_token: Token![.],
+    pub kw: kw::pack,
+    pub paren_token: token::Paren,
+    pub hints: Expr,
+    pub stor: StorIdent,
+}
+impl Pack {
+    fn parse(dot_token: Token![.], input: ParseStream, gen: &mut NameGenerator) -> Result<Self> {
+        let kw = input.parse::<kw::pack>()?;
+        let content;
+        let paren_token = parenthesized!(content in input);
+        Ok(Pack {
+            dot_token,
+            kw,
+            paren_token,
+            hints: content.parse()?,
+            stor: gen.next().into(),
+        })
+    }
+
+    fn to_tokens(&self, tokens: &mut Toks, core_path: &Toks) {
+        self.dot_token.to_tokens(tokens);
+        self.kw.to_tokens(tokens);
+        self.paren_token.surround(tokens, |tokens| {
+            self.hints.to_tokens(tokens);
+            tokens.append_all(quote! { , &mut #core_path . });
+            self.stor.to_tokens(tokens);
+        });
+    }
+}
+
+// syn::ExprMethodCall without the receiver
+#[derive(Debug)]
+struct MethodCall {
+    pub dot_token: Token![.],
+    pub method: Ident,
+    pub turbofish: Option<AngleBracketedGenericArguments>,
+    pub paren_token: token::Paren,
+    pub args: Punctuated<Expr, Token![,]>,
+}
+impl MethodCall {
+    fn parse(dot_token: Token![.], input: ParseStream) -> Result<Self> {
+        let content;
+        Ok(MethodCall {
+            dot_token,
+            method: input.parse()?,
+            turbofish: if input.peek(Token![::]) {
+                Some(AngleBracketedGenericArguments::parse_turbofish(input)?)
+            } else {
+                None
+            },
+            paren_token: parenthesized!(content in input),
+            args: content.parse_terminated(Expr::parse, Token![,])?,
+        })
+    }
+}
+impl ToTokens for MethodCall {
+    fn to_tokens(&self, tokens: &mut Toks) {
+        self.dot_token.to_tokens(tokens);
+        self.method.to_tokens(tokens);
+        self.turbofish.to_tokens(tokens);
+        self.paren_token.surround(tokens, |tokens| {
+            self.args.to_tokens(tokens);
+        });
+    }
+}
+
 impl Layout {
-    fn append_fields(
-        &self,
-        ty_toks: &mut Toks,
-        def_toks: &mut Toks,
-        children: &mut Vec<Toks>,
-        data_ty: &Type,
-    ) -> bool {
+    fn append_fields(&self, fields: &mut StorageFields, children: &mut Vec<Child>, data_ty: &Type) {
         match self {
-            Layout::Align(layout, _)
-            | Layout::Margins(layout, ..)
-            | Layout::NonNavigable(layout) => {
-                layout.append_fields(ty_toks, def_toks, children, data_ty)
+            Layout::NonNavigable(layout) | Layout::MethodCall(layout, _) => {
+                layout.append_fields(fields, children, data_ty);
             }
-            Layout::AlignSingle(..) | Layout::Single(_) => false,
-            Layout::Pack(stor, layout, _) => {
-                ty_toks.append_all(quote! { #stor: ::kas::layout::PackStorage, });
-                def_toks.append_all(quote! { #stor: Default::default(), });
-                layout.append_fields(ty_toks, def_toks, children, data_ty)
+            Layout::Single(_) => (),
+            Layout::Pack(layout, pack) => {
+                let stor = &pack.stor;
+                fields
+                    .ty_toks
+                    .append_all(quote! { #stor: ::kas::layout::PackStorage, });
+                fields
+                    .def_toks
+                    .append_all(quote! { #stor: Default::default(), });
+                layout.append_fields(fields, children, data_ty);
             }
-            Layout::Widget(stor, expr) => {
-                children.push(stor.to_token_stream());
-                ty_toks.append_all(quote! { #stor: Box<dyn ::kas::Widget<Data = #data_ty>>, });
+            Layout::Widget(ident, expr) => {
+                children.push(Child::new_core(ident.clone().into()));
+                fields
+                    .ty_toks
+                    .append_all(quote! { #ident: Box<dyn ::kas::Widget<Data = #data_ty>>, });
                 let span = expr.span();
-                def_toks.append_all(quote_spanned! {span=> #stor: Box::new(#expr), });
-                true
+                fields
+                    .def_toks
+                    .append_all(quote_spanned! {span=> #ident: Box::new(#expr), });
+                fields.used_data_ty = true;
             }
             Layout::Frame(stor, layout, _) | Layout::Button(stor, layout, _) => {
-                ty_toks.append_all(quote! { #stor: ::kas::layout::FrameStorage, });
-                def_toks.append_all(quote! { #stor: Default::default(), });
-                layout.append_fields(ty_toks, def_toks, children, data_ty)
+                fields
+                    .ty_toks
+                    .append_all(quote! { #stor: ::kas::layout::FrameStorage, });
+                fields
+                    .def_toks
+                    .append_all(quote! { #stor: Default::default(), });
+                layout.append_fields(fields, children, data_ty);
             }
             Layout::List(stor, _, VisitableList(list)) => {
-                def_toks.append_all(quote! { #stor: Default::default(), });
+                fields
+                    .def_toks
+                    .append_all(quote! { #stor: Default::default(), });
 
                 let len = list.len();
-                ty_toks.append_all(if len > 16 {
+                fields.ty_toks.append_all(if len > 16 {
                     quote! { #stor: ::kas::layout::DynRowStorage, }
                 } else {
                     quote! { #stor: ::kas::layout::FixedRowStorage<#len>, }
                 });
-                let mut used_data_ty = false;
                 for item in list {
-                    used_data_ty |= item
-                        .layout
-                        .append_fields(ty_toks, def_toks, children, data_ty);
+                    item.layout.append_fields(fields, children, data_ty);
                 }
-                used_data_ty
             }
             Layout::Float(VisitableList(list)) => {
-                let mut used_data_ty = false;
                 for item in list {
-                    used_data_ty |= item
-                        .layout
-                        .append_fields(ty_toks, def_toks, children, data_ty);
+                    item.layout.append_fields(fields, children, data_ty);
                 }
-                used_data_ty
             }
             Layout::Grid(stor, dim, VisitableList(list)) => {
                 let (cols, rows) = (dim.cols as usize, dim.rows as usize);
-                ty_toks
+                fields
+                    .ty_toks
                     .append_all(quote! { #stor: ::kas::layout::FixedGridStorage<#cols, #rows>, });
-                def_toks.append_all(quote! { #stor: Default::default(), });
+                fields
+                    .def_toks
+                    .append_all(quote! { #stor: Default::default(), });
 
-                let mut used_data_ty = false;
                 for item in list {
-                    used_data_ty |= item
-                        .layout
-                        .append_fields(ty_toks, def_toks, children, data_ty);
+                    item.layout.append_fields(fields, children, data_ty);
                 }
-                used_data_ty
             }
-            Layout::Label(stor, text) => {
-                children.push(stor.to_token_stream());
+            Layout::Label(ident, text) => {
+                children.push(Child::new_core(ident.clone().into()));
                 let span = text.span();
                 if *data_ty == syn::parse_quote! { () } {
-                    ty_toks.append_all(quote! { #stor: ::kas::hidden::StrLabel, });
-                    def_toks.append_all(
-                        quote_spanned! {span=> #stor: ::kas::hidden::StrLabel::new(#text), },
+                    fields
+                        .ty_toks
+                        .append_all(quote! { #ident: ::kas::hidden::StrLabel, });
+                    fields.def_toks.append_all(
+                        quote_spanned! {span=> #ident: ::kas::hidden::StrLabel::new(#text), },
                     );
-                    false
                 } else {
-                    ty_toks.append_all(
-                        quote! { #stor: ::kas::hidden::MapAny<#data_ty, ::kas::hidden::StrLabel>, },
+                    fields.ty_toks.append_all(
+                        quote! { #ident: ::kas::hidden::MapAny<#data_ty, ::kas::hidden::StrLabel>, },
                     );
-                    def_toks.append_all(
-                        quote_spanned! {span=> #stor: ::kas::hidden::MapAny::new(::kas::hidden::StrLabel::new(#text)), },
+                    fields.def_toks.append_all(
+                        quote_spanned! {span=> #ident: ::kas::hidden::MapAny::new(::kas::hidden::StrLabel::new(#text)), },
                     );
-                    true
+                    fields.used_data_ty = true;
+                }
+            }
+            Layout::MapAny(layout, map_any) => {
+                let start = children.len();
+                layout.append_fields(fields, children, &parse_quote! { () });
+                let map_expr: Expr = parse_quote! { &() };
+                for child in &mut children[start..] {
+                    if let Some(ref expr) = child.data_binding {
+                        if *expr != map_expr {
+                            emit_error!(map_any.kw, "invalid data type mapping")
+                        }
+                    } else {
+                        child.data_binding = Some(map_expr.clone());
+                    }
                 }
             }
         }
@@ -1151,30 +1052,16 @@ impl Layout {
     // Required: `::kas::layout` must be in scope.
     fn generate(&self, core_path: &Toks) -> Result<Toks> {
         Ok(match self {
-            Layout::Align(layout, align) => {
-                let inner = layout.generate(core_path)?;
-                quote! { layout::Visitor::align(#inner, #align) }
-            }
-            Layout::AlignSingle(expr, align) => {
-                quote! { layout::Visitor::align_single(&mut #expr, #align) }
-            }
-            Layout::Pack(stor, layout, align) => {
-                let inner = layout.generate(core_path)?;
-                quote! { layout::Visitor::pack(&mut #core_path.#stor, #inner, #align) }
-            }
-            Layout::Margins(layout, dirs, selector) => {
-                let inner = layout.generate(core_path)?;
-                quote! { layout::Visitor::margins(
-                    #inner,
-                    ::kas::dir::Directions::from_bits(#dirs).unwrap(),
-                    ::kas::theme::MarginStyle::#selector,
-                ) }
+            Layout::Pack(layout, pack) => {
+                let mut tokens = layout.generate(core_path)?;
+                pack.to_tokens(&mut tokens, core_path);
+                tokens
             }
             Layout::Single(expr) => quote! {
                 layout::Visitor::single(&mut #expr)
             },
-            Layout::Widget(stor, _) => quote! {
-                layout::Visitor::single(&mut #core_path.#stor)
+            Layout::Widget(ident, _) => quote! {
+                layout::Visitor::single(&mut #core_path.#ident)
             },
             Layout::Frame(stor, layout, style) => {
                 let inner = layout.generate(core_path)?;
@@ -1206,7 +1093,13 @@ impl Layout {
             Layout::Label(stor, _) => {
                 quote! { layout::Visitor::single(&mut #core_path.#stor) }
             }
-            Layout::NonNavigable(layout) => return layout.generate(core_path),
+            Layout::NonNavigable(layout) | Layout::MapAny(layout, _) => {
+                return layout.generate(core_path)
+            }
+            Layout::MethodCall(layout, method_call) => {
+                let inner = layout.generate(core_path)?;
+                quote! { #inner #method_call }
+            }
         })
     }
 
@@ -1214,42 +1107,48 @@ impl Layout {
     ///
     /// -   `output`: the result
     /// -   `index`: the next widget's index
-    fn nav_next<'a, I: Clone + Iterator<Item = &'a Member>>(
+    fn nav_next<'a, I: Clone + Iterator<Item = &'a Child>>(
         &self,
         children: I,
         output: &mut Vec<usize>,
-        index: &mut usize,
     ) -> std::result::Result<(), (Span, &'static str)> {
         match self {
-            Layout::Align(layout, _)
-            | Layout::Pack(_, layout, _)
-            | Layout::Margins(layout, _, _)
-            | Layout::Frame(_, layout, _) => layout.nav_next(children, output, index),
-            Layout::Button(_, layout, _) | Layout::NonNavigable(layout) => {
-                // Internals of a button are not navigable, but we still need to increment index
-                let start = output.len();
-                layout.nav_next(children, output, index)?;
-                output.truncate(start);
+            Layout::Pack(layout, _)
+            | Layout::Frame(_, layout, _)
+            | Layout::MapAny(layout, _)
+            | Layout::MethodCall(layout, _) => layout.nav_next(children, output),
+            Layout::Button(_, _, _) | Layout::NonNavigable(_) => {
+                // Internals of a button are not navigable
                 Ok(())
             }
-            Layout::AlignSingle(m, _) | Layout::Single(m) => {
+            Layout::Single(m) => {
                 for (i, child) in children.enumerate() {
-                    if m.member == *child {
-                        output.push(i);
-                        return Ok(());
+                    if let ChildIdent::Field(ref ident) = child.ident {
+                        if m.member == *ident {
+                            output.push(i);
+                            return Ok(());
+                        }
                     }
                 }
                 Err((m.member.span(), "child not found"))
             }
-            Layout::Widget(_, _) => {
-                output.push(*index);
-                *index += 1;
-                Ok(())
+            Layout::Widget(ident, _) => {
+                for (i, child) in children.enumerate() {
+                    if let ChildIdent::CoreField(ref child_ident) = child.ident {
+                        if let Member::Named(ref ci) = child_ident {
+                            if *ident == *ci {
+                                output.push(i);
+                                return Ok(());
+                            }
+                        }
+                    }
+                }
+                panic!("generated child not found")
             }
             Layout::List(_, dir, VisitableList(list)) => {
                 let start = output.len();
                 for item in list {
-                    item.layout.nav_next(children.clone(), output, index)?;
+                    item.layout.nav_next(children.clone(), output)?;
                 }
                 match dir {
                     _ if output.len() <= start + 1 => Ok(()),
@@ -1261,34 +1160,29 @@ impl Layout {
             Layout::Grid(_, _, VisitableList(list)) => {
                 // TODO: sort using CellInfo?
                 for item in list {
-                    item.layout.nav_next(children.clone(), output, index)?;
+                    item.layout.nav_next(children.clone(), output)?;
                 }
                 Ok(())
             }
             Layout::Float(VisitableList(list)) => {
                 for item in list {
-                    item.layout.nav_next(children.clone(), output, index)?;
+                    item.layout.nav_next(children.clone(), output)?;
                 }
                 Ok(())
             }
-            Layout::Label(_, _) => {
-                *index += 1;
-                Ok(())
-            }
+            Layout::Label(_, _) => Ok(()),
         }
     }
 
     fn span_in_layout(&self, ident: &Member) -> Option<Span> {
         match self {
-            Layout::Align(layout, _)
-            | Layout::Pack(_, layout, _)
-            | Layout::Margins(layout, _, _)
+            Layout::Pack(layout, _)
             | Layout::Frame(_, layout, _)
             | Layout::Button(_, layout, _)
-            | Layout::NonNavigable(layout) => layout.span_in_layout(ident),
-            Layout::AlignSingle(expr, _) | Layout::Single(expr) => {
-                (expr.member == *ident).then(|| expr.span())
-            }
+            | Layout::NonNavigable(layout)
+            | Layout::MapAny(layout, _)
+            | Layout::MethodCall(layout, _) => layout.span_in_layout(ident),
+            Layout::Single(expr) => (expr.member == *ident).then(|| expr.span()),
             Layout::Widget(..) => None,
             Layout::List(_, _, VisitableList(list)) | Layout::Float(VisitableList(list)) => list
                 .iter()

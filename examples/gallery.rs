@@ -159,21 +159,19 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
         ],
         row![
             "Button (image)",
-            pack!(
-                center,
-                kas::row![
-                    Button::new_msg(img_light.clone(), Item::Theme("light"))
-                        .with_color("#B38DF9".parse().unwrap())
-                        .with_access_key(Key::Character("h".into())),
-                    Button::new_msg(img_light, Item::Theme("blue"))
-                        .with_color("#7CDAFF".parse().unwrap())
-                        .with_access_key(Key::Character("b".into())),
-                    Button::new_msg(img_dark, Item::Theme("dark"))
-                        .with_color("#E77346".parse().unwrap())
-                        .with_access_key(Key::Character("k".into())),
-                ]
-                .map_any()
-            )
+            row![
+                Button::new_msg(img_light.clone(), Item::Theme("light"))
+                    .with_color("#B38DF9".parse().unwrap())
+                    .with_access_key(Key::Character("h".into())),
+                Button::new_msg(img_light, Item::Theme("blue"))
+                    .with_color("#7CDAFF".parse().unwrap())
+                    .with_access_key(Key::Character("b".into())),
+                Button::new_msg(img_dark, Item::Theme("dark"))
+                    .with_color("#E77346".parse().unwrap())
+                    .with_access_key(Key::Character("k".into())),
+            ]
+            .map_any()
+            .pack(AlignHints::CENTER),
         ],
         row![
             "CheckButton",
@@ -221,7 +219,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
                 .with_scaling(|s| {
                     s.min_factor = 0.1;
                     s.ideal_factor = 0.2;
-                    s.stretch = kas::layout::Stretch::High;
+                    s.stretch = Stretch::High;
                 })
                 .map_any()
         ],
@@ -309,7 +307,9 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 ";
 
     let ui = kas::float![
-        pack!(right top, Button::label_msg("↻", MsgDirection).map_any()),
+        Button::label_msg("↻", MsgDirection)
+            .map_any()
+            .pack(AlignHints::TOP_RIGHT),
         Splitter::new(kas::collection![
             EditBox::new(Guard)
                 .with_multi_line(true)
@@ -391,14 +391,14 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
             cx.action(list, act);
         });
 
+    let sel_buttons = kas::row![
+        "Selection:",
+        RadioButton::new_value("&n&one", SelectionMode::None),
+        RadioButton::new_value("s&ingle", SelectionMode::Single),
+        RadioButton::new_value("&multiple", SelectionMode::Multiple),
+    ];
     let ui = kas::column![
-        kas::row![
-            "Selection:",
-            RadioButton::new_value("&n&one", SelectionMode::None),
-            RadioButton::new_value("s&ingle", SelectionMode::Single),
-            RadioButton::new_value("&multiple", SelectionMode::Multiple),
-        ]
-        .map(|data: &Data| &data.mode),
+        sel_buttons.map(|data: &Data| &data.mode),
         ScrollBars::new(list_view),
     ];
     let ui = Adapt::new(ui, data)

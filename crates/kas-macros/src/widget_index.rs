@@ -51,10 +51,10 @@ impl Parse for WidgetInput {
     }
 }
 
-struct Visitor<'a, I: Clone + Iterator<Item = &'a Member>> {
+struct Visitor<'a, I: Clone + Iterator<Item = (usize, &'a Member)>> {
     children: I,
 }
-impl<'a, I: Clone + Iterator<Item = &'a Member>> VisitMut for Visitor<'a, I> {
+impl<'a, I: Clone + Iterator<Item = (usize, &'a Member)>> VisitMut for Visitor<'a, I> {
     fn visit_macro_mut(&mut self, node: &mut syn::Macro) {
         // HACK: we cannot expand the macro here since we do not have an Expr
         // to replace. Instead we can only modify the macro's tokens.
@@ -71,7 +71,7 @@ impl<'a, I: Clone + Iterator<Item = &'a Member>> VisitMut for Visitor<'a, I> {
                 }
             };
 
-            for (i, child) in self.children.clone().enumerate() {
+            for (i, child) in self.children.clone() {
                 if args.ident == *child {
                     node.tokens = parse_quote! { #i };
                     return;
@@ -87,7 +87,7 @@ impl<'a, I: Clone + Iterator<Item = &'a Member>> VisitMut for Visitor<'a, I> {
     }
 }
 
-pub fn visit_impls<'a, I: Clone + Iterator<Item = &'a Member>>(
+pub fn visit_impls<'a, I: Clone + Iterator<Item = (usize, &'a Member)>>(
     children: I,
     impls: &mut [syn::ItemImpl],
 ) {

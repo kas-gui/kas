@@ -34,14 +34,18 @@ pub trait Visitable {
 
     /// Set size and position
     ///
-    /// This method is identical to [`Layout::set_rect`].
+    /// The caller is expected to set `self.core.rect = rect;`.
+    /// In other respects, this functions identically to [`Layout::set_rect`].
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect);
 
     /// Translate a coordinate to an [`Id`]
     ///
-    /// Implementations should recursively call `find_id` on children, returning
-    /// `None` if no child returns an `Id`.
-    /// This method is simplified relative to [`Layout::find_id`].
+    /// The caller is expected to
+    ///
+    /// 1.  Return `None` if `!self.rect().contains(coord)`
+    /// 2.  Translate `coord`: `let coord = coord + self.translation();`
+    /// 3.  Call `find_id` (this method), returning its result if not `None`
+    /// 4.  Otherwise return `Some(self.id())`
     fn find_id(&mut self, coord: Coord) -> Option<Id>;
 
     /// Draw a widget and its children
@@ -94,32 +98,6 @@ impl<'a> Visitor<Box<dyn Visitable + 'a>> {
     /// Construct a single-item layout
     pub fn single(widget: &'a mut dyn Layout) -> Visitor<impl Visitable + 'a> {
         Visitor(Single { widget })
-    }
-
-    /// Construct a single-item layout with alignment hints
-    pub fn align_single(
-        widget: &'a mut dyn Layout,
-        hints: AlignHints,
-    ) -> Visitor<impl Visitable + 'a> {
-        Self::align(Self::single(widget), hints)
-    }
-
-    /// Construct a sub-layout with alignment hints
-    pub fn align<C: Visitable + 'a>(child: C, hints: AlignHints) -> Visitor<impl Visitable + 'a> {
-        Visitor(Align { child, hints })
-    }
-
-    /// Construct a sub-layout which is squashed and aligned
-    pub fn pack<C: Visitable + 'a>(
-        storage: &'a mut PackStorage,
-        child: C,
-        hints: AlignHints,
-    ) -> Visitor<impl Visitable + 'a> {
-        Visitor(Pack {
-            child,
-            storage,
-            hints,
-        })
     }
 
     /// Replace the margins of a sub-layout
@@ -203,7 +181,32 @@ impl<'a> Visitor<Box<dyn Visitable + 'a>> {
 }
 
 impl<V: Visitable> Visitor<V> {
+    /// Apply alignment
+    pub fn align(self, hints: AlignHints) -> Visitor<impl Visitable> {
+        Visitor(Align { child: self, hints })
+    }
+
+    /// Apply alignment and squash
+    pub fn pack<'a>(
+        self,
+        hints: AlignHints,
+        storage: &'a mut PackStorage,
+    ) -> Visitor<impl Visitable + 'a>
+    where
+        V: 'a,
+    {
+        Visitor(Pack {
+            child: self,
+            hints,
+            storage,
+        })
+    }
+}
+
+impl<V: Visitable> Visitor<V> {
     /// Get size rules for the given axis
+    ///
+    /// This method is identical to [`Layout::size_rules`].
     #[inline]
     pub fn size_rules(mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         self.size_rules_(sizer, axis)
@@ -213,6 +216,9 @@ impl<V: Visitable> Visitor<V> {
     }
 
     /// Apply a given `rect` to self
+    ///
+    /// The caller is expected to set `self.core.rect = rect;`.
+    /// In other respects, this functions identically to [`Layout::set_rect`].
     #[inline]
     pub fn set_rect(mut self, cx: &mut ConfigCx, rect: Rect) {
         self.set_rect_(cx, rect);
@@ -221,10 +227,14 @@ impl<V: Visitable> Visitor<V> {
         self.0.set_rect(cx, rect);
     }
 
-    /// Find a widget by coordinate
+    /// Translate a coordinate to an [`Id`]
     ///
-    /// Does not return the widget's own identifier. See example usage in
-    /// [`Visitor::find_id`].
+    /// The caller is expected to
+    ///
+    /// 1.  Return `None` if `!self.rect().contains(coord)`
+    /// 2.  Translate `coord`: `let coord = coord + self.translation();`
+    /// 3.  Call `find_id` (this method), returning its result if not `None`
+    /// 4.  Otherwise return `Some(self.id())`
     #[inline]
     pub fn find_id(mut self, coord: Coord) -> Option<Id> {
         self.find_id_(coord)
@@ -233,7 +243,9 @@ impl<V: Visitable> Visitor<V> {
         self.0.find_id(coord)
     }
 
-    /// Draw a widget's children
+    /// Draw a widget and its children
+    ///
+    /// This method is identical to [`Layout::draw`].
     #[inline]
     pub fn draw(mut self, draw: DrawCx) {
         self.draw_(draw);
@@ -309,17 +321,14 @@ impl<C: Visitable> Visitable for Align<C> {
 
 struct Pack<'a, C: Visitable> {
     child: C,
-    storage: &'a mut PackStorage,
     hints: AlignHints,
+    storage: &'a mut PackStorage,
 }
 
 impl<'a, C: Visitable> Visitable for Pack<'a, C> {
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        let rules = self
-            .child
-            .size_rules(sizer, self.storage.apply_align(axis, self.hints));
-        self.storage.size.set_component(axis, rules.ideal_size());
-        rules
+        self.storage
+            .child_size_rules(self.hints, axis, |axis| self.child.size_rules(sizer, axis))
     }
 
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
@@ -602,36 +611,45 @@ where
     }
 }
 
-/// Layout storage for alignment
+/// Layout storage for pack
 #[derive(Clone, Default, Debug)]
 pub struct PackStorage {
     align: AlignPair,
     size: Size,
 }
 impl PackStorage {
-    /// Set alignment
-    fn apply_align(&mut self, axis: AxisInfo, hints: AlignHints) -> AxisInfo {
+    /// Calculate child's [`SizeRules`]
+    pub fn child_size_rules(
+        &mut self,
+        hints: AlignHints,
+        axis: AxisInfo,
+        size_child: impl FnOnce(AxisInfo) -> SizeRules,
+    ) -> SizeRules {
         let axis = axis.with_align_hints(hints);
         self.align.set_component(axis, axis.align_or_default());
-        axis
+        let rules = size_child(axis);
+        self.size.set_component(axis, rules.ideal_size());
+        rules
     }
 
     /// Align rect
-    fn aligned_rect(&self, rect: Rect) -> Rect {
+    pub fn aligned_rect(&self, rect: Rect) -> Rect {
         self.align.aligned_rect(self.size, rect)
     }
 }
 
-/// Layout storage for frame layout
+/// Layout storage for frame
 #[derive(Clone, Default, Debug)]
 pub struct FrameStorage {
     /// Size used by frame (sum of widths of borders)
     pub size: Size,
     /// Offset of frame contents from parent position
     pub offset: Offset,
-    // NOTE: potentially rect is redundant (e.g. with widget's rect) but if we
-    // want an alternative as a generic solution then all draw methods must
-    // calculate and pass the child's rect, which is probably worse.
+    /// [`Rect`] assigned to whole frame
+    ///
+    /// NOTE: for a top-level layout component this is redundant with the
+    /// widget's rect. For frames deeper within a widget's layout we *could*
+    /// instead recalculate this (in every draw call etc.).
     rect: Rect,
 }
 impl FrameStorage {

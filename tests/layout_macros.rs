@@ -1,3 +1,4 @@
+use kas::layout::AlignHints;
 use kas::Widget;
 
 fn use_widget<W: Widget<Data = ()>>(_: W) {}
@@ -20,9 +21,9 @@ fn list() {
 #[test]
 fn float() {
     use_widget(kas::float![
-        pack!(left top, "one"),
-        pack!(right bottom, "two"),
-        "some text\nin the\nbackground"
+        "one".pack(AlignHints::TOP_LEFT),
+        "two".pack(AlignHints::BOTTOM_RIGHT),
+        "some text\nin the\nbackground",
     ]);
 }
 
@@ -47,21 +48,4 @@ fn aligned_row() {
     use_widget(kas::aligned_row![column!["one", "two"], column![
         "three", "four"
     ],]);
-}
-
-#[test]
-fn align() {
-    use_widget(kas::align!(right, "132"));
-    use_widget(kas::align!(left top, "abc"));
-}
-
-#[test]
-fn pack() {
-    use_widget(kas::pack!(right top, "132"));
-}
-
-#[test]
-fn margins() {
-    use_widget(kas::margins!(1.0 em, "abc"));
-    use_widget(kas::margins!(vert = none, "abc"));
 }
