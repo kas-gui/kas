@@ -9,10 +9,9 @@ use proc_macro2::{Span, TokenStream as Toks};
 use proc_macro_error::emit_error;
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
-use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{braced, bracketed, parenthesized, parse_quote, token};
-use syn::{AngleBracketedGenericArguments, Expr, Ident, LitInt, LitStr, Member, Token, Type};
+use syn::{Expr, Ident, LitInt, LitStr, Member, Token, Type};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -375,6 +374,7 @@ impl GenerateItem for CellInfo {
 
 #[derive(Debug)]
 enum Layout {
+    Align(Box<Layout>, Align),
     Pack(Box<Layout>, Pack),
     Single(ExprMember),
     Widget(Ident, Expr),
@@ -386,7 +386,6 @@ enum Layout {
     Label(Ident, LitStr),
     NonNavigable(Box<Layout>),
     MapAny(Box<Layout>, MapAny),
-    MethodCall(Box<Layout>, MethodCall),
 }
 
 #[derive(Debug)]
@@ -529,12 +528,32 @@ impl Layout {
                 if input.peek(kw::map_any) {
                     let map_any = MapAny::parse(dot_token, input)?;
                     layout = Layout::MapAny(Box::new(layout), map_any);
+                } else if input.peek(kw::align) {
+                    let align = Align::parse(dot_token, input)?;
+                    layout = Layout::Align(Box::new(layout), align);
                 } else if input.peek(kw::pack) {
                     let pack = Pack::parse(dot_token, input, gen)?;
                     layout = Layout::Pack(Box::new(layout), pack);
+                } else if let Ok(ident) = input.parse::<Ident>() {
+                    emit_error!(
+                        ident, "method not supported here";
+                        note = "supported methods on layout objects: `map_any`, `align`, `pack`",
+                    );
+
+                    // Clear remainder of input stream to avoid a redundant error
+                    let _ = input.step(|cursor| {
+                        let mut rest = *cursor;
+                        while let Some((_, next)) = rest.token_tree() {
+                            rest = next;
+                        }
+                        Ok(((), rest))
+                    })?;
+
+                    // Continue with macro expansion to minimise secondary errors
+                    return Ok(layout);
                 } else {
-                    let method_call = MethodCall::parse(dot_token, input)?;
-                    layout = Layout::MethodCall(Box::new(layout), method_call);
+                    // syn will report error due to unparsed tokens
+                    return Ok(layout);
                 }
 
                 continue;
@@ -871,6 +890,37 @@ impl MapAny {
 
 #[derive(Debug)]
 #[allow(unused)]
+struct Align {
+    pub dot_token: Token![.],
+    pub kw: kw::align,
+    pub paren_token: token::Paren,
+    pub hints: Expr,
+}
+impl Align {
+    fn parse(dot_token: Token![.], input: ParseStream) -> Result<Self> {
+        let kw = input.parse::<kw::align>()?;
+        let content;
+        let paren_token = parenthesized!(content in input);
+        Ok(Align {
+            dot_token,
+            kw,
+            paren_token,
+            hints: content.parse()?,
+        })
+    }
+}
+impl ToTokens for Align {
+    fn to_tokens(&self, tokens: &mut Toks) {
+        self.dot_token.to_tokens(tokens);
+        self.kw.to_tokens(tokens);
+        self.paren_token.surround(tokens, |tokens| {
+            self.hints.to_tokens(tokens);
+        });
+    }
+}
+
+#[derive(Debug)]
+#[allow(unused)]
 struct Pack {
     pub dot_token: Token![.],
     pub kw: kw::pack,
@@ -903,46 +953,10 @@ impl Pack {
     }
 }
 
-// syn::ExprMethodCall without the receiver
-#[derive(Debug)]
-struct MethodCall {
-    pub dot_token: Token![.],
-    pub method: Ident,
-    pub turbofish: Option<AngleBracketedGenericArguments>,
-    pub paren_token: token::Paren,
-    pub args: Punctuated<Expr, Token![,]>,
-}
-impl MethodCall {
-    fn parse(dot_token: Token![.], input: ParseStream) -> Result<Self> {
-        let content;
-        Ok(MethodCall {
-            dot_token,
-            method: input.parse()?,
-            turbofish: if input.peek(Token![::]) {
-                Some(AngleBracketedGenericArguments::parse_turbofish(input)?)
-            } else {
-                None
-            },
-            paren_token: parenthesized!(content in input),
-            args: content.parse_terminated(Expr::parse, Token![,])?,
-        })
-    }
-}
-impl ToTokens for MethodCall {
-    fn to_tokens(&self, tokens: &mut Toks) {
-        self.dot_token.to_tokens(tokens);
-        self.method.to_tokens(tokens);
-        self.turbofish.to_tokens(tokens);
-        self.paren_token.surround(tokens, |tokens| {
-            self.args.to_tokens(tokens);
-        });
-    }
-}
-
 impl Layout {
     fn append_fields(&self, fields: &mut StorageFields, children: &mut Vec<Child>, data_ty: &Type) {
         match self {
-            Layout::NonNavigable(layout) | Layout::MethodCall(layout, _) => {
+            Layout::Align(layout, _) | Layout::NonNavigable(layout) => {
                 layout.append_fields(fields, children, data_ty);
             }
             Layout::Single(_) => (),
@@ -1052,6 +1066,11 @@ impl Layout {
     // Required: `::kas::layout` must be in scope.
     fn generate(&self, core_path: &Toks) -> Result<Toks> {
         Ok(match self {
+            Layout::Align(layout, align) => {
+                let mut tokens = layout.generate(core_path)?;
+                align.to_tokens(&mut tokens);
+                tokens
+            }
             Layout::Pack(layout, pack) => {
                 let mut tokens = layout.generate(core_path)?;
                 pack.to_tokens(&mut tokens, core_path);
@@ -1096,10 +1115,6 @@ impl Layout {
             Layout::NonNavigable(layout) | Layout::MapAny(layout, _) => {
                 return layout.generate(core_path)
             }
-            Layout::MethodCall(layout, method_call) => {
-                let inner = layout.generate(core_path)?;
-                quote! { #inner #method_call }
-            }
         })
     }
 
@@ -1113,10 +1128,10 @@ impl Layout {
         output: &mut Vec<usize>,
     ) -> std::result::Result<(), (Span, &'static str)> {
         match self {
-            Layout::Pack(layout, _)
+            Layout::Align(layout, _)
+            | Layout::Pack(layout, _)
             | Layout::Frame(_, layout, _)
-            | Layout::MapAny(layout, _)
-            | Layout::MethodCall(layout, _) => layout.nav_next(children, output),
+            | Layout::MapAny(layout, _) => layout.nav_next(children, output),
             Layout::Button(_, _, _) | Layout::NonNavigable(_) => {
                 // Internals of a button are not navigable
                 Ok(())
@@ -1176,12 +1191,12 @@ impl Layout {
 
     fn span_in_layout(&self, ident: &Member) -> Option<Span> {
         match self {
-            Layout::Pack(layout, _)
+            Layout::Align(layout, _)
+            | Layout::Pack(layout, _)
             | Layout::Frame(_, layout, _)
             | Layout::Button(_, layout, _)
             | Layout::NonNavigable(layout)
-            | Layout::MapAny(layout, _)
-            | Layout::MethodCall(layout, _) => layout.span_in_layout(ident),
+            | Layout::MapAny(layout, _) => layout.span_in_layout(ident),
             Layout::Single(expr) => (expr.member == *ident).then(|| expr.span()),
             Layout::Widget(..) => None,
             Layout::List(_, _, VisitableList(list)) | Layout::Float(VisitableList(list)) => list
