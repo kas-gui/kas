@@ -511,8 +511,11 @@ impl Parse for Tree {
 }
 
 impl Layout {
-    fn parse(input: ParseStream, gen: &mut NameGenerator, recurse: bool) -> Result<Self> {
-        let mut layout = if recurse && input.peek2(Token![!]) {
+    fn parse(input: ParseStream, gen: &mut NameGenerator, _recurse: bool) -> Result<Self> {
+        #[cfg(feature = "recursive-layout-widgets")]
+        let _recurse = true;
+
+        let mut layout = if _recurse && input.peek2(Token![!]) {
             Self::parse_macro_like(input, gen)?
         } else if input.peek(Token![self]) {
             Layout::Single(input.parse()?)

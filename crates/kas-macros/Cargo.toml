@@ -19,6 +19,9 @@ proc-macro = true
 # Requires that all crates using these macros depend on the log crate.
 log = []
 
+# Optimize generated layout widgets
+recursive-layout-widgets = []
+
 [dependencies]
 quote = "1.0"
 proc-macro2 = { version = "1.0" }
