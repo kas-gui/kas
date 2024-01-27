@@ -8,7 +8,7 @@
 //! Each window shares the counter, but has its own increment step.
 
 use kas::widgets::{format_data, label_any, Adapt, Button, Slider};
-use kas::{messages::MessageStack, Window};
+use kas::{column, messages::MessageStack, row, Window};
 
 #[derive(Clone, Debug)]
 struct Increment(i32);
@@ -37,7 +37,7 @@ fn counter(title: &str) -> Window<Count> {
     struct SetValue(i32);
 
     let slider = Slider::right(1..=10, |_, data: &Data| data.1).with_msg(SetValue);
-    let ui = kas::column![
+    let ui = column![
         format_data!(data: &Data, "Count: {}", data.0.0),
         row![slider, format_data!(data: &Data, "{}", data.1)],
         row![

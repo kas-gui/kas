@@ -20,9 +20,9 @@
 //! is still fast.
 
 use kas::prelude::*;
-use kas::row;
 use kas::widgets::edit::{EditBox, EditField, EditGuard};
 use kas::widgets::{Adapt, Button, Label, List, RadioButton, ScrollBarRegion, Separator, Text};
+use kas::{column, row};
 
 #[derive(Debug)]
 struct SelectEntry(usize);
@@ -170,7 +170,7 @@ fn main() -> kas::app::Result<()> {
         }
         cx.action(list, act);
     });
-    let tree = kas::column![
+    let tree = column![
         "Demonstration of dynamic widget creation / deletion",
         controls.map(|data: &Data| &data.len),
         "Contents of selected entry:",

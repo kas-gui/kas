@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use kas::prelude::*;
 use kas::widgets::{format_data, Adapt, Button};
-use kas::Decorations;
+use kas::{row, Decorations};
 
 #[derive(Clone, Debug)]
 struct MsgReset;
@@ -23,7 +23,7 @@ struct Timer {
 }
 
 fn make_window() -> impl Widget<Data = ()> {
-    let ui = kas::row![
+    let ui = row![
         format_data!(timer: &Timer, "{}.{:03}", timer.elapsed.as_secs(), timer.elapsed.subsec_millis()),
         Button::label_msg("&reset", MsgReset).map_any(),
         Button::label_msg("&start / &stop", MsgStart).map_any(),

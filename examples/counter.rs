@@ -7,12 +7,13 @@
 
 use kas::prelude::*;
 use kas::widgets::{format_value, Adapt, Button};
+use kas::{column, row};
 
 #[derive(Clone, Debug)]
 struct Increment(i32);
 
 fn counter() -> impl Widget<Data = ()> {
-    let tree = kas::column![
+    let tree = column![
         format_value!("{}").align(AlignHints::CENTER),
         row![
             Button::label_msg("−", Increment(-1)),

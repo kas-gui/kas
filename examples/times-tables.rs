@@ -3,6 +3,7 @@
 use kas::prelude::*;
 use kas::view::{driver, MatrixData, MatrixView, SelectionMode, SelectionMsg, SharedData};
 use kas::widgets::{Adapt, EditBox, ScrollBars};
+use kas::{column, row};
 
 #[derive(Debug)]
 struct TableSize(usize);
@@ -54,7 +55,7 @@ fn main() -> kas::app::Result<()> {
     #[derive(Debug)]
     struct SetLen(usize);
 
-    let ui = kas::column![
+    let ui = column![
         row![
             "From 1 to",
             EditBox::parser(|data: &TableSize| data.0, SetLen)

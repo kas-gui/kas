@@ -7,6 +7,7 @@
 
 use kas::prelude::*;
 use kas::widgets::{Adapt, Button, EditField, Splitter};
+use kas::{column, row};
 
 #[derive(Clone, Debug)]
 enum Message {
@@ -17,7 +18,7 @@ enum Message {
 fn main() -> kas::app::Result<()> {
     env_logger::init();
 
-    let ui = kas::column![
+    let ui = column![
         row![
             Button::label_msg("−", Message::Decr),
             Button::label_msg("+", Message::Incr),

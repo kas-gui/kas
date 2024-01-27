@@ -266,7 +266,7 @@ impl Tree {
     pub fn column(inner: ParseStream) -> Result<Self> {
         let mut gen = NameGenerator::default();
         let stor = gen.next();
-        let list = parse_layout_items(inner, &mut gen)?;
+        let list = parse_layout_items(inner, &mut gen, false)?;
         Ok(Tree(Layout::List(stor.into(), Direction::Down, list)))
     }
 
@@ -274,7 +274,7 @@ impl Tree {
     pub fn row(inner: ParseStream) -> Result<Self> {
         let mut gen = NameGenerator::default();
         let stor = gen.next();
-        let list = parse_layout_items(inner, &mut gen)?;
+        let list = parse_layout_items(inner, &mut gen, false)?;
         Ok(Tree(Layout::List(stor.into(), Direction::Right, list)))
     }
 
@@ -287,6 +287,7 @@ impl Tree {
             inner,
             &mut gen,
             true,
+            false,
         )?))
     }
 
@@ -299,6 +300,7 @@ impl Tree {
             inner,
             &mut gen,
             false,
+            false,
         )?))
     }
 
@@ -308,14 +310,14 @@ impl Tree {
         let stor = gen.next();
         let dir: Direction = inner.parse()?;
         let _: Token![,] = inner.parse()?;
-        let list = parse_layout_list(inner, &mut gen)?;
+        let list = parse_layout_list(inner, &mut gen, false)?;
         Ok(Tree(Layout::List(stor.into(), dir, list)))
     }
 
     /// Parse a float (contents only)
     pub fn float(inner: ParseStream) -> Result<Self> {
         let mut gen = NameGenerator::default();
-        let list = parse_layout_items(inner, &mut gen)?;
+        let list = parse_layout_items(inner, &mut gen, false)?;
         Ok(Tree(Layout::Float(list)))
     }
 
@@ -323,7 +325,7 @@ impl Tree {
     pub fn grid(inner: ParseStream) -> Result<Self> {
         let mut gen = NameGenerator::default();
         let stor = gen.next();
-        Ok(Tree(parse_grid(stor.into(), inner, &mut gen)?))
+        Ok(Tree(parse_grid(stor.into(), inner, &mut gen, false)?))
     }
 }
 
@@ -504,13 +506,13 @@ impl GridDimensions {
 impl Parse for Tree {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut gen = NameGenerator::default();
-        Ok(Tree(Layout::parse(input, &mut gen)?))
+        Ok(Tree(Layout::parse(input, &mut gen, true)?))
     }
 }
 
 impl Layout {
-    fn parse(input: ParseStream, gen: &mut NameGenerator) -> Result<Self> {
-        let mut layout = if input.peek2(Token![!]) {
+    fn parse(input: ParseStream, gen: &mut NameGenerator, recurse: bool) -> Result<Self> {
+        let mut layout = if recurse && input.peek2(Token![!]) {
             Self::parse_macro_like(input, gen)?
         } else if input.peek(Token![self]) {
             Layout::Single(input.parse()?)
@@ -572,7 +574,7 @@ impl Layout {
 
             let inner;
             let _ = parenthesized!(inner in input);
-            let layout = Layout::parse(&inner, gen)?;
+            let layout = Layout::parse(&inner, gen, true)?;
 
             let style: Expr = if !inner.is_empty() {
                 let _: Token![,] = inner.parse()?;
@@ -591,7 +593,7 @@ impl Layout {
 
             let inner;
             let _ = parenthesized!(inner in input);
-            let layout = Layout::parse(&inner, gen)?;
+            let layout = Layout::parse(&inner, gen, true)?;
 
             let color: Expr = if !inner.is_empty() {
                 let _: Token![,] = inner.parse()?;
@@ -607,13 +609,13 @@ impl Layout {
             let _: kw::column = input.parse()?;
             let _: Token![!] = input.parse()?;
             let stor = gen.parse_or_next(input)?;
-            let list = parse_layout_list(input, gen)?;
+            let list = parse_layout_list(input, gen, true)?;
             Ok(Layout::List(stor, Direction::Down, list))
         } else if lookahead.peek(kw::row) {
             let _: kw::row = input.parse()?;
             let _: Token![!] = input.parse()?;
             let stor = gen.parse_or_next(input)?;
-            let list = parse_layout_list(input, gen)?;
+            let list = parse_layout_list(input, gen, true)?;
             Ok(Layout::List(stor, Direction::Right, list))
         } else if lookahead.peek(kw::list) {
             let _: kw::list = input.parse()?;
@@ -623,12 +625,12 @@ impl Layout {
             let _ = parenthesized!(inner in input);
             let dir: Direction = inner.parse()?;
             let _: Token![,] = inner.parse()?;
-            let list = parse_layout_list(&inner, gen)?;
+            let list = parse_layout_list(&inner, gen, true)?;
             Ok(Layout::List(stor, dir, list))
         } else if lookahead.peek(kw::float) {
             let _: kw::float = input.parse()?;
             let _: Token![!] = input.parse()?;
-            let list = parse_layout_list(input, gen)?;
+            let list = parse_layout_list(input, gen, true)?;
             Ok(Layout::Float(list))
         } else if lookahead.peek(kw::aligned_column) {
             let _: kw::aligned_column = input.parse()?;
@@ -638,7 +640,7 @@ impl Layout {
             let inner;
             let _ = bracketed!(inner in input);
             Ok(parse_grid_as_list_of_lists::<kw::row>(
-                stor, &inner, gen, true,
+                stor, &inner, gen, true, true,
             )?)
         } else if lookahead.peek(kw::aligned_row) {
             let _: kw::aligned_row = input.parse()?;
@@ -648,7 +650,7 @@ impl Layout {
             let inner;
             let _ = bracketed!(inner in input);
             Ok(parse_grid_as_list_of_lists::<kw::column>(
-                stor, &inner, gen, false,
+                stor, &inner, gen, false, true,
             )?)
         } else if lookahead.peek(kw::grid) {
             let _: kw::grid = input.parse()?;
@@ -657,14 +659,14 @@ impl Layout {
 
             let inner;
             let _ = braced!(inner in input);
-            Ok(parse_grid(stor, &inner, gen)?)
+            Ok(parse_grid(stor, &inner, gen, true)?)
         } else if lookahead.peek(kw::non_navigable) {
             let _: kw::non_navigable = input.parse()?;
             let _: Token![!] = input.parse()?;
 
             let inner;
             let _ = parenthesized!(inner in input);
-            let layout = Layout::parse(&inner, gen)?;
+            let layout = Layout::parse(&inner, gen, true)?;
             Ok(Layout::NonNavigable(Box::new(layout)))
         } else {
             let ident = gen.next();
@@ -674,20 +676,28 @@ impl Layout {
     }
 }
 
-fn parse_layout_list(input: ParseStream, gen: &mut NameGenerator) -> Result<VisitableList<()>> {
+fn parse_layout_list(
+    input: ParseStream,
+    gen: &mut NameGenerator,
+    recurse: bool,
+) -> Result<VisitableList<()>> {
     let inner;
     let _ = bracketed!(inner in input);
-    parse_layout_items(&inner, gen)
+    parse_layout_items(&inner, gen, recurse)
 }
 
-fn parse_layout_items(inner: ParseStream, gen: &mut NameGenerator) -> Result<VisitableList<()>> {
+fn parse_layout_items(
+    inner: ParseStream,
+    gen: &mut NameGenerator,
+    recurse: bool,
+) -> Result<VisitableList<()>> {
     let mut list = vec![];
     let mut gen2 = NameGenerator::default();
     while !inner.is_empty() {
         list.push(ListItem {
             cell: (),
             stor: gen2.next(),
-            layout: Layout::parse(inner, gen)?,
+            layout: Layout::parse(inner, gen, recurse)?,
         });
 
         if inner.is_empty() {
@@ -705,6 +715,7 @@ fn parse_grid_as_list_of_lists<KW: Parse>(
     inner: ParseStream,
     gen: &mut NameGenerator,
     row_major: bool,
+    recurse: bool,
 ) -> Result<Layout> {
     let (mut col, mut row) = (0, 0);
     let mut dim = GridDimensions::default();
@@ -721,7 +732,7 @@ fn parse_grid_as_list_of_lists<KW: Parse>(
         while !inner2.is_empty() {
             let cell = CellInfo::new(col, row);
             dim.update(&cell);
-            let layout = Layout::parse(&inner2, gen)?;
+            let layout = Layout::parse(&inner2, gen, recurse)?;
             cells.push(ListItem {
                 cell,
                 stor: gen2.next(),
@@ -757,7 +768,12 @@ fn parse_grid_as_list_of_lists<KW: Parse>(
     Ok(Layout::Grid(stor, dim, VisitableList(cells)))
 }
 
-fn parse_grid(stor: StorIdent, inner: ParseStream, gen: &mut NameGenerator) -> Result<Layout> {
+fn parse_grid(
+    stor: StorIdent,
+    inner: ParseStream,
+    gen: &mut NameGenerator,
+    recurse: bool,
+) -> Result<Layout> {
     let mut dim = GridDimensions::default();
     let mut gen2 = NameGenerator::default();
     let mut cells = vec![];
@@ -771,10 +787,10 @@ fn parse_grid(stor: StorIdent, inner: ParseStream, gen: &mut NameGenerator) -> R
         if inner.peek(syn::token::Brace) {
             let inner2;
             let _ = braced!(inner2 in inner);
-            layout = Layout::parse(&inner2, gen)?;
+            layout = Layout::parse(&inner2, gen, recurse)?;
             require_comma = false;
         } else {
-            layout = Layout::parse(inner, gen)?;
+            layout = Layout::parse(inner, gen, recurse)?;
             require_comma = true;
         }
         cells.push(ListItem {
