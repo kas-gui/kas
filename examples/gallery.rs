@@ -54,6 +54,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
         ("Th&ree", Entry::Three),
     ];
 
+    #[allow(unused)]
     #[derive(Clone, Debug)]
     enum Item {
         Button,
