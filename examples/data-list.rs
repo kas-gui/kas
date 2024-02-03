@@ -21,8 +21,8 @@
 
 use kas::prelude::*;
 use kas::widgets::edit::{EditBox, EditField, EditGuard};
+use kas::widgets::{column, row};
 use kas::widgets::{Adapt, Button, Label, List, RadioButton, ScrollBarRegion, Separator, Text};
-use kas::{column, row};
 
 #[derive(Debug)]
 struct SelectEntry(usize);

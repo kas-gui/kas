@@ -40,7 +40,7 @@ impl_scope! {
     ///
     /// [`Row`] and [`Column`] are type-defs to `List` which fix the direction `D`.
     ///
-    /// The macros [`kas::row`] and [`kas::column`] also create row/column
+    /// The macros [`row!`] and [`column!`] also create row/column
     /// layouts, but are not fully equivalent:
     ///
     /// -   `row!` and `column!` generate anonymous layout widgets (or objects).
@@ -55,6 +55,8 @@ impl_scope! {
     /// Drawing and event handling is O(log n) in the number of children (assuming
     /// only a small number are visible at any one time).
     ///
+    /// [`row!`]: crate::row
+    /// [`column!`]: crate::column
     /// [`set_direction`]: List::set_direction
     #[autoimpl(Default where C: Default, D: Default)]
     #[widget]

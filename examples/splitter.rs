@@ -6,8 +6,7 @@
 //! Counter example (simple button)
 
 use kas::prelude::*;
-use kas::widgets::{Adapt, Button, EditField, Splitter};
-use kas::{column, row};
+use kas::widgets::{column, row, Adapt, Button, EditField, Splitter};
 
 #[derive(Clone, Debug)]
 enum Message {

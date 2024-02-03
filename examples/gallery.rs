@@ -8,13 +8,13 @@
 //! This is a test-bed to demonstrate most toolkit functionality
 //! (excepting custom graphics).
 
+use kas::collection;
 use kas::dir::Right;
 use kas::event::Key;
 use kas::prelude::*;
 use kas::resvg::Svg;
 use kas::theme::{MarginStyle, ThemeControl};
-use kas::widgets::*;
-use kas::{aligned_column, collection, column, float, row};
+use kas::widgets::{column, *};
 
 #[derive(Debug, Default)]
 struct AppData {

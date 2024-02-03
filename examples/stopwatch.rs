@@ -8,8 +8,8 @@
 use std::time::{Duration, Instant};
 
 use kas::prelude::*;
-use kas::widgets::{format_data, Adapt, Button};
-use kas::{row, Decorations};
+use kas::widgets::{format_data, row, Adapt, Button};
+use kas::Decorations;
 
 #[derive(Clone, Debug)]
 struct MsgReset;
