@@ -617,9 +617,11 @@ pub fn aligned_row(input: TokenStream) -> TokenStream {
 /// # Example
 ///
 /// ```ignore
-/// let list = kas::widgets::List::right(kas::collection![
+/// use kas::collection;
+/// use kas::widgets::{CheckBox, List};
+/// let list = List::right(collection![
 ///     "A checkbox",
-///     kas::widgets::CheckBox::new(|_, _| false),
+///     CheckBox::new(|_, _| false),
 /// ]);
 /// ```
 ///
