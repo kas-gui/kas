@@ -515,6 +515,35 @@ impl Layout {
         #[cfg(feature = "recursive-layout-widgets")]
         let _recurse = true;
 
+        #[cfg(not(feature = "recursive-layout-widgets"))]
+        if input.peek2(Token![!]) {
+            let input2 = input.fork();
+            let mut gen2 = NameGenerator::default();
+            if Self::parse_macro_like(&input2, &mut gen2).is_ok() {
+                loop {
+                    if let Ok(dot_token) = input2.parse::<Token![.]>() {
+                        if input2.peek(kw::map_any) {
+                            let _ = MapAny::parse(dot_token, &input2)?;
+                            continue;
+                        } else if input2.peek(kw::align) {
+                            let _ = Align::parse(dot_token, &input2)?;
+                            continue;
+                        } else if input2.peek(kw::pack) {
+                            let _ = Pack::parse(dot_token, &input2, &mut gen2)?;
+                            continue;
+                        } else if let Ok(ident) = input2.parse::<Ident>() {
+                            proc_macro_error::emit_warning!(
+                                ident, "this method call is incompatible with feature `recursive-layout-widgets`";
+                                note = "extract operand from layout expression or wrap with braces",
+                            );
+                        }
+                    }
+
+                    break;
+                }
+            }
+        }
+
         let mut layout = if _recurse && input.peek2(Token![!]) {
             Self::parse_macro_like(input, gen)?
         } else if input.peek(Token![self]) {
