@@ -636,19 +636,19 @@ impl std::ops::SubAssign<Offset> for Rect {
 #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
 mod winit_impls {
     use super::{Coord, Size};
-    use crate::cast::{Cast, CastApprox, Conv, ConvApprox};
+    use crate::cast::{Cast, CastApprox, Conv, ConvApprox, Result};
     use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize};
 
     impl<X: CastApprox<i32>> ConvApprox<PhysicalPosition<X>> for Coord {
         #[inline]
-        fn try_conv_approx(pos: PhysicalPosition<X>) -> cast::Result<Self> {
+        fn try_conv_approx(pos: PhysicalPosition<X>) -> Result<Self> {
             Ok(Coord(pos.x.cast_approx(), pos.y.cast_approx()))
         }
     }
 
     impl<X: Cast<i32>> Conv<PhysicalSize<X>> for Size {
         #[inline]
-        fn try_conv(size: PhysicalSize<X>) -> cast::Result<Self> {
+        fn try_conv(size: PhysicalSize<X>) -> Result<Self> {
             Ok(Size(size.width.cast(), size.height.cast()))
         }
     }
