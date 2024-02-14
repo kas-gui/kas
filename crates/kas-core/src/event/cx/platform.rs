@@ -560,8 +560,8 @@ impl<'a> EventCx<'a> {
                         }
                     }
                     ev @ (TouchPhase::Ended | TouchPhase::Cancelled) => {
-                        if let Some(mut grab) = self.remove_touch(touch.id) {
-                            self.action(Id::ROOT, grab.flush_click_move());
+                        if let Some(index) = self.get_touch_index(touch.id) {
+                            let grab = self.remove_touch(index);
 
                             if grab.mode == GrabMode::Grab {
                                 let id = grab.cur_id.clone();

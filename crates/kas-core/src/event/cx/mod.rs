@@ -337,25 +337,32 @@ impl EventState {
     }
 
     #[inline]
+    fn get_touch_index(&self, touch_id: u64) -> Option<usize> {
+        self.touch_grab
+            .iter()
+            .enumerate()
+            .find_map(|(i, grab)| (grab.id == touch_id).then_some(i))
+    }
+
+    #[inline]
     fn get_touch(&mut self, touch_id: u64) -> Option<&mut TouchGrab> {
         self.touch_grab.iter_mut().find(|grab| grab.id == touch_id)
     }
 
     // Clears touch grab and pan grab and redraws
-    fn remove_touch(&mut self, touch_id: u64) -> Option<TouchGrab> {
-        for i in 0..self.touch_grab.len() {
-            if self.touch_grab[i].id == touch_id {
-                let grab = self.touch_grab.remove(i);
-                log::trace!(
-                    "remove_touch: touch_id={touch_id}, start_id={}",
-                    grab.start_id
-                );
-                self.opt_action(grab.depress.clone(), Action::REDRAW);
-                self.remove_pan_grab(grab.pan_grab);
-                return Some(grab);
-            }
-        }
-        None
+    //
+    // Returns the grab. Panics on out-of-bounds error.
+    fn remove_touch(&mut self, index: usize) -> TouchGrab {
+        let mut grab = self.touch_grab.remove(index);
+        log::trace!(
+            "remove_touch: touch_id={}, start_id={}",
+            grab.id,
+            grab.start_id
+        );
+        self.opt_action(grab.depress.clone(), Action::REDRAW);
+        self.remove_pan_grab(grab.pan_grab);
+        self.action(Id::ROOT, grab.flush_click_move());
+        grab
     }
 }
 
