@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 use kas::event::NamedKey;
 use kas::prelude::*;
-use kas::widgets::{AccessLabel, Adapt, Button, EditBox};
+use kas::widgets::{column, grid, AccessLabel, Adapt, Button, EditBox};
 
 type Key = kas::event::Key<kas::event::SmolStr>;
 
@@ -31,7 +31,7 @@ fn calc_ui() -> Window<()> {
         .with_width_em(5.0, 10.0);
 
     // We use map_any to avoid passing input data (not wanted by buttons):
-    let buttons = kas::grid! {
+    let buttons = grid! {
         // Key bindings: C, Del
         (0, 0) => Button::label_msg("&clear", Key::Named(NamedKey::Clear))
             .with_access_key(NamedKey::Delete.into()),
@@ -57,7 +57,7 @@ fn calc_ui() -> Window<()> {
     }
     .map_any();
 
-    let ui = Adapt::new(kas::column![display, buttons], Calculator::new())
+    let ui = Adapt::new(column![display, buttons], Calculator::new())
         .on_message(|_, calc, key| calc.handle(key))
         .on_configure(|cx, _| {
             cx.disable_nav_focus(true);

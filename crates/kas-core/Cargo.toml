@@ -74,7 +74,10 @@ dark-light = ["dep:dark-light"]
 # Support spawning async tasks
 spawn = ["dep:async-global-executor"]
 
-# Optimise Node using unsafe code
+# Optimize generated layout widgets
+recursive-layout-widgets = ["kas-macros/recursive-layout-widgets"]
+
+# Optimize Node using unsafe code
 unsafe_node = []
 
 [build-dependencies]

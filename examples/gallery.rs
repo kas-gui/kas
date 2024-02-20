@@ -8,12 +8,13 @@
 //! This is a test-bed to demonstrate most toolkit functionality
 //! (excepting custom graphics).
 
+use kas::collection;
 use kas::dir::Right;
 use kas::event::Key;
 use kas::prelude::*;
 use kas::resvg::Svg;
 use kas::theme::{MarginStyle, ThemeControl};
-use kas::widgets::*;
+use kas::widgets::{column, *};
 
 #[derive(Debug, Default)]
 struct AppData {
@@ -54,6 +55,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
         ("Th&ree", Entry::Three),
     ];
 
+    #[allow(unused)]
     #[derive(Clone, Debug)]
     enum Item {
         Button,
@@ -146,7 +148,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
 Пример текста на нескольких языках.
 טקסט לדוגמא במספר שפות.";
 
-    let widgets = kas::aligned_column![
+    let widgets = aligned_column![
         row!["ScrollLabel", ScrollLabel::new(text).map_any()],
         row![
             "EditBox",
@@ -306,11 +308,11 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 ```
 ";
 
-    let ui = kas::float![
+    let ui = float![
         Button::label_msg("↻", MsgDirection)
             .map_any()
             .pack(AlignHints::TOP_RIGHT),
-        Splitter::new(kas::collection![
+        Splitter::new(collection![
             EditBox::new(Guard)
                 .with_multi_line(true)
                 .with_lines(4, 12)
@@ -391,13 +393,13 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
             cx.action(list, act);
         });
 
-    let sel_buttons = kas::row![
+    let sel_buttons = row![
         "Selection:",
         RadioButton::new_value("&n&one", SelectionMode::None),
         RadioButton::new_value("s&ingle", SelectionMode::Single),
         RadioButton::new_value("&multiple", SelectionMode::Multiple),
     ];
-    let ui = kas::column![
+    let ui = column![
         sel_buttons.map(|data: &Data| &data.mode),
         ScrollBars::new(list_view),
     ];
@@ -486,7 +488,7 @@ fn canvas() -> Box<dyn Widget<Data = AppData>> {
         }
     }
 
-    let ui = kas::column![
+    let ui = column![
         Label::new(
             "Animated canvas demo (CPU-rendered, async). Note: scheduling is broken on X11."
         ),
@@ -512,7 +514,7 @@ KAS_CONFIG_MODE=readwrite
     )
     .unwrap();
 
-    let ui = kas::column![ScrollLabel::new(desc), Separator::new(), EventConfig::new(),]
+    let ui = column![ScrollLabel::new(desc), Separator::new(), EventConfig::new(),]
         .map_any()
         .on_update(|cx, _, data: &AppData| cx.set_disabled(data.disabled));
     Box::new(ui)
@@ -582,7 +584,7 @@ fn main() -> kas::app::Result<()> {
         })
         .build();
 
-    let ui = kas::column![
+    let ui = column![
         menubar,
         Separator::new(),
         TabStack::from([

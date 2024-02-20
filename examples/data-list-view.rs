@@ -11,9 +11,8 @@
 //! to calculate the maximum scroll offset).
 
 use kas::prelude::*;
-use kas::row;
 use kas::view::{Driver, ListData, ListView, SharedData};
-use kas::widgets::*;
+use kas::widgets::{column, *};
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -206,7 +205,7 @@ fn main() -> kas::app::Result<()> {
         let act = list.set_direction(data.dir);
         cx.action(list, act);
     });
-    let tree = kas::column![
+    let tree = column![
         "Demonstration of dynamic widget creation / deletion",
         controls.map(|data: &Data| &data.len),
         "Contents of selected entry:",
