@@ -54,6 +54,7 @@ impl EventState {
             time_updates: vec![],
             send_queue: Default::default(),
             fut_messages: vec![],
+            cancel_grabs: false,
             pending_update: None,
             pending_sel_focus: None,
             pending_nav_focus: PendingNavFocus::None,
@@ -144,6 +145,25 @@ impl EventState {
             for i in 0..cx.touch_grab.len() {
                 let action = cx.touch_grab[i].flush_click_move();
                 cx.state.action |= action;
+            }
+
+            if cx.cancel_grabs {
+                cx.cancel_grabs = false;
+                if let Some((id, event)) = cx.remove_mouse_grab(false) {
+                    cx.send_event(win.as_node(data), id, event);
+                }
+
+                while let Some(grab) = cx.touch_grab.pop() {
+                    if grab.mode == GrabMode::Grab {
+                        let press = Press {
+                            source: PressSource::Touch(grab.id),
+                            id: grab.cur_id,
+                            coord: grab.coord,
+                        };
+                        let event = Event::PressEnd { press, success: false };
+                        cx.send_event(win.as_node(data), grab.start_id, event);
+                    }
+                }
             }
 
             for gi in 0..cx.pan_grab.len() {

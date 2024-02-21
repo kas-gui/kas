@@ -216,6 +216,7 @@ pub struct EventState {
     send_queue: VecDeque<(Id, Erased)>,
     // Set of futures of messages together with id of sending widget
     fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Erased>>>)>,
+    cancel_grabs: bool,
     // Widget requiring update (and optionally configure)
     pending_update: Option<(Id, bool)>,
     // Optional new target for selection focus. bool is true if this also gains key focus.
@@ -365,6 +366,44 @@ impl EventState {
         self.remove_pan_grab(grab.pan_grab);
         self.action(Id::ROOT, grab.flush_click_move());
         grab
+    }
+
+    /// Clear all active events on `target`
+    fn clear_events(&mut self, target: &Id) {
+        if let Some(id) = self.sel_focus.as_ref() {
+            if target.is_ancestor_of(id) {
+                if let Some(pending) = self.pending_sel_focus.as_mut() {
+                    if pending.target.as_ref() == Some(id) {
+                        pending.target = None;
+                        pending.key_focus = false;
+                    }
+                } else {
+                    self.pending_sel_focus = Some(PendingSelFocus {
+                        target: None,
+                        key_focus: false,
+                        source: FocusSource::Synthetic,
+                    });
+                }
+            }
+        }
+
+        if let Some(id) = self.nav_focus.as_ref() {
+            if target.is_ancestor_of(id) {
+                if matches!(&self.pending_nav_focus, PendingNavFocus::Set { ref target, .. } if target.as_ref() == Some(id))
+                {
+                    self.pending_nav_focus = PendingNavFocus::None;
+                }
+
+                if matches!(self.pending_nav_focus, PendingNavFocus::None) {
+                    self.pending_nav_focus = PendingNavFocus::Set {
+                        target: None,
+                        source: FocusSource::Synthetic,
+                    };
+                }
+            }
+        }
+
+        self.cancel_grabs = true;
     }
 }
 
