@@ -21,7 +21,7 @@ use std::time::Duration;
 use kas::app::AppAssoc;
 use kas::draw::color::{Rgba, Rgba8Srgb};
 use kas::draw::{Draw, DrawRounded};
-use kas::geom::{Offset, Quad, Rect, Vec2};
+use kas::geom::{Quad, Vec2};
 use kas::prelude::*;
 use kas::text::Text;
 

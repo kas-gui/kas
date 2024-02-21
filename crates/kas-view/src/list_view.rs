@@ -8,7 +8,7 @@
 use crate::{DataKey, Driver, ListData, SelectionMode, SelectionMsg};
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, FocusSource, Scroll};
-use kas::layout::{solve_size_rules, AlignHints};
+use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
 use kas::NavAdvance;
