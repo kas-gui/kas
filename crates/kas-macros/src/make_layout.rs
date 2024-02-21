@@ -66,57 +66,6 @@ impl Tree {
         self.0.generate(core_path)
     }
 
-    // Excludes: fn nav_next
-    pub fn layout_methods(&self, core_path: &Toks) -> Result<Toks> {
-        let layout = self.0.generate(core_path)?;
-        Ok(quote! {
-            fn size_rules(
-                &mut self,
-                sizer: ::kas::theme::SizeCx,
-                axis: ::kas::layout::AxisInfo,
-            ) -> ::kas::layout::SizeRules {
-                use ::kas::{Layout, layout};
-                #[cfg(debug_assertions)]
-                #core_path.status.size_rules(&#core_path.id, axis);
-
-                (#layout).size_rules(sizer, axis)
-            }
-
-            fn set_rect(
-                &mut self,
-                cx: &mut ::kas::event::ConfigCx,
-                rect: ::kas::geom::Rect,
-            ) {
-                use ::kas::{Layout, layout};
-                #[cfg(debug_assertions)]
-                #core_path.status.set_rect(&#core_path.id);
-
-                #core_path.rect = rect;
-                (#layout).set_rect(cx, rect);
-            }
-
-            fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-                use ::kas::{layout, Layout, LayoutExt};
-                #[cfg(debug_assertions)]
-                #core_path.status.require_rect(&#core_path.id);
-
-                if !self.rect().contains(coord) {
-                    return None;
-                }
-                let coord = coord + self.translation();
-                (#layout).find_id(coord).or_else(|| Some(self.id()))
-            }
-
-            fn draw(&mut self, draw: ::kas::theme::DrawCx) {
-                use ::kas::{Layout, layout};
-                #[cfg(debug_assertions)]
-                #core_path.status.require_rect(&#core_path.id);
-
-                (#layout).draw(draw);
-            }
-        })
-    }
-
     pub fn nav_next<'a, I: Clone + Iterator<Item = &'a Child>>(
         &self,
         children: I,
@@ -190,7 +139,7 @@ impl Tree {
             true,
         );
 
-        let layout_methods = self.layout_methods(&core_path)?;
+        let layout_visitor = self.layout_visitor(&core_path)?;
         let nav_next = match self.nav_next(children.iter()) {
             Ok(result) => Some(result),
             Err((span, msg)) => {
@@ -208,6 +157,13 @@ impl Tree {
                 #stor_ty
             }
 
+            impl #impl_generics ::kas::layout::LayoutVisitor for #impl_target {
+                fn layout_visitor(&mut self) -> ::kas::layout::Visitor<impl ::kas::layout::Visitable> {
+                    use ::kas::layout;
+                    #layout_visitor
+                }
+            }
+
             impl #impl_generics ::kas::Layout for #impl_target {
                 #core_impl
                 #num_children
@@ -219,7 +175,49 @@ impl Tree {
                     }
                 }
 
-                #layout_methods
+                fn size_rules(
+                    &mut self,
+                    sizer: ::kas::theme::SizeCx,
+                    axis: ::kas::layout::AxisInfo,
+                ) -> ::kas::layout::SizeRules {
+                    #[cfg(debug_assertions)]
+                    #core_path.status.size_rules(&#core_path.id, axis);
+                    ::kas::layout::LayoutVisitor::layout_visitor(self).size_rules(sizer, axis)
+                }
+
+                fn set_rect(
+                    &mut self,
+                    cx: &mut ::kas::event::ConfigCx,
+                    rect: ::kas::geom::Rect,
+                ) {
+                    #[cfg(debug_assertions)]
+                    #core_path.status.set_rect(&#core_path.id);
+
+                    #core_path.rect = rect;
+                    ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect);
+                }
+
+                fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+                    use ::kas::{Layout, LayoutExt, layout::LayoutVisitor};
+                    #[cfg(debug_assertions)]
+                    #core_path.status.require_rect(&#core_path.id);
+
+                    if !self.rect().contains(coord) {
+                        return None;
+                    }
+                    let coord = coord + self.translation();
+                    self.layout_visitor()
+                        .find_id(coord)
+                        .or_else(|| Some(self.id()))
+                }
+
+                fn draw(&mut self, draw: ::kas::theme::DrawCx) {
+                    #[cfg(debug_assertions)]
+                    #core_path.status.require_rect(&#core_path.id);
+
+                    ::kas::layout::LayoutVisitor::layout_visitor(self).draw(draw);
+                }
+
                 #nav_next
             }
 
