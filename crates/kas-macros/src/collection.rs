@@ -106,14 +106,23 @@ impl Collection {
             }
         }
 
-        let mut item_names = Vec::with_capacity(self.0.len());
+        let len = self.0.len();
+        let is_empty = match len {
+            0 => quote! { true },
+            _ => quote! { false },
+        };
+
         let mut ty_generics = Punctuated::<Ident, Comma>::new();
         let mut stor_ty = quote! {};
         let mut stor_def = quote! {};
+
+        let mut get_layout_rules = quote! {};
+        let mut get_mut_layout_rules = quote! {};
+        let mut for_node_rules = quote! {};
+
         for (index, item) in self.0.iter().enumerate() {
-            match item {
+            let path = match item {
                 Item::Label(stor, text) => {
-                    item_names.push(stor.to_token_stream());
                     let span = text.span();
                     if let Some(ref data_ty) = data_ty {
                         stor_ty.append_all(
@@ -128,16 +137,28 @@ impl Collection {
                             quote_spanned! {span=> #stor: ::kas::hidden::StrLabel::new(#text), },
                         );
                     }
+                    stor.to_token_stream()
                 }
                 Item::Widget(stor, expr) => {
                     let span = expr.span();
-                    item_names.push(stor.to_token_stream());
                     let ty = Ident::new(&format!("_W{}", index), span);
                     stor_ty.append_all(quote! { #stor: #ty, });
                     stor_def.append_all(quote_spanned! {span=> #stor: Box::new(#expr), });
                     ty_generics.push(ty);
+
+                    stor.to_token_stream()
                 }
-            }
+            };
+
+            get_layout_rules.append_all(quote! {
+                #index => Some(&self.#path),
+            });
+            get_mut_layout_rules.append_all(quote! {
+                #index => Some(&mut self.#path),
+            });
+            for_node_rules.append_all(quote! {
+                #index => closure(self.#path.as_node(data)),
+            });
         }
 
         let data_ty = data_ty
@@ -159,27 +180,6 @@ impl Collection {
             }
             (quote! { <#toks> }, quote! { <#ty_generics> })
         };
-
-        let len = item_names.len();
-        let is_empty = match len {
-            0 => quote! { true },
-            _ => quote! { false },
-        };
-
-        let mut get_layout_rules = quote! {};
-        let mut get_mut_layout_rules = quote! {};
-        let mut for_node_rules = quote! {};
-        for (index, path) in item_names.iter().enumerate() {
-            get_layout_rules.append_all(quote! {
-                #index => Some(&self.#path),
-            });
-            get_mut_layout_rules.append_all(quote! {
-                #index => Some(&mut self.#path),
-            });
-            for_node_rules.append_all(quote! {
-                #index => closure(self.#path.as_node(data)),
-            });
-        }
 
         let toks = quote! {{
             struct #name #impl_generics {
