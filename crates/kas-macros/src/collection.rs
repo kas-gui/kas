@@ -211,9 +211,7 @@ impl Parse for Collection {
 }
 
 impl Collection {
-    pub fn expand(&self) -> Toks {
-        let name = Ident::new("_Collection", Span::call_site());
-
+    pub fn impl_parts(&self) -> (Toks, Toks, Toks, Toks, Toks) {
         let mut data_ty = None;
         for (index, item) in self.0.iter().enumerate() {
             if let Item::Widget(_, expr) = item {
@@ -298,40 +296,52 @@ impl Collection {
             (quote! { <#toks> }, quote! { <#ty_generics> })
         };
 
+        let collection = quote! {
+            type Data = #data_ty;
+
+            fn is_empty(&self) -> bool { #is_empty }
+            fn len(&self) -> usize { #len }
+
+            fn get_layout(&self, index: usize) -> Option<&dyn ::kas::Layout> {
+                match index {
+                    #get_layout_rules
+                    _ => None,
+                }
+            }
+            fn get_mut_layout(&mut self, index: usize) -> Option<&mut dyn ::kas::Layout> {
+                match index {
+                    #get_mut_layout_rules
+                    _ => None,
+                }
+            }
+            fn for_node(
+                &mut self,
+                data: &Self::Data,
+                index: usize,
+                closure: Box<dyn FnOnce(::kas::Node<'_>) + '_>,
+            ) {
+                use ::kas::Widget;
+                match index {
+                    #for_node_rules
+                    _ => (),
+                }
+            }
+        };
+
+        (impl_generics, ty_generics, stor_ty, stor_def, collection)
+    }
+
+    pub fn expand(&self) -> Toks {
+        let name = Ident::new("_Collection", Span::call_site());
+        let (impl_generics, ty_generics, stor_ty, stor_def, collection) = self.impl_parts();
+
         let toks = quote! {{
             struct #name #impl_generics {
                 #stor_ty
             }
 
             impl #impl_generics ::kas::Collection for #name #ty_generics {
-                type Data = #data_ty;
-
-                fn is_empty(&self) -> bool { #is_empty }
-                fn len(&self) -> usize { #len }
-
-                fn get_layout(&self, index: usize) -> Option<&dyn Layout> {
-                    match index {
-                        #get_layout_rules
-                        _ => None,
-                    }
-                }
-                fn get_mut_layout(&mut self, index: usize) -> Option<&mut dyn Layout> {
-                    match index {
-                        #get_mut_layout_rules
-                        _ => None,
-                    }
-                }
-                fn for_node(
-                    &mut self,
-                    data: &Self::Data,
-                    index: usize,
-                    closure: Box<dyn FnOnce(Node<'_>) + '_>,
-                ) {
-                    match index {
-                        #for_node_rules
-                        _ => (),
-                    }
-                }
+                #collection
             }
 
             #name {
