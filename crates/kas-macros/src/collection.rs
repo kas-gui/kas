@@ -7,11 +7,11 @@
 
 use proc_macro2::{Span, TokenStream as Toks};
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
-use syn::parenthesized;
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
+use syn::{braced, parenthesized};
 use syn::{Expr, Ident, Lifetime, LitInt, LitStr, Token};
 
 #[derive(Debug)]
@@ -190,6 +190,7 @@ impl Item {
 }
 
 pub struct Collection(Vec<Item>);
+pub struct CellCollection(Vec<CellInfo>, Collection);
 
 impl Parse for Collection {
     fn parse(inner: ParseStream) -> Result<Self> {
@@ -207,6 +208,44 @@ impl Parse for Collection {
         }
 
         Ok(Collection(items))
+    }
+}
+
+impl Parse for CellCollection {
+    fn parse(inner: ParseStream) -> Result<Self> {
+        let mut gen = NameGenerator::default();
+
+        let mut cells = vec![];
+        let mut items = vec![];
+        while !inner.is_empty() {
+            cells.push(inner.parse()?);
+            let _: Token![=>] = inner.parse()?;
+
+            let item;
+            let require_comma;
+            if inner.peek(syn::token::Brace) {
+                let inner2;
+                let _ = braced!(inner2 in inner);
+                item = Item::parse(&inner2, &mut gen)?;
+                require_comma = false;
+            } else {
+                item = Item::parse(inner, &mut gen)?;
+                require_comma = true;
+            }
+            items.push(item);
+
+            if inner.is_empty() {
+                break;
+            }
+
+            if let Err(e) = inner.parse::<Token![,]>() {
+                if require_comma {
+                    return Err(e);
+                }
+            }
+        }
+
+        Ok(CellCollection(cells, Collection(items)))
     }
 }
 
@@ -342,6 +381,51 @@ impl Collection {
 
             impl #impl_generics ::kas::Collection for #name #ty_generics {
                 #collection
+            }
+
+            #name {
+                #stor_def
+            }
+        }};
+        // println!("{}", toks);
+        toks
+    }
+}
+
+impl CellCollection {
+    pub fn expand(&self) -> Toks {
+        let name = Ident::new("_Collection", Span::call_site());
+        let (impl_generics, ty_generics, stor_ty, stor_def, collection) = self.1.impl_parts();
+
+        let mut cell_info_rules = quote! {};
+        let mut dim = GridDimensions::default();
+        for (index, cell) in self.0.iter().enumerate() {
+            cell_info_rules.append_all(quote! {
+                #index => Some(#cell),
+            });
+            dim.update(cell);
+        }
+
+        let toks = quote! {{
+            struct #name #impl_generics {
+                #stor_ty
+            }
+
+            impl #impl_generics ::kas::Collection for #name #ty_generics {
+                #collection
+            }
+
+            impl #impl_generics ::kas::CellCollection for #name #ty_generics {
+                fn cell_info(&self, index: usize) -> Option<::kas::layout::GridCellInfo> {
+                    match index {
+                        #cell_info_rules
+                        _ => None,
+                    }
+                }
+
+                fn grid_dimensions(&self) -> ::kas::layout::GridDimensions {
+                    #dim
+                }
             }
 
             #name {

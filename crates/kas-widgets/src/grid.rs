@@ -37,6 +37,17 @@ impl_scope! {
     /// ## Performance
     ///
     /// Most operations are `O(n)` in the number of children.
+    ///
+    /// ## Example
+    /// ```
+    /// use kas::cell_collection;
+    /// # use kas_widgets::Grid;
+    /// let _grid = Grid::new(cell_collection! {
+    ///     (0, 0) => "one",
+    ///     (1, 0) => "two",
+    ///     (0..2, 1) => "three",
+    /// });
+    /// ```
     #[widget]
     pub struct Grid<C: CellCollection> {
         core: widget_core!(),

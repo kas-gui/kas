@@ -31,7 +31,7 @@ pub use crate::core::*;
 pub use action::Action;
 pub use decorations::Decorations;
 pub use kas_macros::{autoimpl, extends, impl_default, widget};
-pub use kas_macros::{collection, impl_anon, impl_scope, widget_index};
+pub use kas_macros::{cell_collection, collection, impl_anon, impl_scope, widget_index};
 #[doc(inline)] pub use popup::Popup;
 #[doc(inline)] pub(crate) use popup::PopupDescriptor;
 #[doc(inline)]
