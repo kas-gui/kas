@@ -55,6 +55,18 @@ impl_scope! {
     /// Drawing and event handling is O(log n) in the number of children (assuming
     /// only a small number are visible at any one time).
     ///
+    /// ## Example
+    ///
+    /// ```
+    /// use kas::collection;
+    /// # use kas_widgets::{CheckBox, List};
+    ///
+    /// let list = List::right(collection![
+    ///     "A checkbox",
+    ///     CheckBox::new(|_, state: &bool| *state),
+    /// ]);
+    /// ```
+    ///
     /// [`row!`]: crate::row
     /// [`column!`]: crate::column
     /// [`set_direction`]: List::set_direction
