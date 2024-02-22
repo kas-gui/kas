@@ -3,15 +3,15 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::collection::{NameGenerator, StorIdent};
+use crate::collection::{CellInfo, GridDimensions, NameGenerator, StorIdent};
 use crate::widget::{self, Child, ChildIdent};
 use proc_macro2::{Span, TokenStream as Toks};
 use proc_macro_error::emit_error;
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
-use syn::parse::{Error, Parse, ParseStream, Result};
+use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::{braced, bracketed, parenthesized, parse_quote, token};
-use syn::{Expr, Ident, LitInt, LitStr, Member, Token, Type};
+use syn::{Expr, Ident, LitStr, Member, Token, Type};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -355,20 +355,9 @@ impl GenerateItem for CellInfo {
     }
 
     fn generate_item(item: &ListItem<CellInfo>, core_path: &Toks) -> Result<Toks> {
-        let (col, col_end) = (item.cell.col, item.cell.col_end);
-        let (row, row_end) = (item.cell.row, item.cell.row_end);
+        let cell = &item.cell;
         let layout = item.layout.generate(core_path)?;
-        Ok(quote! {
-            (
-                layout::GridCellInfo {
-                    col: #col,
-                    col_end: #col_end,
-                    row: #row,
-                    row_end: #row_end,
-                },
-                #layout,
-            )
-        })
+        Ok(quote! { (#cell, #layout) })
     }
 }
 
@@ -412,92 +401,6 @@ bitflags::bitflags! {
         const RIGHT = 0b0010;
         const UP = 0b0100;
         const DOWN = 0b1000;
-    }
-}
-
-#[derive(Debug, Default)]
-struct GridDimensions {
-    cols: u32,
-    col_spans: u32,
-    rows: u32,
-    row_spans: u32,
-}
-
-#[derive(Copy, Clone, Debug)]
-struct CellInfo {
-    col: u32,
-    col_end: u32,
-    row: u32,
-    row_end: u32,
-}
-
-impl CellInfo {
-    fn new(col: u32, row: u32) -> Self {
-        CellInfo {
-            col,
-            col_end: col + 1,
-            row,
-            row_end: row + 1,
-        }
-    }
-}
-
-fn parse_cell_info(input: ParseStream) -> Result<CellInfo> {
-    fn parse_end(input: ParseStream, start: u32) -> Result<u32> {
-        if input.parse::<Token![..=]>().is_ok() {
-            let lit = input.parse::<LitInt>()?;
-            let n: u32 = lit.base10_parse()?;
-            if n >= start {
-                Ok(n + 1)
-            } else {
-                Err(Error::new(lit.span(), format!("expected value >= {start}")))
-            }
-        } else if input.parse::<Token![..]>().is_ok() {
-            let plus = input.parse::<Token![+]>();
-            let lit = input.parse::<LitInt>()?;
-            let n: u32 = lit.base10_parse()?;
-
-            if plus.is_ok() {
-                Ok(start + n)
-            } else if n > start {
-                Ok(n)
-            } else {
-                Err(Error::new(lit.span(), format!("expected value > {start}")))
-            }
-        } else {
-            Ok(start + 1)
-        }
-    }
-
-    let inner;
-    let _ = parenthesized!(inner in input);
-
-    let col = inner.parse::<LitInt>()?.base10_parse()?;
-    let col_end = parse_end(&inner, col)?;
-
-    let _ = inner.parse::<Token![,]>()?;
-
-    let row = inner.parse::<LitInt>()?.base10_parse()?;
-    let row_end = parse_end(&inner, row)?;
-
-    Ok(CellInfo {
-        row,
-        row_end,
-        col,
-        col_end,
-    })
-}
-
-impl GridDimensions {
-    fn update(&mut self, cell: &CellInfo) {
-        self.cols = self.cols.max(cell.col_end);
-        if cell.col_end - cell.col > 1 {
-            self.col_spans += 1;
-        }
-        self.rows = self.rows.max(cell.row_end);
-        if cell.row_end - cell.row > 1 {
-            self.row_spans += 1;
-        }
     }
 }
 
@@ -808,7 +711,7 @@ fn parse_grid(
     let mut gen2 = NameGenerator::default();
     let mut cells = vec![];
     while !inner.is_empty() {
-        let cell = parse_cell_info(inner)?;
+        let cell = inner.parse()?;
         dim.update(&cell);
         let _: Token![=>] = inner.parse()?;
 
@@ -900,19 +803,6 @@ impl ToTokens for Direction {
             Direction::Down => toks.append_all(quote! { ::kas::dir::Down }),
             Direction::Expr(expr) => expr.to_tokens(toks),
         }
-    }
-}
-
-impl ToTokens for GridDimensions {
-    fn to_tokens(&self, toks: &mut Toks) {
-        let (cols, rows) = (self.cols, self.rows);
-        let (col_spans, row_spans) = (self.col_spans, self.row_spans);
-        toks.append_all(quote! { layout::GridDimensions {
-            cols: #cols,
-            col_spans: #col_spans,
-            rows: #rows,
-            row_spans: #row_spans,
-        } });
     }
 }
 
