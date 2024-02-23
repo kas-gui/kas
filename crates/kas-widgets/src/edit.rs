@@ -1188,7 +1188,7 @@ impl<G: EditGuard> EditField<G> {
             return;
         }
 
-        if !self.text.required_action().is_ready() {
+        if !self.text.is_prepared() {
             let start = std::time::Instant::now();
 
             self.text.prepare().expect("invalid font_id");

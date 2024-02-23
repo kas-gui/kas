@@ -233,8 +233,8 @@ impl_scope! {
 
         fn direction(&self) -> Direction {
             match self.label.text().text_is_rtl() {
-                Ok(false) | Err(_) => Direction::Right,
-                Ok(true) => Direction::Left,
+                false => Direction::Right,
+                true => Direction::Left,
             }
         }
     }
