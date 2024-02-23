@@ -632,7 +632,7 @@ pub fn collection(input: TokenStream) -> TokenStream {
 ///
 /// For example usage, see [`Grid`](https://docs.rs/kas/latest/kas/widgets/struct.Grid.html).
 ///
-/// [`kas::Collection`]: https://docs.rs/kas/latest/kas/trait.Collection.html
+/// [`kas::CellCollection`]: https://docs.rs/kas/latest/kas/trait.CellCollection.html
 #[proc_macro_error]
 #[proc_macro]
 pub fn cell_collection(input: TokenStream) -> TokenStream {
