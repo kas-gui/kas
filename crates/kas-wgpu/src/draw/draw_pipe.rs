@@ -16,7 +16,7 @@ use kas::app::Error;
 use kas::cast::traits::*;
 use kas::draw::color::Rgba;
 use kas::draw::*;
-use kas::geom::{Quad, Rect, Size, Vec2};
+use kas::geom::{Quad, Size, Vec2};
 use kas::text::{Effect, TextDisplay};
 use kas::theme::RasterConfig;
 

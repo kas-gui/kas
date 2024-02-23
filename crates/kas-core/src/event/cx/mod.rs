@@ -25,7 +25,7 @@ use crate::geom::Coord;
 use crate::messages::{Erased, MessageStack};
 use crate::util::WidgetHierarchy;
 use crate::LayoutExt;
-use crate::{Action, Id, NavAdvance, Node, Widget, WindowId};
+use crate::{Action, Id, NavAdvance, Node, WindowId};
 
 mod config;
 mod cx_pub;

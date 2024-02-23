@@ -9,7 +9,6 @@ use crate::{EditField, EditGuard, MarkButton};
 use kas::event::{Command, ScrollDelta};
 use kas::prelude::*;
 use kas::theme::{FrameStyle, MarkStyle, TextClass};
-use std::cmp::Ord;
 use std::ops::RangeInclusive;
 
 /// Requirements on type used by [`Spinner`]

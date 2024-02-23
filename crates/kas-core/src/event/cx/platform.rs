@@ -5,15 +5,14 @@
 
 //! Event manager — platform API
 
-use smallvec::SmallVec;
 use std::task::Poll;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use super::*;
 use crate::cast::traits::*;
-use crate::geom::{Coord, DVec2};
+use crate::geom::DVec2;
 use crate::theme::ThemeSize;
-use crate::{Action, Id, NavAdvance, Window};
+use crate::Window;
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);

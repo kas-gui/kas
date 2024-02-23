@@ -736,8 +736,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 }
             };
 
-            // Generated layout methods are wrapped, so we don't require debug assertions here.
-            let layout_visitor = layout.layout_visitor(&quote! { self.#core })?;
+            let layout_visitor = layout.layout_visitor(&core_path)?;
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::layout::LayoutVisitor for #impl_target {
                     fn layout_visitor(&mut self) -> ::kas::layout::Visitor<impl ::kas::layout::Visitable> {
@@ -759,16 +758,11 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 }
             });
             set_rect = quote! {
-                #[cfg(debug_assertions)]
-                #core_path.status.set_rect(&#core_path.id);
-
                 #core_path.rect = rect;
                 ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect);
             };
             find_id = quote! {
                 use ::kas::{Layout, LayoutExt, layout::LayoutVisitor};
-                #[cfg(debug_assertions)]
-                #core_path.status.require_rect(&#core_path.id);
 
                 if !self.rect().contains(coord) {
                     return None;

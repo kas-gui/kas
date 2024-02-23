@@ -9,7 +9,7 @@
 #![allow(clippy::wrong_self_convention)]
 
 use super::{AlignHints, AlignPair, AxisInfo, SizeRules};
-use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
+use super::{GridCellInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
 use super::{RowSetter, RowSolver, RowStorage};
 use super::{RulesSetter, RulesSolver};
 use crate::draw::color::Rgb;
@@ -57,7 +57,7 @@ pub trait Visitable {
 /// A list of [`Visitable`]
 ///
 /// This is templated over `cell_info: C` where `C = ()` for lists or
-/// `C = GridChildInfo` for grids.
+/// `C = GridCellInfo` for grids.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait VisitableList<C> {
@@ -169,7 +169,7 @@ impl<'a> Visitor<Box<dyn Visitable + 'a>> {
         data: &'a mut S,
     ) -> Visitor<impl Visitable + 'a>
     where
-        L: VisitableList<GridChildInfo> + 'a,
+        L: VisitableList<GridCellInfo> + 'a,
         S: GridStorage,
     {
         Visitor(Grid {
@@ -569,7 +569,7 @@ struct Grid<'a, S, L> {
 
 impl<'a, S: GridStorage, L> Visitable for Grid<'a, S, L>
 where
-    L: VisitableList<GridChildInfo> + 'a,
+    L: VisitableList<GridCellInfo> + 'a,
 {
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, self.data);

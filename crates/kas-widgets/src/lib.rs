@@ -106,7 +106,7 @@ pub use edit::{EditBox, EditField, EditGuard};
 pub use event_config::EventConfig;
 pub use filler::Filler;
 pub use frame::Frame;
-pub use grid::{BoxGrid, Grid};
+pub use grid::Grid;
 pub use grip::{GripMsg, GripPart};
 pub use label::{label, label_any, AccessLabel, Label};
 pub use list::*;

@@ -5,24 +5,16 @@
 
 //! A grid widget
 
-use kas::layout::{DynGridStorage, GridChildInfo, GridDimensions};
+use kas::layout::{DynGridStorage, GridCellInfo, GridDimensions};
 use kas::layout::{GridSetter, GridSolver, RulesSetter, RulesSolver};
-use kas::{layout, prelude::*};
+use kas::{layout, prelude::*, CellCollection};
 use std::ops::{Index, IndexMut};
-
-/// A grid of boxed widgets
-///
-/// This is a parameterisation of [`Grid`]
-/// This is parameterised over the handler message type.
-///
-/// See documentation of [`Grid`] type.
-pub type BoxGrid<Data> = Grid<Box<dyn Widget<Data = Data>>>;
 
 impl_scope! {
     /// A generic grid widget
     ///
     /// Child widgets are displayed in a grid, according to each child's
-    /// [`GridChildInfo`]. This allows spans and overlapping widgets. The numbers
+    /// [`GridCellInfo`]. This allows spans and overlapping widgets. The numbers
     /// of rows and columns is determined automatically while the sizes of rows and
     /// columns are determined based on their contents (including special handling
     /// for spans, *mostly* with good results).
@@ -45,27 +37,35 @@ impl_scope! {
     /// ## Performance
     ///
     /// Most operations are `O(n)` in the number of children.
-    #[autoimpl(Default)]
+    ///
+    /// ## Example
+    /// ```
+    /// use kas::cell_collection;
+    /// # use kas_widgets::Grid;
+    /// let _grid = Grid::new(cell_collection! {
+    ///     (0, 0) => "one",
+    ///     (1, 0) => "two",
+    ///     (0..2, 1) => "three",
+    /// });
+    /// ```
     #[widget]
-    pub struct Grid<W: Widget> {
+    pub struct Grid<C: CellCollection> {
         core: widget_core!(),
-        widgets: Vec<(GridChildInfo, W)>,
-        data: DynGridStorage,
+        layout: DynGridStorage,
         dim: GridDimensions,
+        widgets: C,
     }
 
     impl Widget for Self {
-        type Data = W::Data;
+        type Data = C::Data;
 
         fn for_child_node(
             &mut self,
-            data: &W::Data,
+            data: &C::Data,
             index: usize,
             closure: Box<dyn FnOnce(Node<'_>) + '_>,
         ) {
-            if let Some(w) = self.widgets.get_mut(index) {
-                closure(w.1.as_node(data));
-            }
+            self.widgets.for_node(data, index, closure);
         }
     }
 
@@ -75,23 +75,28 @@ impl_scope! {
             self.widgets.len()
         }
         fn get_child(&self, index: usize) -> Option<&dyn Layout> {
-            self.widgets.get(index).map(|w| w.1.as_layout())
+            self.widgets.get_layout(index).map(|w| w.as_layout())
         }
+
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, &mut self.data);
-            for (info, child) in &mut self.widgets {
-                solver.for_child(&mut self.data, *info, |axis| {
-                    child.size_rules(sizer.re(), axis)
-                });
+            let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, &mut self.layout);
+            for n in 0..self.widgets.len() {
+                if let Some((info, child)) = self.widgets.cell_info(n).zip(self.widgets.get_mut_layout(n)) {
+                    solver.for_child(&mut self.layout, info, |axis| {
+                        child.size_rules(sizer.re(), axis)
+                    });
+                }
             }
-            solver.finish(&mut self.data)
+            solver.finish(&mut self.layout)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, &mut self.data);
-            for (info, child) in &mut self.widgets {
-                child.set_rect(cx, setter.child_rect(&mut self.data, *info));
+            let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, &mut self.layout);
+            for n in 0..self.widgets.len() {
+                if let Some((info, child)) = self.widgets.cell_info(n).zip(self.widgets.get_mut_layout(n)) {
+                    child.set_rect(cx, setter.child_rect(&mut self.layout, info));
+                }
             }
         }
 
@@ -99,36 +104,36 @@ impl_scope! {
             if !self.rect().contains(coord) {
                 return None;
             }
-            self.widgets
-                .iter_mut()
-                .find_map(|(_, child)| child.find_id(coord))
-                .or_else(|| Some(self.id()))
+            for n in 0..self.widgets.len() {
+                if let Some(child) = self.widgets.get_mut_layout(n) {
+                    if let Some(id) = child.find_id(coord) {
+                        return Some(id);
+                    }
+                }
+            }
+            Some(self.id())
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            for (_, child) in &mut self.widgets {
-                draw.recurse(child);
+            for n in 0..self.widgets.len() {
+                if let Some(child) = self.widgets.get_mut_layout(n) {
+                    draw.recurse(child);
+                }
             }
         }
     }
 }
 
-impl<W: Widget> Grid<W> {
+impl<C: CellCollection> Grid<C> {
     /// Construct a new instance
     #[inline]
-    pub fn new() -> Self {
-        Self::new_vec(vec![])
-    }
-
-    /// Construct a new instance
-    #[inline]
-    pub fn new_vec(widgets: Vec<(GridChildInfo, W)>) -> Self {
-        let mut grid = Grid {
+    pub fn new(widgets: C) -> Self {
+        Grid {
+            core: Default::default(),
+            layout: Default::default(),
+            dim: widgets.grid_dimensions(),
             widgets,
-            ..Default::default()
-        };
-        grid.calc_dim();
-        grid
+        }
     }
 
     /// Get grid dimensions
@@ -144,27 +149,14 @@ impl<W: Widget> Grid<W> {
     /// Use [`Self::dimensions`] to get expected dimensions.
     #[inline]
     pub fn layout_storage(&mut self) -> &mut impl layout::GridStorage {
-        &mut self.data
+        &mut self.layout
     }
+}
 
-    fn calc_dim(&mut self) {
-        let mut dim = GridDimensions::default();
-        for child in &self.widgets {
-            dim.cols = dim.cols.max(child.0.col_end);
-            dim.rows = dim.rows.max(child.0.row_end);
-            if child.0.col_end - child.0.col > 1 {
-                dim.col_spans += 1;
-            }
-            if child.0.row_end - child.0.row > 1 {
-                dim.row_spans += 1;
-            }
-        }
-        self.dim = dim;
-    }
-
+impl<W: Widget> Grid<Vec<(GridCellInfo, W)>> {
     /// Construct via a builder
     pub fn build<F: FnOnce(GridBuilder<W>)>(f: F) -> Self {
-        let mut grid = Self::default();
+        let mut grid = Grid::new(vec![]);
         let _ = grid.edit(f);
         grid
     }
@@ -177,7 +169,7 @@ impl<W: Widget> Grid<W> {
     /// value, [`Action::RECONFIGURE`]).
     pub fn edit<F: FnOnce(GridBuilder<W>)>(&mut self, f: F) -> Action {
         f(GridBuilder(&mut self.widgets));
-        self.calc_dim();
+        self.dim = self.widgets.grid_dimensions();
         Action::RECONFIGURE
     }
 
@@ -202,21 +194,21 @@ impl<W: Widget> Grid<W> {
     }
 
     /// Iterate over childern
-    pub fn iter(&self) -> impl Iterator<Item = &(GridChildInfo, W)> {
+    pub fn iter(&self) -> impl Iterator<Item = &(GridCellInfo, W)> {
         ListIter {
             list: &self.widgets,
         }
     }
 
     /// Mutably iterate over childern
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut (GridChildInfo, W)> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut (GridCellInfo, W)> {
         ListIterMut {
             list: &mut self.widgets,
         }
     }
 }
 
-pub struct GridBuilder<'a, W: Widget>(&'a mut Vec<(GridChildInfo, W)>);
+pub struct GridBuilder<'a, W: Widget>(&'a mut Vec<(GridCellInfo, W)>);
 impl<'a, W: Widget> GridBuilder<'a, W> {
     /// True if there are no child widgets
     pub fn is_empty(&self) -> bool {
@@ -248,7 +240,7 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     ///
     /// The child is added to the end of the "list", thus appears last in
     /// navigation order.
-    pub fn push(&mut self, info: GridChildInfo, widget: W) {
+    pub fn push(&mut self, info: GridCellInfo, widget: W) {
         self.0.push((info, widget));
     }
 
@@ -257,7 +249,7 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     /// The child is added to the end of the "list", thus appears last in
     /// navigation order.
     pub fn push_cell(&mut self, col: u32, row: u32, widget: W) {
-        let info = GridChildInfo::new(col, row);
+        let info = GridCellInfo::new(col, row);
         self.push(info, widget);
     }
 
@@ -278,7 +270,7 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     /// The child is added to the end of the "list", thus appears last in
     /// navigation order.
     pub fn push_cell_span(&mut self, col: u32, row: u32, col_span: u32, row_span: u32, widget: W) {
-        let info = GridChildInfo {
+        let info = GridCellInfo {
             col,
             col_end: col + col_span,
             row,
@@ -311,40 +303,40 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     ///
     /// Returns `None` if there are no children. Otherwise, this
     /// triggers a reconfigure before the next draw operation.
-    pub fn pop(&mut self) -> Option<(GridChildInfo, W)> {
+    pub fn pop(&mut self) -> Option<(GridCellInfo, W)> {
         self.0.pop()
     }
 
     /// Inserts a child widget position `index`
     ///
     /// Panics if `index > len`.
-    pub fn insert(&mut self, index: usize, info: GridChildInfo, widget: W) {
+    pub fn insert(&mut self, index: usize, info: GridCellInfo, widget: W) {
         self.0.insert(index, (info, widget));
     }
 
     /// Removes the child widget at position `index`
     ///
     /// Panics if `index` is out of bounds.
-    pub fn remove(&mut self, index: usize) -> (GridChildInfo, W) {
+    pub fn remove(&mut self, index: usize) -> (GridCellInfo, W) {
         self.0.remove(index)
     }
 
     /// Replace the child at `index`
     ///
     /// Panics if `index` is out of bounds.
-    pub fn replace(&mut self, index: usize, info: GridChildInfo, widget: W) -> (GridChildInfo, W) {
+    pub fn replace(&mut self, index: usize, info: GridCellInfo, widget: W) -> (GridCellInfo, W) {
         let mut item = (info, widget);
         std::mem::swap(&mut item, &mut self.0[index]);
         item
     }
 
     /// Append child widgets from an iterator
-    pub fn extend<T: IntoIterator<Item = (GridChildInfo, W)>>(&mut self, iter: T) {
+    pub fn extend<T: IntoIterator<Item = (GridCellInfo, W)>>(&mut self, iter: T) {
         self.0.extend(iter);
     }
 
     /// Resize, using the given closure to construct new widgets
-    pub fn resize_with<F: Fn(usize) -> (GridChildInfo, W)>(&mut self, len: usize, f: F) {
+    pub fn resize_with<F: Fn(usize) -> (GridCellInfo, W)>(&mut self, len: usize, f: F) {
         let l0 = self.0.len();
         if l0 > len {
             self.0.truncate(len);
@@ -359,7 +351,7 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     /// Retain only widgets satisfying predicate `f`
     ///
     /// See documentation of [`Vec::retain`].
-    pub fn retain<F: FnMut(&(GridChildInfo, W)) -> bool>(&mut self, f: F) {
+    pub fn retain<F: FnMut(&(GridCellInfo, W)) -> bool>(&mut self, f: F) {
         self.0.retain(f);
     }
 
@@ -374,45 +366,45 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     }
 
     /// Iterate over childern
-    pub fn iter(&self) -> impl Iterator<Item = &(GridChildInfo, W)> {
+    pub fn iter(&self) -> impl Iterator<Item = &(GridCellInfo, W)> {
         ListIter { list: self.0 }
     }
 
     /// Mutably iterate over childern
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut (GridChildInfo, W)> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut (GridCellInfo, W)> {
         ListIterMut { list: self.0 }
     }
 }
 
-impl<W: Widget> FromIterator<(GridChildInfo, W)> for Grid<W> {
+impl<W: Widget> FromIterator<(GridCellInfo, W)> for Grid<Vec<(GridCellInfo, W)>> {
     #[inline]
     fn from_iter<T>(iter: T) -> Self
     where
-        T: IntoIterator<Item = (GridChildInfo, W)>,
+        T: IntoIterator<Item = (GridCellInfo, W)>,
     {
-        Self::new_vec(iter.into_iter().collect())
+        Self::new(iter.into_iter().collect())
     }
 }
 
-impl<W: Widget> Index<usize> for Grid<W> {
-    type Output = (GridChildInfo, W);
+impl<W: Widget> Index<usize> for Grid<Vec<(GridCellInfo, W)>> {
+    type Output = (GridCellInfo, W);
 
     fn index(&self, index: usize) -> &Self::Output {
         &self.widgets[index]
     }
 }
 
-impl<W: Widget> IndexMut<usize> for Grid<W> {
+impl<W: Widget> IndexMut<usize> for Grid<Vec<(GridCellInfo, W)>> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.widgets[index]
     }
 }
 
 struct ListIter<'a, W: Widget> {
-    list: &'a [(GridChildInfo, W)],
+    list: &'a [(GridCellInfo, W)],
 }
 impl<'a, W: Widget> Iterator for ListIter<'a, W> {
-    type Item = &'a (GridChildInfo, W);
+    type Item = &'a (GridCellInfo, W);
     fn next(&mut self) -> Option<Self::Item> {
         if let Some((first, rest)) = self.list.split_first() {
             self.list = rest;
@@ -433,10 +425,10 @@ impl<'a, W: Widget> ExactSizeIterator for ListIter<'a, W> {
 }
 
 struct ListIterMut<'a, W: Widget> {
-    list: &'a mut [(GridChildInfo, W)],
+    list: &'a mut [(GridCellInfo, W)],
 }
 impl<'a, W: Widget> Iterator for ListIterMut<'a, W> {
-    type Item = &'a mut (GridChildInfo, W);
+    type Item = &'a mut (GridCellInfo, W);
     fn next(&mut self) -> Option<Self::Item> {
         let list = std::mem::take(&mut self.list);
         if let Some((first, rest)) = list.split_first_mut() {

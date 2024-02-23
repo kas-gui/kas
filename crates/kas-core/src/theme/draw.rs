@@ -13,7 +13,6 @@ use crate::event::{ConfigCx, EventState};
 use crate::geom::{Offset, Rect};
 use crate::text::{TextApi, TextDisplay};
 use crate::{autoimpl, Id, Layout};
-use std::convert::AsRef;
 use std::ops::{Bound, Range, RangeBounds};
 use std::time::Instant;
 

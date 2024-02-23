@@ -614,22 +614,29 @@ pub fn aligned_row(input: TokenStream) -> TokenStream {
 /// Each item must be either a string literal (inferred as a static label) or a
 /// widget (implements [`kas::Widget`](https://docs.rs/kas/latest/kas/trait.Widget.html)).
 ///
-/// # Example
-///
-/// ```ignore
-/// use kas::collection;
-/// use kas::widgets::{CheckBox, List};
-/// let list = List::right(collection![
-///     "A checkbox",
-///     CheckBox::new(|_, _| false),
-/// ]);
-/// ```
+/// For example usage, see [`List`](https://docs.rs/kas/latest/kas/widgets/struct.List.html).
 ///
 /// [`kas::Collection`]: https://docs.rs/kas/latest/kas/trait.Collection.html
 #[proc_macro_error]
 #[proc_macro]
 pub fn collection(input: TokenStream) -> TokenStream {
     parse_macro_input!(input as collection::Collection)
+        .expand()
+        .into()
+}
+
+/// Generate an anonymous struct which implements [`kas::CellCollection`]
+///
+/// Each item must be either a string literal (inferred as a static label) or a
+/// widget (implements [`kas::Widget`](https://docs.rs/kas/latest/kas/trait.Widget.html)).
+///
+/// For example usage, see [`Grid`](https://docs.rs/kas/latest/kas/widgets/struct.Grid.html).
+///
+/// [`kas::Collection`]: https://docs.rs/kas/latest/kas/trait.Collection.html
+#[proc_macro_error]
+#[proc_macro]
+pub fn cell_collection(input: TokenStream) -> TokenStream {
+    parse_macro_input!(input as collection::CellCollection)
         .expand()
         .into()
 }

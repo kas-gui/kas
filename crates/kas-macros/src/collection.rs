@@ -7,11 +7,12 @@
 
 use proc_macro2::{Span, TokenStream as Toks};
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
-use syn::parse::{Parse, ParseStream, Result};
+use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
-use syn::{Expr, Ident, Lifetime, LitStr, Token};
+use syn::{braced, parenthesized};
+use syn::{Expr, Ident, Lifetime, LitInt, LitStr, Token};
 
 #[derive(Debug)]
 pub enum StorIdent {
@@ -57,6 +58,122 @@ impl NameGenerator {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct CellInfo {
+    pub col: u32,
+    pub col_end: u32,
+    pub row: u32,
+    pub row_end: u32,
+}
+
+impl CellInfo {
+    pub fn new(col: u32, row: u32) -> Self {
+        CellInfo {
+            col,
+            col_end: col + 1,
+            row,
+            row_end: row + 1,
+        }
+    }
+}
+
+impl Parse for CellInfo {
+    fn parse(input: ParseStream) -> Result<Self> {
+        fn parse_end(input: ParseStream, start: u32) -> Result<u32> {
+            if input.parse::<Token![..=]>().is_ok() {
+                let lit = input.parse::<LitInt>()?;
+                let n: u32 = lit.base10_parse()?;
+                if n >= start {
+                    Ok(n + 1)
+                } else {
+                    Err(Error::new(lit.span(), format!("expected value >= {start}")))
+                }
+            } else if input.parse::<Token![..]>().is_ok() {
+                let plus = input.parse::<Token![+]>();
+                let lit = input.parse::<LitInt>()?;
+                let n: u32 = lit.base10_parse()?;
+
+                if plus.is_ok() {
+                    Ok(start + n)
+                } else if n > start {
+                    Ok(n)
+                } else {
+                    Err(Error::new(lit.span(), format!("expected value > {start}")))
+                }
+            } else {
+                Ok(start + 1)
+            }
+        }
+
+        let inner;
+        let _ = parenthesized!(inner in input);
+
+        let col = inner.parse::<LitInt>()?.base10_parse()?;
+        let col_end = parse_end(&inner, col)?;
+
+        let _ = inner.parse::<Token![,]>()?;
+
+        let row = inner.parse::<LitInt>()?.base10_parse()?;
+        let row_end = parse_end(&inner, row)?;
+
+        Ok(CellInfo {
+            row,
+            row_end,
+            col,
+            col_end,
+        })
+    }
+}
+
+impl ToTokens for CellInfo {
+    fn to_tokens(&self, toks: &mut Toks) {
+        let (col, col_end) = (self.col, self.col_end);
+        let (row, row_end) = (self.row, self.row_end);
+        toks.append_all(quote! {
+            ::kas::layout::GridCellInfo {
+                col: #col,
+                col_end: #col_end,
+                row: #row,
+                row_end: #row_end,
+            }
+        });
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct GridDimensions {
+    pub cols: u32,
+    col_spans: u32,
+    pub rows: u32,
+    row_spans: u32,
+}
+
+impl GridDimensions {
+    pub fn update(&mut self, cell: &CellInfo) {
+        self.cols = self.cols.max(cell.col_end);
+        if cell.col_end - cell.col > 1 {
+            self.col_spans += 1;
+        }
+        self.rows = self.rows.max(cell.row_end);
+        if cell.row_end - cell.row > 1 {
+            self.row_spans += 1;
+        }
+    }
+}
+
+impl ToTokens for GridDimensions {
+    fn to_tokens(&self, toks: &mut Toks) {
+        let (cols, rows) = (self.cols, self.rows);
+        let (col_spans, row_spans) = (self.col_spans, self.row_spans);
+        toks.append_all(quote! { ::kas::layout::GridDimensions {
+            cols: #cols,
+            col_spans: #col_spans,
+            rows: #rows,
+            row_spans: #row_spans,
+        } });
+    }
+}
+
 pub enum Item {
     Label(Ident, LitStr),
     Widget(Ident, Expr),
@@ -73,6 +190,7 @@ impl Item {
 }
 
 pub struct Collection(Vec<Item>);
+pub struct CellCollection(Vec<CellInfo>, Collection);
 
 impl Parse for Collection {
     fn parse(inner: ParseStream) -> Result<Self> {
@@ -93,10 +211,46 @@ impl Parse for Collection {
     }
 }
 
-impl Collection {
-    pub fn expand(&self) -> Toks {
-        let name = Ident::new("_Collection", Span::call_site());
+impl Parse for CellCollection {
+    fn parse(inner: ParseStream) -> Result<Self> {
+        let mut gen = NameGenerator::default();
 
+        let mut cells = vec![];
+        let mut items = vec![];
+        while !inner.is_empty() {
+            cells.push(inner.parse()?);
+            let _: Token![=>] = inner.parse()?;
+
+            let item;
+            let require_comma;
+            if inner.peek(syn::token::Brace) {
+                let inner2;
+                let _ = braced!(inner2 in inner);
+                item = Item::parse(&inner2, &mut gen)?;
+                require_comma = false;
+            } else {
+                item = Item::parse(inner, &mut gen)?;
+                require_comma = true;
+            }
+            items.push(item);
+
+            if inner.is_empty() {
+                break;
+            }
+
+            if let Err(e) = inner.parse::<Token![,]>() {
+                if require_comma {
+                    return Err(e);
+                }
+            }
+        }
+
+        Ok(CellCollection(cells, Collection(items)))
+    }
+}
+
+impl Collection {
+    pub fn impl_parts(&self) -> (Toks, Toks, Toks, Toks, Toks) {
         let mut data_ty = None;
         for (index, item) in self.0.iter().enumerate() {
             if let Item::Widget(_, expr) = item {
@@ -106,14 +260,23 @@ impl Collection {
             }
         }
 
-        let mut item_names = Vec::with_capacity(self.0.len());
+        let len = self.0.len();
+        let is_empty = match len {
+            0 => quote! { true },
+            _ => quote! { false },
+        };
+
         let mut ty_generics = Punctuated::<Ident, Comma>::new();
         let mut stor_ty = quote! {};
         let mut stor_def = quote! {};
+
+        let mut get_layout_rules = quote! {};
+        let mut get_mut_layout_rules = quote! {};
+        let mut for_node_rules = quote! {};
+
         for (index, item) in self.0.iter().enumerate() {
-            match item {
+            let path = match item {
                 Item::Label(stor, text) => {
-                    item_names.push(stor.to_token_stream());
                     let span = text.span();
                     if let Some(ref data_ty) = data_ty {
                         stor_ty.append_all(
@@ -128,16 +291,28 @@ impl Collection {
                             quote_spanned! {span=> #stor: ::kas::hidden::StrLabel::new(#text), },
                         );
                     }
+                    stor.to_token_stream()
                 }
                 Item::Widget(stor, expr) => {
                     let span = expr.span();
-                    item_names.push(stor.to_token_stream());
                     let ty = Ident::new(&format!("_W{}", index), span);
                     stor_ty.append_all(quote! { #stor: #ty, });
                     stor_def.append_all(quote_spanned! {span=> #stor: Box::new(#expr), });
                     ty_generics.push(ty);
+
+                    stor.to_token_stream()
                 }
-            }
+            };
+
+            get_layout_rules.append_all(quote! {
+                #index => Some(&self.#path),
+            });
+            get_mut_layout_rules.append_all(quote! {
+                #index => Some(&mut self.#path),
+            });
+            for_node_rules.append_all(quote! {
+                #index => closure(self.#path.as_node(data)),
+            });
         }
 
         let data_ty = data_ty
@@ -160,25 +335,75 @@ impl Collection {
             (quote! { <#toks> }, quote! { <#ty_generics> })
         };
 
-        let len = item_names.len();
-        let is_empty = match len {
-            0 => quote! { true },
-            _ => quote! { false },
+        let collection = quote! {
+            type Data = #data_ty;
+
+            fn is_empty(&self) -> bool { #is_empty }
+            fn len(&self) -> usize { #len }
+
+            fn get_layout(&self, index: usize) -> Option<&dyn ::kas::Layout> {
+                match index {
+                    #get_layout_rules
+                    _ => None,
+                }
+            }
+            fn get_mut_layout(&mut self, index: usize) -> Option<&mut dyn ::kas::Layout> {
+                match index {
+                    #get_mut_layout_rules
+                    _ => None,
+                }
+            }
+            fn for_node(
+                &mut self,
+                data: &Self::Data,
+                index: usize,
+                closure: Box<dyn FnOnce(::kas::Node<'_>) + '_>,
+            ) {
+                use ::kas::Widget;
+                match index {
+                    #for_node_rules
+                    _ => (),
+                }
+            }
         };
 
-        let mut get_layout_rules = quote! {};
-        let mut get_mut_layout_rules = quote! {};
-        let mut for_node_rules = quote! {};
-        for (index, path) in item_names.iter().enumerate() {
-            get_layout_rules.append_all(quote! {
-                #index => Some(&self.#path),
+        (impl_generics, ty_generics, stor_ty, stor_def, collection)
+    }
+
+    pub fn expand(&self) -> Toks {
+        let name = Ident::new("_Collection", Span::call_site());
+        let (impl_generics, ty_generics, stor_ty, stor_def, collection) = self.impl_parts();
+
+        let toks = quote! {{
+            struct #name #impl_generics {
+                #stor_ty
+            }
+
+            impl #impl_generics ::kas::Collection for #name #ty_generics {
+                #collection
+            }
+
+            #name {
+                #stor_def
+            }
+        }};
+        // println!("{}", toks);
+        toks
+    }
+}
+
+impl CellCollection {
+    pub fn expand(&self) -> Toks {
+        let name = Ident::new("_Collection", Span::call_site());
+        let (impl_generics, ty_generics, stor_ty, stor_def, collection) = self.1.impl_parts();
+
+        let mut cell_info_rules = quote! {};
+        let mut dim = GridDimensions::default();
+        for (index, cell) in self.0.iter().enumerate() {
+            cell_info_rules.append_all(quote! {
+                #index => Some(#cell),
             });
-            get_mut_layout_rules.append_all(quote! {
-                #index => Some(&mut self.#path),
-            });
-            for_node_rules.append_all(quote! {
-                #index => closure(self.#path.as_node(data)),
-            });
+            dim.update(cell);
         }
 
         let toks = quote! {{
@@ -187,33 +412,19 @@ impl Collection {
             }
 
             impl #impl_generics ::kas::Collection for #name #ty_generics {
-                type Data = #data_ty;
+                #collection
+            }
 
-                fn is_empty(&self) -> bool { #is_empty }
-                fn len(&self) -> usize { #len }
-
-                fn get_layout(&self, index: usize) -> Option<&dyn Layout> {
+            impl #impl_generics ::kas::CellCollection for #name #ty_generics {
+                fn cell_info(&self, index: usize) -> Option<::kas::layout::GridCellInfo> {
                     match index {
-                        #get_layout_rules
+                        #cell_info_rules
                         _ => None,
                     }
                 }
-                fn get_mut_layout(&mut self, index: usize) -> Option<&mut dyn Layout> {
-                    match index {
-                        #get_mut_layout_rules
-                        _ => None,
-                    }
-                }
-                fn for_node(
-                    &mut self,
-                    data: &Self::Data,
-                    index: usize,
-                    closure: Box<dyn FnOnce(Node<'_>) + '_>,
-                ) {
-                    match index {
-                        #for_node_rules
-                        _ => (),
-                    }
+
+                fn grid_dimensions(&self) -> ::kas::layout::GridDimensions {
+                    #dim
                 }
             }
 

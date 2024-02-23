@@ -7,12 +7,9 @@
 //!
 //! Note: due to definition in kas-core, some widgets must be duplicated.
 
-use crate::event::{ConfigCx, CursorIcon, ResizeDirection};
-use crate::geom::Rect;
-use crate::layout::{Align, AxisInfo, SizeRules};
+use crate::event::{CursorIcon, ResizeDirection};
 use crate::text::Text;
-use crate::theme::{DrawCx, SizeCx, TextClass};
-use crate::Layout;
+use crate::theme::TextClass;
 use kas::prelude::*;
 use kas::theme::MarkStyle;
 use kas_macros::impl_scope;

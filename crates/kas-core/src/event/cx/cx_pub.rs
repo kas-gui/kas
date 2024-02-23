@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 use std::future::IntoFuture;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use super::*;
 use crate::cast::Conv;
@@ -17,8 +17,8 @@ use crate::geom::{Offset, Vec2};
 use crate::theme::{SizeCx, ThemeControl};
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
-use crate::{messages::Erased, Action, HasId, Id, Window, WindowId};
 #[allow(unused)] use crate::{Events, Layout}; // for doc-links
+use crate::{HasId, Window};
 
 /// Public API
 impl EventState {
