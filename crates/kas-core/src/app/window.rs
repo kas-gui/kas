@@ -39,6 +39,7 @@ struct WindowData<G: AppGraphicsBuilder, T: Theme<G::Shared>> {
     theme_window: T::Window,
     next_avail_frame_time: Instant,
     queued_frame_time: Option<Instant>,
+    is_sized: bool,
 }
 
 /// Per-window data
@@ -192,6 +193,7 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             theme_window,
             next_avail_frame_time: time,
             queued_frame_time: Some(time),
+            is_sized: apply_size,
         });
 
         if apply_size {
@@ -243,6 +245,7 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
                 // NOTE: we could try resizing here in case the window is too
                 // small due to non-linear scaling, but it appears unnecessary.
                 window.solve_cache.invalidate_rule_cache();
+                window.is_sized = false;
                 false
             }
             WindowEvent::RedrawRequested => self.do_draw(state).is_err(),
@@ -450,6 +453,7 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             window.set_max_inner_size(Some(ideal));
         };
 
+        window.is_sized = true;
         window.set_visible(true);
         window.request_redraw();
         log::trace!(
@@ -467,6 +471,10 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         let Some(ref mut window) = self.window else {
             return Ok(());
         };
+        if !window.is_sized {
+            log::debug!("Ignoring redraw request before window is (re)sized.");
+            return Err(());
+        }
 
         window.next_avail_frame_time = start + self.ev_state.config().frame_dur();
 
