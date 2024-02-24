@@ -918,7 +918,7 @@ impl_scope! {
             let len = string.len();
             self.text.set_string(string);
             self.selection.set_max_len(len);
-            if self.text.try_prepare().is_ok() {
+            if self.text.prepare().is_ok() {
                 self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
                 let view_offset = self.view_offset.min(self.max_scroll_offset());
                 if view_offset != self.view_offset {

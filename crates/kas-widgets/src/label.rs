@@ -8,7 +8,7 @@
 use super::adapt::MapAny;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
-use kas::text::Text;
+use kas::text::{NotReady, Text};
 use kas::theme::TextClass;
 
 /// Construct a [`Label`]
@@ -116,9 +116,10 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: T) -> Action {
-            match self.label.set_and_try_prepare(text) {
+            match self.label.set_and_prepare(text) {
+                Err(NotReady) => Action::empty(),
+                Ok(false) => Action::REDRAW,
                 Ok(true) => Action::RESIZE,
-                _ => Action::REDRAW,
             }
         }
     }
@@ -157,9 +158,10 @@ impl_scope! {
     {
         fn set_string(&mut self, string: String) -> Action {
             self.label.set_string(string);
-            match self.label.try_prepare() {
+            match self.label.prepare() {
+                Err(NotReady) => Action::empty(),
+                Ok(false) => Action::REDRAW,
                 Ok(true) => Action::RESIZE,
-                _ => Action::REDRAW,
             }
         }
     }
@@ -290,9 +292,10 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: AccessString) -> Action {
-            match self.label.set_and_try_prepare(text) {
+            match self.label.set_and_prepare(text) {
+                Err(NotReady) => Action::empty(),
+                Ok(false) => Action::REDRAW,
                 Ok(true) => Action::RESIZE,
-                _ => Action::REDRAW,
             }
         }
     }

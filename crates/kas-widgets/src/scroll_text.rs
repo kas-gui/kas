@@ -11,7 +11,7 @@ use kas::event::{Command, CursorIcon, FocusSource, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
-use kas::text::{SelectionHelper, Text};
+use kas::text::{NotReady, SelectionHelper, Text};
 use kas::theme::TextClass;
 
 impl_scope! {
@@ -191,8 +191,11 @@ impl_scope! {
     {
         fn set_string(&mut self, string: String) -> Action {
             self.text.set_string(string);
-            let _ = self.text.try_prepare();
-            Action::REDRAW
+            match self.text.prepare() {
+                Err(NotReady) => Action::empty(),
+                Ok(false) => Action::REDRAW,
+                Ok(true) => Action::SET_RECT,
+            }
         }
     }
 
@@ -210,9 +213,13 @@ impl_scope! {
             if self.text.env().bounds.1.is_finite() {
                 // NOTE: bounds are initially infinite. Alignment results in
                 // infinite offset and thus infinite measured height.
-                let action = match self.text.try_prepare() {
-                    Ok(true) => Action::RESIZE,
-                    _ => Action::REDRAW,
+                let action = match self.text.prepare() {
+                    Err(NotReady) => {
+                        debug_assert!(false, "update before configure");
+                        Action::empty()
+                    }
+                    Ok(false) => Action::REDRAW,
+                    Ok(true) => Action::SET_RECT,
                 };
                 cx.action(self, action);
             }

@@ -8,7 +8,7 @@
 //! Note: due to definition in kas-core, some widgets must be duplicated.
 
 use crate::event::{CursorIcon, ResizeDirection};
-use crate::text::Text;
+use crate::text::{NotReady, Text};
 use crate::theme::TextClass;
 use kas::prelude::*;
 use kas::theme::MarkStyle;
@@ -150,9 +150,10 @@ impl_scope! {
     impl HasString for Self {
         fn set_string(&mut self, string: String) -> Action {
             self.label.set_string(string);
-            match self.label.try_prepare() {
+            match self.label.prepare() {
+                Err(NotReady) => Action::empty(),
+                Ok(false) => Action::REDRAW,
                 Ok(true) => Action::RESIZE,
-                _ => Action::REDRAW,
             }
         }
     }

@@ -11,7 +11,7 @@ use kas::event::{Command, CursorIcon, FocusSource, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
-use kas::text::{SelectionHelper, Text};
+use kas::text::{NotReady, SelectionHelper, Text};
 use kas::theme::TextClass;
 
 impl_scope! {
@@ -110,9 +110,9 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: T) -> Action {
-            self.text
-                .set_and_try_prepare(text)
-                .expect("invalid font_id");
+            if self.text.set_and_prepare(text).is_err() {
+                return Action::empty();
+            }
 
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             let max_offset = self.max_scroll_offset();
@@ -209,8 +209,11 @@ impl_scope! {
     {
         fn set_string(&mut self, string: String) -> Action {
             self.text.set_string(string);
-            let _ = self.text.try_prepare();
-            Action::REDRAW
+            match self.text.prepare() {
+                Err(NotReady) => Action::empty(),
+                Ok(false) => Action::REDRAW,
+                Ok(true) => Action::SET_RECT,
+            }
         }
     }
 

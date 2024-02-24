@@ -61,9 +61,9 @@ impl_scope! {
             let mut env = self.date.env();
             env.dpem = text_height * 0.5;
             env.bounds = text_size.cast();
-            self.date.update_env(env).expect("invalid font_id");
+            self.date.update_env(env).expect("not configured");
             env.dpem = text_height * 0.7;
-            self.time.update_env(env).expect("invalid font_id");
+            self.time.update_env(env).expect("not configured");
 
             let time_pos = pos + Offset(0, size.1 * 5 / 8);
             let date_pos = pos + Offset(0, size.1 / 8);
@@ -125,6 +125,8 @@ impl_scope! {
         type Data = ();
 
         fn configure(&mut self, cx: &mut ConfigCx) {
+            self.date.configure().unwrap();
+            self.time.configure().unwrap();
             cx.request_timer(self.id(), 0, Duration::new(0, 0));
         }
 
@@ -134,12 +136,8 @@ impl_scope! {
                     self.now = Local::now();
                     let date = self.now.format("%Y-%m-%d").to_string();
                     let time = self.now.format("%H:%M:%S").to_string();
-                    self.date
-                        .set_and_try_prepare(date)
-                        .expect("invalid font_id");
-                    self.time
-                        .set_and_try_prepare(time)
-                        .expect("invalid font_id");
+                    let _ = self.date.set_and_prepare(date);
+                    let _ = self.time.set_and_prepare(time);
                     let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                     log::info!("Requesting update in {}ns", ns);
                     cx.request_timer(self.id(), 0, Duration::new(0, ns));
