@@ -121,7 +121,6 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
 
         // Now that we have a scale factor, we may need to resize:
         let scale_factor = window.scale_factor();
-        let apply_size;
         if scale_factor != 1.0 {
             let sf32 = scale_factor as f32;
             state.shared.theme.update_window(&mut theme_window, sf32);
@@ -142,20 +141,18 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
 
             if let Some(size) = window.request_inner_size(ideal) {
                 debug_assert_eq!(size, window.inner_size());
-                apply_size = true;
             } else {
-                // We will receive WindowEvent::Resized
-                apply_size = false;
+                // We will receive WindowEvent::Resized and resize then.
+                // Unfortunately we can't rely on this since some platforms (X11)
+                // don't always behave as expected, thus we must resize now.
             }
-        } else {
-            apply_size = true;
         }
 
         let size: Size = window.inner_size().cast();
         log::info!(
-            "new: constructed with physical size {:?}, scale factor {}",
+            "Window::resume: constructed with physical size {:?}, scale factor {}",
             size,
-            scale_factor
+            scale_factor,
         );
 
         #[cfg(all(wayland_platform, feature = "clipboard"))]
@@ -174,9 +171,7 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         // NOTE: usage of Arc is inelegant, but avoids lots of unsafe code
         let window = Arc::new(window);
         let mut surface = G::new_surface(&mut state.shared.draw.draw, window.clone())?;
-        if apply_size {
-            surface.do_resize(&mut state.shared.draw.draw, size);
-        }
+        surface.do_resize(&mut state.shared.draw.draw, size);
 
         let winit_id = window.id();
 
@@ -194,9 +189,7 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             queued_frame_time: Some(time),
         });
 
-        if apply_size {
-            self.apply_size(state, true);
-        }
+        self.apply_size(state, true);
 
         log::trace!(target: "kas_perf::wgpu::window", "resume: {}µs", time.elapsed().as_micros());
         Ok(winit_id)
@@ -219,6 +212,7 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         let Some(ref mut window) = self.window else {
             return false;
         };
+
         match event {
             WindowEvent::Moved(_) | WindowEvent::Destroyed => false,
             WindowEvent::Resized(size) => {
@@ -272,6 +266,7 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         let Some(ref window) = self.window else {
             return (Action::empty(), None);
         };
+
         let mut messages = MessageStack::new();
         let action = self.ev_state.flush_pending(
             &mut state.shared,
@@ -346,6 +341,7 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         let Some(ref window) = self.window else {
             return None;
         };
+
         let widget = self.widget.as_node(&state.data);
         let mut messages = MessageStack::new();
         self.ev_state
@@ -365,6 +361,7 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         let Some(ref window) = self.window else {
             return;
         };
+
         let mut messages = MessageStack::new();
         self.ev_state
             .with(&mut state.shared, window, &mut messages, |cx| {
