@@ -128,12 +128,12 @@ impl_scope! {
         #[inline]
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Default, Align::Center);
-            sizer.text_rules(&mut self.label, self.class, axis)
+            sizer.text_rules(&mut self.label, axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.label, self.class, rect.size, None);
+            cx.text_set_size(&mut self.label, rect.size, None);
         }
 
         #[cfg(feature = "min_spec")]
@@ -143,6 +143,12 @@ impl_scope! {
         #[cfg(not(feature = "min_spec"))]
         fn draw(&mut self, mut draw: DrawCx) {
             draw.text_effects(self.rect(), &self.label, self.class);
+        }
+    }
+
+    impl Events for Self {
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.text_configure(&mut self.label, self.class);
         }
     }
 
@@ -304,12 +310,12 @@ impl_scope! {
         #[inline]
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Default, Align::Center);
-            sizer.text_rules(&mut self.label, self.class, axis)
+            sizer.text_rules(&mut self.label, axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.label, self.class, rect.size, None);
+            cx.text_set_size(&mut self.label, rect.size, None);
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
@@ -321,6 +327,8 @@ impl_scope! {
         type Data = ();
 
         fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.text_configure(&mut self.label, self.class);
+
             if let Some(key) = self.label.text().key() {
                 cx.add_access_key(self.id_ref(), key.clone());
             }

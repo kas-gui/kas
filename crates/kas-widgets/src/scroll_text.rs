@@ -37,18 +37,17 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let class = TextClass::LabelScroll;
-            let mut rules = sizer.text_rules(&mut self.text, class, axis);
+            let mut rules = sizer.text_rules(&mut self.text, axis);
             let _ = self.bar.size_rules(sizer.re(), axis);
             if axis.is_vertical() {
-                rules.reduce_min_to(sizer.line_height(class) * 4);
+                rules.reduce_min_to(sizer.text_line_height(&self.text) * 4);
             }
             rules
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.text, TextClass::LabelScroll, rect.size, None);
+            cx.text_set_size(&mut self.text, rect.size, None);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
 
             let max_offset = self.max_scroll_offset();
@@ -201,6 +200,10 @@ impl_scope! {
 
     impl Events for Self {
         type Data = A;
+
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.text_configure(&mut self.text, TextClass::LabelScroll);
+        }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             let text = (self.text_fn)(cx, data);

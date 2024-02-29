@@ -122,6 +122,12 @@ impl<'a> ConfigCx<'a> {
         self.sh.align_feature(feature, rect, align)
     }
 
+    /// Configure a text object
+    #[inline]
+    pub fn text_configure(&self, text: &mut dyn TextApi, class: TextClass) {
+        self.sh.text_configure(text, class);
+    }
+
     /// Prepare a text object
     ///
     /// This sets the text's font, font size, wrapping and optionally alignment,
@@ -130,14 +136,8 @@ impl<'a> ConfigCx<'a> {
     /// Note: setting alignment here is not necessary when the default alignment
     /// is desired or when [`SizeCx::text_rules`] is used.
     #[inline]
-    pub fn text_set_size(
-        &self,
-        text: &mut dyn TextApi,
-        class: TextClass,
-        size: Size,
-        align: Option<AlignPair>,
-    ) {
-        self.sh.text_set_size(text, class, size, align)
+    pub fn text_set_size(&self, text: &mut dyn TextApi, size: Size, align: Option<AlignPair>) {
+        self.sh.text_set_size(text, size, align)
     }
 }
 

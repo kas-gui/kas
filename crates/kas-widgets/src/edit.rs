@@ -694,7 +694,7 @@ impl_scope! {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
             self.outer_rect = rect;
-            cx.text_set_size(&mut self.text, self.class, rect.size, Some(self.align));
+            cx.text_set_size(&mut self.text, rect.size, Some(self.align));
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
         }
@@ -743,6 +743,7 @@ impl_scope! {
         type Data = G::Data;
 
         fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.text_configure(&mut self.text, self.class);
             G::configure(self, cx);
         }
 

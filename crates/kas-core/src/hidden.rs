@@ -15,7 +15,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::{Text, TextApi};
 use crate::theme::{DrawCx, SizeCx, TextClass};
-use crate::{Id, Layout, NavAdvance, Node, Widget};
+use crate::{Events, Id, Layout, NavAdvance, Node, Widget};
 use kas_macros::{autoimpl, impl_scope};
 
 impl_scope! {
@@ -51,16 +51,22 @@ impl_scope! {
         #[inline]
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Default, Align::Center);
-            sizer.text_rules(&mut self.label, Self::CLASS, axis)
+            sizer.text_rules(&mut self.label, axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.label, Self::CLASS, rect.size, None);
+            cx.text_set_size(&mut self.label, rect.size, None);
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
             draw.text(self.rect(), &self.label, Self::CLASS);
+        }
+    }
+
+    impl Events for Self {
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.text_configure(&mut self.label, Self::CLASS);
         }
     }
 

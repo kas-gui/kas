@@ -58,11 +58,11 @@ impl_scope! {
             let text_size = Size(size.0, size.1 / 4);
             let text_height = text_size.1 as f32;
 
+            self.date.set_font_size(text_height * 0.5);
             let mut env = self.date.env();
-            env.dpem = text_height * 0.5;
             env.bounds = text_size.cast();
             self.date.update_env(env).expect("not configured");
-            env.dpem = text_height * 0.7;
+            self.time.set_font_size(text_height * 0.7);
             self.time.update_env(env).expect("not configured");
 
             let time_pos = pos + Offset(0, size.1 * 5 / 8);

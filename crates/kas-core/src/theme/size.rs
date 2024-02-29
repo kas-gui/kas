@@ -155,8 +155,15 @@ impl<'a> SizeCx<'a> {
     /// scales this according to [`Self::dpem`], then measures the line height.
     /// The result is typically 100% - 150% of the value returned by
     /// [`Self::dpem`], depending on the font face.
+    ///
+    /// Prefer to use [`Self::text_line_height`] where possible.
     pub fn line_height(&self, class: TextClass) -> i32 {
         self.0.line_height(class)
+    }
+
+    /// Get the line-height of a configured text object
+    pub fn text_line_height(&self, text: &dyn TextApi) -> i32 {
+        self.0.text_line_height(text)
     }
 
     /// Get [`SizeRules`] for a text element
@@ -179,14 +186,9 @@ impl<'a> SizeCx<'a> {
     ///
     /// Note: this method partially prepares the `text` object. It is not
     /// required to call this method but it is required to call
-    /// [`ConfigCx::text_set_size`] before text display for correct results.
-    pub fn text_rules(
-        &self,
-        text: &mut dyn TextApi,
-        class: TextClass,
-        axis: AxisInfo,
-    ) -> SizeRules {
-        self.0.text_rules(text, class, axis)
+    /// [`ConfigCx::text_configure`] before text display for correct results.
+    pub fn text_rules(&self, text: &mut dyn TextApi, axis: AxisInfo) -> SizeRules {
+        self.0.text_rules(text, axis)
     }
 }
 
@@ -225,18 +227,20 @@ pub trait ThemeSize {
     /// Size of a frame around another element
     fn frame(&self, style: FrameStyle, axis_is_vertical: bool) -> FrameRules;
 
-    /// The height of a line of text using the standard font
+    /// The height of a line of text by class
+    ///
+    /// Prefer to use [`Self::text_line_height`] where possible.
     fn line_height(&self, class: TextClass) -> i32;
 
+    /// Configure a text object, setting font properties
+    fn text_configure(&self, text: &mut dyn TextApi, class: TextClass);
+
+    /// Get the line-height of a configured text object
+    fn text_line_height(&self, text: &dyn TextApi) -> i32;
+
     /// Get [`SizeRules`] for a text element
-    fn text_rules(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules;
+    fn text_rules(&self, text: &mut dyn TextApi, axis: AxisInfo) -> SizeRules;
 
     /// Update a text object, setting font properties and wrap size
-    fn text_set_size(
-        &self,
-        text: &mut dyn TextApi,
-        class: TextClass,
-        size: Size,
-        align: Option<AlignPair>,
-    );
+    fn text_set_size(&self, text: &mut dyn TextApi, size: Size, align: Option<AlignPair>);
 }

@@ -75,7 +75,6 @@ impl_scope! {
             let align = Some(AlignPair::new(Align::Center, Align::Center));
             cx.text_set_size(
                 &mut self.loading_text,
-                TextClass::Label(false),
                 rect.size,
                 align,
             );
@@ -92,6 +91,10 @@ impl_scope! {
     }
     impl Events for ColourSquare {
         type Data = AppData;
+
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.text_configure(&mut self.loading_text, TextClass::Label(false));
+        }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &AppData) {
             self.color = data.color;

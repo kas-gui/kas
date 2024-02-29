@@ -112,12 +112,12 @@ impl_scope! {
         #[inline]
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Default, Align::Center);
-            sizer.text_rules(&mut self.label, self.class, axis)
+            sizer.text_rules(&mut self.label, axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.label, self.class, rect.size, None);
+            cx.text_set_size(&mut self.label, rect.size, None);
         }
 
         #[cfg(feature = "min_spec")]
@@ -132,6 +132,10 @@ impl_scope! {
 
     impl Events for Self {
         type Data = A;
+
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.text_configure(&mut self.label, self.class);
+        }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             let text = (self.label_fn)(cx, data);
