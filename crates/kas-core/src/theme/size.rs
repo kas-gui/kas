@@ -5,14 +5,15 @@
 
 //! "Handle" types used by themes
 
-use std::ops::Deref;
+use cast::CastFloat;
 
 use super::{Feature, FrameStyle, MarginStyle, TextClass};
 use crate::autoimpl;
 use crate::dir::Directional;
-use crate::geom::{Rect, Size};
+use crate::geom::Rect;
 use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules};
 use crate::text::TextApi;
+use std::ops::Deref;
 
 #[allow(unused)] use crate::text::TextApiExt;
 #[allow(unused)]
@@ -163,7 +164,7 @@ impl<'a> SizeCx<'a> {
 
     /// Get the line-height of a configured text object
     pub fn text_line_height(&self, text: &dyn TextApi) -> i32 {
-        self.0.text_line_height(text)
+        text.line_height().expect("not configured").cast_ceil()
     }
 
     /// Get [`SizeRules`] for a text element
@@ -235,12 +236,6 @@ pub trait ThemeSize {
     /// Configure a text object, setting font properties
     fn text_configure(&self, text: &mut dyn TextApi, class: TextClass);
 
-    /// Get the line-height of a configured text object
-    fn text_line_height(&self, text: &dyn TextApi) -> i32;
-
     /// Get [`SizeRules`] for a text element
     fn text_rules(&self, text: &mut dyn TextApi, axis: AxisInfo) -> SizeRules;
-
-    /// Update a text object, setting font properties and wrap size
-    fn text_set_size(&self, text: &mut dyn TextApi, size: Size);
 }

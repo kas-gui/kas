@@ -16,7 +16,7 @@ use crate::cast::traits::*;
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
 use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
-use crate::text::{fonts::FontId, Direction, TextApi, TextApiExt};
+use crate::text::{fonts::FontId, Direction, TextApi};
 
 crate::impl_scope! {
     /// Parameterisation of [`Dimensions`]
@@ -335,10 +335,6 @@ impl<D: 'static> ThemeSize for Window<D> {
         text.configure().expect("invalid font_id");
     }
 
-    fn text_line_height(&self, text: &dyn TextApi) -> i32 {
-        text.line_height().expect("not configured").cast_ceil()
-    }
-
     fn text_rules(&self, text: &mut dyn TextApi, axis: AxisInfo) -> SizeRules {
         let margin = match axis.is_horizontal() {
             true => self.dims.m_text.0,
@@ -386,11 +382,5 @@ impl<D: 'static> ThemeSize for Window<D> {
             let min = bound.max(line_height);
             SizeRules::new(min, min, margins, Stretch::Filler)
         }
-    }
-
-    fn text_set_size(&self, text: &mut dyn TextApi, size: Size) {
-        let mut env = text.env();
-        env.bounds = size.cast();
-        text.update_env(env).expect("not configured");
     }
 }

@@ -13,6 +13,8 @@ use crate::messages::Erased;
 use crate::text::TextApi;
 use crate::theme::{Feature, SizeCx, TextClass, ThemeSize};
 use crate::{Id, Node};
+use cast::Cast;
+use kas_text::{Environment, TextApiExt};
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
@@ -139,7 +141,11 @@ impl<'a> ConfigCx<'a> {
     /// Call [`text_configure`][Self::text_configure] before this method.
     #[inline]
     pub fn text_set_size(&self, text: &mut dyn TextApi, size: Size) {
-        self.sh.text_set_size(text, size)
+        text.update_env(Environment {
+            bounds: size.cast(),
+        })
+        .unwrap();
+        text.prepare().expect("not configured");
     }
 }
 
