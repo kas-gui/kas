@@ -47,7 +47,7 @@ impl_scope! {
 
         fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.text, rect.size, None);
+            cx.text_set_size(&mut self.text, rect.size);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
 
             let max_offset = self.max_scroll_offset();

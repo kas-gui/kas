@@ -346,8 +346,6 @@ impl<D: 'static> ThemeSize for Window<D> {
         };
         let margins = (margin, margin);
 
-        // TODO(opt): setting horizontal alignment now could avoid re-wrapping
-        // text. Unfortunately we don't know the desired alignment here.
         let mut align_pair = text.get_align();
         let align = axis.align_or_default();
         if axis.is_horizontal() {
@@ -390,11 +388,8 @@ impl<D: 'static> ThemeSize for Window<D> {
         }
     }
 
-    fn text_set_size(&self, text: &mut dyn TextApi, size: Size, align: Option<AlignPair>) {
+    fn text_set_size(&self, text: &mut dyn TextApi, size: Size) {
         let mut env = text.env();
-        if let Some(align) = align {
-            text.set_align(align.into());
-        }
         env.bounds = size.cast();
         text.update_env(env).expect("not configured");
     }

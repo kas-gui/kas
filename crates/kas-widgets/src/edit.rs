@@ -656,7 +656,6 @@ impl_scope! {
         view_offset: Offset,
         editable: bool,
         class: TextClass = TextClass::Edit(false),
-        align: AlignPair,
         width: (f32, f32) = (8.0, 16.0),
         lines: (i32, i32) = (1, 1),
         text: Text<String>,
@@ -674,27 +673,34 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut align = self.text.get_align();
             let (min, ideal) = if axis.is_horizontal() {
+                align.0 = axis.align_or_default();
                 let dpem = sizer.dpem();
                 ((self.width.0 * dpem).cast_ceil(), (self.width.1 * dpem).cast_ceil())
             } else {
+                align.1 = if self.multi_line() {
+                    axis.align_or_default()
+                } else {
+                    axis.align_or_center()
+                };
                 let height = sizer.line_height(self.class);
                 (self.lines.0 * height, self.lines.1 * height)
             };
+            self.text.set_align(align.into());
             let margins = sizer.text_margins().extract(axis);
-            let (stretch, align) = if axis.is_horizontal() || self.multi_line() {
-                (Stretch::High, axis.align_or_default())
+            let stretch = if axis.is_horizontal() || self.multi_line() {
+                Stretch::High
             } else {
-                (Stretch::None, axis.align_or_center())
+                Stretch::None
             };
-            self.align.set_component(axis, align);
             SizeRules::new(min, ideal, margins, stretch)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
             self.outer_rect = rect;
-            cx.text_set_size(&mut self.text, rect.size, Some(self.align));
+            cx.text_set_size(&mut self.text, rect.size);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
         }
@@ -949,7 +955,6 @@ impl<G: EditGuard> EditField<G> {
             view_offset: Default::default(),
             editable: true,
             class: TextClass::Edit(false),
-            align: Default::default(),
             width: (8.0, 16.0),
             lines: (1, 1),
             text: Default::default(),

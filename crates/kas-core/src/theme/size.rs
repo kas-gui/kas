@@ -242,5 +242,5 @@ pub trait ThemeSize {
     fn text_rules(&self, text: &mut dyn TextApi, axis: AxisInfo) -> SizeRules;
 
     /// Update a text object, setting font properties and wrap size
-    fn text_set_size(&self, text: &mut dyn TextApi, size: Size, align: Option<AlignPair>);
+    fn text_set_size(&self, text: &mut dyn TextApi, size: Size);
 }
