@@ -125,7 +125,9 @@ impl_scope! {
         type Data = ();
 
         fn configure(&mut self, cx: &mut ConfigCx) {
+            self.date.set_align(AlignPair::CENTER.into());
             self.date.configure().unwrap();
+            self.time.set_align(AlignPair::CENTER.into());
             self.time.configure().unwrap();
             cx.request_timer(self.id(), 0, Duration::new(0, 0));
         }
@@ -136,8 +138,10 @@ impl_scope! {
                     self.now = Local::now();
                     let date = self.now.format("%Y-%m-%d").to_string();
                     let time = self.now.format("%H:%M:%S").to_string();
-                    let _ = self.date.set_and_prepare(date);
-                    let _ = self.time.set_and_prepare(time);
+                    self.date.set_text(date);
+                    self.date.prepare().expect("not configured");
+                    self.time.set_text(time);
+                    self.time.prepare().expect("not configured");
                     let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                     log::info!("Requesting update in {}ns", ns);
                     cx.request_timer(self.id(), 0, Duration::new(0, ns));
@@ -151,19 +155,13 @@ impl_scope! {
 
     impl Clock {
         fn new() -> Self {
-            let env = kas::text::Environment {
-                align: (Align::Center, Align::Center),
-                ..Default::default()
-            };
-            let date = Text::new_env(env, "0000-00-00".into());
-            let time = Text::new_env(env, "00:00:00".into());
             Clock {
                 core: Default::default(),
                 date_rect: Rect::ZERO,
                 time_rect: Rect::ZERO,
                 now: Local::now(),
-                date,
-                time,
+                date: Text::new("0000-00-00".to_string()),
+                time: Text::new("00:00:00".to_string()),
             }
         }
     }

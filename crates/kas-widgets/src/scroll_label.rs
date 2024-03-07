@@ -109,7 +109,8 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: T) -> Action {
-            if self.text.set_and_prepare(text).is_err() {
+            self.text.set_text(text);
+            if self.text.prepare().is_err() {
                 return Action::empty();
             }
 

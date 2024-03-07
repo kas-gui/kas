@@ -346,21 +346,16 @@ impl<D: 'static> ThemeSize for Window<D> {
         };
         let margins = (margin, margin);
 
-        let mut env = text.env();
-
         // TODO(opt): setting horizontal alignment now could avoid re-wrapping
         // text. Unfortunately we don't know the desired alignment here.
+        let mut align_pair = text.get_align();
         let align = axis.align_or_default();
         if axis.is_horizontal() {
-            env.align.0 = align;
+            align_pair.0 = align;
         } else {
-            env.align.1 = align;
+            align_pair.1 = align;
         }
-        if let Some(size) = axis.size_other_if_fixed(true) {
-            env.bounds.0 = size.cast();
-        }
-
-        text.set_env(env);
+        text.set_align(align_pair);
 
         if axis.is_horizontal() {
             if text.get_wrap() {
@@ -383,6 +378,10 @@ impl<D: 'static> ThemeSize for Window<D> {
                 SizeRules::new(bound, bound, margins, Stretch::Filler)
             }
         } else {
+            let mut env = text.env();
+            env.bounds.0 = axis.other().map(|w| w.cast()).unwrap_or(f32::INFINITY);
+            text.set_env(env);
+
             let bound: i32 = text.measure_height().expect("not configured").cast_ceil();
 
             let line_height = self.dims.dpem.cast_ceil();
@@ -394,7 +393,7 @@ impl<D: 'static> ThemeSize for Window<D> {
     fn text_set_size(&self, text: &mut dyn TextApi, size: Size, align: Option<AlignPair>) {
         let mut env = text.env();
         if let Some(align) = align {
-            env.align = align.into();
+            text.set_align(align.into());
         }
         env.bounds = size.cast();
         text.update_env(env).expect("not configured");

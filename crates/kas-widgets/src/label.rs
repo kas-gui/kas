@@ -116,7 +116,8 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: T) -> Action {
-            match self.label.set_and_prepare(text) {
+            self.label.set_text(text);
+            match self.label.prepare() {
                 Err(NotReady) => Action::empty(),
                 Ok(false) => Action::REDRAW,
                 Ok(true) => Action::RESIZE,
@@ -298,7 +299,8 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: AccessString) -> Action {
-            match self.label.set_and_prepare(text) {
+            self.label.set_text(text);
+            match self.label.prepare() {
                 Err(NotReady) => Action::empty(),
                 Ok(false) => Action::REDRAW,
                 Ok(true) => Action::RESIZE,
