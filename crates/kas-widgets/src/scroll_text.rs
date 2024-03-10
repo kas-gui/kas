@@ -152,7 +152,7 @@ impl_scope! {
                 .ok()
                 .and_then(|mut m| m.next_back())
             {
-                let bounds = Vec2::from(self.text.env().bounds);
+                let bounds = Vec2::from(self.text.get_bounds());
                 let min_x = marker.pos.0 - bounds.0;
                 let min_y = marker.pos.1 - marker.descent - bounds.1;
                 let max_x = marker.pos.0;
@@ -213,7 +213,7 @@ impl_scope! {
                 return;
             }
             self.text.set_text(text);
-            if self.text.env().bounds.1.is_finite() {
+            if self.text.get_bounds().1.is_finite() {
                 // NOTE: bounds are initially infinite. Alignment results in
                 // infinite offset and thus infinite measured height.
                 let action = match self.text.prepare() {

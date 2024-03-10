@@ -1189,7 +1189,7 @@ impl<G: EditGuard> EditField<G> {
     }
 
     fn prepare_text(&mut self, cx: &mut EventCx) {
-        if !self.text.env().bounds.1.is_finite() {
+        if !self.text.get_bounds().1.is_finite() {
             // Do not attempt to prepare before bounds are set.
             return;
         }
@@ -1403,7 +1403,7 @@ impl<G: EditGuard> EditField<G> {
                     v.0 = x;
                 }
                 const FACTOR: f32 = 2.0 / 3.0;
-                let mut h_dist = self.text.env().bounds.1 * FACTOR;
+                let mut h_dist = self.text.get_bounds().1 * FACTOR;
                 if cmd == Command::PageUp {
                     h_dist *= -1.0;
                 }
@@ -1602,7 +1602,7 @@ impl<G: EditGuard> EditField<G> {
             .ok()
             .and_then(|mut m| m.next_back())
         {
-            let bounds = Vec2::from(self.text.env().bounds);
+            let bounds = Vec2::from(self.text.get_bounds());
             let min_x = marker.pos.0 - bounds.0;
             let min_y = marker.pos.1 - marker.descent - bounds.1;
             let max_x = marker.pos.0;

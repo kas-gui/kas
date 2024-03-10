@@ -145,7 +145,7 @@ impl_scope! {
                 return;
             }
             self.label.set_text(text);
-            if self.label.env().bounds.1.is_finite() {
+            if self.label.get_bounds().1.is_finite() {
                 // NOTE: bounds are initially infinite. Alignment results in
                 // infinite offset and thus infinite measured height.
                 let action = match self.label.prepare() {

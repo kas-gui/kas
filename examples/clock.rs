@@ -59,11 +59,9 @@ impl_scope! {
             let text_height = text_size.1 as f32;
 
             self.date.set_font_size(text_height * 0.5);
-            let mut env = self.date.env();
-            env.bounds = text_size.cast();
-            self.date.update_env(env).expect("not configured");
+            self.date.set_bounds(text_size.cast());
             self.time.set_font_size(text_height * 0.7);
-            self.time.update_env(env).expect("not configured");
+            self.time.set_bounds(text_size.cast());
 
             let time_pos = pos + Offset(0, size.1 * 5 / 8);
             let date_pos = pos + Offset(0, size.1 / 8);

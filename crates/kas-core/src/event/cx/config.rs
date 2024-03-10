@@ -14,7 +14,6 @@ use crate::text::TextApi;
 use crate::theme::{Feature, SizeCx, TextClass, ThemeSize};
 use crate::{Id, Node};
 use cast::Cast;
-use kas_text::{Environment, TextApiExt};
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
@@ -142,10 +141,7 @@ impl<'a> ConfigCx<'a> {
     #[inline]
     pub fn text_set_size(&self, text: &mut dyn TextApi, size: Size) {
         text.set_wrap_width(size.0.cast());
-        text.update_env(Environment {
-            bounds: size.cast(),
-        })
-        .unwrap();
+        text.set_bounds(size.cast());
         text.prepare().expect("not configured");
     }
 }
