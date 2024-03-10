@@ -168,16 +168,6 @@ impl AxisInfo {
         }
     }
 
-    /// Size of other axis, if fixed and `vertical` matches this axis.
-    #[inline]
-    pub fn size_other_if_fixed(&self, vertical: bool) -> Option<i32> {
-        if vertical == self.vertical && self.has_fixed {
-            Some(self.other_axis)
-        } else {
-            None
-        }
-    }
-
     /// Subtract `x` from size of other axis (if applicable)
     #[inline]
     pub fn sub_other(&mut self, x: i32) {

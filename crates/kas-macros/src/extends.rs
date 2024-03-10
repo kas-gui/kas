@@ -80,8 +80,8 @@ impl Extends {
                 (#base).text(id, rect, text, class);
             }
 
-            fn text_effects(&mut self, id: &Id, rect: Rect, text: &dyn TextApi, class: TextClass) {
-                (#base).text_effects(id, rect, text, class);
+            fn text_effects(&mut self, id: &Id, rect: Rect, text: &TextDisplay, effects: &[::kas::text::Effect<()>], class: TextClass) {
+                (#base).text_effects(id, rect, text, effects, class);
             }
 
             fn text_selected_range(

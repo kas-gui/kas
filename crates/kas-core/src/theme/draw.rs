@@ -11,7 +11,7 @@ use crate::draw::color::Rgb;
 use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType};
 use crate::event::{ConfigCx, EventState};
 use crate::geom::{Offset, Rect};
-use crate::text::{TextApi, TextDisplay};
+use crate::text::{format::FormattableText, Effect, Text, TextApi, TextApiExt, TextDisplay};
 use crate::{autoimpl, Id, Layout};
 use std::ops::{Bound, Range, RangeBounds};
 use std::time::Instant;
@@ -207,10 +207,17 @@ impl<'a> DrawCx<'a> {
     /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
     /// scrolls, `rect` should be the size of the whole text, not the window.
     ///
-    /// [`ConfigCx::text_set_size`] should be called prior to this method to
+    /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text(&mut self, rect: Rect, text: impl AsRef<TextDisplay>, class: TextClass) {
-        self.h.text(&self.id, rect, text.as_ref(), class);
+    pub fn text<T: FormattableText + ?Sized>(
+        &mut self,
+        rect: Rect,
+        text: &Text<T>,
+        class: TextClass,
+    ) {
+        if let Ok(display) = text.display() {
+            self.h.text(&self.id, rect, display, class);
+        }
     }
 
     /// Draw text with effects
@@ -222,10 +229,18 @@ impl<'a> DrawCx<'a> {
     /// emphasis, text size. In addition, this method supports underline and
     /// strikethrough effects.
     ///
-    /// [`ConfigCx::text_set_size`] should be called prior to this method to
+    /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text_effects(&mut self, rect: Rect, text: &dyn TextApi, class: TextClass) {
-        self.h.text_effects(&self.id, rect, text, class);
+    pub fn text_effects<T: FormattableText + ?Sized>(
+        &mut self,
+        rect: Rect,
+        text: &Text<T>,
+        class: TextClass,
+    ) {
+        let effects = text.effect_tokens();
+        if let Ok(text) = text.display() {
+            self.h.text_effects(&self.id, rect, text, effects, class);
+        }
     }
 
     /// Draw some text using the standard font, with a subset selected
@@ -233,13 +248,17 @@ impl<'a> DrawCx<'a> {
     /// Other than visually highlighting the selection, this method behaves
     /// identically to [`Self::text`]. It is likely to be replaced in the
     /// future by a higher-level API.
-    pub fn text_selected<R: RangeBounds<usize>>(
+    pub fn text_selected<T: FormattableText + ?Sized, R: RangeBounds<usize>>(
         &mut self,
         rect: Rect,
-        text: impl AsRef<TextDisplay>,
+        text: &Text<T>,
         range: R,
         class: TextClass,
     ) {
+        let Ok(display) = text.display() else {
+            return;
+        };
+
         let start = match range.start_bound() {
             Bound::Included(n) => *n,
             Bound::Excluded(n) => *n + 1,
@@ -252,7 +271,7 @@ impl<'a> DrawCx<'a> {
         };
         let range = Range { start, end };
         self.h
-            .text_selected_range(&self.id, rect, text.as_ref(), range, class);
+            .text_selected_range(&self.id, rect, display, range, class);
     }
 
     /// Draw an edit marker at the given `byte` index on this `text`
@@ -260,17 +279,18 @@ impl<'a> DrawCx<'a> {
     /// The text cursor is draw from `rect.pos` and clipped to `rect`. If the text
     /// scrolls, `rect` should be the size of the whole text, not the window.
     ///
-    /// [`ConfigCx::text_set_size`] should be called prior to this method to
+    /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text_cursor(
+    pub fn text_cursor<T: FormattableText + ?Sized>(
         &mut self,
         rect: Rect,
-        text: impl AsRef<TextDisplay>,
+        text: &Text<T>,
         class: TextClass,
         byte: usize,
     ) {
-        self.h
-            .text_cursor(&self.id, rect, text.as_ref(), class, byte);
+        if let Ok(text) = text.display() {
+            self.h.text_cursor(&self.id, rect, text, class, byte);
+        }
     }
 
     /// Draw UI element: check box (without label)
@@ -409,7 +429,7 @@ pub trait ThemeDraw {
 
     /// Draw text
     ///
-    /// [`ConfigCx::text_set_size`] should be called prior to this method to
+    /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text(&mut self, id: &Id, rect: Rect, text: &TextDisplay, class: TextClass);
 
@@ -419,9 +439,16 @@ pub trait ThemeDraw {
     /// emphasis, text size. In addition, this method supports underline and
     /// strikethrough effects.
     ///
-    /// [`ConfigCx::text_set_size`] should be called prior to this method to
+    /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text_effects(&mut self, id: &Id, rect: Rect, text: &dyn TextApi, class: TextClass);
+    fn text_effects(
+        &mut self,
+        id: &Id,
+        rect: Rect,
+        text: &TextDisplay,
+        effects: &[Effect<()>],
+        class: TextClass,
+    );
 
     /// Method used to implement [`DrawCx::text_selected`]
     fn text_selected_range(
@@ -435,7 +462,7 @@ pub trait ThemeDraw {
 
     /// Draw an edit marker at the given `byte` index on this `text`
     ///
-    /// [`ConfigCx::text_set_size`] should be called prior to this method to
+    /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text_cursor(
         &mut self,

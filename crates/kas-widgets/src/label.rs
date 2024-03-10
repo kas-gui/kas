@@ -8,7 +8,7 @@
 use super::adapt::MapAny;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
-use kas::text::Text;
+use kas::text::{NotReady, Text};
 use kas::theme::TextClass;
 
 /// Construct a [`Label`]
@@ -116,9 +116,11 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: T) -> Action {
-            match self.label.set_and_try_prepare(text) {
+            self.label.set_text(text);
+            match self.label.prepare() {
+                Err(NotReady) => Action::empty(),
+                Ok(false) => Action::REDRAW,
                 Ok(true) => Action::RESIZE,
-                _ => Action::REDRAW,
             }
         }
     }
@@ -127,12 +129,12 @@ impl_scope! {
         #[inline]
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Default, Align::Center);
-            sizer.text_rules(&mut self.label, self.class, axis)
+            sizer.text_rules(&mut self.label, axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.label, self.class, rect.size, None);
+            cx.text_set_size(&mut self.label, rect.size);
         }
 
         #[cfg(feature = "min_spec")]
@@ -142,6 +144,12 @@ impl_scope! {
         #[cfg(not(feature = "min_spec"))]
         fn draw(&mut self, mut draw: DrawCx) {
             draw.text_effects(self.rect(), &self.label, self.class);
+        }
+    }
+
+    impl Events for Self {
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.text_configure(&mut self.label, self.class);
         }
     }
 
@@ -157,9 +165,10 @@ impl_scope! {
     {
         fn set_string(&mut self, string: String) -> Action {
             self.label.set_string(string);
-            match self.label.try_prepare() {
+            match self.label.prepare() {
+                Err(NotReady) => Action::empty(),
+                Ok(false) => Action::REDRAW,
                 Ok(true) => Action::RESIZE,
-                _ => Action::REDRAW,
             }
         }
     }
@@ -290,9 +299,11 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: AccessString) -> Action {
-            match self.label.set_and_try_prepare(text) {
+            self.label.set_text(text);
+            match self.label.prepare() {
+                Err(NotReady) => Action::empty(),
+                Ok(false) => Action::REDRAW,
                 Ok(true) => Action::RESIZE,
-                _ => Action::REDRAW,
             }
         }
     }
@@ -301,12 +312,12 @@ impl_scope! {
         #[inline]
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Default, Align::Center);
-            sizer.text_rules(&mut self.label, self.class, axis)
+            sizer.text_rules(&mut self.label, axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.label, self.class, rect.size, None);
+            cx.text_set_size(&mut self.label, rect.size);
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
@@ -318,6 +329,8 @@ impl_scope! {
         type Data = ();
 
         fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.text_configure(&mut self.label, self.class);
+
             if let Some(key) = self.label.text().key() {
                 cx.add_access_key(self.id_ref(), key.clone());
             }

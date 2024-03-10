@@ -11,7 +11,7 @@ use kas::event::{Command, CursorIcon, FocusSource, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
-use kas::text::{SelectionHelper, Text};
+use kas::text::{NotReady, SelectionHelper, Text};
 use kas::theme::TextClass;
 
 impl_scope! {
@@ -37,18 +37,17 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let class = TextClass::LabelScroll;
-            let mut rules = sizer.text_rules(&mut self.text, class, axis);
+            let mut rules = sizer.text_rules(&mut self.text, axis);
             let _ = self.bar.size_rules(sizer.re(), axis);
             if axis.is_vertical() {
-                rules.reduce_min_to(sizer.line_height(class) * 4);
+                rules.reduce_min_to(sizer.text_line_height(&self.text) * 4);
             }
             rules
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.text, TextClass::LabelScroll, rect.size, None);
+            cx.text_set_size(&mut self.text, rect.size);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
 
             let max_offset = self.max_scroll_offset();
@@ -153,7 +152,7 @@ impl_scope! {
                 .ok()
                 .and_then(|mut m| m.next_back())
             {
-                let bounds = Vec2::from(self.text.env().bounds);
+                let bounds = Vec2::from(self.text.get_bounds());
                 let min_x = marker.pos.0 - bounds.0;
                 let min_y = marker.pos.1 - marker.descent - bounds.1;
                 let max_x = marker.pos.0;
@@ -191,13 +190,20 @@ impl_scope! {
     {
         fn set_string(&mut self, string: String) -> Action {
             self.text.set_string(string);
-            let _ = self.text.try_prepare();
-            Action::REDRAW
+            match self.text.prepare() {
+                Err(NotReady) => Action::empty(),
+                Ok(false) => Action::REDRAW,
+                Ok(true) => Action::SET_RECT,
+            }
         }
     }
 
     impl Events for Self {
         type Data = A;
+
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.text_configure(&mut self.text, TextClass::LabelScroll);
+        }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             let text = (self.text_fn)(cx, data);
@@ -207,12 +213,16 @@ impl_scope! {
                 return;
             }
             self.text.set_text(text);
-            if self.text.env().bounds.1.is_finite() {
+            if self.text.get_bounds().1.is_finite() {
                 // NOTE: bounds are initially infinite. Alignment results in
                 // infinite offset and thus infinite measured height.
-                let action = match self.text.try_prepare() {
-                    Ok(true) => Action::RESIZE,
-                    _ => Action::REDRAW,
+                let action = match self.text.prepare() {
+                    Err(NotReady) => {
+                        debug_assert!(false, "update before configure");
+                        Action::empty()
+                    }
+                    Ok(false) => Action::REDRAW,
+                    Ok(true) => Action::SET_RECT,
                 };
                 cx.action(self, action);
             }

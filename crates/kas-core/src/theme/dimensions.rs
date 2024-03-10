@@ -16,7 +16,7 @@ use crate::cast::traits::*;
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
 use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
-use crate::text::{fonts::FontId, TextApi, TextApiExt};
+use crate::text::{fonts::FontId, Direction, TextApi};
 
 crate::impl_scope! {
     /// Parameterisation of [`Dimensions`]
@@ -319,50 +319,50 @@ impl<D: 'static> ThemeSize for Window<D> {
 
     fn line_height(&self, class: TextClass) -> i32 {
         let font_id = self.fonts.get(&class).cloned().unwrap_or_default();
-        crate::text::fonts::fonts()
+        crate::text::fonts::library()
             .get_first_face(font_id)
             .expect("invalid font_id")
             .height(self.dims.dpem)
             .cast_ceil()
     }
 
-    fn text_rules(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules {
+    fn text_configure(&self, text: &mut dyn TextApi, class: TextClass) {
+        let direction = Direction::Auto;
+        let font_id = self.fonts.get(&class).cloned().unwrap_or_default();
+        let dpem = self.dims.dpem;
+        let wrap = match class.multi_line() {
+            false => f32::INFINITY,
+            true => 0.0, // NOTE: finite value used as a flag
+        };
+        text.set_font_properties(direction, font_id, dpem, wrap);
+        text.configure().expect("invalid font_id");
+    }
+
+    fn text_rules(&self, text: &mut dyn TextApi, axis: AxisInfo) -> SizeRules {
         let margin = match axis.is_horizontal() {
             true => self.dims.m_text.0,
             false => self.dims.m_text.1,
         };
         let margins = (margin, margin);
 
-        let mut env = text.env();
-
-        // TODO(opt): maybe font look-up should only happen during configure?
-        if let Some(font_id) = self.fonts.get(&class).cloned() {
-            env.font_id = font_id;
-        }
-        env.dpem = self.dims.dpem;
-        // TODO(opt): setting horizontal alignment now could avoid re-wrapping
-        // text. Unfortunately we don't know the desired alignment here.
-        let wrap = class.multi_line();
-        env.wrap = wrap;
+        let mut align_pair = text.get_align();
         let align = axis.align_or_default();
         if axis.is_horizontal() {
-            env.align.0 = align;
+            align_pair.0 = align;
         } else {
-            env.align.1 = align;
+            align_pair.1 = align;
         }
-        if let Some(size) = axis.size_other_if_fixed(true) {
-            env.bounds.0 = size.cast();
-        }
+        text.set_align(align_pair);
 
-        text.set_env(env);
+        let wrap = text.get_wrap_width();
 
         if axis.is_horizontal() {
-            if wrap {
+            if wrap.is_finite() {
                 let min = self.dims.min_line_length;
                 let limit = 2 * min;
                 let bound: i32 = text
                     .measure_width(limit.cast())
-                    .expect("invalid font_id")
+                    .expect("not configured")
                     .cast_ceil();
 
                 // NOTE: using different variable-width stretch policies here can
@@ -372,36 +372,20 @@ impl<D: 'static> ThemeSize for Window<D> {
             } else {
                 let bound: i32 = text
                     .measure_width(f32::INFINITY)
-                    .expect("invalid font_id")
+                    .expect("not configured")
                     .cast_ceil();
                 SizeRules::new(bound, bound, margins, Stretch::Filler)
             }
         } else {
-            let bound: i32 = text.measure_height().expect("invalid font_id").cast_ceil();
+            if wrap.is_finite() {
+                text.set_wrap_width(axis.other().map(|w| w.cast()).unwrap_or(f32::INFINITY));
+            }
+
+            let bound: i32 = text.measure_height().expect("not configured").cast_ceil();
 
             let line_height = self.dims.dpem.cast_ceil();
             let min = bound.max(line_height);
             SizeRules::new(min, min, margins, Stretch::Filler)
         }
-    }
-
-    fn text_set_size(
-        &self,
-        text: &mut dyn TextApi,
-        class: TextClass,
-        size: Size,
-        align: Option<AlignPair>,
-    ) {
-        let mut env = text.env();
-        if let Some(font_id) = self.fonts.get(&class).cloned() {
-            env.font_id = font_id;
-        }
-        env.dpem = self.dims.dpem;
-        env.wrap = class.multi_line();
-        if let Some(align) = align {
-            env.align = align.into();
-        }
-        env.bounds = size.cast();
-        text.update_env(env).expect("invalid font_id");
     }
 }

@@ -8,6 +8,7 @@
 use kas::prelude::*;
 use kas::text;
 use kas::text::format::FormattableText;
+use kas::text::NotReady;
 use kas::theme::TextClass;
 
 impl_scope! {
@@ -111,12 +112,12 @@ impl_scope! {
         #[inline]
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Default, Align::Center);
-            sizer.text_rules(&mut self.label, self.class, axis)
+            sizer.text_rules(&mut self.label, axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.label, self.class, rect.size, None);
+            cx.text_set_size(&mut self.label, rect.size);
         }
 
         #[cfg(feature = "min_spec")]
@@ -132,6 +133,10 @@ impl_scope! {
     impl Events for Self {
         type Data = A;
 
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.text_configure(&mut self.label, self.class);
+        }
+
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             let text = (self.label_fn)(cx, data);
             if text.as_str() == self.label.as_str() {
@@ -140,12 +145,16 @@ impl_scope! {
                 return;
             }
             self.label.set_text(text);
-            if self.label.env().bounds.1.is_finite() {
+            if self.label.get_bounds().1.is_finite() {
                 // NOTE: bounds are initially infinite. Alignment results in
                 // infinite offset and thus infinite measured height.
-                let action = match self.label.try_prepare() {
+                let action = match self.label.prepare() {
+                    Err(NotReady) => {
+                        debug_assert!(false, "update before configure");
+                        Action::empty()
+                    }
+                    Ok(false) => Action::REDRAW,
                     Ok(true) => Action::RESIZE,
-                    _ => Action::REDRAW,
                 };
                 cx.action(self, action);
             }

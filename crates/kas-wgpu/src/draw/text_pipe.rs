@@ -272,9 +272,7 @@ impl Window {
                 }
             }
         };
-        if let Err(e) = text.glyphs(for_glyph) {
-            log::warn!("Window: display failed: {e}");
-        }
+        text.glyphs(for_glyph);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -311,7 +309,7 @@ impl Window {
             }
         };
 
-        let result = if effects.len() > 1
+        if effects.len() > 1
             || effects
                 .first()
                 .map(|e| *e != Effect::default(()))
@@ -330,10 +328,6 @@ impl Window {
         } else {
             text.glyphs(|face, dpem, glyph| for_glyph(face, dpem, glyph, 0, ()))
         };
-
-        if let Err(e) = result {
-            log::warn!("Window: display failed: {e}");
-        }
     }
 
     pub fn text_effects_rgba(
@@ -379,8 +373,6 @@ impl Window {
             }
         };
 
-        if let Err(e) = text.glyphs_with_effects(effects, Rgba::BLACK, for_glyph, for_rect) {
-            log::warn!("Window: display failed: {e}");
-        }
+        text.glyphs_with_effects(effects, Rgba::BLACK, for_glyph, for_rect)
     }
 }

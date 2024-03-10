@@ -58,12 +58,10 @@ impl_scope! {
             let text_size = Size(size.0, size.1 / 4);
             let text_height = text_size.1 as f32;
 
-            let mut env = self.date.env();
-            env.dpem = text_height * 0.5;
-            env.bounds = text_size.cast();
-            self.date.update_env(env).expect("invalid font_id");
-            env.dpem = text_height * 0.7;
-            self.time.update_env(env).expect("invalid font_id");
+            self.date.set_font_size(text_height * 0.5);
+            self.date.set_bounds(text_size.cast());
+            self.time.set_font_size(text_height * 0.7);
+            self.time.set_bounds(text_size.cast());
 
             let time_pos = pos + Offset(0, size.1 * 5 / 8);
             let date_pos = pos + Offset(0, size.1 / 8);
@@ -102,8 +100,12 @@ impl_scope! {
                 draw.rounded_line(centre + v * (r - l), centre + v * r, w, col_face);
             }
 
-            draw.text(self.date_rect, self.date.as_ref(), col_date);
-            draw.text(self.time_rect, self.time.as_ref(), col_time);
+            if let Ok(text) = self.date.display() {
+                draw.text(self.date_rect, text, col_date);
+            }
+            if let Ok(text) = self.time.display() {
+                draw.text(self.time_rect, text, col_time);
+            }
 
             let mut line_seg = |t: f32, r1: f32, r2: f32, w, col| {
                 let v = Vec2(t.sin(), -t.cos());
@@ -125,6 +127,10 @@ impl_scope! {
         type Data = ();
 
         fn configure(&mut self, cx: &mut ConfigCx) {
+            self.date.set_align(AlignPair::CENTER.into());
+            self.date.configure().unwrap();
+            self.time.set_align(AlignPair::CENTER.into());
+            self.time.configure().unwrap();
             cx.request_timer(self.id(), 0, Duration::new(0, 0));
         }
 
@@ -134,12 +140,10 @@ impl_scope! {
                     self.now = Local::now();
                     let date = self.now.format("%Y-%m-%d").to_string();
                     let time = self.now.format("%H:%M:%S").to_string();
-                    self.date
-                        .set_and_try_prepare(date)
-                        .expect("invalid font_id");
-                    self.time
-                        .set_and_try_prepare(time)
-                        .expect("invalid font_id");
+                    self.date.set_text(date);
+                    self.date.prepare().expect("not configured");
+                    self.time.set_text(time);
+                    self.time.prepare().expect("not configured");
                     let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                     log::info!("Requesting update in {}ns", ns);
                     cx.request_timer(self.id(), 0, Duration::new(0, ns));
@@ -153,19 +157,13 @@ impl_scope! {
 
     impl Clock {
         fn new() -> Self {
-            let env = kas::text::Environment {
-                align: (Align::Center, Align::Center),
-                ..Default::default()
-            };
-            let date = Text::new_env(env, "0000-00-00".into());
-            let time = Text::new_env(env, "00:00:00".into());
             Clock {
                 core: Default::default(),
                 date_rect: Rect::ZERO,
                 time_rect: Rect::ZERO,
                 now: Local::now(),
-                date,
-                time,
+                date: Text::new("0000-00-00".to_string()),
+                time: Text::new("00:00:00".to_string()),
             }
         }
     }

@@ -656,7 +656,6 @@ impl_scope! {
         view_offset: Offset,
         editable: bool,
         class: TextClass = TextClass::Edit(false),
-        align: AlignPair,
         width: (f32, f32) = (8.0, 16.0),
         lines: (i32, i32) = (1, 1),
         text: Text<String>,
@@ -674,27 +673,34 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut align = self.text.get_align();
             let (min, ideal) = if axis.is_horizontal() {
+                align.0 = axis.align_or_default();
                 let dpem = sizer.dpem();
                 ((self.width.0 * dpem).cast_ceil(), (self.width.1 * dpem).cast_ceil())
             } else {
+                align.1 = if self.multi_line() {
+                    axis.align_or_default()
+                } else {
+                    axis.align_or_center()
+                };
                 let height = sizer.line_height(self.class);
                 (self.lines.0 * height, self.lines.1 * height)
             };
+            self.text.set_align(align.into());
             let margins = sizer.text_margins().extract(axis);
-            let (stretch, align) = if axis.is_horizontal() || self.multi_line() {
-                (Stretch::High, axis.align_or_default())
+            let stretch = if axis.is_horizontal() || self.multi_line() {
+                Stretch::High
             } else {
-                (Stretch::None, axis.align_or_center())
+                Stretch::None
             };
-            self.align.set_component(axis, align);
             SizeRules::new(min, ideal, margins, stretch)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
             self.outer_rect = rect;
-            cx.text_set_size(&mut self.text, self.class, rect.size, Some(self.align));
+            cx.text_set_size(&mut self.text, rect.size);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
         }
@@ -743,6 +749,7 @@ impl_scope! {
         type Data = G::Data;
 
         fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.text_configure(&mut self.text, self.class);
             G::configure(self, cx);
         }
 
@@ -918,7 +925,7 @@ impl_scope! {
             let len = string.len();
             self.text.set_string(string);
             self.selection.set_max_len(len);
-            if self.text.try_prepare().is_ok() {
+            if self.text.prepare().is_ok() {
                 self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
                 let view_offset = self.view_offset.min(self.max_scroll_offset());
                 if view_offset != self.view_offset {
@@ -948,7 +955,6 @@ impl<G: EditGuard> EditField<G> {
             view_offset: Default::default(),
             editable: true,
             class: TextClass::Edit(false),
-            align: Default::default(),
             width: (8.0, 16.0),
             lines: (1, 1),
             text: Default::default(),
@@ -1183,12 +1189,12 @@ impl<G: EditGuard> EditField<G> {
     }
 
     fn prepare_text(&mut self, cx: &mut EventCx) {
-        if !self.text.env().bounds.1.is_finite() {
+        if !self.text.get_bounds().1.is_finite() {
             // Do not attempt to prepare before bounds are set.
             return;
         }
 
-        if !self.text.required_action().is_ready() {
+        if !self.text.is_prepared() {
             let start = std::time::Instant::now();
 
             self.text.prepare().expect("invalid font_id");
@@ -1397,7 +1403,7 @@ impl<G: EditGuard> EditField<G> {
                     v.0 = x;
                 }
                 const FACTOR: f32 = 2.0 / 3.0;
-                let mut h_dist = self.text.env().bounds.1 * FACTOR;
+                let mut h_dist = self.text.get_bounds().1 * FACTOR;
                 if cmd == Command::PageUp {
                     h_dist *= -1.0;
                 }
@@ -1596,7 +1602,7 @@ impl<G: EditGuard> EditField<G> {
             .ok()
             .and_then(|mut m| m.next_back())
         {
-            let bounds = Vec2::from(self.text.env().bounds);
+            let bounds = Vec2::from(self.text.get_bounds());
             let min_x = marker.pos.0 - bounds.0;
             let min_y = marker.pos.1 - marker.descent - bounds.1;
             let max_x = marker.pos.0;

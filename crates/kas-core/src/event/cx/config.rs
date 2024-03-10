@@ -13,6 +13,7 @@ use crate::messages::Erased;
 use crate::text::TextApi;
 use crate::theme::{Feature, SizeCx, TextClass, ThemeSize};
 use crate::{Id, Node};
+use cast::Cast;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
@@ -122,22 +123,26 @@ impl<'a> ConfigCx<'a> {
         self.sh.align_feature(feature, rect, align)
     }
 
+    /// Configure a text object
+    ///
+    /// This selects a font given the [`TextClass`],
+    /// [theme configuration][crate::theme::Config] and
+    /// the loaded [fonts][crate::text::fonts].
+    #[inline]
+    pub fn text_configure(&self, text: &mut dyn TextApi, class: TextClass) {
+        self.sh.text_configure(text, class);
+    }
+
     /// Prepare a text object
     ///
-    /// This sets the text's font, font size, wrapping and optionally alignment,
-    /// then performs the text preparation necessary before display.
+    /// Wrap and align text for display at the given `size`.
     ///
-    /// Note: setting alignment here is not necessary when the default alignment
-    /// is desired or when [`SizeCx::text_rules`] is used.
+    /// Call [`text_configure`][Self::text_configure] before this method.
     #[inline]
-    pub fn text_set_size(
-        &self,
-        text: &mut dyn TextApi,
-        class: TextClass,
-        size: Size,
-        align: Option<AlignPair>,
-    ) {
-        self.sh.text_set_size(text, class, size, align)
+    pub fn text_set_size(&self, text: &mut dyn TextApi, size: Size) {
+        text.set_wrap_width(size.0.cast());
+        text.set_bounds(size.cast());
+        text.prepare().expect("not configured");
     }
 }
 

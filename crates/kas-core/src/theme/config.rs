@@ -6,7 +6,7 @@
 //! Theme configuration
 
 use super::{ColorsSrgb, TextClass, ThemeConfig};
-use crate::text::fonts::{fonts, AddMode, FontSelector};
+use crate::text::fonts::{self, AddMode, FontSelector};
 use crate::Action;
 use std::collections::BTreeMap;
 use std::time::Duration;
@@ -244,7 +244,7 @@ impl ThemeConfig for Config {
     /// Apply config effects which only happen on startup
     fn apply_startup(&self) {
         if !self.font_aliases.is_empty() {
-            fonts().update_db(|db| {
+            fonts::library().update_db(|db| {
                 for (family, aliases) in self.font_aliases.iter() {
                     db.add_aliases(
                         family.to_string().into(),

@@ -8,7 +8,7 @@
 //! Note: due to definition in kas-core, some widgets must be duplicated.
 
 use crate::event::{CursorIcon, ResizeDirection};
-use crate::text::Text;
+use crate::text::{NotReady, Text};
 use crate::theme::TextClass;
 use kas::prelude::*;
 use kas::theme::MarkStyle;
@@ -125,19 +125,24 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        #[inline]
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Center, Align::Center);
-            sizer.text_rules(&mut self.label, Self::CLASS, axis)
+            sizer.text_rules(&mut self.label, axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.label, Self::CLASS, rect.size, None);
+            cx.text_set_size(&mut self.label, rect.size);
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
             draw.text(self.rect(), &self.label, Self::CLASS);
+        }
+    }
+
+    impl Events for Self {
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.text_configure(&mut self.label, Self::CLASS);
         }
     }
 
@@ -150,9 +155,10 @@ impl_scope! {
     impl HasString for Self {
         fn set_string(&mut self, string: String) -> Action {
             self.label.set_string(string);
-            match self.label.try_prepare() {
+            match self.label.prepare() {
+                Err(NotReady) => Action::empty(),
+                Ok(false) => Action::REDRAW,
                 Ok(true) => Action::RESIZE,
-                _ => Action::REDRAW,
             }
         }
     }
