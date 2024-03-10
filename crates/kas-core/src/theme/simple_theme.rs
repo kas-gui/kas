@@ -16,7 +16,7 @@ use kas::dir::{Direction, Directional};
 use kas::draw::{color::Rgba, *};
 use kas::event::EventState;
 use kas::geom::*;
-use kas::text::{fonts, Effect, TextApi, TextDisplay};
+use kas::text::{fonts, Effect, TextDisplay};
 use kas::theme::dimensions as dim;
 use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use kas::theme::{ColorsLinear, Config, InputState, Theme};
@@ -396,17 +396,23 @@ where
         self.draw.text(rect, text, col);
     }
 
-    fn text_effects(&mut self, id: &Id, rect: Rect, text: &dyn TextApi, class: TextClass) {
+    fn text_effects(
+        &mut self,
+        id: &Id,
+        rect: Rect,
+        text: &TextDisplay,
+        effects: &[Effect<()>],
+        class: TextClass,
+    ) {
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
             self.cols.text
         };
         if class.is_access_key() && !self.ev.show_access_labels() {
-            self.draw.text(rect, text.display(), col);
+            self.draw.text(rect, text, col);
         } else {
-            self.draw
-                .text_effects(rect, text.display(), col, text.effect_tokens());
+            self.draw.text_effects(rect, text, col, effects);
         }
     }
 
@@ -426,7 +432,7 @@ where
         let sel_col = self.cols.text_over(self.cols.text_sel_bg);
 
         // Draw background:
-        let result = text.highlight_range(range.clone(), &mut |p1, p2| {
+        text.highlight_range(range.clone(), &mut |p1, p2| {
             let q = Quad::conv(rect);
             let p1 = Vec2::from(p1);
             let p2 = Vec2::from(p2);
@@ -434,9 +440,6 @@ where
                 self.draw.rect(quad, self.cols.text_sel_bg);
             }
         });
-        if let Err(e) = result {
-            log::error!("text_selected_range: text.highlight_range() -> {e}");
-        }
 
         let effects = [
             Effect {
@@ -468,7 +471,7 @@ where
         let p10max = pos.0 + f32::conv(rect.size.0) - width;
 
         let mut col = self.cols.nav_focus;
-        for cursor in text.text_glyph_pos(byte).iter_mut().flatten().rev() {
+        for cursor in text.text_glyph_pos(byte).rev() {
             let mut p1 = pos + Vec2::from(cursor.pos);
             p1.0 = p1.0.min(p10max);
             let mut p2 = p1;

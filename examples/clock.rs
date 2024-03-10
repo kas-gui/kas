@@ -100,8 +100,12 @@ impl_scope! {
                 draw.rounded_line(centre + v * (r - l), centre + v * r, w, col_face);
             }
 
-            draw.text(self.date_rect, self.date.as_ref(), col_date);
-            draw.text(self.time_rect, self.time.as_ref(), col_time);
+            if let Ok(text) = self.date.display() {
+                draw.text(self.date_rect, text, col_date);
+            }
+            if let Ok(text) = self.time.display() {
+                draw.text(self.time_rect, text, col_time);
+            }
 
             let mut line_seg = |t: f32, r1: f32, r2: f32, w, col| {
                 let v = Vec2(t.sin(), -t.cos());
