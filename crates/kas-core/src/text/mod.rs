@@ -126,11 +126,28 @@ impl<T: FormattableText> Text<T> {
     /// One must call [`Text::prepare`] afterwards and may wish to inspect its
     /// return value to check the size allocation meets requirements.
     pub fn set_text(&mut self, text: T) {
-        /* TODO: enable if we have a way of testing equality (a hash?)
-        if self.text == text {
-            return; // no change
+        #[cfg(feature = "spec")]
+        {
+            trait OptEq {
+                /// May return false when not implemented
+                fn opt_eq(&self, rhs: &Self) -> bool;
+            }
+
+            impl<T: ?Sized> OptEq for T {
+                default fn opt_eq(&self, _: &Self) -> bool {
+                    false
+                }
+            }
+            impl<T: Eq + ?Sized> OptEq for T {
+                fn opt_eq(&self, rhs: &Self) -> bool {
+                    self == rhs
+                }
+            }
+
+            if self.text.opt_eq(&text) {
+                return; // no change
+            }
         }
-         */
 
         self.text = text;
         self.set_max_status(Status::Configured);
