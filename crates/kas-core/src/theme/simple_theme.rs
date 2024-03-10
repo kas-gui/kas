@@ -105,7 +105,7 @@ where
     }
 
     fn init(&mut self, _shared: &mut SharedState<DS>) {
-        let fonts = fonts::fonts();
+        let fonts = fonts::library();
         if let Err(e) = fonts.select_default() {
             panic!("Error loading font: {e}");
         }
