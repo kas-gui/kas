@@ -141,6 +141,7 @@ impl<'a> ConfigCx<'a> {
     /// Call [`text_configure`][Self::text_configure] before this method.
     #[inline]
     pub fn text_set_size(&self, text: &mut dyn TextApi, size: Size) {
+        text.set_wrap_width(size.0.cast());
         text.update_env(Environment {
             bounds: size.cast(),
         })
