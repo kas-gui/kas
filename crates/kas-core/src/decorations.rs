@@ -116,12 +116,9 @@ impl_scope! {
         fn new(label: impl ToString) -> Self {
             Label {
                 core: Default::default(),
-                label: Text::new(label.to_string()),
+                label: Text::new(label.to_string(), TextClass::Label(false)),
             }
         }
-
-        /// Text class
-        pub const CLASS: TextClass = TextClass::Label(false);
     }
 
     impl Layout for Self {
@@ -136,13 +133,13 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            draw.text(self.rect(), &self.label, Self::CLASS);
+            draw.text(self.rect(), &self.label);
         }
     }
 
     impl Events for Self {
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.text_configure(&mut self.label, Self::CLASS);
+            cx.text_configure(&mut self.label);
         }
     }
 

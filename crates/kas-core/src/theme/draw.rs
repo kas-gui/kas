@@ -209,14 +209,9 @@ impl<'a> DrawCx<'a> {
     ///
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text<T: FormattableText + ?Sized>(
-        &mut self,
-        rect: Rect,
-        text: &Text<T>,
-        class: TextClass,
-    ) {
+    pub fn text<T: FormattableText + ?Sized>(&mut self, rect: Rect, text: &Text<T>) {
         if let Ok(display) = text.display() {
-            self.h.text(&self.id, rect, display, class);
+            self.h.text(&self.id, rect, display, text.class());
         }
     }
 
@@ -231,13 +226,9 @@ impl<'a> DrawCx<'a> {
     ///
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text_effects<T: FormattableText + ?Sized>(
-        &mut self,
-        rect: Rect,
-        text: &Text<T>,
-        class: TextClass,
-    ) {
+    pub fn text_effects<T: FormattableText + ?Sized>(&mut self, rect: Rect, text: &Text<T>) {
         let effects = text.effect_tokens();
+        let class = text.class();
         if let Ok(text) = text.display() {
             self.h.text_effects(&self.id, rect, text, effects, class);
         }
@@ -253,7 +244,6 @@ impl<'a> DrawCx<'a> {
         rect: Rect,
         text: &Text<T>,
         range: R,
-        class: TextClass,
     ) {
         let Ok(display) = text.display() else {
             return;
@@ -271,7 +261,7 @@ impl<'a> DrawCx<'a> {
         };
         let range = Range { start, end };
         self.h
-            .text_selected_range(&self.id, rect, display, range, class);
+            .text_selected_range(&self.id, rect, display, range, text.class());
     }
 
     /// Draw an edit marker at the given `byte` index on this `text`
@@ -285,9 +275,9 @@ impl<'a> DrawCx<'a> {
         &mut self,
         rect: Rect,
         text: &Text<T>,
-        class: TextClass,
         byte: usize,
     ) {
+        let class = text.class();
         if let Ok(text) = text.display() {
             self.h.text_cursor(&self.id, rect, text, class, byte);
         }

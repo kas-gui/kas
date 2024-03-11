@@ -16,6 +16,7 @@
 //!
 //! [KAS Text]: https://github.com/kas-gui/kas-text/
 
+use crate::theme::TextClass;
 #[allow(unused)] use kas::{event::ConfigCx, Layout};
 use kas_text::fonts::{FontId, InvalidFontId};
 use kas_text::format::{EditableText, FormattableText};
@@ -46,13 +47,14 @@ pub use string::AccessString;
 ///
 /// Most Functionality is implemented via the [`TextApi`] and [`TextApiExt`]
 /// traits.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Text<T: FormattableText + ?Sized> {
     /// Bounds to use for alignment
     bounds: Vec2,
     font_id: FontId,
     dpem: f32,
     wrap_width: f32,
+    class: TextClass,
     /// Alignment (`horiz`, `vert`)
     ///
     /// By default, horizontal alignment is left or right depending on the
@@ -66,17 +68,24 @@ pub struct Text<T: FormattableText + ?Sized> {
     text: T,
 }
 
+impl<T: Default + FormattableText> Default for Text<T> {
+    fn default() -> Self {
+        Self::new(T::default(), TextClass::Label(true))
+    }
+}
+
 impl<T: FormattableText> Text<T> {
     /// Construct from a text model
     ///
     /// This struct must be made ready for usage by calling [`Text::prepare`].
     #[inline]
-    pub fn new(text: T) -> Self {
+    pub fn new(text: T, class: TextClass) -> Self {
         Text {
             bounds: Vec2::INFINITY,
             font_id: FontId::default(),
             dpem: 16.0,
             wrap_width: f32::INFINITY,
+            class,
             align: Default::default(),
             direction: Direction::default(),
             status: Status::New,
@@ -99,6 +108,15 @@ impl<T: FormattableText> Text<T> {
     #[inline]
     pub fn into_parts(self) -> (TextDisplay, T) {
         (self.display, self.text)
+    }
+
+    /// Set text class (inline)
+    ///
+    /// Default: `TextClass::Label(true)`
+    #[inline]
+    pub fn with_class(mut self, class: TextClass) -> Self {
+        self.class = class;
+        self
     }
 
     /// Clone the formatted text
@@ -155,6 +173,20 @@ impl<T: FormattableText> Text<T> {
 }
 
 impl<T: FormattableText + ?Sized> Text<T> {
+    /// Get text class
+    #[inline]
+    pub fn class(&self) -> TextClass {
+        self.class
+    }
+
+    /// Set text class
+    ///
+    /// Default: `TextClass::Label(true)`
+    #[inline]
+    pub fn set_class(&mut self, class: TextClass) {
+        self.class = class;
+    }
+
     /// Adjust status to indicate a required action
     ///
     /// This is used to notify that some step of preparation may need to be

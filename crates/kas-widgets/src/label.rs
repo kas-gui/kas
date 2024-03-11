@@ -44,7 +44,6 @@ impl_scope! {
     }]
     pub struct Label<T: FormattableText + 'static> {
         core: widget_core!(),
-        class: TextClass = TextClass::Label(true),
         label: Text<T>,
     }
 
@@ -54,15 +53,14 @@ impl_scope! {
         pub fn new(label: T) -> Self {
             Label {
                 core: Default::default(),
-                class: TextClass::Label(true),
-                label: Text::new(label),
+                label: Text::new(label, TextClass::Label(true)),
             }
         }
 
         /// Get text class
         #[inline]
         pub fn class(&self) -> TextClass {
-            self.class
+            self.label.class()
         }
 
         /// Set text class
@@ -70,7 +68,7 @@ impl_scope! {
         /// Default: `TextClass::Label(true)`
         #[inline]
         pub fn set_class(&mut self, class: TextClass) {
-            self.class = class;
+            self.label.set_class(class);
         }
 
         /// Set text class (inline)
@@ -78,14 +76,14 @@ impl_scope! {
         /// Default: `TextClass::Label(true)`
         #[inline]
         pub fn with_class(mut self, class: TextClass) -> Self {
-            self.class = class;
+            self.label.set_class(class);
             self
         }
 
         /// Get whether line-wrapping is enabled
         #[inline]
         pub fn wrap(&self) -> bool {
-            self.class.multi_line()
+            self.class().multi_line()
         }
 
         /// Enable/disable line wrapping
@@ -95,13 +93,13 @@ impl_scope! {
         /// By default this is enabled.
         #[inline]
         pub fn set_wrap(&mut self, wrap: bool) {
-            self.class = TextClass::Label(wrap);
+            self.label.set_class(TextClass::Label(wrap));
         }
 
         /// Enable/disable line wrapping (inline)
         #[inline]
         pub fn with_wrap(mut self, wrap: bool) -> Self {
-            self.class = TextClass::Label(wrap);
+            self.label.set_class(TextClass::Label(wrap));
             self
         }
 
@@ -139,17 +137,17 @@ impl_scope! {
 
         #[cfg(feature = "min_spec")]
         default fn draw(&mut self, mut draw: DrawCx) {
-            draw.text_effects(self.rect(), &self.label, self.class);
+            draw.text_effects(self.rect(), &self.label);
         }
         #[cfg(not(feature = "min_spec"))]
         fn draw(&mut self, mut draw: DrawCx) {
-            draw.text_effects(self.rect(), &self.label, self.class);
+            draw.text_effects(self.rect(), &self.label);
         }
     }
 
     impl Events for Self {
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.text_configure(&mut self.label, self.class);
+            cx.text_configure(&mut self.label);
         }
     }
 
@@ -178,13 +176,13 @@ impl_scope! {
 #[cfg(feature = "min_spec")]
 impl<'a> Layout for Label<&'a str> {
     fn draw(&mut self, mut draw: DrawCx) {
-        draw.text(self.rect(), &self.label, self.class);
+        draw.text(self.rect(), &self.label);
     }
 }
 #[cfg(feature = "min_spec")]
 impl Layout for Label<String> {
     fn draw(&mut self, mut draw: DrawCx) {
-        draw.text(self.rect(), &self.label, self.class);
+        draw.text(self.rect(), &self.label);
     }
 }
 
@@ -227,7 +225,6 @@ impl_scope! {
     #[widget]
     pub struct AccessLabel {
         core: widget_core!(),
-        class: TextClass = TextClass::Label(true),
         label: Text<AccessString>,
     }
 
@@ -237,15 +234,14 @@ impl_scope! {
         pub fn new(label: impl Into<AccessString>) -> Self {
             AccessLabel {
                 core: Default::default(),
-                class: TextClass::AccessLabel(true),
-                label: Text::new(label.into()),
+                label: Text::new(label.into(), TextClass::AccessLabel(true)),
             }
         }
 
         /// Get text class
         #[inline]
         pub fn class(&self) -> TextClass {
-            self.class
+            self.label.class()
         }
 
         /// Set text class
@@ -253,7 +249,7 @@ impl_scope! {
         /// Default: `AccessLabel::Label(true)`
         #[inline]
         pub fn set_class(&mut self, class: TextClass) {
-            self.class = class;
+            self.label.set_class(class);
         }
 
         /// Set text class (inline)
@@ -261,14 +257,14 @@ impl_scope! {
         /// Default: `AccessLabel::Label(true)`
         #[inline]
         pub fn with_class(mut self, class: TextClass) -> Self {
-            self.class = class;
+            self.label.set_class(class);
             self
         }
 
         /// Get whether line-wrapping is enabled
         #[inline]
         pub fn wrap(&self) -> bool {
-            self.class.multi_line()
+            self.class().multi_line()
         }
 
         /// Enable/disable line wrapping
@@ -278,13 +274,13 @@ impl_scope! {
         /// By default this is enabled.
         #[inline]
         pub fn set_wrap(&mut self, wrap: bool) {
-            self.class = TextClass::AccessLabel(wrap);
+            self.label.set_class(TextClass::AccessLabel(wrap));
         }
 
         /// Enable/disable line wrapping (inline)
         #[inline]
         pub fn with_wrap(mut self, wrap: bool) -> Self {
-            self.class = TextClass::Label(wrap);
+            self.label.set_class(TextClass::AccessLabel(wrap));
             self
         }
 
@@ -321,7 +317,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            draw.text_effects(self.rect(), &self.label, self.class);
+            draw.text_effects(self.rect(), &self.label);
         }
     }
 
@@ -329,7 +325,7 @@ impl_scope! {
         type Data = ();
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.text_configure(&mut self.label, self.class);
+            cx.text_configure(&mut self.label);
 
             if let Some(key) = self.label.text().key() {
                 cx.add_access_key(self.id_ref(), key.clone());

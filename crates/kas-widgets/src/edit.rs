@@ -655,7 +655,6 @@ impl_scope! {
         frame_style: FrameStyle,
         view_offset: Offset,
         editable: bool,
-        class: TextClass = TextClass::Edit(false),
         width: (f32, f32) = (8.0, 16.0),
         lines: (i32, i32) = (1, 1),
         text: Text<String>,
@@ -684,7 +683,7 @@ impl_scope! {
                 } else {
                     axis.align_or_center()
                 };
-                let height = sizer.line_height(self.class);
+                let height = sizer.line_height(self.class());
                 (self.lines.0 * height, self.lines.1 * height)
             };
             self.text.set_align(align.into());
@@ -721,7 +720,7 @@ impl_scope! {
             rect.size = rect.size.max(self.text_size);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {
-                    draw.text(rect, &self.text, self.class);
+                    draw.text(rect, &self.text);
                 } else {
                     // TODO(opt): we could cache the selection rectangles here to make
                     // drawing more efficient (self.text.highlight_lines(range) output).
@@ -730,14 +729,12 @@ impl_scope! {
                         rect,
                         &self.text,
                         self.selection.range(),
-                        self.class,
                     );
                 }
                 if self.editable && draw.ev_state().has_key_focus(self.id_ref()).0 {
                     draw.text_cursor(
                         rect,
                         &self.text,
-                        self.class,
                         self.selection.edit_pos(),
                     );
                 }
@@ -749,7 +746,7 @@ impl_scope! {
         type Data = G::Data;
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.text_configure(&mut self.text, self.class);
+            cx.text_configure(&mut self.text);
             G::configure(self, cx);
         }
 
@@ -763,7 +760,7 @@ impl_scope! {
                     if !self.has_key_focus {
                         cx.request_key_focus(self.id(), source);
                     }
-                    if source == FocusSource::Key && !self.class.multi_line() {
+                    if source == FocusSource::Key && !self.class().multi_line() {
                         self.selection.clear();
                         self.selection.set_edit_pos(self.text.str_len());
                         cx.redraw(self);
@@ -772,7 +769,7 @@ impl_scope! {
                 }
                 Event::NavFocus(_) => Used,
                 Event::LostNavFocus => {
-                    if !self.class.multi_line() {
+                    if !self.class().multi_line() {
                         self.selection.set_empty();
                         cx.redraw(self);
                     }
@@ -954,10 +951,9 @@ impl<G: EditGuard> EditField<G> {
             frame_style: FrameStyle::None,
             view_offset: Default::default(),
             editable: true,
-            class: TextClass::Edit(false),
             width: (8.0, 16.0),
             lines: (1, 1),
-            text: Default::default(),
+            text: Text::default().with_class(TextClass::Edit(false)),
             text_size: Default::default(),
             selection: Default::default(),
             edit_x_coord: None,
@@ -979,8 +975,7 @@ impl<A: 'static> EditField<DefaultGuard<A>> {
         let len = text.len();
         EditField {
             editable: true,
-            class: TextClass::Edit(false),
-            text: Text::new(text),
+            text: Text::new(text, TextClass::Edit(false)),
             selection: SelectionHelper::new(len, len),
             ..Default::default()
         }
@@ -1106,7 +1101,7 @@ impl<G: EditGuard> EditField<G> {
     #[inline]
     #[must_use]
     pub fn with_multi_line(mut self, multi_line: bool) -> Self {
-        self.class = TextClass::Edit(multi_line);
+        self.text.set_class(TextClass::Edit(multi_line));
         self.lines = match multi_line {
             false => (1, 1),
             true => (4, 7),
@@ -1119,21 +1114,21 @@ impl<G: EditGuard> EditField<G> {
     /// See also: [`Self::with_multi_line`]
     #[inline]
     pub fn multi_line(&self) -> bool {
-        self.class.multi_line()
+        self.class().multi_line()
     }
 
     /// Set the text class used
     #[inline]
     #[must_use]
     pub fn with_class(mut self, class: TextClass) -> Self {
-        self.class = class;
+        self.text.set_class(class);
         self
     }
 
     /// Get the text class used
     #[inline]
     pub fn class(&self) -> TextClass {
-        self.class
+        self.text.class()
     }
 
     /// Adjust the height allocation

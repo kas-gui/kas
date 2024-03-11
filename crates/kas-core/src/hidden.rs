@@ -39,12 +39,9 @@ impl_scope! {
         pub fn new(label: &'static str) -> Self {
             StrLabel {
                 core: Default::default(),
-                label: Text::new(label),
+                label: Text::new(label, TextClass::Label(false)),
             }
         }
-
-        /// Text class
-        pub const CLASS: TextClass = TextClass::Label(false);
     }
 
     impl Layout for Self {
@@ -60,13 +57,13 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            draw.text(self.rect(), &self.label, Self::CLASS);
+            draw.text(self.rect(), &self.label);
         }
     }
 
     impl Events for Self {
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.text_configure(&mut self.label, Self::CLASS);
+            cx.text_configure(&mut self.label);
         }
     }
 

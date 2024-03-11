@@ -70,16 +70,15 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            let class = TextClass::LabelScroll;
             let rect = Rect::new(self.rect().pos, self.text_size);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {
-                    draw.text(rect, &self.text, class);
+                    draw.text(rect, &self.text);
                 } else {
                     // TODO(opt): we could cache the selection rectangles here to make
                     // drawing more efficient (self.text.highlight_lines(range) output).
                     // The same applies to the edit marker below.
-                    draw.text_selected(rect, &self.text, self.selection.range(), class);
+                    draw.text_selected(rect, &self.text, self.selection.range());
                 }
             });
             draw.with_pass(|mut draw| {
@@ -95,7 +94,7 @@ impl_scope! {
             ScrollText {
                 core: Default::default(),
                 view_offset: Default::default(),
-                text: Text::new(T::default()),
+                text: Text::new(T::default(), TextClass::LabelScroll),
                 text_fn: Box::new(text_fn),
                 text_size: Size::ZERO,
                 selection: SelectionHelper::new(0, 0),
@@ -202,7 +201,7 @@ impl_scope! {
         type Data = A;
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.text_configure(&mut self.text, TextClass::LabelScroll);
+            cx.text_configure(&mut self.text);
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {

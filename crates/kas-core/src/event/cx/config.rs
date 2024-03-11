@@ -10,8 +10,8 @@ use crate::event::{EventState, FocusSource};
 use crate::geom::{Rect, Size};
 use crate::layout::AlignPair;
 use crate::messages::Erased;
-use crate::text::TextApi;
-use crate::theme::{Feature, SizeCx, TextClass, ThemeSize};
+use crate::text::{format::FormattableText, Text, TextApi};
+use crate::theme::{Feature, SizeCx, ThemeSize};
 use crate::{Id, Node};
 use cast::Cast;
 use std::fmt::Debug;
@@ -125,11 +125,15 @@ impl<'a> ConfigCx<'a> {
 
     /// Configure a text object
     ///
+    /// The [`TextClass`] should be set before calling this method (via
+    /// [`Text::new`] or [`Text::set_class`]).
+    ///
     /// This selects a font given the [`TextClass`],
     /// [theme configuration][crate::theme::Config] and
     /// the loaded [fonts][crate::text::fonts].
     #[inline]
-    pub fn text_configure(&self, text: &mut dyn TextApi, class: TextClass) {
+    pub fn text_configure<T: FormattableText>(&self, text: &mut Text<T>) {
+        let class = text.class();
         self.sh.text_configure(text, class);
     }
 
