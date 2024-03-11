@@ -54,7 +54,6 @@ pub struct Text<T: FormattableText + ?Sized> {
     bounds: Vec2,
     font_id: FontId,
     dpem: f32,
-    wrap_width: f32,
     class: TextClass,
     /// Alignment (`horiz`, `vert`)
     ///
@@ -85,7 +84,6 @@ impl<T: FormattableText> Text<T> {
             bounds: Vec2::INFINITY,
             font_id: FontId::default(),
             dpem: 16.0,
-            wrap_width: f32::INFINITY,
             class,
             align: Default::default(),
             direction: Direction::default(),
@@ -312,14 +310,14 @@ impl<T: FormattableText + ?Sized> TextApi for Text<T> {
 
     #[inline]
     fn wrap_width(&self) -> f32 {
-        self.wrap_width
+        self.bounds.0
     }
 
     #[inline]
     fn set_wrap_width(&mut self, wrap_width: f32) {
-        assert!(self.wrap_width >= 0.0);
-        if wrap_width != self.wrap_width {
-            self.wrap_width = wrap_width;
+        debug_assert!(wrap_width >= 0.0);
+        if wrap_width != self.bounds.0 {
+            self.bounds.0 = wrap_width;
             self.set_max_status(Status::LevelRuns);
         }
     }
@@ -425,7 +423,7 @@ impl<T: FormattableText + ?Sized> TextApi for Text<T> {
         }
 
         self.prepare_runs()?;
-        Ok(self.display.measure_height(self.wrap_width))
+        Ok(self.display.measure_height(self.bounds.0))
     }
 
     #[inline]
@@ -441,7 +439,7 @@ impl<T: FormattableText + ?Sized> TextApi for Text<T> {
 
         if self.status == Status::LevelRuns {
             self.display
-                .prepare_lines(self.wrap_width, self.bounds.0, self.align.0);
+                .prepare_lines(self.bounds.0, self.bounds.0, self.align.0);
         }
 
         if self.status <= Status::Wrapped {
