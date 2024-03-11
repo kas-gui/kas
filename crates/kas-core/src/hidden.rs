@@ -30,16 +30,16 @@ impl_scope! {
     }]
     pub struct StrLabel {
         core: widget_core!(),
-        label: Text<&'static str>,
+        text: Text<&'static str>,
     }
 
     impl Self {
-        /// Construct from `label`
+        /// Construct from `text`
         #[inline]
-        pub fn new(label: &'static str) -> Self {
+        pub fn new(text: &'static str) -> Self {
             StrLabel {
                 core: Default::default(),
-                label: Text::new(label, TextClass::Label(false)),
+                text: Text::new(text, TextClass::Label(false)),
             }
         }
     }
@@ -48,28 +48,28 @@ impl_scope! {
         #[inline]
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Default, Align::Center);
-            sizer.text_rules(&mut self.label, axis)
+            sizer.text_rules(&mut self.text, axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.label, rect.size);
+            cx.text_set_size(&mut self.text, rect.size);
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            draw.text(self.rect(), &self.label);
+            draw.text(self.rect(), &self.text);
         }
     }
 
     impl Events for Self {
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.text_configure(&mut self.label);
+            cx.text_configure(&mut self.text);
         }
     }
 
     impl HasStr for Self {
         fn get_str(&self) -> &str {
-            self.label.as_str()
+            self.text.as_str()
         }
     }
 }

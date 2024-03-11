@@ -28,7 +28,7 @@ use crate::text::{Effect, EffectFlags};
 /// may support keyboard access via e.g. `Alt+X`
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AccessString {
-    label: String,
+    text: String,
     effects: SmallVec<[Effect<()>; 2]>,
     key: Option<Key>,
 }
@@ -88,7 +88,7 @@ impl AccessString {
         }
         buf.push_str(s);
         AccessString {
-            label: buf,
+            text: buf,
             effects,
             key,
         }
@@ -101,7 +101,7 @@ impl AccessString {
 
     /// Get the text
     pub fn text(&self) -> &str {
-        &self.label
+        &self.text
     }
 }
 
@@ -110,7 +110,7 @@ impl FormattableText for AccessString {
 
     #[inline]
     fn as_str(&self) -> &str {
-        &self.label
+        &self.text
     }
 
     #[inline]
@@ -124,13 +124,13 @@ impl FormattableText for AccessString {
 }
 
 impl From<String> for AccessString {
-    fn from(input: String) -> Self {
-        if input.as_bytes().contains(&b'&') {
-            Self::parse(&input)
+    fn from(text: String) -> Self {
+        if text.as_bytes().contains(&b'&') {
+            Self::parse(&text)
         } else {
             // fast path: we can use the raw input
             AccessString {
-                label: input,
+                text,
                 ..Default::default()
             }
         }

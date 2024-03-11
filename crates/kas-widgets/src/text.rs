@@ -26,16 +26,16 @@ impl_scope! {
     #[widget]
     pub struct Text<A, T: Default + FormattableText + 'static> {
         core: widget_core!(),
-        label: text::Text<T>,
-        label_fn: Box<dyn Fn(&ConfigCx, &A) -> T>,
+        text: text::Text<T>,
+        text_fn: Box<dyn Fn(&ConfigCx, &A) -> T>,
     }
 
     impl Default for Self where for<'a> &'a A: Into<T> {
         fn default() -> Self {
             Text {
                 core: Default::default(),
-                label: text::Text::new(T::default(), TextClass::Label(true)),
-                label_fn: Box::new(|_, data| data.into()),
+                text: text::Text::new(T::default(), TextClass::Label(true)),
+                text_fn: Box::new(|_, data| data.into()),
             }
         }
     }
@@ -43,18 +43,18 @@ impl_scope! {
     impl Self {
         /// Construct with a data binding
         #[inline]
-        pub fn new(label_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+        pub fn new(text_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
             Text {
                 core: Default::default(),
-                label: text::Text::new(T::default(), TextClass::Label(true)),
-                label_fn: Box::new(label_fn),
+                text: text::Text::new(T::default(), TextClass::Label(true)),
+                text_fn: Box::new(text_fn),
             }
         }
 
         /// Get text class
         #[inline]
         pub fn class(&self) -> TextClass {
-            self.label.class()
+            self.text.class()
         }
 
         /// Set text class
@@ -62,7 +62,7 @@ impl_scope! {
         /// Default: `TextClass::Label(true)`
         #[inline]
         pub fn set_class(&mut self, class: TextClass) {
-            self.label.set_class(class);
+            self.text.set_class(class);
         }
 
         /// Set text class (inline)
@@ -70,7 +70,7 @@ impl_scope! {
         /// Default: `TextClass::Label(true)`
         #[inline]
         pub fn with_class(mut self, class: TextClass) -> Self {
-            self.label.set_class(class);
+            self.text.set_class(class);
             self
         }
 
@@ -87,20 +87,20 @@ impl_scope! {
         /// By default this is enabled.
         #[inline]
         pub fn set_wrap(&mut self, wrap: bool) {
-            self.label.set_class(TextClass::Label(wrap));
+            self.text.set_class(TextClass::Label(wrap));
         }
 
         /// Enable/disable line wrapping (inline)
         #[inline]
         pub fn with_wrap(mut self, wrap: bool) -> Self {
-            self.label.set_class(TextClass::Label(wrap));
+            self.text.set_class(TextClass::Label(wrap));
             self
         }
 
         /// Get read access to the text object
         #[inline]
         pub fn text(&self) -> &text::Text<T> {
-            &self.label
+            &self.text
         }
     }
 
@@ -108,21 +108,21 @@ impl_scope! {
         #[inline]
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Default, Align::Center);
-            sizer.text_rules(&mut self.label, axis)
+            sizer.text_rules(&mut self.text, axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.label, rect.size);
+            cx.text_set_size(&mut self.text, rect.size);
         }
 
         #[cfg(feature = "min_spec")]
         default fn draw(&mut self, mut draw: DrawCx) {
-            draw.text_effects(self.rect(), &self.label);
+            draw.text_effects(self.rect(), &self.text);
         }
         #[cfg(not(feature = "min_spec"))]
         fn draw(&mut self, mut draw: DrawCx) {
-            draw.text_effects(self.rect(), &self.label);
+            draw.text_effects(self.rect(), &self.text);
         }
     }
 
@@ -130,18 +130,18 @@ impl_scope! {
         type Data = A;
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.text_configure(&mut self.label);
+            cx.text_configure(&mut self.text);
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
-            let text = (self.label_fn)(cx, data);
-            if text.as_str() == self.label.as_str() {
+            let text = (self.text_fn)(cx, data);
+            if text.as_str() == self.text.as_str() {
                 // NOTE(opt): avoiding re-preparation of text is a *huge*
                 // optimisation. Move into kas-text?
                 return;
             }
-            self.label.set_text(text);
-            let action = self.label.reprepare_action();
+            self.text.set_text(text);
+            let action = self.text.reprepare_action();
             cx.action(self, action);
         }
     }
@@ -151,13 +151,13 @@ impl_scope! {
 #[cfg(feature = "min_spec")]
 impl<'a, A> Layout for Text<A, &'a str> {
     fn draw(&mut self, mut draw: DrawCx) {
-        draw.text(self.rect(), &self.label);
+        draw.text(self.rect(), &self.text);
     }
 }
 #[cfg(feature = "min_spec")]
 impl<A> Layout for Text<A, String> {
     fn draw(&mut self, mut draw: DrawCx) {
-        draw.text(self.rect(), &self.label);
+        draw.text(self.rect(), &self.text);
     }
 }
 
