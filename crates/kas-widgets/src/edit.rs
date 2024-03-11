@@ -672,7 +672,7 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let mut align = self.text.get_align();
+            let mut align = self.text.align();
             let (min, ideal) = if axis.is_horizontal() {
                 align.0 = axis.align_or_default();
                 let dpem = sizer.dpem();
@@ -1397,7 +1397,7 @@ impl<G: EditGuard> EditField<G> {
                     v.0 = x;
                 }
                 const FACTOR: f32 = 2.0 / 3.0;
-                let mut h_dist = self.text.get_bounds().1 * FACTOR;
+                let mut h_dist = self.text.bounds().1 * FACTOR;
                 if cmd == Command::PageUp {
                     h_dist *= -1.0;
                 }
@@ -1596,7 +1596,7 @@ impl<G: EditGuard> EditField<G> {
             .ok()
             .and_then(|mut m| m.next_back())
         {
-            let bounds = Vec2::from(self.text.get_bounds());
+            let bounds = Vec2::from(self.text.bounds());
             let min_x = marker.pos.0 - bounds.0;
             let min_y = marker.pos.1 - marker.descent - bounds.1;
             let max_x = marker.pos.0;

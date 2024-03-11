@@ -341,7 +341,7 @@ impl<D: 'static> ThemeSize for Window<D> {
         };
         let margins = (margin, margin);
 
-        let mut align_pair = text.get_align();
+        let mut align_pair = text.align();
         let align = axis.align_or_default();
         if axis.is_horizontal() {
             align_pair.0 = align;

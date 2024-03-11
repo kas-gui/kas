@@ -272,7 +272,7 @@ impl<T: FormattableText + ?Sized> TextApi for Text<T> {
     }
 
     #[inline]
-    fn get_font(&self) -> FontId {
+    fn font(&self) -> FontId {
         self.font_id
     }
 
@@ -285,7 +285,7 @@ impl<T: FormattableText + ?Sized> TextApi for Text<T> {
     }
 
     #[inline]
-    fn get_font_size(&self) -> f32 {
+    fn font_size(&self) -> f32 {
         self.dpem
     }
 
@@ -298,7 +298,7 @@ impl<T: FormattableText + ?Sized> TextApi for Text<T> {
     }
 
     #[inline]
-    fn get_direction(&self) -> Direction {
+    fn direction(&self) -> Direction {
         self.direction
     }
 
@@ -311,7 +311,7 @@ impl<T: FormattableText + ?Sized> TextApi for Text<T> {
     }
 
     #[inline]
-    fn get_wrap_width(&self) -> f32 {
+    fn wrap_width(&self) -> f32 {
         self.wrap_width
     }
 
@@ -325,7 +325,7 @@ impl<T: FormattableText + ?Sized> TextApi for Text<T> {
     }
 
     #[inline]
-    fn get_align(&self) -> (Align, Align) {
+    fn align(&self) -> (Align, Align) {
         self.align
     }
 
@@ -342,7 +342,7 @@ impl<T: FormattableText + ?Sized> TextApi for Text<T> {
     }
 
     #[inline]
-    fn get_bounds(&self) -> Vec2 {
+    fn bounds(&self) -> Vec2 {
         self.bounds
     }
 
@@ -404,8 +404,8 @@ impl<T: FormattableText + ?Sized> TextApi for Text<T> {
         self.check_status(Status::Configured)?;
 
         fonts::library()
-            .get_first_face(self.get_font())
-            .map(|face| face.height(self.get_font_size()))
+            .get_first_face(self.font())
+            .map(|face| face.height(self.font_size()))
             .map_err(|_| {
                 debug_assert!(false, "font_id should be validated by configure");
                 NotReady

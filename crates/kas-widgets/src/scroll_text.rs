@@ -151,7 +151,7 @@ impl_scope! {
                 .ok()
                 .and_then(|mut m| m.next_back())
             {
-                let bounds = Vec2::from(self.text.get_bounds());
+                let bounds = Vec2::from(self.text.bounds());
                 let min_x = marker.pos.0 - bounds.0;
                 let min_y = marker.pos.1 - marker.descent - bounds.1;
                 let max_x = marker.pos.0;
