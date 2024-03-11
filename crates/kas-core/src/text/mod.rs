@@ -17,6 +17,7 @@
 //! [KAS Text]: https://github.com/kas-gui/kas-text/
 
 use crate::theme::TextClass;
+use crate::Action;
 #[allow(unused)] use kas::{event::ConfigCx, Layout};
 use kas_text::fonts::{FontId, InvalidFontId};
 use kas_text::format::{EditableText, FormattableText};
@@ -215,6 +216,34 @@ impl<T: FormattableText + ?Sized> Text<T> {
         self.status = Status::LevelRuns;
         Ok(())
     }
+
+    /// Re-prepare, if previously prepared, and return an [`Action`]
+    ///
+    /// Wraps [`TextApi::prepare`], returning an appropriate [`Action`]:
+    ///
+    /// -   When this `Text` object was previously prepared and has sufficient
+    ///     bounds, it is updated and [`Action::REDRAW`] is returned
+    /// -   When this `Text` object was previously prepared but does not have
+    ///     sufficient bounds, it is updated and [`Action::RESIZE`] is returned
+    /// -   When this `Text` object was not previously prepared,
+    ///     [`Action::empty()`] is returned without updating `self`.
+    ///
+    /// This is typically called after updating a `Text` object in a widget.
+    #[inline]
+    pub fn reprepare_action(&mut self) -> Action {
+        match self.prepare() {
+            Err(NotReady) => Action::empty(),
+            Ok(false) => Action::REDRAW,
+            Ok(true) => {
+                let (tl, br) = self.display.bounding_box();
+                if tl.0 < 0.0 || tl.1 < 0.0 || br.0 > self.bounds.0 || br.1 > self.bounds.1 {
+                    Action::RESIZE
+                } else {
+                    Action::REDRAW
+                }
+            }
+        }
+    }
 }
 
 impl<T: FormattableText + ?Sized> TextApi for Text<T> {
@@ -401,6 +430,12 @@ impl<T: FormattableText + ?Sized> TextApi for Text<T> {
 
     #[inline]
     fn prepare(&mut self) -> Result<bool, NotReady> {
+        if self.is_prepared() {
+            return Ok(false);
+        } else if !self.bounds.is_finite() {
+            return Err(NotReady);
+        }
+
         self.prepare_runs()?;
         debug_assert!(self.status >= Status::LevelRuns);
 
@@ -409,15 +444,12 @@ impl<T: FormattableText + ?Sized> TextApi for Text<T> {
                 .prepare_lines(self.wrap_width, self.bounds.0, self.align.0);
         }
 
-        let overflow = if self.status <= Status::Wrapped {
-            let bound = self.display.vertically_align(self.bounds.1, self.align.1);
-            !(bound.0 <= self.bounds.0 && bound.1 <= self.bounds.1)
-        } else {
-            false
-        };
+        if self.status <= Status::Wrapped {
+            self.display.vertically_align(self.bounds.1, self.align.1);
+        }
 
         self.status = Status::Ready;
-        Ok(overflow)
+        Ok(true)
     }
 
     #[inline]

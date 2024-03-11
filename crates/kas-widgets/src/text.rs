@@ -8,7 +8,6 @@
 use kas::prelude::*;
 use kas::text;
 use kas::text::format::FormattableText;
-use kas::text::NotReady;
 use kas::theme::TextClass;
 
 impl_scope! {
@@ -142,19 +141,8 @@ impl_scope! {
                 return;
             }
             self.label.set_text(text);
-            if self.label.get_bounds().1.is_finite() {
-                // NOTE: bounds are initially infinite. Alignment results in
-                // infinite offset and thus infinite measured height.
-                let action = match self.label.prepare() {
-                    Err(NotReady) => {
-                        debug_assert!(false, "update before configure");
-                        Action::empty()
-                    }
-                    Ok(false) => Action::REDRAW,
-                    Ok(true) => Action::RESIZE,
-                };
-                cx.action(self, action);
-            }
+            let action = self.label.reprepare_action();
+            cx.action(self, action);
         }
     }
 }

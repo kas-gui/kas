@@ -914,21 +914,19 @@ impl_scope! {
 
     impl HasString for Self {
         fn set_string(&mut self, string: String) -> Action {
-            if *self.text.text() == string {
+            let old_len = string.len();
+            self.text.set_string(string);
+            if self.text.prepare() != Ok(true) {
                 return Action::empty();
             }
-            let mut action = Action::REDRAW;
 
-            let len = string.len();
-            self.text.set_string(string);
-            self.selection.set_max_len(len);
-            if self.text.prepare().is_ok() {
-                self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
-                let view_offset = self.view_offset.min(self.max_scroll_offset());
-                if view_offset != self.view_offset {
-                    action = Action::SCROLLED;
-                    self.view_offset = view_offset;
-                }
+            self.selection.set_max_len(old_len);
+            let mut action = Action::REDRAW;
+            self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
+            let view_offset = self.view_offset.min(self.max_scroll_offset());
+            if view_offset != self.view_offset {
+                action = Action::SCROLLED;
+                self.view_offset = view_offset;
             }
             action | self.set_error_state(false)
         }
@@ -1184,25 +1182,26 @@ impl<G: EditGuard> EditField<G> {
     }
 
     fn prepare_text(&mut self, cx: &mut EventCx) {
-        if !self.text.get_bounds().1.is_finite() {
-            // Do not attempt to prepare before bounds are set.
-            return;
+        let start = std::time::Instant::now();
+
+        match self.text.prepare() {
+            Err(NotReady) => {
+                debug_assert!(false, "text not ready");
+                return;
+            }
+            Ok(false) => return,
+            Ok(true) => (),
         }
 
-        if !self.text.is_prepared() {
-            let start = std::time::Instant::now();
-
-            self.text.prepare().expect("invalid font_id");
-            self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
-
-            log::trace!(
-                target: "kas_perf::widgets::edit", "prepare_text: {}μs",
-                start.elapsed().as_micros(),
-            );
-        }
+        self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
 
         cx.redraw(&self);
         self.set_view_offset_from_edit_pos(cx);
+
+        log::trace!(
+            target: "kas_perf::widgets::edit", "prepare_text: {}μs",
+            start.elapsed().as_micros(),
+        );
     }
 
     fn trim_paste(&self, text: &str) -> Range<usize> {

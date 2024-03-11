@@ -109,7 +109,7 @@ impl_scope! {
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: T) -> Action {
             self.text.set_text(text);
-            if self.text.prepare().is_err() {
+            if self.text.prepare() != Ok(true) {
                 return Action::empty();
             }
 
@@ -210,8 +210,7 @@ impl_scope! {
             self.text.set_string(string);
             match self.text.prepare() {
                 Err(NotReady) => Action::empty(),
-                Ok(false) => Action::REDRAW,
-                Ok(true) => Action::SET_RECT,
+                Ok(_) => Action::SET_RECT,
             }
         }
     }

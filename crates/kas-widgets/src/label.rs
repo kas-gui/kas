@@ -8,7 +8,7 @@
 use super::adapt::MapAny;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
-use kas::text::{NotReady, Text};
+use kas::text::Text;
 use kas::theme::TextClass;
 
 /// Construct a [`Label`]
@@ -115,11 +115,7 @@ impl_scope! {
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: T) -> Action {
             self.label.set_text(text);
-            match self.label.prepare() {
-                Err(NotReady) => Action::empty(),
-                Ok(false) => Action::REDRAW,
-                Ok(true) => Action::RESIZE,
-            }
+            self.label.reprepare_action()
         }
     }
 
@@ -163,11 +159,7 @@ impl_scope! {
     {
         fn set_string(&mut self, string: String) -> Action {
             self.label.set_string(string);
-            match self.label.prepare() {
-                Err(NotReady) => Action::empty(),
-                Ok(false) => Action::REDRAW,
-                Ok(true) => Action::RESIZE,
-            }
+            self.label.reprepare_action()
         }
     }
 }
@@ -296,11 +288,7 @@ impl_scope! {
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: AccessString) -> Action {
             self.label.set_text(text);
-            match self.label.prepare() {
-                Err(NotReady) => Action::empty(),
-                Ok(false) => Action::REDRAW,
-                Ok(true) => Action::RESIZE,
-            }
+            self.label.reprepare_action()
         }
     }
 

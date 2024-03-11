@@ -188,11 +188,14 @@ impl_scope! {
         T: EditableText,
     {
         fn set_string(&mut self, string: String) -> Action {
+            if string == self.text.as_str() {
+                return Action::empty();
+            }
+
             self.text.set_string(string);
             match self.text.prepare() {
                 Err(NotReady) => Action::empty(),
-                Ok(false) => Action::REDRAW,
-                Ok(true) => Action::SET_RECT,
+                Ok(_) => Action::SET_RECT,
             }
         }
     }
@@ -212,19 +215,12 @@ impl_scope! {
                 return;
             }
             self.text.set_text(text);
-            if self.text.get_bounds().1.is_finite() {
-                // NOTE: bounds are initially infinite. Alignment results in
-                // infinite offset and thus infinite measured height.
-                let action = match self.text.prepare() {
-                    Err(NotReady) => {
-                        debug_assert!(false, "update before configure");
-                        Action::empty()
-                    }
-                    Ok(false) => Action::REDRAW,
-                    Ok(true) => Action::SET_RECT,
-                };
-                cx.action(self, action);
-            }
+            let action = match self.text.prepare() {
+                Err(NotReady) => Action::empty(),
+                Ok(_) => Action::SET_RECT,
+            };
+            debug_assert!(!action.is_empty(), "update before configure");
+            cx.action(self, action);
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
