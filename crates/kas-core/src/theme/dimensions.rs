@@ -330,15 +330,11 @@ impl<D: 'static> ThemeSize for Window<D> {
         let direction = Direction::Auto;
         let font_id = self.fonts.get(&class).cloned().unwrap_or_default();
         let dpem = self.dims.dpem;
-        let wrap = match class.multi_line() {
-            false => f32::INFINITY,
-            true => 0.0, // NOTE: finite value used as a flag
-        };
-        text.set_font_properties(direction, font_id, dpem, wrap);
+        text.set_font_properties(direction, font_id, dpem, f32::INFINITY);
         text.configure().expect("invalid font_id");
     }
 
-    fn text_rules(&self, text: &mut dyn TextApi, axis: AxisInfo) -> SizeRules {
+    fn text_rules(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules {
         let margin = match axis.is_horizontal() {
             true => self.dims.m_text.0,
             false => self.dims.m_text.1,
@@ -354,10 +350,10 @@ impl<D: 'static> ThemeSize for Window<D> {
         }
         text.set_align(align_pair);
 
-        let wrap = text.get_wrap_width();
+        let wrap = class.multi_line();
 
         if axis.is_horizontal() {
-            if wrap.is_finite() {
+            if wrap {
                 let min = self.dims.min_line_length;
                 let limit = 2 * min;
                 let bound: i32 = text
@@ -377,7 +373,7 @@ impl<D: 'static> ThemeSize for Window<D> {
                 SizeRules::new(bound, bound, margins, Stretch::Filler)
             }
         } else {
-            if wrap.is_finite() {
+            if wrap {
                 text.set_wrap_width(axis.other().map(|w| w.cast()).unwrap_or(f32::INFINITY));
             }
 

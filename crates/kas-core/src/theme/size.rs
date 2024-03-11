@@ -12,7 +12,7 @@ use crate::autoimpl;
 use crate::dir::Directional;
 use crate::geom::Rect;
 use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules};
-use crate::text::TextApi;
+use crate::text::{format::FormattableText, Text, TextApi};
 use std::ops::Deref;
 
 #[allow(unused)] use crate::text::TextApiExt;
@@ -188,8 +188,9 @@ impl<'a> SizeCx<'a> {
     /// Note: this method partially prepares the `text` object. It is not
     /// required to call this method but it is required to call
     /// [`ConfigCx::text_configure`] before text display for correct results.
-    pub fn text_rules(&self, text: &mut dyn TextApi, axis: AxisInfo) -> SizeRules {
-        self.0.text_rules(text, axis)
+    pub fn text_rules<T: FormattableText>(&self, text: &mut Text<T>, axis: AxisInfo) -> SizeRules {
+        let class = text.class();
+        self.0.text_rules(text, class, axis)
     }
 }
 
@@ -237,5 +238,5 @@ pub trait ThemeSize {
     fn text_configure(&self, text: &mut dyn TextApi, class: TextClass);
 
     /// Get [`SizeRules`] for a text element
-    fn text_rules(&self, text: &mut dyn TextApi, axis: AxisInfo) -> SizeRules;
+    fn text_rules(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules;
 }
