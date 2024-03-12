@@ -11,8 +11,8 @@ use kas::event::{Command, CursorIcon, FocusSource, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
-use kas::text::{NotReady, SelectionHelper, Text};
-use kas::theme::TextClass;
+use kas::text::{NotReady, SelectionHelper};
+use kas::theme::{Text, TextClass};
 
 impl_scope! {
     /// A static text label supporting scrolling and selection
@@ -70,16 +70,15 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            let class = TextClass::LabelScroll;
             let rect = Rect::new(self.rect().pos, self.text_size);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {
-                    draw.text(rect, &self.text, class);
+                    draw.text(rect, &self.text);
                 } else {
                     // TODO(opt): we could cache the selection rectangles here to make
                     // drawing more efficient (self.text.highlight_lines(range) output).
                     // The same applies to the edit marker below.
-                    draw.text_selected(rect, &self.text, self.selection.range(), class);
+                    draw.text_selected(rect, &self.text, self.selection.range());
                 }
             });
             draw.with_pass(|mut draw| {
@@ -95,7 +94,7 @@ impl_scope! {
             ScrollLabel {
                 core: Default::default(),
                 view_offset: Default::default(),
-                text: Text::new(text),
+                text: Text::new(text, TextClass::LabelScroll),
                 text_size: Size::ZERO,
                 selection: SelectionHelper::new(0, 0),
                 has_sel_focus: false,
@@ -110,7 +109,7 @@ impl_scope! {
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: T) -> Action {
             self.text.set_text(text);
-            if self.text.prepare().is_err() {
+            if self.text.prepare() != Ok(true) {
                 return Action::empty();
             }
 
@@ -171,7 +170,7 @@ impl_scope! {
                 .ok()
                 .and_then(|mut m| m.next_back())
             {
-                let bounds = Vec2::from(self.text.get_bounds());
+                let bounds = Vec2::from(self.text.bounds());
                 let min_x = marker.pos.0 - bounds.0;
                 let min_y = marker.pos.1 - marker.descent - bounds.1;
                 let max_x = marker.pos.0;
@@ -211,8 +210,7 @@ impl_scope! {
             self.text.set_string(string);
             match self.text.prepare() {
                 Err(NotReady) => Action::empty(),
-                Ok(false) => Action::REDRAW,
-                Ok(true) => Action::SET_RECT,
+                Ok(_) => Action::SET_RECT,
             }
         }
     }
@@ -221,7 +219,7 @@ impl_scope! {
         type Data = ();
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.text_configure(&mut self.text, TextClass::LabelScroll);
+            cx.text_configure(&mut self.text);
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {

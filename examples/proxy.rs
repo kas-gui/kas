@@ -14,8 +14,7 @@ use std::time::{Duration, Instant};
 
 use kas::draw::color::Rgba;
 use kas::prelude::*;
-use kas::text::Text;
-use kas::theme::TextClass;
+use kas::theme::{Text, TextClass};
 
 #[derive(Debug)]
 struct SetColor(Rgba);
@@ -61,7 +60,7 @@ impl_scope! {
             ColourSquare {
                 core: Default::default(),
                 color: None,
-                loading_text: Text::new("Loading..."),
+                loading_text: Text::new("Loading...", TextClass::Label(false)),
             }
         }
     }
@@ -80,7 +79,7 @@ impl_scope! {
                 let draw = draw.draw_device();
                 draw.rect((self.rect()).cast(), color);
             } else {
-                draw.text(self.core.rect, &self.loading_text, TextClass::Label(false));
+                draw.text(self.core.rect, &self.loading_text);
             }
         }
     }
@@ -89,7 +88,7 @@ impl_scope! {
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             self.loading_text.set_align((Align::Center, Align::Center));
-            cx.text_configure(&mut self.loading_text, TextClass::Label(false));
+            cx.text_configure(&mut self.loading_text);
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &AppData) {

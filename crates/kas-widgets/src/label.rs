@@ -8,21 +8,20 @@
 use super::adapt::MapAny;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
-use kas::text::{NotReady, Text};
-use kas::theme::TextClass;
+use kas::theme::{Text, TextClass};
 
 /// Construct a [`Label`]
 #[inline]
-pub fn label<T: FormattableText + 'static>(label: T) -> Label<T> {
-    Label::new(label)
+pub fn label<T: FormattableText + 'static>(text: T) -> Label<T> {
+    Label::new(text)
 }
 
 /// Construct a [`Label`] which accepts any data
 ///
 /// This is just a shortcut for `Label::new(text).map_any()`.
 #[inline]
-pub fn label_any<A, T: FormattableText + 'static>(label: T) -> MapAny<A, Label<T>> {
-    MapAny::new(Label::new(label))
+pub fn label_any<A, T: FormattableText + 'static>(text: T) -> MapAny<A, Label<T>> {
+    MapAny::new(Label::new(text))
 }
 
 impl_scope! {
@@ -44,25 +43,23 @@ impl_scope! {
     }]
     pub struct Label<T: FormattableText + 'static> {
         core: widget_core!(),
-        class: TextClass = TextClass::Label(true),
-        label: Text<T>,
+        text: Text<T>,
     }
 
     impl Self {
-        /// Construct from `label`
+        /// Construct from `text`
         #[inline]
-        pub fn new(label: T) -> Self {
+        pub fn new(text: T) -> Self {
             Label {
                 core: Default::default(),
-                class: TextClass::Label(true),
-                label: Text::new(label),
+                text: Text::new(text, TextClass::Label(true)),
             }
         }
 
         /// Get text class
         #[inline]
         pub fn class(&self) -> TextClass {
-            self.class
+            self.text.class()
         }
 
         /// Set text class
@@ -70,7 +67,7 @@ impl_scope! {
         /// Default: `TextClass::Label(true)`
         #[inline]
         pub fn set_class(&mut self, class: TextClass) {
-            self.class = class;
+            self.text.set_class(class);
         }
 
         /// Set text class (inline)
@@ -78,14 +75,14 @@ impl_scope! {
         /// Default: `TextClass::Label(true)`
         #[inline]
         pub fn with_class(mut self, class: TextClass) -> Self {
-            self.class = class;
+            self.text.set_class(class);
             self
         }
 
         /// Get whether line-wrapping is enabled
         #[inline]
         pub fn wrap(&self) -> bool {
-            self.class.multi_line()
+            self.class().multi_line()
         }
 
         /// Enable/disable line wrapping
@@ -95,20 +92,20 @@ impl_scope! {
         /// By default this is enabled.
         #[inline]
         pub fn set_wrap(&mut self, wrap: bool) {
-            self.class = TextClass::Label(wrap);
+            self.text.set_class(TextClass::Label(wrap));
         }
 
         /// Enable/disable line wrapping (inline)
         #[inline]
         pub fn with_wrap(mut self, wrap: bool) -> Self {
-            self.class = TextClass::Label(wrap);
+            self.text.set_class(TextClass::Label(wrap));
             self
         }
 
         /// Get read access to the text object
         #[inline]
         pub fn text(&self) -> &Text<T> {
-            &self.label
+            &self.text
         }
 
         /// Set text in an existing `Label`
@@ -116,12 +113,8 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: T) -> Action {
-            self.label.set_text(text);
-            match self.label.prepare() {
-                Err(NotReady) => Action::empty(),
-                Ok(false) => Action::REDRAW,
-                Ok(true) => Action::RESIZE,
-            }
+            self.text.set_text(text);
+            self.text.reprepare_action()
         }
     }
 
@@ -129,33 +122,33 @@ impl_scope! {
         #[inline]
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Default, Align::Center);
-            sizer.text_rules(&mut self.label, axis)
+            sizer.text_rules(&mut self.text, axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.label, rect.size);
+            cx.text_set_size(&mut self.text, rect.size);
         }
 
         #[cfg(feature = "min_spec")]
         default fn draw(&mut self, mut draw: DrawCx) {
-            draw.text_effects(self.rect(), &self.label, self.class);
+            draw.text_effects(self.rect(), &self.text);
         }
         #[cfg(not(feature = "min_spec"))]
         fn draw(&mut self, mut draw: DrawCx) {
-            draw.text_effects(self.rect(), &self.label, self.class);
+            draw.text_effects(self.rect(), &self.text);
         }
     }
 
     impl Events for Self {
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.text_configure(&mut self.label, self.class);
+            cx.text_configure(&mut self.text);
         }
     }
 
     impl HasStr for Self {
         fn get_str(&self) -> &str {
-            self.label.as_str()
+            self.text.as_str()
         }
     }
 
@@ -164,12 +157,8 @@ impl_scope! {
         T: EditableText,
     {
         fn set_string(&mut self, string: String) -> Action {
-            self.label.set_string(string);
-            match self.label.prepare() {
-                Err(NotReady) => Action::empty(),
-                Ok(false) => Action::REDRAW,
-                Ok(true) => Action::RESIZE,
-            }
+            self.text.set_string(string);
+            self.text.reprepare_action()
         }
     }
 }
@@ -178,13 +167,13 @@ impl_scope! {
 #[cfg(feature = "min_spec")]
 impl<'a> Layout for Label<&'a str> {
     fn draw(&mut self, mut draw: DrawCx) {
-        draw.text(self.rect(), &self.label, self.class);
+        draw.text(self.rect(), &self.text);
     }
 }
 #[cfg(feature = "min_spec")]
 impl Layout for Label<String> {
     fn draw(&mut self, mut draw: DrawCx) {
-        draw.text(self.rect(), &self.label, self.class);
+        draw.text(self.rect(), &self.text);
     }
 }
 
@@ -197,14 +186,14 @@ impl<U, T: From<U> + FormattableText + 'static> From<U> for Label<T> {
 }*/
 
 impl<T: FormattableText + 'static> From<T> for Label<T> {
-    fn from(label: T) -> Self {
-        Label::new(label)
+    fn from(text: T) -> Self {
+        Label::new(text)
     }
 }
 
 impl<'a> From<&'a str> for Label<String> {
-    fn from(label: &'a str) -> Self {
-        Label::new(label.to_string())
+    fn from(text: &'a str) -> Self {
+        Label::new(text.to_string())
     }
 }
 
@@ -227,25 +216,23 @@ impl_scope! {
     #[widget]
     pub struct AccessLabel {
         core: widget_core!(),
-        class: TextClass = TextClass::Label(true),
-        label: Text<AccessString>,
+        text: Text<AccessString>,
     }
 
     impl Self {
-        /// Construct from `label`
+        /// Construct from `text`
         #[inline]
-        pub fn new(label: impl Into<AccessString>) -> Self {
+        pub fn new(text: impl Into<AccessString>) -> Self {
             AccessLabel {
                 core: Default::default(),
-                class: TextClass::AccessLabel(true),
-                label: Text::new(label.into()),
+                text: Text::new(text.into(), TextClass::AccessLabel(true)),
             }
         }
 
         /// Get text class
         #[inline]
         pub fn class(&self) -> TextClass {
-            self.class
+            self.text.class()
         }
 
         /// Set text class
@@ -253,7 +240,7 @@ impl_scope! {
         /// Default: `AccessLabel::Label(true)`
         #[inline]
         pub fn set_class(&mut self, class: TextClass) {
-            self.class = class;
+            self.text.set_class(class);
         }
 
         /// Set text class (inline)
@@ -261,14 +248,14 @@ impl_scope! {
         /// Default: `AccessLabel::Label(true)`
         #[inline]
         pub fn with_class(mut self, class: TextClass) -> Self {
-            self.class = class;
+            self.text.set_class(class);
             self
         }
 
         /// Get whether line-wrapping is enabled
         #[inline]
         pub fn wrap(&self) -> bool {
-            self.class.multi_line()
+            self.class().multi_line()
         }
 
         /// Enable/disable line wrapping
@@ -278,20 +265,20 @@ impl_scope! {
         /// By default this is enabled.
         #[inline]
         pub fn set_wrap(&mut self, wrap: bool) {
-            self.class = TextClass::AccessLabel(wrap);
+            self.text.set_class(TextClass::AccessLabel(wrap));
         }
 
         /// Enable/disable line wrapping (inline)
         #[inline]
         pub fn with_wrap(mut self, wrap: bool) -> Self {
-            self.class = TextClass::Label(wrap);
+            self.text.set_class(TextClass::AccessLabel(wrap));
             self
         }
 
         /// Get read access to the text object
         #[inline]
         pub fn text(&self) -> &Text<AccessString> {
-            &self.label
+            &self.text
         }
 
         /// Set text in an existing `Label`
@@ -299,12 +286,8 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: AccessString) -> Action {
-            self.label.set_text(text);
-            match self.label.prepare() {
-                Err(NotReady) => Action::empty(),
-                Ok(false) => Action::REDRAW,
-                Ok(true) => Action::RESIZE,
-            }
+            self.text.set_text(text);
+            self.text.reprepare_action()
         }
     }
 
@@ -312,16 +295,16 @@ impl_scope! {
         #[inline]
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Default, Align::Center);
-            sizer.text_rules(&mut self.label, axis)
+            sizer.text_rules(&mut self.text, axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.label, rect.size);
+            cx.text_set_size(&mut self.text, rect.size);
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            draw.text_effects(self.rect(), &self.label, self.class);
+            draw.text_effects(self.rect(), &self.text);
         }
     }
 
@@ -329,9 +312,9 @@ impl_scope! {
         type Data = ();
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.text_configure(&mut self.label, self.class);
+            cx.text_configure(&mut self.text);
 
-            if let Some(key) = self.label.text().key() {
+            if let Some(key) = self.text.text().key() {
                 cx.add_access_key(self.id_ref(), key.clone());
             }
         }
@@ -349,7 +332,7 @@ impl_scope! {
 
     impl HasStr for Self {
         fn get_str(&self) -> &str {
-            self.label.as_str()
+            self.text.as_str()
         }
     }
 }

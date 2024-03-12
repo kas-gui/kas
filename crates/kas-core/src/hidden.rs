@@ -13,8 +13,7 @@ use crate::classes::HasStr;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{Align, AxisInfo, SizeRules};
-use crate::text::{Text, TextApi};
-use crate::theme::{DrawCx, SizeCx, TextClass};
+use crate::theme::{DrawCx, SizeCx, Text, TextClass};
 use crate::{Events, Id, Layout, NavAdvance, Node, Widget};
 use kas_macros::{autoimpl, impl_scope};
 
@@ -30,49 +29,46 @@ impl_scope! {
     }]
     pub struct StrLabel {
         core: widget_core!(),
-        label: Text<&'static str>,
+        text: Text<&'static str>,
     }
 
     impl Self {
-        /// Construct from `label`
+        /// Construct from `text`
         #[inline]
-        pub fn new(label: &'static str) -> Self {
+        pub fn new(text: &'static str) -> Self {
             StrLabel {
                 core: Default::default(),
-                label: Text::new(label),
+                text: Text::new(text, TextClass::Label(false)),
             }
         }
-
-        /// Text class
-        pub const CLASS: TextClass = TextClass::Label(false);
     }
 
     impl Layout for Self {
         #[inline]
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Default, Align::Center);
-            sizer.text_rules(&mut self.label, axis)
+            sizer.text_rules(&mut self.text, axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.label, rect.size);
+            cx.text_set_size(&mut self.text, rect.size);
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            draw.text(self.rect(), &self.label, Self::CLASS);
+            draw.text(self.rect(), &self.text);
         }
     }
 
     impl Events for Self {
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.text_configure(&mut self.label, Self::CLASS);
+            cx.text_configure(&mut self.text);
         }
     }
 
     impl HasStr for Self {
         fn get_str(&self) -> &str {
-            self.label.as_str()
+            self.text.as_str()
         }
     }
 }

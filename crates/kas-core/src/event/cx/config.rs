@@ -10,8 +10,8 @@ use crate::event::{EventState, FocusSource};
 use crate::geom::{Rect, Size};
 use crate::layout::AlignPair;
 use crate::messages::Erased;
-use crate::text::TextApi;
-use crate::theme::{Feature, SizeCx, TextClass, ThemeSize};
+use crate::text::format::FormattableText;
+use crate::theme::{Feature, SizeCx, Text, ThemeSize};
 use crate::{Id, Node};
 use cast::Cast;
 use std::fmt::Debug;
@@ -125,11 +125,12 @@ impl<'a> ConfigCx<'a> {
 
     /// Configure a text object
     ///
-    /// This selects a font given the [`TextClass`],
+    /// This selects a font given the [`TextClass`][crate::theme::TextClass],
     /// [theme configuration][crate::theme::Config] and
     /// the loaded [fonts][crate::text::fonts].
     #[inline]
-    pub fn text_configure(&self, text: &mut dyn TextApi, class: TextClass) {
+    pub fn text_configure<T: FormattableText>(&self, text: &mut Text<T>) {
+        let class = text.class();
         self.sh.text_configure(text, class);
     }
 
@@ -139,8 +140,7 @@ impl<'a> ConfigCx<'a> {
     ///
     /// Call [`text_configure`][Self::text_configure] before this method.
     #[inline]
-    pub fn text_set_size(&self, text: &mut dyn TextApi, size: Size) {
-        text.set_wrap_width(size.0.cast());
+    pub fn text_set_size<T: FormattableText>(&self, text: &mut Text<T>, size: Size) {
         text.set_bounds(size.cast());
         text.prepare().expect("not configured");
     }

@@ -7,15 +7,14 @@
 
 use cast::CastFloat;
 
-use super::{Feature, FrameStyle, MarginStyle, TextClass};
+use super::{Feature, FrameStyle, MarginStyle, SizableText, Text, TextClass};
 use crate::autoimpl;
 use crate::dir::Directional;
 use crate::geom::Rect;
 use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules};
-use crate::text::TextApi;
+use crate::text::format::FormattableText;
 use std::ops::Deref;
 
-#[allow(unused)] use crate::text::TextApiExt;
 #[allow(unused)]
 use crate::{event::ConfigCx, layout::Stretch, theme::DrawCx};
 
@@ -163,7 +162,7 @@ impl<'a> SizeCx<'a> {
     }
 
     /// Get the line-height of a configured text object
-    pub fn text_line_height(&self, text: &dyn TextApi) -> i32 {
+    pub fn text_line_height<T: FormattableText>(&self, text: &Text<T>) -> i32 {
         text.line_height().expect("not configured").cast_ceil()
     }
 
@@ -188,8 +187,9 @@ impl<'a> SizeCx<'a> {
     /// Note: this method partially prepares the `text` object. It is not
     /// required to call this method but it is required to call
     /// [`ConfigCx::text_configure`] before text display for correct results.
-    pub fn text_rules(&self, text: &mut dyn TextApi, axis: AxisInfo) -> SizeRules {
-        self.0.text_rules(text, axis)
+    pub fn text_rules<T: FormattableText>(&self, text: &mut Text<T>, axis: AxisInfo) -> SizeRules {
+        let class = text.class();
+        self.0.text_rules(text, class, axis)
     }
 }
 
@@ -230,12 +230,13 @@ pub trait ThemeSize {
 
     /// The height of a line of text by class
     ///
-    /// Prefer to use [`Self::text_line_height`] where possible.
+    /// Prefer to use [`SizeCx::text_line_height`] where possible.
     fn line_height(&self, class: TextClass) -> i32;
 
     /// Configure a text object, setting font properties
-    fn text_configure(&self, text: &mut dyn TextApi, class: TextClass);
+    fn text_configure(&self, text: &mut dyn SizableText, class: TextClass);
 
     /// Get [`SizeRules`] for a text element
-    fn text_rules(&self, text: &mut dyn TextApi, axis: AxisInfo) -> SizeRules;
+    fn text_rules(&self, text: &mut dyn SizableText, class: TextClass, axis: AxisInfo)
+        -> SizeRules;
 }

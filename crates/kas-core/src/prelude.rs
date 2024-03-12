@@ -21,8 +21,6 @@ pub use crate::layout::{
     Align, AlignHints, AlignPair, AxisInfo, LayoutVisitor, SizeRules, Stretch,
 };
 #[doc(no_inline)] pub use crate::text::AccessString;
-#[doc(no_inline)]
-pub use crate::text::{EditableTextApi, TextApi, TextApiExt};
 #[doc(no_inline)] pub use crate::theme::{DrawCx, SizeCx};
 #[doc(no_inline)] pub use crate::Action;
 #[doc(no_inline)]

@@ -8,8 +8,7 @@
 //! Note: due to definition in kas-core, some widgets must be duplicated.
 
 use crate::event::{CursorIcon, ResizeDirection};
-use crate::text::{NotReady, Text};
-use crate::theme::TextClass;
+use crate::theme::{Text, TextClass};
 use kas::prelude::*;
 use kas::theme::MarkStyle;
 use kas_macros::impl_scope;
@@ -107,59 +106,52 @@ impl_scope! {
     }]
     pub struct Label {
         core: widget_core!(),
-        label: Text<String>,
+        text: Text<String>,
     }
 
     impl Self {
-        /// Construct from `label`
+        /// Construct from `text`
         #[inline]
-        fn new(label: impl ToString) -> Self {
+        fn new(text: impl ToString) -> Self {
             Label {
                 core: Default::default(),
-                label: Text::new(label.to_string()),
+                text: Text::new(text.to_string(), TextClass::Label(false)),
             }
         }
-
-        /// Text class
-        pub const CLASS: TextClass = TextClass::Label(false);
     }
 
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Center, Align::Center);
-            sizer.text_rules(&mut self.label, axis)
+            sizer.text_rules(&mut self.text, axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.label, rect.size);
+            cx.text_set_size(&mut self.text, rect.size);
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            draw.text(self.rect(), &self.label, Self::CLASS);
+            draw.text(self.rect(), &self.text);
         }
     }
 
     impl Events for Self {
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.text_configure(&mut self.label, Self::CLASS);
+            cx.text_configure(&mut self.text);
         }
     }
 
     impl HasStr for Self {
         fn get_str(&self) -> &str {
-            self.label.as_str()
+            self.text.as_str()
         }
     }
 
     impl HasString for Self {
         fn set_string(&mut self, string: String) -> Action {
-            self.label.set_string(string);
-            match self.label.prepare() {
-                Err(NotReady) => Action::empty(),
-                Ok(false) => Action::REDRAW,
-                Ok(true) => Action::RESIZE,
-            }
+            self.text.set_string(string);
+            self.text.reprepare_action()
         }
     }
 }
@@ -252,7 +244,7 @@ impl_scope! {
 
         /// Get the title
         pub fn title(&self) -> &str {
-            self.title.label.as_str()
+            self.title.text.as_str()
         }
 
         /// Set the title

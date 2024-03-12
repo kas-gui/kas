@@ -6,10 +6,8 @@
 //! Text widgets
 
 use kas::prelude::*;
-use kas::text;
 use kas::text::format::FormattableText;
-use kas::text::NotReady;
-use kas::theme::TextClass;
+use kas::theme::{self, TextClass};
 
 impl_scope! {
     /// A text label (derived from data)
@@ -27,18 +25,16 @@ impl_scope! {
     #[widget]
     pub struct Text<A, T: Default + FormattableText + 'static> {
         core: widget_core!(),
-        class: TextClass,
-        label: text::Text<T>,
-        label_fn: Box<dyn Fn(&ConfigCx, &A) -> T>,
+        text: theme::Text<T>,
+        text_fn: Box<dyn Fn(&ConfigCx, &A) -> T>,
     }
 
     impl Default for Self where for<'a> &'a A: Into<T> {
         fn default() -> Self {
             Text {
                 core: Default::default(),
-                class: TextClass::Label(true),
-                label: text::Text::new(T::default()),
-                label_fn: Box::new(|_, data| data.into()),
+                text: theme::Text::new(T::default(), TextClass::Label(true)),
+                text_fn: Box::new(|_, data| data.into()),
             }
         }
     }
@@ -46,19 +42,18 @@ impl_scope! {
     impl Self {
         /// Construct with a data binding
         #[inline]
-        pub fn new(label_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+        pub fn new(text_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
             Text {
                 core: Default::default(),
-                class: TextClass::Label(true),
-                label: text::Text::new(T::default()),
-                label_fn: Box::new(label_fn),
+                text: theme::Text::new(T::default(), TextClass::Label(true)),
+                text_fn: Box::new(text_fn),
             }
         }
 
         /// Get text class
         #[inline]
         pub fn class(&self) -> TextClass {
-            self.class
+            self.text.class()
         }
 
         /// Set text class
@@ -66,7 +61,7 @@ impl_scope! {
         /// Default: `TextClass::Label(true)`
         #[inline]
         pub fn set_class(&mut self, class: TextClass) {
-            self.class = class;
+            self.text.set_class(class);
         }
 
         /// Set text class (inline)
@@ -74,14 +69,14 @@ impl_scope! {
         /// Default: `TextClass::Label(true)`
         #[inline]
         pub fn with_class(mut self, class: TextClass) -> Self {
-            self.class = class;
+            self.text.set_class(class);
             self
         }
 
         /// Get whether line-wrapping is enabled
         #[inline]
         pub fn wrap(&self) -> bool {
-            self.class.multi_line()
+            self.class().multi_line()
         }
 
         /// Enable/disable line wrapping
@@ -91,20 +86,20 @@ impl_scope! {
         /// By default this is enabled.
         #[inline]
         pub fn set_wrap(&mut self, wrap: bool) {
-            self.class = TextClass::Label(wrap);
+            self.text.set_class(TextClass::Label(wrap));
         }
 
         /// Enable/disable line wrapping (inline)
         #[inline]
         pub fn with_wrap(mut self, wrap: bool) -> Self {
-            self.class = TextClass::Label(wrap);
+            self.text.set_class(TextClass::Label(wrap));
             self
         }
 
         /// Get read access to the text object
         #[inline]
-        pub fn text(&self) -> &text::Text<T> {
-            &self.label
+        pub fn text(&self) -> &theme::Text<T> {
+            &self.text
         }
     }
 
@@ -112,21 +107,21 @@ impl_scope! {
         #[inline]
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.set_default_align_hv(Align::Default, Align::Center);
-            sizer.text_rules(&mut self.label, axis)
+            sizer.text_rules(&mut self.text, axis)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.label, rect.size);
+            cx.text_set_size(&mut self.text, rect.size);
         }
 
         #[cfg(feature = "min_spec")]
         default fn draw(&mut self, mut draw: DrawCx) {
-            draw.text_effects(self.rect(), &self.label, self.class);
+            draw.text_effects(self.rect(), &self.text);
         }
         #[cfg(not(feature = "min_spec"))]
         fn draw(&mut self, mut draw: DrawCx) {
-            draw.text_effects(self.rect(), &self.label, self.class);
+            draw.text_effects(self.rect(), &self.text);
         }
     }
 
@@ -134,30 +129,19 @@ impl_scope! {
         type Data = A;
 
         fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.text_configure(&mut self.label, self.class);
+            cx.text_configure(&mut self.text);
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
-            let text = (self.label_fn)(cx, data);
-            if text.as_str() == self.label.as_str() {
+            let text = (self.text_fn)(cx, data);
+            if text.as_str() == self.text.as_str() {
                 // NOTE(opt): avoiding re-preparation of text is a *huge*
                 // optimisation. Move into kas-text?
                 return;
             }
-            self.label.set_text(text);
-            if self.label.get_bounds().1.is_finite() {
-                // NOTE: bounds are initially infinite. Alignment results in
-                // infinite offset and thus infinite measured height.
-                let action = match self.label.prepare() {
-                    Err(NotReady) => {
-                        debug_assert!(false, "update before configure");
-                        Action::empty()
-                    }
-                    Ok(false) => Action::REDRAW,
-                    Ok(true) => Action::RESIZE,
-                };
-                cx.action(self, action);
-            }
+            self.text.set_text(text);
+            let action = self.text.reprepare_action();
+            cx.action(self, action);
         }
     }
 }
@@ -166,13 +150,13 @@ impl_scope! {
 #[cfg(feature = "min_spec")]
 impl<'a, A> Layout for Text<A, &'a str> {
     fn draw(&mut self, mut draw: DrawCx) {
-        draw.text(self.rect(), &self.label, self.class);
+        draw.text(self.rect(), &self.text);
     }
 }
 #[cfg(feature = "min_spec")]
 impl<A> Layout for Text<A, String> {
     fn draw(&mut self, mut draw: DrawCx) {
-        draw.text(self.rect(), &self.label, self.class);
+        draw.text(self.rect(), &self.text);
     }
 }
 
