@@ -526,8 +526,7 @@ mod test {
 
         let _scale = draw.size_cx().scale_factor();
 
-        let text = crate::text::Text::new("sample");
-        let class = TextClass::Label(false);
-        draw.text_selected(Rect::ZERO, &text, .., class)
+        let text = crate::theme::Text::new("sample", TextClass::Label(false));
+        draw.text_selected(Rect::ZERO, &text, ..)
     }
 }
