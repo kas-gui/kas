@@ -6,6 +6,7 @@
 //! Theme-applied Text element
 
 use super::TextClass;
+use crate::layout::AxisInfo;
 use crate::text::fonts::{FontId, InvalidFontId};
 use crate::text::format::{EditableText, FormattableText};
 use crate::text::*;
@@ -460,5 +461,52 @@ impl<T: EditableText + ?Sized> EditableTextApi for Text<T> {
     fn swap_string(&mut self, string: &mut String) {
         self.text.swap_string(string);
         self.set_max_status(Status::Configured);
+    }
+}
+
+/// Required functionality on [`Text`] objects for sizing by the theme
+pub trait SizableText {
+    /// Set font face and size
+    fn set_font(&mut self, font_id: FontId, dpem: f32);
+
+    /// Configure text
+    fn configure(&mut self) -> Result<(), InvalidFontId>;
+
+    /// Set alignment from an axis
+    fn set_align_from_axis(&mut self, axis: AxisInfo);
+
+    /// Measure required width, up to some `max_width`
+    fn measure_width(&mut self, max_width: f32) -> Result<f32, NotReady>;
+
+    /// Measure required vertical height, wrapping as configured
+    fn measure_height(&mut self, wrap_width: f32) -> Result<f32, NotReady>;
+}
+
+impl<T: FormattableText + ?Sized> SizableText for Text<T> {
+    fn set_font(&mut self, font_id: FontId, dpem: f32) {
+        self.font_id = font_id;
+        self.dpem = dpem;
+    }
+
+    fn configure(&mut self) -> Result<(), InvalidFontId> {
+        TextApi::configure(self)
+    }
+
+    fn set_align_from_axis(&mut self, axis: AxisInfo) {
+        let align = axis.align_or_default();
+        if axis.is_horizontal() {
+            self.align.0 = align;
+        } else {
+            self.align.1 = align;
+        }
+    }
+
+    fn measure_width(&mut self, max_width: f32) -> Result<f32, NotReady> {
+        TextApi::measure_width(self, max_width)
+    }
+
+    fn measure_height(&mut self, wrap_width: f32) -> Result<f32, NotReady> {
+        self.bounds.0 = wrap_width;
+        TextApi::measure_height(self)
     }
 }

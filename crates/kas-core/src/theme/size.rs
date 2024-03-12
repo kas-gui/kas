@@ -7,7 +7,7 @@
 
 use cast::CastFloat;
 
-use super::{Feature, FrameStyle, MarginStyle, Text, TextClass};
+use super::{Feature, FrameStyle, MarginStyle, SizableText, Text, TextClass};
 use crate::autoimpl;
 use crate::dir::Directional;
 use crate::geom::Rect;
@@ -235,8 +235,9 @@ pub trait ThemeSize {
     fn line_height(&self, class: TextClass) -> i32;
 
     /// Configure a text object, setting font properties
-    fn text_configure(&self, text: &mut dyn TextApi, class: TextClass);
+    fn text_configure(&self, text: &mut dyn SizableText, class: TextClass);
 
     /// Get [`SizeRules`] for a text element
-    fn text_rules(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules;
+    fn text_rules(&self, text: &mut dyn SizableText, class: TextClass, axis: AxisInfo)
+        -> SizeRules;
 }

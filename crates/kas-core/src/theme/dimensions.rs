@@ -11,12 +11,14 @@ use std::f32;
 use std::rc::Rc;
 
 use super::anim::AnimState;
-use super::{Config, Feature, FrameStyle, MarginStyle, MarkStyle, TextClass, ThemeSize};
+use super::{
+    Config, Feature, FrameStyle, MarginStyle, MarkStyle, SizableText, TextClass, ThemeSize,
+};
 use crate::cast::traits::*;
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
 use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
-use crate::text::{fonts::FontId, Direction, TextApi};
+use crate::text::fonts::FontId;
 
 crate::impl_scope! {
     /// Parameterisation of [`Dimensions`]
@@ -326,29 +328,26 @@ impl<D: 'static> ThemeSize for Window<D> {
             .cast_ceil()
     }
 
-    fn text_configure(&self, text: &mut dyn TextApi, class: TextClass) {
-        let direction = Direction::Auto;
+    fn text_configure(&self, text: &mut dyn SizableText, class: TextClass) {
         let font_id = self.fonts.get(&class).cloned().unwrap_or_default();
         let dpem = self.dims.dpem;
-        text.set_font_properties(direction, font_id, dpem, f32::INFINITY);
+        text.set_font(font_id, dpem);
         text.configure().expect("invalid font_id");
     }
 
-    fn text_rules(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules {
+    fn text_rules(
+        &self,
+        text: &mut dyn SizableText,
+        class: TextClass,
+        axis: AxisInfo,
+    ) -> SizeRules {
         let margin = match axis.is_horizontal() {
             true => self.dims.m_text.0,
             false => self.dims.m_text.1,
         };
         let margins = (margin, margin);
 
-        let mut align_pair = text.align();
-        let align = axis.align_or_default();
-        if axis.is_horizontal() {
-            align_pair.0 = align;
-        } else {
-            align_pair.1 = align;
-        }
-        text.set_align(align_pair);
+        text.set_align_from_axis(axis);
 
         let wrap = class.multi_line();
 
@@ -373,11 +372,11 @@ impl<D: 'static> ThemeSize for Window<D> {
                 SizeRules::new(bound, bound, margins, Stretch::Filler)
             }
         } else {
-            if wrap {
-                text.set_wrap_width(axis.other().map(|w| w.cast()).unwrap_or(f32::INFINITY));
-            }
-
-            let bound: i32 = text.measure_height().expect("not configured").cast_ceil();
+            let wrap_width = axis.other().map(|w| w.cast()).unwrap_or(f32::INFINITY);
+            let bound: i32 = text
+                .measure_height(wrap_width)
+                .expect("not configured")
+                .cast_ceil();
 
             let line_height = self.dims.dpem.cast_ceil();
             let min = bound.max(line_height);
