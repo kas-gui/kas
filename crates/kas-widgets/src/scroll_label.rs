@@ -11,8 +11,8 @@ use kas::event::{Command, CursorIcon, FocusSource, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
-use kas::text::{NotReady, SelectionHelper, Text};
-use kas::theme::TextClass;
+use kas::text::{NotReady, SelectionHelper};
+use kas::theme::{Text, TextClass};
 
 impl_scope! {
     /// A static text label supporting scrolling and selection

@@ -8,8 +8,7 @@
 use super::adapt::MapAny;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
-use kas::text::Text;
-use kas::theme::TextClass;
+use kas::theme::{Text, TextClass};
 
 /// Construct a [`Label`]
 #[inline]

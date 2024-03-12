@@ -13,8 +13,8 @@ use crate::classes::HasStr;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{Align, AxisInfo, SizeRules};
-use crate::text::{Text, TextApi};
-use crate::theme::{DrawCx, SizeCx, TextClass};
+use crate::text::TextApi;
+use crate::theme::{DrawCx, SizeCx, Text, TextClass};
 use crate::{Events, Id, Layout, NavAdvance, Node, Widget};
 use kas_macros::{autoimpl, impl_scope};
 

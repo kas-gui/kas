@@ -21,6 +21,7 @@ mod multi;
 mod simple_theme;
 mod size;
 mod style;
+mod text;
 mod theme_dst;
 mod traits;
 
@@ -36,6 +37,7 @@ pub use multi::{MultiTheme, MultiThemeBuilder};
 pub use simple_theme::SimpleTheme;
 pub use size::SizeCx;
 pub use style::*;
+pub use text::Text;
 pub use theme_dst::{MaybeBoxed, ThemeDst};
 pub use traits::{Theme, ThemeConfig, ThemeControl, Window};
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]

@@ -6,9 +6,8 @@
 //! Text widgets
 
 use kas::prelude::*;
-use kas::text;
 use kas::text::format::FormattableText;
-use kas::theme::TextClass;
+use kas::theme::{self, TextClass};
 
 impl_scope! {
     /// A text label (derived from data)
@@ -26,7 +25,7 @@ impl_scope! {
     #[widget]
     pub struct Text<A, T: Default + FormattableText + 'static> {
         core: widget_core!(),
-        text: text::Text<T>,
+        text: theme::Text<T>,
         text_fn: Box<dyn Fn(&ConfigCx, &A) -> T>,
     }
 
@@ -34,7 +33,7 @@ impl_scope! {
         fn default() -> Self {
             Text {
                 core: Default::default(),
-                text: text::Text::new(T::default(), TextClass::Label(true)),
+                text: theme::Text::new(T::default(), TextClass::Label(true)),
                 text_fn: Box::new(|_, data| data.into()),
             }
         }
@@ -46,7 +45,7 @@ impl_scope! {
         pub fn new(text_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
             Text {
                 core: Default::default(),
-                text: text::Text::new(T::default(), TextClass::Label(true)),
+                text: theme::Text::new(T::default(), TextClass::Label(true)),
                 text_fn: Box::new(text_fn),
             }
         }
@@ -99,7 +98,7 @@ impl_scope! {
 
         /// Get read access to the text object
         #[inline]
-        pub fn text(&self) -> &text::Text<T> {
+        pub fn text(&self) -> &theme::Text<T> {
             &self.text
         }
     }

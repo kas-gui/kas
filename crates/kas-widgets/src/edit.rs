@@ -12,8 +12,8 @@ use kas::event::{
 };
 use kas::geom::Vec2;
 use kas::prelude::*;
-use kas::text::{NotReady, SelectionHelper, Text};
-use kas::theme::{Background, FrameStyle, TextClass};
+use kas::text::{NotReady, SelectionHelper};
+use kas::theme::{Background, FrameStyle, Text, TextClass};
 use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
 use std::ops::Range;

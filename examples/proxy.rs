@@ -14,8 +14,7 @@ use std::time::{Duration, Instant};
 
 use kas::draw::color::Rgba;
 use kas::prelude::*;
-use kas::text::Text;
-use kas::theme::TextClass;
+use kas::theme::{Text, TextClass};
 
 #[derive(Debug)]
 struct SetColor(Rgba);

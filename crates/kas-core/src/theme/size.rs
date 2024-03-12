@@ -7,12 +7,12 @@
 
 use cast::CastFloat;
 
-use super::{Feature, FrameStyle, MarginStyle, TextClass};
+use super::{Feature, FrameStyle, MarginStyle, Text, TextClass};
 use crate::autoimpl;
 use crate::dir::Directional;
 use crate::geom::Rect;
 use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules};
-use crate::text::{format::FormattableText, Text, TextApi};
+use crate::text::{format::FormattableText, TextApi};
 use std::ops::Deref;
 
 #[allow(unused)] use crate::text::TextApiExt;

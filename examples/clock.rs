@@ -24,7 +24,6 @@ use kas::draw::{Draw, DrawRounded};
 use kas::geom::{Quad, Vec2};
 use kas::prelude::*;
 use kas::text::Text;
-use kas::theme::TextClass;
 
 type Application = kas::app::Default<(), kas::theme::SimpleTheme>;
 
@@ -163,8 +162,8 @@ impl_scope! {
                 date_rect: Rect::ZERO,
                 time_rect: Rect::ZERO,
                 now: Local::now(),
-                date: Text::new("0000-00-00".to_string(), TextClass::Label(false)),
-                time: Text::new("00:00:00".to_string(), TextClass::Label(false)),
+                date: Text::new("0000-00-00".to_string()),
+                time: Text::new("00:00:00".to_string()),
             }
         }
     }
