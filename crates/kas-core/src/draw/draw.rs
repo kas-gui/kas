@@ -9,7 +9,6 @@ use super::{color::Rgba, AnimationState};
 #[allow(unused)] use super::{DrawRounded, DrawRoundedImpl};
 use super::{DrawShared, DrawSharedImpl, ImageId, PassId, PassType, SharedState, WindowCommon};
 use crate::geom::{Offset, Quad, Rect};
-#[allow(unused)] use crate::text::TextApi;
 use crate::text::{Effect, TextDisplay};
 use std::any::Any;
 use std::time::Instant;
@@ -208,7 +207,7 @@ pub trait Draw {
     /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
     /// scrolls, `rect` should be the size of the whole text, not the window.
     ///
-    /// It is required to call [`TextApi::prepare`] or equivalent
+    /// It is required to call [`Text::prepare`] or equivalent
     /// prior to this method to select a font, font size and perform layout.
     fn text(&mut self, rect: Rect, text: &TextDisplay, col: Rgba);
 
@@ -220,7 +219,7 @@ pub trait Draw {
     /// The effects list does not contain colour information, but may contain
     /// underlining/strikethrough information. It may be empty.
     ///
-    /// It is required to call [`TextApi::prepare`] or equivalent
+    /// It is required to call [`Text::prepare`] or equivalent
     /// prior to this method to select a font, font size and perform layout.
     fn text_effects(&mut self, rect: Rect, text: &TextDisplay, col: Rgba, effects: &[Effect<()>]);
 
@@ -233,7 +232,7 @@ pub trait Draw {
     /// If the `effects` list is empty or the first entry has `start > 0`, a
     /// default entity will be assumed.
     ///
-    /// It is required to call [`TextApi::prepare`] or equivalent
+    /// It is required to call [`Text::prepare`] or equivalent
     /// prior to this method to select a font, font size and perform layout.
     fn text_effects_rgba(&mut self, rect: Rect, text: &TextDisplay, effects: &[Effect<Rgba>]);
 }

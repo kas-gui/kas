@@ -12,7 +12,7 @@
 //! they may appear empty. Call [`ConfigCx::text_config`] from
 //! [`Events::configure`] and [`ConfigCx::text_set_size`] from
 //! [`Layout::set_rect`] to set text position and prepare.
-//! If text is adjusted, one may use e.g. [`TextApi::prepare`] to update.
+//! If text is adjusted, one may use e.g. [`Text::prepare`] to update.
 //!
 //! [KAS Text]: https://github.com/kas-gui/kas-text/
 

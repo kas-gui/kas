@@ -5,9 +5,11 @@
 
 //! Tools for text selection
 
-use super::{TextApi, TextApiExt};
+use kas_text::format::FormattableText;
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
+
+use crate::theme::Text;
 
 /// Action used by [`crate::event::components::TextInput`]
 #[derive(Default)]
@@ -129,7 +131,7 @@ impl SelectionHelper {
     /// If `repeats <= 2`, the selection is expanded by words, otherwise it is
     /// expanded by lines. Line expansion only works if text is line-wrapped
     /// (layout has been solved).
-    pub fn expand<T: TextApi>(&mut self, text: &T, repeats: u32) {
+    pub fn expand<T: FormattableText>(&mut self, text: &Text<T>, repeats: u32) {
         let string = text.as_str();
         let mut range = self.edit_pos..self.anchor_pos;
         if range.start > range.end {
@@ -173,7 +175,7 @@ impl SelectionHelper {
     }
 
     /// Handle an action
-    pub fn action<T: TextApi>(&mut self, text: &T, action: SelectionAction) {
+    pub fn action<T: FormattableText>(&mut self, text: &Text<T>, action: SelectionAction) {
         if action.anchor {
             self.set_anchor();
         }

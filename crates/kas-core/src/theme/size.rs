@@ -12,10 +12,9 @@ use crate::autoimpl;
 use crate::dir::Directional;
 use crate::geom::Rect;
 use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules};
-use crate::text::{format::FormattableText, TextApi};
+use crate::text::format::FormattableText;
 use std::ops::Deref;
 
-#[allow(unused)] use crate::text::TextApiExt;
 #[allow(unused)]
 use crate::{event::ConfigCx, layout::Stretch, theme::DrawCx};
 
@@ -163,7 +162,7 @@ impl<'a> SizeCx<'a> {
     }
 
     /// Get the line-height of a configured text object
-    pub fn text_line_height(&self, text: &dyn TextApi) -> i32 {
+    pub fn text_line_height<T: FormattableText>(&self, text: &Text<T>) -> i32 {
         text.line_height().expect("not configured").cast_ceil()
     }
 

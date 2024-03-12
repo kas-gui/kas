@@ -11,7 +11,7 @@ use crate::draw::color::Rgb;
 use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType};
 use crate::event::{ConfigCx, EventState};
 use crate::geom::{Offset, Rect};
-use crate::text::{format::FormattableText, Effect, TextApi, TextApiExt, TextDisplay};
+use crate::text::{format::FormattableText, Effect, TextDisplay};
 use crate::{autoimpl, Id, Layout};
 use std::ops::{Bound, Range, RangeBounds};
 use std::time::Instant;
