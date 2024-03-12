@@ -6,6 +6,7 @@
 //! Theme-applied Text element
 
 use super::TextClass;
+#[allow(unused)] use super::{DrawCx, SizeCx};
 #[allow(unused)] use crate::event::ConfigCx;
 use crate::layout::AxisInfo;
 use crate::text::fonts::{FaceId, FontId, InvalidFontId};
@@ -16,18 +17,27 @@ use crate::Action;
 /// Text type-setting object (theme aware)
 ///
 /// This struct is a theme-aware variant of [`crate::text::Text`]. It contains:
+/// -   A [`TextClass`]
 /// -   A [`FormattableText`]
 /// -   A [`TextDisplay`]
 /// -   Type-setting configuration. Values have reasonable defaults:
-///     -   The default font will be the first loaded font: see [fonts].
-///     -   The default font size is 16px (the web default).
+///     -   The font is derived from the [`TextClass`] by
+///         [`ConfigCx::text_configure`]. Otherwise, the default font will be
+///         the first loaded font: see [`crate::text::fonts`].
+///     -   The font size is derived from the [`TextClass`] by
+///         [`ConfigCx::text_configure`]. Otherwise, the default font size is
+///         16px (the web default).
 ///     -   Default text direction and alignment is inferred from the text.
-///     -   Line-wrapping requires a call to [`Text::set_wrap_width`].
-///     -   The bounds used for alignment [must be set][Text::set_bounds].
+///     -   The bounds used for alignment and line-wrapping
+///         must be set by calling [`Text::set_bounds`].
 ///
 /// This struct tracks the [`TextDisplay`]'s
 /// [state of preparation][TextDisplay#status-of-preparation] and will perform
-/// steps as required.
+/// steps as required. Normal usage of this struct is as follows:
+/// -   Configure by calling [`ConfigCx::text_configure`]
+/// -   (Optionally) check size requirements by calling [`SizeCx::text_rules`]
+/// -   Set the size and prepare by calling [`ConfigCx::text_set_size`]
+/// -   Draw by calling [`DrawCx::text`] (and/or other text methods)
 #[derive(Clone, Debug)]
 pub struct Text<T: FormattableText + ?Sized> {
     /// Bounds to use for alignment
@@ -169,6 +179,8 @@ impl<T: FormattableText + ?Sized> Text<T> {
 
     /// Set text class
     ///
+    /// This controls line-wrapping, font and font size selection.
+    ///
     /// Default: `TextClass::Label(true)`
     #[inline]
     pub fn set_class(&mut self, class: TextClass) {
@@ -209,7 +221,7 @@ impl<T: FormattableText + ?Sized> Text<T> {
     ///
     /// This is a scaling factor used to convert font sizes, with units
     /// `pixels/Em`. Equivalently, this is the line-height in pixels.
-    /// See [`crate::fonts`] documentation.
+    /// See [`crate::text::fonts`] documentation.
     ///
     /// To calculate this from text size in Points, use `dpem = dpp * pt_size`
     /// where the dots-per-point is usually `dpp = scale_factor * 96.0 / 72.0`

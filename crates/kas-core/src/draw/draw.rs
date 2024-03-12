@@ -207,8 +207,8 @@ pub trait Draw {
     /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
     /// scrolls, `rect` should be the size of the whole text, not the window.
     ///
-    /// It is required to call [`Text::prepare`] or equivalent
-    /// prior to this method to select a font, font size and perform layout.
+    /// The `text` object must be configured and prepared prior to calling this
+    /// method (see [`crate::theme::Text`] or [`crate::text::Text`]).
     fn text(&mut self, rect: Rect, text: &TextDisplay, col: Rgba);
 
     /// Draw text with a single color and effects
@@ -219,8 +219,8 @@ pub trait Draw {
     /// The effects list does not contain colour information, but may contain
     /// underlining/strikethrough information. It may be empty.
     ///
-    /// It is required to call [`Text::prepare`] or equivalent
-    /// prior to this method to select a font, font size and perform layout.
+    /// The `text` object must be configured and prepared prior to calling this
+    /// method (see [`crate::theme::Text`] or [`crate::text::Text`]).
     fn text_effects(&mut self, rect: Rect, text: &TextDisplay, col: Rgba, effects: &[Effect<()>]);
 
     /// Draw text with effects (including [`Rgba`] color)
@@ -232,8 +232,8 @@ pub trait Draw {
     /// If the `effects` list is empty or the first entry has `start > 0`, a
     /// default entity will be assumed.
     ///
-    /// It is required to call [`Text::prepare`] or equivalent
-    /// prior to this method to select a font, font size and perform layout.
+    /// The `text` object must be configured and prepared prior to calling this
+    /// method (see [`crate::theme::Text`] or [`crate::text::Text`]).
     fn text_effects_rgba(&mut self, rect: Rect, text: &TextDisplay, effects: &[Effect<Rgba>]);
 }
 

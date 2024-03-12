@@ -125,10 +125,7 @@ impl<'a> ConfigCx<'a> {
 
     /// Configure a text object
     ///
-    /// The [`TextClass`] should be set before calling this method (via
-    /// [`Text::new`] or [`Text::set_class`]).
-    ///
-    /// This selects a font given the [`TextClass`],
+    /// This selects a font given the [`TextClass`][crate::theme::TextClass],
     /// [theme configuration][crate::theme::Config] and
     /// the loaded [fonts][crate::text::fonts].
     #[inline]

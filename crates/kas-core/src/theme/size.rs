@@ -230,7 +230,7 @@ pub trait ThemeSize {
 
     /// The height of a line of text by class
     ///
-    /// Prefer to use [`Self::text_line_height`] where possible.
+    /// Prefer to use [`SizeCx::text_line_height`] where possible.
     fn line_height(&self, class: TextClass) -> i32;
 
     /// Configure a text object, setting font properties
