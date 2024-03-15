@@ -47,6 +47,7 @@ impl_scope! {
     #[widget]
     pub struct Stack<W: Widget> {
         core: widget_core!(),
+        align_hints: AlignHints,
         widgets: Vec<(W, State)>,
         active: usize,
         size_limit: usize,
@@ -109,11 +110,12 @@ impl_scope! {
             }
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
+            self.align_hints = hints;
             if let Some(entry) = self.widgets.get_mut(self.active) {
                 debug_assert_eq!(entry.1, State::Sized);
-                entry.0.set_rect(cx, rect);
+                entry.0.set_rect(cx, rect, hints);
             }
         }
 
@@ -295,7 +297,7 @@ impl<W: Widget> Stack<W> {
                 cx.resize(self);
             } else {
                 debug_assert_eq!(entry.1, State::Sized);
-                entry.0.set_rect(cx, self.core.rect);
+                entry.0.set_rect(cx, self.core.rect, self.align_hints);
                 cx.region_moved();
             }
         } else {
@@ -347,7 +349,7 @@ impl<W: Widget> Stack<W> {
         if let Some(entry) = self.widgets.get_mut(index) {
             cx.configure(entry.0.as_node(data), id);
             let Size(w, h) = self.core.rect.size;
-            solve_size_rules(&mut entry.0, cx.size_cx(), Some(w), Some(h), None, None);
+            solve_size_rules(&mut entry.0, cx.size_cx(), Some(w), Some(h));
             entry.1 = State::Sized;
         }
     }

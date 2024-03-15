@@ -83,7 +83,7 @@ impl_scope! {
             SizeRules::EMPTY
         }
 
-        fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
             self.track = rect;
         }
 

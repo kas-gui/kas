@@ -70,7 +70,7 @@ impl_scope! {
             self.widgets.get(index).map(|w| w.as_layout())
         }
 
-        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             // Unusual behaviour: children's SizeRules are padded with a frame,
             // but the frame does not adjust the children's rects.
 
@@ -87,13 +87,14 @@ impl_scope! {
             solver.finish(&mut self.layout_store)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, _: AlignHints) {
             self.core.rect = rect;
             let dim = (self.direction, self.widgets.len());
             let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, &mut self.layout_store);
+            let hints = AlignHints::CENTER;
 
             for (n, child) in self.widgets.iter_mut().enumerate() {
-                child.set_rect(cx, setter.child_rect(&mut self.layout_store, n));
+                child.set_rect(cx, setter.child_rect(&mut self.layout_store, n), hints);
             }
         }
 

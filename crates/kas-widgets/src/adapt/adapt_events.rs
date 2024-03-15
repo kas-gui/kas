@@ -9,7 +9,7 @@ use super::{AdaptConfigCx, AdaptEventCx};
 use kas::autoimpl;
 use kas::event::{ConfigCx, Event, EventCx, IsUsed};
 use kas::geom::{Coord, Offset, Rect};
-use kas::layout::{AxisInfo, SizeRules};
+use kas::layout::{AlignHints, AxisInfo, SizeRules};
 use kas::theme::{DrawCx, SizeCx};
 #[allow(unused)] use kas::Events;
 use kas::{Id, Layout, LayoutExt, NavAdvance, Node, Widget};
@@ -242,8 +242,8 @@ impl<W: Widget> Layout for AdaptEvents<W> {
     }
 
     #[inline]
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
-        self.inner.set_rect(cx, rect);
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        self.inner.set_rect(cx, rect, hints);
     }
 
     #[inline]

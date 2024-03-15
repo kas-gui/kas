@@ -242,9 +242,10 @@ impl_scope! {
             self.scaling.size_rules(sizer, axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+            let align = hints.complete_default();
             let scale_factor = cx.size_cx().scale_factor();
-            self.core.rect = self.scaling.align_rect(rect, scale_factor);
+            self.core.rect = self.scaling.align_rect(rect, align, scale_factor);
             let size: (u32, u32) = self.core.rect.size.cast();
 
             if let Some(fut) = self.inner.resize(size) {

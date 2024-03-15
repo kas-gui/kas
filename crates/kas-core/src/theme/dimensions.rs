@@ -347,8 +347,6 @@ impl<D: 'static> ThemeSize for Window<D> {
         };
         let margins = (margin, margin);
 
-        text.set_align_from_axis(axis);
-
         let wrap = class.multi_line();
 
         if axis.is_horizontal() {

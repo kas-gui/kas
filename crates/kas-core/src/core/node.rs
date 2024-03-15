@@ -8,7 +8,7 @@
 use super::Widget;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed};
 use crate::geom::{Coord, Rect};
-use crate::layout::{AxisInfo, SizeRules};
+use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx};
 use crate::{Id, Layout, NavAdvance};
 
@@ -25,7 +25,7 @@ trait NodeT {
     fn for_child_node(&mut self, index: usize, f: Box<dyn FnOnce(Node<'_>) + '_>);
 
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect);
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints);
 
     fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize>;
     fn find_id(&mut self, coord: Coord) -> Option<Id>;
@@ -73,8 +73,8 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         self.0.size_rules(sizer, axis)
     }
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
-        self.0.set_rect(cx, rect);
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        self.0.set_rect(cx, rect, hints);
     }
 
     fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
@@ -293,8 +293,8 @@ impl<'a> Node<'a> {
     }
 
     /// Set size and position
-    pub(crate) fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
-        self.0.set_rect(cx, rect);
+    pub(crate) fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        self.0.set_rect(cx, rect, hints);
     }
 
     /// Navigation in spatial order

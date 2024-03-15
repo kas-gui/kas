@@ -69,9 +69,10 @@ impl_scope! {
             SizeRules::fixed_scaled(100.0, 10.0, sizer.scale_factor())
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.loading_text, rect.size);
+            let align = hints.complete(Align::Default, Align::Center);
+            cx.text_set_size(&mut self.loading_text, rect.size, align);
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

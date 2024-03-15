@@ -140,7 +140,13 @@ impl<'a> ConfigCx<'a> {
     ///
     /// Call [`text_configure`][Self::text_configure] before this method.
     #[inline]
-    pub fn text_set_size<T: FormattableText>(&self, text: &mut Text<T>, size: Size) {
+    pub fn text_set_size<T: FormattableText>(
+        &self,
+        text: &mut Text<T>,
+        size: Size,
+        align: AlignPair,
+    ) {
+        text.set_align(align.into());
         text.set_bounds(size.cast());
         text.prepare().expect("not configured");
     }

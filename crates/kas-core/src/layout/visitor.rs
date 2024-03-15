@@ -8,7 +8,7 @@
 // Methods have to take `&mut self`
 #![allow(clippy::wrong_self_convention)]
 
-use super::{AlignHints, AlignPair, AxisInfo, SizeRules};
+use super::{AlignHints, AxisInfo, SizeRules};
 use super::{GridCellInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
 use super::{RowSetter, RowSolver, RowStorage};
 use super::{RulesSetter, RulesSolver};
@@ -36,7 +36,7 @@ pub trait Visitable {
     ///
     /// The caller is expected to set `self.core.rect = rect;`.
     /// In other respects, this functions identically to [`Layout::set_rect`].
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect);
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints);
 
     /// Translate a coordinate to an [`Id`]
     ///
@@ -220,11 +220,11 @@ impl<V: Visitable> Visitor<V> {
     /// The caller is expected to set `self.core.rect = rect;`.
     /// In other respects, this functions identically to [`Layout::set_rect`].
     #[inline]
-    pub fn set_rect(mut self, cx: &mut ConfigCx, rect: Rect) {
-        self.set_rect_(cx, rect);
+    pub fn set_rect(mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        self.set_rect_(cx, rect, hints);
     }
-    fn set_rect_(&mut self, cx: &mut ConfigCx, rect: Rect) {
-        self.0.set_rect(cx, rect);
+    fn set_rect_(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        self.0.set_rect(cx, rect, hints);
     }
 
     /// Translate a coordinate to an [`Id`]
@@ -260,8 +260,8 @@ impl<V: Visitable> Visitable for Visitor<V> {
         self.size_rules_(sizer, axis)
     }
 
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
-        self.set_rect_(cx, rect);
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        self.set_rect_(cx, rect, hints);
     }
 
     fn find_id(&mut self, coord: Coord) -> Option<Id> {
@@ -282,8 +282,8 @@ impl<'a> Visitable for Single<'a> {
         self.widget.size_rules(sizer, axis)
     }
 
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
-        self.widget.set_rect(cx, rect);
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        self.widget.set_rect(cx, rect, hints);
     }
 
     fn find_id(&mut self, coord: Coord) -> Option<Id> {
@@ -302,12 +302,12 @@ struct Align<C: Visitable> {
 
 impl<C: Visitable> Visitable for Align<C> {
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        self.child
-            .size_rules(sizer, axis.with_align_hints(self.hints))
+        self.child.size_rules(sizer, axis)
     }
 
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
-        self.child.set_rect(cx, rect);
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        let hints = self.hints.combine(hints);
+        self.child.set_rect(cx, rect, hints);
     }
 
     fn find_id(&mut self, coord: Coord) -> Option<Id> {
@@ -327,12 +327,18 @@ struct Pack<'a, C: Visitable> {
 
 impl<'a, C: Visitable> Visitable for Pack<'a, C> {
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        self.storage
-            .child_size_rules(self.hints, axis, |axis| self.child.size_rules(sizer, axis))
+        let rules = self.child.size_rules(sizer, axis);
+        self.storage.size.set_component(axis, rules.ideal_size());
+        rules
     }
 
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
-        self.child.set_rect(cx, self.storage.aligned_rect(rect));
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        let rect = self
+            .hints
+            .combine(hints)
+            .complete_default()
+            .aligned_rect(self.storage.size, rect);
+        self.child.set_rect(cx, rect, hints);
     }
 
     fn find_id(&mut self, coord: Coord) -> Option<Id> {
@@ -367,8 +373,8 @@ impl<C: Visitable> Visitable for Margins<C> {
         child_rules
     }
 
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
-        self.child.set_rect(cx, rect);
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        self.child.set_rect(cx, rect, hints);
     }
 
     fn find_id(&mut self, coord: Coord) -> Option<Id> {
@@ -395,13 +401,13 @@ impl<'a, C: Visitable> Visitable for Frame<'a, C> {
             .size_rules(sizer, axis, child_rules, self.style)
     }
 
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
         self.storage.rect = rect;
         let child_rect = Rect {
             pos: rect.pos + self.storage.offset,
             size: rect.size - self.storage.size,
         };
-        self.child.set_rect(cx, child_rect);
+        self.child.set_rect(cx, child_rect, hints);
     }
 
     fn find_id(&mut self, coord: Coord) -> Option<Id> {
@@ -421,21 +427,20 @@ struct Button<'a, C: Visitable> {
 }
 
 impl<'a, C: Visitable> Visitable for Button<'a, C> {
-    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        let child_rules = self
-            .child
-            .size_rules(sizer.re(), self.storage.child_axis_centered(axis));
+    fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
+        axis.sub_other(self.storage.size.extract(axis.flipped()));
+        let child_rules = self.child.size_rules(sizer.re(), axis);
         self.storage
             .size_rules(sizer, axis, child_rules, FrameStyle::Button)
     }
 
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, _: AlignHints) {
         self.storage.rect = rect;
         let child_rect = Rect {
             pos: rect.pos + self.storage.offset,
             size: rect.size - self.storage.size,
         };
-        self.child.set_rect(cx, child_rect);
+        self.child.set_rect(cx, child_rect, AlignHints::CENTER);
     }
 
     fn find_id(&mut self, _: Coord) -> Option<Id> {
@@ -475,13 +480,13 @@ where
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
         let dim = (self.direction, self.children.len());
         let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, self.data);
 
         for i in 0..self.children.len() {
             if let Some(child) = self.children.get_item(i) {
-                child.set_rect(cx, setter.child_rect(self.data, i));
+                child.set_rect(cx, setter.child_rect(self.data, i), hints);
             }
         }
     }
@@ -526,10 +531,10 @@ where
         rules
     }
 
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
         for i in 0..self.children.len() {
             if let Some(child) = self.children.get_item(i) {
-                child.set_rect(cx, rect);
+                child.set_rect(cx, rect, hints);
             }
         }
     }
@@ -581,11 +586,11 @@ where
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
         let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, self.data);
         for i in 0..self.children.len() {
             if let Some((info, child)) = self.children.get_info_item(i) {
-                child.set_rect(cx, setter.child_rect(self.data, info));
+                child.set_rect(cx, setter.child_rect(self.data, info), hints);
             }
         }
     }
@@ -614,28 +619,7 @@ where
 /// Layout storage for pack
 #[derive(Clone, Default, Debug)]
 pub struct PackStorage {
-    align: AlignPair,
     size: Size,
-}
-impl PackStorage {
-    /// Calculate child's [`SizeRules`]
-    pub fn child_size_rules(
-        &mut self,
-        hints: AlignHints,
-        axis: AxisInfo,
-        size_child: impl FnOnce(AxisInfo) -> SizeRules,
-    ) -> SizeRules {
-        let axis = axis.with_align_hints(hints);
-        self.align.set_component(axis, axis.align_or_default());
-        let rules = size_child(axis);
-        self.size.set_component(axis, rules.ideal_size());
-        rules
-    }
-
-    /// Align rect
-    pub fn aligned_rect(&self, rect: Rect) -> Rect {
-        self.align.aligned_rect(self.size, rect)
-    }
 }
 
 /// Layout storage for frame
@@ -656,13 +640,6 @@ impl FrameStorage {
     /// Calculate child's "other axis" size
     pub fn child_axis(&self, mut axis: AxisInfo) -> AxisInfo {
         axis.sub_other(self.size.extract(axis.flipped()));
-        axis
-    }
-
-    /// Calculate child's "other axis" size, forcing center-alignment of content
-    pub fn child_axis_centered(&self, mut axis: AxisInfo) -> AxisInfo {
-        axis.sub_other(self.size.extract(axis.flipped()));
-        axis.set_align(Some(super::Align::Center));
         axis
     }
 

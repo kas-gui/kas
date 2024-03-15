@@ -107,13 +107,13 @@ impl_scope! {
             solver.finish(&mut self.layout)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             let dim = (self.direction, self.widgets.len());
             let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, &mut self.layout);
 
             for n in 0..self.widgets.len() {
                 if let Some(child) = self.widgets.get_mut_layout(n) {
-                    child.set_rect(cx, setter.child_rect(&mut self.layout, n));
+                    child.set_rect(cx, setter.child_rect(&mut self.layout, n), hints);
                 }
             }
         }

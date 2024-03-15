@@ -10,7 +10,7 @@ use crate::decorations::{Border, Decorations, TitleBar};
 use crate::dir::Directional;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, ResizeDirection, Scroll, Unused, Used};
 use crate::geom::{Coord, Offset, Rect, Size};
-use crate::layout::{self, AxisInfo, SizeRules};
+use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
 use crate::{Action, Events, Icon, Id, Layout, LayoutExt, Widget};
 use kas_macros::impl_scope;
@@ -118,7 +118,7 @@ impl_scope! {
             }
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             // Calculate position and size for nw, ne, and inner portions:
             let s_nw: Size = self.dec_offset.cast();
@@ -128,22 +128,22 @@ impl_scope! {
             let mut p_in = p_nw + self.dec_offset;
             let p_se = p_in + s_in;
 
-            self.b_w.set_rect(cx, Rect::new(Coord(p_nw.0, p_in.1), Size(s_nw.0, s_in.1)));
-            self.b_e.set_rect(cx, Rect::new(Coord(p_se.0, p_in.1), Size(s_se.0, s_in.1)));
-            self.b_n.set_rect(cx, Rect::new(Coord(p_in.0, p_nw.1), Size(s_in.0, s_nw.1)));
-            self.b_s.set_rect(cx, Rect::new(Coord(p_in.0, p_se.1), Size(s_in.0, s_se.1)));
-            self.b_nw.set_rect(cx, Rect::new(p_nw, s_nw));
-            self.b_ne.set_rect(cx, Rect::new(Coord(p_se.0, p_nw.1), Size(s_se.0, s_nw.1)));
-            self.b_se.set_rect(cx, Rect::new(p_se, s_se));
-            self.b_sw.set_rect(cx, Rect::new(Coord(p_nw.0, p_se.1), Size(s_nw.0, s_se.1)));
+            self.b_w.set_rect(cx, Rect::new(Coord(p_nw.0, p_in.1), Size(s_nw.0, s_in.1)), hints);
+            self.b_e.set_rect(cx, Rect::new(Coord(p_se.0, p_in.1), Size(s_se.0, s_in.1)), hints);
+            self.b_n.set_rect(cx, Rect::new(Coord(p_in.0, p_nw.1), Size(s_in.0, s_nw.1)), hints);
+            self.b_s.set_rect(cx, Rect::new(Coord(p_in.0, p_se.1), Size(s_in.0, s_se.1)), hints);
+            self.b_nw.set_rect(cx, Rect::new(p_nw, s_nw), hints);
+            self.b_ne.set_rect(cx, Rect::new(Coord(p_se.0, p_nw.1), Size(s_se.0, s_nw.1)), hints);
+            self.b_se.set_rect(cx, Rect::new(p_se, s_se), hints);
+            self.b_sw.set_rect(cx, Rect::new(Coord(p_nw.0, p_se.1), Size(s_nw.0, s_se.1)), hints);
 
             if self.bar_h > 0 {
                 let bar_size = Size(s_in.0, self.bar_h);
-                self.title_bar.set_rect(cx, Rect::new(p_in, bar_size));
+                self.title_bar.set_rect(cx, Rect::new(p_in, bar_size), hints);
                 p_in.1 += self.bar_h;
                 s_in -= Size(0, self.bar_h);
             }
-            self.inner.set_rect(cx, Rect::new(p_in, s_in));
+            self.inner.set_rect(cx, Rect::new(p_in, s_in), hints);
         }
 
         fn find_id(&mut self, _: Coord) -> Option<Id> {

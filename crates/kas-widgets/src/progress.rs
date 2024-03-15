@@ -16,7 +16,6 @@ impl_scope! {
     #[widget]
     pub struct ProgressBar<A, D: Directional = kas::dir::Right> {
         core: widget_core!(),
-        align: AlignPair,
         direction: D,
         value: f32,
         value_fn: Box<dyn Fn(&ConfigCx, &A) -> f32>,
@@ -55,7 +54,6 @@ impl_scope! {
         pub fn new_dir(value_fn: impl Fn(&ConfigCx, &A) -> f32 + 'static, direction: D) -> Self {
             ProgressBar {
                 core: Default::default(),
-                align: Default::default(),
                 direction,
                 value: 0.0,
                 value_fn: Box::new(value_fn),
@@ -71,18 +69,15 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            self.align.set_component(
-                axis,
-                match axis.is_vertical() == self.direction.is_vertical() {
-                    false => axis.align_or_center(),
-                    true => axis.align_or_stretch(),
-                },
-            );
             sizer.feature(Feature::ProgressBar(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
-            let rect = cx.align_feature(Feature::ProgressBar(self.direction()), rect, self.align);
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+            let align = match self.direction.is_vertical() {
+                false => AlignPair::new(Align::Stretch, hints.vert.unwrap_or(Align::Center)),
+                true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
+            };
+            let rect = cx.align_feature(Feature::ProgressBar(self.direction()), rect, align);
             self.core.rect = rect;
         }
 

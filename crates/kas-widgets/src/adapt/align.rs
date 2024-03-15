@@ -6,7 +6,6 @@
 //! Alignment
 
 use kas::dir::Directions;
-use kas::layout::PackStorage;
 use kas::prelude::*;
 use kas::theme::MarginStyle;
 
@@ -37,8 +36,8 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            self.inner.size_rules(sizer, axis.with_align_hints(self.hints))
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+            self.inner.set_rect(cx, rect, self.hints.combine(hints));
         }
     }
 }
@@ -61,24 +60,28 @@ impl_scope! {
         ///
         /// Use [`Action::RESIZE`] to apply changes.
         pub hints: AlignHints,
-        storage: PackStorage,
+        size: Size,
     }
 
     impl Self {
         /// Construct
         #[inline]
         pub fn new(inner: W, hints: AlignHints) -> Self {
-            Pack { inner, hints, storage: PackStorage::default() }
+            Pack { inner, hints, size: Size::ZERO }
         }
     }
 
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            self.storage.child_size_rules(self.hints, axis, |axis| self.inner.size_rules(sizer, axis))
+            let rules = self.inner.size_rules(sizer, axis);
+            self.size.set_component(axis, rules.ideal_size());
+            rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
-            self.inner.set_rect(cx, self.storage.aligned_rect(rect));
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+            let align = self.hints.combine(hints).complete_default();
+            let rect = align.aligned_rect(self.size, rect);
+            self.inner.set_rect(cx, rect, hints);
         }
     }
 }

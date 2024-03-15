@@ -45,9 +45,9 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.text, rect.size);
+            cx.text_set_size(&mut self.text, rect.size, hints.complete_default());
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
 
             let max_offset = self.max_scroll_offset();
@@ -56,7 +56,7 @@ impl_scope! {
             let w = cx.size_cx().scroll_bar_width().min(rect.size.0);
             rect.pos.0 += rect.size.0 - w;
             rect.size.0 = w;
-            self.bar.set_rect(cx, rect);
+            self.bar.set_rect(cx, rect, AlignHints::NONE);
             let _ = self.bar.set_limits(max_offset.1, rect.size.1);
             self.bar.set_value(cx, self.view_offset.1);
         }
