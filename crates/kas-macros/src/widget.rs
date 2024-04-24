@@ -31,14 +31,18 @@ mod kw {
 
 #[derive(Debug)]
 pub struct BoolToken {
+    #[allow(dead_code)]
     pub kw_span: Span,
+    #[allow(dead_code)]
     pub eq: Eq,
     pub lit: syn::LitBool,
 }
 
 #[derive(Debug)]
 pub struct ExprToken {
+    #[allow(dead_code)]
     pub kw_span: Span,
+    #[allow(dead_code)]
     pub eq: Eq,
     pub expr: syn::Expr,
 }
