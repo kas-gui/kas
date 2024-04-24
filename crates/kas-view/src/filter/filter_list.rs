@@ -197,6 +197,7 @@ impl_scope! {
     }
 
     impl Self {
+        #[allow(clippy::missing_transmute_annotations)] // fields and fn parameters are annotated
         unsafe fn new<'a>(data: &'a A, view: &'a [A::Key]) -> Self {
             UnsafeFilteredList {
                 data: std::mem::transmute(data),

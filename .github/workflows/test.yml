@@ -112,4 +112,5 @@ jobs:
       #     -A clippy::comparison_chain \
       #     -A clippy::if_same_then_else \
       #     -A clippy::single-match \
+      #     -A clippy::redundant_pattern_matching \
       #     -A clippy::unit_arg
