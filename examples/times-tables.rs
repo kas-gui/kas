@@ -29,10 +29,12 @@ impl MatrixData for TableSize {
         (self.0, self.0)
     }
 
+    #[allow(refining_impl_trait)]
     fn col_iter_from(&self, start: usize, limit: usize) -> std::ops::Range<usize> {
         let end = self.0.min(start + limit);
         start..end
     }
+    #[allow(refining_impl_trait)]
     fn row_iter_from(&self, start: usize, limit: usize) -> std::ops::Range<usize> {
         let end = self.0.min(start + limit);
         start..end

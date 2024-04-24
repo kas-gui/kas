@@ -58,6 +58,7 @@ pub trait Visitable {
 ///
 /// This is templated over `cell_info: C` where `C = ()` for lists or
 /// `C = GridCellInfo` for grids.
+#[allow(clippy::len_without_is_empty)]
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait VisitableList<C> {

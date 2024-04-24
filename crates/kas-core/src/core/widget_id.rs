@@ -236,6 +236,7 @@ impl<'a> Iterator for WidgetPathIter<'a> {
 /// [`Display`]: std::fmt::Display
 /// [`Action::RECONFIGURE`]: crate::Action::RECONFIGURE
 /// [`ConfigCx::configure`]: crate::event::ConfigCx::configure
+#[allow(clippy::assigning_clones)]
 #[derive(Clone)]
 pub struct Id(IntOrPtr);
 

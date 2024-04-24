@@ -31,14 +31,18 @@ mod kw {
 
 #[derive(Debug)]
 pub struct BoolToken {
+    #[allow(dead_code)]
     pub kw_span: Span,
+    #[allow(dead_code)]
     pub eq: Eq,
     pub lit: syn::LitBool,
 }
 
 #[derive(Debug)]
 pub struct ExprToken {
+    #[allow(dead_code)]
     pub kw_span: Span,
+    #[allow(dead_code)]
     pub eq: Eq,
     pub expr: syn::Expr,
 }
@@ -176,7 +180,7 @@ pub struct Child {
 impl Child {
     pub fn new_core(ident: Member) -> Self {
         Child {
-            ident: ChildIdent::CoreField(ident.into()),
+            ident: ChildIdent::CoreField(ident),
             attr_span: None,
             data_binding: None,
         }

@@ -70,30 +70,26 @@ impl Tree {
         &self,
         children: I,
     ) -> std::result::Result<Toks, (Span, &'static str)> {
-        match &self.0 {
-            layout => {
-                let mut v = Vec::new();
-                layout.nav_next(children, &mut v).map(|()| {
-                    quote! {
-                        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-                            let mut iter = [#(#v),*].into_iter();
-                            if !reverse {
-                                if let Some(wi) = from {
-                                    let _ = iter.find(|x| *x == wi);
-                                }
-                                iter.next()
-                            } else {
-                                let mut iter = iter.rev();
-                                if let Some(wi) = from {
-                                    let _ = iter.find(|x| *x == wi);
-                                }
-                                iter.next()
-                            }
+        let mut v = Vec::new();
+        self.0.nav_next(children, &mut v).map(|()| {
+            quote! {
+                fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+                    let mut iter = [#(#v),*].into_iter();
+                    if !reverse {
+                        if let Some(wi) = from {
+                            let _ = iter.find(|x| *x == wi);
                         }
+                        iter.next()
+                    } else {
+                        let mut iter = iter.rev();
+                        if let Some(wi) = from {
+                            let _ = iter.find(|x| *x == wi);
+                        }
+                        iter.next()
                     }
-                })
+                }
             }
-        }
+        })
     }
 
     /// If field `ident` is included in the layout, return Span of usage
@@ -477,7 +473,7 @@ impl Layout {
                     );
 
                     // Clear remainder of input stream to avoid a redundant error
-                    let _ = input.step(|cursor| {
+                    input.step(|cursor| {
                         let mut rest = *cursor;
                         while let Some((_, next)) = rest.token_tree() {
                             rest = next;
@@ -1090,12 +1086,10 @@ impl Layout {
             }
             Layout::Widget(ident, _) => {
                 for (i, child) in children.enumerate() {
-                    if let ChildIdent::CoreField(ref child_ident) = child.ident {
-                        if let Member::Named(ref ci) = child_ident {
-                            if *ident == *ci {
-                                output.push(i);
-                                return Ok(());
-                            }
+                    if let ChildIdent::CoreField(Member::Named(ref ci)) = child.ident {
+                        if *ident == *ci {
+                            output.push(i);
+                            return Ok(());
                         }
                     }
                 }

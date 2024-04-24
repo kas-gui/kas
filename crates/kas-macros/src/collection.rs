@@ -16,25 +16,24 @@ use syn::{Expr, Ident, Lifetime, LitInt, LitStr, Token};
 
 #[derive(Debug)]
 pub enum StorIdent {
-    Named(Ident, Span),
-    Generated(Ident, Span),
+    Named(Ident),
+    Generated(Ident),
 }
 impl From<Lifetime> for StorIdent {
-    fn from(lt: Lifetime) -> StorIdent {
-        let span = lt.span();
-        StorIdent::Named(lt.ident, span)
+    fn from(mut lt: Lifetime) -> StorIdent {
+        lt.ident.set_span(lt.span());
+        StorIdent::Named(lt.ident)
     }
 }
 impl From<Ident> for StorIdent {
     fn from(ident: Ident) -> StorIdent {
-        let span = ident.span();
-        StorIdent::Generated(ident, span)
+        StorIdent::Generated(ident)
     }
 }
 impl ToTokens for StorIdent {
     fn to_tokens(&self, toks: &mut Toks) {
         match self {
-            StorIdent::Named(ident, _) | StorIdent::Generated(ident, _) => ident.to_tokens(toks),
+            StorIdent::Named(ident) | StorIdent::Generated(ident) => ident.to_tokens(toks),
         }
     }
 }
