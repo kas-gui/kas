@@ -5,10 +5,11 @@
 
 //! Layout solver
 
-use super::{Align, AxisInfo, Margins, SizeRules};
+use super::{AxisInfo, Margins, SizeRules};
 use crate::cast::Conv;
 use crate::event::ConfigCx;
 use crate::geom::{Rect, Size};
+use crate::layout::AlignHints;
 use crate::theme::SizeCx;
 use crate::util::WidgetHierarchy;
 use crate::{Layout, Node};
@@ -76,11 +77,9 @@ pub fn solve_size_rules<W: Layout + ?Sized>(
     sizer: SizeCx,
     x_size: Option<i32>,
     y_size: Option<i32>,
-    h_align: Option<Align>,
-    v_align: Option<Align>,
 ) {
-    widget.size_rules(sizer.re(), AxisInfo::new(false, y_size, h_align));
-    widget.size_rules(sizer.re(), AxisInfo::new(true, x_size, v_align));
+    widget.size_rules(sizer.re(), AxisInfo::new(false, y_size));
+    widget.size_rules(sizer.re(), AxisInfo::new(true, x_size));
 }
 
 /// Size solver
@@ -137,8 +136,8 @@ impl SolveCache {
     pub fn find_constraints(mut widget: Node<'_>, sizer: SizeCx) -> Self {
         let start = std::time::Instant::now();
 
-        let w = widget.size_rules(sizer.re(), AxisInfo::new(false, None, None));
-        let h = widget.size_rules(sizer.re(), AxisInfo::new(true, Some(w.ideal_size()), None));
+        let w = widget.size_rules(sizer.re(), AxisInfo::new(false, None));
+        let h = widget.size_rules(sizer.re(), AxisInfo::new(true, Some(w.ideal_size())));
 
         let min = Size(w.min_size(), h.min_size());
         let ideal = Size(w.ideal_size(), h.ideal_size());
@@ -197,14 +196,14 @@ impl SolveCache {
         // internal layout solving.
         if self.refresh_rules || width != self.last_width {
             if self.refresh_rules {
-                let w = widget.size_rules(cx.size_cx(), AxisInfo::new(false, None, None));
+                let w = widget.size_rules(cx.size_cx(), AxisInfo::new(false, None));
                 self.min.0 = w.min_size();
                 self.ideal.0 = w.ideal_size();
                 self.margins.horiz = w.margins();
                 width = rect.size.0 - self.margins.sum_horiz();
             }
 
-            let h = widget.size_rules(cx.size_cx(), AxisInfo::new(true, Some(width), None));
+            let h = widget.size_rules(cx.size_cx(), AxisInfo::new(true, Some(width)));
             self.min.1 = h.min_size();
             self.ideal.1 = h.ideal_size();
             self.margins.vert = h.margins();
@@ -216,7 +215,7 @@ impl SolveCache {
             rect.size.0 = width;
             rect.size.1 -= self.margins.sum_vert();
         }
-        widget.set_rect(cx, rect);
+        widget.set_rect(cx, rect, AlignHints::NONE);
 
         log::trace!(target: "kas_perf::layout", "apply_rect: {}μs", start.elapsed().as_micros());
         self.refresh_rules = false;

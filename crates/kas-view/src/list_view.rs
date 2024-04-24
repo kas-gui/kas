@@ -345,8 +345,6 @@ impl_scope! {
                             cx.size_cx(),
                             Some(self.child_size.0),
                             Some(self.child_size.1),
-                            self.align_hints.horiz,
-                            self.align_hints.vert,
                         );
                         w.key = Some(key);
                     } else {
@@ -355,7 +353,7 @@ impl_scope! {
                 } else if let Some(item) = data.borrow(&key) {
                     cx.update(w.widget.as_node(item.borrow()));
                 }
-                w.widget.set_rect(cx, solver.rect(i));
+                w.widget.set_rect(cx, solver.rect(i), self.align_hints);
             }
 
             if count < solver.cur_len {
@@ -462,7 +460,7 @@ impl_scope! {
                 }
                 size
             });
-            axis = AxisInfo::new(axis.is_vertical(), other, axis.align());
+            axis = AxisInfo::new(axis.is_vertical(), other);
 
             self.child_size_min = i32::MAX;
             let mut rules = SizeRules::EMPTY;
@@ -492,12 +490,12 @@ impl_scope! {
             let (rules, offset, size) = frame.surround(rules);
             self.frame_offset.set_component(axis, offset);
             self.frame_size.set_component(axis, size);
-            self.align_hints.set_component(axis, axis.align());
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
+            self.align_hints = hints;
 
             // Widgets need configuring and updating: do so by updating self.
             self.cur_len = 0; // hack: prevent drawing in the mean-time

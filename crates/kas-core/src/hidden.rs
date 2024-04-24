@@ -12,7 +12,7 @@
 use crate::classes::HasStr;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed};
 use crate::geom::{Coord, Offset, Rect};
-use crate::layout::{Align, AxisInfo, SizeRules};
+use crate::layout::{Align, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx, Text, TextClass};
 use crate::{Events, Id, Layout, NavAdvance, Node, Widget};
 use kas_macros::{autoimpl, impl_scope};
@@ -45,14 +45,14 @@ impl_scope! {
 
     impl Layout for Self {
         #[inline]
-        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
-            axis.set_default_align_hv(Align::Default, Align::Center);
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             sizer.text_rules(&mut self.text, axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.text, rect.size);
+            let align = hints.complete(Align::Default, Align::Center);
+            cx.text_set_size(&mut self.text, rect.size, align);
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
@@ -135,8 +135,8 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
-            self.inner.set_rect(cx, rect);
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+            self.inner.set_rect(cx, rect, hints);
         }
 
         #[inline]

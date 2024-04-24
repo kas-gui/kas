@@ -23,6 +23,7 @@ impl_scope! {
     #[widget]
     pub struct Splitter<C: Collection, D: Directional = Direction> {
         core: widget_core!(),
+        align_hints: AlignHints,
         widgets: C,
         grips: Vec<GripPart>,
         data: layout::DynRowStorage,
@@ -89,6 +90,7 @@ impl_scope! {
             grips.resize_with(widgets.len().saturating_sub(1), GripPart::new);
             Splitter {
                 core: Default::default(),
+                align_hints: AlignHints::NONE,
                 widgets,
                 grips,
                 data: Default::default(),
@@ -177,8 +179,9 @@ impl_scope! {
             solver.finish(&mut self.data)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
+            self.align_hints = hints;
             self.size_solved = true;
             if self.widgets.is_empty() {
                 return;
@@ -192,7 +195,7 @@ impl_scope! {
             loop {
                 assert!(n < self.widgets.len());
                 if let Some(w) = self.widgets.get_mut_layout(n) {
-                    w.set_rect(cx, setter.child_rect(&mut self.data, n << 1));
+                    w.set_rect(cx, setter.child_rect(&mut self.data, n << 1), hints);
                 }
 
                 if n >= self.grips.len() {
@@ -202,7 +205,7 @@ impl_scope! {
                 // TODO(opt): calculate all maximal sizes simultaneously
                 let index = (n << 1) + 1;
                 let track = setter.maximal_rect_of(&mut self.data, index);
-                self.grips[n].set_rect(cx, track);
+                self.grips[n].set_rect(cx, track, AlignHints::NONE);
                 let grip = setter.child_rect(&mut self.data, index);
                 let _ = self.grips[n].set_size_and_offset(grip.size, grip.pos - track.pos);
 
@@ -321,7 +324,8 @@ impl<C: Collection, D: Directional> Splitter<C, D> {
         loop {
             assert!(n < self.widgets.len());
             if let Some(w) = self.widgets.get_mut_layout(n) {
-                w.set_rect(cx, setter.child_rect(&mut self.data, n << 1));
+                let rect = setter.child_rect(&mut self.data, n << 1);
+                w.set_rect(cx, rect, self.align_hints);
             }
 
             if n >= self.grips.len() {
@@ -330,7 +334,7 @@ impl<C: Collection, D: Directional> Splitter<C, D> {
 
             let index = (n << 1) + 1;
             let track = self.grips[n].track();
-            self.grips[n].set_rect(cx, track);
+            self.grips[n].set_rect(cx, track, AlignHints::NONE);
             let grip = setter.child_rect(&mut self.data, index);
             let _ = self.grips[n].set_size_and_offset(grip.size, grip.pos - track.pos);
 

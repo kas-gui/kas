@@ -108,11 +108,11 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             let child_size = (rect.size - self.frame_size).max(self.min_child_size);
             let child_rect = Rect::new(rect.pos + self.offset, child_size);
-            self.inner.set_rect(cx, child_rect);
+            self.inner.set_rect(cx, child_rect, hints);
             let _ = self
                 .scroll
                 .set_sizes(rect.size, child_size + self.frame_size);

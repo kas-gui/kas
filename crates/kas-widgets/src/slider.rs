@@ -113,7 +113,6 @@ impl_scope! {
     }]
     pub struct Slider<A, T: SliderValue, D: Directional = Direction> {
         core: widget_core!(),
-        align: AlignPair,
         direction: D,
         // Terminology assumes vertical orientation:
         range: (T, T),
@@ -195,7 +194,6 @@ impl_scope! {
             let value = *range.start();
             Slider {
                 core: Default::default(),
-                align: Default::default(),
                 direction,
                 range: range.into_inner(),
                 step: T::default_step(),
@@ -296,21 +294,18 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            self.align.set_component(
-                axis,
-                match axis.is_vertical() == self.direction.is_vertical() {
-                    false => axis.align_or_center(),
-                    true => axis.align_or_stretch(),
-                },
-            );
             let _ = self.grip.size_rules(sizer.re(), axis);
             sizer.feature(Feature::Slider(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
-            let rect = cx.align_feature(Feature::Slider(self.direction()), rect, self.align);
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+            let align = match self.direction.is_vertical() {
+                false => AlignPair::new(Align::Stretch, hints.vert.unwrap_or(Align::Center)),
+                true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
+            };
+            let rect = cx.align_feature(Feature::Slider(self.direction()), rect, align);
             self.core.rect = rect;
-            self.grip.set_rect(cx, rect);
+            self.grip.set_rect(cx, rect, AlignHints::NONE);
             let mut size = rect.size;
             size.set_component(self.direction, cx.size_cx().grip_len());
             let _ = self.grip.set_size_and_offset(size, self.offset());

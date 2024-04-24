@@ -52,10 +52,10 @@ impl_scope! {
             Visitor::frame(&mut self.frame, label, FrameStyle::Tab).size_rules(sizer, axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             let label = Visitor::single(&mut self.label);
-            Visitor::frame(&mut self.frame, label, FrameStyle::Tab).set_rect(cx, rect)
+            Visitor::frame(&mut self.frame, label, FrameStyle::Tab).set_rect(cx, rect, hints)
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<Id> {

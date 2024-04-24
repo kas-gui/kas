@@ -189,12 +189,13 @@ impl Tree {
                     &mut self,
                     cx: &mut ::kas::event::ConfigCx,
                     rect: ::kas::geom::Rect,
+                    hints: ::kas::layout::AlignHints,
                 ) {
                     #[cfg(debug_assertions)]
                     #core_path.status.set_rect(&#core_path.id);
 
                     #core_path.rect = rect;
-                    ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect);
+                    ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
                 }
 
                 fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {

@@ -32,7 +32,6 @@ impl_scope! {
     #[widget(hover_highlight = true;)]
     pub struct ScrollBar<D: Directional = Direction> {
         core: widget_core!(),
-        align: AlignPair,
         direction: D,
         // Terminology assumes vertical orientation:
         min_grip_len: i32, // units: px
@@ -84,7 +83,6 @@ impl_scope! {
         pub fn new_dir(direction: D) -> Self {
             ScrollBar {
                 core: Default::default(),
-                align: Default::default(),
                 direction,
                 min_grip_len: 0,
                 grip_len: 0,
@@ -276,21 +274,18 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            self.align.set_component(
-                axis,
-                match axis.is_vertical() == self.direction.is_vertical() {
-                    false => axis.align_or_center(),
-                    true => axis.align_or_stretch(),
-                },
-            );
             let _ = self.grip.size_rules(sizer.re(), axis);
             sizer.feature(Feature::ScrollBar(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
-            let rect = cx.align_feature(Feature::ScrollBar(self.direction()), rect, self.align);
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+            let align = match self.direction.is_vertical() {
+                false => AlignPair::new(Align::Stretch, hints.vert.unwrap_or(Align::Center)),
+                true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
+            };
+            let rect = cx.align_feature(Feature::ScrollBar(self.direction()), rect, align);
             self.core.rect = rect;
-            self.grip.set_rect(cx, rect);
+            self.grip.set_rect(cx, rect, AlignHints::NONE);
             self.min_grip_len = cx.size_cx().grip_len();
             let _ = self.update_widgets();
         }
@@ -478,7 +473,7 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             let pos = rect.pos;
             let mut child_size = rect.size;
@@ -495,25 +490,25 @@ impl_scope! {
             }
 
             let child_rect = Rect::new(pos, child_size);
-            self.inner.set_rect(cx, child_rect);
+            self.inner.set_rect(cx, child_rect, hints);
             let max_scroll_offset = self.inner.max_scroll_offset();
 
             if self.show_bars.0 {
                 let pos = Coord(pos.0, rect.pos2().1 - bar_width);
                 let size = Size::new(child_size.0, bar_width);
-                self.horiz_bar.set_rect(cx, Rect { pos, size });
+                self.horiz_bar.set_rect(cx, Rect { pos, size }, AlignHints::NONE);
                 let _ = self.horiz_bar.set_limits(max_scroll_offset.0, rect.size.0);
             } else {
-                self.horiz_bar.set_rect(cx, Rect::ZERO);
+                self.horiz_bar.set_rect(cx, Rect::ZERO, AlignHints::NONE);
             }
 
             if self.show_bars.1 {
                 let pos = Coord(rect.pos2().0 - bar_width, pos.1);
                 let size = Size::new(bar_width, self.core.rect.size.1);
-                self.vert_bar.set_rect(cx, Rect { pos, size });
+                self.vert_bar.set_rect(cx, Rect { pos, size }, AlignHints::NONE);
                 let _ = self.vert_bar.set_limits(max_scroll_offset.1, rect.size.1);
             } else {
-                self.vert_bar.set_rect(cx, Rect::ZERO);
+                self.vert_bar.set_rect(cx, Rect::ZERO, AlignHints::NONE);
             }
         }
 

@@ -375,7 +375,7 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, outer_rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, outer_rect: Rect, hints: AlignHints) {
             self.core.rect = outer_rect;
             let mut rect = outer_rect;
             rect.pos += self.frame_offset;
@@ -389,9 +389,9 @@ impl_scope! {
                 bar_rect = Rect::new(Coord(x0, rect.pos.1), Size(bar_width, rect.size.1));
                 rect.size.0 = (rect.size.0 - bar_width - self.inner_margin).max(0);
             }
-            self.bar.set_rect(cx, bar_rect);
+            self.bar.set_rect(cx, bar_rect, AlignHints::NONE);
 
-            self.inner.set_rect(cx, rect);
+            self.inner.set_rect(cx, rect, hints);
             self.inner.set_outer_rect(outer_rect, FrameStyle::EditBox);
             self.update_scroll_bar(cx);
         }
@@ -672,21 +672,13 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let mut align = self.text.align();
             let (min, ideal) = if axis.is_horizontal() {
-                align.0 = axis.align_or_default();
                 let dpem = sizer.dpem();
                 ((self.width.0 * dpem).cast_ceil(), (self.width.1 * dpem).cast_ceil())
             } else {
-                align.1 = if self.multi_line() {
-                    axis.align_or_default()
-                } else {
-                    axis.align_or_center()
-                };
                 let height = sizer.line_height(self.class());
                 (self.lines.0 * height, self.lines.1 * height)
             };
-            self.text.set_align(align.into());
             let margins = sizer.text_margins().extract(axis);
             let stretch = if axis.is_horizontal() || self.multi_line() {
                 Stretch::High
@@ -696,10 +688,12 @@ impl_scope! {
             SizeRules::new(min, ideal, margins, stretch)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             self.outer_rect = rect;
-            cx.text_set_size(&mut self.text, rect.size);
+            let v_align = if self.multi_line() { Align::Default } else { Align::Center };
+            let align = hints.complete(Align::Default, v_align);
+            cx.text_set_size(&mut self.text, rect.size, align);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
         }

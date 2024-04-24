@@ -120,14 +120,14 @@ impl_scope! {
 
     impl Layout for Self {
         #[inline]
-        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
-            axis.set_default_align_hv(Align::Default, Align::Center);
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             sizer.text_rules(&mut self.text, axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.text, rect.size);
+            let align = hints.complete(Align::Default, Align::Center);
+            cx.text_set_size(&mut self.text, rect.size, align);
         }
 
         #[cfg(feature = "min_spec")]
@@ -293,14 +293,14 @@ impl_scope! {
 
     impl Layout for Self {
         #[inline]
-        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
-            axis.set_default_align_hv(Align::Default, Align::Center);
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             sizer.text_rules(&mut self.text, axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.text, rect.size);
+            let align = hints.complete(Align::Default, Align::Center);
+            cx.text_set_size(&mut self.text, rect.size, align);
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

@@ -108,9 +108,19 @@ impl AlignHints {
         (self.horiz.unwrap_or(horiz), self.vert.unwrap_or(vert))
     }
 
-    /// Complete via default alignments
+    /// Complete, using specified alignments as defaults
     pub fn complete(&self, horiz: Align, vert: Align) -> AlignPair {
         AlignPair::new(self.horiz.unwrap_or(horiz), self.vert.unwrap_or(vert))
+    }
+
+    /// Complete, using [`Align::Default`] as defaults
+    pub fn complete_default(&self) -> AlignPair {
+        self.complete(Align::Default, Align::Default)
+    }
+
+    /// Complete, using [`Align::Center`] as defaults
+    pub fn complete_center(&self) -> AlignPair {
+        self.complete(Align::Center, Align::Center)
     }
 }
 
@@ -180,10 +190,17 @@ impl AlignPair {
     }
 }
 
+impl From<(Align, Align)> for AlignHints {
+    #[inline]
+    fn from((h, v): (Align, Align)) -> Self {
+        AlignHints::new(Some(h), Some(v))
+    }
+}
+
 impl From<(Align, Align)> for AlignPair {
     #[inline]
-    fn from(p: (Align, Align)) -> Self {
-        AlignPair::new(p.0, p.1)
+    fn from((h, v): (Align, Align)) -> Self {
+        AlignPair::new(h, v)
     }
 }
 

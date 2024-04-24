@@ -238,8 +238,6 @@ impl_scope! {
         ///
         /// If is `None`, max size is limited to ideal size.
         pub stretch: Stretch,
-        /// Alignment (set by `Self::size_rules`)
-        align: AlignPair,
     }
 }
 
@@ -256,14 +254,13 @@ impl PixmapScaling {
             .size
             .to_physical(scale_factor * self.ideal_factor)
             .extract(axis);
-        self.align.set_component(axis, axis.align_or_center());
         SizeRules::new(min, ideal, margins, self.stretch)
     }
 
     /// Constrains and aligns within `rect`
     ///
     /// The resulting size is then aligned using the `align` hints, defaulting to centered.
-    pub fn align_rect(&mut self, rect: Rect, scale_factor: f32) -> Rect {
+    pub fn align_rect(&mut self, rect: Rect, align: AlignPair, scale_factor: f32) -> Rect {
         let mut size = rect.size;
 
         if self.stretch == Stretch::None {
@@ -283,7 +280,7 @@ impl PixmapScaling {
             }
         }
 
-        self.align.aligned_rect(size, rect)
+        align.aligned_rect(size, rect)
     }
 }
 

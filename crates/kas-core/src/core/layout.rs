@@ -7,7 +7,7 @@
 
 use crate::event::ConfigCx;
 use crate::geom::{Coord, Offset, Rect};
-use crate::layout::{AxisInfo, SizeRules};
+use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx};
 use crate::util::IdentifyWidget;
 use crate::{HasId, Id};
@@ -168,12 +168,10 @@ pub trait Layout {
     /// outside of its assigned `rect` and to not function as normal.
     ///
     /// The assigned `rect` may be larger than the widget's size requirements,
-    /// regardless of the [`Stretch`] policy used. If the widget should never
-    /// stretch, it must align itself.
-    /// Example: the `CheckBox` widget uses an [`AlignPair`] (set from
-    /// `size_rules`'s [`AxisInfo`]) and uses [`ConfigCx::align_feature`].
-    /// Another example: `Label` uses a `Text` object which handles alignment
-    /// internally.
+    /// regardless of the [`Stretch`] policy used: containers divide up space
+    /// based on children's [`SizeRules`] but do not attempt to align content
+    /// when excess space is available. Instead, content is responsible for
+    /// aligning itself using the provided `hints` and/or local information.
     ///
     /// Required: [`Self::size_rules`] is called for both axes before this
     /// method is called, and that this method has been called *after* the last
@@ -184,8 +182,8 @@ pub trait Layout {
     /// field of `widget_core!()` to the input `rect`.
     ///
     /// [`Stretch`]: crate::layout::Stretch
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
-        let _ = (cx, rect);
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        let _ = (cx, rect, hints);
         unimplemented!() // make rustdoc show that this is a provided method
     }
 

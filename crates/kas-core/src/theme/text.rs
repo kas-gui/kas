@@ -8,7 +8,6 @@
 use super::TextClass;
 #[allow(unused)] use super::{DrawCx, SizeCx};
 #[allow(unused)] use crate::event::ConfigCx;
-use crate::layout::AxisInfo;
 use crate::text::fonts::{FaceId, FontId, InvalidFontId};
 use crate::text::format::{EditableText, FormattableText};
 use crate::text::*;
@@ -722,9 +721,6 @@ pub trait SizableText {
     /// Configure text
     fn configure(&mut self) -> Result<(), InvalidFontId>;
 
-    /// Set alignment from an axis
-    fn set_align_from_axis(&mut self, axis: AxisInfo);
-
     /// Measure required width, up to some `max_width`
     fn measure_width(&mut self, max_width: f32) -> Result<f32, NotReady>;
 
@@ -740,15 +736,6 @@ impl<T: FormattableText + ?Sized> SizableText for Text<T> {
 
     fn configure(&mut self) -> Result<(), InvalidFontId> {
         Text::configure(self)
-    }
-
-    fn set_align_from_axis(&mut self, axis: AxisInfo) {
-        let align = axis.align_or_default();
-        if axis.is_horizontal() {
-            self.align.0 = align;
-        } else {
-            self.align.1 = align;
-        }
     }
 
     fn measure_width(&mut self, max_width: f32) -> Result<f32, NotReady> {

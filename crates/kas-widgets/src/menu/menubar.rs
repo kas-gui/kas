@@ -70,12 +70,12 @@ impl_scope! {
             self.widgets.get(index).map(|w| w.as_layout())
         }
 
-        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             // Unusual behaviour: children's SizeRules are padded with a frame,
             // but the frame does not adjust the children's rects.
 
-            axis.set_default_align(Align::Center);
-            let dim = (self.direction, self.widgets.len());
+            let len = self.widgets.len();
+            let dim = (self.direction, len + 1);
             let mut solver = RowSolver::new(axis, dim, &mut self.layout_store);
             let frame_rules = sizer.frame(FrameStyle::MenuEntry, axis);
             for (n, child) in self.widgets.iter_mut().enumerate() {
@@ -84,16 +84,18 @@ impl_scope! {
                     frame_rules.surround(rules).0
                 });
             }
+            solver.for_child(&mut self.layout_store, len, |_| SizeRules::EMPTY.with_stretch(Stretch::Maximize));
             solver.finish(&mut self.layout_store)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, _: AlignHints) {
             self.core.rect = rect;
-            let dim = (self.direction, self.widgets.len());
+            let dim = (self.direction, self.widgets.len() + 1);
             let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, &mut self.layout_store);
+            let hints = AlignHints::CENTER;
 
             for (n, child) in self.widgets.iter_mut().enumerate() {
-                child.set_rect(cx, setter.child_rect(&mut self.layout_store, n));
+                child.set_rect(cx, setter.child_rect(&mut self.layout_store, n), hints);
             }
         }
 

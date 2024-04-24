@@ -90,12 +90,12 @@ impl_scope! {
             solver.finish(&mut self.layout)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, &mut self.layout);
             for n in 0..self.widgets.len() {
                 if let Some((info, child)) = self.widgets.cell_info(n).zip(self.widgets.get_mut_layout(n)) {
-                    child.set_rect(cx, setter.child_rect(&mut self.layout, info));
+                    child.set_rect(cx, setter.child_rect(&mut self.layout, info), hints);
                 }
             }
         }

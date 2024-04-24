@@ -279,9 +279,9 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
-            self.layout_visitor().set_rect(cx, rect);
+            self.layout_visitor().set_rect(cx, rect, hints);
             self.edit.set_outer_rect(rect, FrameStyle::EditBox);
         }
 

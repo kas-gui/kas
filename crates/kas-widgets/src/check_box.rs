@@ -22,7 +22,6 @@ impl_scope! {
     }]
     pub struct CheckBox<A> {
         core: widget_core!(),
-        align: AlignPair,
         state: bool,
         editable: bool,
         last_change: Option<Instant>,
@@ -52,12 +51,11 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            self.align.set_component(axis, axis.align_or_center());
             sizer.feature(Feature::CheckBox, axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
-            let rect = cx.align_feature(Feature::CheckBox, rect, self.align);
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+            let rect = cx.align_feature(Feature::CheckBox, rect, hints.complete_center());
             self.core.rect = rect;
         }
 
@@ -74,7 +72,6 @@ impl_scope! {
         pub fn new(state_fn: impl Fn(&ConfigCx, &A) -> bool + 'static) -> Self {
             CheckBox {
                 core: Default::default(),
-                align: Default::default(),
                 state: false,
                 editable: true,
                 last_change: None,
@@ -188,9 +185,9 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
-            self.layout_visitor().set_rect(cx, rect);
+            self.layout_visitor().set_rect(cx, rect, hints);
             let dir = self.direction();
             shrink_to_text(&mut self.core.rect, dir, &self.label);
         }
