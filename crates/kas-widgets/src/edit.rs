@@ -455,12 +455,6 @@ impl_scope! {
             action
         }
     }
-
-    impl ToString for Self {
-        fn to_string(&self) -> String {
-            self.inner.to_string()
-        }
-    }
 }
 
 impl<G: EditGuard> EditBox<G> {
@@ -904,6 +898,10 @@ impl_scope! {
         fn get_str(&self) -> &str {
             self.text.text()
         }
+
+        fn get_string(&self) -> String {
+            self.text.text().clone()
+        }
     }
 
     impl HasString for Self {
@@ -923,12 +921,6 @@ impl_scope! {
                 self.view_offset = view_offset;
             }
             action | self.set_error_state(false)
-        }
-    }
-
-    impl ToString for Self {
-        fn to_string(&self) -> String {
-            self.text.text().clone()
         }
     }
 }
