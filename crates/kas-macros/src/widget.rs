@@ -180,7 +180,7 @@ pub struct Child {
 impl Child {
     pub fn new_core(ident: Member) -> Self {
         Child {
-            ident: ChildIdent::CoreField(ident.into()),
+            ident: ChildIdent::CoreField(ident),
             attr_span: None,
             data_binding: None,
         }

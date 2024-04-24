@@ -15,7 +15,6 @@ use std::future::Future;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::time::Instant;
-use std::u16;
 
 use super::config::WindowConfig;
 use super::*;

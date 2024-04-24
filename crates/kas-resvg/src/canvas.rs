@@ -113,13 +113,13 @@ impl_scope! {
         /// Use [`Self::with_size`] or [`Self::with_scaling`] to set the initial size.
         #[inline]
         pub fn new(program: P) -> Self {
-            let mut scaling = PixmapScaling::default();
-            scaling.size = LogicalSize(128.0, 128.0);
-            scaling.stretch = Stretch::High;
-
             Canvas {
                 core: Default::default(),
-                scaling,
+                scaling: PixmapScaling {
+                    size: LogicalSize(128.0, 128.0),
+                    stretch: Stretch::High,
+                    ..Default::default()
+                },
                 inner: State::Initial(program),
                 image: None,
             }

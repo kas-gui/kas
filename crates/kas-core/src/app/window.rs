@@ -338,9 +338,7 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
     }
 
     pub(super) fn update_timer(&mut self, state: &mut AppState<A, G, T>) -> Option<Instant> {
-        let Some(ref window) = self.window else {
-            return None;
-        };
+        let window = self.window.as_ref()?;
 
         let widget = self.widget.as_node(&state.data);
         let mut messages = MessageStack::new();
