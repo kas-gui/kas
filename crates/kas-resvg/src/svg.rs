@@ -12,7 +12,7 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tiny_skia::{Pixmap, Transform};
-use usvg::{Tree, TreeParsing};
+use usvg::Tree;
 
 /// Load errors
 #[derive(thiserror::Error, Debug)]
@@ -49,12 +49,8 @@ fn load(data: &[u8], resources_dir: Option<&Path>) -> Result<Tree, usvg::Error> 
         image_href_resolver: Default::default(),
     };
 
-    let mut tree = Tree::from_data(data, &opts)?;
-
-    // Postprocess. TODO: consider using usvg::Tree::postprocess instead:
-    // do we want to convert text to paths?
-    tree.calculate_abs_transforms();
-    tree.calculate_bounding_boxes();
+    let fonts_db = kas::text::fonts::library().read_db();
+    let tree = Tree::from_data(data, &opts, fonts_db.db())?;
 
     Ok(tree)
 }
@@ -93,8 +89,8 @@ enum State {
 
 async fn draw(svg: Source, mut pixmap: Pixmap) -> Pixmap {
     if let Ok(tree) = svg.tree() {
-        let w = f32::conv(pixmap.width()) / tree.size.width();
-        let h = f32::conv(pixmap.height()) / tree.size.height();
+        let w = f32::conv(pixmap.width()) / tree.size().width();
+        let h = f32::conv(pixmap.height()) / tree.size().height();
         let transform = Transform::from_scale(w, h);
         resvg::render(&tree, transform, &mut pixmap.as_mut());
     }
@@ -177,7 +173,7 @@ impl_scope! {
 
         fn load_source(&mut self, source: Source) -> Result<Action, usvg::Error> {
             // Set scaling size. TODO: this is useless if Self::with_size is called after.
-            let size = source.tree()?.size;
+            let size = source.tree()?.size();
             self.scaling.size = LogicalSize(size.width(), size.height());
 
             self.inner = match std::mem::take(&mut self.inner) {
