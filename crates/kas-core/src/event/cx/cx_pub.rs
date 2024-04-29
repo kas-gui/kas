@@ -158,13 +158,7 @@ impl EventState {
     /// Update event configuration
     #[inline]
     pub fn change_config(&mut self, msg: ChangeConfig) {
-        match self.config.config.try_borrow_mut() {
-            Ok(mut config) => {
-                config.change_config(msg);
-                self.action |= Action::EVENT_CONFIG;
-            }
-            Err(_) => log::error!("EventState::change_config: failed to mutably borrow config"),
-        }
+        self.action |= self.config.change_config(msg);
     }
 
     /// Set/unset a widget as disabled

@@ -9,6 +9,7 @@ use crate::cast::{Cast, CastFloat};
 use crate::config::Shortcuts;
 use crate::event::ModifiersState;
 use crate::geom::Offset;
+use crate::Action;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::cell::{Ref, RefCell};
@@ -187,6 +188,21 @@ impl WindowConfig {
     /// Borrow access to the [`Config`]
     pub fn borrow(&self) -> Ref<Config> {
         self.config.borrow()
+    }
+
+    /// Update event configuration
+    #[inline]
+    pub fn change_config(&mut self, msg: ChangeConfig) -> Action {
+        match self.config.try_borrow_mut() {
+            Ok(mut config) => {
+                config.change_config(msg);
+                Action::EVENT_CONFIG
+            }
+            Err(_) => {
+                log::error!("WindowConfig::change_config: failed to mutably borrow config");
+                Action::empty()
+            }
+        }
     }
 }
 
