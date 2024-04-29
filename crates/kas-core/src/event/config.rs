@@ -5,11 +5,9 @@
 
 //! Event handling configuration
 
-mod shortcuts;
-pub use shortcuts::Shortcuts;
-
 use super::ModifiersState;
 use crate::cast::{Cast, CastFloat};
+use crate::config::Shortcuts;
 use crate::geom::Offset;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
