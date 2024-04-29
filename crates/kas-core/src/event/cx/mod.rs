@@ -395,9 +395,7 @@ impl<'a> EventCx<'a> {
             widget.id()
         );
 
-        let opt_command = self
-            .config
-            .shortcuts(|s| s.try_match(self.modifiers, &vkey));
+        let opt_command = self.config.shortcuts().try_match(self.modifiers, &vkey);
 
         if let Some(cmd) = opt_command {
             let mut targets = vec![];

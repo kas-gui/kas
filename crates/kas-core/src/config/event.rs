@@ -274,9 +274,8 @@ impl WindowConfig {
     }
 
     /// Access shortcut config
-    pub fn shortcuts<F: FnOnce(&Shortcuts) -> T, T>(&self, f: F) -> T {
-        let base = self.config.borrow();
-        f(&base.shortcuts)
+    pub fn shortcuts(&self) -> Ref<Shortcuts> {
+        Ref::map(self.config.borrow(), |c| &c.shortcuts)
     }
 
     /// Minimum frame time
