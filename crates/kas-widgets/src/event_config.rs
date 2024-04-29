@@ -105,45 +105,45 @@ impl_scope! {
 
             EventConfig {
                 core: Default::default(),
-                menu_delay: Spinner::new(0..=5_000, |cx, _| cx.config().borrow().menu_delay_ms)
+                menu_delay: Spinner::new(0..=5_000, |cx, _| cx.config().borrow().event.menu_delay_ms)
                     .with_step(50)
                     .with_msg(ChangeConfig::MenuDelay),
-                touch_select_delay: Spinner::new(0..=5_000, |cx: &ConfigCx, _| cx.config().borrow().touch_select_delay_ms)
+                touch_select_delay: Spinner::new(0..=5_000, |cx: &ConfigCx, _| cx.config().borrow().event.touch_select_delay_ms)
                     .with_step(50)
                     .with_msg(ChangeConfig::TouchSelectDelay),
-                scroll_flick_timeout: Spinner::new(0..=500, |cx: &ConfigCx, _| cx.config().borrow().scroll_flick_timeout_ms)
+                scroll_flick_timeout: Spinner::new(0..=500, |cx: &ConfigCx, _| cx.config().borrow().event.scroll_flick_timeout_ms)
                     .with_step(5)
                     .with_msg(ChangeConfig::ScrollFlickTimeout),
-                scroll_flick_mul: Spinner::new(0.0..=1.0, |cx: &ConfigCx, _| cx.config().borrow().scroll_flick_mul)
+                scroll_flick_mul: Spinner::new(0.0..=1.0, |cx: &ConfigCx, _| cx.config().borrow().event.scroll_flick_mul)
                     .with_step(0.0625)
                     .with_msg(ChangeConfig::ScrollFlickMul),
-                scroll_flick_sub: Spinner::new(0.0..=1.0e4, |cx: &ConfigCx, _| cx.config().borrow().scroll_flick_sub)
+                scroll_flick_sub: Spinner::new(0.0..=1.0e4, |cx: &ConfigCx, _| cx.config().borrow().event.scroll_flick_sub)
                     .with_step(10.0)
                     .with_msg(ChangeConfig::ScrollFlickSub),
-                scroll_dist_em: Spinner::new(0.125..=125.0, |cx: &ConfigCx, _| cx.config().borrow().scroll_dist_em)
+                scroll_dist_em: Spinner::new(0.125..=125.0, |cx: &ConfigCx, _| cx.config().borrow().event.scroll_dist_em)
                     .with_step(0.125)
                     .with_msg(ChangeConfig::ScrollDistEm),
-                pan_dist_thresh: Spinner::new(0.25..=25.0, |cx: &ConfigCx, _| cx.config().borrow().pan_dist_thresh)
+                pan_dist_thresh: Spinner::new(0.25..=25.0, |cx: &ConfigCx, _| cx.config().borrow().event.pan_dist_thresh)
                     .with_step(0.25)
                     .with_msg(ChangeConfig::PanDistThresh),
                 mouse_pan: ComboBox::new_msg(
                     pan_options,
-                    |cx: &ConfigCx, _| cx.config().borrow().mouse_pan,
+                    |cx: &ConfigCx, _| cx.config().borrow().event.mouse_pan,
                     ChangeConfig::MousePan,
                 ),
                 mouse_text_pan: ComboBox::new_msg(
                     pan_options,
-                    |cx: &ConfigCx, _| cx.config().borrow().mouse_text_pan,
+                    |cx: &ConfigCx, _| cx.config().borrow().event.mouse_text_pan,
                     ChangeConfig::MouseTextPan,
                 ),
                 mouse_nav_focus: CheckButton::new_msg(
                     "&Mouse navigation focus",
-                    |cx: &ConfigCx, _| cx.config().borrow().mouse_nav_focus,
+                    |cx: &ConfigCx, _| cx.config().borrow().event.mouse_nav_focus,
                     ChangeConfig::MouseNavFocus,
                 ),
                 touch_nav_focus: CheckButton::new_msg(
                     "&Touchscreen navigation focus",
-                    |cx: &ConfigCx, _| cx.config().borrow().touch_nav_focus,
+                    |cx: &ConfigCx, _| cx.config().borrow().event.touch_nav_focus,
                     ChangeConfig::TouchNavFocus,
                 ),
             }

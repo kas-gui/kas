@@ -9,7 +9,7 @@ use super::common::WindowSurface;
 use super::shared::{AppSharedState, AppState};
 use super::{AppData, AppGraphicsBuilder, ProxyAction};
 use crate::cast::{Cast, Conv};
-use crate::config::event::WindowConfig;
+use crate::config::WindowConfig;
 use crate::draw::{color::Rgba, AnimationState, DrawSharedImpl};
 use crate::event::{ConfigCx, CursorIcon, EventState};
 use crate::geom::{Coord, Rect, Size};

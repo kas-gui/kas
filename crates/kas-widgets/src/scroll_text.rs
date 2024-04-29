@@ -261,7 +261,7 @@ impl_scope! {
                 }
                 Event::Scroll(delta) => {
                     let delta2 = match delta {
-                        ScrollDelta::LineDelta(x, y) => cx.config().scroll_distance((x, y)),
+                        ScrollDelta::LineDelta(x, y) => cx.config().event().scroll_distance((x, y)),
                         ScrollDelta::PixelDelta(coord) => coord,
                     };
                     self.pan_delta(cx, delta2)

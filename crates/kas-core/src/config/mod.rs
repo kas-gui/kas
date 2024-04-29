@@ -5,6 +5,9 @@
 
 //! Configuration items and utilities
 
+mod config;
+pub use config::{Config, WindowConfig};
+
 pub mod event;
 
 mod format;

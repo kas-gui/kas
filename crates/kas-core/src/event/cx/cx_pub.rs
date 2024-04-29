@@ -136,13 +136,19 @@ impl EventState {
     #[inline]
     pub fn config_enable_pan(&self, source: PressSource) -> bool {
         source.is_touch()
-            || source.is_primary() && self.config.mouse_pan().is_enabled_with(self.modifiers())
+            || source.is_primary()
+                && self
+                    .config
+                    .event()
+                    .mouse_pan()
+                    .is_enabled_with(self.modifiers())
     }
 
     /// Is mouse text panning enabled?
     #[inline]
     pub fn config_enable_mouse_text_pan(&self) -> bool {
         self.config
+            .event()
             .mouse_text_pan()
             .is_enabled_with(self.modifiers())
     }
@@ -152,7 +158,7 @@ impl EventState {
     /// Returns true when `dist` is large enough to switch to pan mode.
     #[inline]
     pub fn config_test_pan_thresh(&self, dist: Offset) -> bool {
-        Vec2::conv(dist).abs().max_comp() >= self.config.pan_dist_thresh()
+        Vec2::conv(dist).abs().max_comp() >= self.config.event().pan_dist_thresh()
     }
 
     /// Update event configuration

@@ -19,7 +19,7 @@ use std::time::Instant;
 use super::*;
 use crate::app::{AppShared, Platform, WindowDataErased};
 use crate::cast::Cast;
-use crate::config::event::WindowConfig;
+use crate::config::WindowConfig;
 use crate::geom::Coord;
 use crate::messages::{Erased, MessageStack};
 use crate::util::WidgetHierarchy;

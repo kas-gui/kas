@@ -6,7 +6,7 @@
 //! [`Application`] and supporting elements
 
 use super::{AppData, AppGraphicsBuilder, AppState, Platform, ProxyAction, Result};
-use crate::config::{event, Options};
+use crate::config::{Config, Options};
 use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::theme::{self, Theme, ThemeConfig};
 use crate::util::warn_about_error;
@@ -26,7 +26,7 @@ impl_scope! {
         graphical: G,
         theme: T,
         options: Option<Options>,
-        config: Option<Rc<RefCell<event::Config>>>,
+        config: Option<Rc<RefCell<Config>>>,
     }
 
     impl Self {
@@ -53,19 +53,19 @@ impl_scope! {
 
         /// Use the specified event `config`
         ///
-        /// This is a wrapper around [`Self::with_event_config_rc`].
+        /// This is a wrapper around [`Self::with_config_rc`].
         ///
         /// If omitted, config is provided by [`Options::read_config`].
         #[inline]
-        pub fn with_event_config(self, config: event::Config) -> Self {
-            self.with_event_config_rc(Rc::new(RefCell::new(config)))
+        pub fn with_config(self, config: Config) -> Self {
+            self.with_config_rc(Rc::new(RefCell::new(config)))
         }
 
         /// Use the specified event `config`
         ///
         /// If omitted, config is provided by [`Options::read_config`].
         #[inline]
-        pub fn with_event_config_rc(mut self, config: Rc<RefCell<event::Config>>) -> Self {
+        pub fn with_config_rc(mut self, config: Rc<RefCell<Config>>) -> Self {
             self.config = Some(config);
             self
         }

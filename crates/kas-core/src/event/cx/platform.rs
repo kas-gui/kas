@@ -474,7 +474,7 @@ impl<'a> EventCx<'a> {
                 if state == ElementState::Pressed {
                     if let Some(start_id) = self.hover.clone() {
                         // No mouse grab but have a hover target
-                        if self.config.mouse_nav_focus() {
+                        if self.config.event().mouse_nav_focus() {
                             if let Some(id) =
                                 self.nav_next(win.as_node(data), Some(&start_id), NavAdvance::None)
                             {
@@ -502,7 +502,7 @@ impl<'a> EventCx<'a> {
                     TouchPhase::Started => {
                         let start_id = win.find_id(data, coord);
                         if let Some(id) = start_id.as_ref() {
-                            if self.config.touch_nav_focus() {
+                            if self.config.event().touch_nav_focus() {
                                 if let Some(id) =
                                     self.nav_next(win.as_node(data), Some(id), NavAdvance::None)
                                 {

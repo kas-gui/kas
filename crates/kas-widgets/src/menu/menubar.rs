@@ -194,7 +194,7 @@ impl_scope! {
                             self.set_menu_path(cx, data, Some(&id), false);
                         } else if id != self.delayed_open {
                             cx.set_nav_focus(id.clone(), FocusSource::Pointer);
-                            let delay = cx.config().menu_delay();
+                            let delay = cx.config().event().menu_delay();
                             cx.request_timer(self.id(), id.as_u64(), delay);
                             self.delayed_open = Some(id);
                         }

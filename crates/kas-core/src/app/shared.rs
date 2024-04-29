@@ -6,7 +6,7 @@
 //! Shared state
 
 use super::{AppData, AppGraphicsBuilder, Error, Pending, Platform};
-use crate::config::{event, Options};
+use crate::config::{Config, Options};
 use crate::draw::DrawShared;
 use crate::theme::{Theme, ThemeControl};
 use crate::util::warn_about_error;
@@ -23,7 +23,7 @@ use std::task::Waker;
 /// Application state used by [`AppShared`]
 pub(crate) struct AppSharedState<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
     pub(super) platform: Platform,
-    pub(super) config: Rc<RefCell<event::Config>>,
+    pub(super) config: Rc<RefCell<Config>>,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Clipboard>,
     pub(super) draw: draw::SharedState<G::Shared>,
@@ -52,7 +52,7 @@ where
         draw_shared: G::Shared,
         mut theme: T,
         options: Options,
-        config: Rc<RefCell<event::Config>>,
+        config: Rc<RefCell<Config>>,
     ) -> Result<Self, Error> {
         let platform = pw.platform();
         let mut draw = kas::draw::SharedState::new(draw_shared);
