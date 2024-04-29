@@ -25,7 +25,7 @@ log = "0.4"
 smallvec = "1.6.1"
 unicode-segmentation = "1.7"
 thiserror = "1.0.23"
-image = { version = "0.24.1", optional = true }
+image = { version = "0.25.1", optional = true }
 kas-macros = { version = "0.14.1", path = "../kas-macros" }
 linear-map = "1.2.0"
 
