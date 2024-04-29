@@ -11,7 +11,7 @@ use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::theme::{self, Theme, ThemeConfig};
 use crate::util::warn_about_error;
 use crate::{impl_scope, Window, WindowId};
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
 use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 
@@ -163,6 +163,18 @@ where
     #[inline]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
         &mut self.state.shared.draw
+    }
+
+    /// Access config
+    #[inline]
+    pub fn config(&self) -> Ref<Config> {
+        self.state.shared.config.borrow()
+    }
+
+    /// Access config mutably
+    #[inline]
+    pub fn config_mut(&mut self) -> RefMut<Config> {
+        self.state.shared.config.borrow_mut()
     }
 
     /// Access the theme by ref
