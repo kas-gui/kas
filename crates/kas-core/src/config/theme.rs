@@ -123,9 +123,9 @@ mod defaults {
 
     pub fn color_schemes() -> BTreeMap<String, ColorsSrgb> {
         let mut schemes = BTreeMap::new();
-        schemes.insert("light".to_string(), ColorsSrgb::light());
-        schemes.insert("dark".to_string(), ColorsSrgb::dark());
-        schemes.insert("blue".to_string(), ColorsSrgb::blue());
+        schemes.insert("light".to_string(), ColorsSrgb::LIGHT);
+        schemes.insert("dark".to_string(), ColorsSrgb::DARK);
+        schemes.insert("blue".to_string(), ColorsSrgb::BLUE);
         schemes
     }
 

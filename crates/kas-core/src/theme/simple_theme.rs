@@ -24,6 +24,8 @@ use crate::theme::{ColorsLinear, InputState, Theme};
 use crate::theme::{SelectionStyle, ThemeControl, ThemeDraw, ThemeSize};
 use crate::{Action, Id};
 
+use super::ColorsSrgb;
+
 /// A simple theme
 ///
 /// This theme is functional, but not pretty. It is intended as a template for
@@ -46,7 +48,18 @@ impl SimpleTheme {
     /// Construct
     #[inline]
     pub fn new() -> Self {
-        let cols = ColorsLinear::default();
+        #[cfg(not(feature = "dark-light"))]
+        let cols = ColorsSrgb::LIGHT.into();
+
+        #[cfg(feature = "dark-light")]
+        let cols = {
+            use dark_light::Mode;
+            match dark_light::detect() {
+                Mode::Dark => ColorsSrgb::DARK.into(),
+                Mode::Light | Mode::Default => ColorsSrgb::LIGHT.into(),
+            }
+        };
+
         SimpleTheme {
             config: Default::default(),
             cols,

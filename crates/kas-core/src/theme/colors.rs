@@ -5,11 +5,10 @@
 
 //! Colour schemes
 
-use crate::draw::color::{Rgba, Rgba8Srgb};
+use crate::draw::color::{parse_srgb, Rgba, Rgba8Srgb};
 use crate::event::EventState;
 use crate::theme::Background;
 use crate::Id;
-use std::str::FromStr;
 
 const MULT_DEPRESS: f32 = 0.75;
 const MULT_HIGHLIGHT: f32 = 1.25;
@@ -223,87 +222,57 @@ impl From<ColorsLinear> for ColorsSrgb {
     }
 }
 
-impl Default for ColorsLinear {
-    #[cfg(feature = "dark-light")]
-    fn default() -> Self {
-        use dark_light::Mode;
-        match dark_light::detect() {
-            Mode::Dark => ColorsSrgb::dark().into(),
-            Mode::Light | Mode::Default => ColorsSrgb::light().into(),
-        }
-    }
-
-    #[cfg(not(feature = "dark-light"))]
-    #[inline]
-    fn default() -> Self {
-        ColorsSrgb::default().into()
-    }
-}
-
-impl Default for ColorsSrgb {
-    #[inline]
-    fn default() -> Self {
-        ColorsSrgb::light()
-    }
-}
-
 impl ColorsSrgb {
     /// Default "light" scheme
-    pub fn light() -> Self {
-        Colors {
-            is_dark: false,
-            background: Rgba8Srgb::from_str("#FAFAFA").unwrap(),
-            frame: Rgba8Srgb::from_str("#BCBCBC").unwrap(),
-            accent: Rgba8Srgb::from_str("#8347f2").unwrap(),
-            accent_soft: Rgba8Srgb::from_str("#B38DF9").unwrap(),
-            nav_focus: Rgba8Srgb::from_str("#7E3FF2").unwrap(),
-            edit_bg: Rgba8Srgb::from_str("#FAFAFA").unwrap(),
-            edit_bg_disabled: Rgba8Srgb::from_str("#DCDCDC").unwrap(),
-            edit_bg_error: Rgba8Srgb::from_str("#FFBCBC").unwrap(),
-            text: Rgba8Srgb::from_str("#000000").unwrap(),
-            text_invert: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
-            text_disabled: Rgba8Srgb::from_str("#AAAAAA").unwrap(),
-            text_sel_bg: Rgba8Srgb::from_str("#A172FA").unwrap(),
-        }
-    }
+    pub const LIGHT: ColorsSrgb = Colors {
+        is_dark: false,
+        background: parse_srgb(b"FAFAFA"),
+        frame: parse_srgb(b"BCBCBC"),
+        accent: parse_srgb(b"8347f2"),
+        accent_soft: parse_srgb(b"B38DF9"),
+        nav_focus: parse_srgb(b"7E3FF2"),
+        edit_bg: parse_srgb(b"FAFAFA"),
+        edit_bg_disabled: parse_srgb(b"DCDCDC"),
+        edit_bg_error: parse_srgb(b"FFBCBC"),
+        text: parse_srgb(b"000000"),
+        text_invert: parse_srgb(b"FFFFFF"),
+        text_disabled: parse_srgb(b"AAAAAA"),
+        text_sel_bg: parse_srgb(b"A172FA"),
+    };
 
     /// Dark scheme
-    pub fn dark() -> Self {
-        Colors {
-            is_dark: true,
-            background: Rgba8Srgb::from_str("#404040").unwrap(),
-            frame: Rgba8Srgb::from_str("#AAAAAA").unwrap(),
-            accent: Rgba8Srgb::from_str("#F74C00").unwrap(),
-            accent_soft: Rgba8Srgb::from_str("#E77346").unwrap(),
-            nav_focus: Rgba8Srgb::from_str("#D03E00").unwrap(),
-            edit_bg: Rgba8Srgb::from_str("#303030").unwrap(),
-            edit_bg_disabled: Rgba8Srgb::from_str("#606060").unwrap(),
-            edit_bg_error: Rgba8Srgb::from_str("#a06868").unwrap(),
-            text: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
-            text_invert: Rgba8Srgb::from_str("#000000").unwrap(),
-            text_disabled: Rgba8Srgb::from_str("#CBCBCB").unwrap(),
-            text_sel_bg: Rgba8Srgb::from_str("#E77346").unwrap(),
-        }
-    }
+    pub const DARK: ColorsSrgb = Colors {
+        is_dark: true,
+        background: parse_srgb(b"404040"),
+        frame: parse_srgb(b"AAAAAA"),
+        accent: parse_srgb(b"F74C00"),
+        accent_soft: parse_srgb(b"E77346"),
+        nav_focus: parse_srgb(b"D03E00"),
+        edit_bg: parse_srgb(b"303030"),
+        edit_bg_disabled: parse_srgb(b"606060"),
+        edit_bg_error: parse_srgb(b"a06868"),
+        text: parse_srgb(b"FFFFFF"),
+        text_invert: parse_srgb(b"000000"),
+        text_disabled: parse_srgb(b"CBCBCB"),
+        text_sel_bg: parse_srgb(b"E77346"),
+    };
 
     /// Blue scheme
-    pub fn blue() -> Self {
-        Colors {
-            is_dark: false,
-            background: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
-            frame: Rgba8Srgb::from_str("#DADADA").unwrap(),
-            accent: Rgba8Srgb::from_str("#3fafd7").unwrap(),
-            accent_soft: Rgba8Srgb::from_str("#7CDAFF").unwrap(),
-            nav_focus: Rgba8Srgb::from_str("#3B697A").unwrap(),
-            edit_bg: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
-            edit_bg_disabled: Rgba8Srgb::from_str("#DCDCDC").unwrap(),
-            edit_bg_error: Rgba8Srgb::from_str("#FFBCBC").unwrap(),
-            text: Rgba8Srgb::from_str("#000000").unwrap(),
-            text_invert: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
-            text_disabled: Rgba8Srgb::from_str("#AAAAAA").unwrap(),
-            text_sel_bg: Rgba8Srgb::from_str("#6CC0E1").unwrap(),
-        }
-    }
+    pub const BLUE: ColorsSrgb = Colors {
+        is_dark: false,
+        background: parse_srgb(b"FFFFFF"),
+        frame: parse_srgb(b"DADADA"),
+        accent: parse_srgb(b"3fafd7"),
+        accent_soft: parse_srgb(b"7CDAFF"),
+        nav_focus: parse_srgb(b"3B697A"),
+        edit_bg: parse_srgb(b"FFFFFF"),
+        edit_bg_disabled: parse_srgb(b"DCDCDC"),
+        edit_bg_error: parse_srgb(b"FFBCBC"),
+        text: parse_srgb(b"000000"),
+        text_invert: parse_srgb(b"FFFFFF"),
+        text_disabled: parse_srgb(b"AAAAAA"),
+        text_sel_bg: parse_srgb(b"6CC0E1"),
+    };
 }
 
 impl ColorsLinear {
