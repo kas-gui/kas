@@ -5,13 +5,13 @@
 
 //! Wrapper around mutliple themes, supporting run-time switching
 
-use std::collections::HashMap;
-
-use super::{ColorsLinear, Config, Theme, ThemeDst, Window};
-use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
+use super::{ColorsLinear, Theme, ThemeDst, Window};
+use crate::config::{Config, WindowConfig};
+use crate::draw::{color, DrawIface, DrawSharedImpl};
 use crate::event::EventState;
-use crate::theme::{ThemeControl, ThemeDraw};
-use crate::Action;
+use crate::theme::ThemeDraw;
+use std::cell::RefCell;
+use std::collections::HashMap;
 
 type DynTheme<DS> = Box<dyn ThemeDst<DS>>;
 
@@ -78,42 +78,38 @@ impl<DS> MultiThemeBuilder<DS> {
 }
 
 impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
-    type Config = Config;
     type Window = Box<dyn Window>;
-
     type Draw<'a> = Box<dyn ThemeDraw + 'a>;
 
-    fn config(&self) -> std::borrow::Cow<Self::Config> {
-        let boxed_config = self.themes[self.active].config();
-        // TODO: write each sub-theme's config instead of this stupid cast!
-        let config: Config = boxed_config
-            .as_ref()
-            .downcast_ref::<Config>()
-            .unwrap()
-            .clone();
-        std::borrow::Cow::Owned(config)
-    }
-
-    fn apply_config(&mut self, config: &Self::Config) -> Action {
-        let mut action = Action::empty();
-        for theme in &mut self.themes {
-            action |= theme.apply_config(config);
+    fn init(&mut self, config: &RefCell<Config>) {
+        if config.borrow().theme.active_theme.is_empty() {
+            for (name, index) in &self.names {
+                if *index == self.active {
+                    let _ = config.borrow_mut().theme.set_active_theme(name.to_string());
+                    break;
+                }
+            }
         }
-        action
-    }
 
-    fn init(&mut self, shared: &mut SharedState<DS>) {
         for theme in &mut self.themes {
-            theme.init(shared);
+            theme.init(config);
         }
     }
 
-    fn new_window(&self, dpi_factor: f32) -> Self::Window {
-        self.themes[self.active].new_window(dpi_factor)
+    fn new_window(&mut self, config: &WindowConfig) -> Self::Window {
+        // We may switch themes here
+        let theme = &config.theme().active_theme;
+        if let Some(index) = self.names.get(theme).cloned() {
+            if index != self.active {
+                self.active = index;
+            }
+        }
+
+        self.themes[self.active].new_window(config)
     }
 
-    fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
-        self.themes[self.active].update_window(window, dpi_factor);
+    fn update_window(&mut self, window: &mut Self::Window, config: &WindowConfig) {
+        self.themes[self.active].update_window(window, config);
     }
 
     fn draw<'a>(
@@ -136,63 +132,5 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
 
     fn clear_color(&self) -> color::Rgba {
         self.themes[self.active].clear_color()
-    }
-}
-
-impl<DS> ThemeControl for MultiTheme<DS> {
-    fn set_font_size(&mut self, size: f32) -> Action {
-        // Slightly inefficient, but sufficient: update both
-        // (Otherwise we would have to call set_scheme in set_theme too.)
-        let mut action = Action::empty();
-        for theme in &mut self.themes {
-            action |= theme.set_font_size(size);
-        }
-        action
-    }
-
-    fn active_scheme(&self) -> &str {
-        self.themes[self.active].active_scheme()
-    }
-
-    fn set_scheme(&mut self, scheme: &str) -> Action {
-        // Slightly inefficient, but sufficient: update all
-        // (Otherwise we would have to call set_scheme in set_theme too.)
-        let mut action = Action::empty();
-        for theme in &mut self.themes {
-            action |= theme.set_scheme(scheme);
-        }
-        action
-    }
-
-    fn list_schemes(&self) -> Vec<&str> {
-        // We list only schemes of the active theme. Probably all themes should
-        // have the same schemes anyway.
-        self.themes[self.active].list_schemes()
-    }
-
-    fn get_scheme(&self, name: &str) -> Option<&super::ColorsSrgb> {
-        self.themes[self.active].get_scheme(name)
-    }
-
-    fn get_colors(&self) -> &ColorsLinear {
-        self.themes[self.active].get_colors()
-    }
-
-    fn set_colors(&mut self, name: String, cols: ColorsLinear) -> Action {
-        let mut action = Action::empty();
-        for theme in &mut self.themes {
-            action |= theme.set_colors(name.clone(), cols.clone());
-        }
-        action
-    }
-
-    fn set_theme(&mut self, theme: &str) -> Action {
-        if let Some(index) = self.names.get(theme).cloned() {
-            if index != self.active {
-                self.active = index;
-                return Action::RESIZE | Action::THEME_UPDATE;
-            }
-        }
-        Action::empty()
     }
 }

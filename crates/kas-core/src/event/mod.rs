@@ -58,7 +58,6 @@
 //! [`Id`]: crate::Id
 
 pub mod components;
-pub mod config;
 mod cx;
 #[cfg(not(winit))] mod enums;
 mod events;
@@ -73,7 +72,6 @@ pub use winit::keyboard::{Key, ModifiersState, NamedKey, PhysicalKey};
 pub use winit::window::{CursorIcon, ResizeDirection}; // used by Key
 
 #[allow(unused)] use crate::{Events, Widget};
-#[doc(no_inline)] pub use config::Config;
 pub use cx::*;
 #[cfg(not(winit))] pub use enums::*;
 pub use events::*;

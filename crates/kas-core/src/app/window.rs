@@ -8,14 +8,14 @@
 use super::common::WindowSurface;
 use super::shared::{AppSharedState, AppState};
 use super::{AppData, AppGraphicsBuilder, ProxyAction};
-use kas::cast::{Cast, Conv};
-use kas::draw::{color::Rgba, AnimationState, DrawSharedImpl};
-use kas::event::{config::WindowConfig, ConfigCx, CursorIcon, EventState};
-use kas::geom::{Coord, Rect, Size};
-use kas::layout::SolveCache;
-use kas::theme::{DrawCx, SizeCx, ThemeSize};
-use kas::theme::{Theme, Window as _};
-use kas::{autoimpl, messages::MessageStack, Action, Id, Layout, LayoutExt, Widget, WindowId};
+use crate::cast::{Cast, Conv};
+use crate::config::WindowConfig;
+use crate::draw::{color::Rgba, AnimationState, DrawSharedImpl};
+use crate::event::{ConfigCx, CursorIcon, EventState};
+use crate::geom::{Coord, Rect, Size};
+use crate::layout::SolveCache;
+use crate::theme::{DrawCx, SizeCx, Theme, ThemeSize, Window as _};
+use crate::{autoimpl, messages::MessageStack, Action, Id, Layout, LayoutExt, Widget, WindowId};
 use std::mem::take;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -79,9 +79,11 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
 
         // We cannot reliably determine the scale factor before window creation.
         // A factor of 1.0 lets us estimate the size requirements (logical).
-        let mut theme_window = state.shared.theme.new_window(1.0);
-        let dpem = theme_window.size().dpem();
-        self.ev_state.update_config(1.0, dpem);
+        self.ev_state.update_config(1.0);
+
+        let config = self.ev_state.config();
+        let mut theme_window = state.shared.theme.new_window(config);
+
         self.ev_state.full_configure(
             theme_window.size(),
             self.window_id,
@@ -122,10 +124,11 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         // Now that we have a scale factor, we may need to resize:
         let scale_factor = window.scale_factor();
         if scale_factor != 1.0 {
-            let sf32 = scale_factor as f32;
-            state.shared.theme.update_window(&mut theme_window, sf32);
-            let dpem = theme_window.size().dpem();
-            self.ev_state.update_config(sf32, dpem);
+            self.ev_state.update_config(scale_factor as f32);
+
+            let config = self.ev_state.config();
+            state.shared.theme.update_window(&mut theme_window, config);
+
             let node = self.widget.as_node(&state.data);
             let sizer = SizeCx::new(theme_window.size());
             solve_cache = SolveCache::find_constraints(node, sizer);
@@ -226,13 +229,13 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             }
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 // Note: API allows us to set new window size here.
-                let scale_factor = scale_factor as f32;
+                self.ev_state.update_config(scale_factor as f32);
+
+                let config = self.ev_state.config();
                 state
                     .shared
                     .theme
-                    .update_window(&mut window.theme_window, scale_factor);
-                let dpem = window.theme_window.size().dpem();
-                self.ev_state.update_config(scale_factor, dpem);
+                    .update_window(&mut window.theme_window, config);
 
                 // NOTE: we could try resizing here in case the window is too
                 // small due to non-linear scaling, but it appears unnecessary.
@@ -298,12 +301,10 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
     }
 
     /// Handle an action (excludes handling of CLOSE and EXIT)
-    pub(super) fn handle_action(&mut self, state: &AppState<A, G, T>, mut action: Action) {
+    pub(super) fn handle_action(&mut self, state: &mut AppState<A, G, T>, mut action: Action) {
         if action.contains(Action::EVENT_CONFIG) {
             if let Some(ref mut window) = self.window {
-                let scale_factor = window.scale_factor() as f32;
-                let dpem = window.theme_window.size().dpem();
-                self.ev_state.update_config(scale_factor, dpem);
+                self.ev_state.update_config(window.scale_factor() as f32);
                 action |= Action::UPDATE;
             }
         }
@@ -312,14 +313,21 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         } else if action.contains(Action::UPDATE) {
             self.update(state);
         }
-        if action.contains(Action::THEME_UPDATE) {
+        if action.contains(Action::THEME_SWITCH) {
             if let Some(ref mut window) = self.window {
-                let scale_factor = window.scale_factor() as f32;
+                let config = self.ev_state.config();
+                window.theme_window = state.shared.theme.new_window(config);
+            }
+            action |= Action::RESIZE;
+        } else if action.contains(Action::THEME_UPDATE) {
+            if let Some(ref mut window) = self.window {
+                let config = self.ev_state.config();
                 state
                     .shared
                     .theme
-                    .update_window(&mut window.theme_window, scale_factor);
+                    .update_window(&mut window.theme_window, config);
             }
+            action |= Action::RESIZE;
         }
         if action.contains(Action::RESIZE) {
             if let Some(ref mut window) = self.window {

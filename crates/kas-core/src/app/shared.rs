@@ -6,11 +6,11 @@
 //! Shared state
 
 use super::{AppData, AppGraphicsBuilder, Error, Pending, Platform};
-use kas::config::Options;
-use kas::draw::DrawShared;
-use kas::theme::{Theme, ThemeControl};
-use kas::util::warn_about_error;
-use kas::{draw, messages::MessageStack, Action, WindowId};
+use crate::config::{Config, Options};
+use crate::draw::DrawShared;
+use crate::theme::Theme;
+use crate::util::warn_about_error;
+use crate::{draw, messages::MessageStack, Action, WindowId};
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -23,7 +23,7 @@ use std::task::Waker;
 /// Application state used by [`AppShared`]
 pub(crate) struct AppSharedState<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
     pub(super) platform: Platform,
-    pub(super) config: Rc<RefCell<kas::event::Config>>,
+    pub(super) config: Rc<RefCell<Config>>,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Clipboard>,
     pub(super) draw: draw::SharedState<G::Shared>,
@@ -52,11 +52,11 @@ where
         draw_shared: G::Shared,
         mut theme: T,
         options: Options,
-        config: Rc<RefCell<kas::event::Config>>,
+        config: Rc<RefCell<Config>>,
     ) -> Result<Self, Error> {
         let platform = pw.platform();
-        let mut draw = kas::draw::SharedState::new(draw_shared);
-        theme.init(&mut draw);
+        let draw = kas::draw::SharedState::new(draw_shared);
+        theme.init(&config);
 
         #[cfg(feature = "clipboard")]
         let clipboard = match Clipboard::new() {
@@ -98,10 +98,7 @@ where
     }
 
     pub(crate) fn on_exit(&self) {
-        match self
-            .options
-            .write_config(&self.shared.config.borrow(), &self.shared.theme)
-        {
+        match self.options.write_config(&self.shared.config.borrow()) {
             Ok(()) => (),
             Err(error) => warn_about_error("Failed to save config", &error),
         }
@@ -191,14 +188,6 @@ pub(crate) trait AppShared {
     /// This split API probably can't be resolved until Winit integrates
     /// clipboard support.
     fn set_primary(&mut self, content: String);
-
-    /// Adjust the theme
-    ///
-    /// Note: theme adjustments apply to all windows, as does the [`Action`]
-    /// returned from the closure.
-    //
-    // TODO(opt): pass f by value, not boxed
-    fn adjust_theme<'s>(&'s mut self, f: Box<dyn FnOnce(&mut dyn ThemeControl) -> Action + 's>);
 
     /// Access the [`DrawShared`] object
     fn draw_shared(&mut self) -> &mut dyn DrawShared;
@@ -301,11 +290,6 @@ impl<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> AppShared
                 Err(e) => warn_about_error("Failed to set clipboard contents", &e),
             }
         }
-    }
-
-    fn adjust_theme<'s>(&'s mut self, f: Box<dyn FnOnce(&mut dyn ThemeControl) -> Action + 's>) {
-        let action = f(&mut self.theme);
-        self.pending.push_back(Pending::Action(action));
     }
 
     fn draw_shared(&mut self) -> &mut dyn DrawShared {

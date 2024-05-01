@@ -637,7 +637,9 @@ impl_scope! {
                         Unused
                     };
                 }
-                Event::PressStart { ref press } if press.is_primary() && cx.config().mouse_nav_focus() => {
+                Event::PressStart { ref press } if
+                    press.is_primary() && cx.config().event().mouse_nav_focus() =>
+                {
                     if let Some(index) = cx.last_child() {
                         self.press_target = self.widgets[index].key.clone().map(|k| (index, k));
                     }

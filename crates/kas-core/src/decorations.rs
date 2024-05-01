@@ -8,9 +8,9 @@
 //! Note: due to definition in kas-core, some widgets must be duplicated.
 
 use crate::event::{CursorIcon, ResizeDirection};
+use crate::prelude::*;
+use crate::theme::MarkStyle;
 use crate::theme::{Text, TextClass};
-use kas::prelude::*;
-use kas::theme::MarkStyle;
 use kas_macros::impl_scope;
 use std::fmt::Debug;
 

@@ -72,11 +72,10 @@ fn calc_ui() -> Window<()> {
 fn main() -> kas::app::Result<()> {
     env_logger::init();
 
-    let theme = kas_wgpu::ShadedTheme::new().with_font_size(16.0);
-    kas::app::Default::with_theme(theme)
-        .build(())?
-        .with(calc_ui())
-        .run()
+    let theme = kas_wgpu::ShadedTheme::new();
+    let mut app = kas::app::Default::with_theme(theme).build(())?;
+    let _ = app.config_mut().font.set_size(24.0);
+    app.with(calc_ui()).run()
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

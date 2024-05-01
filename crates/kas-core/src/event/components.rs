@@ -297,7 +297,7 @@ impl ScrollComponent {
                             _ => return (false, Unused),
                         };
                         let delta = match delta {
-                            LineDelta(x, y) => cx.config().scroll_distance((x, y)),
+                            LineDelta(x, y) => cx.config().event().scroll_distance((x, y)),
                             PixelDelta(d) => d,
                         };
                         self.offset - delta
@@ -308,7 +308,7 @@ impl ScrollComponent {
             }
             Event::Scroll(delta) => {
                 let delta = match delta {
-                    LineDelta(x, y) => cx.config().scroll_distance((x, y)),
+                    LineDelta(x, y) => cx.config().event().scroll_distance((x, y)),
                     PixelDelta(d) => d,
                 };
                 self.glide.stop();
@@ -333,16 +333,16 @@ impl ScrollComponent {
             Event::PressEnd { press, .. }
                 if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>
             {
-                let timeout = cx.config().scroll_flick_timeout();
-                let pan_dist_thresh = cx.config().pan_dist_thresh();
+                let timeout = cx.config().event().scroll_flick_timeout();
+                let pan_dist_thresh = cx.config().event().pan_dist_thresh();
                 if self.glide.press_end(timeout, pan_dist_thresh) {
                     cx.request_timer(id.clone(), TIMER_GLIDE, Duration::new(0, 0));
                 }
             }
             Event::Timer(pl) if pl == TIMER_GLIDE => {
                 // Momentum/glide scrolling: update per arbitrary step time until movment stops.
-                let timeout = cx.config().scroll_flick_timeout();
-                let decay = cx.config().scroll_flick_decay();
+                let timeout = cx.config().event().scroll_flick_timeout();
+                let decay = cx.config().event().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(timeout, decay) {
                     action = self.scroll_by_delta(cx, delta);
 
@@ -425,7 +425,7 @@ impl TextInput {
                 let icon = match *press {
                     PressSource::Touch(touch_id) => {
                         self.touch_phase = TouchPhase::Start(touch_id, press.coord);
-                        let delay = cx.config().touch_select_delay();
+                        let delay = cx.config().event().touch_select_delay();
                         cx.request_timer(w_id.clone(), TIMER_SELECT, delay);
                         None
                     }
@@ -477,8 +477,8 @@ impl TextInput {
                 }
             }
             Event::PressEnd { press, .. } if press.is_primary() => {
-                let timeout = cx.config().scroll_flick_timeout();
-                let pan_dist_thresh = cx.config().pan_dist_thresh();
+                let timeout = cx.config().event().scroll_flick_timeout();
+                let pan_dist_thresh = cx.config().event().pan_dist_thresh();
                 if self.glide.press_end(timeout, pan_dist_thresh)
                     && (matches!(press.source, PressSource::Touch(id) if self.touch_phase == TouchPhase::Pan(id))
                         || matches!(press.source, PressSource::Mouse(..) if cx.config_enable_mouse_text_pan()))
@@ -500,8 +500,8 @@ impl TextInput {
             },
             Event::Timer(pl) if pl == TIMER_GLIDE => {
                 // Momentum/glide scrolling: update per arbitrary step time until movment stops.
-                let timeout = cx.config().scroll_flick_timeout();
-                let decay = cx.config().scroll_flick_decay();
+                let timeout = cx.config().event().scroll_flick_timeout();
+                let decay = cx.config().event().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(timeout, decay) {
                     let dur = Duration::from_millis(GLIDE_POLL_MS);
                     cx.request_timer(w_id, TIMER_GLIDE, dur);

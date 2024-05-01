@@ -5,22 +5,24 @@
 
 //! Flat theme
 
+use std::cell::RefCell;
 use std::f32;
 use std::ops::Range;
 use std::time::Instant;
 
 use super::SimpleTheme;
-use kas::cast::traits::*;
-use kas::dir::{Direction, Directional};
-use kas::draw::{color::Rgba, *};
-use kas::event::EventState;
-use kas::geom::*;
-use kas::text::TextDisplay;
-use kas::theme::dimensions as dim;
-use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
-use kas::theme::{ColorsLinear, Config, InputState, Theme};
-use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
-use kas::{Action, Id};
+use crate::cast::traits::*;
+use crate::config::{Config, WindowConfig};
+use crate::dir::{Direction, Directional};
+use crate::draw::{color::Rgba, *};
+use crate::event::EventState;
+use crate::geom::*;
+use crate::text::TextDisplay;
+use crate::theme::dimensions as dim;
+use crate::theme::{Background, FrameStyle, MarkStyle, TextClass};
+use crate::theme::{ColorsLinear, InputState, Theme};
+use crate::theme::{ThemeDraw, ThemeSize};
+use crate::Id;
 
 // Used to ensure a rectangular background is inside a circular corner.
 // Also the maximum inner radius of circular borders to overlap with this rect.
@@ -60,26 +62,6 @@ impl FlatTheme {
         let base = SimpleTheme::new();
         FlatTheme { base }
     }
-
-    /// Set font size
-    ///
-    /// Units: Points per Em (standard unit of font size)
-    #[inline]
-    #[must_use]
-    pub fn with_font_size(mut self, pt_size: f32) -> Self {
-        self.base = self.base.with_font_size(pt_size);
-        self
-    }
-
-    /// Set the colour scheme
-    ///
-    /// If no scheme by this name is found the scheme is left unchanged.
-    #[inline]
-    #[must_use]
-    pub fn with_colours(mut self, scheme: &str) -> Self {
-        self.base = self.base.with_colours(scheme);
-        self
-    }
 }
 
 fn dimensions() -> dim::Parameters {
@@ -105,30 +87,22 @@ impl<DS: DrawSharedImpl> Theme<DS> for FlatTheme
 where
     DS::Draw: DrawRoundedImpl,
 {
-    type Config = Config;
     type Window = dim::Window<DS::Draw>;
-
     type Draw<'a> = DrawHandle<'a, DS>;
 
-    fn config(&self) -> std::borrow::Cow<Self::Config> {
-        <SimpleTheme as Theme<DS>>::config(&self.base)
+    fn init(&mut self, config: &RefCell<Config>) {
+        <SimpleTheme as Theme<DS>>::init(&mut self.base, config)
     }
 
-    fn apply_config(&mut self, config: &Self::Config) -> Action {
-        <SimpleTheme as Theme<DS>>::apply_config(&mut self.base, config)
-    }
-
-    fn init(&mut self, shared: &mut SharedState<DS>) {
-        <SimpleTheme as Theme<DS>>::init(&mut self.base, shared)
-    }
-
-    fn new_window(&self, dpi_factor: f32) -> Self::Window {
+    fn new_window(&mut self, config: &WindowConfig) -> Self::Window {
+        self.base.cols = config.theme().get_active_scheme().into();
         let fonts = self.base.fonts.as_ref().unwrap().clone();
-        dim::Window::new(&dimensions(), &self.base.config, dpi_factor, fonts)
+        dim::Window::new(&dimensions(), config, fonts)
     }
 
-    fn update_window(&self, w: &mut Self::Window, dpi_factor: f32) {
-        w.update(&dimensions(), &self.base.config, dpi_factor);
+    fn update_window(&mut self, w: &mut Self::Window, config: &WindowConfig) {
+        self.base.cols = config.theme().get_active_scheme().into();
+        w.update(&dimensions(), config);
     }
 
     fn draw<'a>(
@@ -158,32 +132,6 @@ where
 
     fn clear_color(&self) -> Rgba {
         self.base.cols.background
-    }
-}
-
-impl ThemeControl for FlatTheme {
-    fn set_font_size(&mut self, pt_size: f32) -> Action {
-        self.base.set_font_size(pt_size)
-    }
-
-    fn active_scheme(&self) -> &str {
-        self.base.active_scheme()
-    }
-
-    fn list_schemes(&self) -> Vec<&str> {
-        self.base.list_schemes()
-    }
-
-    fn get_scheme(&self, name: &str) -> Option<&super::ColorsSrgb> {
-        self.base.get_scheme(name)
-    }
-
-    fn get_colors(&self) -> &ColorsLinear {
-        self.base.get_colors()
-    }
-
-    fn set_colors(&mut self, name: String, cols: ColorsLinear) -> Action {
-        self.base.set_colors(name, cols)
     }
 }
 

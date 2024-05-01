@@ -11,10 +11,10 @@ use std::time::Duration;
 
 use super::*;
 use crate::cast::Conv;
+use crate::config::ConfigMsg;
 use crate::draw::DrawShared;
-use crate::event::config::ChangeConfig;
 use crate::geom::{Offset, Vec2};
-use crate::theme::{SizeCx, ThemeControl};
+use crate::theme::SizeCx;
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
 #[allow(unused)] use crate::{Events, Layout}; // for doc-links
@@ -136,13 +136,19 @@ impl EventState {
     #[inline]
     pub fn config_enable_pan(&self, source: PressSource) -> bool {
         source.is_touch()
-            || source.is_primary() && self.config.mouse_pan().is_enabled_with(self.modifiers())
+            || source.is_primary()
+                && self
+                    .config
+                    .event()
+                    .mouse_pan()
+                    .is_enabled_with(self.modifiers())
     }
 
     /// Is mouse text panning enabled?
     #[inline]
     pub fn config_enable_mouse_text_pan(&self) -> bool {
         self.config
+            .event()
             .mouse_text_pan()
             .is_enabled_with(self.modifiers())
     }
@@ -152,19 +158,13 @@ impl EventState {
     /// Returns true when `dist` is large enough to switch to pan mode.
     #[inline]
     pub fn config_test_pan_thresh(&self, dist: Offset) -> bool {
-        Vec2::conv(dist).abs().max_comp() >= self.config.pan_dist_thresh()
+        Vec2::conv(dist).abs().max_comp() >= self.config.event().pan_dist_thresh()
     }
 
     /// Update event configuration
     #[inline]
-    pub fn change_config(&mut self, msg: ChangeConfig) {
-        match self.config.config.try_borrow_mut() {
-            Ok(mut config) => {
-                config.change_config(msg);
-                self.action |= Action::EVENT_CONFIG;
-            }
-            Err(_) => log::error!("EventState::change_config: failed to mutably borrow config"),
-        }
+    pub fn change_config(&mut self, msg: ConfigMsg) {
+        self.action |= self.config.change_config(msg);
     }
 
     /// Set/unset a widget as disabled
@@ -255,7 +255,7 @@ impl EventState {
         self.action |= Action::EXIT;
     }
 
-    /// Notify that a [`Action`] action should happen
+    /// Notify that an [`Action`] should happen
     ///
     /// This causes the given action to happen after event handling.
     ///
@@ -286,6 +286,16 @@ impl EventState {
         if let Some(id) = id {
             self.action(id, action);
         }
+    }
+
+    /// Notify that an [`Action`] should happen for the whole window
+    ///
+    /// Using [`Self::action`] with a widget `id` instead of this method is
+    /// potentially more efficient (supports future optimisations), but not
+    /// always possible.
+    #[inline]
+    pub fn window_action(&mut self, action: Action) {
+        self.action |= action;
     }
 
     /// Attempts to set a fallback to receive [`Event::Command`]
@@ -941,12 +951,6 @@ impl<'a> EventCx<'a> {
         }
 
         self.shared.set_primary(content)
-    }
-
-    /// Adjust the theme
-    #[inline]
-    pub fn adjust_theme<F: FnOnce(&mut dyn ThemeControl) -> Action>(&mut self, f: F) {
-        self.shared.adjust_theme(Box::new(f));
     }
 
     /// Get a [`SizeCx`]

@@ -6,13 +6,12 @@
 //! [`Application`] and supporting elements
 
 use super::{AppData, AppGraphicsBuilder, AppState, Platform, ProxyAction, Result};
-use crate::config::Options;
+use crate::config::{Config, Options};
 use crate::draw::{DrawShared, DrawSharedImpl};
-use crate::event;
-use crate::theme::{self, Theme, ThemeConfig};
+use crate::theme::{self, Theme};
 use crate::util::warn_about_error;
 use crate::{impl_scope, Window, WindowId};
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
 use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 
@@ -27,7 +26,7 @@ impl_scope! {
         graphical: G,
         theme: T,
         options: Option<Options>,
-        config: Option<Rc<RefCell<event::Config>>>,
+        config: Option<Rc<RefCell<Config>>>,
     }
 
     impl Self {
@@ -54,29 +53,26 @@ impl_scope! {
 
         /// Use the specified event `config`
         ///
-        /// This is a wrapper around [`Self::with_event_config_rc`].
+        /// This is a wrapper around [`Self::with_config_rc`].
         ///
         /// If omitted, config is provided by [`Options::read_config`].
         #[inline]
-        pub fn with_event_config(self, config: event::Config) -> Self {
-            self.with_event_config_rc(Rc::new(RefCell::new(config)))
+        pub fn with_config(self, config: Config) -> Self {
+            self.with_config_rc(Rc::new(RefCell::new(config)))
         }
 
         /// Use the specified event `config`
         ///
         /// If omitted, config is provided by [`Options::read_config`].
         #[inline]
-        pub fn with_event_config_rc(mut self, config: Rc<RefCell<event::Config>>) -> Self {
+        pub fn with_config_rc(mut self, config: Rc<RefCell<Config>>) -> Self {
             self.config = Some(config);
             self
         }
 
         /// Build with `data`
         pub fn build<Data: AppData>(self, data: Data) -> Result<Application<Data, G, T>> {
-            let mut theme = self.theme;
-
             let options = self.options.unwrap_or_else(Options::from_env);
-            options.init_theme_config(&mut theme)?;
 
             let config = self.config.unwrap_or_else(|| match options.read_config() {
                 Ok(config) => Rc::new(RefCell::new(config)),
@@ -85,14 +81,15 @@ impl_scope! {
                     Default::default()
                 }
             });
+            config.borrow_mut().init();
 
             let el = EventLoopBuilder::with_user_event().build()?;
 
             let mut draw_shared = self.graphical.build()?;
-            draw_shared.set_raster_config(theme.config().raster());
+            draw_shared.set_raster_config(config.borrow().font.raster());
 
             let pw = PlatformWrapper(&el);
-            let state = AppState::new(data, pw, draw_shared, theme, options, config)?;
+            let state = AppState::new(data, pw, draw_shared, self.theme, options, config)?;
 
             Ok(Application {
                 el,
@@ -164,6 +161,18 @@ where
     #[inline]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
         &mut self.state.shared.draw
+    }
+
+    /// Access config
+    #[inline]
+    pub fn config(&self) -> Ref<Config> {
+        self.state.shared.config.borrow()
+    }
+
+    /// Access config mutably
+    #[inline]
+    pub fn config_mut(&mut self) -> RefMut<Config> {
+        self.state.shared.config.borrow_mut()
     }
 
     /// Access the theme by ref

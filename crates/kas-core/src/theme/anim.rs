@@ -26,7 +26,7 @@ pub struct AnimState<D> {
 }
 
 impl<D> AnimState<D> {
-    pub fn new(config: &super::Config) -> Self {
+    pub fn new(config: &crate::config::ThemeConfig) -> Self {
         let c = Config {
             cursor_blink_rate: config.cursor_blink_rate(),
             fade_dur: config.transition_fade_duration(),

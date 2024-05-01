@@ -6,22 +6,26 @@
 //! Simple theme
 
 use linear_map::LinearMap;
+use std::cell::RefCell;
 use std::f32;
 use std::ops::Range;
 use std::rc::Rc;
 use std::time::Instant;
 
-use kas::cast::traits::*;
-use kas::dir::{Direction, Directional};
-use kas::draw::{color::Rgba, *};
-use kas::event::EventState;
-use kas::geom::*;
-use kas::text::{fonts, Effect, TextDisplay};
-use kas::theme::dimensions as dim;
-use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
-use kas::theme::{ColorsLinear, Config, InputState, Theme};
-use kas::theme::{SelectionStyle, ThemeControl, ThemeDraw, ThemeSize};
-use kas::{Action, Id};
+use crate::cast::traits::*;
+use crate::config::{Config, WindowConfig};
+use crate::dir::{Direction, Directional};
+use crate::draw::{color::Rgba, *};
+use crate::event::EventState;
+use crate::geom::*;
+use crate::text::{fonts, Effect, TextDisplay};
+use crate::theme::dimensions as dim;
+use crate::theme::{Background, FrameStyle, MarkStyle, TextClass};
+use crate::theme::{ColorsLinear, InputState, Theme};
+use crate::theme::{SelectionStyle, ThemeDraw, ThemeSize};
+use crate::Id;
+
+use super::ColorsSrgb;
 
 /// A simple theme
 ///
@@ -29,7 +33,6 @@ use kas::{Action, Id};
 /// other themes.
 #[derive(Clone, Debug)]
 pub struct SimpleTheme {
-    pub config: Config,
     pub cols: ColorsLinear,
     dims: dim::Parameters,
     pub fonts: Option<Rc<LinearMap<TextClass, fonts::FontId>>>,
@@ -45,33 +48,11 @@ impl SimpleTheme {
     /// Construct
     #[inline]
     pub fn new() -> Self {
-        let cols = ColorsLinear::default();
         SimpleTheme {
-            config: Default::default(),
-            cols,
+            cols: ColorsSrgb::LIGHT.into(), // value is unimportant
             dims: Default::default(),
             fonts: None,
         }
-    }
-
-    /// Set font size
-    ///
-    /// Units: Points per Em (standard unit of font size)
-    #[inline]
-    #[must_use]
-    pub fn with_font_size(mut self, pt_size: f32) -> Self {
-        self.config.set_font_size(pt_size);
-        self
-    }
-
-    /// Set the colour scheme
-    ///
-    /// If no scheme by this name is found the scheme is left unchanged.
-    #[inline]
-    #[must_use]
-    pub fn with_colours(mut self, name: &str) -> Self {
-        let _ = self.set_scheme(name);
-        self
     }
 }
 
@@ -86,44 +67,33 @@ impl<DS: DrawSharedImpl> Theme<DS> for SimpleTheme
 where
     DS::Draw: DrawRoundedImpl,
 {
-    type Config = Config;
     type Window = dim::Window<DS::Draw>;
-
     type Draw<'a> = DrawHandle<'a, DS>;
 
-    fn config(&self) -> std::borrow::Cow<Self::Config> {
-        std::borrow::Cow::Borrowed(&self.config)
-    }
-
-    fn apply_config(&mut self, config: &Self::Config) -> Action {
-        let mut action = self.config.apply_config(config);
-        if let Some(cols) = self.config.get_active_scheme() {
-            self.cols = cols.into();
-            action |= Action::REDRAW;
-        }
-        action
-    }
-
-    fn init(&mut self, _shared: &mut SharedState<DS>) {
+    fn init(&mut self, config: &RefCell<Config>) {
         let fonts = fonts::library();
         if let Err(e) = fonts.select_default() {
             panic!("Error loading font: {e}");
         }
         self.fonts = Some(Rc::new(
-            self.config
+            config
+                .borrow()
+                .font
                 .iter_fonts()
                 .filter_map(|(c, s)| fonts.select_font(s).ok().map(|id| (*c, id)))
                 .collect(),
         ));
     }
 
-    fn new_window(&self, dpi_factor: f32) -> Self::Window {
+    fn new_window(&mut self, config: &WindowConfig) -> Self::Window {
+        self.cols = config.theme().get_active_scheme().into();
         let fonts = self.fonts.as_ref().unwrap().clone();
-        dim::Window::new(&self.dims, &self.config, dpi_factor, fonts)
+        dim::Window::new(&self.dims, config, fonts)
     }
 
-    fn update_window(&self, w: &mut Self::Window, dpi_factor: f32) {
-        w.update(&self.dims, &self.config, dpi_factor);
+    fn update_window(&mut self, w: &mut Self::Window, config: &WindowConfig) {
+        self.cols = config.theme().get_active_scheme().into();
+        w.update(&self.dims, config);
     }
 
     fn draw<'a>(
@@ -153,40 +123,6 @@ where
 
     fn clear_color(&self) -> Rgba {
         self.cols.background
-    }
-}
-
-impl ThemeControl for SimpleTheme {
-    fn set_font_size(&mut self, pt_size: f32) -> Action {
-        self.config.set_font_size(pt_size);
-        Action::RESIZE | Action::THEME_UPDATE
-    }
-
-    fn active_scheme(&self) -> &str {
-        self.config.active_scheme()
-    }
-
-    fn list_schemes(&self) -> Vec<&str> {
-        self.config
-            .color_schemes_iter()
-            .map(|(name, _)| name)
-            .collect()
-    }
-
-    fn get_scheme(&self, name: &str) -> Option<&super::ColorsSrgb> {
-        self.config
-            .color_schemes_iter()
-            .find_map(|item| (name == item.0).then_some(item.1))
-    }
-
-    fn get_colors(&self) -> &ColorsLinear {
-        &self.cols
-    }
-
-    fn set_colors(&mut self, name: String, cols: ColorsLinear) -> Action {
-        self.config.set_active_scheme(name);
-        self.cols = cols;
-        Action::REDRAW
     }
 }
 

@@ -9,11 +9,12 @@
 //! (excepting custom graphics).
 
 use kas::collection;
+use kas::config::{ConfigMsg, ThemeConfigMsg};
 use kas::dir::Right;
 use kas::event::Key;
 use kas::prelude::*;
 use kas::resvg::Svg;
-use kas::theme::{MarginStyle, ThemeControl};
+use kas::theme::MarginStyle;
 use kas::widgets::{column, *};
 
 #[derive(Debug, Default)]
@@ -59,7 +60,6 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
     #[derive(Clone, Debug)]
     enum Item {
         Button,
-        Theme(&'static str),
         Check(bool),
         Combo(Entry),
         Radio(u32),
@@ -162,15 +162,24 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
         row![
             "Button (image)",
             row![
-                Button::new_msg(img_light.clone(), Item::Theme("light"))
-                    .with_color("#B38DF9".parse().unwrap())
-                    .with_access_key(Key::Character("h".into())),
-                Button::new_msg(img_light, Item::Theme("blue"))
-                    .with_color("#7CDAFF".parse().unwrap())
-                    .with_access_key(Key::Character("b".into())),
-                Button::new_msg(img_dark, Item::Theme("dark"))
-                    .with_color("#E77346".parse().unwrap())
-                    .with_access_key(Key::Character("k".into())),
+                Button::new_msg(
+                    img_light.clone(),
+                    ConfigMsg::Theme(ThemeConfigMsg::SetActiveScheme("light".to_string()))
+                )
+                .with_color("#B38DF9".parse().unwrap())
+                .with_access_key(Key::Character("h".into())),
+                Button::new_msg(
+                    img_light,
+                    ConfigMsg::Theme(ThemeConfigMsg::SetActiveScheme("blue".to_string()))
+                )
+                .with_color("#7CDAFF".parse().unwrap())
+                .with_access_key(Key::Character("b".into())),
+                Button::new_msg(
+                    img_dark,
+                    ConfigMsg::Theme(ThemeConfigMsg::SetActiveScheme("dark".to_string()))
+                )
+                .with_color("#E77346".parse().unwrap())
+                .with_access_key(Key::Character("k".into())),
             ]
             .map_any()
             .pack(AlignHints::CENTER),
@@ -233,7 +242,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
             println!("ScrollMsg({value})");
             data.ratio = value as f32 / 100.0;
         })
-        .on_message(|cx, data, item| {
+        .on_message(|_, data, item| {
             println!("Message: {item:?}");
             match item {
                 Item::Check(v) => data.check = v,
@@ -242,10 +251,14 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
                 Item::Spinner(value) | Item::Slider(value) => {
                     data.value = value;
                 }
-                Item::Theme(name) => cx.adjust_theme(|theme| theme.set_scheme(name)),
                 Item::Text(text) => data.text = text,
                 _ => (),
             }
+        })
+        .on_message(|cx, _, msg| {
+            println!("Message: {msg:?}");
+            let act = cx.config().change_config(msg);
+            cx.window_action(act);
         });
 
     let ui = adapt::AdaptEvents::new(ui)
@@ -552,13 +565,11 @@ fn main() -> kas::app::Result<()> {
         })
         .menu("&Style", |menu| {
             menu.submenu("&Colours", |mut menu| {
-                // Enumerate colour schemes. Access through the app since
-                // this handles config loading.
-                for name in app.theme().list_schemes().iter() {
+                // Enumerate colour schemes.
+                for (name, _) in app.config().theme.color_schemes() {
                     let mut title = String::with_capacity(name.len() + 1);
                     match name {
-                        &"" => title.push_str("&Default"),
-                        &"dark" => title.push_str("Dar&k"),
+                        "dark" => title.push_str("Dar&k"),
                         name => {
                             let mut iter = name.char_indices();
                             if let Some((_, c)) = iter.next() {
@@ -600,11 +611,17 @@ fn main() -> kas::app::Result<()> {
     let ui = Adapt::new(ui, AppData::default()).on_message(|cx, state, msg| match msg {
         Menu::Theme(name) => {
             println!("Theme: {name:?}");
-            cx.adjust_theme(|theme| theme.set_theme(name));
+            let act = cx
+                .config()
+                .update_theme(|theme| theme.set_active_theme(name));
+            cx.window_action(act);
         }
         Menu::Colour(name) => {
             println!("Colour scheme: {name:?}");
-            cx.adjust_theme(|theme| theme.set_scheme(&name));
+            let act = cx
+                .config()
+                .update_theme(|theme| theme.set_active_scheme(name));
+            cx.window_action(act);
         }
         Menu::Disabled(disabled) => {
             state.disabled = disabled;

@@ -200,7 +200,7 @@ impl_scope! {
 
         fn force_visible(&mut self, cx: &mut EventState) {
             self.force_visible = true;
-            let delay = cx.config().touch_select_delay();
+            let delay = cx.config().event().touch_select_delay();
             cx.request_timer(self.id(), 0, delay);
         }
 

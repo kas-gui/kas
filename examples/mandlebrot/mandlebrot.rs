@@ -484,10 +484,10 @@ fn main() -> kas::app::Result<()> {
     env_logger::init();
 
     let window = Window::new(MandlebrotUI::new(), "Mandlebrot");
-    let theme = kas::theme::FlatTheme::new().with_colours("dark");
-    kas::app::WgpuBuilder::new(PipeBuilder)
+    let theme = kas::theme::FlatTheme::new();
+    let mut app = kas::app::WgpuBuilder::new(PipeBuilder)
         .with_theme(theme)
-        .build(())?
-        .with(window)
-        .run()
+        .build(())?;
+    let _ = app.config_mut().theme.set_active_scheme("dark");
+    app.with(window).run()
 }

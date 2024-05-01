@@ -226,7 +226,7 @@ impl SolveCache {
     /// This is sometimes called after [`Self::apply_rect`].
     pub fn print_widget_heirarchy(&mut self, widget: &dyn Layout) {
         let rect = widget.rect();
-        let hier = WidgetHierarchy::new(widget);
+        let hier = WidgetHierarchy::new(widget, None);
         log::trace!(
             target: "kas_core::layout::hierarchy",
             "apply_rect: rect={rect:?}:{hier}",

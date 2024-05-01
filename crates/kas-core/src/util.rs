@@ -24,11 +24,16 @@ impl<'a> fmt::Display for IdentifyWidget<'a> {
 /// Note: output starts with a new line.
 pub struct WidgetHierarchy<'a> {
     widget: &'a dyn Layout,
+    filter: Option<Id>,
     indent: usize,
 }
 impl<'a> WidgetHierarchy<'a> {
-    pub fn new(widget: &'a dyn Layout) -> Self {
-        WidgetHierarchy { widget, indent: 0 }
+    pub fn new(widget: &'a dyn Layout, filter: Option<Id>) -> Self {
+        WidgetHierarchy {
+            widget,
+            filter,
+            indent: 0,
+        }
     }
 }
 impl<'a> fmt::Display for WidgetHierarchy<'a> {
@@ -45,8 +50,26 @@ impl<'a> fmt::Display for WidgetHierarchy<'a> {
         write!(f, "\n{trail}{identify:<len$} {xr:<xrlen$} y={y1}..{y2}")?;
 
         let indent = self.indent + 1;
-        self.widget
-            .for_children_try(|w| write!(f, "{}", WidgetHierarchy { widget: w, indent }))?;
+
+        if let Some(id) = self.filter.as_ref() {
+            if let Some(index) = self.widget.find_child_index(id) {
+                if let Some(widget) = self.widget.get_child(index) {
+                    return write!(f, "{}", WidgetHierarchy {
+                        widget,
+                        filter: self.filter.clone(),
+                        indent
+                    });
+                }
+            }
+        }
+
+        self.widget.for_children_try(|widget| {
+            write!(f, "{}", WidgetHierarchy {
+                widget,
+                filter: None,
+                indent
+            })
+        })?;
         Ok(())
     }
 }

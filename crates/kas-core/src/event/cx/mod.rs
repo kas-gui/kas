@@ -16,14 +16,13 @@ use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::time::Instant;
 
-use super::config::WindowConfig;
 use super::*;
 use crate::app::{AppShared, Platform, WindowDataErased};
 use crate::cast::Cast;
+use crate::config::WindowConfig;
 use crate::geom::Coord;
 use crate::messages::{Erased, MessageStack};
 use crate::util::WidgetHierarchy;
-use crate::LayoutExt;
 use crate::{Action, Id, NavAdvance, Node, WindowId};
 
 mod config;
@@ -395,9 +394,7 @@ impl<'a> EventCx<'a> {
             widget.id()
         );
 
-        let opt_command = self
-            .config
-            .shortcuts(|s| s.try_match(self.modifiers, &vkey));
+        let opt_command = self.config.shortcuts().try_match(self.modifiers, &vkey);
 
         if let Some(cmd) = opt_command {
             let mut targets = vec![];
@@ -441,15 +438,11 @@ impl<'a> EventCx<'a> {
             }
 
             if matches!(cmd, Command::Debug) {
-                if let Some(ref id) = self.hover {
-                    if let Some(w) = widget.as_layout().find_widget(id) {
-                        let hier = WidgetHierarchy::new(w);
-                        log::debug!("Widget heirarchy (from mouse): {hier}");
-                    }
-                } else {
-                    let hier = WidgetHierarchy::new(widget.as_layout());
-                    log::debug!("Widget heirarchy (whole window): {hier}");
-                }
+                let hier = WidgetHierarchy::new(widget.as_layout(), self.hover.clone());
+                log::debug!(
+                    "Widget heirarchy (filter={:?}): {hier}",
+                    self.hover.as_ref()
+                );
                 return;
             }
         }

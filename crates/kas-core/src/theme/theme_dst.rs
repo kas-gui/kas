@@ -5,58 +5,34 @@
 
 //! Stack-DST versions of theme traits
 
-use std::any::Any;
-use std::borrow::Cow;
+use std::cell::RefCell;
 
 use super::{Theme, Window};
-use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
+use crate::config::{Config, WindowConfig};
+use crate::draw::{color, DrawIface, DrawSharedImpl};
 use crate::event::EventState;
-use crate::theme::{ThemeControl, ThemeDraw};
-use crate::Action;
-
-/// An optionally-owning (boxed) reference
-///
-/// This is related but not identical to [`Cow`].
-pub enum MaybeBoxed<'a, B: 'a + ?Sized> {
-    Borrowed(&'a B),
-    Boxed(Box<B>),
-}
-
-impl<T: ?Sized> AsRef<T> for MaybeBoxed<'_, T> {
-    fn as_ref(&self) -> &T {
-        match self {
-            MaybeBoxed::Borrowed(r) => r,
-            MaybeBoxed::Boxed(b) => b.as_ref(),
-        }
-    }
-}
+use crate::theme::ThemeDraw;
 
 /// As [`Theme`], but without associated types
 ///
 /// This trait is implemented automatically for all implementations of
 /// [`Theme`]. It is intended only for use where a less parameterised
 /// trait is required.
-pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
-    /// Get current configuration
-    fn config(&self) -> MaybeBoxed<dyn Any>;
-
-    /// Apply/set the passed config
-    fn apply_config(&mut self, config: &dyn Any) -> Action;
-
+pub trait ThemeDst<DS: DrawSharedImpl> {
     /// Theme initialisation
     ///
     /// See also [`Theme::init`].
-    fn init(&mut self, shared: &mut SharedState<DS>);
+    fn init(&mut self, config: &RefCell<Config>);
 
     /// Construct per-window storage
     ///
     /// See also [`Theme::new_window`].
-    fn new_window(&self, dpi_factor: f32) -> Box<dyn Window>;
+    fn new_window(&mut self, config: &WindowConfig) -> Box<dyn Window>;
 
     /// Update a window created by [`Theme::new_window`]
     ///
     /// See also [`Theme::update_window`].
-    fn update_window(&self, window: &mut dyn Window, dpi_factor: f32);
+    fn update_window(&mut self, window: &mut dyn Window, config: &WindowConfig);
 
     fn draw<'a>(
         &'a self,
@@ -72,29 +48,18 @@ pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
 }
 
 impl<DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
-    fn config(&self) -> MaybeBoxed<dyn Any> {
-        match self.config() {
-            Cow::Borrowed(config) => MaybeBoxed::Borrowed(config),
-            Cow::Owned(config) => MaybeBoxed::Boxed(Box::new(config)),
-        }
+    fn init(&mut self, config: &RefCell<Config>) {
+        self.init(config);
     }
 
-    fn apply_config(&mut self, config: &dyn Any) -> Action {
-        self.apply_config(config.downcast_ref().unwrap())
-    }
-
-    fn init(&mut self, shared: &mut SharedState<DS>) {
-        self.init(shared);
-    }
-
-    fn new_window(&self, dpi_factor: f32) -> Box<dyn Window> {
-        let window = <T as Theme<DS>>::new_window(self, dpi_factor);
+    fn new_window(&mut self, config: &WindowConfig) -> Box<dyn Window> {
+        let window = <T as Theme<DS>>::new_window(self, config);
         Box::new(window)
     }
 
-    fn update_window(&self, window: &mut dyn Window, dpi_factor: f32) {
+    fn update_window(&mut self, window: &mut dyn Window, config: &WindowConfig) {
         let window = window.as_any_mut().downcast_mut().unwrap();
-        self.update_window(window, dpi_factor);
+        self.update_window(window, config);
     }
 
     fn draw<'b>(

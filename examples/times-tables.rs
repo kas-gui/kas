@@ -74,7 +74,7 @@ fn main() -> kas::app::Result<()> {
         });
     let window = Window::new(ui, "Times-Tables");
 
-    let theme = kas::theme::SimpleTheme::new().with_font_size(16.0);
+    let theme = kas::theme::SimpleTheme::new();
     kas::app::Default::with_theme(theme)
         .build(())?
         .with(window)

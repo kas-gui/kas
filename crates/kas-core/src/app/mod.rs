@@ -176,7 +176,7 @@ mod test {
             todo!()
         }
 
-        fn set_raster_config(&mut self, _: &crate::theme::RasterConfig) {
+        fn set_raster_config(&mut self, _: &crate::config::RasterConfig) {
             todo!()
         }
 

@@ -12,8 +12,10 @@ bitflags! {
     /// while others don't reqiure a context but do require that some *action*
     /// is performed afterwards. This enum is used to convey that action.
     ///
-    /// An `Action` should be passed to a context: `cx.action(self.id(), action)`
-    /// (assuming `self` is a widget).
+    /// An `Action` produced at run-time should be passed to a context:
+    /// `cx.action(self.id(), action)` (assuming `self` is a widget).
+    /// An `Action` produced before starting the GUI may be discarded, for
+    /// example: `let _ = app.config_mut().font.set_size(24.0);`.
     ///
     /// Two `Action` values may be combined via bit-or (`a | b`).
     #[must_use]
@@ -41,18 +43,31 @@ bitflags! {
         const SET_RECT = 1 << 8;
         /// Resize all widgets in the window
         const RESIZE = 1 << 9;
-        /// Update theme memory
+        /// Update [`Dimensions`](crate::theme::dimensions::Dimensions) instances
+        /// and theme configuration.
+        ///
+        /// Implies [`Action::RESIZE`].
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
         #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
         const THEME_UPDATE = 1 << 10;
         /// Reload per-window cache of event configuration
+        ///
+        /// Implies [`Action::UPDATE`].
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
         #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
         const EVENT_CONFIG = 1 << 11;
+        /// Switch themes, replacing theme-window instances
+        ///
+        /// Implies [`Action::RESIZE`].
+        #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+        #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+        const THEME_SWITCH = 1 << 12;
         /// Reconfigure all widgets of the window
         ///
         /// *Configuring* widgets assigns [`Id`](crate::Id) identifiers and calls
         /// [`Events::configure`](crate::Events::configure).
+        ///
+        /// Implies [`Action::UPDATE`] since widgets are updated on configure.
         const RECONFIGURE = 1 << 16;
         /// Update all widgets
         ///

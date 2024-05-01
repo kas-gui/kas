@@ -351,7 +351,7 @@ impl Event {
 /// `Command` events are mostly produced as a result of OS-specific keyboard
 /// bindings; for example,  [`Command::Copy`] is produced by pressing
 /// <kbd>Command+C</kbd> on MacOS or <kbd>Ctrl+C</kbd> on other platforms.
-/// See [`crate::event::config::Shortcuts`] for more on these bindings.
+/// See [`crate::config::Shortcuts`] for more on these bindings.
 ///
 /// A `Command` event does not necessarily come from keyboard input; for example
 /// some menu widgets send [`Command::Activate`] to trigger an entry as a result

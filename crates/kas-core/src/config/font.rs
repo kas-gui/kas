@@ -3,40 +3,36 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Theme configuration
+//! Font configuration
 
-use super::{ColorsSrgb, TextClass, ThemeConfig};
 use crate::text::fonts::{self, AddMode, FontSelector};
+use crate::theme::TextClass;
 use crate::Action;
 use std::collections::BTreeMap;
-use std::time::Duration;
 
-/// Event handling configuration
+/// A message which may be used to update [`FontConfig`]
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub enum FontConfigMsg {
+    /// Standard font size, in units of pixels-per-Em
+    Size(f32),
+}
+
+/// Font configuration
+///
+/// Note that only changes to [`Self::size`] are currently supported at run-time.
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Config {
-    #[cfg_attr(feature = "serde", serde(skip))]
-    dirty: bool,
-
+pub struct FontConfig {
     /// Standard font size, in units of pixels-per-Em
-    #[cfg_attr(feature = "serde", serde(default = "defaults::font_size"))]
-    font_size: f32,
-
-    /// The colour scheme to use
-    #[cfg_attr(feature = "serde", serde(default))]
-    active_scheme: String,
-
-    /// All colour schemes
-    /// TODO: possibly we should not save default schemes and merge when
-    /// loading (perhaps via a `PartialConfig` type).
-    #[cfg_attr(feature = "serde", serde(default = "defaults::color_schemes"))]
-    color_schemes: BTreeMap<String, ColorsSrgb>,
+    #[cfg_attr(feature = "serde", serde(default = "defaults::size"))]
+    pub size: f32,
 
     /// Font aliases, used when searching for a font family matching the key.
     ///
     /// Example:
     /// ```yaml
-    /// font_aliases:
+    /// aliases:
     ///   sans-serif:
     ///     mode: Prepend
     ///     list:
@@ -53,36 +49,23 @@ pub struct Config {
     ///
     /// Supported modes: `Prepend`, `Append`, `Replace`.
     #[cfg_attr(feature = "serde", serde(default))]
-    font_aliases: BTreeMap<String, FontAliases>,
+    pub aliases: BTreeMap<String, FontAliases>,
 
     /// Standard fonts
     #[cfg_attr(feature = "serde", serde(default))]
-    fonts: BTreeMap<TextClass, FontSelector<'static>>,
-
-    /// Text cursor blink rate: delay between switching states
-    #[cfg_attr(feature = "serde", serde(default = "defaults::cursor_blink_rate_ms"))]
-    cursor_blink_rate_ms: u32,
-
-    /// Transition duration used in animations
-    #[cfg_attr(feature = "serde", serde(default = "defaults::transition_fade_ms"))]
-    transition_fade_ms: u32,
+    pub fonts: BTreeMap<TextClass, FontSelector<'static>>,
 
     /// Text glyph rastering settings
     #[cfg_attr(feature = "serde", serde(default))]
-    raster: RasterConfig,
+    pub raster: RasterConfig,
 }
 
-impl Default for Config {
+impl Default for FontConfig {
     fn default() -> Self {
-        Config {
-            dirty: false,
-            font_size: defaults::font_size(),
-            active_scheme: Default::default(),
-            color_schemes: defaults::color_schemes(),
-            font_aliases: Default::default(),
+        FontConfig {
+            size: defaults::size(),
+            aliases: Default::default(),
             fonts: defaults::fonts(),
-            cursor_blink_rate_ms: defaults::cursor_blink_rate_ms(),
-            transition_fade_ms: defaults::transition_fade_ms(),
             raster: Default::default(),
         }
     }
@@ -143,43 +126,15 @@ impl Default for RasterConfig {
 }
 
 /// Getters
-impl Config {
+impl FontConfig {
     /// Standard font size
     ///
     /// Units: logical (unscaled) pixels per Em.
     ///
     /// To convert to Points, multiply by three quarters.
     #[inline]
-    pub fn font_size(&self) -> f32 {
-        self.font_size
-    }
-
-    /// Active colour scheme (name)
-    ///
-    /// An empty string will resolve the default colour scheme.
-    #[inline]
-    pub fn active_scheme(&self) -> &str {
-        &self.active_scheme
-    }
-
-    /// Iterate over all colour schemes
-    #[inline]
-    pub fn color_schemes_iter(&self) -> impl Iterator<Item = (&str, &ColorsSrgb)> {
-        self.color_schemes.iter().map(|(s, t)| (s.as_str(), t))
-    }
-
-    /// Get a colour scheme by name
-    #[inline]
-    pub fn get_color_scheme(&self, name: &str) -> Option<ColorsSrgb> {
-        self.color_schemes.get(name).cloned()
-    }
-
-    /// Get the active colour scheme
-    ///
-    /// Even this one isn't guaranteed to exist.
-    #[inline]
-    pub fn get_active_scheme(&self) -> Option<ColorsSrgb> {
-        self.color_schemes.get(&self.active_scheme).cloned()
+    pub fn size(&self) -> f32 {
+        self.size
     }
 
     /// Get an iterator over font mappings
@@ -187,65 +142,32 @@ impl Config {
     pub fn iter_fonts(&self) -> impl Iterator<Item = (&TextClass, &FontSelector<'static>)> {
         self.fonts.iter()
     }
-
-    /// Get the cursor blink rate (delay)
-    #[inline]
-    pub fn cursor_blink_rate(&self) -> Duration {
-        Duration::from_millis(self.cursor_blink_rate_ms as u64)
-    }
-
-    /// Get the fade duration used in transition animations
-    #[inline]
-    pub fn transition_fade_duration(&self) -> Duration {
-        Duration::from_millis(self.transition_fade_ms as u64)
-    }
 }
 
 /// Setters
-impl Config {
-    /// Set font size
-    pub fn set_font_size(&mut self, pt_size: f32) {
-        self.dirty = true;
-        self.font_size = pt_size;
-    }
-
-    /// Set colour scheme
-    pub fn set_active_scheme(&mut self, scheme: impl ToString) {
-        self.dirty = true;
-        self.active_scheme = scheme.to_string();
+impl FontConfig {
+    /// Set standard font size
+    ///
+    /// Units: logical (unscaled) pixels per Em.
+    ///
+    /// To convert to Points, multiply by three quarters.
+    pub fn set_size(&mut self, pt_size: f32) -> Action {
+        if self.size != pt_size {
+            self.size = pt_size;
+            Action::THEME_UPDATE | Action::UPDATE
+        } else {
+            Action::empty()
+        }
     }
 }
 
 /// Other functions
-impl Config {
-    /// Currently this is just "set". Later, maybe some type of merge.
-    #[allow(clippy::float_cmp)]
-    pub fn apply_config(&mut self, other: &Config) -> Action {
-        let action = if self.font_size != other.font_size {
-            Action::RESIZE | Action::THEME_UPDATE
-        } else if self != other {
-            Action::REDRAW
-        } else {
-            Action::empty()
-        };
-
-        *self = other.clone();
-        action
-    }
-}
-
-impl ThemeConfig for Config {
-    #[cfg(feature = "serde")]
-    #[inline]
-    fn is_dirty(&self) -> bool {
-        self.dirty
-    }
-
+impl FontConfig {
     /// Apply config effects which only happen on startup
-    fn apply_startup(&self) {
-        if !self.font_aliases.is_empty() {
+    pub(super) fn init(&self) {
+        if !self.aliases.is_empty() {
             fonts::library().update_db(|db| {
-                for (family, aliases) in self.font_aliases.iter() {
+                for (family, aliases) in self.aliases.iter() {
                     db.add_aliases(
                         family.to_string().into(),
                         aliases.list.iter().map(|s| s.to_string().into()),
@@ -258,7 +180,7 @@ impl ThemeConfig for Config {
 
     /// Get raster config
     #[inline]
-    fn raster(&self) -> &RasterConfig {
+    pub fn raster(&self) -> &RasterConfig {
         &self.raster
     }
 }
@@ -280,16 +202,8 @@ mod defaults {
         AddMode::Prepend
     }
 
-    pub fn font_size() -> f32 {
+    pub fn size() -> f32 {
         16.0
-    }
-
-    pub fn color_schemes() -> BTreeMap<String, ColorsSrgb> {
-        let mut schemes = BTreeMap::new();
-        schemes.insert("light".to_string(), ColorsSrgb::light());
-        schemes.insert("dark".to_string(), ColorsSrgb::dark());
-        schemes.insert("blue".to_string(), ColorsSrgb::blue());
-        schemes
     }
 
     pub fn fonts() -> BTreeMap<TextClass, FontSelector<'static>> {
@@ -300,14 +214,6 @@ mod defaults {
             (TextClass::Edit(true), selector),
         ];
         list.iter().cloned().collect()
-    }
-
-    pub fn cursor_blink_rate_ms() -> u32 {
-        600
-    }
-
-    pub fn transition_fade_ms() -> u32 {
-        150
     }
 
     pub fn scale_steps() -> u8 {

@@ -181,7 +181,9 @@ impl_scope! {
             self.inner._configure(cx, &(), id);
         }
 
-        fn _update(&mut self, _: &mut ConfigCx, _: &A) {}
+        fn _update(&mut self, cx: &mut ConfigCx, _: &A) {
+            self.inner._update(cx, &());
+        }
 
         fn _send(&mut self, cx: &mut EventCx, _: &A, id: Id, event: Event) -> IsUsed {
             self.inner._send(cx, &(), id, event)

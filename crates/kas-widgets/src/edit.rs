@@ -803,7 +803,10 @@ impl_scope! {
                     if let Some(text) = event.text {
                         self.received_text(cx, data, &text)
                     } else {
-                        if let Some(cmd) = cx.config().shortcuts(|s| s.try_match(cx.modifiers(), &event.logical_key)) {
+                        let opt_cmd = cx.config()
+                            .shortcuts()
+                            .try_match(cx.modifiers(), &event.logical_key);
+                        if let Some(cmd) = opt_cmd {
                             match self.control_key(cx, data, cmd, Some(event.physical_key)) {
                                 Ok(r) => r,
                                 Err(NotReady) => Used,
@@ -815,7 +818,7 @@ impl_scope! {
                 }
                 Event::Scroll(delta) => {
                     let delta2 = match delta {
-                        ScrollDelta::LineDelta(x, y) => cx.config().scroll_distance((x, y)),
+                        ScrollDelta::LineDelta(x, y) => cx.config().event().scroll_distance((x, y)),
                         ScrollDelta::PixelDelta(coord) => coord,
                     };
                     self.pan_delta(cx, delta2)

@@ -5,21 +5,19 @@
 
 //! Event handling configuration
 
-mod shortcuts;
-pub use shortcuts::Shortcuts;
-
-use super::ModifiersState;
 use crate::cast::{Cast, CastFloat};
+use crate::event::ModifiersState;
 use crate::geom::Offset;
+use crate::Action;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use std::cell::{Ref, RefCell};
-use std::rc::Rc;
+use std::cell::Ref;
 use std::time::Duration;
 
-/// Configuration message used to update [`Config`]
+/// A message which may be used to update [`EventConfig`]
 #[derive(Clone, Debug)]
-pub enum ChangeConfig {
+#[non_exhaustive]
+pub enum EventConfigMsg {
     MenuDelay(u32),
     TouchSelectDelay(u32),
     ScrollFlickTimeout(u32),
@@ -48,13 +46,12 @@ pub enum ChangeConfig {
 /// > `mouse_pan`: [`MousePan`] \
 /// > `mouse_text_pan`: [`MousePan`] \
 /// > `mouse_nav_focus`: `bool` \
-/// > `touch_nav_focus`: `bool` \
-/// > `shortcuts`: [`Shortcuts`]
+/// > `touch_nav_focus`: `bool`
 ///
-/// For descriptions of configuration effects, see [`WindowConfig`] methods.
+/// For descriptions of configuration effects, see [`EventWindowConfig`] methods.
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Config {
+pub struct EventConfig {
     #[cfg_attr(feature = "serde", serde(default = "defaults::menu_delay_ms"))]
     pub menu_delay_ms: u32,
 
@@ -88,21 +85,11 @@ pub struct Config {
     pub mouse_nav_focus: bool,
     #[cfg_attr(feature = "serde", serde(default = "defaults::touch_nav_focus"))]
     pub touch_nav_focus: bool,
-
-    // TODO: this is not "event" configuration; reorganise!
-    #[cfg_attr(feature = "serde", serde(default = "defaults::frame_dur_nanos"))]
-    frame_dur_nanos: u32,
-
-    #[cfg_attr(feature = "serde", serde(default = "Shortcuts::platform_defaults"))]
-    pub shortcuts: Shortcuts,
-
-    #[cfg_attr(feature = "serde", serde(skip))]
-    pub is_dirty: bool,
 }
 
-impl Default for Config {
+impl Default for EventConfig {
     fn default() -> Self {
-        Config {
+        EventConfig {
             menu_delay_ms: defaults::menu_delay_ms(),
             touch_select_delay_ms: defaults::touch_select_delay_ms(),
             scroll_flick_timeout_ms: defaults::scroll_flick_timeout_ms(),
@@ -114,95 +101,55 @@ impl Default for Config {
             mouse_text_pan: defaults::mouse_text_pan(),
             mouse_nav_focus: defaults::mouse_nav_focus(),
             touch_nav_focus: defaults::touch_nav_focus(),
-            frame_dur_nanos: defaults::frame_dur_nanos(),
-            shortcuts: Shortcuts::platform_defaults(),
-            is_dirty: false,
         }
     }
 }
 
-impl Config {
-    /// Has the config ever been updated?
-    #[inline]
-    pub fn is_dirty(&self) -> bool {
-        self.is_dirty
-    }
-
-    pub(crate) fn change_config(&mut self, msg: ChangeConfig) {
+impl EventConfig {
+    pub(super) fn change_config(&mut self, msg: EventConfigMsg) -> Action {
         match msg {
-            ChangeConfig::MenuDelay(v) => self.menu_delay_ms = v,
-            ChangeConfig::TouchSelectDelay(v) => self.touch_select_delay_ms = v,
-            ChangeConfig::ScrollFlickTimeout(v) => self.scroll_flick_timeout_ms = v,
-            ChangeConfig::ScrollFlickMul(v) => self.scroll_flick_mul = v,
-            ChangeConfig::ScrollFlickSub(v) => self.scroll_flick_sub = v,
-            ChangeConfig::ScrollDistEm(v) => self.scroll_dist_em = v,
-            ChangeConfig::PanDistThresh(v) => self.pan_dist_thresh = v,
-            ChangeConfig::MousePan(v) => self.mouse_pan = v,
-            ChangeConfig::MouseTextPan(v) => self.mouse_text_pan = v,
-            ChangeConfig::MouseNavFocus(v) => self.mouse_nav_focus = v,
-            ChangeConfig::TouchNavFocus(v) => self.touch_nav_focus = v,
-            ChangeConfig::ResetToDefault => *self = Config::default(),
+            EventConfigMsg::MenuDelay(v) => self.menu_delay_ms = v,
+            EventConfigMsg::TouchSelectDelay(v) => self.touch_select_delay_ms = v,
+            EventConfigMsg::ScrollFlickTimeout(v) => self.scroll_flick_timeout_ms = v,
+            EventConfigMsg::ScrollFlickMul(v) => self.scroll_flick_mul = v,
+            EventConfigMsg::ScrollFlickSub(v) => self.scroll_flick_sub = v,
+            EventConfigMsg::ScrollDistEm(v) => self.scroll_dist_em = v,
+            EventConfigMsg::PanDistThresh(v) => self.pan_dist_thresh = v,
+            EventConfigMsg::MousePan(v) => self.mouse_pan = v,
+            EventConfigMsg::MouseTextPan(v) => self.mouse_text_pan = v,
+            EventConfigMsg::MouseNavFocus(v) => self.mouse_nav_focus = v,
+            EventConfigMsg::TouchNavFocus(v) => self.touch_nav_focus = v,
+            EventConfigMsg::ResetToDefault => *self = EventConfig::default(),
         }
-        self.is_dirty = true;
+
+        Action::EVENT_CONFIG
     }
 }
 
-/// Wrapper around [`Config`] to handle window-specific scaling
+/// Accessor to event configuration
+///
+/// This is a helper to read event configuration, adapted for the current
+/// application and window scale.
 #[derive(Clone, Debug)]
-pub struct WindowConfig {
-    pub(crate) config: Rc<RefCell<Config>>,
-    scroll_flick_sub: f32,
-    scroll_dist: f32,
-    pan_dist_thresh: f32,
-    pub(crate) nav_focus: bool,
-    frame_dur: Duration,
-}
+pub struct EventWindowConfig<'a>(pub(super) &'a super::WindowConfig);
 
-impl WindowConfig {
-    /// Construct
-    ///
-    /// It is required to call [`Self::update`] before usage.
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(config: Rc<RefCell<Config>>) -> Self {
-        WindowConfig {
-            config,
-            scroll_flick_sub: f32::NAN,
-            scroll_dist: f32::NAN,
-            pan_dist_thresh: f32::NAN,
-            nav_focus: true,
-            frame_dur: Default::default(),
-        }
+impl<'a> EventWindowConfig<'a> {
+    /// Access base (unscaled) event [`EventConfig`]
+    #[inline]
+    pub fn base(&self) -> Ref<EventConfig> {
+        Ref::map(self.0.config.borrow(), |c| &c.event)
     }
 
-    /// Update window-specific/cached values
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn update(&mut self, scale_factor: f32, dpem: f32) {
-        let base = self.config.borrow();
-        self.scroll_flick_sub = base.scroll_flick_sub * scale_factor;
-        self.scroll_dist = base.scroll_dist_em * dpem;
-        self.pan_dist_thresh = base.pan_dist_thresh * scale_factor;
-        self.frame_dur = Duration::from_nanos(base.frame_dur_nanos.cast());
-    }
-
-    /// Borrow access to the [`Config`]
-    pub fn borrow(&self) -> Ref<Config> {
-        self.config.borrow()
-    }
-}
-
-impl WindowConfig {
     /// Delay before opening/closing menus on mouse hover
     #[inline]
     pub fn menu_delay(&self) -> Duration {
-        Duration::from_millis(self.config.borrow().menu_delay_ms.cast())
+        Duration::from_millis(self.base().menu_delay_ms.cast())
     }
 
     /// Delay before switching from panning to (text) selection mode
     #[inline]
     pub fn touch_select_delay(&self) -> Duration {
-        Duration::from_millis(self.config.borrow().touch_select_delay_ms.cast())
+        Duration::from_millis(self.base().touch_select_delay_ms.cast())
     }
 
     /// Controls activation of glide/momentum scrolling
@@ -212,7 +159,7 @@ impl WindowConfig {
     /// events within this time window are used to calculate the initial speed.
     #[inline]
     pub fn scroll_flick_timeout(&self) -> Duration {
-        Duration::from_millis(self.config.borrow().scroll_flick_timeout_ms.cast())
+        Duration::from_millis(self.base().scroll_flick_timeout_ms.cast())
     }
 
     /// Scroll flick velocity decay: `(mul, sub)`
@@ -227,15 +174,15 @@ impl WindowConfig {
     /// Units are pixels/second (output is adjusted for the window's scale factor).
     #[inline]
     pub fn scroll_flick_decay(&self) -> (f32, f32) {
-        (self.config.borrow().scroll_flick_mul, self.scroll_flick_sub)
+        (self.base().scroll_flick_mul, self.0.scroll_flick_sub)
     }
 
     /// Get distance in pixels to scroll due to mouse wheel
     ///
     /// Calculates scroll distance from `(horiz, vert)` lines.
     pub fn scroll_distance(&self, lines: (f32, f32)) -> Offset {
-        let x = (self.scroll_dist * lines.0).cast_nearest();
-        let y = (self.scroll_dist * lines.1).cast_nearest();
+        let x = (self.0.scroll_dist * lines.0).cast_nearest();
+        let y = (self.0.scroll_dist * lines.1).cast_nearest();
         Offset(x, y)
     }
 
@@ -248,45 +195,31 @@ impl WindowConfig {
     /// Units are pixels (output is adjusted for the window's scale factor).
     #[inline]
     pub fn pan_dist_thresh(&self) -> f32 {
-        self.pan_dist_thresh
+        self.0.pan_dist_thresh
     }
 
     /// When to pan general widgets (unhandled events) with the mouse
     #[inline]
     pub fn mouse_pan(&self) -> MousePan {
-        self.config.borrow().mouse_pan
+        self.base().mouse_pan
     }
 
     /// When to pan text fields with the mouse
     #[inline]
     pub fn mouse_text_pan(&self) -> MousePan {
-        self.config.borrow().mouse_text_pan
+        self.base().mouse_text_pan
     }
 
     /// Whether mouse clicks set keyboard navigation focus
     #[inline]
     pub fn mouse_nav_focus(&self) -> bool {
-        self.nav_focus && self.config.borrow().mouse_nav_focus
+        self.0.nav_focus && self.base().mouse_nav_focus
     }
 
     /// Whether touchscreen events set keyboard navigation focus
     #[inline]
     pub fn touch_nav_focus(&self) -> bool {
-        self.nav_focus && self.config.borrow().touch_nav_focus
-    }
-
-    /// Access shortcut config
-    pub fn shortcuts<F: FnOnce(&Shortcuts) -> T, T>(&self, f: F) -> T {
-        let base = self.config.borrow();
-        f(&base.shortcuts)
-    }
-
-    /// Minimum frame time
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    #[inline]
-    pub fn frame_dur(&self) -> Duration {
-        self.frame_dur
+        self.0.nav_focus && self.base().touch_nav_focus
     }
 }
 
@@ -367,9 +300,5 @@ mod defaults {
     }
     pub fn touch_nav_focus() -> bool {
         true
-    }
-
-    pub fn frame_dur_nanos() -> u32 {
-        12_500_000 // 1e9 / 80
     }
 }
