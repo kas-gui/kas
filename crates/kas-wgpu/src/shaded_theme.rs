@@ -92,16 +92,14 @@ impl<DS: DrawSharedImpl> Theme<DS> for ShadedTheme
 where
     DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
-    type Config = Config;
     type Window = dim::Window<DS::Draw>;
-
     type Draw<'a> = DrawHandle<'a, DS>;
 
-    fn config(&self) -> std::borrow::Cow<Self::Config> {
+    fn config(&self) -> std::borrow::Cow<Config> {
         <SimpleTheme as Theme<DS>>::config(&self.base)
     }
 
-    fn apply_config(&mut self, config: &Self::Config) -> Action {
+    fn apply_config(&mut self, config: &Config) -> Action {
         <SimpleTheme as Theme<DS>>::apply_config(&mut self.base, config)
     }
 

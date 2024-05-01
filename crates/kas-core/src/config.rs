@@ -307,7 +307,8 @@ impl Options {
         match self.config_mode {
             #[cfg(feature = "serde")]
             ConfigMode::Read | ConfigMode::ReadWrite if self.theme_config_path.is_file() => {
-                let config: T::Config = Format::guess_and_read_path(&self.theme_config_path)?;
+                let config: crate::theme::Config =
+                    Format::guess_and_read_path(&self.theme_config_path)?;
                 config.apply_startup();
                 // Ignore Action: UI isn't built yet
                 let _ = theme.apply_config(&config);

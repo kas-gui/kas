@@ -5,7 +5,7 @@
 
 //! Theme traits
 
-use super::{ColorsLinear, ColorsSrgb, RasterConfig, ThemeDraw, ThemeSize};
+use super::{ColorsLinear, ColorsSrgb, Config, RasterConfig, ThemeDraw, ThemeSize};
 use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use crate::event::EventState;
 use crate::{autoimpl, Action};
@@ -99,9 +99,6 @@ pub trait ThemeConfig:
 /// large resources (e.g. fonts and icons) consider using external storage.
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
-    /// The associated config type
-    type Config: ThemeConfig;
-
     /// The associated [`Window`] implementation.
     type Window: Window;
 
@@ -112,10 +109,10 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
         Self: 'a;
 
     /// Get current configuration
-    fn config(&self) -> std::borrow::Cow<Self::Config>;
+    fn config(&self) -> std::borrow::Cow<Config>;
 
     /// Apply/set the passed config
-    fn apply_config(&mut self, config: &Self::Config) -> Action;
+    fn apply_config(&mut self, config: &Config) -> Action;
 
     /// Theme initialisation
     ///

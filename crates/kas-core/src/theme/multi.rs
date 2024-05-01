@@ -78,23 +78,14 @@ impl<DS> MultiThemeBuilder<DS> {
 }
 
 impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
-    type Config = Config;
     type Window = Box<dyn Window>;
-
     type Draw<'a> = Box<dyn ThemeDraw + 'a>;
 
-    fn config(&self) -> std::borrow::Cow<Self::Config> {
-        let boxed_config = self.themes[self.active].config();
-        // TODO: write each sub-theme's config instead of this stupid cast!
-        let config: Config = boxed_config
-            .as_ref()
-            .downcast_ref::<Config>()
-            .unwrap()
-            .clone();
-        std::borrow::Cow::Owned(config)
+    fn config(&self) -> std::borrow::Cow<Config> {
+        self.themes[self.active].config()
     }
 
-    fn apply_config(&mut self, config: &Self::Config) -> Action {
+    fn apply_config(&mut self, config: &Config) -> Action {
         let mut action = Action::empty();
         for theme in &mut self.themes {
             action |= theme.apply_config(config);

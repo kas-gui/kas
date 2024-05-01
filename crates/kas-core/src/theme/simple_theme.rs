@@ -86,16 +86,14 @@ impl<DS: DrawSharedImpl> Theme<DS> for SimpleTheme
 where
     DS::Draw: DrawRoundedImpl,
 {
-    type Config = Config;
     type Window = dim::Window<DS::Draw>;
-
     type Draw<'a> = DrawHandle<'a, DS>;
 
-    fn config(&self) -> std::borrow::Cow<Self::Config> {
+    fn config(&self) -> std::borrow::Cow<Config> {
         std::borrow::Cow::Borrowed(&self.config)
     }
 
-    fn apply_config(&mut self, config: &Self::Config) -> Action {
+    fn apply_config(&mut self, config: &Config) -> Action {
         let mut action = self.config.apply_config(config);
         if let Some(cols) = self.config.get_active_scheme() {
             self.cols = cols.into();

@@ -5,31 +5,11 @@
 
 //! Stack-DST versions of theme traits
 
-use std::any::Any;
-use std::borrow::Cow;
-
-use super::{Theme, Window};
+use super::{Config, Theme, Window};
 use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use crate::event::EventState;
 use crate::theme::{ThemeControl, ThemeDraw};
 use crate::Action;
-
-/// An optionally-owning (boxed) reference
-///
-/// This is related but not identical to [`Cow`].
-pub enum MaybeBoxed<'a, B: 'a + ?Sized> {
-    Borrowed(&'a B),
-    Boxed(Box<B>),
-}
-
-impl<T: ?Sized> AsRef<T> for MaybeBoxed<'_, T> {
-    fn as_ref(&self) -> &T {
-        match self {
-            MaybeBoxed::Borrowed(r) => r,
-            MaybeBoxed::Boxed(b) => b.as_ref(),
-        }
-    }
-}
 
 /// As [`Theme`], but without associated types
 ///
@@ -38,10 +18,10 @@ impl<T: ?Sized> AsRef<T> for MaybeBoxed<'_, T> {
 /// trait is required.
 pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
     /// Get current configuration
-    fn config(&self) -> MaybeBoxed<dyn Any>;
+    fn config(&self) -> std::borrow::Cow<Config>;
 
     /// Apply/set the passed config
-    fn apply_config(&mut self, config: &dyn Any) -> Action;
+    fn apply_config(&mut self, config: &Config) -> Action;
 
     /// Theme initialisation
     ///
@@ -72,15 +52,12 @@ pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
 }
 
 impl<DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
-    fn config(&self) -> MaybeBoxed<dyn Any> {
-        match self.config() {
-            Cow::Borrowed(config) => MaybeBoxed::Borrowed(config),
-            Cow::Owned(config) => MaybeBoxed::Boxed(Box::new(config)),
-        }
+    fn config(&self) -> std::borrow::Cow<Config> {
+        self.config()
     }
 
-    fn apply_config(&mut self, config: &dyn Any) -> Action {
-        self.apply_config(config.downcast_ref().unwrap())
+    fn apply_config(&mut self, config: &Config) -> Action {
+        self.apply_config(config)
     }
 
     fn init(&mut self, shared: &mut SharedState<DS>) {
