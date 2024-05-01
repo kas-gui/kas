@@ -32,7 +32,8 @@ pub enum ConfigMsg {
 /// > `event`: [`EventConfig`] \
 /// > `font`: [`FontConfig`] \
 /// > `shortcuts`: [`Shortcuts`] \
-/// > `theme`: [`ThemeConfig`]
+/// > `theme`: [`ThemeConfig`] \
+/// > `max_fps`: `u32`
 ///
 /// For descriptions of configuration effects, see [`WindowConfig`] methods.
 #[derive(Clone, Debug, PartialEq)]
@@ -47,8 +48,12 @@ pub struct Config {
 
     pub theme: ThemeConfig,
 
-    #[cfg_attr(feature = "serde", serde(default = "defaults::frame_dur_nanos"))]
-    frame_dur_nanos: u32,
+    /// FPS limiter
+    ///
+    /// This forces a minimum delay between frames to limit the frame rate.
+    /// `0` is treated specially as no delay.
+    #[cfg_attr(feature = "serde", serde(default = "defaults::max_fps"))]
+    pub max_fps: u32,
 
     #[cfg_attr(feature = "serde", serde(skip))]
     is_dirty: bool,
@@ -61,7 +66,7 @@ impl Default for Config {
             font: Default::default(),
             shortcuts: Shortcuts::platform_defaults(),
             theme: Default::default(),
-            frame_dur_nanos: defaults::frame_dur_nanos(),
+            max_fps: defaults::max_fps(),
             is_dirty: false,
         }
     }
@@ -117,7 +122,12 @@ impl WindowConfig {
         let dpem = base.font.size() * scale_factor;
         self.scroll_dist = base.event.scroll_dist_em * dpem;
         self.pan_dist_thresh = base.event.pan_dist_thresh * scale_factor;
-        self.frame_dur = Duration::from_nanos(base.frame_dur_nanos.cast());
+        let dur_ns = if base.max_fps == 0 {
+            0
+        } else {
+            1_000_000_000 / base.max_fps.max(1)
+        };
+        self.frame_dur = Duration::from_nanos(dur_ns.cast());
     }
 
     /// Access base (unscaled) [`Config`]
@@ -247,7 +257,7 @@ impl WindowConfig {
 }
 
 mod defaults {
-    pub fn frame_dur_nanos() -> u32 {
-        12_500_000 // 1e9 / 80
+    pub fn max_fps() -> u32 {
+        80
     }
 }
