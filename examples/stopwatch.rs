@@ -61,7 +61,7 @@ fn main() -> kas::app::Result<()> {
 
     let theme = kas_wgpu::ShadedTheme::new();
     let mut app = kas::app::Default::with_theme(theme).build(())?;
-    app.config_mut().font.set_size(24.0);
+    let _ = app.config_mut().font.set_size(24.0);
     let _ = app.config_mut().theme.set_active_scheme("dark");
     app.with(window).run()
 }

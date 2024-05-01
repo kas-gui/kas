@@ -157,12 +157,10 @@ impl WindowConfig {
     }
 
     /// Update event configuration
-    pub fn update_event<F: FnOnce(&mut event::Config)>(&self, f: F) -> Action {
+    pub fn update_event<F: FnOnce(&mut event::Config) -> Action>(&self, f: F) -> Action {
         if let Ok(mut c) = self.config.try_borrow_mut() {
             c.is_dirty = true;
-
-            f(&mut c.event);
-            Action::EVENT_CONFIG
+            f(&mut c.event)
         } else {
             Action::empty()
         }
@@ -183,13 +181,7 @@ impl WindowConfig {
     pub fn set_font_size(&self, pt_size: f32) -> Action {
         if let Ok(mut c) = self.config.try_borrow_mut() {
             c.is_dirty = true;
-
-            if pt_size == c.font.size() {
-                Action::empty()
-            } else {
-                c.font.set_size(pt_size);
-                Action::THEME_UPDATE | Action::UPDATE | Action::RESIZE
-            }
+            c.font.set_size(pt_size)
         } else {
             Action::empty()
         }

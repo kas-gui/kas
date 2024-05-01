@@ -29,6 +29,6 @@ fn main() -> kas::app::Result<()> {
 
     let theme = kas::theme::SimpleTheme::new();
     let mut app = kas::app::Default::with_theme(theme).build(())?;
-    app.config_mut().font.set_size(24.0);
+    let _ = app.config_mut().font.set_size(24.0);
     app.with(Window::new(counter(), "Counter")).run()
 }

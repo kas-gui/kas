@@ -8,6 +8,7 @@
 use crate::cast::{Cast, CastFloat};
 use crate::event::ModifiersState;
 use crate::geom::Offset;
+use crate::Action;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::cell::Ref;
@@ -105,7 +106,7 @@ impl Default for Config {
 }
 
 impl Config {
-    pub(super) fn change_config(&mut self, msg: EventConfigMsg) {
+    pub(super) fn change_config(&mut self, msg: EventConfigMsg) -> Action {
         match msg {
             EventConfigMsg::MenuDelay(v) => self.menu_delay_ms = v,
             EventConfigMsg::TouchSelectDelay(v) => self.touch_select_delay_ms = v,
@@ -120,6 +121,8 @@ impl Config {
             EventConfigMsg::TouchNavFocus(v) => self.touch_nav_focus = v,
             EventConfigMsg::ResetToDefault => *self = Config::default(),
         }
+
+        Action::EVENT_CONFIG
     }
 }
 

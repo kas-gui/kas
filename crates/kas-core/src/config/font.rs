@@ -7,6 +7,7 @@
 
 use crate::text::fonts::{self, AddMode, FontSelector};
 use crate::theme::TextClass;
+use crate::Action;
 use std::collections::BTreeMap;
 
 /// A message which may be used to update [`FontConfig`]
@@ -150,8 +151,13 @@ impl FontConfig {
     /// Units: logical (unscaled) pixels per Em.
     ///
     /// To convert to Points, multiply by three quarters.
-    pub fn set_size(&mut self, pt_size: f32) {
-        self.size = pt_size;
+    pub fn set_size(&mut self, pt_size: f32) -> Action {
+        if self.size != pt_size {
+            self.size = pt_size;
+            Action::THEME_UPDATE | Action::UPDATE
+        } else {
+            Action::empty()
+        }
     }
 }
 
