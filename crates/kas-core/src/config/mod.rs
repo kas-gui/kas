@@ -5,6 +5,8 @@
 
 //! Configuration items and utilities
 
+pub mod event;
+
 mod format;
 pub use format::{Error, Format};
 

@@ -11,8 +11,8 @@ use std::time::Duration;
 
 use super::*;
 use crate::cast::Conv;
+use crate::config::event::ChangeConfig;
 use crate::draw::DrawShared;
-use crate::event::config::ChangeConfig;
 use crate::geom::{Offset, Vec2};
 use crate::theme::{SizeCx, ThemeControl};
 #[cfg(all(wayland_platform, feature = "clipboard"))]

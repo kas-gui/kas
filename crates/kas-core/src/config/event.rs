@@ -5,9 +5,9 @@
 
 //! Event handling configuration
 
-use super::ModifiersState;
 use crate::cast::{Cast, CastFloat};
 use crate::config::Shortcuts;
+use crate::event::ModifiersState;
 use crate::geom::Offset;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};

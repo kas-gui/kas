@@ -6,9 +6,8 @@
 //! [`Application`] and supporting elements
 
 use super::{AppData, AppGraphicsBuilder, AppState, Platform, ProxyAction, Result};
-use crate::config::Options;
+use crate::config::{event, Options};
 use crate::draw::{DrawShared, DrawSharedImpl};
-use crate::event;
 use crate::theme::{self, Theme, ThemeConfig};
 use crate::util::warn_about_error;
 use crate::{impl_scope, Window, WindowId};

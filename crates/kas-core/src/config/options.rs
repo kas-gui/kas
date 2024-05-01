@@ -5,8 +5,8 @@
 
 //! Configuration options
 
-use super::Error;
 #[cfg(feature = "serde")] use super::Format;
+use super::{event, Error};
 use crate::draw::DrawSharedImpl;
 use crate::theme::{Theme, ThemeConfig};
 #[cfg(feature = "serde")] use crate::util::warn_about_error;
@@ -145,7 +145,7 @@ impl Options {
     /// Load/save KAS config on start
     ///
     /// Requires feature "serde" to load/save config.
-    pub fn read_config(&self) -> Result<kas::event::Config, Error> {
+    pub fn read_config(&self) -> Result<event::Config, Error> {
         #[cfg(feature = "serde")]
         if !self.config_path.as_os_str().is_empty() {
             return match self.config_mode {
@@ -155,7 +155,7 @@ impl Options {
                 }
                 #[cfg(feature = "serde")]
                 ConfigMode::WriteDefault => {
-                    let config: kas::event::Config = Default::default();
+                    let config: event::Config = Default::default();
                     if let Err(error) = Format::guess_and_write_path(&self.config_path, &config) {
                         warn_about_error("failed to write default config: ", &error);
                     }
@@ -172,7 +172,7 @@ impl Options {
     /// Requires feature "serde" to save config.
     pub fn write_config<DS: DrawSharedImpl, T: Theme<DS>>(
         &self,
-        _config: &kas::event::Config,
+        _config: &event::Config,
         _theme: &T,
     ) -> Result<(), Error> {
         #[cfg(feature = "serde")]

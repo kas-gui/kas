@@ -16,10 +16,10 @@ use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::time::Instant;
 
-use super::config::WindowConfig;
 use super::*;
 use crate::app::{AppShared, Platform, WindowDataErased};
 use crate::cast::Cast;
+use crate::config::event::WindowConfig;
 use crate::geom::Coord;
 use crate::messages::{Erased, MessageStack};
 use crate::util::WidgetHierarchy;
