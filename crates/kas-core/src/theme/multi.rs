@@ -190,7 +190,7 @@ impl<DS> ThemeControl for MultiTheme<DS> {
         if let Some(index) = self.names.get(theme).cloned() {
             if index != self.active {
                 self.active = index;
-                return Action::RESIZE | Action::THEME_UPDATE;
+                return Action::THEME_SWITCH;
             }
         }
         Action::empty()

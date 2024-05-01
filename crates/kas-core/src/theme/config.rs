@@ -222,7 +222,7 @@ impl Config {
     #[allow(clippy::float_cmp)]
     pub fn apply_config(&mut self, other: &Config) -> Action {
         let action = if self.font_size != other.font_size {
-            Action::RESIZE | Action::THEME_UPDATE
+            Action::THEME_UPDATE
         } else if self != other {
             Action::REDRAW
         } else {

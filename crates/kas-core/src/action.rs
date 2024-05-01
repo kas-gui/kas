@@ -42,6 +42,8 @@ bitflags! {
         /// Resize all widgets in the window
         const RESIZE = 1 << 9;
         /// Update theme memory
+        ///
+        /// Implies [`Action::RESIZE`].
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
         #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
         const THEME_UPDATE = 1 << 10;
@@ -49,6 +51,12 @@ bitflags! {
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
         #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
         const EVENT_CONFIG = 1 << 11;
+        /// Switch themes, replacing theme-window instances
+        ///
+        /// Implies [`Action::RESIZE`].
+        #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+        #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+        const THEME_SWITCH = 1 << 12;
         /// Reconfigure all widgets of the window
         ///
         /// *Configuring* widgets assigns [`Id`](crate::Id) identifiers and calls

@@ -159,7 +159,7 @@ where
 impl ThemeControl for SimpleTheme {
     fn set_font_size(&mut self, pt_size: f32) -> Action {
         self.config.set_font_size(pt_size);
-        Action::RESIZE | Action::THEME_UPDATE
+        Action::THEME_UPDATE
     }
 
     fn active_scheme(&self) -> &str {

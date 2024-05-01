@@ -312,7 +312,13 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         } else if action.contains(Action::UPDATE) {
             self.update(state);
         }
-        if action.contains(Action::THEME_UPDATE) {
+        if action.contains(Action::THEME_SWITCH) {
+            if let Some(ref mut window) = self.window {
+                let scale_factor = window.scale_factor() as f32;
+                window.theme_window = state.shared.theme.new_window(scale_factor);
+            }
+            action |= Action::RESIZE;
+        } else if action.contains(Action::THEME_UPDATE) {
             if let Some(ref mut window) = self.window {
                 let scale_factor = window.scale_factor() as f32;
                 state
@@ -320,6 +326,7 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
                     .theme
                     .update_window(&mut window.theme_window, scale_factor);
             }
+            action |= Action::RESIZE;
         }
         if action.contains(Action::RESIZE) {
             if let Some(ref mut window) = self.window {
