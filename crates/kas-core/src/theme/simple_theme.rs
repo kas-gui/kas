@@ -11,17 +11,17 @@ use std::ops::Range;
 use std::rc::Rc;
 use std::time::Instant;
 
-use kas::cast::traits::*;
-use kas::dir::{Direction, Directional};
-use kas::draw::{color::Rgba, *};
-use kas::event::EventState;
-use kas::geom::*;
-use kas::text::{fonts, Effect, TextDisplay};
-use kas::theme::dimensions as dim;
-use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
-use kas::theme::{ColorsLinear, Config, InputState, Theme};
-use kas::theme::{SelectionStyle, ThemeControl, ThemeDraw, ThemeSize};
-use kas::{Action, Id};
+use crate::cast::traits::*;
+use crate::dir::{Direction, Directional};
+use crate::draw::{color::Rgba, *};
+use crate::event::EventState;
+use crate::geom::*;
+use crate::text::{fonts, Effect, TextDisplay};
+use crate::theme::dimensions as dim;
+use crate::theme::{Background, FrameStyle, MarkStyle, TextClass};
+use crate::theme::{ColorsLinear, Config, InputState, Theme};
+use crate::theme::{SelectionStyle, ThemeControl, ThemeDraw, ThemeSize};
+use crate::{Action, Id};
 
 /// A simple theme
 ///

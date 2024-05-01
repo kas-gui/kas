@@ -10,17 +10,17 @@ use std::ops::Range;
 use std::time::Instant;
 
 use super::SimpleTheme;
-use kas::cast::traits::*;
-use kas::dir::{Direction, Directional};
-use kas::draw::{color::Rgba, *};
-use kas::event::EventState;
-use kas::geom::*;
-use kas::text::TextDisplay;
-use kas::theme::dimensions as dim;
-use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
-use kas::theme::{ColorsLinear, Config, InputState, Theme};
-use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
-use kas::{Action, Id};
+use crate::cast::traits::*;
+use crate::dir::{Direction, Directional};
+use crate::draw::{color::Rgba, *};
+use crate::event::EventState;
+use crate::geom::*;
+use crate::text::TextDisplay;
+use crate::theme::dimensions as dim;
+use crate::theme::{Background, FrameStyle, MarkStyle, TextClass};
+use crate::theme::{ColorsLinear, Config, InputState, Theme};
+use crate::theme::{ThemeControl, ThemeDraw, ThemeSize};
+use crate::{Action, Id};
 
 // Used to ensure a rectangular background is inside a circular corner.
 // Also the maximum inner radius of circular borders to overlap with this rect.

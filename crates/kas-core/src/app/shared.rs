@@ -6,11 +6,11 @@
 //! Shared state
 
 use super::{AppData, AppGraphicsBuilder, Error, Pending, Platform};
-use kas::config::Options;
-use kas::draw::DrawShared;
-use kas::theme::{Theme, ThemeControl};
-use kas::util::warn_about_error;
-use kas::{draw, messages::MessageStack, Action, WindowId};
+use crate::config::Options;
+use crate::draw::DrawShared;
+use crate::theme::{Theme, ThemeControl};
+use crate::util::warn_about_error;
+use crate::{draw, messages::MessageStack, Action, WindowId};
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::VecDeque;

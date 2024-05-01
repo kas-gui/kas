@@ -13,7 +13,7 @@
 //!
 //! [KAS Text]: https://github.com/kas-gui/kas-text/
 
-#[allow(unused)] use kas::{event::ConfigCx, Layout};
+#[allow(unused)] use crate::{event::ConfigCx, Layout};
 
 pub use kas_text::*;
 

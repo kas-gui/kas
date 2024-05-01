@@ -7,8 +7,8 @@
 
 use super::{AppData, AppGraphicsBuilder, AppState, Pending};
 use super::{ProxyAction, Window};
-use kas::theme::Theme;
-use kas::{Action, WindowId};
+use crate::theme::Theme;
+use crate::{Action, WindowId};
 use std::collections::HashMap;
 use std::time::Instant;
 use winit::event::{Event, StartCause};
