@@ -8,7 +8,7 @@
 use super::{AppData, AppGraphicsBuilder, AppState, Platform, ProxyAction, Result};
 use crate::config::{Config, Options};
 use crate::draw::{DrawShared, DrawSharedImpl};
-use crate::theme::{self, Theme, ThemeConfig};
+use crate::theme::{self, Theme};
 use crate::util::warn_about_error;
 use crate::{impl_scope, Window, WindowId};
 use std::cell::{Ref, RefCell, RefMut};
@@ -84,11 +84,12 @@ impl_scope! {
                     Default::default()
                 }
             });
+            config.borrow_mut().init();
 
             let el = EventLoopBuilder::with_user_event().build()?;
 
             let mut draw_shared = self.graphical.build()?;
-            draw_shared.set_raster_config(theme.config().raster());
+            draw_shared.set_raster_config(config.borrow().font.raster());
 
             let pw = PlatformWrapper(&el);
             let state = AppState::new(data, pw, draw_shared, theme, options, config)?;

@@ -8,8 +8,8 @@
 use std::collections::HashMap;
 
 use super::{ColorsLinear, Theme, ThemeDst, Window};
-use crate::config::theme::Config;
-use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
+use crate::config::{Config, ThemeConfig, WindowConfig};
+use crate::draw::{color, DrawIface, DrawSharedImpl};
 use crate::event::EventState;
 use crate::theme::{ThemeControl, ThemeDraw};
 use crate::Action;
@@ -82,11 +82,11 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
     type Window = Box<dyn Window>;
     type Draw<'a> = Box<dyn ThemeDraw + 'a>;
 
-    fn config(&self) -> std::borrow::Cow<Config> {
+    fn config(&self) -> std::borrow::Cow<ThemeConfig> {
         self.themes[self.active].config()
     }
 
-    fn apply_config(&mut self, config: &Config) -> Action {
+    fn apply_config(&mut self, config: &ThemeConfig) -> Action {
         let mut action = Action::empty();
         for theme in &mut self.themes {
             action |= theme.apply_config(config);
@@ -94,18 +94,18 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
         action
     }
 
-    fn init(&mut self, shared: &mut SharedState<DS>) {
+    fn init(&mut self, config: &Config) {
         for theme in &mut self.themes {
-            theme.init(shared);
+            theme.init(config);
         }
     }
 
-    fn new_window(&self, dpi_factor: f32) -> Self::Window {
-        self.themes[self.active].new_window(dpi_factor)
+    fn new_window(&self, config: &WindowConfig) -> Self::Window {
+        self.themes[self.active].new_window(config)
     }
 
-    fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
-        self.themes[self.active].update_window(window, dpi_factor);
+    fn update_window(&self, window: &mut Self::Window, config: &WindowConfig) {
+        self.themes[self.active].update_window(window, config);
     }
 
     fn draw<'a>(
@@ -132,16 +132,6 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
 }
 
 impl<DS> ThemeControl for MultiTheme<DS> {
-    fn set_font_size(&mut self, size: f32) -> Action {
-        // Slightly inefficient, but sufficient: update both
-        // (Otherwise we would have to call set_scheme in set_theme too.)
-        let mut action = Action::empty();
-        for theme in &mut self.themes {
-            action |= theme.set_font_size(size);
-        }
-        action
-    }
-
     fn active_scheme(&self) -> &str {
         self.themes[self.active].active_scheme()
     }

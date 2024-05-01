@@ -6,6 +6,7 @@
 //! Top-level configuration struct
 
 use super::event::{self, ChangeConfig};
+use super::FontConfig;
 use crate::cast::Cast;
 use crate::config::Shortcuts;
 use crate::Action;
@@ -28,6 +29,8 @@ use std::time::Duration;
 pub struct Config {
     pub event: event::Config,
 
+    pub font: FontConfig,
+
     #[cfg_attr(feature = "serde", serde(default = "Shortcuts::platform_defaults"))]
     pub shortcuts: Shortcuts,
 
@@ -42,6 +45,7 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             event: event::Config::default(),
+            font: Default::default(),
             shortcuts: Shortcuts::platform_defaults(),
             frame_dur_nanos: defaults::frame_dur_nanos(),
             is_dirty: false,
@@ -50,6 +54,11 @@ impl Default for Config {
 }
 
 impl Config {
+    /// Call on startup
+    pub(crate) fn init(&mut self) {
+        self.font.init();
+    }
+
     /// Has the config ever been updated?
     #[inline]
     pub fn is_dirty(&self) -> bool {
@@ -66,6 +75,7 @@ impl Config {
 #[derive(Clone, Debug)]
 pub struct WindowConfig {
     pub(super) config: Rc<RefCell<Config>>,
+    pub(super) scale_factor: f32,
     pub(super) scroll_flick_sub: f32,
     pub(super) scroll_dist: f32,
     pub(super) pan_dist_thresh: f32,
@@ -83,6 +93,7 @@ impl WindowConfig {
     pub fn new(config: Rc<RefCell<Config>>) -> Self {
         WindowConfig {
             config,
+            scale_factor: f32::NAN,
             scroll_flick_sub: f32::NAN,
             scroll_dist: f32::NAN,
             pan_dist_thresh: f32::NAN,
@@ -94,9 +105,11 @@ impl WindowConfig {
     /// Update window-specific/cached values
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn update(&mut self, scale_factor: f32, dpem: f32) {
+    pub fn update(&mut self, scale_factor: f32) {
         let base = self.config.borrow();
+        self.scale_factor = scale_factor;
         self.scroll_flick_sub = base.event.scroll_flick_sub * scale_factor;
+        let dpem = base.font.size() * scale_factor;
         self.scroll_dist = base.event.scroll_dist_em * dpem;
         self.pan_dist_thresh = base.event.pan_dist_thresh * scale_factor;
         self.frame_dur = Duration::from_nanos(base.frame_dur_nanos.cast());
@@ -129,9 +142,20 @@ impl WindowConfig {
         event::WindowConfig(self)
     }
 
+    /// Access font config
+    pub fn font(&self) -> Ref<FontConfig> {
+        Ref::map(self.config.borrow(), |c| &c.font)
+    }
+
     /// Access shortcut config
     pub fn shortcuts(&self) -> Ref<Shortcuts> {
         Ref::map(self.config.borrow(), |c| &c.shortcuts)
+    }
+
+    /// Scale factor
+    pub fn scale_factor(&self) -> f32 {
+        debug_assert!(self.scale_factor.is_finite());
+        self.scale_factor
     }
 
     /// Minimum frame time

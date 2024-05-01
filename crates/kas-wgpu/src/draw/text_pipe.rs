@@ -7,7 +7,7 @@
 
 use super::{atlases, ShaderManager};
 use kas::cast::*;
-use kas::config::theme::RasterConfig;
+use kas::config::RasterConfig;
 use kas::draw::{color::Rgba, PassId};
 use kas::geom::{Quad, Rect, Vec2};
 use kas::text::fonts::FaceId;

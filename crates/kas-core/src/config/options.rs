@@ -8,7 +8,7 @@
 #[cfg(feature = "serde")] use super::{theme, Format};
 use super::{Config, Error};
 use crate::draw::DrawSharedImpl;
-use crate::theme::{Theme, ThemeConfig};
+use crate::theme::Theme;
 #[cfg(feature = "serde")] use crate::util::warn_about_error;
 use std::env::var;
 use std::path::PathBuf;
@@ -121,21 +121,21 @@ impl Options {
             #[cfg(feature = "serde")]
             ConfigMode::Read | ConfigMode::ReadWrite if self.theme_config_path.is_file() => {
                 let config: theme::Config = Format::guess_and_read_path(&self.theme_config_path)?;
-                config.apply_startup();
                 // Ignore Action: UI isn't built yet
                 let _ = theme.apply_config(&config);
             }
             #[cfg(feature = "serde")]
             ConfigMode::WriteDefault if !self.theme_config_path.as_os_str().is_empty() => {
                 let config = theme.config();
-                config.apply_startup();
                 if let Err(error) =
                     Format::guess_and_write_path(&self.theme_config_path, config.as_ref())
                 {
                     warn_about_error("failed to write default config: ", &error);
                 }
             }
-            _ => theme.config().apply_startup(),
+            _ => {
+                let _ = theme;
+            }
         }
 
         Ok(())

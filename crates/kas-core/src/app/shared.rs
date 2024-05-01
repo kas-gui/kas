@@ -55,8 +55,8 @@ where
         config: Rc<RefCell<Config>>,
     ) -> Result<Self, Error> {
         let platform = pw.platform();
-        let mut draw = kas::draw::SharedState::new(draw_shared);
-        theme.init(&mut draw);
+        let draw = kas::draw::SharedState::new(draw_shared);
+        theme.init(&*config.borrow());
 
         #[cfg(feature = "clipboard")]
         let clipboard = match Clipboard::new() {

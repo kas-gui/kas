@@ -11,7 +11,7 @@ use std::time::Instant;
 
 use crate::{DrawShaded, DrawShadedImpl};
 use kas::cast::traits::*;
-use kas::config::theme::Config;
+use kas::config::{Config, ThemeConfig, WindowConfig};
 use kas::dir::{Direction, Directional};
 use kas::draw::{color::Rgba, *};
 use kas::event::EventState;
@@ -40,15 +40,6 @@ impl ShadedTheme {
     pub fn new() -> Self {
         let base = SimpleTheme::new();
         ShadedTheme { base }
-    }
-
-    /// Set font size
-    ///
-    /// Units: Points per Em (standard unit of font size)
-    #[must_use]
-    pub fn with_font_size(mut self, pt_size: f32) -> Self {
-        self.base = self.base.with_font_size(pt_size);
-        self
     }
 
     /// Set the colour scheme
@@ -96,25 +87,25 @@ where
     type Window = dim::Window<DS::Draw>;
     type Draw<'a> = DrawHandle<'a, DS>;
 
-    fn config(&self) -> std::borrow::Cow<Config> {
+    fn config(&self) -> std::borrow::Cow<ThemeConfig> {
         <SimpleTheme as Theme<DS>>::config(&self.base)
     }
 
-    fn apply_config(&mut self, config: &Config) -> Action {
+    fn apply_config(&mut self, config: &ThemeConfig) -> Action {
         <SimpleTheme as Theme<DS>>::apply_config(&mut self.base, config)
     }
 
-    fn init(&mut self, shared: &mut SharedState<DS>) {
-        <SimpleTheme as Theme<DS>>::init(&mut self.base, shared)
+    fn init(&mut self, config: &Config) {
+        <SimpleTheme as Theme<DS>>::init(&mut self.base, config)
     }
 
-    fn new_window(&self, dpi_factor: f32) -> Self::Window {
+    fn new_window(&self, config: &WindowConfig) -> Self::Window {
         let fonts = self.base.fonts.as_ref().unwrap().clone();
-        dim::Window::new(&dimensions(), &self.base.config, dpi_factor, fonts)
+        dim::Window::new(&dimensions(), config, &self.base.config, fonts)
     }
 
-    fn update_window(&self, w: &mut Self::Window, dpi_factor: f32) {
-        w.update(&dimensions(), &self.base.config, dpi_factor);
+    fn update_window(&self, w: &mut Self::Window, config: &WindowConfig) {
+        w.update(&dimensions(), config);
     }
 
     fn draw<'a>(
@@ -148,10 +139,6 @@ where
 }
 
 impl ThemeControl for ShadedTheme {
-    fn set_font_size(&mut self, pt_size: f32) -> Action {
-        self.base.set_font_size(pt_size)
-    }
-
     fn active_scheme(&self) -> &str {
         self.base.active_scheme()
     }

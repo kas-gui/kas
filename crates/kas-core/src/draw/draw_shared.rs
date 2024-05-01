@@ -8,7 +8,7 @@
 use super::color::Rgba;
 use super::{DrawImpl, PassId};
 use crate::cast::Cast;
-use crate::config::theme::RasterConfig;
+use crate::config::RasterConfig;
 use crate::geom::{Quad, Rect, Size};
 use crate::text::{Effect, TextDisplay};
 use std::any::Any;

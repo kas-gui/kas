@@ -27,9 +27,8 @@ fn counter() -> impl Widget<Data = ()> {
 fn main() -> kas::app::Result<()> {
     env_logger::init();
 
-    let theme = kas::theme::SimpleTheme::new().with_font_size(24.0);
-    kas::app::Default::with_theme(theme)
-        .build(())?
-        .with(Window::new(counter(), "Counter"))
-        .run()
+    let theme = kas::theme::SimpleTheme::new();
+    let mut app = kas::app::Default::with_theme(theme).build(())?;
+    app.config_mut().font.set_size(24.0);
+    app.with(Window::new(counter(), "Counter")).run()
 }

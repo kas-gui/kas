@@ -59,11 +59,8 @@ fn main() -> kas::app::Result<()> {
         .with_transparent(true)
         .with_restrictions(true, true);
 
-    let theme = kas_wgpu::ShadedTheme::new()
-        .with_colours("dark")
-        .with_font_size(18.0);
-    kas::app::Default::with_theme(theme)
-        .build(())?
-        .with(window)
-        .run()
+    let theme = kas_wgpu::ShadedTheme::new().with_colours("dark");
+    let mut app = kas::app::Default::with_theme(theme).build(())?;
+    app.config_mut().font.set_size(24.0);
+    app.with(window).run()
 }

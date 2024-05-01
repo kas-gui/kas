@@ -6,8 +6,8 @@
 //! Theme traits
 
 use super::{ColorsLinear, ColorsSrgb, ThemeDraw, ThemeSize};
-use crate::config::theme::{Config, RasterConfig};
-use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
+use crate::config::{Config, ThemeConfig, WindowConfig};
+use crate::draw::{color, DrawIface, DrawSharedImpl};
 use crate::event::EventState;
 use crate::{autoimpl, Action};
 use std::any::Any;
@@ -21,11 +21,6 @@ use std::any::Any;
 /// the UI is started, this return value can be safely ignored.
 #[crate::autoimpl(for<T: trait + ?Sized> &mut T, Box<T>)]
 pub trait ThemeControl {
-    /// Set font size
-    ///
-    /// Units: Points per Em (standard unit of font size)
-    fn set_font_size(&mut self, pt_size: f32) -> Action;
-
     /// Get the name of the active color scheme
     fn active_scheme(&self) -> &str;
 
@@ -67,31 +62,6 @@ pub trait ThemeControl {
     }
 }
 
-/// Requirements on theme config (without `config` feature)
-#[cfg(not(feature = "serde"))]
-pub trait ThemeConfig: Clone + std::fmt::Debug + 'static {
-    /// Apply startup effects
-    fn apply_startup(&self);
-
-    /// Get raster config
-    fn raster(&self) -> &RasterConfig;
-}
-
-/// Requirements on theme config (with `config` feature)
-#[cfg(feature = "serde")]
-pub trait ThemeConfig:
-    Clone + std::fmt::Debug + 'static + for<'a> serde::Deserialize<'a> + serde::Serialize
-{
-    /// Has the config ever been updated?
-    fn is_dirty(&self) -> bool;
-
-    /// Apply startup effects
-    fn apply_startup(&self);
-
-    /// Get raster config
-    fn raster(&self) -> &RasterConfig;
-}
-
 /// A *theme* provides widget sizing and drawing implementations.
 ///
 /// The theme is generic over some `DrawIface`.
@@ -110,10 +80,10 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
         Self: 'a;
 
     /// Get current configuration
-    fn config(&self) -> std::borrow::Cow<Config>;
+    fn config(&self) -> std::borrow::Cow<ThemeConfig>;
 
     /// Apply/set the passed config
-    fn apply_config(&mut self, config: &Config) -> Action;
+    fn apply_config(&mut self, config: &ThemeConfig) -> Action;
 
     /// Theme initialisation
     ///
@@ -122,7 +92,7 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
     ///
     /// At a minimum, a theme must load a font to [`crate::text::fonts`].
     /// The first font loaded (by any theme) becomes the default font.
-    fn init(&mut self, shared: &mut SharedState<DS>);
+    fn init(&mut self, config: &Config);
 
     /// Construct per-window storage
     ///
@@ -135,12 +105,12 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
     /// ```
     ///
     /// A reference to the draw backend is provided allowing configuration.
-    fn new_window(&self, dpi_factor: f32) -> Self::Window;
+    fn new_window(&self, config: &WindowConfig) -> Self::Window;
 
     /// Update a window created by [`Theme::new_window`]
     ///
     /// This is called when the DPI factor changes or theme dimensions change.
-    fn update_window(&self, window: &mut Self::Window, dpi_factor: f32);
+    fn update_window(&self, window: &mut Self::Window, config: &WindowConfig);
 
     /// Prepare to draw and construct a [`ThemeDraw`] object
     ///

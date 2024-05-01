@@ -10,6 +10,9 @@ pub use config::{Config, WindowConfig};
 
 pub mod event;
 
+mod font;
+pub use font::{FontConfig, RasterConfig};
+
 mod format;
 pub use format::{Error, Format};
 
@@ -19,4 +22,5 @@ pub use options::{ConfigMode, Options};
 mod shortcuts;
 pub use shortcuts::Shortcuts;
 
-pub mod theme;
+mod theme;
+pub use theme::ThemeConfig;

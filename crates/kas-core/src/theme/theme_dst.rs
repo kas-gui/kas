@@ -6,8 +6,8 @@
 //! Stack-DST versions of theme traits
 
 use super::{Theme, Window};
-use crate::config::theme::Config;
-use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
+use crate::config::{Config, ThemeConfig, WindowConfig};
+use crate::draw::{color, DrawIface, DrawSharedImpl};
 use crate::event::EventState;
 use crate::theme::{ThemeControl, ThemeDraw};
 use crate::Action;
@@ -19,25 +19,25 @@ use crate::Action;
 /// trait is required.
 pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
     /// Get current configuration
-    fn config(&self) -> std::borrow::Cow<Config>;
+    fn config(&self) -> std::borrow::Cow<ThemeConfig>;
 
     /// Apply/set the passed config
-    fn apply_config(&mut self, config: &Config) -> Action;
+    fn apply_config(&mut self, config: &ThemeConfig) -> Action;
 
     /// Theme initialisation
     ///
     /// See also [`Theme::init`].
-    fn init(&mut self, shared: &mut SharedState<DS>);
+    fn init(&mut self, config: &Config);
 
     /// Construct per-window storage
     ///
     /// See also [`Theme::new_window`].
-    fn new_window(&self, dpi_factor: f32) -> Box<dyn Window>;
+    fn new_window(&self, config: &WindowConfig) -> Box<dyn Window>;
 
     /// Update a window created by [`Theme::new_window`]
     ///
     /// See also [`Theme::update_window`].
-    fn update_window(&self, window: &mut dyn Window, dpi_factor: f32);
+    fn update_window(&self, window: &mut dyn Window, config: &WindowConfig);
 
     fn draw<'a>(
         &'a self,
@@ -53,26 +53,26 @@ pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
 }
 
 impl<DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
-    fn config(&self) -> std::borrow::Cow<Config> {
+    fn config(&self) -> std::borrow::Cow<ThemeConfig> {
         self.config()
     }
 
-    fn apply_config(&mut self, config: &Config) -> Action {
+    fn apply_config(&mut self, config: &ThemeConfig) -> Action {
         self.apply_config(config)
     }
 
-    fn init(&mut self, shared: &mut SharedState<DS>) {
-        self.init(shared);
+    fn init(&mut self, config: &Config) {
+        self.init(config);
     }
 
-    fn new_window(&self, dpi_factor: f32) -> Box<dyn Window> {
-        let window = <T as Theme<DS>>::new_window(self, dpi_factor);
+    fn new_window(&self, config: &WindowConfig) -> Box<dyn Window> {
+        let window = <T as Theme<DS>>::new_window(self, config);
         Box::new(window)
     }
 
-    fn update_window(&self, window: &mut dyn Window, dpi_factor: f32) {
+    fn update_window(&self, window: &mut dyn Window, config: &WindowConfig) {
         let window = window.as_any_mut().downcast_mut().unwrap();
-        self.update_window(window, dpi_factor);
+        self.update_window(window, config);
     }
 
     fn draw<'b>(

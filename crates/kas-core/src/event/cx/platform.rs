@@ -62,8 +62,8 @@ impl EventState {
     }
 
     /// Update scale factor
-    pub(crate) fn update_config(&mut self, scale_factor: f32, dpem: f32) {
-        self.config.update(scale_factor, dpem);
+    pub(crate) fn update_config(&mut self, scale_factor: f32) {
+        self.config.update(scale_factor);
     }
 
     /// Configure a widget tree

@@ -79,9 +79,11 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
 
         // We cannot reliably determine the scale factor before window creation.
         // A factor of 1.0 lets us estimate the size requirements (logical).
-        let mut theme_window = state.shared.theme.new_window(1.0);
-        let dpem = theme_window.size().dpem();
-        self.ev_state.update_config(1.0, dpem);
+        self.ev_state.update_config(1.0);
+
+        let config = self.ev_state.config();
+        let mut theme_window = state.shared.theme.new_window(config);
+
         self.ev_state.full_configure(
             theme_window.size(),
             self.window_id,
@@ -122,10 +124,11 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         // Now that we have a scale factor, we may need to resize:
         let scale_factor = window.scale_factor();
         if scale_factor != 1.0 {
-            let sf32 = scale_factor as f32;
-            state.shared.theme.update_window(&mut theme_window, sf32);
-            let dpem = theme_window.size().dpem();
-            self.ev_state.update_config(sf32, dpem);
+            self.ev_state.update_config(scale_factor as f32);
+
+            let config = self.ev_state.config();
+            state.shared.theme.update_window(&mut theme_window, config);
+
             let node = self.widget.as_node(&state.data);
             let sizer = SizeCx::new(theme_window.size());
             solve_cache = SolveCache::find_constraints(node, sizer);
@@ -226,13 +229,13 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             }
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 // Note: API allows us to set new window size here.
-                let scale_factor = scale_factor as f32;
+                self.ev_state.update_config(scale_factor as f32);
+
+                let config = self.ev_state.config();
                 state
                     .shared
                     .theme
-                    .update_window(&mut window.theme_window, scale_factor);
-                let dpem = window.theme_window.size().dpem();
-                self.ev_state.update_config(scale_factor, dpem);
+                    .update_window(&mut window.theme_window, config);
 
                 // NOTE: we could try resizing here in case the window is too
                 // small due to non-linear scaling, but it appears unnecessary.
@@ -301,9 +304,7 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
     pub(super) fn handle_action(&mut self, state: &AppState<A, G, T>, mut action: Action) {
         if action.contains(Action::EVENT_CONFIG) {
             if let Some(ref mut window) = self.window {
-                let scale_factor = window.scale_factor() as f32;
-                let dpem = window.theme_window.size().dpem();
-                self.ev_state.update_config(scale_factor, dpem);
+                self.ev_state.update_config(window.scale_factor() as f32);
                 action |= Action::UPDATE;
             }
         }
@@ -314,17 +315,17 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         }
         if action.contains(Action::THEME_SWITCH) {
             if let Some(ref mut window) = self.window {
-                let scale_factor = window.scale_factor() as f32;
-                window.theme_window = state.shared.theme.new_window(scale_factor);
+                let config = self.ev_state.config();
+                window.theme_window = state.shared.theme.new_window(config);
             }
             action |= Action::RESIZE;
         } else if action.contains(Action::THEME_UPDATE) {
             if let Some(ref mut window) = self.window {
-                let scale_factor = window.scale_factor() as f32;
+                let config = self.ev_state.config();
                 state
                     .shared
                     .theme
-                    .update_window(&mut window.theme_window, scale_factor);
+                    .update_window(&mut window.theme_window, config);
             }
             action |= Action::RESIZE;
         }

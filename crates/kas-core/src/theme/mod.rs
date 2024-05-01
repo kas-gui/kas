@@ -37,6 +37,6 @@ pub use size::SizeCx;
 pub use style::*;
 pub use text::{SizableText, Text};
 pub use theme_dst::ThemeDst;
-pub use traits::{Theme, ThemeConfig, ThemeControl, Window};
+pub use traits::{Theme, ThemeControl, Window};
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 pub use {draw::ThemeDraw, size::ThemeSize};

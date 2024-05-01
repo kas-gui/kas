@@ -13,7 +13,7 @@ use std::rc::Rc;
 use super::anim::AnimState;
 use super::{Feature, FrameStyle, MarginStyle, MarkStyle, SizableText, TextClass, ThemeSize};
 use crate::cast::traits::*;
-use crate::config::theme::Config;
+use crate::config::{ThemeConfig, WindowConfig};
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
 use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
@@ -111,8 +111,9 @@ pub struct Dimensions {
 }
 
 impl Dimensions {
-    pub fn new(params: &Parameters, font_size: f32, scale: f32) -> Self {
-        let dpem = scale * font_size;
+    pub fn new(params: &Parameters, config: &WindowConfig) -> Self {
+        let scale = config.scale_factor();
+        let dpem = scale * config.font().size();
 
         let text_m0 = (params.m_text.0 * scale).cast_nearest();
         let text_m1 = (params.m_text.1 * scale).cast_nearest();
@@ -158,19 +159,19 @@ pub struct Window<D> {
 impl<D> Window<D> {
     pub fn new(
         dims: &Parameters,
-        config: &Config,
-        scale: f32,
+        config: &WindowConfig,
+        theme_config: &ThemeConfig,
         fonts: Rc<LinearMap<TextClass, FontId>>,
     ) -> Self {
         Window {
-            dims: Dimensions::new(dims, config.font_size(), scale),
+            dims: Dimensions::new(dims, config),
             fonts,
-            anim: AnimState::new(config),
+            anim: AnimState::new(theme_config),
         }
     }
 
-    pub fn update(&mut self, dims: &Parameters, config: &Config, scale: f32) {
-        self.dims = Dimensions::new(dims, config.font_size(), scale);
+    pub fn update(&mut self, dims: &Parameters, config: &WindowConfig) {
+        self.dims = Dimensions::new(dims, config);
     }
 }
 

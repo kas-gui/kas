@@ -56,11 +56,11 @@ fn main() -> kas::app::Result<()> {
     env_logger::init();
 
     let count = Count(0);
-    let theme = kas_wgpu::ShadedTheme::new().with_font_size(24.0);
+    let theme = kas_wgpu::ShadedTheme::new();
 
-    kas::app::Default::with_theme(theme)
-        .build(count)?
-        .with(counter("Counter 1"))
+    let mut app = kas::app::Default::with_theme(theme).build(count)?;
+    app.config_mut().font.set_size(24.0);
+    app.with(counter("Counter 1"))
         .with(counter("Counter 2"))
         .run()
 }
