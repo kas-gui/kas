@@ -6,12 +6,12 @@
 //! Configuration items and utilities
 
 mod config;
-pub use config::{Config, WindowConfig};
+pub use config::{Config, ConfigMsg, WindowConfig};
 
 pub mod event;
 
 mod font;
-pub use font::{FontConfig, RasterConfig};
+pub use font::{FontConfig, FontConfigMsg, RasterConfig};
 
 mod format;
 pub use format::{Error, Format};

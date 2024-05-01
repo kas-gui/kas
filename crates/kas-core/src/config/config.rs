@@ -5,8 +5,7 @@
 
 //! Top-level configuration struct
 
-use super::event::{self, ChangeConfig};
-use super::FontConfig;
+use super::{event, FontConfig, FontConfigMsg};
 use crate::cast::Cast;
 use crate::config::Shortcuts;
 use crate::Action;
@@ -15,6 +14,14 @@ use serde::{Deserialize, Serialize};
 use std::cell::{Ref, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
+
+/// A message which may be used to update [`Config`]
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub enum ConfigMsg {
+    Event(event::EventConfigMsg),
+    Font(FontConfigMsg),
+}
 
 /// Base configuration
 ///
@@ -64,11 +71,6 @@ impl Config {
     pub fn is_dirty(&self) -> bool {
         self.is_dirty
     }
-
-    pub(crate) fn change_config(&mut self, msg: event::ChangeConfig) {
-        self.event.change_config(msg);
-        self.is_dirty = true;
-    }
 }
 
 /// Configuration, adapted for the application and window scale
@@ -88,9 +90,7 @@ impl WindowConfig {
     /// Construct
     ///
     /// It is required to call [`Self::update`] before usage.
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(config: Rc<RefCell<Config>>) -> Self {
+    pub(crate) fn new(config: Rc<RefCell<Config>>) -> Self {
         WindowConfig {
             config,
             scale_factor: f32::NAN,
@@ -103,9 +103,7 @@ impl WindowConfig {
     }
 
     /// Update window-specific/cached values
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn update(&mut self, scale_factor: f32) {
+    pub(crate) fn update(&mut self, scale_factor: f32) {
         let base = self.config.borrow();
         self.scale_factor = scale_factor;
         self.scroll_flick_sub = base.event.scroll_flick_sub * scale_factor;
@@ -115,31 +113,54 @@ impl WindowConfig {
         self.frame_dur = Duration::from_nanos(base.frame_dur_nanos.cast());
     }
 
-    /// Borrow access to the [`Config`]
-    pub fn borrow(&self) -> Ref<Config> {
+    /// Access base (unscaled) [`Config`]
+    pub fn base(&self) -> Ref<Config> {
         self.config.borrow()
     }
 
-    /// Update event configuration
-    #[inline]
-    pub fn change_config(&mut self, msg: ChangeConfig) -> Action {
-        match self.config.try_borrow_mut() {
-            Ok(mut config) => {
-                config.change_config(msg);
-                Action::EVENT_CONFIG
+    /// Update the base config
+    ///
+    /// Since it is not known which parts of the configuration are updated, all
+    /// configuration-update [`Action`]s must be performed.
+    ///
+    /// NOTE: adjusting font settings from a running app is not currently
+    /// supported, excepting font size.
+    ///
+    /// NOTE: it is assumed that widget state is not affected by config except
+    /// (a) state affected by a widget update (e.g. the `EventConfig` widget)
+    /// and (b) widget size may be affected by font size.
+    pub fn update_base<F: FnOnce(&mut Config)>(&self, f: F) -> Action {
+        if let Ok(mut c) = self.config.try_borrow_mut() {
+            c.is_dirty = true;
+
+            let font_size = c.font.size();
+            f(&mut c);
+
+            let mut action = Action::EVENT_CONFIG | Action::THEME_UPDATE;
+            if c.font.size() != font_size {
+                action |= Action::RESIZE;
             }
-            Err(_) => {
-                log::error!("WindowConfig::change_config: failed to mutably borrow config");
-                Action::empty()
-            }
+            action
+        } else {
+            Action::empty()
         }
     }
-}
 
-impl WindowConfig {
     /// Access event config
     pub fn event(&self) -> event::WindowConfig {
         event::WindowConfig(self)
+    }
+
+    /// Update event configuration
+    pub fn update_event<F: FnOnce(&mut event::Config)>(&self, f: F) -> Action {
+        if let Ok(mut c) = self.config.try_borrow_mut() {
+            c.is_dirty = true;
+
+            f(&mut c.event);
+            Action::EVENT_CONFIG
+        } else {
+            Action::empty()
+        }
     }
 
     /// Access font config
@@ -147,15 +168,57 @@ impl WindowConfig {
         Ref::map(self.config.borrow(), |c| &c.font)
     }
 
+    /// Set standard font size
+    ///
+    /// Units: logical (unscaled) pixels per Em.
+    ///
+    /// To convert to Points, multiply by three quarters.
+    ///
+    /// NOTE: this is currently the only supported run-time update to font configuration.
+    pub fn set_font_size(&self, pt_size: f32) -> Action {
+        if let Ok(mut c) = self.config.try_borrow_mut() {
+            c.is_dirty = true;
+
+            if pt_size == c.font.size() {
+                Action::empty()
+            } else {
+                c.font.set_size(pt_size);
+                Action::THEME_UPDATE | Action::UPDATE | Action::RESIZE
+            }
+        } else {
+            Action::empty()
+        }
+    }
+
     /// Access shortcut config
     pub fn shortcuts(&self) -> Ref<Shortcuts> {
         Ref::map(self.config.borrow(), |c| &c.shortcuts)
+    }
+
+    /// Adjust shortcuts
+    pub fn update_shortcuts<F: FnOnce(&mut Shortcuts)>(&self, f: F) -> Action {
+        if let Ok(mut c) = self.config.try_borrow_mut() {
+            c.is_dirty = true;
+
+            f(&mut c.shortcuts);
+            Action::UPDATE
+        } else {
+            Action::empty()
+        }
     }
 
     /// Scale factor
     pub fn scale_factor(&self) -> f32 {
         debug_assert!(self.scale_factor.is_finite());
         self.scale_factor
+    }
+
+    /// Update event configuration via a [`ConfigMsg`]
+    pub fn change_config(&self, msg: ConfigMsg) -> Action {
+        match msg {
+            ConfigMsg::Event(msg) => self.update_event(|ev| ev.change_config(msg)),
+            ConfigMsg::Font(FontConfigMsg::Size(size)) => self.set_font_size(size),
+        }
     }
 
     /// Minimum frame time

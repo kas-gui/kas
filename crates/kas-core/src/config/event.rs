@@ -10,11 +10,13 @@ use crate::event::ModifiersState;
 use crate::geom::Offset;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+use std::cell::Ref;
 use std::time::Duration;
 
-/// Configuration message used to update [`Config`]
+/// A message which may be used to update [`Config`]
 #[derive(Clone, Debug)]
-pub enum ChangeConfig {
+#[non_exhaustive]
+pub enum EventConfigMsg {
     MenuDelay(u32),
     TouchSelectDelay(u32),
     ScrollFlickTimeout(u32),
@@ -103,20 +105,20 @@ impl Default for Config {
 }
 
 impl Config {
-    pub(super) fn change_config(&mut self, msg: ChangeConfig) {
+    pub(super) fn change_config(&mut self, msg: EventConfigMsg) {
         match msg {
-            ChangeConfig::MenuDelay(v) => self.menu_delay_ms = v,
-            ChangeConfig::TouchSelectDelay(v) => self.touch_select_delay_ms = v,
-            ChangeConfig::ScrollFlickTimeout(v) => self.scroll_flick_timeout_ms = v,
-            ChangeConfig::ScrollFlickMul(v) => self.scroll_flick_mul = v,
-            ChangeConfig::ScrollFlickSub(v) => self.scroll_flick_sub = v,
-            ChangeConfig::ScrollDistEm(v) => self.scroll_dist_em = v,
-            ChangeConfig::PanDistThresh(v) => self.pan_dist_thresh = v,
-            ChangeConfig::MousePan(v) => self.mouse_pan = v,
-            ChangeConfig::MouseTextPan(v) => self.mouse_text_pan = v,
-            ChangeConfig::MouseNavFocus(v) => self.mouse_nav_focus = v,
-            ChangeConfig::TouchNavFocus(v) => self.touch_nav_focus = v,
-            ChangeConfig::ResetToDefault => *self = Config::default(),
+            EventConfigMsg::MenuDelay(v) => self.menu_delay_ms = v,
+            EventConfigMsg::TouchSelectDelay(v) => self.touch_select_delay_ms = v,
+            EventConfigMsg::ScrollFlickTimeout(v) => self.scroll_flick_timeout_ms = v,
+            EventConfigMsg::ScrollFlickMul(v) => self.scroll_flick_mul = v,
+            EventConfigMsg::ScrollFlickSub(v) => self.scroll_flick_sub = v,
+            EventConfigMsg::ScrollDistEm(v) => self.scroll_dist_em = v,
+            EventConfigMsg::PanDistThresh(v) => self.pan_dist_thresh = v,
+            EventConfigMsg::MousePan(v) => self.mouse_pan = v,
+            EventConfigMsg::MouseTextPan(v) => self.mouse_text_pan = v,
+            EventConfigMsg::MouseNavFocus(v) => self.mouse_nav_focus = v,
+            EventConfigMsg::TouchNavFocus(v) => self.touch_nav_focus = v,
+            EventConfigMsg::ResetToDefault => *self = Config::default(),
         }
     }
 }
@@ -129,16 +131,22 @@ impl Config {
 pub struct WindowConfig<'a>(pub(super) &'a super::WindowConfig);
 
 impl<'a> WindowConfig<'a> {
+    /// Access base (unscaled) event [`Config`]
+    #[inline]
+    pub fn base(&self) -> Ref<Config> {
+        Ref::map(self.0.config.borrow(), |c| &c.event)
+    }
+
     /// Delay before opening/closing menus on mouse hover
     #[inline]
     pub fn menu_delay(&self) -> Duration {
-        Duration::from_millis(self.0.borrow().event.menu_delay_ms.cast())
+        Duration::from_millis(self.base().menu_delay_ms.cast())
     }
 
     /// Delay before switching from panning to (text) selection mode
     #[inline]
     pub fn touch_select_delay(&self) -> Duration {
-        Duration::from_millis(self.0.borrow().event.touch_select_delay_ms.cast())
+        Duration::from_millis(self.base().touch_select_delay_ms.cast())
     }
 
     /// Controls activation of glide/momentum scrolling
@@ -148,7 +156,7 @@ impl<'a> WindowConfig<'a> {
     /// events within this time window are used to calculate the initial speed.
     #[inline]
     pub fn scroll_flick_timeout(&self) -> Duration {
-        Duration::from_millis(self.0.borrow().event.scroll_flick_timeout_ms.cast())
+        Duration::from_millis(self.base().scroll_flick_timeout_ms.cast())
     }
 
     /// Scroll flick velocity decay: `(mul, sub)`
@@ -163,10 +171,7 @@ impl<'a> WindowConfig<'a> {
     /// Units are pixels/second (output is adjusted for the window's scale factor).
     #[inline]
     pub fn scroll_flick_decay(&self) -> (f32, f32) {
-        (
-            self.0.borrow().event.scroll_flick_mul,
-            self.0.scroll_flick_sub,
-        )
+        (self.base().scroll_flick_mul, self.0.scroll_flick_sub)
     }
 
     /// Get distance in pixels to scroll due to mouse wheel
@@ -193,25 +198,25 @@ impl<'a> WindowConfig<'a> {
     /// When to pan general widgets (unhandled events) with the mouse
     #[inline]
     pub fn mouse_pan(&self) -> MousePan {
-        self.0.borrow().event.mouse_pan
+        self.base().mouse_pan
     }
 
     /// When to pan text fields with the mouse
     #[inline]
     pub fn mouse_text_pan(&self) -> MousePan {
-        self.0.borrow().event.mouse_text_pan
+        self.base().mouse_text_pan
     }
 
     /// Whether mouse clicks set keyboard navigation focus
     #[inline]
     pub fn mouse_nav_focus(&self) -> bool {
-        self.0.nav_focus && self.0.borrow().event.mouse_nav_focus
+        self.0.nav_focus && self.base().mouse_nav_focus
     }
 
     /// Whether touchscreen events set keyboard navigation focus
     #[inline]
     pub fn touch_nav_focus(&self) -> bool {
-        self.0.nav_focus && self.0.borrow().event.touch_nav_focus
+        self.0.nav_focus && self.base().touch_nav_focus
     }
 }
 

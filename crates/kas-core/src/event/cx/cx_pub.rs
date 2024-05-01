@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use super::*;
 use crate::cast::Conv;
-use crate::config::event::ChangeConfig;
+use crate::config::ConfigMsg;
 use crate::draw::DrawShared;
 use crate::geom::{Offset, Vec2};
 use crate::theme::{SizeCx, ThemeControl};
@@ -163,7 +163,7 @@ impl EventState {
 
     /// Update event configuration
     #[inline]
-    pub fn change_config(&mut self, msg: ChangeConfig) {
+    pub fn change_config(&mut self, msg: ConfigMsg) {
         self.action |= self.config.change_config(msg);
     }
 

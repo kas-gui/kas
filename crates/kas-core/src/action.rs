@@ -41,13 +41,15 @@ bitflags! {
         const SET_RECT = 1 << 8;
         /// Resize all widgets in the window
         const RESIZE = 1 << 9;
-        /// Update theme memory
+        /// Update [`Dimensions`](crate::theme::dimensions::Dimensions) instances
         ///
         /// Implies [`Action::RESIZE`].
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
         #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
         const THEME_UPDATE = 1 << 10;
         /// Reload per-window cache of event configuration
+        ///
+        /// Implies [`Action::UPDATE`].
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
         #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
         const EVENT_CONFIG = 1 << 11;
@@ -61,6 +63,8 @@ bitflags! {
         ///
         /// *Configuring* widgets assigns [`Id`](crate::Id) identifiers and calls
         /// [`Events::configure`](crate::Events::configure).
+        ///
+        /// Implies [`Action::UPDATE`] since widgets are updated on configure.
         const RECONFIGURE = 1 << 16;
         /// Update all widgets
         ///

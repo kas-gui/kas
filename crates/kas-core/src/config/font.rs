@@ -9,13 +9,23 @@ use crate::text::fonts::{self, AddMode, FontSelector};
 use crate::theme::TextClass;
 use std::collections::BTreeMap;
 
-/// Event handling configuration
+/// A message which may be used to update [`FontConfig`]
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub enum FontConfigMsg {
+    /// Standard font size, in units of pixels-per-Em
+    Size(f32),
+}
+
+/// Font configuration
+///
+/// Note that only changes to [`Self::size`] are currently supported at run-time.
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FontConfig {
     /// Standard font size, in units of pixels-per-Em
     #[cfg_attr(feature = "serde", serde(default = "defaults::size"))]
-    size: f32,
+    pub size: f32,
 
     /// Font aliases, used when searching for a font family matching the key.
     ///
@@ -38,15 +48,15 @@ pub struct FontConfig {
     ///
     /// Supported modes: `Prepend`, `Append`, `Replace`.
     #[cfg_attr(feature = "serde", serde(default))]
-    aliases: BTreeMap<String, FontAliases>,
+    pub aliases: BTreeMap<String, FontAliases>,
 
     /// Standard fonts
     #[cfg_attr(feature = "serde", serde(default))]
-    fonts: BTreeMap<TextClass, FontSelector<'static>>,
+    pub fonts: BTreeMap<TextClass, FontSelector<'static>>,
 
     /// Text glyph rastering settings
     #[cfg_attr(feature = "serde", serde(default))]
-    raster: RasterConfig,
+    pub raster: RasterConfig,
 }
 
 impl Default for FontConfig {

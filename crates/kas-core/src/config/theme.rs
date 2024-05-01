@@ -121,11 +121,6 @@ impl ThemeConfig {
 mod defaults {
     use super::*;
 
-    #[cfg(feature = "serde")]
-    pub fn add_mode() -> AddMode {
-        AddMode::Prepend
-    }
-
     pub fn color_schemes() -> BTreeMap<String, ColorsSrgb> {
         let mut schemes = BTreeMap::new();
         schemes.insert("light".to_string(), ColorsSrgb::light());
