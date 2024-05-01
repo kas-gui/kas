@@ -14,7 +14,6 @@
 
 mod anim;
 mod colors;
-mod config;
 mod draw;
 mod flat_theme;
 mod multi;
@@ -30,7 +29,6 @@ mod traits;
 pub mod dimensions;
 
 pub use colors::{Colors, ColorsLinear, ColorsSrgb, InputState};
-pub use config::{Config, RasterConfig};
 pub use draw::{Background, DrawCx};
 pub use flat_theme::FlatTheme;
 pub use multi::{MultiTheme, MultiThemeBuilder};

@@ -126,7 +126,7 @@ impl<'a> ConfigCx<'a> {
     /// Configure a text object
     ///
     /// This selects a font given the [`TextClass`][crate::theme::TextClass],
-    /// [theme configuration][crate::theme::Config] and
+    /// [theme configuration][crate::config::theme::Config] and
     /// the loaded [fonts][crate::text::fonts].
     #[inline]
     pub fn text_configure<T: FormattableText>(&self, text: &mut Text<T>) {

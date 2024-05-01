@@ -12,6 +12,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use crate::cast::traits::*;
+use crate::config::theme::Config;
 use crate::dir::{Direction, Directional};
 use crate::draw::{color::Rgba, *};
 use crate::event::EventState;
@@ -19,7 +20,7 @@ use crate::geom::*;
 use crate::text::{fonts, Effect, TextDisplay};
 use crate::theme::dimensions as dim;
 use crate::theme::{Background, FrameStyle, MarkStyle, TextClass};
-use crate::theme::{ColorsLinear, Config, InputState, Theme};
+use crate::theme::{ColorsLinear, InputState, Theme};
 use crate::theme::{SelectionStyle, ThemeControl, ThemeDraw, ThemeSize};
 use crate::{Action, Id};
 

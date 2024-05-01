@@ -11,10 +11,9 @@ use std::f32;
 use std::rc::Rc;
 
 use super::anim::AnimState;
-use super::{
-    Config, Feature, FrameStyle, MarginStyle, MarkStyle, SizableText, TextClass, ThemeSize,
-};
+use super::{Feature, FrameStyle, MarginStyle, MarkStyle, SizableText, TextClass, ThemeSize};
 use crate::cast::traits::*;
+use crate::config::theme::Config;
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
 use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules, Stretch};

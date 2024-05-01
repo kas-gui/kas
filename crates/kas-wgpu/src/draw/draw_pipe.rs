@@ -14,11 +14,11 @@ use crate::DrawShadedImpl;
 use crate::Options;
 use kas::app::Error;
 use kas::cast::traits::*;
+use kas::config::theme::RasterConfig;
 use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::geom::{Quad, Size, Vec2};
 use kas::text::{Effect, TextDisplay};
-use kas::theme::RasterConfig;
 
 /// Failure while constructing an [`Application`]: no graphics adapter found
 #[non_exhaustive]

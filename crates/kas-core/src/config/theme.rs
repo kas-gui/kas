@@ -5,8 +5,8 @@
 
 //! Theme configuration
 
-use super::{ColorsSrgb, TextClass, ThemeConfig};
 use crate::text::fonts::{self, AddMode, FontSelector};
+use crate::theme::{ColorsSrgb, TextClass, ThemeConfig};
 use crate::Action;
 use std::collections::BTreeMap;
 use std::time::Duration;

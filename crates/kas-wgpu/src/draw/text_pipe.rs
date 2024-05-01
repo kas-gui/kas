@@ -7,11 +7,11 @@
 
 use super::{atlases, ShaderManager};
 use kas::cast::*;
+use kas::config::theme::RasterConfig;
 use kas::draw::{color::Rgba, PassId};
 use kas::geom::{Quad, Rect, Vec2};
 use kas::text::fonts::FaceId;
 use kas::text::{Effect, Glyph, TextDisplay};
-use kas::theme::RasterConfig;
 use kas_text::raster::{raster, Config, SpriteDescriptor};
 use rustc_hash::FxHashMap as HashMap;
 use std::mem::size_of;

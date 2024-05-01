@@ -5,7 +5,8 @@
 
 //! Stack-DST versions of theme traits
 
-use super::{Config, Theme, Window};
+use super::{Theme, Window};
+use crate::config::theme::Config;
 use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use crate::event::EventState;
 use crate::theme::{ThemeControl, ThemeDraw};

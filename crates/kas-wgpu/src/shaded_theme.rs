@@ -11,6 +11,7 @@ use std::time::Instant;
 
 use crate::{DrawShaded, DrawShadedImpl};
 use kas::cast::traits::*;
+use kas::config::theme::Config;
 use kas::dir::{Direction, Directional};
 use kas::draw::{color::Rgba, *};
 use kas::event::EventState;
@@ -18,7 +19,7 @@ use kas::geom::*;
 use kas::text::TextDisplay;
 use kas::theme::dimensions as dim;
 use kas::theme::{Background, ThemeControl, ThemeDraw, ThemeSize};
-use kas::theme::{ColorsLinear, Config, FlatTheme, InputState, SimpleTheme, Theme};
+use kas::theme::{ColorsLinear, FlatTheme, InputState, SimpleTheme, Theme};
 use kas::theme::{FrameStyle, MarkStyle, TextClass};
 use kas::{Action, Id};
 

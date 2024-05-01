@@ -5,7 +5,8 @@
 
 //! Theme traits
 
-use super::{ColorsLinear, ColorsSrgb, Config, RasterConfig, ThemeDraw, ThemeSize};
+use super::{ColorsLinear, ColorsSrgb, ThemeDraw, ThemeSize};
+use crate::config::theme::{Config, RasterConfig};
 use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use crate::event::EventState;
 use crate::{autoimpl, Action};

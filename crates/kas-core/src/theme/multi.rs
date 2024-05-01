@@ -7,7 +7,8 @@
 
 use std::collections::HashMap;
 
-use super::{ColorsLinear, Config, Theme, ThemeDst, Window};
+use super::{ColorsLinear, Theme, ThemeDst, Window};
+use crate::config::theme::Config;
 use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use crate::event::EventState;
 use crate::theme::{ThemeControl, ThemeDraw};

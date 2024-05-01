@@ -18,3 +18,5 @@ pub use options::{ConfigMode, Options};
 
 mod shortcuts;
 pub use shortcuts::Shortcuts;
+
+pub mod theme;
