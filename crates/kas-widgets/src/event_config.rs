@@ -6,8 +6,7 @@
 //! Drivers for configuration types
 
 use crate::{Button, CheckButton, ComboBox, Spinner};
-use kas::config::event::{EventConfigMsg, MousePan};
-use kas::config::ConfigMsg;
+use kas::config::{ConfigMsg, EventConfigMsg, MousePan};
 use kas::prelude::*;
 
 impl_scope! {

@@ -8,7 +8,8 @@
 mod config;
 pub use config::{Config, ConfigMsg, WindowConfig};
 
-pub mod event;
+mod event;
+pub use event::{EventConfig, EventConfigMsg, EventWindowConfig, MousePan};
 
 mod font;
 pub use font::{FontConfig, FontConfigMsg, RasterConfig};

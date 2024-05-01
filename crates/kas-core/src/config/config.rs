@@ -5,8 +5,8 @@
 
 //! Top-level configuration struct
 
-use super::theme::ThemeConfigMsg;
-use super::{event, FontConfig, FontConfigMsg, ThemeConfig};
+use super::{EventConfig, EventConfigMsg, EventWindowConfig};
+use super::{FontConfig, FontConfigMsg, ThemeConfig, ThemeConfigMsg};
 use crate::cast::Cast;
 use crate::config::Shortcuts;
 use crate::Action;
@@ -20,7 +20,7 @@ use std::time::Duration;
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum ConfigMsg {
-    Event(event::EventConfigMsg),
+    Event(EventConfigMsg),
     Font(FontConfigMsg),
     Theme(ThemeConfigMsg),
 }
@@ -29,14 +29,16 @@ pub enum ConfigMsg {
 ///
 /// This is serializable (using `feature = "serde"`) with the following fields:
 ///
-/// > `event`: [`event::Config`] \
-/// > `shortcuts`: [`Shortcuts`]
+/// > `event`: [`EventConfig`] \
+/// > `font`: [`FontConfig`] \
+/// > `shortcuts`: [`Shortcuts`] \
+/// > `theme`: [`ThemeConfig`]
 ///
 /// For descriptions of configuration effects, see [`WindowConfig`] methods.
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Config {
-    pub event: event::Config,
+    pub event: EventConfig,
 
     pub font: FontConfig,
 
@@ -55,7 +57,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
-            event: event::Config::default(),
+            event: EventConfig::default(),
             font: Default::default(),
             shortcuts: Shortcuts::platform_defaults(),
             theme: Default::default(),
@@ -152,12 +154,12 @@ impl WindowConfig {
     }
 
     /// Access event config
-    pub fn event(&self) -> event::WindowConfig {
-        event::WindowConfig(self)
+    pub fn event(&self) -> EventWindowConfig {
+        EventWindowConfig(self)
     }
 
     /// Update event configuration
-    pub fn update_event<F: FnOnce(&mut event::Config) -> Action>(&self, f: F) -> Action {
+    pub fn update_event<F: FnOnce(&mut EventConfig) -> Action>(&self, f: F) -> Action {
         if let Ok(mut c) = self.config.try_borrow_mut() {
             c.is_dirty = true;
             f(&mut c.event)

@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::cell::Ref;
 use std::time::Duration;
 
-/// A message which may be used to update [`Config`]
+/// A message which may be used to update [`EventConfig`]
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum EventConfigMsg {
@@ -48,10 +48,10 @@ pub enum EventConfigMsg {
 /// > `mouse_nav_focus`: `bool` \
 /// > `touch_nav_focus`: `bool`
 ///
-/// For descriptions of configuration effects, see [`WindowConfig`] methods.
+/// For descriptions of configuration effects, see [`EventWindowConfig`] methods.
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Config {
+pub struct EventConfig {
     #[cfg_attr(feature = "serde", serde(default = "defaults::menu_delay_ms"))]
     pub menu_delay_ms: u32,
 
@@ -87,9 +87,9 @@ pub struct Config {
     pub touch_nav_focus: bool,
 }
 
-impl Default for Config {
+impl Default for EventConfig {
     fn default() -> Self {
-        Config {
+        EventConfig {
             menu_delay_ms: defaults::menu_delay_ms(),
             touch_select_delay_ms: defaults::touch_select_delay_ms(),
             scroll_flick_timeout_ms: defaults::scroll_flick_timeout_ms(),
@@ -105,7 +105,7 @@ impl Default for Config {
     }
 }
 
-impl Config {
+impl EventConfig {
     pub(super) fn change_config(&mut self, msg: EventConfigMsg) -> Action {
         match msg {
             EventConfigMsg::MenuDelay(v) => self.menu_delay_ms = v,
@@ -119,7 +119,7 @@ impl Config {
             EventConfigMsg::MouseTextPan(v) => self.mouse_text_pan = v,
             EventConfigMsg::MouseNavFocus(v) => self.mouse_nav_focus = v,
             EventConfigMsg::TouchNavFocus(v) => self.touch_nav_focus = v,
-            EventConfigMsg::ResetToDefault => *self = Config::default(),
+            EventConfigMsg::ResetToDefault => *self = EventConfig::default(),
         }
 
         Action::EVENT_CONFIG
@@ -131,12 +131,12 @@ impl Config {
 /// This is a helper to read event configuration, adapted for the current
 /// application and window scale.
 #[derive(Clone, Debug)]
-pub struct WindowConfig<'a>(pub(super) &'a super::WindowConfig);
+pub struct EventWindowConfig<'a>(pub(super) &'a super::WindowConfig);
 
-impl<'a> WindowConfig<'a> {
-    /// Access base (unscaled) event [`Config`]
+impl<'a> EventWindowConfig<'a> {
+    /// Access base (unscaled) event [`EventConfig`]
     #[inline]
-    pub fn base(&self) -> Ref<Config> {
+    pub fn base(&self) -> Ref<EventConfig> {
         Ref::map(self.0.config.borrow(), |c| &c.event)
     }
 
