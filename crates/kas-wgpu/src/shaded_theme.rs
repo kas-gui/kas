@@ -5,6 +5,7 @@
 
 //! Shaded theme
 
+use std::cell::RefCell;
 use std::f32;
 use std::ops::Range;
 use std::time::Instant;
@@ -18,7 +19,7 @@ use kas::event::EventState;
 use kas::geom::*;
 use kas::text::TextDisplay;
 use kas::theme::dimensions as dim;
-use kas::theme::{Background, ThemeControl, ThemeDraw, ThemeSize};
+use kas::theme::{Background, ThemeDraw, ThemeSize};
 use kas::theme::{ColorsLinear, FlatTheme, InputState, SimpleTheme, Theme};
 use kas::theme::{FrameStyle, MarkStyle, TextClass};
 use kas::Id;
@@ -78,7 +79,7 @@ where
     type Window = dim::Window<DS::Draw>;
     type Draw<'a> = DrawHandle<'a, DS>;
 
-    fn init(&mut self, config: &Config) {
+    fn init(&mut self, config: &RefCell<Config>) {
         <SimpleTheme as Theme<DS>>::init(&mut self.base, config)
     }
 
@@ -122,8 +123,6 @@ where
         <SimpleTheme as Theme<DS>>::clear_color(&self.base)
     }
 }
-
-impl ThemeControl for ShadedTheme {}
 
 impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS>
 where

@@ -8,7 +8,7 @@
 use super::{AppData, AppGraphicsBuilder, Error, Pending, Platform};
 use crate::config::{Config, Options};
 use crate::draw::DrawShared;
-use crate::theme::{Theme, ThemeControl};
+use crate::theme::Theme;
 use crate::util::warn_about_error;
 use crate::{draw, messages::MessageStack, Action, WindowId};
 use std::any::TypeId;
@@ -56,7 +56,7 @@ where
     ) -> Result<Self, Error> {
         let platform = pw.platform();
         let draw = kas::draw::SharedState::new(draw_shared);
-        theme.init(&*config.borrow());
+        theme.init(&config);
 
         #[cfg(feature = "clipboard")]
         let clipboard = match Clipboard::new() {
@@ -189,14 +189,6 @@ pub(crate) trait AppShared {
     /// clipboard support.
     fn set_primary(&mut self, content: String);
 
-    /// Adjust the theme
-    ///
-    /// Note: theme adjustments apply to all windows, as does the [`Action`]
-    /// returned from the closure.
-    //
-    // TODO(opt): pass f by value, not boxed
-    fn adjust_theme<'s>(&'s mut self, f: Box<dyn FnOnce(&mut dyn ThemeControl) -> Action + 's>);
-
     /// Access the [`DrawShared`] object
     fn draw_shared(&mut self) -> &mut dyn DrawShared;
 
@@ -298,11 +290,6 @@ impl<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> AppShared
                 Err(e) => warn_about_error("Failed to set clipboard contents", &e),
             }
         }
-    }
-
-    fn adjust_theme<'s>(&'s mut self, f: Box<dyn FnOnce(&mut dyn ThemeControl) -> Action + 's>) {
-        let action = f(&mut self.theme);
-        self.pending.push_back(Pending::Action(action));
     }
 
     fn draw_shared(&mut self) -> &mut dyn DrawShared {

@@ -488,6 +488,6 @@ fn main() -> kas::app::Result<()> {
     let mut app = kas::app::WgpuBuilder::new(PipeBuilder)
         .with_theme(theme)
         .build(())?;
-    app.config_mut().theme.set_active_scheme("dark");
+    let _ = app.config_mut().theme.set_active_scheme("dark");
     app.with(window).run()
 }

@@ -6,29 +6,14 @@
 //! Theme traits
 
 use super::{ColorsLinear, ThemeDraw, ThemeSize};
+use crate::autoimpl;
 use crate::config::{Config, WindowConfig};
 use crate::draw::{color, DrawIface, DrawSharedImpl};
 use crate::event::EventState;
-use crate::{autoimpl, Action};
 use std::any::Any;
+use std::cell::RefCell;
 
 #[allow(unused)] use crate::event::EventCx;
-
-/// Interface through which a theme can be adjusted at run-time
-///
-/// All methods return an [`Action`] to enable correct action when a theme
-/// is updated via [`EventCx::adjust_theme`]. When adjusting a theme before
-/// the UI is started, this return value can be safely ignored.
-#[crate::autoimpl(for<T: trait + ?Sized> &mut T, Box<T>)]
-pub trait ThemeControl {
-    /// Switch the theme
-    ///
-    /// Most themes do not react to this method; [`super::MultiTheme`] uses
-    /// it to switch themes.
-    fn set_theme(&mut self, _theme: &str) -> Action {
-        Action::empty()
-    }
-}
 
 /// A *theme* provides widget sizing and drawing implementations.
 ///
@@ -37,7 +22,7 @@ pub trait ThemeControl {
 /// Objects of this type are copied within each window's data structure. For
 /// large resources (e.g. fonts and icons) consider using external storage.
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
-pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
+pub trait Theme<DS: DrawSharedImpl> {
     /// The associated [`Window`] implementation.
     type Window: Window;
 
@@ -54,7 +39,7 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
     ///
     /// At a minimum, a theme must load a font to [`crate::text::fonts`].
     /// The first font loaded (by any theme) becomes the default font.
-    fn init(&mut self, config: &Config);
+    fn init(&mut self, config: &RefCell<Config>);
 
     /// Construct per-window storage
     ///

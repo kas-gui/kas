@@ -6,6 +6,7 @@
 //! Simple theme
 
 use linear_map::LinearMap;
+use std::cell::RefCell;
 use std::f32;
 use std::ops::Range;
 use std::rc::Rc;
@@ -21,7 +22,7 @@ use crate::text::{fonts, Effect, TextDisplay};
 use crate::theme::dimensions as dim;
 use crate::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use crate::theme::{ColorsLinear, InputState, Theme};
-use crate::theme::{SelectionStyle, ThemeControl, ThemeDraw, ThemeSize};
+use crate::theme::{SelectionStyle, ThemeDraw, ThemeSize};
 use crate::Id;
 
 use super::ColorsSrgb;
@@ -69,13 +70,14 @@ where
     type Window = dim::Window<DS::Draw>;
     type Draw<'a> = DrawHandle<'a, DS>;
 
-    fn init(&mut self, config: &Config) {
+    fn init(&mut self, config: &RefCell<Config>) {
         let fonts = fonts::library();
         if let Err(e) = fonts.select_default() {
             panic!("Error loading font: {e}");
         }
         self.fonts = Some(Rc::new(
             config
+                .borrow()
                 .font
                 .iter_fonts()
                 .filter_map(|(c, s)| fonts.select_font(s).ok().map(|id| (*c, id)))
@@ -123,8 +125,6 @@ where
         self.cols.background
     }
 }
-
-impl ThemeControl for SimpleTheme {}
 
 impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS>
 where

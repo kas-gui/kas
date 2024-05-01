@@ -5,6 +5,7 @@
 
 //! Flat theme
 
+use std::cell::RefCell;
 use std::f32;
 use std::ops::Range;
 use std::time::Instant;
@@ -20,7 +21,7 @@ use crate::text::TextDisplay;
 use crate::theme::dimensions as dim;
 use crate::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use crate::theme::{ColorsLinear, InputState, Theme};
-use crate::theme::{ThemeControl, ThemeDraw, ThemeSize};
+use crate::theme::{ThemeDraw, ThemeSize};
 use crate::Id;
 
 // Used to ensure a rectangular background is inside a circular corner.
@@ -89,7 +90,7 @@ where
     type Window = dim::Window<DS::Draw>;
     type Draw<'a> = DrawHandle<'a, DS>;
 
-    fn init(&mut self, config: &Config) {
+    fn init(&mut self, config: &RefCell<Config>) {
         <SimpleTheme as Theme<DS>>::init(&mut self.base, config)
     }
 
@@ -133,8 +134,6 @@ where
         self.base.cols.background
     }
 }
-
-impl ThemeControl for FlatTheme {}
 
 impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS>
 where

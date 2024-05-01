@@ -611,7 +611,10 @@ fn main() -> kas::app::Result<()> {
     let ui = Adapt::new(ui, AppData::default()).on_message(|cx, state, msg| match msg {
         Menu::Theme(name) => {
             println!("Theme: {name:?}");
-            cx.adjust_theme(|theme| theme.set_theme(name));
+            let act = cx
+                .config()
+                .update_theme(|theme| theme.set_active_theme(name));
+            cx.window_action(act);
         }
         Menu::Colour(name) => {
             println!("Colour scheme: {name:?}");

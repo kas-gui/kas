@@ -9,8 +9,8 @@ use super::{ColorsLinear, Theme, ThemeDst, Window};
 use crate::config::{Config, WindowConfig};
 use crate::draw::{color, DrawIface, DrawSharedImpl};
 use crate::event::EventState;
-use crate::theme::{ThemeControl, ThemeDraw};
-use crate::Action;
+use crate::theme::ThemeDraw;
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 type DynTheme<DS> = Box<dyn ThemeDst<DS>>;
@@ -81,13 +81,30 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
     type Window = Box<dyn Window>;
     type Draw<'a> = Box<dyn ThemeDraw + 'a>;
 
-    fn init(&mut self, config: &Config) {
+    fn init(&mut self, config: &RefCell<Config>) {
+        if config.borrow().theme.active_theme.is_empty() {
+            for (name, index) in &self.names {
+                if *index == self.active {
+                    let _ = config.borrow_mut().theme.set_active_theme(name.to_string());
+                    break;
+                }
+            }
+        }
+
         for theme in &mut self.themes {
             theme.init(config);
         }
     }
 
     fn new_window(&mut self, config: &WindowConfig) -> Self::Window {
+        // We may switch themes here
+        let theme = &config.theme().active_theme;
+        if let Some(index) = self.names.get(theme).cloned() {
+            if index != self.active {
+                self.active = index;
+            }
+        }
+
         self.themes[self.active].new_window(config)
     }
 
@@ -115,17 +132,5 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
 
     fn clear_color(&self) -> color::Rgba {
         self.themes[self.active].clear_color()
-    }
-}
-
-impl<DS> ThemeControl for MultiTheme<DS> {
-    fn set_theme(&mut self, theme: &str) -> Action {
-        if let Some(index) = self.names.get(theme).cloned() {
-            if index != self.active {
-                self.active = index;
-                return Action::THEME_SWITCH;
-            }
-        }
-        Action::empty()
     }
 }

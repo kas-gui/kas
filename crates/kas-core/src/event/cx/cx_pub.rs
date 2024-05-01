@@ -14,7 +14,7 @@ use crate::cast::Conv;
 use crate::config::ConfigMsg;
 use crate::draw::DrawShared;
 use crate::geom::{Offset, Vec2};
-use crate::theme::{SizeCx, ThemeControl};
+use crate::theme::SizeCx;
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
 #[allow(unused)] use crate::{Events, Layout}; // for doc-links
@@ -951,12 +951,6 @@ impl<'a> EventCx<'a> {
         }
 
         self.shared.set_primary(content)
-    }
-
-    /// Adjust the theme
-    #[inline]
-    pub fn adjust_theme<F: FnOnce(&mut dyn ThemeControl) -> Action>(&mut self, f: F) {
-        self.shared.adjust_theme(Box::new(f));
     }
 
     /// Get a [`SizeCx`]

@@ -5,22 +5,24 @@
 
 //! Stack-DST versions of theme traits
 
+use std::cell::RefCell;
+
 use super::{Theme, Window};
 use crate::config::{Config, WindowConfig};
 use crate::draw::{color, DrawIface, DrawSharedImpl};
 use crate::event::EventState;
-use crate::theme::{ThemeControl, ThemeDraw};
+use crate::theme::ThemeDraw;
 
 /// As [`Theme`], but without associated types
 ///
 /// This trait is implemented automatically for all implementations of
 /// [`Theme`]. It is intended only for use where a less parameterised
 /// trait is required.
-pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
+pub trait ThemeDst<DS: DrawSharedImpl> {
     /// Theme initialisation
     ///
     /// See also [`Theme::init`].
-    fn init(&mut self, config: &Config);
+    fn init(&mut self, config: &RefCell<Config>);
 
     /// Construct per-window storage
     ///
@@ -46,7 +48,7 @@ pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
 }
 
 impl<DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
-    fn init(&mut self, config: &Config) {
+    fn init(&mut self, config: &RefCell<Config>) {
         self.init(config);
     }
 

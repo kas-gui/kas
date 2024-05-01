@@ -206,12 +206,11 @@ impl WindowConfig {
     }
 
     /// Update theme configuration
-    pub fn update_theme<F: FnOnce(&mut ThemeConfig)>(&self, f: F) -> Action {
+    pub fn update_theme<F: FnOnce(&mut ThemeConfig) -> Action>(&self, f: F) -> Action {
         if let Ok(mut c) = self.config.try_borrow_mut() {
             c.is_dirty = true;
 
-            f(&mut c.theme);
-            Action::THEME_UPDATE
+            f(&mut c.theme)
         } else {
             Action::empty()
         }
@@ -240,7 +239,7 @@ impl WindowConfig {
         match msg {
             ConfigMsg::Event(msg) => self.update_event(|ev| ev.change_config(msg)),
             ConfigMsg::Font(FontConfigMsg::Size(size)) => self.set_font_size(size),
-            ConfigMsg::Theme(msg) => self.update_theme(|th| th.change_config(msg)),
+            ConfigMsg::Theme(msg) => self.update_theme(|theme| theme.change_config(msg)),
         }
     }
 
