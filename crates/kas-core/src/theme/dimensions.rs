@@ -13,7 +13,7 @@ use std::rc::Rc;
 use super::anim::AnimState;
 use super::{Feature, FrameStyle, MarginStyle, MarkStyle, SizableText, TextClass, ThemeSize};
 use crate::cast::traits::*;
-use crate::config::{ThemeConfig, WindowConfig};
+use crate::config::WindowConfig;
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
 use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
@@ -160,13 +160,12 @@ impl<D> Window<D> {
     pub fn new(
         dims: &Parameters,
         config: &WindowConfig,
-        theme_config: &ThemeConfig,
         fonts: Rc<LinearMap<TextClass, FontId>>,
     ) -> Self {
         Window {
             dims: Dimensions::new(dims, config),
             fonts,
-            anim: AnimState::new(theme_config),
+            anim: AnimState::new(&config.theme()),
         }
     }
 

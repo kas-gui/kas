@@ -5,8 +5,8 @@
 
 //! Theme traits
 
-use super::{ColorsLinear, ColorsSrgb, ThemeDraw, ThemeSize};
-use crate::config::{Config, ThemeConfig, WindowConfig};
+use super::{ColorsLinear, ThemeDraw, ThemeSize};
+use crate::config::{Config, WindowConfig};
 use crate::draw::{color, DrawIface, DrawSharedImpl};
 use crate::event::EventState;
 use crate::{autoimpl, Action};
@@ -16,43 +16,11 @@ use std::any::Any;
 
 /// Interface through which a theme can be adjusted at run-time
 ///
-/// All methods return a [`Action`] to enable correct action when a theme
+/// All methods return an [`Action`] to enable correct action when a theme
 /// is updated via [`EventCx::adjust_theme`]. When adjusting a theme before
 /// the UI is started, this return value can be safely ignored.
 #[crate::autoimpl(for<T: trait + ?Sized> &mut T, Box<T>)]
 pub trait ThemeControl {
-    /// Get the name of the active color scheme
-    fn active_scheme(&self) -> &str;
-
-    /// List available color schemes
-    fn list_schemes(&self) -> Vec<&str>;
-
-    /// Get colors of a named scheme
-    fn get_scheme(&self, name: &str) -> Option<&ColorsSrgb>;
-
-    /// Access the in-use color scheme
-    fn get_colors(&self) -> &ColorsLinear;
-
-    /// Set colors directly
-    ///
-    /// This may be used to provide a custom color scheme. The `name` is
-    /// compulsary (and returned by [`Self::active_scheme`]).
-    /// The `name` is also used when saving config, though the custom colors are
-    /// not currently saved in this config.
-    fn set_colors(&mut self, name: String, scheme: ColorsLinear) -> Action;
-
-    /// Change the color scheme
-    ///
-    /// If no scheme by this name is found the scheme is left unchanged.
-    fn set_scheme(&mut self, name: &str) -> Action {
-        if name != self.active_scheme() {
-            if let Some(scheme) = self.get_scheme(name) {
-                return self.set_colors(name.to_string(), scheme.into());
-            }
-        }
-        Action::empty()
-    }
-
     /// Switch the theme
     ///
     /// Most themes do not react to this method; [`super::MultiTheme`] uses
@@ -79,12 +47,6 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
         DS: 'a,
         Self: 'a;
 
-    /// Get current configuration
-    fn config(&self) -> std::borrow::Cow<ThemeConfig>;
-
-    /// Apply/set the passed config
-    fn apply_config(&mut self, config: &ThemeConfig) -> Action;
-
     /// Theme initialisation
     ///
     /// The toolkit must call this method before [`Theme::new_window`]
@@ -96,6 +58,9 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
 
     /// Construct per-window storage
     ///
+    /// Updates theme from configuration and constructs a scaled per-window size
+    /// cache.
+    ///
     /// On "standard" monitors, the `dpi_factor` is 1. High-DPI screens may
     /// have a factor of 2 or higher. The factor may not be an integer; e.g.
     /// `9/8 = 1.125` works well with many 1440p screens. It is recommended to
@@ -105,12 +70,12 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
     /// ```
     ///
     /// A reference to the draw backend is provided allowing configuration.
-    fn new_window(&self, config: &WindowConfig) -> Self::Window;
+    fn new_window(&mut self, config: &WindowConfig) -> Self::Window;
 
     /// Update a window created by [`Theme::new_window`]
     ///
-    /// This is called when the DPI factor changes or theme dimensions change.
-    fn update_window(&self, window: &mut Self::Window, config: &WindowConfig);
+    /// This is called when the DPI factor changes or theme config or dimensions change.
+    fn update_window(&mut self, window: &mut Self::Window, config: &WindowConfig);
 
     /// Prepare to draw and construct a [`ThemeDraw`] object
     ///

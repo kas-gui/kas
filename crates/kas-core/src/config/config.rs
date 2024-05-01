@@ -5,7 +5,8 @@
 
 //! Top-level configuration struct
 
-use super::{event, FontConfig, FontConfigMsg};
+use super::theme::ThemeConfigMsg;
+use super::{event, FontConfig, FontConfigMsg, ThemeConfig};
 use crate::cast::Cast;
 use crate::config::Shortcuts;
 use crate::Action;
@@ -21,6 +22,7 @@ use std::time::Duration;
 pub enum ConfigMsg {
     Event(event::EventConfigMsg),
     Font(FontConfigMsg),
+    Theme(ThemeConfigMsg),
 }
 
 /// Base configuration
@@ -41,6 +43,8 @@ pub struct Config {
     #[cfg_attr(feature = "serde", serde(default = "Shortcuts::platform_defaults"))]
     pub shortcuts: Shortcuts,
 
+    pub theme: ThemeConfig,
+
     #[cfg_attr(feature = "serde", serde(default = "defaults::frame_dur_nanos"))]
     frame_dur_nanos: u32,
 
@@ -54,6 +58,7 @@ impl Default for Config {
             event: event::Config::default(),
             font: Default::default(),
             shortcuts: Shortcuts::platform_defaults(),
+            theme: Default::default(),
             frame_dur_nanos: defaults::frame_dur_nanos(),
             is_dirty: false,
         }
@@ -195,6 +200,23 @@ impl WindowConfig {
         Ref::map(self.config.borrow(), |c| &c.shortcuts)
     }
 
+    /// Access theme config
+    pub fn theme(&self) -> Ref<ThemeConfig> {
+        Ref::map(self.config.borrow(), |c| &c.theme)
+    }
+
+    /// Update theme configuration
+    pub fn update_theme<F: FnOnce(&mut ThemeConfig)>(&self, f: F) -> Action {
+        if let Ok(mut c) = self.config.try_borrow_mut() {
+            c.is_dirty = true;
+
+            f(&mut c.theme);
+            Action::THEME_UPDATE
+        } else {
+            Action::empty()
+        }
+    }
+
     /// Adjust shortcuts
     pub fn update_shortcuts<F: FnOnce(&mut Shortcuts)>(&self, f: F) -> Action {
         if let Ok(mut c) = self.config.try_borrow_mut() {
@@ -218,6 +240,7 @@ impl WindowConfig {
         match msg {
             ConfigMsg::Event(msg) => self.update_event(|ev| ev.change_config(msg)),
             ConfigMsg::Font(FontConfigMsg::Size(size)) => self.set_font_size(size),
+            ConfigMsg::Theme(msg) => self.update_theme(|th| th.change_config(msg)),
         }
     }
 

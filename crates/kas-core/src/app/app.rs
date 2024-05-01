@@ -72,10 +72,7 @@ impl_scope! {
 
         /// Build with `data`
         pub fn build<Data: AppData>(self, data: Data) -> Result<Application<Data, G, T>> {
-            let mut theme = self.theme;
-
             let options = self.options.unwrap_or_else(Options::from_env);
-            options.init_theme_config(&mut theme)?;
 
             let config = self.config.unwrap_or_else(|| match options.read_config() {
                 Ok(config) => Rc::new(RefCell::new(config)),
@@ -92,7 +89,7 @@ impl_scope! {
             draw_shared.set_raster_config(config.borrow().font.raster());
 
             let pw = PlatformWrapper(&el);
-            let state = AppState::new(data, pw, draw_shared, theme, options, config)?;
+            let state = AppState::new(data, pw, draw_shared, self.theme, options, config)?;
 
             Ok(Application {
                 el,

@@ -23,4 +23,4 @@ mod shortcuts;
 pub use shortcuts::Shortcuts;
 
 mod theme;
-pub use theme::ThemeConfig;
+pub use theme::{ThemeConfig, ThemeConfigMsg};

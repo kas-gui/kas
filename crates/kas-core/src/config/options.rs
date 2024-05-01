@@ -5,10 +5,8 @@
 
 //! Configuration options
 
+#[cfg(feature = "serde")] use super::Format;
 use super::{Config, Error};
-#[cfg(feature = "serde")] use super::{Format, ThemeConfig};
-use crate::draw::DrawSharedImpl;
-use crate::theme::Theme;
 #[cfg(feature = "serde")] use crate::util::warn_about_error;
 use std::env::var;
 use std::path::PathBuf;
@@ -35,8 +33,6 @@ pub enum ConfigMode {
 pub struct Options {
     /// Config file path. Default: empty. See `KAS_CONFIG` doc.
     pub config_path: PathBuf,
-    /// Theme config path. Default: empty.
-    pub theme_config_path: PathBuf,
     /// Config mode. Default: Read.
     pub config_mode: ConfigMode,
 }
@@ -45,7 +41,6 @@ impl Default for Options {
     fn default() -> Self {
         Options {
             config_path: PathBuf::new(),
-            theme_config_path: PathBuf::new(),
             config_mode: ConfigMode::Read,
         }
     }
@@ -67,12 +62,6 @@ impl Options {
     /// without reading or writing. This may change to use a platform-specific
     /// default path in future versions.
     ///
-    /// The `KAS_THEME_CONFIG` variable, if given, provides a path to the theme
-    /// config file, which is read or written according to `KAS_CONFIG_MODE`.
-    /// If `KAS_THEME_CONFIG` is not specified, platform-default configuration
-    /// is used without reading or writing. This may change to use a
-    /// platform-specific default path in future versions.
-    ///
     /// The `KAS_CONFIG_MODE` variable determines the read/write mode:
     ///
     /// -   `Read` (default): read-only
@@ -87,10 +76,6 @@ impl Options {
 
         if let Ok(v) = var("KAS_CONFIG") {
             options.config_path = v.into();
-        }
-
-        if let Ok(v) = var("KAS_THEME_CONFIG") {
-            options.theme_config_path = v.into();
         }
 
         if let Ok(mut v) = var("KAS_CONFIG_MODE") {
@@ -108,37 +93,6 @@ impl Options {
         }
 
         options
-    }
-
-    /// Load/save and apply theme config on start
-    ///
-    /// Requires feature "serde" to load/save config.
-    pub fn init_theme_config<DS: DrawSharedImpl, T: Theme<DS>>(
-        &self,
-        theme: &mut T,
-    ) -> Result<(), Error> {
-        match self.config_mode {
-            #[cfg(feature = "serde")]
-            ConfigMode::Read | ConfigMode::ReadWrite if self.theme_config_path.is_file() => {
-                let config: ThemeConfig = Format::guess_and_read_path(&self.theme_config_path)?;
-                // Ignore Action: UI isn't built yet
-                let _ = theme.apply_config(&config);
-            }
-            #[cfg(feature = "serde")]
-            ConfigMode::WriteDefault if !self.theme_config_path.as_os_str().is_empty() => {
-                let config = theme.config();
-                if let Err(error) =
-                    Format::guess_and_write_path(&self.theme_config_path, config.as_ref())
-                {
-                    warn_about_error("failed to write default config: ", &error);
-                }
-            }
-            _ => {
-                let _ = theme;
-            }
-        }
-
-        Ok(())
     }
 
     /// Load/save KAS config on start
@@ -169,19 +123,11 @@ impl Options {
     /// Save all config (on exit or after changes)
     ///
     /// Requires feature "serde" to save config.
-    pub fn write_config<DS: DrawSharedImpl, T: Theme<DS>>(
-        &self,
-        _config: &Config,
-        _theme: &T,
-    ) -> Result<(), Error> {
+    pub fn write_config(&self, _config: &Config) -> Result<(), Error> {
         #[cfg(feature = "serde")]
         if self.config_mode == ConfigMode::ReadWrite {
             if !self.config_path.as_os_str().is_empty() && _config.is_dirty() {
                 Format::guess_and_write_path(&self.config_path, &_config)?;
-            }
-            let theme_config = _theme.config();
-            if !self.theme_config_path.as_os_str().is_empty() && theme_config.is_dirty() {
-                Format::guess_and_write_path(&self.theme_config_path, theme_config.as_ref())?;
             }
         }
 

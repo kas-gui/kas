@@ -11,7 +11,7 @@ use std::time::Instant;
 
 use super::SimpleTheme;
 use crate::cast::traits::*;
-use crate::config::{Config, ThemeConfig, WindowConfig};
+use crate::config::{Config, WindowConfig};
 use crate::dir::{Direction, Directional};
 use crate::draw::{color::Rgba, *};
 use crate::event::EventState;
@@ -21,7 +21,7 @@ use crate::theme::dimensions as dim;
 use crate::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use crate::theme::{ColorsLinear, InputState, Theme};
 use crate::theme::{ThemeControl, ThemeDraw, ThemeSize};
-use crate::{Action, Id};
+use crate::Id;
 
 // Used to ensure a rectangular background is inside a circular corner.
 // Also the maximum inner radius of circular borders to overlap with this rect.
@@ -61,16 +61,6 @@ impl FlatTheme {
         let base = SimpleTheme::new();
         FlatTheme { base }
     }
-
-    /// Set the colour scheme
-    ///
-    /// If no scheme by this name is found the scheme is left unchanged.
-    #[inline]
-    #[must_use]
-    pub fn with_colours(mut self, scheme: &str) -> Self {
-        self.base = self.base.with_colours(scheme);
-        self
-    }
 }
 
 fn dimensions() -> dim::Parameters {
@@ -99,24 +89,18 @@ where
     type Window = dim::Window<DS::Draw>;
     type Draw<'a> = DrawHandle<'a, DS>;
 
-    fn config(&self) -> std::borrow::Cow<ThemeConfig> {
-        <SimpleTheme as Theme<DS>>::config(&self.base)
-    }
-
-    fn apply_config(&mut self, config: &ThemeConfig) -> Action {
-        <SimpleTheme as Theme<DS>>::apply_config(&mut self.base, config)
-    }
-
     fn init(&mut self, config: &Config) {
         <SimpleTheme as Theme<DS>>::init(&mut self.base, config)
     }
 
-    fn new_window(&self, config: &WindowConfig) -> Self::Window {
+    fn new_window(&mut self, config: &WindowConfig) -> Self::Window {
+        self.base.cols = config.theme().get_active_scheme().into();
         let fonts = self.base.fonts.as_ref().unwrap().clone();
-        dim::Window::new(&dimensions(), config, &self.base.config, fonts)
+        dim::Window::new(&dimensions(), config, fonts)
     }
 
-    fn update_window(&self, w: &mut Self::Window, config: &WindowConfig) {
+    fn update_window(&mut self, w: &mut Self::Window, config: &WindowConfig) {
+        self.base.cols = config.theme().get_active_scheme().into();
         w.update(&dimensions(), config);
     }
 
@@ -150,27 +134,7 @@ where
     }
 }
 
-impl ThemeControl for FlatTheme {
-    fn active_scheme(&self) -> &str {
-        self.base.active_scheme()
-    }
-
-    fn list_schemes(&self) -> Vec<&str> {
-        self.base.list_schemes()
-    }
-
-    fn get_scheme(&self, name: &str) -> Option<&super::ColorsSrgb> {
-        self.base.get_scheme(name)
-    }
-
-    fn get_colors(&self) -> &ColorsLinear {
-        self.base.get_colors()
-    }
-
-    fn set_colors(&mut self, name: String, cols: ColorsLinear) -> Action {
-        self.base.set_colors(name, cols)
-    }
-}
+impl ThemeControl for FlatTheme {}
 
 impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS>
 where

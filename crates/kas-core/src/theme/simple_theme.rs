@@ -12,7 +12,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use crate::cast::traits::*;
-use crate::config::{Config, ThemeConfig, WindowConfig};
+use crate::config::{Config, WindowConfig};
 use crate::dir::{Direction, Directional};
 use crate::draw::{color::Rgba, *};
 use crate::event::EventState;
@@ -22,7 +22,7 @@ use crate::theme::dimensions as dim;
 use crate::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use crate::theme::{ColorsLinear, InputState, Theme};
 use crate::theme::{SelectionStyle, ThemeControl, ThemeDraw, ThemeSize};
-use crate::{Action, Id};
+use crate::Id;
 
 use super::ColorsSrgb;
 
@@ -32,7 +32,6 @@ use super::ColorsSrgb;
 /// other themes.
 #[derive(Clone, Debug)]
 pub struct SimpleTheme {
-    pub config: ThemeConfig,
     pub cols: ColorsLinear,
     dims: dim::Parameters,
     pub fonts: Option<Rc<LinearMap<TextClass, fonts::FontId>>>,
@@ -48,34 +47,11 @@ impl SimpleTheme {
     /// Construct
     #[inline]
     pub fn new() -> Self {
-        #[cfg(not(feature = "dark-light"))]
-        let cols = ColorsSrgb::LIGHT.into();
-
-        #[cfg(feature = "dark-light")]
-        let cols = {
-            use dark_light::Mode;
-            match dark_light::detect() {
-                Mode::Dark => ColorsSrgb::DARK.into(),
-                Mode::Light | Mode::Default => ColorsSrgb::LIGHT.into(),
-            }
-        };
-
         SimpleTheme {
-            config: Default::default(),
-            cols,
+            cols: ColorsSrgb::LIGHT.into(), // value is unimportant
             dims: Default::default(),
             fonts: None,
         }
-    }
-
-    /// Set the colour scheme
-    ///
-    /// If no scheme by this name is found the scheme is left unchanged.
-    #[inline]
-    #[must_use]
-    pub fn with_colours(mut self, name: &str) -> Self {
-        let _ = self.set_scheme(name);
-        self
     }
 }
 
@@ -93,19 +69,6 @@ where
     type Window = dim::Window<DS::Draw>;
     type Draw<'a> = DrawHandle<'a, DS>;
 
-    fn config(&self) -> std::borrow::Cow<ThemeConfig> {
-        std::borrow::Cow::Borrowed(&self.config)
-    }
-
-    fn apply_config(&mut self, config: &ThemeConfig) -> Action {
-        let mut action = self.config.apply_config(config);
-        if let Some(cols) = self.config.get_active_scheme() {
-            self.cols = cols.into();
-            action |= Action::REDRAW;
-        }
-        action
-    }
-
     fn init(&mut self, config: &Config) {
         let fonts = fonts::library();
         if let Err(e) = fonts.select_default() {
@@ -120,12 +83,14 @@ where
         ));
     }
 
-    fn new_window(&self, config: &WindowConfig) -> Self::Window {
+    fn new_window(&mut self, config: &WindowConfig) -> Self::Window {
+        self.cols = config.theme().get_active_scheme().into();
         let fonts = self.fonts.as_ref().unwrap().clone();
-        dim::Window::new(&self.dims, config, &self.config, fonts)
+        dim::Window::new(&self.dims, config, fonts)
     }
 
-    fn update_window(&self, w: &mut Self::Window, config: &WindowConfig) {
+    fn update_window(&mut self, w: &mut Self::Window, config: &WindowConfig) {
+        self.cols = config.theme().get_active_scheme().into();
         w.update(&self.dims, config);
     }
 
@@ -159,34 +124,7 @@ where
     }
 }
 
-impl ThemeControl for SimpleTheme {
-    fn active_scheme(&self) -> &str {
-        self.config.active_scheme()
-    }
-
-    fn list_schemes(&self) -> Vec<&str> {
-        self.config
-            .color_schemes_iter()
-            .map(|(name, _)| name)
-            .collect()
-    }
-
-    fn get_scheme(&self, name: &str) -> Option<&super::ColorsSrgb> {
-        self.config
-            .color_schemes_iter()
-            .find_map(|item| (name == item.0).then_some(item.1))
-    }
-
-    fn get_colors(&self) -> &ColorsLinear {
-        &self.cols
-    }
-
-    fn set_colors(&mut self, name: String, cols: ColorsLinear) -> Action {
-        self.config.set_active_scheme(name);
-        self.cols = cols;
-        Action::REDRAW
-    }
-}
+impl ThemeControl for SimpleTheme {}
 
 impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS>
 where

@@ -301,7 +301,7 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
     }
 
     /// Handle an action (excludes handling of CLOSE and EXIT)
-    pub(super) fn handle_action(&mut self, state: &AppState<A, G, T>, mut action: Action) {
+    pub(super) fn handle_action(&mut self, state: &mut AppState<A, G, T>, mut action: Action) {
         if action.contains(Action::EVENT_CONFIG) {
             if let Some(ref mut window) = self.window {
                 self.ev_state.update_config(window.scale_factor() as f32);

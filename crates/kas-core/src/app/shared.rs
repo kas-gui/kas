@@ -98,10 +98,7 @@ where
     }
 
     pub(crate) fn on_exit(&self) {
-        match self
-            .options
-            .write_config(&self.shared.config.borrow(), &self.shared.theme)
-        {
+        match self.options.write_config(&self.shared.config.borrow()) {
             Ok(()) => (),
             Err(error) => warn_about_error("Failed to save config", &error),
         }

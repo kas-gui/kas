@@ -6,41 +6,50 @@
 //! Theme configuration
 
 use crate::theme::ColorsSrgb;
-use crate::Action;
 use std::collections::BTreeMap;
 use std::time::Duration;
+
+/// A message which may be used to update [`ThemeConfig`]
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub enum ThemeConfigMsg {
+    /// Changes the active colour scheme (only if this already exists)
+    SetActiveScheme(String),
+    /// Adds or updates a scheme. Does not change the active scheme.
+    AddScheme(String, ColorsSrgb),
+    /// Removes a scheme
+    RemoveScheme(String),
+    /// Set the fade duration (ms)
+    FadeDurationMs(u32),
+}
 
 /// Event handling configuration
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ThemeConfig {
-    #[cfg_attr(feature = "serde", serde(skip))]
-    dirty: bool,
-
     /// The colour scheme to use
     #[cfg_attr(feature = "serde", serde(default))]
-    active_scheme: String,
+    pub active_scheme: String,
 
     /// All colour schemes
     /// TODO: possibly we should not save default schemes and merge when
     /// loading (perhaps via a `PartialConfig` type).
     #[cfg_attr(feature = "serde", serde(default = "defaults::color_schemes"))]
-    color_schemes: BTreeMap<String, ColorsSrgb>,
+    pub color_schemes: BTreeMap<String, ColorsSrgb>,
 
     /// Text cursor blink rate: delay between switching states
     #[cfg_attr(feature = "serde", serde(default = "defaults::cursor_blink_rate_ms"))]
-    cursor_blink_rate_ms: u32,
+    pub cursor_blink_rate_ms: u32,
 
     /// Transition duration used in animations
     #[cfg_attr(feature = "serde", serde(default = "defaults::transition_fade_ms"))]
-    transition_fade_ms: u32,
+    pub transition_fade_ms: u32,
 }
 
 impl Default for ThemeConfig {
     fn default() -> Self {
         ThemeConfig {
-            dirty: false,
-            active_scheme: Default::default(),
+            active_scheme: defaults::default_scheme(),
             color_schemes: defaults::color_schemes(),
             cursor_blink_rate_ms: defaults::cursor_blink_rate_ms(),
             transition_fade_ms: defaults::transition_fade_ms(),
@@ -48,7 +57,17 @@ impl Default for ThemeConfig {
     }
 }
 
-/// Getters
+impl ThemeConfig {
+    pub(super) fn change_config(&mut self, msg: ThemeConfigMsg) {
+        match msg {
+            ThemeConfigMsg::SetActiveScheme(scheme) => self.set_active_scheme(scheme),
+            ThemeConfigMsg::AddScheme(scheme, colors) => self.add_scheme(scheme, colors),
+            ThemeConfigMsg::RemoveScheme(scheme) => self.remove_scheme(&scheme),
+            ThemeConfigMsg::FadeDurationMs(dur) => self.transition_fade_ms = dur,
+        }
+    }
+}
+
 impl ThemeConfig {
     /// Active colour scheme (name)
     ///
@@ -58,24 +77,44 @@ impl ThemeConfig {
         &self.active_scheme
     }
 
+    /// Set the active colour scheme (by name)
+    ///
+    /// Does nothing if the named scheme is not found.
+    pub fn set_active_scheme(&mut self, scheme: impl ToString) {
+        let scheme = scheme.to_string();
+        if self.color_schemes.keys().any(|k| *k == scheme) {
+            self.active_scheme = scheme.to_string();
+        }
+    }
+
     /// Iterate over all colour schemes
     #[inline]
-    pub fn color_schemes_iter(&self) -> impl Iterator<Item = (&str, &ColorsSrgb)> {
+    pub fn color_schemes(&self) -> impl Iterator<Item = (&str, &ColorsSrgb)> {
         self.color_schemes.iter().map(|(s, t)| (s.as_str(), t))
     }
 
     /// Get a colour scheme by name
     #[inline]
-    pub fn get_color_scheme(&self, name: &str) -> Option<ColorsSrgb> {
-        self.color_schemes.get(name).cloned()
+    pub fn get_color_scheme(&self, name: &str) -> Option<&ColorsSrgb> {
+        self.color_schemes.get(name)
     }
 
     /// Get the active colour scheme
-    ///
-    /// Even this one isn't guaranteed to exist.
     #[inline]
-    pub fn get_active_scheme(&self) -> Option<ColorsSrgb> {
-        self.color_schemes.get(&self.active_scheme).cloned()
+    pub fn get_active_scheme(&self) -> &ColorsSrgb {
+        self.color_schemes
+            .get(&self.active_scheme)
+            .unwrap_or(&ColorsSrgb::LIGHT)
+    }
+
+    /// Add or update a colour scheme
+    pub fn add_scheme(&mut self, scheme: impl ToString, colors: ColorsSrgb) {
+        self.color_schemes.insert(scheme.to_string(), colors);
+    }
+
+    /// Remove a colour scheme
+    pub fn remove_scheme(&mut self, scheme: &str) {
+        self.color_schemes.remove(scheme);
     }
 
     /// Get the cursor blink rate (delay)
@@ -91,35 +130,22 @@ impl ThemeConfig {
     }
 }
 
-/// Setters
-impl ThemeConfig {
-    /// Set colour scheme
-    pub fn set_active_scheme(&mut self, scheme: impl ToString) {
-        self.dirty = true;
-        self.active_scheme = scheme.to_string();
-    }
-}
-
-/// Other functions
-impl ThemeConfig {
-    /// Currently this is just "set". Later, maybe some type of merge.
-    #[allow(clippy::float_cmp)]
-    pub fn apply_config(&mut self, other: &ThemeConfig) -> Action {
-        let action = if self != other { Action::REDRAW } else { Action::empty() };
-
-        *self = other.clone();
-        action
-    }
-
-    #[cfg(feature = "serde")]
-    #[inline]
-    pub(crate) fn is_dirty(&self) -> bool {
-        self.dirty
-    }
-}
-
 mod defaults {
     use super::*;
+
+    #[cfg(not(feature = "dark-light"))]
+    pub fn default_scheme() -> String {
+        "light".to_string()
+    }
+
+    #[cfg(feature = "dark-light")]
+    pub fn default_scheme() -> String {
+        use dark_light::Mode;
+        match dark_light::detect() {
+            Mode::Dark => "dark".to_string(),
+            Mode::Light | Mode::Default => "light".to_string(),
+        }
+    }
 
     pub fn color_schemes() -> BTreeMap<String, ColorsSrgb> {
         let mut schemes = BTreeMap::new();

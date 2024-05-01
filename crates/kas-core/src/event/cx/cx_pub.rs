@@ -255,7 +255,7 @@ impl EventState {
         self.action |= Action::EXIT;
     }
 
-    /// Notify that a [`Action`] action should happen
+    /// Notify that an [`Action`] should happen
     ///
     /// This causes the given action to happen after event handling.
     ///
@@ -286,6 +286,16 @@ impl EventState {
         if let Some(id) = id {
             self.action(id, action);
         }
+    }
+
+    /// Notify that an [`Action`] should happen for the whole window
+    ///
+    /// Using [`Self::action`] with a widget `id` instead of this method is
+    /// potentially more efficient (supports future optimisations), but not
+    /// always possible.
+    #[inline]
+    pub fn window_action(&mut self, action: Action) {
+        self.action |= action;
     }
 
     /// Attempts to set a fallback to receive [`Event::Command`]

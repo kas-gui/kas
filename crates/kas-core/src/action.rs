@@ -42,6 +42,7 @@ bitflags! {
         /// Resize all widgets in the window
         const RESIZE = 1 << 9;
         /// Update [`Dimensions`](crate::theme::dimensions::Dimensions) instances
+        /// and theme configuration.
         ///
         /// Implies [`Action::RESIZE`].
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
