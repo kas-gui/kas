@@ -211,8 +211,8 @@ where
     /// Run the main loop.
     #[inline]
     pub fn run(self) -> Result<()> {
-        let mut el = super::EventLoop::new(self.windows, self.state);
-        self.el.run(move |event, elwt| el.handle(event, elwt))?;
+        let mut l = super::Loop::new(self.windows, self.state);
+        self.el.run_app(&mut l)?;
         Ok(())
     }
 }
