@@ -96,6 +96,7 @@ impl Pipeline {
             wgpu::VertexState {
                 module: &shaders.vert_glyph,
                 entry_point: "main",
+                compilation_options: Default::default(),
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Instance>() as wgpu::BufferAddress,
                     step_mode: wgpu::VertexStepMode::Instance,
@@ -111,6 +112,7 @@ impl Pipeline {
             wgpu::FragmentState {
                 module: &shaders.frag_glyph,
                 entry_point: "main",
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: super::RENDER_TEX_FORMAT,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
