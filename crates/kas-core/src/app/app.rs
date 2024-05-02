@@ -13,7 +13,7 @@ use crate::util::warn_about_error;
 use crate::{impl_scope, Window, WindowId};
 use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
-use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
+use winit::event_loop::{EventLoop, EventLoopProxy};
 
 pub struct Application<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
     el: EventLoop<ProxyAction>,
@@ -83,7 +83,7 @@ impl_scope! {
             });
             config.borrow_mut().init();
 
-            let el = EventLoopBuilder::with_user_event().build()?;
+            let el = EventLoop::with_user_event().build()?;
 
             let mut draw_shared = self.graphical.build()?;
             draw_shared.set_raster_config(config.borrow().font.raster());
@@ -237,8 +237,8 @@ impl<'a> PlatformWrapper<'a> {
         {
             cfg_if::cfg_if! {
                 if #[cfg(all(feature = "wayland", feature = "x11"))] {
-                    use winit::platform::wayland::EventLoopWindowTargetExtWayland;
-                    return if self.0.is_wayland() {
+                    use winit::platform::wayland::ActiveEventLoopExtWayland;
+                    return if true /*FIXME: self.0.is_wayland()*/ {
                         Platform::Wayland
                     } else {
                         Platform::X11

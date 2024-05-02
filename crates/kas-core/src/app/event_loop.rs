@@ -12,7 +12,7 @@ use crate::{Action, WindowId};
 use std::collections::HashMap;
 use std::time::Instant;
 use winit::event::{Event, StartCause};
-use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
+use winit::event_loop::{ActiveEventLoop, ControlFlow};
 use winit::window as ww;
 
 /// Event-loop data structure (i.e. all run-time state)
@@ -48,15 +48,11 @@ where
         }
     }
 
-    pub(super) fn handle(
-        &mut self,
-        event: Event<ProxyAction>,
-        elwt: &EventLoopWindowTarget<ProxyAction>,
-    ) {
+    pub(super) fn handle(&mut self, event: Event<ProxyAction>, el: &ActiveEventLoop) {
         match event {
             Event::NewEvents(cause) => {
                 // MainEventsCleared will reset control_flow (but not when it is Poll)
-                elwt.set_control_flow(ControlFlow::Wait);
+                el.set_control_flow(ControlFlow::Wait);
 
                 match cause {
                     StartCause::ResumeTimeReached {
@@ -93,12 +89,12 @@ where
             }
 
             Event::WindowEvent { window_id, event } => {
-                self.flush_pending(elwt);
+                self.flush_pending(el);
 
                 if let Some(id) = self.id_map.get(&window_id) {
                     if let Some(window) = self.windows.get_mut(id) {
                         if window.handle_event(&mut self.state, event) {
-                            elwt.set_control_flow(ControlFlow::Poll);
+                            el.set_control_flow(ControlFlow::Poll);
                         }
                     }
                 }
@@ -138,7 +134,7 @@ where
             Event::Suspended => (),
             Event::Resumed if self.suspended => {
                 for window in self.windows.values_mut() {
-                    match window.resume(&mut self.state, elwt) {
+                    match window.resume(&mut self.state, el) {
                         Ok(winit_id) => {
                             self.id_map.insert(winit_id, window.window_id);
                         }
@@ -152,16 +148,16 @@ where
             Event::Resumed => (),
 
             Event::AboutToWait => {
-                self.flush_pending(elwt);
+                self.flush_pending(el);
                 self.resumes.sort_by_key(|item| item.0);
 
                 if self.windows.is_empty() {
-                    elwt.exit();
-                } else if matches!(elwt.control_flow(), ControlFlow::Poll) {
+                    el.exit();
+                } else if matches!(el.control_flow(), ControlFlow::Poll) {
                 } else if let Some((instant, _)) = self.resumes.first() {
-                    elwt.set_control_flow(ControlFlow::WaitUntil(*instant));
+                    el.set_control_flow(ControlFlow::WaitUntil(*instant));
                 } else {
-                    elwt.set_control_flow(ControlFlow::Wait);
+                    el.set_control_flow(ControlFlow::Wait);
                 };
             }
 
@@ -173,7 +169,7 @@ where
         }
     }
 
-    fn flush_pending(&mut self, elwt: &EventLoopWindowTarget<ProxyAction>) {
+    fn flush_pending(&mut self, el: &ActiveEventLoop) {
         while let Some(pending) = self.state.shared.pending.pop_front() {
             match pending {
                 Pending::AddPopup(parent_id, id, popup) => {
@@ -188,7 +184,7 @@ where
                 Pending::AddWindow(id, mut window) => {
                     log::debug!("Pending: adding window {}", window.widget.title());
                     if !self.suspended {
-                        match window.resume(&mut self.state, elwt) {
+                        match window.resume(&mut self.state, el) {
                             Ok(winit_id) => {
                                 self.id_map.insert(winit_id, id);
                             }
@@ -212,7 +208,7 @@ where
                     if action.contains(Action::CLOSE | Action::EXIT) {
                         self.windows.clear();
                         self.id_map.clear();
-                        elwt.set_control_flow(ControlFlow::Poll);
+                        el.set_control_flow(ControlFlow::Poll);
                     } else {
                         for (_, window) in self.windows.iter_mut() {
                             window.handle_action(&mut self.state, action);
