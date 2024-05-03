@@ -173,7 +173,11 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
 
         // NOTE: usage of Arc is inelegant, but avoids lots of unsafe code
         let window = Arc::new(window);
-        let mut surface = G::new_surface(&mut state.shared.draw.draw, window.clone())?;
+        let mut surface = G::new_surface(
+            &mut state.shared.draw.draw,
+            window.clone(),
+            self.widget.transparent(),
+        )?;
         surface.do_resize(&mut state.shared.draw.draw, size);
 
         let winit_id = window.id();
