@@ -10,6 +10,7 @@ use super::shared::{AppSharedState, AppState};
 use super::{AppData, AppGraphicsBuilder};
 use crate::cast::{Cast, Conv};
 use crate::config::WindowConfig;
+use crate::decorations::Decorations;
 use crate::draw::{color::Rgba, AnimationState, DrawSharedImpl};
 use crate::event::{ConfigCx, CursorIcon, EventState};
 use crate::geom::{Coord, Rect, Size};
@@ -109,7 +110,7 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         attrs.title = self.widget.title().to_string();
         attrs.visible = false;
         attrs.transparent = self.widget.transparent();
-        attrs.decorations = self.widget.decorations() == kas::Decorations::Server;
+        attrs.decorations = self.widget.decorations() == Decorations::Server;
         attrs.window_icon = self.widget.icon();
         let (restrict_min, restrict_max) = self.widget.restrictions();
         if restrict_min {
