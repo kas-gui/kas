@@ -7,12 +7,13 @@
 //!
 //! Demonstrates use of a custom draw pipe.
 
+use kas::decorations::{Decorations, TitleBarButtons};
 use kas::draw::{Draw, DrawIface, PassId};
 use kas::event::{self, Command};
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
 use kas::widgets::adapt::Reserve;
-use kas::widgets::{format_data, format_value, Slider, Text};
+use kas::widgets::{format_data, format_value, Label, Slider, Text};
 use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawPipe};
 use kas_wgpu::wgpu;
 use std::mem::size_of;
@@ -433,15 +434,21 @@ impl_scope! {
     #[widget{
         layout = grid! {
             (1, 0) => self.label,
+            (2, 0) => self.title,
+            (3, 0) => self.buttons,
             (0, 1) => self.iters_label.align(AlignHints::CENTER),
             (0, 2) => self.slider,
-            (1..3, 1..4) => self.mbrot,
+            (1..5, 1..4) => self.mbrot,
         };
     }]
     struct MandlebrotUI {
         core: widget_core!(),
         #[widget(&self.mbrot)]
         label: Text<Mandlebrot, String>,
+        #[widget]
+        title: Label<&'static str>,
+        #[widget]
+        buttons: TitleBarButtons,
         #[widget(&self.iters)]
         iters_label: Reserve<Text<i32, String>>,
         #[widget(&self.iters)]
@@ -457,6 +464,8 @@ impl_scope! {
             MandlebrotUI {
                 core: Default::default(),
                 label: format_data!(mbrot: &Mandlebrot, "{}", mbrot.loc()),
+                title: Label::new("Mandlebrot"),
+                buttons: Default::default(),
                 iters_label: format_value!("{}")
                     .with_min_size_em(3.0, 0.0),
                 slider: Slider::up(0..=256, |_, iters| *iters)
@@ -485,7 +494,8 @@ impl_scope! {
 fn main() -> kas::app::Result<()> {
     env_logger::init();
 
-    let window = Window::new(MandlebrotUI::new(), "Mandlebrot");
+    let window =
+        Window::new(MandlebrotUI::new(), "Mandlebrot").with_decorations(Decorations::Border);
     let theme = kas::theme::FlatTheme::new();
     let mut app = kas::app::WgpuBuilder::new(PipeBuilder)
         .with_theme(theme)
