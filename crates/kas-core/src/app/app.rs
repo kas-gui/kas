@@ -100,15 +100,15 @@ impl_scope! {
     }
 }
 
-/// Application associated types
+/// Inherenet associated types of [`Application`]
 ///
 /// Note: these could be inherent associated types of [`Application`] when Rust#8995 is stable.
-pub trait AppAssoc {
+pub trait ApplicationInherent {
     /// Shared draw state type
     type DrawShared: DrawSharedImpl;
 }
 
-impl<A: AppData, G: AppGraphicsBuilder, T> AppAssoc for Application<A, G, T>
+impl<A: AppData, G: AppGraphicsBuilder, T> ApplicationInherent for Application<A, G, T>
 where
     T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,

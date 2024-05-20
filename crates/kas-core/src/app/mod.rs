@@ -20,7 +20,7 @@ use crate::messages::MessageStack;
 pub(crate) use window::{Window, WindowDataErased};
 
 #[cfg(winit)]
-pub use app::{AppAssoc, AppBuilder, Application, ClosedError, Proxy};
+pub use app::{AppBuilder, Application, ApplicationInherent, ClosedError, Proxy};
 pub use common::{Error, Platform, Result};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
