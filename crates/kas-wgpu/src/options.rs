@@ -58,6 +58,9 @@ impl Options {
     /// -   `SECONDARY`: any of GL or DX11
     /// -   `FALLBACK`: force use of fallback (CPU) rendering
     ///
+    /// The default backend is `PRIMARY`. Note that secondary backends are less
+    /// well supported by WGPU, possibly leading to other issues.
+    ///
     /// WGPU has an [API tracing] feature for debugging. To use this, ensure the
     /// `wgpu/trace` feature is enabled and set the output path:
     /// ```sh
@@ -115,7 +118,7 @@ impl Options {
 
     pub(crate) fn backend(&self) -> Backends {
         if self.backends.is_empty() {
-            Backends::all()
+            Backends::PRIMARY
         } else {
             self.backends
         }
