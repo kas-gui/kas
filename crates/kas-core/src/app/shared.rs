@@ -217,7 +217,7 @@ impl<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> AppShared
         // By far the simplest way to implement this is to let our call
         // anscestor, event::Loop::handle, do the work.
         //
-        // In theory we could pass the EventLoopWindowTarget for *each* event
+        // In theory we could pass the `ActiveEventLoop` for *each* event
         // handled to create the winit window here or use statics to generate
         // errors now, but user code can't do much with this error anyway.
         let id = self.next_window_id();

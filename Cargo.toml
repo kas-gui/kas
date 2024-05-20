@@ -29,12 +29,13 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 # markdown, resvg. Recommended also: clipboard, yaml (or some config format).
 minimal = ["wgpu", "winit", "wayland"]
 # All recommended features for optimal experience
-default = ["minimal", "x11", "view", "image", "resvg", "clipboard", "markdown", "shaping", "spawn"]
+default = ["minimal", "view", "image", "resvg", "clipboard", "markdown", "shaping", "spawn"]
 # All standard test target features
-# NOTE: dynamic is excluded due to linker problems on Windows
-stable = ["default", "serde", "toml", "yaml", "json", "ron", "macros_log"]
-# Enables "recommended" unstable features
-nightly = ["min_spec"]
+stable = ["default", "x11", "serde", "toml", "yaml", "json", "ron", "macros_log"]
+# Enables all "recommended" features for nightly rustc
+nightly = ["stable", "min_spec"]
+# Additional, less recommendation-worthy features
+experimental = ["dark-light", "recursive-layout-widgets", "unsafe_node"]
 
 # Enable dynamic linking (faster linking via an extra run-time dependency):
 dynamic = ["dep:kas-dylib"]
@@ -66,8 +67,6 @@ markdown = ["kas-core/markdown"]
 
 # Enable text shaping
 shaping = ["kas-core/shaping"]
-# Alternative: use Harfbuzz library for shaping
-harfbuzz = ["kas-core/harfbuzz"]
 
 # Enable serde support (mainly config read/write)
 serde = ["kas-core/serde"]

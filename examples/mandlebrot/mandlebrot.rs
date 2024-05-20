@@ -132,6 +132,7 @@ impl CustomPipeBuilder for PipeBuilder {
             vertex: wgpu::VertexState {
                 module: &shaders.vertex,
                 entry_point: "main",
+                compilation_options: Default::default(),
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::VertexStepMode::Vertex,
@@ -152,6 +153,7 @@ impl CustomPipeBuilder for PipeBuilder {
             fragment: Some(wgpu::FragmentState {
                 module: &shaders.fragment,
                 entry_point: "main",
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: tex_format,
                     blend: None,

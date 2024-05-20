@@ -7,7 +7,7 @@
 
 use super::common::WindowSurface;
 use super::shared::{AppSharedState, AppState};
-use super::{AppData, AppGraphicsBuilder, ProxyAction};
+use super::{AppData, AppGraphicsBuilder};
 use crate::cast::{Cast, Conv};
 use crate::config::WindowConfig;
 use crate::draw::{color::Rgba, AnimationState, DrawSharedImpl};
@@ -20,8 +20,8 @@ use std::mem::take;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use winit::event::WindowEvent;
-use winit::event_loop::EventLoopWindowTarget;
-use winit::window::WindowBuilder;
+use winit::event_loop::ActiveEventLoop;
+use winit::window::WindowAttributes;
 
 /// Window fields requiring a frame or surface
 #[crate::autoimpl(Deref, DerefMut using self.window)]
@@ -73,7 +73,7 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
     pub(super) fn resume(
         &mut self,
         state: &mut AppState<A, G, T>,
-        elwt: &EventLoopWindowTarget<ProxyAction>,
+        el: &ActiveEventLoop,
     ) -> super::Result<winit::window::WindowId> {
         let time = Instant::now();
 
@@ -104,22 +104,22 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             .clamp(min_size, max_size)
             .as_logical();
 
-        let mut builder = WindowBuilder::new().with_inner_size(ideal);
+        let mut attrs = WindowAttributes::default();
+        attrs.inner_size = Some(ideal);
+        attrs.title = self.widget.title().to_string();
+        attrs.visible = false;
+        attrs.transparent = self.widget.transparent();
+        attrs.decorations = self.widget.decorations() == kas::Decorations::Server;
+        attrs.window_icon = self.widget.icon();
         let (restrict_min, restrict_max) = self.widget.restrictions();
         if restrict_min {
             let min = solve_cache.min(true).as_logical();
-            builder = builder.with_min_inner_size(min);
+            attrs.min_inner_size = Some(min);
         }
         if restrict_max {
-            builder = builder.with_max_inner_size(ideal);
+            attrs.max_inner_size = Some(ideal);
         }
-        let window = builder
-            .with_title(self.widget.title())
-            .with_window_icon(self.widget.icon())
-            .with_decorations(self.widget.decorations() == kas::Decorations::Server)
-            .with_transparent(self.widget.transparent())
-            .with_visible(false)
-            .build(elwt)?;
+        let window = el.create_window(attrs)?;
 
         // Now that we have a scale factor, we may need to resize:
         let scale_factor = window.scale_factor();
@@ -584,7 +584,7 @@ impl<G: AppGraphicsBuilder, T: Theme<G::Shared>> WindowDataErased for WindowData
 
     #[inline]
     fn set_cursor_icon(&self, icon: CursorIcon) {
-        self.window.set_cursor_icon(icon);
+        self.window.set_cursor(icon);
     }
 
     #[cfg(winit)]

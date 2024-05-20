@@ -68,6 +68,7 @@ impl Pipeline {
             vertex: wgpu::VertexState {
                 module: &shaders.vert_flat_round,
                 entry_point: "main",
+                compilation_options: Default::default(),
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::VertexStepMode::Vertex,
@@ -94,6 +95,7 @@ impl Pipeline {
             fragment: Some(wgpu::FragmentState {
                 module: &shaders.frag_flat_round,
                 entry_point: "main",
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: super::RENDER_TEX_FORMAT,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),

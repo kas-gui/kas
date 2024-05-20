@@ -28,15 +28,15 @@ jobs:
       - name: Build docs
         run: |
           cargo doc --all --no-deps
-          cargo doc --all-features --all --no-deps
+          cargo doc --features nightly --all --no-deps
       - name: Test kas-macros
         run: |
           cargo test --manifest-path crates/kas-macros/Cargo.toml
           cargo test --manifest-path crates/kas-macros/Cargo.toml --all-features
       - name: Test kas-core
         run: |
-          cargo test --manifest-path crates/kas-core/Cargo.toml --features winit,x11
-          cargo test --manifest-path crates/kas-core/Cargo.toml --all-features
+          cargo test --manifest-path crates/kas-core/Cargo.toml --features minimal
+          cargo test --manifest-path crates/kas-core/Cargo.toml --features nightly
       - name: Test kas-widgets
         run: |
           cargo test --manifest-path crates/kas-widgets/Cargo.toml --features kas/winit,kas/wayland
@@ -55,9 +55,9 @@ jobs:
           cargo test --manifest-path crates/kas-dylib/Cargo.toml --features kas-core/winit,kas-core/wayland
           cargo test --manifest-path crates/kas-dylib/Cargo.toml --all-features --features kas-core/winit,kas-core/x11
       - name: Test kas
-        run: |
-          cargo test
-          cargo test --all-features
+        run: cargo test --features nightly
+      - name: Test kas (experimental)
+        run: cargo test --features nightly,experimental
       - name: Test examples/mandlebrot
         run: cargo test --manifest-path examples/mandlebrot/Cargo.toml
 

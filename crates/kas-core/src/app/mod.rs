@@ -14,7 +14,7 @@ mod common;
 use crate::messages::MessageStack;
 #[cfg(winit)] use crate::WindowId;
 #[cfg(winit)] use app::PlatformWrapper;
-#[cfg(winit)] use event_loop::Loop as EventLoop;
+#[cfg(winit)] use event_loop::Loop;
 #[cfg(winit)] pub(crate) use shared::{AppShared, AppState};
 #[cfg(winit)]
 pub(crate) use window::{Window, WindowDataErased};

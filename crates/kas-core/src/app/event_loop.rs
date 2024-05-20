@@ -11,8 +11,9 @@ use crate::theme::Theme;
 use crate::{Action, WindowId};
 use std::collections::HashMap;
 use std::time::Instant;
-use winit::event::{Event, StartCause};
-use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
+use winit::application::ApplicationHandler;
+use winit::event::StartCause;
+use winit::event_loop::{ActiveEventLoop, ControlFlow};
 use winit::window as ww;
 
 /// Event-loop data structure (i.e. all run-time state)
@@ -33,6 +34,136 @@ where
     resumes: Vec<(Instant, WindowId)>,
 }
 
+impl<A: AppData, G, T> ApplicationHandler<ProxyAction> for Loop<A, G, T>
+where
+    G: AppGraphicsBuilder,
+    T: Theme<G::Shared>,
+    T::Window: kas::theme::Window,
+{
+    fn new_events(&mut self, el: &ActiveEventLoop, cause: StartCause) {
+        // MainEventsCleared will reset control_flow (but not when it is Poll)
+        el.set_control_flow(ControlFlow::Wait);
+
+        match cause {
+            StartCause::ResumeTimeReached {
+                requested_resume, ..
+            } => {
+                let item = self
+                    .resumes
+                    .first()
+                    .cloned()
+                    .unwrap_or_else(|| panic!("timer wakeup without resume"));
+                assert_eq!(item.0, requested_resume);
+                log::trace!("Wakeup: timer (window={:?})", item.1);
+
+                let resume = if let Some(w) = self.windows.get_mut(&item.1) {
+                    w.update_timer(&mut self.state)
+                } else {
+                    // presumably, some window with active timers was removed
+                    None
+                };
+
+                if let Some(instant) = resume {
+                    self.resumes[0].0 = instant;
+                } else {
+                    self.resumes.remove(0);
+                }
+            }
+            StartCause::WaitCancelled { .. } => {
+                // This event serves no purpose?
+                // log::debug!("Wakeup: WaitCancelled (ignoring)");
+            }
+            StartCause::Poll => (),
+            StartCause::Init => (),
+        }
+    }
+
+    fn user_event(&mut self, _: &ActiveEventLoop, event: ProxyAction) {
+        match event {
+            ProxyAction::Close(id) => {
+                if let Some(window) = self.windows.get_mut(&id) {
+                    window.send_action(Action::CLOSE);
+                }
+            }
+            ProxyAction::CloseAll => {
+                for window in self.windows.values_mut() {
+                    window.send_action(Action::CLOSE);
+                }
+            }
+            ProxyAction::Message(msg) => {
+                let mut stack = crate::messages::MessageStack::new();
+                stack.push_erased(msg.into_erased());
+                self.state.handle_messages(&mut stack);
+            }
+            ProxyAction::WakeAsync => {
+                // We don't need to do anything: MainEventsCleared will
+                // automatically be called after, which automatically calls
+                // window.update(..), which calls EventState::Update.
+            }
+        }
+    }
+
+    fn resumed(&mut self, el: &ActiveEventLoop) {
+        if self.suspended {
+            for window in self.windows.values_mut() {
+                match window.resume(&mut self.state, el) {
+                    Ok(winit_id) => {
+                        self.id_map.insert(winit_id, window.window_id);
+                    }
+                    Err(e) => {
+                        log::error!("Unable to create window: {}", e);
+                    }
+                }
+            }
+            self.suspended = false;
+        }
+    }
+
+    fn window_event(
+        &mut self,
+        el: &ActiveEventLoop,
+        window_id: ww::WindowId,
+        event: winit::event::WindowEvent,
+    ) {
+        self.flush_pending(el);
+
+        if let Some(id) = self.id_map.get(&window_id) {
+            if let Some(window) = self.windows.get_mut(id) {
+                if window.handle_event(&mut self.state, event) {
+                    el.set_control_flow(ControlFlow::Poll);
+                }
+            }
+        }
+    }
+
+    fn about_to_wait(&mut self, el: &ActiveEventLoop) {
+        self.flush_pending(el);
+        self.resumes.sort_by_key(|item| item.0);
+
+        if self.windows.is_empty() {
+            el.exit();
+        } else if matches!(el.control_flow(), ControlFlow::Poll) {
+        } else if let Some((instant, _)) = self.resumes.first() {
+            el.set_control_flow(ControlFlow::WaitUntil(*instant));
+        } else {
+            el.set_control_flow(ControlFlow::Wait);
+        };
+    }
+
+    fn suspended(&mut self, _: &ActiveEventLoop) {
+        if !self.suspended {
+            for window in self.windows.values_mut() {
+                window.suspend();
+            }
+            self.suspended = true;
+        }
+    }
+
+    fn exiting(&mut self, _: &ActiveEventLoop) {
+        self.state.on_exit();
+    }
+}
+
 impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Loop<A, G, T>
 where
     T::Window: kas::theme::Window,
@@ -48,132 +179,7 @@ where
         }
     }
 
-    pub(super) fn handle(
-        &mut self,
-        event: Event<ProxyAction>,
-        elwt: &EventLoopWindowTarget<ProxyAction>,
-    ) {
-        match event {
-            Event::NewEvents(cause) => {
-                // MainEventsCleared will reset control_flow (but not when it is Poll)
-                elwt.set_control_flow(ControlFlow::Wait);
-
-                match cause {
-                    StartCause::ResumeTimeReached {
-                        requested_resume, ..
-                    } => {
-                        let item = self
-                            .resumes
-                            .first()
-                            .cloned()
-                            .unwrap_or_else(|| panic!("timer wakeup without resume"));
-                        assert_eq!(item.0, requested_resume);
-                        log::trace!("Wakeup: timer (window={:?})", item.1);
-
-                        let resume = if let Some(w) = self.windows.get_mut(&item.1) {
-                            w.update_timer(&mut self.state)
-                        } else {
-                            // presumably, some window with active timers was removed
-                            None
-                        };
-
-                        if let Some(instant) = resume {
-                            self.resumes[0].0 = instant;
-                        } else {
-                            self.resumes.remove(0);
-                        }
-                    }
-                    StartCause::WaitCancelled { .. } => {
-                        // This event serves no purpose?
-                        // log::debug!("Wakeup: WaitCancelled (ignoring)");
-                    }
-                    StartCause::Poll => (),
-                    StartCause::Init => (),
-                }
-            }
-
-            Event::WindowEvent { window_id, event } => {
-                self.flush_pending(elwt);
-
-                if let Some(id) = self.id_map.get(&window_id) {
-                    if let Some(window) = self.windows.get_mut(id) {
-                        if window.handle_event(&mut self.state, event) {
-                            elwt.set_control_flow(ControlFlow::Poll);
-                        }
-                    }
-                }
-            }
-            Event::DeviceEvent { .. } => {
-                // windows handle local input; we do not handle global input
-            }
-            Event::UserEvent(action) => match action {
-                ProxyAction::Close(id) => {
-                    if let Some(window) = self.windows.get_mut(&id) {
-                        window.send_action(Action::CLOSE);
-                    }
-                }
-                ProxyAction::CloseAll => {
-                    for window in self.windows.values_mut() {
-                        window.send_action(Action::CLOSE);
-                    }
-                }
-                ProxyAction::Message(msg) => {
-                    let mut stack = crate::messages::MessageStack::new();
-                    stack.push_erased(msg.into_erased());
-                    self.state.handle_messages(&mut stack);
-                }
-                ProxyAction::WakeAsync => {
-                    // We don't need to do anything: MainEventsCleared will
-                    // automatically be called after, which automatically calls
-                    // window.update(..), which calls EventState::Update.
-                }
-            },
-
-            Event::Suspended if !self.suspended => {
-                for window in self.windows.values_mut() {
-                    window.suspend();
-                }
-                self.suspended = true;
-            }
-            Event::Suspended => (),
-            Event::Resumed if self.suspended => {
-                for window in self.windows.values_mut() {
-                    match window.resume(&mut self.state, elwt) {
-                        Ok(winit_id) => {
-                            self.id_map.insert(winit_id, window.window_id);
-                        }
-                        Err(e) => {
-                            log::error!("Unable to create window: {}", e);
-                        }
-                    }
-                }
-                self.suspended = false;
-            }
-            Event::Resumed => (),
-
-            Event::AboutToWait => {
-                self.flush_pending(elwt);
-                self.resumes.sort_by_key(|item| item.0);
-
-                if self.windows.is_empty() {
-                    elwt.exit();
-                } else if matches!(elwt.control_flow(), ControlFlow::Poll) {
-                } else if let Some((instant, _)) = self.resumes.first() {
-                    elwt.set_control_flow(ControlFlow::WaitUntil(*instant));
-                } else {
-                    elwt.set_control_flow(ControlFlow::Wait);
-                };
-            }
-
-            Event::LoopExiting => {
-                self.state.on_exit();
-            }
-
-            Event::MemoryWarning => (), // TODO ?
-        }
-    }
-
-    fn flush_pending(&mut self, elwt: &EventLoopWindowTarget<ProxyAction>) {
+    fn flush_pending(&mut self, el: &ActiveEventLoop) {
         while let Some(pending) = self.state.shared.pending.pop_front() {
             match pending {
                 Pending::AddPopup(parent_id, id, popup) => {
@@ -188,7 +194,7 @@ where
                 Pending::AddWindow(id, mut window) => {
                     log::debug!("Pending: adding window {}", window.widget.title());
                     if !self.suspended {
-                        match window.resume(&mut self.state, elwt) {
+                        match window.resume(&mut self.state, el) {
                             Ok(winit_id) => {
                                 self.id_map.insert(winit_id, id);
                             }
@@ -212,7 +218,7 @@ where
                     if action.contains(Action::CLOSE | Action::EXIT) {
                         self.windows.clear();
                         self.id_map.clear();
-                        elwt.set_control_flow(ControlFlow::Poll);
+                        el.set_control_flow(ControlFlow::Poll);
                     } else {
                         for (_, window) in self.windows.iter_mut() {
                             window.handle_action(&mut self.state, action);
