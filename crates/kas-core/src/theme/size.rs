@@ -171,9 +171,6 @@ impl<'a> SizeCx<'a> {
     /// The [`TextClass`] is used to select a font and controls whether line
     /// wrapping is enabled.
     ///
-    /// Alignment is set from [`AxisInfo::align_or_default`]. If other alignment
-    /// is desired, modify `axis` before calling this method.
-    ///
     /// Horizontal size without wrapping is simply the size the text.
     /// Horizontal size with wrapping is bounded to some width dependant on the
     /// theme, and may have non-zero [`Stretch`] depending on the size.
