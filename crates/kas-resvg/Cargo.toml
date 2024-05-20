@@ -14,7 +14,7 @@ exclude = ["/screenshots"]
 
 [package.metadata.docs.rs]
 features = ["docs_rs", "svg"]
-rustdoc-args = ["--cfg", "doc_cfg"]
+rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 # Non-local features required for doc builds.

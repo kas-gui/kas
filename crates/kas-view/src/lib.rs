@@ -25,7 +25,7 @@
 //! to cover the visible area, and these are re-used to enable fast scrolling
 //! through large data sets.
 
-#![cfg_attr(doc_cfg, feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
 mod data_impls;
 mod data_traits;

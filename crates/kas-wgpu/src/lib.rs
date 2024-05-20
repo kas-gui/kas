@@ -18,6 +18,7 @@
 //!
 //! [WGPU]: https://github.com/gfx-rs/wgpu
 
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 
 pub mod draw;

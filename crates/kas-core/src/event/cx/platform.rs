@@ -302,7 +302,6 @@ impl<'a> EventCx<'a> {
     /// events the graphics backend must take direct action anyway:
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
     #[cfg(winit)]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
     pub(crate) fn handle_winit<A>(
         &mut self,
         win: &mut Window<A>,

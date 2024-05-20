@@ -23,7 +23,7 @@
 //! -   [Examples](https://github.com/kas-gui/kas/tree/master/examples)
 //! -   [Discuss](https://github.com/kas-gui/kas/discussions)
 
-#![cfg_attr(doc_cfg, feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
 /// KAS prelude
 ///
@@ -35,10 +35,6 @@
 /// This prelude may be more useful when implementing widgets than when simply
 /// using widgets in a GUI.
 pub mod prelude {
-    // Note: using #[doc(no_inline)] here causes doc issues in this crate:
-    // - kas::Id appears to have no methods
-    // - doc_cfg annotations appear to be attached to the wrong items
-
     #[doc(no_inline)] pub use kas_core::prelude::*;
     #[doc(no_inline)]
     pub use kas_widgets::adapt::{AdaptWidget, AdaptWidgetAny};
@@ -49,7 +45,6 @@ pub use kas_core::*;
 #[doc(inline)] pub extern crate kas_widgets as widgets;
 
 #[cfg(feature = "view")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "view")))]
 #[doc(inline)]
 pub extern crate kas_view as view;
 
@@ -63,7 +58,6 @@ pub extern crate kas_view as view;
 /// `tiny-skia` feature may be used to enable only the `Canvas` widget
 /// plus support (i.e. everything but `Svg`), saving approx 200 KiB.
 #[cfg(any(feature = "resvg", feature = "tiny-skia"))]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "resvg")))]
 pub mod resvg {
     pub use kas_resvg::*;
 }
