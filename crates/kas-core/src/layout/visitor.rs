@@ -23,8 +23,6 @@ use crate::{dir::Directional, dir::Directions, Layout};
 ///
 /// Unlike when implementing a widget, all methods of this trait must be
 /// implemented directly.
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[crate::autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait Visitable {
     /// Get size rules for the given axis
@@ -59,8 +57,6 @@ pub trait Visitable {
 /// This is templated over `cell_info: C` where `C = ()` for lists or
 /// `C = GridCellInfo` for grids.
 #[allow(clippy::len_without_is_empty)]
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait VisitableList<C> {
     /// List length
     fn len(&self) -> usize;
@@ -93,8 +89,6 @@ impl<C> VisitableList<C> for () {
 pub struct Visitor<V: Visitable>(V);
 
 /// These methods would be free functions, but `Visitable` is a useful namespace
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl<'a> Visitor<Box<dyn Visitable + 'a>> {
     /// Construct a single-item layout
     pub fn single(widget: &'a mut dyn Layout) -> Visitor<impl Visitable + 'a> {

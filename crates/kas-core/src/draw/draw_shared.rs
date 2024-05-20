@@ -38,7 +38,7 @@ impl ImageHandle {
 impl ImageId {
     /// Construct a new identifier from `u32` value not equal to 0
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     #[inline]
     pub const fn try_new(n: u32) -> Option<Self> {
         // We can't use ? or .map in a const fn so do it the tedious way:
@@ -78,7 +78,7 @@ pub struct SharedState<DS: DrawSharedImpl> {
 }
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 impl<DS: DrawSharedImpl> SharedState<DS> {
     /// Construct (this is only called by the graphics backend)
     pub fn new(draw: DS) -> Self {

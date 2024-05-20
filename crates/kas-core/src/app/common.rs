@@ -175,8 +175,6 @@ impl Platform {
 /// Builder for a graphics backend
 ///
 /// See also [`Application`](super::Application).
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait AppGraphicsBuilder {
     /// The default theme
     type DefaultTheme: Default + Theme<Self::Shared>;
@@ -203,8 +201,6 @@ pub trait AppGraphicsBuilder {
 }
 
 /// Window graphical surface requirements
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait WindowSurface {
     /// Shared draw state
     type Shared: kas::draw::DrawSharedImpl;

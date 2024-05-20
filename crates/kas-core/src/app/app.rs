@@ -32,7 +32,7 @@ impl_scope! {
     impl Self {
         /// Construct from a graphics backend and a theme
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-        #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+        #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
         pub fn new(graphical: G, theme: T) -> Self {
             AppBuilder {
                 graphical,

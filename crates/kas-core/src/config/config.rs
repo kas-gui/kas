@@ -249,7 +249,7 @@ impl WindowConfig {
 
     /// Minimum frame time
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     #[inline]
     pub fn frame_dur(&self) -> Duration {
         self.frame_dur

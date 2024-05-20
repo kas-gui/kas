@@ -52,8 +52,6 @@ pub use draw_shared::{DrawShared, DrawSharedImpl, SharedState};
 use std::time::{Duration, Instant};
 
 /// Animation status
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[crate::impl_default(AnimationState::None)]
 pub(crate) enum AnimationState {
@@ -80,7 +78,7 @@ impl AnimationState {
 
 /// Per-window "draw" data common to all backends
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 #[derive(Debug, Default)]
 pub struct WindowCommon {
     pub(crate) anim: AnimationState,
@@ -105,7 +103,7 @@ pub struct PassId(u32);
 impl PassId {
     /// Construct a new pass from a `u32` identifier
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     #[inline]
     pub const fn new(n: u32) -> Self {
         PassId(n)

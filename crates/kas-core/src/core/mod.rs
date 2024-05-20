@@ -14,7 +14,7 @@ mod widget;
 mod widget_id;
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 pub mod impls;
 
 pub use collection::{CellCollection, Collection};

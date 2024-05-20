@@ -21,7 +21,7 @@ const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 
 /// Platform API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 impl EventState {
     /// Construct per-window event state
     #[inline]
@@ -257,7 +257,7 @@ impl EventState {
 
 /// Platform API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 impl<'a> EventCx<'a> {
     /// Update widgets due to timer
     pub(crate) fn update_timer(&mut self, mut widget: Node<'_>) {

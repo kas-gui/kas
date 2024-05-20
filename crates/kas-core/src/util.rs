@@ -140,7 +140,7 @@ pub fn load_icon_from_path<P: AsRef<std::path::Path>>(
 
 /// Log a warning regarding an error message
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 pub fn warn_about_error(msg: &str, mut error: &dyn std::error::Error) {
     log::warn!("{msg}: {error}");
     while let Some(source) = error.source() {

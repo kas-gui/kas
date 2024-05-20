@@ -14,7 +14,7 @@ exclude = ["/screenshots"]
 
 [package.metadata.docs.rs]
 features = ["stable"]
-rustdoc-args = ["--cfg", "doc_cfg", "--cfg", "docsrs"]
+rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 # The minimal feature set needed to build basic applications (with assumptions

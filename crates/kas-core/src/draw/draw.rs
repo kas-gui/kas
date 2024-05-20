@@ -46,13 +46,13 @@ use std::time::Instant;
 /// automatically for structs containing references.)
 pub struct DrawIface<'a, DS: DrawSharedImpl> {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub draw: &'a mut DS::Draw,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub shared: &'a mut SharedState<DS>,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub pass: PassId,
 }
 
@@ -61,7 +61,7 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
     ///
     /// For usage by graphics backends.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub fn new(draw: &'a mut DS::Draw, shared: &'a mut SharedState<DS>) -> Self {
         DrawIface {
             draw,
@@ -153,7 +153,7 @@ pub trait Draw {
 
     /// Cast fields to [`Any`] references
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     fn get_fields_as_any_mut(&mut self) -> (&mut dyn Any, &mut dyn Any);
 
     /// Add a draw pass

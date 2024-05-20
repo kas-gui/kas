@@ -34,7 +34,7 @@ pub struct ConfigCx<'a> {
 impl<'a> ConfigCx<'a> {
     /// Construct
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub fn new(sh: &'a dyn ThemeSize, ev: &'a mut EventState) -> Self {
         ConfigCx { sh, ev }
     }

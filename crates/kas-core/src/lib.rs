@@ -12,7 +12,7 @@
 //!     re-implementations of [`impl-tools`](https://crates.io/crates/impl-tools) macros
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
-#![cfg_attr(doc_cfg, feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(feature = "spec", feature(specialization))]
 
 extern crate self as kas;
@@ -47,7 +47,7 @@ pub mod draw;
 pub mod event;
 pub mod geom;
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 pub mod hidden;
 pub mod layout;
 pub mod messages;

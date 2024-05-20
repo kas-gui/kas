@@ -208,7 +208,7 @@ impl ScrollComponent {
     /// This is identical to [`Self::focus_rect`] except that it does not call
     /// [`EventCx::set_scroll`], thus will not affect ancestors.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub fn self_focus_rect(&mut self, rect: Rect, window_rect: Rect) -> Action {
         self.glide.stop();
         let v = rect.pos - window_rect.pos;

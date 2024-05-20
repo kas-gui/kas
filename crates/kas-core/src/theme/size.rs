@@ -31,7 +31,7 @@ pub struct SizeCx<'a>(&'a dyn ThemeSize);
 impl<'a> SizeCx<'a> {
     /// Construct from a [`ThemeSize`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub fn new(h: &'a dyn ThemeSize) -> Self {
         SizeCx(h)
     }
@@ -194,8 +194,6 @@ impl<'a> SizeCx<'a> {
 }
 
 /// Theme sizing implementation
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[autoimpl(for<S: trait + ?Sized, R: Deref<Target = S>> R)]
 pub trait ThemeSize {
     /// Get the scale factor
