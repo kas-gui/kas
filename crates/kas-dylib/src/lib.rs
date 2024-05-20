@@ -12,6 +12,6 @@
 #![allow(clippy::single_component_path_imports)]
 
 use kas_core;
-#[cfg(feature = "kas-resvg")] use kas_resvg;
+#[cfg(feature = "resvg")] use kas_resvg;
 use kas_wgpu;
 use kas_widgets;
