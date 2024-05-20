@@ -95,7 +95,6 @@ impl RowStorage for DynRowStorage {
 /// For dynamic-length rows and fixed-length rows with more than 16 items use
 /// `Vec<i32>`. For fixed-length rows up to 16 items, use `[i32; rows]`.
 pub trait RowTemp: AsMut<[i32]> + Default + Debug + sealed::Sealed {
-    #[doc(hidden)]
     fn set_len(&mut self, len: usize);
 }
 
@@ -186,14 +185,12 @@ impl_scope! {
             assert_eq!(self.heights.len(), rows);
         }
 
-        #[doc(hidden)]
         fn widths_and_rules(&mut self) -> (&mut [i32], &mut [SizeRules]) {
             (
                 self.widths.as_mut(),
                 self.width_rules.as_mut(),
             )
         }
-        #[doc(hidden)]
         fn heights_and_rules(&mut self) -> (&mut [i32], &mut [SizeRules]) {
             (
                 self.heights.as_mut(),
@@ -220,11 +217,9 @@ impl GridStorage for DynGridStorage {
         self.heights.resize(rows, 0);
     }
 
-    #[doc(hidden)]
     fn widths_and_rules(&mut self) -> (&mut [i32], &mut [SizeRules]) {
         (self.widths.as_mut(), self.width_rules.as_mut())
     }
-    #[doc(hidden)]
     fn heights_and_rules(&mut self) -> (&mut [i32], &mut [SizeRules]) {
         (self.heights.as_mut(), self.height_rules.as_mut())
     }

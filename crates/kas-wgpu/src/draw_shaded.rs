@@ -9,7 +9,7 @@ use kas::draw::color::Rgba;
 use kas::draw::{DrawIface, DrawImpl, DrawSharedImpl, PassId};
 use kas::geom::Quad;
 
-/// Extension trait providing shaded drawing over [`DrawIface`]
+/// Extension trait providing shaded drawing for [`DrawIface`]
 ///
 /// All methods draw some feature.
 ///
@@ -74,7 +74,7 @@ where
     }
 }
 
-/// Drawing commands for shaded shapes
+/// Extended draw interface for [`DrawIface`] providing shaded drawing
 ///
 /// This trait is an extension over [`DrawImpl`] providing solid shaded shapes.
 ///
@@ -85,8 +85,6 @@ where
 /// Methods are parameterised via a pair of normals, `(inner, outer)`. These may
 /// have values from the closed range `[-1, 1]`, where -1 points inwards,
 /// 0 is perpendicular to the screen towards the viewer, and 1 points outwards.
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait DrawShadedImpl: DrawImpl {
     /// Add a shaded square to the draw buffer
     fn shaded_square(&mut self, pass: PassId, rect: Quad, norm: (f32, f32), col: Rgba);

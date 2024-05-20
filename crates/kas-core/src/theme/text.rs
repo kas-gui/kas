@@ -597,16 +597,6 @@ impl<T: FormattableText + ?Sized> Text<T> {
         Ok(self.display()?.text_glyph_pos(index))
     }
 
-    /// Get the number of glyphs
-    ///
-    /// See [`TextDisplay::num_glyphs`].
-    #[inline]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "num_glyphs")))]
-    #[cfg(feature = "num_glyphs")]
-    pub fn num_glyphs(&self) -> Result<usize, NotReady> {
-        Ok(self.wrapped_display()?.num_glyphs())
-    }
-
     /// Yield a sequence of positioned glyphs
     ///
     /// See [`TextDisplay::glyphs`].

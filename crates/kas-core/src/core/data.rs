@@ -39,7 +39,7 @@ pub struct CoreData {
     pub rect: Rect,
     pub id: Id,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     #[cfg(debug_assertions)]
     pub status: WidgetStatus,
 }
@@ -63,7 +63,7 @@ impl Clone for CoreData {
 ///
 /// It is not used in release builds.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 #[cfg(debug_assertions)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum WidgetStatus {

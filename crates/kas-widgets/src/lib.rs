@@ -58,7 +58,7 @@
 //! -   [`AccessLabel`]: a label which parses access keys
 //! -   [`GripPart`]: a handle (e.g. for a slider, splitter or scroll_bar)
 
-#![cfg_attr(doc_cfg, feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![cfg_attr(feature = "min_spec", feature(min_specialization))]
 
 pub mod adapt;

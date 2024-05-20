@@ -634,7 +634,6 @@ impl EventState {
     /// available, that may be used instead. See also [`async_global_executor`]
     /// documentation of configuration.
     #[cfg(feature = "spawn")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "spawn")))]
     pub fn push_spawn<Fut, M>(&mut self, id: Id, fut: Fut)
     where
         Fut: IntoFuture<Output = M> + 'static,

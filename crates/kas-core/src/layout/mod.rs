@@ -57,7 +57,11 @@ pub use size_rules::SizeRules;
 pub use size_types::*;
 pub use sizer::{solve_size_rules, RulesSetter, RulesSolver, SolveCache};
 pub use storage::*;
-pub use visitor::{FrameStorage, PackStorage, Visitable, VisitableList, Visitor};
+pub use visitor::{FrameStorage, PackStorage};
+
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+pub use visitor::{Visitable, VisitableList, Visitor};
 
 /// Information on which axis is being resized
 ///

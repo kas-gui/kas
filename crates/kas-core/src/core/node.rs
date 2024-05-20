@@ -285,7 +285,7 @@ impl<'a> Node<'a> {
 }
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 impl<'a> Node<'a> {
     /// Get size rules for the given axis
     pub(crate) fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {

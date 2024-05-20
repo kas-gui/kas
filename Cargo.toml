@@ -15,9 +15,9 @@ rust-version = "1.75.0"
 
 [package.metadata.docs.rs]
 features = ["stable"]
-rustdoc-args = ["--cfg", "doc_cfg"]
+rustdoc-args = ["--cfg", "docsrs"]
 # To build locally:
-# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=stable,internal_doc --all --no-deps --open
+# RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --features=stable,internal_doc --all --no-deps --open
 
 [features]
 #########  meta / build features  #########
@@ -84,7 +84,7 @@ ron = ["serde", "kas-core/ron"]
 toml = ["serde", "kas-core/toml"]
 
 # Support image loading and decoding
-image = ["kas-widgets/image"]
+image = ["kas-core/image", "kas-widgets/image"]
 
 # Enable resvg module (Canvas + Svg widgets)
 resvg = ["dep:kas-resvg", "kas-resvg?/svg", "kas-dylib?/resvg"]

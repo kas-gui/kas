@@ -183,7 +183,7 @@ pub enum Event {
     /// Since popups may be removed directly by the [`EventCx`], the parent should
     /// clean up any associated state here.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     PopupClosed(WindowId),
     /// Notification that a widget has gained navigation focus
     ///

@@ -31,7 +31,7 @@ pub struct SizeCx<'a>(&'a dyn ThemeSize);
 impl<'a> SizeCx<'a> {
     /// Construct from a [`ThemeSize`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub fn new(h: &'a dyn ThemeSize) -> Self {
         SizeCx(h)
     }
@@ -171,9 +171,6 @@ impl<'a> SizeCx<'a> {
     /// The [`TextClass`] is used to select a font and controls whether line
     /// wrapping is enabled.
     ///
-    /// Alignment is set from [`AxisInfo::align_or_default`]. If other alignment
-    /// is desired, modify `axis` before calling this method.
-    ///
     /// Horizontal size without wrapping is simply the size the text.
     /// Horizontal size with wrapping is bounded to some width dependant on the
     /// theme, and may have non-zero [`Stretch`] depending on the size.
@@ -194,8 +191,6 @@ impl<'a> SizeCx<'a> {
 }
 
 /// Theme sizing implementation
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[autoimpl(for<S: trait + ?Sized, R: Deref<Target = S>> R)]
 pub trait ThemeSize {
     /// Get the scale factor

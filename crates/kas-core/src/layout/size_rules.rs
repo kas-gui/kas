@@ -354,7 +354,7 @@ impl SizeRules {
     /// revert to the previous solution. (The reverse may not hold if widths
     /// had previously been affected by a different agent.)
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub fn solve_seq(out: &mut [i32], rules: &[Self], target: i32) {
         let total = SizeRules::sum(rules);
         Self::solve_seq_total(out, rules, total, target);
@@ -365,7 +365,7 @@ impl SizeRules {
     /// This is the same as [`SizeRules::solve_seq`] except that the rules' sum
     /// is passed explicitly.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     #[allow(
         clippy::comparison_chain,
         clippy::needless_range_loop,

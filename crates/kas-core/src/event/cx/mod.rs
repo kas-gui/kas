@@ -221,7 +221,7 @@ pub struct EventState {
     pending_nav_focus: PendingNavFocus,
     pending_cmds: VecDeque<(Id, Command)>,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub action: Action,
 }
 

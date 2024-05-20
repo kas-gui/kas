@@ -14,32 +14,26 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum Error {
     #[cfg(feature = "yaml")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "yaml")))]
     #[error("config (de)serialisation to YAML failed")]
     Yaml(#[from] serde_yaml::Error),
 
     #[cfg(feature = "json")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "json")))]
     #[error("config (de)serialisation to JSON failed")]
     Json(#[from] serde_json::Error),
 
     #[cfg(feature = "ron")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "ron")))]
     #[error("config serialisation to RON failed")]
     Ron(#[from] ron::Error),
 
     #[cfg(feature = "ron")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "ron")))]
     #[error("config deserialisation from RON failed")]
     RonSpanned(#[from] ron::error::SpannedError),
 
     #[cfg(feature = "toml")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "toml")))]
     #[error("config deserialisation from TOML failed")]
     TomlDe(#[from] toml::de::Error),
 
     #[cfg(feature = "toml")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "toml")))]
     #[error("config serialisation to TOML failed")]
     TomlSer(#[from] toml::ser::Error),
 

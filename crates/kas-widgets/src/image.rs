@@ -11,7 +11,6 @@ use kas::prelude::*;
 
 /// Image loading errors
 #[cfg(feature = "image")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "image")))]
 #[derive(thiserror::Error, Debug)]
 pub enum ImageError {
     #[error("IO error")]
@@ -23,7 +22,6 @@ pub enum ImageError {
 }
 
 #[cfg(feature = "image")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "image")))]
 impl From<kas::draw::AllocError> for ImageError {
     fn from(_: kas::draw::AllocError) -> ImageError {
         ImageError::Allocation
@@ -32,7 +30,6 @@ impl From<kas::draw::AllocError> for ImageError {
 
 /// Image `Result` type
 #[cfg(feature = "image")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "image")))]
 pub type Result<T> = std::result::Result<T, ImageError>;
 
 impl_scope! {
@@ -61,7 +58,6 @@ impl_scope! {
 
         /// Construct from a path
         #[cfg(feature = "image")]
-        #[cfg_attr(doc_cfg, doc(cfg(feature = "image")))]
         #[inline]
         pub fn new_path<P: AsRef<std::path::Path>>(
             path: P,
@@ -89,7 +85,6 @@ impl_scope! {
         ///
         /// Returns `Action::RESIZE` on success. On error, `self` is unchanged.
         #[cfg(feature = "image")]
-        #[cfg_attr(doc_cfg, doc(cfg(feature = "image")))]
         pub fn load_path<P: AsRef<std::path::Path>>(
             &mut self,
             path: P,

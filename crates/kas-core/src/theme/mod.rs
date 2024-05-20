@@ -25,7 +25,7 @@ mod theme_dst;
 mod traits;
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 pub mod dimensions;
 
 pub use colors::{Colors, ColorsLinear, ColorsSrgb, InputState};
@@ -38,5 +38,7 @@ pub use style::*;
 pub use text::{SizableText, Text};
 pub use theme_dst::ThemeDst;
 pub use traits::{Theme, Window};
+
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 pub use {draw::ThemeDraw, size::ThemeSize};

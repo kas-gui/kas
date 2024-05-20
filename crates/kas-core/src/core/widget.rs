@@ -242,7 +242,7 @@ pub trait Events: Widget + Sized {
 
 /// Action of Widget::_nav_next
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum NavAdvance {
     /// Match only `focus` if navigable
@@ -383,21 +383,21 @@ pub trait Widget: Layout {
     ///
     /// Do not implement this method directly!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     fn _configure(&mut self, cx: &mut ConfigCx, data: &Self::Data, id: Id);
 
     /// Internal method: update recursively
     ///
     /// Do not implement this method directly!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     fn _update(&mut self, cx: &mut ConfigCx, data: &Self::Data);
 
     /// Internal method: send recursively
     ///
     /// Do not implement this method directly!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     fn _send(&mut self, cx: &mut EventCx, data: &Self::Data, id: Id, event: Event) -> IsUsed;
 
     /// Internal method: replay recursively
@@ -407,7 +407,7 @@ pub trait Widget: Layout {
     ///
     /// Do not implement this method directly!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     fn _replay(&mut self, cx: &mut EventCx, data: &Self::Data, id: Id);
 
     /// Internal method: search for the previous/next navigation target
@@ -416,7 +416,7 @@ pub trait Widget: Layout {
     ///
     /// Do not implement this method directly!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     fn _nav_next(
         &mut self,
         cx: &mut ConfigCx,

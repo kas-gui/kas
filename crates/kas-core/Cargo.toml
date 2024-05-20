@@ -14,14 +14,14 @@ exclude = ["/screenshots"]
 
 [package.metadata.docs.rs]
 features = ["stable"]
-rustdoc-args = ["--cfg", "doc_cfg"]
+rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 # The minimal feature set needed to build basic applications (with assumptions
 # about target platforms).
 minimal = ["winit", "wayland"]
 # All standard test target features
-stable = ["minimal", "clipboard", "markdown", "shaping", "spawn", "x11", "serde", "toml", "yaml", "json", "ron", "macros_log"]
+stable = ["minimal", "clipboard", "markdown", "shaping", "spawn", "x11", "serde", "toml", "yaml", "json", "ron", "macros_log", "image"]
 # Enables all "recommended" features for nightly rustc
 nightly = ["stable"]
 # Additional, less recommendation-worthy features
@@ -73,6 +73,9 @@ x11 = ["winit?/x11"]
 # Enable serde integration (mainly config read/write)
 serde = ["dep:serde", "kas-text/serde", "winit?/serde"]
 
+# Enable load_icon_from_path utility function
+image = ["dep:image"]
+
 # Automatically detect usage of dark theme
 dark-light = ["dep:dark-light"]
 
@@ -106,6 +109,7 @@ raw-window-handle = "0.6.0"
 async-global-executor = { version = "2.3.1", optional = true }
 cfg-if = "1.0.0"
 smol_str = "0.2.0"
+image = { version = "0.25.1", optional = true }
 
 [target.'cfg(any(target_os="linux", target_os="dragonfly", target_os="freebsd", target_os="netbsd", target_os="openbsd"))'.dependencies]
 smithay-clipboard = { version = "0.7.0", optional = true }

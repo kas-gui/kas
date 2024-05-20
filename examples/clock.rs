@@ -18,7 +18,7 @@ use std::f32::consts::PI;
 use std::str::FromStr;
 use std::time::Duration;
 
-use kas::app::AppAssoc;
+use kas::app::ApplicationInherent;
 use kas::draw::color::{Rgba, Rgba8Srgb};
 use kas::draw::{Draw, DrawRounded};
 use kas::geom::{Quad, Vec2};
@@ -80,7 +80,7 @@ impl_scope! {
 
             // We use the low-level draw device to draw our clock. This means it is
             // not themeable, but gives us much more flexible draw routines.
-            let mut draw = draw.draw_iface::<<Application as AppAssoc>::DrawShared>().unwrap();
+            let mut draw = draw.draw_iface::<<Application as ApplicationInherent>::DrawShared>().unwrap();
 
             let rect = self.core.rect;
             let quad = Quad::conv(rect);

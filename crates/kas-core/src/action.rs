@@ -48,19 +48,19 @@ bitflags! {
         ///
         /// Implies [`Action::RESIZE`].
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-        #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+        #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
         const THEME_UPDATE = 1 << 10;
         /// Reload per-window cache of event configuration
         ///
         /// Implies [`Action::UPDATE`].
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-        #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+        #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
         const EVENT_CONFIG = 1 << 11;
         /// Switch themes, replacing theme-window instances
         ///
         /// Implies [`Action::RESIZE`].
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-        #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+        #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
         const THEME_SWITCH = 1 << 12;
         /// Reconfigure all widgets of the window
         ///

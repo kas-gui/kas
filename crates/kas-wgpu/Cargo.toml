@@ -13,7 +13,7 @@ documentation = "https://docs.rs/kas-wgpu/"
 
 [package.metadata.docs.rs]
 features = ["kas/winit", "kas/wayland"]
-rustdoc-args = ["--cfg", "doc_cfg"]
+rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 # WARNING: if "raster" is disabled, an alternative like "kas-text/fontdue" is required!

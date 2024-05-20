@@ -128,7 +128,6 @@ impl_scope! {
     /// An SVG image loaded from a path
     ///
     /// May be default constructed (result is empty).
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "svg")))]
     #[autoimpl(Debug ignore self.inner)]
     #[impl_default]
     #[derive(Clone)]

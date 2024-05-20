@@ -81,7 +81,7 @@ impl<'a> DrawCx<'a> {
 
     /// Construct from a [`DrawCx`] and [`EventState`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub fn new(h: &'a mut dyn ThemeDraw, id: Id) -> Self {
         DrawCx { h, id }
     }
@@ -384,8 +384,6 @@ impl<'a> DrawCx<'a> {
 /// }
 /// ```
 /// </details>
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[autoimpl(for<H: trait + ?Sized> Box<H>)]
 pub trait ThemeDraw {
     /// Access components: [`ThemeSize`], [`Draw`], [`EventState`]

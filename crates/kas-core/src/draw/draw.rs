@@ -46,13 +46,13 @@ use std::time::Instant;
 /// automatically for structs containing references.)
 pub struct DrawIface<'a, DS: DrawSharedImpl> {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub draw: &'a mut DS::Draw,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub shared: &'a mut SharedState<DS>,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub pass: PassId,
 }
 
@@ -61,7 +61,7 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
     ///
     /// For usage by graphics backends.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub fn new(draw: &'a mut DS::Draw, shared: &'a mut SharedState<DS>) -> Self {
         DrawIface {
             draw,
@@ -123,7 +123,7 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
     }
 }
 
-/// Base drawing interface for [`DrawIface`]
+/// Basic draw interface for [`DrawIface`]
 ///
 /// Most methods draw some feature. Exceptions are those starting with `get_`
 /// and [`Self::new_dyn_pass`].
@@ -153,7 +153,7 @@ pub trait Draw {
 
     /// Cast fields to [`Any`] references
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     fn get_fields_as_any_mut(&mut self) -> (&mut dyn Any, &mut dyn Any);
 
     /// Add a draw pass
@@ -301,7 +301,7 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
     }
 }
 
-/// Base abstraction over drawing
+/// Implementation target for [`Draw`]
 ///
 /// This trait covers only the bare minimum of functionality which *must* be
 /// provided by the graphics backend; extension traits such as [`DrawRoundedImpl`]
@@ -318,8 +318,6 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
 /// Draw operations take place over multiple render passes, identified by a
 /// handle of type [`PassId`]. In general the user only needs to pass this value
 /// into methods as required. [`DrawImpl::new_pass`] creates a new [`PassId`].
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait DrawImpl: Any {
     /// Access common data
     fn common_mut(&mut self) -> &mut WindowCommon;

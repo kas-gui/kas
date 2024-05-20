@@ -20,12 +20,15 @@ use crate::messages::MessageStack;
 pub(crate) use window::{Window, WindowDataErased};
 
 #[cfg(winit)]
-pub use app::{AppAssoc, AppBuilder, Application, ClosedError, Proxy};
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-pub use common::{AppGraphicsBuilder, WindowSurface};
+pub use app::{AppBuilder, Application, ApplicationInherent, ClosedError, Proxy};
 pub use common::{Error, Platform, Result};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+pub use common::{AppGraphicsBuilder, WindowSurface};
+
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 pub extern crate raw_window_handle;
 
 /// Application state
