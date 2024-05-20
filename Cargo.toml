@@ -84,7 +84,7 @@ ron = ["serde", "kas-core/ron"]
 toml = ["serde", "kas-core/toml"]
 
 # Support image loading and decoding
-image = ["kas-widgets/image"]
+image = ["kas-core/image", "kas-widgets/image"]
 
 # Enable resvg module (Canvas + Svg widgets)
 resvg = ["dep:kas-resvg", "kas-resvg?/svg", "kas-dylib?/resvg"]

@@ -6,6 +6,8 @@
 //! Utilities
 
 use crate::geom::Coord;
+#[cfg(all(feature = "image", feature = "winit"))]
+use crate::Icon;
 use crate::{Id, Layout, LayoutExt};
 use std::fmt;
 
@@ -122,8 +124,7 @@ pub fn nav_next(reverse: bool, from: Option<usize>, len: usize) -> Option<usize>
 }
 
 /// Load a window icon from a path
-#[cfg(feature = "image")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "image")))]
+#[cfg(all(feature = "image", feature = "winit"))]
 pub fn load_icon_from_path<P: AsRef<std::path::Path>>(
     path: P,
 ) -> Result<Icon, Box<dyn std::error::Error>> {
