@@ -24,7 +24,7 @@ impl Default for Options {
     fn default() -> Self {
         Options {
             power_preference: PowerPreference::LowPower,
-            backends: Backends::all(),
+            backends: Backends::PRIMARY,
             wgpu_trace_path: None,
         }
     }
