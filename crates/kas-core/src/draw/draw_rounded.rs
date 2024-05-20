@@ -9,7 +9,7 @@ use super::color::Rgba;
 use super::{Draw, DrawIface, DrawImpl, DrawSharedImpl, PassId};
 use crate::geom::{Quad, Vec2};
 
-/// Extension over [`Draw`] for rounded shapes
+/// Extended draw interface for [`DrawIface`] providing rounded drawing
 ///
 /// All methods draw some feature.
 pub trait DrawRounded: Draw {
@@ -94,15 +94,13 @@ where
     }
 }
 
-/// Drawing commands for rounded shapes
+/// Implementation target for [`DrawRounded`]
 ///
 /// This trait is an extension over [`DrawImpl`] providing rounded shapes.
 ///
 /// The primitives provided by this trait are partially transparent.
 /// If the implementation buffers draw commands, it should draw these
 /// primitives after solid primitives.
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait DrawRoundedImpl: DrawImpl {
     /// Draw a line with rounded ends and uniform colour
     fn rounded_line(&mut self, pass: PassId, p1: Vec2, p2: Vec2, radius: f32, col: Rgba);

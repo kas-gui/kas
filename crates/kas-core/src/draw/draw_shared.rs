@@ -141,11 +141,9 @@ impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
     }
 }
 
-/// Trait over shared data of draw object
+/// Implementation target for [`DrawShared`]
 ///
 /// This is typically used via [`SharedState`].
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait DrawSharedImpl: Any {
     type Draw: DrawImpl;
 
