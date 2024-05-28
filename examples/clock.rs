@@ -15,7 +15,6 @@ extern crate chrono;
 
 use chrono::prelude::*;
 use std::f32::consts::PI;
-use std::str::FromStr;
 use std::time::Duration;
 
 use kas::app::ApplicationInherent;
@@ -70,7 +69,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            let accent: Rgba = Rgba8Srgb::from_str("#d7916f").unwrap().into();
+            let accent: Rgba = Rgba8Srgb::parse_srgb(b"d7916f").into();
             let col_back = Rgba::ga(0.0, 0.5);
             let col_face = accent.multiply(0.4);
             let col_time = Rgba::grey(1.0);
@@ -173,7 +172,7 @@ fn main() -> kas::app::Result<()> {
     env_logger::init();
 
     let window = Window::new(Clock::new(), "Clock")
-        .with_decorations(kas::Decorations::None)
+        .with_decorations(kas::decorations::Decorations::None)
         .with_transparent(true);
 
     Application::with_theme(Default::default())

@@ -61,12 +61,13 @@ impl<CB: CustomPipeBuilder> AppGraphicsBuilder for WgpuBuilder<CB> {
     fn new_surface<'window, W>(
         shared: &mut Self::Shared,
         window: W,
+        transparent: bool,
     ) -> Result<Self::Surface<'window>>
     where
         W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
         Self: Sized,
     {
-        surface::Surface::new(shared, window)
+        surface::Surface::new(shared, window, transparent)
     }
 }
 

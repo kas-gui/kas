@@ -287,7 +287,11 @@ mod test {
             todo!()
         }
 
-        fn new_surface<'window, W>(_: &mut Self::Shared, _: W) -> Result<Self::Surface<'window>>
+        fn new_surface<'window, W>(
+            _: &mut Self::Shared,
+            _: W,
+            _: bool,
+        ) -> Result<Self::Surface<'window>>
         where
             W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
             Self: Sized,

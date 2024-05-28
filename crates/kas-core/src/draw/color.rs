@@ -264,6 +264,53 @@ impl Rgba8Srgb {
             )
         }
     }
+
+    /// Compile-time parser for sRGB and sRGBA colours
+    pub const fn try_parse_srgb(s: &[u8]) -> Result<Rgba8Srgb, ParseError> {
+        if s.len() != 6 && s.len() != 8 {
+            return Err(ParseError::Length);
+        }
+
+        // `val` is copied from the hex crate:
+        // Copyright (c) 2013-2014 The Rust Project Developers.
+        // Copyright (c) 2015-2020 The rust-hex Developers.
+        const fn val(c: u8) -> Result<u8, ()> {
+            match c {
+                b'A'..=b'F' => Ok(c - b'A' + 10),
+                b'a'..=b'f' => Ok(c - b'a' + 10),
+                b'0'..=b'9' => Ok(c - b'0'),
+                _ => Err(()),
+            }
+        }
+
+        const fn byte(a: u8, b: u8) -> Result<u8, ()> {
+            match (val(a), val(b)) {
+                (Ok(hi), Ok(lo)) => Ok(hi << 4 | lo),
+                _ => Err(()),
+            }
+        }
+
+        let r = byte(s[0], s[1]);
+        let g = byte(s[2], s[3]);
+        let b = byte(s[4], s[5]);
+        let a = if s.len() == 8 { byte(s[6], s[7]) } else { Ok(0xFF) };
+
+        match (r, g, b, a) {
+            (Ok(r), Ok(g), Ok(b), Ok(a)) => Ok(Rgba8Srgb([r, g, b, a])),
+            _ => Err(ParseError::InvalidHex),
+        }
+    }
+
+    /// Compile-time parser for sRGB and sRGBA colours
+    ///
+    /// This method has worse diagnostics on error due to limited const-
+    pub const fn parse_srgb(s: &[u8]) -> Rgba8Srgb {
+        match Self::try_parse_srgb(s) {
+            Ok(result) => result,
+            Err(ParseError::Length) => panic!("invalid length (expected 6 or 8 bytes"),
+            Err(ParseError::InvalidHex) => panic!("invalid hex byte (expected 0-9, a-f or A-F)"),
+        }
+    }
 }
 
 impl From<Rgba8Srgb> for [u8; 4] {
@@ -303,54 +350,7 @@ impl std::str::FromStr for Rgba8Srgb {
         if s[0] == b'#' {
             s = &s[1..];
         }
-        try_parse_srgb(&s)
-    }
-}
-
-/// Compile-time parser for sRGB and sRGBA colours
-pub const fn try_parse_srgb(s: &[u8]) -> Result<Rgba8Srgb, ParseError> {
-    if s.len() != 6 && s.len() != 8 {
-        return Err(ParseError::Length);
-    }
-
-    // `val` is copied from the hex crate:
-    // Copyright (c) 2013-2014 The Rust Project Developers.
-    // Copyright (c) 2015-2020 The rust-hex Developers.
-    const fn val(c: u8) -> Result<u8, ()> {
-        match c {
-            b'A'..=b'F' => Ok(c - b'A' + 10),
-            b'a'..=b'f' => Ok(c - b'a' + 10),
-            b'0'..=b'9' => Ok(c - b'0'),
-            _ => Err(()),
-        }
-    }
-
-    const fn byte(a: u8, b: u8) -> Result<u8, ()> {
-        match (val(a), val(b)) {
-            (Ok(hi), Ok(lo)) => Ok(hi << 4 | lo),
-            _ => Err(()),
-        }
-    }
-
-    let r = byte(s[0], s[1]);
-    let g = byte(s[2], s[3]);
-    let b = byte(s[4], s[5]);
-    let a = if s.len() == 8 { byte(s[6], s[7]) } else { Ok(0xFF) };
-
-    match (r, g, b, a) {
-        (Ok(r), Ok(g), Ok(b), Ok(a)) => Ok(Rgba8Srgb([r, g, b, a])),
-        _ => Err(ParseError::InvalidHex),
-    }
-}
-
-/// Compile-time parser for sRGB and sRGBA colours
-///
-/// This method has worse diagnostics on error due to limited const-
-pub const fn parse_srgb(s: &[u8]) -> Rgba8Srgb {
-    match try_parse_srgb(s) {
-        Ok(result) => result,
-        Err(ParseError::Length) => panic!("invalid length (expected 6 or 8 bytes"),
-        Err(ParseError::InvalidHex) => panic!("invalid hex byte (expected 0-9, a-f or A-F)"),
+        Rgba8Srgb::try_parse_srgb(&s)
     }
 }
 

@@ -317,7 +317,7 @@ impl<Data: 'static> Window<Data> {
     }
 
     /// Get the preference for window decorations
-    pub fn decorations(&self) -> crate::Decorations {
+    pub fn decorations(&self) -> Decorations {
         self.decorations
     }
 

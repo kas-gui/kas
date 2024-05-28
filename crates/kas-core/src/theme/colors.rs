@@ -5,7 +5,7 @@
 
 //! Colour schemes
 
-use crate::draw::color::{parse_srgb, Rgba, Rgba8Srgb};
+use crate::draw::color::{Rgba, Rgba8Srgb};
 use crate::event::EventState;
 use crate::theme::Background;
 use crate::Id;
@@ -226,52 +226,52 @@ impl ColorsSrgb {
     /// Default "light" scheme
     pub const LIGHT: ColorsSrgb = Colors {
         is_dark: false,
-        background: parse_srgb(b"FAFAFA"),
-        frame: parse_srgb(b"BCBCBC"),
-        accent: parse_srgb(b"8347f2"),
-        accent_soft: parse_srgb(b"B38DF9"),
-        nav_focus: parse_srgb(b"7E3FF2"),
-        edit_bg: parse_srgb(b"FAFAFA"),
-        edit_bg_disabled: parse_srgb(b"DCDCDC"),
-        edit_bg_error: parse_srgb(b"FFBCBC"),
-        text: parse_srgb(b"000000"),
-        text_invert: parse_srgb(b"FFFFFF"),
-        text_disabled: parse_srgb(b"AAAAAA"),
-        text_sel_bg: parse_srgb(b"A172FA"),
+        background: Rgba8Srgb::parse_srgb(b"FAFAFA"),
+        frame: Rgba8Srgb::parse_srgb(b"BCBCBC"),
+        accent: Rgba8Srgb::parse_srgb(b"8347f2"),
+        accent_soft: Rgba8Srgb::parse_srgb(b"B38DF9"),
+        nav_focus: Rgba8Srgb::parse_srgb(b"7E3FF2"),
+        edit_bg: Rgba8Srgb::parse_srgb(b"FAFAFA"),
+        edit_bg_disabled: Rgba8Srgb::parse_srgb(b"DCDCDC"),
+        edit_bg_error: Rgba8Srgb::parse_srgb(b"FFBCBC"),
+        text: Rgba8Srgb::parse_srgb(b"000000"),
+        text_invert: Rgba8Srgb::parse_srgb(b"FFFFFF"),
+        text_disabled: Rgba8Srgb::parse_srgb(b"AAAAAA"),
+        text_sel_bg: Rgba8Srgb::parse_srgb(b"A172FA"),
     };
 
     /// Dark scheme
     pub const DARK: ColorsSrgb = Colors {
         is_dark: true,
-        background: parse_srgb(b"404040"),
-        frame: parse_srgb(b"AAAAAA"),
-        accent: parse_srgb(b"F74C00"),
-        accent_soft: parse_srgb(b"E77346"),
-        nav_focus: parse_srgb(b"D03E00"),
-        edit_bg: parse_srgb(b"303030"),
-        edit_bg_disabled: parse_srgb(b"606060"),
-        edit_bg_error: parse_srgb(b"a06868"),
-        text: parse_srgb(b"FFFFFF"),
-        text_invert: parse_srgb(b"000000"),
-        text_disabled: parse_srgb(b"CBCBCB"),
-        text_sel_bg: parse_srgb(b"E77346"),
+        background: Rgba8Srgb::parse_srgb(b"404040"),
+        frame: Rgba8Srgb::parse_srgb(b"AAAAAA"),
+        accent: Rgba8Srgb::parse_srgb(b"F74C00"),
+        accent_soft: Rgba8Srgb::parse_srgb(b"E77346"),
+        nav_focus: Rgba8Srgb::parse_srgb(b"D03E00"),
+        edit_bg: Rgba8Srgb::parse_srgb(b"303030"),
+        edit_bg_disabled: Rgba8Srgb::parse_srgb(b"606060"),
+        edit_bg_error: Rgba8Srgb::parse_srgb(b"a06868"),
+        text: Rgba8Srgb::parse_srgb(b"FFFFFF"),
+        text_invert: Rgba8Srgb::parse_srgb(b"000000"),
+        text_disabled: Rgba8Srgb::parse_srgb(b"CBCBCB"),
+        text_sel_bg: Rgba8Srgb::parse_srgb(b"E77346"),
     };
 
     /// Blue scheme
     pub const BLUE: ColorsSrgb = Colors {
         is_dark: false,
-        background: parse_srgb(b"FFFFFF"),
-        frame: parse_srgb(b"DADADA"),
-        accent: parse_srgb(b"3fafd7"),
-        accent_soft: parse_srgb(b"7CDAFF"),
-        nav_focus: parse_srgb(b"3B697A"),
-        edit_bg: parse_srgb(b"FFFFFF"),
-        edit_bg_disabled: parse_srgb(b"DCDCDC"),
-        edit_bg_error: parse_srgb(b"FFBCBC"),
-        text: parse_srgb(b"000000"),
-        text_invert: parse_srgb(b"FFFFFF"),
-        text_disabled: parse_srgb(b"AAAAAA"),
-        text_sel_bg: parse_srgb(b"6CC0E1"),
+        background: Rgba8Srgb::parse_srgb(b"FFFFFF"),
+        frame: Rgba8Srgb::parse_srgb(b"DADADA"),
+        accent: Rgba8Srgb::parse_srgb(b"3fafd7"),
+        accent_soft: Rgba8Srgb::parse_srgb(b"7CDAFF"),
+        nav_focus: Rgba8Srgb::parse_srgb(b"3B697A"),
+        edit_bg: Rgba8Srgb::parse_srgb(b"FFFFFF"),
+        edit_bg_disabled: Rgba8Srgb::parse_srgb(b"DCDCDC"),
+        edit_bg_error: Rgba8Srgb::parse_srgb(b"FFBCBC"),
+        text: Rgba8Srgb::parse_srgb(b"000000"),
+        text_invert: Rgba8Srgb::parse_srgb(b"FFFFFF"),
+        text_disabled: Rgba8Srgb::parse_srgb(b"AAAAAA"),
+        text_sel_bg: Rgba8Srgb::parse_srgb(b"6CC0E1"),
     };
 }
 

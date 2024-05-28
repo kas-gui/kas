@@ -109,6 +109,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         Ok(DrawPipe {
             instance,
+            adapter,
             device,
             queue,
             staging_belt,

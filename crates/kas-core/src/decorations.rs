@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Title bar
+//! Window title-bar and border decorations
 //!
 //! Note: due to definition in kas-core, some widgets must be duplicated.
 
@@ -104,7 +104,7 @@ impl_scope! {
     #[widget {
         Data = ();
     }]
-    pub struct Label {
+    pub(crate) struct Label {
         core: widget_core!(),
         text: Text<String>,
     }
@@ -166,7 +166,7 @@ impl_scope! {
     #[widget {
         hover_highlight = true;
     }]
-    pub struct MarkButton<M: Clone + Debug + 'static> {
+    pub(crate) struct MarkButton<M: Clone + Debug + 'static> {
         core: widget_core!(),
         style: MarkStyle,
         msg: M,
@@ -215,21 +215,72 @@ enum TitleBarButton {
 }
 
 impl_scope! {
+    /// A set of title-bar buttons
+    ///
+    /// Currently, this consists of minimise, maximise and close buttons.
+    #[derive(Clone, Default)]
+    #[widget{
+        layout = row! [
+            MarkButton::new(MarkStyle::Point(Direction::Down), TitleBarButton::Minimize),
+            MarkButton::new(MarkStyle::Point(Direction::Up), TitleBarButton::Maximize),
+            MarkButton::new(MarkStyle::X, TitleBarButton::Close),
+        ];
+    }]
+    pub struct TitleBarButtons {
+        core: widget_core!(),
+    }
+
+    impl Self {
+        /// Construct
+        #[inline]
+        pub fn new() -> Self {
+            TitleBarButtons {
+                core: Default::default(),
+            }
+        }
+    }
+
+    impl Events for Self {
+        type Data = ();
+
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(msg) = cx.try_pop() {
+                match msg {
+                    TitleBarButton::Minimize => {
+                        #[cfg(winit)]
+                        if let Some(w) = cx.winit_window() {
+                            w.set_minimized(true);
+                        }
+                    }
+                    TitleBarButton::Maximize => {
+                        #[cfg(winit)]
+                        if let Some(w) = cx.winit_window() {
+                            w.set_maximized(!w.is_maximized());
+                        }
+                    }
+                    TitleBarButton::Close => cx.action(self, Action::CLOSE),
+                }
+            }
+        }
+    }
+}
+
+impl_scope! {
     /// A window's title bar (part of decoration)
     #[derive(Clone, Default)]
     #[widget{
         layout = row! [
             // self.icon,
             self.title,
-            MarkButton::new(MarkStyle::Point(Direction::Down), TitleBarButton::Minimize),
-            MarkButton::new(MarkStyle::Point(Direction::Up), TitleBarButton::Maximize),
-            MarkButton::new(MarkStyle::X, TitleBarButton::Close),
+            self.buttons,
         ];
     }]
     pub struct TitleBar {
         core: widget_core!(),
         #[widget]
         title: Label,
+        #[widget]
+        buttons: TitleBarButtons,
     }
 
     impl Self {
@@ -239,6 +290,7 @@ impl_scope! {
             TitleBar {
                 core: Default::default(),
                 title: Label::new(title),
+                buttons: Default::default(),
             }
         }
 
@@ -263,26 +315,6 @@ impl_scope! {
                     Used
                 }
                 _ => Unused,
-            }
-        }
-
-        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-            if let Some(msg) = cx.try_pop() {
-                match msg {
-                    TitleBarButton::Minimize => {
-                        #[cfg(winit)]
-                        if let Some(w) = cx.winit_window() {
-                            w.set_minimized(true);
-                        }
-                    }
-                    TitleBarButton::Maximize => {
-                        #[cfg(winit)]
-                        if let Some(w) = cx.winit_window() {
-                            w.set_maximized(!w.is_maximized());
-                        }
-                    }
-                    TitleBarButton::Close => cx.action(self, Action::CLOSE),
-                }
             }
         }
     }

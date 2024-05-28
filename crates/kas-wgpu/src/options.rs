@@ -24,7 +24,7 @@ impl Default for Options {
     fn default() -> Self {
         Options {
             power_preference: PowerPreference::LowPower,
-            backends: Backends::all(),
+            backends: Backends::PRIMARY,
             wgpu_trace_path: None,
         }
     }
@@ -97,7 +97,7 @@ impl Options {
                 "FALLBACK" => Backends::empty(),
                 other => {
                     log::error!("from_env: bad var KAS_BACKENDS={other}");
-                    log::error!("from_env: supported backends: VULKAN, GL, METAL, DX11, DX12, BROWSER_WEBGPU, PRIMARY, SECONDARY, FALLBACK");
+                    log::error!("from_env: supported backends: VULKAN, GL, METAL, DX12, BROWSER_WEBGPU, PRIMARY, SECONDARY, FALLBACK");
                     self.backends
                 }
             }

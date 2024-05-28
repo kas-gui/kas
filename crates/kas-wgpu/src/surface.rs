@@ -21,7 +21,11 @@ pub struct Surface<'a, C: CustomPipe> {
 }
 
 impl<'a, C: CustomPipe> Surface<'a, C> {
-    pub fn new<W>(shared: &mut <Self as WindowSurface>::Shared, window: W) -> Result<Self, Error>
+    pub fn new<W>(
+        shared: &mut <Self as WindowSurface>::Shared,
+        window: W,
+        transparent: bool,
+    ) -> Result<Self, Error>
     where
         W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'a,
         Self: Sized,
@@ -30,6 +34,18 @@ impl<'a, C: CustomPipe> Surface<'a, C> {
             .instance
             .create_surface(window)
             .map_err(|e| Error::Graphics(Box::new(e)))?;
+
+        use wgpu::CompositeAlphaMode::{Inherit, Opaque, PostMultiplied, PreMultiplied};
+        let caps = surface.get_capabilities(&shared.adapter);
+        let alpha_mode = match transparent {
+            // FIXME: data conversion is needed somewhere:
+            true if caps.alpha_modes.contains(&PreMultiplied) => PreMultiplied,
+            true if caps.alpha_modes.contains(&PostMultiplied) => PostMultiplied,
+            _ if caps.alpha_modes.contains(&Opaque) => Opaque,
+            _ => Inherit, // it is specified that either Opaque or Inherit is supported
+        };
+        log::debug!("Surface::new: using alpha_mode={alpha_mode:?}");
+
         let sc_desc = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: crate::draw::RENDER_TEX_FORMAT,
@@ -37,11 +53,7 @@ impl<'a, C: CustomPipe> Surface<'a, C> {
             height: 0,
             present_mode: wgpu::PresentMode::Fifo,
             desired_maximum_frame_latency: 2,
-            // FIXME: current output is for Opaque or PostMultiplied, depending
-            // on window transparency. But we can't pick what we want since only
-            // a sub-set of modes are supported (depending on target).
-            // Currently it's unclear how to handle this properly.
-            alpha_mode: wgpu::CompositeAlphaMode::Auto,
+            alpha_mode,
             view_formats: vec![],
         };
 
