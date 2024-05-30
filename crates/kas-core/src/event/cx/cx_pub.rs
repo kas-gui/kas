@@ -475,6 +475,10 @@ impl EventState {
     /// grabs targets the widget to depress, or when a keyboard binding is used
     /// to activate a widget (for the duration of the key-press).
     ///
+    /// Assumption: this method will only be called by handlers of a grab (i.e.
+    /// recipients of [`Event::PressStart`] after initiating a successful grab,
+    /// [`Event::PressMove`] or [`Event::PressEnd`]).
+    ///
     /// Queues a redraw and returns `true` if the depress target changes,
     /// otherwise returns `false`.
     pub fn set_grab_depress(&mut self, source: PressSource, target: Option<Id>) -> bool {
@@ -504,8 +508,8 @@ impl EventState {
         redraw
     }
 
-    /// Returns true if `id` or any descendant has a mouse or touch grab
-    pub fn any_pin_on(&self, id: &Id) -> bool {
+    /// Returns true if there is a mouse or touch grab on `id` or any descendant of `id`
+    pub fn any_grab_on(&self, id: &Id) -> bool {
         if self
             .mouse_grab
             .as_ref()
