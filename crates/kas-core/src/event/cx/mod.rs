@@ -78,6 +78,7 @@ struct MouseGrab {
     start_id: Id,
     depress: Option<Id>,
     details: GrabDetails,
+    cancel: bool,
 }
 
 impl<'a> EventCx<'a> {
@@ -111,6 +112,7 @@ struct TouchGrab {
     coord: Coord,
     mode: GrabMode,
     pan_grab: (u16, u16),
+    cancel: bool,
 }
 
 impl TouchGrab {
@@ -364,6 +366,54 @@ impl EventState {
         self.action(Id::ROOT, grab.flush_click_move());
         grab
     }
+
+    /// Clear all active events on `target`
+    fn clear_events(&mut self, target: &Id) {
+        if let Some(id) = self.sel_focus.as_ref() {
+            if target.is_ancestor_of(id) {
+                if let Some(pending) = self.pending_sel_focus.as_mut() {
+                    if pending.target.as_ref() == Some(id) {
+                        pending.target = None;
+                        pending.key_focus = false;
+                    }
+                } else {
+                    self.pending_sel_focus = Some(PendingSelFocus {
+                        target: None,
+                        key_focus: false,
+                        source: FocusSource::Synthetic,
+                    });
+                }
+            }
+        }
+
+        if let Some(id) = self.nav_focus.as_ref() {
+            if target.is_ancestor_of(id) {
+                if matches!(&self.pending_nav_focus, PendingNavFocus::Set { ref target, .. } if target.as_ref() == Some(id))
+                {
+                    self.pending_nav_focus = PendingNavFocus::None;
+                }
+
+                if matches!(self.pending_nav_focus, PendingNavFocus::None) {
+                    self.pending_nav_focus = PendingNavFocus::Set {
+                        target: None,
+                        source: FocusSource::Synthetic,
+                    };
+                }
+            }
+        }
+
+        if let Some(grab) = self.mouse_grab.as_mut() {
+            if grab.start_id == target {
+                grab.cancel = true;
+            }
+        }
+
+        for grab in self.touch_grab.iter_mut() {
+            if grab.start_id == target {
+                grab.cancel = true;
+            }
+        }
+    }
 }
 
 /// Event handling context
@@ -492,7 +542,10 @@ impl<'a> EventCx<'a> {
     // Clears mouse grab and pan grab, resets cursor and redraws
     fn remove_mouse_grab(&mut self, success: bool) -> Option<(Id, Event)> {
         if let Some(grab) = self.mouse_grab.take() {
-            log::trace!("remove_mouse_grab: start_id={}", grab.start_id);
+            log::trace!(
+                "remove_mouse_grab: start_id={}, success={success}",
+                grab.start_id
+            );
             self.window.set_cursor_icon(self.hover_icon);
             self.opt_action(grab.depress.clone(), Action::REDRAW);
             if let GrabDetails::Pan(g) = grab.details {

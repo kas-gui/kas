@@ -140,9 +140,38 @@ impl EventState {
             }
 
             cx.flush_mouse_grab_motion();
-            for i in 0..cx.touch_grab.len() {
+            if cx
+                .mouse_grab
+                .as_ref()
+                .map(|grab| grab.cancel)
+                .unwrap_or(false)
+            {
+                if let Some((id, event)) = cx.remove_mouse_grab(false) {
+                    cx.send_event(win.as_node(data), id, event);
+                }
+            }
+
+            let mut i = 0;
+            while i < cx.touch_grab.len() {
                 let action = cx.touch_grab[i].flush_click_move();
                 cx.state.action |= action;
+
+                if cx.touch_grab[i].cancel {
+                    let grab = cx.remove_touch(i);
+
+                    let press = Press {
+                        source: PressSource::Touch(grab.id),
+                        id: grab.cur_id,
+                        coord: grab.coord,
+                    };
+                    let event = Event::PressEnd {
+                        press,
+                        success: false,
+                    };
+                    cx.send_event(win.as_node(data), grab.start_id, event);
+                } else {
+                    i += 1;
+                }
             }
 
             for gi in 0..cx.pan_grab.len() {

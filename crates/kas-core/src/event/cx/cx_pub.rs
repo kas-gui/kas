@@ -174,41 +174,10 @@ impl EventState {
     /// recipient or any ancestor is disabled).
     ///
     /// Disabling a widget clears navigation, selection and key focus when the
-    /// target is disabled. TODO: also cancel mouse/touch/pan grabs.
+    /// target is disabled, and also cancels press/pan grabs.
     pub fn set_disabled(&mut self, target: Id, disable: bool) {
         if disable {
-            if let Some(id) = self.sel_focus.as_ref() {
-                if target.is_ancestor_of(id) {
-                    if let Some(pending) = self.pending_sel_focus.as_mut() {
-                        if pending.target.as_ref() == Some(id) {
-                            pending.target = None;
-                            pending.key_focus = false;
-                        }
-                    } else {
-                        self.pending_sel_focus = Some(PendingSelFocus {
-                            target: None,
-                            key_focus: false,
-                            source: FocusSource::Synthetic,
-                        });
-                    }
-                }
-            }
-
-            if let Some(id) = self.nav_focus.as_ref() {
-                if target.is_ancestor_of(id) {
-                    if matches!(&self.pending_nav_focus, PendingNavFocus::Set { ref target, .. } if target.as_ref() == Some(id))
-                    {
-                        self.pending_nav_focus = PendingNavFocus::None;
-                    }
-
-                    if matches!(self.pending_nav_focus, PendingNavFocus::None) {
-                        self.pending_nav_focus = PendingNavFocus::Set {
-                            target: None,
-                            source: FocusSource::Synthetic,
-                        };
-                    }
-                }
-            }
+            self.clear_events(&target);
         }
 
         for (i, id) in self.disabled.iter().enumerate() {

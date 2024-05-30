@@ -194,6 +194,7 @@ impl GrabBuilder {
                     if grab.start_id != id
                         || grab.button != button
                         || grab.details.is_pan() != mode.is_pan()
+                        || grab.cancel
                     {
                         return Unused;
                     }
@@ -209,6 +210,7 @@ impl GrabBuilder {
                         start_id: id.clone(),
                         depress: Some(id.clone()),
                         details,
+                        cancel: false,
                     });
                 }
                 if let Some(icon) = cursor {
@@ -217,7 +219,7 @@ impl GrabBuilder {
             }
             PressSource::Touch(touch_id) => {
                 if let Some(grab) = cx.get_touch(touch_id) {
-                    if grab.mode.is_pan() != mode.is_pan() {
+                    if grab.mode.is_pan() != mode.is_pan() || grab.cancel {
                         return Unused;
                     }
 
@@ -240,6 +242,7 @@ impl GrabBuilder {
                         coord,
                         mode,
                         pan_grab,
+                        cancel: false,
                     });
                 }
             }
