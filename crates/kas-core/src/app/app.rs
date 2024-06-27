@@ -237,8 +237,8 @@ impl<'a> PlatformWrapper<'a> {
         {
             cfg_if::cfg_if! {
                 if #[cfg(all(feature = "wayland", feature = "x11"))] {
-                    use winit::platform::wayland::ActiveEventLoopExtWayland;
-                    return if true /*FIXME: self.0.is_wayland()*/ {
+                    use winit::platform::wayland::EventLoopExtWayland;
+                    return if self.0.is_wayland() {
                         Platform::Wayland
                     } else {
                         Platform::X11
