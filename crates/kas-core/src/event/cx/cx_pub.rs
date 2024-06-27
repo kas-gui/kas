@@ -172,19 +172,26 @@ impl EventState {
     /// Disabled status applies to all descendants and blocks reception of
     /// events ([`Unused`] is returned automatically when the
     /// recipient or any ancestor is disabled).
-    pub fn set_disabled(&mut self, w_id: Id, state: bool) {
+    ///
+    /// Disabling a widget clears navigation, selection and key focus when the
+    /// target is disabled, and also cancels press/pan grabs.
+    pub fn set_disabled(&mut self, target: Id, disable: bool) {
+        if disable {
+            self.clear_events(&target);
+        }
+
         for (i, id) in self.disabled.iter().enumerate() {
-            if w_id == id {
-                if !state {
-                    self.redraw(w_id);
+            if target == id {
+                if !disable {
+                    self.redraw(target);
                     self.disabled.remove(i);
                 }
                 return;
             }
         }
-        if state {
-            self.action(&w_id, Action::REDRAW);
-            self.disabled.push(w_id);
+        if disable {
+            self.action(&target, Action::REDRAW);
+            self.disabled.push(target);
         }
     }
 
@@ -468,6 +475,10 @@ impl EventState {
     /// grabs targets the widget to depress, or when a keyboard binding is used
     /// to activate a widget (for the duration of the key-press).
     ///
+    /// Assumption: this method will only be called by handlers of a grab (i.e.
+    /// recipients of [`Event::PressStart`] after initiating a successful grab,
+    /// [`Event::PressMove`] or [`Event::PressEnd`]).
+    ///
     /// Queues a redraw and returns `true` if the depress target changes,
     /// otherwise returns `false`.
     pub fn set_grab_depress(&mut self, source: PressSource, target: Option<Id>) -> bool {
@@ -497,8 +508,8 @@ impl EventState {
         redraw
     }
 
-    /// Returns true if `id` or any descendant has a mouse or touch grab
-    pub fn any_pin_on(&self, id: &Id) -> bool {
+    /// Returns true if there is a mouse or touch grab on `id` or any descendant of `id`
+    pub fn any_grab_on(&self, id: &Id) -> bool {
         if self
             .mouse_grab
             .as_ref()

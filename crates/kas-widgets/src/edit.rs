@@ -817,8 +817,13 @@ impl_scope! {
                     }
                 }
                 Event::Scroll(delta) => {
+                    // In single-line mode we do not handle purely vertical
+                    // scrolling; this improves compatibility with Spinner.
+                    let is_single = !self.multi_line();
                     let delta2 = match delta {
+                        ScrollDelta::LineDelta(x, _) if x == 0.0 && is_single => return Unused,
                         ScrollDelta::LineDelta(x, y) => cx.config().event().scroll_distance((x, y)),
+                        ScrollDelta::PixelDelta(Offset(0, _)) if is_single => return Unused,
                         ScrollDelta::PixelDelta(coord) => coord,
                     };
                     self.pan_delta(cx, delta2)
