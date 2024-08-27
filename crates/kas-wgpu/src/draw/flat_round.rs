@@ -103,6 +103,7 @@ impl Pipeline {
                 })],
             }),
             multiview: None,
+            cache: None,
         });
 
         Pipeline { render_pipeline }

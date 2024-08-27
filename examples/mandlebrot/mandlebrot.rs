@@ -107,6 +107,7 @@ impl CustomPipeBuilder for PipeBuilder {
                 max_push_constant_size: size_of::<PushConstants>().cast(),
                 ..Default::default()
             },
+            ..Default::default()
         }
     }
 
@@ -162,6 +163,7 @@ impl CustomPipeBuilder for PipeBuilder {
                 })],
             }),
             multiview: None,
+            cache: None,
         });
 
         Pipe { render_pipeline }

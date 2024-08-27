@@ -149,6 +149,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
             multisample: Default::default(),
             fragment: Some(fragment),
             multiview: None,
+            cache: None,
         });
 
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
