@@ -90,7 +90,7 @@ impl_scope! {
             path: P,
             draw: &mut dyn DrawShared,
         ) -> Result<Action> {
-            let image = image::io::Reader::open(path)?
+            let image = image::ImageReader::open(path)?
                 .with_guessed_format()?
                 .decode()?;
 

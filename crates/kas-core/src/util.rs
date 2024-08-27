@@ -130,7 +130,7 @@ pub fn load_icon_from_path<P: AsRef<std::path::Path>>(
 ) -> Result<Icon, Box<dyn std::error::Error>> {
     // TODO(opt): image loading could be de-duplicated with
     // DrawShared::image_from_path, but this may not be worthwhile.
-    let im = image::io::Reader::open(path)?
+    let im = image::ImageReader::open(path)?
         .with_guessed_format()?
         .decode()?
         .into_rgba8();
