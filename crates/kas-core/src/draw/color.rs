@@ -266,7 +266,8 @@ impl Rgba8Srgb {
     }
 
     /// Compile-time parser for sRGB and sRGBA colours
-    pub const fn try_parse_srgb(s: &[u8]) -> Result<Rgba8Srgb, ParseError> {
+    pub const fn try_parse(s: &str) -> Result<Rgba8Srgb, ParseError> {
+        let s = s.as_bytes();
         if s.len() != 6 && s.len() != 8 {
             return Err(ParseError::Length);
         }
@@ -303,11 +304,11 @@ impl Rgba8Srgb {
 
     /// Compile-time parser for sRGB and sRGBA colours
     ///
-    /// This method has worse diagnostics on error due to limited const-
-    pub const fn parse_srgb(s: &[u8]) -> Rgba8Srgb {
-        match Self::try_parse_srgb(s) {
+    /// This method has worse diagnostics on error due to limited error handling in `const fn`.
+    pub const fn parse(s: &str) -> Rgba8Srgb {
+        match Self::try_parse(s) {
             Ok(result) => result,
-            Err(ParseError::Length) => panic!("invalid length (expected 6 or 8 bytes"),
+            Err(ParseError::Length) => panic!("invalid length (expected 6 or 8 bytes)"),
             Err(ParseError::InvalidHex) => panic!("invalid hex byte (expected 0-9, a-f or A-F)"),
         }
     }
@@ -345,12 +346,13 @@ pub enum ParseError {
 impl std::str::FromStr for Rgba8Srgb {
     type Err = ParseError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut s = s.as_bytes();
-        if s[0] == b'#' {
-            s = &s[1..];
+    fn from_str(mut s: &str) -> Result<Self, Self::Err> {
+        if s.starts_with("#") {
+            let a;
+            (a, s) = s.split_at(1);
+            debug_assert_eq!(a, "#");
         }
-        Rgba8Srgb::try_parse_srgb(&s)
+        Rgba8Srgb::try_parse(s)
     }
 }
 

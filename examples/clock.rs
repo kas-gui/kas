@@ -69,7 +69,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            let accent: Rgba = Rgba8Srgb::parse_srgb(b"d7916f").into();
+            let accent: Rgba = Rgba8Srgb::parse("d7916f").into();
             let col_back = Rgba::ga(0.0, 0.5);
             let col_face = accent.multiply(0.4);
             let col_time = Rgba::grey(1.0);

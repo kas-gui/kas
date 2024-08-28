@@ -36,6 +36,7 @@ fn load(data: &[u8], resources_dir: Option<&Path>) -> Result<Tree, usvg::Error> 
     // - default_size: affected by screen scale factor later
     // - dpi: according to css-values-3, 1in = 96px
     // - font_size: units are (logical) px per em; 16px = 12pt
+    // - TODO: add option to clone fontdb from kas::text?
     let opts = usvg::Options {
         resources_dir: resources_dir.map(|path| path.to_owned()),
         dpi: 96.0,
@@ -47,10 +48,11 @@ fn load(data: &[u8], resources_dir: Option<&Path>) -> Result<Tree, usvg::Error> 
         image_rendering: usvg::ImageRendering::default(),
         default_size: usvg::Size::from_wh(100.0, 100.0).unwrap(),
         image_href_resolver: Default::default(),
+        font_resolver: Default::default(),
+        fontdb: Default::default(),
     };
 
-    let fonts_db = kas::text::fonts::library().read_db();
-    let tree = Tree::from_data(data, &opts, fonts_db.db())?;
+    let tree = Tree::from_data(data, &opts)?;
 
     Ok(tree)
 }

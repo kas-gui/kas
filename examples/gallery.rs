@@ -152,8 +152,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
         row!["ScrollLabel", ScrollLabel::new(text).map_any()],
         row![
             "EditBox",
-            EditBox::string(|data: &Data| data.text.clone())
-                .with_msg(|s| Item::Text(s.to_string())),
+            EditBox::new(Guard).with_text("length must not be a multiple of 8!"),
         ],
         row![
             "Button (text)",
