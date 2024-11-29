@@ -50,6 +50,7 @@ fn load(data: &[u8], resources_dir: Option<&Path>) -> Result<Tree, usvg::Error> 
         image_href_resolver: Default::default(),
         font_resolver: Default::default(),
         fontdb: Default::default(),
+        style_sheet: None,
     };
 
     let tree = Tree::from_data(data, &opts)?;
