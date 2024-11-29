@@ -67,6 +67,7 @@ macro_rules! impl_int {
                 ((self / step).saturating_add(1)).saturating_mul(step).min(u_bound)
             }
             fn sub_step(self, step: Self, l_bound: Self) -> Self {
+                #[allow(clippy::manual_div_ceil)] // only stable on a subset of types used
                 (((self + step - 1) / step).saturating_sub(1)).saturating_mul(step).max(l_bound)
             }
         }

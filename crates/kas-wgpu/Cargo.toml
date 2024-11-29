@@ -53,3 +53,7 @@ features = ["spirv"]
 
 [build-dependencies]
 glob = "0.3"
+
+[lints.clippy]
+needless_lifetimes = "allow"
+unit_arg = "allow"

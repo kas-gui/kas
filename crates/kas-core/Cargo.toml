@@ -134,3 +134,8 @@ version = "0.30.1"
 optional = true
 default-features = false
 features = ["rwh_06"]
+
+[lints.clippy]
+module_inception = "allow"
+needless_lifetimes = "allow"
+unit_arg = "allow"

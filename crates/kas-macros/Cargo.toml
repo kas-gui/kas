@@ -39,3 +39,7 @@ features = ["extra-traits", "full", "visit", "visit-mut"]
 
 [build-dependencies]
 version_check = "0.9"
+
+[lints.clippy]
+collapsible_else_if = "allow"
+unit_arg = "allow"

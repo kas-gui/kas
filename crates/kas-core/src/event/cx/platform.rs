@@ -371,14 +371,13 @@ impl<'a> EventCx<'a> {
                     // TODO(winit): https://github.com/rust-windowing/winit/issues/3038
                     let mut mods = self.modifiers;
                     mods.remove(ModifiersState::SHIFT);
-                    if !mods.is_empty() {
-                        event.text = None;
-                    } else if event
-                        .text
-                        .as_ref()
-                        .and_then(|t| t.chars().next())
-                        .map(|c| c.is_control())
-                        .unwrap_or(false)
+                    if !mods.is_empty()
+                        || event
+                            .text
+                            .as_ref()
+                            .and_then(|t| t.chars().next())
+                            .map(|c| c.is_control())
+                            .unwrap_or(false)
                     {
                         event.text = None;
                     }
