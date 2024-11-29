@@ -133,7 +133,7 @@ impl CustomPipeBuilder for PipeBuilder {
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shaders.vertex,
-                entry_point: "main",
+                entry_point: Some("main"),
                 compilation_options: Default::default(),
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
@@ -154,7 +154,7 @@ impl CustomPipeBuilder for PipeBuilder {
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &shaders.fragment,
-                entry_point: "main",
+                entry_point: Some("main"),
                 compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: tex_format,
