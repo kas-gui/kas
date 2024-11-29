@@ -33,7 +33,7 @@ raster = ["kas-text/raster"]
 bytemuck = "1.7.0"
 futures-lite = "2.0"
 log = "0.4"
-thiserror = "1.0.23"
+thiserror = "2.0.3"
 guillotiere = "0.6.0"
 rustc-hash = "2.0"
 
