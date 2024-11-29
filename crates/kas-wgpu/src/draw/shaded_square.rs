@@ -49,7 +49,7 @@ impl Pipeline {
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shaders.vert_shaded_square,
-                entry_point: "main",
+                entry_point: Some("main"),
                 compilation_options: Default::default(),
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
@@ -74,7 +74,7 @@ impl Pipeline {
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &shaders.frag_shaded_square,
-                entry_point: "main",
+                entry_point: Some("main"),
                 compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: super::RENDER_TEX_FORMAT,

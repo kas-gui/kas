@@ -95,7 +95,7 @@ impl Pipeline {
             wgpu::TextureFormat::R8Unorm,
             wgpu::VertexState {
                 module: &shaders.vert_glyph,
-                entry_point: "main",
+                entry_point: Some("main"),
                 compilation_options: Default::default(),
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Instance>() as wgpu::BufferAddress,
@@ -111,7 +111,7 @@ impl Pipeline {
             },
             wgpu::FragmentState {
                 module: &shaders.frag_glyph,
-                entry_point: "main",
+                entry_point: Some("main"),
                 compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: super::RENDER_TEX_FORMAT,

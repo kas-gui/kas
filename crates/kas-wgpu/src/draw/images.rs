@@ -94,7 +94,7 @@ impl Images {
             wgpu::TextureFormat::Rgba8UnormSrgb,
             wgpu::VertexState {
                 module: &shaders.vert_image,
-                entry_point: "main",
+                entry_point: Some("main"),
                 compilation_options: Default::default(),
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Instance>() as wgpu::BufferAddress,
@@ -109,7 +109,7 @@ impl Images {
             },
             wgpu::FragmentState {
                 module: &shaders.frag_image,
-                entry_point: "main",
+                entry_point: Some("main"),
                 compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: super::RENDER_TEX_FORMAT,
