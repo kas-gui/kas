@@ -189,8 +189,8 @@ impl_scope! {
         /// Where widgets have the same type and the length is fixed, an array
         /// may be used:
         /// ```
-        /// use kas_widgets::{label, Row};
-        /// let _ = Row::new([label("left"), label("right")]);
+        /// use kas_widgets::{Label, Row};
+        /// let _ = Row::new([Label::new("left"), Label::new("right")]);
         /// ```
         ///
         /// To support run-time insertion/deletion, use [`Vec`]:

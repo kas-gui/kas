@@ -10,20 +10,6 @@ use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
 use kas::theme::{Text, TextClass};
 
-/// Construct a [`Label`]
-#[inline]
-pub fn label<T: FormattableText + 'static>(text: T) -> Label<T> {
-    Label::new(text)
-}
-
-/// Construct a [`Label`] which accepts any data
-///
-/// This is just a shortcut for `Label::new(text).map_any()`.
-#[inline]
-pub fn label_any<A, T: FormattableText + 'static>(text: T) -> MapAny<A, Label<T>> {
-    MapAny::new(Label::new(text))
-}
-
 impl_scope! {
     /// A text label
     ///
@@ -54,6 +40,12 @@ impl_scope! {
                 core: Default::default(),
                 text: Text::new(text, TextClass::Label(true)),
             }
+        }
+
+        /// Construct from `text`, mapping to support any data type
+        #[inline]
+        pub fn new_any<A>(text: T) -> MapAny<A, Self> {
+            MapAny::new(Label::new(text))
         }
 
         /// Get text class
