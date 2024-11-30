@@ -27,7 +27,7 @@ mod shaded_theme;
 mod surface;
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
-use kas::app as runner;
+use kas::runner;
 use kas::theme::{FlatTheme, Theme};
 use wgpu::rwh;
 
@@ -36,7 +36,7 @@ pub use options::Options;
 pub use shaded_theme::ShadedTheme;
 pub extern crate wgpu;
 
-/// Builder for a [`kas::app::Runner`] using WGPU
+/// Builder for a [`kas::runner::Runner`] using WGPU
 pub struct Builder<CB: CustomPipeBuilder> {
     custom: CB,
     options: Options,

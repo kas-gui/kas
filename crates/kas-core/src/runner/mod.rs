@@ -5,24 +5,24 @@
 
 //! Runner, platforms and backends
 
-#[cfg(winit)] mod app;
 mod common;
 #[cfg(winit)] mod event_loop;
+#[cfg(winit)] mod runner;
 #[cfg(winit)] mod shared;
 #[cfg(winit)] mod window;
 
 use crate::messages::MessageStack;
 #[cfg(winit)] use crate::WindowId;
-#[cfg(winit)] use app::PlatformWrapper;
 #[cfg(winit)] use event_loop::Loop;
+#[cfg(winit)] use runner::PlatformWrapper;
 #[cfg(winit)] pub(crate) use shared::RunnerT;
 #[cfg(winit)] use shared::State;
 #[cfg(winit)]
 pub(crate) use window::{Window, WindowDataErased};
 
-#[cfg(winit)]
-pub use app::{Builder, ClosedError, Proxy, Runner, RunnerInherent};
 pub use common::{Error, Platform, Result};
+#[cfg(winit)]
+pub use runner::{Builder, ClosedError, Proxy, Runner, RunnerInherent};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]

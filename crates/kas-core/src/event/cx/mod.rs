@@ -17,11 +17,11 @@ use std::pin::Pin;
 use std::time::Instant;
 
 use super::*;
-use crate::app::{Platform, RunnerT, WindowDataErased};
 use crate::cast::Cast;
 use crate::config::WindowConfig;
 use crate::geom::Coord;
 use crate::messages::{Erased, MessageStack};
+use crate::runner::{Platform, RunnerT, WindowDataErased};
 use crate::util::WidgetHierarchy;
 use crate::{Action, Id, NavAdvance, Node, WindowId};
 

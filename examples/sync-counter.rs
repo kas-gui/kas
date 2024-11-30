@@ -15,7 +15,7 @@ struct Increment(i32);
 
 #[derive(Clone, Copy, Debug)]
 struct Count(i32);
-impl kas::app::AppData for Count {
+impl kas::runner::AppData for Count {
     fn handle_messages(&mut self, messages: &mut MessageStack) {
         if let Some(Increment(add)) = messages.try_pop() {
             self.0 += add;
@@ -52,15 +52,16 @@ fn counter(title: &str) -> Window<Count> {
     Window::new(ui, title)
 }
 
-fn main() -> kas::app::Result<()> {
+fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
     let count = Count(0);
     let theme = kas_wgpu::ShadedTheme::new();
 
-    let mut app = kas::app::Default::with_theme(theme).build(count)?;
-    let _ = app.config_mut().font.set_size(24.0);
-    app.with(counter("Counter 1"))
+    let mut runner = kas::runner::Default::with_theme(theme).build(count)?;
+    let _ = runner.config_mut().font.set_size(24.0);
+    runner
+        .with(counter("Counter 1"))
         .with(counter("Counter 2"))
         .run()
 }

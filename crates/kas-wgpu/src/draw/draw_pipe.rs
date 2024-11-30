@@ -12,12 +12,12 @@ use wgpu::util::DeviceExt;
 use super::*;
 use crate::DrawShadedImpl;
 use crate::Options;
-use kas::app::Error;
 use kas::cast::traits::*;
 use kas::config::RasterConfig;
 use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::geom::{Quad, Size, Vec2};
+use kas::runner::Error;
 use kas::text::{Effect, TextDisplay};
 
 /// Failure while constructing a [`Runner`]: no graphics adapter found

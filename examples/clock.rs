@@ -17,14 +17,14 @@ use chrono::prelude::*;
 use std::f32::consts::PI;
 use std::time::Duration;
 
-use kas::app::RunnerInherent;
 use kas::draw::color::{Rgba, Rgba8Srgb};
 use kas::draw::{Draw, DrawRounded};
 use kas::geom::{Quad, Vec2};
 use kas::prelude::*;
+use kas::runner::RunnerInherent;
 use kas::text::Text;
 
-type Runner = kas::app::Default<(), kas::theme::SimpleTheme>;
+type Runner = kas::runner::Default<(), kas::theme::SimpleTheme>;
 
 impl_scope! {
     #[derive(Clone)]
@@ -168,7 +168,7 @@ impl_scope! {
     }
 }
 
-fn main() -> kas::app::Result<()> {
+fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
     let window = Window::new(Clock::new(), "Clock")

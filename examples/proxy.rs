@@ -23,7 +23,7 @@ struct AppData {
     color: Option<Rgba>,
 }
 
-impl kas::app::AppData for AppData {
+impl kas::runner::AppData for AppData {
     fn handle_messages(&mut self, messages: &mut kas::messages::MessageStack) {
         if let Some(SetColor(color)) = messages.try_pop() {
             self.color = Some(color);
@@ -31,11 +31,11 @@ impl kas::app::AppData for AppData {
     }
 }
 
-fn main() -> kas::app::Result<()> {
+fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
     let data = AppData { color: None };
-    let app = kas::app::Default::new(data)?;
+    let app = kas::runner::Default::new(data)?;
 
     // We construct a proxy from the app to enable cross-thread communication.
     let proxy = app.create_proxy();
@@ -99,7 +99,7 @@ impl_scope! {
     }
 }
 
-fn generate_colors(mut proxy: kas::app::Proxy) {
+fn generate_colors(mut proxy: kas::runner::Proxy) {
     // Loading takes time:
     thread::sleep(Duration::from_secs(1));
 

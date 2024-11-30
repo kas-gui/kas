@@ -62,7 +62,7 @@ pub mod resvg {
     pub use kas_resvg::*;
 }
 
-pub mod app {
+pub mod runner {
     //! [`Runner`], platforms and backends
     //!
     //! Start by constructing a [`Runner`] or its [`Default`](type@Default)
@@ -72,8 +72,8 @@ pub mod app {
     ///
     /// Suggested construction patterns:
     ///
-    /// -   <code>kas::app::[Default](type@Default)::[new](Runner::new)(data)?</code>
-    /// -   <code>kas::app::[Default](type@Default)::[with_theme](Runner::with_theme)(theme).[build](Builder::build)(data)?</code>
+    /// -   <code>kas::runner::[Default](type@Default)::[new](Runner::new)(data)?</code>
+    /// -   <code>kas::runner::[Default](type@Default)::[with_theme](Runner::with_theme)(theme).[build](Builder::build)(data)?</code>
     ///
     /// Where:
     ///
@@ -81,9 +81,9 @@ pub mod app {
     /// -   `theme` is some object implementing [`Theme`](crate::theme::Theme)
     /// -   `custom_wgpu_pipe` is a custom WGPU graphics pipeline
     #[doc(inline)]
-    pub use kas_core::app::Runner;
+    pub use kas_core::runner::Runner;
 
-    pub use kas_core::app::*;
+    pub use kas_core::runner::*;
 
     /// Runner pre-launch state, configured with the default graphics backend
     #[cfg(feature = "wgpu")]

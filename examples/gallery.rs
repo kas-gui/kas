@@ -532,7 +532,7 @@ KAS_CONFIG_MODE=readwrite
     Box::new(ui)
 }
 
-fn main() -> kas::app::Result<()> {
+fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
     let theme = kas::theme::MultiTheme::builder()
@@ -540,7 +540,7 @@ fn main() -> kas::app::Result<()> {
         .add("simple", kas::theme::SimpleTheme::new())
         .add("shaded", kas_wgpu::ShadedTheme::new())
         .build();
-    let mut app = kas::app::Default::with_theme(theme).build(())?;
+    let mut runner = kas::runner::Default::with_theme(theme).build(())?;
 
     // TODO: use as logo of tab
     // let img_gallery = Svg::new(include_bytes!("../res/gallery-line.svg"));
@@ -565,7 +565,7 @@ fn main() -> kas::app::Result<()> {
         .menu("&Style", |menu| {
             menu.submenu("&Colours", |mut menu| {
                 // Enumerate colour schemes.
-                for (name, _) in app.config().theme.color_schemes() {
+                for (name, _) in runner.config().theme.color_schemes() {
                     let mut title = String::with_capacity(name.len() + 1);
                     match name {
                         "dark" => title.push_str("Dar&k"),
@@ -630,6 +630,6 @@ fn main() -> kas::app::Result<()> {
         }
     });
 
-    app.add(Window::new(ui, "Gallery — Widgets"));
-    app.run()
+    runner.add(Window::new(ui, "Gallery — Widgets"));
+    runner.run()
 }
