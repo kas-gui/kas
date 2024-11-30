@@ -17,7 +17,7 @@ use std::pin::Pin;
 use std::time::Instant;
 
 use super::*;
-use crate::app::{AppShared, Platform, WindowDataErased};
+use crate::app::{Platform, RunnerT, WindowDataErased};
 use crate::cast::Cast;
 use crate::config::WindowConfig;
 use crate::geom::Coord;
@@ -420,7 +420,7 @@ impl EventState {
 #[must_use]
 pub struct EventCx<'a> {
     state: &'a mut EventState,
-    shared: &'a mut dyn AppShared,
+    runner: &'a mut dyn RunnerT,
     window: &'a dyn WindowDataErased,
     messages: &'a mut MessageStack,
     pub(crate) target_is_disabled: bool,

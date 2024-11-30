@@ -108,14 +108,14 @@ impl EventState {
     #[inline]
     pub(crate) fn with<'a, F: FnOnce(&mut EventCx)>(
         &'a mut self,
-        shared: &'a mut dyn AppShared,
+        runner: &'a mut dyn RunnerT,
         window: &'a dyn WindowDataErased,
         messages: &'a mut MessageStack,
         f: F,
     ) {
         let mut cx = EventCx {
             state: self,
-            shared,
+            runner,
             window,
             messages,
             target_is_disabled: false,
@@ -128,13 +128,13 @@ impl EventState {
     /// Handle all pending items before event loop sleeps
     pub(crate) fn flush_pending<'a, A>(
         &'a mut self,
-        shared: &'a mut dyn AppShared,
+        runner: &'a mut dyn RunnerT,
         window: &'a dyn WindowDataErased,
         messages: &'a mut MessageStack,
         win: &mut Window<A>,
         data: &A,
     ) -> Action {
-        self.with(shared, window, messages, |cx| {
+        self.with(runner, window, messages, |cx| {
             while let Some((id, wid)) = cx.popup_removed.pop() {
                 cx.send_event(win.as_node(data), id, Event::PopupClosed(wid));
             }
@@ -309,7 +309,7 @@ impl<'a> EventCx<'a> {
         let mut i = 0;
         while i < self.state.fut_messages.len() {
             let (_, fut) = &mut self.state.fut_messages[i];
-            let mut cx = std::task::Context::from_waker(self.shared.waker());
+            let mut cx = std::task::Context::from_waker(self.runner.waker());
             match fut.as_mut().poll(&mut cx) {
                 Poll::Pending => {
                     i += 1;

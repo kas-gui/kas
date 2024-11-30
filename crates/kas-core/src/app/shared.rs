@@ -20,7 +20,7 @@ use std::task::Waker;
 
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
-/// Application state used by [`AppShared`]
+/// Application state used by [`RunnerT`]
 pub(super) struct SharedState<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
     pub(super) platform: Platform,
     pub(super) config: Rc<RefCell<Config>>,
@@ -119,8 +119,8 @@ impl<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> SharedState<Data
 
 /// Application shared-state type-erased interface
 ///
-/// A `dyn AppShared` object is used by [crate::event::`EventCx`].
-pub(crate) trait AppShared {
+/// A `dyn RunnerT` object is used by [`crate::event::EventCx`].
+pub(crate) trait RunnerT {
     /// Add a pop-up
     ///
     /// A pop-up may be presented as an overlay layer in the current window or
@@ -196,7 +196,7 @@ pub(crate) trait AppShared {
     fn waker(&self) -> &std::task::Waker;
 }
 
-impl<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> AppShared
+impl<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> RunnerT
     for SharedState<Data, G, T>
 {
     fn add_popup(&mut self, parent_id: WindowId, popup: kas::PopupDescriptor) -> WindowId {
