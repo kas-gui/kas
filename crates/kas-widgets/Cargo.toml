@@ -24,10 +24,19 @@ min_spec = []
 log = "0.4"
 smallvec = "1.6.1"
 unicode-segmentation = "1.7"
-thiserror = "1.0.23"
+thiserror = "2.0.3"
 image = { version = "0.25.1", optional = true }
 kas-macros = { version = "0.14.1", path = "../kas-macros" }
 linear-map = "1.2.0"
 
 # We must rename this package since macros expect kas to be in scope:
 kas = { version = "0.14.1", package = "kas-core", path = "../kas-core" }
+
+[lints.clippy]
+collapsible_else_if = "allow"
+collapsible_if = "allow"
+comparison_chain = "allow"
+module_inception = "allow"
+needless_lifetimes = "allow"
+redundant_pattern_matching = "allow"
+unit_arg = "allow"

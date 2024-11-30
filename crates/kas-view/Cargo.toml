@@ -23,3 +23,8 @@ linear-map = "1.2.0"
 
 # We must rename this package since macros expect kas to be in scope:
 kas = { version = "0.14.1", package = "kas-core", path = "../kas-core" }
+
+[lints.clippy]
+collapsible_else_if = "allow"
+needless_lifetimes = "allow"
+unit_arg = "allow"

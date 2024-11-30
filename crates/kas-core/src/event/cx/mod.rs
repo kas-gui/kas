@@ -84,19 +84,16 @@ struct MouseGrab {
 impl<'a> EventCx<'a> {
     fn flush_mouse_grab_motion(&mut self) {
         if let Some(grab) = self.mouse_grab.as_mut() {
-            match grab.details {
-                GrabDetails::Click { ref cur_id } => {
-                    if grab.start_id == cur_id {
-                        if grab.depress != *cur_id {
-                            grab.depress = cur_id.clone();
-                            self.action |= Action::REDRAW;
-                        }
-                    } else if grab.depress.is_some() {
-                        grab.depress = None;
+            if let GrabDetails::Click { ref cur_id } = grab.details {
+                if grab.start_id == cur_id {
+                    if grab.depress != *cur_id {
+                        grab.depress = cur_id.clone();
                         self.action |= Action::REDRAW;
                     }
+                } else if grab.depress.is_some() {
+                    grab.depress = None;
+                    self.action |= Action::REDRAW;
                 }
-                _ => (),
             }
         }
     }

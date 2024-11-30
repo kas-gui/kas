@@ -97,7 +97,7 @@ smallvec = "1.6.1"
 bitflags = "2.3.3"
 unicode-segmentation = "1.7"
 linear-map = "1.2.0"
-thiserror = "1.0.23"
+thiserror = "2.0.3"
 serde = { version = "1.0.123", features = ["derive"], optional = true }
 serde_json = { version = "1.0.61", optional = true }
 serde_yaml = { version = "0.9.9", optional = true }
@@ -134,3 +134,8 @@ version = "0.30.1"
 optional = true
 default-features = false
 features = ["rwh_06"]
+
+[lints.clippy]
+module_inception = "allow"
+needless_lifetimes = "allow"
+unit_arg = "allow"
