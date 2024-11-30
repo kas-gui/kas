@@ -20,7 +20,7 @@ use kas::draw::*;
 use kas::geom::{Quad, Size, Vec2};
 use kas::text::{Effect, TextDisplay};
 
-/// Failure while constructing an [`Application`]: no graphics adapter found
+/// Failure while constructing a [`Runner`]: no graphics adapter found
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
 #[error("no graphics adapter found")]

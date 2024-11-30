@@ -39,8 +39,8 @@ use std::time::Instant;
 /// }
 /// ```
 ///
-/// Note that this object is little more than a mutable reference to application
-/// shared draw state. As such, it is normal to pass *a new copy* created
+/// This object is effectively a fat pointer to draw state (both window-local
+/// and shared components). As such, it is normal to pass *a new copy* created
 /// via [`DrawIface::re`] as a method argument. (Note that Rust automatically
 /// "reborrows" reference types passed as method arguments, but cannot do so
 /// automatically for structs containing references.)

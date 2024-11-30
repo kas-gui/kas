@@ -20,7 +20,7 @@ use std::task::Waker;
 
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
-/// Application state used by [`RunnerT`]
+/// Runner state used by [`RunnerT`]
 pub(super) struct SharedState<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
     pub(super) platform: Platform,
     pub(super) config: Rc<RefCell<Config>>,
@@ -33,7 +33,7 @@ pub(super) struct SharedState<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::
     window_id: u32,
 }
 
-/// Application state shared by all windows
+/// Runner state shared by all windows
 pub(super) struct State<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
     pub(super) shared: SharedState<Data, G, T>,
     pub(super) data: Data,
@@ -117,7 +117,7 @@ impl<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> SharedState<Data
     }
 }
 
-/// Application shared-state type-erased interface
+/// Runner shared-state type-erased interface
 ///
 /// A `dyn RunnerT` object is used by [`crate::event::EventCx`].
 pub(crate) trait RunnerT {
@@ -142,7 +142,7 @@ pub(crate) trait RunnerT {
     /// event handler, albeit without error handling.
     ///
     /// Safety: this method *should* require generic parameter `Data` (data type
-    /// passed to the `Application`). Realising this would require adding this type
+    /// passed to the `Runner`). Realising this would require adding this type
     /// parameter to `EventCx` and thus to all widgets (not necessarily the
     /// type accepted by the widget as input). As an alternative we require the
     /// caller to type-cast `Window<Data>` to `Window<()>` and pass in

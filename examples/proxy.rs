@@ -6,7 +6,7 @@
 //! Asynchronous events using a proxy
 //!
 //! This is a copy-cat of Druid's async event example, demonstrating usage of
-//! `Application::create_proxy()`. For a more integrated approach to async, see
+//! `Runner::create_proxy()`. For a more integrated approach to async, see
 //! `EventState::push_async()` and `push_spawn()`.
 
 use std::thread;

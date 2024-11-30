@@ -36,7 +36,7 @@ pub use options::Options;
 pub use shaded_theme::ShadedTheme;
 pub extern crate wgpu;
 
-/// Builder for a KAS application using WGPU
+/// Builder for a [`kas::app::Runner`] using WGPU
 pub struct WgpuBuilder<CB: CustomPipeBuilder> {
     custom: CB,
     options: Options,

@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! [`Application`] and supporting elements
+//! [`Runner`] and supporting elements
 
 use super::{AppData, AppGraphicsBuilder, Platform, ProxyAction, Result, State};
 use crate::config::{Config, Options};
@@ -15,7 +15,7 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
 use winit::event_loop::{EventLoop, EventLoopProxy};
 
-pub struct Application<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
+pub struct Runner<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
     el: EventLoop<ProxyAction>,
     windows: Vec<Box<super::Window<Data, G, T>>>,
     state: State<Data, G, T>,
@@ -71,7 +71,7 @@ impl_scope! {
         }
 
         /// Build with `data`
-        pub fn build<Data: AppData>(self, data: Data) -> Result<Application<Data, G, T>> {
+        pub fn build<Data: AppData>(self, data: Data) -> Result<Runner<Data, G, T>> {
             let options = self.options.unwrap_or_else(Options::from_env);
 
             let config = self.config.unwrap_or_else(|| match options.read_config() {
@@ -91,7 +91,7 @@ impl_scope! {
             let pw = PlatformWrapper(&el);
             let state = State::new(data, pw, draw_shared, self.theme, options, config)?;
 
-            Ok(Application {
+            Ok(Runner {
                 el,
                 windows: vec![],
                 state,
@@ -100,15 +100,15 @@ impl_scope! {
     }
 }
 
-/// Inherenet associated types of [`Application`]
+/// Inherenet associated types of [`Runner`]
 ///
-/// Note: these could be inherent associated types of [`Application`] when Rust#8995 is stable.
-pub trait ApplicationInherent {
+/// Note: these could be inherent associated types of [`Runner`] when Rust#8995 is stable.
+pub trait RunnerInherent {
     /// Shared draw state type
     type DrawShared: DrawSharedImpl;
 }
 
-impl<A: AppData, G: AppGraphicsBuilder, T> ApplicationInherent for Application<A, G, T>
+impl<A: AppData, G: AppGraphicsBuilder, T> RunnerInherent for Runner<A, G, T>
 where
     T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,
@@ -116,7 +116,7 @@ where
     type DrawShared = G::Shared;
 }
 
-impl<Data: AppData, G> Application<Data, G, G::DefaultTheme>
+impl<Data: AppData, G> Runner<Data, G, G::DefaultTheme>
 where
     G: AppGraphicsBuilder + Default,
 {
@@ -140,7 +140,7 @@ where
     }
 }
 
-impl<G, T> Application<(), G, T>
+impl<G, T> Runner<(), G, T>
 where
     G: AppGraphicsBuilder + Default,
     T: Theme<G::Shared>,
@@ -152,7 +152,7 @@ where
     }
 }
 
-impl<Data: AppData, G: AppGraphicsBuilder, T> Application<Data, G, T>
+impl<Data: AppData, G: AppGraphicsBuilder, T> Runner<Data, G, T>
 where
     T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,
@@ -309,14 +309,14 @@ impl<'a> PlatformWrapper<'a> {
     }
 }
 
-/// A proxy allowing control of an application from another thread.
+/// A proxy allowing control of a UI from another thread.
 ///
-/// Created by [`Application::create_proxy`].
+/// Created by [`Runner::create_proxy`].
 pub struct Proxy(EventLoopProxy<ProxyAction>);
 
 /// Error type returned by [`Proxy`] functions.
 ///
-/// This error occurs only if the application already terminated.
+/// This error occurs only if the [`Runner`] already terminated.
 pub struct ClosedError;
 
 impl Proxy {

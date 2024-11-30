@@ -15,7 +15,7 @@ bitflags! {
     /// An `Action` produced at run-time should be passed to a context:
     /// `cx.action(self.id(), action)` (assuming `self` is a widget).
     /// An `Action` produced before starting the GUI may be discarded, for
-    /// example: `let _ = app.config_mut().font.set_size(24.0);`.
+    /// example: `let _ = runner.config_mut().font.set_size(24.0);`.
     ///
     /// Two `Action` values may be combined via bit-or (`a | b`).
     #[must_use]

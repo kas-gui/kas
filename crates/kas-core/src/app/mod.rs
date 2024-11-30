@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Application, platforms and backends
+//! Runner, platforms and backends
 
 #[cfg(winit)] mod app;
 mod common;
@@ -21,7 +21,7 @@ use crate::messages::MessageStack;
 pub(crate) use window::{Window, WindowDataErased};
 
 #[cfg(winit)]
-pub use app::{AppBuilder, Application, ApplicationInherent, ClosedError, Proxy};
+pub use app::{AppBuilder, ClosedError, Proxy, Runner, RunnerInherent};
 pub use common::{Error, Platform, Result};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
