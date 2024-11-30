@@ -73,8 +73,8 @@ pub mod app {
     /// Suggested construction patterns:
     ///
     /// -   <code>kas::app::[Default](type@Default)::[new](Runner::new)(data)?</code>
-    /// -   <code>kas::app::[Default](type@Default)::[with_theme](Runner::with_theme)(theme).[build](AppBuilder::build)(data)?</code>
-    /// -   <code>kas::app::[WgpuBuilder]::[new](WgpuBuilder::new)(custom_wgpu_pipe).[with_theme](WgpuBuilder::with_theme)(theme).[build](AppBuilder::build)(data)?</code>
+    /// -   <code>kas::app::[Default](type@Default)::[with_theme](Runner::with_theme)(theme).[build](Builder::build)(data)?</code>
+    /// -   <code>kas::app::[WgpuBuilder]::[new](WgpuBuilder::new)(custom_wgpu_pipe).[with_theme](WgpuBuilder::with_theme)(theme).[build](Builder::build)(data)?</code>
     ///
     /// Where:
     ///

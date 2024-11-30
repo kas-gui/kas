@@ -22,7 +22,7 @@ pub struct Runner<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
 }
 
 impl_scope! {
-    pub struct AppBuilder<G: AppGraphicsBuilder, T: Theme<G::Shared>> {
+    pub struct Builder<G: AppGraphicsBuilder, T: Theme<G::Shared>> {
         graphical: G,
         theme: T,
         options: Option<Options>,
@@ -34,7 +34,7 @@ impl_scope! {
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
         #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
         pub fn new(graphical: G, theme: T) -> Self {
-            AppBuilder {
+            Builder {
                 graphical,
                 theme,
                 options: None,
@@ -77,7 +77,7 @@ impl_scope! {
             let config = self.config.unwrap_or_else(|| match options.read_config() {
                 Ok(config) => Rc::new(RefCell::new(config)),
                 Err(error) => {
-                    warn_about_error("AppBuilder::build: failed to read config", &error);
+                    warn_about_error("kas::app::Builder::build: failed to read config", &error);
                     Default::default()
                 }
             });
@@ -135,8 +135,8 @@ where
 
     /// Construct a builder with the default theme
     #[inline]
-    pub fn with_default_theme() -> AppBuilder<G, G::DefaultTheme> {
-        AppBuilder::new(G::default(), G::DefaultTheme::default())
+    pub fn with_default_theme() -> Builder<G, G::DefaultTheme> {
+        Builder::new(G::default(), G::DefaultTheme::default())
     }
 }
 
@@ -147,8 +147,8 @@ where
 {
     /// Construct a builder with the given `theme`
     #[inline]
-    pub fn with_theme(theme: T) -> AppBuilder<G, T> {
-        AppBuilder::new(G::default(), theme)
+    pub fn with_theme(theme: T) -> Builder<G, T> {
+        Builder::new(G::default(), theme)
     }
 }
 

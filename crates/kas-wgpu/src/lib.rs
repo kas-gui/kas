@@ -27,7 +27,7 @@ mod shaded_theme;
 mod surface;
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
-use kas::app::{AppBuilder, AppGraphicsBuilder, Result};
+use kas::app as runner;
 use kas::theme::{FlatTheme, Theme};
 use wgpu::rwh;
 
@@ -43,14 +43,14 @@ pub struct WgpuBuilder<CB: CustomPipeBuilder> {
     read_env_vars: bool,
 }
 
-impl<CB: CustomPipeBuilder> AppGraphicsBuilder for WgpuBuilder<CB> {
+impl<CB: CustomPipeBuilder> runner::AppGraphicsBuilder for WgpuBuilder<CB> {
     type DefaultTheme = FlatTheme;
 
     type Shared = DrawPipe<CB::Pipe>;
 
     type Surface<'a> = surface::Surface<'a, CB::Pipe>;
 
-    fn build(self) -> Result<Self::Shared> {
+    fn build(self) -> runner::Result<Self::Shared> {
         let mut options = self.options;
         if self.read_env_vars {
             options.load_from_env();
@@ -62,7 +62,7 @@ impl<CB: CustomPipeBuilder> AppGraphicsBuilder for WgpuBuilder<CB> {
         shared: &mut Self::Shared,
         window: W,
         transparent: bool,
-    ) -> Result<Self::Surface<'window>>
+    ) -> runner::Result<Self::Surface<'window>>
     where
         W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
         Self: Sized,
@@ -110,15 +110,15 @@ impl<CB: CustomPipeBuilder> WgpuBuilder<CB> {
         self
     }
 
-    /// Convert to a [`AppBuilder`] using the default theme
+    /// Convert to a [`runner::Builder`] using the default theme
     #[inline]
-    pub fn with_default_theme(self) -> AppBuilder<Self, FlatTheme> {
-        AppBuilder::new(self, FlatTheme::new())
+    pub fn with_default_theme(self) -> runner::Builder<Self, FlatTheme> {
+        runner::Builder::new(self, FlatTheme::new())
     }
 
-    /// Convert to a [`AppBuilder`] using the specified `theme`
+    /// Convert to a [`runner::Builder`] using the specified `theme`
     #[inline]
-    pub fn with_theme<T: Theme<DrawPipe<CB::Pipe>>>(self, theme: T) -> AppBuilder<Self, T> {
-        AppBuilder::new(self, theme)
+    pub fn with_theme<T: Theme<DrawPipe<CB::Pipe>>>(self, theme: T) -> runner::Builder<Self, T> {
+        runner::Builder::new(self, theme)
     }
 }
