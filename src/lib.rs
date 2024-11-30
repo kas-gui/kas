@@ -74,7 +74,6 @@ pub mod app {
     ///
     /// -   <code>kas::app::[Default](type@Default)::[new](Runner::new)(data)?</code>
     /// -   <code>kas::app::[Default](type@Default)::[with_theme](Runner::with_theme)(theme).[build](Builder::build)(data)?</code>
-    /// -   <code>kas::app::[WgpuBuilder]::[new](WgpuBuilder::new)(custom_wgpu_pipe).[with_theme](WgpuBuilder::with_theme)(theme).[build](Builder::build)(data)?</code>
     ///
     /// Where:
     ///
@@ -86,12 +85,9 @@ pub mod app {
 
     pub use kas_core::app::*;
 
-    #[cfg(feature = "wgpu")] pub use kas_wgpu::WgpuBuilder;
-
     /// Runner pre-launch state, configured with the default graphics backend
     #[cfg(feature = "wgpu")]
-    pub type Default<Data, T = crate::theme::FlatTheme> =
-        Runner<Data, kas_wgpu::WgpuBuilder<()>, T>;
+    pub type Default<Data, T = crate::theme::FlatTheme> = Runner<Data, kas_wgpu::Builder<()>, T>;
 }
 
 #[cfg(feature = "dynamic")]

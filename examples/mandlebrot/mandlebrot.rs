@@ -499,7 +499,7 @@ fn main() -> kas::app::Result<()> {
     let window =
         Window::new(MandlebrotUI::new(), "Mandlebrot").with_decorations(Decorations::Border);
     let theme = kas::theme::FlatTheme::new();
-    let mut app = kas::app::WgpuBuilder::new(PipeBuilder)
+    let mut app = kas_wgpu::Builder::new(PipeBuilder)
         .with_theme(theme)
         .build(())?;
     let _ = app.config_mut().theme.set_active_scheme("dark");

@@ -37,13 +37,13 @@ pub use shaded_theme::ShadedTheme;
 pub extern crate wgpu;
 
 /// Builder for a [`kas::app::Runner`] using WGPU
-pub struct WgpuBuilder<CB: CustomPipeBuilder> {
+pub struct Builder<CB: CustomPipeBuilder> {
     custom: CB,
     options: Options,
     read_env_vars: bool,
 }
 
-impl<CB: CustomPipeBuilder> runner::AppGraphicsBuilder for WgpuBuilder<CB> {
+impl<CB: CustomPipeBuilder> runner::AppGraphicsBuilder for Builder<CB> {
     type DefaultTheme = FlatTheme;
 
     type Shared = DrawPipe<CB::Pipe>;
@@ -71,19 +71,19 @@ impl<CB: CustomPipeBuilder> runner::AppGraphicsBuilder for WgpuBuilder<CB> {
     }
 }
 
-impl Default for WgpuBuilder<()> {
+impl Default for Builder<()> {
     fn default() -> Self {
-        WgpuBuilder::new(())
+        Builder::new(())
     }
 }
 
-impl<CB: CustomPipeBuilder> WgpuBuilder<CB> {
+impl<CB: CustomPipeBuilder> Builder<CB> {
     /// Construct with the given pipe builder
     ///
     /// Pass `()` or use [`Self::default`] when not using a custom pipe.
     #[inline]
     pub fn new(cb: CB) -> Self {
-        WgpuBuilder {
+        Builder {
             custom: cb,
             options: Options::default(),
             read_env_vars: true,
