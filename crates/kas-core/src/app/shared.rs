@@ -34,14 +34,14 @@ pub(crate) struct AppSharedState<Data: AppData, G: AppGraphicsBuilder, T: Theme<
 }
 
 /// Application state shared by all windows
-pub(crate) struct AppState<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
+pub(super) struct State<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
     pub(super) shared: AppSharedState<Data, G, T>,
     pub(super) data: Data,
     /// Estimated scale factor (from last window constructed or available screens)
     options: Options,
 }
 
-impl<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> AppState<Data, G, T>
+impl<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> State<Data, G, T>
 where
     T::Window: kas::theme::Window,
 {
@@ -67,7 +67,7 @@ where
             }
         };
 
-        Ok(AppState {
+        Ok(State {
             shared: AppSharedState {
                 platform,
                 config,

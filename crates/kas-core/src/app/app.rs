@@ -5,7 +5,7 @@
 
 //! [`Application`] and supporting elements
 
-use super::{AppData, AppGraphicsBuilder, AppState, Platform, ProxyAction, Result};
+use super::{AppData, AppGraphicsBuilder, Platform, ProxyAction, Result, State};
 use crate::config::{Config, Options};
 use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::theme::{self, Theme};
@@ -18,7 +18,7 @@ use winit::event_loop::{EventLoop, EventLoopProxy};
 pub struct Application<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
     el: EventLoop<ProxyAction>,
     windows: Vec<Box<super::Window<Data, G, T>>>,
-    state: AppState<Data, G, T>,
+    state: State<Data, G, T>,
 }
 
 impl_scope! {
@@ -89,7 +89,7 @@ impl_scope! {
             draw_shared.set_raster_config(config.borrow().font.raster());
 
             let pw = PlatformWrapper(&el);
-            let state = AppState::new(data, pw, draw_shared, self.theme, options, config)?;
+            let state = State::new(data, pw, draw_shared, self.theme, options, config)?;
 
             Ok(Application {
                 el,

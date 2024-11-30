@@ -5,7 +5,7 @@
 
 //! Event loop and handling
 
-use super::{AppData, AppGraphicsBuilder, AppState, Pending};
+use super::{AppData, AppGraphicsBuilder, Pending, State};
 use super::{ProxyAction, Window};
 use crate::theme::Theme;
 use crate::{Action, WindowId};
@@ -29,7 +29,7 @@ where
     /// Translates our WindowId to winit's
     id_map: HashMap<ww::WindowId, WindowId>,
     /// Application state passed from Toolkit
-    state: AppState<A, G, T>,
+    state: State<A, G, T>,
     /// Timer resumes: (time, window identifier)
     resumes: Vec<(Instant, WindowId)>,
 }
@@ -168,7 +168,7 @@ impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Loop<A, G, T>
 where
     T::Window: kas::theme::Window,
 {
-    pub(super) fn new(mut windows: Vec<Box<Window<A, G, T>>>, state: AppState<A, G, T>) -> Self {
+    pub(super) fn new(mut windows: Vec<Box<Window<A, G, T>>>, state: State<A, G, T>) -> Self {
         Loop {
             suspended: true,
             windows: windows.drain(..).map(|w| (w.window_id, w)).collect(),
