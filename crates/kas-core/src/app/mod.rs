@@ -26,7 +26,7 @@ pub use common::{Error, Platform, Result};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-pub use common::{AppGraphicsBuilder, WindowSurface};
+pub use common::{GraphicsBuilder, WindowSurface};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
@@ -54,7 +54,7 @@ impl AppData for () {
 
 #[crate::autoimpl(Debug)]
 #[cfg(winit)]
-enum Pending<A: AppData, G: AppGraphicsBuilder, T: kas::theme::Theme<G::Shared>> {
+enum Pending<A: AppData, G: GraphicsBuilder, T: kas::theme::Theme<G::Shared>> {
     AddPopup(WindowId, WindowId, kas::PopupDescriptor),
     // NOTE: we don't need G, T here if we construct the Window later.
     // But this way we can pass a single boxed value.
@@ -277,7 +277,7 @@ mod test {
     }
 
     struct AGB;
-    impl AppGraphicsBuilder for AGB {
+    impl GraphicsBuilder for AGB {
         type DefaultTheme = crate::theme::SimpleTheme;
 
         type Shared = DrawShared;

@@ -5,7 +5,7 @@
 
 //! [`Runner`] and supporting elements
 
-use super::{AppData, AppGraphicsBuilder, Platform, ProxyAction, Result, State};
+use super::{AppData, GraphicsBuilder, Platform, ProxyAction, Result, State};
 use crate::config::{Config, Options};
 use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::theme::{self, Theme};
@@ -15,14 +15,14 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
 use winit::event_loop::{EventLoop, EventLoopProxy};
 
-pub struct Runner<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
+pub struct Runner<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
     el: EventLoop<ProxyAction>,
     windows: Vec<Box<super::Window<Data, G, T>>>,
     state: State<Data, G, T>,
 }
 
 impl_scope! {
-    pub struct Builder<G: AppGraphicsBuilder, T: Theme<G::Shared>> {
+    pub struct Builder<G: GraphicsBuilder, T: Theme<G::Shared>> {
         graphical: G,
         theme: T,
         options: Option<Options>,
@@ -108,7 +108,7 @@ pub trait RunnerInherent {
     type DrawShared: DrawSharedImpl;
 }
 
-impl<A: AppData, G: AppGraphicsBuilder, T> RunnerInherent for Runner<A, G, T>
+impl<A: AppData, G: GraphicsBuilder, T> RunnerInherent for Runner<A, G, T>
 where
     T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,
@@ -118,7 +118,7 @@ where
 
 impl<Data: AppData, G> Runner<Data, G, G::DefaultTheme>
 where
-    G: AppGraphicsBuilder + Default,
+    G: GraphicsBuilder + Default,
 {
     /// Construct a new instance with default options and theme
     ///
@@ -142,7 +142,7 @@ where
 
 impl<G, T> Runner<(), G, T>
 where
-    G: AppGraphicsBuilder + Default,
+    G: GraphicsBuilder + Default,
     T: Theme<G::Shared>,
 {
     /// Construct a builder with the given `theme`
@@ -152,7 +152,7 @@ where
     }
 }
 
-impl<Data: AppData, G: AppGraphicsBuilder, T> Runner<Data, G, T>
+impl<Data: AppData, G: GraphicsBuilder, T> Runner<Data, G, T>
 where
     T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,

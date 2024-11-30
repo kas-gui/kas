@@ -43,7 +43,7 @@ pub struct Builder<CB: CustomPipeBuilder> {
     read_env_vars: bool,
 }
 
-impl<CB: CustomPipeBuilder> runner::AppGraphicsBuilder for Builder<CB> {
+impl<CB: CustomPipeBuilder> runner::GraphicsBuilder for Builder<CB> {
     type DefaultTheme = FlatTheme;
 
     type Shared = DrawPipe<CB::Pipe>;

@@ -175,7 +175,7 @@ impl Platform {
 /// Builder for a graphics backend
 ///
 /// See also [`Runner`](super::Runner).
-pub trait AppGraphicsBuilder {
+pub trait GraphicsBuilder {
     /// The default theme
     type DefaultTheme: Default + Theme<Self::Shared>;
 
