@@ -6,7 +6,7 @@
 //! Window types
 
 use super::common::WindowSurface;
-use super::shared::{AppSharedState, State};
+use super::shared::{SharedState, State};
 use super::{AppData, AppGraphicsBuilder};
 use crate::cast::{Cast, Conv};
 use crate::config::WindowConfig;
@@ -56,7 +56,7 @@ pub struct Window<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
 impl<A: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
     /// Construct window state (widget)
     pub(super) fn new(
-        shared: &AppSharedState<A, G, T>,
+        shared: &SharedState<A, G, T>,
         window_id: WindowId,
         widget: kas::Window<A>,
     ) -> Self {

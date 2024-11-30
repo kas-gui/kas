@@ -21,7 +21,7 @@ use std::task::Waker;
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
 /// Application state used by [`AppShared`]
-pub(crate) struct AppSharedState<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
+pub(super) struct SharedState<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
     pub(super) platform: Platform,
     pub(super) config: Rc<RefCell<Config>>,
     #[cfg(feature = "clipboard")]
@@ -35,7 +35,7 @@ pub(crate) struct AppSharedState<Data: AppData, G: AppGraphicsBuilder, T: Theme<
 
 /// Application state shared by all windows
 pub(super) struct State<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
-    pub(super) shared: AppSharedState<Data, G, T>,
+    pub(super) shared: SharedState<Data, G, T>,
     pub(super) data: Data,
     /// Estimated scale factor (from last window constructed or available screens)
     options: Options,
@@ -68,7 +68,7 @@ where
         };
 
         Ok(State {
-            shared: AppSharedState {
+            shared: SharedState {
                 platform,
                 config,
                 #[cfg(feature = "clipboard")]
@@ -105,7 +105,7 @@ where
     }
 }
 
-impl<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> AppSharedState<Data, G, T> {
+impl<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> SharedState<Data, G, T> {
     /// Return the next window identifier
     ///
     /// TODO(opt): this should recycle used identifiers since Id does not
@@ -197,7 +197,7 @@ pub(crate) trait AppShared {
 }
 
 impl<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> AppShared
-    for AppSharedState<Data, G, T>
+    for SharedState<Data, G, T>
 {
     fn add_popup(&mut self, parent_id: WindowId, popup: kas::PopupDescriptor) -> WindowId {
         let id = self.next_window_id();
