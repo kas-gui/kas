@@ -8,8 +8,8 @@
 //! Widgets expect the theme to provide an implementation of [`SizeCx`] and of
 //! [`DrawCx`].
 //!
-//! Constructing an application requires a [`Theme`]. Two implementations are
-//! provided here: [`SimpleTheme`] and [`FlatTheme`].
+//! Constructing a [`Runner`](crate::runner::Runner) requires a [`Theme`]. Two
+//! implementations are provided here: [`SimpleTheme`] and [`FlatTheme`].
 //! An adapter, [`MultiTheme`], is also provided.
 
 mod anim;

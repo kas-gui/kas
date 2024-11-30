@@ -3,9 +3,9 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! [`Application`] and supporting elements
+//! [`Runner`] and supporting elements
 
-use super::{AppData, AppGraphicsBuilder, AppState, Platform, ProxyAction, Result};
+use super::{AppData, GraphicsBuilder, Platform, ProxyAction, Result, State};
 use crate::config::{Config, Options};
 use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::theme::{self, Theme};
@@ -15,14 +15,14 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
 use winit::event_loop::{EventLoop, EventLoopProxy};
 
-pub struct Application<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
+pub struct Runner<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
     el: EventLoop<ProxyAction>,
     windows: Vec<Box<super::Window<Data, G, T>>>,
-    state: AppState<Data, G, T>,
+    state: State<Data, G, T>,
 }
 
 impl_scope! {
-    pub struct AppBuilder<G: AppGraphicsBuilder, T: Theme<G::Shared>> {
+    pub struct Builder<G: GraphicsBuilder, T: Theme<G::Shared>> {
         graphical: G,
         theme: T,
         options: Option<Options>,
@@ -34,7 +34,7 @@ impl_scope! {
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
         #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
         pub fn new(graphical: G, theme: T) -> Self {
-            AppBuilder {
+            Builder {
                 graphical,
                 theme,
                 options: None,
@@ -71,13 +71,13 @@ impl_scope! {
         }
 
         /// Build with `data`
-        pub fn build<Data: AppData>(self, data: Data) -> Result<Application<Data, G, T>> {
+        pub fn build<Data: AppData>(self, data: Data) -> Result<Runner<Data, G, T>> {
             let options = self.options.unwrap_or_else(Options::from_env);
 
             let config = self.config.unwrap_or_else(|| match options.read_config() {
                 Ok(config) => Rc::new(RefCell::new(config)),
                 Err(error) => {
-                    warn_about_error("AppBuilder::build: failed to read config", &error);
+                    warn_about_error("kas::app::Builder::build: failed to read config", &error);
                     Default::default()
                 }
             });
@@ -89,9 +89,9 @@ impl_scope! {
             draw_shared.set_raster_config(config.borrow().font.raster());
 
             let pw = PlatformWrapper(&el);
-            let state = AppState::new(data, pw, draw_shared, self.theme, options, config)?;
+            let state = State::new(data, pw, draw_shared, self.theme, options, config)?;
 
-            Ok(Application {
+            Ok(Runner {
                 el,
                 windows: vec![],
                 state,
@@ -100,15 +100,15 @@ impl_scope! {
     }
 }
 
-/// Inherenet associated types of [`Application`]
+/// Inherenet associated types of [`Runner`]
 ///
-/// Note: these could be inherent associated types of [`Application`] when Rust#8995 is stable.
-pub trait ApplicationInherent {
+/// Note: these could be inherent associated types of [`Runner`] when Rust#8995 is stable.
+pub trait RunnerInherent {
     /// Shared draw state type
     type DrawShared: DrawSharedImpl;
 }
 
-impl<A: AppData, G: AppGraphicsBuilder, T> ApplicationInherent for Application<A, G, T>
+impl<A: AppData, G: GraphicsBuilder, T> RunnerInherent for Runner<A, G, T>
 where
     T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,
@@ -116,9 +116,9 @@ where
     type DrawShared = G::Shared;
 }
 
-impl<Data: AppData, G> Application<Data, G, G::DefaultTheme>
+impl<Data: AppData, G> Runner<Data, G, G::DefaultTheme>
 where
-    G: AppGraphicsBuilder + Default,
+    G: GraphicsBuilder + Default,
 {
     /// Construct a new instance with default options and theme
     ///
@@ -135,24 +135,24 @@ where
 
     /// Construct a builder with the default theme
     #[inline]
-    pub fn with_default_theme() -> AppBuilder<G, G::DefaultTheme> {
-        AppBuilder::new(G::default(), G::DefaultTheme::default())
+    pub fn with_default_theme() -> Builder<G, G::DefaultTheme> {
+        Builder::new(G::default(), G::DefaultTheme::default())
     }
 }
 
-impl<G, T> Application<(), G, T>
+impl<G, T> Runner<(), G, T>
 where
-    G: AppGraphicsBuilder + Default,
+    G: GraphicsBuilder + Default,
     T: Theme<G::Shared>,
 {
     /// Construct a builder with the given `theme`
     #[inline]
-    pub fn with_theme(theme: T) -> AppBuilder<G, T> {
-        AppBuilder::new(G::default(), theme)
+    pub fn with_theme(theme: T) -> Builder<G, T> {
+        Builder::new(G::default(), theme)
     }
 }
 
-impl<Data: AppData, G: AppGraphicsBuilder, T> Application<Data, G, T>
+impl<Data: AppData, G: GraphicsBuilder, T> Runner<Data, G, T>
 where
     T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,
@@ -309,14 +309,14 @@ impl<'a> PlatformWrapper<'a> {
     }
 }
 
-/// A proxy allowing control of an application from another thread.
+/// A proxy allowing control of a UI from another thread.
 ///
-/// Created by [`Application::create_proxy`].
+/// Created by [`Runner::create_proxy`].
 pub struct Proxy(EventLoopProxy<ProxyAction>);
 
 /// Error type returned by [`Proxy`] functions.
 ///
-/// This error occurs only if the application already terminated.
+/// This error occurs only if the [`Runner`] already terminated.
 pub struct ClosedError;
 
 impl Proxy {

@@ -493,15 +493,15 @@ impl_scope! {
     }
 }
 
-fn main() -> kas::app::Result<()> {
+fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
     let window =
         Window::new(MandlebrotUI::new(), "Mandlebrot").with_decorations(Decorations::Border);
     let theme = kas::theme::FlatTheme::new();
-    let mut app = kas::app::WgpuBuilder::new(PipeBuilder)
+    let mut runner = kas_wgpu::Builder::new(PipeBuilder)
         .with_theme(theme)
         .build(())?;
-    let _ = app.config_mut().theme.set_active_scheme("dark");
-    app.with(window).run()
+    let _ = runner.config_mut().theme.set_active_scheme("dark");
+    runner.with(window).run()
 }

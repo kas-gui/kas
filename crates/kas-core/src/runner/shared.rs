@@ -5,7 +5,7 @@
 
 //! Shared state
 
-use super::{AppData, AppGraphicsBuilder, Error, Pending, Platform};
+use super::{AppData, Error, GraphicsBuilder, Pending, Platform};
 use crate::config::{Config, Options};
 use crate::draw::DrawShared;
 use crate::theme::Theme;
@@ -20,8 +20,8 @@ use std::task::Waker;
 
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
-/// Application state used by [`AppShared`]
-pub(crate) struct AppSharedState<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
+/// Runner state used by [`RunnerT`]
+pub(super) struct SharedState<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
     pub(super) platform: Platform,
     pub(super) config: Rc<RefCell<Config>>,
     #[cfg(feature = "clipboard")]
@@ -33,15 +33,15 @@ pub(crate) struct AppSharedState<Data: AppData, G: AppGraphicsBuilder, T: Theme<
     window_id: u32,
 }
 
-/// Application state shared by all windows
-pub(crate) struct AppState<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> {
-    pub(super) shared: AppSharedState<Data, G, T>,
+/// Runner state shared by all windows
+pub(super) struct State<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
+    pub(super) shared: SharedState<Data, G, T>,
     pub(super) data: Data,
     /// Estimated scale factor (from last window constructed or available screens)
     options: Options,
 }
 
-impl<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> AppState<Data, G, T>
+impl<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> State<Data, G, T>
 where
     T::Window: kas::theme::Window,
 {
@@ -67,8 +67,8 @@ where
             }
         };
 
-        Ok(AppState {
-            shared: AppSharedState {
+        Ok(State {
+            shared: SharedState {
                 platform,
                 config,
                 #[cfg(feature = "clipboard")]
@@ -105,7 +105,7 @@ where
     }
 }
 
-impl<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> AppSharedState<Data, G, T> {
+impl<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> SharedState<Data, G, T> {
     /// Return the next window identifier
     ///
     /// TODO(opt): this should recycle used identifiers since Id does not
@@ -117,10 +117,10 @@ impl<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> AppSharedState<D
     }
 }
 
-/// Application shared-state type-erased interface
+/// Runner shared-state type-erased interface
 ///
-/// A `dyn AppShared` object is used by [crate::event::`EventCx`].
-pub(crate) trait AppShared {
+/// A `dyn RunnerT` object is used by [`crate::event::EventCx`].
+pub(crate) trait RunnerT {
     /// Add a pop-up
     ///
     /// A pop-up may be presented as an overlay layer in the current window or
@@ -142,7 +142,7 @@ pub(crate) trait AppShared {
     /// event handler, albeit without error handling.
     ///
     /// Safety: this method *should* require generic parameter `Data` (data type
-    /// passed to the `Application`). Realising this would require adding this type
+    /// passed to the `Runner`). Realising this would require adding this type
     /// parameter to `EventCx` and thus to all widgets (not necessarily the
     /// type accepted by the widget as input). As an alternative we require the
     /// caller to type-cast `Window<Data>` to `Window<()>` and pass in
@@ -196,9 +196,7 @@ pub(crate) trait AppShared {
     fn waker(&self) -> &std::task::Waker;
 }
 
-impl<Data: AppData, G: AppGraphicsBuilder, T: Theme<G::Shared>> AppShared
-    for AppSharedState<Data, G, T>
-{
+impl<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> RunnerT for SharedState<Data, G, T> {
     fn add_popup(&mut self, parent_id: WindowId, popup: kas::PopupDescriptor) -> WindowId {
         let id = self.next_window_id();
         self.pending

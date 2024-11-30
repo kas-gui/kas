@@ -45,7 +45,7 @@ impl MatrixData for TableSize {
     }
 }
 
-fn main() -> kas::app::Result<()> {
+fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
     let table = MatrixView::new(driver::NavView)
@@ -75,7 +75,7 @@ fn main() -> kas::app::Result<()> {
     let window = Window::new(ui, "Times-Tables");
 
     let theme = kas::theme::SimpleTheme::new();
-    kas::app::Default::with_theme(theme)
+    kas::runner::Default::with_theme(theme)
         .build(())?
         .with(window)
         .run()

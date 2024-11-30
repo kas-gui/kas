@@ -62,19 +62,18 @@ pub mod resvg {
     pub use kas_resvg::*;
 }
 
-pub mod app {
-    //! Application, platforms and backends
+pub mod runner {
+    //! [`Runner`], platforms and backends
     //!
-    //! Start by constructing an [`Application`] or its [`Default`](type@Default)
+    //! Start by constructing a [`Runner`] or its [`Default`](type@Default)
     //! type-def (requires a backend be enabled, e.g. "wgpu").
 
-    /// Application pre-launch state
+    /// Runner pre-launch state
     ///
     /// Suggested construction patterns:
     ///
-    /// -   <code>kas::app::[Default](type@Default)::[new](Application::new)(data)?</code>
-    /// -   <code>kas::app::[Default](type@Default)::[with_theme](Application::with_theme)(theme).[build](AppBuilder::build)(data)?</code>
-    /// -   <code>kas::app::[WgpuBuilder]::[new](WgpuBuilder::new)(custom_wgpu_pipe).[with_theme](WgpuBuilder::with_theme)(theme).[build](AppBuilder::build)(data)?</code>
+    /// -   <code>kas::runner::[Default](type@Default)::[new](Runner::new)(data)?</code>
+    /// -   <code>kas::runner::[Default](type@Default)::[with_theme](Runner::with_theme)(theme).[build](Builder::build)(data)?</code>
     ///
     /// Where:
     ///
@@ -82,16 +81,13 @@ pub mod app {
     /// -   `theme` is some object implementing [`Theme`](crate::theme::Theme)
     /// -   `custom_wgpu_pipe` is a custom WGPU graphics pipeline
     #[doc(inline)]
-    pub use kas_core::app::Application;
+    pub use kas_core::runner::Runner;
 
-    pub use kas_core::app::*;
+    pub use kas_core::runner::*;
 
-    #[cfg(feature = "wgpu")] pub use kas_wgpu::WgpuBuilder;
-
-    /// Application pre-launch state, configured with the default graphics backend
+    /// Runner pre-launch state, configured with the default graphics backend
     #[cfg(feature = "wgpu")]
-    pub type Default<Data, T = crate::theme::FlatTheme> =
-        Application<Data, kas_wgpu::WgpuBuilder<()>, T>;
+    pub type Default<Data, T = crate::theme::FlatTheme> = Runner<Data, kas_wgpu::Builder<()>, T>;
 }
 
 #[cfg(feature = "dynamic")]

@@ -27,7 +27,7 @@ mod shaded_theme;
 mod surface;
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
-use kas::app::{AppBuilder, AppGraphicsBuilder, Result};
+use kas::runner;
 use kas::theme::{FlatTheme, Theme};
 use wgpu::rwh;
 
@@ -36,21 +36,21 @@ pub use options::Options;
 pub use shaded_theme::ShadedTheme;
 pub extern crate wgpu;
 
-/// Builder for a KAS application using WGPU
-pub struct WgpuBuilder<CB: CustomPipeBuilder> {
+/// Builder for a [`kas::runner::Runner`] using WGPU
+pub struct Builder<CB: CustomPipeBuilder> {
     custom: CB,
     options: Options,
     read_env_vars: bool,
 }
 
-impl<CB: CustomPipeBuilder> AppGraphicsBuilder for WgpuBuilder<CB> {
+impl<CB: CustomPipeBuilder> runner::GraphicsBuilder for Builder<CB> {
     type DefaultTheme = FlatTheme;
 
     type Shared = DrawPipe<CB::Pipe>;
 
     type Surface<'a> = surface::Surface<'a, CB::Pipe>;
 
-    fn build(self) -> Result<Self::Shared> {
+    fn build(self) -> runner::Result<Self::Shared> {
         let mut options = self.options;
         if self.read_env_vars {
             options.load_from_env();
@@ -62,7 +62,7 @@ impl<CB: CustomPipeBuilder> AppGraphicsBuilder for WgpuBuilder<CB> {
         shared: &mut Self::Shared,
         window: W,
         transparent: bool,
-    ) -> Result<Self::Surface<'window>>
+    ) -> runner::Result<Self::Surface<'window>>
     where
         W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
         Self: Sized,
@@ -71,19 +71,19 @@ impl<CB: CustomPipeBuilder> AppGraphicsBuilder for WgpuBuilder<CB> {
     }
 }
 
-impl Default for WgpuBuilder<()> {
+impl Default for Builder<()> {
     fn default() -> Self {
-        WgpuBuilder::new(())
+        Builder::new(())
     }
 }
 
-impl<CB: CustomPipeBuilder> WgpuBuilder<CB> {
+impl<CB: CustomPipeBuilder> Builder<CB> {
     /// Construct with the given pipe builder
     ///
     /// Pass `()` or use [`Self::default`] when not using a custom pipe.
     #[inline]
     pub fn new(cb: CB) -> Self {
-        WgpuBuilder {
+        Builder {
             custom: cb,
             options: Options::default(),
             read_env_vars: true,
@@ -110,15 +110,15 @@ impl<CB: CustomPipeBuilder> WgpuBuilder<CB> {
         self
     }
 
-    /// Convert to a [`AppBuilder`] using the default theme
+    /// Convert to a [`runner::Builder`] using the default theme
     #[inline]
-    pub fn with_default_theme(self) -> AppBuilder<Self, FlatTheme> {
-        AppBuilder::new(self, FlatTheme::new())
+    pub fn with_default_theme(self) -> runner::Builder<Self, FlatTheme> {
+        runner::Builder::new(self, FlatTheme::new())
     }
 
-    /// Convert to a [`AppBuilder`] using the specified `theme`
+    /// Convert to a [`runner::Builder`] using the specified `theme`
     #[inline]
-    pub fn with_theme<T: Theme<DrawPipe<CB::Pipe>>>(self, theme: T) -> AppBuilder<Self, T> {
-        AppBuilder::new(self, theme)
+    pub fn with_theme<T: Theme<DrawPipe<CB::Pipe>>>(self, theme: T) -> runner::Builder<Self, T> {
+        runner::Builder::new(self, theme)
     }
 }

@@ -3,29 +3,30 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Application, platforms and backends
+//! Runner, platforms and backends
 
-#[cfg(winit)] mod app;
 mod common;
 #[cfg(winit)] mod event_loop;
+#[cfg(winit)] mod runner;
 #[cfg(winit)] mod shared;
 #[cfg(winit)] mod window;
 
 use crate::messages::MessageStack;
 #[cfg(winit)] use crate::WindowId;
-#[cfg(winit)] use app::PlatformWrapper;
 #[cfg(winit)] use event_loop::Loop;
-#[cfg(winit)] pub(crate) use shared::{AppShared, AppState};
+#[cfg(winit)] use runner::PlatformWrapper;
+#[cfg(winit)] pub(crate) use shared::RunnerT;
+#[cfg(winit)] use shared::State;
 #[cfg(winit)]
 pub(crate) use window::{Window, WindowDataErased};
 
-#[cfg(winit)]
-pub use app::{AppBuilder, Application, ApplicationInherent, ClosedError, Proxy};
 pub use common::{Error, Platform, Result};
+#[cfg(winit)]
+pub use runner::{Builder, ClosedError, Proxy, Runner, RunnerInherent};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-pub use common::{AppGraphicsBuilder, WindowSurface};
+pub use common::{GraphicsBuilder, WindowSurface};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
@@ -53,7 +54,7 @@ impl AppData for () {
 
 #[crate::autoimpl(Debug)]
 #[cfg(winit)]
-enum Pending<A: AppData, G: AppGraphicsBuilder, T: kas::theme::Theme<G::Shared>> {
+enum Pending<A: AppData, G: GraphicsBuilder, T: kas::theme::Theme<G::Shared>> {
     AddPopup(WindowId, WindowId, kas::PopupDescriptor),
     // NOTE: we don't need G, T here if we construct the Window later.
     // But this way we can pass a single boxed value.
@@ -276,7 +277,7 @@ mod test {
     }
 
     struct AGB;
-    impl AppGraphicsBuilder for AGB {
+    impl GraphicsBuilder for AGB {
         type DefaultTheme = crate::theme::SimpleTheme;
 
         type Shared = DrawShared;

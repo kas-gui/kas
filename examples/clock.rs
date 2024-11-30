@@ -17,14 +17,14 @@ use chrono::prelude::*;
 use std::f32::consts::PI;
 use std::time::Duration;
 
-use kas::app::ApplicationInherent;
 use kas::draw::color::{Rgba, Rgba8Srgb};
 use kas::draw::{Draw, DrawRounded};
 use kas::geom::{Quad, Vec2};
 use kas::prelude::*;
+use kas::runner::RunnerInherent;
 use kas::text::Text;
 
-type Application = kas::app::Default<(), kas::theme::SimpleTheme>;
+type Runner = kas::runner::Default<(), kas::theme::SimpleTheme>;
 
 impl_scope! {
     #[derive(Clone)]
@@ -79,7 +79,7 @@ impl_scope! {
 
             // We use the low-level draw device to draw our clock. This means it is
             // not themeable, but gives us much more flexible draw routines.
-            let mut draw = draw.draw_iface::<<Application as ApplicationInherent>::DrawShared>().unwrap();
+            let mut draw = draw.draw_iface::<<Runner as RunnerInherent>::DrawShared>().unwrap();
 
             let rect = self.core.rect;
             let quad = Quad::conv(rect);
@@ -168,14 +168,14 @@ impl_scope! {
     }
 }
 
-fn main() -> kas::app::Result<()> {
+fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
     let window = Window::new(Clock::new(), "Clock")
         .with_decorations(kas::decorations::Decorations::None)
         .with_transparent(true);
 
-    Application::with_theme(Default::default())
+    Runner::with_theme(Default::default())
         .build(())?
         .with(window)
         .run()

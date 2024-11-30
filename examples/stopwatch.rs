@@ -51,7 +51,7 @@ fn make_window() -> impl Widget<Data = ()> {
         })
 }
 
-fn main() -> kas::app::Result<()> {
+fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
     let window = Window::new(make_window(), "Stopwatch")
@@ -60,7 +60,7 @@ fn main() -> kas::app::Result<()> {
         .with_restrictions(true, true);
 
     let theme = kas_wgpu::ShadedTheme::new();
-    let mut app = kas::app::Default::with_theme(theme).build(())?;
+    let mut app = kas::runner::Default::with_theme(theme).build(())?;
     let _ = app.config_mut().font.set_size(24.0);
     let _ = app.config_mut().theme.set_active_scheme("dark");
     app.with(window).run()

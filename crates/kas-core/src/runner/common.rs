@@ -13,7 +13,7 @@ use raw_window_handle as rwh;
 use std::time::Instant;
 use thiserror::Error;
 
-/// Possible failures from constructing an [`Application`](super::Application)
+/// Possible failures from constructing a [`Runner`](super::Runner)
 ///
 /// Some variants are undocumented. Users should not match these variants since
 /// they are not considered part of the public API.
@@ -174,8 +174,8 @@ impl Platform {
 
 /// Builder for a graphics backend
 ///
-/// See also [`Application`](super::Application).
-pub trait AppGraphicsBuilder {
+/// See also [`Runner`](super::Runner).
+pub trait GraphicsBuilder {
     /// The default theme
     type DefaultTheme: Default + Theme<Self::Shared>;
 
