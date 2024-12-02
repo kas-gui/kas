@@ -108,7 +108,7 @@ pub use filler::Filler;
 pub use frame::Frame;
 pub use grid::Grid;
 pub use grip::{GripMsg, GripPart};
-pub use label::{label, label_any, AccessLabel, Label};
+pub use label::{AccessLabel, Label};
 pub use list::*;
 pub use mark::{Mark, MarkButton};
 pub use nav_frame::NavFrame;

@@ -5,7 +5,7 @@
 
 //! Font configuration
 
-use crate::text::fonts::{self, AddMode, FontSelector};
+use crate::text::fonts::{library, AddMode, FontSelector};
 use crate::theme::TextClass;
 use crate::Action;
 use std::collections::BTreeMap;
@@ -166,9 +166,9 @@ impl FontConfig {
     /// Apply config effects which only happen on startup
     pub(super) fn init(&self) {
         if !self.aliases.is_empty() {
-            fonts::library().update_db(|db| {
+            library().adjust_resolver(|resolver| {
                 for (family, aliases) in self.aliases.iter() {
-                    db.add_aliases(
+                    resolver.add_aliases(
                         family.to_string().into(),
                         aliases.list.iter().map(|s| s.to_string().into()),
                         aliases.mode,

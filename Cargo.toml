@@ -1,6 +1,6 @@
 [package]
 name = "kas"
-version = "0.14.3"
+version = "0.15.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -11,7 +11,7 @@ keywords = ["gui"]
 categories = ["gui"]
 repository = "https://github.com/kas-gui/kas"
 exclude = ["/examples"]
-rust-version = "1.79.0"
+rust-version = "1.80.0"
 
 [package.metadata.docs.rs]
 features = ["stable"]
@@ -132,14 +132,14 @@ recursive-layout-widgets = ["kas-core/recursive-layout-widgets"]
 unsafe_node = ["kas-core/unsafe_node"]
 
 [dependencies]
-kas-core = { version = "0.14.1", path = "crates/kas-core" }
-kas-dylib = { version = "0.14.2", path = "crates/kas-dylib", optional = true }
-kas-widgets = { version = "0.14.2", path = "crates/kas-widgets" }
-kas-view = { version = "0.14.2", path = "crates/kas-view", optional = true }
-kas-resvg = { version = "0.14.2", path = "crates/kas-resvg", optional = true }
+kas-core = { version = "0.15.0", path = "crates/kas-core" }
+kas-dylib = { version = "0.15.0", path = "crates/kas-dylib", optional = true }
+kas-widgets = { version = "0.15.0", path = "crates/kas-widgets" }
+kas-view = { version = "0.15.0", path = "crates/kas-view", optional = true }
+kas-resvg = { version = "0.15.0", path = "crates/kas-resvg", optional = true }
 
 [dependencies.kas-wgpu]
-version = "0.14.2"
+version = "0.15.0"
 path = "crates/kas-wgpu"
 optional = true
 default-features = false
@@ -161,7 +161,3 @@ members = [
     "crates/kas-view",
     "examples/mandlebrot",
 ]
-
-[patch.crates-io.kas-text]
-git = "https://github.com/kas-gui/kas-text.git"
-rev = "8828bb3df7c34559e18429a18a38974ddc3e905f"

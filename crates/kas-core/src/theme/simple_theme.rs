@@ -72,8 +72,8 @@ where
 
     fn init(&mut self, config: &RefCell<Config>) {
         let fonts = fonts::library();
-        if let Err(e) = fonts.select_default() {
-            panic!("Error loading font: {e}");
+        if let Err(e) = fonts.init() {
+            panic!("Error initializing fonts: {e}");
         }
         self.fonts = Some(Rc::new(
             config

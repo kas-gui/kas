@@ -170,6 +170,11 @@ to event handlers and to a new `update` method. The key advantages of this chang
 
 For more on *input data*, read the [design document](https://github.com/kas-gui/design/blob/input-data/widget/input-data.md).
 
+### 0.15.0 — December 2024
+
+Add traits `Collection` and `CellCollection` representing a list/tuple of widgets.
+Revise layout macros with `.align` / `.pack` / `.margins` adapters.
+
 
 Future work
 -----------
