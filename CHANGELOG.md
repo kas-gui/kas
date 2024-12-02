@@ -2,10 +2,34 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
--   Bump MSRV to 1.80 (#457)
+## [0.15.0] — 2024-12-02
 
--   Rename `Application` → `Runner`
+Most significant is the addition of the `Collection` trait representing a list or tuple of widgets.
+
+### Uncategorized
+-   Bump MSRV to 1.80 (#457)
+-   Add struct `kas::config::Config` to house event/theme/font config (#449)
+-   Make `PRIMARY` backend default and fix transparency (#452)
+-   Add `kas::decorations` module (#452)
+-   Rename `Application` → `Runner` and `kas::app` → `kas::runner` (#456)
+
+### Event handling
+-   Add `fn EventState::send` and `send_erased` to allow *sending* a message to any widget (#429)
+-   Assume `Action::UPDATE` from some handlers instead of requiring this explicitly (#432)
+-   Remove event stealing and revise handling of disabled events (#453)
+
+### Layout
+-   Add trait `Collection` and macro `kas::collection!` (#431)
+-   Add trait `CellCollection` and macro `kas::cell_collection!` (#443)
+-   Replace trait `AutoLayout` with `LayoutVisitor` using RPITIT (#434)
+-   Replace `align!(spec DSL, child)`, `pack!(spec DSL, child)` and `margins!(spec DSL, child)` with `.align(hints)`, `.pack(hints)`, `.margins(dirs, style)` widget/layout adapters; more uniform support for adapters within and without layout macros (#438)
+-   Pass `AlignHints` to `fn set_rect` not `size_rules` (#447)
+
+### Widgets
+-   Make `kas::widgets::ImageError` public (#428)
+-   Make `AdaptEvents` a thin wrapper without `Id` (#430)
+-   Use RPITIT in traits `ListData`, `MatrixData` (#433)
+-   Remove widget aliases `StrLabel`, `StringLabel`, `StrText`, `StringText` (#438)
 
 ## [0.14.2] — 2023-12-12
 
