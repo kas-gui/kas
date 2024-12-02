@@ -1,6 +1,6 @@
 [package]
 name = "kas-view"
-version = "0.14.2"
+version = "0.15.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -17,12 +17,12 @@ features = ["kas/winit", "kas/wayland"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-kas-widgets = { version = "0.14.1", path = "../kas-widgets" }
+kas-widgets = { version = "0.15.0", path = "../kas-widgets" }
 log = "0.4"
 linear-map = "1.2.0"
 
 # We must rename this package since macros expect kas to be in scope:
-kas = { version = "0.14.1", package = "kas-core", path = "../kas-core" }
+kas = { version = "0.15.0", package = "kas-core", path = "../kas-core" }
 
 [lints.clippy]
 collapsible_else_if = "allow"

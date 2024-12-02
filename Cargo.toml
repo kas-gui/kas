@@ -1,6 +1,6 @@
 [package]
 name = "kas"
-version = "0.14.3"
+version = "0.15.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -132,14 +132,14 @@ recursive-layout-widgets = ["kas-core/recursive-layout-widgets"]
 unsafe_node = ["kas-core/unsafe_node"]
 
 [dependencies]
-kas-core = { version = "0.14.1", path = "crates/kas-core" }
-kas-dylib = { version = "0.14.2", path = "crates/kas-dylib", optional = true }
-kas-widgets = { version = "0.14.2", path = "crates/kas-widgets" }
-kas-view = { version = "0.14.2", path = "crates/kas-view", optional = true }
-kas-resvg = { version = "0.14.2", path = "crates/kas-resvg", optional = true }
+kas-core = { version = "0.15.0", path = "crates/kas-core" }
+kas-dylib = { version = "0.15.0", path = "crates/kas-dylib", optional = true }
+kas-widgets = { version = "0.15.0", path = "crates/kas-widgets" }
+kas-view = { version = "0.15.0", path = "crates/kas-view", optional = true }
+kas-resvg = { version = "0.15.0", path = "crates/kas-resvg", optional = true }
 
 [dependencies.kas-wgpu]
-version = "0.14.2"
+version = "0.15.0"
 path = "crates/kas-wgpu"
 optional = true
 default-features = false

@@ -1,6 +1,6 @@
 [package]
 name = "kas-dylib"
-version = "0.14.2"
+version = "0.15.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -27,7 +27,7 @@ resvg = ["dep:kas-resvg"]
 docs_rs = ["kas-core/winit", "kas-core/wayland"]
 
 [dependencies]
-kas-core = { version = "0.14.1", path = "../kas-core" }
-kas-widgets = { version = "0.14.2", path = "../kas-widgets" }
-kas-resvg = { version = "0.14.2", path = "../kas-resvg", optional = true }
-kas-wgpu = { version = "0.14.1", path = "../kas-wgpu", default-features = false }
+kas-core = { version = "0.15.0", path = "../kas-core" }
+kas-widgets = { version = "0.15.0", path = "../kas-widgets" }
+kas-resvg = { version = "0.15.0", path = "../kas-resvg", optional = true }
+kas-wgpu = { version = "0.15.0", path = "../kas-wgpu", default-features = false }

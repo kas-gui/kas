@@ -1,6 +1,6 @@
 [package]
 name = "kas-widgets"
-version = "0.14.2"
+version = "0.15.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -26,11 +26,11 @@ smallvec = "1.6.1"
 unicode-segmentation = "1.7"
 thiserror = "2.0.3"
 image = { version = "0.25.1", optional = true }
-kas-macros = { version = "0.14.1", path = "../kas-macros" }
+kas-macros = { version = "0.15.0", path = "../kas-macros" }
 linear-map = "1.2.0"
 
 # We must rename this package since macros expect kas to be in scope:
-kas = { version = "0.14.1", package = "kas-core", path = "../kas-core" }
+kas = { version = "0.15.0", package = "kas-core", path = "../kas-core" }
 
 [lints.clippy]
 collapsible_else_if = "allow"
