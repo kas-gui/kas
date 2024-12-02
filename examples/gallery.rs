@@ -331,7 +331,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
                 .with_text(DOC),
             ScrollLabel::new(Markdown::new(DOC).unwrap())
                 .on_configure(|cx, label| {
-                    cx.push(label.id(), SetLabelId(label.id()));
+                    cx.send(label.id(), SetLabelId(label.id()));
                 })
                 .on_message(|cx, label, text| {
                     let act = label.set_text(text);

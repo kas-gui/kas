@@ -596,11 +596,19 @@ impl EventState {
     }
 
     /// Send a message to `id`
+    ///
+    /// Similar to [`EventCx::push`], the message is sent as part of a widget
+    /// tree traversal.
+    /// The message may be [popped](EventCx::try_pop) or
+    /// [observed](EventCx::try_observe) from [`Events::handle_messages`]
+    /// by the widget itself, its parent, or any ancestor.
     pub fn send<M: Debug + 'static>(&mut self, id: Id, msg: M) {
         self.send_erased(id, Erased::new(msg));
     }
 
-    /// Send an erased message to `id`
+    /// Push a type-erased message to the stack
+    ///
+    /// This is a lower-level variant of [`Self::send`].
     pub fn send_erased(&mut self, id: Id, msg: Erased) {
         self.send_queue.push_back((id, msg));
     }
