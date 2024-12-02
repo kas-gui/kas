@@ -26,8 +26,11 @@ enum LoadError {
 fn load(data: &[u8], resources_dir: Option<&Path>) -> Result<Tree, usvg::Error> {
     use once_cell::sync::Lazy;
     static FONT_FAMILY: Lazy<String> = Lazy::new(|| {
-        let fonts_db = kas::text::fonts::library().read_db();
-        fonts_db.font_family_from_alias("SERIF").unwrap_or_default()
+        let resolver = kas::text::fonts::library().resolver();
+        let db = kas::text::fonts::db().unwrap();
+        resolver
+            .font_family_from_alias(db, "SERIF")
+            .unwrap_or_default()
     });
 
     // Defaults are taken from usvg::Options::default(). Notes:

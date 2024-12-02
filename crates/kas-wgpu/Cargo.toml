@@ -44,7 +44,7 @@ package = "kas-core"
 path = "../kas-core"
 
 [dependencies.kas-text]
-version = "0.6.0"
+version = "0.7.0"
 
 [dependencies.wgpu]
 version = "23.0.1"
