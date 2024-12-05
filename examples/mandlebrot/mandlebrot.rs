@@ -13,7 +13,7 @@ use kas::event::{self, Command};
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
 use kas::widgets::adapt::Reserve;
-use kas::widgets::{format_data, format_value, Label, Slider, Text};
+use kas::widgets::{format_value, Label, Slider, Text};
 use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawPipe};
 use kas_wgpu::wgpu;
 use std::mem::size_of;
@@ -286,8 +286,8 @@ impl PipeWindow {
     }
 }
 
-#[derive(Clone, Debug)]
-struct ViewUpdate;
+#[derive(Debug)]
+struct ViewUpdate(String);
 
 impl_scope! {
     #[widget]
@@ -392,7 +392,6 @@ impl_scope! {
                             self.delta += self.alpha.complex_mul(delta);
                         }
                     }
-                    cx.push(ViewUpdate);
                 }
                 Event::Scroll(delta) => {
                     let factor = match delta {
@@ -400,7 +399,6 @@ impl_scope! {
                         event::ScrollDelta::PixelDelta(coord) => -0.01 * coord.1 as f64,
                     };
                     self.alpha = self.alpha * 2f64.powf(factor);
-                    cx.push(ViewUpdate);
                 }
                 Event::Pan { alpha, delta } => {
                     // Our full transform (from screen coordinates to world coordinates) is:
@@ -416,8 +414,6 @@ impl_scope! {
                     self.delta = self.delta - new_alpha.complex_mul(delta) * self.view_alpha
                         + (self.alpha - new_alpha).complex_mul(self.view_delta);
                     self.alpha = new_alpha;
-
-                    cx.push(ViewUpdate);
                 }
                 Event::PressStart { press } => {
                     return press.grab(self.id())
@@ -427,6 +423,9 @@ impl_scope! {
                 }
                 _ => return Unused,
             }
+
+            cx.redraw(self.id());
+            cx.push(ViewUpdate(self.loc()));
             Used
         }
     }
@@ -445,8 +444,8 @@ impl_scope! {
     }]
     struct MandlebrotUI {
         core: widget_core!(),
-        #[widget(&self.mbrot)]
-        label: Text<Mandlebrot, String>,
+        #[widget(&self.loc)]
+        label: Text<String, String>,
         #[widget]
         title: Label<&'static str>,
         #[widget]
@@ -459,21 +458,25 @@ impl_scope! {
         #[widget(&self.iters)]
         mbrot: Mandlebrot,
         iters: i32,
+        loc: String,
     }
 
     impl MandlebrotUI {
         fn new() -> MandlebrotUI {
+            let mbrot = Mandlebrot::new();
+            let loc = mbrot.loc();
             MandlebrotUI {
                 core: Default::default(),
-                label: format_data!(mbrot: &Mandlebrot, "{}", mbrot.loc()),
+                label: format_value!("{}"),
                 title: Label::new("Mandlebrot"),
                 buttons: Default::default(),
                 iters_label: format_value!("{}")
                     .with_min_size_em(3.0, 0.0),
                 slider: Slider::up(0..=256, |_, iters| *iters)
                     .with_msg(|iters| iters),
-                mbrot: Mandlebrot::new(),
+                mbrot,
                 iters: 64,
+                loc,
             }
         }
     }
@@ -483,8 +486,8 @@ impl_scope! {
         fn handle_messages(&mut self, cx: &mut EventCx, data: &()) {
             if let Some(iters) = cx.try_pop() {
                 self.iters = iters;
-            } else if let Some(ViewUpdate) = cx.try_pop() {
-                cx.redraw(self.mbrot.id());
+            } else if let Some(ViewUpdate(loc)) = cx.try_pop() {
+                self.loc = loc;
             } else {
                 return;
             }
