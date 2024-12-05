@@ -439,6 +439,7 @@ impl_scope! {
             (3, 0) => self.buttons,
             (0, 1) => self.iters_label.align(AlignHints::CENTER),
             (0, 2) => self.slider,
+            // extra col span allows use of Label's margin
             (1..5, 1..4) => self.mbrot,
         };
     }]
@@ -454,7 +455,6 @@ impl_scope! {
         iters_label: Reserve<Text<i32, String>>,
         #[widget(&self.iters)]
         slider: Slider<i32, i32, kas::dir::Up>,
-        // extra col span allows use of Label's margin
         #[widget(&self.iters)]
         mbrot: Mandlebrot,
         iters: i32,
