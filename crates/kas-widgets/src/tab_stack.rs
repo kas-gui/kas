@@ -7,7 +7,6 @@
 
 use crate::adapt::{AdaptEvents, AdaptWidget};
 use crate::{AccessLabel, Row, Stack};
-use kas::layout::{FrameStorage, Visitor};
 use kas::messages::Select;
 use kas::prelude::*;
 use kas::theme::FrameStyle;
@@ -23,13 +22,12 @@ impl_scope! {
     #[autoimpl(HasStr using self.label)]
     #[widget {
         Data = ();
-        layout = button!(self.label);
+        layout = frame!(self.label, style = FrameStyle::Tab);
         navigable = true;
         hover_highlight = true;
     }]
     pub struct Tab {
         core: widget_core!(),
-        frame: FrameStorage,
         #[widget]
         label: AccessLabel,
     }
@@ -40,31 +38,14 @@ impl_scope! {
         pub fn new(label: impl Into<AccessString>) -> Self {
             Tab {
                 core: Default::default(),
-                frame: FrameStorage::default(),
                 label: AccessLabel::new(label),
             }
         }
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let label = Visitor::single(&mut self.label);
-            Visitor::frame(&mut self.frame, label, FrameStyle::Tab).size_rules(sizer, axis)
-        }
-
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
-            let label = Visitor::single(&mut self.label);
-            Visitor::frame(&mut self.frame, label, FrameStyle::Tab).set_rect(cx, rect, hints)
-        }
-
         fn find_id(&mut self, coord: Coord) -> Option<Id> {
             self.rect().contains(coord).then_some(self.id())
-        }
-
-        fn draw(&mut self, draw: DrawCx) {
-            let label = Visitor::single(&mut self.label);
-            Visitor::frame(&mut self.frame, label, FrameStyle::Tab).draw(draw)
         }
     }
 
