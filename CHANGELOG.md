@@ -2,6 +2,11 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+-   Merge fns `DrawCx::text_effects` and `text` (#458)
+-   Remove feature `min_spec` (#458)
+
 ## [0.15.0] — 2024-12-02
 
 Most significant is the addition of the `Collection` trait representing a list or tuple of widgets.
