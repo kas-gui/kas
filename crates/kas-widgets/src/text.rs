@@ -115,13 +115,8 @@ impl_scope! {
             cx.text_set_size(&mut self.text, rect.size, align);
         }
 
-        #[cfg(feature = "min_spec")]
-        default fn draw(&mut self, mut draw: DrawCx) {
-            draw.text_effects(self.rect(), &self.text);
-        }
-        #[cfg(not(feature = "min_spec"))]
         fn draw(&mut self, mut draw: DrawCx) {
-            draw.text_effects(self.rect(), &self.text);
+            draw.text(self.rect(), &self.text);
         }
     }
 
@@ -143,20 +138,6 @@ impl_scope! {
             let action = self.text.reprepare_action();
             cx.action(self, action);
         }
-    }
-}
-
-// Str/String representations have no effects, so use simpler draw call
-#[cfg(feature = "min_spec")]
-impl<'a, A> Layout for Text<A, &'a str> {
-    fn draw(&mut self, mut draw: DrawCx) {
-        draw.text(self.rect(), &self.text);
-    }
-}
-#[cfg(feature = "min_spec")]
-impl<A> Layout for Text<A, String> {
-    fn draw(&mut self, mut draw: DrawCx) {
-        draw.text(self.rect(), &self.text);
     }
 }
 
