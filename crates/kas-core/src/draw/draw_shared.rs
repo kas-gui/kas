@@ -186,7 +186,10 @@ pub trait DrawSharedImpl: Any {
     /// Draw text with a colour and effects
     ///
     /// The effects list does not contain colour information, but may contain
-    /// underlining/strikethrough information. It may be empty.
+    /// underlining/strikethrough information.
+    ///
+    /// If `effects` is empty or all [`Effect::flags`] are default then it is
+    /// equivalent (and faster) to call [`Self::draw_text`] instead.
     fn draw_text_effects(
         &mut self,
         draw: &mut Self::Draw,
@@ -202,6 +205,9 @@ pub trait DrawSharedImpl: Any {
     /// The `effects` list provides both underlining and colour information.
     /// If the `effects` list is empty or the first entry has `start > 0`, a
     /// default entity will be assumed.
+    ///
+    /// If `effects` is empty then it is
+    /// equivalent (and faster) to call [`Self::draw_text`] instead.
     fn draw_text_effects_rgba(
         &mut self,
         draw: &mut Self::Draw,

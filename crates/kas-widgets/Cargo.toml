@@ -13,12 +13,8 @@ repository = "https://github.com/kas-gui/kas"
 exclude = ["/screenshots"]
 
 [package.metadata.docs.rs]
-features = ["min_spec", "kas/winit", "kas/wayland"]
+features = ["kas/winit", "kas/wayland"]
 rustdoc-args = ["--cfg", "docsrs"]
-
-[features]
-# Use min_specialization (enables access key underlining for AccessLabel)
-min_spec = []
 
 [dependencies]
 log = "0.4"

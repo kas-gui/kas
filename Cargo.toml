@@ -33,17 +33,15 @@ default = ["minimal", "view", "image", "resvg", "clipboard", "markdown", "shapin
 # All standard test target features
 stable = ["default", "x11", "serde", "toml", "yaml", "json", "ron", "macros_log"]
 # Enables all "recommended" features for nightly rustc
-nightly = ["stable", "min_spec"]
+nightly = ["stable"]
 # Additional, less recommendation-worthy features
 experimental = ["dark-light", "recursive-layout-widgets", "unsafe_node"]
 
 # Enable dynamic linking (faster linking via an extra run-time dependency):
 dynamic = ["dep:kas-dylib"]
 
-# Use min_specialization (enables access key underlining for AccessLabel)
-min_spec = ["kas-widgets/min_spec"]
 # Use full specialization
-spec = ["min_spec", "kas-core/spec"]
+spec = ["kas-core/spec"]
 
 #########  optional dependencies / features  #########
 
