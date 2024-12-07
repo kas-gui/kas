@@ -399,18 +399,6 @@ impl_scope! {
         pub fn inner_mut(&mut self) -> &mut W {
             &mut self.inner
         }
-
-        fn draw_(&mut self, mut draw: DrawCx) {
-            draw.recurse(&mut self.inner);
-            draw.with_pass(|mut draw| {
-                if self.show_bars.0 {
-                    draw.recurse(&mut self.horiz_bar);
-                }
-                if self.show_bars.1 {
-                    draw.recurse(&mut self.vert_bar);
-                }
-            });
-        }
     }
 
     impl HasScrollBars for Self {
@@ -523,25 +511,9 @@ impl_scope! {
                 .or_else(|| Some(self.id()))
         }
 
-        #[cfg(feature = "min_spec")]
-        default fn draw(&mut self, draw: DrawCx) {
-            self.draw_(draw);
-        }
-        #[cfg(not(feature = "min_spec"))]
-        fn draw(&mut self, draw: DrawCx) {
-            self.draw_(draw);
-        }
-    }
-
-    #[cfg(feature = "min_spec")]
-    impl<W: Widget> Layout for ScrollBars<ScrollRegion<W>> {
         fn draw(&mut self, mut draw: DrawCx) {
-            // Enlarge clip region to *our* rect:
-            draw.with_clip_region(self.core.rect, self.inner.scroll_offset(), |mut draw| {
-                draw.recurse(&mut self.inner);
-            });
-            // Use a second clip region to force draw order:
-            draw.with_clip_region(self.core.rect, Offset::ZERO, |mut draw| {
+            draw.recurse(&mut self.inner);
+            draw.with_pass(|mut draw| {
                 if self.show_bars.0 {
                     draw.recurse(&mut self.horiz_bar);
                 }
