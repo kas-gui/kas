@@ -58,6 +58,21 @@ See [Cargo.toml](https://github.com/kas-gui/kas/blob/master/Cargo.toml#L22).
 [kas]: https://docs.rs/kas
 
 
+Size
+----
+
+To reduce binary size, add this to your `Cargo.toml`:
+```toml
+[profile.release]
+strip = true
+opt-level = "z"
+```
+
+You might also consider using feature `dynamic` if wishing to ship multiple
+binaries with shared libraries (Rust's `libstd` and `libkas_dylib`); note
+however that these are not ABI-stable.
+
+
 Copyright and Licence
 ---------------------
 
