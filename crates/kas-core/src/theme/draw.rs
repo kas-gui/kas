@@ -229,8 +229,13 @@ impl<'a> DrawCx<'a> {
     pub fn text_effects<T: FormattableText + ?Sized>(&mut self, rect: Rect, text: &Text<T>) {
         let effects = text.effect_tokens();
         let class = text.class();
-        if let Ok(text) = text.display() {
-            self.h.text_effects(&self.id, rect, text, effects, class);
+        if let Ok(display) = text.display() {
+            if effects.is_empty() {
+                // Use the faster and simpler implementation when we don't have effects
+                self.h.text(&self.id, rect, display, class);
+            } else {
+                self.h.text_effects(&self.id, rect, display, effects, class);
+            }
         }
     }
 
@@ -426,6 +431,9 @@ pub trait ThemeDraw {
     /// [`ThemeDraw::text`] already supports *font* effects: bold,
     /// emphasis, text size. In addition, this method supports underline and
     /// strikethrough effects.
+    ///
+    /// If `effects` is empty or all [`Effect::flags`] are default then it is
+    /// equivalent (and faster) to call [`Self::text`] instead.
     ///
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).

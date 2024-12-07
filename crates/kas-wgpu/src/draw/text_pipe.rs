@@ -288,17 +288,6 @@ impl Window {
         effects: &[Effect<()>],
         mut draw_quad: impl FnMut(Quad),
     ) {
-        // Optimisation: use cheaper TextDisplay::glyphs method
-        if effects.len() <= 1
-            && effects
-                .first()
-                .map(|e| e.flags == Default::default())
-                .unwrap_or(true)
-        {
-            self.text(pipe, pass, rect, text, col);
-            return;
-        }
-
         let rect = Quad::conv(rect);
 
         let mut for_glyph = |face: FaceId, dpem: f32, glyph: Glyph, _: usize, _: ()| {
