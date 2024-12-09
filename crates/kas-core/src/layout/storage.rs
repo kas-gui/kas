@@ -12,12 +12,12 @@ use std::fmt::Debug;
 /// Requirements of row solver storage type
 ///
 /// Usually this is set by a [`crate::layout::RowSolver`] from
-/// [`crate::Layout::size_rules`], then used by [`crate::Layout::set_rect`] to
+/// [`crate::Layout::l_size_rules`], then used by [`crate::Layout::l_set_rect`] to
 /// divide the assigned rect between children.
 ///
 /// It may be useful to access this directly if not solving size rules normally;
-/// specifically this allows a different size solver to replace `size_rules` and
-/// influence `set_rect`.
+/// specifically this allows a different size solver to replace `l_size_rules` and
+/// influence `l_set_rect`.
 ///
 /// Note: some implementations allocate when [`Self::set_dim`] is first called.
 /// It is expected that this method is called before other methods.
@@ -32,8 +32,8 @@ pub trait RowStorage: Clone + Debug + sealed::Sealed {
 
     /// Access widths for each column/row
     ///
-    /// Widths are calculated from rules when `set_rect` is called. Assigning
-    /// to widths before `set_rect` is called only has any effect when the available
+    /// Widths are calculated from rules when `l_set_rect` is called. Assigning
+    /// to widths before `l_set_rect` is called only has any effect when the available
     /// size exceeds the minimum required (see [`SizeRules::solve_seq`]).
     fn widths(&mut self) -> &mut [i32] {
         self.widths_and_rules().0
@@ -116,12 +116,12 @@ where
 /// Requirements of grid solver storage type
 ///
 /// Usually this is set by a [`crate::layout::GridSolver`] from
-/// [`crate::Layout::size_rules`], then used by [`crate::Layout::set_rect`] to
+/// [`crate::Layout::l_size_rules`], then used by [`crate::Layout::l_set_rect`] to
 /// divide the assigned rect between children.
 ///
 /// It may be useful to access this directly if not solving size rules normally;
-/// specifically this allows a different size solver to replace `size_rules` and
-/// influence `set_rect`.
+/// specifically this allows a different size solver to replace `l_size_rules` and
+/// influence `l_set_rect`.
 ///
 /// Note: some implementations allocate when [`Self::set_dims`] is first called.
 /// It is expected that this method is called before other methods.
@@ -141,8 +141,8 @@ pub trait GridStorage: sealed::Sealed + Clone + std::fmt::Debug {
 
     /// Access widths for each column
     ///
-    /// Widths are calculated from rules when `set_rect` is called. Assigning
-    /// to widths before `set_rect` is called only has any effect when the available
+    /// Widths are calculated from rules when `l_set_rect` is called. Assigning
+    /// to widths before `l_set_rect` is called only has any effect when the available
     /// size exceeds the minimum required (see [`SizeRules::solve_seq`]).
     fn widths(&mut self) -> &mut [i32] {
         self.widths_and_rules().0
@@ -150,8 +150,8 @@ pub trait GridStorage: sealed::Sealed + Clone + std::fmt::Debug {
 
     /// Access heights for each row
     ///
-    /// Heights are calculated from rules when `set_rect` is called. Assigning
-    /// to heights before `set_rect` is called only has any effect when the available
+    /// Heights are calculated from rules when `l_set_rect` is called. Assigning
+    /// to heights before `l_set_rect` is called only has any effect when the available
     /// size exceeds the minimum required (see [`SizeRules::solve_seq`]).
     fn heights(&mut self) -> &mut [i32] {
         self.heights_and_rules().0

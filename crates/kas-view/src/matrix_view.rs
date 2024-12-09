@@ -361,13 +361,13 @@ impl_scope! {
         }
     }
 
-    impl Layout for Self {
+    impl Tile for Self {
         #[inline]
         fn num_children(&self) -> usize {
             usize::conv(self.cur_len.0) * usize::conv(self.cur_len.1)
         }
-        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
-            self.widgets.get(index).map(|w| w.widget.as_layout())
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
+            self.widgets.get(index).map(|w| w.widget.as_tile())
         }
         fn find_child_index(&self, id: &Id) -> Option<usize> {
             let num = self.num_children();
@@ -382,8 +382,10 @@ impl_scope! {
                 None
             }
         }
+    }
 
-        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
+    impl Layout for Self {
+        fn l_size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
             let inner_margin = if self.sel_style.is_external() {
                 sizer.inner_margins().extract(axis)
@@ -393,7 +395,7 @@ impl_scope! {
             let frame = kas::layout::FrameRules::new(0, inner_margin, (0, 0));
 
             let other = axis.other().map(|mut size| {
-                // Use same logic as in set_rect to find per-child size:
+                // Use same logic as in l_set_rect to find per-child size:
                 let other_axis = axis.flipped();
                 size -= self.frame_size.extract(other_axis);
                 let div = Size(self.ideal_len.cols, self.ideal_len.rows).extract(other_axis);
@@ -434,7 +436,7 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             self.align_hints = hints;
 
@@ -465,7 +467,7 @@ impl_scope! {
             let avail_widgets = self.widgets.len();
             if avail_widgets < req_widgets {
                 log::debug!(
-                    "set_rect: allocating widgets (old len = {}, new = {})",
+                    "l_set_rect: allocating widgets (old len = {}, new = {})",
                     avail_widgets,
                     req_widgets
                 );
@@ -483,11 +485,11 @@ impl_scope! {
         }
 
         #[inline]
-        fn translation(&self) -> Offset {
+        fn l_translation(&self) -> Offset {
             self.scroll_offset()
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }
@@ -504,7 +506,7 @@ impl_scope! {
             Some(self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             let offset = self.scroll_offset();
             let rect = self.rect() + offset;
             let num = self.num_children();

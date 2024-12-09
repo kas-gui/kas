@@ -13,8 +13,6 @@
 //!
 //! [KAS Text]: https://github.com/kas-gui/kas-text/
 
-#[allow(unused)] use crate::{event::ConfigCx, Layout};
-
 pub use kas_text::*;
 
 mod selection;

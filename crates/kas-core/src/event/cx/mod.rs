@@ -492,7 +492,7 @@ impl<'a> EventCx<'a> {
             }
 
             if matches!(cmd, Command::Debug) {
-                let hier = WidgetHierarchy::new(widget.as_layout(), self.hover.clone());
+                let hier = WidgetHierarchy::new(widget.as_tile(), self.hover.clone());
                 log::debug!(
                     "Widget heirarchy (filter={:?}): {hier}",
                     self.hover.as_ref()

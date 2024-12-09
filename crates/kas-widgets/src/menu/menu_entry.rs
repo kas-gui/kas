@@ -31,11 +31,11 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             self.rect().contains(coord).then(|| self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw);
         }
@@ -120,11 +120,11 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             self.rect().contains(coord).then(|| self.checkbox.id())
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             let mut draw = draw.re_id(self.checkbox.id());
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.layout_visitor().draw(draw);

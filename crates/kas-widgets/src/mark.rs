@@ -46,11 +46,11 @@ impl_scope! {
         }
     }
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             sizer.feature(self.style.into(), axis)
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             draw.mark(self.core.rect, self.style);
         }
     }
@@ -87,11 +87,11 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             sizer.feature(self.style.into(), axis)
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             draw.mark(self.core.rect, self.style);
         }
     }

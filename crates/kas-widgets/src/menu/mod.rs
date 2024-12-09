@@ -34,21 +34,21 @@ pub use submenu::SubMenu;
 #[derive(Default)]
 pub struct SubItems<'a> {
     /// Primary label
-    pub label: Option<&'a mut dyn Layout>,
+    pub label: Option<&'a mut dyn Tile>,
     /// Secondary label, often used to show shortcut key
-    pub label2: Option<&'a mut dyn Layout>,
+    pub label2: Option<&'a mut dyn Tile>,
     /// Sub-menu indicator
-    pub submenu: Option<&'a mut dyn Layout>,
+    pub submenu: Option<&'a mut dyn Tile>,
     /// Icon
-    pub icon: Option<&'a mut dyn Layout>,
+    pub icon: Option<&'a mut dyn Tile>,
     /// Toggle mark
-    pub toggle: Option<&'a mut dyn Layout>,
+    pub toggle: Option<&'a mut dyn Tile>,
 }
 
 /// Trait governing menus, sub-menus and menu-entries
 ///
 /// Implementations will automatically receive nav focus on mouse-hover, thus
-/// should ensure that [`Layout::find_id`] returns the identifier of the widget
+/// should ensure that [`Layout::l_find_id`] returns the identifier of the widget
 /// which should be focussed, and that this widget has
 /// [`Events::navigable`] return true.
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
@@ -58,8 +58,8 @@ pub trait Menu: Widget {
     /// If this returns sub-items, then these items are aligned in the menu view. This involves
     /// (1) calling `Self::size_rules` and `Self::set_rect` like usual, and (2) running an external
     /// layout solver on these items (which also calls `size_rules` and `set_rect` on each item).
-    /// This is redundant, but ensures the expectations on [`Layout::size_rules`] and
-    /// [`Layout::set_rect`] are met.
+    /// This is redundant, but ensures the expectations on [`Layout::l_size_rules`] and
+    /// [`Layout::l_set_rect`] are met.
     ///
     /// Note further: if this returns `Some(_)`, then spacing for menu item frames is added
     /// "magically" by the caller. The implementor should draw a frame as follows:
@@ -69,7 +69,7 @@ pub trait Menu: Widget {
     /// # struct S;
     /// # impl S {
     /// # fn rect(&self) -> Rect { Rect::ZERO }
-    /// fn draw(&mut self, mut draw: DrawCx) {
+    /// fn l_draw(&mut self, mut draw: DrawCx) {
     ///     draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
     ///     // draw children here
     /// }

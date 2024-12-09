@@ -265,7 +265,7 @@ impl CustomWindow for PipeWindow {
         //               = 2 * (p - rect.pos) / height - (width, height) / height
         //               = 2p / height - (2*rect.pos + rect.size) / height
         // Or: α_v = 2 / height, δ_v = -(2*rect.pos + rect.size) / height
-        // This is used to define view_alpha and view_delta (in Mandlebrot::set_rect).
+        // This is used to define view_alpha and view_delta (in Mandlebrot::l_set_rect).
 
         #[rustfmt::skip]
         self.add_vertices(pass.pass(), &[
@@ -334,14 +334,14 @@ impl_scope! {
     }
 
     impl Layout for Mandlebrot {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             kas::layout::LogicalSize(320.0, 240.0)
                 .to_rules_with_factor(axis, sizer.scale_factor(), 4.0)
                 .with_stretch(Stretch::High)
         }
 
         #[inline]
-        fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
+        fn l_set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
             self.core.rect = rect;
             let size = DVec2::conv(rect.size);
             let rel_width = DVec2(size.0 / size.1, 1.0);
@@ -350,7 +350,7 @@ impl_scope! {
             self.rel_width = rel_width.0 as f32;
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             let draw = draw.draw_device();
             let draw = DrawIface::<DrawPipe<Pipe>>::downcast_from(draw).unwrap();
             let p = (self.alpha, self.delta, self.rel_width, self.iters);

@@ -105,7 +105,7 @@ impl_scope! {
         fn make_next_id(&mut self, is_grip: bool, index: usize) -> Id {
             let child_index = (2 * index) + (is_grip as usize);
             if !is_grip {
-                if let Some(child) = self.widgets.get_layout(index) {
+                if let Some(child) = self.widgets.get_tile(index) {
                     // Use the widget's existing identifier, if any
                     if child.id_ref().is_valid() {
                         if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
@@ -127,16 +127,16 @@ impl_scope! {
         }
     }
 
-    impl Layout for Self {
+    impl Tile for Self {
         #[inline]
         fn num_children(&self) -> usize {
             self.widgets.len() + self.grips.len()
         }
-        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             if (index & 1) != 0 {
-                self.grips.get(index >> 1).map(|w| w.as_layout())
+                self.grips.get(index >> 1).map(|w| w.as_tile())
             } else {
-                self.widgets.get_layout(index >> 1)
+                self.widgets.get_tile(index >> 1)
             }
         }
 
@@ -144,8 +144,10 @@ impl_scope! {
             id.next_key_after(self.id_ref())
                 .and_then(|k| self.id_map.get(&k).cloned())
         }
+    }
 
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+    impl Layout for Self {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             if self.widgets.is_empty() {
                 return SizeRules::EMPTY;
             }
@@ -160,7 +162,7 @@ impl_scope! {
             loop {
                 assert!(n < self.widgets.len());
                 let widgets = &mut self.widgets;
-                if let Some(w) = widgets.get_mut_layout(n) {
+                if let Some(w) = widgets.get_mut_tile(n) {
                     solver.for_child(&mut self.data, n << 1, |axis| {
                         w.size_rules(sizer.re(), axis)
                     });
@@ -179,7 +181,7 @@ impl_scope! {
             solver.finish(&mut self.data)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             self.align_hints = hints;
             self.size_solved = true;
@@ -194,7 +196,7 @@ impl_scope! {
             let mut n = 0;
             loop {
                 assert!(n < self.widgets.len());
-                if let Some(w) = self.widgets.get_mut_layout(n) {
+                if let Some(w) = self.widgets.get_mut_tile(n) {
                     w.set_rect(cx, setter.child_rect(&mut self.data, n << 1), hints);
                 }
 
@@ -213,7 +215,7 @@ impl_scope! {
             }
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) || !self.size_solved {
                 return None;
             }
@@ -235,11 +237,11 @@ impl_scope! {
             Some(self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             if !self.size_solved {
                 return;
             }
-            // as with find_id, there's not much harm in invoking the solver twice
+            // as with l_find_id, there's not much harm in invoking the solver twice
 
             let solver = layout::RowPositionSolver::new(self.direction);
             solver.for_children_mut(&mut self.widgets, draw.get_clip_rect(), |w| {
@@ -323,7 +325,7 @@ impl<C: Collection, D: Directional> Splitter<C, D> {
         let mut n = 0;
         loop {
             assert!(n < self.widgets.len());
-            if let Some(w) = self.widgets.get_mut_layout(n) {
+            if let Some(w) = self.widgets.get_mut_tile(n) {
                 let rect = setter.child_rect(&mut self.data, n << 1);
                 w.set_rect(cx, rect, self.align_hints);
             }

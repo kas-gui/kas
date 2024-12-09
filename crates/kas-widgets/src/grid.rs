@@ -69,19 +69,21 @@ impl_scope! {
         }
     }
 
-    impl Layout for Self {
+    impl Tile for Self {
         #[inline]
         fn num_children(&self) -> usize {
             self.widgets.len()
         }
-        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
-            self.widgets.get_layout(index).map(|w| w.as_layout())
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
+            self.widgets.get_tile(index).map(|w| w.as_tile())
         }
+    }
 
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+    impl Layout for Self {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, &mut self.layout);
             for n in 0..self.widgets.len() {
-                if let Some((info, child)) = self.widgets.cell_info(n).zip(self.widgets.get_mut_layout(n)) {
+                if let Some((info, child)) = self.widgets.cell_info(n).zip(self.widgets.get_mut_tile(n)) {
                     solver.for_child(&mut self.layout, info, |axis| {
                         child.size_rules(sizer.re(), axis)
                     });
@@ -90,22 +92,22 @@ impl_scope! {
             solver.finish(&mut self.layout)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, &mut self.layout);
             for n in 0..self.widgets.len() {
-                if let Some((info, child)) = self.widgets.cell_info(n).zip(self.widgets.get_mut_layout(n)) {
+                if let Some((info, child)) = self.widgets.cell_info(n).zip(self.widgets.get_mut_tile(n)) {
                     child.set_rect(cx, setter.child_rect(&mut self.layout, info), hints);
                 }
             }
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }
             for n in 0..self.widgets.len() {
-                if let Some(child) = self.widgets.get_mut_layout(n) {
+                if let Some(child) = self.widgets.get_mut_tile(n) {
                     if let Some(id) = child.find_id(coord) {
                         return Some(id);
                     }
@@ -114,9 +116,9 @@ impl_scope! {
             Some(self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             for n in 0..self.widgets.len() {
-                if let Some(child) = self.widgets.get_mut_layout(n) {
+                if let Some(child) = self.widgets.get_mut_tile(n) {
                     draw.recurse(child);
                 }
             }

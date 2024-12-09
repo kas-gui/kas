@@ -19,7 +19,7 @@ impl SingleSolver {
     ///
     /// Argument order is consistent with other [`RulesSolver`]s.
     ///
-    /// - `axis`: `AxisInfo` instance passed into `size_rules`
+    /// - `axis`: `AxisInfo` instance passed into `l_size_rules`
     /// - `_dim`: unused
     /// - `_storage`: unused
     pub fn new(axis: AxisInfo, _dim: (), _storage: &mut ()) -> Self {

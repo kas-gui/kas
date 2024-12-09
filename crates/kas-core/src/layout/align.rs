@@ -17,7 +17,7 @@ pub use crate::text::Align;
 /// where hints are not provided.
 ///
 /// The [`AlignHints::complete`] method is provided to conveniently apply
-/// alignment to a widget within [`crate::Layout::set_rect`]:
+/// alignment to a widget within [`crate::Layout::l_set_rect`]:
 /// ```
 /// # use kas_core::layout::{Align, AlignHints};
 /// # use kas_core::geom::*;

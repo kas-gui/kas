@@ -14,7 +14,7 @@ use crate::event::{ConfigCx, Event, EventCx, IsUsed};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{Align, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx, Text, TextClass};
-use crate::{Events, Id, Layout, NavAdvance, Node, Widget};
+use crate::{Events, Id, Layout, NavAdvance, Node, Tile, Widget};
 use kas_macros::{autoimpl, impl_scope};
 
 impl_scope! {
@@ -45,17 +45,17 @@ impl_scope! {
 
     impl Layout for Self {
         #[inline]
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             sizer.text_rules(&mut self.text, axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             let align = hints.complete(Align::Default, Align::Center);
             cx.text_set_size(&mut self.text, rect.size, align);
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             draw.text(self.rect(), &self.text);
         }
     }
@@ -94,9 +94,9 @@ impl_scope! {
     }
 
     // We don't use #[widget] here. This is not supported outside of Kas!
-    impl Layout for Self {
+    impl Tile for Self {
         #[inline]
-        fn as_layout(&self) -> &dyn Layout {
+        fn as_tile(&self) -> &dyn Tile {
             self
         }
 
@@ -120,7 +120,7 @@ impl_scope! {
             self.inner.num_children()
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.inner.get_child(index)
         }
 

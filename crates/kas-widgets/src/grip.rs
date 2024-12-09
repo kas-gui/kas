@@ -43,13 +43,13 @@ impl_scope! {
     ///
     /// This widget is unusual in several ways:
     ///
-    /// 1.  [`Layout::size_rules`] does not request any size; the parent is expected
+    /// 1.  [`Layout::l_size_rules`] does not request any size; the parent is expected
     ///     to do this. (Calling this method is still required to comply with
     ///     widget model.)
-    /// 2.  [`Layout::set_rect`] sets the *track* within which this grip may move;
+    /// 2.  [`Layout::l_set_rect`] sets the *track* within which this grip may move;
     ///     the parent should always call [`GripPart::set_size_and_offset`]
     ///     afterwards to set the grip position.
-    /// 3.  [`Layout::draw`] does nothing. The parent should handle all drawing.
+    /// 3.  [`Layout::l_draw`] does nothing. The parent should handle all drawing.
     ///
     /// # Event handling
     ///
@@ -73,21 +73,21 @@ impl_scope! {
 
     /// This implementation is unusual in that:
     ///
-    /// 1.  `size_rules` always returns [`SizeRules::EMPTY`]
-    /// 2.  `set_rect` sets the *track* within which this grip may move; the
+    /// 1.  `l_size_rules` always returns [`SizeRules::EMPTY`]
+    /// 2.  `l_set_rect` sets the *track* within which this grip may move; the
     ///     parent should call [`GripPart::set_size_and_offset`] after
-    ///     `set_rect` (otherwise the grip's position will not be updated)
-    /// 3.  `draw` does nothing: the parent is expected to do all drawing
+    ///     `l_set_rect` (otherwise the grip's position will not be updated)
+    /// 3.  `l_draw` does nothing: the parent is expected to do all drawing
     impl Layout for GripPart {
-        fn size_rules(&mut self, _: SizeCx, _axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, _: SizeCx, _axis: AxisInfo) -> SizeRules {
             SizeRules::EMPTY
         }
 
-        fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
+        fn l_set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
             self.track = rect;
         }
 
-        fn draw(&mut self, _: DrawCx) {}
+        fn l_draw(&mut self, _: DrawCx) {}
     }
 
     impl Events for GripPart {

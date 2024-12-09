@@ -280,19 +280,19 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             self.layout_visitor().set_rect(cx, rect, hints);
             self.edit.set_outer_rect(rect, FrameStyle::EditBox);
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             self.b_up.find_id(coord)
                 .or_else(|| self.b_down.find_id(coord))
                 .or_else(|| self.edit.find_id(coord))
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             draw.recurse(&mut self.edit);
             draw.recurse(&mut self.b_up);
             draw.recurse(&mut self.b_down);

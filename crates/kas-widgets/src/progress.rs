@@ -68,11 +68,11 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             sizer.feature(Feature::ProgressBar(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             let align = match self.direction.is_vertical() {
                 false => AlignPair::new(Align::Stretch, hints.vert.unwrap_or(Align::Center)),
                 true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
@@ -81,7 +81,7 @@ impl_scope! {
             self.core.rect = rect;
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             let dir = self.direction.as_direction();
             draw.progress_bar(self.rect(), dir, self.value);
         }

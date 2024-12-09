@@ -12,7 +12,7 @@ use kas::geom::{Coord, Offset, Rect};
 use kas::layout::{AlignHints, AxisInfo, SizeRules};
 use kas::theme::{DrawCx, SizeCx};
 #[allow(unused)] use kas::Events;
-use kas::{Id, Layout, LayoutExt, NavAdvance, Node, Widget};
+use kas::{Id, NavAdvance, Node, Tile, TileExt, Widget};
 use std::fmt::Debug;
 
 /// Wrapper with configure / update / message handling callbacks.
@@ -200,9 +200,9 @@ impl<W: Widget> Widget for AdaptEvents<W> {
     }
 }
 
-impl<W: Widget> Layout for AdaptEvents<W> {
+impl<W: Widget> Tile for AdaptEvents<W> {
     #[inline]
-    fn as_layout(&self) -> &dyn Layout {
+    fn as_tile(&self) -> &dyn Tile {
         self
     }
 
@@ -227,7 +227,7 @@ impl<W: Widget> Layout for AdaptEvents<W> {
     }
 
     #[inline]
-    fn get_child(&self, index: usize) -> Option<&dyn Layout> {
+    fn get_child(&self, index: usize) -> Option<&dyn Tile> {
         self.inner.get_child(index)
     }
 

@@ -293,12 +293,12 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let _ = self.grip.size_rules(sizer.re(), axis);
             sizer.feature(Feature::Slider(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             let align = match self.direction.is_vertical() {
                 false => AlignPair::new(Align::Stretch, hints.vert.unwrap_or(Align::Center)),
                 true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
@@ -311,7 +311,7 @@ impl_scope! {
             let _ = self.grip.set_size_and_offset(size, self.offset());
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }
@@ -323,7 +323,7 @@ impl_scope! {
             Some(self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             let dir = self.direction.as_direction();
             draw.slider(self.rect(), &self.grip, dir);
         }

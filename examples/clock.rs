@@ -39,14 +39,14 @@ impl_scope! {
     }
 
     impl Layout for Clock {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             kas::layout::LogicalSize(64.0, 64.0)
                 .to_rules_with_factor(axis, sizer.scale_factor(), 3.0)
                 .with_stretch(Stretch::High)
         }
 
         #[inline]
-        fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
+        fn l_set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
             // Force to square
             let size = rect.size.0.min(rect.size.1);
             let size = Size::splat(size);
@@ -68,7 +68,7 @@ impl_scope! {
             self.time_rect = Rect::new(time_pos, text_size);
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             let accent: Rgba = Rgba8Srgb::parse("d7916f").into();
             let col_back = Rgba::ga(0.0, 0.5);
             let col_face = accent.multiply(0.4);

@@ -19,7 +19,7 @@ use crate::{Action, Widget};
 pub trait Scrollable: Widget {
     /// Given size `size`, returns whether `(horiz, vert)` scrolling is required
     ///
-    /// Note: this is called *before* [`Layout::set_rect`], thus must may need
+    /// Note: this is called *before* [`Layout::l_set_rect`], thus must may need
     /// to perform independent calculation of the content size.
     fn scroll_axes(&self, size: Size) -> (bool, bool);
 
@@ -27,7 +27,7 @@ pub trait Scrollable: Widget {
     ///
     /// Note: the minimum scroll offset is always zero.
     ///
-    /// Note: this is called immediately after [`Layout::set_rect`], thus should
+    /// Note: this is called immediately after [`Layout::l_set_rect`], thus should
     /// be updated there (as well as by [`Events::update`] if appropriate).
     fn max_scroll_offset(&self) -> Offset;
 

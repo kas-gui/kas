@@ -93,7 +93,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.sub_other(self.frame_size.extract(axis.flipped()));
 
             let mut rules = self.inner.size_rules(sizer.re(), axis);
@@ -108,7 +108,7 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             let child_size = (rect.size - self.frame_size).max(self.min_child_size);
             let child_rect = Rect::new(rect.pos + self.offset, child_size);
@@ -119,18 +119,18 @@ impl_scope! {
         }
 
         #[inline]
-        fn translation(&self) -> Offset {
+        fn l_translation(&self) -> Offset {
             self.scroll_offset()
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }
             self.inner.find_id(coord + self.translation())
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             draw.with_clip_region(self.core.rect, self.scroll_offset(), |mut draw| {
                 draw.recurse(&mut self.inner);
             });

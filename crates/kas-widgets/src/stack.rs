@@ -70,21 +70,23 @@ impl_scope! {
         }
     }
 
-    impl Layout for Self {
+    impl Tile for Self {
         #[inline]
         fn num_children(&self) -> usize {
             self.widgets.len()
         }
-        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
-            self.widgets.get(index).map(|(w, _)| w.as_layout())
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
+            self.widgets.get(index).map(|(w, _)| w.as_tile())
         }
 
         fn find_child_index(&self, id: &Id) -> Option<usize> {
             id.next_key_after(self.id_ref())
                 .and_then(|k| self.id_map.get(&k).cloned())
         }
+    }
 
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+    impl Layout for Self {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let mut rules = SizeRules::EMPTY;
             let mut index = 0;
             let end = self.widgets.len().min(self.size_limit);
@@ -110,7 +112,7 @@ impl_scope! {
             }
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             self.align_hints = hints;
             if let Some(entry) = self.widgets.get_mut(self.active) {
@@ -119,7 +121,7 @@ impl_scope! {
             }
         }
 
-        fn nav_next(&self, _: bool, from: Option<usize>) -> Option<usize> {
+        fn l_nav_next(&self, _: bool, from: Option<usize>) -> Option<usize> {
             match from {
                 None => Some(self.active),
                 Some(active) if active != self.active => Some(self.active),
@@ -127,7 +129,7 @@ impl_scope! {
             }
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             if let Some(entry) = self.widgets.get_mut(self.active) {
                 debug_assert_eq!(entry.1, State::Sized);
                 return entry.0.find_id(coord);
@@ -135,7 +137,7 @@ impl_scope! {
             None
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             if let Some(entry) = self.widgets.get_mut(self.active) {
                 debug_assert_eq!(entry.1, State::Sized);
                 draw.recurse(&mut entry.0);

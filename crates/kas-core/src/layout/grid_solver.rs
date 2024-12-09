@@ -90,7 +90,7 @@ impl<CSR: DefaultWithLen, RSR: DefaultWithLen, S: GridStorage> GridSolver<CSR, R
     ///
     /// Argument order is consistent with other [`RulesSolver`]s.
     ///
-    /// - `axis`: `AxisInfo` instance passed into `size_rules`
+    /// - `axis`: `AxisInfo` instance passed into `l_size_rules`
     /// - `dim`: grid dimensions
     /// - `storage`: reference to persistent storage
     pub fn new(axis: AxisInfo, dim: GridDimensions, storage: &mut S) -> Self {

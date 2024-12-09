@@ -36,7 +36,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.inner.set_rect(cx, rect, self.hints.combine(hints));
         }
     }
@@ -72,13 +72,13 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let rules = self.inner.size_rules(sizer, axis);
             self.size.set_component(axis, rules.ideal_size());
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             let align = self.hints.combine(hints).complete_default();
             let rect = align.aligned_rect(self.size, rect);
             self.inner.set_rect(cx, rect, hints);
@@ -111,7 +111,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let mut child_rules = self.inner.size_rules(sizer.re(), axis);
             if self.dirs.intersects(Directions::from(axis)) {
                 let mut rule_margins = child_rules.margins();
