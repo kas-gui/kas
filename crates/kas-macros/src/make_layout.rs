@@ -6,7 +6,7 @@
 use crate::collection::{CellInfo, GridDimensions, NameGenerator, StorIdent};
 use crate::widget::{self, Child, ChildIdent};
 use proc_macro2::{Span, TokenStream as Toks};
-use proc_macro_error::emit_error;
+use proc_macro_error2::{emit_error, emit_warning};
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
@@ -418,7 +418,7 @@ impl Layout {
                             let _ = Pack::parse(dot_token, &input2, &mut temp_gen)?;
                             continue;
                         } else if let Ok(ident) = input2.parse::<Ident>() {
-                            proc_macro_error::emit_warning!(
+                            emit_warning!(
                                 ident, "this method call is incompatible with feature `recursive-layout-widgets`";
                                 note = "extract operand from layout expression or wrap with braces",
                             );

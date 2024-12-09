@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -   Merge fns `DrawCx::text_effects` and `text` (#458)
 -   Remove feature `min_spec` (#458)
+-   Use `proc-macro-error2` (#459)
 
 ## [0.15.0] — 2024-12-02
 
