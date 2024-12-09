@@ -76,11 +76,11 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, _: SizeCx, _axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, _: SizeCx, _axis: AxisInfo) -> SizeRules {
             SizeRules::EMPTY
         }
 
-        fn draw(&mut self, _: DrawCx) {}
+        fn l_draw(&mut self, _: DrawCx) {}
     }
 
     impl Events for Self {
@@ -121,17 +121,17 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             sizer.text_rules(&mut self.text, axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             let align = hints.complete(Align::Center, Align::Center);
             cx.text_set_size(&mut self.text, rect.size, align);
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             draw.text(self.rect(), &self.text);
         }
     }
@@ -186,11 +186,11 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             sizer.feature(self.style.into(), axis)
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             draw.mark(self.core.rect, self.style);
         }
     }

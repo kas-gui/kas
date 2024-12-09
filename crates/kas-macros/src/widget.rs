@@ -166,8 +166,8 @@ pub enum ChildIdent {
 impl ChildIdent {
     pub fn get_rule(&self, core_path: &Toks, i: usize) -> Toks {
         match self {
-            ChildIdent::Field(ident) => quote! { #i => Some(self.#ident.as_layout()), },
-            ChildIdent::CoreField(ident) => quote! { #i => Some(#core_path.#ident.as_layout()), },
+            ChildIdent::Field(ident) => quote! { #i => Some(self.#ident.as_tile()), },
+            ChildIdent::CoreField(ident) => quote! { #i => Some(#core_path.#ident.as_tile()), },
         }
     }
 }
@@ -200,6 +200,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
     let mut widget_impl = None;
     let mut layout_impl = None;
+    let mut tile_impl = None;
     let mut events_impl = None;
 
     let mut num_children = None;
@@ -239,6 +240,13 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             {
                 if layout_impl.is_none() {
                     layout_impl = Some(index);
+                }
+            } else if *path == parse_quote! { ::kas::Tile }
+                || *path == parse_quote! { kas::Tile }
+                || *path == parse_quote! { Tile }
+            {
+                if tile_impl.is_none() {
+                    tile_impl = Some(index);
                 }
 
                 for item in &impl_.items {
@@ -482,10 +490,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     }
     if let Some(span) = get_child.as_ref().or(for_child_node.as_ref()) {
         if num_children.is_none() {
-            emit_warning!(
-                span,
-                "associated impl of `fn Layout::num_children` required"
-            );
+            emit_warning!(span, "associated impl of `fn Tile::num_children` required");
         }
         if opt_derive.is_some() {
             emit_error!(span, "impl forbidden when using #[widget(derive=FIELD)]");
@@ -508,7 +513,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let impl_target = quote! { #name #ty_generics #where_clause };
     let widget_name = name.to_string();
 
-    let mut required_layout_methods;
+    let mut required_tile_methods;
     let mut fn_size_rules = None;
     let mut fn_translation = None;
     let (fn_set_rect, fn_nav_next, fn_find_id);
@@ -516,9 +521,9 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let mut fn_draw = None;
 
     if let Some(inner) = opt_derive {
-        required_layout_methods = quote! {
+        required_tile_methods = quote! {
             #[inline]
-            fn as_layout(&self) -> &dyn Layout {
+            fn as_tile(&self) -> &dyn Tile {
                 self
             }
             #[inline]
@@ -540,7 +545,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 self.#inner.num_children()
             }
             #[inline]
-            fn get_child(&self, index: usize) -> Option<&dyn Layout> {
+            fn get_child(&self, index: usize) -> Option<&dyn Tile> {
                 self.#inner.get_child(index)
             }
             #[inline]
@@ -551,7 +556,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
         fn_size_rules = Some(quote! {
             #[inline]
-            fn size_rules(&mut self,
+            fn l_size_rules(&mut self,
                 sizer: ::kas::theme::SizeCx,
                 axis: ::kas::layout::AxisInfo,
             ) -> ::kas::layout::SizeRules {
@@ -560,7 +565,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         });
         fn_set_rect = quote! {
             #[inline]
-            fn set_rect(
+            fn l_set_rect(
                 &mut self,
                 cx: &mut ::kas::event::ConfigCx,
                 rect: ::kas::geom::Rect,
@@ -570,25 +575,25 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             }
         };
         fn_nav_next = Some(quote! {
-            fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+            fn l_nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
                 self.#inner.nav_next(reverse, from)
             }
         });
         fn_translation = Some(quote! {
             #[inline]
-            fn translation(&self) -> ::kas::geom::Offset {
+            fn l_translation(&self) -> ::kas::geom::Offset {
                 self.#inner.translation()
             }
         });
         fn_find_id = quote! {
             #[inline]
-            fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+            fn l_find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
                 self.#inner.find_id(coord)
             }
         };
         fn_draw = Some(quote! {
             #[inline]
-            fn draw(&mut self, draw: ::kas::theme::DrawCx) {
+            fn l_draw(&mut self, draw: ::kas::theme::DrawCx) {
                 self.#inner.draw(draw);
             }
         });
@@ -682,7 +687,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             #core_path.status.require_rect(&#core_path.id);
         };
 
-        required_layout_methods = impl_core_methods(&widget_name, &core_path);
+        required_tile_methods = impl_core_methods(&widget_name, &core_path);
 
         if do_impl_widget_children {
             let mut get_rules = quote! {};
@@ -691,12 +696,12 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             }
 
             let count = children.len();
-            required_layout_methods.append_all(quote! {
+            required_tile_methods.append_all(quote! {
                 fn num_children(&self) -> usize {
                     #count
                 }
-                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Layout> {
-                    use ::kas::Layout;
+                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Tile> {
+                    use ::kas::Tile;
                     match index {
                         #get_rules
                         _ => None,
@@ -729,12 +734,16 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
         let mut set_rect = quote! { self.#core.rect = rect; };
         let mut find_id = quote! {
-            use ::kas::{Layout, LayoutExt};
+            use ::kas::{Tile, TileExt};
             self.rect().contains(coord).then(|| self.id())
         };
         if let Some((_, layout)) = args.layout.take() {
             fn_nav_next = match layout.nav_next(children.iter()) {
-                Ok(toks) => Some(toks),
+                Ok(toks) => Some(quote! {
+                    fn l_nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+                        #toks
+                    }
+                }),
                 Err((span, msg)) => {
                     fn_nav_next_err = Some((span, msg));
                     None
@@ -752,7 +761,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             });
 
             fn_size_rules = Some(quote! {
-                fn size_rules(
+                fn l_size_rules(
                     &mut self,
                     sizer: ::kas::theme::SizeCx,
                     axis: ::kas::layout::AxisInfo,
@@ -767,7 +776,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
             };
             find_id = quote! {
-                use ::kas::{Layout, LayoutExt, layout::LayoutVisitor};
+                use ::kas::{Tile, TileExt, layout::LayoutVisitor};
 
                 if !self.rect().contains(coord) {
                     return None;
@@ -778,7 +787,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     .or_else(|| Some(self.id()))
             };
             fn_draw = Some(quote! {
-                fn draw(&mut self, draw: ::kas::theme::DrawCx) {
+                fn l_draw(&mut self, draw: ::kas::theme::DrawCx) {
                     #[cfg(debug_assertions)]
                     #core_path.status.require_rect(&#core_path.id);
 
@@ -787,13 +796,13 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             });
         } else {
             fn_nav_next = Some(quote! {
-                fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+                fn l_nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
                     ::kas::util::nav_next(reverse, from, self.num_children())
                 }
             });
         }
         fn_set_rect = quote! {
-            fn set_rect(
+            fn l_set_rect(
                 &mut self,
                 cx: &mut ::kas::event::ConfigCx,
                 rect: ::kas::geom::Rect,
@@ -805,7 +814,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             }
         };
         fn_find_id = quote! {
-            fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+            fn l_find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
                 #[cfg(debug_assertions)]
                 #core_path.status.require_rect(&#core_path.id);
 
@@ -900,9 +909,10 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         let item_idents = collect_idents(layout_impl);
         let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
 
-        layout_impl.items.push(Verbatim(required_layout_methods));
-
-        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "size_rules") {
+        if let Some((index, _)) = item_idents
+            .iter()
+            .find(|(_, ident)| *ident == "l_size_rules")
+        {
             if let Some(ref core) = core_data {
                 if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
                     if let Some(FnArg::Typed(arg)) = f.sig.inputs.iter().nth(2) {
@@ -916,7 +926,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                             emit_error!(arg.pat, "hidden shenanigans require this parameter to have a name; suggestion: `_axis`");
                         }
                     } else {
-                        panic!("size_rules misses args!");
+                        panic!("l_size_rules misses args!");
                     }
                 }
             }
@@ -924,7 +934,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             layout_impl.items.push(Verbatim(method));
         }
 
-        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "set_rect") {
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "l_set_rect") {
             if let Some(ref core) = core_data {
                 if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
                     f.block.stmts.insert(0, parse_quote! {
@@ -937,18 +947,18 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             layout_impl.items.push(Verbatim(fn_set_rect));
         }
 
-        if !has_item("nav_next") {
+        if !has_item("l_nav_next") {
             if let Some(method) = fn_nav_next {
                 layout_impl.items.push(Verbatim(method));
             } else if let Some((span, msg)) = fn_nav_next_err {
-                // We emit a warning here only if nav_next is not explicitly defined
-                emit_warning!(span, "unable to generate `fn Layout::nav_next`: {}", msg,);
+                // We emit a warning here only if l_nav_next is not explicitly defined
+                emit_warning!(span, "unable to generate `fn Layout::l_nav_next`: {}", msg,);
             }
         }
 
         if let Some(ident) = item_idents
             .iter()
-            .find_map(|(_, ident)| (*ident == "translation").then_some(ident))
+            .find_map(|(_, ident)| (*ident == "l_translation").then_some(ident))
         {
             if opt_derive.is_some() {
                 emit_error!(ident, "method not supported in derive mode");
@@ -957,7 +967,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             layout_impl.items.push(Verbatim(method));
         }
 
-        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "find_id") {
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "l_find_id") {
             if let Some(ref core) = core_data {
                 if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
                     f.block.stmts.insert(0, parse_quote! {
@@ -970,7 +980,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             layout_impl.items.push(Verbatim(fn_find_id));
         }
 
-        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "draw") {
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "l_draw") {
             if let Some(ref core) = core_data {
                 if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
                     f.block.stmts.insert(0, parse_quote! {
@@ -985,19 +995,61 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     } else if let Some(fn_size_rules) = fn_size_rules {
         if fn_nav_next.is_none() {
             if let Some((span, msg)) = fn_nav_next_err {
-                emit_warning!(span, "unable to generate `fn Layout::nav_next`: {}", msg,);
+                emit_warning!(span, "unable to generate `fn Layout::l_nav_next`: {}", msg,);
             }
         }
 
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Layout for #impl_target {
-                #required_layout_methods
                 #fn_size_rules
                 #fn_set_rect
                 #fn_nav_next
                 #fn_translation
                 #fn_find_id
                 #fn_draw
+            }
+        });
+    }
+
+    let tile_fn_wrappers = quote! {
+        fn size_rules(
+            &mut self,
+            sizer: ::kas::theme::SizeCx,
+            axis: ::kas::layout::AxisInfo,
+        ) -> ::kas::layout::SizeRules {
+            ::kas::Layout::l_size_rules(self, sizer, axis)
+        }
+        fn set_rect(
+            &mut self,
+            cx: &mut ::kas::event::ConfigCx,
+            rect: ::kas::geom::Rect,
+            hints: ::kas::layout::AlignHints,
+        ) {
+            ::kas::Layout::l_set_rect(self, cx, rect, hints);
+        }
+        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+            ::kas::Layout::l_nav_next(self, reverse, from)
+        }
+        fn translation(&self) -> ::kas::geom::Offset {
+            ::kas::Layout::l_translation(self)
+        }
+        fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+            ::kas::Layout::l_find_id(self, coord)
+        }
+        fn draw(&mut self, draw: ::kas::theme::DrawCx) {
+            ::kas::Layout::l_draw(self, draw);
+        }
+    };
+
+    if let Some(index) = tile_impl {
+        let tile_impl = &mut scope.impls[index];
+        tile_impl.items.push(Verbatim(required_tile_methods));
+        tile_impl.items.push(Verbatim(tile_fn_wrappers));
+    } else {
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::Tile for #impl_target {
+                #required_tile_methods
+                #tile_fn_wrappers
             }
         });
     }
@@ -1026,7 +1078,7 @@ fn collect_idents(item_impl: &ItemImpl) -> Vec<(usize, Ident)> {
 pub fn impl_core_methods(name: &str, core_path: &Toks) -> Toks {
     quote! {
         #[inline]
-        fn as_layout(&self) -> &dyn ::kas::Layout {
+        fn as_tile(&self) -> &dyn ::kas::Tile {
             self
         }
         #[inline]
@@ -1086,7 +1138,7 @@ pub fn impl_widget(
                 index: usize,
                 closure: Box<dyn FnOnce(::kas::Node<'_>) + '_>,
             ) {
-                use ::kas::Layout;
+                use ::kas::Tile;
                 match index {
                     #get_mut_rules
                     _ => (),

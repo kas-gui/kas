@@ -65,17 +65,17 @@ impl_scope! {
         }
     }
     impl Layout for ColourSquare {
-        fn size_rules(&mut self, sizer: SizeCx, _axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, _axis: AxisInfo) -> SizeRules {
             SizeRules::fixed_scaled(100.0, 10.0, sizer.scale_factor())
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             let align = hints.complete(Align::Default, Align::Center);
             cx.text_set_size(&mut self.loading_text, rect.size, align);
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             if let Some(color) = self.color {
                 let draw = draw.draw_device();
                 draw.rect((self.rect()).cast(), color);

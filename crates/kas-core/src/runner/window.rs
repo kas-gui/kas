@@ -16,7 +16,7 @@ use crate::event::{ConfigCx, CursorIcon, EventState};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::SolveCache;
 use crate::theme::{DrawCx, SizeCx, Theme, ThemeSize, Window as _};
-use crate::{autoimpl, messages::MessageStack, Action, Id, Layout, LayoutExt, Widget, WindowId};
+use crate::{autoimpl, messages::MessageStack, Action, Id, Tile, TileExt, Widget, WindowId};
 use std::mem::take;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -439,7 +439,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         let mut cx = ConfigCx::new(window.theme_window.size(), &mut self.ev_state);
         solve_cache.apply_rect(self.widget.as_node(&state.data), &mut cx, rect, true);
         if first {
-            solve_cache.print_widget_heirarchy(self.widget.as_layout());
+            solve_cache.print_widget_heirarchy(self.widget.as_tile());
         }
         self.widget.resize_popups(&mut cx, &state.data);
 

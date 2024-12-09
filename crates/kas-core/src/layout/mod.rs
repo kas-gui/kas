@@ -169,7 +169,7 @@ impl From<AxisInfo> for Directions {
 ///         core: widget_core!(),
 ///     }
 ///     impl Layout for Self {
-///         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+///         fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
 ///             let mut rules = self.layout_visitor().size_rules(sizer, axis);
 ///             rules.set_stretch(Stretch::High);
 ///             rules

@@ -28,7 +28,7 @@ impl_scope! {
         /// Construct a reserve
         ///
         /// The closure `reserve` should generate `SizeRules` on request, just like
-        /// [`Layout::size_rules`]. For example:
+        /// [`Layout::l_size_rules`]. For example:
         ///```
         /// use kas_widgets::adapt::Reserve;
         /// use kas_widgets::Filler;
@@ -49,7 +49,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let inner_rules = self.inner.size_rules(sizer.re(), axis);
             let reserve_rules = (self.reserve)(sizer.re(), axis);
             inner_rules.max(reserve_rules)

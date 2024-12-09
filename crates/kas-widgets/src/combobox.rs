@@ -48,7 +48,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {
+        fn l_nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None
         }

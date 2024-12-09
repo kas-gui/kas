@@ -96,16 +96,16 @@ impl_scope! {
     }
 
     impl kas::Layout for Self {
-        fn nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {
+        fn l_nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             self.rect().contains(coord).then(|| self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw.re_id(self.id()));
             if self.mark.rect().size != Size::ZERO {
@@ -222,16 +222,18 @@ impl_scope! {
         }
     }
 
-    impl kas::Layout for Self {
+    impl Tile for Self {
         #[inline]
         fn num_children(&self) -> usize {
             self.list.len()
         }
-        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
-            self.list.get(index).map(|w| w.as_layout())
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
+            self.list.get(index).map(|w| w.as_tile())
         }
+    }
 
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+    impl kas::Layout for Self {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             self.dim = layout::GridDimensions {
                 cols: MENU_VIEW_COLS,
                 col_spans: self
@@ -255,7 +257,7 @@ impl_scope! {
                 .frame(FrameStyle::MenuEntry, axis.flipped())
                 .surround(child_rules);
 
-            let child_rules = |sizer: SizeCx, w: &mut dyn Layout, mut axis: AxisInfo| {
+            let child_rules = |sizer: SizeCx, w: &mut dyn Tile, mut axis: AxisInfo| {
                 axis.sub_other(frame_size_flipped);
                 let rules = w.size_rules(sizer, axis);
                 frame_rules.surround(rules).0
@@ -299,7 +301,7 @@ impl_scope! {
             solver.finish(store)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, _: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, _: AlignHints) {
             self.core.rect = rect;
             let store = &mut self.store;
             let hints = AlignHints::NONE;
@@ -354,7 +356,7 @@ impl_scope! {
             }
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }
@@ -367,7 +369,7 @@ impl_scope! {
             Some(self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             for child in self.list.iter_mut() {
                 draw.recurse(child);
             }

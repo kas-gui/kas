@@ -49,17 +49,17 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             sizer.feature(Feature::RadioBox, axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             let align = hints.complete_center();
             let rect = cx.align_feature(Feature::RadioBox, rect, align);
             self.core.rect = rect;
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             draw.radio_box(self.rect(), self.state, self.last_change);
         }
     }
@@ -146,14 +146,14 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             self.layout_visitor().set_rect(cx, rect, hints);
             let dir = self.direction();
             crate::check_box::shrink_to_text(&mut self.core.rect, dir, &self.label);
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             self.rect().contains(coord).then(|| self.inner.id())
         }
     }

@@ -44,7 +44,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             self.rect().contains(coord).then_some(self.id())
         }
     }
@@ -162,7 +162,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+        fn l_nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
             let reverse = reverse ^ !self.direction.is_reversed();
             kas::util::nav_next(reverse, from, self.num_children())
         }

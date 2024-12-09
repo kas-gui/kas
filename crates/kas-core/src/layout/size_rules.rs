@@ -19,7 +19,7 @@ use crate::geom::Size;
 
 /// Widget sizing information
 ///
-/// This is the return value of [`crate::Layout::size_rules`] and is used to
+/// This is the return value of [`crate::Layout::l_size_rules`] and is used to
 /// describe size and margin requirements for widgets. This type only concerns
 /// size requirements along a *single* axis.
 ///
@@ -67,12 +67,12 @@ use crate::geom::Size;
 /// `SizeRules` concerns calculations of size requirements, which the layout
 /// engine uses to assign each widget a [`Rect`]; it is up to the widget itself
 /// to either fill this rect or align itself within the given space.
-/// See [`crate::Layout::set_rect`] for more information.
+/// See [`crate::Layout::l_set_rect`] for more information.
 ///
 /// For widgets with a stretch priority of [`Stretch::None`], it is still
 /// possible for layout code to assign a size larger than the preference. It is
 /// up to the widget to align itself within this space: see
-/// [`crate::Layout::set_rect`] and [`crate::layout::AlignHints`].
+/// [`crate::Layout::l_set_rect`] and [`crate::layout::AlignHints`].
 ///
 /// [`Rect`]: crate::geom::Rect
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]

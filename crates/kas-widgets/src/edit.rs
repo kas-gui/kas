@@ -358,7 +358,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             axis.sub_other(self.frame_size.extract(axis.flipped()));
 
             let mut rules = self.inner.size_rules(sizer.re(), axis);
@@ -375,7 +375,7 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, outer_rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, outer_rect: Rect, hints: AlignHints) {
             self.core.rect = outer_rect;
             let mut rect = outer_rect;
             rect.pos += self.frame_offset;
@@ -396,7 +396,7 @@ impl_scope! {
             self.update_scroll_bar(cx);
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }
@@ -412,7 +412,7 @@ impl_scope! {
             Some(self.inner.id())
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             draw.recurse(&mut self.inner);
             if self.max_scroll_offset().1 > 0 {
                 draw.recurse(&mut self.bar);
@@ -665,7 +665,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let (min, ideal) = if axis.is_horizontal() {
                 let dpem = sizer.dpem();
                 ((self.width.0 * dpem).cast_ceil(), (self.width.1 * dpem).cast_ceil())
@@ -682,7 +682,7 @@ impl_scope! {
             SizeRules::new(min, ideal, margins, stretch)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             self.outer_rect = rect;
             let v_align = if self.multi_line() { Align::Default } else { Align::Center };
@@ -692,11 +692,11 @@ impl_scope! {
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             self.outer_rect.contains(coord).then_some(self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             let bg = if self.has_error() {
                 Background::Error
             } else {

@@ -81,51 +81,53 @@ impl_scope! {
         id_map: HashMap<usize, usize>, // map key of Id to index
     }
 
-    impl Layout for Self {
+    impl Tile for Self {
         #[inline]
         fn num_children(&self) -> usize {
             self.widgets.len()
         }
 
-        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
-            self.widgets.get_layout(index)
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
+            self.widgets.get_tile(index)
         }
 
         fn find_child_index(&self, id: &Id) -> Option<usize> {
             id.next_key_after(self.id_ref())
                 .and_then(|k| self.id_map.get(&k).cloned())
         }
+    }
 
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+    impl Layout for Self {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let dim = (self.direction, self.widgets.len());
             let mut solver = RowSolver::new(axis, dim, &mut self.layout);
             for n in 0..self.widgets.len() {
-                if let Some(child) = self.widgets.get_mut_layout(n) {
+                if let Some(child) = self.widgets.get_mut_tile(n) {
                     solver.for_child(&mut self.layout, n, |axis| child.size_rules(sizer.re(), axis));
                 }
             }
             solver.finish(&mut self.layout)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             let dim = (self.direction, self.widgets.len());
             let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, &mut self.layout);
 
             for n in 0..self.widgets.len() {
-                if let Some(child) = self.widgets.get_mut_layout(n) {
+                if let Some(child) = self.widgets.get_mut_tile(n) {
                     child.set_rect(cx, setter.child_rect(&mut self.layout, n), hints);
                 }
             }
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             let solver = RowPositionSolver::new(self.direction);
             solver
                 .find_child_mut(&mut self.widgets, coord)
                 .and_then(|child| child.find_id(coord))
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             let solver = RowPositionSolver::new(self.direction);
             solver.for_children_mut(&mut self.widgets, draw.get_clip_rect(), |w| draw.recurse(w));
         }
@@ -147,7 +149,7 @@ impl_scope! {
     impl Events for Self {
         /// Make a fresh id based on `self.next` then insert into `self.id_map`
         fn make_child_id(&mut self, index: usize) -> Id {
-            if let Some(child) = self.widgets.get_layout(index) {
+            if let Some(child) = self.widgets.get_tile(index) {
                 // Use the widget's existing identifier, if any
                 if child.id_ref().is_valid() {
                     if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {

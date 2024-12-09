@@ -17,9 +17,9 @@ use crate::event::ConfigCx;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::theme::{Background, DrawCx, FrameStyle, MarginStyle, SizeCx};
 use crate::Id;
-use crate::{dir::Directional, dir::Directions, Layout};
+use crate::{dir::Directional, dir::Directions, Tile};
 
-/// A sub-set of [`Layout`] used by [`Visitor`].
+/// A sub-set of [`Tile`] used by [`Visitor`].
 ///
 /// Unlike when implementing a widget, all methods of this trait must be
 /// implemented directly.
@@ -27,13 +27,13 @@ use crate::{dir::Directional, dir::Directions, Layout};
 pub trait Visitable {
     /// Get size rules for the given axis
     ///
-    /// This method is identical to [`Layout::size_rules`].
+    /// This method is identical to [`Tile::size_rules`].
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
 
     /// Set size and position
     ///
     /// The caller is expected to set `self.core.rect = rect;`.
-    /// In other respects, this functions identically to [`Layout::set_rect`].
+    /// In other respects, this functions identically to [`Tile::set_rect`].
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints);
 
     /// Translate a coordinate to an [`Id`]
@@ -48,7 +48,7 @@ pub trait Visitable {
 
     /// Draw a widget and its children
     ///
-    /// This method is identical to [`Layout::draw`].
+    /// This method is identical to [`Tile::draw`].
     fn draw(&mut self, draw: DrawCx);
 }
 
@@ -91,7 +91,7 @@ pub struct Visitor<V: Visitable>(V);
 /// These methods would be free functions, but `Visitable` is a useful namespace
 impl<'a> Visitor<Box<dyn Visitable + 'a>> {
     /// Construct a single-item layout
-    pub fn single(widget: &'a mut dyn Layout) -> Visitor<impl Visitable + 'a> {
+    pub fn single(widget: &'a mut dyn Tile) -> Visitor<impl Visitable + 'a> {
         Visitor(Single { widget })
     }
 
@@ -201,7 +201,7 @@ impl<V: Visitable> Visitor<V> {
 impl<V: Visitable> Visitor<V> {
     /// Get size rules for the given axis
     ///
-    /// This method is identical to [`Layout::size_rules`].
+    /// This method is identical to [`Tile::size_rules`].
     #[inline]
     pub fn size_rules(mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         self.size_rules_(sizer, axis)
@@ -213,7 +213,7 @@ impl<V: Visitable> Visitor<V> {
     /// Apply a given `rect` to self
     ///
     /// The caller is expected to set `self.core.rect = rect;`.
-    /// In other respects, this functions identically to [`Layout::set_rect`].
+    /// In other respects, this functions identically to [`Tile::set_rect`].
     #[inline]
     pub fn set_rect(mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
         self.set_rect_(cx, rect, hints);
@@ -240,7 +240,7 @@ impl<V: Visitable> Visitor<V> {
 
     /// Draw a widget and its children
     ///
-    /// This method is identical to [`Layout::draw`].
+    /// This method is identical to [`Tile::draw`].
     #[inline]
     pub fn draw(mut self, draw: DrawCx) {
         self.draw_(draw);
@@ -269,7 +269,7 @@ impl<V: Visitable> Visitable for Visitor<V> {
 }
 
 struct Single<'a> {
-    widget: &'a mut dyn Layout,
+    widget: &'a mut dyn Tile,
 }
 
 impl<'a> Visitable for Single<'a> {

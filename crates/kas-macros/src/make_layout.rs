@@ -66,6 +66,7 @@ impl Tree {
         self.0.generate(core_path)
     }
 
+    /// Generate implementation of nav_next (excludes fn signature)
     pub fn nav_next<'a, I: Clone + Iterator<Item = &'a Child>>(
         &self,
         children: I,
@@ -73,20 +74,18 @@ impl Tree {
         let mut v = Vec::new();
         self.0.nav_next(children, &mut v).map(|()| {
             quote! {
-                fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-                    let mut iter = [#(#v),*].into_iter();
-                    if !reverse {
-                        if let Some(wi) = from {
-                            let _ = iter.find(|x| *x == wi);
-                        }
-                        iter.next()
-                    } else {
-                        let mut iter = iter.rev();
-                        if let Some(wi) = from {
-                            let _ = iter.find(|x| *x == wi);
-                        }
-                        iter.next()
+                let mut iter = [#(#v),*].into_iter();
+                if !reverse {
+                    if let Some(wi) = from {
+                        let _ = iter.find(|x| *x == wi);
                     }
+                    iter.next()
+                } else {
+                    let mut iter = iter.rev();
+                    if let Some(wi) = from {
+                        let _ = iter.find(|x| *x == wi);
+                    }
+                    iter.next()
                 }
             }
         })
@@ -139,7 +138,7 @@ impl Tree {
         let nav_next = match self.nav_next(children.iter()) {
             Ok(result) => Some(result),
             Err((span, msg)) => {
-                emit_error!(span, "unable to generate `fn Layout::nav_next`: {}", msg);
+                emit_error!(span, "unable to generate `fn Layout::l_nav_next`: {}", msg);
                 None
             }
         };
@@ -160,11 +159,11 @@ impl Tree {
                 }
             }
 
-            impl #impl_generics ::kas::Layout for #impl_target {
+            impl #impl_generics ::kas::Tile for #impl_target {
                 #core_impl
                 #num_children
-                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Layout> {
-                    use ::kas::Layout;
+                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Tile> {
+                    use ::kas::Tile;
                     match index {
                         #get_rules
                         _ => None,
@@ -195,7 +194,7 @@ impl Tree {
                 }
 
                 fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-                    use ::kas::{Layout, LayoutExt, layout::LayoutVisitor};
+                    use ::kas::{Tile, TileExt, layout::LayoutVisitor};
                     #[cfg(debug_assertions)]
                     #core_path.status.require_rect(&#core_path.id);
 
@@ -208,14 +207,20 @@ impl Tree {
                         .or_else(|| Some(self.id()))
                 }
 
+                fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+                    #nav_next
+                }
+
+                fn translation(&self) -> ::kas::geom::Offset {
+                    ::kas::geom::Offset::ZERO
+                }
+
                 fn draw(&mut self, draw: ::kas::theme::DrawCx) {
                     #[cfg(debug_assertions)]
                     #core_path.status.require_rect(&#core_path.id);
 
                     ::kas::layout::LayoutVisitor::layout_visitor(self).draw(draw);
                 }
-
-                #nav_next
             }
 
             impl #impl_generics ::kas::Events for #impl_target {

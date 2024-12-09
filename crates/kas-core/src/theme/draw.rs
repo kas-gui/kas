@@ -12,7 +12,7 @@ use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType
 use crate::event::{ConfigCx, EventState};
 use crate::geom::{Offset, Rect};
 use crate::text::{format::FormattableText, Effect, TextDisplay};
-use crate::{autoimpl, Id, Layout};
+use crate::{autoimpl, Id, Tile};
 use std::ops::{Bound, Range, RangeBounds};
 use std::time::Instant;
 
@@ -75,7 +75,7 @@ impl<'a> DrawCx<'a> {
 
     /// Recurse drawing to a child
     #[inline]
-    pub fn recurse(&mut self, child: &mut (impl Layout + ?Sized)) {
+    pub fn recurse(&mut self, child: &mut (impl Tile + ?Sized)) {
         child.draw(self.re_id(child.id_ref().clone()));
     }
 
@@ -304,13 +304,13 @@ impl<'a> DrawCx<'a> {
     }
 
     /// Draw UI element: scroll bar
-    pub fn scroll_bar<W: Layout>(&mut self, track_rect: Rect, grip: &W, dir: Direction) {
+    pub fn scroll_bar<W: Tile>(&mut self, track_rect: Rect, grip: &W, dir: Direction) {
         self.h
             .scroll_bar(&self.id, grip.id_ref(), track_rect, grip.rect(), dir);
     }
 
     /// Draw UI element: slider
-    pub fn slider<W: Layout>(&mut self, track_rect: Rect, grip: &W, dir: Direction) {
+    pub fn slider<W: Tile>(&mut self, track_rect: Rect, grip: &W, dir: Direction) {
         self.h
             .slider(&self.id, grip.id_ref(), track_rect, grip.rect(), dir);
     }

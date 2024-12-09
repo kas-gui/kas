@@ -20,7 +20,7 @@ use crate::{event::ConfigCx, layout::Stretch, theme::DrawCx};
 
 /// Size and scale interface
 ///
-/// This interface is provided to widgets in [`crate::Layout::size_rules`].
+/// This interface is provided to widgets in [`crate::Layout::l_size_rules`].
 /// It may also be accessed through [`crate::event::EventCx::size_cx`],
 /// [`DrawCx::size_cx`].
 ///
@@ -71,7 +71,7 @@ impl<'a> SizeCx<'a> {
     ///
     /// This value may change during a program's execution (e.g. when a window
     /// is moved to a different monitor); in this case all widgets will be
-    /// resized via [`crate::Layout::size_rules`].
+    /// resized via [`crate::Layout::l_size_rules`].
     pub fn scale_factor(&self) -> f32 {
         self.0.scale_factor()
     }

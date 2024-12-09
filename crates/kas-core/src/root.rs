@@ -12,7 +12,7 @@ use crate::event::{ConfigCx, Event, EventCx, IsUsed, ResizeDirection, Scroll, Un
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
-use crate::{Action, Events, Icon, Id, Layout, LayoutExt, Widget};
+use crate::{Action, Events, Icon, Id, Layout, Tile, TileExt, Widget};
 use kas_macros::impl_scope;
 use smallvec::SmallVec;
 use std::num::NonZeroU32;
@@ -83,7 +83,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let mut inner = self.inner.size_rules(sizer.re(), axis);
 
             self.bar_h = 0;
@@ -118,7 +118,7 @@ impl_scope! {
             }
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             // Calculate position and size for nw, ne, and inner portions:
             let s_nw: Size = self.dec_offset.cast();
@@ -146,11 +146,11 @@ impl_scope! {
             self.inner.set_rect(cx, Rect::new(p_in, s_in), hints);
         }
 
-        fn find_id(&mut self, _: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, _: Coord) -> Option<Id> {
             unimplemented!()
         }
 
-        fn draw(&mut self, _: DrawCx) {
+        fn l_draw(&mut self, _: DrawCx) {
             unimplemented!()
         }
     }
@@ -431,7 +431,7 @@ impl<Data: 'static> Window<Data> {
 
     /// Resize popups
     ///
-    /// This is called immediately after [`Layout::set_rect`] to resize
+    /// This is called immediately after [`Tile::set_rect`] to resize
     /// existing pop-ups.
     pub(crate) fn resize_popups(&mut self, cx: &mut ConfigCx, data: &Data) {
         for i in 0..self.popups.len() {
@@ -442,7 +442,7 @@ impl<Data: 'static> Window<Data> {
 
 // Search for a widget by `id`. On success, return that widget's [`Rect`] and
 // the translation of its children.
-fn find_rect(widget: &dyn Layout, id: Id, mut translation: Offset) -> Option<(Rect, Offset)> {
+fn find_rect(widget: &dyn Tile, id: Id, mut translation: Offset) -> Option<(Rect, Offset)> {
     let mut widget = widget;
     loop {
         if widget.eq_id(&id) {
@@ -502,7 +502,7 @@ impl<Data: 'static> Window<Data> {
             (pos, size)
         };
 
-        let (c, t) = find_rect(self.inner.as_layout(), popup.parent.clone(), Offset::ZERO).unwrap();
+        let (c, t) = find_rect(self.inner.as_tile(), popup.parent.clone(), Offset::ZERO).unwrap();
         *translation = t;
         let r = r + t; // work in translated coordinate space
         let result = self.inner.as_node(data).find_node(&popup.id, |mut node| {
@@ -521,7 +521,7 @@ impl<Data: 'static> Window<Data> {
             };
 
             cache.apply_rect(node.re(), cx, rect, false);
-            cache.print_widget_heirarchy(node.as_layout());
+            cache.print_widget_heirarchy(node.as_tile());
         });
 
         // Event handlers expect that the popup's rect is now assigned.

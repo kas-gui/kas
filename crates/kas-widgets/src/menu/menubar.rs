@@ -61,16 +61,19 @@ impl_scope! {
             }
         }
     }
-    impl Layout for Self {
+
+    impl Tile for Self {
         #[inline]
         fn num_children(&self) -> usize {
             self.widgets.len()
         }
-        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
-            self.widgets.get(index).map(|w| w.as_layout())
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
+            self.widgets.get(index).map(|w| w.as_tile())
         }
+    }
 
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+    impl Layout for Self {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             // Unusual behaviour: children's SizeRules are padded with a frame,
             // but the frame does not adjust the children's rects.
 
@@ -88,7 +91,7 @@ impl_scope! {
             solver.finish(&mut self.layout_store)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, _: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, _: AlignHints) {
             self.core.rect = rect;
             let dim = (self.direction, self.widgets.len() + 1);
             let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, &mut self.layout_store);
@@ -99,7 +102,7 @@ impl_scope! {
             }
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }
@@ -110,7 +113,7 @@ impl_scope! {
                 .or_else(|| Some(self.id()))
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             let solver = RowPositionSolver::new(self.direction);
             solver.for_children_mut(&mut self.widgets, self.core.rect, |w| draw.recurse(w));
         }

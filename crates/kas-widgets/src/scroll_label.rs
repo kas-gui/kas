@@ -36,7 +36,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let mut rules = sizer.text_rules(&mut self.text, axis);
             let _ = self.bar.size_rules(sizer.re(), axis);
             if axis.is_vertical() {
@@ -45,7 +45,7 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             cx.text_set_size(&mut self.text, rect.size, hints.complete_default());
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
@@ -61,7 +61,7 @@ impl_scope! {
             self.bar.set_value(cx, self.view_offset.1);
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }
@@ -69,7 +69,7 @@ impl_scope! {
             self.bar.find_id(coord).or_else(|| Some(self.id()))
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             let rect = Rect::new(self.rect().pos, self.text_size);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {

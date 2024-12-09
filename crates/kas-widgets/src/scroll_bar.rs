@@ -273,12 +273,12 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let _ = self.grip.size_rules(sizer.re(), axis);
             sizer.feature(Feature::ScrollBar(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             let align = match self.direction.is_vertical() {
                 false => AlignPair::new(Align::Stretch, hints.vert.unwrap_or(Align::Center)),
                 true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
@@ -290,7 +290,7 @@ impl_scope! {
             let _ = self.update_widgets();
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }
@@ -300,7 +300,7 @@ impl_scope! {
             self.grip.find_id(coord).or_else(|| Some(self.id()))
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             if draw.ev_state().is_hovered_recursive(self.id_ref()) {
                 self.force_visible(draw.ev_state());
             }
@@ -362,7 +362,7 @@ impl_scope! {
     pub struct ScrollBars<W: Scrollable + Widget> {
         core: widget_core!(),
         mode: ScrollBarMode,
-        show_bars: (bool, bool), // set by user (or set_rect when mode == Auto)
+        show_bars: (bool, bool), // set by user (or l_set_rect when mode == Auto)
         #[widget(&())]
         horiz_bar: ScrollBar<kas::dir::Right>,
         #[widget(&())]
@@ -444,7 +444,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let mut rules = self.inner.size_rules(sizer.re(), axis);
             let vert_rules = self.vert_bar.size_rules(sizer.re(), axis);
             let horiz_rules = self.horiz_bar.size_rules(sizer.re(), axis);
@@ -461,7 +461,7 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             let pos = rect.pos;
             let mut child_size = rect.size;
@@ -500,7 +500,7 @@ impl_scope! {
             }
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }
@@ -511,7 +511,7 @@ impl_scope! {
                 .or_else(|| Some(self.id()))
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn l_draw(&mut self, mut draw: DrawCx) {
             draw.recurse(&mut self.inner);
             draw.with_pass(|mut draw| {
                 if self.show_bars.0 {
