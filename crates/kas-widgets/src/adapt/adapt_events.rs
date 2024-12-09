@@ -265,4 +265,7 @@ impl<W: Widget> Tile for AdaptEvents<W> {
     fn draw(&mut self, draw: DrawCx) {
         self.inner.draw(draw);
     }
+
+    #[cfg(debug_assertions)]
+    fn _tile_key_v1_wip(&self) {}
 }

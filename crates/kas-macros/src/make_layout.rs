@@ -247,6 +247,8 @@ impl Tree {
                 fn draw(&mut self, draw: ::kas::theme::DrawCx) {
                     ::kas::Layout::l_draw(self, draw);
                 }
+                #[cfg(debug_assertions)]
+                fn _tile_key_v1_wip(&self) {}
             }
 
             impl #impl_generics ::kas::Events for #impl_target {

@@ -158,6 +158,9 @@ impl_scope! {
         fn draw(&mut self, draw: DrawCx) {
             self.inner.draw(draw);
         }
+
+        #[cfg(debug_assertions)]
+        fn _tile_key_v1_wip(&self) {}
     }
 
     impl Widget for Self {

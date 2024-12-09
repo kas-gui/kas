@@ -371,6 +371,15 @@ pub trait Tile {
         let _ = draw;
         unimplemented!() // make rustdoc show that this is a provided method
     }
+
+    /// Internal method: API key
+    ///
+    /// If you implement this manually, expect *any* KAS version change to break
+    /// stuff. Not intended for usage outside of the KAS library!
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    #[cfg(debug_assertions)]
+    fn _tile_key_v1_wip(&self);
 }
 
 impl<W: Tile + ?Sized> HasId for &W {

@@ -1039,6 +1039,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         fn draw(&mut self, draw: ::kas::theme::DrawCx) {
             ::kas::Layout::l_draw(self, draw);
         }
+        #[cfg(debug_assertions)]
+        fn _tile_key_v1_wip(&self) {}
     };
 
     if let Some(index) = tile_impl {
