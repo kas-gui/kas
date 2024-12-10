@@ -369,6 +369,10 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 .items
                 .push(Verbatim(widget_recursive_methods(&core_path)));
         }
+
+        if !has_item("_nav_next") {
+            widget_impl.items.push(Verbatim(widget_nav_next()));
+        }
     } else {
         scope.generated.push(impl_widget(
             &impl_generics,
@@ -788,6 +792,7 @@ pub fn impl_widget(
     };
 
     let fns_recurse = widget_recursive_methods(core_path);
+    let fn_nav_next = widget_nav_next();
 
     quote! {
         impl #impl_generics ::kas::Widget for #impl_target {
@@ -795,6 +800,7 @@ pub fn impl_widget(
             #fns_as_node
             #fns_for_child
             #fns_recurse
+            #fn_nav_next
         }
     }
 }
@@ -855,7 +861,11 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
         ) {
             ::kas::impls::_replay(self, cx, data, id);
         }
+    }
+}
 
+fn widget_nav_next() -> Toks {
+    quote! {
         fn _nav_next(
             &mut self,
             cx: &mut ::kas::event::ConfigCx,
