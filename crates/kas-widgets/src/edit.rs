@@ -1040,10 +1040,8 @@ impl<G: EditGuard> EditField<G> {
     ///
     /// Optionally, call this immediately after [`Self::set_rect`] with the
     /// "outer" rect and frame style. In this case, a frame will be drawn using
-    /// this `outer_rect` and `style`. The advantages are:
-    ///
-    /// -   The "error state" background can correctly fill the frame
-    /// -   Clicks on the frame get registered as clicks on self
+    /// this `outer_rect` and `style`. This allows the "error state" background
+    /// to correctly fill the frame.
     ///
     /// Any other widgets painted over the `outer_rect` should be drawn after
     /// the `EditField`.
