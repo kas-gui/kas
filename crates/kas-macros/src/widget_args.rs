@@ -7,11 +7,11 @@ use crate::make_layout;
 use impl_tools_lib::scope::{Scope, ScopeAttr};
 use impl_tools_lib::SimplePath;
 use proc_macro2::{Span, TokenStream as Toks};
-use quote::{quote, quote_spanned};
-use syn::parse::{Error, Parse, ParseStream, Result};
+use quote::{quote, quote_spanned, ToTokens};
+use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::token::Eq;
-use syn::{Expr, Ident, Index, Member, Meta, Token, Type};
+use syn::{Expr, Ident, Index, Member, Meta, Token};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -26,31 +26,63 @@ mod kw {
 }
 
 #[derive(Debug)]
-pub struct BoolToken {
-    #[allow(dead_code)]
-    pub kw_span: Span,
-    #[allow(dead_code)]
+pub struct DataTy {
+    pub kw: kw::Data,
     pub eq: Eq,
-    pub lit: syn::LitBool,
+    pub ty: syn::Type,
+}
+impl ToTokens for DataTy {
+    fn to_tokens(&self, tokens: &mut Toks) {
+        self.kw.to_tokens(tokens);
+        self.eq.to_tokens(tokens);
+        self.ty.to_tokens(tokens);
+    }
 }
 
 #[derive(Debug)]
-pub struct ExprToken {
-    #[allow(dead_code)]
-    pub kw_span: Span,
-    #[allow(dead_code)]
+pub struct HoverHighlight {
+    pub kw: kw::hover_highlight,
+    pub eq: Eq,
+    pub lit: syn::LitBool,
+}
+impl ToTokens for HoverHighlight {
+    fn to_tokens(&self, tokens: &mut Toks) {
+        self.kw.to_tokens(tokens);
+        self.eq.to_tokens(tokens);
+        self.lit.to_tokens(tokens);
+    }
+}
+
+#[derive(Debug)]
+pub struct CursorIcon {
+    pub kw: kw::cursor_icon,
     pub eq: Eq,
     pub expr: syn::Expr,
+}
+impl ToTokens for CursorIcon {
+    fn to_tokens(&self, tokens: &mut Toks) {
+        self.kw.to_tokens(tokens);
+        self.eq.to_tokens(tokens);
+        self.expr.to_tokens(tokens);
+    }
+}
+
+#[derive(Debug)]
+pub struct Layout {
+    pub kw: kw::layout,
+    #[allow(dead_code)]
+    pub eq: Eq,
+    pub tree: make_layout::Tree,
 }
 
 #[derive(Debug, Default)]
 pub struct WidgetArgs {
-    pub data_ty: Option<Type>,
+    pub data_ty: Option<DataTy>,
     pub navigable: Option<Toks>,
-    pub hover_highlight: Option<BoolToken>,
-    pub cursor_icon: Option<ExprToken>,
+    pub hover_highlight: Option<HoverHighlight>,
+    pub cursor_icon: Option<CursorIcon>,
     pub derive: Option<Member>,
-    pub layout: Option<(kw::layout, make_layout::Tree)>,
+    pub layout: Option<Layout>,
 }
 
 impl Parse for WidgetArgs {
@@ -59,16 +91,17 @@ impl Parse for WidgetArgs {
         let mut navigable = None;
         let mut hover_highlight = None;
         let mut cursor_icon = None;
-        let mut kw_derive = None;
         let mut derive = None;
         let mut layout = None;
 
         while !content.is_empty() {
             let lookahead = content.lookahead1();
             if lookahead.peek(kw::Data) && data_ty.is_none() {
-                let kw = content.parse::<kw::Data>()?;
-                let _: Eq = content.parse()?;
-                data_ty = Some((kw, content.parse()?));
+                data_ty = Some(DataTy {
+                    kw: content.parse()?,
+                    eq: content.parse()?,
+                    ty: content.parse()?,
+                });
             } else if lookahead.peek(kw::navigable) && navigable.is_none() {
                 let span = content.parse::<kw::navigable>()?.span();
                 let _: Eq = content.parse()?;
@@ -77,27 +110,29 @@ impl Parse for WidgetArgs {
                     fn navigable(&self) -> bool { #value }
                 });
             } else if lookahead.peek(kw::hover_highlight) && hover_highlight.is_none() {
-                hover_highlight = Some(BoolToken {
-                    kw_span: content.parse::<kw::hover_highlight>()?.span(),
+                hover_highlight = Some(HoverHighlight {
+                    kw: content.parse()?,
                     eq: content.parse()?,
                     lit: content.parse()?,
                 });
             } else if lookahead.peek(kw::cursor_icon) && cursor_icon.is_none() {
-                cursor_icon = Some(ExprToken {
-                    kw_span: content.parse::<kw::cursor_icon>()?.span(),
+                cursor_icon = Some(CursorIcon {
+                    kw: content.parse()?,
                     eq: content.parse()?,
                     expr: content.parse()?,
                 });
             } else if lookahead.peek(kw::derive) && derive.is_none() {
-                kw_derive = Some(content.parse::<kw::derive>()?);
+                let _ = Some(content.parse::<kw::derive>()?);
                 let _: Eq = content.parse()?;
                 let _: Token![self] = content.parse()?;
                 let _: Token![.] = content.parse()?;
                 derive = Some(content.parse()?);
             } else if lookahead.peek(kw::layout) && layout.is_none() {
-                let kw = content.parse::<kw::layout>()?;
-                let _: Eq = content.parse()?;
-                layout = Some((kw, content.parse()?));
+                layout = Some(Layout {
+                    kw: content.parse()?,
+                    eq: content.parse()?,
+                    tree: content.parse()?,
+                });
             } else {
                 return Err(lookahead.error());
             }
@@ -105,18 +140,8 @@ impl Parse for WidgetArgs {
             let _ = content.parse::<Token![;]>()?;
         }
 
-        if let Some(_derive) = kw_derive {
-            if let Some((kw, _)) = layout {
-                return Err(Error::new(kw.span, "incompatible with widget derive"));
-                // note = derive.span() => "this derive"
-            }
-            if let Some((kw, _)) = data_ty {
-                return Err(Error::new(kw.span, "incompatible with widget derive"));
-            }
-        }
-
         Ok(WidgetArgs {
-            data_ty: data_ty.map(|(_, ty)| ty),
+            data_ty,
             navigable,
             hover_highlight,
             cursor_icon,
