@@ -48,11 +48,14 @@ impl_scope! {
         }
     }
 
-    impl Layout for Self {
-        fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+    impl Tile for Self {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let inner_rules = self.inner.size_rules(sizer.re(), axis);
             let reserve_rules = (self.reserve)(sizer.re(), axis);
             inner_rules.max(reserve_rules)
         }
+
+        #[cfg(debug_assertions)]
+        fn _tile_key_v1_wip(&self) {}
     }
 }

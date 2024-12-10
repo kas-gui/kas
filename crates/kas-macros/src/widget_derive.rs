@@ -42,7 +42,6 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
     scope.expand_impl_self();
     let name = &scope.ident;
 
-    let mut layout_impl = None;
     let mut tile_impl = None;
 
     for (index, impl_) in scope.impls.iter().enumerate() {
@@ -51,9 +50,10 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
                 || *path == parse_quote! { kas::Layout }
                 || *path == parse_quote! { Layout }
             {
-                if layout_impl.is_none() {
-                    layout_impl = Some(index);
-                }
+                emit_warning!(
+                    inner, "Layout impl is not used by #[widget(derive=FIELD)]";
+                    note = path.span() => "this Layout impl";
+                );
             } else if *path == parse_quote! { ::kas::Tile }
                 || *path == parse_quote! { kas::Tile }
                 || *path == parse_quote! { Tile }
@@ -141,7 +141,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
 
     let fn_size_rules = Some(quote! {
         #[inline]
-        fn l_size_rules(&mut self,
+        fn size_rules(&mut self,
             sizer: ::kas::theme::SizeCx,
             axis: ::kas::layout::AxisInfo,
         ) -> ::kas::layout::SizeRules {
@@ -150,7 +150,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
     });
     let fn_set_rect = quote! {
         #[inline]
-        fn l_set_rect(
+        fn set_rect(
             &mut self,
             cx: &mut ::kas::event::ConfigCx,
             rect: ::kas::geom::Rect,
@@ -160,28 +160,86 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         }
     };
     let fn_nav_next = Some(quote! {
-        fn l_nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+        #[inline]
+        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
             self.#inner.nav_next(reverse, from)
         }
     });
     let fn_translation = Some(quote! {
         #[inline]
-        fn l_translation(&self) -> ::kas::geom::Offset {
+        fn translation(&self) -> ::kas::geom::Offset {
             self.#inner.translation()
         }
     });
     let fn_find_id = quote! {
         #[inline]
-        fn l_find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+        fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
             self.#inner.find_id(coord)
         }
     };
     let fn_draw = Some(quote! {
         #[inline]
-        fn l_draw(&mut self, draw: ::kas::theme::DrawCx) {
+        fn draw(&mut self, draw: ::kas::theme::DrawCx) {
             self.#inner.draw(draw);
         }
     });
+
+    if let Some(index) = tile_impl {
+        let tile_impl = &mut scope.impls[index];
+        let item_idents = collect_idents(tile_impl);
+        let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
+
+        tile_impl.items.push(Verbatim(required_tile_methods));
+
+        if !has_item("size_rules") {
+            if let Some(method) = fn_size_rules {
+                tile_impl.items.push(Verbatim(method));
+            }
+        }
+
+        if !has_item("set_rect") {
+            tile_impl.items.push(Verbatim(fn_set_rect));
+        }
+
+        if !has_item("nav_next") {
+            if let Some(method) = fn_nav_next {
+                tile_impl.items.push(Verbatim(method));
+            }
+        }
+
+        if let Some(ident) = item_idents
+            .iter()
+            .find_map(|(_, ident)| (*ident == "translation").then_some(ident))
+        {
+            emit_error!(ident, "method not supported in derive mode");
+        } else if let Some(method) = fn_translation {
+            tile_impl.items.push(Verbatim(method));
+        }
+
+        if !has_item("find_id") {
+            tile_impl.items.push(Verbatim(fn_find_id));
+        }
+
+        if !has_item("draw") {
+            if let Some(method) = fn_draw {
+                tile_impl.items.push(Verbatim(method));
+            }
+        }
+    } else {
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::Tile for #impl_target {
+                #required_tile_methods
+                #fn_size_rules
+                #fn_set_rect
+                #fn_nav_next
+                #fn_translation
+                #fn_find_id
+                #fn_draw
+                #[cfg(debug_assertions)]
+                fn _tile_key_v1_wip(&self) {}
+            }
+        });
+    }
 
     // Widget methods are derived. Cost: cannot override any Events methods or translation().
     let fns_as_node = widget_as_node();
@@ -247,103 +305,6 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             }
         }
     });
-
-    if let Some(index) = layout_impl {
-        let layout_impl = &mut scope.impls[index];
-        let item_idents = collect_idents(layout_impl);
-        let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
-
-        if !has_item("l_size_rules") {
-            if let Some(method) = fn_size_rules {
-                layout_impl.items.push(Verbatim(method));
-            }
-        }
-
-        if !has_item("l_set_rect") {
-            layout_impl.items.push(Verbatim(fn_set_rect));
-        }
-
-        if !has_item("l_nav_next") {
-            if let Some(method) = fn_nav_next {
-                layout_impl.items.push(Verbatim(method));
-            }
-        }
-
-        if let Some(ident) = item_idents
-            .iter()
-            .find_map(|(_, ident)| (*ident == "l_translation").then_some(ident))
-        {
-            emit_error!(ident, "method not supported in derive mode");
-        } else if let Some(method) = fn_translation {
-            layout_impl.items.push(Verbatim(method));
-        }
-
-        if !has_item("l_find_id") {
-            layout_impl.items.push(Verbatim(fn_find_id));
-        }
-
-        if !has_item("l_draw") {
-            if let Some(method) = fn_draw {
-                layout_impl.items.push(Verbatim(method));
-            }
-        }
-    } else if let Some(fn_size_rules) = fn_size_rules {
-        scope.generated.push(quote! {
-            impl #impl_generics ::kas::Layout for #impl_target {
-                #fn_size_rules
-                #fn_set_rect
-                #fn_nav_next
-                #fn_translation
-                #fn_find_id
-                #fn_draw
-            }
-        });
-    }
-
-    let tile_fn_wrappers = quote! {
-        fn size_rules(
-            &mut self,
-            sizer: ::kas::theme::SizeCx,
-            axis: ::kas::layout::AxisInfo,
-        ) -> ::kas::layout::SizeRules {
-            ::kas::Layout::l_size_rules(self, sizer, axis)
-        }
-        fn set_rect(
-            &mut self,
-            cx: &mut ::kas::event::ConfigCx,
-            rect: ::kas::geom::Rect,
-            hints: ::kas::layout::AlignHints,
-        ) {
-            ::kas::Layout::l_set_rect(self, cx, rect, hints);
-        }
-        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-            ::kas::Layout::l_nav_next(self, reverse, from)
-        }
-        fn translation(&self) -> ::kas::geom::Offset {
-            ::kas::Layout::l_translation(self)
-        }
-        fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-            ::kas::Layout::l_find_id(self, coord)
-        }
-        fn draw(&mut self, draw: ::kas::theme::DrawCx) {
-            ::kas::Layout::l_draw(self, draw);
-        }
-        #[cfg(debug_assertions)]
-        fn _tile_key_v1_wip(&self) {}
-    };
-
-    if let Some(index) = tile_impl {
-        let tile_impl = &mut scope.impls[index];
-        tile_impl.items.push(Verbatim(required_tile_methods));
-        tile_impl.items.push(Verbatim(tile_fn_wrappers));
-    } else {
-        scope.generated.push(quote! {
-            impl #impl_generics ::kas::Tile for #impl_target {
-                #required_tile_methods
-                #tile_fn_wrappers
-            }
-        });
-    }
 
     if let Ok(val) = std::env::var("KAS_DEBUG_WIDGET") {
         if name == val.as_str() {
