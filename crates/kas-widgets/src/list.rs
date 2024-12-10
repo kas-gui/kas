@@ -110,6 +110,7 @@ impl_scope! {
         }
 
         fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+            self.core.rect = rect;
             let dim = (self.direction, self.widgets.len());
             let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, &mut self.layout);
 
@@ -120,11 +121,12 @@ impl_scope! {
             }
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Id {
             let solver = RowPositionSolver::new(self.direction);
             solver
                 .find_child_mut(&mut self.widgets, coord)
                 .and_then(|child| child.find_id(coord))
+                .unwrap_or_else(|| self.id())
         }
 
         fn l_draw(&mut self, mut draw: DrawCx) {

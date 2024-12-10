@@ -146,7 +146,7 @@ impl_scope! {
             self.inner.set_rect(cx, Rect::new(p_in, s_in), hints);
         }
 
-        fn l_find_id(&mut self, _: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, _: Coord) -> Id {
             unimplemented!()
         }
 

@@ -22,9 +22,9 @@ impl_scope! {
         cursor: CursorIcon,
     }
     impl Layout for Self {
-        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, _: Coord) -> Id {
             // Steal mouse focus: hover points to self, not self.label
-            self.rect().contains(coord).then(|| self.id())
+            self.id()
         }
     }
 }

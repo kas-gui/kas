@@ -31,8 +31,8 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
-            self.rect().contains(coord).then(|| self.id())
+        fn l_find_id(&mut self, _: Coord) -> Id {
+            self.id()
         }
 
         fn l_draw(&mut self, mut draw: DrawCx) {
@@ -120,8 +120,8 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
-            self.rect().contains(coord).then(|| self.checkbox.id())
+        fn l_find_id(&mut self, _: Coord) -> Id {
+            self.checkbox.id()
         }
 
         fn l_draw(&mut self, mut draw: DrawCx) {

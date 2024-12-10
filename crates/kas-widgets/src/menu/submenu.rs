@@ -101,8 +101,8 @@ impl_scope! {
             None
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
-            self.rect().contains(coord).then(|| self.id())
+        fn l_find_id(&mut self, _: Coord) -> Id {
+            self.id()
         }
 
         fn l_draw(&mut self, mut draw: DrawCx) {
@@ -356,17 +356,13 @@ impl_scope! {
             }
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-
+        fn l_find_id(&mut self, coord: Coord) -> Id {
             for child in self.list.iter_mut() {
                 if let Some(id) = child.find_id(coord) {
-                    return Some(id);
+                    return id;
                 }
             }
-            Some(self.id())
+            self.id()
         }
 
         fn l_draw(&mut self, mut draw: DrawCx) {
