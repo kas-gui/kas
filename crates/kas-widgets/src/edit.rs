@@ -376,7 +376,6 @@ impl_scope! {
         }
 
         fn l_set_rect(&mut self, cx: &mut ConfigCx, outer_rect: Rect, hints: AlignHints) {
-            self.core.rect = outer_rect;
             let mut rect = outer_rect;
             rect.pos += self.frame_offset;
             rect.size -= self.frame_size;
@@ -679,7 +678,6 @@ impl_scope! {
         }
 
         fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
             self.outer_rect = rect;
             let v_align = if self.multi_line() { Align::Default } else { Align::Center };
             let align = hints.complete(Align::Default, v_align);

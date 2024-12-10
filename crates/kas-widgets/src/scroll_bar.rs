@@ -459,7 +459,6 @@ impl_scope! {
         }
 
         fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
             let pos = rect.pos;
             let mut child_size = rect.size;
 

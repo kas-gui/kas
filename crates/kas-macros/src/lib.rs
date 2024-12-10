@@ -200,7 +200,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// This field *might* have type [`CoreData`] or might use a special generated
 /// type; either way it has fields `id: Id` (assigned by during configure)
 /// and `rect: Rect` (usually assigned by
-/// `Layout::l_set_rect`). It may contain additional fields for layout data. The
+/// `Tile::set_rect`). It may contain additional fields for layout data. The
 /// type supports `Default` and `Clone` (although `Clone` actually
 /// default-initializes all fields other than `rect` since clones of widgets
 /// must themselves be configured).

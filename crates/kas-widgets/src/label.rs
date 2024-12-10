@@ -117,7 +117,6 @@ impl_scope! {
         }
 
         fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
             let align = hints.complete(Align::Default, Align::Center);
             cx.text_set_size(&mut self.text, rect.size, align);
         }
@@ -271,7 +270,6 @@ impl_scope! {
         }
 
         fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
             let align = hints.complete(Align::Default, Align::Center);
             cx.text_set_size(&mut self.text, rect.size, align);
         }

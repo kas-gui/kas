@@ -281,7 +281,6 @@ impl_scope! {
 
     impl Layout for Self {
         fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
             self.layout_visitor().set_rect(cx, rect, hints);
             self.edit.set_outer_rect(rect, FrameStyle::EditBox);
         }

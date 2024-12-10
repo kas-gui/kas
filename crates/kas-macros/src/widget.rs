@@ -379,7 +379,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let fn_nav_next;
     let mut fn_nav_next_err = None;
     let mut fn_size_rules = None;
-    let mut set_rect = quote! { self.#core.rect = rect; };
+    let mut set_rect = None;
     let mut find_id = quote! {
         use ::kas::{Tile, TileExt};
             self.id()
@@ -419,10 +419,9 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 ::kas::layout::LayoutVisitor::layout_visitor(self).size_rules(sizer, axis)
             }
         });
-        set_rect = quote! {
-            #core_path.rect = rect;
+        set_rect = Some(quote! {
             ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
-        };
+        });
         find_id = quote! {
             use ::kas::{Tile, TileExt, layout::LayoutVisitor};
 
@@ -657,6 +656,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             rect: ::kas::geom::Rect,
             hints: ::kas::layout::AlignHints,
         ) {
+            #core_path.rect = rect;
             ::kas::Layout::l_set_rect(self, cx, rect, hints);
         }
         fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {

@@ -186,7 +186,6 @@ impl_scope! {
 
     impl Layout for Self {
         fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
             self.layout_visitor().set_rect(cx, rect, hints);
             let dir = self.direction();
             shrink_to_text(&mut self.core.rect, dir, &self.label);

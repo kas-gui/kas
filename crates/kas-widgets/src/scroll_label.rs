@@ -46,7 +46,6 @@ impl_scope! {
         }
 
         fn l_set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
             cx.text_set_size(&mut self.text, rect.size, hints.complete_default());
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
 

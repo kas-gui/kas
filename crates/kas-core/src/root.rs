@@ -119,7 +119,6 @@ impl_scope! {
         }
 
         fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
             // Calculate position and size for nw, ne, and inner portions:
             let s_nw: Size = self.dec_offset.cast();
             let s_se = self.dec_size - s_nw;

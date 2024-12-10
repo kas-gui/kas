@@ -94,8 +94,7 @@ pub trait Layout: Sized {
     /// call to [`Self::l_size_rules`] *before* any of the following methods:
     /// [`Layout::l_find_id`], [`Layout::l_draw`], [`Events::handle_event`].
     ///
-    /// Default implementation when not using the `layout` property: set `rect`
-    /// field of `widget_core!()` to the input `rect`.
+    /// Default implementation when not using the `layout` property: do nothing.
     ///
     /// [`Stretch`]: crate::layout::Stretch
     fn l_set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
@@ -313,7 +312,7 @@ pub trait Tile {
 
     /// Set size and position
     ///
-    /// This wraps [`Layout::l_set_rect`].
+    /// This sets `core.rect` then calls [`Layout::l_set_rect`].
     ///
     /// Required: [`Self::size_rules`] is called for both axes before this
     /// method is called, and that this method has been called *after* the last
