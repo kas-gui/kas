@@ -311,16 +311,13 @@ impl_scope! {
             let _ = self.grip.set_size_and_offset(size, self.offset());
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
+        fn l_find_id(&mut self, coord: Coord) -> Id {
             if self.on_move.is_some() {
                 if let Some(id) = self.grip.find_id(coord) {
-                    return Some(id);
+                    return id;
                 }
             }
-            Some(self.id())
+            self.id()
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

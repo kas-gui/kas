@@ -396,20 +396,16 @@ impl_scope! {
             self.update_scroll_bar(cx);
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-
+        fn l_find_id(&mut self, coord: Coord) -> Id {
             if self.max_scroll_offset().1 > 0 {
                 if let Some(id) = self.bar.find_id(coord) {
-                    return Some(id);
+                    return id;
                 }
             }
 
             // If coord is over self but not over self.bar, we assign
             // the event to self.inner without further question.
-            Some(self.inner.id())
+            self.inner.id()
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
@@ -692,8 +688,8 @@ impl_scope! {
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
-            self.outer_rect.contains(coord).then_some(self.id())
+        fn l_find_id(&mut self, _: Coord) -> Id {
+            self.id()
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

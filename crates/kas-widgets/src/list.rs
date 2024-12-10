@@ -119,11 +119,12 @@ impl_scope! {
             }
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Id {
             let solver = RowPositionSolver::new(self.direction);
             solver
                 .find_child_mut(&mut self.widgets, coord)
                 .and_then(|child| child.find_id(coord))
+                .unwrap_or_else(|| self.id())
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

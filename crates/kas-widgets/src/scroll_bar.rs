@@ -290,14 +290,11 @@ impl_scope! {
             let _ = self.update_widgets();
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
+        fn l_find_id(&mut self, coord: Coord) -> Id {
             if self.invisible && self.max_value == 0 {
-                return None;
+                return self.id();
             }
-            self.grip.find_id(coord).or_else(|| Some(self.id()))
+            self.grip.find_id(coord).unwrap_or_else(|| self.id())
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
@@ -500,15 +497,11 @@ impl_scope! {
             }
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-            self.vert_bar
-                .find_id(coord)
+        fn l_find_id(&mut self, coord: Coord) -> Id {
+            self.vert_bar.find_id(coord)
                 .or_else(|| self.horiz_bar.find_id(coord))
                 .or_else(|| self.inner.find_id(coord))
-                .or_else(|| Some(self.id()))
+                .unwrap_or_else(|| self.id())
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

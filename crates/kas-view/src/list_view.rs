@@ -553,20 +553,16 @@ impl_scope! {
             self.scroll_offset()
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-
+        fn l_find_id(&mut self, coord: Coord) -> Id {
             let coord = coord + self.scroll.offset();
             for child in &mut self.widgets[..self.cur_len.cast()] {
                 if child.key.is_some() {
                     if let Some(id) = child.widget.find_id(coord) {
-                        return Some(id);
+                        return id;
                     }
                 }
             }
-            Some(self.id())
+            self.id()
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

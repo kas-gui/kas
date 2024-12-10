@@ -36,14 +36,11 @@ pub trait Visitable {
     /// In other respects, this functions identically to [`Layout::set_rect`].
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints);
 
-    /// Translate a coordinate to an [`Id`]
+    /// Look for a widget at this `coord`
     ///
-    /// The caller is expected to
-    ///
-    /// 1.  Return `None` if `!self.rect().contains(coord)`
-    /// 2.  Translate `coord`: `let coord = coord + self.translation();`
-    /// 3.  Call `find_id` (this method), returning its result if not `None`
-    /// 4.  Otherwise return `Some(self.id())`
+    /// Returns the [`Id`] of a child when some child occupies `coord`. Returns
+    /// [`None`] when there is no (probable) child widget at `coord`, in which
+    /// case the caller may use its own [`Id`].
     fn find_id(&mut self, coord: Coord) -> Option<Id>;
 
     /// Draw a widget and its children

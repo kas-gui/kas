@@ -123,11 +123,9 @@ impl_scope! {
             self.scroll_offset()
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
+        fn l_find_id(&mut self, coord: Coord) -> Id {
             self.inner.find_id(coord + self.translation())
+                .unwrap_or_else(|| self.id())
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

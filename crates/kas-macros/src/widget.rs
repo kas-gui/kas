@@ -385,7 +385,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let mut set_rect = quote! { self.#core.rect = rect; };
     let mut l_find_id = quote! {
         use ::kas::{Layout, LayoutExt};
-        self.rect().contains(coord).then(|| self.id())
+            self.id()
     };
     let mut fn_draw = None;
     if let Some(Layout { tree, .. }) = args.layout.take() {
@@ -425,13 +425,10 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         l_find_id = quote! {
             use ::kas::{Layout, LayoutExt, layout::LayoutVisitor};
 
-            if !self.rect().contains(coord) {
-                return None;
-            }
             let coord = coord + self.translation();
             self.layout_visitor()
                 .find_id(coord)
-                .or_else(|| Some(self.id()))
+                    .unwrap_or_else(|| self.id())
         };
         fn_draw = Some(quote! {
             fn draw(&mut self, draw: ::kas::theme::DrawCx) {
@@ -461,7 +458,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         }
     };
     let fn_l_find_id = quote! {
-        fn l_find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+        fn l_find_id(&mut self, coord: ::kas::geom::Coord) -> ::kas::Id {
             #[cfg(debug_assertions)]
             #core_path.status.require_rect(&#core_path.id);
 

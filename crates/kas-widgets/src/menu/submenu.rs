@@ -101,13 +101,13 @@ impl_scope! {
             None
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
-            self.rect().contains(coord).then(|| self.id())
+        fn l_find_id(&mut self, _: Coord) -> Id {
+            self.id()
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
-            self.label.draw(draw.re_id(self.id()));
+            draw.recurse(&mut self.label);
             if self.mark.rect().size != Size::ZERO {
                 draw.recurse(&mut self.mark);
             }
@@ -354,17 +354,13 @@ impl_scope! {
             }
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-
+        fn l_find_id(&mut self, coord: Coord) -> Id {
             for child in self.list.iter_mut() {
                 if let Some(id) = child.find_id(coord) {
-                    return Some(id);
+                    return id;
                 }
             }
-            Some(self.id())
+            self.id()
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

@@ -127,12 +127,14 @@ impl_scope! {
             }
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Id {
             if let Some(entry) = self.widgets.get_mut(self.active) {
                 debug_assert_eq!(entry.1, State::Sized);
-                return entry.0.find_id(coord);
+                if let Some(id) = entry.0.find_id(coord) {
+                    return id;
+                }
             }
-            None
+            self.id()
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

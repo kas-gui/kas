@@ -254,39 +254,34 @@ pub trait Layout {
     ///
     /// When writing a custom implementation:
     ///
-    /// -   Widgets should test `self.rect().contains(coord)`, returning `None`
-    ///     if this test is `false`; otherwise, they should always return *some*
-    ///     [`Id`], either a childs or their own.
+    /// -   Widgets may assume that `self.rect().contains(coord)`.
     /// -   If the Widget uses a translated coordinate space (i.e.
     ///     `self.translation() != Offset::ZERO`) then pass
     ///     `coord + self.translation()` to children.
     ///
     /// The default implementation is non-trivial:
     /// ```ignore
-    /// if !self.rect().contains(coord) {
-    ///     return None;
-    /// }
     /// let coord = coord + self.translation();
     /// for child in ITER_OVER_CHILDREN {
     ///     if let Some(id) = child.find_id(coord) {
     ///         return Some(id);
     ///     }
     /// }
-    /// Some(self.id())
+    /// self.id()
     /// ```
-    fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
+    fn l_find_id(&mut self, coord: Coord) -> Id {
         let _ = coord;
         unimplemented!() // make rustdoc show that this is a provided method
     }
 
     /// Translate a coordinate to an [`Id`]
     ///
-    /// This wraps [`Layout::l_find_id`].
+    /// This tests whether `self.rect().contains(coord)`, then calls [`Layout::l_find_id`].
     ///
     /// It is expected that [`Tile::set_rect`] is called before this method,
     /// but failure to do so should not cause a fatal error.
     fn find_id(&mut self, coord: Coord) -> Option<Id> {
-        self.l_find_id(coord)
+        self.rect().contains(coord).then(|| self.l_find_id(coord))
     }
 
     /// Draw a widget and its children

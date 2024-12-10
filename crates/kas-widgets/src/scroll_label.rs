@@ -61,12 +61,8 @@ impl_scope! {
             self.bar.set_value(cx, self.view_offset.1);
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-
-            self.bar.find_id(coord).or_else(|| Some(self.id()))
+        fn l_find_id(&mut self, coord: Coord) -> Id {
+            self.bar.find_id(coord).unwrap_or_else(|| self.id())
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

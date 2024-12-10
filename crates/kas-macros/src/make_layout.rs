@@ -195,18 +195,15 @@ impl Tree {
                     ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
                 }
 
-                fn l_find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+                fn l_find_id(&mut self, coord: ::kas::geom::Coord) -> ::kas::Id {
                     use ::kas::{Layout, LayoutExt, layout::LayoutVisitor};
                     #[cfg(debug_assertions)]
                     #core_path.status.require_rect(&#core_path.id);
 
-                    if !self.rect().contains(coord) {
-                        return None;
-                    }
                     let coord = coord + self.translation();
                     self.layout_visitor()
                         .find_id(coord)
-                        .or_else(|| Some(self.id()))
+                        .unwrap_or_else(|| self.id())
                 }
 
                 fn draw(&mut self, draw: ::kas::theme::DrawCx) {
