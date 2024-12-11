@@ -113,7 +113,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn l_find_id(&mut self, _: Coord) -> Id {
+        fn probe(&mut self, _: Coord) -> Id {
             self.inner.id()
         }
     }

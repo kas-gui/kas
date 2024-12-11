@@ -28,7 +28,7 @@ trait NodeT {
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints);
 
     fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize>;
-    fn find_id(&mut self, coord: Coord) -> Option<Id>;
+    fn try_probe(&mut self, coord: Coord) -> Option<Id>;
     fn _draw(&mut self, draw: DrawCx);
 
     fn _configure(&mut self, cx: &mut ConfigCx, id: Id);
@@ -80,8 +80,8 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
     fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
         self.0.nav_next(reverse, from)
     }
-    fn find_id(&mut self, coord: Coord) -> Option<Id> {
-        self.0.find_id(coord)
+    fn try_probe(&mut self, coord: Coord) -> Option<Id> {
+        self.0.try_probe(coord)
     }
     fn _draw(&mut self, mut draw: DrawCx) {
         draw.recurse(&mut self.0);
@@ -303,8 +303,8 @@ impl<'a> Node<'a> {
     }
 
     /// Translate a coordinate to an [`Id`]
-    pub(crate) fn find_id(&mut self, coord: Coord) -> Option<Id> {
-        self.0.find_id(coord)
+    pub(crate) fn try_probe(&mut self, coord: Coord) -> Option<Id> {
+        self.0.try_probe(coord)
     }
 
     cfg_if::cfg_if! {

@@ -266,11 +266,11 @@ impl EventState {
                 cx.action.remove(Action::REGION_MOVED);
 
                 // Update hovered widget
-                let hover = win.find_id(data, cx.last_mouse_coord);
+                let hover = win.try_probe(data, cx.last_mouse_coord);
                 cx.set_hover(win.as_node(data), hover);
 
                 for grab in cx.touch_grab.iter_mut() {
-                    grab.cur_id = win.find_id(data, grab.coord);
+                    grab.cur_id = win.try_probe(data, grab.coord);
                 }
             }
         });
@@ -408,7 +408,7 @@ impl<'a> EventCx<'a> {
                 let coord = position.cast_approx();
 
                 // Update hovered win
-                let id = win.find_id(data, coord);
+                let id = win.try_probe(data, coord);
                 self.set_hover(win.as_node(data), id.clone());
 
                 if let Some(grab) = self.state.mouse_grab.as_mut() {
@@ -527,7 +527,7 @@ impl<'a> EventCx<'a> {
                 let coord = touch.location.cast_approx();
                 match touch.phase {
                     TouchPhase::Started => {
-                        let start_id = win.find_id(data, coord);
+                        let start_id = win.try_probe(data, coord);
                         if let Some(id) = start_id.as_ref() {
                             if self.config.event().touch_nav_focus() {
                                 if let Some(id) =
@@ -547,7 +547,7 @@ impl<'a> EventCx<'a> {
                         }
                     }
                     TouchPhase::Moved => {
-                        let cur_id = win.find_id(data, coord);
+                        let cur_id = win.try_probe(data, coord);
 
                         let mut redraw = false;
                         let mut pan_grab = None;

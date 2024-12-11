@@ -169,10 +169,10 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             self.#inner.translation()
         }
     });
-    let fn_find_id = quote! {
+    let fn_try_probe = quote! {
         #[inline]
-        fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-            self.#inner.find_id(coord)
+        fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+            self.#inner.try_probe(coord)
         }
     };
     let fn_draw = Some(quote! {
@@ -214,8 +214,8 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             tile_impl.items.push(Verbatim(method));
         }
 
-        if !has_item("find_id") {
-            tile_impl.items.push(Verbatim(fn_find_id));
+        if !has_item("try_probe") {
+            tile_impl.items.push(Verbatim(fn_try_probe));
         }
 
         if !has_item("draw") {
@@ -231,7 +231,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
                 #fn_set_rect
                 #fn_nav_next
                 #fn_translation
-                #fn_find_id
+                #fn_try_probe
                 #fn_draw
                 #[cfg(debug_assertions)]
                 fn _tile_key_v1_wip(&self) {}

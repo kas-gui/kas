@@ -22,7 +22,7 @@ impl_scope! {
         cursor: CursorIcon,
     }
     impl Layout for Self {
-        fn l_find_id(&mut self, _: Coord) -> Id {
+        fn probe(&mut self, _: Coord) -> Id {
             // Steal mouse focus: hover points to self, not self.label
             self.id()
         }

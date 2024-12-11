@@ -183,14 +183,14 @@ impl Tree {
                     ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
                 }
 
-                fn l_find_id(&mut self, coord: ::kas::geom::Coord) -> ::kas::Id {
+                fn probe(&mut self, coord: ::kas::geom::Coord) -> ::kas::Id {
                     use ::kas::{Tile, TileExt, layout::LayoutVisitor};
                     #[cfg(debug_assertions)]
                     #core_path.status.require_rect(&#core_path.id);
 
                     let coord = coord + self.translation();
                     self.layout_visitor()
-                        .find_id(coord)
+                        .try_probe(coord)
                         .unwrap_or_else(|| self.id())
                 }
 
@@ -239,8 +239,8 @@ impl Tree {
                 fn translation(&self) -> ::kas::geom::Offset {
                     ::kas::Layout::l_translation(self)
                 }
-                fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-                    self.rect().contains(coord).then(|| ::kas::Layout::l_find_id(self, coord))
+                fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+                    self.rect().contains(coord).then(|| ::kas::Layout::probe(self, coord))
                 }
                 fn _draw(&mut self, draw: ::kas::theme::DrawCx) {
                     ::kas::Layout::l_draw(self, draw);

@@ -60,8 +60,8 @@ impl_scope! {
             self.bar.set_value(cx, self.view_offset.1);
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Id {
-            self.bar.find_id(coord).unwrap_or_else(|| self.id())
+        fn probe(&mut self, coord: Coord) -> Id {
+            self.bar.try_probe(coord).unwrap_or_else(|| self.id())
         }
 
         fn l_draw(&mut self, mut draw: DrawCx) {
