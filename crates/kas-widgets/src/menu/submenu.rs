@@ -107,7 +107,7 @@ impl_scope! {
 
         fn l_draw(&mut self, mut draw: DrawCx) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
-            self.label.draw(draw.re_id(self.id()));
+            draw.recurse(&mut self.label);
             if self.mark.rect().size != Size::ZERO {
                 draw.recurse(&mut self.mark);
             }
