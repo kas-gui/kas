@@ -74,9 +74,11 @@ impl<'a> DrawCx<'a> {
     }
 
     /// Recurse drawing to a child
+    ///
+    /// Use this to draw children in [`Layout::l_draw`](crate::Layout::l_draw).
     #[inline]
     pub fn recurse(&mut self, child: &mut (impl Tile + ?Sized)) {
-        child.draw(self.re_id(child.id_ref().clone()));
+        child._draw(self.re_id(child.id_ref().clone()));
     }
 
     /// Construct from a [`DrawCx`] and [`EventState`]

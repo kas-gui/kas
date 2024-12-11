@@ -361,7 +361,9 @@ pub trait Tile {
     /// [`Id`], allowing drawn components to react to input state. This
     /// implies that when calling `draw` on children, the child's `id` must be
     /// supplied via [`DrawCx::re_id`] or [`DrawCx::recurse`].
-    fn draw(&mut self, draw: DrawCx) {
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    fn _draw(&mut self, draw: DrawCx) {
         let _ = draw;
         unimplemented!() // make rustdoc show that this is a provided method
     }

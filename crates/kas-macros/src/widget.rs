@@ -676,7 +676,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
             self.rect().contains(coord).then(|| ::kas::Layout::l_find_id(self, coord))
         }
-        fn draw(&mut self, draw: ::kas::theme::DrawCx) {
+        fn _draw(&mut self, draw: ::kas::theme::DrawCx) {
             ::kas::Layout::l_draw(self, draw);
         }
         #[cfg(debug_assertions)]
