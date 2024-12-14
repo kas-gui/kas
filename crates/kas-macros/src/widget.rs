@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::widget_args::{member, Child, ChildIdent, WidgetArgs};
+use crate::widget_args::{member, Child, ChildIdent, Layout, WidgetArgs};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::scope::{Scope, ScopeItem};
 use proc_macro2::{Span, TokenStream as Toks};
@@ -24,7 +24,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     assert!(args.derive.is_none());
     scope.expand_impl_self();
     let name = &scope.ident;
-    let mut data_ty = args.data_ty;
+    let mut data_ty = args.data_ty.map(|data_ty| data_ty.ty);
 
     let mut widget_impl = None;
     let mut layout_impl = None;
@@ -171,8 +171,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             core_data = Some(ident.clone());
 
             let mut stor_defs = Default::default();
-            if let Some((_, ref layout)) = args.layout {
-                stor_defs = layout.storage_fields(&mut children, &data_ty);
+            if let Some(Layout { ref tree, .. }) = args.layout {
+                stor_defs = tree.storage_fields(&mut children, &data_ty);
             }
             if !stor_defs.ty_toks.is_empty() {
                 let name = format!("_{name}CoreTy");
@@ -251,15 +251,13 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         field.attrs = other_attrs;
 
         if !is_widget {
-            if let Some(span) = args
-                .layout
-                .as_ref()
-                .and_then(|layout| layout.1.span_in_layout(&ident))
-            {
-                emit_error!(
-                    span, "fields used in layout must be widgets";
-                    note = field.span() => "this field is missing a #[widget] attribute?"
-                );
+            if let Some(Layout { ref tree, .. }) = args.layout {
+                if let Some(span) = tree.span_in_layout(&ident) {
+                    emit_error!(
+                        span, "fields used in layout must be widgets";
+                        note = field.span() => "this field is missing a #[widget] attribute?"
+                    );
+                }
             }
         }
     }
@@ -382,8 +380,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         self.rect().contains(coord).then(|| self.id())
     };
     let mut fn_draw = None;
-    if let Some((_, layout)) = args.layout.take() {
-        fn_nav_next = match layout.nav_next(children.iter()) {
+    if let Some(Layout { tree, .. }) = args.layout.take() {
+        fn_nav_next = match tree.nav_next(children.iter()) {
             Ok(toks) => Some(toks),
             Err((span, msg)) => {
                 fn_nav_next_err = Some((span, msg));
@@ -391,7 +389,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             }
         };
 
-        let layout_visitor = layout.layout_visitor(&core_path)?;
+        let layout_visitor = tree.layout_visitor(&core_path)?;
         scope.generated.push(quote! {
                 impl #impl_generics ::kas::layout::LayoutVisitor for #impl_target {
                     fn layout_visitor(&mut self) -> ::kas::layout::Visitor<impl ::kas::layout::Visitable> {

@@ -4,7 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use crate::widget::{collect_idents, widget_as_node};
-use crate::widget_args::{member, WidgetArgs};
+use crate::widget_args::{member, Layout, WidgetArgs};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::scope::{Scope, ScopeItem};
 use proc_macro2::Span;
@@ -13,7 +13,7 @@ use quote::{quote, ToTokens};
 use syn::parse::{Error, Result};
 use syn::parse_quote;
 use syn::spanned::Spanned;
-use syn::ImplItem::{self, Verbatim};
+use syn::ImplItem::Verbatim;
 use syn::Type;
 
 /// Custom widget definition
@@ -23,33 +23,30 @@ use syn::Type;
 /// behaviour is a panic.
 pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let inner = args.derive.as_ref().unwrap();
+    if let Some(ref toks) = args.data_ty {
+        emit_error!(toks, "not supported by #[widget(derive=FIELD)]")
+    }
+    if let Some(ref toks) = args.navigable {
+        emit_error!(toks, "not supported by #[widget(derive=FIELD)]")
+    }
+    if let Some(ref toks) = args.hover_highlight {
+        emit_error!(toks.span(), "not supported by #[widget(derive=FIELD)]")
+    }
+    if let Some(ref toks) = args.cursor_icon {
+        emit_error!(toks, "not supported by #[widget(derive=FIELD)]")
+    }
+    if let Some(Layout { ref kw, .. }) = args.layout {
+        emit_error!(kw, "not supported by #[widget(derive=FIELD)]")
+    }
+
     scope.expand_impl_self();
     let name = &scope.ident;
-    let mut data_ty = args.data_ty;
 
     let mut layout_impl = None;
 
     for (index, impl_) in scope.impls.iter().enumerate() {
         if let Some((_, ref path, _)) = impl_.trait_ {
-            if *path == parse_quote! { ::kas::Widget }
-                || *path == parse_quote! { kas::Widget }
-                || *path == parse_quote! { Widget }
-            {
-                for item in &impl_.items {
-                    if let ImplItem::Type(ref item) = item {
-                        if item.ident == "Data" {
-                            if let Some(ref ty) = data_ty {
-                                emit_error!(
-                                    ty, "depulicate definition";
-                                    note = item.ty.span() => "also defined here";
-                                );
-                            } else {
-                                data_ty = Some(item.ty.clone());
-                            }
-                        }
-                    }
-                }
-            } else if *path == parse_quote! { ::kas::Layout }
+            if *path == parse_quote! { ::kas::Layout }
                 || *path == parse_quote! { kas::Layout }
                 || *path == parse_quote! { Layout }
             {
