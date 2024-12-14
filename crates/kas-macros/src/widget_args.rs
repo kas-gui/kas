@@ -148,7 +148,11 @@ impl ScopeAttr for AttrImplWidget {
             Meta::Path(_) => WidgetArgs::default(),
             _ => attr.parse_args()?,
         };
-        crate::widget::widget(span, args, scope)
+        if args.derive.is_some() {
+            crate::widget_derive::widget(span, args, scope)
+        } else {
+            crate::widget::widget(span, args, scope)
+        }
     }
 }
 

@@ -21,6 +21,7 @@ mod extends;
 mod make_layout;
 mod widget;
 mod widget_args;
+mod widget_derive;
 mod widget_index;
 
 /// Implement `Default`
