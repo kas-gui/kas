@@ -14,8 +14,12 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum Error {
     #[cfg(feature = "yaml")]
-    #[error("config (de)serialisation to YAML failed")]
-    Yaml(#[from] serde_yaml::Error),
+    #[error("config deserialisation failed")]
+    De(#[from] serde::de::value::Error),
+
+    #[cfg(feature = "yaml")]
+    #[error("config serialisation to YAML failed")]
+    YamlSer(#[from] serde_yaml2::ser::Errors),
 
     #[cfg(feature = "json")]
     #[error("config (de)serialisation to JSON failed")]
@@ -113,8 +117,8 @@ impl Format {
             }
             #[cfg(feature = "yaml")]
             Format::Yaml => {
-                let r = std::io::BufReader::new(std::fs::File::open(path)?);
-                Ok(serde_yaml::from_reader(r)?)
+                let contents = std::fs::read_to_string(path)?;
+                Ok(serde_yaml2::from_str(&contents)?)
             }
             #[cfg(feature = "ron")]
             Format::Ron => {
@@ -148,7 +152,7 @@ impl Format {
             }
             #[cfg(feature = "yaml")]
             Format::Yaml => {
-                let text = serde_yaml::to_string(value)?;
+                let text = serde_yaml2::to_string(value)?;
                 std::fs::write(path, text)?;
                 Ok(())
             }
