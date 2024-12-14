@@ -129,7 +129,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         }
     };
 
-    let fn_size_rules = Some(quote! {
+    let fn_size_rules = quote! {
         #[inline]
         fn size_rules(&mut self,
             sizer: ::kas::theme::SizeCx,
@@ -137,7 +137,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         ) -> ::kas::layout::SizeRules {
             self.#inner.size_rules(sizer, axis)
         }
-    });
+    };
     let fn_set_rect = quote! {
         #[inline]
         fn set_rect(
@@ -149,30 +149,30 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             self.#inner.set_rect(cx, rect, hints);
         }
     };
-    let fn_nav_next = Some(quote! {
+    let fn_nav_next = quote! {
         #[inline]
         fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
             self.#inner.nav_next(reverse, from)
         }
-    });
-    let fn_translation = Some(quote! {
+    };
+    let fn_translation = quote! {
         #[inline]
         fn translation(&self) -> ::kas::geom::Offset {
             self.#inner.translation()
         }
-    });
+    };
     let fn_find_id = quote! {
         #[inline]
         fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
             self.#inner.find_id(coord)
         }
     };
-    let fn_draw = Some(quote! {
+    let fn_draw = quote! {
         #[inline]
         fn draw(&mut self, draw: ::kas::theme::DrawCx) {
             self.#inner.draw(draw);
         }
-    });
+    };
 
     let data_ty: Type = 'outer: {
         for (i, field) in fields.iter_mut().enumerate() {
@@ -260,9 +260,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         layout_impl.items.push(Verbatim(required_layout_methods));
 
         if !has_item("size_rules") {
-            if let Some(method) = fn_size_rules {
-                layout_impl.items.push(Verbatim(method));
-            }
+            layout_impl.items.push(Verbatim(fn_size_rules));
         }
 
         if !has_item("set_rect") {
@@ -270,9 +268,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         }
 
         if !has_item("nav_next") {
-            if let Some(method) = fn_nav_next {
-                layout_impl.items.push(Verbatim(method));
-            }
+            layout_impl.items.push(Verbatim(fn_nav_next));
         }
 
         if let Some(ident) = item_idents
@@ -280,8 +276,8 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             .find_map(|(_, ident)| (*ident == "translation").then_some(ident))
         {
             emit_error!(ident, "method not supported in derive mode");
-        } else if let Some(method) = fn_translation {
-            layout_impl.items.push(Verbatim(method));
+        } else {
+            layout_impl.items.push(Verbatim(fn_translation));
         }
 
         if !has_item("find_id") {
@@ -289,11 +285,9 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         }
 
         if !has_item("draw") {
-            if let Some(method) = fn_draw {
-                layout_impl.items.push(Verbatim(method));
-            }
+            layout_impl.items.push(Verbatim(fn_draw));
         }
-    } else if let Some(fn_size_rules) = fn_size_rules {
+    } else {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Layout for #impl_target {
                 #required_layout_methods
