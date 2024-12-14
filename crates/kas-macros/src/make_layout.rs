@@ -4,7 +4,8 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use crate::collection::{CellInfo, GridDimensions, NameGenerator, StorIdent};
-use crate::widget::{self, Child, ChildIdent};
+use crate::widget;
+use crate::widget_args::{Child, ChildIdent};
 use proc_macro2::{Span, TokenStream as Toks};
 use proc_macro_error2::{emit_error, emit_warning};
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};

@@ -746,36 +746,6 @@ impl_scope! {
             }
         }
 
-        fn _configure(&mut self, cx: &mut ConfigCx, data: &A, id: Id) {
-            self.core.id = id;
-            #[cfg(debug_assertions)]
-            self.core.status.configure(&self.core.id);
-
-            self.configure(cx);
-            self.update(cx, data);
-        }
-
-        fn _update(&mut self, cx: &mut ConfigCx, data: &A) {
-            #[cfg(debug_assertions)]
-            self.core.status.update(&self.core.id);
-
-            self.update(cx, data);
-        }
-
-        fn _send(
-            &mut self,
-            cx: &mut EventCx,
-            data: &A,
-            id: Id,
-            event: Event,
-        ) -> IsUsed {
-            kas::impls::_send(self, cx, data, id, event)
-        }
-
-        fn _replay(&mut self, cx: &mut EventCx, data: &A, id: Id) {
-            kas::impls::_replay(self, cx, data, id);
-        }
-
         // Non-standard implementation to allow mapping new children
         fn _nav_next(
             &mut self,
