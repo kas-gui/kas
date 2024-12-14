@@ -311,7 +311,7 @@ impl_scope! {
             let _ = self.grip.set_size_and_offset(size, self.offset());
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }

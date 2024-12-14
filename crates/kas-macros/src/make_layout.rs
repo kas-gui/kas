@@ -195,7 +195,7 @@ impl Tree {
                     ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
                 }
 
-                fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+                fn l_find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
                     use ::kas::{Layout, LayoutExt, layout::LayoutVisitor};
                     #[cfg(debug_assertions)]
                     #core_path.status.require_rect(&#core_path.id);

@@ -127,7 +127,7 @@ impl_scope! {
             }
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             if let Some(entry) = self.widgets.get_mut(self.active) {
                 debug_assert_eq!(entry.1, State::Sized);
                 return entry.0.find_id(coord);

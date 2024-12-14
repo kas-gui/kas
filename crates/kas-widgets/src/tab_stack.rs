@@ -44,7 +44,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             self.rect().contains(coord).then_some(self.id())
         }
     }

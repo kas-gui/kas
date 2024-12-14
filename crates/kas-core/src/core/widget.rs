@@ -310,7 +310,7 @@ pub enum NavAdvance {
 /// -   **Layout** is specified either via [layout syntax](macros::widget#layout-1)
 ///     or via implementation of at least [`Layout::size_rules`] and
 ///     [`Layout::draw`] (optionally also `set_rect`, `nav_next`, `translation`
-///     and `find_id`).
+///     and `l_find_id`).
 ///-    **Event handling** is optional, implemented through [`Events`].
 ///
 /// For examples, check the source code of widgets in the widgets library

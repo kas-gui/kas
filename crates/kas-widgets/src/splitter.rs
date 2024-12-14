@@ -213,7 +213,7 @@ impl_scope! {
             }
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) || !self.size_solved {
                 return None;
             }
@@ -239,7 +239,7 @@ impl_scope! {
             if !self.size_solved {
                 return;
             }
-            // as with find_id, there's not much harm in invoking the solver twice
+            // as with l_find_id, there's not much harm in invoking the solver twice
 
             let solver = layout::RowPositionSolver::new(self.direction);
             solver.for_children_mut(&mut self.widgets, draw.get_clip_rect(), |w| {

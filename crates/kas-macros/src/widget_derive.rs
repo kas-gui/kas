@@ -161,7 +161,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             self.#inner.translation()
         }
     };
-    let fn_find_id = quote! {
+    let fn_find_id_forward = quote! {
         #[inline]
         fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
             self.#inner.find_id(coord)
@@ -280,8 +280,20 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             layout_impl.items.push(Verbatim(fn_translation));
         }
 
-        if !has_item("find_id") {
-            layout_impl.items.push(Verbatim(fn_find_id));
+        if has_item("l_find_id") {
+            // Use default Layout::find_id impl
+        } else {
+            // Use default Layout::l_find_id (unimplemented)
+            layout_impl.items.push(Verbatim(fn_find_id_forward));
+        }
+
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "find_id") {
+            if let syn::ImplItem::Fn(f) = &mut layout_impl.items[*index] {
+                emit_warning!(
+                    f,
+                    "Implementations are expected to impl `fn l_find_id`, not `find_id`"
+                );
+            }
         }
 
         if !has_item("draw") {
@@ -295,7 +307,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
                 #fn_set_rect
                 #fn_nav_next
                 #fn_translation
-                #fn_find_id
+                #fn_find_id_forward
                 #fn_draw
             }
         });

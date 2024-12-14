@@ -274,9 +274,19 @@ pub trait Layout {
     /// }
     /// Some(self.id())
     /// ```
-    fn find_id(&mut self, coord: Coord) -> Option<Id> {
+    fn l_find_id(&mut self, coord: Coord) -> Option<Id> {
         let _ = coord;
         unimplemented!() // make rustdoc show that this is a provided method
+    }
+
+    /// Translate a coordinate to an [`Id`]
+    ///
+    /// This wraps [`Layout::l_find_id`].
+    ///
+    /// It is expected that [`Tile::set_rect`] is called before this method,
+    /// but failure to do so should not cause a fatal error.
+    fn find_id(&mut self, coord: Coord) -> Option<Id> {
+        self.l_find_id(coord)
     }
 
     /// Draw a widget and its children
