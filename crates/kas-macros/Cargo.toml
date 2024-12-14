@@ -22,6 +22,9 @@ log = []
 # Optimize generated layout widgets
 recursive-layout-widgets = []
 
+# Enable reporting of warnings from proc-macros
+nightly = ["proc-macro-error2/nightly"]
+
 [dependencies]
 quote = "1.0"
 proc-macro2 = { version = "1.0" }
