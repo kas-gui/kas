@@ -316,8 +316,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// ```
 ///
 /// This is a special mode where most features of `#[widget]` are not
-/// available. Only [`Layout`] methods may be specified (overriding those from
-/// the derived widget); everything else is derived.
+/// available.
 ///
 /// ## Debugging
 ///

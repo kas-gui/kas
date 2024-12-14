@@ -11,7 +11,7 @@
 
 use crate::classes::HasStr;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed};
-use crate::geom::{Coord, Offset, Rect};
+use crate::geom::Rect;
 use crate::layout::{Align, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx, Text, TextClass};
 use crate::{Events, Id, Layout, NavAdvance, Node, Widget};
@@ -78,6 +78,7 @@ impl_scope! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Default)]
+    #[widget{ derive = self.inner; }]
     pub struct MapAny<A, W: Widget<Data = ()>> {
         _a: std::marker::PhantomData<A>,
         pub inner: W,
@@ -90,73 +91,6 @@ impl_scope! {
                 _a: std::marker::PhantomData,
                 inner,
             }
-        }
-    }
-
-    // We don't use #[widget] here. This is not supported outside of Kas!
-    impl Layout for Self {
-        #[inline]
-        fn as_layout(&self) -> &dyn Layout {
-            self
-        }
-
-        #[inline]
-        fn id_ref(&self) -> &Id {
-            self.inner.id_ref()
-        }
-
-        #[inline]
-        fn rect(&self) -> Rect {
-            self.inner.rect()
-        }
-
-        #[inline]
-        fn widget_name(&self) -> &'static str {
-            "MapAny"
-        }
-
-        #[inline]
-        fn num_children(&self) -> usize {
-            self.inner.num_children()
-        }
-        #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
-            self.inner.get_child(index)
-        }
-
-        #[inline]
-        fn find_child_index(&self, id: &Id) -> Option<usize> {
-            self.inner.find_child_index(id)
-        }
-
-        #[inline]
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            self.inner.size_rules(sizer, axis)
-        }
-
-        #[inline]
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.inner.set_rect(cx, rect, hints);
-        }
-
-        #[inline]
-        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-            self.inner.nav_next(reverse, from)
-        }
-
-        #[inline]
-        fn translation(&self) -> Offset {
-            self.inner.translation()
-        }
-
-        #[inline]
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
-            self.inner.find_id(coord)
-        }
-
-        #[inline]
-        fn draw(&mut self, draw: DrawCx) {
-            self.inner.draw(draw);
         }
     }
 

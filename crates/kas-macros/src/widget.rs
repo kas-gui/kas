@@ -354,7 +354,11 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         let item_idents = collect_idents(widget_impl);
         let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
 
+        // If the user impls Widget, they must supply type Data and fn for_child_node
+
+        // Always impl fn as_node
         widget_impl.items.push(Verbatim(widget_as_node()));
+
         if !has_item("_send") {
             widget_impl
                 .items

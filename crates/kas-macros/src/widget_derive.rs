@@ -43,6 +43,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
     let name = &scope.ident;
 
     let mut layout_impl = None;
+    let mut widget_impl = None;
 
     for (index, impl_) in scope.impls.iter().enumerate() {
         if let Some((_, ref path, _)) = impl_.trait_ {
@@ -61,6 +62,13 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
                     inner, "Events impl is not used by #[widget(derive=FIELD)]";
                     note = path.span() => "this Events impl";
                 );
+            } else if *path == parse_quote! { ::kas::Widget }
+                || *path == parse_quote! { kas::Widget }
+                || *path == parse_quote! { Widget }
+            {
+                if widget_impl.is_none() {
+                    widget_impl = Some(index);
+                }
             }
         }
     }
@@ -81,16 +89,6 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         item => {
             return Err(syn::Error::new(item.token_span(), "expected struct"));
         }
-    };
-
-    let data_ty: Type = 'outer: {
-        for (i, field) in fields.iter_mut().enumerate() {
-            if *inner == member(i, field.ident.clone()) {
-                let ty = &field.ty;
-                break 'outer parse_quote! { <#ty as ::kas::Widget>::Data };
-            }
-        }
-        return Err(Error::new(inner.span(), "field not found"));
     };
 
     let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
@@ -152,6 +150,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         }
     };
     let fn_nav_next = Some(quote! {
+        #[inline]
         fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
             self.#inner.nav_next(reverse, from)
         }
@@ -175,70 +174,83 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         }
     });
 
-    // Widget methods are derived. Cost: cannot override any Events methods or translation().
-    let fns_as_node = widget_as_node();
-    scope.generated.push(quote! {
-        impl #impl_generics ::kas::Widget for #impl_target {
-            type Data = #data_ty;
-            #fns_as_node
-
-            #[inline]
-            fn for_child_node(
-                &mut self,
-                data: &Self::Data,
-                index: usize,
-                closure: Box<dyn FnOnce(::kas::Node<'_>) + '_>,
-            ) {
-                self.#inner.for_child_node(data, index, closure)
-            }
-
-            fn _configure(
-                &mut self,
-                cx: &mut ::kas::event::ConfigCx,
-                data: &Self::Data,
-                id: ::kas::Id,
-            ) {
-                self.#inner._configure(cx, data, id);
-            }
-
-            fn _update(
-                &mut self,
-                cx: &mut ::kas::event::ConfigCx,
-                data: &Self::Data,
-            ) {
-                self.#inner._update(cx, data);
-            }
-
-            fn _send(
-                &mut self,
-                cx: &mut ::kas::event::EventCx,
-                data: &Self::Data,
-                id: ::kas::Id,
-                event: ::kas::event::Event,
-            ) -> ::kas::event::IsUsed {
-                self.#inner._send(cx, data, id, event)
-            }
-
-            fn _replay(
-                &mut self,
-                cx: &mut ::kas::event::EventCx,
-                data: &Self::Data,
-                id: ::kas::Id,
-            ) {
-                self.#inner._replay(cx, data, id);
-            }
-
-            fn _nav_next(
-                &mut self,
-                cx: &mut ::kas::event::ConfigCx,
-                data: &Self::Data,
-                focus: Option<&::kas::Id>,
-                advance: ::kas::NavAdvance,
-            ) -> Option<::kas::Id> {
-                self.#inner._nav_next(cx, data, focus, advance)
+    let data_ty: Type = 'outer: {
+        for (i, field) in fields.iter_mut().enumerate() {
+            if *inner == member(i, field.ident.clone()) {
+                let ty = &field.ty;
+                break 'outer parse_quote! { <#ty as ::kas::Widget>::Data };
             }
         }
-    });
+        return Err(Error::new(inner.span(), "field not found"));
+    };
+
+    // Widget methods are derived. Cost: cannot override any Events methods or translation().
+    let fns_as_node = widget_as_node();
+
+    if widget_impl.is_none() {
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::Widget for #impl_target {
+                type Data = #data_ty;
+                #fns_as_node
+
+                #[inline]
+                fn for_child_node(
+                    &mut self,
+                    data: &Self::Data,
+                    index: usize,
+                    closure: Box<dyn FnOnce(::kas::Node<'_>) + '_>,
+                ) {
+                    self.#inner.for_child_node(data, index, closure)
+                }
+
+                fn _configure(
+                    &mut self,
+                    cx: &mut ::kas::event::ConfigCx,
+                    data: &Self::Data,
+                    id: ::kas::Id,
+                ) {
+                    self.#inner._configure(cx, data, id);
+                }
+
+                fn _update(
+                    &mut self,
+                    cx: &mut ::kas::event::ConfigCx,
+                    data: &Self::Data,
+                ) {
+                    self.#inner._update(cx, data);
+                }
+
+                fn _send(
+                    &mut self,
+                    cx: &mut ::kas::event::EventCx,
+                    data: &Self::Data,
+                    id: ::kas::Id,
+                    event: ::kas::event::Event,
+                ) -> ::kas::event::IsUsed {
+                    self.#inner._send(cx, data, id, event)
+                }
+
+                fn _replay(
+                    &mut self,
+                    cx: &mut ::kas::event::EventCx,
+                    data: &Self::Data,
+                    id: ::kas::Id,
+                ) {
+                    self.#inner._replay(cx, data, id);
+                }
+
+                fn _nav_next(
+                    &mut self,
+                    cx: &mut ::kas::event::ConfigCx,
+                    data: &Self::Data,
+                    focus: Option<&::kas::Id>,
+                    advance: ::kas::NavAdvance,
+                ) -> Option<::kas::Id> {
+                    self.#inner._nav_next(cx, data, focus, advance)
+                }
+            }
+        });
+    }
 
     if let Some(index) = layout_impl {
         let layout_impl = &mut scope.impls[index];
