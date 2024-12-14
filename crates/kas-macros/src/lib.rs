@@ -20,6 +20,7 @@ mod collection;
 mod extends;
 mod make_layout;
 mod widget;
+mod widget_args;
 mod widget_index;
 
 /// Implement `Default`
@@ -112,7 +113,7 @@ pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 const IMPL_SCOPE_RULES: [&dyn scope::ScopeAttr; 2] =
-    [&scope::AttrImplDefault, &widget::AttrImplWidget];
+    [&scope::AttrImplDefault, &widget_args::AttrImplWidget];
 
 fn find_attr(path: &syn::Path) -> Option<&'static dyn scope::ScopeAttr> {
     IMPL_SCOPE_RULES
