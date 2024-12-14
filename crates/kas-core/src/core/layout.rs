@@ -67,6 +67,15 @@ pub trait Layout: Sized {
     /// horizontal axis before it is called for the vertical axis.
     /// Further, [`Self::l_set_rect`] must be called after this method before
     /// drawing or event handling.
+    // NOTE: used size policies are:
+    // NOTE: SizeRules::EMPTY (possibly with custom stretch)
+    // NOTE: forward from text field (with tweaks to alignment): text could impl Layout?
+    // NOTE: use a PixmapScaling: this could impl Layout?
+    // NOTE: use a LogicalSize with scaling and stretch factor
+    // NOTE: use SizeCx::feature: Feature could impl Layout?
+    // NOTE: use LayoutVisitor
+    // NOTE: (complex)
+    // NOTE: CheckButton/RadioButton do a weird shrink_to_text thing
     fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
 
     /// Set size and position

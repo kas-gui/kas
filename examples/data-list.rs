@@ -96,6 +96,7 @@ impl EditGuard for ListEntryGuard {
 impl_scope! {
     // The list entry
     #[widget{
+        // TODO: this should be constructed in ListEntry::new to allow usage of params from the ctor
         layout = column! [
             row! [self.label, self.radio],
             self.edit,

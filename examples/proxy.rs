@@ -66,6 +66,7 @@ impl_scope! {
     }
     impl Layout for ColourSquare {
         fn l_size_rules(&mut self, sizer: SizeCx, _axis: AxisInfo) -> SizeRules {
+            // NOTE: why not LogicalSize here?
             SizeRules::fixed_scaled(100.0, 10.0, sizer.scale_factor())
         }
 

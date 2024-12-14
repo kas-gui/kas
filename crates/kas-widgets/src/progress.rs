@@ -69,6 +69,7 @@ impl_scope! {
 
     impl Layout for Self {
         fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            // NOTE: we don't need to support flipping from horiz to vert at run-time
             sizer.feature(Feature::ProgressBar(self.direction()), axis)
         }
 

@@ -110,6 +110,8 @@ impl_scope! {
         }
     }
 
+    // NOTE: essentially we just derive from Text's layout here (with a modification to the default alignment).
+    // Can we implement Layout for Text? Maybe, but deriving layout now derives / implements Tile instead.
     impl Layout for Self {
         #[inline]
         fn l_size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {

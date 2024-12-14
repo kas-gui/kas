@@ -56,6 +56,7 @@ pub struct Text<T: FormattableText + ?Sized> {
     display: TextDisplay,
     text: T,
 }
+// TODO: impl Layout for Text?
 
 impl<T: Default + FormattableText> Default for Text<T> {
     fn default() -> Self {
