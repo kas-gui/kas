@@ -396,9 +396,9 @@ impl_scope! {
             self.update_scroll_bar(cx);
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Id {
+        fn probe(&mut self, coord: Coord) -> Id {
             if self.max_scroll_offset().1 > 0 {
-                if let Some(id) = self.bar.find_id(coord) {
+                if let Some(id) = self.bar.try_probe(coord) {
                     return id;
                 }
             }
@@ -688,7 +688,7 @@ impl_scope! {
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
         }
 
-        fn l_find_id(&mut self, _: Coord) -> Id {
+        fn probe(&mut self, _: Coord) -> Id {
             self.id()
         }
 

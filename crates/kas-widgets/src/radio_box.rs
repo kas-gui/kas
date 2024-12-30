@@ -153,7 +153,7 @@ impl_scope! {
             crate::check_box::shrink_to_text(&mut self.core.rect, dir, &self.label);
         }
 
-        fn l_find_id(&mut self, _: Coord) -> Id {
+        fn probe(&mut self, _: Coord) -> Id {
             self.inner.id()
         }
     }

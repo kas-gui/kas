@@ -213,7 +213,7 @@ impl_scope! {
             }
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Id {
+        fn probe(&mut self, coord: Coord) -> Id {
             if !self.size_solved {
                 debug_assert!(false);
                 return self.id();
@@ -225,12 +225,12 @@ impl_scope! {
 
             let solver = layout::RowPositionSolver::new(self.direction);
             if let Some(child) = solver.find_child_mut(&mut self.widgets, coord) {
-                return child.find_id(coord).unwrap_or_else(|| self.id());
+                return child.try_probe(coord).unwrap_or_else(|| self.id());
             }
 
             let solver = layout::RowPositionSolver::new(self.direction);
             if let Some(child) = solver.find_child_mut(&mut self.grips, coord) {
-                return child.find_id(coord).unwrap_or_else(|| self.id());
+                return child.try_probe(coord).unwrap_or_else(|| self.id());
             }
 
             self.id()
@@ -241,7 +241,7 @@ impl_scope! {
                 debug_assert!(false);
                 return;
             }
-            // as with l_find_id, there's not much harm in invoking the solver twice
+            // as with probe, there's not much harm in invoking the solver twice
 
             let solver = layout::RowPositionSolver::new(self.direction);
             solver.for_children_mut(&mut self.widgets, draw.get_clip_rect(), |w| {

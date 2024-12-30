@@ -41,7 +41,7 @@ pub trait Visitable {
     /// Returns the [`Id`] of a child when some child occupies `coord`. Returns
     /// [`None`] when there is no (probable) child widget at `coord`, in which
     /// case the caller may use its own [`Id`].
-    fn find_id(&mut self, coord: Coord) -> Option<Id>;
+    fn try_probe(&mut self, coord: Coord) -> Option<Id>;
 
     /// Draw a widget and its children
     ///
@@ -225,14 +225,14 @@ impl<V: Visitable> Visitor<V> {
     ///
     /// 1.  Return `None` if `!self.rect().contains(coord)`
     /// 2.  Translate `coord`: `let coord = coord + self.translation();`
-    /// 3.  Call `find_id` (this method), returning its result if not `None`
+    /// 3.  Call `try_probe` (this method), returning its result if not `None`
     /// 4.  Otherwise return `Some(self.id())`
     #[inline]
-    pub fn find_id(mut self, coord: Coord) -> Option<Id> {
-        self.find_id_(coord)
+    pub fn try_probe(mut self, coord: Coord) -> Option<Id> {
+        self.try_probe_(coord)
     }
-    fn find_id_(&mut self, coord: Coord) -> Option<Id> {
-        self.0.find_id(coord)
+    fn try_probe_(&mut self, coord: Coord) -> Option<Id> {
+        self.0.try_probe(coord)
     }
 
     /// Draw a widget and its children
@@ -256,8 +256,8 @@ impl<V: Visitable> Visitable for Visitor<V> {
         self.set_rect_(cx, rect, hints);
     }
 
-    fn find_id(&mut self, coord: Coord) -> Option<Id> {
-        self.find_id_(coord)
+    fn try_probe(&mut self, coord: Coord) -> Option<Id> {
+        self.try_probe_(coord)
     }
 
     fn draw(&mut self, draw: DrawCx) {
@@ -278,8 +278,8 @@ impl<'a> Visitable for Single<'a> {
         self.widget.set_rect(cx, rect, hints);
     }
 
-    fn find_id(&mut self, coord: Coord) -> Option<Id> {
-        self.widget.find_id(coord)
+    fn try_probe(&mut self, coord: Coord) -> Option<Id> {
+        self.widget.try_probe(coord)
     }
 
     fn draw(&mut self, mut draw: DrawCx) {
@@ -302,8 +302,8 @@ impl<C: Visitable> Visitable for Align<C> {
         self.child.set_rect(cx, rect, hints);
     }
 
-    fn find_id(&mut self, coord: Coord) -> Option<Id> {
-        self.child.find_id(coord)
+    fn try_probe(&mut self, coord: Coord) -> Option<Id> {
+        self.child.try_probe(coord)
     }
 
     fn draw(&mut self, draw: DrawCx) {
@@ -333,8 +333,8 @@ impl<'a, C: Visitable> Visitable for Pack<'a, C> {
         self.child.set_rect(cx, rect, hints);
     }
 
-    fn find_id(&mut self, coord: Coord) -> Option<Id> {
-        self.child.find_id(coord)
+    fn try_probe(&mut self, coord: Coord) -> Option<Id> {
+        self.child.try_probe(coord)
     }
 
     fn draw(&mut self, draw: DrawCx) {
@@ -369,8 +369,8 @@ impl<C: Visitable> Visitable for Margins<C> {
         self.child.set_rect(cx, rect, hints);
     }
 
-    fn find_id(&mut self, coord: Coord) -> Option<Id> {
-        self.child.find_id(coord)
+    fn try_probe(&mut self, coord: Coord) -> Option<Id> {
+        self.child.try_probe(coord)
     }
 
     fn draw(&mut self, draw: DrawCx) {
@@ -402,8 +402,8 @@ impl<'a, C: Visitable> Visitable for Frame<'a, C> {
         self.child.set_rect(cx, child_rect, hints);
     }
 
-    fn find_id(&mut self, coord: Coord) -> Option<Id> {
-        self.child.find_id(coord)
+    fn try_probe(&mut self, coord: Coord) -> Option<Id> {
+        self.child.try_probe(coord)
     }
 
     fn draw(&mut self, mut draw: DrawCx) {
@@ -435,7 +435,7 @@ impl<'a, C: Visitable> Visitable for Button<'a, C> {
         self.child.set_rect(cx, child_rect, AlignHints::CENTER);
     }
 
-    fn find_id(&mut self, _: Coord) -> Option<Id> {
+    fn try_probe(&mut self, _: Coord) -> Option<Id> {
         // Buttons steal clicks, hence Button never returns ID of content
         None
     }
@@ -483,11 +483,11 @@ where
         }
     }
 
-    fn find_id(&mut self, coord: Coord) -> Option<Id> {
+    fn try_probe(&mut self, coord: Coord) -> Option<Id> {
         // TODO(opt): more efficient search strategy?
         for i in 0..self.children.len() {
             if let Some(child) = self.children.get_item(i) {
-                if let Some(id) = child.find_id(coord) {
+                if let Some(id) = child.try_probe(coord) {
                     return Some(id);
                 }
             }
@@ -531,10 +531,10 @@ where
         }
     }
 
-    fn find_id(&mut self, coord: Coord) -> Option<Id> {
+    fn try_probe(&mut self, coord: Coord) -> Option<Id> {
         for i in 0..self.children.len() {
             if let Some(child) = self.children.get_item(i) {
-                if let Some(id) = child.find_id(coord) {
+                if let Some(id) = child.try_probe(coord) {
                     return Some(id);
                 }
             }
@@ -587,11 +587,11 @@ where
         }
     }
 
-    fn find_id(&mut self, coord: Coord) -> Option<Id> {
+    fn try_probe(&mut self, coord: Coord) -> Option<Id> {
         // TODO(opt): more efficient search strategy?
         for i in 0..self.children.len() {
             if let Some(child) = self.children.get_item(i) {
-                if let Some(id) = child.find_id(coord) {
+                if let Some(id) = child.try_probe(coord) {
                     return Some(id);
                 }
             }

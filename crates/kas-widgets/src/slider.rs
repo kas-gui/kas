@@ -311,9 +311,9 @@ impl_scope! {
             let _ = self.grip.set_size_and_offset(size, self.offset());
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Id {
+        fn probe(&mut self, coord: Coord) -> Id {
             if self.on_move.is_some() {
-                if let Some(id) = self.grip.find_id(coord) {
+                if let Some(id) = self.grip.try_probe(coord) {
                     return id;
                 }
             }

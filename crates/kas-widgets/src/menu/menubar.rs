@@ -99,11 +99,11 @@ impl_scope! {
             }
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Id {
+        fn probe(&mut self, coord: Coord) -> Id {
             let solver = RowPositionSolver::new(self.direction);
             solver
                 .find_child_mut(&mut self.widgets, coord)
-                .and_then(|child| child.find_id(coord))
+                .and_then(|child| child.try_probe(coord))
                 .unwrap_or_else(|| self.id())
         }
 

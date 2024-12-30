@@ -101,7 +101,7 @@ impl_scope! {
             None
         }
 
-        fn l_find_id(&mut self, _: Coord) -> Id {
+        fn probe(&mut self, _: Coord) -> Id {
             self.id()
         }
 
@@ -354,9 +354,9 @@ impl_scope! {
             }
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Id {
+        fn probe(&mut self, coord: Coord) -> Id {
             for child in self.list.iter_mut() {
-                if let Some(id) = child.find_id(coord) {
+                if let Some(id) = child.try_probe(coord) {
                     return id;
                 }
             }

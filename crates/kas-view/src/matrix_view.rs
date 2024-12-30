@@ -487,12 +487,12 @@ impl_scope! {
             self.scroll_offset()
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Id {
+        fn probe(&mut self, coord: Coord) -> Id {
             let num = self.num_children();
             let coord = coord + self.scroll.offset();
             for child in &mut self.widgets[..num] {
                 if child.key.is_some() {
-                    if let Some(id) = child.widget.find_id(coord) {
+                    if let Some(id) = child.widget.try_probe(coord) {
                         return id;
                     }
                 }

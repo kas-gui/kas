@@ -100,10 +100,10 @@ impl_scope! {
             }
         }
 
-        fn l_find_id(&mut self, coord: Coord) -> Id {
+        fn probe(&mut self, coord: Coord) -> Id {
             for n in 0..self.widgets.len() {
                 if let Some(child) = self.widgets.get_mut_layout(n) {
-                    if let Some(id) = child.find_id(coord) {
+                    if let Some(id) = child.try_probe(coord) {
                         return id;
                     }
                 }

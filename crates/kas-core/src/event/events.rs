@@ -152,7 +152,7 @@ pub enum Event {
     /// Motion events for the grabbed mouse pointer or touched finger are sent.
     ///
     /// If `cur_id` is `None`, no widget was found at the coordinate (either
-    /// outside the window or [`crate::Layout::find_id`] failed).
+    /// outside the window or [`crate::Layout::try_probe`] failed).
     PressMove { press: Press, delta: Offset },
     /// End of a click/touch press
     ///
@@ -168,7 +168,7 @@ pub enum Event {
     /// sent.
     ///
     /// If `cur_id` is `None`, no widget was found at the coordinate (either
-    /// outside the window or [`crate::Layout::find_id`] failed).
+    /// outside the window or [`crate::Layout::try_probe`] failed).
     PressEnd { press: Press, success: bool },
     /// Update from a timer
     ///

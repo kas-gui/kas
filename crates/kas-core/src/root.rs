@@ -146,7 +146,7 @@ impl_scope! {
             self.inner.set_rect(cx, Rect::new(p_in, s_in), hints);
         }
 
-        fn l_find_id(&mut self, _: Coord) -> Id {
+        fn probe(&mut self, _: Coord) -> Id {
             unimplemented!()
         }
 
@@ -156,29 +156,29 @@ impl_scope! {
     }
 
     impl Self {
-        pub(crate) fn find_id(&mut self, data: &Data, coord: Coord) -> Option<Id> {
+        pub(crate) fn try_probe(&mut self, data: &Data, coord: Coord) -> Option<Id> {
             if !self.core.rect.contains(coord) {
                 return None;
             }
             for (_, popup, translation) in self.popups.iter_mut().rev() {
-                if let Some(Some(id)) = self.inner.as_node(data).find_node(&popup.id, |mut node| node.find_id(coord + *translation)) {
+                if let Some(Some(id)) = self.inner.as_node(data).find_node(&popup.id, |mut node| node.try_probe(coord + *translation)) {
                     return Some(id);
                 }
             }
             if self.bar_h > 0 {
-                if let Some(id) = self.title_bar.find_id(coord) {
+                if let Some(id) = self.title_bar.try_probe(coord) {
                     return Some(id);
                 }
             }
-            self.inner.find_id(coord)
-                .or_else(|| self.b_w.find_id(coord))
-                .or_else(|| self.b_e.find_id(coord))
-                .or_else(|| self.b_n.find_id(coord))
-                .or_else(|| self.b_s.find_id(coord))
-                .or_else(|| self.b_nw.find_id(coord))
-                .or_else(|| self.b_ne.find_id(coord))
-                .or_else(|| self.b_sw.find_id(coord))
-                .or_else(|| self.b_se.find_id(coord))
+            self.inner.try_probe(coord)
+                .or_else(|| self.b_w.try_probe(coord))
+                .or_else(|| self.b_e.try_probe(coord))
+                .or_else(|| self.b_n.try_probe(coord))
+                .or_else(|| self.b_s.try_probe(coord))
+                .or_else(|| self.b_nw.try_probe(coord))
+                .or_else(|| self.b_ne.try_probe(coord))
+                .or_else(|| self.b_sw.try_probe(coord))
+                .or_else(|| self.b_se.try_probe(coord))
                 .or_else(|| Some(self.id()))
         }
 

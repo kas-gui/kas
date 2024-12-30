@@ -31,7 +31,7 @@ use kas_macros::autoimpl;
 ///     cached by `size_rules`.
 /// 4.  The widget is updated again after any data change (see [`ConfigCx::update`]).
 /// 5.  The widget is ready for event-handling and drawing
-///     ([`Events::handle_event`], [`Layout::find_id`], [`Layout::draw`]).
+///     ([`Events::handle_event`], [`Layout::try_probe`], [`Layout::draw`]).
 ///
 /// Widgets are responsible for ensuring that their children may observe this
 /// lifecycle. Usually this simply involves inclusion of the child in layout
@@ -256,7 +256,7 @@ pub enum NavAdvance {
 ///     cached by `size_rules`.
 /// 4.  The widget is updated again after any data change (see [`ConfigCx::update`]).
 /// 5.  The widget is ready for event-handling and drawing
-///     ([`Events::handle_event`], [`Layout::find_id`], [`Layout::draw`]).
+///     ([`Events::handle_event`], [`Layout::try_probe`], [`Layout::draw`]).
 ///
 /// Widgets are responsible for ensuring that their children may observe this
 /// lifecycle. Usually this simply involves inclusion of the child in layout
@@ -310,7 +310,7 @@ pub enum NavAdvance {
 /// -   **Layout** is specified either via [layout syntax](macros::widget#layout-1)
 ///     or via implementation of at least [`Layout::size_rules`] and
 ///     [`Layout::draw`] (optionally also `set_rect`, `nav_next`, `translation`
-///     and `l_find_id`).
+///     and `probe`).
 ///-    **Event handling** is optional, implemented through [`Events`].
 ///
 /// For examples, check the source code of widgets in the widgets library

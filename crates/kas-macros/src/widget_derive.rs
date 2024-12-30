@@ -161,10 +161,10 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             self.#inner.translation()
         }
     };
-    let fn_find_id_forward = quote! {
+    let fn_try_probe_forward = quote! {
         #[inline]
-        fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-            self.#inner.find_id(coord)
+        fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+            self.#inner.try_probe(coord)
         }
     };
     let fn_draw = quote! {
@@ -280,18 +280,18 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             layout_impl.items.push(Verbatim(fn_translation));
         }
 
-        if has_item("l_find_id") {
-            // Use default Layout::find_id impl
+        if has_item("probe") {
+            // Use default Layout::try_probe impl
         } else {
-            // Use default Layout::l_find_id (unimplemented)
-            layout_impl.items.push(Verbatim(fn_find_id_forward));
+            // Use default Layout::probe (unimplemented)
+            layout_impl.items.push(Verbatim(fn_try_probe_forward));
         }
 
-        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "find_id") {
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "try_probe") {
             if let syn::ImplItem::Fn(f) = &mut layout_impl.items[*index] {
                 emit_warning!(
                     f,
-                    "Implementations are expected to impl `fn l_find_id`, not `find_id`"
+                    "Implementations are expected to impl `fn probe`, not `try_probe`"
                 );
             }
         }
@@ -307,7 +307,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
                 #fn_set_rect
                 #fn_nav_next
                 #fn_translation
-                #fn_find_id_forward
+                #fn_try_probe_forward
                 #fn_draw
             }
         });
