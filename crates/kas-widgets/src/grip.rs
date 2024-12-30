@@ -43,13 +43,19 @@ impl_scope! {
     ///
     /// This widget is unusual in several ways:
     ///
-    /// 1.  [`Layout::size_rules`] does not request any size; the parent is expected
-    ///     to do this. (Calling this method is still required to comply with
-    ///     widget model.)
-    /// 2.  [`Layout::set_rect`] sets the *track* within which this grip may move;
-    ///     the parent should always call [`GripPart::set_size_and_offset`]
-    ///     afterwards to set the grip position.
-    /// 3.  [`Layout::draw`] does nothing. The parent should handle all drawing.
+    /// [`Layout::size_rules`] does not request any size; the parent is expected
+    /// to determine the grip's size.
+    /// (Calling `size_rules` is still required to comply with widget model.)
+    ///
+    /// [`Layout::set_rect`] sets the grip's rect, clamping the position to the
+    /// track (it is assumed that the size does not exceed that of the track).
+    /// [`Self::set_track`] must be called first.
+    ///
+    /// Often it is preferable to use [`Self::set_size`] and
+    /// [`Self::set_offset`] to set the grip's size and position.
+    /// (Calling `set_rect` is still required to comply with widget model.)
+    ///
+    /// [`Layout::draw`] does nothing. The parent should handle all drawing.
     ///
     /// # Event handling
     ///
@@ -71,20 +77,15 @@ impl_scope! {
         press_coord: Coord,
     }
 
-    /// This implementation is unusual in that:
-    ///
-    /// 1.  `size_rules` always returns [`SizeRules::EMPTY`]
-    /// 2.  `set_rect` sets the *track* within which this grip may move; the
-    ///     parent should call [`GripPart::set_size_and_offset`] after
-    ///     `set_rect` (otherwise the grip's position will not be updated)
-    /// 3.  `draw` does nothing: the parent is expected to do all drawing
+    /// This implementation is unusual (see [`GripPart`] documentation).
     impl Layout for GripPart {
         fn size_rules(&mut self, _: SizeCx, _axis: AxisInfo) -> SizeRules {
             SizeRules::EMPTY
         }
 
         fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
-            self.track = rect;
+            self.core.rect = rect;
+            let _ = self.set_offset(self.offset()); // clamp
         }
 
         fn draw(&mut self, _: DrawCx) {}
@@ -131,12 +132,15 @@ impl GripPart {
         }
     }
 
-    /// Set a new grip size and position
+    /// Set the track
     ///
-    /// Returns [`Action::REDRAW`] if a redraw is required.
-    pub fn set_size_and_offset(&mut self, size: Size, offset: Offset) -> Action {
-        self.core.rect.size = size;
-        self.set_offset(offset).1
+    /// The `track` is the region within which the grip may be moved.
+    ///
+    /// This method must be called to set the `track`, presumably from the
+    /// parent widget's [`Layout::set_rect`] method.
+    /// It is expected that [`GripPart::set_offset`] is called after this.
+    pub fn set_track(&mut self, track: Rect) {
+        self.track = track;
     }
 
     /// Get the current track `Rect`
@@ -145,7 +149,24 @@ impl GripPart {
         self.track
     }
 
+    /// Set the grip's size
+    ///
+    /// It is expected that for each axis the `size` is no larger than the size
+    /// of the `track` (see [`GripPart::set_track`]). If equal, then the grip
+    /// may not be moved on this axis.
+    ///
+    /// This method must be called at least once.
+    /// It is expected that [`GripPart::set_offset`] is called after this.
+    ///
+    /// This size may be read via `self.rect().size`.
+    pub fn set_size(&mut self, size: Size) {
+        self.core.rect.size = size;
+    }
+
     /// Get the current grip position
+    ///
+    /// The position returned is relative to `self.track().pos` and is always
+    /// between [`Offset::ZERO`] and [`Self::max_offset`].
     #[inline]
     pub fn offset(&self) -> Offset {
         self.core.rect.pos - self.track.pos
@@ -153,8 +174,8 @@ impl GripPart {
 
     /// Get the maximum allowed offset
     ///
-    /// The grip position is clamped between `ZERO` and this offset relative to
-    /// the track. This value depends on size of the grip and the track.
+    /// This is the maximum allowed [`Self::offset`], equal to the size of the
+    /// track minus the size of the grip.
     #[inline]
     pub fn max_offset(&self) -> Offset {
         Offset::conv(self.track.size) - Offset::conv(self.core.rect.size)
@@ -162,9 +183,14 @@ impl GripPart {
 
     /// Set a new grip position
     ///
-    /// Returns the new position (after clamping input) and an action: empty if
-    /// the grip hasn't moved; `REDRAW` if it has (though this widget is
-    /// not directly responsible for drawing, so this may not be accurate).
+    /// The input `offset` is clamped between [`Offset::ZERO`] and
+    /// [`Self::max_offset`].
+    ///
+    /// The return value is a tuple of the new offest and an action:
+    /// [`Action::REDRAW`] if the grip has moved, otherwise an empty action.
+    ///
+    /// It is expected that [`Self::set_track`] and [`Self::set_size`] are
+    /// called before this method.
     pub fn set_offset(&mut self, offset: Offset) -> (Offset, Action) {
         let offset = offset.min(self.max_offset()).max(Offset::ZERO);
         let grip_pos = self.track.pos + offset;

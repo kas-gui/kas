@@ -218,12 +218,9 @@ impl_scope! {
             let grip_len = i64::from(self.grip_size) * i64::conv(len) / total;
             self.grip_len = i32::conv(grip_len).max(self.min_grip_len).min(len);
             let mut size = self.core.rect.size;
-            if self.direction.is_horizontal() {
-                size.0 = self.grip_len;
-            } else {
-                size.1 = self.grip_len;
-            }
-            self.grip.set_size_and_offset(size, self.offset())
+            size.set_component(self.direction, self.grip_len);
+            self.grip.set_size(size);
+            self.grip.set_offset(self.offset()).1
         }
 
         // translate value to offset in local coordinates
@@ -285,7 +282,11 @@ impl_scope! {
             };
             let rect = cx.align_feature(Feature::ScrollBar(self.direction()), rect, align);
             self.core.rect = rect;
-            self.grip.set_rect(cx, rect, AlignHints::NONE);
+            self.grip.set_track(rect);
+
+            // We call grip.set_rect only for compliance with the widget model:
+            self.grip.set_rect(cx, Rect::ZERO, AlignHints::NONE);
+
             self.min_grip_len = cx.size_cx().grip_len();
             let _ = self.update_widgets();
         }
