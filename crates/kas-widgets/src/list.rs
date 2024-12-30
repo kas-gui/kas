@@ -108,6 +108,7 @@ impl_scope! {
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+            self.core.rect = rect;
             let dim = (self.direction, self.widgets.len());
             let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, &mut self.layout);
 

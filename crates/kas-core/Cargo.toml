@@ -23,7 +23,7 @@ minimal = ["winit", "wayland"]
 # All standard test target features
 stable = ["minimal", "clipboard", "markdown", "shaping", "spawn", "x11", "serde", "toml", "yaml", "json", "ron", "macros_log", "image"]
 # Enables all "recommended" features for nightly rustc
-nightly = ["stable"]
+nightly = ["stable", "kas-macros/nightly"]
 # Additional, less recommendation-worthy features
 experimental = ["dark-light", "recursive-layout-widgets", "unsafe_node"]
 
@@ -43,7 +43,7 @@ markdown = ["kas-text/markdown"]
 shaping = ["kas-text/shaping"]
 
 # Enable support for YAML (de)serialisation
-yaml = ["serde", "dep:serde_yaml"]
+yaml = ["serde", "dep:serde_yaml2"]
 
 # Enable support for JSON (de)serialisation
 json = ["serde", "dep:serde_json"]
@@ -100,7 +100,7 @@ linear-map = "1.2.0"
 thiserror = "2.0.3"
 serde = { version = "1.0.123", features = ["derive"], optional = true }
 serde_json = { version = "1.0.61", optional = true }
-serde_yaml = { version = "0.9.9", optional = true }
+serde_yaml2 = { version = "0.1.2", optional = true }
 ron = { version = "0.8.0", package = "ron", optional = true }
 toml = { version = "0.8.2", package = "toml", optional = true }
 num_enum = "0.7.0"

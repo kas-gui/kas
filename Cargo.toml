@@ -26,7 +26,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 # about target platforms).
 #
 # Note: only some examples build in this configuration; others need view,
-# markdown, resvg. Recommended also: clipboard, yaml (or some config format).
+# markdown, resvg. Recommended also: clipboard, ron (or some config format).
 minimal = ["wgpu", "winit", "wayland"]
 # All recommended features for optimal experience
 default = ["minimal", "view", "image", "resvg", "clipboard", "markdown", "shaping", "spawn"]
