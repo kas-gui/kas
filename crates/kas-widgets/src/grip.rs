@@ -47,12 +47,11 @@ impl_scope! {
     /// to determine the grip's size.
     /// (Calling `size_rules` is still required to comply with widget model.)
     ///
-    /// [`Layout::set_rect`] sets the grip's rect, clamping the position to the
-    /// track (it is assumed that the size does not exceed that of the track).
+    /// [`Layout::set_rect`] sets the grip's rect directly.
     /// [`Self::set_track`] must be called first.
     ///
-    /// Often it is preferable to use [`Self::set_size`] and
-    /// [`Self::set_offset`] to set the grip's size and position.
+    /// Often it is preferable to use [`Self::set_size`] to set the grip's size
+    /// then [`Self::set_offset`] to set the position.
     /// (Calling `set_rect` is still required to comply with widget model.)
     ///
     /// [`Layout::draw`] does nothing. The parent should handle all drawing.
@@ -81,11 +80,6 @@ impl_scope! {
     impl Layout for GripPart {
         fn size_rules(&mut self, _: SizeCx, _axis: AxisInfo) -> SizeRules {
             SizeRules::EMPTY
-        }
-
-        fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
-            self.core.rect = rect;
-            let _ = self.set_offset(self.offset()); // clamp
         }
 
         fn draw(&mut self, _: DrawCx) {}
