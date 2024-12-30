@@ -213,9 +213,10 @@ impl_scope! {
             }
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
-            if !self.rect().contains(coord) || !self.size_solved {
-                return None;
+        fn probe(&mut self, coord: Coord) -> Id {
+            if !self.size_solved {
+                debug_assert!(false);
+                return self.id();
             }
 
             // find_child should gracefully handle the case that a coord is between
@@ -224,22 +225,23 @@ impl_scope! {
 
             let solver = layout::RowPositionSolver::new(self.direction);
             if let Some(child) = solver.find_child_mut(&mut self.widgets, coord) {
-                return child.find_id(coord).or_else(|| Some(self.id()));
+                return child.try_probe(coord).unwrap_or_else(|| self.id());
             }
 
             let solver = layout::RowPositionSolver::new(self.direction);
             if let Some(child) = solver.find_child_mut(&mut self.grips, coord) {
-                return child.find_id(coord).or_else(|| Some(self.id()));
+                return child.try_probe(coord).unwrap_or_else(|| self.id());
             }
 
-            Some(self.id())
+            self.id()
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
             if !self.size_solved {
+                debug_assert!(false);
                 return;
             }
-            // as with find_id, there's not much harm in invoking the solver twice
+            // as with probe, there's not much harm in invoking the solver twice
 
             let solver = layout::RowPositionSolver::new(self.direction);
             solver.for_children_mut(&mut self.widgets, draw.get_clip_rect(), |w| {

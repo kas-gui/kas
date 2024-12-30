@@ -383,9 +383,9 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let mut fn_nav_next_err = None;
     let mut fn_size_rules = None;
     let mut set_rect = quote! { self.#core.rect = rect; };
-    let mut find_id = quote! {
+    let mut probe = quote! {
         use ::kas::{Layout, LayoutExt};
-        self.rect().contains(coord).then(|| self.id())
+            self.id()
     };
     let mut fn_draw = None;
     if let Some(Layout { tree, .. }) = args.layout.take() {
@@ -422,16 +422,13 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             #core_path.rect = rect;
             ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
         };
-        find_id = quote! {
+        probe = quote! {
             use ::kas::{Layout, LayoutExt, layout::LayoutVisitor};
 
-            if !self.rect().contains(coord) {
-                return None;
-            }
             let coord = coord + self.translation();
             self.layout_visitor()
-                .find_id(coord)
-                .or_else(|| Some(self.id()))
+                .try_probe(coord)
+                    .unwrap_or_else(|| self.id())
         };
         fn_draw = Some(quote! {
             fn draw(&mut self, draw: ::kas::theme::DrawCx) {
@@ -460,12 +457,12 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             #set_rect
         }
     };
-    let fn_find_id = quote! {
-        fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+    let fn_probe = quote! {
+        fn probe(&mut self, coord: ::kas::geom::Coord) -> ::kas::Id {
             #[cfg(debug_assertions)]
             #core_path.status.require_rect(&#core_path.id);
 
-            #find_id
+            #probe
         }
     };
 
@@ -601,7 +598,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             }
         }
 
-        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "find_id") {
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "probe") {
             if let Some(ref core) = core_data {
                 if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
                     f.block.stmts.insert(0, parse_quote! {
@@ -611,7 +608,16 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 }
             }
         } else {
-            layout_impl.items.push(Verbatim(fn_find_id));
+            layout_impl.items.push(Verbatim(fn_probe));
+        }
+
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "try_probe") {
+            if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
+                emit_warning!(
+                    f,
+                    "Implementations are expected to impl `fn probe`, not `try_probe`"
+                );
+            }
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "draw") {
@@ -639,7 +645,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 #fn_size_rules
                 #fn_set_rect
                 #fn_nav_next
-                #fn_find_id
+                #fn_probe
                 #fn_draw
             }
         });

@@ -161,10 +161,10 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             self.#inner.translation()
         }
     };
-    let fn_find_id = quote! {
+    let fn_try_probe_forward = quote! {
         #[inline]
-        fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-            self.#inner.find_id(coord)
+        fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+            self.#inner.try_probe(coord)
         }
     };
     let fn_draw = quote! {
@@ -280,8 +280,20 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             layout_impl.items.push(Verbatim(fn_translation));
         }
 
-        if !has_item("find_id") {
-            layout_impl.items.push(Verbatim(fn_find_id));
+        if has_item("probe") {
+            // Use default Layout::try_probe impl
+        } else {
+            // Use default Layout::probe (unimplemented)
+            layout_impl.items.push(Verbatim(fn_try_probe_forward));
+        }
+
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "try_probe") {
+            if let syn::ImplItem::Fn(f) = &mut layout_impl.items[*index] {
+                emit_warning!(
+                    f,
+                    "Implementations are expected to impl `fn probe`, not `try_probe`"
+                );
+            }
         }
 
         if !has_item("draw") {
@@ -295,7 +307,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
                 #fn_set_rect
                 #fn_nav_next
                 #fn_translation
-                #fn_find_id
+                #fn_try_probe_forward
                 #fn_draw
             }
         });

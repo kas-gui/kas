@@ -717,7 +717,7 @@ impl<'a> EventCx<'a> {
     ///
     /// When calling this method, be aware that some widgets use an inner
     /// component to handle events, thus calling with the outer widget's `id`
-    /// may not have the desired effect. [`Layout::find_id`] and
+    /// may not have the desired effect. [`Layout::try_probe`] and
     /// [`EventState::next_nav_focus`] are usually able to find the appropriate
     /// event-handling target.
     pub fn send_command(&mut self, id: Id, cmd: Command) {

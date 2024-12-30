@@ -42,7 +42,7 @@ use kas_macros::autoimpl;
 ///     cached by `size_rules`.
 /// 4.  The widget is updated again after any data change (see [`ConfigCx::update`]).
 /// 5.  The widget is ready for event-handling and drawing ([`Events`],
-///     [`Self::find_id`], [`Self::draw`]).
+///     [`Self::try_probe`], [`Self::draw`]).
 ///
 /// Widgets are responsible for ensuring that their children may observe this
 /// lifecycle. Usually this simply involves inclusion of the child in layout
@@ -176,7 +176,7 @@ pub trait Layout {
     /// Required: [`Self::size_rules`] is called for both axes before this
     /// method is called, and that this method has been called *after* the last
     /// call to [`Self::size_rules`] *before* any of the following methods:
-    /// [`Layout::find_id`], [`Layout::draw`], [`Events::handle_event`].
+    /// [`Layout::try_probe`], [`Layout::draw`], [`Events::handle_event`].
     ///
     /// Default implementation when not using the `layout` property: set `rect`
     /// field of `widget_core!()` to the input `rect`.
@@ -216,7 +216,7 @@ pub trait Layout {
     /// *and* child widgets need to implement this.
     /// Such widgets must also implement [`Events::handle_scroll`].
     ///
-    /// Affects event handling via [`Layout::find_id`] and affects the positioning
+    /// Affects event handling via [`Layout::probe`] and affects the positioning
     /// of pop-up menus. [`Layout::draw`] must be implemented directly using
     /// [`DrawCx::with_clip_region`] to offset contents.
     ///
@@ -226,14 +226,19 @@ pub trait Layout {
         Offset::ZERO
     }
 
-    /// Translate a coordinate to an [`Id`]
+    /// Probe a coordinate for a widget's [`Id`]
     ///
-    /// This method is used to determine which widget reacts to the mouse cursor
-    /// or a touch event. The result affects mouse-hover highlighting, event
-    /// handling by the target, and potentially also event handling by other
-    /// widgets (e.g. a `Label` widget will not handle touch events, but if it
-    /// is contained by a `ScrollRegion`, that widget may capture these via
-    /// [`Events::handle_event`] to implement touch scrolling).
+    /// Returns the [`Id`] of the lowest descendant (leaf-most element of the
+    /// widget tree) occupying `coord` (exceptions possible; see below).
+    ///
+    /// The callee may assume that it occupies `coord`.
+    /// Callers should prefer to call [`Tile::try_probe`] instead.
+    ///
+    /// This method is used to determine which widget reacts to the mouse and
+    /// touch events at the given coordinates. The widget identified by this
+    /// method may be highlighted (if hovered by the mouse) and may respond to
+    /// click/touch events. Unhandled click/touch events are passed to the
+    /// parent widget and so on up the widget tree.
     ///
     /// The result is usually the widget which draws at the given `coord`, but
     /// does not have to be. For example, a `Button` widget will return its own
@@ -241,42 +246,43 @@ pub trait Layout {
     /// widget uses an internal component for event handling and thus reports
     /// this component's `id` even over its own area.
     ///
+    /// ### Call order
+    ///
     /// It is expected that [`Layout::set_rect`] is called before this method,
     /// but failure to do so should not cause a fatal error.
     ///
-    /// The default implementation suffices for widgets without children as well
-    /// as widgets using the `layout` property of [`#[widget]`](crate::widget).
-    /// Custom implementations may be required if:
+    /// ### Default implementation
     ///
-    /// -   A custom [`Layout`] implementation is used
-    /// -   Event stealing or donation is desired (but note that
-    ///     `layout = button: ..;` does this already)
-    ///
-    /// When writing a custom implementation:
-    ///
-    /// -   Widgets should test `self.rect().contains(coord)`, returning `None`
-    ///     if this test is `false`; otherwise, they should always return *some*
-    ///     [`Id`], either a childs or their own.
-    /// -   If the Widget uses a translated coordinate space (i.e.
-    ///     `self.translation() != Offset::ZERO`) then pass
-    ///     `coord + self.translation()` to children.
-    ///
-    /// The default implementation is non-trivial:
+    /// The default macro-generated implementation considers all children of the
+    /// `layout` property and of [`#[widget]`](crate::widget) fields:
     /// ```ignore
-    /// if !self.rect().contains(coord) {
-    ///     return None;
-    /// }
     /// let coord = coord + self.translation();
     /// for child in ITER_OVER_CHILDREN {
-    ///     if let Some(id) = child.find_id(coord) {
+    ///     if let Some(id) = child.try_probe(coord) {
     ///         return Some(id);
     ///     }
     /// }
-    /// Some(self.id())
+    /// self.id()
     /// ```
-    fn find_id(&mut self, coord: Coord) -> Option<Id> {
+    fn probe(&mut self, coord: Coord) -> Id {
         let _ = coord;
         unimplemented!() // make rustdoc show that this is a provided method
+    }
+
+    /// Probe a coordinate for a widget's [`Id`]
+    ///
+    /// Returns the [`Id`] of the lowest descendant (leaf-most element of the
+    /// widget tree) occupying `coord`, if any.
+    ///
+    /// This method returns `None` if `!self.rect().contains(coord)`, otherwise
+    /// returning the result of [`Layout::probe`].
+    ///
+    /// ### Call order
+    ///
+    /// It is expected that [`Tile::set_rect`] is called before this method,
+    /// but failure to do so should not cause a fatal error.
+    fn try_probe(&mut self, coord: Coord) -> Option<Id> {
+        self.rect().contains(coord).then(|| self.probe(coord))
     }
 
     /// Draw a widget and its children

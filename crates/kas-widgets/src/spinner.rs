@@ -286,10 +286,10 @@ impl_scope! {
             self.edit.set_outer_rect(rect, FrameStyle::EditBox);
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
-            self.b_up.find_id(coord)
-                .or_else(|| self.b_down.find_id(coord))
-                .or_else(|| self.edit.find_id(coord))
+        fn probe(&mut self, coord: Coord) -> Id {
+            self.b_up.try_probe(coord)
+                .or_else(|| self.b_down.try_probe(coord))
+                .unwrap_or_else(|| self.edit.id())
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

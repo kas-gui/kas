@@ -396,20 +396,16 @@ impl_scope! {
             self.update_scroll_bar(cx);
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-
+        fn probe(&mut self, coord: Coord) -> Id {
             if self.max_scroll_offset().1 > 0 {
-                if let Some(id) = self.bar.find_id(coord) {
-                    return Some(id);
+                if let Some(id) = self.bar.try_probe(coord) {
+                    return id;
                 }
             }
 
             // If coord is over self but not over self.bar, we assign
             // the event to self.inner without further question.
-            Some(self.inner.id())
+            self.inner.id()
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
@@ -692,8 +688,8 @@ impl_scope! {
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<Id> {
-            self.outer_rect.contains(coord).then_some(self.id())
+        fn probe(&mut self, _: Coord) -> Id {
+            self.id()
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
@@ -1040,10 +1036,8 @@ impl<G: EditGuard> EditField<G> {
     ///
     /// Optionally, call this immediately after [`Self::set_rect`] with the
     /// "outer" rect and frame style. In this case, a frame will be drawn using
-    /// this `outer_rect` and `style`. The advantages are:
-    ///
-    /// -   The "error state" background can correctly fill the frame
-    /// -   Clicks on the frame get registered as clicks on self
+    /// this `outer_rect` and `style`. This allows the "error state" background
+    /// to correctly fill the frame.
     ///
     /// Any other widgets painted over the `outer_rect` should be drawn after
     /// the `EditField`.
