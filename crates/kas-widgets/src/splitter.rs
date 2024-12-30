@@ -205,9 +205,9 @@ impl_scope! {
                 // TODO(opt): calculate all maximal sizes simultaneously
                 let index = (n << 1) + 1;
                 let track = setter.maximal_rect_of(&mut self.data, index);
-                self.grips[n].set_rect(cx, track, AlignHints::NONE);
-                let grip = setter.child_rect(&mut self.data, index);
-                let _ = self.grips[n].set_size_and_offset(grip.size, grip.pos - track.pos);
+                self.grips[n].set_track(track);
+                let rect = setter.child_rect(&mut self.data, index);
+                self.grips[n].set_rect(cx, rect, AlignHints::NONE);
 
                 n += 1;
             }
@@ -336,9 +336,9 @@ impl<C: Collection, D: Directional> Splitter<C, D> {
 
             let index = (n << 1) + 1;
             let track = self.grips[n].track();
-            self.grips[n].set_rect(cx, track, AlignHints::NONE);
-            let grip = setter.child_rect(&mut self.data, index);
-            let _ = self.grips[n].set_size_and_offset(grip.size, grip.pos - track.pos);
+            self.grips[n].set_track(track);
+            let rect = setter.child_rect(&mut self.data, index);
+            let _ = self.grips[n].set_rect(cx, rect, AlignHints::NONE);
 
             n += 1;
         }

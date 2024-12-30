@@ -299,16 +299,21 @@ impl_scope! {
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+            eprintln!("Slider::set_rect({rect:?}");
             let align = match self.direction.is_vertical() {
                 false => AlignPair::new(Align::Stretch, hints.vert.unwrap_or(Align::Center)),
                 true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
             };
-            let rect = cx.align_feature(Feature::Slider(self.direction()), rect, align);
+            let mut rect = cx.align_feature(Feature::Slider(self.direction()), rect, align);
             self.core.rect = rect;
+            self.grip.set_track(rect);
+
+            // Set the grip size (we could instead call set_size but the widget
+            // model requires we call set_rect anyway):
+            rect.size.set_component(self.direction, cx.size_cx().grip_len());
             self.grip.set_rect(cx, rect, AlignHints::NONE);
-            let mut size = rect.size;
-            size.set_component(self.direction, cx.size_cx().grip_len());
-            let _ = self.grip.set_size_and_offset(size, self.offset());
+            // Correct the position:
+            let _ = self.grip.set_offset(self.offset());
         }
 
         fn probe(&mut self, coord: Coord) -> Id {
