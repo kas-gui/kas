@@ -67,6 +67,10 @@ impl AlignHints {
     pub const CENTER_LEFT: AlignHints = AlignHints::new(Some(Align::TL), Some(Align::Center));
     /// Center, right
     pub const CENTER_RIGHT: AlignHints = AlignHints::new(Some(Align::BR), Some(Align::Center));
+    /// Center horizontally
+    pub const HORIZ_CENTER: AlignHints = AlignHints::new(Some(Align::Center), None);
+    /// Center vertically
+    pub const VERT_CENTER: AlignHints = AlignHints::new(None, Some(Align::Center));
 
     /// Stretch on both axes
     pub const STRETCH: AlignHints = AlignHints::new(Some(Align::Stretch), Some(Align::Stretch));

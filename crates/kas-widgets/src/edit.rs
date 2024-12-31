@@ -738,12 +738,11 @@ impl_scope! {
             SizeRules::new(min, ideal, margins, stretch)
         }
 
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, mut hints: AlignHints) {
             self.core.rect = rect;
             self.outer_rect = rect;
-            let v_align = if self.multi_line() { Align::Default } else { Align::Center };
-            let align = hints.complete(Align::Default, v_align);
-            cx.text_set_size(&mut self.text, rect.size, align);
+            hints.vert = Some(if self.multi_line() { Align::Default } else { Align::Center });
+            self.text.set_rect(cx, rect, hints);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
         }
@@ -1447,7 +1446,7 @@ impl<G: EditGuard> EditField<G> {
                     v.0 = x;
                 }
                 const FACTOR: f32 = 2.0 / 3.0;
-                let mut h_dist = self.text.bounds().1 * FACTOR;
+                let mut h_dist = f32::conv(self.text.size().1) * FACTOR;
                 if cmd == Command::PageUp {
                     h_dist *= -1.0;
                 }
@@ -1646,7 +1645,7 @@ impl<G: EditGuard> EditField<G> {
             .ok()
             .and_then(|mut m| m.next_back())
         {
-            let bounds = Vec2::from(self.text.bounds());
+            let bounds = Vec2::conv(self.text.size());
             let min_x = marker.pos.0 - bounds.0;
             let min_y = marker.pos.1 - marker.descent - bounds.1;
             let max_x = marker.pos.0;

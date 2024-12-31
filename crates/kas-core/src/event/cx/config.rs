@@ -7,12 +7,11 @@
 
 use super::PendingNavFocus;
 use crate::event::{EventState, FocusSource};
-use crate::geom::{Rect, Size};
+use crate::geom::Rect;
 use crate::layout::AlignPair;
 use crate::text::format::FormattableText;
 use crate::theme::{Feature, SizeCx, Text, ThemeSize};
 use crate::{Id, Node};
-use cast::Cast;
 use std::ops::{Deref, DerefMut};
 
 #[allow(unused)] use crate::event::{Event, EventCx};
@@ -132,23 +131,6 @@ impl<'a> ConfigCx<'a> {
     pub fn text_configure<T: FormattableText>(&self, text: &mut Text<T>) {
         let class = text.class();
         self.sh.text_configure(text, class);
-    }
-
-    /// Prepare a text object
-    ///
-    /// Wrap and align text for display at the given `size`.
-    ///
-    /// Call [`text_configure`][Self::text_configure] before this method.
-    #[inline]
-    pub fn text_set_size<T: FormattableText>(
-        &self,
-        text: &mut Text<T>,
-        size: Size,
-        align: AlignPair,
-    ) {
-        text.set_align(align.into());
-        text.set_bounds(size.cast());
-        text.prepare().expect("not configured");
     }
 }
 

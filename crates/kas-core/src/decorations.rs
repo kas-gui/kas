@@ -127,8 +127,7 @@ impl_scope! {
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
-            let align = hints.complete(Align::Center, Align::Center);
-            cx.text_set_size(&mut self.text, rect.size, align);
+            self.text.set_rect(cx, rect, hints.combine(AlignHints::CENTER));
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

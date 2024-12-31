@@ -12,7 +12,7 @@
 use crate::classes::HasStr;
 use crate::event::ConfigCx;
 use crate::geom::Rect;
-use crate::layout::{Align, AlignHints, AxisInfo, SizeRules};
+use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx, Text, TextClass};
 use crate::{Events, Layout, Tile, Widget};
 use kas_macros::{autoimpl, impl_scope};
@@ -51,8 +51,7 @@ impl_scope! {
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
-            let align = hints.complete(Align::Default, Align::Center);
-            cx.text_set_size(&mut self.text, rect.size, align);
+            self.text.set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
