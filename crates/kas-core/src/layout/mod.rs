@@ -170,9 +170,9 @@ impl From<AxisInfo> for Directions {
 ///     }
 ///     impl Layout for Self {
 ///         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-///             let mut rules = self.layout_visitor().size_rules(sizer, axis);
-///             rules.set_stretch(Stretch::High);
-///             rules
+///             self.layout_visitor()
+///                 .size_rules(sizer, axis)
+///                 .with_stretch(Stretch::High)
 ///         }
 ///     }
 /// }
