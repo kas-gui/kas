@@ -88,6 +88,10 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
                 || *path == parse_quote! { kas::Widget }
                 || *path == parse_quote! { Widget }
             {
+                emit_error!(
+                    path, "Widget impl is supported by #[widget(derive=FIELD)]";
+                    note = derive_span  => "usage of derive mode";
+                );
                 if widget_impl.is_none() {
                     widget_impl = Some(index);
                 }
