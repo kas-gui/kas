@@ -68,6 +68,12 @@ impl ToTokens for CursorIcon {
 }
 
 #[derive(Debug)]
+pub struct Derive {
+    pub kw: kw::derive,
+    pub field: syn::Member,
+}
+
+#[derive(Debug)]
 pub struct Layout {
     pub kw: kw::layout,
     #[allow(dead_code)]
@@ -81,7 +87,7 @@ pub struct WidgetArgs {
     pub navigable: Option<Toks>,
     pub hover_highlight: Option<HoverHighlight>,
     pub cursor_icon: Option<CursorIcon>,
-    pub derive: Option<Member>,
+    pub derive: Option<Derive>,
     pub layout: Option<Layout>,
 }
 
@@ -122,11 +128,12 @@ impl Parse for WidgetArgs {
                     expr: content.parse()?,
                 });
             } else if lookahead.peek(kw::derive) && derive.is_none() {
-                let _ = Some(content.parse::<kw::derive>()?);
+                let kw = content.parse::<kw::derive>()?;
                 let _: Eq = content.parse()?;
                 let _: Token![self] = content.parse()?;
                 let _: Token![.] = content.parse()?;
-                derive = Some(content.parse()?);
+                let field = content.parse()?;
+                derive = Some(Derive { kw, field });
             } else if lookahead.peek(kw::layout) && layout.is_none() {
                 layout = Some(Layout {
                     kw: content.parse()?,

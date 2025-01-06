@@ -22,21 +22,43 @@ use syn::Type;
 /// It may also inject code into existing methods such that the only observable
 /// behaviour is a panic.
 pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()> {
-    let inner = args.derive.as_ref().unwrap();
+    let derive = args.derive.unwrap();
+    let derive_span = proc_macro_error2::SpanRange {
+        first: derive.kw.span(),
+        last: derive.field.span(),
+    }
+    .collapse();
+    let inner = &derive.field;
+
     if let Some(ref toks) = args.data_ty {
-        emit_error!(toks, "not supported by #[widget(derive=FIELD)]")
+        emit_error!(
+            toks, "not supported by #[widget(derive=FIELD)]";
+            note = derive_span  => "usage of derive mode";
+        )
     }
     if let Some(ref toks) = args.navigable {
-        emit_error!(toks, "not supported by #[widget(derive=FIELD)]")
+        emit_error!(
+            toks, "not supported by #[widget(derive=FIELD)]";
+            note = derive_span  => "usage of derive mode";
+        )
     }
     if let Some(ref toks) = args.hover_highlight {
-        emit_error!(toks.span(), "not supported by #[widget(derive=FIELD)]")
+        emit_error!(
+            toks.span(), "not supported by #[widget(derive=FIELD)]";
+            note = derive_span  => "usage of derive mode";
+        )
     }
     if let Some(ref toks) = args.cursor_icon {
-        emit_error!(toks, "not supported by #[widget(derive=FIELD)]")
+        emit_error!(
+            toks, "not supported by #[widget(derive=FIELD)]";
+            note = derive_span  => "usage of derive mode";
+        )
     }
     if let Some(Layout { ref kw, .. }) = args.layout {
-        emit_error!(kw, "not supported by #[widget(derive=FIELD)]")
+        emit_error!(
+            kw, "not supported by #[widget(derive=FIELD)]";
+            note = derive_span  => "usage of derive mode";
+        )
     }
 
     scope.expand_impl_self();
@@ -59,8 +81,8 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
                 || *path == parse_quote! { Events }
             {
                 emit_warning!(
-                    inner, "Events impl is not used by #[widget(derive=FIELD)]";
-                    note = path.span() => "this Events impl";
+                    path, "Events impl is not used by #[widget(derive=FIELD)]";
+                    note = derive_span  => "usage of derive mode";
                 );
             } else if *path == parse_quote! { ::kas::Widget }
                 || *path == parse_quote! { kas::Widget }
