@@ -27,8 +27,8 @@ jobs:
           cargo fmt --all -- --check
       - name: Build docs
         run: |
-          cargo doc --all --no-deps
-          cargo doc --features nightly --all --no-deps
+          cargo doc --all --no-deps -Zwarnings --config 'build.warnings="deny"'
+          cargo doc --features nightly --all --no-deps -Zwarnings --config 'build.warnings="deny"'
       - name: Test kas-macros
         run: |
           cargo test --manifest-path crates/kas-macros/Cargo.toml
@@ -55,11 +55,11 @@ jobs:
           cargo test --manifest-path crates/kas-dylib/Cargo.toml --features kas-core/winit,kas-core/wayland
           cargo test --manifest-path crates/kas-dylib/Cargo.toml --all-features --features kas-core/winit,kas-core/x11
       - name: Test kas
-        run: cargo test --features nightly
+        run: cargo test --features nightly -Zwarnings --config 'build.warnings="deny"'
       - name: Test kas (experimental)
-        run: cargo test --features nightly,experimental
+        run: cargo test --features nightly,experimental -Zwarnings --config 'build.warnings="deny"'
       - name: Test examples/mandlebrot
-        run: cargo test --manifest-path examples/mandlebrot/Cargo.toml
+        run: cargo test --manifest-path examples/mandlebrot/Cargo.toml -Zwarnings --config 'build.warnings="deny"'
 
   test:
     name: Test
