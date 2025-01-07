@@ -201,9 +201,6 @@ impl<V: Visitable> Visitor<V> {
     /// This method is identical to [`Layout::size_rules`].
     #[inline]
     pub fn size_rules(mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        self.size_rules_(sizer, axis)
-    }
-    fn size_rules_(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         self.0.size_rules(sizer, axis)
     }
 
@@ -213,9 +210,6 @@ impl<V: Visitable> Visitor<V> {
     /// In other respects, this functions identically to [`Layout::set_rect`].
     #[inline]
     pub fn set_rect(mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-        self.set_rect_(cx, rect, hints);
-    }
-    fn set_rect_(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
         self.0.set_rect(cx, rect, hints);
     }
 
@@ -229,9 +223,6 @@ impl<V: Visitable> Visitor<V> {
     /// 4.  Otherwise return `Some(self.id())`
     #[inline]
     pub fn try_probe(mut self, coord: Coord) -> Option<Id> {
-        self.try_probe_(coord)
-    }
-    fn try_probe_(&mut self, coord: Coord) -> Option<Id> {
         self.0.try_probe(coord)
     }
 
@@ -240,28 +231,25 @@ impl<V: Visitable> Visitor<V> {
     /// This method is identical to [`Layout::draw`].
     #[inline]
     pub fn draw(mut self, draw: DrawCx) {
-        self.draw_(draw);
-    }
-    fn draw_(&mut self, draw: DrawCx) {
         self.0.draw(draw);
     }
 }
 
 impl<V: Visitable> Visitable for Visitor<V> {
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        self.size_rules_(sizer, axis)
+        self.0.size_rules(sizer, axis)
     }
 
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-        self.set_rect_(cx, rect, hints);
+        self.0.set_rect(cx, rect, hints);
     }
 
     fn try_probe(&mut self, coord: Coord) -> Option<Id> {
-        self.try_probe_(coord)
+        self.0.try_probe(coord)
     }
 
     fn draw(&mut self, draw: DrawCx) {
-        self.draw_(draw);
+        self.0.draw(draw);
     }
 }
 
