@@ -772,6 +772,8 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             data: &Self::Data,
             id: ::kas::Id,
         ) {
+            debug_assert!(id.is_valid(), "Widget::_configure called with invalid id!");
+
             #core_path.id = id;
             #[cfg(debug_assertions)]
             #core_path.status.configure(&#core_path.id);

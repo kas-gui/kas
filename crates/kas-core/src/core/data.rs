@@ -118,6 +118,7 @@ impl WidgetStatus {
         *self = WidgetStatus::SetRect;
     }
 
+    /// Require that set_rect has been called
     pub fn require_rect(&self, id: &Id) {
         self.require(id, WidgetStatus::SetRect);
     }

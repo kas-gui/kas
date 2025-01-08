@@ -77,7 +77,9 @@ impl<'a> ConfigCx<'a> {
     /// [`Events::make_child_id`].
     #[inline]
     pub fn configure(&mut self, mut widget: Node<'_>, id: Id) {
-        widget._configure(self, id);
+        if id.is_valid() {
+            widget._configure(self, id);
+        }
     }
 
     /// Update a widget
