@@ -4,7 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use crate::widget::{collect_idents, widget_as_node};
-use crate::widget_args::{member, Layout, WidgetArgs};
+use crate::widget_args::{member, DataExpr, Layout, WidgetArgs};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::scope::{Scope, ScopeItem};
 use proc_macro2::Span;
@@ -14,7 +14,6 @@ use syn::parse::{Error, Result};
 use syn::parse_quote;
 use syn::spanned::Spanned;
 use syn::ImplItem::Verbatim;
-use syn::Type;
 
 /// Custom widget definition
 ///
@@ -30,12 +29,23 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
     .collapse();
     let inner = &derive.field;
 
-    if let Some(ref toks) = args.data_ty {
-        emit_error!(
-            toks, "not supported by #[widget(derive=FIELD)]";
-            note = derive_span  => "usage of derive mode";
-        )
+    let data_ty = if let Some(item) = args.data_ty {
+        if args.data_expr.is_none() {
+            emit_error!(
+                &item, "usage requires `data_expr` definition in derive mode";
+                note = derive_span  => "usage of derive mode";
+            );
+        }
+        Some(item.ty)
+    } else {
+        None
+    };
+    if let Some(ref item) = args.data_expr {
+        if data_ty.is_none() {
+            emit_error!(&item, "usage requires `Data` type definition");
+        }
     }
+
     if let Some(ref toks) = args.navigable {
         emit_error!(
             toks, "not supported by #[widget(derive=FIELD)]";
@@ -200,14 +210,23 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         }
     };
 
-    let data_ty: Type = 'outer: {
-        for (i, field) in fields.iter_mut().enumerate() {
-            if *inner == member(i, field.ident.clone()) {
-                let ty = &field.ty;
-                break 'outer parse_quote! { <#ty as ::kas::Widget>::Data };
+    let data_ty = if let Some(ty) = data_ty {
+        ty
+    } else {
+        'outer: {
+            for (i, field) in fields.iter_mut().enumerate() {
+                if *inner == member(i, field.ident.clone()) {
+                    let ty = &field.ty;
+                    break 'outer parse_quote! { <#ty as ::kas::Widget>::Data };
+                }
             }
+            return Err(Error::new(inner.span(), "field not found"));
         }
-        return Err(Error::new(inner.span(), "field not found"));
+    };
+    let map_data = if let Some(DataExpr { ref expr, .. }) = args.data_expr {
+        quote! { let data = #expr; }
+    } else {
+        quote! {}
     };
 
     // Widget methods are derived. Cost: cannot override any Events methods or translation().
@@ -226,6 +245,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
                     index: usize,
                     closure: Box<dyn FnOnce(::kas::Node<'_>) + '_>,
                 ) {
+                    #map_data
                     self.#inner.for_child_node(data, index, closure)
                 }
 
@@ -235,6 +255,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
                     data: &Self::Data,
                     id: ::kas::Id,
                 ) {
+                    #map_data
                     self.#inner._configure(cx, data, id);
                 }
 
@@ -243,6 +264,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
                     cx: &mut ::kas::event::ConfigCx,
                     data: &Self::Data,
                 ) {
+                    #map_data
                     self.#inner._update(cx, data);
                 }
 
@@ -253,6 +275,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
                     id: ::kas::Id,
                     event: ::kas::event::Event,
                 ) -> ::kas::event::IsUsed {
+                    #map_data
                     self.#inner._send(cx, data, id, event)
                 }
 
@@ -262,6 +285,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
                     data: &Self::Data,
                     id: ::kas::Id,
                 ) {
+                    #map_data
                     self.#inner._replay(cx, data, id);
                 }
 
@@ -272,6 +296,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
                     focus: Option<&::kas::Id>,
                     advance: ::kas::NavAdvance,
                 ) -> Option<::kas::Id> {
+                    #map_data
                     self.#inner._nav_next(cx, data, focus, advance)
                 }
             }

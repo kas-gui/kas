@@ -26,6 +26,10 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let name = &scope.ident;
     let mut data_ty = args.data_ty.map(|data_ty| data_ty.ty);
 
+    if let Some(ref item) = args.data_expr {
+        emit_error!(item, "only supported in `derive` mode");
+    }
+
     let mut widget_impl = None;
     let mut layout_impl = None;
     let mut events_impl = None;

@@ -181,6 +181,9 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// Supported arguments (_WidgetAttrArg_) are:
 ///
 /// -   <code>Data = Type</code>: the `Widget::Data` associated type
+/// -   <code>data_expr = expr</code>: a mapping expression for the derived
+///     widget's input data; requires `derive` and `Data` arguments.
+///     Inputs available to this expression are `self` and `data`.
 /// -   <code>derive = self.<em>field</em></code> where
 ///     <code><em>field</em></code> is the name (or number) of a field:
 ///     enables "derive mode" ([see below](#derive)) over the given field
@@ -316,7 +319,8 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// ```
 ///
 /// This is a special mode where most features of `#[widget]` are not
-/// available.
+/// available; most notably, the deriving widget does not have its own `Id`.
+///
 ///
 /// ## Debugging
 ///
