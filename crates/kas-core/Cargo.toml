@@ -23,9 +23,12 @@ minimal = ["winit", "wayland"]
 # All standard test target features
 stable = ["minimal", "clipboard", "markdown", "shaping", "spawn", "x11", "serde", "toml", "yaml", "json", "ron", "macros_log", "image"]
 # Enables all "recommended" features for nightly rustc
-nightly = ["stable", "kas-macros/nightly"]
+nightly = ["stable", "nightly-diagnostics"]
 # Additional, less recommendation-worthy features
 experimental = ["dark-light", "recursive-layout-widgets", "unsafe_node"]
+
+# Enables better proc-macro diagnostics (including warnings); nightly only.
+nightly-diagnostics = ["kas-macros/nightly"]
 
 # Use full specialization
 spec = []

@@ -232,7 +232,7 @@ pub trait Layout {
     /// widget tree) occupying `coord` (exceptions possible; see below).
     ///
     /// The callee may assume that it occupies `coord`.
-    /// Callers should prefer to call [`Tile::try_probe`] instead.
+    /// Callers should prefer to call [`Layout::try_probe`] instead.
     ///
     /// This method is used to determine which widget reacts to the mouse and
     /// touch events at the given coordinates. The widget identified by this
@@ -279,7 +279,7 @@ pub trait Layout {
     ///
     /// ### Call order
     ///
-    /// It is expected that [`Tile::set_rect`] is called before this method,
+    /// It is expected that [`Layout::set_rect`] is called before this method,
     /// but failure to do so should not cause a fatal error.
     fn try_probe(&mut self, coord: Coord) -> Option<Id> {
         self.rect().contains(coord).then(|| self.probe(coord))

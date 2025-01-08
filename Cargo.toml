@@ -33,17 +33,20 @@ default = ["minimal", "view", "image", "resvg", "clipboard", "markdown", "shapin
 # All standard test target features
 stable = ["default", "x11", "serde", "toml", "yaml", "json", "ron", "macros_log"]
 # Enables all "recommended" features for nightly rustc
-nightly = ["stable"]
+nightly = ["stable", "nightly-diagnostics", "kas-core/nightly"]
 # Additional, less recommendation-worthy features
 experimental = ["dark-light", "recursive-layout-widgets", "unsafe_node"]
 
 # Enable dynamic linking (faster linking via an extra run-time dependency):
 dynamic = ["dep:kas-dylib"]
 
+#########  optional dependencies / features  #########
+
+# Enables better proc-macro diagnostics (including warnings); nightly only.
+nightly-diagnostics = ["kas-core/nightly-diagnostics"]
+
 # Use full specialization
 spec = ["kas-core/spec"]
-
-#########  optional dependencies / features  #########
 
 # Enable view widgets
 view = ["dep:kas-view"]
