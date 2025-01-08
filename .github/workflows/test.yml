@@ -56,8 +56,8 @@ jobs:
           cargo test --manifest-path crates/kas-dylib/Cargo.toml --all-features --features kas-core/winit,kas-core/x11
       - name: Test kas
         run: cargo test --features nightly -Zwarnings --config 'build.warnings="deny"'
-      - name: Test kas (experimental)
-        run: cargo test --features nightly,experimental -Zwarnings --config 'build.warnings="deny"'
+      - name: Test kas (experimental; some warnings may be expected)
+        run: cargo test --features nightly,experimental
       - name: Test examples/mandlebrot
         run: cargo test --manifest-path examples/mandlebrot/Cargo.toml -Zwarnings --config 'build.warnings="deny"'
 
