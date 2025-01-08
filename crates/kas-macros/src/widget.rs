@@ -340,7 +340,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 #count
             }
             fn get_child(&self, index: usize) -> Option<&dyn ::kas::Layout> {
-                use ::kas::Layout;
                 match index {
                     #get_rules
                     _ => None,
@@ -384,8 +383,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let mut fn_size_rules = None;
     let mut set_rect = quote! { self.#core.rect = rect; };
     let mut probe = quote! {
-        use ::kas::{Layout, LayoutExt};
-            self.id()
+        ::kas::LayoutExt::id(self)
     };
     let mut fn_draw = None;
     if let Some(Layout { tree, .. }) = args.layout.take() {
@@ -423,12 +421,10 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
         };
         probe = quote! {
-            use ::kas::{Layout, LayoutExt, layout::LayoutVisitor};
-
             let coord = coord + self.translation();
-            self.layout_visitor()
+            ::kas::layout::LayoutVisitor::layout_visitor(self)
                 .try_probe(coord)
-                    .unwrap_or_else(|| self.id())
+                    .unwrap_or_else(|| ::kas::LayoutExt::id(self))
         };
         fn_draw = Some(quote! {
             fn draw(&mut self, draw: ::kas::theme::DrawCx) {
@@ -735,7 +731,6 @@ pub fn impl_widget(
                 index: usize,
                 closure: Box<dyn FnOnce(::kas::Node<'_>) + '_>,
             ) {
-                use ::kas::Layout;
                 match index {
                     #get_mut_rules
                     _ => (),

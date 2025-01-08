@@ -165,7 +165,6 @@ impl Tree {
                 #core_impl
                 #num_children
                 fn get_child(&self, index: usize) -> Option<&dyn ::kas::Layout> {
-                    use ::kas::Layout;
                     match index {
                         #get_rules
                         _ => None,
@@ -196,14 +195,13 @@ impl Tree {
                 }
 
                 fn probe(&mut self, coord: ::kas::geom::Coord) -> ::kas::Id {
-                    use ::kas::{Layout, LayoutExt, layout::LayoutVisitor};
                     #[cfg(debug_assertions)]
                     #core_path.status.require_rect(&#core_path.id);
 
                     let coord = coord + self.translation();
-                    self.layout_visitor()
+                    ::kas::layout::LayoutVisitor::layout_visitor(self)
                         .try_probe(coord)
-                        .unwrap_or_else(|| self.id())
+                        .unwrap_or_else(|| ::kas::LayoutExt::id(self))
                 }
 
                 fn draw(&mut self, draw: ::kas::theme::DrawCx) {
