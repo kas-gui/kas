@@ -177,7 +177,8 @@ impl_scope! {
     where
         F: for<'a> Fn(&'a A) -> &'a W::Data,
     {
-        inner: W,
+        /// The inner widget
+        pub inner: W,
         map_fn: F,
         _data: PhantomData<A>,
     }

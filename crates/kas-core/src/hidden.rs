@@ -92,6 +92,7 @@ impl_scope! {
     }]
     pub struct MapAny<A, W: Widget<Data = ()>> {
         _a: std::marker::PhantomData<A>,
+        /// The inner widget
         pub inner: W,
     }
 
