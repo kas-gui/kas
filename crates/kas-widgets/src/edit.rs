@@ -343,7 +343,7 @@ impl_scope! {
     ///
     /// By default, the editor supports a single-line only;
     /// [`Self::with_multi_line`] and [`Self::with_class`] can be used to change this.
-    #[autoimpl(Deref, DerefMut, HasStr using self.inner)]
+    #[autoimpl(HasStr using self.inner)]
     #[autoimpl(Clone, Default, Debug where G: trait)]
     #[widget]
     pub struct EditBox<G: EditGuard = DefaultGuard<()>> {
@@ -397,7 +397,7 @@ impl_scope! {
         }
 
         fn probe(&mut self, coord: Coord) -> Id {
-            if self.max_scroll_offset().1 > 0 {
+            if self.inner.max_scroll_offset().1 > 0 {
                 if let Some(id) = self.bar.try_probe(coord) {
                     return id;
                 }
@@ -410,7 +410,7 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawCx) {
             draw.recurse(&mut self.inner);
-            if self.max_scroll_offset().1 > 0 {
+            if self.inner.max_scroll_offset().1 > 0 {
                 draw.recurse(&mut self.bar);
             }
         }
@@ -559,6 +559,18 @@ impl<G: EditGuard> EditBox<G> {
         self
     }
 
+    /// Get whether this `EditField` is editable
+    #[inline]
+    pub fn is_editable(&self) -> bool {
+        self.inner.is_editable()
+    }
+
+    /// Set whether this `EditField` is editable
+    #[inline]
+    pub fn set_editable(&mut self, editable: bool) {
+        self.inner.set_editable(editable);
+    }
+
     /// Set whether this `EditBox` uses multi-line mode
     ///
     /// This setting has two effects: the vertical size allocation is increased
@@ -573,12 +585,32 @@ impl<G: EditGuard> EditBox<G> {
         self
     }
 
+    /// True if the editor uses multi-line mode
+    ///
+    /// See also: [`Self::with_multi_line`]
+    #[inline]
+    pub fn multi_line(&self) -> bool {
+        self.inner.multi_line()
+    }
+
     /// Set the text class used
     #[inline]
     #[must_use]
     pub fn with_class(mut self, class: TextClass) -> Self {
         self.inner = self.inner.with_class(class);
         self
+    }
+
+    /// Get the text class used
+    #[inline]
+    pub fn class(&self) -> TextClass {
+        self.inner.class()
+    }
+
+    /// Adjust the height allocation
+    #[inline]
+    pub fn set_lines(&mut self, min_lines: i32, ideal_lines: i32) {
+        self.inner.set_lines(min_lines, ideal_lines);
     }
 
     /// Adjust the height allocation (inline)
@@ -589,12 +621,40 @@ impl<G: EditGuard> EditBox<G> {
         self
     }
 
+    /// Adjust the width allocation
+    #[inline]
+    pub fn set_width_em(&mut self, min_em: f32, ideal_em: f32) {
+        self.inner.set_width_em(min_em, ideal_em);
+    }
+
     /// Adjust the width allocation (inline)
     #[inline]
     #[must_use]
     pub fn with_width_em(mut self, min_em: f32, ideal_em: f32) -> Self {
         self.set_width_em(min_em, ideal_em);
         self
+    }
+
+    /// Get whether the widget has edit focus
+    ///
+    /// This is true when the widget is editable and has keyboard focus.
+    #[inline]
+    pub fn has_edit_focus(&self) -> bool {
+        self.inner.has_edit_focus()
+    }
+
+    /// Get whether the input state is erroneous
+    #[inline]
+    pub fn has_error(&self) -> bool {
+        self.inner.has_error()
+    }
+
+    /// Set the error state
+    ///
+    /// When true, the input field's background is drawn red.
+    /// This state is cleared by [`Self::set_string`].
+    pub fn set_error_state(&mut self, error_state: bool) -> Action {
+        self.inner.set_error_state(error_state)
     }
 }
 
@@ -1069,11 +1129,13 @@ impl<G: EditGuard> EditField<G> {
     }
 
     /// Get whether this `EditField` is editable
+    #[inline]
     pub fn is_editable(&self) -> bool {
         self.editable
     }
 
     /// Set whether this `EditField` is editable
+    #[inline]
     pub fn set_editable(&mut self, editable: bool) {
         self.editable = editable;
     }
