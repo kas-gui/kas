@@ -218,6 +218,8 @@ impl<'a> Iterator for WidgetPathIter<'a> {
 /// `a4`. To interpret these values, first subtract 8 from each digit but the
 /// last digit, then read as base-8: `[1, 2, 8, 20]`.
 ///
+/// # Representation
+///
 /// This type is small (64-bit) and non-zero: `Option<Id>` has the same
 /// size as `Id`. It is also very cheap to `Clone`: usually only one `if`
 /// check, and in the worst case a pointer dereference and ref-count increment.
@@ -226,8 +228,13 @@ impl<'a> Iterator for WidgetPathIter<'a> {
 ///
 /// `Id` is neither `Send` nor `Sync`.
 ///
-/// Identifiers are assigned when configured and when re-configured
-/// (via [`Action::RECONFIGURE`] or [`ConfigCx::configure`]).
+/// # Invalid state
+///
+/// When `Id` is [`Default`] constructed, it uses a special **invalid** state.
+/// Any attempt to use or compare such an invalid state will cause a panic.
+///
+/// Widgets are initially constructed with an invalid `Id`, then assigned an
+/// `Id` when configured (see [`Events::configure`]).
 /// In most cases values are persistent but this is not guaranteed (e.g.
 /// inserting or removing a child from a `List` widget will affect the
 /// identifiers of all following children). View-widgets assign path components
@@ -236,6 +243,7 @@ impl<'a> Iterator for WidgetPathIter<'a> {
 /// [`Display`]: std::fmt::Display
 /// [`Action::RECONFIGURE`]: crate::Action::RECONFIGURE
 /// [`ConfigCx::configure`]: crate::event::ConfigCx::configure
+/// [`Events::configure`]: crate::Events::configure
 #[allow(clippy::assigning_clones)]
 #[derive(Clone)]
 pub struct Id(IntOrPtr);

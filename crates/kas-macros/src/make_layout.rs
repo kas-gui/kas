@@ -187,7 +187,7 @@ impl Tree {
                     #[cfg(debug_assertions)]
                     #core_path.status.require_rect(&#core_path.id);
 
-                    draw.set_id(::kas::TileExt::id(self));
+                    draw.set_id(::kas::Tile::id(self));
 
                     ::kas::layout::LayoutVisitor::layout_visitor(self).draw(draw);
                 }
@@ -217,7 +217,7 @@ impl Tree {
                     let coord = coord + ::kas::Tile::translation(self);
                     ::kas::layout::LayoutVisitor::layout_visitor(self)
                         .try_probe(coord)
-                        .unwrap_or_else(|| ::kas::TileExt::id(self))
+                        .unwrap_or_else(|| ::kas::Tile::id(self))
                 }
 
                 fn handle_event(

@@ -7,7 +7,7 @@
 
 use crate::dir::Direction;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};
-use crate::{Events, Id, TileExt, Widget, WindowId};
+use crate::{Events, Id, Tile, TileExt, Widget, WindowId};
 use kas_macros::{impl_scope, widget_index};
 
 #[allow(unused)] use crate::event::EventState;

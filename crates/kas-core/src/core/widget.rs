@@ -25,7 +25,8 @@ use kas_macros::autoimpl;
 ///
 /// # Widget lifecycle
 ///
-/// 1.  The widget is configured ([`Events::configure`]) and immediately updated
+/// 1.  The widget is configured ([`Events::configure`],
+///     [`Events::configure_recurse`]) and immediately updated
 ///     ([`Events::update`]).
 /// 2.  The widget has its size-requirements checked by calling
 ///     [`Layout::size_rules`] for each axis.
@@ -80,12 +81,14 @@ pub trait Events: Widget + Sized {
     /// Configure children
     ///
     /// This method is called after [`Self::configure`].
-    /// It usually configures all children.
+    /// The default implementation configures all children.
     ///
-    /// The default implementation suffices except where children should *not*
-    /// be configured (for example, to delay configuration of hidden children).
-    ///
-    /// Use [`Events::make_child_id`] and [`ConfigCx::configure`].
+    /// An explicit implementation is required in cases where not all children
+    /// should be configured immediately (for example, a stack or paged list may
+    /// choose not to configure hidden children until just before they become
+    /// visible). To configure children explicitly, generate an [`Id`] by
+    /// calling [`Events::make_child_id`] on `self` then pass this `id` to
+    /// [`ConfigCx::configure`].
     fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
         for index in 0..self.num_children() {
             let id = self.make_child_id(index);

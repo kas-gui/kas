@@ -234,16 +234,32 @@ pub trait Tile: Layout {
         unimplemented!() // make rustdoc show that this is a provided method
     }
 
-    /// Get the widget's identifier
+    /// Get a reference to the widget's identifier
     ///
-    /// Note that the default-constructed [`Id`] is *invalid*: any
-    /// operations on this value will cause a panic. A valid identifier is
-    /// assigned when the widget is configured (immediately before calling
-    /// [`Events::configure`]).
+    /// The widget identifier is assigned when the widget is configured (see
+    /// [`Events::configure`] and [`Events::configure_recurse`]). In case the
+    /// [`Id`] is accessed before this, it will be [invalid](Id#invalid-state).
+    /// The identifier *may* change when widgets which are descendants of some
+    /// dynamic layout are reconfigured.
     ///
     /// This method is implemented by the `#[widget]` macro.
     fn id_ref(&self) -> &Id {
         unimplemented!() // make rustdoc show that this is a provided method
+    }
+
+    /// Get the widget's identifier
+    ///
+    /// This method returns a [`Clone`] of [`Self::id_ref`]. Since cloning an
+    /// `Id` is [very cheap](Id#representation), this can mostly be ignored.
+    ///
+    /// The widget identifier is assigned when the widget is configured (see
+    /// [`Events::configure`] and [`Events::configure_recurse`]). In case the
+    /// [`Id`] is accessed before this, it will be [invalid](Id#invalid-state).
+    /// The identifier *may* change when widgets which are descendants of some
+    /// dynamic layout are reconfigured.
+    #[inline]
+    fn id(&self) -> Id {
+        self.id_ref().clone()
     }
 
     /// Get the widget's region, relative to its parent.
@@ -351,16 +367,6 @@ impl<W: Tile + ?Sized> HasId for &mut W {
 
 /// Extension trait over widgets
 pub trait TileExt: Tile {
-    /// Get the widget's identifier
-    ///
-    /// Note that the default-constructed [`Id`] is *invalid*: any
-    /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned during configure.
-    #[inline]
-    fn id(&self) -> Id {
-        self.id_ref().clone()
-    }
-
     /// Test widget identifier for equality
     ///
     /// This method may be used to test against `Id`, `Option<Id>`

@@ -15,7 +15,7 @@ use crate::{Id, Node};
 use std::ops::{Deref, DerefMut};
 
 #[allow(unused)] use crate::event::{Event, EventCx};
-#[allow(unused)] use crate::{Events, Layout};
+#[allow(unused)] use crate::{Action, Events, Layout};
 
 /// Widget configuration and update context
 ///
@@ -71,6 +71,9 @@ impl<'a> ConfigCx<'a> {
     /// [widget lifecycle](Layout#widget-lifecycle)).
     /// This method performs complete configuration of the widget by calling
     /// [`Events::configure`], [`Events::update`], [`Events::configure_recurse`].
+    ///
+    /// To trigger (re)-configuration of the entire widget tree, use
+    /// [`Action::RECONFIGURE`].
     ///
     /// Pass the `id` to assign to the widget. This is usually constructed with
     /// [`Events::make_child_id`].
