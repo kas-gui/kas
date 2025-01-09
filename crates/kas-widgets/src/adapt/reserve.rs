@@ -16,7 +16,6 @@ impl_scope! {
     ///
     /// Usually, this type will be constructed through one of the methods on
     /// [`AdaptWidget`](crate::adapt::AdaptWidget).
-    #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[widget{ derive = self.inner; }]
     pub struct Reserve<W: Widget> {
