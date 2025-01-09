@@ -52,7 +52,6 @@ impl_scope! {
     ///
     /// This is essentially just two widgets with "glue" to handle a
     /// [`SetFilter`] message from the [`EditBox`].
-    #[autoimpl(Deref, DerefMut using self.list)]
     #[autoimpl(Scrollable using self.list where W: trait)]
     #[widget {
         Data = A;
@@ -87,6 +86,24 @@ impl_scope! {
                 list: FilterList::new(list, filter),
             }
         }
+
+        /// Access the inner list widget
+        #[inline]
+        pub fn list(&self) -> &W {
+            &self.list.list
+        }
+
+        /// Access the inner list widget mutably
+        #[inline]
+        pub fn list_mut(&mut self) -> &mut W {
+            &mut self.list.list
+        }
+
+        /// Set the filter value
+        #[inline]
+        pub fn set_filter(&mut self, cx: &mut ConfigCx, data: &A, filter: F::Value) {
+            self.list.set_filter(cx, data, filter);
+        }
     }
 
     impl Events for Self {
@@ -110,7 +127,6 @@ impl_scope! {
     ///
     /// To set the filter call [`Self::set_filter`] or pass a message of type
     /// `SetFilter<F::Value>`.
-    #[autoimpl(Deref, DerefMut using self.list)]
     #[autoimpl(Scrollable using self.list where W: trait)]
     #[widget {
         layout = self.list;
@@ -122,6 +138,10 @@ impl_scope! {
         W: Widget<Data = UnsafeFilteredList<A>>,
     {
         core: widget_core!(),
+        /// The inner list
+        //
+        // NOTE: we could just Deref to self.list *if* FilterList were derived
+        // instead of having its own Id, but for now that's not practical.
         #[widget(unsafe { &UnsafeFilteredList::new(data, &self.view) })]
         pub list: W,
         filter: F,
@@ -139,7 +159,7 @@ impl_scope! {
             }
         }
 
-        /// Set filter value
+        /// Set the filter value
         pub fn set_filter(&mut self, cx: &mut ConfigCx, data: &A, filter: F::Value) {
             if self.filter.set_filter(filter) {
                 cx.update(self.as_node(data));
