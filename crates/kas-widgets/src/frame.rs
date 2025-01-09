@@ -12,7 +12,9 @@ impl_scope! {
     ///
     /// This widget provides a simple abstraction: drawing a frame around its
     /// contents.
-    #[autoimpl(Deref, DerefMut using self.inner)]
+    //
+    // NOTE: this would use derive mode if that supported custom layout syntax,
+    // but it does not. This would allow us to implement Deref to self.inner.
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Default)]
     #[widget{
@@ -21,6 +23,7 @@ impl_scope! {
     }]
     pub struct Frame<W: Widget> {
         core: widget_core!(),
+        /// The inner widget
         #[widget]
         pub inner: W,
     }
