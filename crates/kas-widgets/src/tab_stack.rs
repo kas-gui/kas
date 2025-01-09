@@ -175,7 +175,7 @@ impl_scope! {
             if let Some(MsgSelectIndex(index)) = cx.try_pop() {
                 self.set_active(&mut cx.config_cx(), data, index);
                 if let Some(ref f) = self.on_change {
-                    let title = self.tabs[index].get_str();
+                    let title = self.tabs.inner[index].get_str();
                     f(cx, data, index, title);
                 }
             }
@@ -248,7 +248,7 @@ impl<W: Widget> TabStack<W> {
     /// This does not change the active page index.
     pub fn clear(&mut self) {
         self.stack.clear();
-        self.tabs.clear();
+        self.tabs.inner.clear();
     }
 
     /// Get a page
@@ -263,12 +263,12 @@ impl<W: Widget> TabStack<W> {
 
     /// Get a tab
     pub fn get_tab(&self, index: usize) -> Option<&Tab> {
-        self.tabs.get(index)
+        self.tabs.inner.get(index)
     }
 
     /// Get a tab
     pub fn get_tab_mut(&mut self, index: usize) -> Option<&mut Tab> {
-        self.tabs.get_mut(index)
+        self.tabs.inner.get_mut(index)
     }
 
     /// Append a page
@@ -278,7 +278,7 @@ impl<W: Widget> TabStack<W> {
     ///
     /// Returns the new page's index.
     pub fn push(&mut self, cx: &mut ConfigCx, data: &W::Data, tab: Tab, widget: W) -> usize {
-        let ti = self.tabs.push(cx, &(), tab);
+        let ti = self.tabs.inner.push(cx, &(), tab);
         let si = self.stack.push(cx, data, widget);
         debug_assert_eq!(ti, si);
         si
@@ -289,7 +289,7 @@ impl<W: Widget> TabStack<W> {
     /// If this page was active then no page will be left active.
     /// Consider also calling [`Self::set_active`].
     pub fn pop(&mut self, cx: &mut EventState) -> Option<(Tab, W)> {
-        let tab = self.tabs.pop(cx);
+        let tab = self.tabs.inner.pop(cx);
         let w = self.stack.pop(cx);
         debug_assert_eq!(tab.is_some(), w.is_some());
         tab.zip(w)
@@ -301,7 +301,7 @@ impl<W: Widget> TabStack<W> {
     ///
     /// The active page does not change (the index of the active page may change instead).
     pub fn insert(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize, tab: Tab, widget: W) {
-        self.tabs.insert(cx, &(), index, tab);
+        self.tabs.inner.insert(cx, &(), index, tab);
         self.stack.insert(cx, data, index, widget);
     }
 
@@ -312,7 +312,7 @@ impl<W: Widget> TabStack<W> {
     /// If this page was active then no page will be left active.
     /// Consider also calling [`Self::set_active`].
     pub fn remove(&mut self, cx: &mut EventState, index: usize) -> (Tab, W) {
-        let tab = self.tabs.remove(cx, index);
+        let tab = self.tabs.inner.remove(cx, index);
         let stack = self.stack.remove(cx, index);
         (tab, stack)
     }
@@ -341,7 +341,7 @@ impl<W: Widget> TabStack<W> {
         // self.tabs.reserve(min_len);
         // self.stack.reserve(min_len);
         for (tab, w) in iter {
-            self.tabs.push(cx, &(), tab);
+            self.tabs.inner.push(cx, &(), tab);
             self.stack.push(cx, data, w);
         }
     }

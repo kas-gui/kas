@@ -16,12 +16,12 @@ kas::impl_scope! {
     /// Wrapper with configure / update / message handling callbacks.
     ///
     /// This type is constructed by some [`AdaptWidget`](super::AdaptWidget) methods.
-    #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(Scrollable using self.inner where W: trait)]
     #[widget {
         derive = self.inner;
     }]
     pub struct AdaptEvents<W: Widget> {
+        /// The inner widget
         pub inner: W,
         on_configure: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W)>>,
         on_update: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W, &W::Data)>>,

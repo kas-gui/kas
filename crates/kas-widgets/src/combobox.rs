@@ -12,7 +12,6 @@ use kas::prelude::*;
 use kas::theme::{MarkStyle, TextClass};
 use kas::Popup;
 use std::fmt::Debug;
-use std::ops::{Deref, DerefMut};
 
 #[derive(Clone, Debug)]
 struct IndexMsg(usize);
@@ -61,6 +60,7 @@ impl_scope! {
             let msg = (self.state_fn)(cx, data);
             if let Some(index) = self.popup
                 .inner
+                .inner
                 .iter()
                 .enumerate()
                 .find_map(|(i, w)| (*w == msg).then_some(i))
@@ -77,7 +77,7 @@ impl_scope! {
         fn handle_event(&mut self, cx: &mut EventCx, _: &A, event: Event) -> IsUsed {
             let open_popup = |s: &mut Self, cx: &mut EventCx, source: FocusSource| {
                 if s.popup.open(cx, &(), s.id()) {
-                    if let Some(w) = s.popup.inner.deref().get_child(s.active) {
+                    if let Some(w) = s.popup.inner.inner.get_child(s.active) {
                         cx.next_nav_focus(w.id(), false, source);
                     }
                 }
@@ -304,10 +304,10 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
 
     /// Set the active choice
     pub fn set_active(&mut self, index: usize) -> Action {
-        if self.active != index && index < self.popup.inner.len() {
+        if self.active != index && index < self.popup.inner.inner.len() {
             self.active = index;
             let string = if index < self.len() {
-                self.popup.inner[index].get_string()
+                self.popup.inner.inner[index].get_string()
             } else {
                 "".to_string()
             };
@@ -320,18 +320,18 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
     /// Get the number of entries
     #[inline]
     pub fn len(&self) -> usize {
-        self.popup.inner.len()
+        self.popup.inner.inner.len()
     }
 
     /// True if the box contains no entries
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.popup.inner.is_empty()
+        self.popup.inner.inner.is_empty()
     }
 
     /// Remove all choices
     pub fn clear(&mut self) {
-        self.popup.inner.clear()
+        self.popup.inner.inner.clear()
     }
 
     /// Add a choice to the combobox, in last position
@@ -341,13 +341,13 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
     // TODO(opt): these methods cause full-window resize. They don't need to
     // resize at all if the menu is closed!
     pub fn push<T: Into<AccessString>>(&mut self, cx: &mut ConfigCx, label: T, msg: V) -> usize {
-        let column = self.popup.inner.deref_mut();
+        let column = &mut self.popup.inner.inner;
         column.push(cx, &(), MenuEntry::new_msg(label, msg))
     }
 
     /// Pops the last choice from the combobox
     pub fn pop(&mut self, cx: &mut EventState) -> Option<()> {
-        self.popup.inner.pop(cx).map(|_| ())
+        self.popup.inner.inner.pop(cx).map(|_| ())
     }
 
     /// Add a choice at position `index`
@@ -360,7 +360,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
         label: T,
         msg: V,
     ) {
-        let column = self.popup.inner.deref_mut();
+        let column = &mut self.popup.inner.inner;
         column.insert(cx, &(), index, MenuEntry::new_msg(label, msg));
     }
 
@@ -368,7 +368,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
     ///
     /// Panics if `index` is out of bounds.
     pub fn remove(&mut self, cx: &mut EventState, index: usize) {
-        self.popup.inner.remove(cx, index);
+        self.popup.inner.inner.remove(cx, index);
     }
 
     /// Replace the choice at `index`
@@ -382,6 +382,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
         msg: V,
     ) {
         self.popup
+            .inner
             .inner
             .replace(cx, &(), index, MenuEntry::new_msg(label, msg));
     }
