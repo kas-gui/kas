@@ -279,7 +279,6 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// ```ignore
 /// impl_scope! {
 ///     /// A frame around content
-///     #[autoimpl(Deref, DerefMut using self.inner)]
 ///     #[autoimpl(class_traits using self.inner where W: trait)]
 ///     #[derive(Clone, Default)]
 ///     #[widget{
@@ -321,6 +320,15 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// This is a special mode where most features of `#[widget]` are not
 /// available; most notably, the deriving widget does not have its own `Id`.
 ///
+/// ### A note on `Deref`
+///
+/// The "derive" example implements [`Deref`] over the inner widget. This is
+/// acceptable for a simple wrapping "derive widget". It is not recommended to
+/// implement [`Deref`] outside of derive mode (i.e. when the outer widget has
+/// its own `Id`) due to the potential for method collision (e.g. `outer.id()`
+/// may resolve to `outer.deref().id()` when the trait providing `fn id` is not
+/// in scope, yet is available through a bound on the field).
+///
 ///
 /// ## Debugging
 ///
@@ -339,6 +347,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// [`CursorIcon`]: https://docs.rs/kas/latest/kas/event/enum.CursorIcon.html
 /// [`IsUsed`]: https://docs.rs/kas/latest/kas/event/enum.IsUsed.html
 /// [`CoreData`]: https://docs.rs/kas/latest/kas/struct.CoreData.html
+/// [`Deref`]: std::ops::Deref
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
