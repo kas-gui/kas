@@ -15,7 +15,6 @@ impl_scope! {
     /// usage.
     ///
     /// Mouse/touch input on the label sends events to the inner widget.
-    #[autoimpl(Deref, DerefMut using self.inner)]
     #[derive(Clone, Default)]
     #[widget {
         Data = W::Data;
