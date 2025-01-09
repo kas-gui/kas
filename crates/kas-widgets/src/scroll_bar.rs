@@ -350,7 +350,6 @@ impl_scope! {
     /// the result looks poor when content is scrolled. Instead the content should
     /// force internal margins by wrapping contents with a (zero-sized) frame.
     /// [`ScrollRegion`] already does this.
-    #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[impl_default(where W: trait)]
     #[derive(Clone, Debug)]
