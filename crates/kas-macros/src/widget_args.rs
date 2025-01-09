@@ -23,6 +23,7 @@ mod kw {
     custom_keyword!(cursor_icon);
     custom_keyword!(derive);
     custom_keyword!(Data);
+    custom_keyword!(data_expr);
 }
 
 #[derive(Debug)]
@@ -36,6 +37,20 @@ impl ToTokens for DataTy {
         self.kw.to_tokens(tokens);
         self.eq.to_tokens(tokens);
         self.ty.to_tokens(tokens);
+    }
+}
+
+#[derive(Debug)]
+pub struct DataExpr {
+    pub kw: kw::data_expr,
+    pub eq: Eq,
+    pub expr: syn::Expr,
+}
+impl ToTokens for DataExpr {
+    fn to_tokens(&self, tokens: &mut Toks) {
+        self.kw.to_tokens(tokens);
+        self.eq.to_tokens(tokens);
+        self.expr.to_tokens(tokens);
     }
 }
 
@@ -84,6 +99,7 @@ pub struct Layout {
 #[derive(Debug, Default)]
 pub struct WidgetArgs {
     pub data_ty: Option<DataTy>,
+    pub data_expr: Option<DataExpr>,
     pub navigable: Option<Toks>,
     pub hover_highlight: Option<HoverHighlight>,
     pub cursor_icon: Option<CursorIcon>,
@@ -94,6 +110,7 @@ pub struct WidgetArgs {
 impl Parse for WidgetArgs {
     fn parse(content: ParseStream) -> Result<Self> {
         let mut data_ty = None;
+        let mut data_expr = None;
         let mut navigable = None;
         let mut hover_highlight = None;
         let mut cursor_icon = None;
@@ -107,6 +124,12 @@ impl Parse for WidgetArgs {
                     kw: content.parse()?,
                     eq: content.parse()?,
                     ty: content.parse()?,
+                });
+            } else if lookahead.peek(kw::data_expr) && data_expr.is_none() {
+                data_expr = Some(DataExpr {
+                    kw: content.parse()?,
+                    eq: content.parse()?,
+                    expr: content.parse()?,
                 });
             } else if lookahead.peek(kw::navigable) && navigable.is_none() {
                 let span = content.parse::<kw::navigable>()?.span();
@@ -149,6 +172,7 @@ impl Parse for WidgetArgs {
 
         Ok(WidgetArgs {
             data_ty,
+            data_expr,
             navigable,
             hover_highlight,
             cursor_icon,

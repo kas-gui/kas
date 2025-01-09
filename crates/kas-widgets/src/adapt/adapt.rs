@@ -17,7 +17,6 @@ impl_scope! {
     /// Where [`Map`] allows mapping to a sub-set of input data, `Adapt` allows
     /// mapping to a super-set (including internal storage). Further, `Adapt`
     /// supports message handlers which mutate internal storage.
-    #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(Scrollable using self.inner where W: trait)]
     #[widget {
         layout = self.inner;
@@ -161,20 +160,25 @@ impl_scope! {
 impl_scope! {
     /// Data mapping
     ///
-    /// This is a generic data-mapping widget. See also [`Adapt`], [`MapAny`](super::MapAny).
+    /// This is a generic data-mapping widget-wrapper.
+    /// See also [`Adapt`], [`MapAny`](super::MapAny).
+    ///
+    /// This struct is a thin wrapper around the inner widget without its own
+    /// [`Id`]. It supports [`Deref`](std::ops::Deref) and
+    /// [`DerefMut`](std::ops::DerefMut) to the inner widget.
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(Scrollable using self.inner where W: trait)]
     #[widget {
         Data = A;
-        layout = self.inner;
+        data_expr = (self.map_fn)(data);
+        derive = self.inner;
     }]
     pub struct Map<A, W: Widget, F>
     where
         F: for<'a> Fn(&'a A) -> &'a W::Data,
     {
-        core: widget_core!(),
-        #[widget((self.map_fn)(data))]
-        inner: W,
+        /// The inner widget
+        pub inner: W,
         map_fn: F,
         _data: PhantomData<A>,
     }
@@ -186,7 +190,6 @@ impl_scope! {
         /// -   And `map_fn` mapping to the inner widget's data type
         pub fn new(inner: W, map_fn: F) -> Self {
             Map {
-                core: Default::default(),
                 inner,
                 map_fn,
                 _data: PhantomData,

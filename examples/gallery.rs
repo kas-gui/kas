@@ -123,7 +123,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
                 if let Some(MsgEdit) = cx.try_pop() {
                     // TODO: do not always set text: if this is a true pop-up it
                     // should not normally lose data.
-                    let act = self.popup.set_text(data.text.clone());
+                    let act = self.popup.inner.set_text(data.text.clone());
                     // let ed = TextEdit::new(text, true);
                     // cx.add_window::<()>(ed.into_window("Edit text"));
                     // TODO: cx.add_modal(..)
@@ -401,7 +401,7 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
     let list_view = filter::FilterBoxList::new(ListView::down(ListGuard), filter, guard)
         .map(|data: &Data| &data.list)
         .on_update(|cx, list, data| {
-            let act = list.set_selection_mode(data.mode);
+            let act = list.list_mut().set_selection_mode(data.mode);
             cx.action(list, act);
         });
 

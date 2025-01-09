@@ -286,7 +286,7 @@ impl Rgba8Srgb {
 
         const fn byte(a: u8, b: u8) -> Result<u8, ()> {
             match (val(a), val(b)) {
-                (Ok(hi), Ok(lo)) => Ok(hi << 4 | lo),
+                (Ok(hi), Ok(lo)) => Ok((hi << 4) | lo),
                 _ => Err(()),
             }
         }

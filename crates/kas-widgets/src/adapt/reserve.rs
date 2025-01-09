@@ -5,7 +5,9 @@
 
 //! Size reservation
 
+use kas::dir::Directions;
 use kas::prelude::*;
+use kas::theme::MarginStyle;
 
 impl_scope! {
     /// A generic widget for size reservations
@@ -16,7 +18,6 @@ impl_scope! {
     ///
     /// Usually, this type will be constructed through one of the methods on
     /// [`AdaptWidget`](crate::adapt::AdaptWidget).
-    #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[widget{ derive = self.inner; }]
     pub struct Reserve<W: Widget> {
@@ -53,6 +54,48 @@ impl_scope! {
             let inner_rules = self.inner.size_rules(sizer.re(), axis);
             let reserve_rules = (self.reserve)(sizer.re(), axis);
             inner_rules.max(reserve_rules)
+        }
+    }
+}
+
+impl_scope! {
+    /// Specify margins
+    ///
+    /// This replaces a widget's margins.
+    ///
+    /// Usually, this type will be constructed through one of the methods on
+    /// [`AdaptWidget`](crate::adapt::AdaptWidget).
+    #[autoimpl(class_traits using self.inner where W: trait)]
+    #[widget{ derive = self.inner; }]
+    pub struct Margins<W: Widget> {
+        pub inner: W,
+        dirs: Directions,
+        style: MarginStyle,
+    }
+
+    impl Self {
+        /// Construct
+        #[inline]
+        pub fn new(inner: W, dirs: Directions, style: MarginStyle) -> Self {
+            Margins { inner, dirs, style }
+        }
+    }
+
+    impl Layout for Self {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut child_rules = self.inner.size_rules(sizer.re(), axis);
+            if self.dirs.intersects(Directions::from(axis)) {
+                let mut rule_margins = child_rules.margins();
+                let margins = sizer.margins(self.style).extract(axis);
+                if self.dirs.intersects(Directions::LEFT | Directions::UP) {
+                    rule_margins.0 = margins.0;
+                }
+                if self.dirs.intersects(Directions::RIGHT | Directions::DOWN) {
+                    rule_margins.1 = margins.1;
+                }
+                child_rules.set_margins(rule_margins);
+            }
+            child_rules
         }
     }
 }

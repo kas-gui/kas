@@ -8,20 +8,20 @@
 use super::{AdaptConfigCx, AdaptEventCx};
 use kas::autoimpl;
 use kas::event::{ConfigCx, Event, EventCx, IsUsed};
-use kas::geom::Rect;
-use kas::layout::{AlignHints, AxisInfo, SizeRules};
-use kas::theme::{DrawCx, SizeCx};
 #[allow(unused)] use kas::Events;
-use kas::{Id, Layout, LayoutExt, NavAdvance, Node, Widget};
+use kas::{Id, LayoutExt, Node, Widget};
 use std::fmt::Debug;
 
 kas::impl_scope! {
     /// Wrapper with configure / update / message handling callbacks.
     ///
     /// This type is constructed by some [`AdaptWidget`](super::AdaptWidget) methods.
-    #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(Scrollable using self.inner where W: trait)]
+    #[widget {
+        derive = self.inner;
+    }]
     pub struct AdaptEvents<W: Widget> {
+        /// The inner widget
         pub inner: W,
         on_configure: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W)>>,
         on_update: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W, &W::Data)>>,
@@ -122,71 +122,6 @@ kas::impl_scope! {
         }
     }
 
-    impl Layout for Self {
-        #[inline]
-        fn as_layout(&self) -> &dyn ::kas::Layout {
-            self
-        }
-        #[inline]
-        fn id_ref(&self) -> &::kas::Id {
-            self.inner.id_ref()
-        }
-        #[inline]
-        fn rect(&self) -> ::kas::geom::Rect {
-            self.inner.rect()
-        }
-
-        #[inline]
-        fn widget_name(&self) -> &'static str {
-            "AdaptEvents"
-        }
-
-        #[inline]
-        fn num_children(&self) -> usize {
-            self.inner.num_children()
-        }
-        #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn ::kas::Layout> {
-            self.inner.get_child(index)
-        }
-        #[inline]
-        fn find_child_index(&self, id: &::kas::Id) -> Option<usize> {
-            self.inner.find_child_index(id)
-        }
-
-        #[inline]
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            self.inner.size_rules(sizer, axis)
-        }
-
-        #[inline]
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.inner.set_rect(cx, rect, hints);
-        }
-
-        #[inline]
-        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-            self.inner.nav_next(reverse, from)
-        }
-
-        #[inline]
-        fn translation(&self) -> ::kas::geom::Offset {
-            self.inner.translation()
-        }
-
-        // NOTE: fn probe is left unimplemented since it should not be called directly
-
-        #[inline]
-        fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-            self.inner.try_probe(coord)
-        }
-
-        #[inline]
-        fn draw(&mut self, draw: DrawCx) {
-            self.inner.draw(draw);
-        }
-    }
-
     impl<W: Widget> Widget for AdaptEvents<W> {
         type Data = W::Data;
 
@@ -252,17 +187,6 @@ kas::impl_scope! {
                     handler(&mut cx, &mut self.inner, data);
                 }
             }
-        }
-
-        #[inline]
-        fn _nav_next(
-            &mut self,
-            cx: &mut ConfigCx,
-            data: &Self::Data,
-            focus: Option<&Id>,
-            advance: NavAdvance,
-        ) -> Option<Id> {
-            self.inner._nav_next(cx, data, focus, advance)
         }
     }
 }

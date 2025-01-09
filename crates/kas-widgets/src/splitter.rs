@@ -338,7 +338,7 @@ impl<C: Collection, D: Directional> Splitter<C, D> {
             let track = self.grips[n].track();
             self.grips[n].set_track(track);
             let rect = setter.child_rect(&mut self.data, index);
-            let _ = self.grips[n].set_rect(cx, rect, AlignHints::NONE);
+            self.grips[n].set_rect(cx, rect, AlignHints::NONE);
 
             n += 1;
         }

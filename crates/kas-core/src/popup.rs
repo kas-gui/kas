@@ -8,7 +8,7 @@
 use crate::dir::Direction;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};
 use crate::{Events, Id, LayoutExt, Widget, WindowId};
-use kas_macros::{autoimpl, impl_scope, widget_index};
+use kas_macros::{impl_scope, widget_index};
 
 #[allow(unused)] use crate::event::EventState;
 
@@ -34,15 +34,15 @@ impl_scope! {
     /// NOTE: currently only the emulated approach is implemented.
     ///
     /// A popup receives input data from its parent like any other widget.
-    #[autoimpl(Deref, DerefMut using self.inner)]
     #[widget {
         layout = frame!(self.inner, style = kas::theme::FrameStyle::Popup);
     }]
     pub struct Popup<W: Widget> {
         core: widget_core!(),
         direction: Direction,
+        /// The inner widget
         #[widget]
-        inner: W,
+        pub inner: W,
         win_id: Option<WindowId>,
     }
 

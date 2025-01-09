@@ -174,8 +174,8 @@ impl_scope! {
                 _ => self.popup.close(cx),
             }
 
-            for i in 0..self.popup.len() {
-                self.popup[i].set_menu_path(cx, data, target, set_focus);
+            for i in 0..self.popup.inner.len() {
+                self.popup.inner[i].set_menu_path(cx, data, target, set_focus);
             }
         }
     }

@@ -26,6 +26,10 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let name = &scope.ident;
     let mut data_ty = args.data_ty.map(|data_ty| data_ty.ty);
 
+    if let Some(ref item) = args.data_expr {
+        emit_error!(item, "only supported in `derive` mode");
+    }
+
     let mut widget_impl = None;
     let mut layout_impl = None;
     let mut events_impl = None;
@@ -340,7 +344,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 #count
             }
             fn get_child(&self, index: usize) -> Option<&dyn ::kas::Layout> {
-                use ::kas::Layout;
                 match index {
                     #get_rules
                     _ => None,
@@ -384,8 +387,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let mut fn_size_rules = None;
     let mut set_rect = quote! { self.#core.rect = rect; };
     let mut probe = quote! {
-        use ::kas::{Layout, LayoutExt};
-            self.id()
+        ::kas::LayoutExt::id(self)
     };
     let mut fn_draw = None;
     if let Some(Layout { tree, .. }) = args.layout.take() {
@@ -423,12 +425,10 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
         };
         probe = quote! {
-            use ::kas::{Layout, LayoutExt, layout::LayoutVisitor};
-
             let coord = coord + self.translation();
-            self.layout_visitor()
+            ::kas::layout::LayoutVisitor::layout_visitor(self)
                 .try_probe(coord)
-                    .unwrap_or_else(|| self.id())
+                    .unwrap_or_else(|| ::kas::LayoutExt::id(self))
         };
         fn_draw = Some(quote! {
             fn draw(&mut self, draw: ::kas::theme::DrawCx) {
@@ -735,7 +735,6 @@ pub fn impl_widget(
                 index: usize,
                 closure: Box<dyn FnOnce(::kas::Node<'_>) + '_>,
             ) {
-                use ::kas::Layout;
                 match index {
                     #get_mut_rules
                     _ => (),
@@ -777,6 +776,8 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             data: &Self::Data,
             id: ::kas::Id,
         ) {
+            debug_assert!(id.is_valid(), "Widget::_configure called with invalid id!");
+
             #core_path.id = id;
             #[cfg(debug_assertions)]
             #core_path.status.configure(&#core_path.id);

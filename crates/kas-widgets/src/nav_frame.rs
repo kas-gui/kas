@@ -18,7 +18,6 @@ impl_scope! {
     /// When activated, this widget pushes [`Select`] to the message stack.
     ///
     /// [`Select`]: kas::messages::Select
-    #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Default)]
     #[widget{
@@ -28,6 +27,7 @@ impl_scope! {
     }]
     pub struct NavFrame<W: Widget> {
         core: widget_core!(),
+        /// The inner widget
         #[widget]
         pub inner: W,
     }
