@@ -17,7 +17,6 @@ impl_scope! {
     /// Where [`Map`] allows mapping to a sub-set of input data, `Adapt` allows
     /// mapping to a super-set (including internal storage). Further, `Adapt`
     /// supports message handlers which mutate internal storage.
-    #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(Scrollable using self.inner where W: trait)]
     #[widget {
         layout = self.inner;
