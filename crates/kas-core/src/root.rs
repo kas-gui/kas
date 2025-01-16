@@ -156,7 +156,7 @@ impl_scope! {
             if !self.core.rect.contains(coord) {
                 return None;
             }
-            for (_, popup, translation) in self.popups.iter_mut().rev() {
+            for (_, popup, translation) in self.popups.iter().rev() {
                 if let Some(Some(id)) = self.inner.as_node(data).find_node(&popup.id, |mut node| node.try_probe(coord + *translation)) {
                     return Some(id);
                 }
