@@ -409,13 +409,13 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
         let layout_visitor = tree.layout_visitor(&core_path)?;
         scope.generated.push(quote! {
-                impl #impl_generics ::kas::layout::LayoutVisitor for #impl_target {
-                    fn layout_visitor(&mut self) -> ::kas::layout::Visitor<impl ::kas::layout::Visitable> {
-                        use ::kas::layout;
-                        #layout_visitor
-                    }
+            impl #impl_generics ::kas::layout::LayoutVisitor for #impl_target {
+                fn layout_visitor(&mut self) -> ::kas::layout::Visitor<impl ::kas::Layout> {
+                    use ::kas::layout;
+                    #layout_visitor
                 }
-            });
+            }
+        });
 
         fn_size_rules = Some(quote! {
             fn size_rules(

@@ -154,7 +154,7 @@ impl Tree {
             }
 
             impl #impl_generics ::kas::layout::LayoutVisitor for #impl_target {
-                fn layout_visitor(&mut self) -> ::kas::layout::Visitor<impl ::kas::layout::Visitable> {
+                fn layout_visitor(&mut self) -> ::kas::layout::Visitor<impl ::kas::Layout> {
                     use ::kas::layout;
                     #layout_visitor
                 }
@@ -1159,7 +1159,7 @@ impl<C: GenerateItem> VisitableList<C> {
 
             let ty = Ident::new(&format!("_L{}", index), span);
             impl_generics.append_all(quote! {
-                #ty: ::kas::layout::Visitable,
+                #ty: ::kas::Layout,
             });
             ty_generics.append_all(quote! { #ty, });
 
@@ -1186,7 +1186,7 @@ impl<C: GenerateItem> VisitableList<C> {
             impl<#impl_generics> ::kas::layout::VisitableList<#info_ty> for #name <#ty_generics> {
                 fn len(&self) -> usize { #len }
 
-                fn get_info_item(&mut self, index: usize) -> Option<(#info_ty, &mut dyn ::kas::layout::Visitable)> {
+                fn get_info_item(&mut self, index: usize) -> Option<(#info_ty, &mut dyn ::kas::Layout)> {
                     match index {
                         #get_mut_rules
                         _ => None,
