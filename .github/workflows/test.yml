@@ -71,7 +71,7 @@ jobs:
         toolchain: [stable]
         include:
           - os: ubuntu-latest
-            toolchain: "1.80.0"
+            toolchain: "1.80.1"
           - os: ubuntu-latest
             toolchain: beta
 
