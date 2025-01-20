@@ -125,7 +125,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            let mut draw = draw.re_id(self.checkbox.id());
+            draw.set_id(self.checkbox.id());
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.layout_visitor().draw(draw);
         }

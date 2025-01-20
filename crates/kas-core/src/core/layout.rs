@@ -293,10 +293,15 @@ pub trait Layout {
     /// It is expected that [`Self::set_rect`] is called before this method,
     /// but failure to do so should not cause a fatal error.
     ///
-    /// The `draw` parameter is pre-parameterized with this widget's
-    /// [`Id`], allowing drawn components to react to input state. This
-    /// implies that when calling `draw` on children, the child's `id` must be
-    /// supplied via [`DrawCx::re_id`] or [`DrawCx::recurse`].
+    /// ### Method modification
+    ///
+    /// The `#[widget]` macro injects a call to [`DrawCx::set_id`] into this
+    /// method where possible, allowing correct detection of disabled and
+    /// highlight states.
+    ///
+    /// This method modification should never cause issues (besides the implied
+    /// limitation that widgets cannot easily detect a parent's state while
+    /// being drawn).
     fn draw(&mut self, draw: DrawCx);
 }
 
