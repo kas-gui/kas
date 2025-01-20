@@ -187,10 +187,10 @@ impl_scope! {
             if self.dec_size != Size::ZERO {
                 draw.frame(self.core.rect, FrameStyle::Window, Default::default());
                 if self.bar_h > 0 {
-                    draw.recurse(&mut self.title_bar);
+                    self.title_bar.draw(draw.re());
                 }
             }
-            draw.recurse(&mut self.inner);
+            self.inner.draw(draw.re());
             for (_, popup, translation) in &self.popups {
                 self.inner.as_node(data).find_node(&popup.id, |mut node| {
                     let clip_rect = node.rect() - *translation;

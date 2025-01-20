@@ -409,9 +409,9 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            draw.recurse(&mut self.inner);
+            self.inner.draw(draw.re());
             if self.inner.max_scroll_offset().1 > 0 {
-                draw.recurse(&mut self.bar);
+                self.bar.draw(draw.re());
             }
         }
     }

@@ -270,8 +270,8 @@ impl<'a> Visitable for Single<'a> {
         self.widget.try_probe(coord)
     }
 
-    fn draw(&mut self, mut draw: DrawCx) {
-        draw.recurse(self.widget)
+    fn draw(&mut self, draw: DrawCx) {
+        self.widget.draw(draw);
     }
 }
 

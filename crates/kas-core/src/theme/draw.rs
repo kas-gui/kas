@@ -60,12 +60,6 @@ impl<'a> DrawCx<'a> {
         }
     }
 
-    /// Recurse drawing to a child
-    #[inline]
-    pub fn recurse(&mut self, child: &mut (impl Layout + ?Sized)) {
-        child.draw(self.re());
-    }
-
     /// Construct from a [`DrawCx`] and [`EventState`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]

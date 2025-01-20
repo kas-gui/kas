@@ -37,7 +37,7 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawCx) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
-            draw.recurse(&mut self.label);
+            self.label.draw(draw.re());
         }
     }
 
