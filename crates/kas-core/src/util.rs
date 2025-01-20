@@ -8,12 +8,12 @@
 use crate::geom::Coord;
 #[cfg(all(feature = "image", feature = "winit"))]
 use crate::Icon;
-use crate::{Id, Layout, LayoutExt};
+use crate::{Id, Tile, TileExt};
 use std::fmt;
 
 /// Helper to display widget identification (e.g. `MyWidget#01`)
 ///
-/// Constructed by [`crate::LayoutExt::identify`].
+/// Constructed by [`crate::TileExt::identify`].
 pub struct IdentifyWidget<'a>(pub(crate) &'static str, pub(crate) &'a Id);
 impl<'a> fmt::Display for IdentifyWidget<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
@@ -25,12 +25,12 @@ impl<'a> fmt::Display for IdentifyWidget<'a> {
 ///
 /// Note: output starts with a new line.
 pub struct WidgetHierarchy<'a> {
-    widget: &'a dyn Layout,
+    widget: &'a dyn Tile,
     filter: Option<Id>,
     indent: usize,
 }
 impl<'a> WidgetHierarchy<'a> {
-    pub fn new(widget: &'a dyn Layout, filter: Option<Id>) -> Self {
+    pub fn new(widget: &'a dyn Tile, filter: Option<Id>) -> Self {
         WidgetHierarchy {
             widget,
             filter,
@@ -102,7 +102,7 @@ impl<'a, T: fmt::Debug + ?Sized> fmt::Debug for TryFormat<'a, T> {
     }
 }
 
-/// Generic implementation of [`Layout::nav_next`]
+/// Generic implementation of [`Tile::nav_next`]
 pub fn nav_next(reverse: bool, from: Option<usize>, len: usize) -> Option<usize> {
     let last = len.wrapping_sub(1);
     if last == usize::MAX {

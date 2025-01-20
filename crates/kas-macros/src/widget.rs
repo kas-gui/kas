@@ -32,6 +32,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
     let mut widget_impl = None;
     let mut layout_impl = None;
+    let mut tile_impl = None;
     let mut events_impl = None;
 
     let mut num_children = None;
@@ -71,6 +72,13 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             {
                 if layout_impl.is_none() {
                     layout_impl = Some(index);
+                }
+            } else if *path == parse_quote! { ::kas::Tile }
+                || *path == parse_quote! { kas::Tile }
+                || *path == parse_quote! { Tile }
+            {
+                if tile_impl.is_none() {
+                    tile_impl = Some(index);
                 }
 
                 for item in &impl_.items {
@@ -285,10 +293,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     }
     if let Some(span) = get_child.as_ref().or(for_child_node.as_ref()) {
         if num_children.is_none() {
-            emit_warning!(
-                span,
-                "associated impl of `fn Layout::num_children` required"
-            );
+            emit_warning!(span, "associated impl of `fn Tile::num_children` required");
         }
         if !children.is_empty() {
             if children
@@ -304,7 +309,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
     let impl_generics = impl_generics.to_token_stream();
     let impl_target = quote! { #name #ty_generics #where_clause };
-
     let Some(core) = core_data.clone() else {
         let span = match scope.item {
             ScopeItem::Struct {
@@ -329,7 +333,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         #core_path.status.require_rect(&#core_path.id);
     };
 
-    let mut required_layout_methods = impl_core_methods(&name.to_string(), &core_path);
+    let mut required_tile_methods = impl_core_methods(&name.to_string(), &core_path);
 
     let do_impl_widget_children = get_child.is_none() && for_child_node.is_none();
     if do_impl_widget_children {
@@ -339,11 +343,11 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         }
 
         let count = children.len();
-        required_layout_methods.append_all(quote! {
+        required_tile_methods.append_all(quote! {
             fn num_children(&self) -> usize {
                 #count
             }
-            fn get_child(&self, index: usize) -> Option<&dyn ::kas::Layout> {
+            fn get_child(&self, index: usize) -> Option<&dyn ::kas::Tile> {
                 match index {
                     #get_rules
                     _ => None,
@@ -387,12 +391,16 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let mut fn_size_rules = None;
     let mut set_rect = quote! { self.#core.rect = rect; };
     let mut probe = quote! {
-        ::kas::LayoutExt::id(self)
+        ::kas::TileExt::id(self)
     };
     let mut fn_draw = None;
     if let Some(Layout { tree, .. }) = args.layout.take() {
         fn_nav_next = match tree.nav_next(children.iter()) {
-            Ok(toks) => Some(toks),
+            Ok(toks) => Some(quote! {
+                fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+                    #toks
+                }
+            }),
             Err((span, msg)) => {
                 fn_nav_next_err = Some((span, msg));
                 None
@@ -425,17 +433,17 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
         };
         probe = quote! {
-            let coord = coord + self.translation();
+            let coord = coord + ::kas::Tile::translation(self);
             ::kas::layout::LayoutVisitor::layout_visitor(self)
                 .try_probe(coord)
-                    .unwrap_or_else(|| ::kas::LayoutExt::id(self))
+                    .unwrap_or_else(|| ::kas::TileExt::id(self))
         };
         fn_draw = Some(quote! {
             fn draw(&mut self, mut draw: ::kas::theme::DrawCx) {
                 #[cfg(debug_assertions)]
                 #core_path.status.require_rect(&#core_path.id);
 
-                draw.set_id(::kas::LayoutExt::id(self));
+                draw.set_id(::kas::TileExt::id(self));
 
                 ::kas::layout::LayoutVisitor::layout_visitor(self).draw(draw);
             }
@@ -552,9 +560,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     if let Some(index) = layout_impl {
         let layout_impl = &mut scope.impls[index];
         let item_idents = collect_idents(layout_impl);
-        let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
-
-        layout_impl.items.push(Verbatim(required_layout_methods));
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "size_rules") {
             if let Some(ref core) = core_data {
@@ -587,15 +592,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             }
         } else {
             layout_impl.items.push(Verbatim(fn_set_rect));
-        }
-
-        if !has_item("nav_next") {
-            if let Some(method) = fn_nav_next {
-                layout_impl.items.push(Verbatim(method));
-            } else if let Some((span, msg)) = fn_nav_next_err {
-                // We emit a warning here only if nav_next is not explicitly defined
-                emit_warning!(span, "unable to generate `fn Layout::nav_next`: {}", msg,);
-            }
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "probe") {
@@ -636,7 +632,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                             if pat_ident.mutability.is_some() {
                                 let draw = &pat_ident.ident;
                                 f.block.stmts.insert(0, parse_quote! {
-                                    #draw.set_id(::kas::LayoutExt::id(self));
+                                    #draw.set_id(::kas::TileExt::id(self));
                                 });
                             }
                         }
@@ -647,20 +643,42 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             layout_impl.items.push(Verbatim(method));
         }
     } else if let Some(fn_size_rules) = fn_size_rules {
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::Layout for #impl_target {
+                #fn_size_rules
+                #fn_set_rect
+                #fn_probe
+                #fn_draw
+            }
+        });
+    }
+
+    if let Some(index) = tile_impl {
+        let tile_impl = &mut scope.impls[index];
+        let item_idents = collect_idents(tile_impl);
+        let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
+
+        tile_impl.items.push(Verbatim(required_tile_methods));
+
+        if !has_item("nav_next") {
+            if let Some(method) = fn_nav_next {
+                tile_impl.items.push(Verbatim(method));
+            } else if let Some((span, msg)) = fn_nav_next_err {
+                // We emit a warning here only if nav_next is not explicitly defined
+                emit_warning!(span, "unable to generate `fn Tile::nav_next`: {}", msg,);
+            }
+        }
+    } else {
         if fn_nav_next.is_none() {
             if let Some((span, msg)) = fn_nav_next_err {
-                emit_warning!(span, "unable to generate `fn Layout::nav_next`: {}", msg,);
+                emit_warning!(span, "unable to generate `fn Tile::nav_next`: {}", msg,);
             }
         }
 
         scope.generated.push(quote! {
-            impl #impl_generics ::kas::Layout for #impl_target {
-                #required_layout_methods
-                #fn_size_rules
-                #fn_set_rect
+            impl #impl_generics ::kas::Tile for #impl_target {
+                #required_tile_methods
                 #fn_nav_next
-                #fn_probe
-                #fn_draw
             }
         });
     }
@@ -689,7 +707,7 @@ pub fn collect_idents(item_impl: &ItemImpl) -> Vec<(usize, Ident)> {
 pub fn impl_core_methods(name: &str, core_path: &Toks) -> Toks {
     quote! {
         #[inline]
-        fn as_layout(&self) -> &dyn ::kas::Layout {
+        fn as_tile(&self) -> &dyn ::kas::Tile {
             self
         }
         #[inline]

@@ -96,11 +96,6 @@ impl_scope! {
     }
 
     impl kas::Layout for Self {
-        fn nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {
-            // We have no child within our rect
-            None
-        }
-
         fn probe(&mut self, _: Coord) -> Id {
             self.id()
         }
@@ -111,6 +106,13 @@ impl_scope! {
             if self.mark.rect().size != Size::ZERO {
                 self.mark.draw(draw.re());
             }
+        }
+    }
+
+    impl Tile for Self {
+        fn nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {
+            // We have no child within our rect
+            None
         }
     }
 
@@ -222,15 +224,17 @@ impl_scope! {
         }
     }
 
-    impl kas::Layout for Self {
+    impl Tile for Self {
         #[inline]
         fn num_children(&self) -> usize {
             self.list.len()
         }
-        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
-            self.list.get(index).map(|w| w.as_layout())
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
+            self.list.get(index).map(|w| w.as_tile())
         }
+    }
 
+    impl kas::Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             self.dim = layout::GridDimensions {
                 cols: MENU_VIEW_COLS,
@@ -255,7 +259,7 @@ impl_scope! {
                 .frame(FrameStyle::MenuEntry, axis.flipped())
                 .surround(child_rules);
 
-            let child_rules = |sizer: SizeCx, w: &mut dyn Layout, mut axis: AxisInfo| {
+            let child_rules = |sizer: SizeCx, w: &mut dyn Tile, mut axis: AxisInfo| {
                 axis.sub_other(frame_size_flipped);
                 let rules = w.size_rules(sizer, axis);
                 frame_rules.surround(rules).0

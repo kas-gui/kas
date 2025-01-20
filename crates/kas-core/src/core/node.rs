@@ -10,7 +10,7 @@ use crate::event::{ConfigCx, Event, EventCx, IsUsed};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx};
-use crate::{Id, Layout, NavAdvance};
+use crate::{Id, NavAdvance, Tile};
 
 #[cfg(not(feature = "unsafe_node"))]
 trait NodeT {
@@ -18,7 +18,7 @@ trait NodeT {
     fn rect(&self) -> Rect;
 
     fn clone_node(&mut self) -> Node<'_>;
-    fn as_layout(&self) -> &dyn Layout;
+    fn as_tile(&self) -> &dyn Tile;
 
     fn num_children(&self) -> usize;
     fn find_child_index(&self, id: &Id) -> Option<usize>;
@@ -55,8 +55,8 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
     fn clone_node(&mut self) -> Node<'_> {
         Node::new(self.0, self.1)
     }
-    fn as_layout(&self) -> &dyn Layout {
-        self.0.as_layout()
+    fn as_tile(&self) -> &dyn Tile {
+        self.0.as_tile()
     }
 
     fn num_children(&self) -> usize {
@@ -162,9 +162,9 @@ impl<'a> Node<'a> {
         }
     }
 
-    /// Reborrow as a `dyn Layout`
-    pub fn as_layout(&self) -> &dyn Layout {
-        self.0.as_layout()
+    /// Reborrow as a `dyn Tile`
+    pub fn as_tile(&self) -> &dyn Tile {
+        self.0.as_tile()
     }
 
     /// Get the widget's identifier

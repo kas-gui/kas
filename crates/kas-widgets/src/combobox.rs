@@ -46,7 +46,7 @@ impl_scope! {
         on_select: Option<Box<dyn Fn(&mut EventCx, V)>>,
     }
 
-    impl Layout for Self {
+    impl Tile for Self {
         fn nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None

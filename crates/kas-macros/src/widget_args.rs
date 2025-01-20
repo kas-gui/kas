@@ -222,8 +222,8 @@ pub enum ChildIdent {
 impl ChildIdent {
     pub fn get_rule(&self, core_path: &Toks, i: usize) -> Toks {
         match self {
-            ChildIdent::Field(ident) => quote! { #i => Some(self.#ident.as_layout()), },
-            ChildIdent::CoreField(ident) => quote! { #i => Some(#core_path.#ident.as_layout()), },
+            ChildIdent::Field(ident) => quote! { #i => Some(self.#ident.as_tile()), },
+            ChildIdent::CoreField(ident) => quote! { #i => Some(#core_path.#ident.as_tile()), },
         }
     }
 }

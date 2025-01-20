@@ -69,19 +69,21 @@ impl_scope! {
         }
     }
 
-    impl Layout for Self {
+    impl Tile for Self {
         #[inline]
         fn num_children(&self) -> usize {
             self.widgets.len()
         }
-        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
-            self.widgets.get_layout(index).map(|w| w.as_layout())
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
+            self.widgets.get_tile(index).map(|w| w.as_tile())
         }
+    }
 
+    impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, &mut self.layout);
             for n in 0..self.widgets.len() {
-                if let Some((info, child)) = self.widgets.cell_info(n).zip(self.widgets.get_mut_layout(n)) {
+                if let Some((info, child)) = self.widgets.cell_info(n).zip(self.widgets.get_mut_tile(n)) {
                     solver.for_child(&mut self.layout, info, |axis| {
                         child.size_rules(sizer.re(), axis)
                     });
@@ -94,7 +96,7 @@ impl_scope! {
             self.core.rect = rect;
             let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, &mut self.layout);
             for n in 0..self.widgets.len() {
-                if let Some((info, child)) = self.widgets.cell_info(n).zip(self.widgets.get_mut_layout(n)) {
+                if let Some((info, child)) = self.widgets.cell_info(n).zip(self.widgets.get_mut_tile(n)) {
                     child.set_rect(cx, setter.child_rect(&mut self.layout, info), hints);
                 }
             }
@@ -102,7 +104,7 @@ impl_scope! {
 
         fn probe(&mut self, coord: Coord) -> Id {
             for n in 0..self.widgets.len() {
-                if let Some(child) = self.widgets.get_mut_layout(n) {
+                if let Some(child) = self.widgets.get_mut_tile(n) {
                     if let Some(id) = child.try_probe(coord) {
                         return id;
                     }
@@ -113,7 +115,7 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawCx) {
             for n in 0..self.widgets.len() {
-                if let Some(child) = self.widgets.get_mut_layout(n) {
+                if let Some(child) = self.widgets.get_mut_tile(n) {
                     child.draw(draw.re());
                 }
             }

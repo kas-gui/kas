@@ -5,7 +5,8 @@
 
 //! Widget and Events traits
 
-use super::{Layout, Node};
+#[allow(unused)] use super::Layout;
+use super::{Node, Tile};
 #[allow(unused)] use crate::event::Used;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused};
 use crate::Id;
@@ -31,7 +32,7 @@ use kas_macros::autoimpl;
 ///     cached by `size_rules`.
 /// 4.  The widget is updated again after any data change (see [`ConfigCx::update`]).
 /// 5.  The widget is ready for event-handling and drawing
-///     ([`Events::handle_event`], [`Layout::try_probe`], [`Layout::draw`]).
+///     ([`Events::handle_event`], [`Tile::try_probe`], [`Layout::draw`]).
 ///
 /// Widgets are responsible for ensuring that their children may observe this
 /// lifecycle. Usually this simply involves inclusion of the child in layout
@@ -46,7 +47,7 @@ pub trait Events: Widget + Sized {
     /// [`Id::default`] in order to avoid configuring the child, but in
     /// this case the widget must configure via another means.
     ///
-    /// If this is implemented explicitly then [`Layout::find_child_index`] must
+    /// If this is implemented explicitly then [`Tile::find_child_index`] must
     /// be too.
     ///
     /// Default impl: `self.id_ref().make_child(index)`
@@ -238,12 +239,12 @@ pub enum NavAdvance {
 
 /// The Widget trait
 ///
-/// The primary widget trait covers event handling over super trait [`Layout`]
+/// The primary widget trait covers event handling over super trait [`Tile`]
 /// which governs layout, drawing, child enumeration and identification.
 /// Most methods of `Widget` are hidden and only for use within the Kas library.
 ///
 /// `Widget` is dyn-safe given a type parameter, e.g. `dyn Widget<Data = ()>`.
-/// [`Layout`] is dyn-safe without a type parameter. [`Node`] is a dyn-safe
+/// [`Tile`] is dyn-safe without a type parameter. [`Node`] is a dyn-safe
 /// abstraction over a `&dyn Widget<Data = T>` plus a `&T` data parameter.
 ///
 /// # Widget lifecycle
@@ -256,7 +257,7 @@ pub enum NavAdvance {
 ///     cached by `size_rules`.
 /// 4.  The widget is updated again after any data change (see [`ConfigCx::update`]).
 /// 5.  The widget is ready for event-handling and drawing
-///     ([`Events::handle_event`], [`Layout::try_probe`], [`Layout::draw`]).
+///     ([`Events::handle_event`], [`Tile::try_probe`], [`Layout::draw`]).
 ///
 /// Widgets are responsible for ensuring that their children may observe this
 /// lifecycle. Usually this simply involves inclusion of the child in layout
@@ -269,7 +270,7 @@ pub enum NavAdvance {
 /// [`impl_scope`](macros::impl_scope). **This is the only supported method of
 /// implementing `Widget`.**
 ///
-/// Explicit (partial) implementations of [`Widget`], [`Layout`] and [`Events`]
+/// Explicit (partial) implementations of [`Widget`], [`Layout`], [`Tile`] and [`Events`]
 /// are optional. The [`#widget`] macro completes implementations.
 ///
 /// Synopsis:
@@ -298,13 +299,13 @@ pub enum NavAdvance {
 /// -   **Data**: the type [`Widget::Data`] must be specified exactly once, but
 ///     this type may be given in any of three locations: as a property of the
 ///     [`#widget`] macro or as [`Widget::Data`].
-/// -   **Core** methods of [`Layout`] are *always* implemented via the [`#widget`]
-///     macro, whether or not an `impl Layout { ... }` item is present.
-/// -   **Introspection** methods [`Layout::num_children`], [`Layout::get_child`]
+/// -   **Core** methods of [`Tile`] are *always* implemented via the [`#widget`]
+///     macro, whether or not an `impl Tile { ... }` item is present.
+/// -   **Introspection** methods [`Tile::num_children`], [`Tile::get_child`]
 ///     and [`Widget::for_child_node`] are implemented by the [`#widget`] macro
 ///     in most cases: child widgets embedded within a layout descriptor or
 ///     included as fields marked with `#[widget]` are enumerated.
-/// -   **Introspection** methods [`Layout::find_child_index`] and
+/// -   **Introspection** methods [`Tile::find_child_index`] and
 ///     [`Events::make_child_id`] have default implementations which *usually*
 ///     suffice.
 /// -   **Layout** is specified either via [layout syntax](macros::widget#layout-1)
@@ -320,7 +321,7 @@ pub enum NavAdvance {
 ///
 /// [`#widget`]: macros::widget
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait Widget: Layout {
+pub trait Widget: Tile {
     /// Input data type
     ///
     /// Widget expects data of this type to be provided by reference when
@@ -344,7 +345,7 @@ pub trait Widget: Layout {
     ///
     /// Widgets with no children or using the `#[widget]` attribute on fields do
     /// not need to implement this. Widgets with an explicit implementation of
-    /// [`Layout::num_children`] also need to implement this.
+    /// [`Tile::num_children`] also need to implement this.
     ///
     /// It is recommended to use the methods on [`Node`]
     /// instead of calling this method.

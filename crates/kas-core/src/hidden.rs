@@ -14,7 +14,7 @@ use crate::event::ConfigCx;
 use crate::geom::Rect;
 use crate::layout::{Align, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx, Text, TextClass};
-use crate::{Events, Layout, Widget};
+use crate::{Events, Layout, Tile, Widget};
 use kas_macros::{autoimpl, impl_scope};
 
 impl_scope! {

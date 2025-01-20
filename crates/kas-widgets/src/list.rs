@@ -81,26 +81,28 @@ impl_scope! {
         id_map: HashMap<usize, usize>, // map key of Id to index
     }
 
-    impl Layout for Self {
+    impl Tile for Self {
         #[inline]
         fn num_children(&self) -> usize {
             self.widgets.len()
         }
 
-        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
-            self.widgets.get_layout(index)
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
+            self.widgets.get_tile(index)
         }
 
         fn find_child_index(&self, id: &Id) -> Option<usize> {
             id.next_key_after(self.id_ref())
                 .and_then(|k| self.id_map.get(&k).cloned())
         }
+    }
 
+    impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let dim = (self.direction, self.widgets.len());
             let mut solver = RowSolver::new(axis, dim, &mut self.layout);
             for n in 0..self.widgets.len() {
-                if let Some(child) = self.widgets.get_mut_layout(n) {
+                if let Some(child) = self.widgets.get_mut_tile(n) {
                     solver.for_child(&mut self.layout, n, |axis| child.size_rules(sizer.re(), axis));
                 }
             }
@@ -113,7 +115,7 @@ impl_scope! {
             let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, &mut self.layout);
 
             for n in 0..self.widgets.len() {
-                if let Some(child) = self.widgets.get_mut_layout(n) {
+                if let Some(child) = self.widgets.get_mut_tile(n) {
                     child.set_rect(cx, setter.child_rect(&mut self.layout, n), hints);
                 }
             }
@@ -149,7 +151,7 @@ impl_scope! {
     impl Events for Self {
         /// Make a fresh id based on `self.next` then insert into `self.id_map`
         fn make_child_id(&mut self, index: usize) -> Id {
-            if let Some(child) = self.widgets.get_layout(index) {
+            if let Some(child) = self.widgets.get_tile(index) {
                 // Use the widget's existing identifier, if any
                 if child.id_ref().is_valid() {
                     if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {

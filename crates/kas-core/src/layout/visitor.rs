@@ -17,9 +17,10 @@ use crate::event::ConfigCx;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::theme::{Background, DrawCx, FrameStyle, MarginStyle, SizeCx};
 use crate::Id;
-use crate::{dir::Directional, dir::Directions, Layout};
+#[allow(unused)] use crate::Layout;
+use crate::{dir::Directional, dir::Directions, Tile};
 
-/// A sub-set of [`Layout`] used by [`Visitor`].
+/// A sub-set of [`Tile`] used by [`Visitor`].
 ///
 /// Unlike when implementing a widget, all methods of this trait must be
 /// implemented directly.
@@ -88,7 +89,7 @@ pub struct Visitor<V: Visitable>(V);
 /// These methods would be free functions, but `Visitable` is a useful namespace
 impl<'a> Visitor<Box<dyn Visitable + 'a>> {
     /// Construct a single-item layout
-    pub fn single(widget: &'a mut dyn Layout) -> Visitor<impl Visitable + 'a> {
+    pub fn single(widget: &'a mut dyn Tile) -> Visitor<impl Visitable + 'a> {
         Visitor(Single { widget })
     }
 
@@ -254,7 +255,7 @@ impl<V: Visitable> Visitable for Visitor<V> {
 }
 
 struct Single<'a> {
-    widget: &'a mut dyn Layout,
+    widget: &'a mut dyn Tile,
 }
 
 impl<'a> Visitable for Single<'a> {

@@ -117,11 +117,6 @@ impl_scope! {
                 .set_sizes(rect.size, child_size + self.frame_size);
         }
 
-        #[inline]
-        fn translation(&self) -> Offset {
-            self.scroll_offset()
-        }
-
         fn probe(&mut self, coord: Coord) -> Id {
             self.inner.try_probe(coord + self.translation())
                 .unwrap_or_else(|| self.id())
@@ -131,6 +126,13 @@ impl_scope! {
             draw.with_clip_region(self.core.rect, self.scroll_offset(), |mut draw| {
                 self.inner.draw(draw.re());
             });
+        }
+    }
+
+    impl Tile for Self {
+        #[inline]
+        fn translation(&self) -> Offset {
+            self.scroll_offset()
         }
     }
 

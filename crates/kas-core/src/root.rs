@@ -12,7 +12,7 @@ use crate::event::{ConfigCx, Event, EventCx, IsUsed, ResizeDirection, Scroll, Un
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
-use crate::{Action, Events, Icon, Id, Layout, LayoutExt, Widget};
+use crate::{Action, Events, Icon, Id, Layout, Tile, TileExt, Widget};
 use kas_macros::impl_scope;
 use smallvec::SmallVec;
 use std::num::NonZeroU32;
@@ -442,7 +442,7 @@ impl<Data: 'static> Window<Data> {
 
 // Search for a widget by `id`. On success, return that widget's [`Rect`] and
 // the translation of its children.
-fn find_rect(widget: &dyn Layout, id: Id, mut translation: Offset) -> Option<(Rect, Offset)> {
+fn find_rect(widget: &dyn Tile, id: Id, mut translation: Offset) -> Option<(Rect, Offset)> {
     let mut widget = widget;
     loop {
         if widget.eq_id(&id) {
@@ -502,7 +502,7 @@ impl<Data: 'static> Window<Data> {
             (pos, size)
         };
 
-        let (c, t) = find_rect(self.inner.as_layout(), popup.parent.clone(), Offset::ZERO).unwrap();
+        let (c, t) = find_rect(self.inner.as_tile(), popup.parent.clone(), Offset::ZERO).unwrap();
         *translation = t;
         let r = r + t; // work in translated coordinate space
         let result = self.inner.as_node(data).find_node(&popup.id, |mut node| {
@@ -521,7 +521,7 @@ impl<Data: 'static> Window<Data> {
             };
 
             cache.apply_rect(node.re(), cx, rect, false);
-            cache.print_widget_heirarchy(node.as_layout());
+            cache.print_widget_heirarchy(node.as_tile());
         });
 
         // Event handlers expect that the popup's rect is now assigned.

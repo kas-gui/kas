@@ -12,7 +12,7 @@ use crate::geom::{Rect, Size};
 use crate::layout::AlignHints;
 use crate::theme::SizeCx;
 use crate::util::WidgetHierarchy;
-use crate::{Layout, Node};
+use crate::{Node, Tile};
 
 /// A [`SizeRules`] solver for layouts
 ///
@@ -72,7 +72,7 @@ pub trait RulesSetter {
 ///
 /// Parameters `x_size` and `y_size` should be passed where this dimension is
 /// fixed and are used e.g. for text wrapping.
-pub fn solve_size_rules<W: Layout + ?Sized>(
+pub fn solve_size_rules<W: Tile + ?Sized>(
     widget: &mut W,
     sizer: SizeCx,
     x_size: Option<i32>,
@@ -224,7 +224,7 @@ impl SolveCache {
     /// Print widget heirarchy in the trace log
     ///
     /// This is sometimes called after [`Self::apply_rect`].
-    pub fn print_widget_heirarchy(&mut self, widget: &dyn Layout) {
+    pub fn print_widget_heirarchy(&mut self, widget: &dyn Tile) {
         let rect = widget.rect();
         let hier = WidgetHierarchy::new(widget, None);
         log::trace!(

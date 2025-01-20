@@ -269,8 +269,8 @@ impl Collection {
         let mut stor_ty = quote! {};
         let mut stor_def = quote! {};
 
-        let mut get_layout_rules = quote! {};
-        let mut get_mut_layout_rules = quote! {};
+        let mut get_tile_rules = quote! {};
+        let mut get_mut_tile_rules = quote! {};
         let mut for_node_rules = quote! {};
 
         for (index, item) in self.0.iter().enumerate() {
@@ -303,10 +303,10 @@ impl Collection {
                 }
             };
 
-            get_layout_rules.append_all(quote! {
+            get_tile_rules.append_all(quote! {
                 #index => Some(&self.#path),
             });
-            get_mut_layout_rules.append_all(quote! {
+            get_mut_tile_rules.append_all(quote! {
                 #index => Some(&mut self.#path),
             });
             for_node_rules.append_all(quote! {
@@ -340,15 +340,15 @@ impl Collection {
             fn is_empty(&self) -> bool { #is_empty }
             fn len(&self) -> usize { #len }
 
-            fn get_layout(&self, index: usize) -> Option<&dyn ::kas::Layout> {
+            fn get_tile(&self, index: usize) -> Option<&dyn ::kas::Tile> {
                 match index {
-                    #get_layout_rules
+                    #get_tile_rules
                     _ => None,
                 }
             }
-            fn get_mut_layout(&mut self, index: usize) -> Option<&mut dyn ::kas::Layout> {
+            fn get_mut_tile(&mut self, index: usize) -> Option<&mut dyn ::kas::Tile> {
                 match index {
-                    #get_mut_layout_rules
+                    #get_mut_tile_rules
                     _ => None,
                 }
             }

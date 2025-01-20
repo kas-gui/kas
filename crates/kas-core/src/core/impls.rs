@@ -7,7 +7,7 @@
 
 use crate::event::{ConfigCx, Event, EventCx, FocusSource, IsUsed, Scroll, Unused, Used};
 #[cfg(debug_assertions)] use crate::util::IdentifyWidget;
-use crate::{Events, Id, Layout, NavAdvance, Node, Widget};
+use crate::{Events, Id, NavAdvance, Node, Tile, Widget};
 
 /// Generic implementation of [`Widget::_send`]
 pub fn _send<W: Events>(

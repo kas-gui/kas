@@ -160,11 +160,11 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///
 /// This may *only* be used within the [`impl_scope!`] macro.
 ///
-/// Assists implementation of the [`Widget`], [`Events`] and [`Layout`] traits.
+/// Assists implementation of the [`Widget`], [`Events`], [`Layout`] and [`Tile`] traits.
 /// Implementations of these traits are generated if missing or augmented with
 /// missing method implementations.
 ///
-/// This macro may inject methods into existing [`Layout`] / [`Events`] / [`Widget`] implementations.
+/// This macro may inject methods into existing [`Layout`] / [`Tile`] / [`Events`] / [`Widget`] implementations.
 /// This is used both to provide default implementations which could not be
 /// written on the trait and to implement properties like `navigable`.
 /// (In the case of multiple implementations of the same trait, as used for
@@ -225,7 +225,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// syntax, where _Layout_ is any of the below.
 ///
 /// Using the `layout = ...;` property will also generate a corresponding
-/// implementation of `Events::nav_next`, with a couple of exceptions
+/// implementation of `Tile::nav_next`, with a couple of exceptions
 /// (where macro-time analysis is insufficient to implement this method).
 ///
 /// > [_Column_](macro@column), [_Row_](macro@row), [_List_](macro@list), [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_](macro@float) :\
@@ -355,6 +355,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// [`Widget`]: https://docs.rs/kas/latest/kas/trait.Widget.html
 /// [`Widget::get_child`]: https://docs.rs/kas/latest/kas/trait.Widget.html#method.get_child
 /// [`Layout`]: https://docs.rs/kas/latest/kas/trait.Layout.html
+/// [`Tile`]: https://docs.rs/kas/latest/kas/trait.Tile.html
 /// [`Events`]: https://docs.rs/kas/latest/kas/trait.Events.html
 /// [`CursorIcon`]: https://docs.rs/kas/latest/kas/event/enum.CursorIcon.html
 /// [`IsUsed`]: https://docs.rs/kas/latest/kas/event/enum.IsUsed.html

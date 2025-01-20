@@ -17,7 +17,7 @@ use crate::geom::{Offset, Vec2};
 use crate::theme::SizeCx;
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
-#[allow(unused)] use crate::{Events, Layout}; // for doc-links
+#[allow(unused)] use crate::{Events, Tile}; // for doc-links
 use crate::{HasId, Window};
 
 /// Public API
@@ -717,7 +717,7 @@ impl<'a> EventCx<'a> {
     ///
     /// When calling this method, be aware that some widgets use an inner
     /// component to handle events, thus calling with the outer widget's `id`
-    /// may not have the desired effect. [`Layout::try_probe`] and
+    /// may not have the desired effect. [`Tile::try_probe`] and
     /// [`EventState::next_nav_focus`] are usually able to find the appropriate
     /// event-handling target.
     pub fn send_command(&mut self, id: Id, cmd: Command) {

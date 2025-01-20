@@ -34,15 +34,15 @@ pub use submenu::SubMenu;
 #[derive(Default)]
 pub struct SubItems<'a> {
     /// Primary label
-    pub label: Option<&'a mut dyn Layout>,
+    pub label: Option<&'a mut dyn Tile>,
     /// Secondary label, often used to show shortcut key
-    pub label2: Option<&'a mut dyn Layout>,
+    pub label2: Option<&'a mut dyn Tile>,
     /// Sub-menu indicator
-    pub submenu: Option<&'a mut dyn Layout>,
+    pub submenu: Option<&'a mut dyn Tile>,
     /// Icon
-    pub icon: Option<&'a mut dyn Layout>,
+    pub icon: Option<&'a mut dyn Tile>,
     /// Toggle mark
-    pub toggle: Option<&'a mut dyn Layout>,
+    pub toggle: Option<&'a mut dyn Tile>,
 }
 
 /// Trait governing menus, sub-menus and menu-entries

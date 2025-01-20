@@ -419,13 +419,13 @@ impl_scope! {
         }
     }
 
-    impl Layout for Self {
+    impl Tile for Self {
         #[inline]
         fn num_children(&self) -> usize {
             self.cur_len.cast()
         }
-        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
-            self.widgets.get(index).map(|w| w.widget.as_layout())
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
+            self.widgets.get(index).map(|w| w.widget.as_tile())
         }
         fn find_child_index(&self, id: &Id) -> Option<usize> {
             let key = A::Key::reconstruct_key(self.id_ref(), id);
@@ -440,6 +440,13 @@ impl_scope! {
             }
         }
 
+        #[inline]
+        fn translation(&self) -> Offset {
+            self.scroll_offset()
+        }
+    }
+
+    impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
             let inner_margin = if self.sel_style.is_external() {
@@ -546,11 +553,6 @@ impl_scope! {
                 self.widgets.truncate(req_widgets);
             }
             debug_assert!(self.widgets.len() >= req_widgets);
-        }
-
-        #[inline]
-        fn translation(&self) -> Offset {
-            self.scroll_offset()
         }
 
         fn probe(&mut self, coord: Coord) -> Id {

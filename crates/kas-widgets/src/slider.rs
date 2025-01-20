@@ -299,7 +299,6 @@ impl_scope! {
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            eprintln!("Slider::set_rect({rect:?}");
             let align = match self.direction.is_vertical() {
                 false => AlignPair::new(Align::Stretch, hints.vert.unwrap_or(Align::Center)),
                 true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
