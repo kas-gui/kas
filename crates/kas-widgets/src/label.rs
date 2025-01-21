@@ -26,6 +26,7 @@ impl_scope! {
     #[derive(Clone, Debug)]
     #[widget {
         Data = ();
+        layout = self.text;
     }]
     pub struct Label<T: FormattableText + 'static> {
         core: widget_core!(),
@@ -111,18 +112,9 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        #[inline]
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            sizer.text_rules(&mut self.text, axis)
-        }
-
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             self.text.set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
-        }
-
-        fn draw(&mut self, mut draw: DrawCx) {
-            draw.text(self.rect(), &self.text);
         }
     }
 
@@ -185,7 +177,9 @@ impl_scope! {
     /// Line-wrapping is enabled by default.
     #[impl_default]
     #[derive(Clone, Debug)]
-    #[widget]
+    #[widget {
+        layout = self.text;
+    }]
     pub struct AccessLabel {
         core: widget_core!(),
         text: Text<AccessString>,
@@ -264,18 +258,9 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        #[inline]
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            sizer.text_rules(&mut self.text, axis)
-        }
-
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             self.text.set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
-        }
-
-        fn draw(&mut self, mut draw: DrawCx) {
-            draw.text(self.rect(), &self.text);
         }
     }
 

@@ -103,6 +103,7 @@ impl_scope! {
     #[derive(Clone, Debug, Default)]
     #[widget {
         Data = ();
+        layout = self.text;
     }]
     pub(crate) struct Label {
         core: widget_core!(),
@@ -121,17 +122,9 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            sizer.text_rules(&mut self.text, axis)
-        }
-
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
             self.text.set_rect(cx, rect, hints.combine(AlignHints::CENTER));
-        }
-
-        fn draw(&mut self, mut draw: DrawCx) {
-            draw.text(self.rect(), &self.text);
         }
     }
 
