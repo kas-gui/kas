@@ -107,9 +107,9 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawCx) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
-            draw.recurse(&mut self.label);
+            self.label.draw(draw.re());
             if self.mark.rect().size != Size::ZERO {
-                draw.recurse(&mut self.mark);
+                self.mark.draw(draw.re());
             }
         }
     }
@@ -365,7 +365,7 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawCx) {
             for child in self.list.iter_mut() {
-                draw.recurse(child);
+                child.draw(draw.re());
             }
         }
     }

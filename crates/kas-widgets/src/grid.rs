@@ -114,7 +114,7 @@ impl_scope! {
         fn draw(&mut self, mut draw: DrawCx) {
             for n in 0..self.widgets.len() {
                 if let Some(child) = self.widgets.get_mut_layout(n) {
-                    draw.recurse(child);
+                    child.draw(draw.re());
                 }
             }
         }

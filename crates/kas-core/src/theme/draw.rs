@@ -34,7 +34,7 @@ pub enum Background {
 /// Lower-level interfaces may be accessed through [`Self::draw_device`].
 ///
 /// `DrawCx` is not a `Copy` or `Clone` type; instead it may be "reborrowed"
-/// via [`Self::re_id`] or [`Self::re_clone`].
+/// via [`Self::re`].
 ///
 /// -   `draw.check_box(&*self, self.state);` — note `&*self` to convert from to
 ///     `&W` from `&mut W`, since the latter would cause borrow conflicts
@@ -44,26 +44,13 @@ pub struct DrawCx<'a> {
 }
 
 impl<'a> DrawCx<'a> {
-    /// Reborrow with a new lifetime and new `id`
+    /// Reborrow with a new lifetime
     ///
     /// Rust allows references like `&T` or `&mut T` to be "reborrowed" through
     /// coercion: essentially, the pointer is copied under a new, shorter, lifetime.
     /// Until rfcs#1403 lands, reborrows on user types require a method call.
     #[inline(always)]
-    pub fn re_id<'b>(&'b mut self, id: Id) -> DrawCx<'b>
-    where
-        'a: 'b,
-    {
-        DrawCx { h: self.h, id }
-    }
-
-    /// Reborrow with a new lifetime and same `id`
-    ///
-    /// Rust allows references like `&T` or `&mut T` to be "reborrowed" through
-    /// coercion: essentially, the pointer is copied under a new, shorter, lifetime.
-    /// Until rfcs#1403 lands, reborrows on user types require a method call.
-    #[inline(always)]
-    pub fn re_clone<'b>(&'b mut self) -> DrawCx<'b>
+    pub fn re<'b>(&'b mut self) -> DrawCx<'b>
     where
         'a: 'b,
     {
@@ -73,17 +60,21 @@ impl<'a> DrawCx<'a> {
         }
     }
 
-    /// Recurse drawing to a child
-    #[inline]
-    pub fn recurse(&mut self, child: &mut (impl Layout + ?Sized)) {
-        child.draw(self.re_id(child.id_ref().clone()));
-    }
-
     /// Construct from a [`DrawCx`] and [`EventState`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub fn new(h: &'a mut dyn ThemeDraw, id: Id) -> Self {
         DrawCx { h, id }
+    }
+
+    /// Set the identity of the current widget
+    ///
+    /// This struct tracks the [`Id`] of the calling widget to allow evaluation
+    /// of widget state (e.g. is disabled, is hovered, has key focus).
+    /// Usually you don't need to worry about this since the `#[widget]` macro
+    /// injects a call to this method at the start of [`Layout::draw`].
+    pub fn set_id(&mut self, id: Id) {
+        self.id = id;
     }
 
     /// Access event-management state

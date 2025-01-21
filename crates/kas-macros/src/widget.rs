@@ -431,9 +431,11 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     .unwrap_or_else(|| ::kas::LayoutExt::id(self))
         };
         fn_draw = Some(quote! {
-            fn draw(&mut self, draw: ::kas::theme::DrawCx) {
+            fn draw(&mut self, mut draw: ::kas::theme::DrawCx) {
                 #[cfg(debug_assertions)]
                 #core_path.status.require_rect(&#core_path.id);
+
+                draw.set_id(::kas::LayoutExt::id(self));
 
                 ::kas::layout::LayoutVisitor::layout_visitor(self).draw(draw);
             }
@@ -567,8 +569,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                         } else {
                             emit_error!(arg.pat, "hidden shenanigans require this parameter to have a name; suggestion: `_axis`");
                         }
-                    } else {
-                        panic!("size_rules misses args!");
                     }
                 }
             }
@@ -627,6 +627,20 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                         #[cfg(debug_assertions)]
                         self.#core.status.require_rect(&self.#core.id);
                     });
+
+                    if let Some(FnArg::Typed(arg)) = f.sig.inputs.iter().nth(1) {
+                        // NOTE: if the 'draw' parameter is unnamed or not 'mut'
+                        // then we don't need to call DrawCx::set_id since no
+                        // calls to draw methods are possible.
+                        if let Pat::Ident(ref pat_ident) = *arg.pat {
+                            if pat_ident.mutability.is_some() {
+                                let draw = &pat_ident.ident;
+                                f.block.stmts.insert(0, parse_quote! {
+                                    #draw.set_id(::kas::LayoutExt::id(self));
+                                });
+                            }
+                        }
+                    }
                 }
             }
         } else if let Some(method) = fn_draw {

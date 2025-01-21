@@ -329,6 +329,18 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// may resolve to `outer.deref().id()` when the trait providing `fn id` is not
 /// in scope, yet is available through a bound on the field).
 ///
+/// ## Method modification
+///
+/// As a policy, this macro *may* inject code into user-defined methods of
+/// `Widget` and its super traits, such that:
+///
+/// -   The modification cannot have harmful side effects (other than reported
+///     errors).
+/// -   All side effects observable outside of reported error cases must be
+///     documented in the widget method documentation.
+///
+/// As an example, status checks are injected into some `Layout` methods to
+/// enforce the expected call order of methods at runtime in debug builds.
 ///
 /// ## Debugging
 ///

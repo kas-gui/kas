@@ -270,8 +270,8 @@ impl<'a> Visitable for Single<'a> {
         self.widget.try_probe(coord)
     }
 
-    fn draw(&mut self, mut draw: DrawCx) {
-        draw.recurse(self.widget)
+    fn draw(&mut self, draw: DrawCx) {
+        self.widget.draw(draw);
     }
 }
 
@@ -486,7 +486,7 @@ where
     fn draw(&mut self, mut draw: DrawCx) {
         for i in 0..self.children.len() {
             if let Some(child) = self.children.get_item(i) {
-                child.draw(draw.re_clone());
+                child.draw(draw.re());
             }
         }
     }
@@ -534,7 +534,7 @@ where
         let mut iter = (0..self.children.len()).rev();
         if let Some(first) = iter.next() {
             if let Some(child) = self.children.get_item(first) {
-                child.draw(draw.re_clone());
+                child.draw(draw.re());
             }
         }
         for i in iter {
@@ -590,7 +590,7 @@ where
     fn draw(&mut self, mut draw: DrawCx) {
         for i in (0..self.children.len()).rev() {
             if let Some(child) = self.children.get_item(i) {
-                child.draw(draw.re_clone());
+                child.draw(draw.re());
             }
         }
     }

@@ -71,12 +71,16 @@ jobs:
         toolchain: [stable]
         include:
           - os: ubuntu-latest
-            toolchain: "1.80.0"
+            toolchain: "1.80.1"
+            variant: MSRV
           - os: ubuntu-latest
             toolchain: beta
 
     steps:
       - uses: actions/checkout@v4
+      - name: MSRV
+        if: ${{ matrix.variant == 'MSRV' }}
+        run: cp Cargo.lock.msrv Cargo.lock
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:

@@ -505,13 +505,13 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            draw.recurse(&mut self.inner);
+            self.inner.draw(draw.re());
             draw.with_pass(|mut draw| {
                 if self.show_bars.0 {
-                    draw.recurse(&mut self.horiz_bar);
+                    self.horiz_bar.draw(draw.re());
                 }
                 if self.show_bars.1 {
-                    draw.recurse(&mut self.vert_bar);
+                    self.vert_bar.draw(draw.re());
                 }
             });
         }

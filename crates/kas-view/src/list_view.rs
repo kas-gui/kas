@@ -574,7 +574,7 @@ impl_scope! {
                             draw.selection(child.widget.rect(), self.sel_style);
                         }
                     }
-                    draw.recurse(&mut child.widget);
+                    child.widget.draw(draw.re());
                 }
             });
         }

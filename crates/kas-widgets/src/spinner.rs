@@ -293,9 +293,9 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            draw.recurse(&mut self.edit);
-            draw.recurse(&mut self.b_up);
-            draw.recurse(&mut self.b_down);
+            self.edit.draw(draw.re());
+            self.b_up.draw(draw.re());
+            self.b_down.draw(draw.re());
         }
     }
 

@@ -84,7 +84,7 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
         self.0.try_probe(coord)
     }
     fn _draw(&mut self, mut draw: DrawCx) {
-        draw.recurse(&mut self.0);
+        self.0.draw(draw.re());
     }
 
     fn _configure(&mut self, cx: &mut ConfigCx, id: Id) {
@@ -311,7 +311,7 @@ impl<'a> Node<'a> {
         if #[cfg(feature = "unsafe_node")] {
             /// Draw a widget and its children
             pub(crate) fn _draw(&mut self, mut draw: DrawCx) {
-                draw.recurse(&mut self.0);
+                self.0.draw(draw.re());
             }
         } else {
             /// Draw a widget and its children

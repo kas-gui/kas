@@ -245,7 +245,7 @@ impl_scope! {
 
             let solver = layout::RowPositionSolver::new(self.direction);
             solver.for_children_mut(&mut self.widgets, draw.get_clip_rect(), |w| {
-                draw.recurse(w);
+                w.draw(draw.re());
             });
 
             let solver = layout::RowPositionSolver::new(self.direction);

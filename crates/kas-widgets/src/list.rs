@@ -129,7 +129,7 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawCx) {
             let solver = RowPositionSolver::new(self.direction);
-            solver.for_children_mut(&mut self.widgets, draw.get_clip_rect(), |w| draw.recurse(w));
+            solver.for_children_mut(&mut self.widgets, draw.get_clip_rect(), |w| w.draw(draw.re()));
         }
     }
 

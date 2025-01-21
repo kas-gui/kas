@@ -204,9 +204,11 @@ impl Tree {
                         .unwrap_or_else(|| ::kas::LayoutExt::id(self))
                 }
 
-                fn draw(&mut self, draw: ::kas::theme::DrawCx) {
+                fn draw(&mut self, mut draw: ::kas::theme::DrawCx) {
                     #[cfg(debug_assertions)]
                     #core_path.status.require_rect(&#core_path.id);
+
+                    draw.set_id(::kas::LayoutExt::id(self));
 
                     ::kas::layout::LayoutVisitor::layout_visitor(self).draw(draw);
                 }

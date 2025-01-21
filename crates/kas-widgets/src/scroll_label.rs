@@ -78,7 +78,7 @@ impl_scope! {
                 }
             });
             draw.with_pass(|mut draw| {
-                draw.recurse(&mut self.bar);
+                self.bar.draw(draw.re());
             });
         }
     }

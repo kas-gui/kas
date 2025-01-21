@@ -513,7 +513,7 @@ impl_scope! {
                             if self.selection.contains(key) {
                                 draw.selection(child.widget.rect(), self.sel_style);
                             }
-                            draw.recurse(&mut child.widget);
+                            child.widget.draw(draw.re());
                         }
                     }
                 }
