@@ -92,11 +92,6 @@ impl Tree {
         })
     }
 
-    /// If field `ident` is included in the layout, return Span of usage
-    pub fn span_in_layout(&self, ident: &Member) -> Option<Span> {
-        self.0.span_in_layout(ident)
-    }
-
     /// Synthesize an entire widget from the layout
     pub fn expand_as_widget(self, widget_name: &str) -> Result<Toks> {
         let mut children = Vec::new();
@@ -1076,7 +1071,9 @@ impl Layout {
                         }
                     }
                 }
-                Err((m.member.span(), "child not found"))
+
+                // Fallback case: m is not a widget therefore not a navigable child
+                Ok(())
             }
             Layout::Widget(ident, _) => {
                 for (i, child) in children.enumerate() {
@@ -1115,26 +1112,6 @@ impl Layout {
                 Ok(())
             }
             Layout::Label(_, _) => Ok(()),
-        }
-    }
-
-    fn span_in_layout(&self, ident: &Member) -> Option<Span> {
-        match self {
-            Layout::Align(layout, _)
-            | Layout::Pack(layout, _)
-            | Layout::Frame(_, layout, _)
-            | Layout::Button(_, layout, _)
-            | Layout::NonNavigable(layout)
-            | Layout::MapAny(layout, _) => layout.span_in_layout(ident),
-            Layout::Single(expr) => (expr.member == *ident).then(|| expr.span()),
-            Layout::Widget(..) => None,
-            Layout::List(_, _, LayoutList(list)) | Layout::Float(LayoutList(list)) => list
-                .iter()
-                .find_map(|item| item.layout.span_in_layout(ident)),
-            Layout::Grid(_, _, LayoutList(list)) => list
-                .iter()
-                .find_map(|cell| cell.layout.span_in_layout(ident)),
-            Layout::Label(..) => None,
         }
     }
 }

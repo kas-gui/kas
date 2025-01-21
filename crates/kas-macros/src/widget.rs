@@ -232,7 +232,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             continue;
         }
 
-        let mut is_widget = false;
         let mut other_attrs = Vec::with_capacity(field.attrs.len());
         for attr in field.attrs.drain(..) {
             if *attr.path() == parse_quote! { widget } {
@@ -250,7 +249,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                         return Err(Error::new(span, "unexpected"));
                     }
                 };
-                is_widget = true;
                 children.push(Child {
                     ident: ChildIdent::Field(ident.clone()),
                     attr_span: Some(attr.span()),
@@ -261,17 +259,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             }
         }
         field.attrs = other_attrs;
-
-        if !is_widget {
-            if let Some(Layout { ref tree, .. }) = args.layout {
-                if let Some(span) = tree.span_in_layout(&ident) {
-                    emit_error!(
-                        span, "fields used in layout must be widgets";
-                        note = field.span() => "this field is missing a #[widget] attribute?"
-                    );
-                }
-            }
-        }
     }
 
     let named_child_iter = children
@@ -387,7 +374,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     }
 
     let fn_nav_next;
-    let mut fn_nav_next_err = None;
     let mut fn_size_rules = None;
     let mut set_rect = quote! { self.#core.rect = rect; };
     let mut probe = quote! {
@@ -395,17 +381,13 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     };
     let mut fn_draw = None;
     if let Some(Layout { tree, .. }) = args.layout.take() {
-        fn_nav_next = match tree.nav_next(children.iter()) {
-            Ok(toks) => Some(quote! {
+        fn_nav_next = tree.nav_next(children.iter()).map(|toks| {
+            quote! {
                 fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
                     #toks
                 }
-            }),
-            Err((span, msg)) => {
-                fn_nav_next_err = Some((span, msg));
-                None
             }
-        };
+        });
 
         let layout_visitor = tree.layout_visitor(&core_path)?;
         scope.generated.push(quote! {
@@ -449,7 +431,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             }
         });
     } else {
-        fn_nav_next = Some(quote! {
+        fn_nav_next = Ok(quote! {
             fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
                 ::kas::util::nav_next(reverse, from, self.num_children())
             }
@@ -663,19 +645,22 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         tile_impl.items.push(Verbatim(required_tile_methods));
 
         if !has_item("nav_next") {
-            if let Some(method) = fn_nav_next {
-                tile_impl.items.push(Verbatim(method));
-            } else if let Some((span, msg)) = fn_nav_next_err {
-                // We emit a warning here only if nav_next is not explicitly defined
-                emit_warning!(span, "unable to generate `fn Tile::nav_next`: {}", msg,);
+            match fn_nav_next {
+                Ok(method) => tile_impl.items.push(Verbatim(method)),
+                Err((span, msg)) => {
+                    // We emit a warning here only if nav_next is not explicitly defined
+                    emit_warning!(span, "unable to generate `fn Tile::nav_next`: {}", msg,);
+                }
             }
         }
     } else {
-        if fn_nav_next.is_none() {
-            if let Some((span, msg)) = fn_nav_next_err {
+        let fn_nav_next = match fn_nav_next {
+            Ok(method) => Some(method),
+            Err((span, msg)) => {
                 emit_warning!(span, "unable to generate `fn Tile::nav_next`: {}", msg,);
+                None
             }
-        }
+        };
 
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Tile for #impl_target {
