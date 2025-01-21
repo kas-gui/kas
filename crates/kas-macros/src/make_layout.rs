@@ -325,7 +325,7 @@ struct ListItem<C> {
     layout: Layout,
 }
 #[derive(Debug)]
-struct VisitableList<C>(Vec<ListItem<C>>);
+struct LayoutList<C>(Vec<ListItem<C>>);
 trait GenerateItem: Sized {
     fn cell_info_type() -> Toks;
     fn generate_item(item: &ListItem<Self>, core_path: &Toks) -> Result<Toks>;
@@ -360,9 +360,9 @@ enum Layout {
     Widget(Ident, Expr),
     Frame(StorIdent, Box<Layout>, Expr),
     Button(StorIdent, Box<Layout>, Expr),
-    List(StorIdent, Direction, VisitableList<()>),
-    Float(VisitableList<()>),
-    Grid(StorIdent, GridDimensions, VisitableList<CellInfo>),
+    List(StorIdent, Direction, LayoutList<()>),
+    Float(LayoutList<()>),
+    Grid(StorIdent, GridDimensions, LayoutList<CellInfo>),
     Label(Ident, LitStr),
     NonNavigable(Box<Layout>),
     MapAny(Box<Layout>, MapAny),
@@ -604,7 +604,7 @@ fn parse_layout_list(
     input: ParseStream,
     core_gen: &mut NameGenerator,
     recurse: bool,
-) -> Result<VisitableList<()>> {
+) -> Result<LayoutList<()>> {
     let inner;
     let _ = bracketed!(inner in input);
     parse_layout_items(&inner, core_gen, recurse)
@@ -614,7 +614,7 @@ fn parse_layout_items(
     inner: ParseStream,
     core_gen: &mut NameGenerator,
     recurse: bool,
-) -> Result<VisitableList<()>> {
+) -> Result<LayoutList<()>> {
     let mut list = vec![];
     let mut gen2 = NameGenerator::default();
     while !inner.is_empty() {
@@ -631,7 +631,7 @@ fn parse_layout_items(
         let _: Token![,] = inner.parse()?;
     }
 
-    Ok(VisitableList(list))
+    Ok(LayoutList(list))
 }
 
 fn parse_grid_as_list_of_lists<KW: Parse>(
@@ -689,7 +689,7 @@ fn parse_grid_as_list_of_lists<KW: Parse>(
         }
     }
 
-    Ok(Layout::Grid(stor, dim, VisitableList(cells)))
+    Ok(Layout::Grid(stor, dim, LayoutList(cells)))
 }
 
 fn parse_grid(
@@ -734,7 +734,7 @@ fn parse_grid(
         }
     }
 
-    Ok(Layout::Grid(stor, dim, VisitableList(cells)))
+    Ok(Layout::Grid(stor, dim, LayoutList(cells)))
 }
 
 impl Parse for ExprMember {
@@ -921,7 +921,7 @@ impl Layout {
                     .append_all(quote! { #stor: Default::default(), });
                 layout.append_fields(fields, children, data_ty);
             }
-            Layout::List(stor, _, VisitableList(list)) => {
+            Layout::List(stor, _, LayoutList(list)) => {
                 fields
                     .def_toks
                     .append_all(quote! { #stor: Default::default(), });
@@ -936,12 +936,12 @@ impl Layout {
                     item.layout.append_fields(fields, children, data_ty);
                 }
             }
-            Layout::Float(VisitableList(list)) => {
+            Layout::Float(LayoutList(list)) => {
                 for item in list {
                     item.layout.append_fields(fields, children, data_ty);
                 }
             }
-            Layout::Grid(stor, dim, VisitableList(list)) => {
+            Layout::Grid(stor, dim, LayoutList(list)) => {
                 let (cols, rows) = (dim.cols as usize, dim.rows as usize);
                 fields
                     .ty_toks
@@ -1089,7 +1089,7 @@ impl Layout {
                 }
                 panic!("generated child not found")
             }
-            Layout::List(_, dir, VisitableList(list)) => {
+            Layout::List(_, dir, LayoutList(list)) => {
                 let start = output.len();
                 for item in list {
                     item.layout.nav_next(children.clone(), output)?;
@@ -1101,14 +1101,14 @@ impl Layout {
                     Direction::Expr(_) => Err((dir.span(), "`list(dir)` with non-static `dir`")),
                 }
             }
-            Layout::Grid(_, _, VisitableList(list)) => {
+            Layout::Grid(_, _, LayoutList(list)) => {
                 // TODO: sort using CellInfo?
                 for item in list {
                     item.layout.nav_next(children.clone(), output)?;
                 }
                 Ok(())
             }
-            Layout::Float(VisitableList(list)) => {
+            Layout::Float(LayoutList(list)) => {
                 for item in list {
                     item.layout.nav_next(children.clone(), output)?;
                 }
@@ -1128,10 +1128,10 @@ impl Layout {
             | Layout::MapAny(layout, _) => layout.span_in_layout(ident),
             Layout::Single(expr) => (expr.member == *ident).then(|| expr.span()),
             Layout::Widget(..) => None,
-            Layout::List(_, _, VisitableList(list)) | Layout::Float(VisitableList(list)) => list
+            Layout::List(_, _, LayoutList(list)) | Layout::Float(LayoutList(list)) => list
                 .iter()
                 .find_map(|item| item.layout.span_in_layout(ident)),
-            Layout::Grid(_, _, VisitableList(list)) => list
+            Layout::Grid(_, _, LayoutList(list)) => list
                 .iter()
                 .find_map(|cell| cell.layout.span_in_layout(ident)),
             Layout::Label(..) => None,
@@ -1139,7 +1139,7 @@ impl Layout {
     }
 }
 
-impl<C: GenerateItem> VisitableList<C> {
+impl<C: GenerateItem> LayoutList<C> {
     pub fn expand(&self, core_path: &Toks) -> Result<Toks> {
         if self.0.is_empty() {
             return Ok(quote! { () });
@@ -1183,7 +1183,7 @@ impl<C: GenerateItem> VisitableList<C> {
                 #stor_ty
             }
 
-            impl<#impl_generics> ::kas::layout::VisitableList<#info_ty> for #name <#ty_generics> {
+            impl<#impl_generics> ::kas::layout::LayoutList<#info_ty> for #name <#ty_generics> {
                 fn len(&self) -> usize { #len }
 
                 fn get_info_item(&mut self, index: usize) -> Option<(#info_ty, &mut dyn ::kas::Layout)> {

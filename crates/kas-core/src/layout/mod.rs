@@ -60,7 +60,7 @@ pub use visitor::{FrameStorage, PackStorage};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-pub use visitor::{VisitableList, Visitor};
+pub use visitor::{LayoutList, Visitor};
 
 /// Information on which axis is being resized
 ///

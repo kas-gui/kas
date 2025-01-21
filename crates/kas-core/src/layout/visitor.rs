@@ -24,7 +24,7 @@ use crate::{dir::Directional, dir::Directions, Layout};
 /// This is templated over `cell_info: C` where `C = ()` for lists or
 /// `C = GridCellInfo` for grids.
 #[allow(clippy::len_without_is_empty)]
-pub trait VisitableList<C> {
+pub trait LayoutList<C> {
     /// List length
     fn len(&self) -> usize;
 
@@ -36,7 +36,7 @@ pub trait VisitableList<C> {
     fn get_info_item(&mut self, index: usize) -> Option<(C, &mut dyn Layout)>;
 }
 
-impl<C> VisitableList<C> for () {
+impl<C> LayoutList<C> for () {
     #[inline]
     fn len(&self) -> usize {
         0
@@ -105,7 +105,7 @@ impl<'a> Visitor<Box<dyn Layout + 'a>> {
     /// Construct a row/column layout over an iterator of layouts
     pub fn list<L, D, S>(list: L, direction: D, data: &'a mut S) -> Visitor<impl Layout + 'a>
     where
-        L: VisitableList<()> + 'a,
+        L: LayoutList<()> + 'a,
         D: Directional,
         S: RowStorage,
     {
@@ -120,7 +120,7 @@ impl<'a> Visitor<Box<dyn Layout + 'a>> {
     ///
     /// This is a stack, but showing all items simultaneously.
     /// The first item is drawn on top and has first input priority.
-    pub fn float<L: VisitableList<()> + 'a>(list: L) -> Visitor<impl Layout + 'a> {
+    pub fn float<L: LayoutList<()> + 'a>(list: L) -> Visitor<impl Layout + 'a> {
         Visitor(Float { children: list })
     }
 
@@ -131,7 +131,7 @@ impl<'a> Visitor<Box<dyn Layout + 'a>> {
         data: &'a mut S,
     ) -> Visitor<impl Layout + 'a>
     where
-        L: VisitableList<GridCellInfo> + 'a,
+        L: LayoutList<GridCellInfo> + 'a,
         S: GridStorage,
     {
         Visitor(Grid {
@@ -417,7 +417,7 @@ struct List<'a, L, D, S> {
 
 impl<'a, L, D: Directional, S: RowStorage> Layout for List<'a, L, D, S>
 where
-    L: VisitableList<()> + 'a,
+    L: LayoutList<()> + 'a,
 {
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         let dim = (self.direction, self.children.len());
@@ -469,7 +469,7 @@ struct Float<L> {
 
 impl<L> Layout for Float<L>
 where
-    L: VisitableList<()>,
+    L: LayoutList<()>,
 {
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         let mut rules = SizeRules::EMPTY;
@@ -524,7 +524,7 @@ struct Grid<'a, S, L> {
 
 impl<'a, S: GridStorage, L> Layout for Grid<'a, S, L>
 where
-    L: VisitableList<GridCellInfo> + 'a,
+    L: LayoutList<GridCellInfo> + 'a,
 {
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, self.data);
