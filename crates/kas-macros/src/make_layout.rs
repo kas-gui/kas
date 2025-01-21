@@ -142,7 +142,7 @@ impl Tree {
         let toks = quote! {{
             struct #name #impl_generics {
                 rect: ::kas::geom::Rect,
-                id: ::kas::Id,
+                _id: ::kas::Id,
                 #[cfg(debug_assertions)]
                 status: ::kas::WidgetStatus,
                 #stor_ty
@@ -162,7 +162,7 @@ impl Tree {
                     axis: ::kas::layout::AxisInfo,
                 ) -> ::kas::layout::SizeRules {
                     #[cfg(debug_assertions)]
-                    #core_path.status.size_rules(&#core_path.id, axis);
+                    #core_path.status.size_rules(&#core_path._id, axis);
                     ::kas::layout::LayoutVisitor::layout_visitor(self).size_rules(sizer, axis)
                 }
 
@@ -173,7 +173,7 @@ impl Tree {
                     hints: ::kas::layout::AlignHints,
                 ) {
                     #[cfg(debug_assertions)]
-                    #core_path.status.set_rect(&#core_path.id);
+                    #core_path.status.set_rect(&#core_path._id);
 
                     #core_path.rect = rect;
                     ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
@@ -185,7 +185,7 @@ impl Tree {
 
                 fn draw(&mut self, mut draw: ::kas::theme::DrawCx) {
                     #[cfg(debug_assertions)]
-                    #core_path.status.require_rect(&#core_path.id);
+                    #core_path.status.require_rect(&#core_path._id);
 
                     draw.set_id(::kas::Tile::id(self));
 
@@ -212,7 +212,7 @@ impl Tree {
                 #[inline]
                 fn probe(&mut self, coord: ::kas::geom::Coord) -> ::kas::Id {
                     #[cfg(debug_assertions)]
-                    #core_path.status.require_rect(&#core_path.id);
+                    #core_path.status.require_rect(&#core_path._id);
 
                     let coord = coord + ::kas::Tile::translation(self);
                     ::kas::layout::LayoutVisitor::layout_visitor(self)
@@ -227,7 +227,7 @@ impl Tree {
                     _: ::kas::event::Event,
                 ) -> ::kas::event::IsUsed {
                     #[cfg(debug_assertions)]
-                    #core_path.status.require_rect(&#core_path.id);
+                    #core_path.status.require_rect(&#core_path._id);
                     ::kas::event::Unused
                 }
             }
@@ -236,7 +236,7 @@ impl Tree {
 
             #name {
                 rect: Default::default(),
-                id: Default::default(),
+                _id: Default::default(),
                 #[cfg(debug_assertions)]
                 status: Default::default(),
                 #stor_def

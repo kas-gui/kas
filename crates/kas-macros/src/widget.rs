@@ -194,7 +194,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 scope.generated.push(quote! {
                     struct #core_type {
                         rect: ::kas::geom::Rect,
-                        id: ::kas::Id,
+                        _id: ::kas::Id,
                         #[cfg(debug_assertions)]
                         status: ::kas::WidgetStatus,
                         #stor_ty
@@ -204,7 +204,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                         fn default() -> Self {
                             #core_type {
                                 rect: Default::default(),
-                                id: Default::default(),
+                                _id: Default::default(),
                                 #[cfg(debug_assertions)]
                                 status: ::kas::WidgetStatus::New,
                                 #stor_def
@@ -317,7 +317,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
     let require_rect: syn::Stmt = parse_quote! {
         #[cfg(debug_assertions)]
-        #core_path.status.require_rect(&#core_path.id);
+        #core_path.status.require_rect(&#core_path._id);
     };
 
     let mut required_tile_methods = impl_core_methods(&name.to_string(), &core_path);
@@ -406,7 +406,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 axis: ::kas::layout::AxisInfo,
             ) -> ::kas::layout::SizeRules {
                 #[cfg(debug_assertions)]
-                #core_path.status.size_rules(&#core_path.id, axis);
+                #core_path.status.size_rules(&#core_path._id, axis);
                 ::kas::layout::LayoutVisitor::layout_visitor(self).size_rules(sizer, axis)
             }
         });
@@ -423,7 +423,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         fn_draw = Some(quote! {
             fn draw(&mut self, mut draw: ::kas::theme::DrawCx) {
                 #[cfg(debug_assertions)]
-                #core_path.status.require_rect(&#core_path.id);
+                #core_path.status.require_rect(&#core_path._id);
 
                 draw.set_id(::kas::Tile::id(self));
 
@@ -445,7 +445,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             hints: ::kas::layout::AlignHints,
         ) {
             #[cfg(debug_assertions)]
-            #core_path.status.set_rect(&#core_path.id);
+            #core_path.status.set_rect(&#core_path._id);
             #set_rect
         }
     };
@@ -546,7 +546,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let fn_try_probe = quote! {
         fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
             #[cfg(debug_assertions)]
-            self.#core.status.require_rect(&self.#core.id);
+            self.#core.status.require_rect(&self.#core._id);
 
             ::kas::Tile::rect(self).contains(coord).then(|| ::kas::Events::probe(self, coord))
         }
@@ -564,7 +564,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                             let axis = &pat_ident.ident;
                             f.block.stmts.insert(0, parse_quote! {
                                 #[cfg(debug_assertions)]
-                                self.#core.status.size_rules(&self.#core.id, #axis);
+                                self.#core.status.size_rules(&self.#core._id, #axis);
                             });
                         } else {
                             emit_error!(arg.pat, "hidden shenanigans require this parameter to have a name; suggestion: `_axis`");
@@ -581,7 +581,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
                     f.block.stmts.insert(0, parse_quote! {
                         #[cfg(debug_assertions)]
-                        self.#core.status.set_rect(&self.#core.id);
+                        self.#core.status.set_rect(&self.#core._id);
                     });
                 }
             }
@@ -605,7 +605,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
                     f.block.stmts.insert(0, parse_quote! {
                         #[cfg(debug_assertions)]
-                        self.#core.status.require_rect(&self.#core.id);
+                        self.#core.status.require_rect(&self.#core._id);
                     });
 
                     if let Some(FnArg::Typed(arg)) = f.sig.inputs.iter().nth(1) {
@@ -699,7 +699,7 @@ pub fn impl_core_methods(name: &str, core_path: &Toks) -> Toks {
         }
         #[inline]
         fn id_ref(&self) -> &::kas::Id {
-            &#core_path.id
+            &#core_path._id
         }
         #[inline]
         fn rect(&self) -> ::kas::geom::Rect {
@@ -797,9 +797,9 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
         ) {
             debug_assert!(id.is_valid(), "Widget::_configure called with invalid id!");
 
-            #core_path.id = id;
+            #core_path._id = id;
             #[cfg(debug_assertions)]
-            #core_path.status.configure(&#core_path.id);
+            #core_path.status.configure(&#core_path._id);
 
             ::kas::Events::configure(self, cx);
             ::kas::Events::update(self, cx, data);
@@ -812,7 +812,7 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             data: &Self::Data,
         ) {
             #[cfg(debug_assertions)]
-            #core_path.status.update(&#core_path.id);
+            #core_path.status.update(&#core_path._id);
 
             ::kas::Events::update(self, cx, data);
             ::kas::Events::update_recurse(self, cx, data);

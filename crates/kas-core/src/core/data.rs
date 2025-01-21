@@ -37,7 +37,7 @@ impl Icon {
 #[derive(Default, Debug)]
 pub struct CoreData {
     pub rect: Rect,
-    pub id: Id,
+    pub _id: Id,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     #[cfg(debug_assertions)]
@@ -50,7 +50,8 @@ impl Clone for CoreData {
     fn clone(&self) -> Self {
         CoreData {
             rect: self.rect,
-            ..CoreData::default()
+            _id: Default::default(),
+            status: self.status,
         }
     }
 }
