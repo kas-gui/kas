@@ -6,7 +6,7 @@
 //! The [`Collection`] trait
 
 use crate::layout::{GridCellInfo, GridDimensions};
-use crate::{Layout, Node, Widget};
+use crate::{Node, Tile, Widget};
 use kas_macros::impl_scope;
 use std::ops::RangeBounds;
 
@@ -31,11 +31,11 @@ pub trait Collection {
     /// The number of widgets
     fn len(&self) -> usize;
 
-    /// Get a widget as a [`Layout`]
-    fn get_layout(&self, index: usize) -> Option<&dyn Layout>;
+    /// Get a widget as a [`Tile`]
+    fn get_tile(&self, index: usize) -> Option<&dyn Tile>;
 
-    /// Get a widget as a mutable [`Layout`]
-    fn get_mut_layout(&mut self, index: usize) -> Option<&mut dyn Layout>;
+    /// Get a widget as a mutable [`Tile`]
+    fn get_mut_tile(&mut self, index: usize) -> Option<&mut dyn Tile>;
 
     /// Operate on a widget as a [`Node`]
     fn for_node(
@@ -45,11 +45,11 @@ pub trait Collection {
         closure: Box<dyn FnOnce(Node<'_>) + '_>,
     );
 
-    /// Iterate over elements as [`Layout`] items within `range`
+    /// Iterate over elements as [`Tile`] items within `range`
     ///
     /// Note: there is currently no mutable equivalent due to the streaming
     /// iterator problem.
-    fn iter_layout(&self, range: impl RangeBounds<usize>) -> CollectionIterLayout<'_, Self> {
+    fn iter_tile(&self, range: impl RangeBounds<usize>) -> CollectionIterTile<'_, Self> {
         use std::ops::Bound::{Excluded, Included, Unbounded};
         let start = match range.start_bound() {
             Included(start) => *start,
@@ -61,7 +61,7 @@ pub trait Collection {
             Excluded(end) => *end,
             Unbounded => self.len(),
         };
-        CollectionIterLayout {
+        CollectionIterTile {
             start,
             end,
             collection: self,
@@ -80,12 +80,12 @@ pub trait Collection {
     /// -   `Some(Ok(index))` if an `Equal` element is found at `index`
     /// -   `Some(Err(index))` if no `Equal` element is found; in this case such
     ///     an element could be inserted at `index`
-    /// -   `None` if [`Collection::get_layout`] returns `None` for some
+    /// -   `None` if [`Collection::get_tile`] returns `None` for some
     ///     `index` less than [`Collection::len`]. This is an error case that
     ///     should not occur.
     fn binary_search_by<'a, F>(&'a self, mut f: F) -> Option<Result<usize, usize>>
     where
-        F: FnMut(&'a dyn Layout) -> std::cmp::Ordering,
+        F: FnMut(&'a dyn Tile) -> std::cmp::Ordering,
     {
         use std::cmp::Ordering::{Greater, Less};
 
@@ -99,7 +99,7 @@ pub trait Collection {
         while left < right {
             let mid = left + size / 2;
 
-            let cmp = f(self.get_layout(mid)?);
+            let cmp = f(self.get_tile(mid)?);
 
             if cmp == Less {
                 left = mid + 1;
@@ -161,21 +161,21 @@ pub trait CellCollection: Collection {
 }
 
 impl_scope! {
-    /// An iterator over a [`Collection`] as [`Layout`] elements
-    pub struct CollectionIterLayout<'a, C: Collection + ?Sized> {
+    /// An iterator over a [`Collection`] as [`Tile`] elements
+    pub struct CollectionIterTile<'a, C: Collection + ?Sized> {
         start: usize,
         end: usize,
         collection: &'a C,
     }
 
     impl Iterator for Self {
-        type Item = &'a dyn Layout;
+        type Item = &'a dyn Tile;
 
         fn next(&mut self) -> Option<Self::Item> {
             let index = self.start;
             if index < self.end {
                 self.start += 1;
-                self.collection.get_layout(index)
+                self.collection.get_tile(index)
             } else {
                 None
             }
@@ -187,7 +187,7 @@ impl_scope! {
             if self.start < self.end {
                 let index = self.end - 1;
                 self.end = index;
-                self.collection.get_layout(index)
+                self.collection.get_tile(index)
             } else {
                 None
             }
@@ -245,13 +245,13 @@ macro_rules! impl_slice {
             }
 
             #[inline]
-            fn get_layout(&self, index: usize) -> Option<&dyn Layout> {
-                self.get(index).map(|$pat| $w as &dyn Layout)
+            fn get_tile(&self, index: usize) -> Option<&dyn Tile> {
+                self.get(index).map(|$pat| $w as &dyn Tile)
             }
 
             #[inline]
-            fn get_mut_layout(&mut self, index: usize) -> Option<&mut dyn Layout> {
-                self.get_mut(index).map(|$pat| $w as &mut dyn Layout)
+            fn get_mut_tile(&mut self, index: usize) -> Option<&mut dyn Tile> {
+                self.get_mut(index).map(|$pat| $w as &mut dyn Tile)
             }
 
             #[inline]
@@ -269,9 +269,9 @@ macro_rules! impl_slice {
             #[inline]
             fn binary_search_by<'a, F>(&'a self, mut f: F) -> Option<Result<usize, usize>>
             where
-                F: FnMut(&'a dyn Layout) -> std::cmp::Ordering,
+                F: FnMut(&'a dyn Tile) -> std::cmp::Ordering,
             {
-                Some(<[_]>::binary_search_by(self, move |$pat| f($w.as_layout())))
+                Some(<[_]>::binary_search_by(self, move |$pat| f($w.as_tile())))
             }
         }
     };

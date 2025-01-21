@@ -361,13 +361,13 @@ impl_scope! {
         }
     }
 
-    impl Layout for Self {
+    impl Tile for Self {
         #[inline]
         fn num_children(&self) -> usize {
             usize::conv(self.cur_len.0) * usize::conv(self.cur_len.1)
         }
-        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
-            self.widgets.get(index).map(|w| w.widget.as_layout())
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
+            self.widgets.get(index).map(|w| w.widget.as_tile())
         }
         fn find_child_index(&self, id: &Id) -> Option<usize> {
             let num = self.num_children();
@@ -383,6 +383,13 @@ impl_scope! {
             }
         }
 
+        #[inline]
+        fn translation(&self) -> Offset {
+            self.scroll_offset()
+        }
+    }
+
+    impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
             let inner_margin = if self.sel_style.is_external() {
@@ -482,24 +489,6 @@ impl_scope! {
             debug_assert!(self.widgets.len() >= req_widgets);
         }
 
-        #[inline]
-        fn translation(&self) -> Offset {
-            self.scroll_offset()
-        }
-
-        fn probe(&mut self, coord: Coord) -> Id {
-            let num = self.num_children();
-            let coord = coord + self.scroll.offset();
-            for child in &mut self.widgets[..num] {
-                if child.key.is_some() {
-                    if let Some(id) = child.widget.try_probe(coord) {
-                        return id;
-                    }
-                }
-            }
-            self.id()
-        }
-
         fn draw(&mut self, mut draw: DrawCx) {
             let offset = self.scroll_offset();
             let rect = self.rect() + offset;
@@ -567,6 +556,19 @@ impl_scope! {
         }
 
         fn update_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
+
+        fn probe(&mut self, coord: Coord) -> Id {
+            let num = self.num_children();
+            let coord = coord + self.scroll.offset();
+            for child in &mut self.widgets[..num] {
+                if child.key.is_some() {
+                    if let Some(id) = child.widget.try_probe(coord) {
+                        return id;
+                    }
+                }
+            }
+            self.id()
+        }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
             let is_used = match event {

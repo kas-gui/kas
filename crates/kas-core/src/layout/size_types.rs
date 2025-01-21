@@ -242,7 +242,7 @@ impl_scope! {
 }
 
 impl PixmapScaling {
-    /// Generates `size_rules` based on size
+    /// Generates [`SizeRules`] based on size
     pub fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         let margins = sizer.margins(self.margins).extract(axis);
         let scale_factor = sizer.scale_factor();

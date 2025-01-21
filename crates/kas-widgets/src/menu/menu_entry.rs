@@ -31,10 +31,6 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn probe(&mut self, _: Coord) -> Id {
-            self.id()
-        }
-
         fn draw(&mut self, mut draw: DrawCx) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw.re());
@@ -69,6 +65,10 @@ impl_scope! {
 
     impl Events for Self {
         type Data = ();
+
+        fn probe(&mut self, _: Coord) -> Id {
+            self.id()
+        }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
@@ -120,10 +120,6 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn probe(&mut self, _: Coord) -> Id {
-            self.checkbox.id()
-        }
-
         fn draw(&mut self, mut draw: DrawCx) {
             draw.set_id(self.checkbox.id());
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
@@ -133,6 +129,10 @@ impl_scope! {
 
     impl Events for Self {
         type Data = A;
+
+        fn probe(&mut self, _: Coord) -> Id {
+            self.checkbox.id()
+        }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
             if let Some(kas::messages::Activate(code)) = cx.try_pop() {

@@ -7,15 +7,19 @@
 
 use super::TextClass;
 #[allow(unused)] use super::{DrawCx, SizeCx};
+use crate::cast::Cast;
 #[allow(unused)] use crate::event::ConfigCx;
+use crate::geom::{Rect, Size};
+use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::text::fonts::{FaceId, FontId, InvalidFontId};
 use crate::text::format::{EditableText, FormattableText};
 use crate::text::*;
-use crate::Action;
+use crate::{Action, Layout};
 
 /// Text type-setting object (theme aware)
 ///
 /// This struct is a theme-aware variant of [`crate::text::Text`]. It contains:
+/// -   A [`Rect`]
 /// -   A [`TextClass`]
 /// -   A [`FormattableText`]
 /// -   A [`TextDisplay`]
@@ -27,20 +31,17 @@ use crate::Action;
 ///         [`ConfigCx::text_configure`]. Otherwise, the default font size is
 ///         16px (the web default).
 ///     -   Default text direction and alignment is inferred from the text.
-///     -   The bounds used for alignment and line-wrapping
-///         must be set by calling [`Text::set_bounds`].
 ///
 /// This struct tracks the [`TextDisplay`]'s
 /// [state of preparation][TextDisplay#status-of-preparation] and will perform
 /// steps as required. Normal usage of this struct is as follows:
 /// -   Configure by calling [`ConfigCx::text_configure`]
 /// -   (Optionally) check size requirements by calling [`SizeCx::text_rules`]
-/// -   Set the size and prepare by calling [`ConfigCx::text_set_size`]
+/// -   Set the size and prepare by calling [`Self::set_rect`]
 /// -   Draw by calling [`DrawCx::text`] (and/or other text methods)
 #[derive(Clone, Debug)]
-pub struct Text<T: FormattableText + ?Sized> {
-    /// Bounds to use for alignment
-    bounds: Vec2,
+pub struct Text<T: FormattableText> {
+    rect: Rect,
     font_id: FontId,
     dpem: f32,
     class: TextClass,
@@ -63,7 +64,30 @@ impl<T: Default + FormattableText> Default for Text<T> {
     }
 }
 
-/// Constructors and other methods requiring `T: Sized`
+/// Implement [`Layout`], using default alignment where alignment is not provided
+impl<T: FormattableText> Layout for Text<T> {
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+        sizer.text_rules(self, axis)
+    }
+
+    fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+        self.set_align(hints.complete_default().into());
+        if rect.size != self.rect.size {
+            if rect.size.0 != self.rect.size.0 {
+                self.set_max_status(Status::LevelRuns);
+            } else {
+                self.set_max_status(Status::Wrapped);
+            }
+            self.rect = rect;
+        }
+        self.prepare().expect("not configured");
+    }
+
+    fn draw(&mut self, mut draw: DrawCx) {
+        draw.text(self.rect, &self);
+    }
+}
+
 impl<T: FormattableText> Text<T> {
     /// Construct from a text model
     ///
@@ -71,7 +95,7 @@ impl<T: FormattableText> Text<T> {
     #[inline]
     pub fn new(text: T, class: TextClass) -> Self {
         Text {
-            bounds: Vec2::INFINITY,
+            rect: Rect::default(),
             font_id: FontId::default(),
             dpem: 16.0,
             class,
@@ -140,10 +164,7 @@ impl<T: FormattableText> Text<T> {
         self.text = text;
         self.set_max_status(Status::Configured);
     }
-}
 
-/// Text, font and type-setting getters and setters
-impl<T: FormattableText + ?Sized> Text<T> {
     /// Length of text
     ///
     /// This is a shortcut to `self.as_str().len()`.
@@ -283,28 +304,10 @@ impl<T: FormattableText + ?Sized> Text<T> {
         }
     }
 
-    /// Get text bounds
+    /// Get text size
     #[inline]
-    pub fn bounds(&self) -> Vec2 {
-        self.bounds
-    }
-
-    /// Set text bounds
-    ///
-    /// These are used for alignment and line-wrapping.
-    ///
-    /// It is expected that `bounds` are finite.
-    #[inline]
-    pub fn set_bounds(&mut self, bounds: Vec2) {
-        debug_assert!(bounds.is_finite());
-        if bounds != self.bounds {
-            if bounds.0 != self.bounds.0 {
-                self.set_max_status(Status::LevelRuns);
-            } else {
-                self.set_max_status(Status::Wrapped);
-            }
-            self.bounds = bounds;
-        }
+    pub fn size(&self) -> Size {
+        self.rect.size
     }
 
     /// Get the base directionality of the text
@@ -343,7 +346,7 @@ impl<T: FormattableText + ?Sized> Text<T> {
 }
 
 /// Type-setting operations and status
-impl<T: FormattableText + ?Sized> Text<T> {
+impl<T: FormattableText> Text<T> {
     /// Check whether the status is at least `status`
     #[inline]
     pub fn check_status(&self, status: Status) -> Result<(), NotReady> {
@@ -472,31 +475,30 @@ impl<T: FormattableText + ?Sized> Text<T> {
 
     /// Prepare text for display, as necessary
     ///
-    /// [`Self::configure`] and [`Self::set_bounds`] must be called before this
+    /// [`Self::configure`] and [`Self::set_rect`] must be called before this
     /// method.
     ///
     /// Does all preparation steps necessary in order to display or query the
-    /// layout of this text. Text is aligned within the given `bounds`.
+    /// layout of this text. Text is aligned within the set [`Rect`].
     ///
     /// Returns `Ok(true)` on success when some action is performed, `Ok(false)`
     /// when the text is already prepared.
     pub fn prepare(&mut self) -> Result<bool, NotReady> {
         if self.is_prepared() {
             return Ok(false);
-        } else if !self.bounds.is_finite() {
-            return Err(NotReady);
         }
 
         self.prepare_runs()?;
         debug_assert!(self.status >= Status::LevelRuns);
 
         if self.status == Status::LevelRuns {
-            self.display
-                .prepare_lines(self.bounds.0, self.bounds.0, self.align.0);
+            let bounds: Vec2 = self.rect.size.cast();
+            self.display.prepare_lines(bounds.0, bounds.0, self.align.0);
         }
 
         if self.status <= Status::Wrapped {
-            self.display.vertically_align(self.bounds.1, self.align.1);
+            self.display
+                .vertically_align(self.rect.size.1.cast(), self.align.1);
         }
 
         self.status = Status::Ready;
@@ -508,9 +510,9 @@ impl<T: FormattableText + ?Sized> Text<T> {
     /// Wraps [`Text::prepare`], returning an appropriate [`Action`]:
     ///
     /// -   When this `Text` object was previously prepared and has sufficient
-    ///     bounds, it is updated and [`Action::REDRAW`] is returned
+    ///     size, it is updated and [`Action::REDRAW`] is returned
     /// -   When this `Text` object was previously prepared but does not have
-    ///     sufficient bounds, it is updated and [`Action::RESIZE`] is returned
+    ///     sufficient size, it is updated and [`Action::RESIZE`] is returned
     /// -   When this `Text` object was not previously prepared,
     ///     [`Action::empty()`] is returned without updating `self`.
     ///
@@ -522,7 +524,8 @@ impl<T: FormattableText + ?Sized> Text<T> {
             Ok(false) => Action::REDRAW,
             Ok(true) => {
                 let (tl, br) = self.display.bounding_box();
-                if tl.0 < 0.0 || tl.1 < 0.0 || br.0 > self.bounds.0 || br.1 > self.bounds.1 {
+                let bounds: Vec2 = self.rect.size.cast();
+                if tl.0 < 0.0 || tl.1 < 0.0 || br.0 > bounds.0 || br.1 > bounds.1 {
                     Action::RESIZE
                 } else {
                     Action::REDRAW
@@ -534,7 +537,7 @@ impl<T: FormattableText + ?Sized> Text<T> {
     ///
     /// This is the position of the upper-left and lower-right corners of a
     /// bounding box on content.
-    /// Alignment and input bounds do affect the result.
+    /// Alignment and size do affect the result.
     #[inline]
     pub fn bounding_box(&self) -> Result<(Vec2, Vec2), NotReady> {
         Ok(self.wrapped_display()?.bounding_box())
@@ -640,7 +643,7 @@ impl<T: FormattableText + ?Sized> Text<T> {
 }
 
 /// Text editing operations
-impl<T: EditableText + ?Sized> Text<T> {
+impl<T: EditableText> Text<T> {
     /// Insert a char at the given position
     ///
     /// This may be used to edit the raw text instead of replacing it.
@@ -718,7 +721,7 @@ pub trait SizableText {
     fn measure_height(&mut self, wrap_width: f32) -> Result<f32, NotReady>;
 }
 
-impl<T: FormattableText + ?Sized> SizableText for Text<T> {
+impl<T: FormattableText> SizableText for Text<T> {
     fn set_font(&mut self, font_id: FontId, dpem: f32) {
         self.font_id = font_id;
         self.dpem = dpem;

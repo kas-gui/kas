@@ -191,14 +191,14 @@ impl_scope! {
             let dir = self.direction();
             shrink_to_text(&mut self.core.rect, dir, &self.label);
         }
-
-        fn probe(&mut self, _: Coord) -> Id {
-            self.inner.id()
-        }
     }
 
     impl Events for Self {
         type Data = A;
+
+        fn probe(&mut self, _: Coord) -> Id {
+            self.inner.id()
+        }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
             if let Some(kas::messages::Activate(code)) = cx.try_pop() {

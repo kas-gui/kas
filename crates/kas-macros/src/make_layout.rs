@@ -67,6 +67,7 @@ impl Tree {
         self.0.generate(core_path)
     }
 
+    /// Generate implementation of nav_next (excludes fn signature)
     pub fn nav_next<'a, I: Clone + Iterator<Item = &'a Child>>(
         &self,
         children: I,
@@ -74,28 +75,21 @@ impl Tree {
         let mut v = Vec::new();
         self.0.nav_next(children, &mut v).map(|()| {
             quote! {
-                fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-                    let mut iter = [#(#v),*].into_iter();
-                    if !reverse {
-                        if let Some(wi) = from {
-                            let _ = iter.find(|x| *x == wi);
-                        }
-                        iter.next()
-                    } else {
-                        let mut iter = iter.rev();
-                        if let Some(wi) = from {
-                            let _ = iter.find(|x| *x == wi);
-                        }
-                        iter.next()
+                let mut iter = [#(#v),*].into_iter();
+                if !reverse {
+                    if let Some(wi) = from {
+                        let _ = iter.find(|x| *x == wi);
                     }
+                    iter.next()
+                } else {
+                    let mut iter = iter.rev();
+                    if let Some(wi) = from {
+                        let _ = iter.find(|x| *x == wi);
+                    }
+                    iter.next()
                 }
             }
         })
-    }
-
-    /// If field `ident` is included in the layout, return Span of usage
-    pub fn span_in_layout(&self, ident: &Member) -> Option<Span> {
-        self.0.span_in_layout(ident)
     }
 
     /// Synthesize an entire widget from the layout
@@ -140,7 +134,7 @@ impl Tree {
         let nav_next = match self.nav_next(children.iter()) {
             Ok(result) => Some(result),
             Err((span, msg)) => {
-                emit_error!(span, "unable to generate `fn Layout::nav_next`: {}", msg);
+                emit_error!(span, "unable to generate `fn Tile::nav_next`: {}", msg);
                 None
             }
         };
@@ -155,22 +149,13 @@ impl Tree {
             }
 
             impl #impl_generics ::kas::layout::LayoutVisitor for #impl_target {
-                fn layout_visitor(&mut self) -> ::kas::layout::Visitor<impl ::kas::layout::Visitable> {
+                fn layout_visitor(&mut self) -> ::kas::layout::Visitor<impl ::kas::Layout> {
                     use ::kas::layout;
                     #layout_visitor
                 }
             }
 
             impl #impl_generics ::kas::Layout for #impl_target {
-                #core_impl
-                #num_children
-                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Layout> {
-                    match index {
-                        #get_rules
-                        _ => None,
-                    }
-                }
-
                 fn size_rules(
                     &mut self,
                     sizer: ::kas::theme::SizeCx,
@@ -194,29 +179,47 @@ impl Tree {
                     ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
                 }
 
-                fn probe(&mut self, coord: ::kas::geom::Coord) -> ::kas::Id {
-                    #[cfg(debug_assertions)]
-                    #core_path.status.require_rect(&#core_path.id);
-
-                    let coord = coord + self.translation();
-                    ::kas::layout::LayoutVisitor::layout_visitor(self)
-                        .try_probe(coord)
-                        .unwrap_or_else(|| ::kas::LayoutExt::id(self))
+                fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+                    ::kas::Tile::rect(self).contains(coord).then(|| ::kas::Events::probe(self, coord))
                 }
 
                 fn draw(&mut self, mut draw: ::kas::theme::DrawCx) {
                     #[cfg(debug_assertions)]
                     #core_path.status.require_rect(&#core_path.id);
 
-                    draw.set_id(::kas::LayoutExt::id(self));
+                    draw.set_id(::kas::TileExt::id(self));
 
                     ::kas::layout::LayoutVisitor::layout_visitor(self).draw(draw);
                 }
+            }
 
-                #nav_next
+            impl #impl_generics ::kas::Tile for #impl_target {
+                #core_impl
+                #num_children
+                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Tile> {
+                    match index {
+                        #get_rules
+                        _ => None,
+                    }
+                }
+
+                fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+                    #nav_next
+                }
             }
 
             impl #impl_generics ::kas::Events for #impl_target {
+                #[inline]
+                fn probe(&mut self, coord: ::kas::geom::Coord) -> ::kas::Id {
+                    #[cfg(debug_assertions)]
+                    #core_path.status.require_rect(&#core_path.id);
+
+                    let coord = coord + ::kas::Tile::translation(self);
+                    ::kas::layout::LayoutVisitor::layout_visitor(self)
+                        .try_probe(coord)
+                        .unwrap_or_else(|| ::kas::TileExt::id(self))
+                }
+
                 fn handle_event(
                     &mut self,
                     _: &mut ::kas::event::EventCx,
@@ -317,7 +320,7 @@ struct ListItem<C> {
     layout: Layout,
 }
 #[derive(Debug)]
-struct VisitableList<C>(Vec<ListItem<C>>);
+struct LayoutList<C>(Vec<ListItem<C>>);
 trait GenerateItem: Sized {
     fn cell_info_type() -> Toks;
     fn generate_item(item: &ListItem<Self>, core_path: &Toks) -> Result<Toks>;
@@ -352,9 +355,9 @@ enum Layout {
     Widget(Ident, Expr),
     Frame(StorIdent, Box<Layout>, Expr),
     Button(StorIdent, Box<Layout>, Expr),
-    List(StorIdent, Direction, VisitableList<()>),
-    Float(VisitableList<()>),
-    Grid(StorIdent, GridDimensions, VisitableList<CellInfo>),
+    List(StorIdent, Direction, LayoutList<()>),
+    Float(LayoutList<()>),
+    Grid(StorIdent, GridDimensions, LayoutList<CellInfo>),
     Label(Ident, LitStr),
     NonNavigable(Box<Layout>),
     MapAny(Box<Layout>, MapAny),
@@ -596,7 +599,7 @@ fn parse_layout_list(
     input: ParseStream,
     core_gen: &mut NameGenerator,
     recurse: bool,
-) -> Result<VisitableList<()>> {
+) -> Result<LayoutList<()>> {
     let inner;
     let _ = bracketed!(inner in input);
     parse_layout_items(&inner, core_gen, recurse)
@@ -606,7 +609,7 @@ fn parse_layout_items(
     inner: ParseStream,
     core_gen: &mut NameGenerator,
     recurse: bool,
-) -> Result<VisitableList<()>> {
+) -> Result<LayoutList<()>> {
     let mut list = vec![];
     let mut gen2 = NameGenerator::default();
     while !inner.is_empty() {
@@ -623,7 +626,7 @@ fn parse_layout_items(
         let _: Token![,] = inner.parse()?;
     }
 
-    Ok(VisitableList(list))
+    Ok(LayoutList(list))
 }
 
 fn parse_grid_as_list_of_lists<KW: Parse>(
@@ -681,7 +684,7 @@ fn parse_grid_as_list_of_lists<KW: Parse>(
         }
     }
 
-    Ok(Layout::Grid(stor, dim, VisitableList(cells)))
+    Ok(Layout::Grid(stor, dim, LayoutList(cells)))
 }
 
 fn parse_grid(
@@ -726,7 +729,7 @@ fn parse_grid(
         }
     }
 
-    Ok(Layout::Grid(stor, dim, VisitableList(cells)))
+    Ok(Layout::Grid(stor, dim, LayoutList(cells)))
 }
 
 impl Parse for ExprMember {
@@ -913,7 +916,7 @@ impl Layout {
                     .append_all(quote! { #stor: Default::default(), });
                 layout.append_fields(fields, children, data_ty);
             }
-            Layout::List(stor, _, VisitableList(list)) => {
+            Layout::List(stor, _, LayoutList(list)) => {
                 fields
                     .def_toks
                     .append_all(quote! { #stor: Default::default(), });
@@ -928,12 +931,12 @@ impl Layout {
                     item.layout.append_fields(fields, children, data_ty);
                 }
             }
-            Layout::Float(VisitableList(list)) => {
+            Layout::Float(LayoutList(list)) => {
                 for item in list {
                     item.layout.append_fields(fields, children, data_ty);
                 }
             }
-            Layout::Grid(stor, dim, VisitableList(list)) => {
+            Layout::Grid(stor, dim, LayoutList(list)) => {
                 let (cols, rows) = (dim.cols as usize, dim.rows as usize);
                 fields
                     .ty_toks
@@ -1068,7 +1071,9 @@ impl Layout {
                         }
                     }
                 }
-                Err((m.member.span(), "child not found"))
+
+                // Fallback case: m is not a widget therefore not a navigable child
+                Ok(())
             }
             Layout::Widget(ident, _) => {
                 for (i, child) in children.enumerate() {
@@ -1081,7 +1086,7 @@ impl Layout {
                 }
                 panic!("generated child not found")
             }
-            Layout::List(_, dir, VisitableList(list)) => {
+            Layout::List(_, dir, LayoutList(list)) => {
                 let start = output.len();
                 for item in list {
                     item.layout.nav_next(children.clone(), output)?;
@@ -1093,14 +1098,14 @@ impl Layout {
                     Direction::Expr(_) => Err((dir.span(), "`list(dir)` with non-static `dir`")),
                 }
             }
-            Layout::Grid(_, _, VisitableList(list)) => {
+            Layout::Grid(_, _, LayoutList(list)) => {
                 // TODO: sort using CellInfo?
                 for item in list {
                     item.layout.nav_next(children.clone(), output)?;
                 }
                 Ok(())
             }
-            Layout::Float(VisitableList(list)) => {
+            Layout::Float(LayoutList(list)) => {
                 for item in list {
                     item.layout.nav_next(children.clone(), output)?;
                 }
@@ -1109,29 +1114,9 @@ impl Layout {
             Layout::Label(_, _) => Ok(()),
         }
     }
-
-    fn span_in_layout(&self, ident: &Member) -> Option<Span> {
-        match self {
-            Layout::Align(layout, _)
-            | Layout::Pack(layout, _)
-            | Layout::Frame(_, layout, _)
-            | Layout::Button(_, layout, _)
-            | Layout::NonNavigable(layout)
-            | Layout::MapAny(layout, _) => layout.span_in_layout(ident),
-            Layout::Single(expr) => (expr.member == *ident).then(|| expr.span()),
-            Layout::Widget(..) => None,
-            Layout::List(_, _, VisitableList(list)) | Layout::Float(VisitableList(list)) => list
-                .iter()
-                .find_map(|item| item.layout.span_in_layout(ident)),
-            Layout::Grid(_, _, VisitableList(list)) => list
-                .iter()
-                .find_map(|cell| cell.layout.span_in_layout(ident)),
-            Layout::Label(..) => None,
-        }
-    }
 }
 
-impl<C: GenerateItem> VisitableList<C> {
+impl<C: GenerateItem> LayoutList<C> {
     pub fn expand(&self, core_path: &Toks) -> Result<Toks> {
         if self.0.is_empty() {
             return Ok(quote! { () });
@@ -1151,7 +1136,7 @@ impl<C: GenerateItem> VisitableList<C> {
 
             let ty = Ident::new(&format!("_L{}", index), span);
             impl_generics.append_all(quote! {
-                #ty: ::kas::layout::Visitable,
+                #ty: ::kas::Layout,
             });
             ty_generics.append_all(quote! { #ty, });
 
@@ -1175,10 +1160,10 @@ impl<C: GenerateItem> VisitableList<C> {
                 #stor_ty
             }
 
-            impl<#impl_generics> ::kas::layout::VisitableList<#info_ty> for #name <#ty_generics> {
+            impl<#impl_generics> ::kas::layout::LayoutList<#info_ty> for #name <#ty_generics> {
                 fn len(&self) -> usize { #len }
 
-                fn get_info_item(&mut self, index: usize) -> Option<(#info_ty, &mut dyn ::kas::layout::Visitable)> {
+                fn get_info_item(&mut self, index: usize) -> Option<(#info_ty, &mut dyn ::kas::Layout)> {
                     match index {
                         #get_mut_rules
                         _ => None,

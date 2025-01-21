@@ -96,15 +96,6 @@ impl_scope! {
     }
 
     impl kas::Layout for Self {
-        fn nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {
-            // We have no child within our rect
-            None
-        }
-
-        fn probe(&mut self, _: Coord) -> Id {
-            self.id()
-        }
-
         fn draw(&mut self, mut draw: DrawCx) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw.re());
@@ -114,11 +105,22 @@ impl_scope! {
         }
     }
 
+    impl Tile for Self {
+        fn nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {
+            // We have no child within our rect
+            None
+        }
+    }
+
     impl Events for Self {
         type Data = Data;
 
         fn navigable(&self) -> bool {
             self.navigable
+        }
+
+        fn probe(&mut self, _: Coord) -> Id {
+            self.id()
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> IsUsed {
@@ -207,6 +209,17 @@ impl_scope! {
         list: Vec<W>,
     }
 
+    impl Events for Self {
+        fn probe(&mut self, coord: Coord) -> Id {
+            for child in self.list.iter_mut() {
+                if let Some(id) = child.try_probe(coord) {
+                    return id;
+                }
+            }
+            self.id()
+        }
+    }
+
     impl kas::Widget for Self {
         type Data = W::Data;
 
@@ -222,15 +235,17 @@ impl_scope! {
         }
     }
 
-    impl kas::Layout for Self {
+    impl Tile for Self {
         #[inline]
         fn num_children(&self) -> usize {
             self.list.len()
         }
-        fn get_child(&self, index: usize) -> Option<&dyn Layout> {
-            self.list.get(index).map(|w| w.as_layout())
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
+            self.list.get(index).map(|w| w.as_tile())
         }
+    }
 
+    impl kas::Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             self.dim = layout::GridDimensions {
                 cols: MENU_VIEW_COLS,
@@ -255,7 +270,7 @@ impl_scope! {
                 .frame(FrameStyle::MenuEntry, axis.flipped())
                 .surround(child_rules);
 
-            let child_rules = |sizer: SizeCx, w: &mut dyn Layout, mut axis: AxisInfo| {
+            let child_rules = |sizer: SizeCx, w: &mut dyn Tile, mut axis: AxisInfo| {
                 axis.sub_other(frame_size_flipped);
                 let rules = w.size_rules(sizer, axis);
                 frame_rules.surround(rules).0
@@ -352,15 +367,6 @@ impl_scope! {
                     }
                 }
             }
-        }
-
-        fn probe(&mut self, coord: Coord) -> Id {
-            for child in self.list.iter_mut() {
-                if let Some(id) = child.try_probe(coord) {
-                    return id;
-                }
-            }
-            self.id()
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

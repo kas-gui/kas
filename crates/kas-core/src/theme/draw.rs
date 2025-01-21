@@ -12,7 +12,8 @@ use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType
 use crate::event::{ConfigCx, EventState};
 use crate::geom::{Offset, Rect};
 use crate::text::{format::FormattableText, Effect, TextDisplay};
-use crate::{autoimpl, Id, Layout};
+#[allow(unused)] use crate::Layout;
+use crate::{autoimpl, Id, Tile};
 use std::ops::{Bound, Range, RangeBounds};
 use std::time::Instant;
 
@@ -203,7 +204,7 @@ impl<'a> DrawCx<'a> {
     ///
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text<T: FormattableText + ?Sized>(&mut self, rect: Rect, text: &Text<T>) {
+    pub fn text<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>) {
         let effects = text.effect_tokens();
         let class = text.class();
         if let Ok(display) = text.display() {
@@ -221,7 +222,7 @@ impl<'a> DrawCx<'a> {
     /// Other than visually highlighting the selection, this method behaves
     /// identically to [`Self::text`]. It is likely to be replaced in the
     /// future by a higher-level API.
-    pub fn text_selected<T: FormattableText + ?Sized, R: RangeBounds<usize>>(
+    pub fn text_selected<T: FormattableText, R: RangeBounds<usize>>(
         &mut self,
         rect: Rect,
         text: &Text<T>,
@@ -253,12 +254,7 @@ impl<'a> DrawCx<'a> {
     ///
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text_cursor<T: FormattableText + ?Sized>(
-        &mut self,
-        rect: Rect,
-        text: &Text<T>,
-        byte: usize,
-    ) {
+    pub fn text_cursor<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>, byte: usize) {
         let class = text.class();
         if let Ok(text) = text.display() {
             self.h.text_cursor(&self.id, rect, text, class, byte);
@@ -295,13 +291,13 @@ impl<'a> DrawCx<'a> {
     }
 
     /// Draw UI element: scroll bar
-    pub fn scroll_bar<W: Layout>(&mut self, track_rect: Rect, grip: &W, dir: Direction) {
+    pub fn scroll_bar<W: Tile>(&mut self, track_rect: Rect, grip: &W, dir: Direction) {
         self.h
             .scroll_bar(&self.id, grip.id_ref(), track_rect, grip.rect(), dir);
     }
 
     /// Draw UI element: slider
-    pub fn slider<W: Layout>(&mut self, track_rect: Rect, grip: &W, dir: Direction) {
+    pub fn slider<W: Tile>(&mut self, track_rect: Rect, grip: &W, dir: Direction) {
         self.h
             .slider(&self.id, grip.id_ref(), track_rect, grip.rect(), dir);
     }

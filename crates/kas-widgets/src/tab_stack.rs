@@ -43,13 +43,11 @@ impl_scope! {
         }
     }
 
-    impl Layout for Self {
+    impl Events for Self {
         fn probe(&mut self, _: Coord) -> Id {
             self.id()
         }
-    }
 
-    impl Events for Self {
         fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> IsUsed {
             event.on_activate(cx, self.id(), |cx| {
                 cx.push(Select);
@@ -161,7 +159,7 @@ impl_scope! {
         }
     }
 
-    impl Layout for Self {
+    impl Tile for Self {
         fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
             let reverse = reverse ^ !self.direction.is_reversed();
             kas::util::nav_next(reverse, from, self.num_children())

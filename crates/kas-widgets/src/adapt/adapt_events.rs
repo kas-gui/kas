@@ -9,7 +9,7 @@ use super::{AdaptConfigCx, AdaptEventCx};
 use kas::autoimpl;
 use kas::event::{ConfigCx, Event, EventCx, IsUsed};
 #[allow(unused)] use kas::Events;
-use kas::{Id, LayoutExt, Node, Widget};
+use kas::{Id, Node, TileExt, Widget};
 use std::fmt::Debug;
 
 kas::impl_scope! {

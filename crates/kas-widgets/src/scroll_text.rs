@@ -47,7 +47,7 @@ impl_scope! {
 
         fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
-            cx.text_set_size(&mut self.text, rect.size, hints.complete_default());
+            self.text.set_rect(cx, rect, hints);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
 
             let max_offset = self.max_scroll_offset();
@@ -59,10 +59,6 @@ impl_scope! {
             self.bar.set_rect(cx, rect, AlignHints::NONE);
             let _ = self.bar.set_limits(max_offset.1, rect.size.1);
             self.bar.set_value(cx, self.view_offset.1);
-        }
-
-        fn probe(&mut self, coord: Coord) -> Id {
-            self.bar.try_probe(coord).unwrap_or_else(|| self.id())
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
@@ -147,7 +143,7 @@ impl_scope! {
                 .ok()
                 .and_then(|mut m| m.next_back())
             {
-                let bounds = Vec2::from(self.text.bounds());
+                let bounds = Vec2::conv(self.text.size());
                 let min_x = marker.pos.0 - bounds.0;
                 let min_y = marker.pos.1 - marker.descent - bounds.1;
                 let max_x = marker.pos.0;
@@ -217,6 +213,10 @@ impl_scope! {
             };
             debug_assert!(!action.is_empty(), "update before configure");
             cx.action(self, action);
+        }
+
+        fn probe(&mut self, coord: Coord) -> Id {
+            self.bar.try_probe(coord).unwrap_or_else(|| self.id())
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {

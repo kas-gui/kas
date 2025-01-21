@@ -286,12 +286,6 @@ impl_scope! {
             self.edit.set_outer_rect(rect, FrameStyle::EditBox);
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
-            self.b_up.try_probe(coord)
-                .or_else(|| self.b_down.try_probe(coord))
-                .unwrap_or_else(|| self.edit.id())
-        }
-
         fn draw(&mut self, mut draw: DrawCx) {
             self.edit.draw(draw.re());
             self.b_up.draw(draw.re());
@@ -301,6 +295,12 @@ impl_scope! {
 
     impl Events for Self {
         type Data = A;
+
+        fn probe(&mut self, coord: Coord) -> Id {
+            self.b_up.try_probe(coord)
+                .or_else(|| self.b_down.try_probe(coord))
+                .unwrap_or_else(|| self.edit.id())
+        }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
             let btn = match event {

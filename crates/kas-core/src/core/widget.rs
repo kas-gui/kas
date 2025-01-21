@@ -5,13 +5,15 @@
 
 //! Widget and Events traits
 
-use super::{Layout, Node};
+#[allow(unused)] use super::Layout;
+use super::{Node, Tile};
 #[allow(unused)] use crate::event::Used;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused};
+use crate::geom::Coord;
+#[allow(unused)] use crate::layout::LayoutVisitor;
 use crate::Id;
-use kas_macros::autoimpl;
-
 #[allow(unused)] use kas_macros as macros;
+use kas_macros::autoimpl;
 
 /// Widget event-handling
 ///
@@ -46,7 +48,7 @@ pub trait Events: Widget + Sized {
     /// [`Id::default`] in order to avoid configuring the child, but in
     /// this case the widget must configure via another means.
     ///
-    /// If this is implemented explicitly then [`Layout::find_child_index`] must
+    /// If this is implemented explicitly then [`Tile::find_child_index`] must
     /// be too.
     ///
     /// Default impl: `self.id_ref().make_child(index)`
@@ -136,6 +138,53 @@ pub trait Events: Widget + Sized {
     #[inline]
     fn navigable(&self) -> bool {
         false
+    }
+
+    /// Probe a coordinate for a widget's [`Id`]
+    ///
+    /// Returns the [`Id`] of the widget expected to handle clicks and touch
+    /// events at the given `coord`. Typically this is the lowest descendant in
+    /// the widget tree at the given `coord`, but it is not required to be; e.g.
+    /// a `Button` may use an inner widget as a label but return its own [`Id`]
+    /// to indicate that the button (not the inner label) handles clicks.
+    ///
+    /// # Calling
+    ///
+    /// **Prefer to call [`Layout::try_probe`] instead**.
+    ///
+    /// ## Call order
+    ///
+    /// It is expected that [`Layout::set_rect`] is called before this method,
+    /// but failure to do so should not cause a fatal error.
+    ///
+    /// # Implementation
+    ///
+    /// The callee may usually assume that it occupies `coord` and may thus
+    /// return its own [`Id`] when no child occupies the input `coord`.
+    ///
+    /// ## Default implementation
+    ///
+    /// ## Default implementation
+    ///
+    /// The `#[widget]` macro
+    /// [may generate a default implementation](macros::widget#layout-1) by
+    /// implementing [`LayoutVisitor`] for `Self`.
+    /// In this case the default impl of this method is
+    /// `self.layout_visitor().set_rect(/* ... */)`.
+    /// The underlying implementation considers all children of the `layout`
+    /// property and of  fields, like this:
+    /// ```ignore
+    /// let coord = coord + self.translation();
+    /// for child in ITER_OVER_CHILDREN {
+    ///     if let Some(id) = child.try_probe(coord) {
+    ///         return Some(id);
+    ///     }
+    /// }
+    /// self.id()
+    /// ```
+    fn probe(&mut self, coord: Coord) -> Id {
+        let _ = coord;
+        unimplemented!() // make rustdoc show that this is a provided method
     }
 
     /// Mouse focus handler
@@ -238,12 +287,12 @@ pub enum NavAdvance {
 
 /// The Widget trait
 ///
-/// The primary widget trait covers event handling over super trait [`Layout`]
+/// The primary widget trait covers event handling over super trait [`Tile`]
 /// which governs layout, drawing, child enumeration and identification.
 /// Most methods of `Widget` are hidden and only for use within the Kas library.
 ///
 /// `Widget` is dyn-safe given a type parameter, e.g. `dyn Widget<Data = ()>`.
-/// [`Layout`] is dyn-safe without a type parameter. [`Node`] is a dyn-safe
+/// [`Tile`] is dyn-safe without a type parameter. [`Node`] is a dyn-safe
 /// abstraction over a `&dyn Widget<Data = T>` plus a `&T` data parameter.
 ///
 /// # Widget lifecycle
@@ -269,7 +318,7 @@ pub enum NavAdvance {
 /// [`impl_scope`](macros::impl_scope). **This is the only supported method of
 /// implementing `Widget`.**
 ///
-/// Explicit (partial) implementations of [`Widget`], [`Layout`] and [`Events`]
+/// Explicit (partial) implementations of [`Widget`], [`Layout`], [`Tile`] and [`Events`]
 /// are optional. The [`#widget`] macro completes implementations.
 ///
 /// Synopsis:
@@ -298,19 +347,19 @@ pub enum NavAdvance {
 /// -   **Data**: the type [`Widget::Data`] must be specified exactly once, but
 ///     this type may be given in any of three locations: as a property of the
 ///     [`#widget`] macro or as [`Widget::Data`].
-/// -   **Core** methods of [`Layout`] are *always* implemented via the [`#widget`]
-///     macro, whether or not an `impl Layout { ... }` item is present.
-/// -   **Introspection** methods [`Layout::num_children`], [`Layout::get_child`]
+/// -   **Core** methods of [`Tile`] are *always* implemented via the [`#widget`]
+///     macro, whether or not an `impl Tile { ... }` item is present.
+/// -   **Introspection** methods [`Tile::num_children`], [`Tile::get_child`]
 ///     and [`Widget::for_child_node`] are implemented by the [`#widget`] macro
 ///     in most cases: child widgets embedded within a layout descriptor or
 ///     included as fields marked with `#[widget]` are enumerated.
-/// -   **Introspection** methods [`Layout::find_child_index`] and
+/// -   **Introspection** methods [`Tile::find_child_index`] and
 ///     [`Events::make_child_id`] have default implementations which *usually*
 ///     suffice.
 /// -   **Layout** is specified either via [layout syntax](macros::widget#layout-1)
 ///     or via implementation of at least [`Layout::size_rules`] and
 ///     [`Layout::draw`] (optionally also `set_rect`, `nav_next`, `translation`
-///     and `probe`).
+///     and [`Events::probe`]).
 ///-    **Event handling** is optional, implemented through [`Events`].
 ///
 /// For examples, check the source code of widgets in the widgets library
@@ -320,7 +369,7 @@ pub enum NavAdvance {
 ///
 /// [`#widget`]: macros::widget
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
-pub trait Widget: Layout {
+pub trait Widget: Tile {
     /// Input data type
     ///
     /// Widget expects data of this type to be provided by reference when
@@ -344,7 +393,7 @@ pub trait Widget: Layout {
     ///
     /// Widgets with no children or using the `#[widget]` attribute on fields do
     /// not need to implement this. Widgets with an explicit implementation of
-    /// [`Layout::num_children`] also need to implement this.
+    /// [`Tile::num_children`] also need to implement this.
     ///
     /// It is recommended to use the methods on [`Node`]
     /// instead of calling this method.

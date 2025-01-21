@@ -75,6 +75,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
     let name = &scope.ident;
 
     let mut layout_impl = None;
+    let mut tile_impl = None;
     let mut widget_impl = None;
 
     for (index, impl_) in scope.impls.iter().enumerate() {
@@ -85,6 +86,13 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             {
                 if layout_impl.is_none() {
                     layout_impl = Some(index);
+                }
+            } else if *path == parse_quote! { ::kas::Tile }
+                || *path == parse_quote! { kas::Tile }
+                || *path == parse_quote! { Tile }
+            {
+                if tile_impl.is_none() {
+                    tile_impl = Some(index);
                 }
             } else if *path == parse_quote! { ::kas::Events }
                 || *path == parse_quote! { kas::Events }
@@ -128,9 +136,9 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
     let impl_target = quote! { #name #ty_generics #where_clause };
     let widget_name = name.to_string();
 
-    let required_layout_methods = quote! {
+    let required_tile_methods = quote! {
         #[inline]
-        fn as_layout(&self) -> &dyn ::kas::Layout {
+        fn as_tile(&self) -> &dyn ::kas::Tile {
             self
         }
         #[inline]
@@ -152,7 +160,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             self.#inner.num_children()
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn ::kas::Layout> {
+        fn get_child(&self, index: usize) -> Option<&dyn ::kas::Tile> {
             self.#inner.get_child(index)
         }
         #[inline]
@@ -181,19 +189,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             self.#inner.set_rect(cx, rect, hints);
         }
     };
-    let fn_nav_next = quote! {
-        #[inline]
-        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-            self.#inner.nav_next(reverse, from)
-        }
-    };
-    let fn_translation = quote! {
-        #[inline]
-        fn translation(&self) -> ::kas::geom::Offset {
-            self.#inner.translation()
-        }
-    };
-    let fn_try_probe_forward = quote! {
+    let fn_try_probe = quote! {
         #[inline]
         fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
             self.#inner.try_probe(coord)
@@ -211,8 +207,6 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         let item_idents = collect_idents(layout_impl);
         let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
 
-        layout_impl.items.push(Verbatim(required_layout_methods));
-
         if !has_item("size_rules") {
             layout_impl.items.push(Verbatim(fn_size_rules));
         }
@@ -221,33 +215,8 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             layout_impl.items.push(Verbatim(fn_set_rect));
         }
 
-        if !has_item("nav_next") {
-            layout_impl.items.push(Verbatim(fn_nav_next));
-        }
-
-        if let Some(ident) = item_idents
-            .iter()
-            .find_map(|(_, ident)| (*ident == "translation").then_some(ident))
-        {
-            emit_error!(ident, "method not supported in derive mode");
-        } else {
-            layout_impl.items.push(Verbatim(fn_translation));
-        }
-
-        if has_item("probe") {
-            // Use default Layout::try_probe impl
-        } else {
-            // Use default Layout::probe (unimplemented)
-            layout_impl.items.push(Verbatim(fn_try_probe_forward));
-        }
-
-        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "try_probe") {
-            if let syn::ImplItem::Fn(f) = &mut layout_impl.items[*index] {
-                emit_warning!(
-                    f,
-                    "Implementations are expected to impl `fn probe`, not `try_probe`"
-                );
-            }
+        if !has_item("try_probe") {
+            layout_impl.items.push(Verbatim(fn_try_probe));
         }
 
         if !has_item("draw") {
@@ -256,12 +225,9 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
     } else {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Layout for #impl_target {
-                #required_layout_methods
                 #fn_size_rules
                 #fn_set_rect
-                #fn_nav_next
-                #fn_translation
-                #fn_try_probe_forward
+                #fn_try_probe
                 #fn_draw
             }
         });
@@ -419,6 +385,30 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
                 #fn_send
                 #fn_replay
                 #fn_nav_next
+            }
+        });
+    }
+
+    let tile_methods = quote! {
+        #[inline]
+        fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+            self.#inner.nav_next(reverse, from)
+        }
+        #[inline]
+        fn translation(&self) -> ::kas::geom::Offset {
+            self.#inner.translation()
+        }
+    };
+
+    if let Some(index) = tile_impl {
+        let tile_impl = &mut scope.impls[index];
+        tile_impl.items.push(Verbatim(required_tile_methods));
+        tile_impl.items.push(Verbatim(tile_methods));
+    } else {
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::Tile for #impl_target {
+                #required_tile_methods
+                #tile_methods
             }
         });
     }

@@ -17,7 +17,7 @@ use crate::geom::{Offset, Vec2};
 use crate::theme::SizeCx;
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
-#[allow(unused)] use crate::{Events, Layout}; // for doc-links
+#[allow(unused)] use crate::{Events, Layout, Tile}; // for doc-links
 use crate::{HasId, Window};
 
 /// Public API

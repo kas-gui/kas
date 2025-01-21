@@ -117,16 +117,6 @@ impl_scope! {
                 .set_sizes(rect.size, child_size + self.frame_size);
         }
 
-        #[inline]
-        fn translation(&self) -> Offset {
-            self.scroll_offset()
-        }
-
-        fn probe(&mut self, coord: Coord) -> Id {
-            self.inner.try_probe(coord + self.translation())
-                .unwrap_or_else(|| self.id())
-        }
-
         fn draw(&mut self, mut draw: DrawCx) {
             draw.with_clip_region(self.core.rect, self.scroll_offset(), |mut draw| {
                 self.inner.draw(draw.re());
@@ -134,9 +124,21 @@ impl_scope! {
         }
     }
 
+    impl Tile for Self {
+        #[inline]
+        fn translation(&self) -> Offset {
+            self.scroll_offset()
+        }
+    }
+
     impl Events for Self {
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.register_nav_fallback(self.id());
+        }
+
+        fn probe(&mut self, coord: Coord) -> Id {
+            self.inner.try_probe(coord + self.translation())
+                .unwrap_or_else(|| self.id())
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {

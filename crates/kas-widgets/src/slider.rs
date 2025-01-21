@@ -299,7 +299,6 @@ impl_scope! {
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            eprintln!("Slider::set_rect({rect:?}");
             let align = match self.direction.is_vertical() {
                 false => AlignPair::new(Align::Stretch, hints.vert.unwrap_or(Align::Center)),
                 true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
@@ -316,15 +315,6 @@ impl_scope! {
             let _ = self.grip.set_offset(self.offset());
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
-            if self.on_move.is_some() {
-                if let Some(id) = self.grip.try_probe(coord) {
-                    return id;
-                }
-            }
-            self.id()
-        }
-
         fn draw(&mut self, mut draw: DrawCx) {
             let dir = self.direction.as_direction();
             draw.slider(self.rect(), &self.grip, dir);
@@ -337,6 +327,15 @@ impl_scope! {
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             let action = self.set_value((self.state_fn)(cx, data));
             cx.action(self, action);
+        }
+
+        fn probe(&mut self, coord: Coord) -> Id {
+            if self.on_move.is_some() {
+                if let Some(id) = self.grip.try_probe(coord) {
+                    return id;
+                }
+            }
+            self.id()
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {

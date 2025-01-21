@@ -46,8 +46,7 @@ mod storage;
 mod visitor;
 
 use crate::dir::{Direction, Directional, Directions};
-
-#[allow(unused)] use crate::Layout;
+use crate::Layout;
 
 pub use align::{Align, AlignHints, AlignPair};
 pub use grid_solver::{DefaultWithLen, GridCellInfo, GridDimensions, GridSetter, GridSolver};
@@ -61,7 +60,7 @@ pub use visitor::{FrameStorage, PackStorage};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-pub use visitor::{Visitable, VisitableList, Visitor};
+pub use visitor::{LayoutList, Visitor};
 
 /// Information on which axis is being resized
 ///
@@ -182,7 +181,7 @@ impl From<AxisInfo> for Directions {
 /// [`layout`]: crate::widget#layout-1
 pub trait LayoutVisitor {
     /// Layout defined by a [`Visitor`]
-    fn layout_visitor(&mut self) -> Visitor<impl Visitable>;
+    fn layout_visitor(&mut self) -> Visitor<impl Layout>;
 }
 
 #[cfg(test)]
