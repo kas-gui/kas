@@ -10,10 +10,10 @@ use super::{Node, Tile};
 #[allow(unused)] use crate::event::Used;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused};
 use crate::geom::Coord;
+#[allow(unused)] use crate::layout::LayoutVisitor;
 use crate::Id;
-use kas_macros::autoimpl;
-
 #[allow(unused)] use kas_macros as macros;
+use kas_macros::autoimpl;
 
 /// Widget event-handling
 ///
@@ -142,33 +142,37 @@ pub trait Events: Widget + Sized {
 
     /// Probe a coordinate for a widget's [`Id`]
     ///
-    /// Returns the [`Id`] of the lowest descendant (leaf-most element of the
-    /// widget tree) occupying `coord` (exceptions possible; see below).
+    /// Returns the [`Id`] of the widget expected to handle clicks and touch
+    /// events at the given `coord`. Typically this is the lowest descendant in
+    /// the widget tree at the given `coord`, but it is not required to be; e.g.
+    /// a `Button` may use an inner widget as a label but return its own [`Id`]
+    /// to indicate that the button (not the inner label) handles clicks.
     ///
-    /// The callee may assume that it occupies `coord`.
-    /// Callers should prefer to call [`Layout::try_probe`] instead.
+    /// # Calling
     ///
-    /// This method is used to determine which widget reacts to the mouse and
-    /// touch events at the given coordinates. The widget identified by this
-    /// method may be highlighted (if hovered by the mouse) and may respond to
-    /// click/touch events. Unhandled click/touch events are passed to the
-    /// parent widget and so on up the widget tree.
+    /// **Prefer to call [`Layout::try_probe`] instead**.
     ///
-    /// The result is usually the widget which draws at the given `coord`, but
-    /// does not have to be. For example, a `Button` widget will return its own
-    /// `id` for coordinates drawn by internal content, while the `CheckButton`
-    /// widget uses an internal component for event handling and thus reports
-    /// this component's `id` even over its own area.
-    ///
-    /// ### Call order
+    /// ## Call order
     ///
     /// It is expected that [`Layout::set_rect`] is called before this method,
     /// but failure to do so should not cause a fatal error.
     ///
-    /// ### Default implementation
+    /// # Implementation
     ///
-    /// The default macro-generated implementation considers all children of the
-    /// `layout` property and of [`#[widget]`](crate::widget) fields:
+    /// The callee may usually assume that it occupies `coord` and may thus
+    /// return its own [`Id`] when no child occupies the input `coord`.
+    ///
+    /// ## Default implementation
+    ///
+    /// ## Default implementation
+    ///
+    /// The `#[widget]` macro
+    /// [may generate a default implementation](macros::widget#layout-1) by
+    /// implementing [`LayoutVisitor`] for `Self`.
+    /// In this case the default impl of this method is
+    /// `self.layout_visitor().set_rect(/* ... */)`.
+    /// The underlying implementation considers all children of the `layout`
+    /// property and of  fields, like this:
     /// ```ignore
     /// let coord = coord + self.translation();
     /// for child in ITER_OVER_CHILDREN {
