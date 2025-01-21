@@ -12,9 +12,9 @@
 use crate::classes::HasStr;
 use crate::event::ConfigCx;
 use crate::geom::Rect;
-use crate::layout::{AlignHints, AxisInfo, SizeRules};
-use crate::theme::{DrawCx, SizeCx, Text, TextClass};
-use crate::{Events, Layout, Tile, Widget};
+use crate::layout::AlignHints;
+use crate::theme::{Text, TextClass};
+use crate::{Events, Layout, Widget};
 use kas_macros::{autoimpl, impl_scope};
 
 impl_scope! {
