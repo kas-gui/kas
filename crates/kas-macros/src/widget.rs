@@ -468,10 +468,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         }
     };
     let fn_probe = quote! {
+        #[inline]
         fn probe(&mut self, coord: ::kas::geom::Coord) -> ::kas::Id {
-            #[cfg(debug_assertions)]
-            #core_path.status.require_rect(&#core_path.id);
-
             #probe
         }
     };
@@ -524,9 +522,14 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     if let Some(index) = events_impl {
         let events_impl = &mut scope.impls[index];
         let item_idents = collect_idents(events_impl);
+        let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
 
         if let Some(method) = fn_navigable {
             events_impl.items.push(Verbatim(method));
+        }
+
+        if !has_item("probe") {
+            events_impl.items.push(Verbatim(fn_probe));
         }
 
         events_impl.items.push(Verbatim(fn_handle_hover));
@@ -551,6 +554,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Events for #impl_target {
                 #fn_navigable
+                #fn_probe
                 #fn_handle_hover
                 #fn_handle_event
             }
@@ -559,7 +563,10 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
     let fn_try_probe = quote! {
         fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-            ::kas::Tile::rect(self).contains(coord).then(|| self.probe(coord))
+            #[cfg(debug_assertions)]
+            self.#core.status.require_rect(&self.#core.id);
+
+            ::kas::Tile::rect(self).contains(coord).then(|| ::kas::Events::probe(self, coord))
         }
     };
 
@@ -598,19 +605,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             }
         } else {
             layout_impl.items.push(Verbatim(fn_set_rect));
-        }
-
-        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "probe") {
-            if let Some(ref core) = core_data {
-                if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
-                    f.block.stmts.insert(0, parse_quote! {
-                        #[cfg(debug_assertions)]
-                        self.#core.status.require_rect(&self.#core.id);
-                    });
-                }
-            }
-        } else {
-            layout_impl.items.push(Verbatim(fn_probe));
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "try_probe") {
@@ -655,7 +649,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             impl #impl_generics ::kas::Layout for #impl_target {
                 #fn_size_rules
                 #fn_set_rect
-                #fn_probe
                 #fn_try_probe
                 #fn_draw
             }

@@ -396,6 +396,17 @@ impl_scope! {
             self.update_scroll_bar(cx);
         }
 
+        fn draw(&mut self, mut draw: DrawCx) {
+            self.inner.draw(draw.re());
+            if self.inner.max_scroll_offset().1 > 0 {
+                self.bar.draw(draw.re());
+            }
+        }
+    }
+
+    impl Events for Self {
+        type Data = G::Data;
+
         fn probe(&mut self, coord: Coord) -> Id {
             if self.inner.max_scroll_offset().1 > 0 {
                 if let Some(id) = self.bar.try_probe(coord) {
@@ -407,17 +418,6 @@ impl_scope! {
             // the event to self.inner without further question.
             self.inner.id()
         }
-
-        fn draw(&mut self, mut draw: DrawCx) {
-            self.inner.draw(draw.re());
-            if self.inner.max_scroll_offset().1 > 0 {
-                self.bar.draw(draw.re());
-            }
-        }
-    }
-
-    impl Events for Self {
-        type Data = G::Data;
 
         fn handle_messages(&mut self, cx: &mut EventCx<'_>, _: &G::Data) {
             if let Some(ScrollMsg(y)) = cx.try_pop() {
@@ -748,10 +748,6 @@ impl_scope! {
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
         }
 
-        fn probe(&mut self, _: Coord) -> Id {
-            self.id()
-        }
-
         fn draw(&mut self, mut draw: DrawCx) {
             let bg = if self.has_error() {
                 Background::Error
@@ -796,6 +792,10 @@ impl_scope! {
 
         fn update(&mut self, cx: &mut ConfigCx, data: &G::Data) {
             G::update(self, cx, data);
+        }
+
+        fn probe(&mut self, _: Coord) -> Id {
+            self.id()
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> IsUsed {

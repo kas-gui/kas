@@ -12,8 +12,8 @@ use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType
 use crate::event::{ConfigCx, EventState};
 use crate::geom::{Offset, Rect};
 use crate::text::{format::FormattableText, Effect, TextDisplay};
-use crate::{autoimpl, Id, Tile};
 #[allow(unused)] use crate::Layout;
+use crate::{autoimpl, Id, Tile};
 use std::ops::{Bound, Range, RangeBounds};
 use std::time::Instant;
 

@@ -215,27 +215,8 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             layout_impl.items.push(Verbatim(fn_set_rect));
         }
 
-        if has_item("probe") {
-            layout_impl.items.push(Verbatim(quote! {
-                fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-                    ::kas::Tile::rect(self).contains(coord).then(|| self.probe(coord))
-                }
-            }));
-        } else {
-            // Use default Layout::probe (unimplemented)
-
-            if !has_item("try_probe") {
-                layout_impl.items.push(Verbatim(fn_try_probe));
-            }
-        }
-
-        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "try_probe") {
-            if let syn::ImplItem::Fn(f) = &mut layout_impl.items[*index] {
-                emit_warning!(
-                    f,
-                    "Implementations are expected to impl `fn probe`, not `try_probe`"
-                );
-            }
+        if !has_item("try_probe") {
+            layout_impl.items.push(Verbatim(fn_try_probe));
         }
 
         if !has_item("draw") {

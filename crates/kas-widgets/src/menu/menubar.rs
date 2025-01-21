@@ -102,14 +102,6 @@ impl_scope! {
             }
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
-            let solver = RowPositionSolver::new(self.direction);
-            solver
-                .find_child_mut(&mut self.widgets, coord)
-                .and_then(|child| child.try_probe(coord))
-                .unwrap_or_else(|| self.id())
-        }
-
         fn draw(&mut self, mut draw: DrawCx) {
             let solver = RowPositionSolver::new(self.direction);
             solver.for_children_mut(&mut self.widgets, self.core.rect, |w| w.draw(draw.re()));
@@ -132,6 +124,14 @@ impl_scope! {
     }
 
     impl<Data, D: Directional> Events for MenuBar<Data, D> {
+        fn probe(&mut self, coord: Coord) -> Id {
+            let solver = RowPositionSolver::new(self.direction);
+            solver
+                .find_child_mut(&mut self.widgets, coord)
+                .and_then(|child| child.try_probe(coord))
+                .unwrap_or_else(|| self.id())
+        }
+
         fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> IsUsed {
             match event {
                 Event::Timer(id_code) => {

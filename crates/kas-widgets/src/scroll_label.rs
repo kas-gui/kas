@@ -61,10 +61,6 @@ impl_scope! {
             self.bar.set_value(cx, self.view_offset.1);
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
-            self.bar.try_probe(coord).unwrap_or_else(|| self.id())
-        }
-
         fn draw(&mut self, mut draw: DrawCx) {
             let rect = Rect::new(self.rect().pos, self.text_size);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
@@ -216,6 +212,10 @@ impl_scope! {
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.text_configure(&mut self.text);
+        }
+
+        fn probe(&mut self, coord: Coord) -> Id {
+            self.bar.try_probe(coord).unwrap_or_else(|| self.id())
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {

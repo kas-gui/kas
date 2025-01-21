@@ -215,35 +215,14 @@ impl_scope! {
             }
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
-            if !self.size_solved {
-                debug_assert!(false);
-                return self.id();
-            }
-
-            // find_child should gracefully handle the case that a coord is between
-            // widgets, so there's no harm (and only a small performance loss) in
-            // calling it twice.
-
-            let solver = layout::RowPositionSolver::new(self.direction);
-            if let Some(child) = solver.find_child_mut(&mut self.widgets, coord) {
-                return child.try_probe(coord).unwrap_or_else(|| self.id());
-            }
-
-            let solver = layout::RowPositionSolver::new(self.direction);
-            if let Some(child) = solver.find_child_mut(&mut self.grips, coord) {
-                return child.try_probe(coord).unwrap_or_else(|| self.id());
-            }
-
-            self.id()
-        }
-
         fn draw(&mut self, mut draw: DrawCx) {
             if !self.size_solved {
                 debug_assert!(false);
                 return;
             }
-            // as with probe, there's not much harm in invoking the solver twice
+            // find_child should gracefully handle the case that a coord is between
+            // widgets, so there's no harm (and only a small performance loss) in
+            // calling it twice.
 
             let solver = layout::RowPositionSolver::new(self.direction);
             solver.for_children_mut(&mut self.widgets, draw.get_clip_rect(), |w| {
@@ -284,6 +263,29 @@ impl_scope! {
 
         fn configure(&mut self, _: &mut ConfigCx) {
             self.id_map.clear();
+        }
+
+        fn probe(&mut self, coord: Coord) -> Id {
+            if !self.size_solved {
+                debug_assert!(false);
+                return self.id();
+            }
+
+            // find_child should gracefully handle the case that a coord is between
+            // widgets, so there's no harm (and only a small performance loss) in
+            // calling it twice.
+
+            let solver = layout::RowPositionSolver::new(self.direction);
+            if let Some(child) = solver.find_child_mut(&mut self.widgets, coord) {
+                return child.try_probe(coord).unwrap_or_else(|| self.id());
+            }
+
+            let solver = layout::RowPositionSolver::new(self.direction);
+            if let Some(child) = solver.find_child_mut(&mut self.grips, coord) {
+                return child.try_probe(coord).unwrap_or_else(|| self.id());
+            }
+
+            self.id()
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {

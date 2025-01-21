@@ -129,16 +129,6 @@ impl_scope! {
             }
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
-            if let Some(entry) = self.widgets.get_mut(self.active) {
-                debug_assert_eq!(entry.1, State::Sized);
-                if let Some(id) = entry.0.try_probe(coord) {
-                    return id;
-                }
-            }
-            self.id()
-        }
-
         fn draw(&mut self, mut draw: DrawCx) {
             if let Some(entry) = self.widgets.get_mut(self.active) {
                 debug_assert_eq!(entry.1, State::Sized);
@@ -213,6 +203,16 @@ impl_scope! {
             if let Some((w, _)) = self.widgets.get_mut(self.active) {
                 cx.update(w.as_node(data));
             }
+        }
+
+        fn probe(&mut self, coord: Coord) -> Id {
+            if let Some(entry) = self.widgets.get_mut(self.active) {
+                debug_assert_eq!(entry.1, State::Sized);
+                if let Some(id) = entry.0.try_probe(coord) {
+                    return id;
+                }
+            }
+            self.id()
         }
     }
 

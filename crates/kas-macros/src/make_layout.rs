@@ -184,18 +184,8 @@ impl Tree {
                     ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
                 }
 
-                fn probe(&mut self, coord: ::kas::geom::Coord) -> ::kas::Id {
-                    #[cfg(debug_assertions)]
-                    #core_path.status.require_rect(&#core_path.id);
-
-                    let coord = coord + ::kas::Tile::translation(self);
-                    ::kas::layout::LayoutVisitor::layout_visitor(self)
-                        .try_probe(coord)
-                        .unwrap_or_else(|| ::kas::TileExt::id(self))
-                }
-
                 fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-                    ::kas::Tile::rect(self).contains(coord).then(|| self.probe(coord))
+                    ::kas::Tile::rect(self).contains(coord).then(|| ::kas::Events::probe(self, coord))
                 }
 
                 fn draw(&mut self, mut draw: ::kas::theme::DrawCx) {
@@ -224,6 +214,17 @@ impl Tree {
             }
 
             impl #impl_generics ::kas::Events for #impl_target {
+                #[inline]
+                fn probe(&mut self, coord: ::kas::geom::Coord) -> ::kas::Id {
+                    #[cfg(debug_assertions)]
+                    #core_path.status.require_rect(&#core_path.id);
+
+                    let coord = coord + ::kas::Tile::translation(self);
+                    ::kas::layout::LayoutVisitor::layout_visitor(self)
+                        .try_probe(coord)
+                        .unwrap_or_else(|| ::kas::TileExt::id(self))
+                }
+
                 fn handle_event(
                     &mut self,
                     _: &mut ::kas::event::EventCx,

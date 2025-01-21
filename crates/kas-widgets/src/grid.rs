@@ -56,6 +56,19 @@ impl_scope! {
         widgets: C,
     }
 
+    impl Events for Self {
+        fn probe(&mut self, coord: Coord) -> Id {
+            for n in 0..self.widgets.len() {
+                if let Some(child) = self.widgets.get_mut_tile(n) {
+                    if let Some(id) = child.try_probe(coord) {
+                        return id;
+                    }
+                }
+            }
+            self.id()
+        }
+    }
+
     impl Widget for Self {
         type Data = C::Data;
 
@@ -100,17 +113,6 @@ impl_scope! {
                     child.set_rect(cx, setter.child_rect(&mut self.layout, info), hints);
                 }
             }
-        }
-
-        fn probe(&mut self, coord: Coord) -> Id {
-            for n in 0..self.widgets.len() {
-                if let Some(child) = self.widgets.get_mut_tile(n) {
-                    if let Some(id) = child.try_probe(coord) {
-                        return id;
-                    }
-                }
-            }
-            self.id()
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

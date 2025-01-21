@@ -106,53 +106,10 @@ pub trait Layout {
     /// Probe a coordinate for a widget's [`Id`]
     ///
     /// Returns the [`Id`] of the lowest descendant (leaf-most element of the
-    /// widget tree) occupying `coord` (exceptions possible; see below).
-    ///
-    /// The callee may assume that it occupies `coord`.
-    /// Callers should prefer to call [`Layout::try_probe`] instead.
-    ///
-    /// This method is used to determine which widget reacts to the mouse and
-    /// touch events at the given coordinates. The widget identified by this
-    /// method may be highlighted (if hovered by the mouse) and may respond to
-    /// click/touch events. Unhandled click/touch events are passed to the
-    /// parent widget and so on up the widget tree.
-    ///
-    /// The result is usually the widget which draws at the given `coord`, but
-    /// does not have to be. For example, a `Button` widget will return its own
-    /// `id` for coordinates drawn by internal content, while the `CheckButton`
-    /// widget uses an internal component for event handling and thus reports
-    /// this component's `id` even over its own area.
-    ///
-    /// ### Call order
-    ///
-    /// It is expected that [`Layout::set_rect`] is called before this method,
-    /// but failure to do so should not cause a fatal error.
-    ///
-    /// ### Default implementation
-    ///
-    /// The default macro-generated implementation considers all children of the
-    /// `layout` property and of [`#[widget]`](crate::widget) fields:
-    /// ```ignore
-    /// let coord = coord + self.translation();
-    /// for child in ITER_OVER_CHILDREN {
-    ///     if let Some(id) = child.try_probe(coord) {
-    ///         return Some(id);
-    ///     }
-    /// }
-    /// self.id()
-    /// ```
-    fn probe(&mut self, coord: Coord) -> Id {
-        let _ = coord;
-        unimplemented!() // make rustdoc show that this is a provided method
-    }
-
-    /// Probe a coordinate for a widget's [`Id`]
-    ///
-    /// Returns the [`Id`] of the lowest descendant (leaf-most element of the
     /// widget tree) occupying `coord`, if any.
     ///
     /// This method returns `None` if `!self.rect().contains(coord)`, otherwise
-    /// returning the result of [`Layout::probe`].
+    /// returning the result of [`Events::probe`].
     ///
     /// ### Call order
     ///
@@ -301,7 +258,7 @@ pub trait Tile: Layout {
     /// *and* child widgets need to implement this.
     /// Such widgets must also implement [`Events::handle_scroll`].
     ///
-    /// Affects event handling via [`Layout::probe`] and affects the positioning
+    /// Affects event handling via [`Events::probe`] and affects the positioning
     /// of pop-up menus. [`Layout::draw`] must be implemented directly using
     /// [`DrawCx::with_clip_region`] to offset contents.
     ///

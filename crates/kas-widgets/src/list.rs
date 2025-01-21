@@ -121,14 +121,6 @@ impl_scope! {
             }
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
-            let solver = RowPositionSolver::new(self.direction);
-            solver
-                .find_child_mut(&mut self.widgets, coord)
-                .and_then(|child| child.try_probe(coord))
-                .unwrap_or_else(|| self.id())
-        }
-
         fn draw(&mut self, mut draw: DrawCx) {
             let solver = RowPositionSolver::new(self.direction);
             solver.for_children_mut(&mut self.widgets, draw.get_clip_rect(), |w| w.draw(draw.re()));
@@ -175,6 +167,14 @@ impl_scope! {
 
         fn configure(&mut self, _: &mut ConfigCx) {
             self.id_map.clear();
+        }
+
+        fn probe(&mut self, coord: Coord) -> Id {
+            let solver = RowPositionSolver::new(self.direction);
+            solver
+                .find_child_mut(&mut self.widgets, coord)
+                .and_then(|child| child.try_probe(coord))
+                .unwrap_or_else(|| self.id())
         }
     }
 

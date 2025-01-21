@@ -96,10 +96,6 @@ impl_scope! {
     }
 
     impl kas::Layout for Self {
-        fn probe(&mut self, _: Coord) -> Id {
-            self.id()
-        }
-
         fn draw(&mut self, mut draw: DrawCx) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw.re());
@@ -121,6 +117,10 @@ impl_scope! {
 
         fn navigable(&self) -> bool {
             self.navigable
+        }
+
+        fn probe(&mut self, _: Coord) -> Id {
+            self.id()
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> IsUsed {
@@ -207,6 +207,17 @@ impl_scope! {
         dim: layout::GridDimensions,
         store: layout::DynGridStorage, //NOTE(opt): number of columns is fixed
         list: Vec<W>,
+    }
+
+    impl Events for Self {
+        fn probe(&mut self, coord: Coord) -> Id {
+            for child in self.list.iter_mut() {
+                if let Some(id) = child.try_probe(coord) {
+                    return id;
+                }
+            }
+            self.id()
+        }
     }
 
     impl kas::Widget for Self {
@@ -356,15 +367,6 @@ impl_scope! {
                     }
                 }
             }
-        }
-
-        fn probe(&mut self, coord: Coord) -> Id {
-            for child in self.list.iter_mut() {
-                if let Some(id) = child.try_probe(coord) {
-                    return id;
-                }
-            }
-            self.id()
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

@@ -291,13 +291,6 @@ impl_scope! {
             let _ = self.update_widgets();
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
-            if self.invisible && self.max_value == 0 {
-                return self.id();
-            }
-            self.grip.try_probe(coord).unwrap_or_else(|| self.id())
-        }
-
         fn draw(&mut self, mut draw: DrawCx) {
             if draw.ev_state().is_hovered_recursive(self.id_ref()) {
                 self.force_visible(draw.ev_state());
@@ -315,6 +308,13 @@ impl_scope! {
 
     impl Events for Self {
         type Data = ();
+
+        fn probe(&mut self, coord: Coord) -> Id {
+            if self.invisible && self.max_value == 0 {
+                return self.id();
+            }
+            self.grip.try_probe(coord).unwrap_or_else(|| self.id())
+        }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
@@ -497,13 +497,6 @@ impl_scope! {
             }
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
-            self.vert_bar.try_probe(coord)
-                .or_else(|| self.horiz_bar.try_probe(coord))
-                .or_else(|| self.inner.try_probe(coord))
-                .unwrap_or_else(|| self.id())
-        }
-
         fn draw(&mut self, mut draw: DrawCx) {
             self.inner.draw(draw.re());
             draw.with_pass(|mut draw| {
@@ -518,6 +511,13 @@ impl_scope! {
     }
 
     impl Events for Self {
+        fn probe(&mut self, coord: Coord) -> Id {
+            self.vert_bar.try_probe(coord)
+                .or_else(|| self.horiz_bar.try_probe(coord))
+                .or_else(|| self.inner.try_probe(coord))
+                .unwrap_or_else(|| self.id())
+        }
+
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             let index = cx.last_child();
             if index == Some(widget_index![self.horiz_bar]) {

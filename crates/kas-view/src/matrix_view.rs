@@ -489,19 +489,6 @@ impl_scope! {
             debug_assert!(self.widgets.len() >= req_widgets);
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
-            let num = self.num_children();
-            let coord = coord + self.scroll.offset();
-            for child in &mut self.widgets[..num] {
-                if child.key.is_some() {
-                    if let Some(id) = child.widget.try_probe(coord) {
-                        return id;
-                    }
-                }
-            }
-            self.id()
-        }
-
         fn draw(&mut self, mut draw: DrawCx) {
             let offset = self.scroll_offset();
             let rect = self.rect() + offset;
@@ -569,6 +556,19 @@ impl_scope! {
         }
 
         fn update_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
+
+        fn probe(&mut self, coord: Coord) -> Id {
+            let num = self.num_children();
+            let coord = coord + self.scroll.offset();
+            for child in &mut self.widgets[..num] {
+                if child.key.is_some() {
+                    if let Some(id) = child.widget.try_probe(coord) {
+                        return id;
+                    }
+                }
+            }
+            self.id()
+        }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
             let is_used = match event {

@@ -111,7 +111,7 @@ impl_scope! {
         }
     }
 
-    impl Layout for Self {
+    impl Events for Self {
         fn probe(&mut self, _: Coord) -> Id {
             self.inner.id()
         }

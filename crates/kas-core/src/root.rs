@@ -146,10 +146,6 @@ impl_scope! {
             self.inner.set_rect(cx, Rect::new(p_in, s_in), hints);
         }
 
-        fn probe(&mut self, _: Coord) -> Id {
-            unimplemented!()
-        }
-
         fn draw(&mut self, _: DrawCx) {
             unimplemented!()
         }
@@ -212,6 +208,10 @@ impl_scope! {
                 // usually preferred where supported (e.g. KDE).
                 self.decorations = Decorations::Toolkit;
             }
+        }
+
+        fn probe(&mut self, _: Coord) -> Id {
+            unimplemented!()
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
