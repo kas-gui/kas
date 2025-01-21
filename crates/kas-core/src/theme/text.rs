@@ -40,7 +40,7 @@ use crate::{Action, Layout};
 /// -   Set the size and prepare by calling [`Self::set_rect`]
 /// -   Draw by calling [`DrawCx::text`] (and/or other text methods)
 #[derive(Clone, Debug)]
-pub struct Text<T: FormattableText + ?Sized> {
+pub struct Text<T: FormattableText> {
     rect: Rect,
     font_id: FontId,
     dpem: f32,
@@ -65,8 +65,6 @@ impl<T: Default + FormattableText> Default for Text<T> {
 }
 
 /// Implement [`Layout`], using default alignment where alignment is not provided
-///
-/// TODO: Support `T: ?Sized`
 impl<T: FormattableText> Layout for Text<T> {
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         sizer.text_rules(self, axis)
@@ -90,7 +88,6 @@ impl<T: FormattableText> Layout for Text<T> {
     }
 }
 
-/// Constructors and other methods requiring `T: Sized`
 impl<T: FormattableText> Text<T> {
     /// Construct from a text model
     ///
@@ -167,10 +164,7 @@ impl<T: FormattableText> Text<T> {
         self.text = text;
         self.set_max_status(Status::Configured);
     }
-}
 
-/// Text, font and type-setting getters and setters
-impl<T: FormattableText + ?Sized> Text<T> {
     /// Length of text
     ///
     /// This is a shortcut to `self.as_str().len()`.
@@ -352,7 +346,7 @@ impl<T: FormattableText + ?Sized> Text<T> {
 }
 
 /// Type-setting operations and status
-impl<T: FormattableText + ?Sized> Text<T> {
+impl<T: FormattableText> Text<T> {
     /// Check whether the status is at least `status`
     #[inline]
     pub fn check_status(&self, status: Status) -> Result<(), NotReady> {
@@ -649,7 +643,7 @@ impl<T: FormattableText + ?Sized> Text<T> {
 }
 
 /// Text editing operations
-impl<T: EditableText + ?Sized> Text<T> {
+impl<T: EditableText> Text<T> {
     /// Insert a char at the given position
     ///
     /// This may be used to edit the raw text instead of replacing it.
@@ -727,7 +721,7 @@ pub trait SizableText {
     fn measure_height(&mut self, wrap_width: f32) -> Result<f32, NotReady>;
 }
 
-impl<T: FormattableText + ?Sized> SizableText for Text<T> {
+impl<T: FormattableText> SizableText for Text<T> {
     fn set_font(&mut self, font_id: FontId, dpem: f32) {
         self.font_id = font_id;
         self.dpem = dpem;

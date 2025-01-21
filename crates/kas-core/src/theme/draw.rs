@@ -204,7 +204,7 @@ impl<'a> DrawCx<'a> {
     ///
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text<T: FormattableText + ?Sized>(&mut self, rect: Rect, text: &Text<T>) {
+    pub fn text<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>) {
         let effects = text.effect_tokens();
         let class = text.class();
         if let Ok(display) = text.display() {
@@ -222,7 +222,7 @@ impl<'a> DrawCx<'a> {
     /// Other than visually highlighting the selection, this method behaves
     /// identically to [`Self::text`]. It is likely to be replaced in the
     /// future by a higher-level API.
-    pub fn text_selected<T: FormattableText + ?Sized, R: RangeBounds<usize>>(
+    pub fn text_selected<T: FormattableText, R: RangeBounds<usize>>(
         &mut self,
         rect: Rect,
         text: &Text<T>,
@@ -254,12 +254,7 @@ impl<'a> DrawCx<'a> {
     ///
     /// [`ConfigCx::text_configure`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text_cursor<T: FormattableText + ?Sized>(
-        &mut self,
-        rect: Rect,
-        text: &Text<T>,
-        byte: usize,
-    ) {
+    pub fn text_cursor<T: FormattableText>(&mut self, rect: Rect, text: &Text<T>, byte: usize) {
         let class = text.class();
         if let Ok(text) = text.display() {
             self.h.text_cursor(&self.id, rect, text, class, byte);
