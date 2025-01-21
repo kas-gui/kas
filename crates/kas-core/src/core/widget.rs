@@ -32,7 +32,7 @@ use kas_macros::autoimpl;
 ///     cached by `size_rules`.
 /// 4.  The widget is updated again after any data change (see [`ConfigCx::update`]).
 /// 5.  The widget is ready for event-handling and drawing
-///     ([`Events::handle_event`], [`Tile::try_probe`], [`Layout::draw`]).
+///     ([`Events::handle_event`], [`Layout::try_probe`], [`Layout::draw`]).
 ///
 /// Widgets are responsible for ensuring that their children may observe this
 /// lifecycle. Usually this simply involves inclusion of the child in layout
@@ -257,7 +257,7 @@ pub enum NavAdvance {
 ///     cached by `size_rules`.
 /// 4.  The widget is updated again after any data change (see [`ConfigCx::update`]).
 /// 5.  The widget is ready for event-handling and drawing
-///     ([`Events::handle_event`], [`Tile::try_probe`], [`Layout::draw`]).
+///     ([`Events::handle_event`], [`Layout::try_probe`], [`Layout::draw`]).
 ///
 /// Widgets are responsible for ensuring that their children may observe this
 /// lifecycle. Usually this simply involves inclusion of the child in layout

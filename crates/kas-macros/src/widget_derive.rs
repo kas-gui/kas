@@ -189,15 +189,17 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             self.#inner.set_rect(cx, rect, hints);
         }
     };
+    let fn_try_probe = quote! {
+        #[inline]
+        fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+            self.#inner.try_probe(coord)
+        }
+    };
     let fn_draw = quote! {
         #[inline]
         fn draw(&mut self, draw: ::kas::theme::DrawCx) {
             self.#inner.draw(draw);
         }
-    };
-
-    let mut fn_try_probe_impl = quote! {
-        self.#inner.try_probe(coord)
     };
 
     if let Some(index) = layout_impl {
@@ -214,11 +216,17 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         }
 
         if has_item("probe") {
-            fn_try_probe_impl = quote! {
-                self.rect().contains(coord).then(|| ::kas::Layout::probe(self, coord))
-            };
+            layout_impl.items.push(Verbatim(quote! {
+                fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+                    ::kas::Tile::rect(self).contains(coord).then(|| self.probe(coord))
+                }
+            }));
         } else {
             // Use default Layout::probe (unimplemented)
+
+            if !has_item("try_probe") {
+                layout_impl.items.push(Verbatim(fn_try_probe));
+            }
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "try_probe") {
@@ -238,6 +246,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             impl #impl_generics ::kas::Layout for #impl_target {
                 #fn_size_rules
                 #fn_set_rect
+                #fn_try_probe
                 #fn_draw
             }
         });
@@ -407,10 +416,6 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         #[inline]
         fn translation(&self) -> ::kas::geom::Offset {
             self.#inner.translation()
-        }
-        #[inline]
-        fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-            #fn_try_probe_impl
         }
     };
 

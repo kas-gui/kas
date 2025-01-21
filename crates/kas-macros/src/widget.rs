@@ -557,6 +557,12 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         });
     }
 
+    let fn_try_probe = quote! {
+        fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+            ::kas::Tile::rect(self).contains(coord).then(|| self.probe(coord))
+        }
+    };
+
     if let Some(index) = layout_impl {
         let layout_impl = &mut scope.impls[index];
         let item_idents = collect_idents(layout_impl);
@@ -609,11 +615,13 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "try_probe") {
             if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
-                emit_warning!(
+                emit_error!(
                     f,
                     "Implementations are expected to impl `fn probe`, not `try_probe`"
                 );
             }
+        } else {
+            layout_impl.items.push(Verbatim(fn_try_probe));
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "draw") {
@@ -648,6 +656,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 #fn_size_rules
                 #fn_set_rect
                 #fn_probe
+                #fn_try_probe
                 #fn_draw
             }
         });

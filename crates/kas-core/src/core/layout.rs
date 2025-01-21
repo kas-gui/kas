@@ -35,7 +35,7 @@ use kas_macros::autoimpl;
 ///     cached by `size_rules`.
 /// 4.  The widget is updated again after any data change (see [`ConfigCx::update`]).
 /// 5.  The widget is ready for event-handling and drawing ([`Events`],
-///     [`Tile::try_probe`], [`Self::draw`]).
+///     [`Layout::try_probe`], [`Self::draw`]).
 ///
 /// Widgets are responsible for ensuring that their children may observe this
 /// lifecycle. Usually this simply involves inclusion of the child in layout
@@ -92,7 +92,7 @@ pub trait Layout {
     /// Required: [`Self::size_rules`] is called for both axes before this
     /// method is called, and that this method has been called *after* the last
     /// call to [`Self::size_rules`] *before* any of the following methods:
-    /// [`Tile::try_probe`], [`Layout::draw`], [`Events::handle_event`].
+    /// [`Layout::try_probe`], [`Layout::draw`], [`Events::handle_event`].
     ///
     /// Default implementation when not using the `layout` property: set `rect`
     /// field of `widget_core!()` to the input `rect`.
@@ -109,7 +109,7 @@ pub trait Layout {
     /// widget tree) occupying `coord` (exceptions possible; see below).
     ///
     /// The callee may assume that it occupies `coord`.
-    /// Callers should prefer to call [`Tile::try_probe`] instead.
+    /// Callers should prefer to call [`Layout::try_probe`] instead.
     ///
     /// This method is used to determine which widget reacts to the mouse and
     /// touch events at the given coordinates. The widget identified by this
@@ -145,6 +145,20 @@ pub trait Layout {
         let _ = coord;
         unimplemented!() // make rustdoc show that this is a provided method
     }
+
+    /// Probe a coordinate for a widget's [`Id`]
+    ///
+    /// Returns the [`Id`] of the lowest descendant (leaf-most element of the
+    /// widget tree) occupying `coord`, if any.
+    ///
+    /// This method returns `None` if `!self.rect().contains(coord)`, otherwise
+    /// returning the result of [`Layout::probe`].
+    ///
+    /// ### Call order
+    ///
+    /// It is expected that [`Layout::set_rect`] is called before this method,
+    /// but failure to do so should not cause a fatal error.
+    fn try_probe(&mut self, coord: Coord) -> Option<Id>;
 
     /// Draw a widget and its children
     ///
@@ -295,22 +309,6 @@ pub trait Tile: Layout {
     #[inline]
     fn translation(&self) -> Offset {
         Offset::ZERO
-    }
-
-    /// Probe a coordinate for a widget's [`Id`]
-    ///
-    /// Returns the [`Id`] of the lowest descendant (leaf-most element of the
-    /// widget tree) occupying `coord`, if any.
-    ///
-    /// This method returns `None` if `!self.rect().contains(coord)`, otherwise
-    /// returning the result of [`Layout::probe`].
-    ///
-    /// ### Call order
-    ///
-    /// It is expected that [`Layout::set_rect`] is called before this method,
-    /// but failure to do so should not cause a fatal error.
-    fn try_probe(&mut self, coord: Coord) -> Option<Id> {
-        self.rect().contains(coord).then(|| self.probe(coord))
     }
 }
 

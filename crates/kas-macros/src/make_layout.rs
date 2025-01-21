@@ -194,6 +194,10 @@ impl Tree {
                         .unwrap_or_else(|| ::kas::TileExt::id(self))
                 }
 
+                fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+                    ::kas::Tile::rect(self).contains(coord).then(|| self.probe(coord))
+                }
+
                 fn draw(&mut self, mut draw: ::kas::theme::DrawCx) {
                     #[cfg(debug_assertions)]
                     #core_path.status.require_rect(&#core_path.id);
