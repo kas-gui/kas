@@ -446,6 +446,30 @@ pub fn widget_index(input: TokenStream) -> TokenStream {
     input.into_token_stream().into()
 }
 
+/// Macro to set the `rect` stored in the widget core
+///
+/// Widgets have a hidden field of type [`Rect`] in their `widget_core!()`, used
+/// to implement method [`Tile::rect`]. This macro assigns to that field.
+///
+/// This macro is usable only within an [`impl_scope!`]  macro using the
+/// [`widget`](macro@widget) attribute.
+///
+/// Example usage:
+/// ```
+/// fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
+///     widget_set_rect!(rect);
+/// }
+/// ```
+///
+/// [`Rect`]: https://docs.rs/kas/latest/kas/geom/struct.Rect.html
+/// [`Tile::rect`]: https://docs.rs/kas/latest/kas/trait.Tile.html#method.rect
+#[proc_macro_error]
+#[proc_macro]
+pub fn widget_set_rect(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as widget_index::UnscopedInput);
+    input.into_token_stream().into()
+}
+
 trait ExpandLayout {
     fn expand_layout(self, name: &str) -> TokenStream;
 }

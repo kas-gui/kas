@@ -13,7 +13,7 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
 use crate::{Action, Events, Icon, Id, Layout, Tile, TileExt, Widget};
-use kas_macros::impl_scope;
+use kas_macros::{impl_scope, widget_set_rect};
 use smallvec::SmallVec;
 use std::num::NonZeroU32;
 
@@ -119,7 +119,7 @@ impl_scope! {
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
+            widget_set_rect!(rect);
             // Calculate position and size for nw, ne, and inner portions:
             let s_nw: Size = self.dec_offset.cast();
             let s_se = self.dec_size - s_nw;

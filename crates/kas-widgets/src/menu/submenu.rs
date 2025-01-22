@@ -315,7 +315,7 @@ impl_scope! {
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, _: AlignHints) {
-            self.core.rect = rect;
+            widget_set_rect!(rect);
             let store = &mut self.store;
             let hints = AlignHints::NONE;
             let mut setter = layout::GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, store);

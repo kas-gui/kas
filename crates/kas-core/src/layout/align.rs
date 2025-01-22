@@ -27,7 +27,7 @@ pub use crate::text::Align;
 /// let rect = align
 ///     .complete(Align::Stretch, Align::Center)
 ///     .aligned_rect(pref_size, rect);
-/// // self.core.rect = rect;
+/// // widget_set_rect!(rect);
 /// ```
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct AlignHints {

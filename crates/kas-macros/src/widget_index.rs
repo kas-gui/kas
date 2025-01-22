@@ -55,6 +55,7 @@ impl Parse for WidgetInput {
 
 struct Visitor<'a, I: Clone + Iterator<Item = (usize, &'a Member)>> {
     children: I,
+    path_rect: TokenStream,
 }
 impl<'a, I: Clone + Iterator<Item = (usize, &'a Member)>> VisitMut for Visitor<'a, I> {
     fn visit_macro_mut(&mut self, node: &mut syn::Macro) {
@@ -83,6 +84,19 @@ impl<'a, I: Clone + Iterator<Item = (usize, &'a Member)>> VisitMut for Visitor<'
             emit_error!(args.ident.span(), "does not match any child widget");
             node.tokens = parse_quote! { error_emitted 0 };
             return;
+        } else if node.path == parse_quote! { widget_set_rect } {
+            let expr = match syn::parse2::<syn::Expr>(node.tokens.clone()) {
+                Ok(expr) => expr,
+                Err(err) => {
+                    emit_error!(node.tokens.span(), "{}", err);
+                    node.tokens = parse_quote! { error_emitted };
+                    return;
+                }
+            };
+
+            let path_rect = &self.path_rect;
+            node.tokens = parse_quote! { expanded_result #path_rect = #expr };
+            return;
         }
 
         visit_mut::visit_macro_mut(self, node);
@@ -91,9 +105,13 @@ impl<'a, I: Clone + Iterator<Item = (usize, &'a Member)>> VisitMut for Visitor<'
 
 pub fn visit_impls<'a, I: Clone + Iterator<Item = (usize, &'a Member)>>(
     children: I,
+    path_rect: TokenStream,
     impls: &mut [syn::ItemImpl],
 ) {
-    let mut obj = Visitor { children };
+    let mut obj = Visitor {
+        children,
+        path_rect,
+    };
 
     for impl_ in impls {
         obj.visit_item_impl_mut(impl_);

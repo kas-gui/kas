@@ -304,7 +304,7 @@ impl_scope! {
                 true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
             };
             let mut rect = cx.align_feature(Feature::Slider(self.direction()), rect, align);
-            self.core.rect = rect;
+            widget_set_rect!(rect);
             self.grip.set_track(rect);
 
             // Set the grip size (we could instead call set_size but the widget

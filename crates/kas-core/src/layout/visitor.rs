@@ -176,7 +176,7 @@ impl<V: Layout> Visitor<V> {
 
     /// Apply a given `rect` to self
     ///
-    /// The caller is expected to set `self.core.rect = rect;`.
+    /// The caller is expected to call `widget_set_rect!(rect);`.
     /// In other respects, this functions identically to [`Layout::set_rect`].
     #[inline]
     pub fn set_rect(mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {

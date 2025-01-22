@@ -24,7 +24,9 @@ pub use crate::layout::{
 #[doc(no_inline)] pub use crate::theme::{DrawCx, SizeCx};
 #[doc(no_inline)] pub use crate::Action;
 #[doc(no_inline)]
-pub use crate::{autoimpl, impl_anon, impl_default, impl_scope, widget, widget_index};
+pub use crate::{autoimpl, impl_anon, impl_default, impl_scope};
+#[doc(no_inline)]
+pub use crate::{widget, widget_index, widget_set_rect};
 #[doc(no_inline)]
 pub use crate::{Events, Layout, Tile, TileExt, Widget, Window, WindowCommand};
 #[doc(no_inline)] pub use crate::{HasId, Id};

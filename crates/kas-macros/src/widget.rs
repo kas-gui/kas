@@ -261,6 +261,25 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         field.attrs = other_attrs;
     }
 
+    let Some(core) = core_data.clone() else {
+        let span = match scope.item {
+            ScopeItem::Struct {
+                fields: Fields::Named(ref fields),
+                ..
+            } => fields.brace_token.span,
+            ScopeItem::Struct {
+                fields: Fields::Unnamed(ref fields),
+                ..
+            } => fields.paren_token.span,
+            _ => unreachable!(),
+        };
+        return Err(Error::new(
+            span.join(),
+            "expected: a field with type `widget_core!()`",
+        ));
+    };
+    let core_path = quote! { self.#core };
+
     let named_child_iter = children
         .iter()
         .enumerate()
@@ -268,7 +287,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             ChildIdent::Field(ref member) => Some((i, member)),
             ChildIdent::CoreField(_) => None,
         });
-    crate::widget_index::visit_impls(named_child_iter, &mut scope.impls);
+    let path_rect = quote! { #core_path.rect };
+    crate::widget_index::visit_impls(named_child_iter, path_rect, &mut scope.impls);
 
     if let Some(ref span) = num_children {
         if get_child.is_none() {
@@ -296,24 +316,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
     let impl_generics = impl_generics.to_token_stream();
     let impl_target = quote! { #name #ty_generics #where_clause };
-    let Some(core) = core_data.clone() else {
-        let span = match scope.item {
-            ScopeItem::Struct {
-                fields: Fields::Named(ref fields),
-                ..
-            } => fields.brace_token.span,
-            ScopeItem::Struct {
-                fields: Fields::Unnamed(ref fields),
-                ..
-            } => fields.paren_token.span,
-            _ => unreachable!(),
-        };
-        return Err(Error::new(
-            span.join(),
-            "expected: a field with type `widget_core!()`",
-        ));
-    };
-    let core_path = quote! { self.#core };
 
     let require_rect: syn::Stmt = parse_quote! {
         #[cfg(debug_assertions)]

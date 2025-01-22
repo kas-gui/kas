@@ -78,7 +78,7 @@ impl_scope! {
                 true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
             };
             let rect = cx.align_feature(Feature::ProgressBar(self.direction()), rect, align);
-            self.core.rect = rect;
+            widget_set_rect!(rect);
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

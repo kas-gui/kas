@@ -281,7 +281,7 @@ impl_scope! {
                 true => AlignPair::new(hints.horiz.unwrap_or(Align::Center), Align::Stretch),
             };
             let rect = cx.align_feature(Feature::ScrollBar(self.direction()), rect, align);
-            self.core.rect = rect;
+            widget_set_rect!(rect);
             self.grip.set_track(rect);
 
             // We call grip.set_rect only for compliance with the widget model:
@@ -459,7 +459,7 @@ impl_scope! {
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
+            widget_set_rect!(rect);
             let pos = rect.pos;
             let mut child_size = rect.size;
 
