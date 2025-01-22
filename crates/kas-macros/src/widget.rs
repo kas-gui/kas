@@ -226,7 +226,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     path: core_type.into(),
                 });
             } else {
-                field.ty = parse_quote! { ::kas::CoreData };
+                field.ty = parse_quote! { ::kas::DefaultCoreType };
             }
 
             continue;

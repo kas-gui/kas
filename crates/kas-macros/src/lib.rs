@@ -200,13 +200,8 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// The struct must contain a field of type `widget_core!()` (usually named
 /// `core`). The macro `widget_core!()` is a placeholder, expanded by
 /// `#[widget]` and used to identify the field used (any name may be used).
-/// This field *might* have type [`CoreData`] or might use a special generated
-/// type; either way it has fields `id: Id` (assigned by during configure)
-/// and `rect: Rect` (usually assigned by
-/// `Layout::set_rect`). It may contain additional fields for layout data. The
-/// type supports `Default` and `Clone` (although `Clone` actually
-/// default-initializes all fields other than `rect` since clones of widgets
-/// must themselves be configured).
+/// This type implements [`Default`] and [`Clone`], though the clone is not an
+/// exact clone (cloned widgets must still be configured).
 ///
 /// Assuming the deriving type is a `struct` or `tuple struct`, fields support
 /// the following attributes:
@@ -359,7 +354,6 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// [`Events`]: https://docs.rs/kas/latest/kas/trait.Events.html
 /// [`CursorIcon`]: https://docs.rs/kas/latest/kas/event/enum.CursorIcon.html
 /// [`IsUsed`]: https://docs.rs/kas/latest/kas/event/enum.IsUsed.html
-/// [`CoreData`]: https://docs.rs/kas/latest/kas/struct.CoreData.html
 /// [`Deref`]: std::ops::Deref
 #[proc_macro_attribute]
 #[proc_macro_error]
