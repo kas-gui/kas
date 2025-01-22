@@ -442,9 +442,8 @@ pub fn impl_anon(input: TokenStream) -> TokenStream {
 #[proc_macro_error]
 #[proc_macro]
 pub fn widget_index(input: TokenStream) -> TokenStream {
-    let input2 = input.clone();
-    let _ = parse_macro_input!(input2 as widget_index::BaseInput);
-    input
+    let input = parse_macro_input!(input as widget_index::UnscopedInput);
+    input.into_token_stream().into()
 }
 
 trait ExpandLayout {

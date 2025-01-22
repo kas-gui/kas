@@ -3,37 +3,39 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenStream};
 use proc_macro_error2::emit_error;
 use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
 use syn::visit_mut::{self, VisitMut};
-use syn::{parse_quote, Error, Lit, Member, Result, Token};
+use syn::{parse_quote, Error, Member, Result, Token};
 
 #[allow(non_camel_case_types)]
 mod kw {
     syn::custom_keyword!(error_emitted);
+    syn::custom_keyword!(expanded_result);
 }
 
-pub struct BaseInput;
-impl Parse for BaseInput {
+pub struct UnscopedInput(TokenStream);
+impl Parse for UnscopedInput {
     fn parse(input: ParseStream) -> Result<Self> {
-        if input.peek(Lit) {
-            // Okay: macro was expanded internally (or user wrote a number...)
-            let _ = input.parse::<Lit>()?;
-            if input.is_empty() {
-                return Ok(Self);
-            }
+        if input.peek(kw::expanded_result) {
+            // Okay: macro was expanded internally
+            let _: kw::expanded_result = input.parse()?;
+            Ok(UnscopedInput(input.parse()?))
         } else if input.peek(kw::error_emitted) {
             // An error was already emitted by the visitor
             let _ = input.parse::<kw::error_emitted>()?;
-            if input.is_empty() {
-                return Ok(Self);
-            }
+            Ok(UnscopedInput(input.parse()?))
+        } else {
+            let msg = "usage invalid outside of `impl_scope!` macro with `#[widget]` attribute";
+            Err(Error::new(Span::call_site(), msg))
         }
-
-        let msg = "usage of `widget_index!` invalid outside of `impl_scope!` macro with `#[widget]` attribute";
-        Err(Error::new(Span::call_site(), msg))
+    }
+}
+impl UnscopedInput {
+    pub fn into_token_stream(self) -> TokenStream {
+        self.0
     }
 }
 
@@ -66,20 +68,20 @@ impl<'a, I: Clone + Iterator<Item = (usize, &'a Member)>> VisitMut for Visitor<'
                 Ok(args) => args,
                 Err(err) => {
                     emit_error!(node.tokens.span(), "{}", err);
-                    node.tokens = parse_quote! { error_emitted };
+                    node.tokens = parse_quote! { error_emitted 0 };
                     return;
                 }
             };
 
             for (i, child) in self.children.clone() {
                 if args.ident == *child {
-                    node.tokens = parse_quote! { #i };
+                    node.tokens = parse_quote! { expanded_result #i };
                     return;
                 }
             }
 
             emit_error!(args.ident.span(), "does not match any child widget");
-            node.tokens = parse_quote! { error_emitted };
+            node.tokens = parse_quote! { error_emitted 0 };
             return;
         }
 
