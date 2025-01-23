@@ -233,7 +233,7 @@ pub trait Events: Widget + Sized {
     /// This is the secondary event handler (see [documentation](crate::event)).
     ///
     /// It is implied that the stack contains at least one message.
-    /// Use [`EventCx::try_pop`] and/or [`EventCx::try_observe`].
+    /// Use [`EventCx::try_pop`] and/or [`EventCx::try_peek`].
     ///
     /// [`EventCx::last_child`] may be called to find the message's sender.
     /// This may return [`None`] (if no child was visited, which implies that

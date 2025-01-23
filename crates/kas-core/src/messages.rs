@@ -186,7 +186,7 @@ impl MessageStack {
     /// Try observing the last message on the stack without popping
     ///
     /// This method may be called from [`Events::handle_messages`].
-    pub fn try_observe<M: Debug + 'static>(&self) -> Option<&M> {
+    pub fn try_peek<M: Debug + 'static>(&self) -> Option<&M> {
         if self.has_any() {
             self.stack.last().and_then(|m| m.downcast_ref::<M>())
         } else {
