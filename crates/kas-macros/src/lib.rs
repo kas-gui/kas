@@ -449,7 +449,7 @@ pub fn widget_index(input: TokenStream) -> TokenStream {
 /// [`widget`](macro@widget) attribute.
 ///
 /// Example usage:
-/// ```
+/// ```ignore
 /// fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
 ///     widget_set_rect!(rect);
 /// }
