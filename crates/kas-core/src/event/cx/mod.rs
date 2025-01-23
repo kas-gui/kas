@@ -426,6 +426,8 @@ pub struct EventCx<'a> {
     pub(crate) target_is_disabled: bool,
     last_child: Option<usize>,
     scroll: Scroll,
+    /// Identity of current widget
+    pub(crate) id: Id,
 }
 
 impl<'a> Deref for EventCx<'a> {
@@ -442,6 +444,13 @@ impl<'a> DerefMut for EventCx<'a> {
 
 /// Internal methods
 impl<'a> EventCx<'a> {
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    #[cfg(debug_assertions)]
+    pub fn assert_id(&self, id: &Id) {
+        assert_eq!(id, &self.id);
+    }
+
     fn start_key_event(&mut self, mut widget: Node<'_>, vkey: Key, code: PhysicalKey) {
         log::trace!(
             "start_key_event: widget={}, vkey={vkey:?}, physical_key={code:?}",

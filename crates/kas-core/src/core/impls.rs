@@ -43,7 +43,9 @@ pub fn _send<W: Events>(
             let translation = widget.translation();
             let mut _found = false;
             widget.as_node(data).for_child(index, |mut node| {
+                let own_id = std::mem::replace(&mut cx.id, node.id());
                 is_used = node._send(cx, id.clone(), event.clone() + translation);
+                cx.id = own_id;
                 _found = true;
             });
 
@@ -81,7 +83,9 @@ pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>
     if let Some(index) = widget.find_child_index(&id) {
         let mut _found = false;
         widget.as_node(data).for_child(index, |mut node| {
+            let own_id = std::mem::replace(&mut cx.id, node.id());
             node._replay(cx, id.clone());
+            cx.id = own_id;
             _found = true;
         });
 

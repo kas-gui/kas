@@ -247,10 +247,15 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             WindowEvent::RedrawRequested => self.do_draw(state).is_err(),
             event => {
                 let mut messages = MessageStack::new();
-                self.ev_state
-                    .with(&mut state.shared, window, &mut messages, |cx| {
+                self.ev_state.with(
+                    &mut state.shared,
+                    window,
+                    &mut messages,
+                    self.widget.id(),
+                    |cx| {
                         cx.handle_winit(&mut self.widget, &state.data, event);
-                    });
+                    },
+                );
                 state.handle_messages(&mut messages);
 
                 if self.ev_state.action.contains(Action::RECONFIGURE) {
@@ -352,10 +357,13 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
 
         let widget = self.widget.as_node(&state.data);
         let mut messages = MessageStack::new();
-        self.ev_state
-            .with(&mut state.shared, window, &mut messages, |cx| {
-                cx.update_timer(widget)
-            });
+        self.ev_state.with(
+            &mut state.shared,
+            window,
+            &mut messages,
+            widget.id(),
+            |cx| cx.update_timer(widget),
+        );
         state.handle_messages(&mut messages);
         self.next_resume()
     }
@@ -371,10 +379,13 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         };
 
         let mut messages = MessageStack::new();
-        self.ev_state
-            .with(&mut state.shared, window, &mut messages, |cx| {
-                self.widget.add_popup(cx, &state.data, id, popup)
-            });
+        self.ev_state.with(
+            &mut state.shared,
+            window,
+            &mut messages,
+            self.widget.id(),
+            |cx| self.widget.add_popup(cx, &state.data, id, popup),
+        );
         state.handle_messages(&mut messages);
     }
 
@@ -388,10 +399,13 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         } else if let Some(window) = self.window.as_ref() {
             let widget = &mut self.widget;
             let mut messages = MessageStack::new();
-            self.ev_state
-                .with(&mut state.shared, window, &mut messages, |cx| {
-                    widget.remove_popup(cx, id)
-                });
+            self.ev_state.with(
+                &mut state.shared,
+                window,
+                &mut messages,
+                widget.id(),
+                |cx| widget.remove_popup(cx, id),
+            );
             state.handle_messages(&mut messages);
         }
     }

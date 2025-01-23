@@ -827,6 +827,9 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             id: ::kas::Id,
             event: ::kas::event::Event,
         ) -> ::kas::event::IsUsed {
+            #[cfg(debug_assertions)]
+            cx.assert_id(::kas::Tile::id_ref(self));
+
             ::kas::impls::_send(self, cx, data, id, event)
         }
 
@@ -836,6 +839,9 @@ fn widget_recursive_methods(core_path: &Toks) -> Toks {
             data: &Self::Data,
             id: ::kas::Id,
         ) {
+            #[cfg(debug_assertions)]
+            cx.assert_id(::kas::Tile::id_ref(self));
+
             ::kas::impls::_replay(self, cx, data, id);
         }
     }

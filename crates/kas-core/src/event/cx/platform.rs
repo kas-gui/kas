@@ -12,7 +12,7 @@ use super::*;
 use crate::cast::traits::*;
 use crate::geom::DVec2;
 use crate::theme::ThemeSize;
-use crate::Window;
+use crate::{Tile, Window};
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
@@ -111,6 +111,7 @@ impl EventState {
         runner: &'a mut dyn RunnerT,
         window: &'a dyn WindowDataErased,
         messages: &'a mut MessageStack,
+        id: Id,
         f: F,
     ) {
         let mut cx = EventCx {
@@ -121,6 +122,7 @@ impl EventState {
             target_is_disabled: false,
             last_child: None,
             scroll: Scroll::None,
+            id,
         };
         f(&mut cx);
     }
@@ -134,7 +136,7 @@ impl EventState {
         win: &mut Window<A>,
         data: &A,
     ) -> Action {
-        self.with(runner, window, messages, |cx| {
+        self.with(runner, window, messages, win.id(), |cx| {
             while let Some((id, wid)) = cx.popup_removed.pop() {
                 cx.send_event(win.as_node(data), id, Event::PopupClosed(wid));
             }
