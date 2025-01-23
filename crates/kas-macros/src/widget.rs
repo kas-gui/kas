@@ -705,8 +705,6 @@ pub fn impl_core_methods(name: &str, core_path: &Toks) -> Toks {
         }
         #[inline]
         fn rect(&self) -> ::kas::geom::Rect {
-            #[cfg(debug_assertions)]
-            #core_path.status.require_rect(&#core_path._id);
             #core_path._rect
         }
 
