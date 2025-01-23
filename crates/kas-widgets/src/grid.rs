@@ -106,7 +106,7 @@ impl_scope! {
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
+            widget_set_rect!(rect);
             let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, &mut self.layout);
             for n in 0..self.widgets.len() {
                 if let Some((info, child)) = self.widgets.cell_info(n).zip(self.widgets.get_mut_tile(n)) {

@@ -154,7 +154,7 @@ impl_scope! {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             let align = hints.complete_default();
             let scale_factor = cx.size_cx().scale_factor();
-            self.core.rect = self.scaling.align_rect(rect, align, scale_factor);
+            widget_set_rect!(self.scaling.align_rect(rect, align, scale_factor));
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

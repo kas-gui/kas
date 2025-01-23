@@ -239,7 +239,7 @@ impl_scope! {
 
         fn position_solver(&self) -> PositionSolver {
             PositionSolver {
-                pos_start: self.core.rect.pos + self.frame_offset,
+                pos_start: self.rect().pos + self.frame_offset,
                 skip: self.child_size + self.child_inter_margin,
                 size: self.child_size,
                 first_data: self.first_data,
@@ -442,7 +442,7 @@ impl_scope! {
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
+            widget_set_rect!(rect);
             self.align_hints = hints;
 
             // Widgets need configuring and updating: do so by updating self.
@@ -493,7 +493,7 @@ impl_scope! {
             let offset = self.scroll_offset();
             let rect = self.rect() + offset;
             let num = self.num_children();
-            draw.with_clip_region(self.core.rect, offset, |mut draw| {
+            draw.with_clip_region(self.rect(), offset, |mut draw| {
                 for child in &mut self.widgets[..num] {
                     if let Some(ref key) = child.key {
                         // Note: we don't know which widgets within 0..num are
@@ -605,7 +605,7 @@ impl_scope! {
                     };
                     return if let Some((ci, ri)) = data_index {
                         // Set nav focus and update scroll position
-                        let action = self.scroll.focus_rect(cx, solver.rect(ci, ri), self.core.rect);
+                        let action = self.scroll.focus_rect(cx, solver.rect(ci, ri), self.rect());
                         if !action.is_empty() {
                             cx.action(&self, action);
                             solver = self.update_widgets(&mut cx.config_cx(), data);
@@ -671,7 +671,7 @@ impl_scope! {
 
             let (moved, used_by_sber) = self
                 .scroll
-                .scroll_by_event(cx, event, self.id(), self.core.rect);
+                .scroll_by_event(cx, event, self.id(), self.rect());
             if moved {
                 self.update_widgets(&mut cx.config_cx(), data);
             }
@@ -801,7 +801,7 @@ impl_scope! {
                     (d_cols - 1, d_rows - 1)
                 };
 
-                let action = self.scroll.self_focus_rect(solver.rect(ci, ri), self.core.rect);
+                let action = self.scroll.self_focus_rect(solver.rect(ci, ri), self.rect());
                 if !action.is_empty() {
                     cx.action(&self, action);
                     solver = self.update_widgets(cx, data);

@@ -13,7 +13,7 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
 use crate::{Action, Events, Icon, Id, Layout, Tile, TileExt, Widget};
-use kas_macros::impl_scope;
+use kas_macros::{impl_scope, widget_set_rect};
 use smallvec::SmallVec;
 use std::num::NonZeroU32;
 
@@ -119,7 +119,7 @@ impl_scope! {
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
+            widget_set_rect!(rect);
             // Calculate position and size for nw, ne, and inner portions:
             let s_nw: Size = self.dec_offset.cast();
             let s_se = self.dec_size - s_nw;
@@ -153,10 +153,10 @@ impl_scope! {
 
     impl Self {
         pub(crate) fn try_probe(&mut self, data: &Data, coord: Coord) -> Option<Id> {
-            if !self.core.rect.contains(coord) {
+            if !self.rect().contains(coord) {
                 return None;
             }
-            for (_, popup, translation) in self.popups.iter_mut().rev() {
+            for (_, popup, translation) in self.popups.iter().rev() {
                 if let Some(Some(id)) = self.inner.as_node(data).find_node(&popup.id, |mut node| node.try_probe(coord + *translation)) {
                     return Some(id);
                 }
@@ -181,7 +181,7 @@ impl_scope! {
         #[cfg(winit)]
         pub(crate) fn draw(&mut self, data: &Data, mut draw: DrawCx) {
             if self.dec_size != Size::ZERO {
-                draw.frame(self.core.rect, FrameStyle::Window, Default::default());
+                draw.frame(self.rect(), FrameStyle::Window, Default::default());
                 if self.bar_h > 0 {
                     self.title_bar.draw(draw.re());
                 }
@@ -473,7 +473,7 @@ impl<Data: 'static> Window<Data> {
     fn resize_popup(&mut self, cx: &mut ConfigCx, data: &Data, index: usize) {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
-        let r = self.core.rect;
+        let r = self.rect();
         let (_, ref mut popup, ref mut translation) = self.popups[index];
 
         let is_reversed = popup.direction.is_reversed();

@@ -141,8 +141,8 @@ impl Tree {
 
         let toks = quote! {{
             struct #name #impl_generics {
-                rect: ::kas::geom::Rect,
-                id: ::kas::Id,
+                _rect: ::kas::geom::Rect,
+                _id: ::kas::Id,
                 #[cfg(debug_assertions)]
                 status: ::kas::WidgetStatus,
                 #stor_ty
@@ -162,7 +162,7 @@ impl Tree {
                     axis: ::kas::layout::AxisInfo,
                 ) -> ::kas::layout::SizeRules {
                     #[cfg(debug_assertions)]
-                    #core_path.status.size_rules(&#core_path.id, axis);
+                    #core_path.status.size_rules(&#core_path._id, axis);
                     ::kas::layout::LayoutVisitor::layout_visitor(self).size_rules(sizer, axis)
                 }
 
@@ -173,9 +173,9 @@ impl Tree {
                     hints: ::kas::layout::AlignHints,
                 ) {
                     #[cfg(debug_assertions)]
-                    #core_path.status.set_rect(&#core_path.id);
+                    #core_path.status.set_rect(&#core_path._id);
 
-                    #core_path.rect = rect;
+                    #core_path._rect = rect;
                     ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
                 }
 
@@ -185,9 +185,9 @@ impl Tree {
 
                 fn draw(&mut self, mut draw: ::kas::theme::DrawCx) {
                     #[cfg(debug_assertions)]
-                    #core_path.status.require_rect(&#core_path.id);
+                    #core_path.status.require_rect(&#core_path._id);
 
-                    draw.set_id(::kas::TileExt::id(self));
+                    draw.set_id(::kas::Tile::id(self));
 
                     ::kas::layout::LayoutVisitor::layout_visitor(self).draw(draw);
                 }
@@ -212,12 +212,12 @@ impl Tree {
                 #[inline]
                 fn probe(&mut self, coord: ::kas::geom::Coord) -> ::kas::Id {
                     #[cfg(debug_assertions)]
-                    #core_path.status.require_rect(&#core_path.id);
+                    #core_path.status.require_rect(&#core_path._id);
 
                     let coord = coord + ::kas::Tile::translation(self);
                     ::kas::layout::LayoutVisitor::layout_visitor(self)
                         .try_probe(coord)
-                        .unwrap_or_else(|| ::kas::TileExt::id(self))
+                        .unwrap_or_else(|| ::kas::Tile::id(self))
                 }
 
                 fn handle_event(
@@ -227,7 +227,7 @@ impl Tree {
                     _: ::kas::event::Event,
                 ) -> ::kas::event::IsUsed {
                     #[cfg(debug_assertions)]
-                    #core_path.status.require_rect(&#core_path.id);
+                    #core_path.status.require_rect(&#core_path._id);
                     ::kas::event::Unused
                 }
             }
@@ -235,8 +235,8 @@ impl Tree {
             #widget_impl
 
             #name {
-                rect: Default::default(),
-                id: Default::default(),
+                _rect: Default::default(),
+                _id: Default::default(),
                 #[cfg(debug_assertions)]
                 status: Default::default(),
                 #stor_def

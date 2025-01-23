@@ -56,7 +56,7 @@ impl_scope! {
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             let rect = cx.align_feature(Feature::CheckBox, rect, hints.complete_center());
-            self.core.rect = rect;
+            widget_set_rect!(rect);
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
@@ -186,10 +186,10 @@ impl_scope! {
 
     impl Layout for Self {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
+            widget_set_rect!(rect);
             self.layout_visitor().set_rect(cx, rect, hints);
             let dir = self.direction();
-            shrink_to_text(&mut self.core.rect, dir, &self.label);
+            shrink_to_text(&mut self.rect(), dir, &self.label);
         }
     }
 

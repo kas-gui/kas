@@ -342,7 +342,7 @@ impl_scope! {
 
         #[inline]
         fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
-            self.core.rect = rect;
+            widget_set_rect!(rect);
             let size = DVec2::conv(rect.size);
             let rel_width = DVec2(size.0 / size.1, 1.0);
             self.view_alpha = 2.0 / size.1;
@@ -354,7 +354,7 @@ impl_scope! {
             let draw = draw.draw_device();
             let draw = DrawIface::<DrawPipe<Pipe>>::downcast_from(draw).unwrap();
             let p = (self.alpha, self.delta, self.rel_width, self.iters);
-            draw.draw.custom(draw.get_pass(), self.core.rect, p);
+            draw.draw.custom(draw.get_pass(), self.rect(), p);
         }
     }
 

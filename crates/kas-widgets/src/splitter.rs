@@ -182,7 +182,7 @@ impl_scope! {
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
+            widget_set_rect!(rect);
             self.align_hints = hints;
             self.size_solved = true;
             if self.widgets.is_empty() {
@@ -316,12 +316,12 @@ impl<C: Collection, D: Directional> Splitter<C, D> {
         let index = 2 * n + 1;
 
         let hrect = self.grips[n].rect();
-        let width1 = (hrect.pos - self.core.rect.pos).extract(self.direction);
-        let width2 = (self.core.rect.size - hrect.size).extract(self.direction) - width1;
+        let width1 = (hrect.pos - self.rect().pos).extract(self.direction);
+        let width2 = (self.rect().size - hrect.size).extract(self.direction) - width1;
 
         let dim = (self.direction, self.num_children());
         let mut setter =
-            layout::RowSetter::<D, Vec<i32>, _>::new_unsolved(self.core.rect, dim, &mut self.data);
+            layout::RowSetter::<D, Vec<i32>, _>::new_unsolved(self.rect(), dim, &mut self.data);
         setter.solve_range(&mut self.data, 0..index, width1);
         setter.solve_range(&mut self.data, (index + 1)..dim.1, width2);
         setter.update_offsets(&mut self.data);

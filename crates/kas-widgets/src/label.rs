@@ -113,7 +113,7 @@ impl_scope! {
 
     impl Layout for Self {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
+            widget_set_rect!(rect);
             self.text.set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
         }
     }
@@ -259,7 +259,7 @@ impl_scope! {
 
     impl Layout for Self {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
+            widget_set_rect!(rect);
             self.text.set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
         }
     }

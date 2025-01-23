@@ -34,23 +34,22 @@ impl Icon {
 /// Common widget data
 ///
 /// This type may be used for a [`Widget`]'s `core: widget_core!()` field.
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 #[derive(Default, Debug)]
-pub struct CoreData {
-    pub rect: Rect,
-    pub id: Id,
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+pub struct DefaultCoreType {
+    pub _rect: Rect,
+    pub _id: Id,
     #[cfg(debug_assertions)]
     pub status: WidgetStatus,
 }
 
-/// Note: the clone has default-initialised identifier.
-/// Configuration and layout solving is required as for any other widget.
-impl Clone for CoreData {
+impl Clone for DefaultCoreType {
     fn clone(&self) -> Self {
-        CoreData {
-            rect: self.rect,
-            ..CoreData::default()
+        DefaultCoreType {
+            _rect: self._rect,
+            _id: Default::default(),
+            status: self.status,
         }
     }
 }

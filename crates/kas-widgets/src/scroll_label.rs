@@ -46,7 +46,7 @@ impl_scope! {
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
+            widget_set_rect!(rect);
             self.text.set_rect(cx, rect, hints);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
 

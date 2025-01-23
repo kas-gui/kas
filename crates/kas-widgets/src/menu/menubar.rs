@@ -92,7 +92,7 @@ impl_scope! {
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, _: AlignHints) {
-            self.core.rect = rect;
+            widget_set_rect!(rect);
             let dim = (self.direction, self.widgets.len() + 1);
             let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, &mut self.layout_store);
             let hints = AlignHints::CENTER;
@@ -104,7 +104,8 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawCx) {
             let solver = RowPositionSolver::new(self.direction);
-            solver.for_children_mut(&mut self.widgets, self.core.rect, |w| w.draw(draw.re()));
+            let rect = self.rect();
+            solver.for_children_mut(&mut self.widgets, rect, |w| w.draw(draw.re()));
         }
     }
 

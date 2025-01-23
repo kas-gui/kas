@@ -121,7 +121,7 @@ impl_scope! {
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
+            widget_set_rect!(rect);
             self.align_hints = hints;
             if let Some(entry) = self.widgets.get_mut(self.active) {
                 debug_assert_eq!(entry.1, State::Sized);
@@ -286,6 +286,7 @@ impl<W: Widget> Stack<W> {
         }
         self.active = index;
 
+        let rect = self.rect();
         let id = self.make_child_id(index);
         if let Some(entry) = self.widgets.get_mut(index) {
             let node = entry.0.as_node(data);
@@ -301,7 +302,7 @@ impl<W: Widget> Stack<W> {
                 cx.resize(self);
             } else {
                 debug_assert_eq!(entry.1, State::Sized);
-                entry.0.set_rect(cx, self.core.rect, self.align_hints);
+                entry.0.set_rect(cx, rect, self.align_hints);
                 cx.region_moved();
             }
         } else {
@@ -349,10 +350,10 @@ impl<W: Widget> Stack<W> {
 
     /// Configure and size the page at index
     fn configure_and_size(&mut self, cx: &mut ConfigCx, data: &W::Data, index: usize) {
+        let Size(w, h) = self.rect().size;
         let id = self.make_child_id(index);
         if let Some(entry) = self.widgets.get_mut(index) {
             cx.configure(entry.0.as_node(data), id);
-            let Size(w, h) = self.core.rect.size;
             solve_size_rules(&mut entry.0, cx.size_cx(), Some(w), Some(h));
             entry.1 = State::Sized;
         }

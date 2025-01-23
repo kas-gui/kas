@@ -200,13 +200,8 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// The struct must contain a field of type `widget_core!()` (usually named
 /// `core`). The macro `widget_core!()` is a placeholder, expanded by
 /// `#[widget]` and used to identify the field used (any name may be used).
-/// This field *might* have type [`CoreData`] or might use a special generated
-/// type; either way it has fields `id: Id` (assigned by during configure)
-/// and `rect: Rect` (usually assigned by
-/// `Layout::set_rect`). It may contain additional fields for layout data. The
-/// type supports `Default` and `Clone` (although `Clone` actually
-/// default-initializes all fields other than `rect` since clones of widgets
-/// must themselves be configured).
+/// This type implements [`Default`] and [`Clone`], though the clone is not an
+/// exact clone (cloned widgets must still be configured).
 ///
 /// Assuming the deriving type is a `struct` or `tuple struct`, fields support
 /// the following attributes:
@@ -359,7 +354,6 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// [`Events`]: https://docs.rs/kas/latest/kas/trait.Events.html
 /// [`CursorIcon`]: https://docs.rs/kas/latest/kas/event/enum.CursorIcon.html
 /// [`IsUsed`]: https://docs.rs/kas/latest/kas/event/enum.IsUsed.html
-/// [`CoreData`]: https://docs.rs/kas/latest/kas/struct.CoreData.html
 /// [`Deref`]: std::ops::Deref
 #[proc_macro_attribute]
 #[proc_macro_error]
@@ -442,9 +436,32 @@ pub fn impl_anon(input: TokenStream) -> TokenStream {
 #[proc_macro_error]
 #[proc_macro]
 pub fn widget_index(input: TokenStream) -> TokenStream {
-    let input2 = input.clone();
-    let _ = parse_macro_input!(input2 as widget_index::BaseInput);
-    input
+    let input = parse_macro_input!(input as widget_index::UnscopedInput);
+    input.into_token_stream().into()
+}
+
+/// Macro to set the `rect` stored in the widget core
+///
+/// Widgets have a hidden field of type [`Rect`] in their `widget_core!()`, used
+/// to implement method [`Tile::rect`]. This macro assigns to that field.
+///
+/// This macro is usable only within an [`impl_scope!`]  macro using the
+/// [`widget`](macro@widget) attribute.
+///
+/// Example usage:
+/// ```ignore
+/// fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
+///     widget_set_rect!(rect);
+/// }
+/// ```
+///
+/// [`Rect`]: https://docs.rs/kas/latest/kas/geom/struct.Rect.html
+/// [`Tile::rect`]: https://docs.rs/kas/latest/kas/trait.Tile.html#method.rect
+#[proc_macro_error]
+#[proc_macro]
+pub fn widget_set_rect(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as widget_index::UnscopedInput);
+    input.into_token_stream().into()
 }
 
 trait ExpandLayout {

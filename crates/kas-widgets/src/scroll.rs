@@ -108,7 +108,7 @@ impl_scope! {
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
+            widget_set_rect!(rect);
             let child_size = (rect.size - self.frame_size).max(self.min_child_size);
             let child_rect = Rect::new(rect.pos + self.offset, child_size);
             self.inner.set_rect(cx, child_rect, hints);
@@ -118,7 +118,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            draw.with_clip_region(self.core.rect, self.scroll_offset(), |mut draw| {
+            draw.with_clip_region(self.rect(), self.scroll_offset(), |mut draw| {
                 self.inner.draw(draw.re());
             });
         }
@@ -143,7 +143,7 @@ impl_scope! {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             self.scroll
-                .scroll_by_event(cx, event, self.id(), self.core.rect)
+                .scroll_by_event(cx, event, self.id(), self.rect())
                 .1
         }
 

@@ -52,7 +52,7 @@ impl_scope! {
             let size = Size::splat(size);
             let excess = rect.size - size;
             let pos = rect.pos + excess / 2;
-            self.core.rect = Rect { pos, size };
+            widget_set_rect!(Rect { pos, size });
 
             let text_size = Size(size.0, size.1 / 4);
             let text_height = text_size.1 as f32;
@@ -81,7 +81,7 @@ impl_scope! {
             // not themeable, but gives us much more flexible draw routines.
             let mut draw = draw.draw_iface::<<Runner as RunnerInherent>::DrawShared>().unwrap();
 
-            let rect = self.core.rect;
+            let rect = self.rect();
             let quad = Quad::conv(rect);
             draw.circle(quad, 0.0, col_back);
             draw.circle(quad, 0.98, col_face);
