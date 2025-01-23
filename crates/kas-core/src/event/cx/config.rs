@@ -94,28 +94,6 @@ impl<'a> ConfigCx<'a> {
         widget._update(self);
     }
 
-    /* TODO: can we support these (i.e. track `id`)?
-    /// Push a message (replay)
-    ///
-    /// Unlike [`EventCx::push`], this is not handled while unwinding
-    /// from event sending, but via a fresh traversal of the widget tree.
-    pub fn push<M: Debug + 'static>(&mut self, msg: M) {
-        self.send(id, msg);
-    }
-
-    /// Push a type-erased message (replay)
-    ///
-    /// Unlike [`EventCx::push_erased`], this is not handled while unwinding
-    /// from event sending, but via a fresh traversal of the widget tree.
-    ///
-    /// The message may be [popped](EventCx::try_pop) or
-    /// [observed](EventCx::try_observe) from [`Events::handle_messages`]
-    /// by the widget itself, its parent, or any ancestor.
-    pub fn push_erased(&mut self, msg: Erased) {
-        self.send_erased(id, msg);
-    }
-    */
-
     /// Align a feature's rect
     ///
     /// In case the input `rect` is larger than desired on either axis, it is
