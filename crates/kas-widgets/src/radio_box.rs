@@ -150,7 +150,7 @@ impl_scope! {
             widget_set_rect!(rect);
             self.layout_visitor().set_rect(cx, rect, hints);
             let dir = self.direction();
-            crate::check_box::shrink_to_text(&mut self.core.rect, dir, &self.label);
+            crate::check_box::shrink_to_text(&mut self.rect(), dir, &self.label);
         }
     }
 

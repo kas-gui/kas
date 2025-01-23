@@ -189,7 +189,7 @@ impl_scope! {
             widget_set_rect!(rect);
             self.layout_visitor().set_rect(cx, rect, hints);
             let dir = self.direction();
-            shrink_to_text(&mut self.core.rect, dir, &self.label);
+            shrink_to_text(&mut self.rect(), dir, &self.label);
         }
     }
 

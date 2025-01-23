@@ -376,7 +376,7 @@ impl_scope! {
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, outer_rect: Rect, hints: AlignHints) {
-            self.core.rect = outer_rect;
+            widget_set_rect!(outer_rect);
             let mut rect = outer_rect;
             rect.pos += self.frame_offset;
             rect.size -= self.frame_size;

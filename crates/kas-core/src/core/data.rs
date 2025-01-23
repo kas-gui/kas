@@ -36,7 +36,7 @@ impl Icon {
 /// This type may be used for a [`Widget`]'s `core: widget_core!()` field.
 #[derive(Default, Debug)]
 pub struct CoreData {
-    pub rect: Rect,
+    pub _rect: Rect,
     pub _id: Id,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
@@ -49,7 +49,7 @@ pub struct CoreData {
 impl Clone for CoreData {
     fn clone(&self) -> Self {
         CoreData {
-            rect: self.rect,
+            _rect: self._rect,
             _id: Default::default(),
             status: self.status,
         }

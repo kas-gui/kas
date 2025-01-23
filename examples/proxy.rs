@@ -79,7 +79,7 @@ impl_scope! {
                 let draw = draw.draw_device();
                 draw.rect((self.rect()).cast(), color);
             } else {
-                draw.text(self.core.rect, &self.loading_text);
+                draw.text(self.rect(), &self.loading_text);
             }
         }
     }

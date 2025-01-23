@@ -193,7 +193,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 let stor_def = &stor_defs.def_toks;
                 scope.generated.push(quote! {
                     struct #core_type {
-                        rect: ::kas::geom::Rect,
+                        _rect: ::kas::geom::Rect,
                         _id: ::kas::Id,
                         #[cfg(debug_assertions)]
                         status: ::kas::WidgetStatus,
@@ -203,7 +203,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     impl Default for #core_type {
                         fn default() -> Self {
                             #core_type {
-                                rect: Default::default(),
+                                _rect: Default::default(),
                                 _id: Default::default(),
                                 #[cfg(debug_assertions)]
                                 status: ::kas::WidgetStatus::New,
@@ -215,7 +215,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     impl Clone for #core_type {
                         fn clone(&self) -> Self {
                             #core_type {
-                                rect: self.rect,
+                                _rect: self._rect,
                                 .. #core_type::default()
                             }
                         }
@@ -287,7 +287,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             ChildIdent::Field(ref member) => Some((i, member)),
             ChildIdent::CoreField(_) => None,
         });
-    let path_rect = quote! { #core_path.rect };
+    let path_rect = quote! { #core_path._rect };
     crate::widget_index::visit_impls(named_child_iter, path_rect, &mut scope.impls);
 
     if let Some(ref span) = num_children {
@@ -377,7 +377,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
     let fn_nav_next;
     let mut fn_size_rules = None;
-    let mut set_rect = quote! { self.#core.rect = rect; };
+    let mut set_rect = quote! { self.#core._rect = rect; };
     let mut probe = quote! {
         ::kas::Tile::id(self)
     };
@@ -413,7 +413,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             }
         });
         set_rect = quote! {
-            #core_path.rect = rect;
+            #core_path._rect = rect;
             ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
         };
         probe = quote! {
@@ -705,7 +705,9 @@ pub fn impl_core_methods(name: &str, core_path: &Toks) -> Toks {
         }
         #[inline]
         fn rect(&self) -> ::kas::geom::Rect {
-            #core_path.rect
+            #[cfg(debug_assertions)]
+            #core_path.status.require_rect(&#core_path._id);
+            #core_path._rect
         }
 
         #[inline]

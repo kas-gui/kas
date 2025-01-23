@@ -354,7 +354,7 @@ impl_scope! {
             let draw = draw.draw_device();
             let draw = DrawIface::<DrawPipe<Pipe>>::downcast_from(draw).unwrap();
             let p = (self.alpha, self.delta, self.rel_width, self.iters);
-            draw.draw.custom(draw.get_pass(), self.core.rect, p);
+            draw.draw.custom(draw.get_pass(), self.rect(), p);
         }
     }
 

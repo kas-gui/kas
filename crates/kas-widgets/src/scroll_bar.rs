@@ -207,8 +207,8 @@ impl_scope! {
         #[inline]
         fn bar_len(&self) -> i32 {
             match self.direction.is_vertical() {
-                false => self.core.rect.size.0,
-                true => self.core.rect.size.1,
+                false => self.rect().size.0,
+                true => self.rect().size.1,
             }
         }
 
@@ -217,7 +217,7 @@ impl_scope! {
             let total = 1i64.max(i64::from(self.max_value) + i64::from(self.grip_size));
             let grip_len = i64::from(self.grip_size) * i64::conv(len) / total;
             self.grip_len = i32::conv(grip_len).max(self.min_grip_len).min(len);
-            let mut size = self.core.rect.size;
+            let mut size = self.rect().size;
             size.set_component(self.direction, self.grip_len);
             self.grip.set_size(size);
             self.grip.set_offset(self.offset()).1
@@ -489,7 +489,7 @@ impl_scope! {
 
             if self.show_bars.1 {
                 let pos = Coord(rect.pos2().0 - bar_width, pos.1);
-                let size = Size::new(bar_width, self.core.rect.size.1);
+                let size = Size::new(bar_width, self.rect().size.1);
                 self.vert_bar.set_rect(cx, Rect { pos, size }, AlignHints::NONE);
                 let _ = self.vert_bar.set_limits(max_scroll_offset.1, rect.size.1);
             } else {

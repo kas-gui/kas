@@ -51,7 +51,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            draw.mark(self.core.rect, self.style);
+            draw.mark(self.rect(), self.style);
         }
     }
 }
@@ -92,7 +92,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            draw.mark(self.core.rect, self.style);
+            draw.mark(self.rect(), self.style);
         }
     }
 

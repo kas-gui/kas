@@ -141,7 +141,7 @@ impl Tree {
 
         let toks = quote! {{
             struct #name #impl_generics {
-                rect: ::kas::geom::Rect,
+                _rect: ::kas::geom::Rect,
                 _id: ::kas::Id,
                 #[cfg(debug_assertions)]
                 status: ::kas::WidgetStatus,
@@ -175,7 +175,7 @@ impl Tree {
                     #[cfg(debug_assertions)]
                     #core_path.status.set_rect(&#core_path._id);
 
-                    #core_path.rect = rect;
+                    #core_path._rect = rect;
                     ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
                 }
 
@@ -235,7 +235,7 @@ impl Tree {
             #widget_impl
 
             #name {
-                rect: Default::default(),
+                _rect: Default::default(),
                 _id: Default::default(),
                 #[cfg(debug_assertions)]
                 status: Default::default(),

@@ -153,7 +153,7 @@ impl_scope! {
 
     impl Self {
         pub(crate) fn try_probe(&mut self, data: &Data, coord: Coord) -> Option<Id> {
-            if !self.core.rect.contains(coord) {
+            if !self.rect().contains(coord) {
                 return None;
             }
             for (_, popup, translation) in self.popups.iter().rev() {
@@ -181,7 +181,7 @@ impl_scope! {
         #[cfg(winit)]
         pub(crate) fn draw(&mut self, data: &Data, mut draw: DrawCx) {
             if self.dec_size != Size::ZERO {
-                draw.frame(self.core.rect, FrameStyle::Window, Default::default());
+                draw.frame(self.rect(), FrameStyle::Window, Default::default());
                 if self.bar_h > 0 {
                     self.title_bar.draw(draw.re());
                 }
@@ -473,7 +473,7 @@ impl<Data: 'static> Window<Data> {
     fn resize_popup(&mut self, cx: &mut ConfigCx, data: &Data, index: usize) {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
-        let r = self.core.rect;
+        let r = self.rect();
         let (_, ref mut popup, ref mut translation) = self.popups[index];
 
         let is_reversed = popup.direction.is_reversed();
