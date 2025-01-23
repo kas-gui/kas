@@ -234,7 +234,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
             mark: Mark::new(MarkStyle::Point(Direction::Down)),
             popup: Popup::new(
                 AdaptEvents::new(Column::new(entries)).on_messages(|cx, _, _| {
-                    if let Some(_) = cx.try_observe::<V>() {
+                    if let Some(_) = cx.try_peek::<V>() {
                         if let Some(index) = cx.last_child() {
                             cx.push(IndexMsg(index));
                         }

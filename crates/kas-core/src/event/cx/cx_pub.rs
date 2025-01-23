@@ -600,7 +600,7 @@ impl EventState {
     /// Similar to [`EventCx::push`], the message is sent as part of a widget
     /// tree traversal.
     /// The message may be [popped](EventCx::try_pop) or
-    /// [observed](EventCx::try_observe) from [`Events::handle_messages`]
+    /// [peeked](EventCx::try_peek) from [`Events::handle_messages`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn send<M: Debug + 'static>(&mut self, id: Id, msg: M) {
         self.send_erased(id, Erased::new(msg));
@@ -730,7 +730,7 @@ impl<'a> EventCx<'a> {
     /// then pushed to the stack.
     ///
     /// The message may be [popped](EventCx::try_pop) or
-    /// [observed](EventCx::try_observe) from [`Events::handle_messages`]
+    /// [peeked](EventCx::try_peek) from [`Events::handle_messages`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn push<M: Debug + 'static>(&mut self, msg: M) {
         self.push_erased(Erased::new(msg));
@@ -741,7 +741,7 @@ impl<'a> EventCx<'a> {
     /// This is a lower-level variant of [`Self::push`].
     ///
     /// The message may be [popped](EventCx::try_pop) or
-    /// [observed](EventCx::try_observe) from [`Events::handle_messages`]
+    /// [peeked](EventCx::try_peek) from [`Events::handle_messages`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn push_erased(&mut self, msg: Erased) {
         self.messages.push_erased(msg);
@@ -762,8 +762,8 @@ impl<'a> EventCx<'a> {
     /// Try observing the last message on the stack without popping
     ///
     /// This method may be called from [`Events::handle_messages`].
-    pub fn try_observe<M: Debug + 'static>(&self) -> Option<&M> {
-        self.messages.try_observe()
+    pub fn try_peek<M: Debug + 'static>(&self) -> Option<&M> {
+        self.messages.try_peek()
     }
 
     /// Try getting a debug representation of the last message on the stack
