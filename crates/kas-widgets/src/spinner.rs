@@ -293,14 +293,16 @@ impl_scope! {
         }
     }
 
-    impl Events for Self {
-        type Data = A;
-
+    impl Tile for Self {
         fn probe(&mut self, coord: Coord) -> Id {
             self.b_up.try_probe(coord)
                 .or_else(|| self.b_down.try_probe(coord))
                 .unwrap_or_else(|| self.edit.id())
         }
+    }
+
+    impl Events for Self {
+        type Data = A;
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
             let btn = match event {

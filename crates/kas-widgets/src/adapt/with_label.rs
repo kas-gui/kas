@@ -111,7 +111,7 @@ impl_scope! {
         }
     }
 
-    impl Events for Self {
+    impl Tile for Self {
         fn probe(&mut self, _: Coord) -> Id {
             self.inner.id()
         }

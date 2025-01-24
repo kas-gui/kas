@@ -506,14 +506,9 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     if let Some(index) = events_impl {
         let events_impl = &mut scope.impls[index];
         let item_idents = collect_idents(events_impl);
-        let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
 
         if let Some(method) = fn_navigable {
             events_impl.items.push(Verbatim(method));
-        }
-
-        if !has_item("probe") {
-            events_impl.items.push(Verbatim(fn_probe));
         }
 
         events_impl.items.push(Verbatim(fn_handle_hover));
@@ -538,7 +533,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Events for #impl_target {
                 #fn_navigable
-                #fn_probe
                 #fn_handle_hover
                 #fn_handle_event
             }
@@ -550,7 +544,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             #[cfg(debug_assertions)]
             self.#core.status.require_rect(&self.#core._id);
 
-            ::kas::Tile::rect(self).contains(coord).then(|| ::kas::Events::probe(self, coord))
+            ::kas::Tile::rect(self).contains(coord).then(|| ::kas::Tile::probe(self, coord))
         }
     };
 
@@ -655,6 +649,10 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 }
             }
         }
+
+        if !has_item("probe") {
+            tile_impl.items.push(Verbatim(fn_probe));
+        }
     } else {
         let fn_nav_next = match fn_nav_next {
             Ok(method) => Some(method),
@@ -668,6 +666,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             impl #impl_generics ::kas::Tile for #impl_target {
                 #required_tile_methods
                 #fn_nav_next
+                #fn_probe
             }
         });
     }

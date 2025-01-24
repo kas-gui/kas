@@ -79,6 +79,12 @@ impl_scope! {
         }
     }
 
+    impl Tile for Self {
+        fn probe(&mut self, coord: Coord) -> Id {
+            self.bar.try_probe(coord).unwrap_or_else(|| self.id())
+        }
+    }
+
     impl Self {
         /// Construct an `ScrollLabel` with the given inital `text`
         #[inline]
@@ -212,10 +218,6 @@ impl_scope! {
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.text_configure(&mut self.text);
-        }
-
-        fn probe(&mut self, coord: Coord) -> Id {
-            self.bar.try_probe(coord).unwrap_or_else(|| self.id())
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {

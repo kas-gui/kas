@@ -361,34 +361,6 @@ impl_scope! {
         }
     }
 
-    impl Tile for Self {
-        #[inline]
-        fn num_children(&self) -> usize {
-            usize::conv(self.cur_len.0) * usize::conv(self.cur_len.1)
-        }
-        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
-            self.widgets.get(index).map(|w| w.widget.as_tile())
-        }
-        fn find_child_index(&self, id: &Id) -> Option<usize> {
-            let num = self.num_children();
-            let key = A::Key::reconstruct_key(self.id_ref(), id);
-            if key.is_some() {
-                self.widgets[0..num]
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(i, w)| (key == w.key).then_some(i))
-                    .next()
-            } else {
-                None
-            }
-        }
-
-        #[inline]
-        fn translation(&self) -> Offset {
-            self.scroll_offset()
-        }
-    }
-
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
@@ -510,6 +482,47 @@ impl_scope! {
         }
     }
 
+    impl Tile for Self {
+        #[inline]
+        fn num_children(&self) -> usize {
+            usize::conv(self.cur_len.0) * usize::conv(self.cur_len.1)
+        }
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
+            self.widgets.get(index).map(|w| w.widget.as_tile())
+        }
+        fn find_child_index(&self, id: &Id) -> Option<usize> {
+            let num = self.num_children();
+            let key = A::Key::reconstruct_key(self.id_ref(), id);
+            if key.is_some() {
+                self.widgets[0..num]
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, w)| (key == w.key).then_some(i))
+                    .next()
+            } else {
+                None
+            }
+        }
+
+        #[inline]
+        fn translation(&self) -> Offset {
+            self.scroll_offset()
+        }
+
+        fn probe(&mut self, coord: Coord) -> Id {
+            let num = self.num_children();
+            let coord = coord + self.scroll.offset();
+            for child in &mut self.widgets[..num] {
+                if child.key.is_some() {
+                    if let Some(id) = child.widget.try_probe(coord) {
+                        return id;
+                    }
+                }
+            }
+            self.id()
+        }
+    }
+
     impl Events for Self {
         #[inline]
         fn make_child_id(&mut self, _: usize) -> Id {
@@ -556,19 +569,6 @@ impl_scope! {
         }
 
         fn update_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
-
-        fn probe(&mut self, coord: Coord) -> Id {
-            let num = self.num_children();
-            let coord = coord + self.scroll.offset();
-            for child in &mut self.widgets[..num] {
-                if child.key.is_some() {
-                    if let Some(id) = child.widget.try_probe(coord) {
-                        return id;
-                    }
-                }
-            }
-            self.id()
-        }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
             let is_used = match event {

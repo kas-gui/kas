@@ -306,15 +306,17 @@ impl_scope! {
         }
     }
 
-    impl Events for Self {
-        type Data = ();
-
+    impl Tile for Self {
         fn probe(&mut self, coord: Coord) -> Id {
             if self.invisible && self.max_value == 0 {
                 return self.id();
             }
             self.grip.try_probe(coord).unwrap_or_else(|| self.id())
         }
+    }
+
+    impl Events for Self {
+        type Data = ();
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
@@ -510,14 +512,16 @@ impl_scope! {
         }
     }
 
-    impl Events for Self {
+    impl Tile for Self {
         fn probe(&mut self, coord: Coord) -> Id {
             self.vert_bar.try_probe(coord)
                 .or_else(|| self.horiz_bar.try_probe(coord))
                 .or_else(|| self.inner.try_probe(coord))
                 .unwrap_or_else(|| self.id())
         }
+    }
 
+    impl Events for Self {
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             let index = cx.last_child();
             if index == Some(widget_index![self.horiz_bar]) {

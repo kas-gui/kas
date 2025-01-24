@@ -43,11 +43,13 @@ impl_scope! {
         }
     }
 
-    impl Events for Self {
+    impl Tile for Self {
         fn probe(&mut self, _: Coord) -> Id {
             self.id()
         }
+    }
 
+    impl Events for Self {
         fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> IsUsed {
             event.on_activate(cx, self.id(), |cx| {
                 cx.push(Select);

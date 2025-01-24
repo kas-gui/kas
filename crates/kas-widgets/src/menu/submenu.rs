@@ -110,6 +110,10 @@ impl_scope! {
             // We have no child within our rect
             None
         }
+
+        fn probe(&mut self, _: Coord) -> Id {
+            self.id()
+        }
     }
 
     impl Events for Self {
@@ -117,10 +121,6 @@ impl_scope! {
 
         fn navigable(&self) -> bool {
             self.navigable
-        }
-
-        fn probe(&mut self, _: Coord) -> Id {
-            self.id()
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> IsUsed {
@@ -207,42 +207,6 @@ impl_scope! {
         dim: layout::GridDimensions,
         store: layout::DynGridStorage, //NOTE(opt): number of columns is fixed
         list: Vec<W>,
-    }
-
-    impl Events for Self {
-        fn probe(&mut self, coord: Coord) -> Id {
-            for child in self.list.iter_mut() {
-                if let Some(id) = child.try_probe(coord) {
-                    return id;
-                }
-            }
-            self.id()
-        }
-    }
-
-    impl kas::Widget for Self {
-        type Data = W::Data;
-
-        fn for_child_node(
-            &mut self,
-            data: &W::Data,
-            index: usize,
-            closure: Box<dyn FnOnce(Node<'_>) + '_>,
-        ) {
-            if let Some(w) = self.list.get_mut(index) {
-                closure(w.as_node(data));
-            }
-        }
-    }
-
-    impl Tile for Self {
-        #[inline]
-        fn num_children(&self) -> usize {
-            self.list.len()
-        }
-        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
-            self.list.get(index).map(|w| w.as_tile())
-        }
     }
 
     impl kas::Layout for Self {
@@ -372,6 +336,40 @@ impl_scope! {
         fn draw(&mut self, mut draw: DrawCx) {
             for child in self.list.iter_mut() {
                 child.draw(draw.re());
+            }
+        }
+    }
+
+    impl Tile for Self {
+        #[inline]
+        fn num_children(&self) -> usize {
+            self.list.len()
+        }
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
+            self.list.get(index).map(|w| w.as_tile())
+        }
+
+        fn probe(&mut self, coord: Coord) -> Id {
+            for child in self.list.iter_mut() {
+                if let Some(id) = child.try_probe(coord) {
+                    return id;
+                }
+            }
+            self.id()
+        }
+    }
+
+    impl kas::Widget for Self {
+        type Data = W::Data;
+
+        fn for_child_node(
+            &mut self,
+            data: &W::Data,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
+            if let Some(w) = self.list.get_mut(index) {
+                closure(w.as_node(data));
             }
         }
     }

@@ -70,29 +70,6 @@ impl_scope! {
         }
     }
 
-    impl Tile for Self {
-        #[inline]
-        fn num_children(&self) -> usize {
-            self.widgets.len()
-        }
-        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
-            self.widgets.get(index).map(|(w, _)| w.as_tile())
-        }
-
-        fn find_child_index(&self, id: &Id) -> Option<usize> {
-            id.next_key_after(self.id_ref())
-                .and_then(|k| self.id_map.get(&k).cloned())
-        }
-
-        fn nav_next(&self, _: bool, from: Option<usize>) -> Option<usize> {
-            match from {
-                None => Some(self.active),
-                Some(active) if active != self.active => Some(self.active),
-                _ => None,
-            }
-        }
-    }
-
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let mut rules = SizeRules::EMPTY;
@@ -134,6 +111,39 @@ impl_scope! {
                 debug_assert_eq!(entry.1, State::Sized);
                 entry.0.draw(draw.re());
             }
+        }
+    }
+
+    impl Tile for Self {
+        #[inline]
+        fn num_children(&self) -> usize {
+            self.widgets.len()
+        }
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
+            self.widgets.get(index).map(|(w, _)| w.as_tile())
+        }
+
+        fn find_child_index(&self, id: &Id) -> Option<usize> {
+            id.next_key_after(self.id_ref())
+                .and_then(|k| self.id_map.get(&k).cloned())
+        }
+
+        fn nav_next(&self, _: bool, from: Option<usize>) -> Option<usize> {
+            match from {
+                None => Some(self.active),
+                Some(active) if active != self.active => Some(self.active),
+                _ => None,
+            }
+        }
+
+        fn probe(&mut self, coord: Coord) -> Id {
+            if let Some(entry) = self.widgets.get_mut(self.active) {
+                debug_assert_eq!(entry.1, State::Sized);
+                if let Some(id) = entry.0.try_probe(coord) {
+                    return id;
+                }
+            }
+            self.id()
         }
     }
 
@@ -203,16 +213,6 @@ impl_scope! {
             if let Some((w, _)) = self.widgets.get_mut(self.active) {
                 cx.update(w.as_node(data));
             }
-        }
-
-        fn probe(&mut self, coord: Coord) -> Id {
-            if let Some(entry) = self.widgets.get_mut(self.active) {
-                debug_assert_eq!(entry.1, State::Sized);
-                if let Some(id) = entry.0.try_probe(coord) {
-                    return id;
-                }
-            }
-            self.id()
         }
     }
 

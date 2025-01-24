@@ -79,6 +79,12 @@ impl_scope! {
         }
     }
 
+    impl Tile for Self {
+        fn probe(&mut self, coord: Coord) -> Id {
+            self.bar.try_probe(coord).unwrap_or_else(|| self.id())
+        }
+    }
+
     impl Self {
         /// Construct an `ScrollText` with the given inital `text`
         #[inline]
@@ -213,10 +219,6 @@ impl_scope! {
             };
             debug_assert!(!action.is_empty(), "update before configure");
             cx.action(self, action);
-        }
-
-        fn probe(&mut self, coord: Coord) -> Id {
-            self.bar.try_probe(coord).unwrap_or_else(|| self.id())
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {

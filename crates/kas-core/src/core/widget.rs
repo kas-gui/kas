@@ -9,7 +9,6 @@
 use super::{Node, Tile};
 #[allow(unused)] use crate::event::Used;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused};
-use crate::geom::Coord;
 #[allow(unused)] use crate::layout::LayoutVisitor;
 use crate::Id;
 #[allow(unused)] use kas_macros as macros;
@@ -141,53 +140,6 @@ pub trait Events: Widget + Sized {
     #[inline]
     fn navigable(&self) -> bool {
         false
-    }
-
-    /// Probe a coordinate for a widget's [`Id`]
-    ///
-    /// Returns the [`Id`] of the widget expected to handle clicks and touch
-    /// events at the given `coord`. Typically this is the lowest descendant in
-    /// the widget tree at the given `coord`, but it is not required to be; e.g.
-    /// a `Button` may use an inner widget as a label but return its own [`Id`]
-    /// to indicate that the button (not the inner label) handles clicks.
-    ///
-    /// # Calling
-    ///
-    /// **Prefer to call [`Layout::try_probe`] instead**.
-    ///
-    /// ## Call order
-    ///
-    /// It is expected that [`Layout::set_rect`] is called before this method,
-    /// but failure to do so should not cause a fatal error.
-    ///
-    /// # Implementation
-    ///
-    /// The callee may usually assume that it occupies `coord` and may thus
-    /// return its own [`Id`] when no child occupies the input `coord`.
-    ///
-    /// ## Default implementation
-    ///
-    /// ## Default implementation
-    ///
-    /// The `#[widget]` macro
-    /// [may generate a default implementation](macros::widget#layout-1) by
-    /// implementing [`LayoutVisitor`] for `Self`.
-    /// In this case the default impl of this method is
-    /// `self.layout_visitor().set_rect(/* ... */)`.
-    /// The underlying implementation considers all children of the `layout`
-    /// property and of  fields, like this:
-    /// ```ignore
-    /// let coord = coord + self.translation();
-    /// for child in ITER_OVER_CHILDREN {
-    ///     if let Some(id) = child.try_probe(coord) {
-    ///         return Some(id);
-    ///     }
-    /// }
-    /// self.id()
-    /// ```
-    fn probe(&mut self, coord: Coord) -> Id {
-        let _ = coord;
-        unimplemented!() // make rustdoc show that this is a provided method
     }
 
     /// Mouse focus handler
@@ -362,7 +314,7 @@ pub enum NavAdvance {
 /// -   **Layout** is specified either via [layout syntax](macros::widget#layout-1)
 ///     or via implementation of at least [`Layout::size_rules`] and
 ///     [`Layout::draw`] (optionally also `set_rect`, `nav_next`, `translation`
-///     and [`Events::probe`]).
+///     and [`Tile::probe`]).
 ///-    **Event handling** is optional, implemented through [`Events`].
 ///
 /// For examples, check the source code of widgets in the widgets library

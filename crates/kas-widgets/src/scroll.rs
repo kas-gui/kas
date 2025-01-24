@@ -129,16 +129,16 @@ impl_scope! {
         fn translation(&self) -> Offset {
             self.scroll_offset()
         }
+
+        fn probe(&mut self, coord: Coord) -> Id {
+            self.inner.try_probe(coord + self.translation())
+                .unwrap_or_else(|| self.id())
+        }
     }
 
     impl Events for Self {
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.register_nav_fallback(self.id());
-        }
-
-        fn probe(&mut self, coord: Coord) -> Id {
-            self.inner.try_probe(coord + self.translation())
-                .unwrap_or_else(|| self.id())
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {

@@ -180,7 +180,7 @@ impl Tree {
                 }
 
                 fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-                    ::kas::Tile::rect(self).contains(coord).then(|| ::kas::Events::probe(self, coord))
+                    ::kas::Tile::rect(self).contains(coord).then(|| ::kas::Tile::probe(self, coord))
                 }
 
                 fn draw(&mut self, mut draw: ::kas::theme::DrawCx) {
@@ -206,9 +206,7 @@ impl Tree {
                 fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
                     #nav_next
                 }
-            }
 
-            impl #impl_generics ::kas::Events for #impl_target {
                 #[inline]
                 fn probe(&mut self, coord: ::kas::geom::Coord) -> ::kas::Id {
                     #[cfg(debug_assertions)]
@@ -219,7 +217,9 @@ impl Tree {
                         .try_probe(coord)
                         .unwrap_or_else(|| ::kas::Tile::id(self))
                 }
+            }
 
+            impl #impl_generics ::kas::Events for #impl_target {
                 fn handle_event(
                     &mut self,
                     _: &mut ::kas::event::EventCx,
