@@ -154,12 +154,14 @@ impl_scope! {
         }
     }
 
-    impl Events for Self {
-        type Data = A;
-
+    impl Tile for Self {
         fn probe(&mut self, _: Coord) -> Id {
             self.inner.id()
         }
+    }
+
+    impl Events for Self {
+        type Data = A;
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
             if let Some(kas::messages::Activate(code)) = cx.try_pop() {

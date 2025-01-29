@@ -37,6 +37,12 @@ impl_scope! {
         }
     }
 
+    impl Tile for Self {
+        fn probe(&mut self, _: Coord) -> Id {
+            self.id()
+        }
+    }
+
     impl Self {
         /// Construct a menu item with a given `label` and `msg`
         ///
@@ -65,10 +71,6 @@ impl_scope! {
 
     impl Events for Self {
         type Data = ();
-
-        fn probe(&mut self, _: Coord) -> Id {
-            self.id()
-        }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
@@ -127,12 +129,14 @@ impl_scope! {
         }
     }
 
-    impl Events for Self {
-        type Data = A;
-
+    impl Tile for Self {
         fn probe(&mut self, _: Coord) -> Id {
             self.checkbox.id()
         }
+    }
+
+    impl Events for Self {
+        type Data = A;
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
             if let Some(kas::messages::Activate(code)) = cx.try_pop() {

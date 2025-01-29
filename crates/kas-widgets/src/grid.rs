@@ -56,42 +56,6 @@ impl_scope! {
         widgets: C,
     }
 
-    impl Events for Self {
-        fn probe(&mut self, coord: Coord) -> Id {
-            for n in 0..self.widgets.len() {
-                if let Some(child) = self.widgets.get_mut_tile(n) {
-                    if let Some(id) = child.try_probe(coord) {
-                        return id;
-                    }
-                }
-            }
-            self.id()
-        }
-    }
-
-    impl Widget for Self {
-        type Data = C::Data;
-
-        fn for_child_node(
-            &mut self,
-            data: &C::Data,
-            index: usize,
-            closure: Box<dyn FnOnce(Node<'_>) + '_>,
-        ) {
-            self.widgets.for_node(data, index, closure);
-        }
-    }
-
-    impl Tile for Self {
-        #[inline]
-        fn num_children(&self) -> usize {
-            self.widgets.len()
-        }
-        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
-            self.widgets.get_tile(index).map(|w| w.as_tile())
-        }
-    }
-
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, &mut self.layout);
@@ -121,6 +85,40 @@ impl_scope! {
                     child.draw(draw.re());
                 }
             }
+        }
+    }
+
+    impl Tile for Self {
+        #[inline]
+        fn num_children(&self) -> usize {
+            self.widgets.len()
+        }
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
+            self.widgets.get_tile(index).map(|w| w.as_tile())
+        }
+
+        fn probe(&mut self, coord: Coord) -> Id {
+            for n in 0..self.widgets.len() {
+                if let Some(child) = self.widgets.get_mut_tile(n) {
+                    if let Some(id) = child.try_probe(coord) {
+                        return id;
+                    }
+                }
+            }
+            self.id()
+        }
+    }
+
+    impl Widget for Self {
+        type Data = C::Data;
+
+        fn for_child_node(
+            &mut self,
+            data: &C::Data,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
+            self.widgets.for_node(data, index, closure);
         }
     }
 }

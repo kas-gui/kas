@@ -21,7 +21,7 @@ impl_scope! {
         label: Label<&'static str>,
         cursor: CursorIcon,
     }
-    impl Events for Self {
+    impl Tile for Self {
         fn probe(&mut self, _: Coord) -> Id {
             // Steal mouse focus: hover points to self, not self.label
             self.id()

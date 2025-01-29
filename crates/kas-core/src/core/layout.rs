@@ -153,7 +153,7 @@ pub trait Layout {
     ///
     /// # Implementation
     ///
-    /// Widgets should implement [`Events::probe`] instead, in which case an
+    /// Widgets should implement [`Tile::probe`] instead, in which case an
     /// implemention of this method will be provided:
     /// ```ignore
     /// self.rect().contains(coord).then(|| self.probe(coord))
@@ -340,7 +340,7 @@ pub trait Tile: Layout {
     /// *and* child widgets need to implement this.
     /// Such widgets must also implement [`Events::handle_scroll`].
     ///
-    /// Affects event handling via [`Events::probe`] and affects the positioning
+    /// Affects event handling via [`Tile::probe`] and affects the positioning
     /// of pop-up menus. [`Layout::draw`] must be implemented directly using
     /// [`DrawCx::with_clip_region`] to offset contents.
     ///
@@ -348,6 +348,56 @@ pub trait Tile: Layout {
     #[inline]
     fn translation(&self) -> Offset {
         Offset::ZERO
+    }
+
+    /// Probe a coordinate for a widget's [`Id`]
+    ///
+    /// Returns the [`Id`] of the widget expected to handle clicks and touch
+    /// events at the given `coord`. Typically this is the lowest descendant in
+    /// the widget tree at the given `coord`, but it is not required to be; e.g.
+    /// a `Button` may use an inner widget as a label but return its own [`Id`]
+    /// to indicate that the button (not the inner label) handles clicks.
+    ///
+    /// # Calling
+    ///
+    /// **Prefer to call [`Layout::try_probe`] instead**.
+    ///
+    /// ## Call order
+    ///
+    /// It is expected that [`Layout::set_rect`] is called before this method,
+    /// but failure to do so should not cause a fatal error.
+    ///
+    /// # Implementation
+    ///
+    /// The callee may usually assume that it occupies `coord` and may thus
+    /// return its own [`Id`] when no child occupies the input `coord`.
+    ///
+    /// ## Default implementation
+    ///
+    /// ## Default implementation
+    ///
+    /// The `#[widget]` macro
+    /// [may generate a default implementation](macros::widget#layout-1) by
+    /// implementing [`LayoutVisitor`] for `Self`.
+    /// In this case the default impl of this method is
+    /// `self.layout_visitor().set_rect(/* ... */)`.
+    /// The underlying implementation considers all children of the `layout`
+    /// property and of  fields, like this:
+    /// ```ignore
+    /// let coord = coord + self.translation();
+    /// for child in ITER_OVER_CHILDREN {
+    ///     if let Some(id) = child.try_probe(coord) {
+    ///         return Some(id);
+    ///     }
+    /// }
+    /// self.id()
+    /// ```
+    fn probe(&mut self, coord: Coord) -> Id
+    where
+        Self: Sized,
+    {
+        let _ = coord;
+        unimplemented!() // make rustdoc show that this is a provided method
     }
 }
 

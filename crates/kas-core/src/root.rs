@@ -210,10 +210,6 @@ impl_scope! {
             }
         }
 
-        fn probe(&mut self, _: Coord) -> Id {
-            unimplemented!()
-        }
-
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
                 Event::PressStart { .. } if self.drag_anywhere => {

@@ -81,22 +81,6 @@ impl_scope! {
         id_map: HashMap<usize, usize>, // map key of Id to index
     }
 
-    impl Tile for Self {
-        #[inline]
-        fn num_children(&self) -> usize {
-            self.widgets.len()
-        }
-
-        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
-            self.widgets.get_tile(index)
-        }
-
-        fn find_child_index(&self, id: &Id) -> Option<usize> {
-            id.next_key_after(self.id_ref())
-                .and_then(|k| self.id_map.get(&k).cloned())
-        }
-    }
-
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let dim = (self.direction, self.widgets.len());
@@ -127,16 +111,27 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
-        type Data = C::Data;
+    impl Tile for Self {
+        #[inline]
+        fn num_children(&self) -> usize {
+            self.widgets.len()
+        }
 
-        fn for_child_node(
-            &mut self,
-            data: &C::Data,
-            index: usize,
-            closure: Box<dyn FnOnce(Node<'_>) + '_>,
-        ) {
-            self.widgets.for_node(data, index, closure);
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
+            self.widgets.get_tile(index)
+        }
+
+        fn find_child_index(&self, id: &Id) -> Option<usize> {
+            id.next_key_after(self.id_ref())
+                .and_then(|k| self.id_map.get(&k).cloned())
+        }
+
+        fn probe(&mut self, coord: Coord) -> Id {
+            let solver = RowPositionSolver::new(self.direction);
+            solver
+                .find_child_mut(&mut self.widgets, coord)
+                .and_then(|child| child.try_probe(coord))
+                .unwrap_or_else(|| self.id())
         }
     }
 
@@ -168,13 +163,18 @@ impl_scope! {
         fn configure(&mut self, _: &mut ConfigCx) {
             self.id_map.clear();
         }
+    }
 
-        fn probe(&mut self, coord: Coord) -> Id {
-            let solver = RowPositionSolver::new(self.direction);
-            solver
-                .find_child_mut(&mut self.widgets, coord)
-                .and_then(|child| child.try_probe(coord))
-                .unwrap_or_else(|| self.id())
+    impl Widget for Self {
+        type Data = C::Data;
+
+        fn for_child_node(
+            &mut self,
+            data: &C::Data,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
+            self.widgets.for_node(data, index, closure);
         }
     }
 

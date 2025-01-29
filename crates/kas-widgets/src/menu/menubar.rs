@@ -62,16 +62,6 @@ impl_scope! {
         }
     }
 
-    impl Tile for Self {
-        #[inline]
-        fn num_children(&self) -> usize {
-            self.widgets.len()
-        }
-        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
-            self.widgets.get(index).map(|w| w.as_tile())
-        }
-    }
-
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             // Unusual behaviour: children's SizeRules are padded with a frame,
@@ -109,22 +99,15 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
-        type Data = Data;
-
-        fn for_child_node(
-            &mut self,
-            data: &Data,
-            index: usize,
-            closure: Box<dyn FnOnce(Node<'_>) + '_>,
-        ) {
-            if let Some(w) = self.widgets.get_mut(index) {
-                closure(w.as_node(data));
-            }
+    impl Tile for Self {
+        #[inline]
+        fn num_children(&self) -> usize {
+            self.widgets.len()
         }
-    }
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
+            self.widgets.get(index).map(|w| w.as_tile())
+        }
 
-    impl<Data, D: Directional> Events for MenuBar<Data, D> {
         fn probe(&mut self, coord: Coord) -> Id {
             let solver = RowPositionSolver::new(self.direction);
             solver
@@ -132,7 +115,9 @@ impl_scope! {
                 .and_then(|child| child.try_probe(coord))
                 .unwrap_or_else(|| self.id())
         }
+    }
 
+    impl Events for Self {
         fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> IsUsed {
             match event {
                 Event::Timer(id_code) => {
@@ -250,6 +235,21 @@ impl_scope! {
                     }
                 }
                 _ => Unused,
+            }
+        }
+    }
+
+    impl Widget for Self {
+        type Data = Data;
+
+        fn for_child_node(
+            &mut self,
+            data: &Data,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
+            if let Some(w) = self.widgets.get_mut(index) {
+                closure(w.as_node(data));
             }
         }
     }

@@ -321,14 +321,7 @@ impl_scope! {
         }
     }
 
-    impl Events for Self {
-        type Data = A;
-
-        fn update(&mut self, cx: &mut ConfigCx, data: &A) {
-            let action = self.set_value((self.state_fn)(cx, data));
-            cx.action(self, action);
-        }
-
+    impl Tile for Self {
         fn probe(&mut self, coord: Coord) -> Id {
             if self.on_move.is_some() {
                 if let Some(id) = self.grip.try_probe(coord) {
@@ -336,6 +329,15 @@ impl_scope! {
                 }
             }
             self.id()
+        }
+    }
+
+    impl Events for Self {
+        type Data = A;
+
+        fn update(&mut self, cx: &mut ConfigCx, data: &A) {
+            let action = self.set_value((self.state_fn)(cx, data));
+            cx.action(self, action);
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {

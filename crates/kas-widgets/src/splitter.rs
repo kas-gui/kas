@@ -127,25 +127,6 @@ impl_scope! {
         }
     }
 
-    impl Tile for Self {
-        #[inline]
-        fn num_children(&self) -> usize {
-            self.widgets.len() + self.grips.len()
-        }
-        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
-            if (index & 1) != 0 {
-                self.grips.get(index >> 1).map(|w| w.as_tile())
-            } else {
-                self.widgets.get_tile(index >> 1)
-            }
-        }
-
-        fn find_child_index(&self, id: &Id) -> Option<usize> {
-            id.next_key_after(self.id_ref())
-                .and_then(|k| self.id_map.get(&k).cloned())
-        }
-    }
-
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             if self.widgets.is_empty() {
@@ -236,33 +217,22 @@ impl_scope! {
         }
     }
 
-    impl Widget for Self {
-        type Data = C::Data;
-
-        fn for_child_node(
-            &mut self,
-            data: &C::Data,
-            index: usize,
-            closure: Box<dyn FnOnce(Node<'_>) + '_>,
-        ) {
+    impl Tile for Self {
+        #[inline]
+        fn num_children(&self) -> usize {
+            self.widgets.len() + self.grips.len()
+        }
+        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             if (index & 1) != 0 {
-                if let Some(w) = self.grips.get_mut(index >> 1) {
-                    closure(w.as_node(&()));
-                }
+                self.grips.get(index >> 1).map(|w| w.as_tile())
             } else {
-                self.widgets.for_node(data, index >> 1, closure);
+                self.widgets.get_tile(index >> 1)
             }
         }
-    }
 
-    impl Events for Self {
-        fn make_child_id(&mut self, child_index: usize) -> Id {
-            let is_grip = (child_index & 1) != 0;
-            self.make_next_id(is_grip, child_index / 2)
-        }
-
-        fn configure(&mut self, _: &mut ConfigCx) {
-            self.id_map.clear();
+        fn find_child_index(&self, id: &Id) -> Option<usize> {
+            id.next_key_after(self.id_ref())
+                .and_then(|k| self.id_map.get(&k).cloned())
         }
 
         fn probe(&mut self, coord: Coord) -> Id {
@@ -287,6 +257,17 @@ impl_scope! {
 
             self.id()
         }
+    }
+
+    impl Events for Self {
+        fn make_child_id(&mut self, child_index: usize) -> Id {
+            let is_grip = (child_index & 1) != 0;
+            self.make_next_id(is_grip, child_index / 2)
+        }
+
+        fn configure(&mut self, _: &mut ConfigCx) {
+            self.id_map.clear();
+        }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(index) = cx.last_child() {
@@ -304,6 +285,25 @@ impl_scope! {
                         self.adjust_size(&mut cx.config_cx(), n);
                     }
                 }
+            }
+        }
+    }
+
+    impl Widget for Self {
+        type Data = C::Data;
+
+        fn for_child_node(
+            &mut self,
+            data: &C::Data,
+            index: usize,
+            closure: Box<dyn FnOnce(Node<'_>) + '_>,
+        ) {
+            if (index & 1) != 0 {
+                if let Some(w) = self.grips.get_mut(index >> 1) {
+                    closure(w.as_node(&()));
+                }
+            } else {
+                self.widgets.for_node(data, index >> 1, closure);
             }
         }
     }
