@@ -11,7 +11,7 @@ use kas::event::{Command, CursorIcon, FocusSource, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
-use kas::text::{NotReady, SelectionHelper};
+use kas::text::SelectionHelper;
 use kas::theme::{Text, TextClass};
 
 impl_scope! {
@@ -192,23 +192,19 @@ impl_scope! {
             // unnecessary: cx.redraw(self);
             self.bar.set_value(cx, offset.1);
         }
-    }
 
-    impl HasStr for Self {
-        fn get_str(&self) -> &str {
+        /// Get text contents
+        pub fn as_str(&self) -> &str {
             self.text.as_str()
         }
     }
 
-    impl HasString for Self
-    where
-        T: EditableText,
-    {
-        fn set_string(&mut self, string: String) -> Action {
+    impl<T: EditableText + 'static> ScrollLabel<T> {
+        /// Set text contents from a string
+        pub fn set_string(&mut self, cx: &mut EventState, string: String) {
             self.text.set_string(string);
-            match self.text.prepare() {
-                Err(NotReady) => Action::empty(),
-                Ok(_) => Action::SET_RECT,
+            if self.text.prepare().is_ok() {
+                cx.action(self, Action::SET_RECT);
             }
         }
     }
