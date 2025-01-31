@@ -10,7 +10,7 @@ use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{Command, CursorIcon, FocusSource, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
-use kas::text::format::{EditableText, FormattableText};
+use kas::text::format::FormattableText;
 use kas::text::{NotReady, SelectionHelper};
 use kas::theme::{Text, TextClass};
 
@@ -172,29 +172,6 @@ impl_scope! {
             self.view_offset = offset;
             // unnecessary: cx.redraw(self);
             self.bar.set_value(cx, offset.1);
-        }
-    }
-
-    impl HasStr for Self {
-        fn get_str(&self) -> &str {
-            self.text.as_str()
-        }
-    }
-
-    impl HasString for Self
-    where
-        T: EditableText,
-    {
-        fn set_string(&mut self, string: String) -> Action {
-            if string == self.text.as_str() {
-                return Action::empty();
-            }
-
-            self.text.set_string(string);
-            match self.text.prepare() {
-                Err(NotReady) => Action::empty(),
-                Ok(_) => Action::SET_RECT,
-            }
         }
     }
 
