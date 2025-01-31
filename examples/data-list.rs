@@ -159,7 +159,7 @@ fn main() -> kas::runner::Result<()> {
         len: 5,
         active: 0,
         dir: Direction::Down,
-        active_string: ListEntry::new(0).label.get_string(),
+        active_string: ListEntry::new(0).label.as_str().to_string(),
     };
 
     let list = List::new(vec![]).on_update(|cx, list, data: &Data| {

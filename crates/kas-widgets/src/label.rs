@@ -109,6 +109,11 @@ impl_scope! {
             self.text.set_text(text);
             self.text.reprepare_action()
         }
+
+        /// Get text contents
+        pub fn as_str(&self) -> &str {
+            self.text.as_str()
+        }
     }
 
     impl Layout for Self {
@@ -124,19 +129,11 @@ impl_scope! {
         }
     }
 
-    impl HasStr for Self {
-        fn get_str(&self) -> &str {
-            self.text.as_str()
-        }
-    }
-
-    impl HasString for Self
-    where
-        T: EditableText,
-    {
-        fn set_string(&mut self, string: String) -> Action {
+    impl<T: EditableText + 'static> Label<T> {
+        /// Set text contents from a string
+        pub fn set_string(&mut self, cx: &mut EventState, string: String) {
             self.text.set_string(string);
-            self.text.reprepare_action()
+            cx.action(self.id(), self.text.reprepare_action());
         }
     }
 }
