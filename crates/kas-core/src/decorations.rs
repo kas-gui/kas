@@ -134,16 +134,11 @@ impl_scope! {
         }
     }
 
-    impl HasStr for Self {
-        fn get_str(&self) -> &str {
-            self.text.as_str()
-        }
-    }
-
-    impl HasString for Self {
-        fn set_string(&mut self, string: String) -> Action {
+    impl Self {
+        /// Set text from a string
+        pub fn set_string(&mut self, cx: &mut EventState, string: String) {
             self.text.set_string(string);
-            self.text.reprepare_action()
+            cx.action(self.id(), self.text.reprepare_action());
         }
     }
 }
@@ -292,8 +287,8 @@ impl_scope! {
         }
 
         /// Set the title
-        pub fn set_title(&mut self, title: String) -> Action {
-            self.title.set_string(title)
+        pub fn set_title(&mut self, cx: &mut EventState, title: String) {
+            self.title.set_string(cx, title)
         }
     }
 

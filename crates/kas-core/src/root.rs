@@ -224,7 +224,7 @@ impl_scope! {
             if let Some(cmd) = cx.try_pop() {
                 match cmd {
                     WindowCommand::SetTitle(title) => {
-                        cx.action(self.id(), self.title_bar.set_title(title));
+                        self.title_bar.set_title(cx, title);
                         #[cfg(winit)]
                         if self.decorations == Decorations::Server {
                             if let Some(w) = cx.winit_window() {
