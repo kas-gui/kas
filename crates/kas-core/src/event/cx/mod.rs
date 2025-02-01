@@ -219,9 +219,7 @@ pub struct EventState {
     pending_sel_focus: Option<PendingSelFocus>,
     pending_nav_focus: PendingNavFocus,
     pending_cmds: VecDeque<(Id, Command)>,
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-    pub action: Action,
+    pub(crate) action: Action,
 }
 
 /// internals
