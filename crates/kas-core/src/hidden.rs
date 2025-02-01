@@ -72,7 +72,6 @@ impl_scope! {
     /// [`Id`](crate::Id). It supports [`Deref`](std::ops::Deref) and
     /// [`DerefMut`](std::ops::DerefMut) to the inner widget.
     #[autoimpl(Deref, DerefMut using self.inner)]
-    #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Default)]
     #[widget {
         Data = A;

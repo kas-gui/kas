@@ -18,7 +18,6 @@ impl_scope! {
     ///
     /// Usually, this type will be constructed through one of the methods on
     /// [`AdaptWidget`](crate::adapt::AdaptWidget).
-    #[autoimpl(class_traits using self.inner where W: trait)]
     #[widget{ derive = self.inner; }]
     pub struct Reserve<W: Widget> {
         pub inner: W,
@@ -65,7 +64,6 @@ impl_scope! {
     ///
     /// Usually, this type will be constructed through one of the methods on
     /// [`AdaptWidget`](crate::adapt::AdaptWidget).
-    #[autoimpl(class_traits using self.inner where W: trait)]
     #[widget{ derive = self.inner; }]
     pub struct Margins<W: Widget> {
         pub inner: W,
