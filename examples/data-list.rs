@@ -88,7 +88,7 @@ impl EditGuard for ListEntryGuard {
 
     fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Data) {
         if data.active == edit.guard.0 {
-            cx.push(Control::UpdateCurrent(edit.get_string()));
+            cx.push(Control::UpdateCurrent(edit.clone_string()));
         }
     }
 }
@@ -117,7 +117,7 @@ impl_scope! {
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Data) {
             if let Some(SelectEntry(n)) = cx.try_pop() {
                 if data.active != n {
-                    cx.push(Control::Select(n, self.edit.get_string()));
+                    cx.push(Control::Select(n, self.edit.clone_string()));
                 }
             }
         }

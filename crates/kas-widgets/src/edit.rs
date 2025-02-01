@@ -177,22 +177,20 @@ impl_scope! {
             if edit.guard.edited {
                 edit.guard.edited = false;
                 if let Some(ref on_afl) = edit.guard.on_afl {
-                    return on_afl(cx, data, edit.get_str());
+                    return on_afl(cx, data, edit.as_str());
                 }
             }
 
             // Reset data on focus loss (update is inhibited with focus).
             // No need if we just sent a message (should cause an update).
             let string = (edit.guard.value_fn)(data);
-            let action = edit.set_string(string);
-            cx.action(edit, action);
+            edit.set_string(cx, string);
         }
 
         fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
             if !edit.has_edit_focus() {
                 let string = (edit.guard.value_fn)(data);
-                let action = edit.set_string(string);
-                cx.action(edit, action);
+                edit.set_string(cx, string);
             }
         }
 
@@ -251,13 +249,12 @@ impl_scope! {
                 // Reset data on focus loss (update is inhibited with focus).
                 // No need if we just sent a message (should cause an update).
                 let value = (edit.guard.value_fn)(data);
-                let action = edit.set_string(format!("{}", value));
-                cx.action(edit, action);
+                edit.set_string(cx, format!("{}", value));
             }
         }
 
         fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &A) {
-            edit.guard.parsed = edit.get_str().parse().ok();
+            edit.guard.parsed = edit.as_str().parse().ok();
             let action = edit.set_error_state(edit.guard.parsed.is_none());
             cx.action(edit, action);
         }
@@ -265,8 +262,7 @@ impl_scope! {
         fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
             if !edit.has_edit_focus() {
                 let value = (edit.guard.value_fn)(data);
-                let action = edit.set_string(format!("{}", value));
-                cx.action(&edit, action);
+                edit.set_string(cx, format!("{}", value));
                 edit.guard.parsed = None;
             }
         }
@@ -312,12 +308,11 @@ impl_scope! {
         fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, data: &A) {
             // Always reset data on focus loss
             let value = (edit.guard.value_fn)(data);
-            let action = edit.set_string(format!("{}", value));
-            cx.action(edit, action);
+            edit.set_string(cx, format!("{}", value));
         }
 
         fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &A) {
-            let result = edit.get_str().parse();
+            let result = edit.as_str().parse();
             let action = edit.set_error_state(result.is_err());
             cx.action(edit.id(), action);
             if let Ok(value) = result {
@@ -328,8 +323,7 @@ impl_scope! {
         fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
             if !edit.has_edit_focus() {
                 let value = (edit.guard.value_fn)(data);
-                let action = edit.set_string(format!("{}", value));
-                cx.action(&edit, action);
+                edit.set_string(cx, format!("{}", value));
             }
         }
     }
@@ -343,7 +337,6 @@ impl_scope! {
     ///
     /// By default, the editor supports a single-line only;
     /// [`Self::with_multi_line`] and [`Self::with_class`] can be used to change this.
-    #[autoimpl(HasStr using self.inner)]
     #[autoimpl(Clone, Default, Debug where G: trait)]
     #[widget]
     pub struct EditBox<G: EditGuard = DefaultGuard<()>> {
@@ -440,17 +433,23 @@ impl_scope! {
             cx.action(&self, action);
             self.bar.set_value(cx, self.inner.view_offset.1);
         }
-    }
 
-    impl HasString for Self {
-        fn set_string(&mut self, string: String) -> Action {
-            let mut action = self.inner.set_string(string);
-            if action.contains(Action::SCROLLED) {
-                action.remove(Action::SCROLLED);
-                let max_offset = self.inner.max_scroll_offset().1;
-                action |= self.bar.set_limits(max_offset, self.inner.rect().size.1);
-            }
-            action
+        /// Get text contents
+        #[inline]
+        pub fn as_str(&self) -> &str {
+            self.inner.as_str()
+        }
+
+        /// Get the text contents as a `String`
+        #[inline]
+        pub fn clone_string(&self) -> String {
+            self.inner.clone_string()
+        }
+
+        /// Set text contents from a `String`
+        #[inline]
+        pub fn set_string(&mut self, cx: &mut EventState, text: String) {
+            self.inner.set_string(cx, text);
         }
     }
 }
@@ -961,20 +960,26 @@ impl_scope! {
         }
     }
 
-    impl HasStr for Self {
-        fn get_str(&self) -> &str {
-            self.text.text()
+    impl Self {
+        /// Get text contents
+        #[inline]
+        pub fn as_str(&self) -> &str {
+            self.text.as_str()
         }
 
-        fn get_string(&self) -> String {
-            self.text.text().clone()
+        /// Get the text contents as a `String`
+        #[inline]
+        pub fn clone_string(&self) -> String {
+            self.text.clone_string()
         }
-    }
 
-    impl HasString for Self {
-        fn set_string(&mut self, string: String) -> Action {
+        /// Set text contents from a `String`
+        ///
+        /// NOTE: we could add a `set_str` variant of this method but there
+        /// doesn't appear to be a need.
+        pub fn set_string(&mut self, cx: &mut EventState, string: String) {
             if !self.text.set_string(string) || self.text.prepare() != Ok(true) {
-                return Action::empty();
+                return;
             }
 
             self.selection.set_max_len(self.text.str_len());
@@ -985,7 +990,8 @@ impl_scope! {
                 action |= Action::SCROLLED;
                 self.view_offset = view_offset;
             }
-            action | self.set_error_state(false)
+            action |= self.set_error_state(false);
+            cx.action(self, action);
         }
     }
 }

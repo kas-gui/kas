@@ -94,8 +94,7 @@ impl EditGuard for ListEntryGuard {
 
     fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &Item) {
         if !edit.has_edit_focus() {
-            let act = edit.set_string(data.1.clone());
-            cx.action(edit, act);
+            edit.set_string(cx, data.1.to_string());
         }
     }
 
@@ -105,7 +104,7 @@ impl EditGuard for ListEntryGuard {
     }
 
     fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Item) {
-        cx.push(Control::Update(edit.guard.0, edit.get_string()));
+        cx.push(Control::Update(edit.guard.0, edit.clone_string()));
     }
 }
 
@@ -133,7 +132,7 @@ impl_scope! {
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Item) {
             if let Some(SelectEntry(n)) = cx.try_pop() {
                 if data.0 != n {
-                    cx.push(Control::Select(n, self.edit.get_string()));
+                    cx.push(Control::Select(n, self.edit.clone_string()));
                 }
             }
         }

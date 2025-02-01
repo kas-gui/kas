@@ -91,13 +91,13 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
         type Data = Data;
 
         fn activate(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Data) -> IsUsed {
-            cx.push(Item::Edit(edit.get_string()));
+            cx.push(Item::Edit(edit.clone_string()));
             Used
         }
 
         fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Data) {
             // 7a is the colour of *magic*!
-            let act = edit.set_error_state(edit.get_str().len() % (7 + 1) == 0);
+            let act = edit.set_error_state(edit.as_str().len() % (7 + 1) == 0);
             cx.action(edit, act);
         }
     }
@@ -123,12 +123,11 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
                 if let Some(MsgEdit) = cx.try_pop() {
                     // TODO: do not always set text: if this is a true pop-up it
                     // should not normally lose data.
-                    let act = self.popup.inner.set_text(data.text.clone());
+                    self.popup.inner.set_text(cx, data.text.clone());
                     // let ed = TextEdit::new(text, true);
                     // cx.add_window::<()>(ed.into_window("Edit text"));
                     // TODO: cx.add_modal(..)
                     self.popup.open(cx, &(), self.id());
-                    cx.action(self, act);
                 } else if let Some(result) = cx.try_pop() {
                     match result {
                         TextEditResult::Cancel => (),
@@ -294,7 +293,7 @@ fn editor() -> Box<dyn Widget<Data = AppData>> {
         }
 
         fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Data) {
-            let result = Markdown::new(edit.get_str());
+            let result = Markdown::new(edit.as_str());
             let act = edit.set_error_state(result.is_err());
             cx.action(edit, act);
             let text = result.unwrap_or_else(|err| Markdown::new(&format!("{err}")).unwrap());
