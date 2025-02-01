@@ -93,6 +93,11 @@ impl_scope! {
                 Unused
             }
         }
+
+        /// Get text contents
+        pub fn as_str(&self) -> &str {
+            self.label.get_str()
+        }
     }
 
     impl kas::Layout for Self {
@@ -179,12 +184,6 @@ impl_scope! {
             for i in 0..self.popup.inner.len() {
                 self.popup.inner[i].set_menu_path(cx, data, target, set_focus);
             }
-        }
-    }
-
-    impl HasStr for Self {
-        fn get_str(&self) -> &str {
-            self.label.get_str()
         }
     }
 }

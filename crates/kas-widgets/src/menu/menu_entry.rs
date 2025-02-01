@@ -61,10 +61,9 @@ impl_scope! {
         pub fn set_msg(&mut self, msg: M) {
             self.msg = msg;
         }
-    }
 
-    impl HasStr for Self {
-        fn get_str(&self) -> &str {
+        /// Get text contents
+        pub fn as_str(&self) -> &str {
             self.label.get_str()
         }
     }

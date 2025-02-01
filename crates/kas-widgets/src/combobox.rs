@@ -221,7 +221,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
         entries: Vec<MenuEntry<V>>,
         state_fn: impl Fn(&ConfigCx, &A) -> V + 'static,
     ) -> Self {
-        let label = entries.first().map(|entry| entry.get_string());
+        let label = entries.first().map(|entry| entry.as_str().to_string());
         let label = Label::new(label.unwrap_or_default()).with_class(TextClass::Button);
         ComboBox {
             core: Default::default(),
@@ -295,7 +295,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
         if self.active != index && index < self.popup.inner.inner.len() {
             self.active = index;
             let string = if index < self.len() {
-                self.popup.inner.inner[index].get_string()
+                self.popup.inner.inner[index].as_str().to_string()
             } else {
                 "".to_string()
             };
