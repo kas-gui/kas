@@ -15,10 +15,10 @@ use proc_macro_error2::{emit_call_site_error, emit_error, proc_macro_error};
 use syn::parse_macro_input;
 use syn::spanned::Spanned;
 
-mod class_traits;
 mod collection;
 mod extends;
 mod make_layout;
+mod scroll_traits;
 mod widget;
 mod widget_args;
 mod widget_derive;
@@ -67,24 +67,11 @@ pub fn impl_default(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// | [`::core::marker::Copy`] | * | - | *allowed with `Clone` |
 /// | [`::core::ops::Deref`] | - | deref target | `type Target` is type of target field |
 /// | [`::core::ops::DerefMut`] | - | deref target | `type Target` is type of target field |
-/// | `::kas::classes::HasBool` | - | deref target | |
-/// | `::kas::classes::HasStr` | - | deref target | |
-/// | `::kas::classes::HasString` | - | deref target | |
-/// | `class_traits` | - | deref target | implements each `kas::class` trait |
-///
-/// ### Examples
-///
-/// Implement all `kas::class` trait over a wrapper type:
-/// ```no_test
-/// # use kas_macros::autoimpl;
-/// #[autoimpl(class_traits using self.0 where T: trait)]
-/// struct WrappingType<T>(T);
-/// ```
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
     use autoimpl::ImplTrait;
-    use class_traits::{ImplClassTraits, ImplHasScrollBars, ImplScrollable};
+    use scroll_traits::{ImplHasScrollBars, ImplScrollable};
     use std::iter::once;
 
     let mut toks = item.clone();
@@ -94,10 +81,9 @@ pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
             // We could use lazy_static to construct a HashMap for fast lookups,
             // but given the small number of impls a "linear map" is fine.
             let find_impl = |path: &syn::Path| {
-                (autoimpl::STD_IMPLS.iter())
-                    .chain(class_traits::CLASS_IMPLS.iter())
+                autoimpl::STD_IMPLS
+                    .iter()
                     .cloned()
-                    .chain(once(&ImplClassTraits as &dyn ImplTrait))
                     .chain(once(&ImplHasScrollBars as &dyn ImplTrait))
                     .chain(once(&ImplScrollable as &dyn ImplTrait))
                     .find(|impl_| impl_.path().matches_ident_or_path(path))
@@ -274,7 +260,6 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// ```ignore
 /// impl_scope! {
 ///     /// A frame around content
-///     #[autoimpl(class_traits using self.inner where W: trait)]
 ///     #[derive(Clone, Default)]
 ///     #[widget{
 ///         layout = frame!(self.inner, style = kas::theme::FrameStyle::Frame);

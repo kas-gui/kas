@@ -19,7 +19,6 @@ impl_scope! {
     /// A tab
     ///
     /// This is a special variant of `Button` which sends a [`Select`] on press.
-    #[autoimpl(HasStr using self.label)]
     #[widget {
         Data = ();
         layout = frame!(self.label, style = FrameStyle::Tab);
@@ -40,6 +39,11 @@ impl_scope! {
                 core: Default::default(),
                 label: AccessLabel::new(label),
             }
+        }
+
+        /// Get text contents
+        pub fn as_str(&self) -> &str {
+            self.label.as_str()
         }
     }
 
@@ -175,7 +179,7 @@ impl_scope! {
             if let Some(MsgSelectIndex(index)) = cx.try_pop() {
                 self.set_active(&mut cx.config_cx(), data, index);
                 if let Some(ref f) = self.on_change {
-                    let title = self.tabs.inner[index].get_str();
+                    let title = self.tabs.inner[index].as_str();
                     f(cx, data, index, title);
                 }
             }

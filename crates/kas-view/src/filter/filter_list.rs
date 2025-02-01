@@ -7,7 +7,6 @@
 
 use super::Filter;
 use crate::{ListData, SharedData};
-use kas::classes::HasStr;
 use kas::event::{ConfigCx, EventCx};
 use kas::{autoimpl, impl_scope, Events, Widget};
 use kas_widgets::edit::{EditBox, EditField, EditGuard};
@@ -27,7 +26,7 @@ impl EditGuard for KeystrokeGuard {
     type Data = ();
 
     fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Self::Data) {
-        cx.push(SetFilter(edit.get_string()));
+        cx.push(SetFilter(edit.as_str().to_string()));
     }
 }
 
@@ -43,7 +42,7 @@ impl EditGuard for AflGuard {
 
     #[inline]
     fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Self::Data) {
-        cx.push(SetFilter(edit.get_string()));
+        cx.push(SetFilter(edit.as_str().to_string()));
     }
 }
 

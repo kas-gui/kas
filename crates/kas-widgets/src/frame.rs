@@ -15,7 +15,6 @@ impl_scope! {
     //
     // NOTE: this would use derive mode if that supported custom layout syntax,
     // but it does not. This would allow us to implement Deref to self.inner.
-    #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Default)]
     #[widget{
         Data = W::Data;

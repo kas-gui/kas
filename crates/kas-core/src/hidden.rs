@@ -9,7 +9,6 @@
 //! hidden by default and direct usage (outside of kas crates) is
 //! not supported (i.e. **changes are not considered breaking**).
 
-use crate::classes::HasStr;
 use crate::event::ConfigCx;
 use crate::geom::Rect;
 use crate::layout::AlignHints;
@@ -42,6 +41,11 @@ impl_scope! {
                 text: Text::new(text, TextClass::Label(false)),
             }
         }
+
+        /// Get text contents
+        pub fn as_str(&self) -> &str {
+            self.text.as_str()
+        }
     }
 
     impl Layout for Self {
@@ -56,12 +60,6 @@ impl_scope! {
             cx.text_configure(&mut self.text);
         }
     }
-
-    impl HasStr for Self {
-        fn get_str(&self) -> &str {
-            self.text.as_str()
-        }
-    }
 }
 
 impl_scope! {
@@ -74,7 +72,6 @@ impl_scope! {
     /// [`Id`](crate::Id). It supports [`Deref`](std::ops::Deref) and
     /// [`DerefMut`](std::ops::DerefMut) to the inner widget.
     #[autoimpl(Deref, DerefMut using self.inner)]
-    #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Default)]
     #[widget {
         Data = A;

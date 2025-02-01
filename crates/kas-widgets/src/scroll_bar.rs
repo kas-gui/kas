@@ -352,7 +352,6 @@ impl_scope! {
     /// the result looks poor when content is scrolled. Instead the content should
     /// force internal margins by wrapping contents with a (zero-sized) frame.
     /// [`ScrollRegion`] already does this.
-    #[autoimpl(class_traits using self.inner where W: trait)]
     #[impl_default(where W: trait)]
     #[derive(Clone, Debug)]
     #[widget {
@@ -555,7 +554,6 @@ impl_scope! {
     ///
     /// Use the [`HasScrollBars`] trait to adjust scroll bar behaviour.
     #[autoimpl(Deref, DerefMut, HasScrollBars, Scrollable using self.0)]
-    #[autoimpl(class_traits using self.0 where W: trait)]
     #[derive(Clone, Debug, Default)]
     #[widget{
         derive = self.0;

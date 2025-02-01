@@ -15,7 +15,6 @@ impl_scope! {
     /// A push-button with a generic label
     ///
     /// Default alignment of content is centered.
-    #[autoimpl(class_traits using self.inner where W: trait)]
     #[widget {
         Data = W::Data;
         layout = button!(self.inner, color = self.color);

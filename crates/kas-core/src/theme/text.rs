@@ -643,14 +643,11 @@ impl<T: FormattableText> Text<T> {
 }
 
 /// Text editing operations
-impl<T: EditableText> Text<T> {
+impl Text<String> {
     /// Insert a char at the given position
     ///
     /// This may be used to edit the raw text instead of replacing it.
     /// One must call [`Text::prepare`] afterwards.
-    ///
-    /// Formatting is adjusted: any specifiers starting at or after `index` are
-    /// delayed by the length of `c`.
     ///
     /// Currently this is not significantly more efficient than
     /// [`Text::set_text`]. This may change in the future (TODO).
@@ -667,10 +664,6 @@ impl<T: EditableText> Text<T> {
     ///
     /// One may simulate an unbounded range by via `start..usize::MAX`.
     ///
-    /// Formatting is adjusted: any specifiers within the replaced text are
-    /// pushed back to the end of the replacement, and the position of any
-    /// specifiers after the replaced section is adjusted as appropriate.
-    ///
     /// Currently this is not significantly more efficient than
     /// [`Text::set_text`]. This may change in the future (TODO).
     #[inline]
@@ -681,21 +674,24 @@ impl<T: EditableText> Text<T> {
 
     /// Set text to a raw `String`
     ///
-    /// One must call [`Text::prepare`] afterwards.
-    ///
-    /// All existing text formatting is removed.
+    /// Returns `true` when new `text` contents do not match old contents. In
+    /// this case the new `text` is assigned, but the caller must also call
+    /// [`Text::prepare`] afterwards.
     #[inline]
-    pub fn set_string(&mut self, string: String) {
-        self.text.set_string(string);
+    pub fn set_string(&mut self, text: String) -> bool {
+        if self.text.as_str() == text {
+            return false; // no change
+        }
+
+        self.text.set_string(text);
         self.set_max_status(Status::Configured);
+        true
     }
 
     /// Swap the raw text with a `String`
     ///
     /// This may be used to edit the raw text instead of replacing it.
     /// One must call [`Text::prepare`] afterwards.
-    ///
-    /// All existing text formatting is removed.
     ///
     /// Currently this is not significantly more efficient than
     /// [`Text::set_text`]. This may change in the future (TODO).

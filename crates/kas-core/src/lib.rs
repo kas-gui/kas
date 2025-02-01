@@ -39,7 +39,6 @@ pub use kas_macros::{widget, widget_index, widget_set_rect};
 pub use root::{Window, WindowCommand, WindowId};
 
 // public implementations:
-pub mod classes;
 pub mod config;
 pub mod dir;
 pub mod draw;
