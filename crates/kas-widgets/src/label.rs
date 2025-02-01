@@ -239,6 +239,11 @@ impl_scope! {
             self
         }
 
+        /// Get text contents
+        pub fn as_str(&self) -> &str {
+            self.text.as_str()
+        }
+
         /// Get read access to the text object
         #[inline]
         pub fn text(&self) -> &Text<AccessString> {
@@ -281,12 +286,6 @@ impl_scope! {
                 }
                 _ => Unused
             }
-        }
-    }
-
-    impl HasStr for Self {
-        fn get_str(&self) -> &str {
-            self.text.as_str()
         }
     }
 }

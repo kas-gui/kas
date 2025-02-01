@@ -96,7 +96,7 @@ impl_scope! {
 
         /// Get text contents
         pub fn as_str(&self) -> &str {
-            self.label.get_str()
+            self.label.as_str()
         }
     }
 
