@@ -973,18 +973,16 @@ impl_scope! {
 
     impl HasString for Self {
         fn set_string(&mut self, string: String) -> Action {
-            let old_len = string.len();
-            self.text.set_string(string);
-            if self.text.prepare() != Ok(true) {
+            if !self.text.set_string(string) || self.text.prepare() != Ok(true) {
                 return Action::empty();
             }
 
-            self.selection.set_max_len(old_len);
+            self.selection.set_max_len(self.text.str_len());
             let mut action = Action::REDRAW;
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             let view_offset = self.view_offset.min(self.max_scroll_offset());
             if view_offset != self.view_offset {
-                action = Action::SCROLLED;
+                action |= Action::SCROLLED;
                 self.view_offset = view_offset;
             }
             action | self.set_error_state(false)

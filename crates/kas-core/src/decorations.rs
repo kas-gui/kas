@@ -137,8 +137,9 @@ impl_scope! {
     impl Self {
         /// Set text from a string
         pub fn set_string(&mut self, cx: &mut EventState, string: String) {
-            self.text.set_string(string);
-            cx.action(self.id(), self.text.reprepare_action());
+            if self.text.set_string(string) {
+                cx.action(self.id(), self.text.reprepare_action());
+            }
         }
     }
 }

@@ -10,7 +10,7 @@ use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{Command, CursorIcon, FocusSource, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
-use kas::text::format::{EditableText, FormattableText};
+use kas::text::format::FormattableText;
 use kas::text::SelectionHelper;
 use kas::theme::{Text, TextClass};
 
@@ -199,11 +199,10 @@ impl_scope! {
         }
     }
 
-    impl<T: EditableText + 'static> ScrollLabel<T> {
+    impl ScrollLabel<String> {
         /// Set text contents from a string
         pub fn set_string(&mut self, cx: &mut EventState, string: String) {
-            self.text.set_string(string);
-            if self.text.prepare().is_ok() {
+            if self.text.set_string(string) && self.text.prepare().is_ok() {
                 cx.action(self, Action::SET_RECT);
             }
         }
