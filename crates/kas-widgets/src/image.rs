@@ -139,10 +139,10 @@ impl_scope! {
         /// By default, this is [`PixmapScaling::default`] except with
         /// `fix_aspect: true`.
         #[inline]
-        pub fn set_scaling(&mut self, f: impl FnOnce(&mut PixmapScaling)) -> Action {
+        pub fn set_scaling(&mut self, cx: &mut EventState, f: impl FnOnce(&mut PixmapScaling)) {
             f(&mut self.scaling);
             // NOTE: if only `aspect` is changed, REDRAW is enough
-            Action::RESIZE
+            cx.resize(self);
         }
     }
 

@@ -151,10 +151,10 @@ impl_scope! {
         /// Default size is 128 × 128; default stretch is [`Stretch::High`].
         /// Other fields use [`PixmapScaling`]'s default values.
         #[inline]
-        pub fn set_scaling(&mut self, f: impl FnOnce(&mut PixmapScaling)) -> Action {
+        pub fn set_scaling(&mut self, cx: &mut EventState, f: impl FnOnce(&mut PixmapScaling)) {
             f(&mut self.scaling);
             // NOTE: if only `aspect` is changed, REDRAW is enough
-            Action::RESIZE
+            cx.resize(self);
         }
     }
 
