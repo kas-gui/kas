@@ -333,8 +333,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
                     cx.send(label.id(), SetLabelId(label.id()));
                 })
                 .on_message(|cx, label, text| {
-                    let act = label.set_text(text);
-                    cx.action(label, act);
+                    label.set_text(cx, text);
                 })
                 .map_any()
         ])

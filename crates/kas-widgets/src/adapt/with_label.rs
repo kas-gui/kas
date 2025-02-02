@@ -106,8 +106,8 @@ impl_scope! {
         ///
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
-        pub fn set_text<T: Into<AccessString>>(&mut self, text: T) -> Action {
-            self.label.set_text(text.into())
+        pub fn set_text<T: Into<AccessString>>(&mut self, cx: &mut EventState, text: T) {
+            self.label.set_text(cx, text.into());
         }
     }
 

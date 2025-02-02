@@ -105,9 +105,10 @@ impl_scope! {
         ///
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
-        pub fn set_text(&mut self, text: T) -> Action {
+        pub fn set_text(&mut self, cx: &mut EventState, text: T) {
             self.text.set_text(text);
-            self.text.reprepare_action()
+            let act = self.text.reprepare_action();
+            cx.action(self, act);
         }
 
         /// Get text contents
@@ -254,9 +255,10 @@ impl_scope! {
         ///
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
-        pub fn set_text(&mut self, text: AccessString) -> Action {
+        pub fn set_text(&mut self, cx: &mut EventState, text: AccessString) {
             self.text.set_text(text);
-            self.text.reprepare_action()
+            let act = self.text.reprepare_action();
+            cx.action(self, act);
         }
     }
 
