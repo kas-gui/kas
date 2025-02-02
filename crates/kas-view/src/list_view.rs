@@ -166,28 +166,29 @@ impl_scope! {
         /// except via [`Select`] from view widgets. (TODO: reconsider this.)
         ///
         /// [`Select`]: kas::messages::Select
-        pub fn set_selection_mode(&mut self, mode: SelectionMode) -> Action {
+        pub fn set_selection_mode(&mut self, cx: &mut EventState, mode: SelectionMode) {
             self.sel_mode = mode;
             match mode {
                 SelectionMode::None if !self.selection.is_empty() => {
                     self.selection.clear();
-                    Action::REDRAW
+                    cx.redraw(self);
                 }
                 SelectionMode::Single if self.selection.len() > 1 => {
                     if let Some(first) = self.selection.iter().next().cloned() {
                         self.selection.retain(|item| *item == first);
                     }
-                    Action::REDRAW
+                    cx.redraw(self);
                 }
-                _ => Action::empty(),
+                _ => (),
             }
         }
-        /// Set the selection mode (inline)
+        /// Set the initial selection mode (inline)
         ///
         /// See [`Self::set_selection_mode`] documentation.
         #[must_use]
         pub fn with_selection_mode(mut self, mode: SelectionMode) -> Self {
-            let _ = self.set_selection_mode(mode);
+            debug_assert!(self.selection.is_empty());
+            self.sel_mode = mode;
             self
         }
 
@@ -199,14 +200,11 @@ impl_scope! {
         ///
         /// By default, [`SelectionStyle::Highlight`] is used. Other modes may
         /// add margin between elements.
-        pub fn set_selection_style(&mut self, style: SelectionStyle) -> Action {
-            let action = if style.is_external() != self.sel_style.is_external() {
-                Action::RESIZE
-            } else {
-                Action::empty()
+        pub fn set_selection_style(&mut self, cx: &mut EventState, style: SelectionStyle) {
+            if style.is_external() != self.sel_style.is_external() {
+                cx.resize(&self);
             };
             self.sel_style = style;
-            action
         }
         /// Set the selection style (inline)
         ///
@@ -231,12 +229,10 @@ impl_scope! {
         }
 
         /// Clear all selected items
-        pub fn clear_selected(&mut self) -> Action {
-            if self.selection.is_empty() {
-                Action::empty()
-            } else {
+        pub fn clear_selected(&mut self, cx: &mut EventState) {
+            if !self.selection.is_empty() {
                 self.selection.clear();
-                Action::REDRAW
+                cx.redraw(self);
             }
         }
 
@@ -246,30 +242,32 @@ impl_scope! {
         /// Does not verify the validity of `key`.
         /// Does not send [`SelectionMsg`] messages.
         ///
-        /// Returns `Action::REDRAW` if newly selected, `Action::empty()` if
+        /// Returns `true` if newly selected, `false` if
         /// already selected. Fails if selection mode does not permit selection
         /// or if the key is invalid.
-        pub fn select(&mut self, key: A::Key) -> Action {
+        pub fn select(&mut self, cx: &mut EventState, key: A::Key) -> bool {
             match self.sel_mode {
-                SelectionMode::None => return Action::empty(),
+                SelectionMode::None => return false,
                 SelectionMode::Single => self.selection.clear(),
                 _ => (),
             }
-            match self.selection.insert(key) {
-                true => Action::REDRAW,
-                false => Action::empty(),
+            let r = self.selection.insert(key);
+            if r {
+                cx.redraw(self);
             }
+            r
         }
 
         /// Directly deselect an item
         ///
-        /// Returns `Action::REDRAW` if deselected, `Action::empty()` if not
+        /// Returns `true` if deselected, `false` if not
         /// previously selected or if the key is invalid.
-        pub fn deselect(&mut self, key: &A::Key) -> Action {
-            match self.selection.remove(key) {
-                true => Action::REDRAW,
-                false => Action::empty(),
+        pub fn deselect(&mut self, cx: &mut EventState, key: &A::Key) -> bool {
+            let r = self.selection.remove(key);
+            if r {
+                cx.redraw(self);
             }
+            r
         }
 
         /// Get the direction of contents

@@ -396,8 +396,7 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
     let list_view = filter::FilterBoxList::new(ListView::down(ListGuard), filter, guard)
         .map(|data: &Data| &data.list)
         .on_update(|cx, list, data| {
-            let act = list.list_mut().set_selection_mode(data.mode);
-            cx.action(list, act);
+            list.list_mut().set_selection_mode(cx, data.mode);
         });
 
     let sel_buttons = row![
