@@ -339,8 +339,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
                 .map_any()
         ])
         .on_update(|cx, list, data: &Data| {
-            let act = list.set_direction(data.dir);
-            cx.action(list, act);
+            list.set_direction(cx, data.dir);
         }),
     ];
 

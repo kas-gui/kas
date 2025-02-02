@@ -263,14 +263,14 @@ impl_scope! {
 
     impl<C: Collection> List<C, Direction> {
         /// Set the direction of contents
-        pub fn set_direction(&mut self, direction: Direction) -> Action {
+        pub fn set_direction(&mut self, cx: &mut EventState, direction: Direction) {
             if direction == self.direction {
-                return Action::empty();
+                return;
             }
 
             self.direction = direction;
             // Note: most of the time SET_RECT would be enough, but margins can be different
-            Action::RESIZE
+            cx.action(self, Action::RESIZE);
         }
     }
 

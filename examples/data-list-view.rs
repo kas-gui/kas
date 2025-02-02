@@ -201,8 +201,7 @@ fn main() -> kas::runner::Result<()> {
     let data = Data::new(5);
 
     let list = ListView::new(MyDriver).on_update(|cx, list, data| {
-        let act = list.set_direction(data.dir);
-        cx.action(list, act);
+        list.set_direction(cx, data.dir);
     });
     let tree = column![
         "Demonstration of dynamic widget creation / deletion",
