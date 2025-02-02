@@ -147,8 +147,7 @@ impl<A, T: SpinnerValue> EditGuard for SpinnerGuard<A, T> {
         } else {
             is_err = true;
         };
-        let action = edit.set_error_state(is_err);
-        cx.action(edit, action);
+        edit.set_error_state(cx, is_err);
     }
 }
 

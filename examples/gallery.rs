@@ -97,8 +97,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
 
         fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Data) {
             // 7a is the colour of *magic*!
-            let act = edit.set_error_state(edit.as_str().len() % (7 + 1) == 0);
-            cx.action(edit, act);
+            edit.set_error_state(cx, edit.as_str().len() % (7 + 1) == 0);
         }
     }
 
@@ -294,8 +293,7 @@ fn editor() -> Box<dyn Widget<Data = AppData>> {
 
         fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Data) {
             let result = Markdown::new(edit.as_str());
-            let act = edit.set_error_state(result.is_err());
-            cx.action(edit, act);
+            edit.set_error_state(cx, result.is_err());
             let text = result.unwrap_or_else(|err| Markdown::new(&format!("{err}")).unwrap());
             cx.send(data.label_id.clone(), text);
         }
