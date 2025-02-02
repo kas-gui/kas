@@ -429,8 +429,7 @@ impl_scope! {
     impl Self {
         fn update_scroll_bar(&mut self, cx: &mut EventState) {
             let max_offset = self.inner.max_scroll_offset().1;
-            let action = self.bar.set_limits(max_offset, self.inner.rect().size.1);
-            cx.action(&self, action);
+            self.bar.set_limits(cx, max_offset, self.inner.rect().size.1);
             self.bar.set_value(cx, self.inner.view_offset.1);
         }
 

@@ -57,7 +57,7 @@ impl_scope! {
             rect.pos.0 += rect.size.0 - w;
             rect.size.0 = w;
             self.bar.set_rect(cx, rect, AlignHints::NONE);
-            let _ = self.bar.set_limits(max_offset.1, rect.size.1);
+            self.bar.set_limits(cx, max_offset.1, rect.size.1);
             self.bar.set_value(cx, self.view_offset.1);
         }
 
@@ -113,7 +113,7 @@ impl_scope! {
 
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             let max_offset = self.max_scroll_offset();
-            let _ = self.bar.set_limits(max_offset.1, self.rect().size.1);
+            self.bar.set_limits(cx, max_offset.1, self.rect().size.1);
             self.view_offset = self.view_offset.min(max_offset);
 
             self.selection.set_max_len(self.text.str_len());

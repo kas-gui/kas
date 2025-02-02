@@ -279,8 +279,7 @@ impl_scope! {
                             if self.direction.is_reversed() {
                                 offset = Offset::conv(grip.track().size) - offset;
                             }
-                            let action = grip.set_offset(offset).1;
-                            cx.action(&self, action);
+                            grip.set_offset(cx, offset);
                         }
                         self.adjust_size(&mut cx.config_cx(), n);
                     }

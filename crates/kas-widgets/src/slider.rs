@@ -256,8 +256,7 @@ impl_scope! {
             }
 
             self.value = value;
-            let act = self.grip.set_offset(self.offset()).1;
-            cx.action(self, act);
+            self.grip.set_offset(cx, self.offset());
             true
         }
 
@@ -315,7 +314,7 @@ impl_scope! {
             rect.size.set_component(self.direction, cx.size_cx().grip_len());
             self.grip.set_rect(cx, rect, AlignHints::NONE);
             // Correct the position:
-            let _ = self.grip.set_offset(self.offset());
+            self.grip.set_offset(cx, self.offset());
         }
 
         fn draw(&mut self, mut draw: DrawCx) {

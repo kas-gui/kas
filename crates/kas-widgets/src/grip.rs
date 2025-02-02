@@ -179,20 +179,18 @@ impl_scope! {
         /// The input `offset` is clamped between [`Offset::ZERO`] and
         /// [`Self::max_offset`].
         ///
-        /// The return value is a tuple of the new offest and an action:
-        /// [`Action::REDRAW`] if the grip has moved, otherwise an empty action.
+        /// The return value is a tuple of the new offest.
         ///
         /// It is expected that [`Self::set_track`] and [`Self::set_size`] are
         /// called before this method.
-        pub fn set_offset(&mut self, offset: Offset) -> (Offset, Action) {
+        pub fn set_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
             let offset = offset.min(self.max_offset()).max(Offset::ZERO);
             let grip_pos = self.track.pos + offset;
             if grip_pos != self.rect().pos {
                 widget_set_rect!(Rect { pos: grip_pos, size: self.rect().size });
-                (offset, Action::REDRAW)
-            } else {
-                (offset, Action::empty())
+                cx.redraw(self);
             }
+            offset
         }
 
         /// Handle an event on the track itself

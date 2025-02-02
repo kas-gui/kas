@@ -124,7 +124,11 @@ impl_scope! {
         #[inline]
         #[must_use]
         pub fn with_limits(mut self, max_value: i32, grip_size: i32) -> Self {
-            let _ = self.set_limits(max_value, grip_size);
+            // We should gracefully handle zero, though appearance may be wrong.
+            self.grip_size = grip_size.max(1);
+
+            self.max_value = max_value.max(0);
+            self.value = self.value.clamp(0, self.max_value);
             self
         }
 
@@ -152,13 +156,13 @@ impl_scope! {
         /// so long as both parameters use the same units.
         ///
         /// Returns [`Action::REDRAW`] if a redraw is required.
-        pub fn set_limits(&mut self, max_value: i32, grip_size: i32) -> Action {
+        pub fn set_limits(&mut self, cx: &mut EventState, max_value: i32, grip_size: i32) {
             // We should gracefully handle zero, though appearance may be wrong.
             self.grip_size = grip_size.max(1);
 
             self.max_value = max_value.max(0);
             self.value = self.value.clamp(0, self.max_value);
-            self.update_widgets()
+            self.update_widgets(cx);
         }
 
         /// Read the current max value
@@ -191,8 +195,7 @@ impl_scope! {
             let changed = value != self.value;
             if changed {
                 self.value = value;
-                let action = self.grip.set_offset(self.offset()).1;
-                cx.action(&self, action);
+                self.grip.set_offset(cx, self.offset());
             }
             self.force_visible(cx);
             changed
@@ -212,7 +215,7 @@ impl_scope! {
             }
         }
 
-        fn update_widgets(&mut self) -> Action {
+        fn update_widgets(&mut self, cx: &mut EventState) {
             let len = self.bar_len();
             let total = 1i64.max(i64::from(self.max_value) + i64::from(self.grip_size));
             let grip_len = i64::from(self.grip_size) * i64::conv(len) / total;
@@ -220,7 +223,7 @@ impl_scope! {
             let mut size = self.rect().size;
             size.set_component(self.direction, self.grip_len);
             self.grip.set_size(size);
-            self.grip.set_offset(self.offset()).1
+            self.grip.set_offset(cx, self.offset());
         }
 
         // translate value to offset in local coordinates
@@ -244,8 +247,7 @@ impl_scope! {
 
         // true if not equal to old value
         fn apply_grip_offset(&mut self, cx: &mut EventCx, offset: Offset) {
-            let (offset, action) = self.grip.set_offset(offset);
-            cx.action(&self, action);
+            let offset = self.grip.set_offset(cx, offset);
 
             let len = self.bar_len() - self.grip_len;
             let mut offset = match self.direction.is_vertical() {
@@ -288,7 +290,7 @@ impl_scope! {
             self.grip.set_rect(cx, Rect::ZERO, AlignHints::NONE);
 
             self.min_grip_len = cx.size_cx().grip_len();
-            let _ = self.update_widgets();
+            self.update_widgets(cx);
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
@@ -483,7 +485,7 @@ impl_scope! {
                 let pos = Coord(pos.0, rect.pos2().1 - bar_width);
                 let size = Size::new(child_size.0, bar_width);
                 self.horiz_bar.set_rect(cx, Rect { pos, size }, AlignHints::NONE);
-                let _ = self.horiz_bar.set_limits(max_scroll_offset.0, rect.size.0);
+                self.horiz_bar.set_limits(cx, max_scroll_offset.0, rect.size.0);
             } else {
                 self.horiz_bar.set_rect(cx, Rect::ZERO, AlignHints::NONE);
             }
@@ -492,7 +494,7 @@ impl_scope! {
                 let pos = Coord(rect.pos2().0 - bar_width, pos.1);
                 let size = Size::new(bar_width, self.rect().size.1);
                 self.vert_bar.set_rect(cx, Rect { pos, size }, AlignHints::NONE);
-                let _ = self.vert_bar.set_limits(max_scroll_offset.1, rect.size.1);
+                self.vert_bar.set_limits(cx, max_scroll_offset.1, rect.size.1);
             } else {
                 self.vert_bar.set_rect(cx, Rect::ZERO, AlignHints::NONE);
             }
