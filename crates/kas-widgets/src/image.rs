@@ -52,8 +52,12 @@ impl_scope! {
         /// The image may be allocated through the [`DrawShared`] interface.
         #[inline]
         pub fn new(handle: ImageHandle, draw: &mut dyn DrawShared) -> Option<Self> {
-            let mut sprite = Self::default();
-            sprite.set(handle, draw).map(|_| sprite)
+            draw.image_size(&handle).map(|size| {
+                let mut sprite = Self::default();
+                sprite.scaling.size = size.cast();
+                sprite.handle = Some(handle);
+                sprite
+            })
         }
 
         /// Construct from a path
@@ -64,32 +68,50 @@ impl_scope! {
             draw: &mut dyn DrawShared,
         ) -> Result<Self> {
             let mut sprite = Self::default();
-            let _ = sprite.load_path(path, draw)?;
+            sprite._load_path(path, draw)?;
             Ok(sprite)
         }
 
         /// Assign a pre-allocated image
         ///
-        /// Returns `Action::RESIZE` on success. On error, `self` is unchanged.
-        pub fn set(&mut self, handle: ImageHandle, draw: &mut dyn DrawShared) -> Option<Action> {
+        /// Returns `true` on success. On error, `self` is unchanged.
+        pub fn set(
+            &mut self,
+            cx: &mut EventState,
+            handle: ImageHandle,
+            draw: &mut dyn DrawShared,
+        ) -> bool {
             if let Some(size) = draw.image_size(&handle) {
                 self.scaling.size = size.cast();
                 self.handle = Some(handle);
-                Some(Action::RESIZE)
+                cx.resize(self);
+                true
             } else {
-                None
+                false
             }
         }
 
         /// Load from a path
         ///
-        /// Returns `Action::RESIZE` on success. On error, `self` is unchanged.
+        /// On error, `self` is unchanged.
         #[cfg(feature = "image")]
         pub fn load_path<P: AsRef<std::path::Path>>(
             &mut self,
+            cx: &mut EventState,
             path: P,
             draw: &mut dyn DrawShared,
-        ) -> Result<Action> {
+        ) -> Result<()> {
+            self._load_path(path, draw).map(|_| {
+                cx.resize(self);
+            })
+        }
+
+        #[cfg(feature = "image")]
+        fn _load_path<P: AsRef<std::path::Path>>(
+            &mut self,
+            path: P,
+            draw: &mut dyn DrawShared,
+        ) -> Result<()> {
             let image = image::ImageReader::open(path)?
                 .with_guessed_format()?
                 .decode()?;
@@ -110,16 +132,14 @@ impl_scope! {
             self.scaling.size = size.cast();
             self.handle = Some(handle);
 
-            Ok(Action::RESIZE)
+            Ok(())
         }
 
         /// Remove image (set empty)
-        pub fn clear(&mut self, draw: &mut dyn DrawShared) -> Action {
+        pub fn clear(&mut self, cx: &mut EventState, draw: &mut dyn DrawShared) {
             if let Some(handle) = self.handle.take() {
                 draw.image_free(handle);
-                Action::RESIZE
-            } else {
-                Action::empty()
+                cx.resize(self);
             }
         }
 
