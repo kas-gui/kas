@@ -137,8 +137,8 @@ impl_scope! {
             }
 
             self.direction = direction;
-            // Note: most of the time SET_RECT would be enough, but margins can be different
-            cx.action(self, Action::RESIZE);
+            // Note: most of the time Action::SET_RECT would be enough, but margins can be different
+            cx.resize(self);
         }
 
         /// Call the handler `f` on page change

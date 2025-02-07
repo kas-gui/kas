@@ -118,7 +118,7 @@ impl_scope! {
 
             self.selection.set_max_len(self.text.str_len());
 
-            cx.action(self, Action::REDRAW);
+            cx.redraw(self);
         }
 
         fn set_edit_pos_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {
