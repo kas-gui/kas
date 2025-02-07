@@ -108,8 +108,8 @@ impl_scope! {
         }
 
         /// Set text
-        pub fn set_text(&mut self, text: impl ToString) -> Action {
-            self.edit.set_string(text.to_string())
+        pub fn set_text(&mut self, cx: &mut EventState, text: impl ToString) {
+            self.edit.set_string(cx, text.to_string());
         }
 
         /// Build a [`Window`]
@@ -119,7 +119,7 @@ impl_scope! {
 
         fn close(&mut self, cx: &mut EventCx, commit: bool) -> IsUsed {
             cx.push(if commit {
-                TextEditResult::Ok(self.edit.get_string())
+                TextEditResult::Ok(self.edit.clone_string())
             } else {
                 TextEditResult::Cancel
             });

@@ -7,7 +7,7 @@
 
 use super::adapt::MapAny;
 use kas::prelude::*;
-use kas::text::format::{EditableText, FormattableText};
+use kas::text::format::FormattableText;
 use kas::theme::{Text, TextClass};
 
 impl_scope! {
@@ -109,6 +109,11 @@ impl_scope! {
             self.text.set_text(text);
             self.text.reprepare_action()
         }
+
+        /// Get text contents
+        pub fn as_str(&self) -> &str {
+            self.text.as_str()
+        }
     }
 
     impl Layout for Self {
@@ -124,19 +129,12 @@ impl_scope! {
         }
     }
 
-    impl HasStr for Self {
-        fn get_str(&self) -> &str {
-            self.text.as_str()
-        }
-    }
-
-    impl HasString for Self
-    where
-        T: EditableText,
-    {
-        fn set_string(&mut self, string: String) -> Action {
-            self.text.set_string(string);
-            self.text.reprepare_action()
+    impl Label<String> {
+        /// Set text contents from a string
+        pub fn set_string(&mut self, cx: &mut EventState, string: String) {
+            if self.text.set_string(string) {
+                cx.action(self.id(), self.text.reprepare_action());
+            }
         }
     }
 }
@@ -241,6 +239,11 @@ impl_scope! {
             self
         }
 
+        /// Get text contents
+        pub fn as_str(&self) -> &str {
+            self.text.as_str()
+        }
+
         /// Get read access to the text object
         #[inline]
         pub fn text(&self) -> &Text<AccessString> {
@@ -283,12 +286,6 @@ impl_scope! {
                 }
                 _ => Unused
             }
-        }
-    }
-
-    impl HasStr for Self {
-        fn get_str(&self) -> &str {
-            self.text.as_str()
         }
     }
 }
