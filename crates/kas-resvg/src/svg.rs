@@ -169,11 +169,14 @@ impl_scope! {
         /// happens (hence returning [`Action::RESIZE`]).
         ///
         /// This sets [`PixmapScaling::size`] from the SVG.
-        pub fn load(&mut self, data: &'static [u8], resources_dir: Option<&Path>)
-            -> Result<Action, impl std::error::Error>
-        {
+        pub fn load(
+            &mut self,
+            cx: &mut EventState,
+            data: &'static [u8],
+            resources_dir: Option<&Path>,
+        ) -> Result<(), impl std::error::Error> {
             let source = Source::Static(data, resources_dir.map(|p| p.to_owned()));
-            self.load_source(source)
+            self.load_source(source).map(|act| cx.action(self, act))
         }
 
         fn load_source(&mut self, source: Source) -> Result<Action, usvg::Error> {
@@ -191,10 +194,12 @@ impl_scope! {
         /// Load from a path
         ///
         /// This is a wrapper around [`Self::load`].
-        pub fn load_path<P: AsRef<Path>>(&mut self, path: P)
-            -> Result<Action, impl std::error::Error>
-        {
-            self.load_path_(path.as_ref())
+        pub fn load_path<P: AsRef<Path>>(
+            &mut self,
+            cx: &mut EventState,
+            path: P,
+        ) -> Result<(), impl std::error::Error> {
+            self.load_path_(path.as_ref()).map(|act| cx.action(self, act))
         }
 
         fn load_path_(&mut self, path: &Path) -> Result<Action, LoadError> {
