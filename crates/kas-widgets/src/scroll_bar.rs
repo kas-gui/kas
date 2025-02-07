@@ -11,6 +11,28 @@ use kas::prelude::*;
 use kas::theme::Feature;
 use std::fmt::Debug;
 
+/// Scroll bar mode
+///
+/// The default value is [`ScrollBarMode::Auto`].
+#[kas_macros::impl_default(ScrollBarMode::Auto)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum ScrollBarMode {
+    /// Automatically enable/disable scroll bars as required when resized.
+    ///
+    /// This has the side-effect of reserving enough space for scroll bars even
+    /// when not required.
+    Auto,
+    /// Each scroll bar has fixed visibility.
+    ///
+    /// Parameters: `(horiz_is_visible, vert_is_visible)`.
+    Fixed(bool, bool),
+    /// Enabled scroll bars float over content and are only drawn when hovered
+    /// over by the mouse. Disabled scroll bars are fully hidden.
+    ///
+    /// Parameters: `(horiz_is_enabled, vert_is_enabled)`.
+    Invisible(bool, bool),
+}
+
 /// Message from a [`ScrollBar`]
 #[derive(Copy, Clone, Debug)]
 pub struct ScrollMsg(pub i32);
@@ -375,7 +397,6 @@ impl_scope! {
         /// Construct
         ///
         /// By default scroll bars are automatically enabled based on requirements.
-        /// Use the [`HasScrollBars`] trait to adjust this behaviour.
         #[inline]
         pub fn new(inner: W) -> Self {
             ScrollBars {
@@ -385,6 +406,62 @@ impl_scope! {
                 horiz_bar: ScrollBar::new(),
                 vert_bar: ScrollBar::new(),
                 inner,
+            }
+        }
+
+        /// Set fixed visibility of scroll bars (inline)
+        #[inline]
+        pub fn with_fixed_bars(mut self, horiz: bool, vert: bool) -> Self
+        where
+            Self: Sized,
+        {
+            self.mode = ScrollBarMode::Fixed(horiz, vert);
+            self.horiz_bar.set_invisible(false);
+            self.vert_bar.set_invisible(false);
+            self.show_bars = (horiz, vert);
+            self
+        }
+
+        /// Set fixed, invisible bars (inline)
+        ///
+        /// In this mode scroll bars are either enabled but invisible until
+        /// hovered by the mouse or disabled completely.
+        #[inline]
+        pub fn with_invisible_bars(mut self, horiz: bool, vert: bool) -> Self
+        where
+            Self: Sized,
+        {
+            self.mode = ScrollBarMode::Invisible(horiz, vert);
+            self.horiz_bar.set_invisible(true);
+            self.vert_bar.set_invisible(true);
+            self.show_bars = (horiz, vert);
+            self
+        }
+
+        /// Get current mode of scroll bars
+        #[inline]
+        pub fn scroll_bar_mode(&self) -> ScrollBarMode {
+            self.mode
+        }
+
+        /// Set scroll bar mode
+        pub fn set_scroll_bar_mode(&mut self, cx: &mut EventState, mode: ScrollBarMode) {
+            if mode != self.mode {
+                self.mode = mode;
+                let (invis_horiz, invis_vert) = match mode {
+                    ScrollBarMode::Auto => (false, false),
+                    ScrollBarMode::Fixed(horiz, vert) => {
+                        self.show_bars = (horiz, vert);
+                        (false, false)
+                    }
+                    ScrollBarMode::Invisible(horiz, vert) => {
+                        self.show_bars = (horiz, vert);
+                        (horiz, vert)
+                    }
+                };
+                self.horiz_bar.set_invisible(invis_horiz);
+                self.vert_bar.set_invisible(invis_vert);
+                cx.resize(self);
             }
         }
 
@@ -398,27 +475,6 @@ impl_scope! {
         #[inline]
         pub fn inner_mut(&mut self) -> &mut W {
             &mut self.inner
-        }
-    }
-
-    impl HasScrollBars for Self {
-        fn get_mode(&self) -> ScrollBarMode {
-            self.mode
-        }
-        fn set_mode(&mut self, mode: ScrollBarMode) -> Action {
-            self.mode = mode;
-            let invisible = mode == ScrollBarMode::Invisible;
-            self.horiz_bar.set_invisible(invisible);
-            self.vert_bar.set_invisible(invisible);
-            Action::RESIZE
-        }
-
-        fn get_visible_bars(&self) -> (bool, bool) {
-            self.show_bars
-        }
-        fn set_visible_bars(&mut self, bars: (bool, bool)) -> Action {
-            self.show_bars = bars;
-            Action::RESIZE
         }
     }
 
@@ -449,9 +505,9 @@ impl_scope! {
             let vert_rules = self.vert_bar.size_rules(sizer.re(), axis);
             let horiz_rules = self.horiz_bar.size_rules(sizer.re(), axis);
             let (use_horiz, use_vert) = match self.mode {
-                ScrollBarMode::Fixed => self.show_bars,
+                ScrollBarMode::Fixed(horiz, vert) => (horiz, vert),
                 ScrollBarMode::Auto => (true, true),
-                ScrollBarMode::Invisible => (false, false),
+                ScrollBarMode::Invisible(_, _) => (false, false),
             };
             if axis.is_horizontal() && use_horiz {
                 rules.append(vert_rules);
@@ -553,9 +609,7 @@ impl_scope! {
     /// This is essentially a `ScrollBars<ScrollRegion<W>>`:
     /// [`ScrollRegion`] handles the actual scrolling and wheel/touch events,
     /// while [`ScrollBars`] adds scroll bar controls.
-    ///
-    /// Use the [`HasScrollBars`] trait to adjust scroll bar behaviour.
-    #[autoimpl(Deref, DerefMut, HasScrollBars, Scrollable using self.0)]
+    #[autoimpl(Deref, DerefMut, Scrollable using self.0)]
     #[derive(Clone, Debug, Default)]
     #[widget{
         derive = self.0;
@@ -567,6 +621,39 @@ impl_scope! {
         #[inline]
         pub fn new(inner: W) -> Self {
             ScrollBarRegion(ScrollBars::new(ScrollRegion::new(inner)))
+        }
+
+        /// Set fixed visibility of scroll bars (inline)
+        #[inline]
+        pub fn with_fixed_bars(self, horiz: bool, vert: bool) -> Self
+        where
+            Self: Sized,
+        {
+            ScrollBarRegion(self.0.with_fixed_bars(horiz, vert))
+        }
+
+        /// Set fixed, invisible bars (inline)
+        ///
+        /// In this mode scroll bars are either enabled but invisible until
+        /// hovered by the mouse or disabled completely.
+        #[inline]
+        pub fn with_invisible_bars(self, horiz: bool, vert: bool) -> Self
+        where
+            Self: Sized,
+        {
+            ScrollBarRegion(self.0.with_invisible_bars(horiz, vert))
+        }
+
+        /// Get current mode of scroll bars
+        #[inline]
+        pub fn scroll_bar_mode(&self) -> ScrollBarMode {
+            self.0.scroll_bar_mode()
+        }
+
+        /// Set scroll bar mode
+        #[inline]
+        pub fn set_scroll_bar_mode(&mut self, cx: &mut EventState, mode: ScrollBarMode) {
+            self.0.set_scroll_bar_mode(cx, mode);
         }
 
         /// Access inner widget directly

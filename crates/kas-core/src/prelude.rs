@@ -29,5 +29,4 @@ pub use crate::{widget, widget_index, widget_set_rect};
 #[doc(no_inline)]
 pub use crate::{Events, Layout, Tile, TileExt, Widget, Window, WindowCommand};
 #[doc(no_inline)] pub use crate::{HasId, Id};
-#[doc(no_inline)]
-pub use crate::{HasScrollBars, Node, ScrollBarMode, Scrollable};
+#[doc(no_inline)] pub use crate::{Node, Scrollable};
