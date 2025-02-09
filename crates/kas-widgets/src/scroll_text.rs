@@ -57,7 +57,7 @@ impl_scope! {
             rect.pos.0 += rect.size.0 - w;
             rect.size.0 = w;
             self.bar.set_rect(cx, rect, AlignHints::NONE);
-            let _ = self.bar.set_limits(max_offset.1, rect.size.1);
+            self.bar.set_limits(cx, max_offset.1, rect.size.1);
             self.bar.set_value(cx, self.view_offset.1);
         }
 

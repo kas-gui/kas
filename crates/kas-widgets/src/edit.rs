@@ -255,8 +255,7 @@ impl_scope! {
 
         fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &A) {
             edit.guard.parsed = edit.as_str().parse().ok();
-            let action = edit.set_error_state(edit.guard.parsed.is_none());
-            cx.action(edit, action);
+            edit.set_error_state(cx, edit.guard.parsed.is_none());
         }
 
         fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
@@ -313,8 +312,7 @@ impl_scope! {
 
         fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &A) {
             let result = edit.as_str().parse();
-            let action = edit.set_error_state(result.is_err());
-            cx.action(edit.id(), action);
+            edit.set_error_state(cx, result.is_err());
             if let Ok(value) = result {
                 (edit.guard.on_afl)(cx, value);
             }
@@ -429,8 +427,7 @@ impl_scope! {
     impl Self {
         fn update_scroll_bar(&mut self, cx: &mut EventState) {
             let max_offset = self.inner.max_scroll_offset().1;
-            let action = self.bar.set_limits(max_offset, self.inner.rect().size.1);
-            cx.action(&self, action);
+            self.bar.set_limits(cx, max_offset, self.inner.rect().size.1);
             self.bar.set_value(cx, self.inner.view_offset.1);
         }
 
@@ -654,8 +651,8 @@ impl<G: EditGuard> EditBox<G> {
     ///
     /// When true, the input field's background is drawn red.
     /// This state is cleared by [`Self::set_string`].
-    pub fn set_error_state(&mut self, error_state: bool) -> Action {
-        self.inner.set_error_state(error_state)
+    pub fn set_error_state(&mut self, cx: &mut EventState, error_state: bool) {
+        self.inner.set_error_state(cx, error_state);
     }
 }
 
@@ -983,15 +980,14 @@ impl_scope! {
             }
 
             self.selection.set_max_len(self.text.str_len());
-            let mut action = Action::REDRAW;
+            cx.redraw(&self);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             let view_offset = self.view_offset.min(self.max_scroll_offset());
             if view_offset != self.view_offset {
-                action |= Action::SCROLLED;
+                cx.action(&self, Action::SCROLLED);
                 self.view_offset = view_offset;
             }
-            action |= self.set_error_state(false);
-            cx.action(self, action);
+            self.set_error_state(cx, false);
         }
     }
 }
@@ -1233,9 +1229,9 @@ impl<G: EditGuard> EditField<G> {
     /// When true, the input field's background is drawn red.
     /// This state is cleared by [`Self::set_string`].
     // TODO: possibly change type to Option<String> and display the error
-    pub fn set_error_state(&mut self, error_state: bool) -> Action {
+    pub fn set_error_state(&mut self, cx: &mut EventState, error_state: bool) {
         self.error_state = error_state;
-        Action::REDRAW
+        cx.redraw(self);
     }
 
     fn prepare_text(&mut self, cx: &mut EventCx) {

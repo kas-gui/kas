@@ -131,14 +131,14 @@ impl_scope! {
         /// Set the position of tabs relative to content
         ///
         /// Default value: [`Direction::Up`]
-        pub fn set_direction(&mut self, direction: Direction) -> Action {
+        pub fn set_direction(&mut self, cx: &mut EventState, direction: Direction) {
             if direction == self.direction {
-                return Action::empty();
+                return;
             }
 
             self.direction = direction;
-            // Note: most of the time SET_RECT would be enough, but margins can be different
-            Action::RESIZE
+            // Note: most of the time Action::SET_RECT would be enough, but margins can be different
+            cx.resize(self);
         }
 
         /// Call the handler `f` on page change

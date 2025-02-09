@@ -57,7 +57,7 @@ impl_scope! {
             rect.pos.0 += rect.size.0 - w;
             rect.size.0 = w;
             self.bar.set_rect(cx, rect, AlignHints::NONE);
-            let _ = self.bar.set_limits(max_offset.1, rect.size.1);
+            self.bar.set_limits(cx, max_offset.1, rect.size.1);
             self.bar.set_value(cx, self.view_offset.1);
         }
 
@@ -105,20 +105,20 @@ impl_scope! {
         ///
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
-        pub fn set_text(&mut self, text: T) -> Action {
+        pub fn set_text(&mut self, cx: &mut EventState, text: T) {
             self.text.set_text(text);
             if self.text.prepare() != Ok(true) {
-                return Action::empty();
+                return;
             }
 
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             let max_offset = self.max_scroll_offset();
-            let _ = self.bar.set_limits(max_offset.1, self.rect().size.1);
+            self.bar.set_limits(cx, max_offset.1, self.rect().size.1);
             self.view_offset = self.view_offset.min(max_offset);
 
             self.selection.set_max_len(self.text.str_len());
 
-            Action::REDRAW
+            cx.redraw(self);
         }
 
         fn set_edit_pos_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {

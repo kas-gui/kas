@@ -238,8 +238,11 @@ impl_scope! {
         }
 
         /// Set value and update grip
+        ///
+        /// Returns `true` if, after clamping to the supported range, `value`
+        /// differs from the existing value.
         #[allow(clippy::neg_cmp_op_on_partial_ord)]
-        fn set_value(&mut self, value: T) -> Action {
+        fn set_value(&mut self, cx: &mut EventState, value: T) -> bool {
             let value = if !(value >= self.range.0) {
                 self.range.0
             } else if !(value <= self.range.1) {
@@ -249,11 +252,12 @@ impl_scope! {
             };
 
             if value == self.value {
-                return Action::empty();
+                return false;
             }
 
             self.value = value;
-            self.grip.set_offset(self.offset()).1
+            self.grip.set_offset(cx, self.offset());
+            true
         }
 
         // translate value to offset in local coordinates
@@ -282,9 +286,7 @@ impl_scope! {
             if self.direction.is_reversed() {
                 a = b - a;
             }
-            let action = self.set_value(a + self.range.0);
-            if !action.is_empty() {
-                cx.action(&self, action);
+            if self.set_value(cx, a + self.range.0) {
                 if let Some(ref f) = self.on_move {
                     f(cx, data, self.value);
                 }
@@ -312,7 +314,7 @@ impl_scope! {
             rect.size.set_component(self.direction, cx.size_cx().grip_len());
             self.grip.set_rect(cx, rect, AlignHints::NONE);
             // Correct the position:
-            let _ = self.grip.set_offset(self.offset());
+            self.grip.set_offset(cx, self.offset());
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
@@ -336,8 +338,8 @@ impl_scope! {
         type Data = A;
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
-            let action = self.set_value((self.state_fn)(cx, data));
-            cx.action(self, action);
+            let v = (self.state_fn)(cx, data);
+            self.set_value(cx, v);
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
@@ -375,9 +377,7 @@ impl_scope! {
 
                     cx.depress_with_key(self.id(), code);
 
-                    let action = self.set_value(value);
-                    if !action.is_empty() {
-                        cx.action(&self, action);
+                    if self.set_value(cx, value) {
                         if let Some(ref f) = self.on_move {
                             f(cx, data, self.value);
                         }

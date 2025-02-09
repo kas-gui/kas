@@ -71,14 +71,14 @@ impl_scope! {
 
     impl<C: Collection> Splitter<C, Direction> {
         /// Set the direction of contents
-        pub fn set_direction(&mut self, direction: Direction) -> Action {
+        pub fn set_direction(&mut self, cx: &mut EventState, direction: Direction) {
             if direction == self.direction {
-                return Action::empty();
+                return;
             }
 
             self.direction = direction;
-            // Note: most of the time SET_RECT would be enough, but margins can be different
-            Action::RESIZE
+            // Note: most of the time Action::SET_RECT would be enough, but margins can be different
+            cx.resize(self);
         }
     }
 
@@ -279,8 +279,7 @@ impl_scope! {
                             if self.direction.is_reversed() {
                                 offset = Offset::conv(grip.track().size) - offset;
                             }
-                            let action = grip.set_offset(offset).1;
-                            cx.action(&self, action);
+                            grip.set_offset(cx, offset);
                         }
                         self.adjust_size(&mut cx.config_cx(), n);
                     }

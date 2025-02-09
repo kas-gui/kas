@@ -153,30 +153,31 @@ impl_scope! {
         pub fn new(data: &'static [u8]) -> Result<Self, impl std::error::Error> {
             let mut svg = Svg::default();
             let source = Source::Static(data, None);
-            svg.load_source(source).map(|_action| svg)
+            svg.load_source(source).map(|_| svg)
         }
 
         /// Construct from a path
         pub fn new_path<P: AsRef<Path>>(path: P) -> Result<Self, impl std::error::Error> {
             let mut svg = Svg::default();
-            let _action = svg.load_path_(path.as_ref())?;
+            svg._load_path(path.as_ref())?;
             Result::<Self, LoadError>::Ok(svg)
         }
 
         /// Load from `data`
         ///
-        /// Replaces existing data, but does not re-render until a resize
-        /// happens (hence returning [`Action::RESIZE`]).
-        ///
-        /// This sets [`PixmapScaling::size`] from the SVG.
-        pub fn load(&mut self, data: &'static [u8], resources_dir: Option<&Path>)
-            -> Result<Action, impl std::error::Error>
-        {
+        /// Replaces existing data and request a resize. The sizing policy is
+        /// set to [`PixmapScaling::size`] using dimensions from the SVG.
+        pub fn load(
+            &mut self,
+            cx: &mut EventState,
+            data: &'static [u8],
+            resources_dir: Option<&Path>,
+        ) -> Result<(), impl std::error::Error> {
             let source = Source::Static(data, resources_dir.map(|p| p.to_owned()));
-            self.load_source(source)
+            self.load_source(source).map(|_| cx.resize(self))
         }
 
-        fn load_source(&mut self, source: Source) -> Result<Action, usvg::Error> {
+        fn load_source(&mut self, source: Source) -> Result<(), usvg::Error> {
             // Set scaling size. TODO: this is useless if Self::with_size is called after.
             let size = source.tree()?.size();
             self.scaling.size = LogicalSize(size.width(), size.height());
@@ -185,19 +186,21 @@ impl_scope! {
                 State::Ready(_, px) => State::Ready(source, px),
                 _ => State::Initial(source),
             };
-            Ok(Action::RESIZE)
+            Ok(())
         }
 
         /// Load from a path
         ///
         /// This is a wrapper around [`Self::load`].
-        pub fn load_path<P: AsRef<Path>>(&mut self, path: P)
-            -> Result<Action, impl std::error::Error>
-        {
-            self.load_path_(path.as_ref())
+        pub fn load_path<P: AsRef<Path>>(
+            &mut self,
+            cx: &mut EventState,
+            path: P,
+        ) -> Result<(), impl std::error::Error> {
+            self._load_path(path.as_ref()).map(|_| cx.resize(self))
         }
 
-        fn load_path_(&mut self, path: &Path) -> Result<Action, LoadError> {
+        fn _load_path(&mut self, path: &Path) -> Result<(), LoadError> {
             let buf = std::fs::read(path)?;
             let rd = path.parent().map(|path| path.to_owned());
             let source = Source::Heap(buf.into(), rd);
@@ -231,10 +234,10 @@ impl_scope! {
         /// [`PixmapScaling::size`] is set from the SVG on loading (it may also be set here).
         /// Other scaling parameters take their default values from [`PixmapScaling`].
         #[inline]
-        pub fn set_scaling(&mut self, f: impl FnOnce(&mut PixmapScaling)) -> Action {
+        pub fn set_scaling(&mut self, cx: &mut EventState, f: impl FnOnce(&mut PixmapScaling)) {
             f(&mut self.scaling);
             // NOTE: if only `aspect` is changed, REDRAW is enough
-            Action::RESIZE
+            cx.resize(self);
         }
     }
 

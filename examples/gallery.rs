@@ -97,8 +97,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
 
         fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Data) {
             // 7a is the colour of *magic*!
-            let act = edit.set_error_state(edit.as_str().len() % (7 + 1) == 0);
-            cx.action(edit, act);
+            edit.set_error_state(cx, edit.as_str().len() % (7 + 1) == 0);
         }
     }
 
@@ -294,8 +293,7 @@ fn editor() -> Box<dyn Widget<Data = AppData>> {
 
         fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, data: &Data) {
             let result = Markdown::new(edit.as_str());
-            let act = edit.set_error_state(result.is_err());
-            cx.action(edit, act);
+            edit.set_error_state(cx, result.is_err());
             let text = result.unwrap_or_else(|err| Markdown::new(&format!("{err}")).unwrap());
             cx.send(data.label_id.clone(), text);
         }
@@ -333,14 +331,12 @@ Demonstration of *as-you-type* formatting from **Markdown**.
                     cx.send(label.id(), SetLabelId(label.id()));
                 })
                 .on_message(|cx, label, text| {
-                    let act = label.set_text(text);
-                    cx.action(label, act);
+                    label.set_text(cx, text);
                 })
                 .map_any()
         ])
         .on_update(|cx, list, data: &Data| {
-            let act = list.set_direction(data.dir);
-            cx.action(list, act);
+            list.set_direction(cx, data.dir);
         }),
     ];
 
@@ -400,8 +396,7 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
     let list_view = filter::FilterBoxList::new(ListView::down(ListGuard), filter, guard)
         .map(|data: &Data| &data.list)
         .on_update(|cx, list, data| {
-            let act = list.list_mut().set_selection_mode(data.mode);
-            cx.action(list, act);
+            list.list_mut().set_selection_mode(cx, data.mode);
         });
 
     let sel_buttons = row![
