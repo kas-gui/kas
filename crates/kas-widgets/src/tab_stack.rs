@@ -21,7 +21,7 @@ impl_scope! {
     /// This is a special variant of `Button` which sends a [`Select`] on press.
     #[widget {
         Data = ();
-        layout = frame!(self.label, style = FrameStyle::Tab);
+        layout = frame!(self.label).with_style(FrameStyle::Tab);
         navigable = true;
         hover_highlight = true;
     }]

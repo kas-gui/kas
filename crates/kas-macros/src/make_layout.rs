@@ -41,10 +41,10 @@ mod kw {
     custom_keyword!(non_navigable);
     custom_keyword!(px);
     custom_keyword!(em);
-    custom_keyword!(style);
     custom_keyword!(color);
     custom_keyword!(map_any);
     custom_keyword!(with_direction);
+    custom_keyword!(with_style);
 }
 
 #[derive(Default)]
@@ -431,9 +431,14 @@ impl Layout {
                     let pack = Pack::parse(dot_token, input, core_gen)?;
                     layout = Layout::Pack(Box::new(layout), pack);
                 } else if let Ok(ident) = input.parse::<Ident>() {
+                    let note_msg = if matches!(&layout, &Layout::Frame(_, _, _)) {
+                        "supported methods on layout objects: `map_any`, `align`, `pack`, `with_style`"
+                    } else {
+                        "supported methods on layout objects: `map_any`, `align`, `pack`"
+                    };
                     emit_error!(
                         ident, "method not supported here";
-                        note = "supported methods on layout objects: `map_any`, `align`, `pack`",
+                        note = note_msg,
                     );
 
                     // Clear remainder of input stream to avoid a redundant error
@@ -470,10 +475,12 @@ impl Layout {
             let _ = parenthesized!(inner in input);
             let layout = Layout::parse(&inner, core_gen, true)?;
 
-            let style: Expr = if !inner.is_empty() {
-                let _: Token![,] = inner.parse()?;
-                let _: kw::style = inner.parse()?;
-                let _: Token![=] = inner.parse()?;
+            let style = if input.peek(Token![.]) && input.peek2(kw::with_style) {
+                let _: Token![.] = input.parse()?;
+                let _: kw::with_style = input.parse()?;
+
+                let inner;
+                let _ = parenthesized!(inner in input);
                 inner.parse()?
             } else {
                 syn::parse_quote! { ::kas::theme::FrameStyle::Frame }

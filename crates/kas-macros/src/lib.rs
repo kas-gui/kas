@@ -208,16 +208,12 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// implementation of `Tile::nav_next`, with a couple of exceptions
 /// (where macro-time analysis is insufficient to implement this method).
 ///
-/// > [_Column_], [_Row_], [_List_] [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_](macro@float) :\
+/// > [_Column_], [_Row_], [_List_] [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_](macro@float), [_Frame_] :\
 /// > &nbsp;&nbsp; These stand-alone macros are explicitly supported in this position.\
 ///
 /// > _Single_ :\
 /// > &nbsp;&nbsp; `self` `.` _Member_\
 /// > &nbsp;&nbsp; A named child: `self.foo` (more precisely, this matches any expression starting `self`, and uses `&mut (#expr)`)
-/// >
-/// > _Frame_ :\
-/// > &nbsp;&nbsp; `frame!` `(` _Layout_ ( `,` `style` `=` _Expr_ )? `)`\
-/// > &nbsp;&nbsp; Adds a frame of type _Expr_ around content, defaulting to `FrameStyle::Frame`.
 /// >
 /// > _Button_ :\
 /// > &nbsp;&nbsp; `button!` `(` _Layout_ ( `,` `color` `=` _Expr_ )? `)`\
@@ -251,7 +247,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///     /// A frame around content
 ///     #[derive(Clone, Default)]
 ///     #[widget{
-///         layout = frame!(self.inner, style = kas::theme::FrameStyle::Frame);
+///         layout = frame!(self.inner);
 ///     }]
 ///     pub struct Frame<W: Widget> {
 ///         core: widget_core!(),
@@ -332,6 +328,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// [_Column_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.column.html
 /// [_Row_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.row.html
 /// [_List_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.list.html
+/// [_Frame_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.frame.html
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
