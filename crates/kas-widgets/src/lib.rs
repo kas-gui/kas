@@ -94,7 +94,7 @@ mod stack;
 mod tab_stack;
 mod text;
 
-pub use kas_macros::{aligned_column, aligned_row, column, float, grid, list, row};
+pub use kas_macros::{aligned_column, aligned_row, float, grid, list, row};
 
 pub use crate::image::Image;
 #[cfg(feature = "image")] pub use crate::image::ImageError;

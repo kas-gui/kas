@@ -14,6 +14,40 @@ use kas::Collection;
 use std::collections::hash_map::{Entry, HashMap};
 use std::ops::{Index, IndexMut};
 
+/// Make a [`Column`] widget
+///
+/// When called as a stand-alone macro, `column! [..]` is just syntactic sugar
+/// for `Column::new(kas::collection! [..])`.
+///
+/// When called within [widget layout syntax], `column!` may be evaluated as a
+/// recursive macro and the result does not have a specified type, except that
+/// methods [`map_any`], [`align`] and [`pack`] are supported via emulation.
+///
+/// Either way, items of `column![..]` support [widget layout syntax].
+///
+/// # Example
+///
+/// ```
+/// let my_widget = kas_widgets::column! [
+///     "one",
+///     "two",
+/// ];
+/// ```
+///
+/// [widget layout syntax]: macro@widget#layout-1
+/// [`map_any`]: crate::AdaptWidgetAny::map_any
+/// [`align`]: crate::AdaptWidget::align
+/// [`pack`]: crate::AdaptWidget::pack
+#[macro_export]
+macro_rules! column {
+    ( $( $ee:expr ),* ) => {
+        $crate::Column::new( ::kas::collection! [ $( $ee ),* ] )
+    };
+    ( $( $ee:expr ),+ , ) => {
+        $crate::Column::new( ::kas::collection! [ $( $ee ),+ ] )
+    };
+}
+
 /// A generic row widget
 ///
 /// See documentation of [`List`] type.

@@ -208,7 +208,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// implementation of `Tile::nav_next`, with a couple of exceptions
 /// (where macro-time analysis is insufficient to implement this method).
 ///
-/// > [_Column_](macro@column), [_Row_](macro@row), [_List_](macro@list), [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_](macro@float) :\
+/// > [_Column_], [_Row_](macro@row), [_List_](macro@list), [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_](macro@float) :\
 /// > &nbsp;&nbsp; These stand-alone macros are explicitly supported in this position.\
 ///
 /// > _Single_ :\
@@ -329,6 +329,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// [`CursorIcon`]: https://docs.rs/kas/latest/kas/event/enum.CursorIcon.html
 /// [`IsUsed`]: https://docs.rs/kas/latest/kas/event/enum.IsUsed.html
 /// [`Deref`]: std::ops::Deref
+/// [_Column_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.column.html
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
@@ -451,24 +452,6 @@ impl ExpandLayout for make_layout::Tree {
             }
         }
     }
-}
-
-/// Make a column widget
-///
-/// Items support [widget layout syntax](macro@widget#layout-1).
-///
-/// # Example
-///
-/// ```ignore
-/// let my_widget = kas::column! [
-///     "one",
-///     "two",
-/// ];
-/// ```
-#[proc_macro_error]
-#[proc_macro]
-pub fn column(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input with make_layout::Tree::column).expand_layout("_Column")
 }
 
 /// Make a row widget
