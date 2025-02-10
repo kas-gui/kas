@@ -234,7 +234,8 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
         row!["Child window", popup_edit_box],
     ];
 
-    let ui = Adapt::new(widgets, data)
+    let ui = widgets
+        .with_state(data)
         .on_message(|_, data, ScrollMsg(value)| {
             println!("ScrollMsg({value})");
             data.ratio = value as f32 / 100.0;
@@ -340,7 +341,8 @@ Demonstration of *as-you-type* formatting from **Markdown**.
         }),
     ];
 
-    let ui = Adapt::new(ui, Data::default())
+    let ui = ui
+        .with_state(Data::default())
         .on_update(|_, data, app_data: &AppData| data.disabled = app_data.disabled)
         .on_message(|_, data, MsgDirection| {
             data.dir = match data.dir {
@@ -409,7 +411,8 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
         sel_buttons.map(|data: &Data| &data.mode),
         ScrollBars::new(list_view),
     ];
-    let ui = Adapt::new(ui, data)
+    let ui = ui
+        .with_state(data)
         .on_message(|_, data, mode| data.mode = mode)
         .on_message(|_, data, selection: SelectionMsg<usize>| match selection {
             SelectionMsg::Select(i) => println!("Selected: {}", &data.list[i]),
@@ -601,28 +604,30 @@ fn main() -> kas::runner::Result<()> {
         .with_msg(|_, title| WindowCommand::SetTitle(format!("Gallery — {}", title))),
     ];
 
-    let ui = Adapt::new(ui, AppData::default()).on_message(|cx, state, msg| match msg {
-        Menu::Theme(name) => {
-            println!("Theme: {name:?}");
-            let act = cx
-                .config()
-                .update_theme(|theme| theme.set_active_theme(name));
-            cx.window_action(act);
-        }
-        Menu::Colour(name) => {
-            println!("Colour scheme: {name:?}");
-            let act = cx
-                .config()
-                .update_theme(|theme| theme.set_active_scheme(name));
-            cx.window_action(act);
-        }
-        Menu::Disabled(disabled) => {
-            state.disabled = disabled;
-        }
-        Menu::Quit => {
-            cx.exit();
-        }
-    });
+    let ui = ui
+        .with_state(AppData::default())
+        .on_message(|cx, state, msg| match msg {
+            Menu::Theme(name) => {
+                println!("Theme: {name:?}");
+                let act = cx
+                    .config()
+                    .update_theme(|theme| theme.set_active_theme(name));
+                cx.window_action(act);
+            }
+            Menu::Colour(name) => {
+                println!("Colour scheme: {name:?}");
+                let act = cx
+                    .config()
+                    .update_theme(|theme| theme.set_active_scheme(name));
+                cx.window_action(act);
+            }
+            Menu::Disabled(disabled) => {
+                state.disabled = disabled;
+            }
+            Menu::Quit => {
+                cx.exit();
+            }
+        });
 
     runner.add(Window::new(ui, "Gallery — Widgets"));
     runner.run()

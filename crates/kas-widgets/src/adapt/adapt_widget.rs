@@ -185,5 +185,12 @@ pub trait AdaptWidget: Widget + Sized {
     {
         WithLabel::new_dir(self, direction, label)
     }
+
+    /// Construct an [`Adapt`] widget over input
+    #[inline]
+    #[must_use]
+    fn with_state<A>(self, state: Self::Data) -> Adapt<A, Self> {
+        Adapt::new(self, state)
+    }
 }
 impl<W: Widget> AdaptWidget for W {}

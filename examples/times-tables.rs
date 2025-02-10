@@ -2,7 +2,7 @@
 
 use kas::prelude::*;
 use kas::view::{driver, MatrixData, MatrixView, SelectionMode, SelectionMsg, SharedData};
-use kas::widgets::{column, row, Adapt, EditBox, ScrollBars};
+use kas::widgets::{column, row, EditBox, ScrollBars};
 
 #[derive(Debug)]
 struct TableSize(usize);
@@ -63,7 +63,8 @@ fn main() -> kas::runner::Result<()> {
         ],
         table.align(AlignHints::RIGHT),
     ];
-    let ui = Adapt::new(ui, TableSize(12))
+    let ui = ui
+        .with_state(TableSize(12))
         .on_message(|_, data, SetLen(len)| data.0 = len)
         .on_message(|_, _, selection| match selection {
             SelectionMsg::<(usize, usize)>::Select((col, row)) => {
