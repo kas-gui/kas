@@ -208,7 +208,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// implementation of `Tile::nav_next`, with a couple of exceptions
 /// (where macro-time analysis is insufficient to implement this method).
 ///
-/// > [_Column_], [_Row_], [_List_](macro@list), [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_](macro@float) :\
+/// > [_Column_], [_Row_], [_List_] [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_](macro@float) :\
 /// > &nbsp;&nbsp; These stand-alone macros are explicitly supported in this position.\
 ///
 /// > _Single_ :\
@@ -331,6 +331,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// [`Deref`]: std::ops::Deref
 /// [_Column_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.column.html
 /// [_Row_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.row.html
+/// [_List_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.list.html
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
@@ -453,34 +454,6 @@ impl ExpandLayout for make_layout::Tree {
             }
         }
     }
-}
-
-/// Make a list widget
-///
-/// This is a more generic variant of [`column!`] and [`row!`].
-///
-/// Children are navigated in visual order.
-///
-/// Items support [widget layout syntax](macro@widget#layout-1).
-///
-/// # Example
-///
-/// ```ignore
-/// let my_widget = kas::list!(left, ["one", "two"]);
-/// ```
-///
-/// # Syntax
-///
-/// > _List_ :\
-/// > &nbsp;&nbsp; `list!` `(` _Direction_ `,` `[` ( _Layout_ `,` )* ( _Layout_ `,`? )? `]` `}`
-/// >
-/// > _Direction_ :\
-/// > &nbsp;&nbsp; `left` | `right` | `up` | `down`
-
-#[proc_macro_error]
-#[proc_macro]
-pub fn list(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input with make_layout::Tree::list).expand_layout("_List")
 }
 
 /// Make a float widget

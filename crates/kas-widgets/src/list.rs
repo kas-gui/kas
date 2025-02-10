@@ -79,6 +79,43 @@ macro_rules! column {
     };
 }
 
+/// Make a [`List`] widget
+///
+/// When called as a stand-alone macro, `list! [..]` is just syntactic sugar
+/// for `List::new(kas::collection! [..])`.
+///
+/// When called within [widget layout syntax], `list!` may be evaluated as a
+/// recursive macro and the result does not have a specified type, except that
+/// methods [`map_any`], [`align`], [`pack`] and [`with_direction`] are
+/// supported via emulation. In this case, calling [`with_direction`] is
+/// required. Note that the argument passed to [`with_direction`] is expanded
+/// at the use site, so for example `.with_direction(self.dir)` will read
+/// `self.dir` whenever layout is computed.
+///
+/// Either way, items of `list![..]` support [widget layout syntax].
+///
+/// # Example
+///
+/// ```
+/// let my_widget = kas_widgets::list! ["one", "two"]
+///     .with_direction(kas::dir::Left);
+/// ```
+///
+/// [widget layout syntax]: macro@widget#layout-1
+/// [`map_any`]: crate::AdaptWidgetAny::map_any
+/// [`align`]: crate::AdaptWidget::align
+/// [`pack`]: crate::AdaptWidget::pack
+/// [`with_direction`]: List::with_direction
+#[macro_export]
+macro_rules! list {
+    ( $( $ee:expr ),* ) => {
+        $crate::List::new( ::kas::collection! [ $( $ee ),* ] )
+    };
+    ( $( $ee:expr ),+ , ) => {
+        $crate::List::new( ::kas::collection! [ $( $ee ),+ ] )
+    };
+}
+
 /// A generic row widget
 ///
 /// See documentation of [`List`] type.
@@ -326,9 +363,9 @@ impl_scope! {
         }
     }
 
-    impl<C: Collection> List<C, Direction> {
+    impl<C: Collection, D: Directional + Eq> List<C, D> {
         /// Set the direction of contents
-        pub fn set_direction(&mut self, cx: &mut EventState, direction: Direction) {
+        pub fn set_direction(&mut self, cx: &mut EventState, direction: D) {
             if direction == self.direction {
                 return;
             }
@@ -356,6 +393,13 @@ impl_scope! {
         /// Get the direction of contents
         pub fn direction(&self) -> Direction {
             self.direction.as_direction()
+        }
+
+        /// Set the direction of contents (inline)
+        #[inline]
+        pub fn with_direction(mut self, direction: D) -> Self {
+            self.direction = direction;
+            self
         }
 
         /// Access layout storage

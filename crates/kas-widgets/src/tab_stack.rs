@@ -99,10 +99,7 @@ impl_scope! {
     /// See also the main implementing widget: [`Stack`].
     #[impl_default(Self::new())]
     #[widget {
-        layout = list!(self.direction, [
-            self.stack,
-            self.tabs,
-        ]);
+        layout = list![self.stack, self.tabs].with_direction(self.direction);
     }]
     pub struct TabStack<W: Widget> {
         core: widget_core!(),

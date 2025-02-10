@@ -135,7 +135,8 @@ impl_scope! {
     ///
     /// See also [`RadioBox`] which excludes the label.
     #[widget{
-        layout = list!(self.direction(), [self.inner, non_navigable!(self.label)]);
+        layout = list![self.inner, non_navigable!(self.label)]
+            .with_direction(self.direction());
     }]
     pub struct RadioButton<A> {
         core: widget_core!(),

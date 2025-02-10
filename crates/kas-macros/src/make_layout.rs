@@ -44,6 +44,7 @@ mod kw {
     custom_keyword!(style);
     custom_keyword!(color);
     custom_keyword!(map_any);
+    custom_keyword!(with_direction);
 }
 
 #[derive(Default)]
@@ -270,16 +271,6 @@ impl Tree {
             false,
             false,
         )?))
-    }
-
-    /// Parse direction, list
-    pub fn list(inner: ParseStream) -> Result<Self> {
-        let mut core_gen = NameGenerator::default();
-        let stor = core_gen.next();
-        let dir: Direction = inner.parse()?;
-        let _: Token![,] = inner.parse()?;
-        let list = parse_layout_list(inner, &mut core_gen, false)?;
-        Ok(Tree(Layout::List(stor.into(), dir, list)))
     }
 
     /// Parse a float (contents only)
@@ -524,11 +515,12 @@ impl Layout {
             let _: kw::list = input.parse()?;
             let _: Token![!] = input.parse()?;
             let stor = core_gen.next();
-            let inner;
-            let _ = parenthesized!(inner in input);
-            let dir: Direction = inner.parse()?;
-            let _: Token![,] = inner.parse()?;
-            let list = parse_layout_list(&inner, core_gen, true)?;
+            let list = parse_layout_list(&input, core_gen, true)?;
+            let _: Token![.] = input.parse()?;
+            let _: kw::with_direction = input.parse()?;
+            let args;
+            let _ = parenthesized!(args in input);
+            let dir: Direction = args.parse()?;
             Ok(Layout::List(stor, dir, list))
         } else if lookahead.peek(kw::float) {
             let _: kw::float = input.parse()?;
