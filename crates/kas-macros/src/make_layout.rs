@@ -246,14 +246,6 @@ impl Tree {
         Ok(toks)
     }
 
-    /// Parse a row (contents only)
-    pub fn row(inner: ParseStream) -> Result<Self> {
-        let mut core_gen = NameGenerator::default();
-        let stor = core_gen.next();
-        let list = parse_layout_items(inner, &mut core_gen, false)?;
-        Ok(Tree(Layout::List(stor.into(), Direction::Right, list)))
-    }
-
     /// Parse an aligned column (contents only)
     pub fn aligned_column(inner: ParseStream) -> Result<Self> {
         let mut core_gen = NameGenerator::default();

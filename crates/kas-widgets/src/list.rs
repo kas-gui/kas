@@ -14,6 +14,37 @@ use kas::Collection;
 use std::collections::hash_map::{Entry, HashMap};
 use std::ops::{Index, IndexMut};
 
+/// Make a [`Row`] widget
+///
+/// When called as a stand-alone macro, `row! [..]` is just syntactic sugar
+/// for `Row::new(kas::collection! [..])`.
+///
+/// When called within [widget layout syntax], `row!` may be evaluated as a
+/// recursive macro and the result does not have a specified type, except that
+/// methods [`map_any`], [`align`] and [`pack`] are supported via emulation.
+///
+/// Either way, items of `row![..]` support [widget layout syntax].
+///
+/// # Example
+///
+/// ```
+/// let my_widget = kas_widgets::row!["one", "two"];
+/// ```
+///
+/// [widget layout syntax]: macro@widget#layout-1
+/// [`map_any`]: crate::AdaptWidgetAny::map_any
+/// [`align`]: crate::AdaptWidget::align
+/// [`pack`]: crate::AdaptWidget::pack
+#[macro_export]
+macro_rules! row {
+    ( $( $ee:expr ),* ) => {
+        $crate::Row::new( ::kas::collection! [ $( $ee ),* ] )
+    };
+    ( $( $ee:expr ),+ , ) => {
+        $crate::Row::new( ::kas::collection! [ $( $ee ),+ ] )
+    };
+}
+
 /// Make a [`Column`] widget
 ///
 /// When called as a stand-alone macro, `column! [..]` is just syntactic sugar
