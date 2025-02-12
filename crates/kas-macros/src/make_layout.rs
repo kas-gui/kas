@@ -271,13 +271,6 @@ impl Tree {
         )?))
     }
 
-    /// Parse a float (contents only)
-    pub fn float(inner: ParseStream) -> Result<Self> {
-        let mut core_gen = NameGenerator::default();
-        let list = parse_layout_items(inner, &mut core_gen, false)?;
-        Ok(Tree(Layout::Float(list)))
-    }
-
     /// Parse a grid (contents only)
     pub fn grid(inner: ParseStream) -> Result<Self> {
         let mut core_gen = NameGenerator::default();

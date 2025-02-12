@@ -208,7 +208,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// implementation of `Tile::nav_next`, with a couple of exceptions
 /// (where macro-time analysis is insufficient to implement this method).
 ///
-/// > [_Column_], [_Row_], [_List_] [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_](macro@float), [_Frame_] :\
+/// > [_Column_], [_Row_], [_List_] [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_], [_Frame_] :\
 /// > &nbsp;&nbsp; These stand-alone macros are explicitly supported in this position.\
 ///
 /// > _Single_ :\
@@ -320,6 +320,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// [_Column_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.column.html
 /// [_Row_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.row.html
 /// [_List_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.list.html
+/// [_Float_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.float.html
 /// [_Frame_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.frame.html
 #[proc_macro_attribute]
 #[proc_macro_error]
@@ -443,38 +444,6 @@ impl ExpandLayout for make_layout::Tree {
             }
         }
     }
-}
-
-/// Make a float widget
-///
-/// All children occupy the same space with the first child on top.
-///
-/// Size is determined as the maximum required by any child for each axis.
-/// All children are assigned this size. It is usually necessary to use [`pack`]
-/// or a similar mechanism to constrain a child to avoid it hiding the content
-/// underneath (note that even if an unconstrained child does not *visually*
-/// hide everything beneath, it may still "occupy" the assigned area, preventing
-/// mouse clicks from reaching the widget beneath).
-///
-/// Children are navigated in order of declaration.
-///
-/// Items support [widget layout syntax](macro@widget#layout-1).
-///
-/// # Example
-///
-/// ```ignore
-/// let my_widget = kas::float! [
-///     "one".pack(AlignHints::TOP_LEFT),
-///     "two".pack(AlignHints::BOTTOM_RIGHT),
-///     "some text\nin the\nbackground"
-/// ];
-/// ```
-///
-/// [`pack`]: https://docs.rs/kas/latest/kas/widgets/trait.AdaptWidget.html#method.pack
-#[proc_macro_error]
-#[proc_macro]
-pub fn float(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input with make_layout::Tree::float).expand_layout("_Float")
 }
 
 /// Make a grid widget
