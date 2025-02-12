@@ -442,13 +442,17 @@ impl Layout {
                     );
 
                     // Clear remainder of input stream to avoid a redundant error
-                    input.step(|cursor| {
-                        let mut rest = *cursor;
-                        while let Some((_, next)) = rest.token_tree() {
-                            rest = next;
-                        }
-                        Ok(((), rest))
-                    })?;
+                    let turbofish = if input.peek(Token![::]) {
+                        Some(syn::AngleBracketedGenericArguments::parse_turbofish(input)?)
+                    } else {
+                        None
+                    };
+
+                    if turbofish.is_some() || input.peek(syn::token::Paren) {
+                        let inner;
+                        let _ = parenthesized!(inner in input);
+                        let _ = inner.parse_terminated(Expr::parse, Token![,])?;
+                    }
 
                     // Continue with macro expansion to minimise secondary errors
                     return Ok(layout);
