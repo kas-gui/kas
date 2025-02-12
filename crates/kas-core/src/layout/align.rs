@@ -51,9 +51,9 @@ impl AlignHints {
     /// Top, left
     pub const TOP_LEFT: AlignHints = AlignHints::new(Some(Align::TL), Some(Align::TL));
     /// Top, right
-    pub const TOP_RIGHT: AlignHints = AlignHints::new(Some(Align::TL), Some(Align::BR));
+    pub const TOP_RIGHT: AlignHints = AlignHints::new(Some(Align::BR), Some(Align::TL));
     /// Bottom, left
-    pub const BOTTOM_LEFT: AlignHints = AlignHints::new(Some(Align::BR), Some(Align::TL));
+    pub const BOTTOM_LEFT: AlignHints = AlignHints::new(Some(Align::TL), Some(Align::BR));
     /// Bottom, right
     pub const BOTTOM_RIGHT: AlignHints = AlignHints::new(Some(Align::BR), Some(Align::BR));
 
