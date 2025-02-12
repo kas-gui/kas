@@ -383,13 +383,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     };
     let mut fn_draw = None;
     if let Some(Layout { tree, .. }) = args.layout.take() {
-        fn_nav_next = tree.nav_next(children.iter()).map(|toks| {
-            quote! {
-                fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-                    #toks
-                }
-            }
-        });
+        fn_nav_next = tree.nav_next(children.iter());
 
         let layout_visitor = tree.layout_visitor(&core_path)?;
         scope.generated.push(quote! {

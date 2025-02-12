@@ -7,7 +7,7 @@ use crate::collection::{CellInfo, GridDimensions, NameGenerator};
 use crate::widget;
 use crate::widget_args::{Child, ChildIdent};
 use proc_macro2::{Span, TokenStream as Toks};
-use proc_macro_error2::emit_error;
+use proc_macro_error2::{emit_error, emit_warning};
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
@@ -37,7 +37,6 @@ mod kw {
     custom_keyword!(aligned_column);
     custom_keyword!(aligned_row);
     custom_keyword!(float);
-    custom_keyword!(non_navigable);
     custom_keyword!(px);
     custom_keyword!(em);
     custom_keyword!(map_any);
@@ -67,7 +66,7 @@ impl Tree {
         self.0.generate(core_path)
     }
 
-    /// Generate implementation of nav_next (excludes fn signature)
+    /// Generate implementation of nav_next
     pub fn nav_next<'a, I: Clone + Iterator<Item = &'a Child>>(
         &self,
         children: I,
@@ -75,18 +74,20 @@ impl Tree {
         let mut v = Vec::new();
         self.0.nav_next(children, &mut v).map(|()| {
             quote! {
-                let mut iter = [#(#v),*].into_iter();
-                if !reverse {
-                    if let Some(wi) = from {
-                        let _ = iter.find(|x| *x == wi);
+                fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+                    let mut iter = [#(#v),*].into_iter();
+                    if !reverse {
+                        if let Some(wi) = from {
+                            let _ = iter.find(|x| *x == wi);
+                        }
+                        iter.next()
+                    } else {
+                        let mut iter = iter.rev();
+                        if let Some(wi) = from {
+                            let _ = iter.find(|x| *x == wi);
+                        }
+                        iter.next()
                     }
-                    iter.next()
-                } else {
-                    let mut iter = iter.rev();
-                    if let Some(wi) = from {
-                        let _ = iter.find(|x| *x == wi);
-                    }
-                    iter.next()
                 }
             }
         })
@@ -134,7 +135,7 @@ impl Tree {
         let nav_next = match self.nav_next(children.iter()) {
             Ok(result) => Some(result),
             Err((span, msg)) => {
-                emit_error!(span, "unable to generate `fn Tile::nav_next`: {}", msg);
+                emit_warning!(span, "unable to generate `fn Tile::nav_next`: {}", msg);
                 None
             }
         };
@@ -203,9 +204,7 @@ impl Tree {
                     }
                 }
 
-                fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-                    #nav_next
-                }
+                #nav_next
 
                 #[inline]
                 fn probe(&mut self, coord: ::kas::geom::Coord) -> ::kas::Id {
@@ -332,7 +331,6 @@ enum Layout {
     Float(LayoutList<()>),
     Grid(Ident, GridDimensions, LayoutList<CellInfo>),
     Label(Ident, LitStr),
-    NonNavigable(Box<Layout>),
     MapAny(Box<Layout>, MapAny),
 }
 
@@ -560,14 +558,6 @@ impl Layout {
             let inner;
             let _ = braced!(inner in input);
             Ok(parse_grid(stor, &inner, core_gen, true)?)
-        } else if lookahead.peek(kw::non_navigable) {
-            let _: kw::non_navigable = input.parse()?;
-            let _: Token![!] = input.parse()?;
-
-            let inner;
-            let _ = parenthesized!(inner in input);
-            let layout = Layout::parse(&inner, core_gen, true)?;
-            Ok(Layout::NonNavigable(Box::new(layout)))
         } else {
             let ident = core_gen.next();
             let expr = input.parse()?;
@@ -863,7 +853,7 @@ impl Pack {
 impl Layout {
     fn append_fields(&self, fields: &mut StorageFields, children: &mut Vec<Child>, data_ty: &Type) {
         match self {
-            Layout::Align(layout, _) | Layout::NonNavigable(layout) => {
+            Layout::Align(layout, _) => {
                 layout.append_fields(fields, children, data_ty);
             }
             Layout::Single(_) => (),
@@ -1013,16 +1003,13 @@ impl Layout {
             Layout::Label(stor, _) => {
                 quote! { layout::Visitor::single(&mut #core_path.#stor) }
             }
-            Layout::NonNavigable(layout) | Layout::MapAny(layout, _) => {
-                return layout.generate(core_path)
-            }
+            Layout::MapAny(layout, _) => return layout.generate(core_path),
         })
     }
 
     /// Create a Vec enumerating all children in navigation order
     ///
     /// -   `output`: the result
-    /// -   `index`: the next widget's index
     fn nav_next<'a, I: Clone + Iterator<Item = &'a Child>>(
         &self,
         children: I,
@@ -1033,10 +1020,6 @@ impl Layout {
             | Layout::Pack(layout, _)
             | Layout::Frame(_, layout, _, _)
             | Layout::MapAny(layout, _) => layout.nav_next(children, output),
-            Layout::NonNavigable(_) => {
-                // Internals of a button are not navigable
-                Ok(())
-            }
             Layout::Single(m) => {
                 for (i, child) in children.enumerate() {
                     if let ChildIdent::Field(ref ident) = child.ident {

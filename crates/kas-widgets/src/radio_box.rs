@@ -135,8 +135,7 @@ impl_scope! {
     ///
     /// See also [`RadioBox`] which excludes the label.
     #[widget{
-        layout = list![self.inner, non_navigable!(self.label)]
-            .with_direction(self.direction());
+        layout = list![self.inner, self.label].with_direction(self.direction());
     }]
     pub struct RadioButton<A> {
         core: widget_core!(),
@@ -156,6 +155,10 @@ impl_scope! {
     }
 
     impl Tile for Self {
+        fn nav_next(&self, _: bool, from: Option<usize>) -> Option<usize> {
+            from.xor(Some(widget_index!(self.inner)))
+        }
+
         fn probe(&mut self, _: Coord) -> Id {
             self.inner.id()
         }

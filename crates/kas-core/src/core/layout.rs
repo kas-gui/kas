@@ -291,6 +291,8 @@ pub trait Tile: Layout {
 
     /// Access a child as a `dyn Tile`
     ///
+    /// This method returns `None` exactly when `index >= self.num_children()`.
+    ///
     /// This method is usually implemented automatically by the `#[widget]`
     /// macro.
     fn get_child(&self, index: usize) -> Option<&dyn Tile> {
@@ -316,16 +318,21 @@ pub trait Tile: Layout {
     /// Controls <kbd>Tab</kbd> navigation order of children.
     /// This method should:
     ///
-    /// -   Return `None` if there is no next child
-    /// -   Determine the next child after `from` (if provided) or the whole
-    ///     range, optionally in `reverse` order
-    /// -   Ensure that the selected widget is addressable through
-    ///     [`Tile::get_child`]
+    /// -   Return `None` if there is no (next) navigable child
+    /// -   In the case there are navigable children and `from == None`, return
+    ///     the index of the first (or last if `reverse`) navigable child
+    /// -   In the case there are navigable children and `from == Some(index)`,
+    ///     it may be expected that `from` is the output of a previous call to
+    ///     this method; the method should return the next (or previous if
+    ///     `reverse`) navigable child (if any)
     ///
-    /// Both `from` and the return value use the widget index, as used by
-    /// [`Tile::get_child`].
+    /// The return value mut be `None` or `Some(index)` where
+    /// `self.get_child(index).is_some()` (see [`Tile::get_child`]).
     ///
-    /// Default implementation:
+    /// It is not required that all children (all indices `i` for
+    /// `i < self.num_children()`) are returnable from this method.
+    ///
+    /// Default (macro generated) implementation:
     ///
     /// -   Generated from `#[widget]`'s layout property, if used (not always possible!)
     /// -   Otherwise, iterate through children in order of definition
