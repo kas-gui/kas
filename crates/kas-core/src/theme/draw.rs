@@ -7,7 +7,7 @@
 
 use super::{FrameStyle, MarkStyle, SelectionStyle, SizeCx, Text, TextClass, ThemeSize};
 use crate::dir::Direction;
-use crate::draw::color::Rgb;
+use crate::draw::color::{ParseError, Rgb};
 use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType};
 use crate::event::{ConfigCx, EventState};
 use crate::geom::{Offset, Rect};
@@ -27,6 +27,39 @@ pub enum Background {
     Error,
     /// A given color
     Rgb(Rgb),
+}
+
+impl From<Rgb> for Background {
+    #[inline]
+    fn from(color: Rgb) -> Self {
+        Background::Rgb(color)
+    }
+}
+
+#[derive(Copy, Clone, Debug, thiserror::Error)]
+pub enum BackgroundParseError {
+    /// No `#` prefix
+    ///
+    /// NOTE: this exists to allow the possibility of supporting new exprs like
+    /// "Default" or "Error".
+    #[error("Unknown: no `#` prefix")]
+    Unknown,
+    /// Invalid hex
+    #[error("invalid hex sequence")]
+    InvalidRgb(#[from] ParseError),
+}
+
+impl std::str::FromStr for Background {
+    type Err = BackgroundParseError;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.starts_with("#") {
+            Rgb::from_str(s).map(|c| c.into()).map_err(|e| e.into())
+        } else {
+            Err(BackgroundParseError::Unknown)
+        }
+    }
 }
 
 /// Draw interface

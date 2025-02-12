@@ -29,7 +29,6 @@ mod kw {
     custom_keyword!(center);
     custom_keyword!(stretch);
     custom_keyword!(frame);
-    custom_keyword!(button);
     custom_keyword!(list);
     custom_keyword!(grid);
     custom_keyword!(default);
@@ -41,10 +40,10 @@ mod kw {
     custom_keyword!(non_navigable);
     custom_keyword!(px);
     custom_keyword!(em);
-    custom_keyword!(color);
     custom_keyword!(map_any);
     custom_keyword!(with_direction);
     custom_keyword!(with_style);
+    custom_keyword!(with_background);
 }
 
 #[derive(Default)]
@@ -328,8 +327,7 @@ enum Layout {
     Pack(Box<Layout>, Pack),
     Single(ExprMember),
     Widget(Ident, Expr),
-    Frame(Ident, Box<Layout>, Expr),
-    Button(Ident, Box<Layout>, Expr),
+    Frame(Ident, Box<Layout>, Expr, Expr),
     List(Ident, Direction, LayoutList<()>),
     Float(LayoutList<()>),
     Grid(Ident, GridDimensions, LayoutList<CellInfo>),
@@ -431,8 +429,8 @@ impl Layout {
                     let pack = Pack::parse(dot_token, input, core_gen)?;
                     layout = Layout::Pack(Box::new(layout), pack);
                 } else if let Ok(ident) = input.parse::<Ident>() {
-                    let note_msg = if matches!(&layout, &Layout::Frame(_, _, _)) {
-                        "supported methods on layout objects: `map_any`, `align`, `pack`, `with_style`"
+                    let note_msg = if matches!(&layout, &Layout::Frame(_, _, _, _)) {
+                        "supported methods on layout objects: `map_any`, `align`, `pack`, `with_style`, `with_background`"
                     } else {
                         "supported methods on layout objects: `map_any`, `align`, `pack`"
                     };
@@ -479,37 +477,33 @@ impl Layout {
             let _ = parenthesized!(inner in input);
             let layout = Layout::parse(&inner, core_gen, true)?;
 
-            let style = if input.peek(Token![.]) && input.peek2(kw::with_style) {
-                let _: Token![.] = input.parse()?;
-                let _: kw::with_style = input.parse()?;
+            let mut style = None;
+            let mut bg = None;
+            while input.peek(Token![.]) {
+                if style.is_none() && input.peek2(kw::with_style) {
+                    let _: Token![.] = input.parse()?;
+                    let _: kw::with_style = input.parse()?;
 
-                let inner;
-                let _ = parenthesized!(inner in input);
-                inner.parse()?
-            } else {
-                syn::parse_quote! { ::kas::theme::FrameStyle::Frame }
-            };
+                    let inner;
+                    let _ = parenthesized!(inner in input);
+                    style = Some(inner.parse()?);
+                } else if bg.is_none() && input.peek2(kw::with_background) {
+                    let _: Token![.] = input.parse()?;
+                    let _: kw::with_background = input.parse()?;
 
-            Ok(Layout::Frame(stor, Box::new(layout), style))
-        } else if lookahead.peek(kw::button) {
-            let _: kw::button = input.parse()?;
-            let _: Token![!] = input.parse()?;
-            let stor = core_gen.next();
+                    let inner;
+                    let _ = parenthesized!(inner in input);
+                    bg = Some(inner.parse()?);
+                } else {
+                    break;
+                }
+            }
 
-            let inner;
-            let _ = parenthesized!(inner in input);
-            let layout = Layout::parse(&inner, core_gen, true)?;
+            let style =
+                style.unwrap_or_else(|| syn::parse_quote! { ::kas::theme::FrameStyle::Frame });
+            let bg = bg.unwrap_or_else(|| syn::parse_quote! { ::kas::theme::Background::Default });
 
-            let color: Expr = if !inner.is_empty() {
-                let _: Token![,] = inner.parse()?;
-                let _: kw::color = inner.parse()?;
-                let _: Token![=] = inner.parse()?;
-                inner.parse()?
-            } else {
-                syn::parse_quote! { None }
-            };
-
-            Ok(Layout::Button(stor, Box::new(layout), color))
+            Ok(Layout::Frame(stor, Box::new(layout), style, bg))
         } else if lookahead.peek(kw::column) {
             let _: kw::column = input.parse()?;
             let _: Token![!] = input.parse()?;
@@ -894,7 +888,7 @@ impl Layout {
                     .append_all(quote_spanned! {span=> #ident: Box::new(#expr), });
                 fields.used_data_ty = true;
             }
-            Layout::Frame(stor, layout, _) | Layout::Button(stor, layout, _) => {
+            Layout::Frame(stor, layout, _, _) => {
                 fields
                     .ty_toks
                     .append_all(quote! { #stor: ::kas::layout::FrameStorage, });
@@ -995,16 +989,10 @@ impl Layout {
             Layout::Widget(ident, _) => quote! {
                 layout::Visitor::single(&mut #core_path.#ident)
             },
-            Layout::Frame(stor, layout, style) => {
+            Layout::Frame(stor, layout, style, bg) => {
                 let inner = layout.generate(core_path)?;
                 quote! {
-                    layout::Visitor::frame(&mut #core_path.#stor, #inner, #style)
-                }
-            }
-            Layout::Button(stor, layout, color) => {
-                let inner = layout.generate(core_path)?;
-                quote! {
-                    layout::Visitor::button(&mut #core_path.#stor, #inner, #color)
+                    layout::Visitor::frame(&mut #core_path.#stor, #inner, #style, #bg)
                 }
             }
             Layout::List(stor, dir, list) => {
@@ -1043,9 +1031,9 @@ impl Layout {
         match self {
             Layout::Align(layout, _)
             | Layout::Pack(layout, _)
-            | Layout::Frame(_, layout, _)
+            | Layout::Frame(_, layout, _, _)
             | Layout::MapAny(layout, _) => layout.nav_next(children, output),
-            Layout::Button(_, _, _) | Layout::NonNavigable(_) => {
+            Layout::NonNavigable(_) => {
                 // Internals of a button are not navigable
                 Ok(())
             }

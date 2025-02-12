@@ -329,7 +329,7 @@ impl From<[u8; 4]> for Rgba8Srgb {
 #[derive(Copy, Clone, Debug, Error)]
 pub enum ParseError {
     /// Incorrect input length
-    #[error("invalid length (expected 6 or 8 bytes")]
+    #[error("invalid length (expected 6 or 8 bytes)")]
     Length,
     /// Invalid hex byte
     #[error("invalid hex byte (expected 0-9, a-f or A-F)")]

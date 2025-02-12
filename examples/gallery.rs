@@ -163,19 +163,19 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
                     img_light.clone(),
                     ConfigMsg::Theme(ThemeConfigMsg::SetActiveScheme("light".to_string()))
                 )
-                .with_color("#B38DF9".parse().unwrap())
+                .with_background("#B38DF9".parse().unwrap())
                 .with_access_key(Key::Character("h".into())),
                 Button::new_msg(
                     img_light,
                     ConfigMsg::Theme(ThemeConfigMsg::SetActiveScheme("blue".to_string()))
                 )
-                .with_color("#7CDAFF".parse().unwrap())
+                .with_background("#7CDAFF".parse().unwrap())
                 .with_access_key(Key::Character("b".into())),
                 Button::new_msg(
                     img_dark,
                     ConfigMsg::Theme(ThemeConfigMsg::SetActiveScheme("dark".to_string()))
                 )
-                .with_color("#E77346".parse().unwrap())
+                .with_background("#E77346".parse().unwrap())
                 .with_access_key(Key::Character("k".into())),
             ]
             .map_any()

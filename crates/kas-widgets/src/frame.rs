@@ -6,7 +6,7 @@
 //! A simple frame
 
 use kas::prelude::*;
-use kas::theme::FrameStyle;
+use kas::theme::{Background, FrameStyle};
 
 /// Make a [`Frame`] widget
 ///
@@ -52,6 +52,7 @@ impl_scope! {
     pub struct Frame<W: Widget> {
         core: widget_core!(),
         style: FrameStyle,
+        bg: Background,
         /// The inner widget
         #[widget]
         pub inner: W,
@@ -64,6 +65,7 @@ impl_scope! {
             Frame {
                 core: Default::default(),
                 style: FrameStyle::Frame,
+                bg: Background::default(),
                 inner,
             }
         }
@@ -78,6 +80,16 @@ impl_scope! {
         #[must_use]
         pub fn with_style(mut self, style: FrameStyle) -> Self {
             self.style = style;
+            self
+        }
+
+        /// Set the frame background color (inline)
+        ///
+        /// The default background is [`Background::Default`].
+        #[inline]
+        #[must_use]
+        pub fn with_background(mut self, bg: Background) -> Self {
+            self.bg = bg;
             self
         }
     }

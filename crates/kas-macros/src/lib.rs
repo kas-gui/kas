@@ -215,10 +215,6 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; `self` `.` _Member_\
 /// > &nbsp;&nbsp; A named child: `self.foo` (more precisely, this matches any expression starting `self`, and uses `&mut (#expr)`)
 /// >
-/// > _Button_ :\
-/// > &nbsp;&nbsp; `button!` `(` _Layout_ ( `,` `color` `=` _Expr_ )? `)`\
-/// > &nbsp;&nbsp; Adds a button frame (optionally with color _Expr_) around content.
-/// >
 /// > _WidgetConstructor_ :\
 /// > &nbsp;&nbsp; _Expr_\
 /// > &nbsp;&nbsp; An expression yielding a widget, e.g. `Label::new("Hello world")`. The result must be an object of some type `W: Widget`.
