@@ -19,10 +19,10 @@ mod collection;
 mod extends;
 mod make_layout;
 mod scroll_traits;
+mod visitors;
 mod widget;
 mod widget_args;
 mod widget_derive;
-mod widget_index;
 
 /// Implement `Default`
 ///
@@ -403,7 +403,7 @@ pub fn impl_anon(input: TokenStream) -> TokenStream {
 #[proc_macro_error]
 #[proc_macro]
 pub fn widget_index(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as widget_index::UnscopedInput);
+    let input = parse_macro_input!(input as visitors::UnscopedInput);
     input.into_token_stream().into()
 }
 
@@ -412,8 +412,11 @@ pub fn widget_index(input: TokenStream) -> TokenStream {
 /// Widgets have a hidden field of type [`Rect`] in their `widget_core!()`, used
 /// to implement method [`Tile::rect`]. This macro assigns to that field.
 ///
-/// This macro is usable only within an [`impl_scope!`]  macro using the
-/// [`widget`](macro@widget) attribute.
+/// This macro is usable only within the definition of `Layout::set_rect` within
+/// an [`impl_scope!`] macro using the [`widget`](macro@widget) attribute.
+///
+/// The method `Tile::rect` will be generated if this macro is used by the
+/// widget, otherwise a definition of the method must be provided.
 ///
 /// Example usage:
 /// ```ignore
@@ -427,7 +430,7 @@ pub fn widget_index(input: TokenStream) -> TokenStream {
 #[proc_macro_error]
 #[proc_macro]
 pub fn widget_set_rect(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as widget_index::UnscopedInput);
+    let input = parse_macro_input!(input as visitors::UnscopedInput);
     input.into_token_stream().into()
 }
 

@@ -121,7 +121,8 @@ impl Tree {
             get_rules.append_all(child.ident.get_rule(&core_path, index));
         }
 
-        let core_impl = widget::impl_core_methods(widget_name, &core_path);
+        let required_tile_methods = widget::required_tile_methods(widget_name, &core_path);
+        let fn_rect = widget::fn_rect(&core_path);
         let widget_impl = widget::impl_widget(
             &impl_generics,
             &impl_target,
@@ -195,7 +196,8 @@ impl Tree {
             }
 
             impl #impl_generics ::kas::Tile for #impl_target {
-                #core_impl
+                #required_tile_methods
+                #fn_rect
                 #num_children
                 fn get_child(&self, index: usize) -> Option<&dyn ::kas::Tile> {
                     match index {

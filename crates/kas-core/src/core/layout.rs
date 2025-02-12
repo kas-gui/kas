@@ -264,10 +264,9 @@ pub trait Tile: Layout {
 
     /// Get the widget's region, relative to its parent.
     ///
-    /// This method is implemented by the `#[widget]` macro.
-    fn rect(&self) -> Rect {
-        unimplemented!() // make rustdoc show that this is a provided method
-    }
+    /// This method is usually implemented by the `#[widget]` macro.
+    /// See also [`kas::widget_set_rect`].
+    fn rect(&self) -> Rect;
 
     /// Get the name of the widget struct
     ///

@@ -73,6 +73,8 @@ impl_scope! {
         core: widget_core!(),
         // The track is the area within which this GripPart may move
         track: Rect,
+        // The position of the grip handle
+        rect: Rect,
         press_coord: Coord,
     }
 
@@ -82,7 +84,17 @@ impl_scope! {
             SizeRules::EMPTY
         }
 
+        fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
+            self.rect = rect;
+        }
+
         fn draw(&mut self, _: DrawCx) {}
+    }
+
+    impl Tile for Self {
+        fn rect(&self) -> Rect {
+            self.rect
+        }
     }
 
     impl Events for GripPart {
@@ -121,6 +133,7 @@ impl_scope! {
             GripPart {
                 core: Default::default(),
                 track: Default::default(),
+                rect: Default::default(),
                 press_coord: Coord::ZERO,
             }
         }
@@ -153,7 +166,7 @@ impl_scope! {
         ///
         /// This size may be read via `self.rect().size`.
         pub fn set_size(&mut self, size: Size) {
-            widget_set_rect!(Rect { pos: self.rect().pos, size, });
+            self.rect.size = size;
         }
 
         /// Get the current grip position
@@ -187,7 +200,7 @@ impl_scope! {
             let offset = offset.min(self.max_offset()).max(Offset::ZERO);
             let grip_pos = self.track.pos + offset;
             if grip_pos != self.rect().pos {
-                widget_set_rect!(Rect { pos: grip_pos, size: self.rect().size });
+                self.rect.pos = grip_pos;
                 cx.redraw(self);
             }
             offset

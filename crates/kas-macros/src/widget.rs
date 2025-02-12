@@ -287,8 +287,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             ChildIdent::Field(ref member) => Some((i, member)),
             ChildIdent::CoreField(_) => None,
         });
-    let path_rect = quote! { #core_path._rect };
-    crate::widget_index::visit_impls(named_child_iter, path_rect, &mut scope.impls);
+    crate::visitors::widget_index(named_child_iter, &mut scope.impls);
 
     if let Some(ref span) = num_children {
         if get_child.is_none() {
@@ -322,17 +321,15 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         #core_path.status.require_rect(&#core_path._id);
     };
 
-    let mut required_tile_methods = impl_core_methods(&name.to_string(), &core_path);
-
     let do_impl_widget_children = get_child.is_none() && for_child_node.is_none();
-    if do_impl_widget_children {
+    let fns_get_child = if do_impl_widget_children {
         let mut get_rules = quote! {};
         for (index, child) in children.iter().enumerate() {
             get_rules.append_all(child.ident.get_rule(&core_path, index));
         }
 
         let count = children.len();
-        required_tile_methods.append_all(quote! {
+        Some(quote! {
             fn num_children(&self) -> usize {
                 #count
             }
@@ -342,8 +339,10 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     _ => None,
                 }
             }
-        });
-    }
+        })
+    } else {
+        None
+    };
 
     if let Some(index) = widget_impl {
         let widget_impl = &mut scope.impls[index];
@@ -542,6 +541,9 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         }
     };
 
+    let core_rect_is_set;
+    let mut widget_set_rect_span = None;
+    let mut fn_set_rect_span = None;
     if let Some(index) = layout_impl {
         let layout_impl = &mut scope.impls[index];
         let item_idents = collect_idents(layout_impl);
@@ -567,16 +569,25 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "set_rect") {
-            if let Some(ref core) = core_data {
-                if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
+            if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
+                fn_set_rect_span = Some(f.span());
+
+                let path_rect = quote! { #core_path._rect };
+                widget_set_rect_span = crate::visitors::widget_set_rect(path_rect, &mut f.block);
+                core_rect_is_set = widget_set_rect_span.is_some();
+
+                if let Some(ref core) = core_data {
                     f.block.stmts.insert(0, parse_quote! {
                         #[cfg(debug_assertions)]
                         self.#core.status.set_rect(&self.#core._id);
                     });
                 }
+            } else {
+                core_rect_is_set = false;
             }
         } else {
             layout_impl.items.push(Verbatim(fn_set_rect));
+            core_rect_is_set = true;
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "try_probe") {
@@ -625,7 +636,18 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 #fn_draw
             }
         });
+        core_rect_is_set = true;
+    } else {
+        core_rect_is_set = false;
     }
+
+    let mut have_fn_rect = core_rect_is_set;
+    let required_tile_methods = required_tile_methods(&name.to_string(), &core_path);
+    let fn_rect = if core_rect_is_set {
+        Some(fn_rect(&core_path))
+    } else {
+        None
+    };
 
     if let Some(index) = tile_impl {
         let tile_impl = &mut scope.impls[index];
@@ -633,6 +655,37 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
 
         tile_impl.items.push(Verbatim(required_tile_methods));
+
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "rect") {
+            have_fn_rect = true;
+            if let Some(span) = widget_set_rect_span {
+                let fn_rect_span = tile_impl.items[*index].span();
+                emit_warning!(
+                    span, "assignment `widget_set_rect!` has no effect when `fn rect` is defined";
+                    note = fn_rect_span => "this `fn rect`";
+                );
+            }
+            if core_rect_is_set {
+                let fn_rect_span = tile_impl.items[*index].span();
+                if let Some(span) = widget_set_rect_span {
+                    emit_warning!(
+                        span, "assignment `widget_set_rect!` has no effect when `fn rect` is defined";
+                        note = fn_rect_span => "this `fn rect`";
+                    );
+                } else {
+                    emit_warning!(
+                        fn_rect_span,
+                        "definition of `Layout::set_rect` is expected when `fn rect` is defined"
+                    );
+                }
+            }
+        } else if let Some(method) = fn_rect {
+            tile_impl.items.push(Verbatim(method));
+        }
+
+        if let Some(methods) = fns_get_child {
+            tile_impl.items.push(Verbatim(methods));
+        }
 
         if !has_item("nav_next") {
             match fn_nav_next {
@@ -659,10 +712,23 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Tile for #impl_target {
                 #required_tile_methods
+                #fn_rect
+                #fns_get_child
                 #fn_nav_next
                 #fn_probe
             }
         });
+    }
+
+    // TODO(opt): omit field widget.core._rect if !core_rect_is_set
+
+    if !have_fn_rect {
+        if let Some(span) = fn_set_rect_span {
+            emit_warning!(
+                span, "`widget_set_rect!(/* rect */)` not found";
+                note = "`fn Tile::rect()` implementation cannot be generated without `widget_set_rect!`";
+            );
+        }
     }
 
     if let Ok(val) = std::env::var("KAS_DEBUG_WIDGET") {
@@ -686,7 +752,7 @@ pub fn collect_idents(item_impl: &ItemImpl) -> Vec<(usize, Ident)> {
         .collect()
 }
 
-pub fn impl_core_methods(name: &str, core_path: &Toks) -> Toks {
+pub fn required_tile_methods(name: &str, core_path: &Toks) -> Toks {
     quote! {
         #[inline]
         fn as_tile(&self) -> &dyn ::kas::Tile {
@@ -696,14 +762,19 @@ pub fn impl_core_methods(name: &str, core_path: &Toks) -> Toks {
         fn id_ref(&self) -> &::kas::Id {
             &#core_path._id
         }
-        #[inline]
-        fn rect(&self) -> ::kas::geom::Rect {
-            #core_path._rect
-        }
 
         #[inline]
         fn widget_name(&self) -> &'static str {
             #name
+        }
+    }
+}
+
+pub fn fn_rect(core_path: &Toks) -> Toks {
+    quote! {
+        #[inline]
+        fn rect(&self) -> ::kas::geom::Rect {
+            #core_path._rect
         }
     }
 }

@@ -53,11 +53,10 @@ impl Parse for WidgetInput {
     }
 }
 
-struct Visitor<'a, I: Clone + Iterator<Item = (usize, &'a Member)>> {
+struct WidgetIndexVisitor<'a, I: Clone + Iterator<Item = (usize, &'a Member)>> {
     children: I,
-    path_rect: TokenStream,
 }
-impl<'a, I: Clone + Iterator<Item = (usize, &'a Member)>> VisitMut for Visitor<'a, I> {
+impl<'a, I: Clone + Iterator<Item = (usize, &'a Member)>> VisitMut for WidgetIndexVisitor<'a, I> {
     fn visit_macro_mut(&mut self, node: &mut syn::Macro) {
         // HACK: we cannot expand the macro here since we do not have an Expr
         // to replace. Instead we can only modify the macro's tokens.
@@ -84,7 +83,39 @@ impl<'a, I: Clone + Iterator<Item = (usize, &'a Member)>> VisitMut for Visitor<'
             emit_error!(args.ident.span(), "does not match any child widget");
             node.tokens = parse_quote! { error_emitted 0 };
             return;
-        } else if node.path == parse_quote! { widget_set_rect } {
+        }
+
+        visit_mut::visit_macro_mut(self, node);
+    }
+}
+
+pub fn widget_index<'a, I: Clone + Iterator<Item = (usize, &'a Member)>>(
+    children: I,
+    impls: &mut [syn::ItemImpl],
+) {
+    let mut obj = WidgetIndexVisitor { children };
+
+    for impl_ in impls {
+        obj.visit_item_impl_mut(impl_);
+    }
+}
+
+struct SetRectVisitor {
+    path_rect: TokenStream,
+    first_usage: Option<Span>,
+}
+impl VisitMut for SetRectVisitor {
+    fn visit_macro_mut(&mut self, node: &mut syn::Macro) {
+        // HACK: we cannot expand the macro here since we do not have an Expr
+        // to replace. Instead we can only modify the macro's tokens.
+        // WARNING: if the macro's tokens are modified before printing an error
+        // message is emitted then the span of that error message is incorrect.
+
+        if node.path == parse_quote! { widget_set_rect } {
+            if self.first_usage.is_none() {
+                self.first_usage = Some(node.span());
+            }
+
             let expr = match syn::parse2::<syn::Expr>(node.tokens.clone()) {
                 Ok(expr) => expr,
                 Err(err) => {
@@ -103,17 +134,14 @@ impl<'a, I: Clone + Iterator<Item = (usize, &'a Member)>> VisitMut for Visitor<'
     }
 }
 
-pub fn visit_impls<'a, I: Clone + Iterator<Item = (usize, &'a Member)>>(
-    children: I,
-    path_rect: TokenStream,
-    impls: &mut [syn::ItemImpl],
-) {
-    let mut obj = Visitor {
-        children,
+/// Returns first span of widget_set_rect usage, if any
+pub fn widget_set_rect(path_rect: TokenStream, block: &mut syn::Block) -> Option<Span> {
+    let mut obj = SetRectVisitor {
         path_rect,
+        first_usage: None,
     };
 
-    for impl_ in impls {
-        obj.visit_item_impl_mut(impl_);
-    }
+    obj.visit_block_mut(block);
+
+    obj.first_usage
 }
