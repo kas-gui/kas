@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::collection::{CellInfo, GridDimensions, NameGenerator, StorIdent};
+use crate::collection::{CellInfo, GridDimensions, NameGenerator};
 use crate::widget;
 use crate::widget_args::{Child, ChildIdent};
 use proc_macro2::{Span, TokenStream as Toks};
@@ -353,11 +353,11 @@ enum Layout {
     Pack(Box<Layout>, Pack),
     Single(ExprMember),
     Widget(Ident, Expr),
-    Frame(StorIdent, Box<Layout>, Expr),
-    Button(StorIdent, Box<Layout>, Expr),
-    List(StorIdent, Direction, LayoutList<()>),
+    Frame(Ident, Box<Layout>, Expr),
+    Button(Ident, Box<Layout>, Expr),
+    List(Ident, Direction, LayoutList<()>),
     Float(LayoutList<()>),
-    Grid(StorIdent, GridDimensions, LayoutList<CellInfo>),
+    Grid(Ident, GridDimensions, LayoutList<CellInfo>),
     Label(Ident, LitStr),
     NonNavigable(Box<Layout>),
     MapAny(Box<Layout>, MapAny),
@@ -489,7 +489,7 @@ impl Layout {
         if lookahead.peek(kw::frame) {
             let _: kw::frame = input.parse()?;
             let _: Token![!] = input.parse()?;
-            let stor = core_gen.parse_or_next(input)?;
+            let stor = core_gen.next();
 
             let inner;
             let _ = parenthesized!(inner in input);
@@ -508,7 +508,7 @@ impl Layout {
         } else if lookahead.peek(kw::button) {
             let _: kw::button = input.parse()?;
             let _: Token![!] = input.parse()?;
-            let stor = core_gen.parse_or_next(input)?;
+            let stor = core_gen.next();
 
             let inner;
             let _ = parenthesized!(inner in input);
@@ -527,19 +527,19 @@ impl Layout {
         } else if lookahead.peek(kw::column) {
             let _: kw::column = input.parse()?;
             let _: Token![!] = input.parse()?;
-            let stor = core_gen.parse_or_next(input)?;
+            let stor = core_gen.next();
             let list = parse_layout_list(input, core_gen, true)?;
             Ok(Layout::List(stor, Direction::Down, list))
         } else if lookahead.peek(kw::row) {
             let _: kw::row = input.parse()?;
             let _: Token![!] = input.parse()?;
-            let stor = core_gen.parse_or_next(input)?;
+            let stor = core_gen.next();
             let list = parse_layout_list(input, core_gen, true)?;
             Ok(Layout::List(stor, Direction::Right, list))
         } else if lookahead.peek(kw::list) {
             let _: kw::list = input.parse()?;
             let _: Token![!] = input.parse()?;
-            let stor = core_gen.parse_or_next(input)?;
+            let stor = core_gen.next();
             let inner;
             let _ = parenthesized!(inner in input);
             let dir: Direction = inner.parse()?;
@@ -554,7 +554,7 @@ impl Layout {
         } else if lookahead.peek(kw::aligned_column) {
             let _: kw::aligned_column = input.parse()?;
             let _: Token![!] = input.parse()?;
-            let stor = core_gen.parse_or_next(input)?;
+            let stor = core_gen.next();
 
             let inner;
             let _ = bracketed!(inner in input);
@@ -564,7 +564,7 @@ impl Layout {
         } else if lookahead.peek(kw::aligned_row) {
             let _: kw::aligned_row = input.parse()?;
             let _: Token![!] = input.parse()?;
-            let stor = core_gen.parse_or_next(input)?;
+            let stor = core_gen.next();
 
             let inner;
             let _ = bracketed!(inner in input);
@@ -574,7 +574,7 @@ impl Layout {
         } else if lookahead.peek(kw::grid) {
             let _: kw::grid = input.parse()?;
             let _: Token![!] = input.parse()?;
-            let stor = core_gen.parse_or_next(input)?;
+            let stor = core_gen.next();
 
             let inner;
             let _ = braced!(inner in input);
@@ -630,7 +630,7 @@ fn parse_layout_items(
 }
 
 fn parse_grid_as_list_of_lists<KW: Parse>(
-    stor: StorIdent,
+    stor: Ident,
     inner: ParseStream,
     core_gen: &mut NameGenerator,
     row_major: bool,
@@ -688,7 +688,7 @@ fn parse_grid_as_list_of_lists<KW: Parse>(
 }
 
 fn parse_grid(
-    stor: StorIdent,
+    stor: Ident,
     inner: ParseStream,
     core_gen: &mut NameGenerator,
     recurse: bool,
@@ -848,7 +848,7 @@ struct Pack {
     pub kw: kw::pack,
     pub paren_token: token::Paren,
     pub hints: Expr,
-    pub stor: StorIdent,
+    pub stor: Ident,
 }
 impl Pack {
     fn parse(

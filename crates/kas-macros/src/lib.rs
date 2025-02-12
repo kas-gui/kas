@@ -210,19 +210,17 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///
 /// > [_Column_](macro@column), [_Row_](macro@row), [_List_](macro@list), [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_](macro@float) :\
 /// > &nbsp;&nbsp; These stand-alone macros are explicitly supported in this position.\
-/// > &nbsp;&nbsp; Optionally, a _Storage_ specifier is supported immediately after the macro name, e.g.\
-/// > &nbsp;&nbsp; `column! 'storage_name ["one", "two"]`
 ///
 /// > _Single_ :\
 /// > &nbsp;&nbsp; `self` `.` _Member_\
 /// > &nbsp;&nbsp; A named child: `self.foo` (more precisely, this matches any expression starting `self`, and uses `&mut (#expr)`)
 /// >
 /// > _Frame_ :\
-/// > &nbsp;&nbsp; `frame!` _Storage_? `(` _Layout_ ( `,` `style` `=` _Expr_ )? `)`\
+/// > &nbsp;&nbsp; `frame!` `(` _Layout_ ( `,` `style` `=` _Expr_ )? `)`\
 /// > &nbsp;&nbsp; Adds a frame of type _Expr_ around content, defaulting to `FrameStyle::Frame`.
 /// >
 /// > _Button_ :\
-/// > &nbsp;&nbsp; `button!` _Storage_? `(` _Layout_ ( `,` `color` `=` _Expr_ )? `)`\
+/// > &nbsp;&nbsp; `button!` `(` _Layout_ ( `,` `color` `=` _Expr_ )? `)`\
 /// > &nbsp;&nbsp; Adds a button frame (optionally with color _Expr_) around content.
 /// >
 /// > _WidgetConstructor_ :\
@@ -243,14 +241,6 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; _Ident_ | _Index_\
 /// > &nbsp;&nbsp; The name of a struct field or an index into a tuple struct.
 /// >
-/// > _Direction_ :\
-/// > &nbsp;&nbsp; `left` | `right` | `up` | `down` | _Expr_:\
-/// > &nbsp;&nbsp; Note that an _Expr_ must start with `self`
-/// >
-/// > _Storage_ :\
-/// > &nbsp;&nbsp; `'` _Ident_\
-/// > &nbsp;&nbsp; Used to explicitly name the storage used by a generated widget or layout; for example `row 'x: ["A", "B", "C"]` will add a field `x: R` where `R: RowStorage` within the generated `widget_core!()`. If omitted, the field name will be anonymous (generated).
-///
 /// ## Examples
 ///
 /// A simple example is the

@@ -12,31 +12,7 @@ use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::{braced, parenthesized};
-use syn::{Expr, Ident, Lifetime, LitInt, LitStr, Token};
-
-#[derive(Debug)]
-pub enum StorIdent {
-    Named(Ident),
-    Generated(Ident),
-}
-impl From<Lifetime> for StorIdent {
-    fn from(mut lt: Lifetime) -> StorIdent {
-        lt.ident.set_span(lt.span());
-        StorIdent::Named(lt.ident)
-    }
-}
-impl From<Ident> for StorIdent {
-    fn from(ident: Ident) -> StorIdent {
-        StorIdent::Generated(ident)
-    }
-}
-impl ToTokens for StorIdent {
-    fn to_tokens(&self, toks: &mut Toks) {
-        match self {
-            StorIdent::Named(ident) | StorIdent::Generated(ident) => ident.to_tokens(toks),
-        }
-    }
-}
+use syn::{Expr, Ident, LitInt, LitStr, Token};
 
 #[derive(Default)]
 pub struct NameGenerator(usize);
@@ -46,14 +22,6 @@ impl NameGenerator {
         self.0 += 1;
         let span = Span::call_site();
         Ident::new(&name, span)
-    }
-
-    pub fn parse_or_next(&mut self, input: ParseStream) -> Result<StorIdent> {
-        if input.peek(Lifetime) {
-            Ok(input.parse::<Lifetime>()?.into())
-        } else {
-            Ok(self.next().into())
-        }
     }
 }
 

@@ -28,7 +28,7 @@ impl_scope! {
     /// when selected. If a handler is specified via [`Self::with`] or
     /// [`Self::with_msg`] then this message is passed to the handler and not emitted.
     #[widget {
-        layout = button! 'frame(row! [self.label, self.mark]);
+        layout = button!(row! [self.label, self.mark]);
         navigable = true;
         hover_highlight = true;
     }]
