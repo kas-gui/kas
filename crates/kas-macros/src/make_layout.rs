@@ -293,7 +293,7 @@ impl Layout {
             let _: kw::list = input.parse()?;
             let _: Token![!] = input.parse()?;
             let stor = core_gen.next();
-            let list = parse_layout_list(&input, core_gen)?;
+            let list = parse_layout_list(input, core_gen)?;
             let _: Token![.] = input.parse()?;
             let _: kw::with_direction = input.parse()?;
             let args;
@@ -596,7 +596,7 @@ impl Pack {
             kw,
             paren_token,
             hints: content.parse()?,
-            stor: core_gen.next().into(),
+            stor: core_gen.next(),
         })
     }
 

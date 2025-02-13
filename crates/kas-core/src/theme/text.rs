@@ -84,7 +84,7 @@ impl<T: FormattableText> Layout for Text<T> {
     }
 
     fn draw(&mut self, mut draw: DrawCx) {
-        draw.text(self.rect, &self);
+        draw.text(self.rect, self);
     }
 }
 
