@@ -10,14 +10,40 @@ use kas::Collection;
 
 /// Make a [`Float`] widget
 ///
-/// When called as a stand-alone macro, `float!(inner)` is just syntactic sugar
-/// for `Float::new(kas::collection! [..])`.
+/// # Syntax
+///
+/// > _Collection_ :\
+/// > &nbsp;&nbsp; `float!` `[` _Items_<sup>\?</sup> `]`
+/// >
+/// > _Items_ :\
+/// > &nbsp;&nbsp; (_Item_ `,`)<sup>\*</sup> _Item_ `,`<sup>\?</sup>
+///
+/// ## Stand-alone usage
+///
+/// When used as a stand-alone macro, `float! [/* ... */]` is just syntactic sugar
+/// for `Float::new(kas::collection! [/* ... */])`.
+///
+/// In this case, _Item_ may be:
+///
+/// -   A string literal (interpreted as a label widget), optionally followed by
+///     an [`align`] or [`pack`] method call
+/// -   An expression yielding an object implementing `Widget<Data = _A>`
+///
+/// In case all _Item_ instances are a string literal, the data type of the
+/// `float!` widget will be `()`; otherwise the data type of the widget is `_A`
+/// where `_A` is a generic type parameter of the widget.
+///
+/// ## Usage within widget layout syntax
 ///
 /// When called within [widget layout syntax], `float!` may be evaluated as a
 /// recursive macro and the result does not have a specified type, except that
 /// methods [`map_any`], [`align`] and [`pack`] are supported via emulation.
 ///
-/// Either way, items of `float![..]` support [widget layout syntax].
+/// In this case, _Item_ is evaluated using [widget layout syntax]. This is
+/// broadly similar to the above with a couple of exceptions:
+///
+/// -   Supported layout macros do not need to be imported to the module scope
+/// -   An _Item_ may be a `#[widget]` field of the widget
 ///
 /// # Example
 ///

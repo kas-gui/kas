@@ -16,14 +16,40 @@ use std::ops::{Index, IndexMut};
 
 /// Make a [`Row`] widget
 ///
-/// When called as a stand-alone macro, `row! [..]` is just syntactic sugar
-/// for `Row::new(kas::collection! [..])`.
+/// # Syntax
+///
+/// > _Collection_ :\
+/// > &nbsp;&nbsp; `row!` `[` _Items_<sup>\?</sup> `]`
+/// >
+/// > _Items_ :\
+/// > &nbsp;&nbsp; (_Item_ `,`)<sup>\*</sup> _Item_ `,`<sup>\?</sup>
+///
+/// ## Stand-alone usage
+///
+/// When used as a stand-alone macro, `row! [/* ... */]` is just syntactic sugar
+/// for `Row::new(kas::collection! [/* ... */])`.
+///
+/// In this case, _Item_ may be:
+///
+/// -   A string literal (interpreted as a label widget), optionally followed by
+///     an [`align`] or [`pack`] method call
+/// -   An expression yielding an object implementing `Widget<Data = _A>`
+///
+/// In case all _Item_ instances are a string literal, the data type of the
+/// `row!` widget will be `()`; otherwise the data type of the widget is `_A`
+/// where `_A` is a generic type parameter of the widget.
+///
+/// ## Usage within widget layout syntax
 ///
 /// When called within [widget layout syntax], `row!` may be evaluated as a
 /// recursive macro and the result does not have a specified type, except that
 /// methods [`map_any`], [`align`] and [`pack`] are supported via emulation.
 ///
-/// Either way, items of `row![..]` support [widget layout syntax].
+/// In this case, _Item_ is evaluated using [widget layout syntax]. This is
+/// broadly similar to the above with a couple of exceptions:
+///
+/// -   Supported layout macros do not need to be imported to the module scope
+/// -   An _Item_ may be a `#[widget]` field of the widget
 ///
 /// # Example
 ///
@@ -47,14 +73,40 @@ macro_rules! row {
 
 /// Make a [`Column`] widget
 ///
-/// When called as a stand-alone macro, `column! [..]` is just syntactic sugar
-/// for `Column::new(kas::collection! [..])`.
+/// # Syntax
+///
+/// > _Collection_ :\
+/// > &nbsp;&nbsp; `column!` `[` _Items_<sup>\?</sup> `]`
+/// >
+/// > _Items_ :\
+/// > &nbsp;&nbsp; (_Item_ `,`)<sup>\*</sup> _Item_ `,`<sup>\?</sup>
+///
+/// ## Stand-alone usage
+///
+/// When used as a stand-alone macro, `column! [/* ... */]` is just syntactic sugar
+/// for `Column::new(kas::collection! [/* ... */])`.
+///
+/// In this case, _Item_ may be:
+///
+/// -   A string literal (interpreted as a label widget), optionally followed by
+///     an [`align`] or [`pack`] method call
+/// -   An expression yielding an object implementing `Widget<Data = _A>`
+///
+/// In case all _Item_ instances are a string literal, the data type of the
+/// `column!` widget will be `()`; otherwise the data type of the widget is `_A`
+/// where `_A` is a generic type parameter of the widget.
+///
+/// ## Usage within widget layout syntax
 ///
 /// When called within [widget layout syntax], `column!` may be evaluated as a
 /// recursive macro and the result does not have a specified type, except that
 /// methods [`map_any`], [`align`] and [`pack`] are supported via emulation.
 ///
-/// Either way, items of `column![..]` support [widget layout syntax].
+/// In this case, _Item_ is evaluated using [widget layout syntax]. This is
+/// broadly similar to the above with a couple of exceptions:
+///
+/// -   Supported layout macros do not need to be imported to the module scope
+/// -   An _Item_ may be a `#[widget]` field of the widget
 ///
 /// # Example
 ///
@@ -81,8 +133,30 @@ macro_rules! column {
 
 /// Make a [`List`] widget
 ///
-/// When called as a stand-alone macro, `list! [..]` is just syntactic sugar
-/// for `List::new(kas::collection! [..])`.
+/// # Syntax
+///
+/// > _Collection_ :\
+/// > &nbsp;&nbsp; `list!` `[` _Items_<sup>\?</sup> `]`
+/// >
+/// > _Items_ :\
+/// > &nbsp;&nbsp; (_Item_ `,`)<sup>\*</sup> _Item_ `,`<sup>\?</sup>
+///
+/// ## Stand-alone usage
+///
+/// When used as a stand-alone macro, `list! [/* ... */]` is just syntactic sugar
+/// for `List::new(kas::collection! [/* ... */])`.
+///
+/// In this case, _Item_ may be:
+///
+/// -   A string literal (interpreted as a label widget), optionally followed by
+///     an [`align`] or [`pack`] method call
+/// -   An expression yielding an object implementing `Widget<Data = _A>`
+///
+/// In case all _Item_ instances are a string literal, the data type of the
+/// `list!` widget will be `()`; otherwise the data type of the widget is `_A`
+/// where `_A` is a generic type parameter of the widget.
+///
+/// ## Usage within widget layout syntax
 ///
 /// When called within [widget layout syntax], `list!` may be evaluated as a
 /// recursive macro and the result does not have a specified type, except that
@@ -92,7 +166,11 @@ macro_rules! column {
 /// at the use site, so for example `.with_direction(self.dir)` will read
 /// `self.dir` whenever layout is computed.
 ///
-/// Either way, items of `list![..]` support [widget layout syntax].
+/// In this case, _Item_ is evaluated using [widget layout syntax]. This is
+/// broadly similar to the above with a couple of exceptions:
+///
+/// -   Supported layout macros do not need to be imported to the module scope
+/// -   An _Item_ may be a `#[widget]` field of the widget
 ///
 /// # Example
 ///

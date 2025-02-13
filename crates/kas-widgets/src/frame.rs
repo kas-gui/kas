@@ -10,8 +10,14 @@ use kas::theme::{Background, FrameStyle};
 
 /// Make a [`Frame`] widget
 ///
+/// # Syntax
+///
+/// ## Stand-alone usage
+///
 /// When called as a stand-alone macro, `frame!(inner)` is just syntactic sugar
 /// for `Frame::new(inner)`, and yes, this makes the macro pointless.
+///
+/// ## Usage within widget layout syntax
 ///
 /// When called within [widget layout syntax], `frame!` may be evaluated as a
 /// recursive macro and the result does not have a specified type, except that
