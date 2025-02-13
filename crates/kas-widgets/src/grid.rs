@@ -10,6 +10,78 @@ use kas::layout::{GridSetter, GridSolver, RulesSetter, RulesSolver};
 use kas::{layout, prelude::*, CellCollection};
 use std::ops::{Index, IndexMut};
 
+/// Make a [`Grid`] widget
+///
+/// Constructs a table with auto-determined number of rows and columns.
+/// Cells may overlap, in which case behaviour is identical to [`float!`]: the
+/// first declared item is on top.
+///
+/// # Syntax
+///
+/// > _Collection_ :\
+/// > &nbsp;&nbsp; `collection!` `[` _ItemArms_<sup>\?</sup> `]`
+/// >
+/// > _ItemArms_ :\
+/// > &nbsp;&nbsp; (_ItemArm_ `,`)<sup>\*</sup> _ItemArm_ `,`<sup>\?</sup>
+/// >
+/// > _ItemArm_ :\
+/// > &nbsp;&nbsp; `(` _Column_ `,` _Row_ `)` `=>` _Item_
+/// >
+/// > _Column_, _Row_ :\
+/// > &nbsp;&nbsp; _LitInt_ | ( _LitInt_ `..` `+` _LitInt_ ) | ( _LitInt_ `..`
+/// > _LitInt_ ) | ( _LitInt_ `..=` _LitInt_ )
+///
+/// Here, _Column_ and _Row_ are selected via an index (from 0), a range of
+/// indices, or a start + increment. For example, `2` = `2..+1` = `2..3` =
+/// `2..=2` while `5..+2` = `5..7` = `5..=6`.
+///
+/// ## Stand-alone usage
+///
+/// When used as a stand-alone macro, `grid! [/* ... */]` is just syntactic
+/// sugar for `Grid::new(kas::cell_collection! [/* ... */])`.
+///
+/// In this case, _Item_ may be:
+///
+/// -   A string literal (interpreted as a label widget), optionally followed by
+///     an [`align`] or [`pack`] method call
+/// -   An expression yielding an object implementing `Widget<Data = _A>`
+///
+/// In case all _Item_ instances are a string literal, the data type of the
+/// `grid!` widget will be `()`; otherwise the data type of the widget is `_A`
+/// where `_A` is a generic type parameter of the widget.
+///
+/// ## Usage within widget layout syntax
+///
+/// In this case, _Item_ uses [widget layout syntax]. This is broadly similar to
+/// the above with a couple of exceptions:
+///
+/// -   Supported layout macros do not need to be imported to the module scope
+/// -   An _Item_ may be a `#[widget]` field of the widget
+///
+/// # Example
+///
+/// ```
+/// let my_widget = kas_widgets::grid! {
+///     (0, 0) => "one",
+///     (1, 0) => "two",
+///     (0..2, 1) => "three",
+/// };
+/// ```
+///
+/// [widget layout syntax]: macro@widget#layout-1
+/// [`align`]: crate::AdaptWidget::align
+/// [`pack`]: crate::AdaptWidget::pack
+/// [`float!`]: crate::float
+#[macro_export]
+macro_rules! grid {
+    ( $( ($cc:expr, $rr:expr) => $ee:expr ),* ) => {
+        $crate::Grid::new( ::kas::cell_collection! [ $( ($cc, $rr) => $ee ),* ] )
+    };
+    ( $( ($cc:expr, $rr:expr) => $ee:expr ),+ , ) => {
+        $crate::Grid::new( ::kas::cell_collection! [ $( ($cc, $rr) => $ee ),+ ] )
+    };
+}
+
 impl_scope! {
     /// A generic grid widget
     ///

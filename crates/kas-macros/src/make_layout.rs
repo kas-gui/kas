@@ -272,13 +272,6 @@ impl Tree {
             false,
         )?))
     }
-
-    /// Parse a grid (contents only)
-    pub fn grid(inner: ParseStream) -> Result<Self> {
-        let mut core_gen = NameGenerator::default();
-        let stor = core_gen.next();
-        Ok(Tree(parse_grid(stor.into(), inner, &mut core_gen, false)?))
-    }
 }
 
 #[derive(Debug)]

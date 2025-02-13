@@ -208,7 +208,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// implementation of `Tile::nav_next`, with a couple of exceptions
 /// (where macro-time analysis is insufficient to implement this method).
 ///
-/// > [_Column_], [_Row_], [_List_] [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_], [_Frame_] :\
+/// > [_Column_], [_Row_], [_List_] [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_], [_Float_], [_Frame_] :\
 /// > &nbsp;&nbsp; These stand-alone macros are explicitly supported in this position.\
 ///
 /// > _Single_ :\
@@ -322,6 +322,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// [_List_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.list.html
 /// [_Float_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.float.html
 /// [_Frame_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.frame.html
+/// [_Grid_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.grid.html
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
@@ -447,51 +448,6 @@ impl ExpandLayout for make_layout::Tree {
             }
         }
     }
-}
-
-/// Make a grid widget
-///
-/// Constructs a table with auto-determined number of rows and columns.
-/// Each child is assigned a cell using match-like syntax.
-///
-/// A child may be stretched across multiple cells using range-like syntax:
-/// `3..5`, `3..=4` and `3..+2` are all equivalent.
-///
-/// Behaviour of overlapping widgets is identical to [`float!`]: the first
-/// declared item is on top.
-///
-/// Children are navigated in order of declaration.
-///
-/// Items support [widget layout syntax](macro@widget#layout-1).
-///
-/// # Example
-///
-/// ```ignore
-/// let my_widget = kas::grid! {
-///     (0, 0) => "top left",
-///     (1, 0) => "top right",
-///     (0..2, 1) => "bottom row (merged)",
-/// };
-/// ```
-///
-/// # Syntax
-///
-/// > _Grid_ :\
-/// > &nbsp;&nbsp; `grid!` `{` _GridCell_* `}`
-/// >
-/// > _GridCell_ :\
-/// > &nbsp;&nbsp; `(` _CellRange_ `,` _CellRange_ `)` `=>` ( _Layout_ | `{` _Layout_ `}` )
-/// >
-/// > _CellRange_ :\
-/// > &nbsp;&nbsp; _LitInt_ ( `..` `+`? _LitInt_ )?
-///
-/// Cells are specified using `match`-like syntax from `(col_spec, row_spec)` to
-/// a layout, e.g.: `(1, 0) => self.foo`. Spans are specified via range syntax,
-/// e.g. `(0..2, 1) => self.bar`.
-#[proc_macro_error]
-#[proc_macro]
-pub fn grid(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input with make_layout::Tree::grid).expand_layout("_Grid")
 }
 
 /// Make an aligned column widget
