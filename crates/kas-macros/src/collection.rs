@@ -14,6 +14,12 @@ use syn::token::Comma;
 use syn::{braced, parenthesized};
 use syn::{Expr, Ident, LitInt, LitStr, Token};
 
+#[allow(non_camel_case_types)]
+mod kw {
+    syn::custom_keyword!(align);
+    syn::custom_keyword!(pack);
+}
+
 #[derive(Default)]
 pub struct NameGenerator(usize);
 impl NameGenerator {
@@ -142,14 +148,41 @@ impl ToTokens for GridDimensions {
 }
 
 pub enum Item {
-    Label(Ident, LitStr),
+    Label(Ident, Toks, Toks),
     Widget(Ident, Expr),
 }
 
 impl Item {
     fn parse(input: ParseStream, gen: &mut NameGenerator) -> Result<Self> {
         if input.peek(LitStr) {
-            Ok(Item::Label(gen.next(), input.parse()?))
+            let text: LitStr = input.parse()?;
+            let span = text.span();
+            let mut ty = quote! { ::kas::hidden::StrLabel };
+            let mut def = quote_spanned! {span=> ::kas::hidden::StrLabel::new(#text) };
+
+            if input.peek(Token![.]) && input.peek2(kw::align) {
+                let _: Token![.] = input.parse()?;
+                let _: kw::align = input.parse()?;
+
+                let inner;
+                let _ = parenthesized!(inner in input);
+                let hints: Expr = inner.parse()?;
+
+                ty = quote! { ::kas::hidden::Align<#ty> };
+                def = quote! { ::kas::hidden::Align::new(#def, #hints) };
+            } else if input.peek(Token![.]) && input.peek2(kw::pack) {
+                let _: Token![.] = input.parse()?;
+                let _: kw::pack = input.parse()?;
+
+                let inner;
+                let _ = parenthesized!(inner in input);
+                let hints: Expr = inner.parse()?;
+
+                ty = quote! { ::kas::hidden::Pack<#ty> };
+                def = quote! { ::kas::hidden::Pack::new(#def, #hints) };
+            }
+
+            Ok(Item::Label(gen.next(), ty, def))
         } else {
             Ok(Item::Widget(gen.next(), input.parse()?))
         }
@@ -243,20 +276,13 @@ impl Collection {
 
         for (index, item) in self.0.iter().enumerate() {
             let path = match item {
-                Item::Label(stor, text) => {
-                    let span = text.span();
+                Item::Label(stor, ty, def) => {
                     if let Some(ref data_ty) = data_ty {
-                        stor_ty.append_all(
-                            quote! { #stor: ::kas::hidden::MapAny<#data_ty, ::kas::hidden::StrLabel>, },
-                        );
-                        stor_def.append_all(
-                            quote_spanned! {span=> #stor: ::kas::hidden::MapAny::new(::kas::hidden::StrLabel::new(#text)), },
-                        );
+                        stor_ty.append_all(quote! { #stor: ::kas::hidden::MapAny<#data_ty, #ty>, });
+                        stor_def.append_all(quote! { #stor: ::kas::hidden::MapAny::new(#def), });
                     } else {
-                        stor_ty.append_all(quote! { #stor: ::kas::hidden::StrLabel, });
-                        stor_def.append_all(
-                            quote_spanned! {span=> #stor: ::kas::hidden::StrLabel::new(#text), },
-                        );
+                        stor_ty.append_all(quote! { #stor: #ty, });
+                        stor_def.append_all(quote! { #stor: #def, });
                     }
                     stor.to_token_stream()
                 }

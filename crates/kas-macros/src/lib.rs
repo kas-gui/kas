@@ -560,12 +560,29 @@ pub fn aligned_row(input: TokenStream) -> TokenStream {
 
 /// Generate an anonymous struct which implements [`kas::Collection`]
 ///
-/// Each item must be either a string literal (inferred as a static label) or a
-/// widget (implements [`kas::Widget`](https://docs.rs/kas/latest/kas/trait.Widget.html)).
+/// # Syntax
+///
+/// > _Collection_ :\
+/// > &nbsp;&nbsp; `collection!` `[` _Items_<sup>\?</sup> `]`
+/// >
+/// > _Items_ :\
+/// > &nbsp;&nbsp; (_Item_ `,`)<sup>\*</sup> _Item_ `,`<sup>\?</sup>
+///
+/// In this case, _Item_ may be:
+///
+/// -   A string literal (interpreted as a label widget), optionally followed by
+///     an [`align`] or [`pack`] method call
+/// -   An expression yielding an object implementing `Widget<Data = _A>`
+///
+/// In case all _Item_ instances are a string literal, the data type of the
+/// `collection!` widget will be `()`; otherwise the data type of the widget is `_A`
+/// where `_A` is a generic type parameter of the widget.
 ///
 /// For example usage, see [`List`](https://docs.rs/kas/latest/kas/widgets/struct.List.html).
 ///
 /// [`kas::Collection`]: https://docs.rs/kas/latest/kas/trait.Collection.html
+/// [`align`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.align
+/// [`pack`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.pack
 #[proc_macro_error]
 #[proc_macro]
 pub fn collection(input: TokenStream) -> TokenStream {
@@ -576,12 +593,35 @@ pub fn collection(input: TokenStream) -> TokenStream {
 
 /// Generate an anonymous struct which implements [`kas::CellCollection`]
 ///
-/// Each item must be either a string literal (inferred as a static label) or a
-/// widget (implements [`kas::Widget`](https://docs.rs/kas/latest/kas/trait.Widget.html)).
+/// # Syntax
+///
+/// > _Collection_ :\
+/// > &nbsp;&nbsp; `collection!` `[` _ItemArms_<sup>\?</sup> `]`
+/// >
+/// > _ItemArms_ :\
+/// > &nbsp;&nbsp; (_ItemArm_ `,`)<sup>\*</sup> _ItemArm_ `,`<sup>\?</sup>
+/// >
+/// > _ItemArm_ :\
+/// > &nbsp;&nbsp; `(` _Column_ `,` _Row_ `)` `=>` _Item_
+/// >
+/// > _Column_, _Row_ :\
+/// > &nbsp;&nbsp; _LitInt_ ( `..` | `..=` _LitInt_ )<sup>\?</sup>
+///
+/// In this case, _Item_ may be:
+///
+/// -   A string literal (interpreted as a label widget), optionally followed by
+///     an [`align`] or [`pack`] method call
+/// -   An expression yielding an object implementing `Widget<Data = _A>`
+///
+/// In case all _Item_ instances are a string literal, the data type of the
+/// `collection!` widget will be `()`; otherwise the data type of the widget is `_A`
+/// where `_A` is a generic type parameter of the widget.
 ///
 /// For example usage, see [`Grid`](https://docs.rs/kas/latest/kas/widgets/struct.Grid.html).
 ///
 /// [`kas::CellCollection`]: https://docs.rs/kas/latest/kas/trait.CellCollection.html
+/// [`align`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.align
+/// [`pack`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.pack
 #[proc_macro_error]
 #[proc_macro]
 pub fn cell_collection(input: TokenStream) -> TokenStream {
