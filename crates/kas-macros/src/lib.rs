@@ -450,9 +450,10 @@ impl ExpandLayout for make_layout::Tree {
     }
 }
 
-/// Make an aligned column widget
+/// Define a [`Grid`] as a sequence of rows
 ///
-/// Items support [widget layout syntax](macro@widget#layout-1).
+/// This is just special convenience syntax for defining a [`Grid`]. See also
+/// [`grid!`] documentation.
 ///
 /// # Example
 ///
@@ -462,15 +463,19 @@ impl ExpandLayout for make_layout::Tree {
 ///     row!["three", "four"],
 /// ];
 /// ```
+///
+/// [`[Grid`]: https://docs.rs/kas/latest/kas/widgets/struct.Grid.html
+/// [`grid!`]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.grid.html
 #[proc_macro_error]
 #[proc_macro]
 pub fn aligned_column(input: TokenStream) -> TokenStream {
     parse_macro_input!(input with make_layout::Tree::aligned_column).expand_layout("_AlignedColumn")
 }
 
-/// Make an aligned row widget
+/// Define a [`Grid`] as a sequence of columns
 ///
-/// Items support [widget layout syntax](macro@widget#layout-1).
+/// This is just special convenience syntax for defining a [`Grid`]. See also
+/// [`grid!`] documentation.
 ///
 /// # Example
 ///
@@ -480,6 +485,9 @@ pub fn aligned_column(input: TokenStream) -> TokenStream {
 ///     column!["three", "four"],
 /// ];
 /// ```
+///
+/// [`[Grid`]: https://docs.rs/kas/latest/kas/widgets/struct.Grid.html
+/// [`grid!`]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.grid.html
 #[proc_macro_error]
 #[proc_macro]
 pub fn aligned_row(input: TokenStream) -> TokenStream {
