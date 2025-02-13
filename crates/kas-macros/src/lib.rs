@@ -208,7 +208,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// implementation of `Tile::nav_next`, with a couple of exceptions
 /// (where macro-time analysis is insufficient to implement this method).
 ///
-/// > [_Column_], [_Row_], [_List_] [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_], [_Float_], [_Frame_] :\
+/// > [_Column_], [_Row_], [_List_] [_AlignedColumn_], [_AlignedRow_], [_Grid_], [_Float_], [_Frame_] :\
 /// > &nbsp;&nbsp; These stand-alone macros are explicitly supported in this position.\
 ///
 /// > _Single_ :\
@@ -323,6 +323,8 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// [_Float_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.float.html
 /// [_Frame_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.frame.html
 /// [_Grid_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.grid.html
+/// [_AlignedColumn_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.aligned_column.html
+/// [_AlignedRow_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.aligned_row.html
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
@@ -433,65 +435,6 @@ pub fn widget_index(input: TokenStream) -> TokenStream {
 pub fn widget_set_rect(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as visitors::UnscopedInput);
     input.into_token_stream().into()
-}
-
-trait ExpandLayout {
-    fn expand_layout(self, name: &str) -> TokenStream;
-}
-impl ExpandLayout for make_layout::Tree {
-    fn expand_layout(self, name: &str) -> TokenStream {
-        match self.expand_as_widget(name) {
-            Ok(toks) => toks.into(),
-            Err(err) => {
-                emit_call_site_error!(err);
-                TokenStream::default()
-            }
-        }
-    }
-}
-
-/// Define a [`Grid`] as a sequence of rows
-///
-/// This is just special convenience syntax for defining a [`Grid`]. See also
-/// [`grid!`] documentation.
-///
-/// # Example
-///
-/// ```ignore
-/// let my_widget = kas::aligned_column! [
-///     row!["one", "two"],
-///     row!["three", "four"],
-/// ];
-/// ```
-///
-/// [`[Grid`]: https://docs.rs/kas/latest/kas/widgets/struct.Grid.html
-/// [`grid!`]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.grid.html
-#[proc_macro_error]
-#[proc_macro]
-pub fn aligned_column(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input with make_layout::Tree::aligned_column).expand_layout("_AlignedColumn")
-}
-
-/// Define a [`Grid`] as a sequence of columns
-///
-/// This is just special convenience syntax for defining a [`Grid`]. See also
-/// [`grid!`] documentation.
-///
-/// # Example
-///
-/// ```ignore
-/// let my_widget = kas::aligned_row! [
-///     column!["one", "two"],
-///     column!["three", "four"],
-/// ];
-/// ```
-///
-/// [`[Grid`]: https://docs.rs/kas/latest/kas/widgets/struct.Grid.html
-/// [`grid!`]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.grid.html
-#[proc_macro_error]
-#[proc_macro]
-pub fn aligned_row(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input with make_layout::Tree::aligned_row).expand_layout("_AlignedRow")
 }
 
 /// Generate an anonymous struct which implements [`kas::Collection`]

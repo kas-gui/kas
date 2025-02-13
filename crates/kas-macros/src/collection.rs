@@ -11,13 +11,17 @@ use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
-use syn::{braced, parenthesized};
+use syn::{braced, bracketed, parenthesized};
 use syn::{Expr, Ident, LitInt, LitStr, Token};
 
 #[allow(non_camel_case_types)]
 mod kw {
     syn::custom_keyword!(align);
     syn::custom_keyword!(pack);
+    syn::custom_keyword!(aligned_column);
+    syn::custom_keyword!(aligned_row);
+    syn::custom_keyword!(column);
+    syn::custom_keyword!(row);
 }
 
 #[derive(Default)]
@@ -212,37 +216,85 @@ impl Parse for Collection {
 }
 
 impl Parse for CellCollection {
-    fn parse(inner: ParseStream) -> Result<Self> {
+    fn parse(input: ParseStream) -> Result<Self> {
+        if input.peek(kw::aligned_column) {
+            let _: kw::aligned_column = input.parse()?;
+            return Self::parse_aligned::<kw::row>(input, false);
+        } else if input.peek(kw::aligned_row) {
+            let _: kw::aligned_row = input.parse()?;
+            return Self::parse_aligned::<kw::column>(input, true);
+        }
+
         let mut gen = NameGenerator::default();
 
         let mut cells = vec![];
         let mut items = vec![];
-        while !inner.is_empty() {
-            cells.push(inner.parse()?);
-            let _: Token![=>] = inner.parse()?;
+        while !input.is_empty() {
+            cells.push(input.parse()?);
+            let _: Token![=>] = input.parse()?;
 
             let item;
             let require_comma;
-            if inner.peek(syn::token::Brace) {
-                let inner2;
-                let _ = braced!(inner2 in inner);
-                item = Item::parse(&inner2, &mut gen)?;
+            if input.peek(syn::token::Brace) {
+                let inner;
+                let _ = braced!(inner in input);
+                item = Item::parse(&inner, &mut gen)?;
                 require_comma = false;
             } else {
-                item = Item::parse(inner, &mut gen)?;
+                item = Item::parse(input, &mut gen)?;
                 require_comma = true;
             }
             items.push(item);
 
-            if inner.is_empty() {
+            if input.is_empty() {
                 break;
             }
 
-            if let Err(e) = inner.parse::<Token![,]>() {
+            if let Err(e) = input.parse::<Token![,]>() {
                 if require_comma {
                     return Err(e);
                 }
             }
+        }
+
+        Ok(CellCollection(cells, Collection(items)))
+    }
+}
+
+impl CellCollection {
+    fn parse_aligned<Kw: Parse>(input: ParseStream, transmute: bool) -> Result<Self> {
+        let mut gen = NameGenerator::default();
+        let mut cells = vec![];
+        let mut items = vec![];
+
+        let mut row = 0;
+        while !input.is_empty() {
+            let _: Kw = input.parse()?;
+            let _: Token![!] = input.parse()?;
+
+            let inner;
+            let _ = bracketed!(inner in input);
+            let mut col = 0;
+            while !inner.is_empty() {
+                let (mut a, mut b) = (col, row);
+                if transmute {
+                    (a, b) = (b, a);
+                }
+                cells.push(CellInfo::new(a, b));
+                items.push(Item::parse(&inner, &mut gen)?);
+
+                if inner.is_empty() {
+                    break;
+                }
+                let _: Token![,] = inner.parse()?;
+                col += 1;
+            }
+
+            if input.is_empty() {
+                break;
+            }
+            let _: Token![,] = input.parse()?;
+            row += 1;
         }
 
         Ok(CellCollection(cells, Collection(items)))

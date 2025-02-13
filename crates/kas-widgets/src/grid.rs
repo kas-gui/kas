@@ -82,6 +82,52 @@ macro_rules! grid {
     };
 }
 
+/// Define a [`Grid`] as a sequence of rows
+///
+/// This is just special convenience syntax for defining a [`Grid`]. See also
+/// [`grid!`] documentation.
+///
+/// # Example
+///
+/// ```
+/// let my_widget = kas_widgets::aligned_column! [
+///     row!["one", "two"],
+///     row!["three", "four"],
+/// ];
+/// ```
+#[macro_export]
+macro_rules! aligned_column {
+    () => {
+        $crate::Grid::new(::kas::cell_collection! [])
+    };
+    ($(row![$($ee:expr),* $(,)?]),+ $(,)?) => {
+        $crate::Grid::new(::kas::cell_collection![aligned_column $(row![$($ee),*]),+])
+    };
+}
+
+/// Define a [`Grid`] as a sequence of columns
+///
+/// This is just special convenience syntax for defining a [`Grid`]. See also
+/// [`grid!`] documentation.
+///
+/// # Example
+///
+/// ```
+/// let my_widget = kas_widgets::aligned_row! [
+///     column!["one", "two"],
+///     column!["three", "four"],
+/// ];
+/// ```
+#[macro_export]
+macro_rules! aligned_row {
+    () => {
+        $crate::Grid::new(::kas::cell_collection! [])
+    };
+    ($(column![$($ee:expr),* $(,)?]),+ $(,)?) => {
+        $crate::Grid::new(::kas::cell_collection![aligned_row $(column![$($ee),*]),+])
+    };
+}
+
 impl_scope! {
     /// A generic grid widget
     ///
