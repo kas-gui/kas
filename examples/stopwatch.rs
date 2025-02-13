@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use kas::decorations::Decorations;
 use kas::prelude::*;
-use kas::widgets::{format_data, row, Adapt, Button};
+use kas::widgets::{format_data, row, Button};
 
 #[derive(Clone, Debug)]
 struct MsgReset;
@@ -29,7 +29,7 @@ fn make_window() -> impl Widget<Data = ()> {
         Button::label_msg("&start / &stop", MsgStart).map_any(),
     ];
 
-    Adapt::new(ui, Timer::default())
+    ui.with_state(Timer::default())
         .on_configure(|cx, _| cx.enable_alt_bypass(true))
         .on_message(|_, timer, MsgReset| *timer = Timer::default())
         .on_message(|cx, timer, MsgStart| {

@@ -25,7 +25,7 @@ stable = ["minimal", "clipboard", "markdown", "shaping", "spawn", "x11", "serde"
 # Enables all "recommended" features for nightly rustc
 nightly = ["stable", "nightly-diagnostics"]
 # Additional, less recommendation-worthy features
-experimental = ["dark-light", "recursive-layout-widgets", "unsafe_node"]
+experimental = ["dark-light", "unsafe_node"]
 
 # Enables better proc-macro diagnostics (including warnings); nightly only.
 nightly-diagnostics = ["kas-macros/nightly"]
@@ -84,9 +84,6 @@ dark-light = ["dep:dark-light"]
 
 # Support spawning async tasks
 spawn = ["dep:async-global-executor"]
-
-# Optimize generated layout widgets
-recursive-layout-widgets = ["kas-macros/recursive-layout-widgets"]
 
 # Optimize Node using unsafe code
 unsafe_node = []

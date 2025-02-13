@@ -3,8 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::collection::{CellInfo, GridDimensions, NameGenerator, StorIdent};
-use crate::widget;
+use crate::collection::{CellInfo, GridDimensions, NameGenerator};
 use crate::widget_args::{Child, ChildIdent};
 use proc_macro2::{Span, TokenStream as Toks};
 use proc_macro_error2::emit_error;
@@ -29,7 +28,6 @@ mod kw {
     custom_keyword!(center);
     custom_keyword!(stretch);
     custom_keyword!(frame);
-    custom_keyword!(button);
     custom_keyword!(list);
     custom_keyword!(grid);
     custom_keyword!(default);
@@ -38,12 +36,12 @@ mod kw {
     custom_keyword!(aligned_column);
     custom_keyword!(aligned_row);
     custom_keyword!(float);
-    custom_keyword!(non_navigable);
     custom_keyword!(px);
     custom_keyword!(em);
-    custom_keyword!(style);
-    custom_keyword!(color);
     custom_keyword!(map_any);
+    custom_keyword!(with_direction);
+    custom_keyword!(with_style);
+    custom_keyword!(with_background);
 }
 
 #[derive(Default)]
@@ -67,7 +65,7 @@ impl Tree {
         self.0.generate(core_path)
     }
 
-    /// Generate implementation of nav_next (excludes fn signature)
+    /// Generate implementation of nav_next
     pub fn nav_next<'a, I: Clone + Iterator<Item = &'a Child>>(
         &self,
         children: I,
@@ -75,241 +73,23 @@ impl Tree {
         let mut v = Vec::new();
         self.0.nav_next(children, &mut v).map(|()| {
             quote! {
-                let mut iter = [#(#v),*].into_iter();
-                if !reverse {
-                    if let Some(wi) = from {
-                        let _ = iter.find(|x| *x == wi);
+                fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+                    let mut iter = [#(#v),*].into_iter();
+                    if !reverse {
+                        if let Some(wi) = from {
+                            let _ = iter.find(|x| *x == wi);
+                        }
+                        iter.next()
+                    } else {
+                        let mut iter = iter.rev();
+                        if let Some(wi) = from {
+                            let _ = iter.find(|x| *x == wi);
+                        }
+                        iter.next()
                     }
-                    iter.next()
-                } else {
-                    let mut iter = iter.rev();
-                    if let Some(wi) = from {
-                        let _ = iter.find(|x| *x == wi);
-                    }
-                    iter.next()
                 }
             }
         })
-    }
-
-    /// Synthesize an entire widget from the layout
-    pub fn expand_as_widget(self, widget_name: &str) -> Result<Toks> {
-        let mut children = Vec::new();
-        let data_ty: syn::Type = syn::parse_quote! { _Data };
-        let stor_defs = self.storage_fields(&mut children, &data_ty);
-        let stor_ty = &stor_defs.ty_toks;
-        let stor_def = &stor_defs.def_toks;
-
-        let name = Ident::new(widget_name, Span::call_site());
-        let core_path = quote! { self };
-        let (impl_generics, impl_target) = if stor_defs.used_data_ty {
-            (quote! { <_Data> }, quote! { #name <_Data> })
-        } else {
-            (quote! {}, quote! { #name })
-        };
-
-        let count = children.len();
-        let num_children = quote! {
-            fn num_children(&self) -> usize {
-                #count
-            }
-        };
-
-        let mut get_rules = quote! {};
-        for (index, child) in children.iter().enumerate() {
-            get_rules.append_all(child.ident.get_rule(&core_path, index));
-        }
-
-        let core_impl = widget::impl_core_methods(widget_name, &core_path);
-        let widget_impl = widget::impl_widget(
-            &impl_generics,
-            &impl_target,
-            &data_ty,
-            &core_path,
-            &children,
-            true,
-        );
-
-        let layout_visitor = self.layout_visitor(&core_path)?;
-        let nav_next = match self.nav_next(children.iter()) {
-            Ok(result) => Some(result),
-            Err((span, msg)) => {
-                emit_error!(span, "unable to generate `fn Tile::nav_next`: {}", msg);
-                None
-            }
-        };
-
-        let toks = quote! {{
-            struct #name #impl_generics {
-                _rect: ::kas::geom::Rect,
-                _id: ::kas::Id,
-                #[cfg(debug_assertions)]
-                status: ::kas::WidgetStatus,
-                #stor_ty
-            }
-
-            impl #impl_generics ::kas::layout::LayoutVisitor for #impl_target {
-                fn layout_visitor(&mut self) -> ::kas::layout::Visitor<impl ::kas::Layout> {
-                    use ::kas::layout;
-                    #layout_visitor
-                }
-            }
-
-            impl #impl_generics ::kas::Layout for #impl_target {
-                fn size_rules(
-                    &mut self,
-                    sizer: ::kas::theme::SizeCx,
-                    axis: ::kas::layout::AxisInfo,
-                ) -> ::kas::layout::SizeRules {
-                    #[cfg(debug_assertions)]
-                    #core_path.status.size_rules(&#core_path._id, axis);
-                    ::kas::layout::LayoutVisitor::layout_visitor(self).size_rules(sizer, axis)
-                }
-
-                fn set_rect(
-                    &mut self,
-                    cx: &mut ::kas::event::ConfigCx,
-                    rect: ::kas::geom::Rect,
-                    hints: ::kas::layout::AlignHints,
-                ) {
-                    #[cfg(debug_assertions)]
-                    #core_path.status.set_rect(&#core_path._id);
-
-                    #core_path._rect = rect;
-                    ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
-                }
-
-                fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-                    ::kas::Tile::rect(self).contains(coord).then(|| ::kas::Tile::probe(self, coord))
-                }
-
-                fn draw(&mut self, mut draw: ::kas::theme::DrawCx) {
-                    #[cfg(debug_assertions)]
-                    #core_path.status.require_rect(&#core_path._id);
-
-                    draw.set_id(::kas::Tile::id(self));
-
-                    ::kas::layout::LayoutVisitor::layout_visitor(self).draw(draw);
-                }
-            }
-
-            impl #impl_generics ::kas::Tile for #impl_target {
-                #core_impl
-                #num_children
-                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Tile> {
-                    match index {
-                        #get_rules
-                        _ => None,
-                    }
-                }
-
-                fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-                    #nav_next
-                }
-
-                #[inline]
-                fn probe(&mut self, coord: ::kas::geom::Coord) -> ::kas::Id {
-                    #[cfg(debug_assertions)]
-                    #core_path.status.require_rect(&#core_path._id);
-
-                    let coord = coord + ::kas::Tile::translation(self);
-                    ::kas::layout::LayoutVisitor::layout_visitor(self)
-                        .try_probe(coord)
-                        .unwrap_or_else(|| ::kas::Tile::id(self))
-                }
-            }
-
-            impl #impl_generics ::kas::Events for #impl_target {
-                fn handle_event(
-                    &mut self,
-                    _: &mut ::kas::event::EventCx,
-                    _: &Self::Data,
-                    _: ::kas::event::Event,
-                ) -> ::kas::event::IsUsed {
-                    #[cfg(debug_assertions)]
-                    #core_path.status.require_rect(&#core_path._id);
-                    ::kas::event::Unused
-                }
-            }
-
-            #widget_impl
-
-            #name {
-                _rect: Default::default(),
-                _id: Default::default(),
-                #[cfg(debug_assertions)]
-                status: Default::default(),
-                #stor_def
-            }
-        }};
-        // println!("{}", toks);
-        Ok(toks)
-    }
-
-    /// Parse a column (contents only)
-    pub fn column(inner: ParseStream) -> Result<Self> {
-        let mut core_gen = NameGenerator::default();
-        let stor = core_gen.next();
-        let list = parse_layout_items(inner, &mut core_gen, false)?;
-        Ok(Tree(Layout::List(stor.into(), Direction::Down, list)))
-    }
-
-    /// Parse a row (contents only)
-    pub fn row(inner: ParseStream) -> Result<Self> {
-        let mut core_gen = NameGenerator::default();
-        let stor = core_gen.next();
-        let list = parse_layout_items(inner, &mut core_gen, false)?;
-        Ok(Tree(Layout::List(stor.into(), Direction::Right, list)))
-    }
-
-    /// Parse an aligned column (contents only)
-    pub fn aligned_column(inner: ParseStream) -> Result<Self> {
-        let mut core_gen = NameGenerator::default();
-        let stor = core_gen.next();
-        Ok(Tree(parse_grid_as_list_of_lists::<kw::row>(
-            stor.into(),
-            inner,
-            &mut core_gen,
-            true,
-            false,
-        )?))
-    }
-
-    /// Parse an aligned row (contents only)
-    pub fn aligned_row(inner: ParseStream) -> Result<Self> {
-        let mut core_gen = NameGenerator::default();
-        let stor = core_gen.next();
-        Ok(Tree(parse_grid_as_list_of_lists::<kw::column>(
-            stor.into(),
-            inner,
-            &mut core_gen,
-            false,
-            false,
-        )?))
-    }
-
-    /// Parse direction, list
-    pub fn list(inner: ParseStream) -> Result<Self> {
-        let mut core_gen = NameGenerator::default();
-        let stor = core_gen.next();
-        let dir: Direction = inner.parse()?;
-        let _: Token![,] = inner.parse()?;
-        let list = parse_layout_list(inner, &mut core_gen, false)?;
-        Ok(Tree(Layout::List(stor.into(), dir, list)))
-    }
-
-    /// Parse a float (contents only)
-    pub fn float(inner: ParseStream) -> Result<Self> {
-        let mut core_gen = NameGenerator::default();
-        let list = parse_layout_items(inner, &mut core_gen, false)?;
-        Ok(Tree(Layout::Float(list)))
-    }
-
-    /// Parse a grid (contents only)
-    pub fn grid(inner: ParseStream) -> Result<Self> {
-        let mut core_gen = NameGenerator::default();
-        let stor = core_gen.next();
-        Ok(Tree(parse_grid(stor.into(), inner, &mut core_gen, false)?))
     }
 }
 
@@ -353,13 +133,11 @@ enum Layout {
     Pack(Box<Layout>, Pack),
     Single(ExprMember),
     Widget(Ident, Expr),
-    Frame(StorIdent, Box<Layout>, Expr),
-    Button(StorIdent, Box<Layout>, Expr),
-    List(StorIdent, Direction, LayoutList<()>),
+    Frame(Ident, Box<Layout>, Expr, Expr),
+    List(Ident, Direction, LayoutList<()>),
     Float(LayoutList<()>),
-    Grid(StorIdent, GridDimensions, LayoutList<CellInfo>),
+    Grid(Ident, GridDimensions, LayoutList<CellInfo>),
     Label(Ident, LitStr),
-    NonNavigable(Box<Layout>),
     MapAny(Box<Layout>, MapAny),
 }
 
@@ -393,45 +171,13 @@ bitflags::bitflags! {
 impl Parse for Tree {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut core_gen = NameGenerator::default();
-        Ok(Tree(Layout::parse(input, &mut core_gen, true)?))
+        Ok(Tree(Layout::parse(input, &mut core_gen)?))
     }
 }
 
 impl Layout {
-    fn parse(input: ParseStream, core_gen: &mut NameGenerator, _recurse: bool) -> Result<Self> {
-        #[cfg(feature = "recursive-layout-widgets")]
-        let _recurse = true;
-
-        #[cfg(not(feature = "recursive-layout-widgets"))]
-        if input.peek2(Token![!]) {
-            let input2 = input.fork();
-            let mut temp_gen = NameGenerator::default();
-            if Self::parse_macro_like(&input2, &mut temp_gen).is_ok() {
-                loop {
-                    if let Ok(dot_token) = input2.parse::<Token![.]>() {
-                        if input2.peek(kw::map_any) {
-                            let _ = MapAny::parse(dot_token, &input2)?;
-                            continue;
-                        } else if input2.peek(kw::align) {
-                            let _ = Align::parse(dot_token, &input2)?;
-                            continue;
-                        } else if input2.peek(kw::pack) {
-                            let _ = Pack::parse(dot_token, &input2, &mut temp_gen)?;
-                            continue;
-                        } else if let Ok(ident) = input2.parse::<Ident>() {
-                            proc_macro_error2::emit_warning!(
-                                ident, "this method call is incompatible with feature `recursive-layout-widgets`";
-                                note = "extract operand from layout expression or wrap with braces",
-                            );
-                        }
-                    }
-
-                    break;
-                }
-            }
-        }
-
-        let mut layout = if _recurse && input.peek2(Token![!]) {
+    fn parse(input: ParseStream, core_gen: &mut NameGenerator) -> Result<Self> {
+        let mut layout = if input.peek2(Token![!]) {
             Self::parse_macro_like(input, core_gen)?
         } else if input.peek(Token![self]) {
             Layout::Single(input.parse()?)
@@ -456,19 +202,28 @@ impl Layout {
                     let pack = Pack::parse(dot_token, input, core_gen)?;
                     layout = Layout::Pack(Box::new(layout), pack);
                 } else if let Ok(ident) = input.parse::<Ident>() {
+                    let note_msg = if matches!(&layout, &Layout::Frame(_, _, _, _)) {
+                        "supported methods on layout objects: `map_any`, `align`, `pack`, `with_style`, `with_background`"
+                    } else {
+                        "supported methods on layout objects: `map_any`, `align`, `pack`"
+                    };
                     emit_error!(
                         ident, "method not supported here";
-                        note = "supported methods on layout objects: `map_any`, `align`, `pack`",
+                        note = note_msg,
                     );
 
                     // Clear remainder of input stream to avoid a redundant error
-                    input.step(|cursor| {
-                        let mut rest = *cursor;
-                        while let Some((_, next)) = rest.token_tree() {
-                            rest = next;
-                        }
-                        Ok(((), rest))
-                    })?;
+                    let turbofish = if input.peek(Token![::]) {
+                        Some(syn::AngleBracketedGenericArguments::parse_turbofish(input)?)
+                    } else {
+                        None
+                    };
+
+                    if turbofish.is_some() || input.peek(syn::token::Paren) {
+                        let inner;
+                        let _ = parenthesized!(inner in input);
+                        let _ = inner.parse_terminated(Expr::parse, Token![,])?;
+                    }
 
                     // Continue with macro expansion to minimise secondary errors
                     return Ok(layout);
@@ -489,104 +244,95 @@ impl Layout {
         if lookahead.peek(kw::frame) {
             let _: kw::frame = input.parse()?;
             let _: Token![!] = input.parse()?;
-            let stor = core_gen.parse_or_next(input)?;
+            let stor = core_gen.next();
 
             let inner;
             let _ = parenthesized!(inner in input);
-            let layout = Layout::parse(&inner, core_gen, true)?;
+            let layout = Layout::parse(&inner, core_gen)?;
 
-            let style: Expr = if !inner.is_empty() {
-                let _: Token![,] = inner.parse()?;
-                let _: kw::style = inner.parse()?;
-                let _: Token![=] = inner.parse()?;
-                inner.parse()?
-            } else {
-                syn::parse_quote! { ::kas::theme::FrameStyle::Frame }
-            };
+            let mut style = None;
+            let mut bg = None;
+            while input.peek(Token![.]) {
+                if style.is_none() && input.peek2(kw::with_style) {
+                    let _: Token![.] = input.parse()?;
+                    let _: kw::with_style = input.parse()?;
 
-            Ok(Layout::Frame(stor, Box::new(layout), style))
-        } else if lookahead.peek(kw::button) {
-            let _: kw::button = input.parse()?;
-            let _: Token![!] = input.parse()?;
-            let stor = core_gen.parse_or_next(input)?;
+                    let inner;
+                    let _ = parenthesized!(inner in input);
+                    style = Some(inner.parse()?);
+                } else if bg.is_none() && input.peek2(kw::with_background) {
+                    let _: Token![.] = input.parse()?;
+                    let _: kw::with_background = input.parse()?;
 
-            let inner;
-            let _ = parenthesized!(inner in input);
-            let layout = Layout::parse(&inner, core_gen, true)?;
+                    let inner;
+                    let _ = parenthesized!(inner in input);
+                    bg = Some(inner.parse()?);
+                } else {
+                    break;
+                }
+            }
 
-            let color: Expr = if !inner.is_empty() {
-                let _: Token![,] = inner.parse()?;
-                let _: kw::color = inner.parse()?;
-                let _: Token![=] = inner.parse()?;
-                inner.parse()?
-            } else {
-                syn::parse_quote! { None }
-            };
+            let style =
+                style.unwrap_or_else(|| syn::parse_quote! { ::kas::theme::FrameStyle::Frame });
+            let bg = bg.unwrap_or_else(|| syn::parse_quote! { ::kas::theme::Background::Default });
 
-            Ok(Layout::Button(stor, Box::new(layout), color))
+            Ok(Layout::Frame(stor, Box::new(layout), style, bg))
         } else if lookahead.peek(kw::column) {
             let _: kw::column = input.parse()?;
             let _: Token![!] = input.parse()?;
-            let stor = core_gen.parse_or_next(input)?;
-            let list = parse_layout_list(input, core_gen, true)?;
+            let stor = core_gen.next();
+            let list = parse_layout_list(input, core_gen)?;
             Ok(Layout::List(stor, Direction::Down, list))
         } else if lookahead.peek(kw::row) {
             let _: kw::row = input.parse()?;
             let _: Token![!] = input.parse()?;
-            let stor = core_gen.parse_or_next(input)?;
-            let list = parse_layout_list(input, core_gen, true)?;
+            let stor = core_gen.next();
+            let list = parse_layout_list(input, core_gen)?;
             Ok(Layout::List(stor, Direction::Right, list))
         } else if lookahead.peek(kw::list) {
             let _: kw::list = input.parse()?;
             let _: Token![!] = input.parse()?;
-            let stor = core_gen.parse_or_next(input)?;
-            let inner;
-            let _ = parenthesized!(inner in input);
-            let dir: Direction = inner.parse()?;
-            let _: Token![,] = inner.parse()?;
-            let list = parse_layout_list(&inner, core_gen, true)?;
+            let stor = core_gen.next();
+            let list = parse_layout_list(input, core_gen)?;
+            let _: Token![.] = input.parse()?;
+            let _: kw::with_direction = input.parse()?;
+            let args;
+            let _ = parenthesized!(args in input);
+            let dir: Direction = args.parse()?;
             Ok(Layout::List(stor, dir, list))
         } else if lookahead.peek(kw::float) {
             let _: kw::float = input.parse()?;
             let _: Token![!] = input.parse()?;
-            let list = parse_layout_list(input, core_gen, true)?;
+            let list = parse_layout_list(input, core_gen)?;
             Ok(Layout::Float(list))
         } else if lookahead.peek(kw::aligned_column) {
             let _: kw::aligned_column = input.parse()?;
             let _: Token![!] = input.parse()?;
-            let stor = core_gen.parse_or_next(input)?;
+            let stor = core_gen.next();
 
             let inner;
             let _ = bracketed!(inner in input);
             Ok(parse_grid_as_list_of_lists::<kw::row>(
-                stor, &inner, core_gen, true, true,
+                stor, &inner, core_gen, true,
             )?)
         } else if lookahead.peek(kw::aligned_row) {
             let _: kw::aligned_row = input.parse()?;
             let _: Token![!] = input.parse()?;
-            let stor = core_gen.parse_or_next(input)?;
+            let stor = core_gen.next();
 
             let inner;
             let _ = bracketed!(inner in input);
             Ok(parse_grid_as_list_of_lists::<kw::column>(
-                stor, &inner, core_gen, false, true,
+                stor, &inner, core_gen, false,
             )?)
         } else if lookahead.peek(kw::grid) {
             let _: kw::grid = input.parse()?;
             let _: Token![!] = input.parse()?;
-            let stor = core_gen.parse_or_next(input)?;
+            let stor = core_gen.next();
 
             let inner;
             let _ = braced!(inner in input);
-            Ok(parse_grid(stor, &inner, core_gen, true)?)
-        } else if lookahead.peek(kw::non_navigable) {
-            let _: kw::non_navigable = input.parse()?;
-            let _: Token![!] = input.parse()?;
-
-            let inner;
-            let _ = parenthesized!(inner in input);
-            let layout = Layout::parse(&inner, core_gen, true)?;
-            Ok(Layout::NonNavigable(Box::new(layout)))
+            Ok(parse_grid(stor, &inner, core_gen)?)
         } else {
             let ident = core_gen.next();
             let expr = input.parse()?;
@@ -595,28 +341,20 @@ impl Layout {
     }
 }
 
-fn parse_layout_list(
-    input: ParseStream,
-    core_gen: &mut NameGenerator,
-    recurse: bool,
-) -> Result<LayoutList<()>> {
+fn parse_layout_list(input: ParseStream, core_gen: &mut NameGenerator) -> Result<LayoutList<()>> {
     let inner;
     let _ = bracketed!(inner in input);
-    parse_layout_items(&inner, core_gen, recurse)
+    parse_layout_items(&inner, core_gen)
 }
 
-fn parse_layout_items(
-    inner: ParseStream,
-    core_gen: &mut NameGenerator,
-    recurse: bool,
-) -> Result<LayoutList<()>> {
+fn parse_layout_items(inner: ParseStream, core_gen: &mut NameGenerator) -> Result<LayoutList<()>> {
     let mut list = vec![];
     let mut gen2 = NameGenerator::default();
     while !inner.is_empty() {
         list.push(ListItem {
             cell: (),
             stor: gen2.next(),
-            layout: Layout::parse(inner, core_gen, recurse)?,
+            layout: Layout::parse(inner, core_gen)?,
         });
 
         if inner.is_empty() {
@@ -630,11 +368,10 @@ fn parse_layout_items(
 }
 
 fn parse_grid_as_list_of_lists<KW: Parse>(
-    stor: StorIdent,
+    stor: Ident,
     inner: ParseStream,
     core_gen: &mut NameGenerator,
     row_major: bool,
-    recurse: bool,
 ) -> Result<Layout> {
     let (mut col, mut row) = (0, 0);
     let mut dim = GridDimensions::default();
@@ -651,7 +388,7 @@ fn parse_grid_as_list_of_lists<KW: Parse>(
         while !inner2.is_empty() {
             let cell = CellInfo::new(col, row);
             dim.update(&cell);
-            let layout = Layout::parse(&inner2, core_gen, recurse)?;
+            let layout = Layout::parse(&inner2, core_gen)?;
             cells.push(ListItem {
                 cell,
                 stor: gen2.next(),
@@ -687,12 +424,7 @@ fn parse_grid_as_list_of_lists<KW: Parse>(
     Ok(Layout::Grid(stor, dim, LayoutList(cells)))
 }
 
-fn parse_grid(
-    stor: StorIdent,
-    inner: ParseStream,
-    core_gen: &mut NameGenerator,
-    recurse: bool,
-) -> Result<Layout> {
+fn parse_grid(stor: Ident, inner: ParseStream, core_gen: &mut NameGenerator) -> Result<Layout> {
     let mut dim = GridDimensions::default();
     let mut gen2 = NameGenerator::default();
     let mut cells = vec![];
@@ -706,10 +438,10 @@ fn parse_grid(
         if inner.peek(syn::token::Brace) {
             let inner2;
             let _ = braced!(inner2 in inner);
-            layout = Layout::parse(&inner2, core_gen, recurse)?;
+            layout = Layout::parse(&inner2, core_gen)?;
             require_comma = false;
         } else {
-            layout = Layout::parse(inner, core_gen, recurse)?;
+            layout = Layout::parse(inner, core_gen)?;
             require_comma = true;
         }
         cells.push(ListItem {
@@ -848,7 +580,7 @@ struct Pack {
     pub kw: kw::pack,
     pub paren_token: token::Paren,
     pub hints: Expr,
-    pub stor: StorIdent,
+    pub stor: Ident,
 }
 impl Pack {
     fn parse(
@@ -864,7 +596,7 @@ impl Pack {
             kw,
             paren_token,
             hints: content.parse()?,
-            stor: core_gen.next().into(),
+            stor: core_gen.next(),
         })
     }
 
@@ -882,7 +614,7 @@ impl Pack {
 impl Layout {
     fn append_fields(&self, fields: &mut StorageFields, children: &mut Vec<Child>, data_ty: &Type) {
         match self {
-            Layout::Align(layout, _) | Layout::NonNavigable(layout) => {
+            Layout::Align(layout, _) => {
                 layout.append_fields(fields, children, data_ty);
             }
             Layout::Single(_) => (),
@@ -907,7 +639,7 @@ impl Layout {
                     .append_all(quote_spanned! {span=> #ident: Box::new(#expr), });
                 fields.used_data_ty = true;
             }
-            Layout::Frame(stor, layout, _) | Layout::Button(stor, layout, _) => {
+            Layout::Frame(stor, layout, _, _) => {
                 fields
                     .ty_toks
                     .append_all(quote! { #stor: ::kas::layout::FrameStorage, });
@@ -1008,16 +740,10 @@ impl Layout {
             Layout::Widget(ident, _) => quote! {
                 layout::Visitor::single(&mut #core_path.#ident)
             },
-            Layout::Frame(stor, layout, style) => {
+            Layout::Frame(stor, layout, style, bg) => {
                 let inner = layout.generate(core_path)?;
                 quote! {
-                    layout::Visitor::frame(&mut #core_path.#stor, #inner, #style)
-                }
-            }
-            Layout::Button(stor, layout, color) => {
-                let inner = layout.generate(core_path)?;
-                quote! {
-                    layout::Visitor::button(&mut #core_path.#stor, #inner, #color)
+                    layout::Visitor::frame(&mut #core_path.#stor, #inner, #style, #bg)
                 }
             }
             Layout::List(stor, dir, list) => {
@@ -1038,16 +764,13 @@ impl Layout {
             Layout::Label(stor, _) => {
                 quote! { layout::Visitor::single(&mut #core_path.#stor) }
             }
-            Layout::NonNavigable(layout) | Layout::MapAny(layout, _) => {
-                return layout.generate(core_path)
-            }
+            Layout::MapAny(layout, _) => return layout.generate(core_path),
         })
     }
 
     /// Create a Vec enumerating all children in navigation order
     ///
     /// -   `output`: the result
-    /// -   `index`: the next widget's index
     fn nav_next<'a, I: Clone + Iterator<Item = &'a Child>>(
         &self,
         children: I,
@@ -1056,12 +779,8 @@ impl Layout {
         match self {
             Layout::Align(layout, _)
             | Layout::Pack(layout, _)
-            | Layout::Frame(_, layout, _)
+            | Layout::Frame(_, layout, _, _)
             | Layout::MapAny(layout, _) => layout.nav_next(children, output),
-            Layout::Button(_, _, _) | Layout::NonNavigable(_) => {
-                // Internals of a button are not navigable
-                Ok(())
-            }
             Layout::Single(m) => {
                 for (i, child) in children.enumerate() {
                     if let ChildIdent::Field(ref ident) = child.ident {

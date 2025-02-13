@@ -21,7 +21,7 @@ impl_scope! {
     /// This is a special variant of `Button` which sends a [`Select`] on press.
     #[widget {
         Data = ();
-        layout = frame!(self.label, style = FrameStyle::Tab);
+        layout = frame!(self.label).with_style(FrameStyle::Tab);
         navigable = true;
         hover_highlight = true;
     }]
@@ -99,10 +99,7 @@ impl_scope! {
     /// See also the main implementing widget: [`Stack`].
     #[impl_default(Self::new())]
     #[widget {
-        layout = list!(self.direction, [
-            self.stack,
-            self.tabs,
-        ]);
+        layout = list![self.stack, self.tabs].with_direction(self.direction);
     }]
     pub struct TabStack<W: Widget> {
         core: widget_core!(),

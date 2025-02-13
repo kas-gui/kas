@@ -71,6 +71,7 @@ pub mod dialog;
 pub mod edit;
 mod event_config;
 mod filler;
+mod float;
 mod frame;
 mod grid;
 mod grip;
@@ -94,8 +95,6 @@ mod stack;
 mod tab_stack;
 mod text;
 
-pub use kas_macros::{aligned_column, aligned_row, column, float, grid, list, row};
-
 pub use crate::image::Image;
 #[cfg(feature = "image")] pub use crate::image::ImageError;
 pub use button::Button;
@@ -104,6 +103,7 @@ pub use combobox::ComboBox;
 pub use edit::{EditBox, EditField, EditGuard};
 pub use event_config::EventConfig;
 pub use filler::Filler;
+pub use float::Float;
 pub use frame::Frame;
 pub use grid::Grid;
 pub use grip::{GripMsg, GripPart};

@@ -6,9 +6,9 @@
 //! Push-buttons
 
 use super::AccessLabel;
-use kas::draw::color::Rgb;
 use kas::event::Key;
 use kas::prelude::*;
+use kas::theme::{Background, FrameStyle};
 use std::fmt::Debug;
 
 impl_scope! {
@@ -17,14 +17,17 @@ impl_scope! {
     /// Default alignment of content is centered.
     #[widget {
         Data = W::Data;
-        layout = button!(self.inner, color = self.color);
+        layout = frame!(self.inner)
+            .with_style(FrameStyle::Button)
+            .with_background(self.bg)
+            .align(AlignHints::CENTER);
         navigable = true;
         hover_highlight = true;
     }]
     pub struct Button<W: Widget> {
         core: widget_core!(),
         key: Option<Key>,
-        color: Option<Rgb>,
+        bg: Background,
         #[widget]
         pub inner: W,
         on_press: Option<Box<dyn Fn(&mut EventCx, &W::Data)>>,
@@ -37,7 +40,7 @@ impl_scope! {
             Button {
                 core: Default::default(),
                 key: Default::default(),
-                color: None,
+                bg: Background::Default,
                 inner,
                 on_press: None,
             }
@@ -80,16 +83,20 @@ impl_scope! {
             self
         }
 
-        /// Set button color
-        pub fn set_color(&mut self, color: Option<Rgb>) {
-            self.color = color;
-        }
-
-        /// Set button color (chain style)
+        /// Set the frame background color (inline)
+        ///
+        /// The default background is [`Background::Default`].
+        #[inline]
         #[must_use]
-        pub fn with_color(mut self, color: Rgb) -> Self {
-            self.color = Some(color);
+        pub fn with_background(mut self, bg: Background) -> Self {
+            self.bg = bg;
             self
+        }
+    }
+
+    impl Tile for Self {
+        fn probe(&mut self, _: Coord) -> Id {
+            self.id()
         }
     }
 

@@ -35,7 +35,7 @@ stable = ["default", "x11", "serde", "toml", "yaml", "json", "ron", "macros_log"
 # Enables all "recommended" features for nightly rustc
 nightly = ["stable", "nightly-diagnostics", "kas-core/nightly"]
 # Additional, less recommendation-worthy features
-experimental = ["dark-light", "recursive-layout-widgets", "unsafe_node"]
+experimental = ["dark-light", "unsafe_node"]
 
 # Enable dynamic linking (faster linking via an extra run-time dependency):
 dynamic = ["dep:kas-dylib"]
@@ -113,21 +113,6 @@ wayland = ["kas-core/wayland"]
 
 # Support X11
 x11 = ["kas-core/x11"]
-
-# Optimize generated layout widgets
-#
-# Recursive layout macros allow the generation of complex layout widgets; for
-# example `row!["a", column!["b", "c"]]` yields a single layout widget (over
-# three `StrLabel` widgets) instead of two separate layout widgets.
-# (Note that this happens anyway in custom widget layout syntax where it is
-# requried to support reference to widget fields.)
-#
-# A limited number of method calls such as `.align(AlignHints::LEFT)` and
-# `.map_any()` are supported but are not linked correctly via rust-analyzer.
-#
-# Often results in unused import warnings, hence you may want to use
-# RUSTFLAGS="-A unused_imports".
-recursive-layout-widgets = ["kas-core/recursive-layout-widgets"]
 
 # Optimize Node using unsafe code
 unsafe_node = ["kas-core/unsafe_node"]

@@ -10,9 +10,10 @@
 //! not supported (i.e. **changes are not considered breaking**).
 
 use crate::event::ConfigCx;
-use crate::geom::Rect;
-use crate::layout::AlignHints;
-use crate::theme::{Text, TextClass};
+use crate::geom::{Rect, Size};
+use crate::layout::{AlignHints, AxisInfo, SizeRules};
+use crate::theme::{SizeCx, Text, TextClass};
+#[allow(unused)] use crate::Action;
 use crate::{Events, Layout, Widget};
 use kas_macros::{autoimpl, impl_scope, widget_set_rect};
 
@@ -91,6 +92,79 @@ impl_scope! {
                 _a: std::marker::PhantomData,
                 inner,
             }
+        }
+    }
+}
+
+impl_scope! {
+    /// Apply an alignment hint
+    ///
+    /// The inner widget chooses how to apply (or ignore) this hint.
+    ///
+    /// Usually, this type will be constructed through one of the methods on
+    /// [`AdaptWidget`](https://docs.rs/kas/latest/kas/widgets/trait.AdaptWidget.html).
+    #[widget{ derive = self.inner; }]
+    pub struct Align<W: Widget> {
+        pub inner: W,
+        /// Hints may be modified directly.
+        ///
+        /// Use [`Action::RESIZE`] to apply changes.
+        pub hints: AlignHints,
+    }
+
+    impl Self {
+        /// Construct
+        #[inline]
+        pub fn new(inner: W, hints: AlignHints) -> Self {
+            Align { inner, hints }
+        }
+    }
+
+    impl Layout for Self {
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+            self.inner.set_rect(cx, rect, self.hints.combine(hints));
+        }
+    }
+}
+
+impl_scope! {
+    /// Apply an alignment hint, squash and align the result
+    ///
+    /// The inner widget chooses how to apply (or ignore) this hint.
+    /// The widget is then prevented from stretching beyond its ideal size,
+    /// aligning within the available rect.
+    ///
+    /// Usually, this type will be constructed through one of the methods on
+    /// [`AdaptWidget`](https://docs.rs/kas/latest/kas/widgets/trait.AdaptWidget.html).
+    #[widget{ derive = self.inner; }]
+    pub struct Pack<W: Widget> {
+        pub inner: W,
+        /// Hints may be modified directly.
+        ///
+        /// Use [`Action::RESIZE`] to apply changes.
+        pub hints: AlignHints,
+        size: Size,
+    }
+
+    impl Self {
+        /// Construct
+        #[inline]
+        pub fn new(inner: W, hints: AlignHints) -> Self {
+            Pack { inner, hints, size: Size::ZERO }
+        }
+    }
+
+    impl Layout for Self {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            let rules = self.inner.size_rules(sizer, axis);
+            self.size.set_component(axis, rules.ideal_size());
+            rules
+        }
+
+        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
+            let align = self.hints.combine(hints).complete_default();
+            let rect = align.aligned_rect(self.size, rect);
+            self.inner.set_rect(cx, rect, hints);
         }
     }
 }

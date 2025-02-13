@@ -78,11 +78,13 @@ impl<'a> Visitor<Box<dyn Layout + 'a>> {
         storage: &'a mut FrameStorage,
         child: C,
         style: FrameStyle,
+        bg: Background,
     ) -> Visitor<impl Layout + 'a> {
         Visitor(Frame {
             child,
             storage,
             style,
+            bg,
         })
     }
 
@@ -340,6 +342,7 @@ struct Frame<'a, C: Layout> {
     child: C,
     storage: &'a mut FrameStorage,
     style: FrameStyle,
+    bg: Background,
 }
 
 impl<'a, C: Layout> Layout for Frame<'a, C> {
@@ -365,7 +368,7 @@ impl<'a, C: Layout> Layout for Frame<'a, C> {
     }
 
     fn draw(&mut self, mut draw: DrawCx) {
-        draw.frame(self.storage.rect, self.style, Background::Default);
+        draw.frame(self.storage.rect, self.style, self.bg);
         self.child.draw(draw);
     }
 }

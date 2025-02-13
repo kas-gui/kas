@@ -17,25 +17,44 @@ impl_scope! {
     /// Where [`Map`] allows mapping to a sub-set of input data, `Adapt` allows
     /// mapping to a super-set (including internal storage). Further, `Adapt`
     /// supports message handlers which mutate internal storage.
+    ///
+    /// # Inner data type
+    ///
+    /// Note that, at least for now, the type of state stored by `Adapt` must
+    /// equal the data type of the inner widget: `state: <W as Widget>::Data`.
+    /// Since `W::Data` must outlive `W` (for our purposes this is not much
+    /// different than if `Widget::Data: 'static`), we cannot support `W::Data`
+    /// like `(&A, &S)` where `state: S`, so we might as well simply pass `&S`
+    /// to the inner widget `W`. This implies that any state from `A` which
+    /// needs to be passed into `W` must be *copied* into `state: W::Data` by
+    /// [`Adapt::on_update`].
+    ///
+    /// (It is possible that the above restrictions will change in the future,
+    /// but they would require Rust to support generic associated types in
+    /// dyn-safe traits (also known as object safe GATs), at least for lifetime
+    /// parameters. There *was* an unstable feature for this,
+    /// `generic_associated_types_extended`, but it was removed due to being
+    /// stale, experimental and unsound. But even if Rust did gain this feature,
+    /// it is not clear that [`Widget::Data`] should be generic.)
     #[autoimpl(Scrollable using self.inner where W: trait)]
     #[widget {
         layout = self.inner;
     }]
-    pub struct Adapt<A, W: Widget<Data = S>, S: Debug> {
+    pub struct Adapt<A, W: Widget> {
         core: widget_core!(),
-        state: S,
+        state: W::Data,
         #[widget(&self.state)]
         inner: W,
-        configure_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut S)>>,
-        update_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut S, &A)>>,
-        timer_handlers: LinearMap<u64, Box<dyn Fn(&mut AdaptEventCx, &mut S, &A)>>,
-        message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx, &mut S, &A)>>,
+        configure_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W::Data)>>,
+        update_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W::Data, &A)>>,
+        timer_handlers: LinearMap<u64, Box<dyn Fn(&mut AdaptEventCx, &mut W::Data, &A)>>,
+        message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx, &mut W::Data, &A)>>,
     }
 
     impl Self {
         /// Construct over `inner` with additional `state`
         #[inline]
-        pub fn new(inner: W, state: S) -> Self {
+        pub fn new(inner: W, state: W::Data) -> Self {
             Adapt {
                 core: Default::default(),
                 state,
@@ -50,7 +69,7 @@ impl_scope! {
         /// Add a handler to be called on configuration
         pub fn on_configure<F>(mut self, handler: F) -> Self
         where
-            F: Fn(&mut AdaptConfigCx, &mut S) + 'static,
+            F: Fn(&mut AdaptConfigCx, &mut W::Data) + 'static,
         {
             debug_assert!(self.configure_handler.is_none());
             self.configure_handler = Some(Box::new(handler));
@@ -62,7 +81,7 @@ impl_scope! {
         /// Children will be updated after the handler is called.
         pub fn on_update<F>(mut self, handler: F) -> Self
         where
-            F: Fn(&mut AdaptConfigCx, &mut S, &A) + 'static,
+            F: Fn(&mut AdaptConfigCx, &mut W::Data, &A) + 'static,
         {
             debug_assert!(self.update_handler.is_none());
             self.update_handler = Some(Box::new(handler));
@@ -76,7 +95,7 @@ impl_scope! {
         /// of [`EventState::push_async`](kas::event::EventState::push_async).
         pub fn on_timer<H>(mut self, timer_id: u64, handler: H) -> Self
         where
-            H: Fn(&mut AdaptEventCx, &mut S, &A) + 'static,
+            H: Fn(&mut AdaptEventCx, &mut W::Data, &A) + 'static,
         {
             debug_assert!(self.timer_handlers.get(&timer_id).is_none());
             self.timer_handlers.insert(timer_id, Box::new(handler));
@@ -92,7 +111,7 @@ impl_scope! {
         pub fn on_message<M, H>(self, handler: H) -> Self
         where
             M: Debug + 'static,
-            H: Fn(&mut AdaptEventCx, &mut S, M) + 'static,
+            H: Fn(&mut AdaptEventCx, &mut W::Data, M) + 'static,
         {
             self.on_messages(move |cx, state, _data| {
                 if let Some(m) = cx.try_pop() {
@@ -104,7 +123,7 @@ impl_scope! {
         /// Add a generic message handler
         pub fn on_messages<H>(mut self, handler: H) -> Self
         where
-            H: Fn(&mut AdaptEventCx, &mut S, &A) + 'static,
+            H: Fn(&mut AdaptEventCx, &mut W::Data, &A) + 'static,
         {
             self.message_handlers.push(Box::new(handler));
             self

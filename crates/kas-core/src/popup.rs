@@ -35,7 +35,7 @@ impl_scope! {
     ///
     /// A popup receives input data from its parent like any other widget.
     #[widget {
-        layout = frame!(self.inner, style = kas::theme::FrameStyle::Popup);
+        layout = frame!(self.inner).with_style(kas::theme::FrameStyle::Popup);
     }]
     pub struct Popup<W: Widget> {
         core: widget_core!(),

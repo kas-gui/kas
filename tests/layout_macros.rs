@@ -16,7 +16,7 @@ fn row() {
 
 #[test]
 fn list() {
-    use_widget(list!(left, ["one", "two"]));
+    use_widget(list!["one", "two"].with_direction(kas::dir::Left));
 }
 
 #[test]

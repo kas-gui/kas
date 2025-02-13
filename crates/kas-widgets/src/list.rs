@@ -14,6 +14,186 @@ use kas::Collection;
 use std::collections::hash_map::{Entry, HashMap};
 use std::ops::{Index, IndexMut};
 
+/// Make a [`Row`] widget
+///
+/// # Syntax
+///
+/// > _Collection_ :\
+/// > &nbsp;&nbsp; `row!` `[` _Items_<sup>\?</sup> `]`
+/// >
+/// > _Items_ :\
+/// > &nbsp;&nbsp; (_Item_ `,`)<sup>\*</sup> _Item_ `,`<sup>\?</sup>
+///
+/// ## Stand-alone usage
+///
+/// When used as a stand-alone macro, `row! [/* ... */]` is just syntactic sugar
+/// for `Row::new(kas::collection! [/* ... */])`.
+///
+/// In this case, _Item_ may be:
+///
+/// -   A string literal (interpreted as a label widget), optionally followed by
+///     an [`align`] or [`pack`] method call
+/// -   An expression yielding an object implementing `Widget<Data = _A>`
+///
+/// In case all _Item_ instances are a string literal, the data type of the
+/// `row!` widget will be `()`; otherwise the data type of the widget is `_A`
+/// where `_A` is a generic type parameter of the widget.
+///
+/// ## Usage within widget layout syntax
+///
+/// When called within [widget layout syntax], `row!` may be evaluated as a
+/// recursive macro and the result does not have a specified type, except that
+/// methods [`map_any`], [`align`] and [`pack`] are supported via emulation.
+///
+/// In this case, _Item_ is evaluated using [widget layout syntax]. This is
+/// broadly similar to the above with a couple of exceptions:
+///
+/// -   Supported layout macros do not need to be imported to the module scope
+/// -   An _Item_ may be a `#[widget]` field of the widget
+///
+/// # Example
+///
+/// ```
+/// let my_widget = kas_widgets::row!["one", "two"];
+/// ```
+///
+/// [widget layout syntax]: macro@widget#layout-1
+/// [`map_any`]: crate::AdaptWidgetAny::map_any
+/// [`align`]: crate::AdaptWidget::align
+/// [`pack`]: crate::AdaptWidget::pack
+#[macro_export]
+macro_rules! row {
+    ( $( $ee:expr ),* ) => {
+        $crate::Row::new( ::kas::collection! [ $( $ee ),* ] )
+    };
+    ( $( $ee:expr ),+ , ) => {
+        $crate::Row::new( ::kas::collection! [ $( $ee ),+ ] )
+    };
+}
+
+/// Make a [`Column`] widget
+///
+/// # Syntax
+///
+/// > _Collection_ :\
+/// > &nbsp;&nbsp; `column!` `[` _Items_<sup>\?</sup> `]`
+/// >
+/// > _Items_ :\
+/// > &nbsp;&nbsp; (_Item_ `,`)<sup>\*</sup> _Item_ `,`<sup>\?</sup>
+///
+/// ## Stand-alone usage
+///
+/// When used as a stand-alone macro, `column! [/* ... */]` is just syntactic sugar
+/// for `Column::new(kas::collection! [/* ... */])`.
+///
+/// In this case, _Item_ may be:
+///
+/// -   A string literal (interpreted as a label widget), optionally followed by
+///     an [`align`] or [`pack`] method call
+/// -   An expression yielding an object implementing `Widget<Data = _A>`
+///
+/// In case all _Item_ instances are a string literal, the data type of the
+/// `column!` widget will be `()`; otherwise the data type of the widget is `_A`
+/// where `_A` is a generic type parameter of the widget.
+///
+/// ## Usage within widget layout syntax
+///
+/// When called within [widget layout syntax], `column!` may be evaluated as a
+/// recursive macro and the result does not have a specified type, except that
+/// methods [`map_any`], [`align`] and [`pack`] are supported via emulation.
+///
+/// In this case, _Item_ is evaluated using [widget layout syntax]. This is
+/// broadly similar to the above with a couple of exceptions:
+///
+/// -   Supported layout macros do not need to be imported to the module scope
+/// -   An _Item_ may be a `#[widget]` field of the widget
+///
+/// # Example
+///
+/// ```
+/// let my_widget = kas_widgets::column! [
+///     "one",
+///     "two",
+/// ];
+/// ```
+///
+/// [widget layout syntax]: macro@widget#layout-1
+/// [`map_any`]: crate::AdaptWidgetAny::map_any
+/// [`align`]: crate::AdaptWidget::align
+/// [`pack`]: crate::AdaptWidget::pack
+#[macro_export]
+macro_rules! column {
+    ( $( $ee:expr ),* ) => {
+        $crate::Column::new( ::kas::collection! [ $( $ee ),* ] )
+    };
+    ( $( $ee:expr ),+ , ) => {
+        $crate::Column::new( ::kas::collection! [ $( $ee ),+ ] )
+    };
+}
+
+/// Make a [`List`] widget
+///
+/// # Syntax
+///
+/// > _Collection_ :\
+/// > &nbsp;&nbsp; `list!` `[` _Items_<sup>\?</sup> `]`
+/// >
+/// > _Items_ :\
+/// > &nbsp;&nbsp; (_Item_ `,`)<sup>\*</sup> _Item_ `,`<sup>\?</sup>
+///
+/// ## Stand-alone usage
+///
+/// When used as a stand-alone macro, `list! [/* ... */]` is just syntactic sugar
+/// for `List::new(kas::collection! [/* ... */])`.
+///
+/// In this case, _Item_ may be:
+///
+/// -   A string literal (interpreted as a label widget), optionally followed by
+///     an [`align`] or [`pack`] method call
+/// -   An expression yielding an object implementing `Widget<Data = _A>`
+///
+/// In case all _Item_ instances are a string literal, the data type of the
+/// `list!` widget will be `()`; otherwise the data type of the widget is `_A`
+/// where `_A` is a generic type parameter of the widget.
+///
+/// ## Usage within widget layout syntax
+///
+/// When called within [widget layout syntax], `list!` may be evaluated as a
+/// recursive macro and the result does not have a specified type, except that
+/// methods [`map_any`], [`align`], [`pack`] and [`with_direction`] are
+/// supported via emulation. In this case, calling [`with_direction`] is
+/// required. Note that the argument passed to [`with_direction`] is expanded
+/// at the use site, so for example `.with_direction(self.dir)` will read
+/// `self.dir` whenever layout is computed.
+///
+/// In this case, _Item_ is evaluated using [widget layout syntax]. This is
+/// broadly similar to the above with a couple of exceptions:
+///
+/// -   Supported layout macros do not need to be imported to the module scope
+/// -   An _Item_ may be a `#[widget]` field of the widget
+///
+/// # Example
+///
+/// ```
+/// let my_widget = kas_widgets::list! ["one", "two"]
+///     .with_direction(kas::dir::Left);
+/// ```
+///
+/// [widget layout syntax]: macro@widget#layout-1
+/// [`map_any`]: crate::AdaptWidgetAny::map_any
+/// [`align`]: crate::AdaptWidget::align
+/// [`pack`]: crate::AdaptWidget::pack
+/// [`with_direction`]: List::with_direction
+#[macro_export]
+macro_rules! list {
+    ( $( $ee:expr ),* ) => {
+        $crate::List::new( ::kas::collection! [ $( $ee ),* ] )
+    };
+    ( $( $ee:expr ),+ , ) => {
+        $crate::List::new( ::kas::collection! [ $( $ee ),+ ] )
+    };
+}
+
 /// A generic row widget
 ///
 /// See documentation of [`List`] type.
@@ -261,9 +441,9 @@ impl_scope! {
         }
     }
 
-    impl<C: Collection> List<C, Direction> {
+    impl<C: Collection, D: Directional + Eq> List<C, D> {
         /// Set the direction of contents
-        pub fn set_direction(&mut self, cx: &mut EventState, direction: Direction) {
+        pub fn set_direction(&mut self, cx: &mut EventState, direction: D) {
             if direction == self.direction {
                 return;
             }
@@ -291,6 +471,13 @@ impl_scope! {
         /// Get the direction of contents
         pub fn direction(&self) -> Direction {
             self.direction.as_direction()
+        }
+
+        /// Set the direction of contents (inline)
+        #[inline]
+        pub fn with_direction(mut self, direction: D) -> Self {
+            self.direction = direction;
+            self
         }
 
         /// Access layout storage
