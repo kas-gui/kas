@@ -48,7 +48,6 @@ struct WindowData<G: GraphicsBuilder, T: Theme<G::Shared>> {
 pub struct Window<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
     _data: std::marker::PhantomData<A>,
     pub(super) widget: kas::Window<A>,
-    pub(super) window_id: WindowId,
     ev_state: EventState,
     window: Option<WindowData<G, T>>,
 }
@@ -65,10 +64,14 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         Window {
             _data: std::marker::PhantomData,
             widget,
-            window_id,
-            ev_state: EventState::new(config, shared.platform),
+            ev_state: EventState::new(window_id, config, shared.platform),
             window: None,
         }
+    }
+
+    #[inline]
+    pub(super) fn window_id(&self) -> WindowId {
+        self.ev_state.window_id
     }
 
     /// Open (resume) a window
@@ -86,12 +89,8 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         let config = self.ev_state.config();
         let mut theme_window = state.shared.theme.new_window(config);
 
-        self.ev_state.full_configure(
-            theme_window.size(),
-            self.window_id,
-            &mut self.widget,
-            &state.data,
-        );
+        self.ev_state
+            .full_configure(theme_window.size(), &mut self.widget, &state.data);
 
         let node = self.widget.as_node(&state.data);
         let sizer = SizeCx::new(theme_window.size());
@@ -191,7 +190,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             surface,
             frame_count: (Instant::now(), 0),
 
-            window_id: self.window_id,
+            window_id: self.ev_state.window_id,
             solve_cache,
             theme_window,
             next_avail_frame_time: time,
@@ -380,7 +379,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
     }
 
     pub(super) fn send_close(&mut self, id: WindowId) {
-        if id == self.window_id {
+        if id == self.ev_state.window_id {
             self.ev_state.action(Id::ROOT, Action::CLOSE);
         } else if let Some(window) = self.window.as_ref() {
             let widget = &mut self.widget;
@@ -399,12 +398,8 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             return;
         };
 
-        self.ev_state.full_configure(
-            window.theme_window.size(),
-            self.window_id,
-            &mut self.widget,
-            &state.data,
-        );
+        self.ev_state
+            .full_configure(window.theme_window.size(), &mut self.widget, &state.data);
 
         log::trace!(target: "kas_perf::wgpu::window", "reconfigure: {}µs", time.elapsed().as_micros());
     }

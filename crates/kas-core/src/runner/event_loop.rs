@@ -108,7 +108,7 @@ where
             for window in self.windows.values_mut() {
                 match window.resume(&mut self.state, el) {
                     Ok(winit_id) => {
-                        self.id_map.insert(winit_id, window.window_id);
+                        self.id_map.insert(winit_id, window.window_id());
                     }
                     Err(e) => {
                         log::error!("Unable to create window: {}", e);
@@ -171,7 +171,7 @@ where
     pub(super) fn new(mut windows: Vec<Box<Window<A, G, T>>>, state: State<A, G, T>) -> Self {
         Loop {
             suspended: true,
-            windows: windows.drain(..).map(|w| (w.window_id, w)).collect(),
+            windows: windows.drain(..).map(|w| (w.window_id(), w)).collect(),
             popups: Default::default(),
             id_map: Default::default(),
             state,

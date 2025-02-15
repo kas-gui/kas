@@ -25,8 +25,9 @@ const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 impl EventState {
     /// Construct per-window event state
     #[inline]
-    pub(crate) fn new(config: WindowConfig, platform: Platform) -> Self {
+    pub(crate) fn new(window_id: WindowId, config: WindowConfig, platform: Platform) -> Self {
         EventState {
+            window_id,
             config,
             platform,
             disabled: vec![],
@@ -78,11 +79,10 @@ impl EventState {
     pub(crate) fn full_configure<A>(
         &mut self,
         sizer: &dyn ThemeSize,
-        wid: WindowId,
         win: &mut Window<A>,
         data: &A,
     ) {
-        let id = Id::ROOT.make_child(wid.get().cast());
+        let id = Id::ROOT.make_child(self.window_id.get().cast());
 
         log::debug!(target: "kas_core::event", "full_configure of Window{id}");
         self.action.remove(Action::RECONFIGURE);
@@ -248,8 +248,14 @@ impl EventState {
             }
 
             while let Some((id, cmd)) = cx.pending_cmds.pop_front() {
-                log::trace!(target: "kas_core::event", "sending pending command {cmd:?} to {id}");
-                cx.send_event(win.as_node(data), id, Event::Command(cmd, None));
+                if cmd == Command::Exit {
+                    cx.runner.exit();
+                } else if cmd == Command::Close {
+                    cx.handle_close();
+                } else {
+                    log::trace!(target: "kas_core::event", "sending pending command {cmd:?} to {id}");
+                    cx.send_event(win.as_node(data), id, Event::Command(cmd, None));
+                }
             }
 
             while let Some((id, msg)) = cx.send_queue.pop_front() {

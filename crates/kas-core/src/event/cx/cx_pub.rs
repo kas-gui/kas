@@ -849,21 +849,12 @@ impl<'a> EventCx<'a> {
     ///
     /// Navigation focus will return to whichever widget had focus before
     /// the popup was open.
-    pub fn close_window(&mut self, id: WindowId) {
-        if let Some(index) =
-            self.popups
-                .iter()
-                .enumerate()
-                .find_map(|(i, p)| if p.0 == id { Some(i) } else { None })
-        {
-            let (wid, popup, onf) = self.popups.remove(index);
-            self.popup_removed.push((popup.id, wid));
-            self.runner.close_window(wid);
-
-            if let Some(id) = onf {
-                self.set_nav_focus(id, FocusSource::Synthetic);
+    pub fn close_window(&mut self, mut id: WindowId) {
+        for (index, p) in self.popups.iter().enumerate() {
+            if p.0 == id {
+                id = self.close_popup(index);
+                break;
             }
-            return;
         }
 
         self.runner.close_window(id);

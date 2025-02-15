@@ -183,6 +183,7 @@ type AccessLayer = (bool, HashMap<Key, Id>);
 // for each widget during drawing. Most fields contain only a few values, hence
 // `SmallVec` is used to keep contents in local memory.
 pub struct EventState {
+    pub(crate) window_id: WindowId,
     config: WindowConfig,
     platform: Platform,
     disabled: Vec<Id>,
@@ -362,6 +363,23 @@ impl EventState {
         grab
     }
 
+    // Remove popup at index and return its [`WindowId`]
+    //
+    // Panics if `index` is out of bounds.
+    //
+    // The caller must call `runner.close_window(window_id)`.
+    #[must_use]
+    fn close_popup(&mut self, index: usize) -> WindowId {
+        let (window_id, popup, onf) = self.popups.remove(index);
+        self.popup_removed.push((popup.id, window_id));
+
+        if let Some(id) = onf {
+            self.set_nav_focus(id, FocusSource::Synthetic);
+        }
+
+        window_id
+    }
+
     /// Clear all active events on `target`
     fn clear_events(&mut self, target: &Id) {
         if let Some(id) = self.sel_focus.as_ref() {
@@ -448,7 +466,13 @@ impl<'a> EventCx<'a> {
 
         let opt_command = self.config.shortcuts().try_match(self.modifiers, &vkey);
 
-        if let Some(cmd) = opt_command {
+        if Some(Command::Exit) == opt_command {
+            self.action |= Action::EXIT;
+            return;
+        } else if Some(Command::Close) == opt_command {
+            self.handle_close();
+            return;
+        } else if let Some(cmd) = opt_command {
             let mut targets = vec![];
             let mut send = |_self: &mut Self, id: Id, cmd| -> bool {
                 if !targets.contains(&id) {
@@ -625,6 +649,15 @@ impl<'a> EventCx<'a> {
         if let Some(id) = id {
             self.send_event(widget, id, event);
         }
+    }
+
+    fn handle_close(&mut self) {
+        let mut id = self.window_id;
+        if !self.popups.is_empty() {
+            let index = self.popups.len() - 1;
+            id = self.close_popup(index);
+        }
+        self.runner.close_window(id);
     }
 
     // Call Widget::_nav_next
