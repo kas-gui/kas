@@ -370,29 +370,23 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             return;
         };
 
-        let mut messages = MessageStack::new();
-        self.ev_state
-            .with(&mut state.shared, window, &mut messages, |cx| {
-                self.widget.add_popup(cx, &state.data, id, popup)
-            });
-        state.handle_messages(&mut messages);
+        let size = window.theme_window.size();
+        let mut cx = ConfigCx::new(&size, &mut self.ev_state);
+        self.widget.add_popup(&mut cx, &state.data, id, popup);
     }
 
     pub(super) fn send_action(&mut self, action: Action) {
         self.ev_state.action(Id::ROOT, action);
     }
 
-    pub(super) fn send_close(&mut self, state: &mut State<A, G, T>, id: WindowId) {
+    pub(super) fn send_close(&mut self, id: WindowId) {
         if id == self.window_id {
             self.ev_state.action(Id::ROOT, Action::CLOSE);
         } else if let Some(window) = self.window.as_ref() {
             let widget = &mut self.widget;
-            let mut messages = MessageStack::new();
-            self.ev_state
-                .with(&mut state.shared, window, &mut messages, |cx| {
-                    widget.remove_popup(cx, id)
-                });
-            state.handle_messages(&mut messages);
+            let size = window.theme_window.size();
+            let mut cx = ConfigCx::new(&size, &mut self.ev_state);
+            widget.remove_popup(&mut cx, id);
         }
     }
 }
