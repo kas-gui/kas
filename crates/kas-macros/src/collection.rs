@@ -11,31 +11,17 @@ use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
-use syn::{braced, parenthesized};
-use syn::{Expr, Ident, Lifetime, LitInt, LitStr, Token};
+use syn::{braced, bracketed, parenthesized};
+use syn::{Expr, Ident, LitInt, LitStr, Token};
 
-#[derive(Debug)]
-pub enum StorIdent {
-    Named(Ident),
-    Generated(Ident),
-}
-impl From<Lifetime> for StorIdent {
-    fn from(mut lt: Lifetime) -> StorIdent {
-        lt.ident.set_span(lt.span());
-        StorIdent::Named(lt.ident)
-    }
-}
-impl From<Ident> for StorIdent {
-    fn from(ident: Ident) -> StorIdent {
-        StorIdent::Generated(ident)
-    }
-}
-impl ToTokens for StorIdent {
-    fn to_tokens(&self, toks: &mut Toks) {
-        match self {
-            StorIdent::Named(ident) | StorIdent::Generated(ident) => ident.to_tokens(toks),
-        }
-    }
+#[allow(non_camel_case_types)]
+mod kw {
+    syn::custom_keyword!(align);
+    syn::custom_keyword!(pack);
+    syn::custom_keyword!(aligned_column);
+    syn::custom_keyword!(aligned_row);
+    syn::custom_keyword!(column);
+    syn::custom_keyword!(row);
 }
 
 #[derive(Default)]
@@ -46,14 +32,6 @@ impl NameGenerator {
         self.0 += 1;
         let span = Span::call_site();
         Ident::new(&name, span)
-    }
-
-    pub fn parse_or_next(&mut self, input: ParseStream) -> Result<StorIdent> {
-        if input.peek(Lifetime) {
-            Ok(input.parse::<Lifetime>()?.into())
-        } else {
-            Ok(self.next().into())
-        }
     }
 }
 
@@ -174,14 +152,41 @@ impl ToTokens for GridDimensions {
 }
 
 pub enum Item {
-    Label(Ident, LitStr),
+    Label(Ident, Toks, Toks),
     Widget(Ident, Expr),
 }
 
 impl Item {
     fn parse(input: ParseStream, gen: &mut NameGenerator) -> Result<Self> {
         if input.peek(LitStr) {
-            Ok(Item::Label(gen.next(), input.parse()?))
+            let text: LitStr = input.parse()?;
+            let span = text.span();
+            let mut ty = quote! { ::kas::hidden::StrLabel };
+            let mut def = quote_spanned! {span=> ::kas::hidden::StrLabel::new(#text) };
+
+            if input.peek(Token![.]) && input.peek2(kw::align) {
+                let _: Token![.] = input.parse()?;
+                let _: kw::align = input.parse()?;
+
+                let inner;
+                let _ = parenthesized!(inner in input);
+                let hints: Expr = inner.parse()?;
+
+                ty = quote! { ::kas::hidden::Align<#ty> };
+                def = quote! { ::kas::hidden::Align::new(#def, #hints) };
+            } else if input.peek(Token![.]) && input.peek2(kw::pack) {
+                let _: Token![.] = input.parse()?;
+                let _: kw::pack = input.parse()?;
+
+                let inner;
+                let _ = parenthesized!(inner in input);
+                let hints: Expr = inner.parse()?;
+
+                ty = quote! { ::kas::hidden::Pack<#ty> };
+                def = quote! { ::kas::hidden::Pack::new(#def, #hints) };
+            }
+
+            Ok(Item::Label(gen.next(), ty, def))
         } else {
             Ok(Item::Widget(gen.next(), input.parse()?))
         }
@@ -211,37 +216,85 @@ impl Parse for Collection {
 }
 
 impl Parse for CellCollection {
-    fn parse(inner: ParseStream) -> Result<Self> {
+    fn parse(input: ParseStream) -> Result<Self> {
+        if input.peek(kw::aligned_column) {
+            let _: kw::aligned_column = input.parse()?;
+            return Self::parse_aligned::<kw::row>(input, false);
+        } else if input.peek(kw::aligned_row) {
+            let _: kw::aligned_row = input.parse()?;
+            return Self::parse_aligned::<kw::column>(input, true);
+        }
+
         let mut gen = NameGenerator::default();
 
         let mut cells = vec![];
         let mut items = vec![];
-        while !inner.is_empty() {
-            cells.push(inner.parse()?);
-            let _: Token![=>] = inner.parse()?;
+        while !input.is_empty() {
+            cells.push(input.parse()?);
+            let _: Token![=>] = input.parse()?;
 
             let item;
             let require_comma;
-            if inner.peek(syn::token::Brace) {
-                let inner2;
-                let _ = braced!(inner2 in inner);
-                item = Item::parse(&inner2, &mut gen)?;
+            if input.peek(syn::token::Brace) {
+                let inner;
+                let _ = braced!(inner in input);
+                item = Item::parse(&inner, &mut gen)?;
                 require_comma = false;
             } else {
-                item = Item::parse(inner, &mut gen)?;
+                item = Item::parse(input, &mut gen)?;
                 require_comma = true;
             }
             items.push(item);
 
-            if inner.is_empty() {
+            if input.is_empty() {
                 break;
             }
 
-            if let Err(e) = inner.parse::<Token![,]>() {
+            if let Err(e) = input.parse::<Token![,]>() {
                 if require_comma {
                     return Err(e);
                 }
             }
+        }
+
+        Ok(CellCollection(cells, Collection(items)))
+    }
+}
+
+impl CellCollection {
+    fn parse_aligned<Kw: Parse>(input: ParseStream, transmute: bool) -> Result<Self> {
+        let mut gen = NameGenerator::default();
+        let mut cells = vec![];
+        let mut items = vec![];
+
+        let mut row = 0;
+        while !input.is_empty() {
+            let _: Kw = input.parse()?;
+            let _: Token![!] = input.parse()?;
+
+            let inner;
+            let _ = bracketed!(inner in input);
+            let mut col = 0;
+            while !inner.is_empty() {
+                let (mut a, mut b) = (col, row);
+                if transmute {
+                    (a, b) = (b, a);
+                }
+                cells.push(CellInfo::new(a, b));
+                items.push(Item::parse(&inner, &mut gen)?);
+
+                if inner.is_empty() {
+                    break;
+                }
+                let _: Token![,] = inner.parse()?;
+                col += 1;
+            }
+
+            if input.is_empty() {
+                break;
+            }
+            let _: Token![,] = input.parse()?;
+            row += 1;
         }
 
         Ok(CellCollection(cells, Collection(items)))
@@ -275,20 +328,13 @@ impl Collection {
 
         for (index, item) in self.0.iter().enumerate() {
             let path = match item {
-                Item::Label(stor, text) => {
-                    let span = text.span();
+                Item::Label(stor, ty, def) => {
                     if let Some(ref data_ty) = data_ty {
-                        stor_ty.append_all(
-                            quote! { #stor: ::kas::hidden::MapAny<#data_ty, ::kas::hidden::StrLabel>, },
-                        );
-                        stor_def.append_all(
-                            quote_spanned! {span=> #stor: ::kas::hidden::MapAny::new(::kas::hidden::StrLabel::new(#text)), },
-                        );
+                        stor_ty.append_all(quote! { #stor: ::kas::hidden::MapAny<#data_ty, #ty>, });
+                        stor_def.append_all(quote! { #stor: ::kas::hidden::MapAny::new(#def), });
                     } else {
-                        stor_ty.append_all(quote! { #stor: ::kas::hidden::StrLabel, });
-                        stor_def.append_all(
-                            quote_spanned! {span=> #stor: ::kas::hidden::StrLabel::new(#text), },
-                        );
+                        stor_ty.append_all(quote! { #stor: #ty, });
+                        stor_def.append_all(quote! { #stor: #def, });
                     }
                     stor.to_token_stream()
                 }

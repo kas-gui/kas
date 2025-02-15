@@ -9,6 +9,7 @@ use crate::adapt::AdaptEvents;
 use crate::{menu::MenuEntry, Column, Label, Mark};
 use kas::event::{Command, FocusSource, ScrollDelta};
 use kas::prelude::*;
+use kas::theme::FrameStyle;
 use kas::theme::{MarkStyle, TextClass};
 use kas::Popup;
 use std::fmt::Debug;
@@ -28,7 +29,9 @@ impl_scope! {
     /// when selected. If a handler is specified via [`Self::with`] or
     /// [`Self::with_msg`] then this message is passed to the handler and not emitted.
     #[widget {
-        layout = button! 'frame(row! [self.label, self.mark]);
+        layout = frame!(row! [self.label, self.mark])
+            .with_style(FrameStyle::Button)
+            .align(AlignHints::CENTER);
         navigable = true;
         hover_highlight = true;
     }]
@@ -50,6 +53,10 @@ impl_scope! {
         fn nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None
+        }
+
+        fn probe(&mut self, _: Coord) -> Id {
+            self.id()
         }
     }
 

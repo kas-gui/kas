@@ -7,7 +7,7 @@
 //!
 //! Each window shares the counter, but has its own increment step.
 
-use kas::widgets::{column, format_data, row, Adapt, Button, Label, Slider};
+use kas::widgets::{column, format_data, row, AdaptWidget, Button, Label, Slider};
 use kas::{messages::MessageStack, Window};
 
 #[derive(Clone, Debug)]
@@ -46,7 +46,8 @@ fn counter(title: &str) -> Window<Count> {
         ],
     ];
 
-    let ui = Adapt::new(ui, initial)
+    let ui = ui
+        .with_state(initial)
         .on_update(|_, state, count| state.0 = *count)
         .on_message(|_, state, SetValue(v)| state.1 = v);
     Window::new(ui, title)

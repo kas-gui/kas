@@ -6,7 +6,7 @@
 //! Wrapper adding a label
 
 use crate::AccessLabel;
-use kas::{layout, prelude::*};
+use kas::prelude::*;
 
 impl_scope! {
     /// A wrapper widget with a label
@@ -18,7 +18,7 @@ impl_scope! {
     #[derive(Clone, Default)]
     #[widget {
         Data = W::Data;
-        layout = list! 'row (self.dir, [self.inner, non_navigable!(self.label)]);
+        layout = list![self.inner, self.label].with_direction(self.dir);
     }]
     pub struct WithLabel<W: Widget, D: Directional = Direction> {
         core: widget_core!(),
@@ -72,15 +72,6 @@ impl_scope! {
             self.inner
         }
 
-        /// Access layout storage
-        ///
-        /// The number of columns/rows is fixed at two: the `inner` widget, and
-        /// the `label` (in this order, regardless of direction).
-        #[inline]
-        pub fn layout_storage(&mut self) -> &mut impl layout::RowStorage {
-            &mut self.core.row
-        }
-
         /// Get whether line-wrapping is enabled
         #[inline]
         pub fn wrap(&self) -> bool {
@@ -112,6 +103,10 @@ impl_scope! {
     }
 
     impl Tile for Self {
+        fn nav_next(&self, _: bool, from: Option<usize>) -> Option<usize> {
+            from.xor(Some(widget_index!(self.inner)))
+        }
+
         fn probe(&mut self, _: Coord) -> Id {
             self.inner.id()
         }

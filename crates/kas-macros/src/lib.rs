@@ -19,10 +19,10 @@ mod collection;
 mod extends;
 mod make_layout;
 mod scroll_traits;
+mod visitors;
 mod widget;
 mod widget_args;
 mod widget_derive;
-mod widget_index;
 
 /// Implement `Default`
 ///
@@ -208,22 +208,12 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// implementation of `Tile::nav_next`, with a couple of exceptions
 /// (where macro-time analysis is insufficient to implement this method).
 ///
-/// > [_Column_](macro@column), [_Row_](macro@row), [_List_](macro@list), [_AlignedColumn_](macro@aligned_column), [_AlignedRow_](macro@aligned_row), [_Grid_](macro@grid), [_Float_](macro@float) :\
+/// > [_Column_], [_Row_], [_List_] [_AlignedColumn_], [_AlignedRow_], [_Grid_], [_Float_], [_Frame_] :\
 /// > &nbsp;&nbsp; These stand-alone macros are explicitly supported in this position.\
-/// > &nbsp;&nbsp; Optionally, a _Storage_ specifier is supported immediately after the macro name, e.g.\
-/// > &nbsp;&nbsp; `column! 'storage_name ["one", "two"]`
 ///
 /// > _Single_ :\
 /// > &nbsp;&nbsp; `self` `.` _Member_\
 /// > &nbsp;&nbsp; A named child: `self.foo` (more precisely, this matches any expression starting `self`, and uses `&mut (#expr)`)
-/// >
-/// > _Frame_ :\
-/// > &nbsp;&nbsp; `frame!` _Storage_? `(` _Layout_ ( `,` `style` `=` _Expr_ )? `)`\
-/// > &nbsp;&nbsp; Adds a frame of type _Expr_ around content, defaulting to `FrameStyle::Frame`.
-/// >
-/// > _Button_ :\
-/// > &nbsp;&nbsp; `button!` _Storage_? `(` _Layout_ ( `,` `color` `=` _Expr_ )? `)`\
-/// > &nbsp;&nbsp; Adds a button frame (optionally with color _Expr_) around content.
 /// >
 /// > _WidgetConstructor_ :\
 /// > &nbsp;&nbsp; _Expr_\
@@ -233,24 +223,12 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; _StrLit_\
 /// > &nbsp;&nbsp; A string literal generates a label widget, e.g. "Hello world". This is an internal type without text wrapping.
 /// >
-/// > _NonNavigable_ :\
-/// > &nbsp;&nbsp; `non_navigable!` `(` _Layout_ `)` \
-/// > &nbsp;&nbsp; Does not affect layout. Specifies that the content is excluded from tab-navigation order.
-///
 /// Additional syntax rules (not layout items):
 ///
 /// > _Member_ :\
 /// > &nbsp;&nbsp; _Ident_ | _Index_\
 /// > &nbsp;&nbsp; The name of a struct field or an index into a tuple struct.
 /// >
-/// > _Direction_ :\
-/// > &nbsp;&nbsp; `left` | `right` | `up` | `down` | _Expr_:\
-/// > &nbsp;&nbsp; Note that an _Expr_ must start with `self`
-/// >
-/// > _Storage_ :\
-/// > &nbsp;&nbsp; `'` _Ident_\
-/// > &nbsp;&nbsp; Used to explicitly name the storage used by a generated widget or layout; for example `row 'x: ["A", "B", "C"]` will add a field `x: R` where `R: RowStorage` within the generated `widget_core!()`. If omitted, the field name will be anonymous (generated).
-///
 /// ## Examples
 ///
 /// A simple example is the
@@ -261,7 +239,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///     /// A frame around content
 ///     #[derive(Clone, Default)]
 ///     #[widget{
-///         layout = frame!(self.inner, style = kas::theme::FrameStyle::Frame);
+///         layout = frame!(self.inner);
 ///     }]
 ///     pub struct Frame<W: Widget> {
 ///         core: widget_core!(),
@@ -339,6 +317,14 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// [`CursorIcon`]: https://docs.rs/kas/latest/kas/event/enum.CursorIcon.html
 /// [`IsUsed`]: https://docs.rs/kas/latest/kas/event/enum.IsUsed.html
 /// [`Deref`]: std::ops::Deref
+/// [_Column_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.column.html
+/// [_Row_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.row.html
+/// [_List_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.list.html
+/// [_Float_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.float.html
+/// [_Frame_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.frame.html
+/// [_Grid_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.grid.html
+/// [_AlignedColumn_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.aligned_column.html
+/// [_AlignedRow_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.aligned_row.html
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
@@ -420,7 +406,7 @@ pub fn impl_anon(input: TokenStream) -> TokenStream {
 #[proc_macro_error]
 #[proc_macro]
 pub fn widget_index(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as widget_index::UnscopedInput);
+    let input = parse_macro_input!(input as visitors::UnscopedInput);
     input.into_token_stream().into()
 }
 
@@ -429,8 +415,11 @@ pub fn widget_index(input: TokenStream) -> TokenStream {
 /// Widgets have a hidden field of type [`Rect`] in their `widget_core!()`, used
 /// to implement method [`Tile::rect`]. This macro assigns to that field.
 ///
-/// This macro is usable only within an [`impl_scope!`]  macro using the
-/// [`widget`](macro@widget) attribute.
+/// This macro is usable only within the definition of `Layout::set_rect` within
+/// an [`impl_scope!`] macro using the [`widget`](macro@widget) attribute.
+///
+/// The method `Tile::rect` will be generated if this macro is used by the
+/// widget, otherwise a definition of the method must be provided.
 ///
 /// Example usage:
 /// ```ignore
@@ -444,207 +433,35 @@ pub fn widget_index(input: TokenStream) -> TokenStream {
 #[proc_macro_error]
 #[proc_macro]
 pub fn widget_set_rect(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as widget_index::UnscopedInput);
+    let input = parse_macro_input!(input as visitors::UnscopedInput);
     input.into_token_stream().into()
-}
-
-trait ExpandLayout {
-    fn expand_layout(self, name: &str) -> TokenStream;
-}
-impl ExpandLayout for make_layout::Tree {
-    fn expand_layout(self, name: &str) -> TokenStream {
-        match self.expand_as_widget(name) {
-            Ok(toks) => toks.into(),
-            Err(err) => {
-                emit_call_site_error!(err);
-                TokenStream::default()
-            }
-        }
-    }
-}
-
-/// Make a column widget
-///
-/// Items support [widget layout syntax](macro@widget#layout-1).
-///
-/// # Example
-///
-/// ```ignore
-/// let my_widget = kas::column! [
-///     "one",
-///     "two",
-/// ];
-/// ```
-#[proc_macro_error]
-#[proc_macro]
-pub fn column(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input with make_layout::Tree::column).expand_layout("_Column")
-}
-
-/// Make a row widget
-///
-/// Items support [widget layout syntax](macro@widget#layout-1).
-///
-/// # Example
-///
-/// ```ignore
-/// let my_widget = kas::row! ["one", "two"];
-/// ```
-#[proc_macro_error]
-#[proc_macro]
-pub fn row(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input with make_layout::Tree::row).expand_layout("_Row")
-}
-
-/// Make a list widget
-///
-/// This is a more generic variant of [`column!`] and [`row!`].
-///
-/// Children are navigated in visual order.
-///
-/// Items support [widget layout syntax](macro@widget#layout-1).
-///
-/// # Example
-///
-/// ```ignore
-/// let my_widget = kas::list!(left, ["one", "two"]);
-/// ```
-///
-/// # Syntax
-///
-/// > _List_ :\
-/// > &nbsp;&nbsp; `list!` `(` _Direction_ `,` `[` ( _Layout_ `,` )* ( _Layout_ `,`? )? `]` `}`
-/// >
-/// > _Direction_ :\
-/// > &nbsp;&nbsp; `left` | `right` | `up` | `down`
-
-#[proc_macro_error]
-#[proc_macro]
-pub fn list(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input with make_layout::Tree::list).expand_layout("_List")
-}
-
-/// Make a float widget
-///
-/// All children occupy the same space with the first child on top.
-///
-/// Size is determined as the maximum required by any child for each axis.
-/// All children are assigned this size. It is usually necessary to use [`pack`]
-/// or a similar mechanism to constrain a child to avoid it hiding the content
-/// underneath (note that even if an unconstrained child does not *visually*
-/// hide everything beneath, it may still "occupy" the assigned area, preventing
-/// mouse clicks from reaching the widget beneath).
-///
-/// Children are navigated in order of declaration.
-///
-/// Items support [widget layout syntax](macro@widget#layout-1).
-///
-/// # Example
-///
-/// ```ignore
-/// let my_widget = kas::float! [
-///     "one".pack(AlignHints::TOP_LEFT),
-///     "two".pack(AlignHints::BOTTOM_RIGHT),
-///     "some text\nin the\nbackground"
-/// ];
-/// ```
-///
-/// [`pack`]: https://docs.rs/kas/latest/kas/widgets/trait.AdaptWidget.html#method.pack
-#[proc_macro_error]
-#[proc_macro]
-pub fn float(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input with make_layout::Tree::float).expand_layout("_Float")
-}
-
-/// Make a grid widget
-///
-/// Constructs a table with auto-determined number of rows and columns.
-/// Each child is assigned a cell using match-like syntax.
-///
-/// A child may be stretched across multiple cells using range-like syntax:
-/// `3..5`, `3..=4` and `3..+2` are all equivalent.
-///
-/// Behaviour of overlapping widgets is identical to [`float!`]: the first
-/// declared item is on top.
-///
-/// Children are navigated in order of declaration.
-///
-/// Items support [widget layout syntax](macro@widget#layout-1).
-///
-/// # Example
-///
-/// ```ignore
-/// let my_widget = kas::grid! {
-///     (0, 0) => "top left",
-///     (1, 0) => "top right",
-///     (0..2, 1) => "bottom row (merged)",
-/// };
-/// ```
-///
-/// # Syntax
-///
-/// > _Grid_ :\
-/// > &nbsp;&nbsp; `grid!` `{` _GridCell_* `}`
-/// >
-/// > _GridCell_ :\
-/// > &nbsp;&nbsp; `(` _CellRange_ `,` _CellRange_ `)` `=>` ( _Layout_ | `{` _Layout_ `}` )
-/// >
-/// > _CellRange_ :\
-/// > &nbsp;&nbsp; _LitInt_ ( `..` `+`? _LitInt_ )?
-///
-/// Cells are specified using `match`-like syntax from `(col_spec, row_spec)` to
-/// a layout, e.g.: `(1, 0) => self.foo`. Spans are specified via range syntax,
-/// e.g. `(0..2, 1) => self.bar`.
-#[proc_macro_error]
-#[proc_macro]
-pub fn grid(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input with make_layout::Tree::grid).expand_layout("_Grid")
-}
-
-/// Make an aligned column widget
-///
-/// Items support [widget layout syntax](macro@widget#layout-1).
-///
-/// # Example
-///
-/// ```ignore
-/// let my_widget = kas::aligned_column! [
-///     row!["one", "two"],
-///     row!["three", "four"],
-/// ];
-/// ```
-#[proc_macro_error]
-#[proc_macro]
-pub fn aligned_column(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input with make_layout::Tree::aligned_column).expand_layout("_AlignedColumn")
-}
-
-/// Make an aligned row widget
-///
-/// Items support [widget layout syntax](macro@widget#layout-1).
-///
-/// # Example
-///
-/// ```ignore
-/// let my_widget = kas::aligned_row! [
-///     column!["one", "two"],
-///     column!["three", "four"],
-/// ];
-/// ```
-#[proc_macro_error]
-#[proc_macro]
-pub fn aligned_row(input: TokenStream) -> TokenStream {
-    parse_macro_input!(input with make_layout::Tree::aligned_row).expand_layout("_AlignedRow")
 }
 
 /// Generate an anonymous struct which implements [`kas::Collection`]
 ///
-/// Each item must be either a string literal (inferred as a static label) or a
-/// widget (implements [`kas::Widget`](https://docs.rs/kas/latest/kas/trait.Widget.html)).
+/// # Syntax
+///
+/// > _Collection_ :\
+/// > &nbsp;&nbsp; `collection!` `[` _Items_<sup>\?</sup> `]`
+/// >
+/// > _Items_ :\
+/// > &nbsp;&nbsp; (_Item_ `,`)<sup>\*</sup> _Item_ `,`<sup>\?</sup>
+///
+/// In this case, _Item_ may be:
+///
+/// -   A string literal (interpreted as a label widget), optionally followed by
+///     an [`align`] or [`pack`] method call
+/// -   An expression yielding an object implementing `Widget<Data = _A>`
+///
+/// In case all _Item_ instances are a string literal, the data type of the
+/// `collection!` widget will be `()`; otherwise the data type of the widget is `_A`
+/// where `_A` is a generic type parameter of the widget.
 ///
 /// For example usage, see [`List`](https://docs.rs/kas/latest/kas/widgets/struct.List.html).
 ///
 /// [`kas::Collection`]: https://docs.rs/kas/latest/kas/trait.Collection.html
+/// [`align`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.align
+/// [`pack`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.pack
 #[proc_macro_error]
 #[proc_macro]
 pub fn collection(input: TokenStream) -> TokenStream {
@@ -655,12 +472,40 @@ pub fn collection(input: TokenStream) -> TokenStream {
 
 /// Generate an anonymous struct which implements [`kas::CellCollection`]
 ///
-/// Each item must be either a string literal (inferred as a static label) or a
-/// widget (implements [`kas::Widget`](https://docs.rs/kas/latest/kas/trait.Widget.html)).
+/// # Syntax
+///
+/// > _Collection_ :\
+/// > &nbsp;&nbsp; `collection!` `[` _ItemArms_<sup>\?</sup> `]`
+/// >
+/// > _ItemArms_ :\
+/// > &nbsp;&nbsp; (_ItemArm_ `,`)<sup>\*</sup> _ItemArm_ `,`<sup>\?</sup>
+/// >
+/// > _ItemArm_ :\
+/// > &nbsp;&nbsp; `(` _Column_ `,` _Row_ `)` `=>` _Item_
+/// >
+/// > _Column_, _Row_ :\
+/// > &nbsp;&nbsp; _LitInt_ | ( _LitInt_ `..` `+` _LitInt_ ) | ( _LitInt_ `..`
+/// > _LitInt_ ) | ( _LitInt_ `..=` _LitInt_ )
+///
+/// Here, _Column_ and _Row_ are selected via an index (from 0), a range of
+/// indices, or a start + increment. For example, `2` = `2..+1` = `2..3` =
+/// `2..=2` while `5..+2` = `5..7` = `5..=6`.
+///
+/// _Item_ may be:
+///
+/// -   A string literal (interpreted as a label widget), optionally followed by
+///     an [`align`] or [`pack`] method call
+/// -   An expression yielding an object implementing `Widget<Data = _A>`
+///
+/// In case all _Item_ instances are a string literal, the data type of the
+/// `collection!` widget will be `()`; otherwise the data type of the widget is `_A`
+/// where `_A` is a generic type parameter of the widget.
 ///
 /// For example usage, see [`Grid`](https://docs.rs/kas/latest/kas/widgets/struct.Grid.html).
 ///
 /// [`kas::CellCollection`]: https://docs.rs/kas/latest/kas/trait.CellCollection.html
+/// [`align`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.align
+/// [`pack`]: https://docs.rs/kas/latest/kas/widgets/adapt/trait.AdaptWidget.html#method.pack
 #[proc_macro_error]
 #[proc_macro]
 pub fn cell_collection(input: TokenStream) -> TokenStream {

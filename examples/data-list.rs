@@ -22,7 +22,7 @@
 use kas::prelude::*;
 use kas::widgets::edit::{EditBox, EditField, EditGuard};
 use kas::widgets::{column, row};
-use kas::widgets::{Adapt, Button, Label, List, RadioButton, ScrollBarRegion, Separator, Text};
+use kas::widgets::{Button, Label, List, RadioButton, ScrollBarRegion, Separator, Text};
 
 #[derive(Debug)]
 struct SelectEntry(usize);
@@ -178,7 +178,9 @@ fn main() -> kas::runner::Result<()> {
         ScrollBarRegion::new(list).with_fixed_bars(false, true),
     ];
 
-    let ui = Adapt::new(tree, data).on_message(|_, data, control| data.handle(control));
+    let ui = tree
+        .with_state(data)
+        .on_message(|_, data, control| data.handle(control));
 
     let window = Window::new(ui, "Dynamic widget demo");
 

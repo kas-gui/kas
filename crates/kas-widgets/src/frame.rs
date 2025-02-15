@@ -6,6 +6,41 @@
 //! A simple frame
 
 use kas::prelude::*;
+use kas::theme::{Background, FrameStyle};
+
+/// Make a [`Frame`] widget
+///
+/// # Syntax
+///
+/// ## Stand-alone usage
+///
+/// When called as a stand-alone macro, `frame!(inner)` is just syntactic sugar
+/// for `Frame::new(inner)`, and yes, this makes the macro pointless.
+///
+/// ## Usage within widget layout syntax
+///
+/// When called within [widget layout syntax], `frame!` may be evaluated as a
+/// recursive macro and the result does not have a specified type, except that
+/// methods [`map_any`], [`align`], [`pack`] and [`with_style`] are supported
+/// via emulation.
+///
+/// # Example
+///
+/// ```
+/// let my_widget = kas_widgets::frame!(kas_widgets::Label::new("content"));
+/// ```
+///
+/// [widget layout syntax]: macro@widget#layout-1
+/// [`map_any`]: crate::AdaptWidgetAny::map_any
+/// [`align`]: crate::AdaptWidget::align
+/// [`pack`]: crate::AdaptWidget::pack
+/// [`with_style`]: Frame::with_style
+#[macro_export]
+macro_rules! frame {
+    ( $e:expr ) => {
+        $crate::Frame::new($e)
+    };
+}
 
 impl_scope! {
     /// A frame around content
@@ -18,10 +53,12 @@ impl_scope! {
     #[derive(Clone, Default)]
     #[widget{
         Data = W::Data;
-        layout = frame!(self.inner);
+        layout = frame!(self.inner).with_style(self.style);
     }]
     pub struct Frame<W: Widget> {
         core: widget_core!(),
+        style: FrameStyle,
+        bg: Background,
         /// The inner widget
         #[widget]
         pub inner: W,
@@ -33,8 +70,33 @@ impl_scope! {
         pub fn new(inner: W) -> Self {
             Frame {
                 core: Default::default(),
+                style: FrameStyle::Frame,
+                bg: Background::default(),
                 inner,
             }
+        }
+
+        /// Set the frame style (inline)
+        ///
+        /// The default style is [`FrameStyle::Frame`].
+        ///
+        /// Note: using [`FrameStyle::NavFocus`] does not automatically make
+        /// this widget interactive. Use [`NavFrame`](crate::NavFrame) for that.
+        #[inline]
+        #[must_use]
+        pub fn with_style(mut self, style: FrameStyle) -> Self {
+            self.style = style;
+            self
+        }
+
+        /// Set the frame background color (inline)
+        ///
+        /// The default background is [`Background::Default`].
+        #[inline]
+        #[must_use]
+        pub fn with_background(mut self, bg: Background) -> Self {
+            self.bg = bg;
+            self
         }
     }
 }
