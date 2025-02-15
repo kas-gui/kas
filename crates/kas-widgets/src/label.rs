@@ -102,9 +102,6 @@ impl_scope! {
         }
 
         /// Set text in an existing `Label`
-        ///
-        /// Note: this must not be called before fonts have been initialised
-        /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, cx: &mut EventState, text: T) {
             self.text.set_text(text);
             let act = self.text.reprepare_action();
@@ -252,9 +249,6 @@ impl_scope! {
         }
 
         /// Set text in an existing `Label`
-        ///
-        /// Note: this must not be called before fonts have been initialised
-        /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, cx: &mut EventState, text: AccessString) {
             self.text.set_text(text);
             let act = self.text.reprepare_action();
