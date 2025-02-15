@@ -140,14 +140,6 @@ impl_scope! {
     }
 }
 
-/* TODO(specialization): can we support this? min_specialization is not enough.
-impl<U, T: From<U> + FormattableText + 'static> From<U> for Text<T> {
-    default fn from(text: U) -> Self {
-        let text = T::from(text);
-        Text::new(text)
-    }
-}*/
-
 /// A [`Text`] widget which formats a value from input
 ///
 /// Examples:
