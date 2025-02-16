@@ -11,7 +11,7 @@ keywords = ["gui"]
 categories = ["gui"]
 repository = "https://github.com/kas-gui/kas"
 exclude = ["/examples"]
-rust-version = "1.80.1"
+rust-version = "1.81.0"
 
 [package.metadata.docs.rs]
 features = ["stable"]
