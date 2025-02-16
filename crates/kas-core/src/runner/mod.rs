@@ -39,6 +39,9 @@ pub extern crate raw_window_handle;
 /// across windows). This trait must be implemented by the latter.
 ///
 /// When no top-level data is required, use `()` which implements this trait.
+///
+/// TODO: should we pass some type of interface to the runner to these methods?
+/// We could pass a `&mut dyn RunnerT` easily, but that trait is not public.
 pub trait AppData: 'static {
     /// Handle messages
     ///
@@ -46,10 +49,22 @@ pub trait AppData: 'static {
     /// the widget tree (see [kas::event] module doc), a message is left on the
     /// stack. Unhandled messages will result in warnings in the log.
     fn handle_messages(&mut self, messages: &mut MessageStack);
+
+    /// Application is being suspended
+    ///
+    /// The application should ensure any important state is saved.
+    ///
+    /// This method is called when the application has been suspended or is
+    /// about to exit (on Android/iOS/Web platforms, the application may resume
+    /// after this method is called; on other platforms this probably indicates
+    /// imminent closure). Widget state may still exist, but is not live
+    /// (widgets will not process events or messages).
+    fn suspended(&mut self) {}
 }
 
 impl AppData for () {
     fn handle_messages(&mut self, _: &mut MessageStack) {}
+    fn suspended(&mut self) {}
 }
 
 #[crate::autoimpl(Debug)]

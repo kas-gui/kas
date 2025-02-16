@@ -288,6 +288,14 @@ impl EventState {
 
         std::mem::take(&mut self.action)
     }
+
+    /// Window has been closed: clean up state
+    pub(crate) fn suspended(&mut self, runner: &mut dyn RunnerT) {
+        while !self.popups.is_empty() {
+            let id = self.close_popup(self.popups.len() - 1);
+            runner.close_window(id);
+        }
+    }
 }
 
 /// Platform API

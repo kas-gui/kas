@@ -204,9 +204,27 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
     }
 
     /// Close (suspend) the window, keeping state (widget)
-    pub(super) fn suspend(&mut self) {
-        // TODO: close popups and notify the widget to allow saving data
-        self.window = None;
+    ///
+    /// Returns `true` unless this `Window` should be destoyed.
+    pub(super) fn suspend(&mut self, state: &mut State<A, G, T>) -> bool {
+        if let Some(ref mut window) = self.window {
+            self.ev_state.suspended(&mut state.shared);
+
+            let mut messages = MessageStack::new();
+            let action = self.ev_state.flush_pending(
+                &mut state.shared,
+                window,
+                &mut messages,
+                &mut self.widget,
+                &state.data,
+            );
+            state.handle_messages(&mut messages);
+
+            self.window = None;
+            !action.contains(Action::CLOSE)
+        } else {
+            true
+        }
     }
 
     /// Handle an event

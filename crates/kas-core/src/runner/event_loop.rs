@@ -152,15 +152,15 @@ where
 
     fn suspended(&mut self, _: &ActiveEventLoop) {
         if !self.suspended {
-            for window in self.windows.values_mut() {
-                window.suspend();
-            }
+            self.windows
+                .retain(|_, window| window.suspend(&mut self.state));
+            self.state.suspended();
             self.suspended = true;
         }
     }
 
-    fn exiting(&mut self, _: &ActiveEventLoop) {
-        self.state.on_exit();
+    fn exiting(&mut self, el: &ActiveEventLoop) {
+        self.suspended(el);
     }
 }
 
@@ -236,8 +236,15 @@ where
             if let Some(instant) = resume {
                 self.resumes.push((instant, *window_id));
             }
+
             if close_all || action.contains(Action::CLOSE) {
-                window.suspend();
+                window.suspend(&mut self.state);
+
+                // Call flush_pending again since suspend may queue messages.
+                // We don't care about the returned Action or resume times since
+                // the window is being destroyed.
+                let _ = window.flush_pending(&mut self.state);
+
                 self.id_map.retain(|_, v| v != window_id);
                 false
             } else {

@@ -97,7 +97,9 @@ where
         }
     }
 
-    pub(crate) fn on_exit(&self) {
+    pub(crate) fn suspended(&mut self) {
+        self.data.suspended();
+
         match self.options.write_config(&self.shared.config.borrow()) {
             Ok(()) => (),
             Err(error) => warn_about_error("Failed to save config", &error),
