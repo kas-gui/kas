@@ -152,6 +152,9 @@ pub(crate) trait RunnerT {
     /// Close a window
     fn close_window(&mut self, id: WindowId);
 
+    /// Exit the application
+    fn exit(&mut self);
+
     /// Attempt to get clipboard contents
     ///
     /// In case of failure, paste actions will simply fail. The implementation
@@ -226,6 +229,10 @@ impl<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> RunnerT for SharedS
 
     fn close_window(&mut self, id: WindowId) {
         self.pending.push_back(Pending::CloseWindow(id));
+    }
+
+    fn exit(&mut self) {
+        self.pending.push_back(Pending::Exit);
     }
 
     fn get_clipboard(&mut self) -> Option<String> {

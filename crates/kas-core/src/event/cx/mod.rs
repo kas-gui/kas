@@ -467,7 +467,7 @@ impl<'a> EventCx<'a> {
         let opt_command = self.config.shortcuts().try_match(self.modifiers, &vkey);
 
         if Some(Command::Exit) == opt_command {
-            self.action |= Action::EXIT;
+            self.runner.exit();
             return;
         } else if Some(Command::Close) == opt_command {
             self.handle_close();

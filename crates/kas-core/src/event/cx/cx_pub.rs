@@ -259,7 +259,7 @@ impl EventState {
     /// Terminate the GUI
     #[inline]
     pub fn exit(&mut self) {
-        self.action |= Action::EXIT;
+        self.pending_cmds.push_back((Id::ROOT, Command::Exit));
     }
 
     /// Notify that an [`Action`] should happen

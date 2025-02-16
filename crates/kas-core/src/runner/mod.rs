@@ -61,6 +61,7 @@ enum Pending<A: AppData, G: GraphicsBuilder, T: kas::theme::Theme<G::Shared>> {
     AddWindow(WindowId, Box<Window<A, G, T>>),
     CloseWindow(WindowId),
     Action(kas::Action),
+    Exit,
 }
 
 #[cfg(winit)]

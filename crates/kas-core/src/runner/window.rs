@@ -281,7 +281,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         );
         state.handle_messages(&mut messages);
 
-        if action.contains(Action::CLOSE | Action::EXIT) {
+        if action.contains(Action::CLOSE) {
             return (action, None);
         }
         self.handle_action(state, action);

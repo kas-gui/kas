@@ -180,6 +180,7 @@ where
     }
 
     fn flush_pending(&mut self, el: &ActiveEventLoop) {
+        let mut close_all = false;
         while let Some(pending) = self.state.shared.pending.pop_front() {
             match pending {
                 Pending::AddPopup(parent_id, id, popup) => {
@@ -215,7 +216,7 @@ where
                     }
                 }
                 Pending::Action(action) => {
-                    if action.contains(Action::CLOSE | Action::EXIT) {
+                    if action.contains(Action::CLOSE) {
                         self.windows.clear();
                         self.id_map.clear();
                         el.set_control_flow(ControlFlow::Poll);
@@ -225,32 +226,23 @@ where
                         }
                     }
                 }
+                Pending::Exit => close_all = true,
             }
         }
 
-        let mut close_all = false;
         self.resumes.clear();
         self.windows.retain(|window_id, window| {
             let (action, resume) = window.flush_pending(&mut self.state);
             if let Some(instant) = resume {
                 self.resumes.push((instant, *window_id));
             }
-            if action.contains(Action::EXIT) {
-                close_all = true;
-                true
-            } else if action.contains(Action::CLOSE) {
+            if close_all || action.contains(Action::CLOSE) {
+                window.suspend();
                 self.id_map.retain(|_, v| v != window_id);
                 false
             } else {
                 true
             }
         });
-
-        if close_all {
-            for (_, mut window) in self.windows.drain() {
-                window.suspend();
-            }
-            self.id_map.clear();
-        }
     }
 }
