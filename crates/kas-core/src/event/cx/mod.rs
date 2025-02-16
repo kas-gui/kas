@@ -464,15 +464,15 @@ impl<'a> EventCx<'a> {
             widget.id()
         );
 
-        let opt_command = self.config.shortcuts().try_match(self.modifiers, &vkey);
+        let opt_cmd = self.config.shortcuts().try_match(self.modifiers, &vkey);
 
-        if Some(Command::Exit) == opt_command {
+        if Some(Command::Exit) == opt_cmd {
             self.runner.exit();
             return;
-        } else if Some(Command::Close) == opt_command {
+        } else if Some(Command::Close) == opt_cmd {
             self.handle_close();
             return;
-        } else if let Some(cmd) = opt_command {
+        } else if let Some(cmd) = opt_cmd {
             let mut targets = vec![];
             let mut send = |_self: &mut Self, id: Id, cmd| -> bool {
                 if !targets.contains(&id) {
@@ -548,10 +548,10 @@ impl<'a> EventCx<'a> {
             }
             let event = Event::Command(Command::Activate, Some(code));
             self.send_event(widget, id, event);
-        } else if self.config.nav_focus && vkey == Key::Named(NamedKey::Tab) {
+        } else if self.config.nav_focus && opt_cmd == Some(Command::Tab) {
             let shift = self.modifiers.shift_key();
             self.next_nav_focus_impl(widget.re(), None, shift, FocusSource::Key);
-        } else if vkey == Key::Named(NamedKey::Escape) {
+        } else if opt_cmd == Some(Command::Escape) {
             if let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
                 self.close_window(id);
             }
