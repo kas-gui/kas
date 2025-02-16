@@ -35,7 +35,7 @@ impl Image {
         assert!(!data.is_empty());
         assert_eq!(data.len(), 4 * usize::conv(size.0) * usize::conv(size.1));
         queue.write_texture(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: atlas_pipe.get_texture(self.atlas),
                 mip_level: 0,
                 origin: wgpu::Origin3d {
@@ -46,7 +46,7 @@ impl Image {
                 aspect: wgpu::TextureAspect::All,
             },
             data,
-            wgpu::ImageDataLayout {
+            wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(4 * size.0),
                 rows_per_image: Some(size.1),

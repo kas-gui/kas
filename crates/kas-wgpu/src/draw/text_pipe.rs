@@ -148,7 +148,7 @@ impl Pipeline {
         }
         for (atlas, origin, size, data) in self.prepare.drain(..) {
             queue.write_texture(
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture: self.atlas_pipe.get_texture(atlas),
                     mip_level: 0,
                     origin: wgpu::Origin3d {
@@ -159,7 +159,7 @@ impl Pipeline {
                     aspect: wgpu::TextureAspect::All,
                 },
                 &data,
-                wgpu::ImageDataLayout {
+                wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(size.0),
                     rows_per_image: Some(size.1),
