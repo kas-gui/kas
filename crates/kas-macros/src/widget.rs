@@ -184,7 +184,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
             let mut stor_defs = Default::default();
             if let Some(Layout { ref tree, .. }) = args.layout {
-                stor_defs = tree.storage_fields(&mut children, &data_ty);
+                stor_defs = tree.storage_fields(&mut children);
             }
             if !stor_defs.ty_toks.is_empty() {
                 let name = format!("_{name}CoreTy");
@@ -796,11 +796,6 @@ pub fn impl_widget(
                 ChildIdent::Field(ident) => quote! { self.#ident },
                 ChildIdent::CoreField(ident) => quote! { #core_path.#ident },
             };
-            // TODO: incorrect or unconstrained data type of child causes a poor error
-            // message here. Add a constaint like this (assuming no mapping fn):
-            // <#ty as WidgetNode::Data> == Self::Data
-            // But this is unsupported: rust#20041
-            // predicates.push(..);
 
             get_mut_rules.append_all(if let Some(ref data) = child.data_binding {
                 quote! { #i => closure(#path.as_node(#data)), }

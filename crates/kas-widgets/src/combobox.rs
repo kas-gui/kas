@@ -29,7 +29,7 @@ impl_scope! {
     /// when selected. If a handler is specified via [`Self::with`] or
     /// [`Self::with_msg`] then this message is passed to the handler and not emitted.
     #[widget {
-        layout = frame!(row! [self.label, self.mark])
+        layout = frame!(row! [self.label, Mark::new(MarkStyle::Point(Direction::Down))])
             .with_style(FrameStyle::Button)
             .align(AlignHints::CENTER);
         navigable = true;
@@ -39,8 +39,6 @@ impl_scope! {
         core: widget_core!(),
         #[widget(&())]
         label: Label<String>,
-        #[widget(&())]
-        mark: Mark,
         #[widget(&())]
         popup: Popup<AdaptEvents<Column<Vec<MenuEntry<V>>>>>,
         active: usize,
@@ -233,7 +231,6 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
         ComboBox {
             core: Default::default(),
             label,
-            mark: Mark::new(MarkStyle::Point(Direction::Down)),
             popup: Popup::new(
                 AdaptEvents::new(Column::new(entries)).on_messages(|cx, _, _| {
                     if let Some(_) = cx.try_peek::<V>() {

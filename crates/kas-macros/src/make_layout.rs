@@ -10,8 +10,8 @@ use proc_macro_error2::emit_error;
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::{braced, bracketed, parenthesized, parse_quote, token};
-use syn::{Expr, Ident, LitStr, Member, Token, Type};
+use syn::{braced, bracketed, parenthesized, token};
+use syn::{Expr, Ident, LitStr, Member, Token};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -21,24 +21,12 @@ mod kw {
     custom_keyword!(pack);
     custom_keyword!(column);
     custom_keyword!(row);
-    custom_keyword!(right);
-    custom_keyword!(left);
-    custom_keyword!(down);
-    custom_keyword!(up);
-    custom_keyword!(center);
-    custom_keyword!(stretch);
     custom_keyword!(frame);
     custom_keyword!(list);
     custom_keyword!(grid);
-    custom_keyword!(default);
-    custom_keyword!(top);
-    custom_keyword!(bottom);
     custom_keyword!(aligned_column);
     custom_keyword!(aligned_row);
     custom_keyword!(float);
-    custom_keyword!(px);
-    custom_keyword!(em);
-    custom_keyword!(map_any);
     custom_keyword!(with_direction);
     custom_keyword!(with_style);
     custom_keyword!(with_background);
@@ -48,15 +36,14 @@ mod kw {
 pub struct StorageFields {
     pub ty_toks: Toks,
     pub def_toks: Toks,
-    pub used_data_ty: bool,
 }
 
 #[derive(Debug)]
 pub struct Tree(Layout);
 impl Tree {
-    pub fn storage_fields(&self, children: &mut Vec<Child>, data_ty: &Type) -> StorageFields {
+    pub fn storage_fields(&self, children: &mut Vec<Child>) -> StorageFields {
         let mut fields = StorageFields::default();
-        self.0.append_fields(&mut fields, children, data_ty);
+        self.0.append_fields(&mut fields, children);
         fields
     }
 
@@ -138,7 +125,6 @@ enum Layout {
     Float(LayoutList<()>),
     Grid(Ident, GridDimensions, LayoutList<CellInfo>),
     Label(Ident, LitStr),
-    MapAny(Box<Layout>, MapAny),
 }
 
 #[derive(Debug)]
@@ -148,6 +134,7 @@ struct ExprMember {
     member: Member,
 }
 
+#[allow(unused)]
 #[derive(Debug)]
 enum Direction {
     Left,
@@ -192,10 +179,7 @@ impl Layout {
 
         loop {
             if let Ok(dot_token) = input.parse::<Token![.]>() {
-                if input.peek(kw::map_any) {
-                    let map_any = MapAny::parse(dot_token, input)?;
-                    layout = Layout::MapAny(Box::new(layout), map_any);
-                } else if input.peek(kw::align) {
+                if input.peek(kw::align) {
                     let align = Align::parse(dot_token, input)?;
                     layout = Layout::Align(Box::new(layout), align);
                 } else if input.peek(kw::pack) {
@@ -203,9 +187,9 @@ impl Layout {
                     layout = Layout::Pack(Box::new(layout), pack);
                 } else if let Ok(ident) = input.parse::<Ident>() {
                     let note_msg = if matches!(&layout, &Layout::Frame(_, _, _, _)) {
-                        "supported methods on layout objects: `map_any`, `align`, `pack`, `with_style`, `with_background`"
+                        "supported methods on layout objects: `align`, `pack`, `with_style`, `with_background`"
                     } else {
-                        "supported methods on layout objects: `map_any`, `align`, `pack`"
+                        "supported methods on layout objects: `align`, `pack`"
                     };
                     emit_error!(
                         ident, "method not supported here";
@@ -484,24 +468,7 @@ impl ToTokens for ExprMember {
 
 impl Parse for Direction {
     fn parse(input: ParseStream) -> Result<Self> {
-        let lookahead = input.lookahead1();
-        if lookahead.peek(kw::right) {
-            let _: kw::right = input.parse()?;
-            Ok(Direction::Right)
-        } else if lookahead.peek(kw::down) {
-            let _: kw::down = input.parse()?;
-            Ok(Direction::Down)
-        } else if lookahead.peek(kw::left) {
-            let _: kw::left = input.parse()?;
-            Ok(Direction::Left)
-        } else if lookahead.peek(kw::up) {
-            let _: kw::up = input.parse()?;
-            Ok(Direction::Up)
-        } else if lookahead.peek(Token![self]) {
-            Ok(Direction::Expr(input.parse()?))
-        } else {
-            Err(lookahead.error())
-        }
+        Ok(Direction::Expr(input.parse()?))
     }
 }
 
@@ -521,24 +488,6 @@ impl ToTokens for Direction {
             Direction::Down => toks.append_all(quote! { ::kas::dir::Down }),
             Direction::Expr(expr) => expr.to_tokens(toks),
         }
-    }
-}
-
-#[derive(Debug)]
-#[allow(unused)]
-struct MapAny {
-    pub dot_token: Token![.],
-    pub kw: kw::map_any,
-    pub paren_token: token::Paren,
-}
-impl MapAny {
-    fn parse(dot_token: Token![.], input: ParseStream) -> Result<Self> {
-        let _content;
-        Ok(MapAny {
-            dot_token,
-            kw: input.parse()?,
-            paren_token: parenthesized!(_content in input),
-        })
     }
 }
 
@@ -612,10 +561,10 @@ impl Pack {
 }
 
 impl Layout {
-    fn append_fields(&self, fields: &mut StorageFields, children: &mut Vec<Child>, data_ty: &Type) {
+    fn append_fields(&self, fields: &mut StorageFields, children: &mut Vec<Child>) {
         match self {
             Layout::Align(layout, _) => {
-                layout.append_fields(fields, children, data_ty);
+                layout.append_fields(fields, children);
             }
             Layout::Single(_) => (),
             Layout::Pack(layout, pack) => {
@@ -626,18 +575,17 @@ impl Layout {
                 fields
                     .def_toks
                     .append_all(quote! { #stor: Default::default(), });
-                layout.append_fields(fields, children, data_ty);
+                layout.append_fields(fields, children);
             }
             Layout::Widget(ident, expr) => {
                 children.push(Child::new_core(ident.clone().into()));
                 fields
                     .ty_toks
-                    .append_all(quote! { #ident: Box<dyn ::kas::Widget<Data = #data_ty>>, });
+                    .append_all(quote! { #ident: Box<dyn ::kas::Widget<Data = ()>>, });
                 let span = expr.span();
                 fields
                     .def_toks
                     .append_all(quote_spanned! {span=> #ident: Box::new(#expr), });
-                fields.used_data_ty = true;
             }
             Layout::Frame(stor, layout, _, _) => {
                 fields
@@ -646,7 +594,7 @@ impl Layout {
                 fields
                     .def_toks
                     .append_all(quote! { #stor: Default::default(), });
-                layout.append_fields(fields, children, data_ty);
+                layout.append_fields(fields, children);
             }
             Layout::List(stor, _, LayoutList(list)) => {
                 fields
@@ -660,12 +608,12 @@ impl Layout {
                     quote! { #stor: ::kas::layout::FixedRowStorage<#len>, }
                 });
                 for item in list {
-                    item.layout.append_fields(fields, children, data_ty);
+                    item.layout.append_fields(fields, children);
                 }
             }
             Layout::Float(LayoutList(list)) => {
                 for item in list {
-                    item.layout.append_fields(fields, children, data_ty);
+                    item.layout.append_fields(fields, children);
                 }
             }
             Layout::Grid(stor, dim, LayoutList(list)) => {
@@ -678,42 +626,18 @@ impl Layout {
                     .append_all(quote! { #stor: Default::default(), });
 
                 for item in list {
-                    item.layout.append_fields(fields, children, data_ty);
+                    item.layout.append_fields(fields, children);
                 }
             }
             Layout::Label(ident, text) => {
                 children.push(Child::new_core(ident.clone().into()));
                 let span = text.span();
-                if *data_ty == syn::parse_quote! { () } {
-                    fields
-                        .ty_toks
-                        .append_all(quote! { #ident: ::kas::hidden::StrLabel, });
-                    fields.def_toks.append_all(
-                        quote_spanned! {span=> #ident: ::kas::hidden::StrLabel::new(#text), },
-                    );
-                } else {
-                    fields.ty_toks.append_all(
-                        quote! { #ident: ::kas::hidden::MapAny<#data_ty, ::kas::hidden::StrLabel>, },
-                    );
-                    fields.def_toks.append_all(
-                        quote_spanned! {span=> #ident: ::kas::hidden::MapAny::new(::kas::hidden::StrLabel::new(#text)), },
-                    );
-                    fields.used_data_ty = true;
-                }
-            }
-            Layout::MapAny(layout, map_any) => {
-                let start = children.len();
-                layout.append_fields(fields, children, &parse_quote! { () });
-                let map_expr: Expr = parse_quote! { &() };
-                for child in &mut children[start..] {
-                    if let Some(ref expr) = child.data_binding {
-                        if *expr != map_expr {
-                            emit_error!(map_any.kw, "invalid data type mapping")
-                        }
-                    } else {
-                        child.data_binding = Some(map_expr.clone());
-                    }
-                }
+                fields
+                    .ty_toks
+                    .append_all(quote! { #ident: ::kas::hidden::StrLabel, });
+                fields.def_toks.append_all(
+                    quote_spanned! {span=> #ident: ::kas::hidden::StrLabel::new(#text), },
+                );
             }
         }
     }
@@ -764,7 +688,6 @@ impl Layout {
             Layout::Label(stor, _) => {
                 quote! { layout::Visitor::single(&mut #core_path.#stor) }
             }
-            Layout::MapAny(layout, _) => return layout.generate(core_path),
         })
     }
 
@@ -777,10 +700,9 @@ impl Layout {
         output: &mut Vec<usize>,
     ) -> std::result::Result<(), (Span, &'static str)> {
         match self {
-            Layout::Align(layout, _)
-            | Layout::Pack(layout, _)
-            | Layout::Frame(_, layout, _, _)
-            | Layout::MapAny(layout, _) => layout.nav_next(children, output),
+            Layout::Align(layout, _) | Layout::Pack(layout, _) | Layout::Frame(_, layout, _, _) => {
+                layout.nav_next(children, output)
+            }
             Layout::Single(m) => {
                 for (i, child) in children.enumerate() {
                     if let ChildIdent::Field(ref ident) = child.ident {
