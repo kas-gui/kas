@@ -472,7 +472,8 @@ where
 /// Layout storage for pack
 #[derive(Clone, Default, Debug)]
 pub struct PackStorage {
-    size: Size,
+    /// Ideal size
+    pub size: Size,
 }
 
 /// Layout storage for frame

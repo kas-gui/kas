@@ -383,6 +383,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let fn_try_probe;
     let mut fn_draw = None;
     if let Some(Layout { tree, .. }) = args.layout.take() {
+        let set_rect = tree.set_rect(&core_path);
         let try_probe = tree.try_probe(&core_path);
         let draw = tree.draw(&core_path);
         fn_nav_next = tree.nav_next(children.iter());
@@ -416,7 +417,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     hints: ::kas::layout::AlignHints,
                 ) {
                     #core_path._rect = rect;
-                    ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
+                    #set_rect
                 }
 
                 #[inline]

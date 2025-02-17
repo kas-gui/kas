@@ -52,6 +52,11 @@ impl Tree {
         self.0.generate(core_path)
     }
 
+    /// Yield an implementation of `fn set_rect`
+    pub fn set_rect(&self, core_path: &Toks) -> Toks {
+        self.0.set_rect(core_path)
+    }
+
     /// Yield an implementation of `fn try_probe`
     pub fn try_probe(&self, core_path: &Toks) -> Toks {
         let mut targets = Vec::new();
@@ -710,6 +715,86 @@ impl Layout {
                 quote! { layout::Visitor::single(&mut #core_path.#stor) }
             }
         })
+    }
+
+    /// Yield an implementation of `fn set_rect`
+    fn set_rect(&self, core_path: &Toks) -> Toks {
+        match self {
+            Layout::Align(layout, align) => {
+                let align_hints = &align.hints;
+                let inner = layout.set_rect(core_path);
+                quote! {{
+                    let hints = #align_hints.combine(hints);
+                    #inner
+                }}
+            }
+            Layout::Pack(layout, pack) => {
+                let align_hints = &pack.hints;
+                let stor = &pack.stor;
+                let inner = layout.set_rect(core_path);
+                quote! { {
+                    let rect = #align_hints
+                        .combine(hints)
+                        .complete_default()
+                        .aligned_rect(#core_path.#stor.size, rect);
+                    #inner
+                } }
+            }
+            Layout::Single(expr) => quote! {
+                ::kas::Layout::set_rect(&mut #expr, cx, rect, hints);
+            },
+            Layout::Widget(stor, _) | Layout::Label(stor, _) => quote! {
+                ::kas::Layout::set_rect(&mut #core_path.#stor, cx, rect, hints);
+            },
+            Layout::Frame(stor, layout, _, _) => {
+                let inner = layout.set_rect(core_path);
+                quote! {{
+                    #core_path.#stor.rect = rect;
+                    let rect = ::kas::geom::Rect {
+                        pos: rect.pos + #core_path.#stor.offset,
+                        size: rect.size - #core_path.#stor.size,
+                    };
+                    #inner
+                }}
+            }
+            Layout::List(stor, dir, LayoutList(list)) => {
+                let len = list.len();
+                let mut toks = quote! {
+                    let dim = (#dir, #len);
+                    let mut setter = ::kas::layout::RowSetter::<_, Vec<i32>, _>::new(rect, dim, &mut #core_path.#stor);
+                };
+                for (index, item) in list.iter().enumerate() {
+                    let inner = item.layout.set_rect(core_path);
+                    toks.append_all(quote!{{
+                        let rect = ::kas::layout::RulesSetter::child_rect(&mut setter, &mut #core_path.#stor, #index);
+                        #inner
+                    }});
+                }
+                toks
+            }
+            Layout::Float(LayoutList(list)) => {
+                let mut toks = Toks::new();
+                for item in list {
+                    toks.append_all(item.layout.set_rect(core_path));
+                }
+                toks
+            }
+            Layout::Grid(stor, dim, LayoutList(list)) => {
+                let mut toks = quote! {
+                    let dim = #dim;
+                    let mut setter = ::kas::layout::GridSetter::<Vec<_>, Vec<_>, _>::new(rect, dim, &mut #core_path.#stor);
+                };
+                for item in list {
+                    let inner = item.layout.set_rect(core_path);
+                    let cell = &item.cell;
+                    toks.append_all(quote!{{
+                        let rect = ::kas::layout::RulesSetter::child_rect(&mut setter, &mut #core_path.#stor, #cell);
+                        #inner
+                    }});
+                }
+                toks
+            }
+        }
     }
 
     /// Yield an implementation of `fn draw`
