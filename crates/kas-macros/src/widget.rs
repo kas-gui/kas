@@ -420,7 +420,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
                 #[inline]
                 fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-                    ::kas::Tile::rect(self).contains(coord).then(|| ::kas::Tile::probe(self, coord))
+                    ::kas::layout::LayoutVisitor::layout_visitor(self).try_probe(coord)
                 }
 
                 #[inline]
@@ -463,7 +463,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 #[cfg(debug_assertions)]
                 self.#core.status.require_rect(&self.#core._id);
 
-                ::kas::MacroDefinedLayout::try_probe(self, coord)
+                ::kas::Tile::rect(self).contains(coord).then(|| ::kas::Tile::probe(self, coord))
             }
         };
 
@@ -478,8 +478,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
         probe = quote! {
             let coord = coord + ::kas::Tile::translation(self);
-            ::kas::layout::LayoutVisitor::layout_visitor(self)
-                .try_probe(coord)
+            ::kas::MacroDefinedLayout::try_probe(self, coord)
                     .unwrap_or_else(|| ::kas::Tile::id(self))
         };
     } else {
