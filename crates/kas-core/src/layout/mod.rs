@@ -45,7 +45,6 @@ mod size_rules;
 mod size_types;
 mod sizer;
 mod storage;
-mod visitor;
 
 use crate::dir::{Direction, Directional, Directions};
 
@@ -57,11 +56,6 @@ pub use size_rules::SizeRules;
 pub use size_types::*;
 pub use sizer::{solve_size_rules, RulesSetter, RulesSolver, SolveCache};
 pub use storage::*;
-pub use visitor::{FrameStorage, PackStorage};
-
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-pub use visitor::{LayoutList, Visitor};
 
 /// Information on which axis is being resized
 ///

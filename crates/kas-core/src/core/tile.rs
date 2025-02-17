@@ -11,8 +11,7 @@ use crate::{HasId, Id, Layout};
 use kas_macros::autoimpl;
 
 #[allow(unused)] use super::{Events, Widget};
-#[allow(unused)]
-use crate::layout::{self, AlignPair};
+#[allow(unused)] use crate::layout::{self, AlignPair};
 #[allow(unused)] use crate::theme::DrawCx;
 #[allow(unused)] use kas_macros as macros;
 
