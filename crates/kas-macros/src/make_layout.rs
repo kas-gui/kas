@@ -52,6 +52,11 @@ impl Tree {
         self.0.generate(core_path)
     }
 
+    /// Yield an implementation of `fn size_rules`
+    pub fn size_rules(&self, core_path: &Toks) -> Toks {
+        self.0.size_rules(core_path)
+    }
+
     /// Yield an implementation of `fn set_rect`
     pub fn set_rect(&self, core_path: &Toks) -> Toks {
         self.0.set_rect(core_path)
@@ -715,6 +720,92 @@ impl Layout {
                 quote! { layout::Visitor::single(&mut #core_path.#stor) }
             }
         })
+    }
+
+    /// Yield an implementation of `fn size_rules`
+    fn size_rules(&self, core_path: &Toks) -> Toks {
+        match self {
+            Layout::Align(layout, _) => layout.size_rules(core_path),
+            Layout::Pack(layout, pack) => {
+                let stor = &pack.stor;
+                let inner = layout.size_rules(core_path);
+                quote! {{
+                    let rules = #inner;
+                    #core_path.#stor.size.set_component(axis, rules.ideal_size());
+                    rules
+                }}
+            }
+            Layout::Single(expr) => quote! {
+                ::kas::Layout::size_rules(&mut #expr, sizer, axis)
+            },
+            Layout::Widget(stor, _) | Layout::Label(stor, _) => quote! {
+                ::kas::Layout::size_rules(&mut #core_path.#stor, sizer, axis)
+            },
+            Layout::Frame(stor, layout, style, _) => {
+                let inner = layout.size_rules(core_path);
+                quote! {
+                    let child_rules = {
+                        let sizer = sizer.re();
+                        let axis = #core_path.#stor.child_axis(axis);
+                        #inner
+                    };
+                    #core_path.#stor.size_rules(sizer, axis, child_rules, #style)
+                }
+            }
+            Layout::List(stor, dir, LayoutList(list)) => {
+                let len = list.len();
+                let mut toks = quote! {
+                    let dim = (#dir, #len);
+                    let mut solver = ::kas::layout::RowSolver::new(axis, dim, &mut #core_path.#stor);
+                };
+                for (index, item) in list.iter().enumerate() {
+                    let inner = item.layout.size_rules(core_path);
+                    toks.append_all(quote!{{
+                        ::kas::layout::RulesSolver::for_child(&mut solver, &mut #core_path.#stor, #index, |axis| {
+                            let sizer = sizer.re();
+                            #inner
+                        });
+                    }});
+                }
+                toks.append_all(quote! {
+                    ::kas::layout::RulesSolver::finish(solver, &mut #core_path.#stor)
+                });
+                toks
+            }
+            Layout::Float(LayoutList(list)) => {
+                let mut toks = quote! {
+                    let mut rules = SizeRules::EMPTY;
+                };
+                for item in list {
+                    let inner = item.layout.size_rules(core_path);
+                    toks.append_all(quote! {
+                        rules = rules.max({ #inner });
+                    });
+                }
+                toks.append_all(quote! { rules });
+                toks
+            }
+            Layout::Grid(stor, dim, LayoutList(list)) => {
+                let mut toks = quote! {
+                    let dim = #dim;
+                    let mut solver = ::kas::layout::GridSolver::<Vec<_>, Vec<_>, _>::new(axis, dim, &mut #core_path.#stor);
+                };
+                for item in list {
+                    let inner = item.layout.size_rules(core_path);
+                    let cell = &item.cell;
+                    toks.append_all(quote!{{
+                        ::kas::layout::RulesSolver::for_child(&mut solver, &mut #core_path.#stor, #cell, |axis| {
+                            let sizer = sizer.re();
+                            #inner
+                        });
+                    }});
+                }
+                toks.append_all(quote! {
+                    ::kas::layout::RulesSolver::finish(solver, &mut #core_path.#stor)
+                });
+                toks
+            }
+        }
     }
 
     /// Yield an implementation of `fn set_rect`

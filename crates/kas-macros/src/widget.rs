@@ -383,6 +383,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let fn_try_probe;
     let mut fn_draw = None;
     if let Some(Layout { tree, .. }) = args.layout.take() {
+        let size_rules = tree.size_rules(&core_path);
         let set_rect = tree.set_rect(&core_path);
         let try_probe = tree.try_probe(&core_path);
         let draw = tree.draw(&core_path);
@@ -406,7 +407,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     sizer: ::kas::theme::SizeCx,
                     axis: ::kas::layout::AxisInfo,
                 ) -> ::kas::layout::SizeRules {
-                    ::kas::layout::LayoutVisitor::layout_visitor(self).size_rules(sizer, axis)
+                    #size_rules
                 }
 
                 #[inline]
