@@ -108,7 +108,7 @@ where
             for window in self.windows.values_mut() {
                 match window.resume(&mut self.state, el) {
                     Ok(winit_id) => {
-                        self.id_map.insert(winit_id, window.window_id);
+                        self.id_map.insert(winit_id, window.window_id());
                     }
                     Err(e) => {
                         log::error!("Unable to create window: {}", e);
@@ -152,15 +152,15 @@ where
 
     fn suspended(&mut self, _: &ActiveEventLoop) {
         if !self.suspended {
-            for window in self.windows.values_mut() {
-                window.suspend();
-            }
+            self.windows
+                .retain(|_, window| window.suspend(&mut self.state));
+            self.state.suspended();
             self.suspended = true;
         }
     }
 
-    fn exiting(&mut self, _: &ActiveEventLoop) {
-        self.state.on_exit();
+    fn exiting(&mut self, el: &ActiveEventLoop) {
+        self.suspended(el);
     }
 }
 
@@ -171,7 +171,7 @@ where
     pub(super) fn new(mut windows: Vec<Box<Window<A, G, T>>>, state: State<A, G, T>) -> Self {
         Loop {
             suspended: true,
-            windows: windows.drain(..).map(|w| (w.window_id, w)).collect(),
+            windows: windows.drain(..).map(|w| (w.window_id(), w)).collect(),
             popups: Default::default(),
             id_map: Default::default(),
             state,
@@ -180,6 +180,7 @@ where
     }
 
     fn flush_pending(&mut self, el: &ActiveEventLoop) {
+        let mut close_all = false;
         while let Some(pending) = self.state.shared.pending.pop_front() {
             match pending {
                 Pending::AddPopup(parent_id, id, popup) => {
@@ -211,11 +212,11 @@ where
                         win_id = id;
                     }
                     if let Some(window) = self.windows.get_mut(&win_id) {
-                        window.send_close(&mut self.state, target);
+                        window.send_close(target);
                     }
                 }
                 Pending::Action(action) => {
-                    if action.contains(Action::CLOSE | Action::EXIT) {
+                    if action.contains(Action::CLOSE) {
                         self.windows.clear();
                         self.id_map.clear();
                         el.set_control_flow(ControlFlow::Poll);
@@ -225,32 +226,30 @@ where
                         }
                     }
                 }
+                Pending::Exit => close_all = true,
             }
         }
 
-        let mut close_all = false;
         self.resumes.clear();
         self.windows.retain(|window_id, window| {
             let (action, resume) = window.flush_pending(&mut self.state);
             if let Some(instant) = resume {
                 self.resumes.push((instant, *window_id));
             }
-            if action.contains(Action::EXIT) {
-                close_all = true;
-                true
-            } else if action.contains(Action::CLOSE) {
+
+            if close_all || action.contains(Action::CLOSE) {
+                window.suspend(&mut self.state);
+
+                // Call flush_pending again since suspend may queue messages.
+                // We don't care about the returned Action or resume times since
+                // the window is being destroyed.
+                let _ = window.flush_pending(&mut self.state);
+
                 self.id_map.retain(|_, v| v != window_id);
                 false
             } else {
                 true
             }
         });
-
-        if close_all {
-            for (_, mut window) in self.windows.drain() {
-                window.suspend();
-            }
-            self.id_map.clear();
-        }
     }
 }

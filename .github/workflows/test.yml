@@ -71,7 +71,7 @@ jobs:
         toolchain: [stable]
         include:
           - os: ubuntu-latest
-            toolchain: "1.80.1"
+            toolchain: "1.81.0"
             variant: MSRV
           - os: ubuntu-latest
             toolchain: beta

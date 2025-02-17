@@ -32,7 +32,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         mut custom: CB,
         options: &Options,
     ) -> Result<Self, Error> {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: options.backend(),
             ..Default::default()
         });

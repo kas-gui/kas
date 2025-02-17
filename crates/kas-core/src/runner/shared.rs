@@ -97,7 +97,9 @@ where
         }
     }
 
-    pub(crate) fn on_exit(&self) {
+    pub(crate) fn suspended(&mut self) {
+        self.data.suspended();
+
         match self.options.write_config(&self.shared.config.borrow()) {
             Ok(()) => (),
             Err(error) => warn_about_error("Failed to save config", &error),
@@ -151,6 +153,9 @@ pub(crate) trait RunnerT {
 
     /// Close a window
     fn close_window(&mut self, id: WindowId);
+
+    /// Exit the application
+    fn exit(&mut self);
 
     /// Attempt to get clipboard contents
     ///
@@ -226,6 +231,10 @@ impl<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> RunnerT for SharedS
 
     fn close_window(&mut self, id: WindowId) {
         self.pending.push_back(Pending::CloseWindow(id));
+    }
+
+    fn exit(&mut self) {
+        self.pending.push_back(Pending::Exit);
     }
 
     fn get_clipboard(&mut self) -> Option<String> {

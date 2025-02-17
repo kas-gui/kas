@@ -401,21 +401,21 @@ impl<Data: 'static> Window<Data> {
     /// Each [`crate::Popup`] is assigned a [`WindowId`]; both are passed.
     pub(crate) fn add_popup(
         &mut self,
-        cx: &mut EventCx,
+        cx: &mut ConfigCx,
         data: &Data,
         id: WindowId,
         popup: kas::PopupDescriptor,
     ) {
         let index = self.popups.len();
         self.popups.push((id, popup, Offset::ZERO));
-        self.resize_popup(&mut cx.config_cx(), data, index);
+        self.resize_popup(cx, data, index);
         cx.action(Id::ROOT, Action::REDRAW);
     }
 
     /// Trigger closure of a pop-up
     ///
     /// If the given `id` refers to a pop-up, it should be closed.
-    pub(crate) fn remove_popup(&mut self, cx: &mut EventCx, id: WindowId) {
+    pub(crate) fn remove_popup(&mut self, cx: &mut ConfigCx, id: WindowId) {
         for i in 0..self.popups.len() {
             if id == self.popups[i].0 {
                 self.popups.remove(i);

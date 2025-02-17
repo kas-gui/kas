@@ -48,7 +48,6 @@ struct WindowData<G: GraphicsBuilder, T: Theme<G::Shared>> {
 pub struct Window<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
     _data: std::marker::PhantomData<A>,
     pub(super) widget: kas::Window<A>,
-    pub(super) window_id: WindowId,
     ev_state: EventState,
     window: Option<WindowData<G, T>>,
 }
@@ -65,10 +64,14 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         Window {
             _data: std::marker::PhantomData,
             widget,
-            window_id,
-            ev_state: EventState::new(config, shared.platform),
+            ev_state: EventState::new(window_id, config, shared.platform),
             window: None,
         }
+    }
+
+    #[inline]
+    pub(super) fn window_id(&self) -> WindowId {
+        self.ev_state.window_id
     }
 
     /// Open (resume) a window
@@ -86,12 +89,8 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         let config = self.ev_state.config();
         let mut theme_window = state.shared.theme.new_window(config);
 
-        self.ev_state.full_configure(
-            theme_window.size(),
-            self.window_id,
-            &mut self.widget,
-            &state.data,
-        );
+        self.ev_state
+            .full_configure(theme_window.size(), &mut self.widget, &state.data);
 
         let node = self.widget.as_node(&state.data);
         let sizer = SizeCx::new(theme_window.size());
@@ -191,7 +190,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             surface,
             frame_count: (Instant::now(), 0),
 
-            window_id: self.window_id,
+            window_id: self.ev_state.window_id,
             solve_cache,
             theme_window,
             next_avail_frame_time: time,
@@ -205,9 +204,27 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
     }
 
     /// Close (suspend) the window, keeping state (widget)
-    pub(super) fn suspend(&mut self) {
-        // TODO: close popups and notify the widget to allow saving data
-        self.window = None;
+    ///
+    /// Returns `true` unless this `Window` should be destoyed.
+    pub(super) fn suspend(&mut self, state: &mut State<A, G, T>) -> bool {
+        if let Some(ref mut window) = self.window {
+            self.ev_state.suspended(&mut state.shared);
+
+            let mut messages = MessageStack::new();
+            let action = self.ev_state.flush_pending(
+                &mut state.shared,
+                window,
+                &mut messages,
+                &mut self.widget,
+                &state.data,
+            );
+            state.handle_messages(&mut messages);
+
+            self.window = None;
+            !action.contains(Action::CLOSE)
+        } else {
+            true
+        }
     }
 
     /// Handle an event
@@ -282,7 +299,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         );
         state.handle_messages(&mut messages);
 
-        if action.contains(Action::CLOSE | Action::EXIT) {
+        if action.contains(Action::CLOSE) {
             return (action, None);
         }
         self.handle_action(state, action);
@@ -370,29 +387,23 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             return;
         };
 
-        let mut messages = MessageStack::new();
-        self.ev_state
-            .with(&mut state.shared, window, &mut messages, |cx| {
-                self.widget.add_popup(cx, &state.data, id, popup)
-            });
-        state.handle_messages(&mut messages);
+        let size = window.theme_window.size();
+        let mut cx = ConfigCx::new(&size, &mut self.ev_state);
+        self.widget.add_popup(&mut cx, &state.data, id, popup);
     }
 
     pub(super) fn send_action(&mut self, action: Action) {
         self.ev_state.action(Id::ROOT, action);
     }
 
-    pub(super) fn send_close(&mut self, state: &mut State<A, G, T>, id: WindowId) {
-        if id == self.window_id {
+    pub(super) fn send_close(&mut self, id: WindowId) {
+        if id == self.ev_state.window_id {
             self.ev_state.action(Id::ROOT, Action::CLOSE);
         } else if let Some(window) = self.window.as_ref() {
             let widget = &mut self.widget;
-            let mut messages = MessageStack::new();
-            self.ev_state
-                .with(&mut state.shared, window, &mut messages, |cx| {
-                    widget.remove_popup(cx, id)
-                });
-            state.handle_messages(&mut messages);
+            let size = window.theme_window.size();
+            let mut cx = ConfigCx::new(&size, &mut self.ev_state);
+            widget.remove_popup(&mut cx, id);
         }
     }
 }
@@ -405,12 +416,8 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             return;
         };
 
-        self.ev_state.full_configure(
-            window.theme_window.size(),
-            self.window_id,
-            &mut self.widget,
-            &state.data,
-        );
+        self.ev_state
+            .full_configure(window.theme_window.size(), &mut self.widget, &state.data);
 
         log::trace!(target: "kas_perf::wgpu::window", "reconfigure: {}µs", time.elapsed().as_micros());
     }
