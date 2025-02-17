@@ -10,7 +10,7 @@ use proc_macro_error2::emit_error;
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::{braced, bracketed, parenthesized, parse_quote, token};
+use syn::{braced, bracketed, parenthesized, token};
 use syn::{Expr, Ident, LitStr, Member, Token, Type};
 
 #[allow(non_camel_case_types)]
@@ -38,7 +38,6 @@ mod kw {
     custom_keyword!(float);
     custom_keyword!(px);
     custom_keyword!(em);
-    custom_keyword!(map_any);
     custom_keyword!(with_direction);
     custom_keyword!(with_style);
     custom_keyword!(with_background);
@@ -138,7 +137,6 @@ enum Layout {
     Float(LayoutList<()>),
     Grid(Ident, GridDimensions, LayoutList<CellInfo>),
     Label(Ident, LitStr),
-    MapAny(Box<Layout>, MapAny),
 }
 
 #[derive(Debug)]
@@ -192,10 +190,7 @@ impl Layout {
 
         loop {
             if let Ok(dot_token) = input.parse::<Token![.]>() {
-                if input.peek(kw::map_any) {
-                    let map_any = MapAny::parse(dot_token, input)?;
-                    layout = Layout::MapAny(Box::new(layout), map_any);
-                } else if input.peek(kw::align) {
+                if input.peek(kw::align) {
                     let align = Align::parse(dot_token, input)?;
                     layout = Layout::Align(Box::new(layout), align);
                 } else if input.peek(kw::pack) {
@@ -203,9 +198,9 @@ impl Layout {
                     layout = Layout::Pack(Box::new(layout), pack);
                 } else if let Ok(ident) = input.parse::<Ident>() {
                     let note_msg = if matches!(&layout, &Layout::Frame(_, _, _, _)) {
-                        "supported methods on layout objects: `map_any`, `align`, `pack`, `with_style`, `with_background`"
+                        "supported methods on layout objects: `align`, `pack`, `with_style`, `with_background`"
                     } else {
-                        "supported methods on layout objects: `map_any`, `align`, `pack`"
+                        "supported methods on layout objects: `align`, `pack`"
                     };
                     emit_error!(
                         ident, "method not supported here";
@@ -526,24 +521,6 @@ impl ToTokens for Direction {
 
 #[derive(Debug)]
 #[allow(unused)]
-struct MapAny {
-    pub dot_token: Token![.],
-    pub kw: kw::map_any,
-    pub paren_token: token::Paren,
-}
-impl MapAny {
-    fn parse(dot_token: Token![.], input: ParseStream) -> Result<Self> {
-        let _content;
-        Ok(MapAny {
-            dot_token,
-            kw: input.parse()?,
-            paren_token: parenthesized!(_content in input),
-        })
-    }
-}
-
-#[derive(Debug)]
-#[allow(unused)]
 struct Align {
     pub dot_token: Token![.],
     pub kw: kw::align,
@@ -691,20 +668,6 @@ impl Layout {
                     quote_spanned! {span=> #ident: ::kas::hidden::StrLabel::new(#text), },
                 );
             }
-            Layout::MapAny(layout, map_any) => {
-                let start = children.len();
-                layout.append_fields(fields, children, &parse_quote! { () });
-                let map_expr: Expr = parse_quote! { &() };
-                for child in &mut children[start..] {
-                    if let Some(ref expr) = child.data_binding {
-                        if *expr != map_expr {
-                            emit_error!(map_any.kw, "invalid data type mapping")
-                        }
-                    } else {
-                        child.data_binding = Some(map_expr.clone());
-                    }
-                }
-            }
         }
     }
 
@@ -754,7 +717,6 @@ impl Layout {
             Layout::Label(stor, _) => {
                 quote! { layout::Visitor::single(&mut #core_path.#stor) }
             }
-            Layout::MapAny(layout, _) => return layout.generate(core_path),
         })
     }
 
@@ -767,10 +729,9 @@ impl Layout {
         output: &mut Vec<usize>,
     ) -> std::result::Result<(), (Span, &'static str)> {
         match self {
-            Layout::Align(layout, _)
-            | Layout::Pack(layout, _)
-            | Layout::Frame(_, layout, _, _)
-            | Layout::MapAny(layout, _) => layout.nav_next(children, output),
+            Layout::Align(layout, _) | Layout::Pack(layout, _) | Layout::Frame(_, layout, _, _) => {
+                layout.nav_next(children, output)
+            }
             Layout::Single(m) => {
                 for (i, child) in children.enumerate() {
                     if let ChildIdent::Field(ref ident) = child.ident {
