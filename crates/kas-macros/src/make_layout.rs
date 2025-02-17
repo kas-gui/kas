@@ -21,23 +21,12 @@ mod kw {
     custom_keyword!(pack);
     custom_keyword!(column);
     custom_keyword!(row);
-    custom_keyword!(right);
-    custom_keyword!(left);
-    custom_keyword!(down);
-    custom_keyword!(up);
-    custom_keyword!(center);
-    custom_keyword!(stretch);
     custom_keyword!(frame);
     custom_keyword!(list);
     custom_keyword!(grid);
-    custom_keyword!(default);
-    custom_keyword!(top);
-    custom_keyword!(bottom);
     custom_keyword!(aligned_column);
     custom_keyword!(aligned_row);
     custom_keyword!(float);
-    custom_keyword!(px);
-    custom_keyword!(em);
     custom_keyword!(with_direction);
     custom_keyword!(with_style);
     custom_keyword!(with_background);
@@ -145,6 +134,7 @@ struct ExprMember {
     member: Member,
 }
 
+#[allow(unused)]
 #[derive(Debug)]
 enum Direction {
     Left,
@@ -478,24 +468,7 @@ impl ToTokens for ExprMember {
 
 impl Parse for Direction {
     fn parse(input: ParseStream) -> Result<Self> {
-        let lookahead = input.lookahead1();
-        if lookahead.peek(kw::right) {
-            let _: kw::right = input.parse()?;
-            Ok(Direction::Right)
-        } else if lookahead.peek(kw::down) {
-            let _: kw::down = input.parse()?;
-            Ok(Direction::Down)
-        } else if lookahead.peek(kw::left) {
-            let _: kw::left = input.parse()?;
-            Ok(Direction::Left)
-        } else if lookahead.peek(kw::up) {
-            let _: kw::up = input.parse()?;
-            Ok(Direction::Up)
-        } else if lookahead.peek(Token![self]) {
-            Ok(Direction::Expr(input.parse()?))
-        } else {
-            Err(lookahead.error())
-        }
+        Ok(Direction::Expr(input.parse()?))
     }
 }
 
