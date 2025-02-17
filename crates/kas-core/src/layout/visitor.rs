@@ -532,7 +532,7 @@ pub struct FrameStorage {
     /// NOTE: for a top-level layout component this is redundant with the
     /// widget's rect. For frames deeper within a widget's layout we *could*
     /// instead recalculate this (in every draw call etc.).
-    rect: Rect,
+    pub rect: Rect,
 }
 impl FrameStorage {
     /// Calculate child's "other axis" size

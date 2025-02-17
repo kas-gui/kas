@@ -383,6 +383,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let fn_try_probe;
     let mut fn_draw = None;
     if let Some(Layout { tree, .. }) = args.layout.take() {
+        let draw = tree.draw(&core_path);
         fn_nav_next = tree.nav_next(children.iter());
 
         let layout_visitor = tree.layout_visitor(&core_path)?;
@@ -425,8 +426,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 #[inline]
                 fn draw(&mut self, mut draw: ::kas::theme::DrawCx) {
                     draw.set_id(::kas::Tile::id(self));
-
-                    ::kas::layout::LayoutVisitor::layout_visitor(self).draw(draw);
+                    #draw
                 }
             }
         });

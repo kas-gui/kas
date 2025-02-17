@@ -52,6 +52,11 @@ impl Tree {
         self.0.generate(core_path)
     }
 
+    /// Yield an implementation of `fn draw`
+    pub fn draw(&self, core_path: &Toks) -> Toks {
+        self.0.draw(core_path)
+    }
+
     /// Generate implementation of nav_next
     pub fn nav_next<'a, I: Clone + Iterator<Item = &'a Child>>(
         &self,
@@ -689,6 +694,40 @@ impl Layout {
                 quote! { layout::Visitor::single(&mut #core_path.#stor) }
             }
         })
+    }
+
+    /// Yield an implementation of `fn draw`
+    fn draw(&self, core_path: &Toks) -> Toks {
+        match self {
+            Layout::Align(layout, _) | Layout::Pack(layout, _) => layout.draw(core_path),
+            Layout::Single(expr) => quote! {
+                ::kas::Layout::draw(&mut #expr, draw.re());
+            },
+            Layout::Widget(stor, _) | Layout::Label(stor, _) => quote! {
+                ::kas::Layout::draw(&mut #core_path.#stor, draw.re());
+            },
+            Layout::Frame(stor, layout, style, bg) => {
+                let mut toks = quote! {
+                    draw.frame(#core_path.#stor.rect, #style, #bg);
+                };
+                toks.append_all(layout.draw(core_path));
+                toks
+            }
+            Layout::List(_, _, LayoutList(list)) | Layout::Float(LayoutList(list)) => {
+                let mut toks = Toks::new();
+                for item in list {
+                    toks.append_all(item.layout.draw(core_path));
+                }
+                toks
+            }
+            Layout::Grid(_, _, LayoutList(list)) => {
+                let mut toks = Toks::new();
+                for item in list {
+                    toks.append_all(item.layout.draw(core_path));
+                }
+                toks
+            }
+        }
     }
 
     /// Create a Vec enumerating all children in navigation order
