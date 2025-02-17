@@ -383,6 +383,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let fn_try_probe;
     let mut fn_draw = None;
     if let Some(Layout { tree, .. }) = args.layout.take() {
+        let try_probe = tree.try_probe(&core_path);
         let draw = tree.draw(&core_path);
         fn_nav_next = tree.nav_next(children.iter());
 
@@ -420,7 +421,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
                 #[inline]
                 fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-                    ::kas::layout::LayoutVisitor::layout_visitor(self).try_probe(coord)
+                    #try_probe
                 }
 
                 #[inline]

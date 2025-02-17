@@ -52,6 +52,22 @@ impl Tree {
         self.0.generate(core_path)
     }
 
+    /// Yield an implementation of `fn try_probe`
+    pub fn try_probe(&self, core_path: &Toks) -> Toks {
+        let mut targets = Vec::new();
+        self.0.probe_targets(core_path, &mut targets);
+        let mut toks = Toks::new();
+        for target in &targets {
+            toks.append_all(quote! {
+                if let Some(id) = ::kas::Layout::try_probe(&mut #target, coord) {
+                    Some(id)
+                } else
+            });
+        }
+        toks.append_all(quote! { { None } });
+        toks
+    }
+
     /// Yield an implementation of `fn draw`
     pub fn draw(&self, core_path: &Toks) -> Toks {
         self.0.draw(core_path)
@@ -694,6 +710,29 @@ impl Layout {
                 quote! { layout::Visitor::single(&mut #core_path.#stor) }
             }
         })
+    }
+
+    /// Yield an implementation of `fn draw`
+    fn probe_targets(&self, core_path: &Toks, targets: &mut Vec<Toks>) {
+        match self {
+            Layout::Align(layout, _) | Layout::Pack(layout, _) | Layout::Frame(_, layout, _, _) => {
+                layout.probe_targets(core_path, targets)
+            }
+            Layout::Single(expr) => targets.push(expr.to_token_stream()),
+            Layout::Widget(stor, _) | Layout::Label(stor, _) => {
+                targets.push(quote! { #core_path.#stor })
+            }
+            Layout::List(_, _, LayoutList(list)) | Layout::Float(LayoutList(list)) => {
+                for item in list {
+                    item.layout.probe_targets(core_path, targets);
+                }
+            }
+            Layout::Grid(_, _, LayoutList(list)) => {
+                for item in list {
+                    item.layout.probe_targets(core_path, targets);
+                }
+            }
+        }
     }
 
     /// Yield an implementation of `fn draw`
