@@ -12,7 +12,6 @@ use super::{AlignHints, AxisInfo, SizeRules};
 use super::{GridCellInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
 use super::{RowSetter, RowSolver, RowStorage};
 use super::{RulesSetter, RulesSolver};
-use crate::draw::color::Rgb;
 use crate::event::ConfigCx;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::theme::{Background, DrawCx, FrameStyle, MarginStyle, SizeCx};
@@ -85,22 +84,6 @@ impl<'a> Visitor<Box<dyn Layout + 'a>> {
             storage,
             style,
             bg,
-        })
-    }
-
-    /// Construct a button frame around a sub-layout
-    ///
-    /// Generates a button frame containing the child node. Mouse/touch input
-    /// on the button reports input to `self`, not to the child node.
-    pub fn button<C: Layout + 'a>(
-        storage: &'a mut FrameStorage,
-        child: C,
-        color: Option<Rgb>,
-    ) -> Visitor<impl Layout + 'a> {
-        Visitor(Button {
-            child,
-            storage,
-            color,
         })
     }
 
@@ -369,44 +352,6 @@ impl<'a, C: Layout> Layout for Frame<'a, C> {
 
     fn draw(&mut self, mut draw: DrawCx) {
         draw.frame(self.storage.rect, self.style, self.bg);
-        self.child.draw(draw);
-    }
-}
-
-struct Button<'a, C: Layout> {
-    child: C,
-    storage: &'a mut FrameStorage,
-    color: Option<Rgb>,
-}
-
-impl<'a, C: Layout> Layout for Button<'a, C> {
-    fn size_rules(&mut self, sizer: SizeCx, mut axis: AxisInfo) -> SizeRules {
-        axis.sub_other(self.storage.size.extract(axis.flipped()));
-        let child_rules = self.child.size_rules(sizer.re(), axis);
-        self.storage
-            .size_rules(sizer, axis, child_rules, FrameStyle::Button)
-    }
-
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, _: AlignHints) {
-        self.storage.rect = rect;
-        let child_rect = Rect {
-            pos: rect.pos + self.storage.offset,
-            size: rect.size - self.storage.size,
-        };
-        self.child.set_rect(cx, child_rect, AlignHints::CENTER);
-    }
-
-    fn try_probe(&mut self, _: Coord) -> Option<Id> {
-        // Buttons steal clicks, hence Button never returns ID of content
-        None
-    }
-
-    fn draw(&mut self, mut draw: DrawCx) {
-        let bg = match self.color {
-            Some(rgb) => Background::Rgb(rgb),
-            None => Background::Default,
-        };
-        draw.frame(self.storage.rect, FrameStyle::Button, bg);
         self.child.draw(draw);
     }
 }
