@@ -13,8 +13,7 @@ use crate::Id;
 use kas_macros::autoimpl;
 
 #[allow(unused)] use super::{Events, Tile, Widget};
-#[allow(unused)]
-use crate::layout::{self, AlignPair, LayoutVisitor};
+#[allow(unused)] use crate::layout::{self, AlignPair};
 #[allow(unused)] use kas_macros as macros;
 
 /// Positioning and drawing routines for [`Widget`]s
@@ -85,11 +84,8 @@ pub trait Layout {
     ///
     /// ## Default implementation
     ///
-    /// The `#[widget]` macro
-    /// [may generate a default implementation](macros::widget#layout-1) by
-    /// implementing [`LayoutVisitor`] for `Self`.
-    /// In this case the default impl of this method is
-    /// `self.layout_visitor().size_rules(/* ... */)`.
+    /// The `#[widget]` macro may implement this method as a wrapper over
+    /// the corresponding [`MacroDefinedLayout`].
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
 
     /// Set size and position
@@ -125,11 +121,8 @@ pub trait Layout {
     ///
     /// ## Default implementation
     ///
-    /// The `#[widget]` macro
-    /// [may generate a default implementation](macros::widget#layout-1) by
-    /// implementing [`LayoutVisitor`] for `Self`.
-    /// In this case the default impl of this method is
-    /// `self.layout_visitor().set_rect(/* ... */)`.
+    /// The `#[widget]` macro may implement this method as a wrapper over
+    /// the corresponding [`MacroDefinedLayout`].
     ///
     /// [`Stretch`]: crate::layout::Stretch
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints);
@@ -184,11 +177,8 @@ pub trait Layout {
     ///
     /// ## Default implementation
     ///
-    /// The `#[widget]` macro
-    /// [may generate a default implementation](macros::widget#layout-1) by
-    /// implementing [`LayoutVisitor`] for `Self`.
-    /// In this case the default impl of this method is
-    /// `self.layout_visitor().draw(/* ... */)`.
+    /// The `#[widget]` macro may implement this method as a wrapper over
+    /// the corresponding [`MacroDefinedLayout`].
     ///
     /// ## Method modification
     ///

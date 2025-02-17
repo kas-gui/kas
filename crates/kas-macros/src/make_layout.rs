@@ -47,11 +47,6 @@ impl Tree {
         fields
     }
 
-    // Required: `::kas::layout` must be in scope.
-    pub fn layout_visitor(&self, core_path: &Toks) -> Result<Toks> {
-        self.0.generate(core_path)
-    }
-
     /// Yield an implementation of `fn size_rules`
     pub fn size_rules(&self, core_path: &Toks) -> Toks {
         self.0.size_rules(core_path)
@@ -114,35 +109,7 @@ impl Tree {
 #[derive(Debug)]
 struct ListItem<C> {
     cell: C,
-    stor: Ident,
     layout: Layout,
-}
-#[derive(Debug)]
-struct LayoutList<C>(Vec<ListItem<C>>);
-trait GenerateItem: Sized {
-    fn cell_info_type() -> Toks;
-    fn generate_item(item: &ListItem<Self>, core_path: &Toks) -> Result<Toks>;
-}
-impl GenerateItem for () {
-    fn cell_info_type() -> Toks {
-        quote! { () }
-    }
-
-    fn generate_item(item: &ListItem<()>, core_path: &Toks) -> Result<Toks> {
-        let layout = item.layout.generate(core_path)?;
-        Ok(quote! { ((), #layout) })
-    }
-}
-impl GenerateItem for CellInfo {
-    fn cell_info_type() -> Toks {
-        quote! { ::kas::layout::GridCellInfo }
-    }
-
-    fn generate_item(item: &ListItem<CellInfo>, core_path: &Toks) -> Result<Toks> {
-        let cell = &item.cell;
-        let layout = item.layout.generate(core_path)?;
-        Ok(quote! { (#cell, #layout) })
-    }
 }
 
 #[derive(Debug)]
@@ -152,9 +119,9 @@ enum Layout {
     Single(ExprMember),
     Widget(Ident, Expr),
     Frame(Ident, Box<Layout>, Expr, Expr),
-    List(Ident, Direction, LayoutList<()>),
-    Float(LayoutList<()>),
-    Grid(Ident, GridDimensions, LayoutList<CellInfo>),
+    List(Ident, Direction, Vec<ListItem<()>>),
+    Float(Vec<ListItem<()>>),
+    Grid(Ident, GridDimensions, Vec<ListItem<CellInfo>>),
     Label(Ident, LitStr),
 }
 
@@ -356,19 +323,23 @@ impl Layout {
     }
 }
 
-fn parse_layout_list(input: ParseStream, core_gen: &mut NameGenerator) -> Result<LayoutList<()>> {
+fn parse_layout_list(
+    input: ParseStream,
+    core_gen: &mut NameGenerator,
+) -> Result<Vec<ListItem<()>>> {
     let inner;
     let _ = bracketed!(inner in input);
     parse_layout_items(&inner, core_gen)
 }
 
-fn parse_layout_items(inner: ParseStream, core_gen: &mut NameGenerator) -> Result<LayoutList<()>> {
+fn parse_layout_items(
+    inner: ParseStream,
+    core_gen: &mut NameGenerator,
+) -> Result<Vec<ListItem<()>>> {
     let mut list = vec![];
-    let mut gen2 = NameGenerator::default();
     while !inner.is_empty() {
         list.push(ListItem {
             cell: (),
-            stor: gen2.next(),
             layout: Layout::parse(inner, core_gen)?,
         });
 
@@ -379,7 +350,7 @@ fn parse_layout_items(inner: ParseStream, core_gen: &mut NameGenerator) -> Resul
         let _: Token![,] = inner.parse()?;
     }
 
-    Ok(LayoutList(list))
+    Ok(list)
 }
 
 fn parse_grid_as_list_of_lists<KW: Parse>(
@@ -390,7 +361,6 @@ fn parse_grid_as_list_of_lists<KW: Parse>(
 ) -> Result<Layout> {
     let (mut col, mut row) = (0, 0);
     let mut dim = GridDimensions::default();
-    let mut gen2 = NameGenerator::default();
     let mut cells = vec![];
 
     while !inner.is_empty() {
@@ -404,11 +374,7 @@ fn parse_grid_as_list_of_lists<KW: Parse>(
             let cell = CellInfo::new(col, row);
             dim.update(&cell);
             let layout = Layout::parse(&inner2, core_gen)?;
-            cells.push(ListItem {
-                cell,
-                stor: gen2.next(),
-                layout,
-            });
+            cells.push(ListItem { cell, layout });
 
             if inner2.is_empty() {
                 break;
@@ -436,12 +402,11 @@ fn parse_grid_as_list_of_lists<KW: Parse>(
         }
     }
 
-    Ok(Layout::Grid(stor, dim, LayoutList(cells)))
+    Ok(Layout::Grid(stor, dim, cells))
 }
 
 fn parse_grid(stor: Ident, inner: ParseStream, core_gen: &mut NameGenerator) -> Result<Layout> {
     let mut dim = GridDimensions::default();
-    let mut gen2 = NameGenerator::default();
     let mut cells = vec![];
     while !inner.is_empty() {
         let cell = inner.parse()?;
@@ -459,11 +424,7 @@ fn parse_grid(stor: Ident, inner: ParseStream, core_gen: &mut NameGenerator) -> 
             layout = Layout::parse(inner, core_gen)?;
             require_comma = true;
         }
-        cells.push(ListItem {
-            cell,
-            stor: gen2.next(),
-            layout,
-        });
+        cells.push(ListItem { cell, layout });
 
         if inner.is_empty() {
             break;
@@ -476,7 +437,7 @@ fn parse_grid(stor: Ident, inner: ParseStream, core_gen: &mut NameGenerator) -> 
         }
     }
 
-    Ok(Layout::Grid(stor, dim, LayoutList(cells)))
+    Ok(Layout::Grid(stor, dim, cells))
 }
 
 impl Parse for ExprMember {
@@ -579,16 +540,6 @@ impl Pack {
             stor: core_gen.next(),
         })
     }
-
-    fn to_tokens(&self, tokens: &mut Toks, core_path: &Toks) {
-        self.dot_token.to_tokens(tokens);
-        self.kw.to_tokens(tokens);
-        self.paren_token.surround(tokens, |tokens| {
-            self.hints.to_tokens(tokens);
-            tokens.append_all(quote! { , &mut #core_path . });
-            self.stor.to_tokens(tokens);
-        });
-    }
 }
 
 impl Layout {
@@ -627,7 +578,7 @@ impl Layout {
                     .append_all(quote! { #stor: Default::default(), });
                 layout.append_fields(fields, children);
             }
-            Layout::List(stor, _, LayoutList(list)) => {
+            Layout::List(stor, _, list) => {
                 fields
                     .def_toks
                     .append_all(quote! { #stor: Default::default(), });
@@ -642,12 +593,12 @@ impl Layout {
                     item.layout.append_fields(fields, children);
                 }
             }
-            Layout::Float(LayoutList(list)) => {
+            Layout::Float(list) => {
                 for item in list {
                     item.layout.append_fields(fields, children);
                 }
             }
-            Layout::Grid(stor, dim, LayoutList(list)) => {
+            Layout::Grid(stor, dim, list) => {
                 let (cols, rows) = (dim.cols as usize, dim.rows as usize);
                 fields
                     .ty_toks
@@ -671,55 +622,6 @@ impl Layout {
                 );
             }
         }
-    }
-
-    // Optionally pass in the list of children, but not when already in a
-    // multi-element layout (list/slice/grid).
-    //
-    // Required: `::kas::layout` must be in scope.
-    fn generate(&self, core_path: &Toks) -> Result<Toks> {
-        Ok(match self {
-            Layout::Align(layout, align) => {
-                let mut tokens = layout.generate(core_path)?;
-                align.to_tokens(&mut tokens);
-                tokens
-            }
-            Layout::Pack(layout, pack) => {
-                let mut tokens = layout.generate(core_path)?;
-                pack.to_tokens(&mut tokens, core_path);
-                tokens
-            }
-            Layout::Single(expr) => quote! {
-                layout::Visitor::single(&mut #expr)
-            },
-            Layout::Widget(ident, _) => quote! {
-                layout::Visitor::single(&mut #core_path.#ident)
-            },
-            Layout::Frame(stor, layout, style, bg) => {
-                let inner = layout.generate(core_path)?;
-                quote! {
-                    layout::Visitor::frame(&mut #core_path.#stor, #inner, #style, #bg)
-                }
-            }
-            Layout::List(stor, dir, list) => {
-                let list = list.expand(core_path)?;
-                quote! {{
-                    let dir = #dir;
-                    layout::Visitor::list(#list, dir, &mut #core_path.#stor)
-                }}
-            }
-            Layout::Grid(stor, dim, list) => {
-                let list = list.expand(core_path)?;
-                quote! { layout::Visitor::grid(#list, #dim, &mut #core_path.#stor) }
-            }
-            Layout::Float(list) => {
-                let list = list.expand(core_path)?;
-                quote! { layout::Visitor::float(#list) }
-            }
-            Layout::Label(stor, _) => {
-                quote! { layout::Visitor::single(&mut #core_path.#stor) }
-            }
-        })
     }
 
     /// Yield an implementation of `fn size_rules`
@@ -752,7 +654,7 @@ impl Layout {
                     #core_path.#stor.size_rules(sizer, axis, child_rules, #style)
                 }
             }
-            Layout::List(stor, dir, LayoutList(list)) => {
+            Layout::List(stor, dir, list) => {
                 let len = list.len();
                 let mut toks = quote! {
                     let dim = (#dir, #len);
@@ -772,7 +674,7 @@ impl Layout {
                 });
                 toks
             }
-            Layout::Float(LayoutList(list)) => {
+            Layout::Float(list) => {
                 let mut toks = quote! {
                     let mut rules = SizeRules::EMPTY;
                 };
@@ -785,7 +687,7 @@ impl Layout {
                 toks.append_all(quote! { rules });
                 toks
             }
-            Layout::Grid(stor, dim, LayoutList(list)) => {
+            Layout::Grid(stor, dim, list) => {
                 let mut toks = quote! {
                     let dim = #dim;
                     let mut solver = ::kas::layout::GridSolver::<Vec<_>, Vec<_>, _>::new(axis, dim, &mut #core_path.#stor);
@@ -848,7 +750,7 @@ impl Layout {
                     #inner
                 }}
             }
-            Layout::List(stor, dir, LayoutList(list)) => {
+            Layout::List(stor, dir, list) => {
                 let len = list.len();
                 let mut toks = quote! {
                     let dim = (#dir, #len);
@@ -863,14 +765,14 @@ impl Layout {
                 }
                 toks
             }
-            Layout::Float(LayoutList(list)) => {
+            Layout::Float(list) => {
                 let mut toks = Toks::new();
                 for item in list {
                     toks.append_all(item.layout.set_rect(core_path));
                 }
                 toks
             }
-            Layout::Grid(stor, dim, LayoutList(list)) => {
+            Layout::Grid(stor, dim, list) => {
                 let mut toks = quote! {
                     let dim = #dim;
                     let mut setter = ::kas::layout::GridSetter::<Vec<_>, Vec<_>, _>::new(rect, dim, &mut #core_path.#stor);
@@ -898,12 +800,12 @@ impl Layout {
             Layout::Widget(stor, _) | Layout::Label(stor, _) => {
                 targets.push(quote! { #core_path.#stor })
             }
-            Layout::List(_, _, LayoutList(list)) | Layout::Float(LayoutList(list)) => {
+            Layout::List(_, _, list) | Layout::Float(list) => {
                 for item in list {
                     item.layout.probe_targets(core_path, targets);
                 }
             }
-            Layout::Grid(_, _, LayoutList(list)) => {
+            Layout::Grid(_, _, list) => {
                 for item in list {
                     item.layout.probe_targets(core_path, targets);
                 }
@@ -928,14 +830,14 @@ impl Layout {
                 toks.append_all(layout.draw(core_path));
                 toks
             }
-            Layout::List(_, _, LayoutList(list)) | Layout::Float(LayoutList(list)) => {
+            Layout::List(_, _, list) | Layout::Float(list) => {
                 let mut toks = Toks::new();
                 for item in list {
                     toks.append_all(item.layout.draw(core_path));
                 }
                 toks
             }
-            Layout::Grid(_, _, LayoutList(list)) => {
+            Layout::Grid(_, _, list) => {
                 let mut toks = Toks::new();
                 for item in list {
                     toks.append_all(item.layout.draw(core_path));
@@ -981,7 +883,7 @@ impl Layout {
                 }
                 panic!("generated child not found")
             }
-            Layout::List(_, dir, LayoutList(list)) => {
+            Layout::List(_, dir, list) => {
                 let start = output.len();
                 for item in list {
                     item.layout.nav_next(children.clone(), output)?;
@@ -993,14 +895,14 @@ impl Layout {
                     Direction::Expr(_) => Err((dir.span(), "`list(dir)` with non-static `dir`")),
                 }
             }
-            Layout::Grid(_, _, LayoutList(list)) => {
+            Layout::Grid(_, _, list) => {
                 // TODO: sort using CellInfo?
                 for item in list {
                     item.layout.nav_next(children.clone(), output)?;
                 }
                 Ok(())
             }
-            Layout::Float(LayoutList(list)) => {
+            Layout::Float(list) => {
                 for item in list {
                     item.layout.nav_next(children.clone(), output)?;
                 }
@@ -1008,69 +910,5 @@ impl Layout {
             }
             Layout::Label(_, _) => Ok(()),
         }
-    }
-}
-
-impl<C: GenerateItem> LayoutList<C> {
-    pub fn expand(&self, core_path: &Toks) -> Result<Toks> {
-        if self.0.is_empty() {
-            return Ok(quote! { () });
-        }
-
-        let name = Ident::new("_VisitableList", Span::call_site());
-        let info_ty = C::cell_info_type();
-
-        let mut item_names = Vec::with_capacity(self.0.len());
-        let mut impl_generics = quote! {};
-        let mut ty_generics = quote! {};
-        let mut stor_ty = quote! {};
-        let mut stor_def = quote! {};
-        for (index, item) in self.0.iter().enumerate() {
-            let span = Span::call_site(); // TODO: span of layout item
-            item_names.push(item.stor.to_token_stream());
-
-            let ty = Ident::new(&format!("_L{}", index), span);
-            impl_generics.append_all(quote! {
-                #ty: ::kas::Layout,
-            });
-            ty_generics.append_all(quote! { #ty, });
-
-            let stor = &item.stor;
-            stor_ty.append_all(quote! { #stor: (#info_ty, ::kas::layout::Visitor<#ty>), });
-            let item = GenerateItem::generate_item(item, core_path)?;
-            stor_def.append_all(quote_spanned! {span=> #stor: #item, });
-        }
-
-        let len = item_names.len();
-
-        let mut get_mut_rules = quote! {};
-        for (index, path) in item_names.iter().enumerate() {
-            get_mut_rules.append_all(quote! {
-                #index => Some((self.#path.0, &mut self.#path.1)),
-            });
-        }
-
-        let toks = quote! {{
-            struct #name <#impl_generics> {
-                #stor_ty
-            }
-
-            impl<#impl_generics> ::kas::layout::LayoutList<#info_ty> for #name <#ty_generics> {
-                fn len(&self) -> usize { #len }
-
-                fn get_info_item(&mut self, index: usize) -> Option<(#info_ty, &mut dyn ::kas::Layout)> {
-                    match index {
-                        #get_mut_rules
-                        _ => None,
-                    }
-                }
-            }
-
-            #name {
-                #stor_def
-            }
-        }};
-        // println!("{}", toks);
-        Ok(toks)
     }
 }

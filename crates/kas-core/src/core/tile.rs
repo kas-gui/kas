@@ -12,7 +12,7 @@ use kas_macros::autoimpl;
 
 #[allow(unused)] use super::{Events, Widget};
 #[allow(unused)]
-use crate::layout::{self, AlignPair, LayoutVisitor};
+use crate::layout::{self, AlignPair};
 #[allow(unused)] use crate::theme::DrawCx;
 #[allow(unused)] use kas_macros as macros;
 
@@ -193,23 +193,10 @@ pub trait Tile: Layout {
     ///
     /// ## Default implementation
     ///
-    /// ## Default implementation
-    ///
-    /// The `#[widget]` macro
-    /// [may generate a default implementation](macros::widget#layout-1) by
-    /// implementing [`LayoutVisitor`] for `Self`.
-    /// In this case the default impl of this method is
-    /// `self.layout_visitor().set_rect(/* ... */)`.
-    /// The underlying implementation considers all children of the `layout`
-    /// property and of  fields, like this:
+    /// The `#[widget]` macro may implement this method as:
     /// ```ignore
     /// let coord = coord + self.translation();
-    /// for child in ITER_OVER_CHILDREN {
-    ///     if let Some(id) = child.try_probe(coord) {
-    ///         return Some(id);
-    ///     }
-    /// }
-    /// self.id()
+    /// MacroDefinedLayout::try_probe(self, coord).unwrap_or_else(|| self.id())
     /// ```
     fn probe(&mut self, coord: Coord) -> Id
     where

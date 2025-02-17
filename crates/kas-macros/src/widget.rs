@@ -389,16 +389,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         let draw = tree.draw(&core_path);
         fn_nav_next = tree.nav_next(children.iter());
 
-        let layout_visitor = tree.layout_visitor(&core_path)?;
-        scope.generated.push(quote! {
-            impl #impl_generics ::kas::layout::LayoutVisitor for #impl_target {
-                fn layout_visitor(&mut self) -> ::kas::layout::Visitor<impl ::kas::Layout> {
-                    use ::kas::layout;
-                    #layout_visitor
-                }
-            }
-        });
-
         scope.generated.push(quote! {
             impl #impl_generics ::kas::MacroDefinedLayout for #impl_target {
                 #[inline]
