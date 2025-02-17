@@ -11,7 +11,7 @@ use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::{braced, bracketed, parenthesized, token};
-use syn::{Expr, Ident, LitStr, Member, Token, Type};
+use syn::{Expr, Ident, LitStr, Member, Token};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -47,15 +47,14 @@ mod kw {
 pub struct StorageFields {
     pub ty_toks: Toks,
     pub def_toks: Toks,
-    pub used_data_ty: bool,
 }
 
 #[derive(Debug)]
 pub struct Tree(Layout);
 impl Tree {
-    pub fn storage_fields(&self, children: &mut Vec<Child>, data_ty: &Type) -> StorageFields {
+    pub fn storage_fields(&self, children: &mut Vec<Child>) -> StorageFields {
         let mut fields = StorageFields::default();
-        self.0.append_fields(&mut fields, children, data_ty);
+        self.0.append_fields(&mut fields, children);
         fields
     }
 
@@ -589,10 +588,10 @@ impl Pack {
 }
 
 impl Layout {
-    fn append_fields(&self, fields: &mut StorageFields, children: &mut Vec<Child>, data_ty: &Type) {
+    fn append_fields(&self, fields: &mut StorageFields, children: &mut Vec<Child>) {
         match self {
             Layout::Align(layout, _) => {
-                layout.append_fields(fields, children, data_ty);
+                layout.append_fields(fields, children);
             }
             Layout::Single(_) => (),
             Layout::Pack(layout, pack) => {
@@ -603,7 +602,7 @@ impl Layout {
                 fields
                     .def_toks
                     .append_all(quote! { #stor: Default::default(), });
-                layout.append_fields(fields, children, data_ty);
+                layout.append_fields(fields, children);
             }
             Layout::Widget(ident, expr) => {
                 children.push(Child::new_core(ident.clone().into()));
@@ -614,7 +613,6 @@ impl Layout {
                 fields
                     .def_toks
                     .append_all(quote_spanned! {span=> #ident: Box::new(#expr), });
-                fields.used_data_ty = true;
             }
             Layout::Frame(stor, layout, _, _) => {
                 fields
@@ -623,7 +621,7 @@ impl Layout {
                 fields
                     .def_toks
                     .append_all(quote! { #stor: Default::default(), });
-                layout.append_fields(fields, children, data_ty);
+                layout.append_fields(fields, children);
             }
             Layout::List(stor, _, LayoutList(list)) => {
                 fields
@@ -637,12 +635,12 @@ impl Layout {
                     quote! { #stor: ::kas::layout::FixedRowStorage<#len>, }
                 });
                 for item in list {
-                    item.layout.append_fields(fields, children, data_ty);
+                    item.layout.append_fields(fields, children);
                 }
             }
             Layout::Float(LayoutList(list)) => {
                 for item in list {
-                    item.layout.append_fields(fields, children, data_ty);
+                    item.layout.append_fields(fields, children);
                 }
             }
             Layout::Grid(stor, dim, LayoutList(list)) => {
@@ -655,7 +653,7 @@ impl Layout {
                     .append_all(quote! { #stor: Default::default(), });
 
                 for item in list {
-                    item.layout.append_fields(fields, children, data_ty);
+                    item.layout.append_fields(fields, children);
                 }
             }
             Layout::Label(ident, text) => {

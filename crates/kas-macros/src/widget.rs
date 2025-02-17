@@ -184,7 +184,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
             let mut stor_defs = Default::default();
             if let Some(Layout { ref tree, .. }) = args.layout {
-                stor_defs = tree.storage_fields(&mut children, &data_ty);
+                stor_defs = tree.storage_fields(&mut children);
             }
             if !stor_defs.ty_toks.is_empty() {
                 let name = format!("_{name}CoreTy");
