@@ -201,3 +201,25 @@ pub trait Layout {
     /// being drawn).
     fn draw(&mut self, draw: DrawCx);
 }
+
+/// Macro-defined layout
+///
+/// This trait is a copy of [`Layout`], implemented automatically for custom
+/// widgets with macro-defined layout. It may be useful for small hacks where
+/// the macro-generated layout implementations should still be used, but with
+/// some addition or modification of inputs.
+///
+/// TODO: add an example
+pub trait MacroDefinedLayout {
+    /// Get size rules for the given axis
+    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
+
+    /// Set size and position
+    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints);
+
+    /// Probe a coordinate for a widget's [`Id`]
+    fn try_probe(&mut self, coord: Coord) -> Option<Id>;
+
+    /// Draw a widget and its children
+    fn draw(&mut self, draw: DrawCx);
+}

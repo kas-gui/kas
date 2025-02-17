@@ -376,10 +376,11 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
     let fn_nav_next;
     let mut fn_size_rules = None;
-    let mut set_rect = quote! { self.#core._rect = rect; };
+    let fn_set_rect;
     let mut probe = quote! {
         ::kas::Tile::id(self)
     };
+    let fn_try_probe;
     let mut fn_draw = None;
     if let Some(Layout { tree, .. }) = args.layout.take() {
         fn_nav_next = tree.nav_next(children.iter());
@@ -394,6 +395,42 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             }
         });
 
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::MacroDefinedLayout for #impl_target {
+                #[inline]
+                fn size_rules(
+                    &mut self,
+                    sizer: ::kas::theme::SizeCx,
+                    axis: ::kas::layout::AxisInfo,
+                ) -> ::kas::layout::SizeRules {
+                    ::kas::layout::LayoutVisitor::layout_visitor(self).size_rules(sizer, axis)
+                }
+
+                #[inline]
+                fn set_rect(
+                    &mut self,
+                    cx: &mut ::kas::event::ConfigCx,
+                    rect: ::kas::geom::Rect,
+                    hints: ::kas::layout::AlignHints,
+                ) {
+                    #core_path._rect = rect;
+                    ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
+                }
+
+                #[inline]
+                fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+                    ::kas::Tile::rect(self).contains(coord).then(|| ::kas::Tile::probe(self, coord))
+                }
+
+                #[inline]
+                fn draw(&mut self, mut draw: ::kas::theme::DrawCx) {
+                    draw.set_id(::kas::Tile::id(self));
+
+                    ::kas::layout::LayoutVisitor::layout_visitor(self).draw(draw);
+                }
+            }
+        });
+
         fn_size_rules = Some(quote! {
             fn size_rules(
                 &mut self,
@@ -402,48 +439,80 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             ) -> ::kas::layout::SizeRules {
                 #[cfg(debug_assertions)]
                 #core_path.status.size_rules(&#core_path._id, axis);
-                ::kas::layout::LayoutVisitor::layout_visitor(self).size_rules(sizer, axis)
+
+                ::kas::MacroDefinedLayout::size_rules(self, sizer, axis)
             }
         });
-        set_rect = quote! {
-            #core_path._rect = rect;
-            ::kas::layout::LayoutVisitor::layout_visitor(self).set_rect(cx, rect, hints);
+
+        fn_set_rect = quote! {
+            fn set_rect(
+                &mut self,
+                cx: &mut ::kas::event::ConfigCx,
+                rect: ::kas::geom::Rect,
+                hints: ::kas::layout::AlignHints,
+            ) {
+                #[cfg(debug_assertions)]
+                #core_path.status.set_rect(&#core_path._id);
+
+                ::kas::MacroDefinedLayout::set_rect(self, cx, rect, hints);
+            }
         };
+
+        fn_try_probe = quote! {
+            fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+                #[cfg(debug_assertions)]
+                self.#core.status.require_rect(&self.#core._id);
+
+                ::kas::MacroDefinedLayout::try_probe(self, coord)
+            }
+        };
+
+        fn_draw = Some(quote! {
+            fn draw(&mut self, draw: ::kas::theme::DrawCx) {
+                #[cfg(debug_assertions)]
+                #core_path.status.require_rect(&#core_path._id);
+
+                ::kas::MacroDefinedLayout::draw(self, draw);
+            }
+        });
+
         probe = quote! {
             let coord = coord + ::kas::Tile::translation(self);
             ::kas::layout::LayoutVisitor::layout_visitor(self)
                 .try_probe(coord)
                     .unwrap_or_else(|| ::kas::Tile::id(self))
         };
-        fn_draw = Some(quote! {
-            fn draw(&mut self, mut draw: ::kas::theme::DrawCx) {
-                #[cfg(debug_assertions)]
-                #core_path.status.require_rect(&#core_path._id);
-
-                draw.set_id(::kas::Tile::id(self));
-
-                ::kas::layout::LayoutVisitor::layout_visitor(self).draw(draw);
-            }
-        });
     } else {
+        fn_set_rect = quote! {
+            fn set_rect(
+                &mut self,
+                cx: &mut ::kas::event::ConfigCx,
+                rect: ::kas::geom::Rect,
+                hints: ::kas::layout::AlignHints,
+            ) {
+                #[cfg(debug_assertions)]
+                #core_path.status.set_rect(&#core_path._id);
+
+                self.#core._rect = rect;
+            }
+        };
+
+        fn_try_probe = quote! {
+            fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+                #[cfg(debug_assertions)]
+                self.#core.status.require_rect(&self.#core._id);
+
+                ::kas::Tile::rect(self).contains(coord).then(|| ::kas::Tile::probe(self, coord))
+            }
+        };
+
         fn_nav_next = Ok(quote! {
             fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
                 ::kas::util::nav_next(reverse, from, self.num_children())
             }
         });
     }
-    let fn_set_rect = quote! {
-        fn set_rect(
-            &mut self,
-            cx: &mut ::kas::event::ConfigCx,
-            rect: ::kas::geom::Rect,
-            hints: ::kas::layout::AlignHints,
-        ) {
-            #[cfg(debug_assertions)]
-            #core_path.status.set_rect(&#core_path._id);
-            #set_rect
-        }
-    };
+
     let fn_probe = quote! {
         #[inline]
         fn probe(&mut self, coord: ::kas::geom::Coord) -> ::kas::Id {
@@ -531,15 +600,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             }
         });
     }
-
-    let fn_try_probe = quote! {
-        fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-            #[cfg(debug_assertions)]
-            self.#core.status.require_rect(&self.#core._id);
-
-            ::kas::Tile::rect(self).contains(coord).then(|| ::kas::Tile::probe(self, coord))
-        }
-    };
 
     let core_rect_is_set;
     let mut widget_set_rect_span = None;

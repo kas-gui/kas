@@ -124,7 +124,7 @@ impl_scope! {
         fn draw(&mut self, mut draw: DrawCx) {
             draw.set_id(self.checkbox.id());
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
-            self.layout_visitor().draw(draw);
+            kas::MacroDefinedLayout::draw(self, draw);
         }
     }
 
