@@ -107,12 +107,13 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
     let popup_edit_box = impl_anon! {
         #[widget{
             layout = row! [
-                format_data!(data: &Data, "{}", &data.text),
-                Button::label_msg("&Edit", MsgEdit).map_any(),
+                self.text,
+                Button::label_msg("&Edit", MsgEdit),
             ];
         }]
         struct {
             core: widget_core!(),
+            #[widget] text: Text<Data, String> = format_data!(data: &Data, "{}", &data.text),
             #[widget(&())] popup: Popup<TextEdit> = Popup::new(TextEdit::new("", true), Direction::Down),
         }
         impl Events for Self {

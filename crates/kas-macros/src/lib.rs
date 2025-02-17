@@ -208,27 +208,33 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// implementation of `Tile::nav_next`, with a couple of exceptions
 /// (where macro-time analysis is insufficient to implement this method).
 ///
-/// > [_Column_], [_Row_], [_List_] [_AlignedColumn_], [_AlignedRow_], [_Grid_], [_Float_], [_Frame_] :\
+/// > [_Column_], [_Row_], [_List_] [_AlignedColumn_], [_AlignedRow_], [_Grid_],
+/// > [_Float_], [_Frame_] :\
 /// > &nbsp;&nbsp; These stand-alone macros are explicitly supported in this position.\
-///
+/// >
 /// > _Single_ :\
 /// > &nbsp;&nbsp; `self` `.` _Member_\
-/// > &nbsp;&nbsp; A named child: `self.foo` (more precisely, this matches any expression starting `self`, and uses `&mut (#expr)`)
+/// > &nbsp;&nbsp; A named child: `self.foo` (more precisely, this matches any
+/// > expression starting `self`, and uses `&mut (#expr)`).
 /// >
 /// > _WidgetConstructor_ :\
 /// > &nbsp;&nbsp; _Expr_\
-/// > &nbsp;&nbsp; An expression yielding a widget, e.g. `Label::new("Hello world")`. The result must be an object of some type `W: Widget`.
+/// > &nbsp;&nbsp; An expression yielding a widget, e.g.
+/// > `Label::new("Hello world")`. The result must be an object of some type
+/// > `W: Widget<Data = ()>`. This widget will be stored in a hidden field and
+/// > is accessible through `Tile::get_child` but does not receive input data.
 /// >
 /// > _LabelLit_ :\
 /// > &nbsp;&nbsp; _StrLit_\
-/// > &nbsp;&nbsp; A string literal generates a label widget, e.g. "Hello world". This is an internal type without text wrapping.
-/// >
+/// > &nbsp;&nbsp; A string literal generates a label widget, e.g. "Hello
+/// > world". This is an internal type without text wrapping.
+///
 /// Additional syntax rules (not layout items):
 ///
 /// > _Member_ :\
 /// > &nbsp;&nbsp; _Ident_ | _Index_\
 /// > &nbsp;&nbsp; The name of a struct field or an index into a tuple struct.
-/// >
+///
 /// ## Examples
 ///
 /// A simple example is the

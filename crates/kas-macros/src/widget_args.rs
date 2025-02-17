@@ -238,7 +238,7 @@ impl Child {
         Child {
             ident: ChildIdent::CoreField(ident),
             attr_span: None,
-            data_binding: None,
+            data_binding: Some(syn::parse_quote! { &() }),
         }
     }
 }

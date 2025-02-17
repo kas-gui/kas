@@ -632,7 +632,7 @@ impl Layout {
                 children.push(Child::new_core(ident.clone().into()));
                 fields
                     .ty_toks
-                    .append_all(quote! { #ident: Box<dyn ::kas::Widget<Data = #data_ty>>, });
+                    .append_all(quote! { #ident: Box<dyn ::kas::Widget<Data = ()>>, });
                 let span = expr.span();
                 fields
                     .def_toks
@@ -684,22 +684,12 @@ impl Layout {
             Layout::Label(ident, text) => {
                 children.push(Child::new_core(ident.clone().into()));
                 let span = text.span();
-                if *data_ty == syn::parse_quote! { () } {
-                    fields
-                        .ty_toks
-                        .append_all(quote! { #ident: ::kas::hidden::StrLabel, });
-                    fields.def_toks.append_all(
-                        quote_spanned! {span=> #ident: ::kas::hidden::StrLabel::new(#text), },
-                    );
-                } else {
-                    fields.ty_toks.append_all(
-                        quote! { #ident: ::kas::hidden::MapAny<#data_ty, ::kas::hidden::StrLabel>, },
-                    );
-                    fields.def_toks.append_all(
-                        quote_spanned! {span=> #ident: ::kas::hidden::MapAny::new(::kas::hidden::StrLabel::new(#text)), },
-                    );
-                    fields.used_data_ty = true;
-                }
+                fields
+                    .ty_toks
+                    .append_all(quote! { #ident: ::kas::hidden::StrLabel, });
+                fields.def_toks.append_all(
+                    quote_spanned! {span=> #ident: ::kas::hidden::StrLabel::new(#text), },
+                );
             }
             Layout::MapAny(layout, map_any) => {
                 let start = children.len();
