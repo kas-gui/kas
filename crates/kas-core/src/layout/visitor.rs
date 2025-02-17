@@ -14,9 +14,9 @@ use super::{RowSetter, RowSolver, RowStorage};
 use super::{RulesSetter, RulesSolver};
 use crate::event::ConfigCx;
 use crate::geom::{Coord, Offset, Rect, Size};
-use crate::theme::{Background, DrawCx, FrameStyle, MarginStyle, SizeCx};
+use crate::theme::{Background, DrawCx, FrameStyle, SizeCx};
 use crate::Id;
-use crate::{dir::Directional, dir::Directions, Layout};
+use crate::{dir::Directional, Layout};
 
 /// A list of [`Layout`]
 ///
@@ -59,15 +59,6 @@ impl<'a> Visitor<Box<dyn Layout + 'a>> {
     /// Construct a single-item layout
     pub fn single(widget: &'a mut dyn Layout) -> Visitor<impl Layout + 'a> {
         Visitor(Single { widget })
-    }
-
-    /// Replace the margins of a sub-layout
-    pub fn margins<C: Layout + 'a>(
-        child: C,
-        dirs: Directions,
-        style: MarginStyle,
-    ) -> Visitor<impl Layout + 'a> {
-        Visitor(Margins { child, dirs, style })
     }
 
     /// Construct a frame around a sub-layout
@@ -273,42 +264,6 @@ impl<'a, C: Layout> Layout for Pack<'a, C> {
             .combine(hints)
             .complete_default()
             .aligned_rect(self.storage.size, rect);
-        self.child.set_rect(cx, rect, hints);
-    }
-
-    fn try_probe(&mut self, coord: Coord) -> Option<Id> {
-        self.child.try_probe(coord)
-    }
-
-    fn draw(&mut self, draw: DrawCx) {
-        self.child.draw(draw);
-    }
-}
-
-struct Margins<C: Layout> {
-    child: C,
-    dirs: Directions,
-    style: MarginStyle,
-}
-
-impl<C: Layout> Layout for Margins<C> {
-    fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-        let mut child_rules = self.child.size_rules(sizer.re(), axis);
-        if self.dirs.intersects(Directions::from(axis)) {
-            let mut rule_margins = child_rules.margins();
-            let margins = sizer.margins(self.style).extract(axis);
-            if self.dirs.intersects(Directions::LEFT | Directions::UP) {
-                rule_margins.0 = margins.0;
-            }
-            if self.dirs.intersects(Directions::RIGHT | Directions::DOWN) {
-                rule_margins.1 = margins.1;
-            }
-            child_rules.set_margins(rule_margins);
-        }
-        child_rules
-    }
-
-    fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
         self.child.set_rect(cx, rect, hints);
     }
 
