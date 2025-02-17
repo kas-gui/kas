@@ -796,11 +796,6 @@ pub fn impl_widget(
                 ChildIdent::Field(ident) => quote! { self.#ident },
                 ChildIdent::CoreField(ident) => quote! { #core_path.#ident },
             };
-            // TODO: incorrect or unconstrained data type of child causes a poor error
-            // message here. Add a constaint like this (assuming no mapping fn):
-            // <#ty as WidgetNode::Data> == Self::Data
-            // But this is unsupported: rust#20041
-            // predicates.push(..);
 
             get_mut_rules.append_all(if let Some(ref data) = child.data_binding {
                 quote! { #i => closure(#path.as_node(#data)), }
