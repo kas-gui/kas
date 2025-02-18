@@ -80,6 +80,10 @@ impl_scope! {
 
     /// This implementation is unusual (see [`GripPart`] documentation).
     impl Layout for GripPart {
+        fn rect(&self) -> Rect {
+            self.rect
+        }
+
         fn size_rules(&mut self, _: SizeCx, _axis: AxisInfo) -> SizeRules {
             SizeRules::EMPTY
         }
@@ -89,12 +93,6 @@ impl_scope! {
         }
 
         fn draw(&self, _: DrawCx) {}
-    }
-
-    impl Tile for Self {
-        fn rect(&self) -> Rect {
-            self.rect
-        }
     }
 
     impl Events for GripPart {

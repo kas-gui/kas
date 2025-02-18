@@ -51,6 +51,14 @@ use kas_macros::autoimpl;
 /// [`#widget`]: macros::widget
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait Layout {
+    /// Get the widget's region
+    ///
+    /// Coordinates are relative to the parent's coordinate space.
+    ///
+    /// This method is usually implemented by the `#[widget]` macro.
+    /// See also [`kas::widget_set_rect`].
+    fn rect(&self) -> Rect;
+
     /// Get size rules for the given axis
     ///
     /// # Calling
@@ -201,6 +209,9 @@ pub trait Layout {
 ///
 /// TODO: add an example
 pub trait MacroDefinedLayout {
+    /// Get the widget's region
+    fn rect(&self) -> Rect;
+
     /// Get size rules for the given axis
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
 

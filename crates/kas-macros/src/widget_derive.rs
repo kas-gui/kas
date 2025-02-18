@@ -145,10 +145,6 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         fn id_ref(&self) -> &::kas::Id {
             self.#inner.id_ref()
         }
-        #[inline]
-        fn rect(&self) -> ::kas::geom::Rect {
-            self.#inner.rect()
-        }
 
         #[inline]
         fn widget_name(&self) -> &'static str {
@@ -169,6 +165,12 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         }
     };
 
+    let fn_rect = quote! {
+        #[inline]
+        fn rect(&self) -> ::kas::geom::Rect {
+            self.#inner.rect()
+        }
+    };
     let fn_size_rules = quote! {
         #[inline]
         fn size_rules(&mut self,
@@ -207,6 +209,10 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         let item_idents = collect_idents(layout_impl);
         let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
 
+        if !has_item("rect") {
+            layout_impl.items.push(Verbatim(fn_rect));
+        }
+
         if !has_item("size_rules") {
             layout_impl.items.push(Verbatim(fn_size_rules));
         }
@@ -225,6 +231,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
     } else {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Layout for #impl_target {
+                #fn_rect
                 #fn_size_rules
                 #fn_set_rect
                 #fn_try_probe

@@ -5,7 +5,7 @@
 
 //! Layout, Tile and TileExt traits
 
-use crate::geom::{Coord, Offset, Rect};
+use crate::geom::{Coord, Offset};
 use crate::util::IdentifyWidget;
 use crate::{HasId, Id, Layout};
 use kas_macros::autoimpl;
@@ -21,7 +21,7 @@ use kas_macros::autoimpl;
 ///
 /// -   Has no [`Data`](Widget::Data) parameter
 /// -   Supports read-only tree reflection: [`Self::get_child`]
-/// -   Provides some basic operations: [`Self::id_ref`], [`Self::rect`]
+/// -   Provides some basic operations: [`Self::id_ref`]
 /// -   Covers sizing and drawing operations from [`Layout`]
 ///
 /// `Tile` may not be implemented directly; it will be implemented by the
@@ -73,12 +73,6 @@ pub trait Tile: Layout {
     fn id(&self) -> Id {
         self.id_ref().clone()
     }
-
-    /// Get the widget's region, relative to its parent.
-    ///
-    /// This method is usually implemented by the `#[widget]` macro.
-    /// See also [`kas::widget_set_rect`].
-    fn rect(&self) -> Rect;
 
     /// Get the name of the widget struct
     ///

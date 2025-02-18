@@ -66,6 +66,10 @@ impl<T: Default + FormattableText> Default for Text<T> {
 
 /// Implement [`Layout`], using default alignment where alignment is not provided
 impl<T: FormattableText> Layout for Text<T> {
+    fn rect(&self) -> Rect {
+        self.rect
+    }
+
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         sizer.text_rules(self, axis)
     }
