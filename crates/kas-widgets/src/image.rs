@@ -177,7 +177,7 @@ impl_scope! {
             widget_set_rect!(self.scaling.align_rect(rect, align, scale_factor));
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             if let Some(id) = self.handle.as_ref().map(|h| h.id()) {
                 draw.image(self.rect(), id);
             }

@@ -114,7 +114,7 @@ impl_scope! {
             self.text.set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             draw.text(self.rect(), &self.text);
         }
     }

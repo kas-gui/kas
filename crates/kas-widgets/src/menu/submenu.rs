@@ -101,7 +101,7 @@ impl_scope! {
     }
 
     impl kas::Layout for Self {
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw.re());
             if self.mark.rect().size != Size::ZERO {
@@ -332,8 +332,8 @@ impl_scope! {
             }
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
-            for child in self.list.iter_mut() {
+        fn draw(&self, mut draw: DrawCx) {
+            for child in self.list.iter() {
                 child.draw(draw.re());
             }
         }

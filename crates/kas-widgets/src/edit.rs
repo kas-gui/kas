@@ -387,7 +387,7 @@ impl_scope! {
             self.update_scroll_bar(cx);
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             self.inner.draw(draw.re());
             if self.inner.max_scroll_offset().1 > 0 {
                 self.bar.draw(draw.re());
@@ -745,7 +745,7 @@ impl_scope! {
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             let bg = if self.has_error() {
                 Background::Error
             } else {

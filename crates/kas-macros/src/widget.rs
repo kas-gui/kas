@@ -417,7 +417,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 }
 
                 #[inline]
-                fn draw(&mut self, mut draw: ::kas::theme::DrawCx) {
+                fn draw(&self, mut draw: ::kas::theme::DrawCx) {
                     draw.set_id(::kas::Tile::id(self));
                     #draw
                 }
@@ -461,7 +461,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         };
 
         fn_draw = Some(quote! {
-            fn draw(&mut self, draw: ::kas::theme::DrawCx) {
+            fn draw(&self, draw: ::kas::theme::DrawCx) {
                 #[cfg(debug_assertions)]
                 #core_path.status.require_rect(&#core_path._id);
 

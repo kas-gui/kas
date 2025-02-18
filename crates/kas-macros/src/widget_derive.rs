@@ -197,7 +197,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
     };
     let fn_draw = quote! {
         #[inline]
-        fn draw(&mut self, draw: ::kas::theme::DrawCx) {
+        fn draw(&self, draw: ::kas::theme::DrawCx) {
             self.#inner.draw(draw);
         }
     };

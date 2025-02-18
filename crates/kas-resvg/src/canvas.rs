@@ -24,7 +24,7 @@ pub trait CanvasProgram: std::fmt::Debug + Send + 'static {
     ///
     /// Note that [`Layout::draw`] does not call this method, but instead draws
     /// from a copy of the `pixmap` (updated each time this method completes).
-    fn draw(&mut self, pixmap: &mut Pixmap);
+    fn draw(&self, pixmap: &mut Pixmap);
 
     /// This method is called each time a frame is drawn. Note that since
     /// redrawing is async and non-blocking, the result is expected to be at
@@ -36,7 +36,7 @@ pub trait CanvasProgram: std::fmt::Debug + Send + 'static {
     }
 }
 
-async fn draw<P: CanvasProgram>(mut program: P, mut pixmap: Pixmap) -> (P, Pixmap) {
+async fn draw<P: CanvasProgram>(program: P, mut pixmap: Pixmap) -> (P, Pixmap) {
     pixmap.fill(Color::TRANSPARENT);
     program.draw(&mut pixmap);
     (program, pixmap)
@@ -175,7 +175,7 @@ impl_scope! {
             }
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             if let Ok(mut state) = self.inner.try_borrow_mut() {
                 if let Some(fut) = state.maybe_redraw() {
                     draw.ev_state().push_spawn(self.id(), fut);

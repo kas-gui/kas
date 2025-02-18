@@ -9,7 +9,7 @@ use super::Widget;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
-use crate::theme::{DrawCx, SizeCx};
+use crate::theme::SizeCx;
 use crate::{Id, NavAdvance, Tile};
 
 #[cfg(not(feature = "unsafe_node"))]
@@ -29,7 +29,6 @@ trait NodeT {
 
     fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize>;
     fn try_probe(&mut self, coord: Coord) -> Option<Id>;
-    fn _draw(&mut self, draw: DrawCx);
 
     fn _configure(&mut self, cx: &mut ConfigCx, id: Id);
     fn _update(&mut self, cx: &mut ConfigCx);
@@ -82,9 +81,6 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
     }
     fn try_probe(&mut self, coord: Coord) -> Option<Id> {
         self.0.try_probe(coord)
-    }
-    fn _draw(&mut self, mut draw: DrawCx) {
-        self.0.draw(draw.re());
     }
 
     fn _configure(&mut self, cx: &mut ConfigCx, id: Id) {
@@ -305,20 +301,6 @@ impl<'a> Node<'a> {
     /// Translate a coordinate to an [`Id`]
     pub(crate) fn try_probe(&mut self, coord: Coord) -> Option<Id> {
         self.0.try_probe(coord)
-    }
-
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "unsafe_node")] {
-            /// Draw a widget and its children
-            pub(crate) fn _draw(&mut self, mut draw: DrawCx) {
-                self.0.draw(draw.re());
-            }
-        } else {
-            /// Draw a widget and its children
-            pub(crate) fn _draw(&mut self, draw: DrawCx) {
-                self.0._draw(draw);
-            }
-        }
     }
 
     /// Internal method: configure recursively

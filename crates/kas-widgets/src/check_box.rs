@@ -59,7 +59,7 @@ impl_scope! {
             widget_set_rect!(rect);
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             draw.check_box(self.rect(), self.state, self.last_change);
         }
     }

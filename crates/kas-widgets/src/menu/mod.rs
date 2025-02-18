@@ -69,7 +69,7 @@ pub trait Menu: Widget {
     /// # struct S;
     /// # impl S {
     /// # fn rect(&self) -> Rect { Rect::ZERO }
-    /// fn draw(&mut self, mut draw: DrawCx) {
+    /// fn draw(&self, mut draw: DrawCx) {
     ///     draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
     ///     // draw children here
     /// }

@@ -818,10 +818,10 @@ impl Layout {
         match self {
             Layout::Align(layout, _) | Layout::Pack(layout, _) => layout.draw(core_path),
             Layout::Single(expr) => quote! {
-                ::kas::Layout::draw(&mut #expr, draw.re());
+                ::kas::Layout::draw(&#expr, draw.re());
             },
             Layout::Widget(stor, _) | Layout::Label(stor, _) => quote! {
-                ::kas::Layout::draw(&mut #core_path.#stor, draw.re());
+                ::kas::Layout::draw(&#core_path.#stor, draw.re());
             },
             Layout::Frame(stor, layout, style, bg) => {
                 let mut toks = quote! {

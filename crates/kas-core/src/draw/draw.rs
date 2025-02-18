@@ -29,7 +29,7 @@ use std::time::Instant;
 /// #     _pd: std::marker::PhantomData<DS>,
 /// # }
 /// impl CircleWidget {
-///     fn draw(&mut self, mut draw: DrawCx) {
+///     fn draw(&self, mut draw: DrawCx) {
 ///         // This type assumes usage of kas_wgpu without a custom draw pipe:
 ///         type DrawIface = DrawIface<kas_wgpu::draw::DrawPipe<()>>;
 ///         if let Some(mut draw) = DrawIface::downcast_from(draw.draw_device()) {

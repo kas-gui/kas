@@ -285,9 +285,9 @@ impl_scope! {
             }
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             let solver = RowPositionSolver::new(self.direction);
-            solver.for_children_mut(&mut self.widgets, draw.get_clip_rect(), |w| w.draw(draw.re()));
+            solver.for_children(&self.widgets, draw.get_clip_rect(), |w| w.draw(draw.re()));
         }
     }
 

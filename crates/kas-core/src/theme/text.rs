@@ -83,7 +83,7 @@ impl<T: FormattableText> Layout for Text<T> {
         self.prepare().expect("not configured");
     }
 
-    fn draw(&mut self, mut draw: DrawCx) {
+    fn draw(&self, mut draw: DrawCx) {
         draw.text(self.rect, self);
     }
 }

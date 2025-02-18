@@ -122,15 +122,15 @@ impl_scope! {
             }
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             let mut iter = (0..self.widgets.len()).rev();
             if let Some(first) = iter.next() {
-                if let Some(child) = self.widgets.get_mut_tile(first) {
+                if let Some(child) = self.widgets.get_tile(first) {
                     child.draw(draw.re());
                 }
             }
             for i in iter {
-                if let Some(child) = self.widgets.get_mut_tile(i) {
+                if let Some(child) = self.widgets.get_tile(i) {
                     draw.with_pass(|draw| child.draw(draw));
                 }
             }

@@ -329,9 +329,9 @@ impl<D: Directional> RowPositionSolver<D> {
     }
 
     /// Call `f` on each child intersecting the given `rect`
-    pub fn for_children_mut<C: Collection + ?Sized, F: FnMut(&mut dyn Tile)>(
+    pub fn for_children<C: Collection + ?Sized, F: FnMut(&dyn Tile)>(
         self,
-        widgets: &mut C,
+        widgets: &C,
         rect: Rect,
         mut f: F,
     ) {
@@ -360,7 +360,7 @@ impl<D: Directional> RowPositionSolver<D> {
         };
 
         for i in start..widgets.len() {
-            if let Some(child) = widgets.get_mut_tile(i) {
+            if let Some(child) = widgets.get_tile(i) {
                 let do_break = match self.direction.as_direction() {
                     Direction::Right => child.rect().pos.0 >= end.0,
                     Direction::Down => child.rect().pos.1 >= end.1,

@@ -31,7 +31,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw.re());
         }
@@ -121,7 +121,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             draw.set_id(self.checkbox.id());
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             kas::MacroDefinedLayout::draw(self, draw);

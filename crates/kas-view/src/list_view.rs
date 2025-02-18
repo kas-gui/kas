@@ -524,10 +524,10 @@ impl_scope! {
             debug_assert!(self.widgets.len() >= req_widgets);
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             let offset = self.scroll_offset();
             draw.with_clip_region(self.rect(), offset, |mut draw| {
-                for child in &mut self.widgets[..self.cur_len.cast()] {
+                for child in &self.widgets[..self.cur_len.cast()] {
                     if let Some(ref key) = child.key {
                         if self.selection.contains(key) {
                             draw.selection(child.widget.rect(), self.sel_style);

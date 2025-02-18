@@ -281,7 +281,7 @@ impl_scope! {
             self.edit.set_outer_rect(rect, FrameStyle::EditBox);
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             self.edit.draw(draw.re());
             self.b_up.draw(draw.re());
             self.b_down.draw(draw.re());

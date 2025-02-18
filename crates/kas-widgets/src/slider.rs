@@ -317,7 +317,7 @@ impl_scope! {
             self.grip.set_offset(cx, self.offset());
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             let dir = self.direction.as_direction();
             draw.slider(self.rect(), &self.grip, dir);
         }

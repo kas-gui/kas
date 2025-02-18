@@ -317,7 +317,7 @@ impl_scope! {
             self.update_widgets(cx);
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             if !self.invisible
                 || (self.max_value != 0 && self.force_visible)
                 || draw.ev_state().is_depressed(self.grip.id_ref())
@@ -568,7 +568,7 @@ impl_scope! {
             }
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             self.inner.draw(draw.re());
             draw.with_pass(|mut draw| {
                 if self.show_bars.0 {

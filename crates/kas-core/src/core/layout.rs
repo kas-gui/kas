@@ -189,7 +189,7 @@ pub trait Layout {
     /// This method modification should never cause issues (besides the implied
     /// limitation that widgets cannot easily detect a parent's state while
     /// being drawn).
-    fn draw(&mut self, draw: DrawCx);
+    fn draw(&self, draw: DrawCx);
 }
 
 /// Macro-defined layout
@@ -211,5 +211,5 @@ pub trait MacroDefinedLayout {
     fn try_probe(&mut self, coord: Coord) -> Option<Id>;
 
     /// Draw a widget and its children
-    fn draw(&mut self, draw: DrawCx);
+    fn draw(&self, draw: DrawCx);
 }

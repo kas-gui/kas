@@ -94,10 +94,10 @@ impl_scope! {
             }
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             let solver = RowPositionSolver::new(self.direction);
             let rect = self.rect();
-            solver.for_children_mut(&mut self.widgets, rect, |w| w.draw(draw.re()));
+            solver.for_children(&self.widgets, rect, |w| w.draw(draw.re()));
         }
     }
 

@@ -88,7 +88,7 @@ impl_scope! {
             self.rect = rect;
         }
 
-        fn draw(&mut self, _: DrawCx) {}
+        fn draw(&self, _: DrawCx) {}
     }
 
     impl Tile for Self {
