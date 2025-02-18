@@ -5,7 +5,7 @@
 
 //! Widget method implementations
 
-use crate::event::{ConfigCx, Event, EventCx, FocusSource, IsUsed, Scroll, Unused, Used};
+use crate::event::{ConfigCx, Event, EventCx, FocusSource, IsUsed, Scroll, Unused};
 #[cfg(debug_assertions)] use crate::util::IdentifyWidget;
 use crate::{Events, Id, NavAdvance, Node, Tile, Widget};
 
@@ -25,14 +25,14 @@ pub fn _send<W: Events>(
             return is_used;
         }
 
+        // Side-effects of receiving events at the target widget.
+        // These actions do not affect is_used or event propagation.
         match &event {
             Event::MouseHover(state) => {
                 widget.handle_hover(cx, *state);
-                return Used;
             }
             Event::NavFocus(FocusSource::Key) => {
                 cx.set_scroll(Scroll::Rect(widget.rect()));
-                is_used |= Used;
             }
             _ => (),
         }

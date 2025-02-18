@@ -7,7 +7,7 @@
 
 #[allow(unused)] use super::Layout;
 use super::{Node, Tile};
-#[allow(unused)] use crate::event::Used;
+#[allow(unused)] use crate::event::EventState;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused};
 use crate::Id;
 #[allow(unused)] use kas_macros as macros;
@@ -150,13 +150,13 @@ pub trait Events: Widget + Sized {
     /// default implementation of this method does nothing.
     ///
     /// Note: to implement `hover_highlight`, simply request a redraw on
-    /// focus gain and loss. To implement `cursor_icon`, call
-    /// `cx.set_hover_cursor(EXPR);` on focus gain.
+    /// hover gain and loss. To implement `cursor_icon`, call
+    /// [`EventState::set_hover_cursor`] on hover gain only.
     ///
     /// [`#widget`]: macros::widget
     #[inline]
-    fn handle_hover(&mut self, cx: &mut EventCx, state: bool) {
-        let _ = (cx, state);
+    fn handle_hover(&mut self, cx: &mut EventCx, is_hovered: bool) {
+        let _ = (cx, is_hovered);
     }
 
     /// Handle an [`Event`]

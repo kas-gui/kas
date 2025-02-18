@@ -306,8 +306,8 @@ impl Event {
             CursorMove { .. } | PressStart { .. } => false,
             Pan { .. } | PressMove { .. } | PressEnd { .. } => true,
             Timer(_) | PopupClosed(_) => true,
-            NavFocus { .. } | SelFocus(_) | KeyFocus | MouseHover(_) => false,
-            LostNavFocus | LostKeyFocus | LostSelFocus => true,
+            NavFocus { .. } | SelFocus(_) | KeyFocus | MouseHover(true) => false,
+            LostNavFocus | LostKeyFocus | LostSelFocus | MouseHover(false) => true,
         }
     }
 
@@ -346,7 +346,7 @@ impl Event {
             NavFocus { .. } | LostNavFocus => false,
             SelFocus(_) | LostSelFocus => false,
             KeyFocus | LostKeyFocus => false,
-            MouseHover(_) => false,
+            MouseHover(_) => true,
         }
     }
 }
