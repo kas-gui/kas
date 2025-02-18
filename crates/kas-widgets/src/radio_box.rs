@@ -147,7 +147,6 @@ impl_scope! {
 
     impl Layout for Self {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            widget_set_rect!(rect);
             kas::MacroDefinedLayout::set_rect(self, cx, rect, hints);
             let dir = self.direction();
             crate::check_box::shrink_to_text(&mut self.rect(), dir, &self.label);

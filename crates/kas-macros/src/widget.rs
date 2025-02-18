@@ -375,6 +375,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     }
 
     let fn_nav_next;
+    let fn_rect;
     let mut fn_size_rules = None;
     let fn_set_rect;
     let mut probe = quote! {
@@ -383,17 +384,25 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let fn_try_probe;
     let mut fn_draw = None;
     if let Some(Layout { tree, .. }) = args.layout.take() {
-        let size_rules = tree.size_rules(&core_path);
-        let set_rect = tree.set_rect(&core_path);
-        let try_probe = tree.try_probe(&core_path);
-        let draw = tree.draw(&core_path);
+        // TODO(opt): omit field widget.core._rect if not set here
+        let mut set_rect = quote! {};
+        let tree_rect = tree.rect(&core_path).unwrap_or_else(|| {
+            set_rect = quote! {
+                #core_path._rect = rect;
+            };
+            quote! { #core_path._rect }
+        });
+        let tree_size_rules = tree.size_rules(&core_path);
+        let tree_set_rect = tree.set_rect(&core_path);
+        let tree_try_probe = tree.try_probe(&core_path);
+        let tree_draw = tree.draw(&core_path);
         fn_nav_next = tree.nav_next(children.iter());
 
         scope.generated.push(quote! {
             impl #impl_generics ::kas::MacroDefinedLayout for #impl_target {
                 #[inline]
                 fn rect(&self) -> ::kas::geom::Rect {
-                    #core_path._rect
+                    #tree_rect
                 }
 
                 #[inline]
@@ -402,7 +411,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     sizer: ::kas::theme::SizeCx,
                     axis: ::kas::layout::AxisInfo,
                 ) -> ::kas::layout::SizeRules {
-                    #size_rules
+                    #tree_size_rules
                 }
 
                 #[inline]
@@ -412,22 +421,29 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     rect: ::kas::geom::Rect,
                     hints: ::kas::layout::AlignHints,
                 ) {
-                    #core_path._rect = rect;
                     #set_rect
+                    #tree_set_rect
                 }
 
                 #[inline]
                 fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-                    #try_probe
+                    #tree_try_probe
                 }
 
                 #[inline]
                 fn draw(&self, mut draw: ::kas::theme::DrawCx) {
                     draw.set_id(::kas::Tile::id(self));
-                    #draw
+                    #tree_draw
                 }
             }
         });
+
+        fn_rect = quote! {
+            #[inline]
+            fn rect(&self) -> ::kas::geom::Rect {
+                ::kas::MacroDefinedLayout::rect(self)
+            }
+        };
 
         fn_size_rules = Some(quote! {
             fn size_rules(
@@ -480,6 +496,14 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     .unwrap_or_else(|| ::kas::Tile::id(self))
         };
     } else {
+        // TODO(opt): omit field widget.core._rect if a custom `fn rect` defintion is used
+        fn_rect = quote! {
+            #[inline]
+            fn rect(&self) -> ::kas::geom::Rect {
+                #core_path._rect
+            }
+        };
+
         fn_set_rect = quote! {
             fn set_rect(
                 &mut self,
@@ -623,7 +647,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             layout_impl.items.push(Verbatim(method));
         }
 
-        let core_rect_is_set;
         let mut fn_set_rect_span = None;
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "set_rect") {
             if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
@@ -631,7 +654,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
                 let path_rect = quote! { #core_path._rect };
                 widget_set_rect_span = crate::visitors::widget_set_rect(path_rect, &mut f.block);
-                core_rect_is_set = widget_set_rect_span.is_some();
 
                 if let Some(ref core) = core_data {
                     f.block.stmts.insert(0, parse_quote! {
@@ -639,15 +661,11 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                         self.#core.status.set_rect(&self.#core._id);
                     });
                 }
-            } else {
-                core_rect_is_set = false;
             }
         } else {
             layout_impl.items.push(Verbatim(fn_set_rect));
-            core_rect_is_set = true;
         }
 
-        // TODO(opt): omit field widget.core._rect if !core_rect_is_set
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "rect") {
             if let Some(span) = widget_set_rect_span {
                 let fn_rect_span = layout_impl.items[*index].span();
@@ -655,30 +673,15 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     span, "assignment `widget_set_rect!` has no effect when `fn rect` is defined";
                     note = fn_rect_span => "this `fn rect`";
                 );
-            }
-            if core_rect_is_set {
+            } else if fn_set_rect_span.is_none() {
                 let fn_rect_span = layout_impl.items[*index].span();
-                if let Some(span) = widget_set_rect_span {
-                    emit_warning!(
-                        span, "assignment `widget_set_rect!` has no effect when `fn rect` is defined";
-                        note = fn_rect_span => "this `fn rect`";
-                    );
-                } else {
-                    emit_warning!(
-                        fn_rect_span,
-                        "definition of `Layout::set_rect` is expected when `fn rect` is defined"
-                    );
-                }
-            }
-        } else if core_rect_is_set {
-            layout_impl.items.push(Verbatim(fn_rect(&core_path)));
-        } else {
-            if let Some(span) = fn_set_rect_span {
                 emit_warning!(
-                    span, "`widget_set_rect!(/* rect */)` not found";
-                    note = "`fn Layout::rect()` implementation cannot be generated without `widget_set_rect!`";
+                    fn_rect_span,
+                    "definition of `Layout::set_rect` is expected when `fn rect` is defined"
                 );
             }
+        } else {
+            layout_impl.items.push(Verbatim(fn_rect));
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "try_probe") {
@@ -719,7 +722,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             layout_impl.items.push(Verbatim(method));
         }
     } else if let Some(fn_size_rules) = fn_size_rules {
-        let fn_rect = fn_rect(&core_path);
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Layout for #impl_target {
                 #fn_rect
@@ -811,15 +813,6 @@ pub fn required_tile_methods(name: &str, core_path: &Toks) -> Toks {
         #[inline]
         fn widget_name(&self) -> &'static str {
             #name
-        }
-    }
-}
-
-pub fn fn_rect(core_path: &Toks) -> Toks {
-    quote! {
-        #[inline]
-        fn rect(&self) -> ::kas::geom::Rect {
-            #core_path._rect
         }
     }
 }

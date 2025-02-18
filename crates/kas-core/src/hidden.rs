@@ -15,7 +15,7 @@ use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{SizeCx, Text, TextClass};
 #[allow(unused)] use crate::Action;
 use crate::{Events, Layout, Widget};
-use kas_macros::{autoimpl, impl_scope, widget_set_rect};
+use kas_macros::{autoimpl, impl_scope};
 
 impl_scope! {
     /// A simple text label
@@ -51,7 +51,6 @@ impl_scope! {
 
     impl Layout for Self {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            widget_set_rect!(rect);
             self.text.set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
         }
     }
