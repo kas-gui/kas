@@ -5,9 +5,56 @@
 
 //! Layout solver — storage
 
-use super::SizeRules;
+use super::{AxisInfo, SizeRules};
+use crate::dir::Directional;
+use crate::geom::{Offset, Rect, Size};
+use crate::theme::{FrameStyle, SizeCx};
 use kas_macros::impl_scope;
 use std::fmt::Debug;
+
+/// Layout storage for pack
+#[derive(Clone, Default, Debug)]
+pub struct PackStorage {
+    /// Ideal size
+    pub size: Size,
+}
+
+/// Layout storage for frame
+#[derive(Clone, Default, Debug)]
+pub struct FrameStorage {
+    /// Size used by frame (sum of widths of borders)
+    pub size: Size,
+    /// Offset of frame contents from parent position
+    pub offset: Offset,
+    /// [`Rect`] assigned to whole frame
+    ///
+    /// NOTE: for a top-level layout component this is redundant with the
+    /// widget's rect. For frames deeper within a widget's layout we *could*
+    /// instead recalculate this (in every draw call etc.).
+    pub rect: Rect,
+}
+impl FrameStorage {
+    /// Calculate child's "other axis" size
+    pub fn child_axis(&self, mut axis: AxisInfo) -> AxisInfo {
+        axis.sub_other(self.size.extract(axis.flipped()));
+        axis
+    }
+
+    /// Generate [`SizeRules`]
+    pub fn size_rules(
+        &mut self,
+        sizer: SizeCx,
+        axis: AxisInfo,
+        child_rules: SizeRules,
+        style: FrameStyle,
+    ) -> SizeRules {
+        let frame_rules = sizer.frame(style, axis);
+        let (rules, offset, size) = frame_rules.surround(child_rules);
+        self.offset.set_component(axis, offset);
+        self.size.set_component(axis, size);
+        rules
+    }
+}
 
 /// Requirements of row solver storage type
 ///

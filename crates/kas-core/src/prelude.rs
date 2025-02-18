@@ -16,9 +16,7 @@ pub use crate::event::{ConfigCx, Event, EventCx, EventState, IsUsed, Unused, Use
 #[doc(no_inline)]
 pub use crate::geom::{Coord, Offset, Rect, Size};
 #[doc(no_inline)]
-pub use crate::layout::{
-    Align, AlignHints, AlignPair, AxisInfo, LayoutVisitor, SizeRules, Stretch,
-};
+pub use crate::layout::{Align, AlignHints, AlignPair, AxisInfo, SizeRules, Stretch};
 #[doc(no_inline)] pub use crate::text::AccessString;
 #[doc(no_inline)] pub use crate::theme::{DrawCx, SizeCx};
 #[doc(no_inline)] pub use crate::Action;

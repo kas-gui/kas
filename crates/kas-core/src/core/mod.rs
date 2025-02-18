@@ -10,6 +10,7 @@ mod data;
 mod layout;
 mod node;
 mod scroll_traits;
+mod tile;
 mod widget;
 mod widget_id;
 
@@ -22,5 +23,6 @@ pub use data::*;
 pub use layout::*;
 pub use node::Node;
 pub use scroll_traits::*;
+pub use tile::*;
 pub use widget::*;
 pub use widget_id::*;

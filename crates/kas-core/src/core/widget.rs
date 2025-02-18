@@ -9,7 +9,6 @@
 use super::{Node, Tile};
 #[allow(unused)] use crate::event::Used;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused};
-#[allow(unused)] use crate::layout::LayoutVisitor;
 use crate::Id;
 #[allow(unused)] use kas_macros as macros;
 use kas_macros::autoimpl;

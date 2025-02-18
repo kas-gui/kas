@@ -34,6 +34,8 @@
 //!
 //! [`RowPositionSolver`] may be used with widgets set out by [`RowSetter`]
 //! to quickly locate children from a `coord` or `rect`.
+//!
+//! [`Layout`]: crate::Layout
 
 mod align;
 mod grid_solver;
@@ -43,10 +45,8 @@ mod size_rules;
 mod size_types;
 mod sizer;
 mod storage;
-mod visitor;
 
 use crate::dir::{Direction, Directional, Directions};
-use crate::Layout;
 
 pub use align::{Align, AlignHints, AlignPair};
 pub use grid_solver::{DefaultWithLen, GridCellInfo, GridDimensions, GridSetter, GridSolver};
@@ -56,11 +56,6 @@ pub use size_rules::SizeRules;
 pub use size_types::*;
 pub use sizer::{solve_size_rules, RulesSetter, RulesSolver, SolveCache};
 pub use storage::*;
-pub use visitor::{FrameStorage, PackStorage};
-
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-pub use visitor::{LayoutList, Visitor};
 
 /// Information on which axis is being resized
 ///
@@ -145,43 +140,6 @@ impl From<AxisInfo> for Directions {
             true => Directions::UP | Directions::DOWN,
         }
     }
-}
-
-/// Macro-generated implementation of layout over a [`Visitor`]
-///
-/// This method is implemented by the [`#widget`] macro when a [`layout`]
-/// specification is provided.
-/// Direct implementations of this trait are not supported.
-///
-/// This trait may be used in user-code where a `layout` specification is used
-/// *and* custom behaviour is provided for one or more layout methods, for example:
-/// ```
-/// # extern crate kas_core as kas;
-/// use kas::prelude::*;
-///
-/// impl_scope! {
-///     #[widget {
-///         Data = ();
-///         layout = "Example";
-///     }]
-///     struct Example {
-///         core: widget_core!(),
-///     }
-///     impl Layout for Self {
-///         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-///             self.layout_visitor()
-///                 .size_rules(sizer, axis)
-///                 .with_stretch(Stretch::High)
-///         }
-///     }
-/// }
-/// ```
-///
-/// [`#widget`]: crate::widget
-/// [`layout`]: crate::widget#layout-1
-pub trait LayoutVisitor {
-    /// Layout defined by a [`Visitor`]
-    fn layout_visitor(&mut self) -> Visitor<impl Layout>;
 }
 
 #[cfg(test)]
