@@ -215,9 +215,9 @@ impl_scope! {
             self.widgets.get_tile(index).map(|w| w.as_tile())
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
+        fn probe(&self, coord: Coord) -> Id {
             for n in 0..self.widgets.len() {
-                if let Some(child) = self.widgets.get_mut_tile(n) {
+                if let Some(child) = self.widgets.get_tile(n) {
                     if let Some(id) = child.try_probe(coord) {
                         return id;
                     }

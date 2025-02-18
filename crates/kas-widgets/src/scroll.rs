@@ -129,7 +129,7 @@ impl_scope! {
             self.scroll_offset()
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
+        fn probe(&self, coord: Coord) -> Id {
             self.inner.try_probe(coord + self.translation())
                 .unwrap_or_else(|| self.id())
         }

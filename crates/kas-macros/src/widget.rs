@@ -412,7 +412,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 }
 
                 #[inline]
-                fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+                fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
                     #try_probe
                 }
 
@@ -452,7 +452,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         };
 
         fn_try_probe = quote! {
-            fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+            fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
                 #[cfg(debug_assertions)]
                 self.#core.status.require_rect(&self.#core._id);
 
@@ -490,7 +490,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         };
 
         fn_try_probe = quote! {
-            fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+            fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
                 #[cfg(debug_assertions)]
                 self.#core.status.require_rect(&self.#core._id);
 
@@ -507,7 +507,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
     let fn_probe = quote! {
         #[inline]
-        fn probe(&mut self, coord: ::kas::geom::Coord) -> ::kas::Id {
+        fn probe(&self, coord: ::kas::geom::Coord) -> ::kas::Id {
             #probe
         }
     };

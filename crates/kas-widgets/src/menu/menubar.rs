@@ -110,10 +110,10 @@ impl_scope! {
             self.widgets.get(index).map(|w| w.as_tile())
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
+        fn probe(&self, coord: Coord) -> Id {
             let solver = RowPositionSolver::new(self.direction);
             solver
-                .find_child_mut(&mut self.widgets, coord)
+                .find_child(&self.widgets, coord)
                 .and_then(|child| child.try_probe(coord))
                 .unwrap_or_else(|| self.id())
         }

@@ -156,7 +156,7 @@ pub trait Layout {
     ///
     /// Non-widgets do not have an [`Id`], and therefore should use the default
     /// implementation which simply returns `None`.
-    fn try_probe(&mut self, coord: Coord) -> Option<Id> {
+    fn try_probe(&self, coord: Coord) -> Option<Id> {
         let _ = coord;
         None
     }
@@ -208,7 +208,7 @@ pub trait MacroDefinedLayout {
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints);
 
     /// Probe a coordinate for a widget's [`Id`]
-    fn try_probe(&mut self, coord: Coord) -> Option<Id>;
+    fn try_probe(&self, coord: Coord) -> Option<Id>;
 
     /// Draw a widget and its children
     fn draw(&self, draw: DrawCx);

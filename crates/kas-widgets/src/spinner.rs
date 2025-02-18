@@ -289,7 +289,7 @@ impl_scope! {
     }
 
     impl Tile for Self {
-        fn probe(&mut self, coord: Coord) -> Id {
+        fn probe(&self, coord: Coord) -> Id {
             self.b_up.try_probe(coord)
                 .or_else(|| self.b_down.try_probe(coord))
                 .unwrap_or_else(|| self.edit.id())

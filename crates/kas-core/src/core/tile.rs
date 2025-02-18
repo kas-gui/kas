@@ -197,7 +197,7 @@ pub trait Tile: Layout {
     /// let coord = coord + self.translation();
     /// MacroDefinedLayout::try_probe(self, coord).unwrap_or_else(|| self.id())
     /// ```
-    fn probe(&mut self, coord: Coord) -> Id
+    fn probe(&self, coord: Coord) -> Id
     where
         Self: Sized,
     {

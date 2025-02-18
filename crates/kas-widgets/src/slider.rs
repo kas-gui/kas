@@ -324,7 +324,7 @@ impl_scope! {
     }
 
     impl Tile for Self {
-        fn probe(&mut self, coord: Coord) -> Id {
+        fn probe(&self, coord: Coord) -> Id {
             if self.on_move.is_some() {
                 if let Some(id) = self.grip.try_probe(coord) {
                     return id;

@@ -22,7 +22,7 @@ impl_scope! {
         cursor: CursorIcon,
     }
     impl Tile for Self {
-        fn probe(&mut self, _: Coord) -> Id {
+        fn probe(&self, _: Coord) -> Id {
             // Steal mouse focus: hover points to self, not self.label
             self.id()
         }

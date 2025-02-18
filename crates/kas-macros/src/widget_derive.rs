@@ -191,7 +191,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
     };
     let fn_try_probe = quote! {
         #[inline]
-        fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+        fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
             self.#inner.try_probe(coord)
         }
     };

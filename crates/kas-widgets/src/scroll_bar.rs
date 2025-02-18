@@ -329,7 +329,7 @@ impl_scope! {
     }
 
     impl Tile for Self {
-        fn probe(&mut self, coord: Coord) -> Id {
+        fn probe(&self, coord: Coord) -> Id {
             if self.invisible && self.max_value == 0 {
                 return self.id();
             }
@@ -582,7 +582,7 @@ impl_scope! {
     }
 
     impl Tile for Self {
-        fn probe(&mut self, coord: Coord) -> Id {
+        fn probe(&self, coord: Coord) -> Id {
             self.vert_bar.try_probe(coord)
                 .or_else(|| self.horiz_bar.try_probe(coord))
                 .or_else(|| self.inner.try_probe(coord))

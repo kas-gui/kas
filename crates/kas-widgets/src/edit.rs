@@ -396,7 +396,7 @@ impl_scope! {
     }
 
     impl Tile for Self {
-        fn probe(&mut self, coord: Coord) -> Id {
+        fn probe(&self, coord: Coord) -> Id {
             if self.inner.max_scroll_offset().1 > 0 {
                 if let Some(id) = self.bar.try_probe(coord) {
                     return id;
@@ -780,7 +780,7 @@ impl_scope! {
     }
 
     impl Tile for Self {
-        fn probe(&mut self, _: Coord) -> Id {
+        fn probe(&self, _: Coord) -> Id {
             self.id()
         }
     }

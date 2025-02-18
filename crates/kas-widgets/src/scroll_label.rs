@@ -80,7 +80,7 @@ impl_scope! {
     }
 
     impl Tile for Self {
-        fn probe(&mut self, coord: Coord) -> Id {
+        fn probe(&self, coord: Coord) -> Id {
             self.bar.try_probe(coord).unwrap_or_else(|| self.id())
         }
     }

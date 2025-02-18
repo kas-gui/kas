@@ -64,7 +64,7 @@ impl Tree {
         let mut toks = Toks::new();
         for target in &targets {
             toks.append_all(quote! {
-                if let Some(id) = ::kas::Layout::try_probe(&mut #target, coord) {
+                if let Some(id) = ::kas::Layout::try_probe(&#target, coord) {
                     Some(id)
                 } else
             });

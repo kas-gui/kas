@@ -152,13 +152,15 @@ impl_scope! {
     }
 
     impl Self {
-        pub(crate) fn try_probe(&mut self, data: &Data, coord: Coord) -> Option<Id> {
+        pub(crate) fn try_probe(&self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }
             for (_, popup, translation) in self.popups.iter().rev() {
-                if let Some(Some(id)) = self.inner.as_node(data).find_node(&popup.id, |mut node| node.try_probe(coord + *translation)) {
-                    return Some(id);
+                if let Some(widget) = self.inner.find_widget(&popup.id) {
+                    if let Some(id) = widget.try_probe(coord + *translation) {
+                        return Some(id);
+                    }
                 }
             }
             if self.bar_h > 0 {
