@@ -65,6 +65,7 @@ impl_scope! {
         max_value: i32,
         value: i32,
         invisible: bool,
+        is_hovered: bool,
         force_visible: bool,
         #[widget]
         grip: GripPart,
@@ -114,6 +115,7 @@ impl_scope! {
                 max_value: 0,
                 value: 0,
                 invisible: false,
+                is_hovered: false,
                 force_visible: false,
                 grip: GripPart::new(),
             }
@@ -221,14 +223,12 @@ impl_scope! {
                 self.value = value;
                 self.grip.set_offset(cx, self.offset());
             }
-            self.force_visible(cx);
+            if !self.is_hovered {
+                self.force_visible = true;
+                let delay = cx.config().event().touch_select_delay();
+                cx.request_timer(self.id(), TIMER_HIDE, delay);
+            }
             changed
-        }
-
-        fn force_visible(&mut self, cx: &mut EventState) {
-            self.force_visible = true;
-            let delay = cx.config().event().touch_select_delay();
-            cx.request_timer(self.id(), TIMER_HIDE, delay);
         }
 
         #[inline]
@@ -318,10 +318,6 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawCx) {
-            if draw.ev_state().is_hovered_recursive(self.id_ref()) {
-                self.force_visible(draw.ev_state());
-            }
-
             if !self.invisible
                 || (self.max_value != 0 && self.force_visible)
                 || draw.ev_state().is_depressed(self.grip.id_ref())
@@ -347,13 +343,27 @@ impl_scope! {
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
                 Event::Timer(TIMER_HIDE) => {
-                    self.force_visible = false;
-                    cx.redraw(self);
+                    if !self.is_hovered {
+                        self.force_visible = false;
+                        cx.redraw(self);
+                    }
                     Used
                 }
                 Event::PressStart { press } => {
                     let offset = self.grip.handle_press_on_track(cx, &press);
                     self.apply_grip_offset(cx, offset);
+                    Used
+                }
+                Event::MouseHover(true) => {
+                    self.is_hovered = true;
+                    self.force_visible = true;
+                    cx.redraw(self);
+                    Used
+                }
+                Event::MouseHover(false) => {
+                    self.is_hovered = false;
+                    let delay = cx.config().event().touch_select_delay();
+                    cx.request_timer(self.id(), TIMER_HIDE, delay);
                     Used
                 }
                 _ => Unused,
