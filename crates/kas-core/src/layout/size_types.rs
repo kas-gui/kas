@@ -238,6 +238,8 @@ impl_scope! {
         ///
         /// If is `None`, max size is limited to ideal size.
         pub stretch: Stretch,
+        /// The assigned [`Rect`]
+        pub rect: Rect,
     }
 }
 
@@ -260,7 +262,7 @@ impl PixmapScaling {
     /// Constrains and aligns within `rect`
     ///
     /// The resulting size is then aligned using the `align` hints, defaulting to centered.
-    pub fn align_rect(&mut self, rect: Rect, align: AlignPair, scale_factor: f32) -> Rect {
+    pub fn set_rect(&mut self, rect: Rect, align: AlignPair, scale_factor: f32) {
         let mut size = rect.size;
 
         if self.stretch == Stretch::None {
@@ -280,7 +282,7 @@ impl PixmapScaling {
             }
         }
 
-        align.aligned_rect(size, rect)
+        self.rect = align.aligned_rect(size, rect);
     }
 }
 

@@ -160,6 +160,10 @@ impl_scope! {
     }
 
     impl Layout for Self {
+        fn rect(&self) -> Rect {
+            self.scaling.rect
+        }
+
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             self.scaling.size_rules(sizer, axis)
         }
@@ -167,9 +171,9 @@ impl_scope! {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             let align = hints.complete_default();
             let scale_factor = cx.size_cx().scale_factor();
-            widget_set_rect!(self.scaling.align_rect(rect, align, scale_factor));
-            let size = self.rect().size.cast();
+            self.scaling.set_rect(rect, align, scale_factor);
 
+            let size = self.rect().size.cast();
             if let Some(fut) = self.inner.get_mut().resize(size) {
                 cx.push_spawn(self.id(), fut);
             }

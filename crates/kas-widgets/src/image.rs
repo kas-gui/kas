@@ -167,6 +167,10 @@ impl_scope! {
     }
 
     impl Layout for Image {
+        fn rect(&self) -> Rect {
+            self.scaling.rect
+        }
+
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             self.scaling.size_rules(sizer, axis)
         }
@@ -174,7 +178,7 @@ impl_scope! {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             let align = hints.complete_default();
             let scale_factor = cx.size_cx().scale_factor();
-            widget_set_rect!(self.scaling.align_rect(rect, align, scale_factor));
+            self.scaling.set_rect(rect, align, scale_factor);
         }
 
         fn draw(&self, mut draw: DrawCx) {
