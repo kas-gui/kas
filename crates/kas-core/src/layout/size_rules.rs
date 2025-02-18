@@ -224,7 +224,6 @@ impl SizeRules {
     }
 
     /// Use the maximum size of `self` and `rhs`.
-    #[inline]
     #[must_use = "method does not modify self but returns a new value"]
     pub fn max(self, rhs: Self) -> SizeRules {
         SizeRules {
@@ -279,7 +278,6 @@ impl SizeRules {
     ///
     /// Note also that appending [`SizeRules::EMPTY`] does include interior
     /// margins (those between `EMPTY` and the other rules) within the result.
-    #[inline]
     #[must_use = "method does not modify self but returns a new value"]
     pub fn appended(self, rhs: SizeRules) -> Self {
         let c: i32 = self.m.1.max(rhs.m.0).into();
@@ -371,7 +369,6 @@ impl SizeRules {
         clippy::needless_range_loop,
         clippy::needless_return
     )]
-    #[inline]
     pub fn solve_seq_total(out: &mut [i32], rules: &[Self], total: Self, target: i32) {
         type Targets = SmallVec<[i32; 16]>;
         #[allow(non_snake_case)]

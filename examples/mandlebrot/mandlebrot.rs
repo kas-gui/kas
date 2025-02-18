@@ -340,7 +340,6 @@ impl_scope! {
                 .with_stretch(Stretch::High)
         }
 
-        #[inline]
         fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
             widget_set_rect!(rect);
             let size = DVec2::conv(rect.size);

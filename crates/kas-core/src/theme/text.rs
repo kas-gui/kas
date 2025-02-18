@@ -409,7 +409,6 @@ impl<T: FormattableText> Text<T> {
         Ok(())
     }
 
-    #[inline]
     fn prepare_runs(&mut self) -> Result<(), NotReady> {
         match self.status {
             Status::New => return Err(NotReady),
@@ -521,7 +520,6 @@ impl<T: FormattableText> Text<T> {
     ///     [`Action::empty()`] is returned without updating `self`.
     ///
     /// This is typically called after updating a `Text` object in a widget.
-    #[inline]
     pub fn reprepare_action(&mut self) -> Action {
         match self.prepare() {
             Err(NotReady) => Action::empty(),

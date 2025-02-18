@@ -406,7 +406,6 @@ impl_scope! {
             self.scroll.offset()
         }
 
-        #[inline]
         fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
             let act = self.scroll.set_offset(offset);
             cx.action(&self, act);

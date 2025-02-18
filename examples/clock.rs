@@ -48,7 +48,6 @@ impl_scope! {
                 .with_stretch(Stretch::High)
         }
 
-        #[inline]
         fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
             // Force to square
             let size = rect.size.0.min(rect.size.1);
