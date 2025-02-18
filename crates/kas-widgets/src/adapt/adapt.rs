@@ -6,6 +6,7 @@
 //! Adapt widget
 
 use super::{AdaptConfigCx, AdaptEventCx};
+use kas::event::TimerHandle;
 use kas::prelude::*;
 use linear_map::LinearMap;
 use std::fmt::Debug;
@@ -47,7 +48,7 @@ impl_scope! {
         inner: W,
         configure_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W::Data)>>,
         update_handler: Option<Box<dyn Fn(&mut AdaptConfigCx, &mut W::Data, &A)>>,
-        timer_handlers: LinearMap<u64, Box<dyn Fn(&mut AdaptEventCx, &mut W::Data, &A)>>,
+        timer_handlers: LinearMap<TimerHandle, Box<dyn Fn(&mut AdaptEventCx, &mut W::Data, &A)>>,
         message_handlers: Vec<Box<dyn Fn(&mut AdaptEventCx, &mut W::Data, &A)>>,
     }
 
@@ -93,7 +94,7 @@ impl_scope! {
         /// It is assumed that state is modified by this timer. Frequent usage
         /// of timers which don't do anything may be inefficient; prefer usage
         /// of [`EventState::push_async`](kas::event::EventState::push_async).
-        pub fn on_timer<H>(mut self, timer_id: u64, handler: H) -> Self
+        pub fn on_timer<H>(mut self, timer_id: TimerHandle, handler: H) -> Self
         where
             H: Fn(&mut AdaptEventCx, &mut W::Data, &A) + 'static,
         {

@@ -6,7 +6,7 @@
 //! `ScrollBar` control
 
 use super::{GripMsg, GripPart, ScrollRegion};
-use kas::event::Scroll;
+use kas::event::{Scroll, TimerHandle};
 use kas::prelude::*;
 use kas::theme::Feature;
 use std::fmt::Debug;
@@ -36,6 +36,8 @@ pub enum ScrollBarMode {
 /// Message from a [`ScrollBar`]
 #[derive(Copy, Clone, Debug)]
 pub struct ScrollMsg(pub i32);
+
+const TIMER_HIDE: TimerHandle = TimerHandle::new(0, false);
 
 impl_scope! {
     /// A scroll bar
@@ -226,7 +228,7 @@ impl_scope! {
         fn force_visible(&mut self, cx: &mut EventState) {
             self.force_visible = true;
             let delay = cx.config().event().touch_select_delay();
-            cx.request_timer(self.id(), 0, delay);
+            cx.request_timer(self.id(), TIMER_HIDE, delay);
         }
 
         #[inline]
@@ -344,7 +346,7 @@ impl_scope! {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
-                Event::Timer(_) => {
+                Event::Timer(TIMER_HIDE) => {
                     self.force_visible = false;
                     cx.redraw(self);
                     Used

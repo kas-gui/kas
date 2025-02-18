@@ -5,6 +5,7 @@
 
 //! Adapted contexts
 
+use kas::event::TimerHandle;
 use kas::prelude::*;
 use std::time::Duration;
 
@@ -46,10 +47,10 @@ impl<'a: 'b, 'b> AdaptEventCx<'a, 'b> {
     /// Requesting an update with `delay == 0` is valid except from a timer
     /// handler where it might cause an infinite loop.
     ///
-    /// Multiple timer requests with the same `timer_id` are merged
-    /// (choosing the earliest time).
+    /// Multiple timer requests with the same `id` and `handle` are merged
+    /// (see [`TimerHandle`] documentation).
     #[inline]
-    pub fn request_timer(&mut self, timer_id: u64, delay: Duration) {
+    pub fn request_timer(&mut self, timer_id: TimerHandle, delay: Duration) {
         self.cx.request_timer(self.id.clone(), timer_id, delay);
     }
 }
@@ -103,10 +104,10 @@ impl<'a: 'b, 'b> AdaptConfigCx<'a, 'b> {
     /// Requesting an update with `delay == 0` is valid except from a timer
     /// handler where it might cause an infinite loop.
     ///
-    /// Multiple timer requests with the same `timer_id` are merged
-    /// (choosing the earliest time).
+    /// Multiple timer requests with the same `id` and `handle` are merged
+    /// (see [`TimerHandle`] documentation).
     #[inline]
-    pub fn request_timer(&mut self, timer_id: u64, delay: Duration) {
+    pub fn request_timer(&mut self, timer_id: TimerHandle, delay: Duration) {
         self.cx.request_timer(self.id.clone(), timer_id, delay);
     }
 }

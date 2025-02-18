@@ -200,34 +200,35 @@ impl EventState {
     /// Widget updates may be used for animation and timed responses. See also
     /// [`Draw::animate`](crate::draw::Draw::animate) for animation.
     ///
-    /// Widget `id` will receive [`Event::Timer`] with this `payload` at
+    /// Widget `id` will receive [`Event::Timer`] with this `handle` at
     /// approximately `time = now + delay` (or possibly a little later due to
     /// frame-rate limiters and processing time).
     ///
     /// Requesting an update with `delay == 0` is valid, except from an
     /// [`Event::Timer`] handler (where it may cause an infinite loop).
     ///
-    /// Multiple timer requests with the same `id` and `payload` are merged
-    /// (choosing the earliest time).
-    pub fn request_timer(&mut self, id: Id, payload: u64, delay: Duration) {
+    /// Multiple timer requests with the same `id` and `handle` are merged
+    /// (see [`TimerHandle`] documentation).
+    pub fn request_timer(&mut self, id: Id, handle: TimerHandle, delay: Duration) {
         let time = Instant::now() + delay;
         if let Some(row) = self
             .time_updates
             .iter_mut()
-            .find(|row| row.1 == id && row.2 == payload)
+            .find(|row| row.1 == id && row.2 == handle)
         {
-            if row.0 <= time {
+            let earliest = handle.earliest();
+            if earliest && row.0 <= time || !earliest && row.0 >= time {
                 return;
             }
 
             row.0 = time;
+        } else {
             log::trace!(
                 target: "kas_core::event",
                 "request_timer: update {id} at now+{}ms",
                 delay.as_millis()
             );
-        } else {
-            self.time_updates.push((time, id, payload));
+            self.time_updates.push((time, id, handle));
         }
 
         self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort

@@ -209,7 +209,7 @@ pub struct EventState {
     // For each: (WindowId of popup, popup descriptor, old nav focus)
     popups: SmallVec<[(WindowId, crate::PopupDescriptor, Option<Id>); 16]>,
     popup_removed: SmallVec<[(Id, WindowId); 16]>,
-    time_updates: Vec<(Instant, Id, u64)>,
+    time_updates: Vec<(Instant, Id, TimerHandle)>,
     // Set of messages awaiting sending
     send_queue: VecDeque<(Id, Erased)>,
     // Set of futures of messages together with id of sending widget

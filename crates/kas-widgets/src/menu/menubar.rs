@@ -6,10 +6,12 @@
 //! Menubar
 
 use super::{Menu, SubMenu, SubMenuBuilder};
-use kas::event::{Command, FocusSource};
+use kas::event::{Command, FocusSource, TimerHandle};
 use kas::layout::{self, RowPositionSolver, RowSetter, RowSolver, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::theme::FrameStyle;
+
+const TIMER_SHOW: TimerHandle = TimerHandle::new(0, false);
 
 impl_scope! {
     /// A menu-bar
@@ -120,11 +122,9 @@ impl_scope! {
     impl Events for Self {
         fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> IsUsed {
             match event {
-                Event::Timer(id_code) => {
+                Event::Timer(TIMER_SHOW) => {
                     if let Some(id) = self.delayed_open.clone() {
-                        if id.as_u64() == id_code {
-                            self.set_menu_path(cx, data, Some(&id), false);
-                        }
+                        self.set_menu_path(cx, data, Some(&id), false);
                     }
                     Used
                 }
@@ -181,7 +181,7 @@ impl_scope! {
                         } else if id != self.delayed_open {
                             cx.set_nav_focus(id.clone(), FocusSource::Pointer);
                             let delay = cx.config().event().menu_delay();
-                            cx.request_timer(self.id(), id.as_u64(), delay);
+                            cx.request_timer(self.id(), TIMER_SHOW, delay);
                             self.delayed_open = Some(id);
                         }
                     } else {

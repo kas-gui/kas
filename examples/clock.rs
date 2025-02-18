@@ -19,12 +19,15 @@ use std::time::Duration;
 
 use kas::draw::color::{Rgba, Rgba8Srgb};
 use kas::draw::{Draw, DrawRounded};
+use kas::event::TimerHandle;
 use kas::geom::{Quad, Vec2};
 use kas::prelude::*;
 use kas::runner::RunnerInherent;
 use kas::text::Text;
 
 type Runner = kas::runner::Default<(), kas::theme::SimpleTheme>;
+
+const TIMER: TimerHandle = TimerHandle::new(0, true);
 
 impl_scope! {
     #[derive(Clone)]
@@ -130,12 +133,12 @@ impl_scope! {
             self.date.configure().unwrap();
             self.time.set_align(AlignPair::CENTER.into());
             self.time.configure().unwrap();
-            cx.request_timer(self.id(), 0, Duration::new(0, 0));
+            cx.request_timer(self.id(), TIMER, Duration::ZERO);
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
-                Event::Timer(0) => {
+                Event::Timer(TIMER) => {
                     self.now = Local::now();
                     let date = self.now.format("%Y-%m-%d").to_string();
                     let time = self.now.format("%H:%M:%S").to_string();
@@ -145,7 +148,7 @@ impl_scope! {
                     self.time.prepare().expect("not configured");
                     let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                     log::info!("Requesting update in {}ns", ns);
-                    cx.request_timer(self.id(), 0, Duration::new(0, ns));
+                    cx.request_timer(self.id(), TIMER, Duration::from_nanos(ns as u64));
                     cx.redraw(self);
                     Used
                 }
