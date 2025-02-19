@@ -524,7 +524,7 @@ KAS_CONFIG_MODE=readwrite
     )
     .unwrap();
 
-    let ui = column![ScrollLabel::new(desc), Separator::new(), EventConfig::new(),]
+    let ui = column![ScrollLabel::new(desc), Separator::new(), EventConfig::new()]
         .map_any()
         .on_update(|cx, _, data: &AppData| cx.set_disabled(data.disabled));
     Box::new(ui)

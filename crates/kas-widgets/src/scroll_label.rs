@@ -42,7 +42,7 @@ impl_scope! {
             if axis.is_vertical() {
                 rules.reduce_min_to(sizer.text_line_height(&self.text) * 4);
             }
-            rules
+            rules.with_stretch(Stretch::Low)
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect, hints: AlignHints) {
