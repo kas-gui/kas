@@ -51,6 +51,14 @@ use kas_macros::autoimpl;
 /// [`#widget`]: macros::widget
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait Layout {
+    /// Get the widget's region
+    ///
+    /// Coordinates are relative to the parent's coordinate space.
+    ///
+    /// This method is usually implemented by the `#[widget]` macro.
+    /// See also [`kas::widget_set_rect`].
+    fn rect(&self) -> Rect;
+
     /// Get size rules for the given axis
     ///
     /// # Calling
@@ -156,7 +164,7 @@ pub trait Layout {
     ///
     /// Non-widgets do not have an [`Id`], and therefore should use the default
     /// implementation which simply returns `None`.
-    fn try_probe(&mut self, coord: Coord) -> Option<Id> {
+    fn try_probe(&self, coord: Coord) -> Option<Id> {
         let _ = coord;
         None
     }
@@ -189,7 +197,7 @@ pub trait Layout {
     /// This method modification should never cause issues (besides the implied
     /// limitation that widgets cannot easily detect a parent's state while
     /// being drawn).
-    fn draw(&mut self, draw: DrawCx);
+    fn draw(&self, draw: DrawCx);
 }
 
 /// Macro-defined layout
@@ -201,6 +209,9 @@ pub trait Layout {
 ///
 /// TODO: add an example
 pub trait MacroDefinedLayout {
+    /// Get the widget's region
+    fn rect(&self) -> Rect;
+
     /// Get size rules for the given axis
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
 
@@ -208,8 +219,8 @@ pub trait MacroDefinedLayout {
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints);
 
     /// Probe a coordinate for a widget's [`Id`]
-    fn try_probe(&mut self, coord: Coord) -> Option<Id>;
+    fn try_probe(&self, coord: Coord) -> Option<Id>;
 
     /// Draw a widget and its children
-    fn draw(&mut self, draw: DrawCx);
+    fn draw(&self, draw: DrawCx);
 }

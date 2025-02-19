@@ -80,7 +80,7 @@ impl_scope! {
             SizeRules::EMPTY
         }
 
-        fn draw(&mut self, _: DrawCx) {}
+        fn draw(&self, _: DrawCx) {}
     }
 
     impl Events for Self {
@@ -123,7 +123,6 @@ impl_scope! {
 
     impl Layout for Self {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            widget_set_rect!(rect);
             self.text.set_rect(cx, rect, hints.combine(AlignHints::CENTER));
         }
     }
@@ -178,7 +177,7 @@ impl_scope! {
             sizer.feature(self.style.into(), axis)
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             draw.mark(self.rect(), self.style);
         }
     }

@@ -6,7 +6,7 @@
 //! `ScrollBar` control
 
 use super::{GripMsg, GripPart, ScrollRegion};
-use kas::event::Scroll;
+use kas::event::{Scroll, TimerHandle};
 use kas::prelude::*;
 use kas::theme::Feature;
 use std::fmt::Debug;
@@ -37,6 +37,8 @@ pub enum ScrollBarMode {
 #[derive(Copy, Clone, Debug)]
 pub struct ScrollMsg(pub i32);
 
+const TIMER_HIDE: TimerHandle = TimerHandle::new(0, false);
+
 impl_scope! {
     /// A scroll bar
     ///
@@ -63,6 +65,7 @@ impl_scope! {
         max_value: i32,
         value: i32,
         invisible: bool,
+        is_hovered: bool,
         force_visible: bool,
         #[widget]
         grip: GripPart,
@@ -112,6 +115,7 @@ impl_scope! {
                 max_value: 0,
                 value: 0,
                 invisible: false,
+                is_hovered: false,
                 force_visible: false,
                 grip: GripPart::new(),
             }
@@ -219,14 +223,12 @@ impl_scope! {
                 self.value = value;
                 self.grip.set_offset(cx, self.offset());
             }
-            self.force_visible(cx);
+            if !self.is_hovered {
+                self.force_visible = true;
+                let delay = cx.config().event().touch_select_delay();
+                cx.request_timer(self.id(), TIMER_HIDE, delay);
+            }
             changed
-        }
-
-        fn force_visible(&mut self, cx: &mut EventState) {
-            self.force_visible = true;
-            let delay = cx.config().event().touch_select_delay();
-            cx.request_timer(self.id(), 0, delay);
         }
 
         #[inline]
@@ -315,11 +317,7 @@ impl_scope! {
             self.update_widgets(cx);
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
-            if draw.ev_state().is_hovered_recursive(self.id_ref()) {
-                self.force_visible(draw.ev_state());
-            }
-
+        fn draw(&self, mut draw: DrawCx) {
             if !self.invisible
                 || (self.max_value != 0 && self.force_visible)
                 || draw.ev_state().is_depressed(self.grip.id_ref())
@@ -331,7 +329,7 @@ impl_scope! {
     }
 
     impl Tile for Self {
-        fn probe(&mut self, coord: Coord) -> Id {
+        fn probe(&self, coord: Coord) -> Id {
             if self.invisible && self.max_value == 0 {
                 return self.id();
             }
@@ -344,14 +342,28 @@ impl_scope! {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
-                Event::Timer(_) => {
-                    self.force_visible = false;
-                    cx.redraw(self);
+                Event::Timer(TIMER_HIDE) => {
+                    if !self.is_hovered {
+                        self.force_visible = false;
+                        cx.redraw(self);
+                    }
                     Used
                 }
                 Event::PressStart { press } => {
                     let offset = self.grip.handle_press_on_track(cx, &press);
                     self.apply_grip_offset(cx, offset);
+                    Used
+                }
+                Event::MouseHover(true) => {
+                    self.is_hovered = true;
+                    self.force_visible = true;
+                    cx.redraw(self);
+                    Used
+                }
+                Event::MouseHover(false) => {
+                    self.is_hovered = false;
+                    let delay = cx.config().event().touch_select_delay();
+                    cx.request_timer(self.id(), TIMER_HIDE, delay);
                     Used
                 }
                 _ => Unused,
@@ -556,7 +568,7 @@ impl_scope! {
             }
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             self.inner.draw(draw.re());
             draw.with_pass(|mut draw| {
                 if self.show_bars.0 {
@@ -570,7 +582,7 @@ impl_scope! {
     }
 
     impl Tile for Self {
-        fn probe(&mut self, coord: Coord) -> Id {
+        fn probe(&self, coord: Coord) -> Id {
             self.vert_bar.try_probe(coord)
                 .or_else(|| self.horiz_bar.try_probe(coord))
                 .or_else(|| self.inner.try_probe(coord))

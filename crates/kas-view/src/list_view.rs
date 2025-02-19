@@ -406,7 +406,6 @@ impl_scope! {
             self.scroll.offset()
         }
 
-        #[inline]
         fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
             let act = self.scroll.set_offset(offset);
             cx.action(&self, act);
@@ -524,10 +523,10 @@ impl_scope! {
             debug_assert!(self.widgets.len() >= req_widgets);
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             let offset = self.scroll_offset();
             draw.with_clip_region(self.rect(), offset, |mut draw| {
-                for child in &mut self.widgets[..self.cur_len.cast()] {
+                for child in &self.widgets[..self.cur_len.cast()] {
                     if let Some(ref key) = child.key {
                         if self.selection.contains(key) {
                             draw.selection(child.widget.rect(), self.sel_style);
@@ -565,9 +564,9 @@ impl_scope! {
             self.scroll_offset()
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
+        fn probe(&self, coord: Coord) -> Id {
             let coord = coord + self.scroll.offset();
-            for child in &mut self.widgets[..self.cur_len.cast()] {
+            for child in &self.widgets[..self.cur_len.cast()] {
                 if child.key.is_some() {
                     if let Some(id) = child.widget.try_probe(coord) {
                         return id;

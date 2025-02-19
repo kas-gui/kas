@@ -80,6 +80,10 @@ impl_scope! {
 
     /// This implementation is unusual (see [`GripPart`] documentation).
     impl Layout for GripPart {
+        fn rect(&self) -> Rect {
+            self.rect
+        }
+
         fn size_rules(&mut self, _: SizeCx, _axis: AxisInfo) -> SizeRules {
             SizeRules::EMPTY
         }
@@ -88,13 +92,7 @@ impl_scope! {
             self.rect = rect;
         }
 
-        fn draw(&mut self, _: DrawCx) {}
-    }
-
-    impl Tile for Self {
-        fn rect(&self) -> Rect {
-            self.rect
-        }
+        fn draw(&self, _: DrawCx) {}
     }
 
     impl Events for GripPart {
@@ -175,7 +173,7 @@ impl_scope! {
         /// between [`Offset::ZERO`] and [`Self::max_offset`].
         #[inline]
         pub fn offset(&self) -> Offset {
-            self.rect().pos - self.track.pos
+            self.rect.pos - self.track.pos
         }
 
         /// Get the maximum allowed offset
@@ -184,7 +182,7 @@ impl_scope! {
         /// track minus the size of the grip.
         #[inline]
         pub fn max_offset(&self) -> Offset {
-            Offset::conv(self.track.size) - Offset::conv(self.rect().size)
+            Offset::conv(self.track.size) - Offset::conv(self.rect.size)
         }
 
         /// Set a new grip position
@@ -199,7 +197,7 @@ impl_scope! {
         pub fn set_offset(&mut self, cx: &mut EventState, offset: Offset) -> Offset {
             let offset = offset.min(self.max_offset()).max(Offset::ZERO);
             let grip_pos = self.track.pos + offset;
-            if grip_pos != self.rect().pos {
+            if grip_pos != self.rect.pos {
                 self.rect.pos = grip_pos;
                 cx.redraw(self);
             }
@@ -223,7 +221,7 @@ impl_scope! {
                 .with_icon(CursorIcon::Grabbing)
                 .with_cx(cx);
 
-            let offset = press.coord - self.track.pos - Offset::conv(self.rect().size / 2);
+            let offset = press.coord - self.track.pos - Offset::conv(self.rect.size / 2);
             let offset = offset.clamp(Offset::ZERO, self.max_offset());
             self.press_coord = press.coord - offset;
             offset

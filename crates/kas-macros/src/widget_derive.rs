@@ -145,10 +145,6 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         fn id_ref(&self) -> &::kas::Id {
             self.#inner.id_ref()
         }
-        #[inline]
-        fn rect(&self) -> ::kas::geom::Rect {
-            self.#inner.rect()
-        }
 
         #[inline]
         fn widget_name(&self) -> &'static str {
@@ -169,6 +165,12 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         }
     };
 
+    let fn_rect = quote! {
+        #[inline]
+        fn rect(&self) -> ::kas::geom::Rect {
+            self.#inner.rect()
+        }
+    };
     let fn_size_rules = quote! {
         #[inline]
         fn size_rules(&mut self,
@@ -191,13 +193,13 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
     };
     let fn_try_probe = quote! {
         #[inline]
-        fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+        fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
             self.#inner.try_probe(coord)
         }
     };
     let fn_draw = quote! {
         #[inline]
-        fn draw(&mut self, draw: ::kas::theme::DrawCx) {
+        fn draw(&self, draw: ::kas::theme::DrawCx) {
             self.#inner.draw(draw);
         }
     };
@@ -206,6 +208,10 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         let layout_impl = &mut scope.impls[index];
         let item_idents = collect_idents(layout_impl);
         let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
+
+        if !has_item("rect") {
+            layout_impl.items.push(Verbatim(fn_rect));
+        }
 
         if !has_item("size_rules") {
             layout_impl.items.push(Verbatim(fn_size_rules));
@@ -225,6 +231,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
     } else {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Layout for #impl_target {
+                #fn_rect
                 #fn_size_rules
                 #fn_set_rect
                 #fn_try_probe

@@ -106,8 +106,8 @@ impl_scope! {
             }
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
-            if let Some(entry) = self.widgets.get_mut(self.active) {
+        fn draw(&self, mut draw: DrawCx) {
+            if let Some(entry) = self.widgets.get(self.active) {
                 debug_assert_eq!(entry.1, State::Sized);
                 entry.0.draw(draw.re());
             }
@@ -136,8 +136,8 @@ impl_scope! {
             }
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
-            if let Some(entry) = self.widgets.get_mut(self.active) {
+        fn probe(&self, coord: Coord) -> Id {
+            if let Some(entry) = self.widgets.get(self.active) {
                 debug_assert_eq!(entry.1, State::Sized);
                 if let Some(id) = entry.0.try_probe(coord) {
                     return id;

@@ -107,7 +107,7 @@ impl_scope! {
             from.xor(Some(widget_index!(self.inner)))
         }
 
-        fn probe(&mut self, _: Coord) -> Id {
+        fn probe(&self, _: Coord) -> Id {
             self.inner.id()
         }
     }

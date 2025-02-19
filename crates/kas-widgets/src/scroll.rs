@@ -116,7 +116,7 @@ impl_scope! {
                 .set_sizes(rect.size, child_size + self.frame_size);
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             draw.with_clip_region(self.rect(), self.scroll_offset(), |mut draw| {
                 self.inner.draw(draw.re());
             });
@@ -129,7 +129,7 @@ impl_scope! {
             self.scroll_offset()
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
+        fn probe(&self, coord: Coord) -> Id {
             self.inner.try_probe(coord + self.translation())
                 .unwrap_or_else(|| self.id())
         }

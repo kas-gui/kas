@@ -174,9 +174,7 @@ pub enum Event {
     ///
     /// This event is received after requesting timed wake-up(s)
     /// (see [`EventState::request_timer`]).
-    ///
-    /// The `u64` payload is copied from [`EventState::request_timer`].
-    Timer(u64),
+    Timer(TimerHandle),
     /// Notification that a popup has been closed
     ///
     /// This is sent to the popup when closed.
@@ -308,8 +306,8 @@ impl Event {
             CursorMove { .. } | PressStart { .. } => false,
             Pan { .. } | PressMove { .. } | PressEnd { .. } => true,
             Timer(_) | PopupClosed(_) => true,
-            NavFocus { .. } | SelFocus(_) | KeyFocus | MouseHover(_) => false,
-            LostNavFocus | LostKeyFocus | LostSelFocus => true,
+            NavFocus { .. } | SelFocus(_) | KeyFocus | MouseHover(true) => false,
+            LostNavFocus | LostKeyFocus | LostSelFocus | MouseHover(false) => true,
         }
     }
 
@@ -348,7 +346,7 @@ impl Event {
             NavFocus { .. } | LostNavFocus => false,
             SelFocus(_) | LostSelFocus => false,
             KeyFocus | LostKeyFocus => false,
-            MouseHover(_) => false,
+            MouseHover(_) => true,
         }
     }
 }
@@ -613,6 +611,33 @@ impl Command {
             Command::Down => Some(Direction::Down),
             _ => None,
         }
+    }
+}
+
+/// A timer handle
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct TimerHandle(i64);
+impl TimerHandle {
+    /// Construct a new handle
+    ///
+    /// The code must be positive. If a widget uses multiple timers, each must
+    /// have a unique code.
+    ///
+    /// When a timer update is requested multiple times before delivery using
+    /// the same `TimerHandle`, these requests are merged, choosing the
+    /// earliest time if `earliest`, otherwise the latest time.
+    pub const fn new(code: i64, earliest: bool) -> Self {
+        assert!(code >= 0);
+        if earliest {
+            TimerHandle(-code - 1)
+        } else {
+            TimerHandle(code)
+        }
+    }
+
+    /// Check whether this timer chooses the earliest time when merging
+    pub fn earliest(self) -> bool {
+        self.0 < 0
     }
 }
 

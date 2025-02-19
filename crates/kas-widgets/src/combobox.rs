@@ -53,7 +53,7 @@ impl_scope! {
             None
         }
 
-        fn probe(&mut self, _: Coord) -> Id {
+        fn probe(&self, _: Coord) -> Id {
             self.id()
         }
     }

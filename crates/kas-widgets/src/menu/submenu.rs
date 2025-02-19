@@ -101,7 +101,7 @@ impl_scope! {
     }
 
     impl kas::Layout for Self {
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw.re());
             if self.mark.rect().size != Size::ZERO {
@@ -116,7 +116,7 @@ impl_scope! {
             None
         }
 
-        fn probe(&mut self, _: Coord) -> Id {
+        fn probe(&self, _: Coord) -> Id {
             self.id()
         }
     }
@@ -332,8 +332,8 @@ impl_scope! {
             }
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
-            for child in self.list.iter_mut() {
+        fn draw(&self, mut draw: DrawCx) {
+            for child in self.list.iter() {
                 child.draw(draw.re());
             }
         }
@@ -348,8 +348,8 @@ impl_scope! {
             self.list.get(index).map(|w| w.as_tile())
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
-            for child in self.list.iter_mut() {
+        fn probe(&self, coord: Coord) -> Id {
+            for child in self.list.iter() {
                 if let Some(id) = child.try_probe(coord) {
                     return id;
                 }

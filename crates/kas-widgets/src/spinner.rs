@@ -276,12 +276,11 @@ impl_scope! {
 
     impl Layout for Self {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            widget_set_rect!(rect);
             kas::MacroDefinedLayout::set_rect(self, cx, rect, hints);
             self.edit.set_outer_rect(rect, FrameStyle::EditBox);
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             self.edit.draw(draw.re());
             self.b_up.draw(draw.re());
             self.b_down.draw(draw.re());
@@ -289,7 +288,7 @@ impl_scope! {
     }
 
     impl Tile for Self {
-        fn probe(&mut self, coord: Coord) -> Id {
+        fn probe(&self, coord: Coord) -> Id {
             self.b_up.try_probe(coord)
                 .or_else(|| self.b_down.try_probe(coord))
                 .unwrap_or_else(|| self.edit.id())

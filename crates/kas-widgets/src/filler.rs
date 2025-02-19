@@ -28,7 +28,7 @@ impl_scope! {
             SizeRules::empty(stretch)
         }
 
-        fn draw(&mut self, _: DrawCx) {}
+        fn draw(&self, _: DrawCx) {}
     }
 }
 

@@ -67,17 +67,6 @@ impl EventState {
         self.mouse_grab.is_none() && *w_id == self.hover
     }
 
-    /// Get whether widget `id` or any of its descendants are under the mouse cursor
-    #[inline]
-    pub fn is_hovered_recursive(&self, id: &Id) -> bool {
-        self.mouse_grab.is_none()
-            && self
-                .hover
-                .as_ref()
-                .map(|h| id.is_ancestor_of(h))
-                .unwrap_or(false)
-    }
-
     /// Check whether the given widget is visually depressed
     pub fn is_depressed(&self, w_id: &Id) -> bool {
         for (_, id) in &self.key_depress {
@@ -200,34 +189,35 @@ impl EventState {
     /// Widget updates may be used for animation and timed responses. See also
     /// [`Draw::animate`](crate::draw::Draw::animate) for animation.
     ///
-    /// Widget `id` will receive [`Event::Timer`] with this `payload` at
+    /// Widget `id` will receive [`Event::Timer`] with this `handle` at
     /// approximately `time = now + delay` (or possibly a little later due to
     /// frame-rate limiters and processing time).
     ///
     /// Requesting an update with `delay == 0` is valid, except from an
     /// [`Event::Timer`] handler (where it may cause an infinite loop).
     ///
-    /// Multiple timer requests with the same `id` and `payload` are merged
-    /// (choosing the earliest time).
-    pub fn request_timer(&mut self, id: Id, payload: u64, delay: Duration) {
+    /// Multiple timer requests with the same `id` and `handle` are merged
+    /// (see [`TimerHandle`] documentation).
+    pub fn request_timer(&mut self, id: Id, handle: TimerHandle, delay: Duration) {
         let time = Instant::now() + delay;
         if let Some(row) = self
             .time_updates
             .iter_mut()
-            .find(|row| row.1 == id && row.2 == payload)
+            .find(|row| row.1 == id && row.2 == handle)
         {
-            if row.0 <= time {
+            let earliest = handle.earliest();
+            if earliest && row.0 <= time || !earliest && row.0 >= time {
                 return;
             }
 
             row.0 = time;
+        } else {
             log::trace!(
                 target: "kas_core::event",
                 "request_timer: update {id} at now+{}ms",
                 delay.as_millis()
             );
-        } else {
-            self.time_updates.push((time, id, payload));
+            self.time_updates.push((time, id, handle));
         }
 
         self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
@@ -888,7 +878,6 @@ impl<'a> EventCx<'a> {
     ///
     /// In case of failure, paste actions will simply fail. The implementation
     /// may wish to log an appropriate warning message.
-    #[inline]
     pub fn get_clipboard(&mut self) -> Option<String> {
         #[cfg(all(wayland_platform, feature = "clipboard"))]
         if let Some(cb) = self.window.wayland_clipboard() {
@@ -905,7 +894,6 @@ impl<'a> EventCx<'a> {
     }
 
     /// Attempt to set clipboard contents
-    #[inline]
     pub fn set_clipboard(&mut self, content: String) {
         #[cfg(all(wayland_platform, feature = "clipboard"))]
         if let Some(cb) = self.window.wayland_clipboard() {
@@ -932,7 +920,6 @@ impl<'a> EventCx<'a> {
     ///
     /// Linux has a "primary buffer" with implicit copy on text selection and
     /// paste on middle-click. This method does nothing on other platforms.
-    #[inline]
     pub fn get_primary(&mut self) -> Option<String> {
         #[cfg(all(wayland_platform, feature = "clipboard"))]
         if let Some(cb) = self.window.wayland_clipboard() {
@@ -952,7 +939,6 @@ impl<'a> EventCx<'a> {
     ///
     /// Linux has a "primary buffer" with implicit copy on text selection and
     /// paste on middle-click. This method does nothing on other platforms.
-    #[inline]
     pub fn set_primary(&mut self, content: String) {
         #[cfg(all(wayland_platform, feature = "clipboard"))]
         if let Some(cb) = self.window.wayland_clipboard() {

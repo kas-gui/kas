@@ -15,8 +15,8 @@ use crate::{Action, Id};
 use kas_macros::impl_default;
 use std::time::{Duration, Instant};
 
-const TIMER_SELECT: u64 = 1 << 60;
-const TIMER_GLIDE: u64 = (1 << 60) + 1;
+const TIMER_SELECT: TimerHandle = TimerHandle::new(1 << 60, true);
+const TIMER_GLIDE: TimerHandle = TimerHandle::new((1 << 60) + 1, true);
 const GLIDE_POLL_MS: u64 = 3;
 const GLIDE_MAX_SAMPLES: usize = 8;
 
@@ -336,7 +336,7 @@ impl ScrollComponent {
                 let timeout = cx.config().event().scroll_flick_timeout();
                 let pan_dist_thresh = cx.config().event().pan_dist_thresh();
                 if self.glide.press_end(timeout, pan_dist_thresh) {
-                    cx.request_timer(id.clone(), TIMER_GLIDE, Duration::new(0, 0));
+                    cx.request_timer(id.clone(), TIMER_GLIDE, Duration::ZERO);
                 }
             }
             Event::Timer(pl) if pl == TIMER_GLIDE => {
@@ -484,7 +484,7 @@ impl TextInput {
                         || matches!(press.source, PressSource::Mouse(..) if cx.config_enable_mouse_text_pan()))
                 {
                     self.touch_phase = TouchPhase::None;
-                    cx.request_timer(w_id, TIMER_GLIDE, Duration::new(0, 0));
+                    cx.request_timer(w_id, TIMER_GLIDE, Duration::ZERO);
                 }
                 Action::None
             }

@@ -491,7 +491,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
                     .theme
                     .draw(draw, &mut self.ev_state, &mut window.theme_window);
             let draw_cx = DrawCx::new(&mut draw, self.widget.id());
-            self.widget.draw(&state.data, draw_cx);
+            self.widget.draw(draw_cx);
         }
         let time2 = Instant::now();
 

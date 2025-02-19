@@ -48,7 +48,7 @@ impl_scope! {
     }
 
     impl Tile for Self {
-        fn probe(&mut self, _: Coord) -> Id {
+        fn probe(&self, _: Coord) -> Id {
             self.id()
         }
     }

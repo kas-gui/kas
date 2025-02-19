@@ -74,7 +74,7 @@ impl_scope! {
             self.loading_text.set_rect(cx, rect, hints.combine(AlignHints::CENTER));
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             if let Some(color) = self.color {
                 let draw = draw.draw_device();
                 draw.rect((self.rect()).cast(), color);

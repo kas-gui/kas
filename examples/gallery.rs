@@ -433,7 +433,7 @@ fn canvas() -> Box<dyn Widget<Data = AppData>> {
     #[derive(Debug)]
     struct Program(Instant);
     impl CanvasProgram for Program {
-        fn draw(&mut self, pixmap: &mut Pixmap) {
+        fn draw(&self, pixmap: &mut Pixmap) {
             let size = (200.0, 200.0);
             let scale = Transform::from_scale(
                 f32::conv(pixmap.width()) / size.0,

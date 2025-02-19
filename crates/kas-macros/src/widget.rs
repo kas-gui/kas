@@ -375,6 +375,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     }
 
     let fn_nav_next;
+    let fn_rect;
     let mut fn_size_rules = None;
     let fn_set_rect;
     let mut probe = quote! {
@@ -383,21 +384,34 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     let fn_try_probe;
     let mut fn_draw = None;
     if let Some(Layout { tree, .. }) = args.layout.take() {
-        let size_rules = tree.size_rules(&core_path);
-        let set_rect = tree.set_rect(&core_path);
-        let try_probe = tree.try_probe(&core_path);
-        let draw = tree.draw(&core_path);
+        // TODO(opt): omit field widget.core._rect if not set here
+        let mut set_rect = quote! {};
+        let tree_rect = tree.rect(&core_path).unwrap_or_else(|| {
+            set_rect = quote! {
+                #core_path._rect = rect;
+            };
+            quote! { #core_path._rect }
+        });
+        let tree_size_rules = tree.size_rules(&core_path);
+        let tree_set_rect = tree.set_rect(&core_path);
+        let tree_try_probe = tree.try_probe(&core_path);
+        let tree_draw = tree.draw(&core_path);
         fn_nav_next = tree.nav_next(children.iter());
 
         scope.generated.push(quote! {
             impl #impl_generics ::kas::MacroDefinedLayout for #impl_target {
+                #[inline]
+                fn rect(&self) -> ::kas::geom::Rect {
+                    #tree_rect
+                }
+
                 #[inline]
                 fn size_rules(
                     &mut self,
                     sizer: ::kas::theme::SizeCx,
                     axis: ::kas::layout::AxisInfo,
                 ) -> ::kas::layout::SizeRules {
-                    #size_rules
+                    #tree_size_rules
                 }
 
                 #[inline]
@@ -407,22 +421,29 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     rect: ::kas::geom::Rect,
                     hints: ::kas::layout::AlignHints,
                 ) {
-                    #core_path._rect = rect;
                     #set_rect
+                    #tree_set_rect
                 }
 
                 #[inline]
-                fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
-                    #try_probe
+                fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+                    #tree_try_probe
                 }
 
                 #[inline]
-                fn draw(&mut self, mut draw: ::kas::theme::DrawCx) {
+                fn draw(&self, mut draw: ::kas::theme::DrawCx) {
                     draw.set_id(::kas::Tile::id(self));
-                    #draw
+                    #tree_draw
                 }
             }
         });
+
+        fn_rect = quote! {
+            #[inline]
+            fn rect(&self) -> ::kas::geom::Rect {
+                ::kas::MacroDefinedLayout::rect(self)
+            }
+        };
 
         fn_size_rules = Some(quote! {
             fn size_rules(
@@ -452,16 +473,16 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         };
 
         fn_try_probe = quote! {
-            fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+            fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
                 #[cfg(debug_assertions)]
                 self.#core.status.require_rect(&self.#core._id);
 
-                ::kas::Tile::rect(self).contains(coord).then(|| ::kas::Tile::probe(self, coord))
+                self.rect().contains(coord).then(|| ::kas::Tile::probe(self, coord))
             }
         };
 
         fn_draw = Some(quote! {
-            fn draw(&mut self, draw: ::kas::theme::DrawCx) {
+            fn draw(&self, draw: ::kas::theme::DrawCx) {
                 #[cfg(debug_assertions)]
                 #core_path.status.require_rect(&#core_path._id);
 
@@ -475,6 +496,14 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                     .unwrap_or_else(|| ::kas::Tile::id(self))
         };
     } else {
+        // TODO(opt): omit field widget.core._rect if a custom `fn rect` defintion is used
+        fn_rect = quote! {
+            #[inline]
+            fn rect(&self) -> ::kas::geom::Rect {
+                #core_path._rect
+            }
+        };
+
         fn_set_rect = quote! {
             fn set_rect(
                 &mut self,
@@ -490,11 +519,11 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         };
 
         fn_try_probe = quote! {
-            fn try_probe(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
+            fn try_probe(&self, coord: ::kas::geom::Coord) -> Option<::kas::Id> {
                 #[cfg(debug_assertions)]
                 self.#core.status.require_rect(&self.#core._id);
 
-                ::kas::Tile::rect(self).contains(coord).then(|| ::kas::Tile::probe(self, coord))
+                self.rect().contains(coord).then(|| ::kas::Tile::probe(self, coord))
             }
         };
 
@@ -507,7 +536,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
     let fn_probe = quote! {
         #[inline]
-        fn probe(&mut self, coord: ::kas::geom::Coord) -> ::kas::Id {
+        fn probe(&self, coord: ::kas::geom::Coord) -> ::kas::Id {
             #probe
         }
     };
@@ -593,12 +622,11 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         });
     }
 
-    let core_rect_is_set;
     let mut widget_set_rect_span = None;
-    let mut fn_set_rect_span = None;
     if let Some(index) = layout_impl {
         let layout_impl = &mut scope.impls[index];
         let item_idents = collect_idents(layout_impl);
+        let mut fn_rect_is_provided = fn_size_rules.is_some();
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "size_rules") {
             if let Some(ref core) = core_data {
@@ -620,13 +648,14 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             layout_impl.items.push(Verbatim(method));
         }
 
+        let mut fn_set_rect_span = None;
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "set_rect") {
             if let ImplItem::Fn(f) = &mut layout_impl.items[*index] {
                 fn_set_rect_span = Some(f.span());
 
                 let path_rect = quote! { #core_path._rect };
                 widget_set_rect_span = crate::visitors::widget_set_rect(path_rect, &mut f.block);
-                core_rect_is_set = widget_set_rect_span.is_some();
+                fn_rect_is_provided |= widget_set_rect_span.is_some();
 
                 if let Some(ref core) = core_data {
                     f.block.stmts.insert(0, parse_quote! {
@@ -634,12 +663,30 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                         self.#core.status.set_rect(&self.#core._id);
                     });
                 }
-            } else {
-                core_rect_is_set = false;
             }
         } else {
             layout_impl.items.push(Verbatim(fn_set_rect));
-            core_rect_is_set = true;
+            fn_rect_is_provided = true;
+        }
+
+        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "rect") {
+            if let Some(span) = widget_set_rect_span {
+                let fn_rect_span = layout_impl.items[*index].span();
+                emit_warning!(
+                    span, "assignment `widget_set_rect!` has no effect when `fn rect` is defined";
+                    note = fn_rect_span => "this `fn rect`";
+                );
+            } else if fn_set_rect_span.is_none() {
+                let fn_rect_span = layout_impl.items[*index].span();
+                emit_warning!(
+                    fn_rect_span,
+                    "definition of `Layout::set_rect` is expected when `fn rect` is defined"
+                );
+            }
+        } else if fn_rect_is_provided {
+            layout_impl.items.push(Verbatim(fn_rect));
+        } else if let Some(span) = fn_set_rect_span {
+            emit_warning!(span, "cowardly refusing to provide an impl of `fn rect` with custom `fn set_rect` without usage of `widget_set_rect!` and without a property-defined layout");
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "try_probe") {
@@ -682,24 +729,16 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     } else if let Some(fn_size_rules) = fn_size_rules {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Layout for #impl_target {
+                #fn_rect
                 #fn_size_rules
                 #fn_set_rect
                 #fn_try_probe
                 #fn_draw
             }
         });
-        core_rect_is_set = true;
-    } else {
-        core_rect_is_set = false;
     }
 
-    let mut have_fn_rect = core_rect_is_set;
     let required_tile_methods = required_tile_methods(&name.to_string(), &core_path);
-    let fn_rect = if core_rect_is_set {
-        Some(fn_rect(&core_path))
-    } else {
-        None
-    };
 
     if let Some(index) = tile_impl {
         let tile_impl = &mut scope.impls[index];
@@ -707,33 +746,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
 
         tile_impl.items.push(Verbatim(required_tile_methods));
-
-        if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "rect") {
-            have_fn_rect = true;
-            if let Some(span) = widget_set_rect_span {
-                let fn_rect_span = tile_impl.items[*index].span();
-                emit_warning!(
-                    span, "assignment `widget_set_rect!` has no effect when `fn rect` is defined";
-                    note = fn_rect_span => "this `fn rect`";
-                );
-            }
-            if core_rect_is_set {
-                let fn_rect_span = tile_impl.items[*index].span();
-                if let Some(span) = widget_set_rect_span {
-                    emit_warning!(
-                        span, "assignment `widget_set_rect!` has no effect when `fn rect` is defined";
-                        note = fn_rect_span => "this `fn rect`";
-                    );
-                } else {
-                    emit_warning!(
-                        fn_rect_span,
-                        "definition of `Layout::set_rect` is expected when `fn rect` is defined"
-                    );
-                }
-            }
-        } else if let Some(method) = fn_rect {
-            tile_impl.items.push(Verbatim(method));
-        }
 
         if let Some(methods) = fns_get_child {
             tile_impl.items.push(Verbatim(methods));
@@ -764,23 +776,11 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Tile for #impl_target {
                 #required_tile_methods
-                #fn_rect
                 #fns_get_child
                 #fn_nav_next
                 #fn_probe
             }
         });
-    }
-
-    // TODO(opt): omit field widget.core._rect if !core_rect_is_set
-
-    if !have_fn_rect {
-        if let Some(span) = fn_set_rect_span {
-            emit_warning!(
-                span, "`widget_set_rect!(/* rect */)` not found";
-                note = "`fn Tile::rect()` implementation cannot be generated without `widget_set_rect!`";
-            );
-        }
     }
 
     if let Ok(val) = std::env::var("KAS_DEBUG_WIDGET") {
@@ -818,15 +818,6 @@ pub fn required_tile_methods(name: &str, core_path: &Toks) -> Toks {
         #[inline]
         fn widget_name(&self) -> &'static str {
             #name
-        }
-    }
-}
-
-pub fn fn_rect(core_path: &Toks) -> Toks {
-    quote! {
-        #[inline]
-        fn rect(&self) -> ::kas::geom::Rect {
-            #core_path._rect
         }
     }
 }

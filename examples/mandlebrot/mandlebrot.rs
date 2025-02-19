@@ -340,7 +340,6 @@ impl_scope! {
                 .with_stretch(Stretch::High)
         }
 
-        #[inline]
         fn set_rect(&mut self, _: &mut ConfigCx, rect: Rect, _: AlignHints) {
             widget_set_rect!(rect);
             let size = DVec2::conv(rect.size);
@@ -350,7 +349,7 @@ impl_scope! {
             self.rel_width = rel_width.0 as f32;
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             let draw = draw.draw_device();
             let draw = DrawIface::<DrawPipe<Pipe>>::downcast_from(draw).unwrap();
             let p = (self.alpha, self.delta, self.rel_width, self.iters);

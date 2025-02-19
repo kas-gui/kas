@@ -50,7 +50,7 @@ impl_scope! {
             sizer.feature(self.style.into(), axis)
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             draw.mark(self.rect(), self.style);
         }
     }
@@ -91,7 +91,7 @@ impl_scope! {
             sizer.feature(self.style.into(), axis)
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             draw.mark(self.rect(), self.style);
         }
     }

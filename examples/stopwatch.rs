@@ -8,6 +8,7 @@
 use std::time::{Duration, Instant};
 
 use kas::decorations::Decorations;
+use kas::event::TimerHandle;
 use kas::prelude::*;
 use kas::widgets::{format_data, row, Button};
 
@@ -21,6 +22,8 @@ struct Timer {
     elapsed: Duration,
     last: Option<Instant>,
 }
+
+const TIMER: TimerHandle = TimerHandle::new(0, true);
 
 fn make_window() -> impl Widget<Data = ()> {
     let ui = row![
@@ -38,15 +41,15 @@ fn make_window() -> impl Widget<Data = ()> {
                 timer.elapsed += now - last;
             } else {
                 timer.last = Some(now);
-                cx.request_timer(0, Duration::new(0, 0));
+                cx.request_timer(TIMER, Duration::ZERO);
             }
         })
-        .on_timer(0, |cx, timer, _| {
+        .on_timer(TIMER, |cx, timer, _| {
             if let Some(last) = timer.last {
                 let now = Instant::now();
                 timer.elapsed += now - last;
                 timer.last = Some(now);
-                cx.request_timer(0, Duration::new(0, 1));
+                cx.request_timer(TIMER, Duration::from_nanos(1));
             }
         })
 }

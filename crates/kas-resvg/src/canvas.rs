@@ -8,6 +8,7 @@
 use kas::draw::{ImageFormat, ImageHandle};
 use kas::layout::{LogicalSize, PixmapScaling};
 use kas::prelude::*;
+use std::cell::RefCell;
 use std::future::Future;
 use tiny_skia::{Color, Pixmap};
 
@@ -23,7 +24,7 @@ pub trait CanvasProgram: std::fmt::Debug + Send + 'static {
     ///
     /// Note that [`Layout::draw`] does not call this method, but instead draws
     /// from a copy of the `pixmap` (updated each time this method completes).
-    fn draw(&mut self, pixmap: &mut Pixmap);
+    fn draw(&self, pixmap: &mut Pixmap);
 
     /// This method is called each time a frame is drawn. Note that since
     /// redrawing is async and non-blocking, the result is expected to be at
@@ -35,7 +36,7 @@ pub trait CanvasProgram: std::fmt::Debug + Send + 'static {
     }
 }
 
-async fn draw<P: CanvasProgram>(mut program: P, mut pixmap: Pixmap) -> (P, Pixmap) {
+async fn draw<P: CanvasProgram>(program: P, mut pixmap: Pixmap) -> (P, Pixmap) {
     pixmap.fill(Color::TRANSPARENT);
     program.draw(&mut pixmap);
     (program, pixmap)
@@ -103,7 +104,7 @@ impl_scope! {
     pub struct Canvas<P: CanvasProgram> {
         core: widget_core!(),
         scaling: PixmapScaling,
-        inner: State<P>,
+        inner: RefCell<State<P>>,
         image: Option<ImageHandle>,
     }
 
@@ -120,7 +121,7 @@ impl_scope! {
                     stretch: Stretch::High,
                     ..Default::default()
                 },
-                inner: State::Initial(program),
+                inner: RefCell::new(State::Initial(program)),
                 image: None,
             }
         }
@@ -159,6 +160,10 @@ impl_scope! {
     }
 
     impl Layout for Self {
+        fn rect(&self) -> Rect {
+            self.scaling.rect
+        }
+
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             self.scaling.size_rules(sizer, axis)
         }
@@ -166,17 +171,19 @@ impl_scope! {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             let align = hints.complete_default();
             let scale_factor = cx.size_cx().scale_factor();
-            widget_set_rect!(self.scaling.align_rect(rect, align, scale_factor));
-            let size = self.rect().size.cast();
+            self.scaling.set_rect(rect, align, scale_factor);
 
-            if let Some(fut) = self.inner.resize(size) {
+            let size = self.rect().size.cast();
+            if let Some(fut) = self.inner.get_mut().resize(size) {
                 cx.push_spawn(self.id(), fut);
             }
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
-            if let Some(fut) = self.inner.maybe_redraw() {
-                draw.ev_state().push_spawn(self.id(), fut);
+        fn draw(&self, mut draw: DrawCx) {
+            if let Ok(mut state) = self.inner.try_borrow_mut() {
+                if let Some(fut) = state.maybe_redraw() {
+                    draw.ev_state().push_spawn(self.id(), fut);
+                }
             }
 
             if let Some(id) = self.image.as_ref().map(|h| h.id()) {
@@ -190,7 +197,7 @@ impl_scope! {
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some((program, mut pixmap)) = cx.try_pop::<(P, Pixmap)>() {
-                debug_assert!(matches!(self.inner, State::Rendering));
+                debug_assert!(matches!(self.inner.get_mut(), State::Rendering));
                 let size = (pixmap.width(), pixmap.height());
                 let ds = cx.draw_shared();
 
@@ -213,18 +220,19 @@ impl_scope! {
                 cx.redraw(&self);
 
                 let rect_size: (u32, u32) = self.rect().size.cast();
+                let state = self.inner.get_mut();
                 if rect_size != size {
                     // Possible if a redraw was in progress when set_rect was called
 
                     pixmap = if let Some(px) = Pixmap::new(rect_size.0, rect_size.1) {
                         px
                     } else {
-                        self.inner = State::Initial(program);
+                        *state = State::Initial(program);
                         return;
                     };
                     cx.push_spawn(self.id(), draw(program, pixmap));
                 } else {
-                    self.inner = State::Ready(program, pixmap);
+                    *state = State::Ready(program, pixmap);
                 }
             }
         }

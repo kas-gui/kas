@@ -84,7 +84,6 @@ where
         })
     }
 
-    #[inline]
     pub(crate) fn handle_messages(&mut self, messages: &mut MessageStack) {
         if messages.reset_and_has_any() {
             let count = messages.get_op_count();

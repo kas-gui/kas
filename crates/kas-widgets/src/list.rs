@@ -285,9 +285,9 @@ impl_scope! {
             }
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             let solver = RowPositionSolver::new(self.direction);
-            solver.for_children_mut(&mut self.widgets, draw.get_clip_rect(), |w| w.draw(draw.re()));
+            solver.for_children(&self.widgets, draw.get_clip_rect(), |w| w.draw(draw.re()));
         }
     }
 
@@ -306,10 +306,10 @@ impl_scope! {
                 .and_then(|k| self.id_map.get(&k).cloned())
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
+        fn probe(&self, coord: Coord) -> Id {
             let solver = RowPositionSolver::new(self.direction);
             solver
-                .find_child_mut(&mut self.widgets, coord)
+                .find_child(&self.widgets, coord)
                 .and_then(|child| child.try_probe(coord))
                 .unwrap_or_else(|| self.id())
         }

@@ -66,6 +66,10 @@ impl<T: Default + FormattableText> Default for Text<T> {
 
 /// Implement [`Layout`], using default alignment where alignment is not provided
 impl<T: FormattableText> Layout for Text<T> {
+    fn rect(&self) -> Rect {
+        self.rect
+    }
+
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
         sizer.text_rules(self, axis)
     }
@@ -83,7 +87,7 @@ impl<T: FormattableText> Layout for Text<T> {
         self.prepare().expect("not configured");
     }
 
-    fn draw(&mut self, mut draw: DrawCx) {
+    fn draw(&self, mut draw: DrawCx) {
         draw.text(self.rect, self);
     }
 }
@@ -405,7 +409,6 @@ impl<T: FormattableText> Text<T> {
         Ok(())
     }
 
-    #[inline]
     fn prepare_runs(&mut self) -> Result<(), NotReady> {
         match self.status {
             Status::New => return Err(NotReady),
@@ -517,7 +520,6 @@ impl<T: FormattableText> Text<T> {
     ///     [`Action::empty()`] is returned without updating `self`.
     ///
     /// This is typically called after updating a `Text` object in a widget.
-    #[inline]
     pub fn reprepare_action(&mut self) -> Action {
         match self.prepare() {
             Err(NotReady) => Action::empty(),

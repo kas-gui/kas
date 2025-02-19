@@ -94,7 +94,6 @@ impl Quad {
     }
 
     /// Calculate the intersection of two quads
-    #[inline]
     pub fn intersection(&self, rhs: &Quad) -> Option<Quad> {
         let a = Vec2(self.a.0.max(rhs.a.0), self.a.1.max(rhs.a.1));
         let x = (self.b.0.min(rhs.b.0) - a.0).max(0.0);

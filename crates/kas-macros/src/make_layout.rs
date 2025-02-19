@@ -47,6 +47,11 @@ impl Tree {
         fields
     }
 
+    /// Yield an implementation of `fn rect`, if easy
+    pub fn rect(&self, core_path: &Toks) -> Option<Toks> {
+        self.0.rect(core_path)
+    }
+
     /// Yield an implementation of `fn size_rules`
     pub fn size_rules(&self, core_path: &Toks) -> Toks {
         self.0.size_rules(core_path)
@@ -64,7 +69,7 @@ impl Tree {
         let mut toks = Toks::new();
         for target in &targets {
             toks.append_all(quote! {
-                if let Some(id) = ::kas::Layout::try_probe(&mut #target, coord) {
+                if let Some(id) = ::kas::Layout::try_probe(&#target, coord) {
                     Some(id)
                 } else
             });
@@ -624,6 +629,19 @@ impl Layout {
         }
     }
 
+    /// Yield an implementation of `fn rect`, if easy
+    fn rect(&self, core_path: &Toks) -> Option<Toks> {
+        match self {
+            Layout::Align(layout, _) | Layout::Pack(layout, _) => layout.rect(core_path),
+            Layout::Single(expr) => Some(quote! { ::kas::Layout::rect(&#expr) }),
+            Layout::Widget(stor, _) | Layout::Label(stor, _) => {
+                Some(quote! { ::kas::Layout::rect(&#core_path.#stor) })
+            }
+            Layout::Frame(stor, _, _, _) => Some(quote! { #core_path.#stor.rect }),
+            Layout::List(_, _, _) | Layout::Float(_) | Layout::Grid(_, _, _) => None,
+        }
+    }
+
     /// Yield an implementation of `fn size_rules`
     fn size_rules(&self, core_path: &Toks) -> Toks {
         match self {
@@ -818,10 +836,10 @@ impl Layout {
         match self {
             Layout::Align(layout, _) | Layout::Pack(layout, _) => layout.draw(core_path),
             Layout::Single(expr) => quote! {
-                ::kas::Layout::draw(&mut #expr, draw.re());
+                ::kas::Layout::draw(&#expr, draw.re());
             },
             Layout::Widget(stor, _) | Layout::Label(stor, _) => quote! {
-                ::kas::Layout::draw(&mut #core_path.#stor, draw.re());
+                ::kas::Layout::draw(&#core_path.#stor, draw.re());
             },
             Layout::Frame(stor, layout, style, bg) => {
                 let mut toks = quote! {

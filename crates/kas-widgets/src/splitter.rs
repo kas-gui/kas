@@ -196,7 +196,7 @@ impl_scope! {
             }
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             if !self.size_solved {
                 debug_assert!(false);
                 return;
@@ -206,12 +206,12 @@ impl_scope! {
             // calling it twice.
 
             let solver = layout::RowPositionSolver::new(self.direction);
-            solver.for_children_mut(&mut self.widgets, draw.get_clip_rect(), |w| {
+            solver.for_children(&self.widgets, draw.get_clip_rect(), |w| {
                 w.draw(draw.re());
             });
 
             let solver = layout::RowPositionSolver::new(self.direction);
-            solver.for_children_mut(&mut self.grips, draw.get_clip_rect(), |w| {
+            solver.for_children(&self.grips, draw.get_clip_rect(), |w| {
                 draw.separator(w.rect())
             });
         }
@@ -235,7 +235,7 @@ impl_scope! {
                 .and_then(|k| self.id_map.get(&k).cloned())
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
+        fn probe(&self, coord: Coord) -> Id {
             if !self.size_solved {
                 debug_assert!(false);
                 return self.id();
@@ -246,12 +246,12 @@ impl_scope! {
             // calling it twice.
 
             let solver = layout::RowPositionSolver::new(self.direction);
-            if let Some(child) = solver.find_child_mut(&mut self.widgets, coord) {
+            if let Some(child) = solver.find_child(&self.widgets, coord) {
                 return child.try_probe(coord).unwrap_or_else(|| self.id());
             }
 
             let solver = layout::RowPositionSolver::new(self.direction);
-            if let Some(child) = solver.find_child_mut(&mut self.grips, coord) {
+            if let Some(child) = solver.find_child(&self.grips, coord) {
                 return child.try_probe(coord).unwrap_or_else(|| self.id());
             }
 

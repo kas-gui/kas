@@ -146,19 +146,21 @@ impl_scope! {
             self.inner.set_rect(cx, Rect::new(p_in, s_in), hints);
         }
 
-        fn draw(&mut self, _: DrawCx) {
+        fn draw(&self, _: DrawCx) {
             unimplemented!()
         }
     }
 
     impl Self {
-        pub(crate) fn try_probe(&mut self, data: &Data, coord: Coord) -> Option<Id> {
+        pub(crate) fn try_probe(&self, coord: Coord) -> Option<Id> {
             if !self.rect().contains(coord) {
                 return None;
             }
             for (_, popup, translation) in self.popups.iter().rev() {
-                if let Some(Some(id)) = self.inner.as_node(data).find_node(&popup.id, |mut node| node.try_probe(coord + *translation)) {
-                    return Some(id);
+                if let Some(widget) = self.inner.find_widget(&popup.id) {
+                    if let Some(id) = widget.try_probe(coord + *translation) {
+                        return Some(id);
+                    }
                 }
             }
             if self.bar_h > 0 {
@@ -179,7 +181,7 @@ impl_scope! {
         }
 
         #[cfg(winit)]
-        pub(crate) fn draw(&mut self, data: &Data, mut draw: DrawCx) {
+        pub(crate) fn draw(&self, mut draw: DrawCx) {
             if self.dec_size != Size::ZERO {
                 draw.frame(self.rect(), FrameStyle::Window, Default::default());
                 if self.bar_h > 0 {
@@ -188,12 +190,12 @@ impl_scope! {
             }
             self.inner.draw(draw.re());
             for (_, popup, translation) in &self.popups {
-                self.inner.as_node(data).find_node(&popup.id, |mut node| {
-                    let clip_rect = node.rect() - *translation;
+                if let Some(child) = self.inner.find_widget(&popup.id) {
+                    let clip_rect = child.rect() - *translation;
                     draw.with_overlay(clip_rect, *translation, |draw| {
-                        node._draw(draw);
+                        child.draw(draw);
                     });
-                });
+                }
             }
         }
     }

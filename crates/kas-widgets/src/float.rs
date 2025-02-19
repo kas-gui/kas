@@ -122,15 +122,15 @@ impl_scope! {
             }
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             let mut iter = (0..self.widgets.len()).rev();
             if let Some(first) = iter.next() {
-                if let Some(child) = self.widgets.get_mut_tile(first) {
+                if let Some(child) = self.widgets.get_tile(first) {
                     child.draw(draw.re());
                 }
             }
             for i in iter {
-                if let Some(child) = self.widgets.get_mut_tile(i) {
+                if let Some(child) = self.widgets.get_tile(i) {
                     draw.with_pass(|draw| child.draw(draw));
                 }
             }
@@ -147,9 +147,9 @@ impl_scope! {
             self.widgets.get_tile(index)
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
+        fn probe(&self, coord: Coord) -> Id {
             for i in 0..self.widgets.len() {
-                if let Some(child) = self.widgets.get_mut_tile(i) {
+                if let Some(child) = self.widgets.get_tile(i) {
                     if let Some(id) = child.try_probe(coord) {
                         return id;
                     }

@@ -140,7 +140,6 @@ kas::impl_scope! {
             self.inner.for_child_node(data, index, closure);
         }
 
-        #[inline]
         fn _configure(&mut self, cx: &mut ConfigCx, data: &Self::Data, id: Id) {
             self.inner._configure(cx, data, id);
 
@@ -163,7 +162,6 @@ kas::impl_scope! {
             }
         }
 
-        #[inline]
         fn _send(&mut self, cx: &mut EventCx, data: &Self::Data, id: Id, event: Event) -> IsUsed {
             let is_used = self.inner._send(cx, data, id, event);
 
@@ -177,7 +175,6 @@ kas::impl_scope! {
             is_used
         }
 
-        #[inline]
         fn _replay(&mut self, cx: &mut EventCx, data: &Self::Data, id: Id) {
             self.inner._replay(cx, data, id);
 

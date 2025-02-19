@@ -31,14 +31,14 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw.re());
         }
     }
 
     impl Tile for Self {
-        fn probe(&mut self, _: Coord) -> Id {
+        fn probe(&self, _: Coord) -> Id {
             self.id()
         }
     }
@@ -121,7 +121,7 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             draw.set_id(self.checkbox.id());
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             kas::MacroDefinedLayout::draw(self, draw);
@@ -129,7 +129,7 @@ impl_scope! {
     }
 
     impl Tile for Self {
-        fn probe(&mut self, _: Coord) -> Id {
+        fn probe(&self, _: Coord) -> Id {
             self.checkbox.id()
         }
     }

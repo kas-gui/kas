@@ -350,7 +350,6 @@ impl_scope! {
             self.scroll.offset()
         }
 
-        #[inline]
         fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
             let action = self.scroll.set_offset(offset);
             cx.action(&self, action);
@@ -459,12 +458,12 @@ impl_scope! {
             debug_assert!(self.widgets.len() >= req_widgets);
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             let offset = self.scroll_offset();
             let rect = self.rect() + offset;
             let num = self.num_children();
             draw.with_clip_region(self.rect(), offset, |mut draw| {
-                for child in &mut self.widgets[..num] {
+                for child in &self.widgets[..num] {
                     if let Some(ref key) = child.key {
                         // Note: we don't know which widgets within 0..num are
                         // visible, so check intersection before drawing:
@@ -507,10 +506,10 @@ impl_scope! {
             self.scroll_offset()
         }
 
-        fn probe(&mut self, coord: Coord) -> Id {
+        fn probe(&self, coord: Coord) -> Id {
             let num = self.num_children();
             let coord = coord + self.scroll.offset();
-            for child in &mut self.widgets[..num] {
+            for child in &self.widgets[..num] {
                 if child.key.is_some() {
                     if let Some(id) = child.widget.try_probe(coord) {
                         return id;

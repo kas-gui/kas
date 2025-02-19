@@ -242,6 +242,10 @@ impl_scope! {
     }
 
     impl Layout for Self {
+        fn rect(&self) -> Rect {
+            self.scaling.rect
+        }
+
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             self.scaling.size_rules(sizer, axis)
         }
@@ -249,15 +253,15 @@ impl_scope! {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             let align = hints.complete_default();
             let scale_factor = cx.size_cx().scale_factor();
-            widget_set_rect!(self.scaling.align_rect(rect, align, scale_factor));
-            let size: (u32, u32) = self.rect().size.cast();
+            self.scaling.set_rect(rect, align, scale_factor);
 
+            let size: (u32, u32) = self.rect().size.cast();
             if let Some(fut) = self.inner.resize(size) {
                 cx.push_spawn(self.id(), fut);
             }
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             if let Some(id) = self.image.as_ref().map(|h| h.id()) {
                 draw.image(self.rect(), id);
             }

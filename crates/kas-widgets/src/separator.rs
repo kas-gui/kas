@@ -38,7 +38,7 @@ impl_scope! {
             sizer.feature(kas::theme::Feature::Separator, axis)
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             draw.separator(self.rect());
         }
     }

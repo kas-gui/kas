@@ -59,7 +59,7 @@ impl_scope! {
             widget_set_rect!(rect);
         }
 
-        fn draw(&mut self, mut draw: DrawCx) {
+        fn draw(&self, mut draw: DrawCx) {
             draw.check_box(self.rect(), self.state, self.last_change);
         }
     }
@@ -186,7 +186,6 @@ impl_scope! {
 
     impl Layout for Self {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            widget_set_rect!(rect);
             kas::MacroDefinedLayout::set_rect(self, cx, rect, hints);
             let dir = self.direction();
             shrink_to_text(&mut self.rect(), dir, &self.label);
@@ -198,7 +197,7 @@ impl_scope! {
             from.xor(Some(widget_index!(self.inner)))
         }
 
-        fn probe(&mut self, _: Coord) -> Id {
+        fn probe(&self, _: Coord) -> Id {
             self.inner.id()
         }
     }
