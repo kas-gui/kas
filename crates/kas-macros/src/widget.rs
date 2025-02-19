@@ -816,8 +816,8 @@ pub fn required_tile_methods(name: &str, core_path: &Toks) -> Toks {
         }
 
         #[inline]
-        fn widget_name(&self) -> &'static str {
-            #name
+        fn identify(&self) -> ::kas::util::IdentifyWidget<'_> {
+            ::kas::util::IdentifyWidget::simple(#name, self.id_ref())
         }
     }
 }

@@ -6,7 +6,6 @@
 //! Widget method implementations
 
 use crate::event::{ConfigCx, Event, EventCx, FocusSource, IsUsed, Scroll, Unused};
-#[cfg(debug_assertions)] use crate::util::IdentifyWidget;
 use crate::{Events, Id, NavAdvance, Node, Tile, Widget};
 
 /// Generic implementation of [`Widget::_send`]
@@ -53,7 +52,7 @@ pub fn _send<W: Events>(
                 // so we ignore in release builds.
                 log::error!(
                     "_send: {} found index {index} for {id} but not child",
-                    IdentifyWidget(widget.widget_name(), widget.id_ref())
+                    widget.identify()
                 );
             }
 
@@ -91,7 +90,7 @@ pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>
             // so we ignore in release builds.
             log::error!(
                 "_replay: {} found index {index} for {id} but not child",
-                IdentifyWidget(widget.widget_name(), widget.id_ref())
+                widget.identify()
             );
         }
 
@@ -108,10 +107,7 @@ pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>
         // This implies use of push_async / push_spawn from a widget which was
         // unmapped or removed.
         #[cfg(debug_assertions)]
-        log::debug!(
-            "_replay: {} cannot find path to {id}",
-            IdentifyWidget(widget.widget_name(), widget.id_ref())
-        );
+        log::debug!("_replay: {} cannot find path to {id}", widget.identify());
     }
 }
 

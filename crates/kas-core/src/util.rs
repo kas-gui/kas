@@ -11,13 +11,32 @@ use crate::Icon;
 use crate::{Id, Tile, TileExt};
 use std::fmt;
 
+enum IdentifyContents<'a> {
+    Simple(&'a Id),
+    Wrapping(&'a dyn Tile),
+}
+
 /// Helper to display widget identification (e.g. `MyWidget#01`)
 ///
-/// Constructed by [`crate::TileExt::identify`].
-pub struct IdentifyWidget<'a>(pub(crate) &'static str, pub(crate) &'a Id);
+/// Constructed by [`crate::Tile::identify`].
+pub struct IdentifyWidget<'a>(&'a str, IdentifyContents<'a>);
+impl<'a> IdentifyWidget<'a> {
+    /// Construct for a simple widget
+    pub fn simple(name: &'a str, id: &'a Id) -> Self {
+        IdentifyWidget(name, IdentifyContents::Simple(id))
+    }
+
+    /// Construct for a wrapping widget
+    pub fn wrapping(name: &'a str, inner: &'a dyn Tile) -> Self {
+        IdentifyWidget(name, IdentifyContents::Wrapping(inner))
+    }
+}
 impl<'a> fmt::Display for IdentifyWidget<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{}{}", self.0, self.1)
+        match self.1 {
+            IdentifyContents::Simple(id) => write!(f, "{}{}", self.0, id),
+            IdentifyContents::Wrapping(inner) => write!(f, "{}<{}>", self.0, inner.identify()),
+        }
     }
 }
 
@@ -40,7 +59,7 @@ impl<'a> WidgetHierarchy<'a> {
 }
 impl<'a> fmt::Display for WidgetHierarchy<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let len = 43 - 2 * self.indent;
+        let len = 51 - 2 * self.indent;
         let trail = "| ".repeat(self.indent);
         // Note: pre-format some items to ensure correct alignment
         let identify = format!("{}", self.widget.identify());

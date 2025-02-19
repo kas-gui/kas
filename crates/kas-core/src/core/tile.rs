@@ -74,10 +74,12 @@ pub trait Tile: Layout {
         self.id_ref().clone()
     }
 
-    /// Get the name of the widget struct
+    /// Return a [`Display`]-able widget identifier
     ///
     /// This method is implemented by the `#[widget]` macro.
-    fn widget_name(&self) -> &'static str {
+    ///
+    /// [`Display`]: std::fmt::Display
+    fn identify(&self) -> IdentifyWidget<'_> {
         unimplemented!() // make rustdoc show that this is a provided method
     }
 
@@ -226,12 +228,6 @@ pub trait TileExt: Tile {
         Id: PartialEq<T>,
     {
         *self.id_ref() == rhs
-    }
-
-    /// Display as "StructName#Id"
-    #[inline]
-    fn identify(&self) -> IdentifyWidget {
-        IdentifyWidget(self.widget_name(), self.id_ref())
     }
 
     /// Check whether `id` is self or a descendant

@@ -147,8 +147,8 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         }
 
         #[inline]
-        fn widget_name(&self) -> &'static str {
-            #widget_name
+        fn identify(&self) -> ::kas::util::IdentifyWidget<'_> {
+            ::kas::util::IdentifyWidget::wrapping(#widget_name, self.#inner.as_tile())
         }
 
         #[inline]
