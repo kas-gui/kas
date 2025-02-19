@@ -120,6 +120,10 @@ impl<'a> fmt::Display for WidgetHierarchy<'a> {
         let num_children = self.widget.num_children();
         for index in 0..num_children {
             if let Some(widget) = self.widget.get_child(index) {
+                if !widget.id_ref().is_valid() {
+                    continue;
+                }
+
                 write!(f, "{}", WidgetHierarchy {
                     widget,
                     filter: None,
