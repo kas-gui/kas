@@ -8,7 +8,7 @@
 use crate::geom::Coord;
 #[cfg(all(feature = "image", feature = "winit"))]
 use crate::Icon;
-use crate::{Id, Tile, TileExt};
+use crate::{Id, Tile};
 use std::fmt;
 
 enum IdentifyContents<'a> {
@@ -40,27 +40,52 @@ impl<'a> fmt::Display for IdentifyWidget<'a> {
     }
 }
 
+struct Trail<'a> {
+    parent: Option<&'a Trail<'a>>,
+    trail: &'static str,
+}
+impl<'a> fmt::Display for Trail<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        if let Some(p) = self.parent {
+            p.fmt(f)?;
+        }
+        write!(f, "{}", self.trail)
+    }
+}
+
 /// Helper to print widget heirarchy
 ///
 /// Note: output starts with a new line.
 pub struct WidgetHierarchy<'a> {
     widget: &'a dyn Tile,
     filter: Option<Id>,
+    trail: Trail<'a>,
     indent: usize,
+    have_next_sibling: bool,
 }
 impl<'a> WidgetHierarchy<'a> {
     pub fn new(widget: &'a dyn Tile, filter: Option<Id>) -> Self {
         WidgetHierarchy {
             widget,
             filter,
+            trail: Trail {
+                parent: None,
+                trail: "",
+            },
             indent: 0,
+            have_next_sibling: false,
         }
     }
 }
 impl<'a> fmt::Display for WidgetHierarchy<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let len = 51 - 2 * self.indent;
-        let trail = "| ".repeat(self.indent);
+        let trail = &self.trail;
+        let (hook, trail_hook) = match self.indent >= 1 {
+            false => ("", ""),
+            true if self.have_next_sibling => ("├ ", "│ "),
+            true => ("└ ", "  "),
+        };
         // Note: pre-format some items to ensure correct alignment
         let identify = format!("{}", self.widget.identify());
         let r = self.widget.rect();
@@ -68,7 +93,10 @@ impl<'a> fmt::Display for WidgetHierarchy<'a> {
         let Coord(x2, y2) = r.pos + r.size;
         let xr = format!("x={x1}..{x2}");
         let xrlen = xr.len().max(12);
-        write!(f, "\n{trail}{identify:<len$} {xr:<xrlen$} y={y1}..{y2}")?;
+        write!(
+            f,
+            "\n{trail}{hook}{identify:<len$} {xr:<xrlen$} y={y1}..{y2}"
+        )?;
 
         let indent = self.indent + 1;
 
@@ -78,19 +106,32 @@ impl<'a> fmt::Display for WidgetHierarchy<'a> {
                     return write!(f, "{}", WidgetHierarchy {
                         widget,
                         filter: self.filter.clone(),
-                        indent
+                        trail: Trail {
+                            parent: Some(trail),
+                            trail: trail_hook,
+                        },
+                        indent,
+                        have_next_sibling: false,
                     });
                 }
             }
         }
 
-        self.widget.for_children_try(|widget| {
-            write!(f, "{}", WidgetHierarchy {
-                widget,
-                filter: None,
-                indent
-            })
-        })?;
+        let num_children = self.widget.num_children();
+        for index in 0..num_children {
+            if let Some(widget) = self.widget.get_child(index) {
+                write!(f, "{}", WidgetHierarchy {
+                    widget,
+                    filter: None,
+                    trail: Trail {
+                        parent: Some(trail),
+                        trail: trail_hook,
+                    },
+                    indent,
+                    have_next_sibling: index + 1 < num_children,
+                })?;
+            }
+        }
         Ok(())
     }
 }
