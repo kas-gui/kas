@@ -245,7 +245,8 @@ impl_scope! {
             }
         }
 
-        fn update_widgets(&mut self, cx: &mut ConfigCx, data: &A) -> PositionSolver {
+        // If full, call cx.update on all view widgets
+        fn update_widgets(&mut self, cx: &mut ConfigCx, data: &A, full: bool) -> PositionSolver {
             let time = Instant::now();
 
             let offset = self.scroll_offset();
@@ -302,8 +303,10 @@ impl_scope! {
                         } else {
                             w.key = None; // disables drawing and clicking
                         }
-                    } else if let Some(item) = data.borrow(&key) {
-                        cx.update(w.widget.as_node(item.borrow()));
+                    } else if full {
+                        if let Some(item) = data.borrow(&key) {
+                            cx.update(w.widget.as_node(item.borrow()));
+                        }
                     }
                     w.widget.set_rect(cx, solver.rect(ci, ri), self.align_hints);
                 }
@@ -561,7 +564,7 @@ impl_scope! {
                 cx.resize(&self);
             }
 
-            self.update_widgets(cx, data);
+            self.update_widgets(cx, data, true);
             self.update_content_size(cx);
         }
 
@@ -605,7 +608,7 @@ impl_scope! {
                         let action = self.scroll.focus_rect(cx, solver.rect(ci, ri), self.rect());
                         if !action.is_empty() {
                             cx.action(&self, action);
-                            solver = self.update_widgets(&mut cx.config_cx(), data);
+                            solver = self.update_widgets(&mut cx.config_cx(), data, false);
                         }
 
                         let index = solver.data_to_child(ci, ri);
@@ -670,7 +673,7 @@ impl_scope! {
                 .scroll
                 .scroll_by_event(cx, event, self.id(), self.rect());
             if moved {
-                self.update_widgets(&mut cx.config_cx(), data);
+                self.update_widgets(&mut cx.config_cx(), data, false);
             }
             is_used | used_by_sber
         }
@@ -717,7 +720,7 @@ impl_scope! {
 
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &A, scroll: Scroll) {
             let act = self.scroll.scroll(cx, self.rect(), scroll);
-            self.update_widgets(&mut cx.config_cx(), data);
+            self.update_widgets(&mut cx.config_cx(), data, false);
             cx.action(self, act);
         }
     }
@@ -802,7 +805,7 @@ impl_scope! {
                 let action = self.scroll.self_focus_rect(solver.rect(ci, ri), self.rect());
                 if !action.is_empty() {
                     cx.action(&self, action);
-                    solver = self.update_widgets(cx, data);
+                    solver = self.update_widgets(cx, data, false);
                 }
 
                 let index = solver.data_to_child(ci, ri);

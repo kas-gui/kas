@@ -308,7 +308,8 @@ impl_scope! {
             }
         }
 
-        fn update_widgets(&mut self, cx: &mut ConfigCx, data: &A) {
+        // If full, call cx.update on all view widgets
+        fn update_widgets(&mut self, cx: &mut ConfigCx, data: &A, full: bool) {
             let time = Instant::now();
 
             let offset = u64::conv(self.scroll_offset().extract(self.direction));
@@ -346,8 +347,10 @@ impl_scope! {
                     } else {
                         w.key = None; // disables drawing and clicking
                     }
-                } else if let Some(item) = data.borrow(&key) {
-                    cx.update(w.widget.as_node(item.borrow()));
+                } else if full {
+                    if let Some(item) = data.borrow(&key) {
+                        cx.update(w.widget.as_node(item.borrow()));
+                    }
                 }
                 w.widget.set_rect(cx, solver.rect(i), self.align_hints);
             }
@@ -614,10 +617,11 @@ impl_scope! {
                 // We must call at least SET_RECT to update scrollable region
                 // RESIZE allows recalculation of child widget size which may
                 // have been zero if no data was initially available!
+                // TODO(opt): we may not need to resize here.
                 cx.resize(&self);
             }
 
-            self.update_widgets(cx, data);
+            self.update_widgets(cx, data, true);
             self.update_content_size(cx);
         }
 
@@ -657,7 +661,7 @@ impl_scope! {
                         let act = self.scroll.focus_rect(cx, solver.rect(i_data), self.rect());
                         if !act.is_empty() {
                             cx.action(&self, act);
-                            self.update_widgets(&mut cx.config_cx(), data);
+                            self.update_widgets(&mut cx.config_cx(), data, false);
                         }
                         let index = i_data % usize::conv(self.cur_len);
                         cx.next_nav_focus(self.widgets[index].widget.id(), false, FocusSource::Key);
@@ -704,7 +708,7 @@ impl_scope! {
                 .scroll
                 .scroll_by_event(cx, event, self.id(), self.rect());
             if moved {
-                self.update_widgets(&mut cx.config_cx(), data);
+                self.update_widgets(&mut cx.config_cx(), data, false);
             }
             is_used | used_by_sber
         }
@@ -751,7 +755,7 @@ impl_scope! {
 
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &A, scroll: Scroll) {
             let act = self.scroll.scroll(cx, self.rect(), scroll);
-            self.update_widgets(&mut cx.config_cx(), data);
+            self.update_widgets(&mut cx.config_cx(), data, false);
             cx.action(self, act);
         }
     }
@@ -826,7 +830,7 @@ impl_scope! {
                 let act = self.scroll.self_focus_rect(solver.rect(data_index), self.rect());
                 if !act.is_empty() {
                     cx.action(&self, act);
-                    self.update_widgets(cx, data);
+                    self.update_widgets(cx, data, false);
                 }
 
                 let index = data_index % usize::conv(self.cur_len);
