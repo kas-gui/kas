@@ -79,7 +79,13 @@ impl_scope! {
                     frame_rules.surround(rules).0
                 });
             }
-            solver.for_child(&mut self.layout_store, len, |_| SizeRules::EMPTY.with_stretch(Stretch::Maximize));
+            solver.for_child(&mut self.layout_store, len, |axis| {
+                let mut rules = SizeRules::EMPTY;
+                if axis.is_horizontal() {
+                    rules.set_stretch(Stretch::Maximize);
+                }
+                rules
+            });
             solver.finish(&mut self.layout_store)
         }
 

@@ -82,8 +82,8 @@ impl<T: FormattableText> Layout for Text<T> {
             } else {
                 self.set_max_status(Status::Wrapped);
             }
-            self.rect = rect;
         }
+        self.rect = rect;
         self.prepare().expect("not configured");
     }
 

@@ -49,6 +49,7 @@ impl Clone for DefaultCoreType {
         DefaultCoreType {
             _rect: self._rect,
             _id: Default::default(),
+            #[cfg(debug_assertions)]
             status: self.status,
         }
     }
