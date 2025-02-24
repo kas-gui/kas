@@ -40,18 +40,37 @@ impl<'a: 'b, 'b> AdaptEventCx<'a, 'b> {
 
     /// Schedule a timed update
     ///
-    /// This widget will receive an update for timer `timer_id` at
+    /// Widget updates may be used for delayed action. For animation, prefer to
+    /// use [`Draw::animate`](kas::draw::Draw::animate) or
+    /// [`Self::request_frame_timer`].
+    ///
+    /// This widget will receive an update for timer `handle` at
     /// approximately `time = now + delay` (or possibly a little later due to
     /// frame-rate limiters and processing time).
     ///
     /// Requesting an update with `delay == 0` is valid except from a timer
-    /// handler where it might cause an infinite loop.
+    /// handler where it may cause an infinite loop.
     ///
     /// Multiple timer requests with the same `id` and `handle` are merged
     /// (see [`TimerHandle`] documentation).
     #[inline]
-    pub fn request_timer(&mut self, timer_id: TimerHandle, delay: Duration) {
-        self.cx.request_timer(self.id.clone(), timer_id, delay);
+    pub fn request_timer(&mut self, handle: TimerHandle, delay: Duration) {
+        self.cx.request_timer(self.id.clone(), handle, delay);
+    }
+
+    /// Schedule a frame timer update
+    ///
+    /// Widget `id` will receive [`Event::Timer`] with this `handle` either
+    /// before or soon after the next frame is drawn.
+    ///
+    /// This may be useful for animations which mutate widget state. Animations
+    /// which don't mutate widget state may use
+    /// [`Draw::animate`](kas::draw::Draw::animate) instead.
+    ///
+    /// It is expected that `handle.earliest() == true` (style guide).
+    #[inline]
+    pub fn request_frame_timer(&mut self, handle: TimerHandle) {
+        self.cx.request_frame_timer(self.id.clone(), handle);
     }
 }
 
@@ -97,17 +116,36 @@ impl<'a: 'b, 'b> AdaptConfigCx<'a, 'b> {
 
     /// Schedule a timed update
     ///
-    /// This widget will receive an update for timer `timer_id` at
+    /// Widget updates may be used for delayed action. For animation, prefer to
+    /// use [`Draw::animate`](kas::draw::Draw::animate) or
+    /// [`Self::request_frame_timer`].
+    ///
+    /// This widget will receive an update for timer `handle` at
     /// approximately `time = now + delay` (or possibly a little later due to
     /// frame-rate limiters and processing time).
     ///
     /// Requesting an update with `delay == 0` is valid except from a timer
-    /// handler where it might cause an infinite loop.
+    /// handler where it may cause an infinite loop.
     ///
     /// Multiple timer requests with the same `id` and `handle` are merged
     /// (see [`TimerHandle`] documentation).
     #[inline]
-    pub fn request_timer(&mut self, timer_id: TimerHandle, delay: Duration) {
-        self.cx.request_timer(self.id.clone(), timer_id, delay);
+    pub fn request_timer(&mut self, handle: TimerHandle, delay: Duration) {
+        self.cx.request_timer(self.id.clone(), handle, delay);
+    }
+
+    /// Schedule a frame timer update
+    ///
+    /// Widget `id` will receive [`Event::Timer`] with this `handle` either
+    /// before or soon after the next frame is drawn.
+    ///
+    /// This may be useful for animations which mutate widget state. Animations
+    /// which don't mutate widget state may use
+    /// [`Draw::animate`](kas::draw::Draw::animate) instead.
+    ///
+    /// It is expected that `handle.earliest() == true` (style guide).
+    #[inline]
+    pub fn request_frame_timer(&mut self, handle: TimerHandle) {
+        self.cx.request_frame_timer(self.id.clone(), handle);
     }
 }

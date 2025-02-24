@@ -52,6 +52,7 @@ impl EventState {
             popups: Default::default(),
             popup_removed: Default::default(),
             time_updates: vec![],
+            frame_updates: Default::default(),
             send_queue: Default::default(),
             fut_messages: vec![],
             pending_update: None,
@@ -184,51 +185,6 @@ impl EventState {
                 }
             }
 
-            for gi in 0..cx.pan_grab.len() {
-                let grab = &mut cx.pan_grab[gi];
-                debug_assert!(grab.mode != GrabMode::Grab);
-                assert!(grab.n > 0);
-
-                // Terminology: pi are old coordinates, qi are new coords
-                let (p1, q1) = (DVec2::conv(grab.coords[0].0), DVec2::conv(grab.coords[0].1));
-                grab.coords[0].0 = grab.coords[0].1;
-
-                let alpha;
-                let delta;
-
-                if grab.mode == GrabMode::PanOnly || grab.n == 1 {
-                    alpha = DVec2(1.0, 0.0);
-                    delta = q1 - p1;
-                } else {
-                    // We don't use more than two touches: information would be
-                    // redundant (although it could be averaged).
-                    let (p2, q2) = (DVec2::conv(grab.coords[1].0), DVec2::conv(grab.coords[1].1));
-                    grab.coords[1].0 = grab.coords[1].1;
-                    let (pd, qd) = (p2 - p1, q2 - q1);
-
-                    alpha = match grab.mode {
-                        GrabMode::PanFull => qd.complex_div(pd),
-                        GrabMode::PanScale => {
-                            DVec2((qd.sum_square() / pd.sum_square()).sqrt(), 0.0)
-                        }
-                        GrabMode::PanRotate => {
-                            let a = qd.complex_div(pd);
-                            a / a.sum_square().sqrt()
-                        }
-                        _ => unreachable!(),
-                    };
-
-                    // Average delta from both movements:
-                    delta = (q1 - alpha.complex_mul(p1) + q2 - alpha.complex_mul(p2)) * 0.5;
-                }
-
-                let id = grab.id.clone();
-                if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
-                    let event = Event::Pan { alpha, delta };
-                    cx.send_event(win.as_node(data), id, event);
-                }
-            }
-
             if let Some((id, reconf)) = cx.pending_update.take() {
                 if reconf {
                     win.as_node(data)
@@ -312,6 +268,60 @@ impl EventState {
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 impl<'a> EventCx<'a> {
+    /// Pre-draw / pre-sleep
+    ///
+    /// This method should be called once per frame as well as after the last
+    /// frame before a long sleep.
+    pub(crate) fn frame_update(&mut self, mut widget: Node<'_>) {
+        for gi in 0..self.pan_grab.len() {
+            let grab = &mut self.pan_grab[gi];
+            debug_assert!(grab.mode != GrabMode::Grab);
+            assert!(grab.n > 0);
+
+            // Terminology: pi are old coordinates, qi are new coords
+            let (p1, q1) = (DVec2::conv(grab.coords[0].0), DVec2::conv(grab.coords[0].1));
+            grab.coords[0].0 = grab.coords[0].1;
+
+            let alpha;
+            let delta;
+
+            if grab.mode == GrabMode::PanOnly || grab.n == 1 {
+                alpha = DVec2(1.0, 0.0);
+                delta = q1 - p1;
+            } else {
+                // We don't use more than two touches: information would be
+                // redundant (although it could be averaged).
+                let (p2, q2) = (DVec2::conv(grab.coords[1].0), DVec2::conv(grab.coords[1].1));
+                grab.coords[1].0 = grab.coords[1].1;
+                let (pd, qd) = (p2 - p1, q2 - q1);
+
+                alpha = match grab.mode {
+                    GrabMode::PanFull => qd.complex_div(pd),
+                    GrabMode::PanScale => DVec2((qd.sum_square() / pd.sum_square()).sqrt(), 0.0),
+                    GrabMode::PanRotate => {
+                        let a = qd.complex_div(pd);
+                        a / a.sum_square().sqrt()
+                    }
+                    _ => unreachable!(),
+                };
+
+                // Average delta from both movements:
+                delta = (q1 - alpha.complex_mul(p1) + q2 - alpha.complex_mul(p2)) * 0.5;
+            }
+
+            let id = grab.id.clone();
+            if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
+                let event = Event::Pan { alpha, delta };
+                self.send_event(widget.re(), id, event);
+            }
+        }
+
+        let frame_updates = std::mem::take(&mut self.frame_updates);
+        for (id, handle) in frame_updates.into_iter() {
+            self.send_event(widget.re(), id, Event::Timer(handle));
+        }
+    }
+
     /// Update widgets due to timer
     pub(crate) fn update_timer(&mut self, mut widget: Node<'_>) {
         let now = Instant::now();

@@ -17,7 +17,6 @@ use std::time::{Duration, Instant};
 
 const TIMER_SELECT: TimerHandle = TimerHandle::new(1 << 60, true);
 const TIMER_GLIDE: TimerHandle = TimerHandle::new((1 << 60) + 1, true);
-const GLIDE_POLL_MS: u64 = 3;
 const GLIDE_MAX_SAMPLES: usize = 8;
 
 #[derive(Clone, Debug)]
@@ -336,10 +335,10 @@ impl ScrollComponent {
                 let timeout = cx.config().event().scroll_flick_timeout();
                 let pan_dist_thresh = cx.config().event().pan_dist_thresh();
                 if self.glide.press_end(timeout, pan_dist_thresh) {
-                    cx.request_timer(id.clone(), TIMER_GLIDE, Duration::ZERO);
+                    cx.request_frame_timer(id.clone(), TIMER_GLIDE);
                 }
             }
-            Event::Timer(pl) if pl == TIMER_GLIDE => {
+            Event::Timer(TIMER_GLIDE) => {
                 // Momentum/glide scrolling: update per arbitrary step time until movment stops.
                 let timeout = cx.config().event().scroll_flick_timeout();
                 let decay = cx.config().event().scroll_flick_decay();
@@ -347,8 +346,7 @@ impl ScrollComponent {
                     action = self.scroll_by_delta(cx, delta);
 
                     if self.glide.vel != Vec2::ZERO {
-                        let dur = Duration::from_millis(GLIDE_POLL_MS);
-                        cx.request_timer(id.clone(), TIMER_GLIDE, dur);
+                        cx.request_frame_timer(id.clone(), TIMER_GLIDE);
                         cx.set_scroll(Scroll::Scrolled);
                     }
                 }
@@ -487,11 +485,11 @@ impl TextInput {
                         || matches!(press.source, PressSource::Mouse(..) if cx.config_enable_mouse_text_pan()))
                 {
                     self.touch_phase = TouchPhase::None;
-                    cx.request_timer(w_id, TIMER_GLIDE, Duration::ZERO);
+                    cx.request_frame_timer(w_id, TIMER_GLIDE);
                 }
                 Action::None
             }
-            Event::Timer(pl) if pl == TIMER_SELECT => match self.touch_phase {
+            Event::Timer(TIMER_SELECT) => match self.touch_phase {
                 TouchPhase::Start(touch_id, coord) => {
                     self.touch_phase = TouchPhase::Cursor(touch_id);
                     Action::Focus {
@@ -501,13 +499,12 @@ impl TextInput {
                 }
                 _ => Action::None,
             },
-            Event::Timer(pl) if pl == TIMER_GLIDE => {
+            Event::Timer(TIMER_GLIDE) => {
                 // Momentum/glide scrolling: update per arbitrary step time until movment stops.
                 let timeout = cx.config().event().scroll_flick_timeout();
                 let decay = cx.config().event().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(timeout, decay) {
-                    let dur = Duration::from_millis(GLIDE_POLL_MS);
-                    cx.request_timer(w_id, TIMER_GLIDE, dur);
+                    cx.request_frame_timer(w_id, TIMER_GLIDE);
                     Action::Pan(delta)
                 } else {
                     Action::None

@@ -41,7 +41,7 @@ fn make_window() -> impl Widget<Data = ()> {
                 timer.elapsed += now - last;
             } else {
                 timer.last = Some(now);
-                cx.request_timer(TIMER, Duration::ZERO);
+                cx.request_frame_timer(TIMER);
             }
         })
         .on_timer(TIMER, |cx, timer, _| {
@@ -49,7 +49,7 @@ fn make_window() -> impl Widget<Data = ()> {
                 let now = Instant::now();
                 timer.elapsed += now - last;
                 timer.last = Some(now);
-                cx.request_timer(TIMER, Duration::from_nanos(1));
+                cx.request_frame_timer(TIMER);
             }
         })
 }

@@ -8,7 +8,7 @@
 // Without winit, several things go unused
 #![cfg_attr(not(winit), allow(unused))]
 
-use linear_map::LinearMap;
+use linear_map::{set::LinearSet, LinearMap};
 use smallvec::SmallVec;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::future::Future;
@@ -192,6 +192,7 @@ pub struct EventState {
     popups: SmallVec<[(WindowId, crate::PopupDescriptor, Option<Id>); 16]>,
     popup_removed: SmallVec<[(Id, WindowId); 16]>,
     time_updates: Vec<(Instant, Id, TimerHandle)>,
+    frame_updates: LinearSet<(Id, TimerHandle)>,
     // Set of messages awaiting sending
     send_queue: VecDeque<(Id, Erased)>,
     // Set of futures of messages together with id of sending widget

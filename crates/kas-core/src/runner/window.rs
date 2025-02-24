@@ -41,6 +41,7 @@ struct WindowData<G: GraphicsBuilder, T: Theme<G::Shared>> {
     theme_window: T::Window,
     next_avail_frame_time: Instant,
     queued_frame_time: Option<Instant>,
+    need_redraw: bool,
 }
 
 /// Per-window data
@@ -195,6 +196,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             theme_window,
             next_avail_frame_time: time,
             queued_frame_time: Some(time),
+            need_redraw: true,
         });
 
         self.apply_size(state, true);
@@ -360,19 +362,39 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         if !action.is_empty() {
             if let Some(ref mut window) = self.window {
                 window.queued_frame_time = Some(window.next_avail_frame_time);
+                window.need_redraw = true;
             }
         }
     }
 
-    pub(super) fn update_timer(&mut self, state: &mut State<A, G, T>) -> Option<Instant> {
-        let window = self.window.as_ref()?;
+    pub(super) fn update_timer(
+        &mut self,
+        state: &mut State<A, G, T>,
+        requested_resume: Instant,
+    ) -> Option<Instant> {
+        let window = self.window.as_mut()?;
 
         let widget = self.widget.as_node(&state.data);
         let mut messages = MessageStack::new();
-        self.ev_state
-            .with(&mut state.shared, window, &mut messages, |cx| {
-                cx.update_timer(widget)
-            });
+
+        if Some(requested_resume) == window.queued_frame_time {
+            window.queued_frame_time = None;
+
+            self.ev_state
+                .with(&mut state.shared, window, &mut messages, |cx| {
+                    cx.frame_update(widget);
+                });
+
+            if window.need_redraw || self.ev_state.action.contains(Action::REDRAW) {
+                window.request_redraw();
+            }
+        } else {
+            self.ev_state
+                .with(&mut state.shared, window, &mut messages, |cx| {
+                    cx.update_timer(widget);
+                });
+        }
+
         state.handle_messages(&mut messages);
         self.next_resume()
     }
@@ -497,10 +519,10 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
 
         let anim = take(&mut window.surface.common_mut().anim);
         window.queued_frame_time = match anim {
-            AnimationState::None => None,
-            AnimationState::Animate => Some(window.next_avail_frame_time),
+            AnimationState::None | AnimationState::Animate => Some(window.next_avail_frame_time),
             AnimationState::Timed(time) => Some(time.max(window.next_avail_frame_time)),
         };
+        window.need_redraw = anim != AnimationState::None;
         self.ev_state.action -= Action::REDRAW; // we just drew
         if !self.ev_state.action.is_empty() {
             log::info!("do_draw: abort and enqueue `Self::update` due to non-empty actions");
@@ -546,12 +568,11 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
 
     fn next_resume(&self) -> Option<Instant> {
         self.window.as_ref().and_then(|w| {
-            match (self.ev_state.next_resume(), w.queued_frame_time) {
-                (Some(t1), Some(t2)) => Some(t1.min(t2)),
-                (Some(t), None) => Some(t),
-                (None, Some(t)) => Some(t),
-                (None, None) => None,
-            }
+            self.ev_state
+                .next_resume()
+                .into_iter()
+                .chain(w.queued_frame_time.into_iter())
+                .min()
         })
     }
 }
