@@ -102,7 +102,7 @@ impl_scope! {
             match event {
                 Event::PressStart { press, .. } => {
                     cx.push(GripMsg::PressStart);
-                    press.grab(self.id())
+                    press.grab(self.id(), kas::event::GrabMode::Grab)
                         .with_icon(CursorIcon::Grabbing)
                         .with_cx(cx);
 
@@ -217,7 +217,7 @@ impl_scope! {
         /// the posision; e.g. `Slider` pins the position to the nearest detent.
         pub fn handle_press_on_track(&mut self, cx: &mut EventCx, press: &Press) -> Offset {
             press
-                .grab(self.id())
+                .grab(self.id(), kas::event::GrabMode::Grab)
                 .with_icon(CursorIcon::Grabbing)
                 .with_cx(cx);
 

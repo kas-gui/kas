@@ -318,7 +318,7 @@ impl ScrollComponent {
                 if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>
             {
                 let _ = press
-                    .grab(id.clone())
+                    .grab(id.clone(), GrabMode::Grab)
                     .with_icon(CursorIcon::Grabbing)
                     .with_cx(cx);
                 self.glide.press_start();
@@ -444,7 +444,10 @@ impl TextInput {
                         None
                     }
                 };
-                press.grab(w_id).with_opt_icon(icon).with_cx(cx);
+                press
+                    .grab(w_id, GrabMode::Grab)
+                    .with_opt_icon(icon)
+                    .with_cx(cx);
                 self.glide.press_start();
                 action
             }
