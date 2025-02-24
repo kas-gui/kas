@@ -139,7 +139,21 @@ impl EventState {
                 cx.send_event(win.as_node(data), id, Event::PopupClosed(wid));
             }
 
-            cx.flush_mouse_grab_motion();
+            if let Some(grab) = cx.state.mouse_grab.as_mut() {
+                if let GrabDetails::Click = grab.details {
+                    let hover = cx.state.hover.as_ref();
+                    if grab.start_id == hover {
+                        if grab.depress.as_ref() != hover {
+                            grab.depress = hover.cloned();
+                            cx.action |= Action::REDRAW;
+                        }
+                    } else if grab.depress.is_some() {
+                        grab.depress = None;
+                        cx.action |= Action::REDRAW;
+                    }
+                }
+            }
+
             if cx
                 .mouse_grab
                 .as_ref()
@@ -427,9 +441,7 @@ impl<'a> EventCx<'a> {
 
                 if let Some(grab) = self.state.mouse_grab.as_mut() {
                     match grab.details {
-                        GrabDetails::Click { ref mut cur_id } => {
-                            *cur_id = id;
-                        }
+                        GrabDetails::Click => (),
                         GrabDetails::Grab => {
                             let target = grab.start_id.clone();
                             let press = Press {

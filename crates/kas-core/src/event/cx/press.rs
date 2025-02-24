@@ -173,9 +173,7 @@ impl GrabBuilder {
         match source {
             PressSource::Mouse(button, repetitions) => {
                 let details = match mode {
-                    GrabMode::Click => GrabDetails::Click {
-                        cur_id: Some(id.clone()),
-                    },
+                    GrabMode::Click => GrabDetails::Click,
                     GrabMode::Grab => GrabDetails::Grab,
                     mode => {
                         assert!(mode.is_pan());

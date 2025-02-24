@@ -60,7 +60,7 @@ impl GrabMode {
 
 #[derive(Clone, Debug)]
 enum GrabDetails {
-    Click { cur_id: Option<Id> },
+    Click,
     Grab,
     Pan((u16, u16)),
 }
@@ -79,24 +79,6 @@ struct MouseGrab {
     depress: Option<Id>,
     details: GrabDetails,
     cancel: bool,
-}
-
-impl<'a> EventCx<'a> {
-    fn flush_mouse_grab_motion(&mut self) {
-        if let Some(grab) = self.mouse_grab.as_mut() {
-            if let GrabDetails::Click { ref cur_id } = grab.details {
-                if grab.start_id == cur_id {
-                    if grab.depress != *cur_id {
-                        grab.depress = cur_id.clone();
-                        self.action |= Action::REDRAW;
-                    }
-                } else if grab.depress.is_some() {
-                    grab.depress = None;
-                    self.action |= Action::REDRAW;
-                }
-            }
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
