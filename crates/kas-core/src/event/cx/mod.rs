@@ -362,14 +362,16 @@ impl EventState {
         window_id
     }
 
-    /// Clear all active events on `target`
-    fn clear_events(&mut self, target: &Id) {
+    /// Clear all focus and grabs on `target`
+    fn cancel_event_focus(&mut self, target: &Id) {
         if let Some(id) = self.sel_focus.as_ref() {
             if target.is_ancestor_of(id) {
                 if let Some(pending) = self.pending_sel_focus.as_mut() {
                     if pending.target.as_ref() == Some(id) {
                         pending.target = None;
                         pending.key_focus = false;
+                    } else {
+                        // We have a new focus target, hence the old one will be cleared
                     }
                 } else {
                     self.pending_sel_focus = Some(PendingSelFocus {

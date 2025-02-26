@@ -139,7 +139,9 @@ impl EventState {
                 cx.send_event(win.as_node(data), id, Event::PopupClosed(wid));
             }
 
+            let mut cancel = false;
             if let Some(grab) = cx.state.mouse_grab.as_mut() {
+                cancel = grab.cancel;
                 if let GrabDetails::Click = grab.details {
                     let hover = cx.state.hover.as_ref();
                     if grab.start_id == hover {
@@ -153,13 +155,7 @@ impl EventState {
                     }
                 }
             }
-
-            if cx
-                .mouse_grab
-                .as_ref()
-                .map(|grab| grab.cancel)
-                .unwrap_or(false)
-            {
+            if cancel {
                 if let Some((id, event)) = cx.remove_mouse_grab(false) {
                     cx.send_event(win.as_node(data), id, event);
                 }

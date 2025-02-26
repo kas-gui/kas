@@ -166,7 +166,7 @@ impl EventState {
     /// target is disabled, and also cancels press/pan grabs.
     pub fn set_disabled(&mut self, target: Id, disable: bool) {
         if disable {
-            self.clear_events(&target);
+            self.cancel_event_focus(&target);
         }
 
         for (i, id) in self.disabled.iter().enumerate() {
