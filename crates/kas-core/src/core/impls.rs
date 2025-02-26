@@ -145,9 +145,10 @@ fn nav_next(
     let mut child = focus.and_then(|id| widget.find_child_index(id));
 
     if let Some(index) = child {
-        if let Some(Some(id)) =
-            widget.for_child(index, |mut node| node._nav_next(cx, focus, advance))
-        {
+        let mut opt_id = None;
+        let out = &mut opt_id;
+        widget.for_child(index, |mut node| *out = node._nav_next(cx, focus, advance));
+        if let Some(id) = opt_id {
             return Some(id);
         }
     }
@@ -171,11 +172,13 @@ fn nav_next(
     };
 
     while let Some(index) = widget.nav_next(rev, child) {
-        if let Some(Some(id)) =
-            widget.for_child(index, |mut node| node._nav_next(cx, focus, advance))
-        {
+        let mut opt_id = None;
+        let out = &mut opt_id;
+        widget.for_child(index, |mut node| *out = node._nav_next(cx, focus, advance));
+        if let Some(id) = opt_id {
             return Some(id);
         }
+
         child = Some(index);
     }
 

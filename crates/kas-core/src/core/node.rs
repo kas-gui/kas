@@ -214,17 +214,12 @@ impl<'a> Node<'a> {
         self.0.num_children()
     }
 
-    /// Run `f` on some child by index and, if valid, return the result.
+    /// Run `f` on some child by index.
     ///
-    /// Calls the closure and returns `Some(result)` exactly when
-    /// `index < self.num_children()`.
+    /// Calls the closure exactly when `index < self.num_children()`.
     #[inline(always)]
-    pub fn for_child<R>(&mut self, index: usize, f: impl FnOnce(Node<'_>) -> R) -> Option<R> {
-        let mut result = None;
-        let out = &mut result;
-        let f: Box<dyn for<'b> FnOnce(Node<'b>)> = Box::new(|node| {
-            *out = Some(f(node));
-        });
+    pub fn for_child(&mut self, index: usize, f: impl FnOnce(Node<'_>)) {
+        let f: Box<dyn for<'b> FnOnce(Node<'b>)> = Box::new(f);
         cfg_if::cfg_if! {
             if #[cfg(feature = "unsafe_node")] {
                 self.0.for_child_node(self.1, index, f);
@@ -232,18 +227,13 @@ impl<'a> Node<'a> {
                 self.0.for_child_node(index, f);
             }
         }
-        result
     }
 
     /// Run a `f` on all children
     #[inline(always)]
     pub fn for_children(&mut self, mut f: impl FnMut(Node<'_>)) {
         for index in 0..self.0.num_children() {
-            // NOTE: for_child_node takes FnOnce hence we must wrap the closure
-            let f = &mut f;
-            let f: Box<dyn for<'b> FnOnce(Node<'b>)> = Box::new(|node| {
-                f(node);
-            });
+            let f: Box<dyn for<'b> FnOnce(Node<'b>)> = Box::new(&mut f);
             cfg_if::cfg_if! {
                 if #[cfg(feature = "unsafe_node")] {
                     self.0.for_child_node(self.1, index, f);
@@ -269,8 +259,10 @@ impl<'a> Node<'a> {
     #[inline(always)]
     pub fn find_node<F: FnOnce(Node<'_>) -> T, T>(&mut self, id: &Id, cb: F) -> Option<T> {
         if let Some(index) = self.find_child_index(id) {
-            self.for_child(index, |mut node| node.find_node(id, cb))
-                .unwrap()
+            let mut result = None;
+            let out = &mut result;
+            self.for_child(index, |mut node| *out = node.find_node(id, cb));
+            result
         } else if self.eq_id(id) {
             Some(cb(self.re()))
         } else {

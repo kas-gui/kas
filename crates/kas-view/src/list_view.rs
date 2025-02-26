@@ -790,9 +790,10 @@ impl_scope! {
             let mut child = focus.and_then(|id| self.find_child_index(id));
 
             if let Some(index) = child {
-                if let Some(Some(id)) = self.as_node(data)
-                    .for_child(index, |mut w| w._nav_next(cx, focus, advance))
-                {
+                let mut opt_id = None;
+                let out = &mut opt_id;
+                self.as_node(data).for_child(index, |mut node| *out = node._nav_next(cx, focus, advance));
+                if let Some(id) = opt_id {
                     return Some(id);
                 }
             }
@@ -829,9 +830,11 @@ impl_scope! {
                 }
 
                 let index = data_index % usize::conv(self.cur_len);
-                if let Some(Some(id)) = self.as_node(data)
-                    .for_child(index, |mut w| w._nav_next(cx, focus, advance))
-                {
+
+                let mut opt_id = None;
+                let out = &mut opt_id;
+                self.as_node(data).for_child(index, |mut node| *out = node._nav_next(cx, focus, advance));
+                if let Some(id) = opt_id {
                     return Some(id);
                 }
 
