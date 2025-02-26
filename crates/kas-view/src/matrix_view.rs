@@ -454,11 +454,7 @@ impl_scope! {
                         widget: self.driver.make(&A::Key::default()),
                     }
                 });
-            } else if req_widgets + 64 <= avail_widgets {
-                // Free memory (rarely useful?)
-                self.widgets.truncate(req_widgets);
             }
-            debug_assert!(self.widgets.len() >= req_widgets);
         }
 
         fn draw(&self, mut draw: DrawCx) {

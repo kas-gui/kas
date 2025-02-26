@@ -56,8 +56,9 @@ impl_scope! {
         frame_size: Size,
         driver: V,
         widgets: Vec<WidgetData<A::Key, V::Widget>>,
+        alloc_len: u32,
         data_len: u32,
-        /// The number of widgets in use (cur_len ≤ widgets.len())
+        /// The number of widgets in use (cur_len ≤ alloc_len ≤ widgets.len())
         cur_len: u32,
         /// First data item mapped to a widget
         first_data: u32,
@@ -129,6 +130,7 @@ impl_scope! {
                 frame_size: Default::default(),
                 driver,
                 widgets: Default::default(),
+                alloc_len: 0,
                 data_len: 0,
                 cur_len: 0,
                 first_data: 0,
@@ -316,7 +318,7 @@ impl_scope! {
             let mut first_data = usize::conv(offset / u64::conv(self.skip));
 
             let data_len: usize = self.data_len.cast();
-            let cur_len: usize = self.widgets.len().min(data_len);
+            let cur_len: usize = data_len.min(self.alloc_len.cast());
             first_data = first_data.min(data_len - cur_len);
             self.cur_len = cur_len.cast();
             debug_assert!(self.num_children() <= self.widgets.len());
@@ -501,9 +503,11 @@ impl_scope! {
 
             if skip == 0 {
                 self.skip = 1; // avoid divide by 0
+                self.alloc_len = 0;
                 return;
             }
             let req_widgets = usize::conv((size + skip - 1) / skip + 1);
+            self.alloc_len = req_widgets.cast();
 
             let avail_widgets = self.widgets.len();
             if avail_widgets < req_widgets {
@@ -519,11 +523,6 @@ impl_scope! {
                     self.widgets.push(WidgetData { key: None, widget });
                 }
             }
-            if req_widgets + 64 <= avail_widgets {
-                // Free memory (rarely useful?)
-                self.widgets.truncate(req_widgets);
-            }
-            debug_assert!(self.widgets.len() >= req_widgets);
         }
 
         fn draw(&self, mut draw: DrawCx) {
@@ -601,6 +600,7 @@ impl_scope! {
                         widget: self.driver.make(&key),
                     }
                 });
+                self.alloc_len = len.cast();
             }
 
             cx.register_nav_fallback(self.id());
