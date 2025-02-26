@@ -218,6 +218,7 @@ impl<'a> Node<'a> {
     ///
     /// Calls the closure and returns `Some(result)` exactly when
     /// `index < self.num_children()`.
+    #[inline(always)]
     pub fn for_child<R>(&mut self, index: usize, f: impl FnOnce(Node<'_>) -> R) -> Option<R> {
         let mut result = None;
         let out = &mut result;
@@ -235,6 +236,7 @@ impl<'a> Node<'a> {
     }
 
     /// Run a `f` on all children
+    #[inline(always)]
     pub fn for_children(&mut self, mut f: impl FnMut(Node<'_>)) {
         for index in 0..self.0.num_children() {
             // NOTE: for_child_node takes FnOnce hence we must wrap the closure
@@ -264,6 +266,7 @@ impl<'a> Node<'a> {
     /// Find the descendant with this `id`, if any, and call `cb` on it
     ///
     /// Returns `Some(result)` if and only if node `id` was found.
+    #[inline(always)]
     pub fn find_node<F: FnOnce(Node<'_>) -> T, T>(&mut self, id: &Id, cb: F) -> Option<T> {
         if let Some(index) = self.find_child_index(id) {
             self.for_child(index, |mut node| node.find_node(id, cb))
