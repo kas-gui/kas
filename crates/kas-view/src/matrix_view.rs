@@ -491,17 +491,16 @@ impl_scope! {
             self.widgets.get(index).map(|w| w.widget.as_tile())
         }
         fn find_child_index(&self, id: &Id) -> Option<usize> {
-            let num = self.num_children();
             let key = A::Key::reconstruct_key(self.id_ref(), id);
             if key.is_some() {
-                self.widgets[0..num]
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(i, w)| (key == w.key).then_some(i))
-                    .next()
-            } else {
-                None
+                let num = self.num_children();
+                for (i, w) in self.widgets[..num].iter().enumerate() {
+                    if key == w.key {
+                        return Some(i);
+                    }
+                }
             }
+            None
         }
 
         #[inline]
