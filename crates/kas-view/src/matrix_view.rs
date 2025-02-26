@@ -7,7 +7,7 @@
 
 use super::*;
 use kas::event::components::ScrollComponent;
-use kas::event::{Command, FocusSource, Scroll};
+use kas::event::{Command, FocusSource, Scroll, TimerHandle};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
@@ -17,6 +17,8 @@ use kas_widgets::ScrollBars;
 use linear_map::set::LinearSet;
 use std::borrow::Borrow;
 use std::time::Instant;
+
+const TIMER_UPDATE_WIDGETS: TimerHandle = TimerHandle::new(1, true);
 
 #[derive(Clone, Copy, Debug, Default)]
 struct Dim {
@@ -356,7 +358,7 @@ impl_scope! {
         fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
             let action = self.scroll.set_offset(offset);
             cx.action(&self, action);
-            cx.request_update(self.id(), false);
+            cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
             self.scroll.offset()
         }
     }
@@ -417,10 +419,6 @@ impl_scope! {
             widget_set_rect!(rect);
             self.align_hints = hints;
 
-            // Widgets need configuring and updating: do so by updating self.
-            self.cur_len = (0, 0); // hack: prevent drawing in the mean-time
-            cx.request_update(self.id(), false);
-
             let avail = rect.size - self.frame_size;
             let child_size = Size(avail.0 / self.ideal_len.cols, avail.1 / self.ideal_len.rows)
                 .min(self.child_size_ideal)
@@ -454,6 +452,34 @@ impl_scope! {
                         widget: self.driver.make(&A::Key::default()),
                     }
                 });
+
+                cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
+            }
+
+            // Call set_rect on children. (This might sometimes be unnecessary,
+            // except that the Layout::set_rect specification requires this
+            // action and we cannot guarantee that the requested
+            // TIMER_UPDATE_WIDGETS event will be immediately.)
+
+            let col_len: usize = self.cur_len.0.cast();
+            let row_len: usize = self.cur_len.1.cast();
+            let (first_row, first_col): (usize, usize) = self.first_data.cast();
+
+            let pos_start = self.rect().pos + self.frame_offset;
+            let skip = self.child_size + self.child_inter_margin;
+
+            for rn in 0..row_len {
+                let ri = first_row + rn;
+                for cn in 0..col_len {
+                    let ci = first_col + cn;
+                    let i = (ci % col_len) + (ri % row_len) * col_len;
+
+                    let w = &mut self.widgets[i];
+                    if w.key.is_some() {
+                        let pos = pos_start + skip.cwise_mul(Size(ci.cast(), ri.cast()));
+                        w.widget.set_rect(cx, Rect::new(pos, child_size), self.align_hints);
+                    }
+                }
             }
         }
 
@@ -661,6 +687,10 @@ impl_scope! {
                     }
                     Used
                 }
+                Event::Timer(TIMER_UPDATE_WIDGETS) => {
+                    self.update_widgets(&mut cx.config_cx(), data, false);
+                    Used
+                }
                 _ => Unused, // fall through to scroll handler
             };
 
@@ -668,7 +698,9 @@ impl_scope! {
                 .scroll
                 .scroll_by_event(cx, event, self.id(), self.rect());
             if moved {
-                self.update_widgets(&mut cx.config_cx(), data, false);
+                // We may process multiple 'moved' events per frame; TIMER_UPDATE_WIDGETS will only
+                // be processed once per frame.
+                cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
             }
             is_used | used_by_sber
         }

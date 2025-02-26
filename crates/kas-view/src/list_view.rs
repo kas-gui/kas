@@ -7,7 +7,7 @@
 
 use crate::{DataKey, Driver, ListData, SelectionMode, SelectionMsg};
 use kas::event::components::ScrollComponent;
-use kas::event::{Command, FocusSource, Scroll};
+use kas::event::{Command, FocusSource, Scroll, TimerHandle};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
@@ -18,6 +18,8 @@ use linear_map::set::LinearSet;
 use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::time::Instant;
+
+const TIMER_UPDATE_WIDGETS: TimerHandle = TimerHandle::new(1, true);
 
 #[derive(Clone, Debug, Default)]
 struct WidgetData<K, W> {
@@ -414,7 +416,7 @@ impl_scope! {
         fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
             let act = self.scroll.set_offset(offset);
             cx.action(&self, act);
-            cx.request_update(self.id(), false);
+            cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
             self.scroll.offset()
         }
     }
@@ -477,10 +479,6 @@ impl_scope! {
             widget_set_rect!(rect);
             self.align_hints = hints;
 
-            // Widgets need configuring and updating: do so by updating self.
-            self.cur_len = 0; // hack: prevent drawing in the mean-time
-            cx.request_update(self.id(), false);
-
             let mut child_size = rect.size - self.frame_size;
             let (size, skip);
             if self.direction.is_horizontal() {
@@ -521,6 +519,21 @@ impl_scope! {
                 for _ in avail_widgets..req_widgets {
                     let widget = self.driver.make(&key);
                     self.widgets.push(WidgetData { key: None, widget });
+                }
+
+                cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
+            }
+
+            // Call set_rect on children. (This might sometimes be unnecessary,
+            // except that the Layout::set_rect specification requires this
+            // action and we cannot guarantee that the requested
+            // TIMER_UPDATE_WIDGETS event will be immediately.)
+            let solver = self.position_solver();
+            for i in 0..solver.cur_len {
+                let i = solver.first_data + i;
+                let w = &mut self.widgets[i % solver.cur_len];
+                if w.key.is_some() {
+                    w.widget.set_rect(cx, solver.rect(i), self.align_hints);
                 }
             }
         }
@@ -701,6 +714,10 @@ impl_scope! {
                     }
                     Used
                 }
+                Event::Timer(TIMER_UPDATE_WIDGETS) => {
+                    self.update_widgets(&mut cx.config_cx(), data, false);
+                    Used
+                }
                 _ => Unused, // fall through to scroll handler
             };
 
@@ -708,7 +725,9 @@ impl_scope! {
                 .scroll
                 .scroll_by_event(cx, event, self.id(), self.rect());
             if moved {
-                self.update_widgets(&mut cx.config_cx(), data, false);
+                // We may process multiple 'moved' events per frame; TIMER_UPDATE_WIDGETS will only
+                // be processed once per frame.
+                cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
             }
             is_used | used_by_sber
         }
