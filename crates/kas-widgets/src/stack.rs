@@ -153,11 +153,9 @@ impl_scope! {
                 if state.is_configured() {
                     debug_assert!(child.id_ref().is_valid());
                     if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
-                        debug_assert_eq!(self.id_map.get(&key), Some(&index));
-                    } else {
-                        debug_assert!(false);
+                        self.id_map.insert(key, index);
+                        return child.id();
                     }
-                    return child.id();
                 }
 
                 // Use the widget's existing identifier, if any

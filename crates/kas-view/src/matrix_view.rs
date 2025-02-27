@@ -570,7 +570,17 @@ impl_scope! {
             cx.register_nav_fallback(self.id());
         }
 
-        fn configure_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
+        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+            let id = self.id();
+            for w in &mut self.widgets {
+                if let Some(ref key) = w.key {
+                    if let Some(item) = data.borrow(&key) {
+                        let id = key.make_id(&id);
+                        cx.configure(w.widget.as_node(item.borrow()), id);
+                    }
+                }
+            }
+        }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             self.selection.retain(|key| data.contains_key(key));

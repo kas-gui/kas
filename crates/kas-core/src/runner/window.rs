@@ -131,6 +131,10 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             let config = self.ev_state.config();
             state.shared.theme.update_window(&mut theme_window, config);
 
+            // Update text size which is assigned during configure
+            self.ev_state
+                .full_configure(theme_window.size(), &mut self.widget, &state.data);
+
             let node = self.widget.as_node(&state.data);
             let sizer = SizeCx::new(theme_window.size());
             solve_cache = SolveCache::find_constraints(node, sizer);

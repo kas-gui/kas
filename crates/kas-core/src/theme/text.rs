@@ -721,8 +721,14 @@ pub trait SizableText {
 
 impl<T: FormattableText> SizableText for Text<T> {
     fn set_font(&mut self, font_id: FontId, dpem: f32) {
-        self.font_id = font_id;
-        self.dpem = dpem;
+        if font_id != self.font_id {
+            self.font_id = font_id;
+            self.dpem = dpem;
+            self.set_max_status(Status::Configured);
+        } else if dpem != self.dpem {
+            self.dpem = dpem;
+            self.set_max_status(Status::ResizeLevelRuns);
+        }
     }
 
     fn configure(&mut self) -> Result<(), InvalidFontId> {
