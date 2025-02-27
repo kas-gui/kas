@@ -103,6 +103,10 @@ impl EventState {
         self.time_updates.last().map(|time| time.0)
     }
 
+    pub(crate) fn have_pending_futures(&self) -> bool {
+        !self.fut_messages.is_empty()
+    }
+
     /// Construct a [`EventCx`] referring to this state
     ///
     /// Invokes the given closure on this [`EventCx`].
@@ -229,10 +233,6 @@ impl EventState {
                 cx.replay(win.as_node(data), id, msg);
             }
 
-            // Poll futures almost last. This means that any newly pushed future
-            // should get polled from the same update() call.
-            cx.poll_futures(win.as_node(data));
-
             // Finally, clear the region_moved flag.
             if cx.action.contains(Action::REGION_MOVED) {
                 cx.action.remove(Action::REGION_MOVED);
@@ -320,6 +320,9 @@ impl<'a> EventCx<'a> {
         for (id, handle) in frame_updates.into_iter() {
             self.send_event(widget.re(), id, Event::Timer(handle));
         }
+
+        // Poll futures once per frame.
+        self.poll_futures(widget);
     }
 
     /// Update widgets due to timer

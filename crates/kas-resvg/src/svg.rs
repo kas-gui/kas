@@ -84,7 +84,7 @@ impl Source {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 enum State {
     #[default]
     None,
@@ -293,8 +293,7 @@ impl_scope! {
                 }
 
                 cx.redraw(&self);
-                let inner = std::mem::replace(&mut self.inner, State::None);
-                self.inner = match inner {
+                self.inner = match std::mem::take(&mut self.inner) {
                     State::None => State::None,
                     State::Initial(source) |
                     State::Rendering(source) |
@@ -303,7 +302,7 @@ impl_scope! {
 
                 let own_size: (u32, u32) = self.rect().size.cast();
                 if size != own_size {
-                    if let Some(fut) = self.inner.resize(size) {
+                    if let Some(fut) = self.inner.resize(own_size) {
                         cx.push_spawn(self.id(), fut);
                     }
                 }
