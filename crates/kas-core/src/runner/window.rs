@@ -530,11 +530,10 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             AnimationState::Timed(time) => Some(time.max(window.next_avail_frame_time)),
         };
         window.need_redraw = anim != AnimationState::None;
-        self.ev_state.action -= Action::REDRAW; // we just drew
-        if !self.ev_state.action.is_empty() {
-            log::info!("do_draw: abort and enqueue `Self::update` due to non-empty actions");
-            return Err(());
-        }
+        self.ev_state.action -= Action::REDRAW;
+        // NOTE: we used to return Err(()) if !action.is_empty() here, e.g. if a
+        // widget requested a resize during draw. Likely it's better not to do
+        // this even if the frame is imperfect.
 
         let clear_color = if self.widget.transparent() {
             Rgba::TRANSPARENT

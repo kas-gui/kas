@@ -122,8 +122,6 @@ where
         window_id: ww::WindowId,
         event: winit::event::WindowEvent,
     ) {
-        self.flush_pending(el);
-
         if let Some(id) = self.id_map.get(&window_id) {
             if let Some(window) = self.windows.get_mut(id) {
                 if window.handle_event(&mut self.state, event) {
