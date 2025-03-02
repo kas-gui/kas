@@ -381,7 +381,7 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
     }
     let data = Data {
         mode: SelectionMode::None,
-        list: (2019..=2023)
+        list: (2019..=2025)
             .flat_map(|year| MONTHS.iter().map(move |m| format!("{m} {year}")))
             .collect(),
     };
