@@ -344,11 +344,11 @@ impl ScrollComponent {
                 let decay = cx.config().event().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(timeout, decay) {
                     action = self.scroll_by_delta(cx, delta);
+                    cx.set_scroll(Scroll::Scrolled);
+                }
 
-                    if self.glide.vel != Vec2::ZERO {
-                        cx.request_frame_timer(id.clone(), TIMER_GLIDE);
-                        cx.set_scroll(Scroll::Scrolled);
-                    }
+                if self.glide.vel != Vec2::ZERO {
+                    cx.request_frame_timer(id.clone(), TIMER_GLIDE);
                 }
             }
             _ => return (false, Unused),

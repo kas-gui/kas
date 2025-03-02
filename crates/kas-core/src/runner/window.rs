@@ -391,7 +391,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
 
             if window.need_redraw || self.ev_state.action.contains(Action::REDRAW) {
                 window.request_redraw();
-            } else if self.ev_state.have_pending_futures() {
+            } else if self.ev_state.have_pending() {
                 window.next_avail_frame_time = Instant::now() + self.ev_state.config().frame_dur();
                 window.queued_frame_time = Some(window.next_avail_frame_time);
             }

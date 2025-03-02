@@ -103,8 +103,8 @@ impl EventState {
         self.time_updates.last().map(|time| time.0)
     }
 
-    pub(crate) fn have_pending_futures(&self) -> bool {
-        !self.fut_messages.is_empty()
+    pub(crate) fn have_pending(&self) -> bool {
+        !self.frame_updates.is_empty() || !self.fut_messages.is_empty()
     }
 
     /// Construct a [`EventCx`] referring to this state
