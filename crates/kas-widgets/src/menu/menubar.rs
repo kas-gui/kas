@@ -145,7 +145,7 @@ impl_scope! {
                             let press_in_the_bar = self.rect().contains(press.coord);
 
                             if !press_in_the_bar || !any_menu_open {
-                                press.grab(self.id()).with_cx(cx);
+                                press.grab(self.id(), kas::event::GrabMode::Grab).with_cx(cx);
                             }
                             cx.set_grab_depress(*press, press.id.clone());
                             if press_in_the_bar {

@@ -121,13 +121,14 @@ pub enum Event {
     },
     /// Movement of mouse cursor without press
     ///
-    /// This event is sent only when:
+    /// This event is only sent one case: when the mouse is moved while a
+    /// [`Popup`] is open and there is not an active [`Press::grab`] on the
+    /// mouse cursor.
     ///
-    /// 1.  No [`Press::grab`] is active
-    /// 2.  A [`Popup`] is open
-    ///
-    /// The parent (or an ancestor) of a [`Popup`] should handle or explicitly
-    /// ignore this event.
+    /// This event may be sent 10+ times per frame, thus it is important that
+    /// the handler be fast. It may be useful to schedule a pre-draw update
+    /// with [`EventState::request_frame_timer`] to handle any post-move
+    /// updates.
     CursorMove { press: Press },
     /// A mouse button was pressed or touch event started
     ///
@@ -153,6 +154,11 @@ pub enum Event {
     ///
     /// If `cur_id` is `None`, no widget was found at the coordinate (either
     /// outside the window or [`crate::Layout::try_probe`] failed).
+    ///
+    /// This event may be sent 10+ times per frame, thus it is important that
+    /// the handler be fast. It may be useful to schedule a pre-draw update
+    /// with [`EventState::request_frame_timer`] to handle any post-move
+    /// updates.
     PressMove { press: Press, delta: Offset },
     /// End of a click/touch press
     ///
@@ -172,8 +178,7 @@ pub enum Event {
     PressEnd { press: Press, success: bool },
     /// Update from a timer
     ///
-    /// This event is received after requesting timed wake-up(s)
-    /// (see [`EventState::request_timer`]).
+    /// This event must be requested by [`EventState::request_timer`].
     Timer(TimerHandle),
     /// Notification that a popup has been closed
     ///
@@ -276,7 +281,9 @@ impl Event {
                 cx.depress_with_key(id, code);
                 f(cx)
             }
-            Event::PressStart { press, .. } if press.is_primary() => press.grab(id).with_cx(cx),
+            Event::PressStart { press, .. } if press.is_primary() => {
+                press.grab(id, GrabMode::Click).with_cx(cx)
+            }
             Event::PressEnd { press, success } => {
                 if success && id == press.id {
                     f(cx)

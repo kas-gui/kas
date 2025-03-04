@@ -9,6 +9,7 @@ use crate::event::{ConfigCx, Event, EventCx, FocusSource, IsUsed, Scroll, Unused
 use crate::{Events, Id, NavAdvance, Node, Tile, Widget};
 
 /// Generic implementation of [`Widget::_send`]
+#[inline(always)]
 pub fn _send<W: Events>(
     widget: &mut W,
     cx: &mut EventCx,
@@ -76,6 +77,7 @@ pub fn _send<W: Events>(
 }
 
 /// Generic implementation of [`Widget::_replay`]
+#[inline(always)]
 pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>::Data, id: Id) {
     if let Some(index) = widget.find_child_index(&id) {
         let mut _found = false;
@@ -112,6 +114,7 @@ pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>
 }
 
 /// Generic implementation of [`Widget::_nav_next`]
+#[inline(always)]
 pub fn _nav_next<W: Events>(
     widget: &mut W,
     cx: &mut ConfigCx,
@@ -142,9 +145,10 @@ fn nav_next(
     let mut child = focus.and_then(|id| widget.find_child_index(id));
 
     if let Some(index) = child {
-        if let Some(Some(id)) =
-            widget.for_child(index, |mut node| node._nav_next(cx, focus, advance))
-        {
+        let mut opt_id = None;
+        let out = &mut opt_id;
+        widget.for_child(index, |mut node| *out = node._nav_next(cx, focus, advance));
+        if let Some(id) = opt_id {
             return Some(id);
         }
     }
@@ -168,11 +172,13 @@ fn nav_next(
     };
 
     while let Some(index) = widget.nav_next(rev, child) {
-        if let Some(Some(id)) =
-            widget.for_child(index, |mut node| node._nav_next(cx, focus, advance))
-        {
+        let mut opt_id = None;
+        let out = &mut opt_id;
+        widget.for_child(index, |mut node| *out = node._nav_next(cx, focus, advance));
+        if let Some(id) = opt_id {
             return Some(id);
         }
+
         child = Some(index);
     }
 

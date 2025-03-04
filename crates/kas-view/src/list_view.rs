@@ -7,7 +7,7 @@
 
 use crate::{DataKey, Driver, ListData, SelectionMode, SelectionMsg};
 use kas::event::components::ScrollComponent;
-use kas::event::{Command, FocusSource, Scroll};
+use kas::event::{Command, FocusSource, Scroll, TimerHandle};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
@@ -18,6 +18,8 @@ use linear_map::set::LinearSet;
 use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::time::Instant;
+
+const TIMER_UPDATE_WIDGETS: TimerHandle = TimerHandle::new(1, true);
 
 #[derive(Clone, Debug, Default)]
 struct WidgetData<K, W> {
@@ -56,8 +58,9 @@ impl_scope! {
         frame_size: Size,
         driver: V,
         widgets: Vec<WidgetData<A::Key, V::Widget>>,
+        alloc_len: u32,
         data_len: u32,
-        /// The number of widgets in use (cur_len ≤ widgets.len())
+        /// The number of widgets in use (cur_len ≤ alloc_len ≤ widgets.len())
         cur_len: u32,
         /// First data item mapped to a widget
         first_data: u32,
@@ -129,6 +132,7 @@ impl_scope! {
                 frame_size: Default::default(),
                 driver,
                 widgets: Default::default(),
+                alloc_len: 0,
                 data_len: 0,
                 cur_len: 0,
                 first_data: 0,
@@ -308,14 +312,15 @@ impl_scope! {
             }
         }
 
-        fn update_widgets(&mut self, cx: &mut ConfigCx, data: &A) {
+        // If full, call cx.update on all view widgets
+        fn update_widgets(&mut self, cx: &mut ConfigCx, data: &A, full: bool) {
             let time = Instant::now();
 
             let offset = u64::conv(self.scroll_offset().extract(self.direction));
             let mut first_data = usize::conv(offset / u64::conv(self.skip));
 
             let data_len: usize = self.data_len.cast();
-            let cur_len: usize = self.widgets.len().min(data_len);
+            let cur_len: usize = data_len.min(self.alloc_len.cast());
             first_data = first_data.min(data_len - cur_len);
             self.cur_len = cur_len.cast();
             debug_assert!(self.num_children() <= self.widgets.len());
@@ -346,8 +351,10 @@ impl_scope! {
                     } else {
                         w.key = None; // disables drawing and clicking
                     }
-                } else if let Some(item) = data.borrow(&key) {
-                    cx.update(w.widget.as_node(item.borrow()));
+                } else if full {
+                    if let Some(item) = data.borrow(&key) {
+                        cx.update(w.widget.as_node(item.borrow()));
+                    }
                 }
                 w.widget.set_rect(cx, solver.rect(i), self.align_hints);
             }
@@ -409,7 +416,7 @@ impl_scope! {
         fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
             let act = self.scroll.set_offset(offset);
             cx.action(&self, act);
-            cx.request_update(self.id(), false);
+            cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
             self.scroll.offset()
         }
     }
@@ -472,10 +479,6 @@ impl_scope! {
             widget_set_rect!(rect);
             self.align_hints = hints;
 
-            // Widgets need configuring and updating: do so by updating self.
-            self.cur_len = 0; // hack: prevent drawing in the mean-time
-            cx.request_update(self.id(), false);
-
             let mut child_size = rect.size - self.frame_size;
             let (size, skip);
             if self.direction.is_horizontal() {
@@ -498,9 +501,11 @@ impl_scope! {
 
             if skip == 0 {
                 self.skip = 1; // avoid divide by 0
+                self.alloc_len = 0;
                 return;
             }
             let req_widgets = usize::conv((size + skip - 1) / skip + 1);
+            self.alloc_len = req_widgets.cast();
 
             let avail_widgets = self.widgets.len();
             if avail_widgets < req_widgets {
@@ -515,12 +520,22 @@ impl_scope! {
                     let widget = self.driver.make(&key);
                     self.widgets.push(WidgetData { key: None, widget });
                 }
+
+                cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
             }
-            if req_widgets + 64 <= avail_widgets {
-                // Free memory (rarely useful?)
-                self.widgets.truncate(req_widgets);
+
+            // Call set_rect on children. (This might sometimes be unnecessary,
+            // except that the Layout::set_rect specification requires this
+            // action and we cannot guarantee that the requested
+            // TIMER_UPDATE_WIDGETS event will be immediately.)
+            let solver = self.position_solver();
+            for i in 0..solver.cur_len {
+                let i = solver.first_data + i;
+                let w = &mut self.widgets[i % solver.cur_len];
+                if w.key.is_some() {
+                    w.widget.set_rect(cx, solver.rect(i), self.align_hints);
+                }
             }
-            debug_assert!(self.widgets.len() >= req_widgets);
         }
 
         fn draw(&self, mut draw: DrawCx) {
@@ -549,14 +564,14 @@ impl_scope! {
         fn find_child_index(&self, id: &Id) -> Option<usize> {
             let key = A::Key::reconstruct_key(self.id_ref(), id);
             if key.is_some() {
-                self.widgets
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(i, w)| (key == w.key).then_some(i))
-                    .next()
-            } else {
-                None
+                let num = self.num_children();
+                for (i, w) in self.widgets[..num].iter().enumerate() {
+                    if key == w.key {
+                        return Some(i);
+                    }
+                }
             }
+            None
         }
 
         #[inline]
@@ -598,12 +613,23 @@ impl_scope! {
                         widget: self.driver.make(&key),
                     }
                 });
+                self.alloc_len = len.cast();
             }
 
             cx.register_nav_fallback(self.id());
         }
 
-        fn configure_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
+        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+            let id = self.id();
+            for w in &mut self.widgets {
+                if let Some(ref key) = w.key {
+                    if let Some(item) = data.borrow(&key) {
+                        let id = key.make_id(&id);
+                        cx.configure(w.widget.as_node(item.borrow()), id);
+                    }
+                }
+            }
+        }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             self.selection.retain(|key| data.contains_key(key));
@@ -614,10 +640,11 @@ impl_scope! {
                 // We must call at least SET_RECT to update scrollable region
                 // RESIZE allows recalculation of child widget size which may
                 // have been zero if no data was initially available!
+                // TODO(opt): we may not need to resize here.
                 cx.resize(&self);
             }
 
-            self.update_widgets(cx, data);
+            self.update_widgets(cx, data, true);
             self.update_content_size(cx);
         }
 
@@ -657,7 +684,7 @@ impl_scope! {
                         let act = self.scroll.focus_rect(cx, solver.rect(i_data), self.rect());
                         if !act.is_empty() {
                             cx.action(&self, act);
-                            self.update_widgets(&mut cx.config_cx(), data);
+                            self.update_widgets(&mut cx.config_cx(), data, false);
                         }
                         let index = i_data % usize::conv(self.cur_len);
                         cx.next_nav_focus(self.widgets[index].widget.id(), false, FocusSource::Key);
@@ -681,7 +708,7 @@ impl_scope! {
 
                     // Press may also be grabbed by scroll component (replacing
                     // this). Either way we can select on PressEnd.
-                    press.grab(self.id()).with_cx(cx)
+                    press.grab(self.id(), kas::event::GrabMode::Click).with_cx(cx)
                 }
                 Event::PressEnd { ref press, success } if press.is_primary() => {
                     if let Some((index, ref key)) = self.press_target {
@@ -697,6 +724,10 @@ impl_scope! {
                     }
                     Used
                 }
+                Event::Timer(TIMER_UPDATE_WIDGETS) => {
+                    self.update_widgets(&mut cx.config_cx(), data, false);
+                    Used
+                }
                 _ => Unused, // fall through to scroll handler
             };
 
@@ -704,7 +735,9 @@ impl_scope! {
                 .scroll
                 .scroll_by_event(cx, event, self.id(), self.rect());
             if moved {
-                self.update_widgets(&mut cx.config_cx(), data);
+                // We may process multiple 'moved' events per frame; TIMER_UPDATE_WIDGETS will only
+                // be processed once per frame.
+                cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
             }
             is_used | used_by_sber
         }
@@ -751,7 +784,7 @@ impl_scope! {
 
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &A, scroll: Scroll) {
             let act = self.scroll.scroll(cx, self.rect(), scroll);
-            self.update_widgets(&mut cx.config_cx(), data);
+            self.update_widgets(&mut cx.config_cx(), data, false);
             cx.action(self, act);
         }
     }
@@ -790,9 +823,10 @@ impl_scope! {
             let mut child = focus.and_then(|id| self.find_child_index(id));
 
             if let Some(index) = child {
-                if let Some(Some(id)) = self.as_node(data)
-                    .for_child(index, |mut w| w._nav_next(cx, focus, advance))
-                {
+                let mut opt_id = None;
+                let out = &mut opt_id;
+                self.as_node(data).for_child(index, |mut node| *out = node._nav_next(cx, focus, advance));
+                if let Some(id) = opt_id {
                     return Some(id);
                 }
             }
@@ -825,13 +859,15 @@ impl_scope! {
                 let act = self.scroll.self_focus_rect(solver.rect(data_index), self.rect());
                 if !act.is_empty() {
                     cx.action(&self, act);
-                    self.update_widgets(cx, data);
+                    self.update_widgets(cx, data, false);
                 }
 
                 let index = data_index % usize::conv(self.cur_len);
-                if let Some(Some(id)) = self.as_node(data)
-                    .for_child(index, |mut w| w._nav_next(cx, focus, advance))
-                {
+
+                let mut opt_id = None;
+                let out = &mut opt_id;
+                self.as_node(data).for_child(index, |mut node| *out = node._nav_next(cx, focus, advance));
+                if let Some(id) = opt_id {
                     return Some(id);
                 }
 

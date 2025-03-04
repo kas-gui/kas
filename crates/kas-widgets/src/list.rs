@@ -322,10 +322,8 @@ impl_scope! {
                 // Use the widget's existing identifier, if any
                 if child.id_ref().is_valid() {
                     if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
-                        if let Entry::Vacant(entry) = self.id_map.entry(key) {
-                            entry.insert(index);
-                            return child.id();
-                        }
+                        self.id_map.insert(key, index);
+                        return child.id();
                     }
                 }
             }

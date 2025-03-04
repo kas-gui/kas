@@ -108,12 +108,12 @@ impl Press {
     /// is returned. It is expected that the requested press/pan events are all
     /// "used" ([`Used`]).
     #[inline]
-    pub fn grab(&self, id: Id) -> GrabBuilder {
+    pub fn grab(&self, id: Id, mode: GrabMode) -> GrabBuilder {
         GrabBuilder {
             id,
             source: self.source,
             coord: self.coord,
-            mode: GrabMode::Grab,
+            mode,
             cursor: None,
         }
     }
@@ -132,13 +132,6 @@ pub struct GrabBuilder {
 }
 
 impl GrabBuilder {
-    /// Set grab mode (default: [`GrabMode::Grab`])
-    #[inline]
-    pub fn with_mode(mut self, mode: GrabMode) -> Self {
-        self.mode = mode;
-        self
-    }
-
     /// Set cursor icon (default: do not set)
     #[inline]
     pub fn with_icon(self, icon: CursorIcon) -> Self {
@@ -180,9 +173,7 @@ impl GrabBuilder {
         match source {
             PressSource::Mouse(button, repetitions) => {
                 let details = match mode {
-                    GrabMode::Click => GrabDetails::Click {
-                        cur_id: Some(id.clone()),
-                    },
+                    GrabMode::Click => GrabDetails::Click,
                     GrabMode::Grab => GrabDetails::Grab,
                     mode => {
                         assert!(mode.is_pan());

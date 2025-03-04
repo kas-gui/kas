@@ -136,7 +136,7 @@ impl_scope! {
                 Event::PressStart { press } => {
                     if press.id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
                         if press.is_primary() {
-                            press.grab(self.id()).with_cx(cx);
+                            press.grab(self.id(), kas::event::GrabMode::Grab).with_cx(cx);
                             cx.set_grab_depress(*press, press.id);
                             self.opening = !self.popup.is_open();
                         }

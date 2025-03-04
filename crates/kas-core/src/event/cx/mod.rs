@@ -8,7 +8,7 @@
 // Without winit, several things go unused
 #![cfg_attr(not(winit), allow(unused))]
 
-use linear_map::LinearMap;
+use linear_map::{set::LinearSet, LinearMap};
 use smallvec::SmallVec;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::future::Future;
@@ -60,7 +60,7 @@ impl GrabMode {
 
 #[derive(Clone, Debug)]
 enum GrabDetails {
-    Click { cur_id: Option<Id> },
+    Click,
     Grab,
     Pan((u16, u16)),
 }
@@ -79,24 +79,6 @@ struct MouseGrab {
     depress: Option<Id>,
     details: GrabDetails,
     cancel: bool,
-}
-
-impl<'a> EventCx<'a> {
-    fn flush_mouse_grab_motion(&mut self) {
-        if let Some(grab) = self.mouse_grab.as_mut() {
-            if let GrabDetails::Click { ref cur_id } = grab.details {
-                if grab.start_id == cur_id {
-                    if grab.depress != *cur_id {
-                        grab.depress = cur_id.clone();
-                        self.action |= Action::REDRAW;
-                    }
-                } else if grab.depress.is_some() {
-                    grab.depress = None;
-                    self.action |= Action::REDRAW;
-                }
-            }
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -210,6 +192,7 @@ pub struct EventState {
     popups: SmallVec<[(WindowId, crate::PopupDescriptor, Option<Id>); 16]>,
     popup_removed: SmallVec<[(Id, WindowId); 16]>,
     time_updates: Vec<(Instant, Id, TimerHandle)>,
+    frame_updates: LinearSet<(Id, TimerHandle)>,
     // Set of messages awaiting sending
     send_queue: VecDeque<(Id, Erased)>,
     // Set of futures of messages together with id of sending widget
@@ -380,14 +363,16 @@ impl EventState {
         window_id
     }
 
-    /// Clear all active events on `target`
-    fn clear_events(&mut self, target: &Id) {
+    /// Clear all focus and grabs on `target`
+    fn cancel_event_focus(&mut self, target: &Id) {
         if let Some(id) = self.sel_focus.as_ref() {
             if target.is_ancestor_of(id) {
                 if let Some(pending) = self.pending_sel_focus.as_mut() {
                     if pending.target.as_ref() == Some(id) {
                         pending.target = None;
                         pending.key_focus = false;
+                    } else {
+                        // We have a new focus target, hence the old one will be cleared
                     }
                 } else {
                     self.pending_sel_focus = Some(PendingSelFocus {

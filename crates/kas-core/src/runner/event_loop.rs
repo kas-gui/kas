@@ -41,7 +41,6 @@ where
     T::Window: kas::theme::Window,
 {
     fn new_events(&mut self, el: &ActiveEventLoop, cause: StartCause) {
-        // MainEventsCleared will reset control_flow (but not when it is Poll)
         el.set_control_flow(ControlFlow::Wait);
 
         match cause {
@@ -57,7 +56,7 @@ where
                 log::trace!("Wakeup: timer (window={:?})", item.1);
 
                 let resume = if let Some(w) = self.windows.get_mut(&item.1) {
-                    w.update_timer(&mut self.state)
+                    w.update_timer(&mut self.state, requested_resume)
                 } else {
                     // presumably, some window with active timers was removed
                     None
@@ -96,9 +95,7 @@ where
                 self.state.handle_messages(&mut stack);
             }
             ProxyAction::WakeAsync => {
-                // We don't need to do anything: MainEventsCleared will
-                // automatically be called after, which automatically calls
-                // window.update(..), which calls EventState::Update.
+                // We don't need to do anything here since about_to_wait will poll all futures.
             }
         }
     }
@@ -125,8 +122,6 @@ where
         window_id: ww::WindowId,
         event: winit::event::WindowEvent,
     ) {
-        self.flush_pending(el);
-
         if let Some(id) = self.id_map.get(&window_id) {
             if let Some(window) = self.windows.get_mut(id) {
                 if window.handle_event(&mut self.state, event) {

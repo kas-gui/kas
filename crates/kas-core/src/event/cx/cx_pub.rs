@@ -166,7 +166,7 @@ impl EventState {
     /// target is disabled, and also cancels press/pan grabs.
     pub fn set_disabled(&mut self, target: Id, disable: bool) {
         if disable {
-            self.clear_events(&target);
+            self.cancel_event_focus(&target);
         }
 
         for (i, id) in self.disabled.iter().enumerate() {
@@ -186,8 +186,9 @@ impl EventState {
 
     /// Schedule a timed update
     ///
-    /// Widget updates may be used for animation and timed responses. See also
-    /// [`Draw::animate`](crate::draw::Draw::animate) for animation.
+    /// Widget updates may be used for delayed action. For animation, prefer to
+    /// use [`Draw::animate`](crate::draw::Draw::animate) or
+    /// [`Self::request_frame_timer`].
     ///
     /// Widget `id` will receive [`Event::Timer`] with this `handle` at
     /// approximately `time = now + delay` (or possibly a little later due to
@@ -221,6 +222,21 @@ impl EventState {
         }
 
         self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
+    }
+
+    /// Schedule a frame timer update
+    ///
+    /// Widget `id` will receive [`Event::Timer`] with this `handle` either
+    /// before or soon after the next frame is drawn.
+    ///
+    /// This may be useful for animations which mutate widget state. Animations
+    /// which don't mutate widget state may use
+    /// [`Draw::animate`](crate::draw::Draw::animate) instead.
+    ///
+    /// It is expected that `handle.earliest() == true` (style guide).
+    pub fn request_frame_timer(&mut self, id: Id, handle: TimerHandle) {
+        debug_assert!(handle.earliest());
+        self.frame_updates.insert((id, handle));
     }
 
     /// Notify that a widget must be redrawn
