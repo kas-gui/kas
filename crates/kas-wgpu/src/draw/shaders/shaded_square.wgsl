@@ -43,7 +43,7 @@ fn frag(
     @location(0) fragColor: vec4<f32>,
     @location(1) norm2: vec2<f32>,
 ) -> FragmentOutput {
-    let n3: f32 = 1.0 - sqrt(norm2.x * norm2.x + norm2.y * norm2.y);
+    let n3: f32 = sqrt(1.0 - norm2.x * norm2.x - norm2.y * norm2.y);
     let norm = vec3<f32>(norm2.x, norm2.y, n3);
     let c: vec3<f32> = (fragColor.xyz * dot(norm, global2.lightNorm));
     let outColor = vec4<f32>(c.x, c.y, c.z, fragColor.w);
