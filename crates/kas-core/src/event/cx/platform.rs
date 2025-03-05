@@ -233,6 +233,10 @@ impl EventState {
                 cx.replay(win.as_node(data), id, msg);
             }
 
+            // Poll futures. TODO(opt): this does not need to happen so often,
+            // but just in frame_update is insufficient.
+            cx.poll_futures(win.as_node(data));
+
             // Finally, clear the region_moved flag.
             if cx.action.contains(Action::REGION_MOVED) {
                 cx.action.remove(Action::REGION_MOVED);
@@ -320,9 +324,6 @@ impl<'a> EventCx<'a> {
         for (id, handle) in frame_updates.into_iter() {
             self.send_event(widget.re(), id, Event::Timer(handle));
         }
-
-        // Poll futures once per frame.
-        self.poll_futures(widget);
     }
 
     /// Update widgets due to timer
