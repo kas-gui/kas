@@ -16,7 +16,7 @@ use std::ops::{Index, IndexMut};
 /// This is a parametrisation of [`Stack`].
 pub type BoxStack<Data> = Stack<Box<dyn Widget<Data = Data>>>;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 enum State {
     #[default]
     None,
@@ -42,7 +42,7 @@ impl_scope! {
     /// By default, all pages are configured and sized. To avoid configuring
     /// hidden pages (thus preventing these pages from affecting size)
     /// call [`Self::set_size_limit`] or [`Self::with_size_limit`].
-    #[autoimpl(Default)]
+    #[impl_default]
     #[derive(Clone, Debug)]
     #[widget]
     pub struct Stack<W: Widget> {
@@ -50,7 +50,7 @@ impl_scope! {
         align_hints: AlignHints,
         widgets: Vec<(W, State)>,
         active: usize,
-        size_limit: usize,
+        size_limit: usize = usize::MAX,
         next: usize,
         id_map: HashMap<usize, usize>, // map key of Id to index
     }
@@ -73,28 +73,20 @@ impl_scope! {
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let mut rules = SizeRules::EMPTY;
-            let mut index = 0;
-            let end = self.widgets.len().min(self.size_limit);
-            loop {
-                if index == end {
-                    if self.active >= end {
-                        index = self.active;
-                    } else {
-                        break rules;
-                    }
-                } else if index > end {
-                    break rules;
-                }
-
-                if let Some(entry) = self.widgets.get_mut(index) {
+            for (index, entry) in self.widgets.iter_mut().enumerate() {
+                if index < self.size_limit || index == self.active {
                     if entry.1.is_configured() {
                         rules = rules.max(entry.0.size_rules(sizer.re(), axis));
                         entry.1 = State::Sized;
+                    } else {
+                        entry.1 = State::None;
                     }
+                } else {
+                    // Ensure entry will be resized before becoming active
+                    entry.1 = entry.1.min(State::Configured);
                 }
-
-                index += 1;
             }
+            rules
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
@@ -129,11 +121,16 @@ impl_scope! {
         }
 
         fn nav_next(&self, _: bool, from: Option<usize>) -> Option<usize> {
-            match from {
-                None => Some(self.active),
-                Some(active) if active != self.active => Some(self.active),
-                _ => None,
+            let active = match from {
+                None => self.active,
+                Some(active) if active != self.active => self.active,
+                _ => return None,
+            };
+            if let Some(entry) = self.widgets.get(active) {
+                debug_assert_eq!(entry.1, State::Sized);
+                return Some(active);
             }
+            None
         }
 
         fn probe(&self, coord: Coord) -> Id {
@@ -182,28 +179,18 @@ impl_scope! {
         }
 
         fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-            let mut index = 0;
-            let end = self.widgets.len().min(self.size_limit);
-            loop {
-                if index == end {
-                    if self.active >= end {
-                        index = self.active;
-                    } else {
-                        break;
-                    }
-                } else if index > end {
-                    break;
-                }
-
-                let id = self.make_child_id(index);
-                if let Some(entry) = self.widgets.get_mut(index) {
+            for index in 0..self.widgets.len() {
+                if index < self.size_limit || index == self.active {
+                    let id = self.make_child_id(index);
+                    let entry = &mut self.widgets[index];
                     cx.configure(entry.0.as_node(data), id);
                     if entry.1 == State::None {
                         entry.1 = State::Configured;
                     }
+                } else {
+                    // Ensure widget will be reconfigured before becoming active
+                    self.widgets[index].1 = State::None;
                 }
-
-                index += 1;
             }
         }
 
@@ -269,9 +256,16 @@ impl<W: Widget> Stack<W> {
     /// Set the active widget (inline)
     ///
     /// Unlike [`Self::set_active`], this does not update anything; it is
-    /// assumed that sizing happens afterwards.
+    /// assumed that this method is only used before the UI is run.
     #[inline]
     pub fn with_active(mut self, active: usize) -> Self {
+        debug_assert_eq!(
+            self.widgets
+                .get(self.active)
+                .map(|e| e.1)
+                .unwrap_or_default(),
+            State::None
+        );
         self.active = active;
         self
     }
@@ -297,12 +291,14 @@ impl<W: Widget> Stack<W> {
             }
 
             if entry.1 == State::Configured {
-                cx.resize(self);
-            } else {
-                debug_assert_eq!(entry.1, State::Sized);
-                entry.0.set_rect(cx, rect, self.align_hints);
-                cx.region_moved();
+                let Size(w, h) = rect.size;
+                solve_size_rules(&mut entry.0, cx.size_cx(), Some(w), Some(h));
+                entry.1 = State::Sized;
             }
+
+            debug_assert_eq!(entry.1, State::Sized);
+            entry.0.set_rect(cx, rect, self.align_hints);
+            cx.region_moved();
         } else {
             if old_index < self.widgets.len() {
                 cx.region_moved();
