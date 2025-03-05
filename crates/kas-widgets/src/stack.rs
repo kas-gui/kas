@@ -291,8 +291,11 @@ impl<W: Widget> Stack<W> {
             }
 
             if entry.1 == State::Configured {
-                let Size(w, h) = rect.size;
-                solve_size_rules(&mut entry.0, cx.size_cx(), Some(w), Some(h));
+                let Size(w, _h) = rect.size;
+                // HACK: we should pass the known height here, but it causes
+                // even distribution of excess space. Maybe SizeRules::solve_seq
+                // should not always distribute excess space?
+                solve_size_rules(&mut entry.0, cx.size_cx(), Some(w), None);
                 entry.1 = State::Sized;
             }
 

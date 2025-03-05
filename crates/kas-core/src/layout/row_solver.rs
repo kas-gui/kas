@@ -42,6 +42,7 @@ impl<S: RowStorage> RowSolver<S> {
         let axis_is_vertical = axis.is_vertical() ^ dir.is_vertical();
 
         if axis.has_fixed && axis_is_vertical {
+            // Assume we already have rules for the other axis; solve for the given width
             let (widths, rules) = storage.widths_and_rules();
             SizeRules::solve_seq(widths, rules, axis.other_axis);
         }
