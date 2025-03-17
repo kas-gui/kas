@@ -104,7 +104,7 @@ impl_scope! {
                     cx.push(GripMsg::PressStart);
                     press.grab(self.id(), kas::event::GrabMode::Grab)
                         .with_icon(CursorIcon::Grabbing)
-                        .with_cx(cx);
+                        .complete(cx);
 
                     // Event delivery implies coord is over the grip.
                     self.press_coord = press.coord - self.offset();
@@ -219,7 +219,7 @@ impl_scope! {
             press
                 .grab(self.id(), kas::event::GrabMode::Grab)
                 .with_icon(CursorIcon::Grabbing)
-                .with_cx(cx);
+                .complete(cx);
 
             let offset = press.coord - self.track.pos - Offset::conv(self.rect.size / 2);
             let offset = offset.clamp(Offset::ZERO, self.max_offset());

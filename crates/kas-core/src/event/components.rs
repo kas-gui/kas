@@ -319,7 +319,7 @@ impl ScrollComponent {
                 let _ = press
                     .grab(id.clone(), GrabMode::Grab)
                     .with_icon(CursorIcon::Grabbing)
-                    .with_cx(cx);
+                    .complete(cx);
                 self.glide.press_start();
             }
             Event::PressMove { press, delta, .. }
@@ -445,7 +445,7 @@ impl TextInput {
                 press
                     .grab(w_id, GrabMode::Grab)
                     .with_opt_icon(icon)
-                    .with_cx(cx);
+                    .complete(cx);
                 self.glide.press_start();
                 action
             }
