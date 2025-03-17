@@ -357,8 +357,10 @@ impl_scope! {
 
         fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
             let action = self.scroll.set_offset(offset);
-            cx.action(&self, action);
-            cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
+            if !action.is_empty() {
+                cx.action(&self, action);
+                cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
+            }
             self.scroll.offset()
         }
     }
