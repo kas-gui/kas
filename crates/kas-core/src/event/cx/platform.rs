@@ -628,7 +628,7 @@ impl<'a> EventCx<'a> {
                         if let Some(index) = self.get_touch_index(touch.id) {
                             let grab = self.remove_touch(index);
 
-                            if grab.mode == GrabMode::Grab {
+                            if !grab.mode.is_pan() {
                                 let id = grab.cur_id.clone();
                                 let press = Press { source, id, coord };
                                 let success = ev == TouchPhase::Ended;
