@@ -509,6 +509,14 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             return Ok(());
         };
 
+        let mut messages = MessageStack::new();
+        let widget = self.widget.as_node(&state.data);
+        self.ev_state
+            .with(&mut state.shared, window, &mut messages, |cx| {
+                cx.frame_update(widget);
+            });
+        state.handle_messages(&mut messages);
+
         window.next_avail_frame_time = start + self.ev_state.config().frame_dur();
 
         {

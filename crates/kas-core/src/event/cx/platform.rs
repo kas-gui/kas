@@ -277,6 +277,7 @@ impl<'a> EventCx<'a> {
     /// This method should be called once per frame as well as after the last
     /// frame before a long sleep.
     pub(crate) fn frame_update(&mut self, mut widget: Node<'_>) {
+        log::debug!(target: "kas_core::event", "Processing frame update");
         for gi in 0..self.pan_grab.len() {
             let grab = &mut self.pan_grab[gi];
             debug_assert!(grab.mode != GrabMode::Grab);
