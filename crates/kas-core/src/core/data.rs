@@ -84,12 +84,18 @@ impl WidgetStatus {
     }
 
     /// Configure
+    ///
+    /// Requires nothing. Re-configuration does not require repeating other actions.
     pub fn configure(&mut self, _id: &Id) {
         // re-configure does not require repeating other actions
         *self = (*self).max(WidgetStatus::Configured);
     }
 
     /// Update
+    ///
+    /// Requires configure. Does not affect status (note that widgets are always
+    /// updated immediately after configure, hence `WidgetStatus::Configured`
+    /// implies that `update` has been called or is just about to be called).
     pub fn update(&self, id: &Id) {
         self.require(id, WidgetStatus::Configured);
 
@@ -100,25 +106,31 @@ impl WidgetStatus {
     }
 
     /// Size rules
+    ///
+    /// Requires a prior call to `configure`. When `axis.is_vertical()`,
+    /// requires a prior call to `size_rules` for the horizontal axis.
+    ///
+    /// Re-calling `size_rules` does not require additional actions.
     pub fn size_rules(&mut self, id: &Id, axis: crate::layout::AxisInfo) {
-        // NOTE: Possibly this is too strict and we should not require
-        // re-running size_rules(vert) or set_rect afterwards?
         if axis.is_horizontal() {
             self.require(id, WidgetStatus::Configured);
-            *self = WidgetStatus::SizeRulesX;
+            *self = (*self).max(WidgetStatus::SizeRulesX);
         } else {
             self.require(id, WidgetStatus::SizeRulesX);
-            *self = WidgetStatus::SizeRulesY;
+            *self = (*self).max(WidgetStatus::SizeRulesY);
         }
     }
 
     /// Set rect
+    ///
+    /// Requires calling `size_rules` for each axis. Re-calling `set_rect` does
+    /// not require additional actions.
     pub fn set_rect(&mut self, id: &Id) {
         self.require(id, WidgetStatus::SizeRulesY);
         *self = WidgetStatus::SetRect;
     }
 
-    /// Require that set_rect has been called
+    /// Require that `set_rect` has been called
     pub fn require_rect(&self, id: &Id) {
         self.require(id, WidgetStatus::SetRect);
     }

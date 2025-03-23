@@ -26,11 +26,20 @@ use kas_macros::autoimpl;
 /// 1.  The widget is configured ([`Events::configure`],
 ///     [`Events::configure_recurse`]) and immediately updated
 ///     ([`Events::update`]).
-/// 2.  The widget has its size-requirements checked by calling
-///     [`Layout::size_rules`] for each axis.
-/// 3.  [`Layout::set_rect`] is called to position elements. This may use data
-///     cached by `size_rules`.
-/// 4.  The widget is updated again after any data change (see [`ConfigCx::update`]).
+///
+///     The widget may be re-configured at any time without expectation that
+///     the layout will be resized / set again.
+/// 2.  The widget is updated by calling [`Events::update`] immediately after
+///     it is configured and also after any update to input data (or other data
+///     which may have changed, such as that exposed by [`EventState::config`]).
+/// 3.  The widget is "sized" by calling [`Layout::size_rules`] for the
+///     horizontal axis then for the vertical axis.
+///
+///     These methods may be called again at any time without expectation that
+///     the layout will be set again.
+/// 4.  [`Layout::set_rect`] is called to "set" layout.
+///
+///     This method may be called again at any time.
 /// 5.  The widget is ready for event-handling and drawing
 ///     ([`Events::handle_event`], [`Layout::try_probe`], [`Layout::draw`]).
 ///
