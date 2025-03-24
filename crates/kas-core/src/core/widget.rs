@@ -102,8 +102,9 @@ pub trait Events: Widget + Sized {
         for index in 0..self.num_children() {
             let id = self.make_child_id(index);
             if id.is_valid() {
-                self.as_node(data)
-                    .for_child(index, |node| cx.configure(node, id));
+                if let Some(node) = self.as_node(data).get_child(index) {
+                    cx.configure(node, id);
+                }
             }
         }
     }
@@ -134,7 +135,9 @@ pub trait Events: Widget + Sized {
     /// Use [`ConfigCx::update`].
     fn update_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
         for index in 0..self.num_children() {
-            self.as_node(data).for_child(index, |node| cx.update(node));
+            if let Some(node) = self.as_node(data).get_child(index) {
+                cx.update(node);
+            }
         }
     }
 

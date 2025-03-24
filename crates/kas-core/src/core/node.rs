@@ -218,19 +218,13 @@ impl<'a> Node<'a> {
     ///
     /// Calls the closure exactly when `index < self.num_children()`.
     #[inline(always)]
-    pub fn for_child(&mut self, index: usize, f: impl FnOnce(Node<'_>)) {
-        let f: Box<dyn for<'b> FnOnce(Node<'b>)> = Box::new(f);
-        let opt_node = {
-            cfg_if::cfg_if! {
-                if #[cfg(feature = "unsafe_node")] {
-                    self.0.child_node(self.1, index)
-                } else {
-                    self.0.child_node(index)
-                }
+    pub fn get_child(&mut self, index: usize) -> Option<Node<'_>> {
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "unsafe_node")] {
+                self.0.child_node(self.1, index)
+            } else {
+                self.0.child_node(index)
             }
-        };
-        if let Some(node) = opt_node {
-            f(node);
         }
     }
 
@@ -269,10 +263,12 @@ impl<'a> Node<'a> {
     #[inline(always)]
     pub fn find_node<F: FnOnce(Node<'_>) -> T, T>(&mut self, id: &Id, cb: F) -> Option<T> {
         if let Some(index) = self.find_child_index(id) {
-            let mut result = None;
-            let out = &mut result;
-            self.for_child(index, |mut node| *out = node.find_node(id, cb));
-            result
+            if let Some(mut node) = self.get_child(index) {
+                node.find_node(id, cb)
+            } else {
+                debug_assert!(false);
+                None
+            }
         } else if self.eq_id(id) {
             Some(cb(self.re()))
         } else {

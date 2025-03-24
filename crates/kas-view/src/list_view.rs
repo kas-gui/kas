@@ -842,7 +842,9 @@ impl_scope! {
             if let Some(index) = child {
                 let mut opt_id = None;
                 let out = &mut opt_id;
-                self.as_node(data).for_child(index, |mut node| *out = node._nav_next(cx, focus, advance));
+                if let Some(mut node) = self.as_node(data).get_child(index) {
+                    *out = node._nav_next(cx, focus, advance);
+                }
                 if let Some(id) = opt_id {
                     return Some(id);
                 }
@@ -883,7 +885,9 @@ impl_scope! {
 
                 let mut opt_id = None;
                 let out = &mut opt_id;
-                self.as_node(data).for_child(index, |mut node| *out = node._nav_next(cx, focus, advance));
+                if let Some(mut node) = self.as_node(data).get_child(index) {
+                    *out = node._nav_next(cx, focus, advance);
+                }
                 if let Some(id) = opt_id {
                     return Some(id);
                 }

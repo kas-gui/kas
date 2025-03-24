@@ -42,10 +42,10 @@ pub fn _send<W: Events>(
         if let Some(index) = widget.find_child_index(&id) {
             let translation = widget.translation();
             let mut _found = false;
-            widget.as_node(data).for_child(index, |mut node| {
+            if let Some(mut node) = widget.as_node(data).get_child(index) {
                 is_used = node._send(cx, id.clone(), event.clone() + translation);
                 _found = true;
-            });
+            }
 
             #[cfg(debug_assertions)]
             if !_found {
@@ -81,10 +81,10 @@ pub fn _send<W: Events>(
 pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>::Data, id: Id) {
     if let Some(index) = widget.find_child_index(&id) {
         let mut _found = false;
-        widget.as_node(data).for_child(index, |mut node| {
+        if let Some(mut node) = widget.as_node(data).get_child(index) {
             node._replay(cx, id.clone());
             _found = true;
-        });
+        }
 
         #[cfg(debug_assertions)]
         if !_found {
@@ -147,7 +147,9 @@ fn nav_next(
     if let Some(index) = child {
         let mut opt_id = None;
         let out = &mut opt_id;
-        widget.for_child(index, |mut node| *out = node._nav_next(cx, focus, advance));
+        if let Some(mut node) = widget.get_child(index) {
+            *out = node._nav_next(cx, focus, advance);
+        }
         if let Some(id) = opt_id {
             return Some(id);
         }
@@ -174,7 +176,9 @@ fn nav_next(
     while let Some(index) = widget.nav_next(rev, child) {
         let mut opt_id = None;
         let out = &mut opt_id;
-        widget.for_child(index, |mut node| *out = node._nav_next(cx, focus, advance));
+        if let Some(mut node) = widget.get_child(index) {
+            *out = node._nav_next(cx, focus, advance);
+        }
         if let Some(id) = opt_id {
             return Some(id);
         }
