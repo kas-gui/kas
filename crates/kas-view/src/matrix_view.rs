@@ -745,19 +745,16 @@ impl_scope! {
     impl Widget for Self {
         type Data = A::Data;
 
-        fn for_child_node(
-            &mut self,
-            data: &A::Data,
-            index: usize,
-            closure: Box<dyn FnOnce(Node<'_>) + '_>,
-        ) {
+        fn child_node<'n>(&'n mut self, data: &'n A::Data, index: usize) -> Option<Node<'n>> {
             if let Some(w) = self.widgets.get_mut(index) {
                 if let Some(ref key) = w.key {
                     if let Some(item) = self.accessor.item(data, key) {
-                        closure(w.widget.as_node(item));
+                        return Some(w.widget.as_node(item));
                     }
                 }
             }
+
+            None
         }
 
         // Non-standard implementation to allow mapping new children

@@ -22,7 +22,7 @@ trait NodeT {
 
     fn num_children(&self) -> usize;
     fn find_child_index(&self, id: &Id) -> Option<usize>;
-    fn for_child_node(&mut self, index: usize, f: Box<dyn FnOnce(Node<'_>) + '_>);
+    fn child_node(&mut self, index: usize) -> Option<Node<'_>>;
 
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules;
     fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints);
@@ -64,8 +64,8 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
         self.0.find_child_index(id)
     }
 
-    fn for_child_node(&mut self, index: usize, f: Box<dyn FnOnce(Node<'_>) + '_>) {
-        self.0.for_child_node(self.1, index, f);
+    fn child_node(&mut self, index: usize) -> Option<Node<'_>> {
+        self.0.child_node(self.1, index)
     }
 
     fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
@@ -220,12 +220,17 @@ impl<'a> Node<'a> {
     #[inline(always)]
     pub fn for_child(&mut self, index: usize, f: impl FnOnce(Node<'_>)) {
         let f: Box<dyn for<'b> FnOnce(Node<'b>)> = Box::new(f);
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "unsafe_node")] {
-                self.0.for_child_node(self.1, index, f);
-            } else {
-                self.0.for_child_node(index, f);
+        let opt_node = {
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "unsafe_node")] {
+                    self.0.child_node(self.1, index)
+                } else {
+                    self.0.child_node(index)
+                }
             }
+        };
+        if let Some(node) = opt_node {
+            f(node);
         }
     }
 
@@ -234,12 +239,17 @@ impl<'a> Node<'a> {
     pub fn for_children(&mut self, mut f: impl FnMut(Node<'_>)) {
         for index in 0..self.0.num_children() {
             let f: Box<dyn for<'b> FnOnce(Node<'b>)> = Box::new(&mut f);
-            cfg_if::cfg_if! {
-                if #[cfg(feature = "unsafe_node")] {
-                    self.0.for_child_node(self.1, index, f);
-                } else {
-                    self.0.for_child_node(index, f);
+            let opt_node = {
+                cfg_if::cfg_if! {
+                    if #[cfg(feature = "unsafe_node")] {
+                        self.0.child_node(self.1, index)
+                    } else {
+                        self.0.child_node(index)
+                    }
                 }
+            };
+            if let Some(node) = opt_node {
+                f(node);
             }
         }
     }

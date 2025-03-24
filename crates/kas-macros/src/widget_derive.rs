@@ -274,16 +274,15 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
 
     // Widget methods are derived. Cost: cannot override any Events methods or translation().
     let fn_as_node = widget_as_node();
-    let fn_for_child_node = quote! {
+    let fn_child_node = quote! {
         #[inline]
-        fn for_child_node(
-            &mut self,
-            data: &Self::Data,
+        fn child_node<'__n>(
+            &'__n mut self,
+            data: &'__n Self::Data,
             index: usize,
-            closure: Box<dyn FnOnce(::kas::Node<'_>) + '_>,
-        ) {
+        ) -> Option<::kas::Node<'__n>> {
             #map_data
-            self.#inner.for_child_node(data, index, closure)
+            self.#inner.child_node(data, index)
         }
     };
     let fn_configure = quote! {
@@ -358,8 +357,8 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             widget_impl.items.push(Verbatim(fn_as_node));
         }
 
-        if !has_item("for_child_node") {
-            widget_impl.items.push(Verbatim(fn_for_child_node));
+        if !has_item("child_node") {
+            widget_impl.items.push(Verbatim(fn_child_node));
         }
 
         if !has_item("_configure") {
@@ -386,7 +385,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             impl #impl_generics ::kas::Widget for #impl_target {
                 type Data = #data_ty;
                 #fn_as_node
-                #fn_for_child_node
+                #fn_child_node
                 #fn_configure
                 #fn_update
                 #fn_send

@@ -315,7 +315,7 @@ pub enum NavAdvance {
 /// -   **Core** methods of [`Tile`] are *always* implemented via the [`#widget`]
 ///     macro, whether or not an `impl Tile { ... }` item is present.
 /// -   **Introspection** methods [`Tile::num_children`], [`Tile::get_child`]
-///     and [`Widget::for_child_node`] are implemented by the [`#widget`] macro
+///     and [`Widget::child_node`] are implemented by the [`#widget`] macro
 ///     in most cases: child widgets embedded within a layout descriptor or
 ///     included as fields marked with `#[widget]` are enumerated.
 /// -   **Introspection** methods [`Tile::find_child_index`] and
@@ -362,13 +362,8 @@ pub trait Widget: Tile {
     ///
     /// It is recommended to use the methods on [`Node`]
     /// instead of calling this method.
-    fn for_child_node(
-        &mut self,
-        data: &Self::Data,
-        index: usize,
-        closure: Box<dyn FnOnce(Node<'_>) + '_>,
-    ) {
-        let _ = (data, index, closure);
+    fn child_node<'n>(&'n mut self, data: &'n Self::Data, index: usize) -> Option<Node<'n>> {
+        let _ = (data, index);
         unimplemented!() // make rustdoc show that this is a provided method
     }
 
