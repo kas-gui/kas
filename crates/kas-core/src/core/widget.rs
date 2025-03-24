@@ -68,8 +68,10 @@ pub trait Events: Widget + Sized {
     /// Configure self
     ///
     /// Widgets are *configured* before sizing, drawing and event handling (see
-    /// [widget lifecycle](Widget#widget-lifecycle)). Configuration may be
-    /// repeated at any time.
+    /// [widget lifecycle](Widget#widget-lifecycle)).
+    ///
+    /// Configuration may be repeated at any time. If `id` changes, children
+    /// must be assigned new/updated identifiers.
     ///
     /// [`Self::update`] is always called immediately after this method,
     /// followed by [`Self::configure_recurse`].

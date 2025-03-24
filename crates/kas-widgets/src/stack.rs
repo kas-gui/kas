@@ -147,19 +147,13 @@ impl_scope! {
     impl Events for Self {
         fn make_child_id(&mut self, index: usize) -> Id {
             if let Some((child, state)) = self.widgets.get(index) {
-                if state.is_configured() {
-                    debug_assert!(child.id_ref().is_valid());
+                // Use the widget's existing identifier, if valid
+                if state.is_configured() && child.id_ref().is_valid() && self.id_ref().is_ancestor_of(child.id_ref()) {
                     if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
-                        self.id_map.insert(key, index);
-                        return child.id();
-                    }
-                }
-
-                // Use the widget's existing identifier, if any
-                if child.id_ref().is_valid() {
-                    if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
-                        self.id_map.insert(key, index);
-                        return child.id();
+                        if let Entry::Vacant(entry) = self.id_map.entry(key) {
+                            entry.insert(index);
+                            return child.id();
+                        }
                     }
                 }
             }
@@ -175,6 +169,7 @@ impl_scope! {
         }
 
         fn configure(&mut self, _: &mut ConfigCx) {
+            // All children will be re-configured which will rebuild id_map
             self.id_map.clear();
         }
 
