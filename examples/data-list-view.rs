@@ -47,7 +47,7 @@ impl Data {
             strings: HashMap::new(),
         }
     }
-    fn get(&self, index: usize) -> String {
+    fn get_string(&self, index: usize) -> String {
         self.strings
             .get(&index)
             .cloned()
@@ -80,7 +80,7 @@ impl Data {
         self.len = len;
         if self.active >= len && len > 0 {
             self.active = len - 1;
-            self.active_string = self.get(self.active);
+            self.active_string = self.get_string(self.active);
         }
     }
 }
@@ -142,13 +142,12 @@ impl_scope! {
 impl SharedData for Data {
     type Key = usize;
     type Item = Item;
-    type ItemRef<'b> = Item;
 
     fn contains_key(&self, key: &Self::Key) -> bool {
         *key < self.len()
     }
-    fn borrow(&self, key: &Self::Key) -> Option<Item> {
-        Some((self.active, self.get(*key)))
+    fn get(&self, key: &Self::Key) -> Option<Item> {
+        Some((self.active, self.get_string(*key)))
     }
 }
 impl ListData for Data {

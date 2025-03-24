@@ -15,7 +15,6 @@ use kas::NavAdvance;
 #[allow(unused)] // doc links
 use kas_widgets::ScrollBars;
 use linear_map::set::LinearSet;
-use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::time::Instant;
 
@@ -338,8 +337,8 @@ impl_scope! {
                 if w.key.as_ref() != Some(&key) {
                     self.driver.set_key(&mut w.widget, &key);
 
-                    if let Some(item) = data.borrow(&key) {
-                        cx.configure(w.widget.as_node(item.borrow()), id);
+                    if let Some(item) = data.get(&key) {
+                        cx.configure(w.widget.as_node(&item), id);
 
                         solve_size_rules(
                             &mut w.widget,
@@ -352,8 +351,8 @@ impl_scope! {
                         w.key = None; // disables drawing and clicking
                     }
                 } else if full {
-                    if let Some(item) = data.borrow(&key) {
-                        cx.update(w.widget.as_node(item.borrow()));
+                    if let Some(item) = data.get(&key) {
+                        cx.update(w.widget.as_node(&item));
                     }
                 }
                 w.widget.set_rect(cx, solver.rect(i), self.align_hints);
@@ -625,9 +624,9 @@ impl_scope! {
             let id = self.id();
             for w in &mut self.widgets {
                 if let Some(ref key) = w.key {
-                    if let Some(item) = data.borrow(&key) {
+                    if let Some(item) = data.get(&key) {
                         let id = key.make_id(&id);
-                        cx.configure(w.widget.as_node(item.borrow()), id);
+                        cx.configure(w.widget.as_node(&item), id);
                     }
                 }
             }
@@ -803,8 +802,8 @@ impl_scope! {
         ) {
             if let Some(w) = self.widgets.get_mut(index) {
                 if let Some(ref key) = w.key {
-                    if let Some(item) = data.borrow(key) {
-                        closure(w.widget.as_node(item.borrow()));
+                    if let Some(item) = data.get(key) {
+                        closure(w.widget.as_node(&item));
                     }
                 }
             }

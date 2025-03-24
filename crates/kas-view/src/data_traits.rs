@@ -6,7 +6,6 @@
 //! Traits for shared data objects
 
 use kas::{autoimpl, Id};
-use std::borrow::Borrow;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -82,52 +81,13 @@ pub trait SharedData: Debug {
     /// Item type
     type Item: Clone;
 
-    /// A borrow of the item type
-    ///
-    /// This type must support [`Borrow`] over [`Self::Item`]. This is, for
-    /// example, supported by `Self::Item` and `&Self::Item`.
-    ///
-    /// It is also recommended (but not required) that the type support
-    /// [`std::ops::Deref`]: this allows easier usage of [`Self::borrow`].
-    ///
-    /// TODO(spec): once Rust supports some form of specialization, `AsRef` will
-    /// presumably get blanket impls over `T` and `&T`, and will then be more
-    /// appropriate to use than `Borrow`.
-    type ItemRef<'b>: Borrow<Self::Item>
-    where
-        Self: 'b;
-
     /// Check whether a key has data
     fn contains_key(&self, key: &Self::Key) -> bool;
 
-    /// Borrow an item by `key`
+    /// Get a reference to an item by `key`
     ///
     /// Returns `None` if `key` has no associated item.
-    ///
-    /// Depending on the implementation, this may involve some form of lock
-    /// such as `RefCell::borrow` or `Mutex::lock`. The implementation should
-    /// panic on lock failure, not return `None`.
-    fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>>;
-
-    /// Access a borrow of an item
-    ///
-    /// This is a convenience method over [`Self::borrow`].
-    fn with_ref<V>(&self, key: &Self::Key, f: impl FnOnce(&Self::Item) -> V) -> Option<V>
-    where
-        Self: Sized,
-    {
-        self.borrow(key).map(|borrow| f(borrow.borrow()))
-    }
-
-    /// Get data by key (clone)
-    ///
-    /// Returns `None` if `key` has no associated item.
-    ///
-    /// This has a default implementation over [`Self::borrow`].
-    #[inline]
-    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
-        self.borrow(key).map(|r| r.borrow().to_owned())
-    }
+    fn get(&self, key: &Self::Key) -> Option<Self::Item>;
 }
 
 /// Trait for viewable data lists

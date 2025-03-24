@@ -173,8 +173,8 @@ impl_scope! {
             self.view.clear();
             self.view.reserve(data.len());
             for key in data.iter_from(0, usize::MAX) {
-                if let Some(item) = data.borrow(&key) {
-                    if self.filter.matches(std::borrow::Borrow::borrow(&item)) {
+                if let Some(item) = data.get(&key) {
+                    if self.filter.matches(&item) {
                         self.view.push(key);
                     }
                 }
@@ -207,8 +207,7 @@ impl_scope! {
     /// are not adjusted in any way.
     ///
     /// The filter applies to [`SharedData::contains_key`] and [`ListData`]
-    /// methods, but not to [`SharedData::borrow`] (the latter can thus access
-    /// items excluded by the filter).
+    /// methods.
     #[derive(Debug)]
     pub struct UnsafeFilteredList<A: ListData + 'static> {
         data: &'static A,
@@ -228,7 +227,6 @@ impl_scope! {
     impl SharedData for Self {
         type Key = A::Key;
         type Item = A::Item;
-        type ItemRef<'b> = A::ItemRef<'b> where A: 'b;
 
         fn contains_key(&self, key: &Self::Key) -> bool {
             // TODO(opt): note that this is O(n*n). For large lists it would be
@@ -237,8 +235,8 @@ impl_scope! {
             self.view.iter().any(|item| *item == *key)
         }
         #[inline]
-        fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>> {
-            self.data.borrow(key)
+        fn get(&self, key: &Self::Key) -> Option<A::Item> {
+            self.data.get(key)
         }
     }
 
