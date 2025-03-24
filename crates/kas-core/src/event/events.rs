@@ -282,7 +282,7 @@ impl Event {
                 f(cx)
             }
             Event::PressStart { press, .. } if press.is_primary() => {
-                press.grab(id, GrabMode::Click).with_cx(cx)
+                press.grab(id, GrabMode::Click).complete(cx)
             }
             Event::PressEnd { press, success } => {
                 if success && id == press.id {

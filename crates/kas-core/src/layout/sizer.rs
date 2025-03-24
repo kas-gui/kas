@@ -13,6 +13,7 @@ use crate::layout::AlignHints;
 use crate::theme::SizeCx;
 use crate::util::WidgetHierarchy;
 use crate::{Node, Tile};
+use log::trace;
 
 /// A [`SizeRules`] solver for layouts
 ///
@@ -78,6 +79,12 @@ pub fn solve_size_rules<W: Tile + ?Sized>(
     x_size: Option<i32>,
     y_size: Option<i32>,
 ) {
+    trace!(
+        "solve_size_rules({}, _, {:?}, {:?})",
+        widget.identify(),
+        x_size,
+        y_size
+    );
     widget.size_rules(sizer.re(), AxisInfo::new(false, y_size));
     widget.size_rules(sizer.re(), AxisInfo::new(true, x_size));
 }

@@ -121,7 +121,7 @@ impl Press {
 
 /// Bulider pattern (see [`Press::grab`])
 ///
-/// Conclude by calling [`Self::with_cx`].
+/// Conclude by calling [`Self::complete`].
 #[must_use]
 pub struct GrabBuilder {
     id: Id,
@@ -161,7 +161,7 @@ impl GrabBuilder {
     ///
     /// Note: error conditions are only checked in debug builds. These cases
     /// may need revision.
-    pub fn with_cx(self, cx: &mut EventCx) -> IsUsed {
+    pub fn complete(self, cx: &mut EventCx) -> IsUsed {
         let GrabBuilder {
             id,
             source,

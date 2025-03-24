@@ -417,7 +417,7 @@ impl_scope! {
                 Event::PressStart { press } => {
                     return press.grab(self.id(), event::GrabMode::PanFull)
                         .with_icon(event::CursorIcon::Grabbing)
-                        .with_cx(cx);
+                        .complete(cx);
                 }
                 _ => return Unused,
             }

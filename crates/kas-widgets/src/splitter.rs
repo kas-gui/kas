@@ -106,11 +106,25 @@ impl_scope! {
             let child_index = (2 * index) + (is_grip as usize);
             if !is_grip {
                 if let Some(child) = self.widgets.get_tile(index) {
-                    // Use the widget's existing identifier, if any
-                    if child.id_ref().is_valid() {
+                    // Use the widget's existing identifier, if valid
+                    if child.id_ref().is_valid() && self.id_ref().is_ancestor_of(child.id_ref()) {
                         if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
-                            self.id_map.insert(key, child_index);
-                            return child.id();
+                            if let Entry::Vacant(entry) = self.id_map.entry(key) {
+                                entry.insert(child_index);
+                                return child.id();
+                            }
+                        }
+                    }
+                }
+            } else {
+                if let Some(child) = self.grips.get_tile(index) {
+                    // Use the widget's existing identifier, if valid
+                    if child.id_ref().is_valid() && self.id_ref().is_ancestor_of(child.id_ref()) {
+                        if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
+                            if let Entry::Vacant(entry) = self.id_map.entry(key) {
+                                entry.insert(child_index);
+                                return child.id();
+                            }
                         }
                     }
                 }
@@ -266,6 +280,7 @@ impl_scope! {
         }
 
         fn configure(&mut self, _: &mut ConfigCx) {
+            // All children will be re-configured which will rebuild id_map
             self.id_map.clear();
         }
 

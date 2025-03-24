@@ -233,6 +233,10 @@ impl EventState {
                 cx.replay(win.as_node(data), id, msg);
             }
 
+            // Poll futures. TODO(opt): this does not need to happen so often,
+            // but just in frame_update is insufficient.
+            cx.poll_futures(win.as_node(data));
+
             // Finally, clear the region_moved flag.
             if cx.action.contains(Action::REGION_MOVED) {
                 cx.action.remove(Action::REGION_MOVED);
@@ -273,6 +277,7 @@ impl<'a> EventCx<'a> {
     /// This method should be called once per frame as well as after the last
     /// frame before a long sleep.
     pub(crate) fn frame_update(&mut self, mut widget: Node<'_>) {
+        log::debug!(target: "kas_core::event", "Processing frame update");
         for gi in 0..self.pan_grab.len() {
             let grab = &mut self.pan_grab[gi];
             debug_assert!(grab.mode != GrabMode::Grab);
@@ -320,9 +325,6 @@ impl<'a> EventCx<'a> {
         for (id, handle) in frame_updates.into_iter() {
             self.send_event(widget.re(), id, Event::Timer(handle));
         }
-
-        // Poll futures once per frame.
-        self.poll_futures(widget);
     }
 
     /// Update widgets due to timer
@@ -626,7 +628,7 @@ impl<'a> EventCx<'a> {
                         if let Some(index) = self.get_touch_index(touch.id) {
                             let grab = self.remove_touch(index);
 
-                            if grab.mode == GrabMode::Grab {
+                            if !grab.mode.is_pan() {
                                 let id = grab.cur_id.clone();
                                 let press = Press { source, id, coord };
                                 let success = ev == TouchPhase::Ended;

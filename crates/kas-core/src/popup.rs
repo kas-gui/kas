@@ -76,8 +76,7 @@ impl_scope! {
                         Unused
                     }
                 }
-                Event::PopupClosed(id) => {
-                    debug_assert_eq!(Some(id), self.win_id);
+                Event::PopupClosed(_) => {
                     self.win_id = None;
                     Used
                 }
@@ -149,7 +148,7 @@ impl_scope! {
         /// Navigation focus will return to whichever widget had focus before
         /// the popup was open.
         pub fn close(&mut self, cx: &mut EventCx) {
-            if let Some(id) = self.win_id {
+            if let Some(id) = self.win_id.take() {
                 cx.close_window(id);
             }
         }

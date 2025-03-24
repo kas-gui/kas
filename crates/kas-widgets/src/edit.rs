@@ -884,7 +884,7 @@ impl_scope! {
                     self.pan_delta(cx, delta2)
                 }
                 Event::PressStart { press } if press.is_tertiary() =>
-                    press.grab(self.id(), kas::event::GrabMode::Click).with_cx(cx),
+                    press.grab(self.id(), kas::event::GrabMode::Click).complete(cx),
                 Event::PressEnd { press, .. } if press.is_tertiary() => {
                     if let Some(content) = cx.get_primary() {
                         self.set_edit_pos_from_coord(cx, press.coord);

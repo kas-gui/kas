@@ -21,8 +21,10 @@ layout(set = 0, binding = 1) uniform FragCommon {
 };
 
 void main() {
-    float n3 = 1.0 - sqrt(norm2.x * norm2.x + norm2.y * norm2.y);
+    float n3 = sqrt(1.0 - norm2.x * norm2.x - norm2.y * norm2.y);
     vec3 norm = vec3(norm2, n3);
+    // HACK: hard code the light norm since the value received above is clearly wrong
+    vec3 lightNorm = vec3(0.1204612, -0.28491753, 1.0);
     vec3 c = fragColor.rgb * dot(norm, lightNorm);
     outColor = vec4(c, fragColor.a);
 }

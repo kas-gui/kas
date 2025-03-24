@@ -414,9 +414,11 @@ impl_scope! {
         }
 
         fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
-            let act = self.scroll.set_offset(offset);
-            cx.action(&self, act);
-            cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
+            let action = self.scroll.set_offset(offset);
+            if !action.is_empty() {
+                cx.action(&self, action);
+                cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
+            }
             self.scroll.offset()
         }
     }
@@ -708,7 +710,7 @@ impl_scope! {
 
                     // Press may also be grabbed by scroll component (replacing
                     // this). Either way we can select on PressEnd.
-                    press.grab(self.id(), kas::event::GrabMode::Click).with_cx(cx)
+                    press.grab(self.id(), kas::event::GrabMode::Click).complete(cx)
                 }
                 Event::PressEnd { ref press, success } if press.is_primary() => {
                     if let Some((index, ref key)) = self.press_target {

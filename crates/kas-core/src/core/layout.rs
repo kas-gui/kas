@@ -23,24 +23,6 @@ use kas_macros::autoimpl;
 /// See [`Widget`] documentation and the [`#widget`] macro.
 /// `Layout` may not be implemented independently.
 ///
-/// # Widget lifecycle
-///
-/// 1.  The widget is configured ([`Events::configure`]) and immediately updated
-///     ([`Events::update`]).
-/// 2.  The widget has its size-requirements checked by calling [`Self::size_rules`]
-///     for each axis (usually via recursion, sometimes via [`layout::solve_size_rules`]
-///     or [`layout::SolveCache`]).
-/// 3.  [`Self::set_rect`] is called to position elements. This may use data
-///     cached by `size_rules`.
-/// 4.  The widget is updated again after any data change (see [`ConfigCx::update`]).
-/// 5.  The widget is ready for event-handling and drawing ([`Events`],
-///     [`Layout::try_probe`], [`Self::draw`]).
-///
-/// Widgets are responsible for ensuring that their children may observe this
-/// lifecycle. Usually this simply involves inclusion of the child in layout
-/// operations. Steps of the lifecycle may be postponed until a widget becomes
-/// visible.
-///
 /// # Implementation
 ///
 /// The [`#widget`] macro will, when its `layout` property is specified,
@@ -64,7 +46,7 @@ pub trait Layout {
     /// # Calling
     ///
     /// This method is called during sizing (see
-    /// [widget lifecycle](Self#widget-lifecycle)).
+    /// [widget lifecycle](Widget#widget-lifecycle)).
     /// Typically, this method is called twice: first for the horizontal axis,
     /// second for the vertical axis (with resolved width available through
     /// the `axis` parameter allowing content wrapping).

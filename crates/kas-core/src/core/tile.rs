@@ -86,7 +86,8 @@ pub trait Tile: Layout {
     /// Get the number of child widgets
     ///
     /// Every value in the range `0..self.num_children()` is a valid child
-    /// index.
+    /// index (meaning that the child exists, though it may not be configured
+    /// or sized or visible even though the parent widget is).
     ///
     /// This method is usually implemented automatically by the `#[widget]`
     /// macro. It should be implemented directly if and only if
@@ -99,6 +100,8 @@ pub trait Tile: Layout {
     /// Access a child as a `dyn Tile`
     ///
     /// This method returns `None` exactly when `index >= self.num_children()`.
+    /// A returned child may not be configured or sized or visible even when
+    /// the parent widget is.
     ///
     /// This method is usually implemented automatically by the `#[widget]`
     /// macro.
