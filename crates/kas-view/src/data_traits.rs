@@ -5,17 +5,20 @@
 
 //! Traits for shared data objects
 
-use kas::{autoimpl, Id};
+use kas::Id;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;
+use std::ops::Range;
 
 /// Bounds on the key type
+///
+/// This type should be small, easy to copy, and without internal mutability.
 pub trait DataKey: Clone + Debug + Default + PartialEq + Eq + 'static {
     /// Make an [`Id`] for a key
     ///
-    /// The result must be distinct from `parent`.
-    /// Use [`Id::make_child`].
+    /// The result must be distinct from `parent` and a descendant of `parent`
+    /// (use [`Id::make_child`] for this, optionally more than once).
     fn make_id(&self, parent: &Id) -> Id;
 
     /// Reconstruct a key from an [`Id`]
@@ -68,88 +71,76 @@ impl DataKey for (usize, usize) {
     }
 }
 
-/// Trait for shared data
+/// Accessor for data
 ///
-/// By design, all methods take only `&self` and only allow immutable access to
-/// data.
-#[autoimpl(for<T: trait + ?Sized>
-    &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
-pub trait SharedData: Debug {
+/// The trait covers access to data (especially important for data which must be retrieved from a
+/// remote database or generated on demand). The implementation may optionally support filtering.
+///
+/// Type parameter `Index` is `usize` for `ListView` or `(usize, usize)` for `MatrixView`.
+pub trait DataAccessor<Index> {
+    /// Input data type (of parent widget)
+    type Data;
+
     /// Key type
+    ///
+    /// All data items should have a stable key so that data items may be
+    /// tracked through changing filters.
     type Key: DataKey;
 
     /// Item type
+    ///
+    /// `&Item` is passed to child view widgets as input data.
     type Item: Clone;
 
-    /// Get a reference to an item by `key`
+    /// Update the query
     ///
-    /// Returns `None` if `key` has no associated item.
-    fn get(&self, key: &Self::Key) -> Option<Self::Item>;
-}
-
-/// Trait for viewable data lists
-///
-/// Provided implementations: `[T]`, `Vec<T>`.
-/// Warning: these implementations do not communicate changes to data.
-/// Non-static lists should use a custom type and trait implementation.
-#[allow(clippy::len_without_is_empty)]
-#[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
-pub trait ListData: SharedData {
-    /// No data is available
-    fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    /// Number of data items available
+    /// This is called by [`kas::Events::update`]. It may be called frequently
+    /// and without changes to `data` and should use `async` execution for
+    /// expensive or slow calculations.
     ///
-    /// Note: users may assume this is `O(1)`.
-    fn len(&self) -> usize;
+    /// This method should perform any updates required to adjust [`Self::len`].
+    fn update(&mut self, data: &Self::Data);
 
-    /// Iterate over up to `limit` keys from `start`
+    /// Get the total number of items
     ///
-    /// An example where `type Key = usize`:
-    /// ```ignore
-    /// fn iter_from(&self, start: usize, limit: usize) -> impl Iterator<Item = usize> {
-    ///     start.min(self.len)..(start + limit).min(self.len)
-    /// }
-    /// ```
+    /// The result may change after a call to [`Self::update`] due to changes in
+    /// the data set query or filter. The result should not depend on `range`.
     ///
-    /// This method is called on every update so should be reasonably fast.
-    fn iter_from(&self, start: usize, limit: usize) -> impl Iterator<Item = Self::Key>;
-}
+    /// TODO: revise how scrolling works and remove this method.
+    fn len(&self, data: &Self::Data) -> Index;
 
-/// Trait for viewable data matrices
-///
-/// Data matrices are a kind of table where each cell has the same type.
-#[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
-pub trait MatrixData: SharedData {
-    /// Column key type
-    type ColKey;
-    /// Row key type
-    type RowKey;
-
-    /// No data is available
-    fn is_empty(&self) -> bool;
-
-    /// Number of `(cols, rows)` available
+    /// Prepare a range
     ///
-    /// Note: users may assume this is `O(1)`.
-    fn len(&self) -> (usize, usize);
-
-    /// Iterate over up to `limit` column keys from `start`
+    /// This method is called after [`Self::update`] and any time that the
+    /// accessed range might be expected to change. It may be called frequently
+    /// and without changes to `range` and should use `async` execution for
+    /// expensive or slow calculations.
     ///
-    /// The result will be in deterministic implementation-defined order, with
-    /// a length of `max(limit, data_len - start)` where `data_len` is the number of
-    /// items available.
-    fn col_iter_from(&self, start: usize, limit: usize) -> impl Iterator<Item = Self::ColKey>;
-
-    /// Iterate over up to `limit` row keys from `start`
+    /// It should prepare for [`Self::key`] to be called on the given `range`
+    /// and [`Self::item`] to be called for the returnable keys. These methods
+    /// may be called immediately after this method, though it is acceptable for
+    /// them to return [`None`] until keys / data items are available.
     ///
-    /// The result will be in deterministic implementation-defined order, with
-    /// a length of `max(limit, data_len - start)` where `data_len` is the number of
-    /// items available.
-    fn row_iter_from(&self, start: usize, limit: usize) -> impl Iterator<Item = Self::RowKey>;
+    /// This method may update cached keys and items asynchronously (i.e. after
+    /// this method returns); in this case it should prioritise updating of keys
+    /// over items.
+    fn prepare_range(&mut self, data: &Self::Data, range: Range<Index>);
 
-    /// Make a key from parts
-    fn make_key(&self, col: &Self::ColKey, row: &Self::RowKey) -> Self::Key;
+    /// Get a key for a given `index`, if available
+    ///
+    /// This method should be fast since it may be called repeatedly.
+    /// The method may be called for each `index` in the given `range` after
+    /// calls to [`Self::update`].
+    ///
+    /// This may return `None` even when `index` is within the query's `range`
+    /// since data may be sparse or still loading (async).
+    fn key(&self, data: &Self::Data, index: Index) -> Option<Self::Key>;
+
+    /// Get a data item, if available
+    ///
+    /// This method should be fast since it may be called repeatedly.
+    ///
+    /// This may return `None` while data is still loading (async). The view
+    /// widget may display a loading animation in this case.
+    fn item<'r>(&'r self, data: &'r Self::Data, key: &'r Self::Key) -> Option<&'r Self::Item>;
 }

@@ -11,9 +11,10 @@
 //! to calculate the maximum scroll offset).
 
 use kas::prelude::*;
-use kas::view::{Driver, ListData, ListView, SharedData};
+use kas::view::{DataAccessor, Driver, ListView};
 use kas::widgets::{column, *};
 use std::collections::HashMap;
+use std::ops::Range;
 
 #[derive(Debug)]
 struct SelectEntry(usize);
@@ -139,23 +140,51 @@ impl_scope! {
     }
 }
 
-impl SharedData for Data {
+#[derive(Default)]
+struct MyAccessor {
+    start: usize,
+    len: usize,
+    items: Vec<Item>,
+}
+impl DataAccessor<usize> for MyAccessor {
+    type Data = Data;
     type Key = usize;
     type Item = Item;
 
-    fn get(&self, key: &Self::Key) -> Option<Item> {
-        Some((self.active, self.get_string(*key)))
-    }
-}
-impl ListData for Data {
-    fn len(&self) -> usize {
-        self.len
+    fn update(&mut self, _: &Self::Data) {}
+
+    fn len(&self, data: &Self::Data) -> usize {
+        data.len
     }
 
-    fn iter_from(&self, start: usize, limit: usize) -> impl Iterator<Item = usize> {
-        let start = start.min(self.len);
-        let end = (start + limit).min(self.len);
-        (start..end).into_iter()
+    fn prepare_range(&mut self, data: &Self::Data, range: Range<usize>) {
+        let update_range;
+        if range.len() == self.len {
+            if range.start == self.start {
+                return;
+            } else if range.start > self.start {
+                update_range = (self.start + self.len)..range.end;
+            } else {
+                update_range = range.start..self.start;
+            }
+        } else {
+            self.len = range.len();
+            self.items.resize(self.len, Item::default());
+            update_range = range.clone();
+        }
+
+        self.start = range.start;
+        for index in update_range {
+            self.items[index % self.len] = (data.active, data.get_string(index));
+        }
+    }
+
+    fn key(&self, _: &Self::Data, index: usize) -> Option<Self::Key> {
+        Some(index)
+    }
+
+    fn item(&self, _: &Self::Data, key: &Self::Key) -> Option<&Item> {
+        Some(&self.items[key % self.len])
     }
 }
 
@@ -196,7 +225,7 @@ fn main() -> kas::runner::Result<()> {
 
     let data = Data::new(5);
 
-    let list = ListView::new(MyDriver).on_update(|cx, list, data: &Data| {
+    let list = ListView::new(MyAccessor::default(), MyDriver).on_update(|cx, list, data: &Data| {
         list.set_direction(cx, data.dir);
     });
     let tree = column![
