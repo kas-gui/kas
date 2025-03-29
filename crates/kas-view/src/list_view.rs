@@ -49,7 +49,7 @@ impl_scope! {
     #[widget]
     pub struct ListView<A: ListData, V, D = Direction>
     where
-        V: Driver<A::Item, A>,
+        V: Driver<A::Key, A::Item>,
         D: Directional,
     {
         core: widget_core!(),
@@ -88,31 +88,31 @@ impl_scope! {
             Self::new_dir(driver, D::default())
         }
     }
-    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, kas::dir::Left> {
+    impl<A: ListData, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Left> {
         /// Construct a new instance
         pub fn left(driver: V) -> Self {
             Self::new(driver)
         }
     }
-    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, kas::dir::Right> {
+    impl<A: ListData, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Right> {
         /// Construct a new instance
         pub fn right(driver: V) -> Self {
             Self::new(driver)
         }
     }
-    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, kas::dir::Up> {
+    impl<A: ListData, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Up> {
         /// Construct a new instance
         pub fn up(driver: V) -> Self {
             Self::new(driver)
         }
     }
-    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, kas::dir::Down> {
+    impl<A: ListData, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Down> {
         /// Construct a new instance
         pub fn down(driver: V) -> Self {
             Self::new(driver)
         }
     }
-    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, Direction> {
+    impl<A: ListData, V: Driver<A::Key, A::Item>> ListView<A, V, Direction> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, cx: &mut EventState, direction: Direction) {
             if direction != self.direction {
@@ -162,10 +162,10 @@ impl_scope! {
         /// [`Select`].
         ///
         /// On selection and deselection, a [`SelectionMsg`] message is emitted.
-        /// This is not sent to [`Driver::on_messages`].
+        /// This is not sent to [`Driver::handle_messages`].
         ///
         /// The driver may trigger selection by emitting [`Select`] from
-        /// [`Driver::on_messages`]. The driver is not notified of selection
+        /// [`Driver::handle_messages`]. The driver is not notified of selection
         /// except via [`Select`] from view widgets. (TODO: reconsider this.)
         ///
         /// [`Select`]: kas::messages::Select
@@ -765,7 +765,9 @@ impl_scope! {
                     None => return,
                 };
 
-                self.driver.on_messages(cx, &mut w.widget, data, &key);
+                if let Some(item) = data.get(&key) {
+                    self.driver.handle_messages(cx, &mut w.widget, &item, &key);
+                }
             } else {
                 // Message is from self
                 key = match self.press_target.as_ref() {

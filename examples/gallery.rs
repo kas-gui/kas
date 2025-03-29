@@ -387,8 +387,7 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
     };
 
     struct ListGuard;
-    type FilteredList = filter::UnsafeFilteredList<Vec<String>>;
-    impl Driver<String, FilteredList> for ListGuard {
+    impl Driver<usize, String> for ListGuard {
         type Widget = NavFrame<Text<String, String>>;
         fn make(&mut self, _: &usize) -> Self::Widget {
             Default::default()

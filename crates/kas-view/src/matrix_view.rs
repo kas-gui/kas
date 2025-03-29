@@ -52,7 +52,7 @@ impl_scope! {
     /// emit [`kas::messages::Select`] to have themselves be selected.
     #[derive(Clone, Debug)]
     #[widget]
-    pub struct MatrixView<A: MatrixData, V: Driver<A::Item, A>> {
+    pub struct MatrixView<A: MatrixData, V: Driver<A::Key, A::Item>> {
         core: widget_core!(),
         frame_offset: Offset,
         frame_size: Size,
@@ -115,10 +115,10 @@ impl_scope! {
         /// [`Select`].
         ///
         /// On selection and deselection, a [`SelectionMsg`] message is emitted.
-        /// This is not sent to [`Driver::on_messages`].
+        /// This is not sent to [`Driver::handle_messages`].
         ///
         /// The driver may trigger selection by emitting [`Select`] from
-        /// [`Driver::on_messages`]. The driver is not notified of selection
+        /// [`Driver::handle_messages`]. The driver is not notified of selection
         /// except via [`Select`] from view widgets. (TODO: reconsider this.)
         ///
         /// [`Select`]: kas::messages::Select
@@ -723,7 +723,9 @@ impl_scope! {
                     None => return,
                 };
 
-                self.driver.on_messages(cx, &mut w.widget, data, &key);
+                if let Some(item) = data.get(&key) {
+                    self.driver.handle_messages(cx, &mut w.widget, &item, &key);
+                }
             } else {
                 // Message is from self
                 key = match self.press_target.clone() {

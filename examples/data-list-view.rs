@@ -160,7 +160,7 @@ impl ListData for Data {
 }
 
 struct MyDriver;
-impl Driver<Item, Data> for MyDriver {
+impl Driver<usize, Item> for MyDriver {
     type Widget = ListEntry;
 
     fn make(&mut self, key: &usize) -> Self::Widget {
@@ -196,7 +196,7 @@ fn main() -> kas::runner::Result<()> {
 
     let data = Data::new(5);
 
-    let list = ListView::new(MyDriver).on_update(|cx, list, data| {
+    let list = ListView::new(MyDriver).on_update(|cx, list, data: &Data| {
         list.set_direction(cx, data.dir);
     });
     let tree = column![
