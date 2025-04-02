@@ -14,9 +14,6 @@ macro_rules! impl_list_data {
             type Key = usize;
             type Item = T;
 
-            fn contains_key(&self, key: &Self::Key) -> bool {
-                *key < self.len()
-            }
             fn get(&self, key: &Self::Key) -> Option<Self::Item> {
                 <[T]>::get(self, *key).cloned()
             }

@@ -206,8 +206,7 @@ impl_scope! {
     /// This is an abstraction over a [`ListData`]. Items and associated keys
     /// are not adjusted in any way.
     ///
-    /// The filter applies to [`SharedData::contains_key`] and [`ListData`]
-    /// methods.
+    /// The filter applies to [`ListData`] methods.
     #[derive(Debug)]
     pub struct UnsafeFilteredList<A: ListData + 'static> {
         data: &'static A,
@@ -228,12 +227,6 @@ impl_scope! {
         type Key = A::Key;
         type Item = A::Item;
 
-        fn contains_key(&self, key: &Self::Key) -> bool {
-            // TODO(opt): note that this is O(n*n). For large lists it would be
-            // faster to re-evaluate the filter. Alternatively we could use a
-            // HashSet or BTreeSet to test membership.
-            self.view.iter().any(|item| *item == *key)
-        }
         #[inline]
         fn get(&self, key: &Self::Key) -> Option<A::Item> {
             self.data.get(key)

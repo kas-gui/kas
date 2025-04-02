@@ -143,9 +143,6 @@ impl SharedData for Data {
     type Key = usize;
     type Item = Item;
 
-    fn contains_key(&self, key: &Self::Key) -> bool {
-        *key < self.len()
-    }
     fn get(&self, key: &Self::Key) -> Option<Item> {
         Some((self.active, self.get_string(*key)))
     }

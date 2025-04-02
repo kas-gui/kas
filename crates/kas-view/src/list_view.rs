@@ -273,6 +273,21 @@ impl_scope! {
             r
         }
 
+        /// Deselect all unavailable items
+        ///
+        /// By default, the set of selected keys persists when items filtered or
+        /// removed the data set. This allows the selection to survive changing
+        /// filters. To avoid this behaviour, call this method on update.
+        pub fn deselect_unavailable(&mut self, cx: &mut EventState) {
+            let len = self.selection.len();
+            self.selection.retain(|key| {
+                self.widgets.iter().any(|widget| widget.key.as_ref() == Some(key))
+            });
+            if len != self.selection.len() {
+                cx.redraw(self);
+            }
+        }
+
         /// Get the direction of contents
         pub fn direction(&self) -> Direction {
             self.direction.as_direction()
@@ -633,8 +648,6 @@ impl_scope! {
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
-            self.selection.retain(|key| data.contains_key(key));
-
             let data_len = data.len().cast();
             if data_len != self.data_len {
                 self.data_len = data_len;

@@ -584,8 +584,6 @@ impl_scope! {
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
-            self.selection.retain(|key| data.contains_key(key));
-
             let (d_cols, d_rows) = data.len();
             let data_len = Size(d_cols.cast(), d_rows.cast());
             if data_len != self.data_len {

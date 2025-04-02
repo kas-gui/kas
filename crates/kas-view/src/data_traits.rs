@@ -81,9 +81,6 @@ pub trait SharedData: Debug {
     /// Item type
     type Item: Clone;
 
-    /// Check whether a key has data
-    fn contains_key(&self, key: &Self::Key) -> bool;
-
     /// Get a reference to an item by `key`
     ///
     /// Returns `None` if `key` has no associated item.

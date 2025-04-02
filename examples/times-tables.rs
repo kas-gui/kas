@@ -10,11 +10,8 @@ impl SharedData for TableSize {
     type Key = (usize, usize);
     type Item = usize;
 
-    fn contains_key(&self, key: &Self::Key) -> bool {
-        key.0 < self.0 && key.1 < self.0
-    }
     fn get(&self, key: &Self::Key) -> Option<usize> {
-        self.contains_key(key).then_some((key.0 + 1) * (key.1 + 1))
+        (key.0 < self.0 && key.1 < self.0).then_some((key.0 + 1) * (key.1 + 1))
     }
 }
 impl MatrixData for TableSize {
