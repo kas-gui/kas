@@ -30,7 +30,7 @@
 mod data_traits;
 pub use data_traits::*;
 
-// pub mod filter;
+pub mod filter;
 
 pub mod driver;
 pub use driver::Driver;

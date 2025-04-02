@@ -153,6 +153,11 @@ impl_scope! {
             }
         }
 
+        /// Access the data accessor
+        pub fn accessor(&self) -> &A {
+            &self.accessor
+        }
+
         /// Get the current selection mode
         pub fn selection_mode(&self) -> SelectionMode {
             self.sel_mode

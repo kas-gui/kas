@@ -357,7 +357,10 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 }
 
 fn filter_list() -> Box<dyn Widget<Data = AppData>> {
-    use kas::view::{filter, Driver, ListView, SelectionMode, SelectionMsg};
+    use kas::view::{
+        filter, filter::Filter, DataAccessor, Driver, ListView, SelectionMode, SelectionMsg,
+    };
+    use std::ops::Range;
 
     const MONTHS: &[&str] = &[
         "January",
@@ -377,14 +380,62 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
     #[derive(Debug)]
     struct Data {
         mode: SelectionMode,
-        list: Vec<String>,
     }
     let data = Data {
         mode: SelectionMode::None,
+    };
+
+    struct MonthsAccessor {
+        filter: filter::ContainsCaseInsensitive,
+        // NOTE: list should perhaps be stored in struct Data, but we need to
+        // access it in fn item(). Ideally `&Data` would be passed as input data
+        // but we pass the filter instead; we can't pass both without making
+        // type Widget::Data generic over a lifetime (requires dyn-safe GAT).
+        list: Vec<String>,
+        filtered: Vec<usize>,
+    }
+    let accessor = MonthsAccessor {
+        filter: Default::default(),
         list: (2019..=2025)
             .flat_map(|year| MONTHS.iter().map(move |m| format!("{m} {year}")))
             .collect(),
+        filtered: Vec::new(),
     };
+
+    impl DataAccessor<usize> for MonthsAccessor {
+        type Data = filter::ContainsCaseInsensitive;
+
+        type Key = usize;
+
+        type Item = String;
+
+        fn update(&mut self, filter: &Self::Data) {
+            if *filter != self.filter || self.filtered.is_empty() {
+                self.filter = filter.clone();
+                self.filtered.clear();
+                self.filtered.reserve(self.list.len());
+                for (i, item) in self.list.iter().enumerate() {
+                    if filter.matches(item) {
+                        self.filtered.push(i);
+                    }
+                }
+            }
+        }
+
+        fn len(&self, _: &Self::Data) -> usize {
+            self.filtered.len()
+        }
+
+        fn prepare_range(&mut self, _: &Self::Data, _: Range<usize>) {}
+
+        fn key(&self, _: &Self::Data, index: usize) -> Option<usize> {
+            self.filtered.get(index).cloned()
+        }
+
+        fn item(&self, _: &Self::Data, key: &usize) -> Option<&String> {
+            self.list.get(*key)
+        }
+    }
 
     struct ListGuard;
     impl Driver<usize, String> for ListGuard {
@@ -394,11 +445,15 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
         }
     }
     let filter = filter::ContainsCaseInsensitive::new();
-    let guard = filter::KeystrokeGuard;
-    let list_view = filter::FilterBoxList::new(ListView::down(ListGuard), filter, guard)
-        .map(|data: &Data| &data.list)
-        .on_update(|cx, list, data| {
+    let list_view = ListView::down(accessor, ListGuard);
+    let list_view = filter::FilterBoxListView::new(filter, list_view, filter::KeystrokeGuard)
+        .map_any()
+        .on_update(|cx, list, data: &Data| {
             list.list_mut().set_selection_mode(cx, data.mode);
+        })
+        .on_message(|_, fblv, selection: SelectionMsg<usize>| match selection {
+            SelectionMsg::Select(i) => println!("Selected: {}", &fblv.list().accessor().list[i]),
+            _ => (),
         });
 
     let sel_buttons = row![
@@ -413,11 +468,7 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
     ];
     let ui = ui
         .with_state(data)
-        .on_message(|_, data, mode| data.mode = mode)
-        .on_message(|_, data, selection: SelectionMsg<usize>| match selection {
-            SelectionMsg::Select(i) => println!("Selected: {}", &data.list[i]),
-            _ => (),
-        });
+        .on_message(|_, data, mode| data.mode = mode);
     let ui = adapt::AdaptEvents::new(ui)
         .on_update(|cx, _, data: &AppData| cx.set_disabled(data.disabled));
     Box::new(ui)

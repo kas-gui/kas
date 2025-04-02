@@ -23,7 +23,7 @@ pub trait Filter<T>: FilterValue {
 }
 
 /// Filter: target contains self (case-sensitive string match)
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct ContainsString(String);
 
 impl ContainsString {
@@ -63,7 +63,7 @@ impl Filter<String> for ContainsString {
 // upper case). See [question on StackOverflow].
 //
 // [question on StackOverflow]: https://stackoverflow.com/questions/47298336/case-insensitive-string-matching-in-rust
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct ContainsCaseInsensitive(String);
 
 impl ContainsCaseInsensitive {
