@@ -703,6 +703,8 @@ impl_scope! {
                     self.driver.handle_messages(cx, &mut w.widget, &item, &key);
                 }
             } else {
+                self.accessor.handle_messages(cx, data);
+
                 // Message is from self
                 key = match self.press_target.clone() {
                     Some((_, k)) => k,

@@ -5,6 +5,7 @@
 
 //! Traits for shared data objects
 
+use kas::event::EventCx;
 use kas::Id;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
@@ -130,6 +131,19 @@ pub trait DataAccessor<Index> {
     /// this method returns); in this case it should prioritise updating of keys
     /// over items.
     fn prepare_range(&mut self, data: &Self::Data, range: Range<Index>);
+
+    /// Handle an async message
+    ///
+    /// This method is called when a message is available, possibly the result
+    /// of an asynchronous message sent through [`Self::update`] or
+    /// [`Self::prepare_range`]. The implementation should
+    /// [try_pop](EventCx::try_pop) messages of types sent by this trait impl
+    /// but not messages of other types.
+    ///
+    /// Default implementation: do nothing.
+    fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
+        let _ = (cx, data);
+    }
 
     /// Get a key for a given `index`, if available
     ///
