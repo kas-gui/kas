@@ -357,9 +357,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 }
 
 fn filter_list() -> Box<dyn Widget<Data = AppData>> {
-    use kas::view::{
-        filter, filter::Filter, DataAccessor, Driver, ListView, SelectionMode, SelectionMsg,
-    };
+    use kas::view::{driver, filter, DataAccessor, ListView, SelectionMode, SelectionMsg};
     use std::ops::Range;
 
     const MONTHS: &[&str] = &[
@@ -415,6 +413,7 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
                 self.filtered.clear();
                 self.filtered.reserve(self.list.len());
                 for (i, item) in self.list.iter().enumerate() {
+                    use filter::Filter;
                     if filter.matches(item) {
                         self.filtered.push(i);
                     }
@@ -437,15 +436,8 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
         }
     }
 
-    struct ListGuard;
-    impl Driver<usize, String> for ListGuard {
-        type Widget = NavFrame<Text<String, String>>;
-        fn make(&mut self, _: &usize) -> Self::Widget {
-            Default::default()
-        }
-    }
     let filter = filter::ContainsCaseInsensitive::new();
-    let list_view = ListView::down(accessor, ListGuard);
+    let list_view = ListView::down(accessor, driver::NavView);
     let list_view = filter::FilterBoxListView::new(filter, list_view, filter::KeystrokeGuard)
         .map_any()
         .on_update(|cx, list, data: &Data| {
