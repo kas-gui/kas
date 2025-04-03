@@ -33,6 +33,26 @@ use std::default::Default;
 /// message with a `Key`, either embed that key while constructing
 /// the widget with [`Driver::make`] or intercept the message in
 /// [`Driver::handle_messages`].
+///
+/// # Example implementations
+///
+/// It is expected that a custom implementation is created for each usage. A
+/// simple example might just map input data to a [`Text`] widget:
+/// ```
+/// use kas_view::Driver;
+/// use kas_widgets::Text;
+///
+/// struct MyDriver;
+/// impl<Key> Driver<Key, f32> for MyDriver {
+///     type Widget = Text<f32, String>;
+///     fn make(&mut self, _: &Key) -> Self::Widget {
+///         Text::new(|_, data: &f32| data.to_string())
+///     }
+///     fn set_key(&mut self, _: &mut Self::Widget, _: &Key) {
+///         // Text has no metadata that needs to be reset
+///     }
+/// }
+/// ```
 #[autoimpl(for<T: trait + ?Sized> &mut T, Box<T>)]
 pub trait Driver<Key, Item> {
     /// Type of the widget used to view data
@@ -133,6 +153,7 @@ impl<Key> Driver<Key, bool> for View {
         // CheckBox has no metadata that needs to be reset
     }
 }
+
 impl<Key> Driver<Key, bool> for NavView {
     type Widget = CheckBox<bool>;
     fn make(&mut self, _: &Key) -> Self::Widget {
