@@ -1,50 +1,74 @@
 //! Do you know your times tables?
 
 use kas::prelude::*;
-use kas::view::{driver, MatrixData, MatrixView, SelectionMode, SelectionMsg, SharedData};
+use kas::view::{driver, DataAccessor, MatrixView, SelectionMode, SelectionMsg};
 use kas::widgets::{column, row, EditBox, ScrollBars};
+use std::ops::Range;
 
-#[derive(Debug)]
-struct TableSize(usize);
-impl SharedData for TableSize {
+#[derive(Debug, Default)]
+struct TableSize {
+    dim: usize,
+    x_len: usize,
+    x_start: usize,
+    y_start: usize,
+    contents: Vec<usize>,
+}
+
+impl DataAccessor<(usize, usize)> for TableSize {
+    type Data = usize;
     type Key = (usize, usize);
     type Item = usize;
 
-    fn get(&self, key: &Self::Key) -> Option<usize> {
-        (key.0 < self.0 && key.1 < self.0).then_some((key.0 + 1) * (key.1 + 1))
-    }
-}
-impl MatrixData for TableSize {
-    type ColKey = usize;
-    type RowKey = usize;
-
-    fn is_empty(&self) -> bool {
-        self.0 == 0
-    }
-    fn len(&self) -> (usize, usize) {
-        (self.0, self.0)
+    fn update(&mut self, dim: &Self::Data) {
+        self.dim = *dim;
     }
 
-    #[allow(refining_impl_trait)]
-    fn col_iter_from(&self, start: usize, limit: usize) -> std::ops::Range<usize> {
-        let end = self.0.min(start + limit);
-        start..end
-    }
-    #[allow(refining_impl_trait)]
-    fn row_iter_from(&self, start: usize, limit: usize) -> std::ops::Range<usize> {
-        let end = self.0.min(start + limit);
-        start..end
+    fn len(&self, _: &Self::Data) -> (usize, usize) {
+        (self.dim, self.dim)
     }
 
-    fn make_key(&self, col: &Self::ColKey, row: &Self::RowKey) -> Self::Key {
-        (*col, *row)
+    fn prepare_range(&mut self, _: &Self::Data, range: Range<(usize, usize)>) {
+        // This is a simple hack to cache contents for the given range for usage by item()
+        let x_len = range.end.0 - range.start.0;
+        let y_len = range.end.1 - range.start.1;
+        if x_len != self.x_len
+            || x_len * y_len != self.contents.len()
+            || self.x_start != range.start.0
+            || self.y_start != range.start.1
+        {
+            self.x_len = x_len;
+            self.x_start = range.start.0;
+            self.y_start = range.start.1;
+            self.contents.clear();
+            self.contents.reserve(x_len * y_len);
+
+            for y in range.start.1..range.end.1 {
+                for x in range.start.0..range.end.0 {
+                    self.contents.push((x + 1) * (y + 1));
+                }
+            }
+        }
+    }
+
+    fn key(&self, _: &Self::Data, index: (usize, usize)) -> Option<Self::Key> {
+        Some(index)
+    }
+
+    fn item(&self, _: &Self::Data, key: &Self::Key) -> Option<&Self::Item> {
+        // We are required to return a reference, otherwise we would simply
+        // calculate the value here!
+        let (x, y) = *key;
+        let xrel = x - self.x_start;
+        let yrel = y - self.y_start;
+        let i = xrel + yrel * self.x_len;
+        self.contents.get(i)
     }
 }
 
 fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
-    let table = MatrixView::new(driver::NavView)
+    let table = MatrixView::new(TableSize::default(), driver::NavView)
         .with_num_visible(12, 12)
         .with_selection_mode(SelectionMode::Single);
     let table = ScrollBars::new(table);
@@ -53,15 +77,12 @@ fn main() -> kas::runner::Result<()> {
     struct SetLen(usize);
 
     let ui = column![
-        row![
-            "From 1 to",
-            EditBox::parser(|data: &TableSize| data.0, SetLen)
-        ],
+        row!["From 1 to", EditBox::parser(|dim: &usize| *dim, SetLen)],
         table.align(AlignHints::RIGHT),
     ];
     let ui = ui
-        .with_state(TableSize(12))
-        .on_message(|_, data, SetLen(len)| data.0 = len)
+        .with_state(12)
+        .on_message(|_, dim, SetLen(len)| *dim = len)
         .on_message(|_, _, selection| match selection {
             SelectionMsg::<(usize, usize)>::Select((col, row)) => {
                 let (c, r) = (col + 1, row + 1);

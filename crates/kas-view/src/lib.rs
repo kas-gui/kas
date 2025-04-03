@@ -38,8 +38,8 @@ pub use driver::Driver;
 mod list_view;
 pub use list_view::ListView;
 
-// mod matrix_view;
-// pub use matrix_view::MatrixView;
+mod matrix_view;
+pub use matrix_view::MatrixView;
 
 /// Used to notify selection and deselection of [`ListView`] and [`MatrixView`] children
 #[derive(Clone, Debug)]
