@@ -8,9 +8,10 @@
 use super::Filter;
 use crate::{DataAccessor, Driver, ListView};
 use kas::dir::{Direction, Directional};
-use kas::event::EventCx;
+use kas::event::{EventCx, EventState};
 use kas::{autoimpl, impl_scope, Events, Widget};
 use kas_widgets::edit::{EditBox, EditField, EditGuard};
+use kas_widgets::{ScrollBarMode, ScrollBars};
 use std::fmt::Debug;
 
 #[derive(Debug, Default)]
@@ -67,7 +68,7 @@ impl_scope! {
         #[widget(&())]
         edit: EditBox<G>,
         #[widget(&self.filter)]
-        list: ListView<A, V, D>,
+        list: ScrollBars<ListView<A, V, D>>,
     }
 
     impl Self {
@@ -80,20 +81,54 @@ impl_scope! {
                 core: Default::default(),
                 filter,
                 edit: EditBox::new(guard),
-                list,
+                list: ScrollBars::new(list),
             }
+        }
+
+        /// Set fixed visibility of scroll bars (inline)
+        #[inline]
+        pub fn with_fixed_bars(mut self, horiz: bool, vert: bool) -> Self
+        where
+            Self: Sized,
+        {
+            self.list = self.list.with_fixed_bars(horiz, vert);
+            self
+        }
+
+        /// Set fixed, invisible bars (inline)
+        ///
+        /// In this mode scroll bars are either enabled but invisible until
+        /// hovered by the mouse or disabled completely.
+        #[inline]
+        pub fn with_invisible_bars(mut self, horiz: bool, vert: bool) -> Self
+        where
+            Self: Sized,
+        {
+            self.list = self.list.with_invisible_bars(horiz, vert);
+            self
+        }
+
+        /// Get current mode of scroll bars
+        #[inline]
+        pub fn scroll_bar_mode(&self) -> ScrollBarMode {
+            self.list.scroll_bar_mode()
+        }
+
+        /// Set scroll bar mode
+        pub fn set_scroll_bar_mode(&mut self, cx: &mut EventState, mode: ScrollBarMode) {
+            self.list.set_scroll_bar_mode(cx, mode);
         }
 
         /// Access the inner list widget
         #[inline]
         pub fn list(&self) -> &ListView<A, V, D> {
-            &self.list
+            self.list.inner()
         }
 
         /// Access the inner list widget mutably
         #[inline]
         pub fn list_mut(&mut self) -> &mut ListView<A, V, D> {
-            &mut self.list
+            self.list.inner_mut()
         }
     }
 

@@ -462,10 +462,7 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
         RadioButton::new_value("s&ingle", SelectionMode::Single),
         RadioButton::new_value("&multiple", SelectionMode::Multiple),
     ];
-    let ui = column![
-        sel_buttons.map(|data: &Data| &data.mode),
-        ScrollBars::new(list_view),
-    ];
+    let ui = column![sel_buttons.map(|data: &Data| &data.mode), list_view,];
     let ui = ui
         .with_state(data)
         .on_message(|_, data, mode| data.mode = mode);
