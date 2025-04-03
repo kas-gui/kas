@@ -620,28 +620,26 @@ impl EventState {
         self.send_queue.push_back((id, msg));
     }
 
-    /// Asynchronously push a message to the stack via a [`Future`]
+    /// Send a message to `id` via a [`Future`]
     ///
     /// The future is polled after event handling and after drawing and is able
     /// to wake the event loop. This future is executed on the main thread; for
-    /// high-CPU tasks use [`Self::push_spawn`] instead.
+    /// high-CPU tasks use [`Self::send_spawn`] instead.
     ///
-    /// The future must resolve to a message on completion. This message is
-    /// pushed to the message stack as if it were pushed with [`EventCx::push`]
-    /// from widget `id`, allowing this widget or any ancestor to handle it in
-    /// [`Events::handle_messages`].
-    pub fn push_async<Fut, M>(&mut self, id: Id, fut: Fut)
+    /// The future must resolve to a message on completion. Its message is then
+    /// sent to `id` via stack traversal identically to [`Self::send`].
+    pub fn send_async<Fut, M>(&mut self, id: Id, fut: Fut)
     where
         Fut: IntoFuture<Output = M> + 'static,
         M: Debug + 'static,
     {
-        self.push_async_erased(id, async { Erased::new(fut.await) });
+        self.send_async_erased(id, async { Erased::new(fut.await) });
     }
 
-    /// Asynchronously push a type-erased message to the stack via a [`Future`]
+    /// Send a type-erased message to `id` via a [`Future`]
     ///
-    /// This is a low-level variant of [`Self::push_async`].
-    pub fn push_async_erased<Fut>(&mut self, id: Id, fut: Fut)
+    /// This is a low-level variant of [`Self::send_async`].
+    pub fn send_async_erased<Fut>(&mut self, id: Id, fut: Fut)
     where
         Fut: IntoFuture<Output = Erased> + 'static,
     {
@@ -653,20 +651,20 @@ impl EventState {
     ///
     /// The future is spawned to a thread-pool before the event-handling loop
     /// sleeps, and is able to wake the loop on completion. Tasks involving
-    /// significant CPU work should use this method over [`Self::push_async`].
+    /// significant CPU work should use this method over [`Self::send_async`].
     ///
     /// This method is simply a wrapper around [`async_global_executor::spawn`]
-    /// and [`Self::push_async`]; if a different multi-threaded executor is
+    /// and [`Self::send_async`]; if a different multi-threaded executor is
     /// available, that may be used instead. See also [`async_global_executor`]
     /// documentation of configuration.
     #[cfg(feature = "spawn")]
-    pub fn push_spawn<Fut, M>(&mut self, id: Id, fut: Fut)
+    pub fn send_spawn<Fut, M>(&mut self, id: Id, fut: Fut)
     where
         Fut: IntoFuture<Output = M> + 'static,
         Fut::IntoFuture: Send,
         M: Debug + Send + 'static,
     {
-        self.push_async(id, async_global_executor::spawn(fut.into_future()));
+        self.send_async(id, async_global_executor::spawn(fut.into_future()));
     }
 
     /// Request update and optionally configure to widget `id`
