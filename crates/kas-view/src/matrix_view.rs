@@ -267,7 +267,7 @@ impl_scope! {
 
             let start = (first_row, first_col);
             let end = (first_row + row_len, first_col + col_len);
-            self.accessor.prepare_range(data, start..end);
+            self.accessor.prepare_range(cx, self.id(), data, start..end);
 
             let solver = self.position_solver();
             for ri in start.0..end.0 {
@@ -567,7 +567,7 @@ impl_scope! {
         }
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A::Data) {
-            self.accessor.update(data);
+            self.accessor.update(cx, self.id(), data);
             let (d_cols, d_rows) = self.accessor.len(data);
             let data_len = Size(d_cols.cast(), d_rows.cast());
             if data_len != self.data_len {
@@ -703,7 +703,7 @@ impl_scope! {
                     self.driver.handle_messages(cx, &mut w.widget, &item, &key);
                 }
             } else {
-                self.accessor.handle_messages(cx, data);
+                self.accessor.handle_messages(cx, self.id(), data);
 
                 // Message is from self
                 key = match self.press_target.clone() {

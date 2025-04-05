@@ -19,7 +19,7 @@ impl DataAccessor<(usize, usize)> for TableSize {
     type Key = (usize, usize);
     type Item = usize;
 
-    fn update(&mut self, dim: &Self::Data) {
+    fn update(&mut self, _: &mut ConfigCx, _: Id, dim: &Self::Data) {
         self.dim = *dim;
     }
 
@@ -27,7 +27,13 @@ impl DataAccessor<(usize, usize)> for TableSize {
         (self.dim, self.dim)
     }
 
-    fn prepare_range(&mut self, _: &Self::Data, range: Range<(usize, usize)>) {
+    fn prepare_range(
+        &mut self,
+        _: &mut ConfigCx,
+        _: Id,
+        _: &Self::Data,
+        range: Range<(usize, usize)>,
+    ) {
         // This is a simple hack to cache contents for the given range for usage by item()
         let x_len = range.end.0 - range.start.0;
         let y_len = range.end.1 - range.start.1;

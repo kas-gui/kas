@@ -407,7 +407,7 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
 
         type Item = String;
 
-        fn update(&mut self, filter: &Self::Data) {
+        fn update(&mut self, _: &mut ConfigCx, _: Id, filter: &Self::Data) {
             if *filter != self.filter || self.filtered.is_empty() {
                 self.filter = filter.clone();
                 self.filtered.clear();
@@ -425,7 +425,7 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
             self.filtered.len()
         }
 
-        fn prepare_range(&mut self, _: &Self::Data, _: Range<usize>) {}
+        fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, _: &Self::Data, _: Range<usize>) {}
 
         fn key(&self, _: &Self::Data, index: usize) -> Option<usize> {
             self.filtered.get(index).cloned()

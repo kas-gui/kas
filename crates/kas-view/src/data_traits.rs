@@ -5,7 +5,7 @@
 
 //! Traits for shared data objects
 
-use kas::event::EventCx;
+use kas::event::{ConfigCx, EventCx};
 use kas::Id;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
@@ -100,7 +100,10 @@ pub trait DataAccessor<Index> {
     /// expensive or slow calculations.
     ///
     /// This method should perform any updates required to adjust [`Self::len`].
-    fn update(&mut self, data: &Self::Data);
+    ///
+    /// To receive (async) messages with [`Self::handle_messages`], send to `id`
+    /// using (for example) `cx.send_async(id, _)`.
+    fn update(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data);
 
     /// Get the total number of items
     ///
@@ -130,7 +133,10 @@ pub trait DataAccessor<Index> {
     /// This method may update cached keys and items asynchronously (i.e. after
     /// this method returns); in this case it should prioritise updating of keys
     /// over items.
-    fn prepare_range(&mut self, data: &Self::Data, range: Range<Index>);
+    ///
+    /// To receive (async) messages with [`Self::handle_messages`], send to `id`
+    /// using (for example) `cx.send_async(id, _)`.
+    fn prepare_range(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data, range: Range<Index>);
 
     /// Handle an async message
     ///
@@ -140,9 +146,12 @@ pub trait DataAccessor<Index> {
     /// [try_pop](EventCx::try_pop) messages of types sent by this trait impl
     /// but not messages of other types.
     ///
+    /// To receive (async) messages with [`Self::handle_messages`], send to `id`
+    /// using (for example) `cx.send_async(id, _)`.
+    ///
     /// Default implementation: do nothing.
-    fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
-        let _ = (cx, data);
+    fn handle_messages(&mut self, cx: &mut EventCx, id: Id, data: &Self::Data) {
+        let _ = (cx, id, data);
     }
 
     /// Get a key for a given `index`, if available

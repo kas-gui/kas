@@ -151,13 +151,13 @@ impl DataAccessor<usize> for MyAccessor {
     type Key = usize;
     type Item = Item;
 
-    fn update(&mut self, _: &Self::Data) {}
+    fn update(&mut self, _: &mut ConfigCx, _: Id, _: &Self::Data) {}
 
     fn len(&self, data: &Self::Data) -> usize {
         data.len
     }
 
-    fn prepare_range(&mut self, data: &Self::Data, range: Range<usize>) {
+    fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, data: &Self::Data, range: Range<usize>) {
         let update_range;
         if range.len() == self.len {
             if range.start == self.start {
