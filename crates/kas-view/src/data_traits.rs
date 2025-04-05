@@ -103,7 +103,11 @@ pub trait DataAccessor<Index> {
     ///
     /// To receive (async) messages with [`Self::handle_messages`], send to `id`
     /// using (for example) `cx.send_async(id, _)`.
-    fn update(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data);
+    ///
+    /// The default implementation does nothing.
+    fn update(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data) {
+        let _ = (cx, id, data);
+    }
 
     /// Get the total number of items
     ///
@@ -136,7 +140,11 @@ pub trait DataAccessor<Index> {
     ///
     /// To receive (async) messages with [`Self::handle_messages`], send to `id`
     /// using (for example) `cx.send_async(id, _)`.
-    fn prepare_range(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data, range: Range<Index>);
+    ///
+    /// The default implementation does nothing.
+    fn prepare_range(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data, range: Range<Index>) {
+        let _ = (cx, id, data, range);
+    }
 
     /// Handle an async message
     ///
@@ -149,7 +157,7 @@ pub trait DataAccessor<Index> {
     /// To receive (async) messages with [`Self::handle_messages`], send to `id`
     /// using (for example) `cx.send_async(id, _)`.
     ///
-    /// Default implementation: do nothing.
+    /// The default implementation does nothing.
     fn handle_messages(&mut self, cx: &mut EventCx, id: Id, data: &Self::Data) {
         let _ = (cx, id, data);
     }

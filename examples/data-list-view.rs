@@ -151,8 +151,6 @@ impl DataAccessor<usize> for MyAccessor {
     type Key = usize;
     type Item = Item;
 
-    fn update(&mut self, _: &mut ConfigCx, _: Id, _: &Self::Data) {}
-
     fn len(&self, data: &Self::Data) -> usize {
         data.len
     }

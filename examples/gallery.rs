@@ -358,7 +358,6 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 
 fn filter_list() -> Box<dyn Widget<Data = AppData>> {
     use kas::view::{driver, filter, DataAccessor, ListView, SelectionMode, SelectionMsg};
-    use std::ops::Range;
 
     const MONTHS: &[&str] = &[
         "January",
@@ -424,8 +423,6 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
         fn len(&self, _: &Self::Data) -> usize {
             self.filtered.len()
         }
-
-        fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, _: &Self::Data, _: Range<usize>) {}
 
         fn key(&self, _: &Self::Data, index: usize) -> Option<usize> {
             self.filtered.get(index).cloned()
