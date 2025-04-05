@@ -885,7 +885,7 @@ pub fn impl_widget(
 pub fn widget_as_node() -> Toks {
     quote! {
         #[inline]
-        fn as_node<'a>(&'a mut self, data: &'a Self::Data) -> ::kas::Node<'a> {
+        fn as_node<'__a>(&'__a mut self, data: &'__a Self::Data) -> ::kas::Node<'__a> {
             ::kas::Node::new(self, data)
         }
     }
