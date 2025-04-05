@@ -78,6 +78,74 @@ impl DataKey for (usize, usize) {
 /// remote database or generated on demand). The implementation may optionally support filtering.
 ///
 /// Type parameter `Index` is `usize` for `ListView` or `(usize, usize)` for `MatrixView`.
+///
+/// # Implementing `DataAccessor`
+///
+/// Data keys ([`Self::key`]) should always be independent of the search query
+/// or filter. The key may simply be the input `index` if the `index` will
+/// always correspond to a fixed data `Item`. This may not be the case if a
+/// (variable) filter or query is used or if the items available through the
+/// data set are not fixed.
+///
+/// ## Local fixed data sets
+///
+/// Accessing data stored within `self` or the input `data` type [`Self::Data`]
+/// is the simplest case; it may be sufficient to implement the required methods
+/// [`Self::len`], [`Self::key`] and [`Self::item`] only.
+///
+/// ## Dynamic local data sets
+///
+/// In case of a local data set which may change or where the query or filter
+/// used changes, the method [`Self::update`] must be implemented and it must be
+/// ensured that the widget's [`kas::Events::update`] method is called (the
+/// latter will already be the case when the changing data/query/filter is
+/// passed via input `data`).
+///
+/// The result of [`Self::len`] should be updated to return the number of
+/// available elements. (TODO: this should not be required provided that the
+/// available scroll range is provided or estimated somehow.)
+///
+/// ## Generated data
+///
+/// In some cases, data `Item`s may be generated on demand. This is problematic
+/// since [`Self::item`] must return a *reference to* the data. The solution is
+/// to generate this data using the [`Self::prepare_range`] method, caching
+/// generated values within `self`. (It is assumed that such use cases are
+/// relatively rare and/or simple, otherwise the return value may be changed to
+/// `Option<std::borrow::Cow<Item>>`.)
+///
+/// Note that [`Self::prepare_range`] may be called frequently, thus (at risk of
+/// premature optimization) it should not unnecessarily regenerate items on each
+/// call. In case input data changes, [`Self::update`] will be called followed
+/// by [`Self::prepare_range`].
+///
+/// If generation is slow, it should be performed asynchronously (see below)
+/// so that all methods may return quickly.
+///
+/// ## Non-local data (`async`)
+///
+/// Method implementations should never block. For non-local data, this requires
+/// the usage of `async` message handling; [`Self::update`],
+/// [`Self::prepare_range`] and [`Self::handle_messages`] may all dispatch
+/// `async` queries using `cx.send_async(id, QUERY)`.
+/// The result will be received by [`Self::handle_messages`].
+///
+/// The number of available elements (if not known in advance) should be
+/// requested by [`Self::update`] when required (note that the method may be
+/// called frequently and without changes to input `data`). It is acceptable if
+/// the result is updated asynchronously, nothing that [`Self::prepare_range`]
+/// will be limited to the current result of [`Self::len`].
+/// It is acceptable if not all indices less than `len` will return a valid key
+/// through [`Self::key`], though simply returning a very large `len` will not
+/// work well with scrollbars (TODO: better support for estimated lengths).
+///
+/// If data keys cannot be generated locally on demand they may be requested by
+/// [`Self::update`] and/or [`Self::prepare_range`].
+///
+/// Data items should be requested through [`Self::prepare_range`] as required,
+/// caching results locally when received by [`Self::handle_messages`]. It is up
+/// to the implementation whether to continue caching items outside of the
+/// latest requested `range`.
 pub trait DataAccessor<Index> {
     /// Input data type (of parent widget)
     type Data;
