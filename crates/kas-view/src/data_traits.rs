@@ -5,18 +5,21 @@
 
 //! Traits for shared data objects
 
-use kas::{autoimpl, Id};
-use std::borrow::Borrow;
+use kas::event::{ConfigCx, EventCx};
+use kas::Id;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;
+use std::ops::Range;
 
 /// Bounds on the key type
+///
+/// This type should be small, easy to copy, and without internal mutability.
 pub trait DataKey: Clone + Debug + Default + PartialEq + Eq + 'static {
     /// Make an [`Id`] for a key
     ///
-    /// The result must be distinct from `parent`.
-    /// Use [`Id::make_child`].
+    /// The result must be distinct from `parent` and a descendant of `parent`
+    /// (use [`Id::make_child`] for this, optionally more than once).
     fn make_id(&self, parent: &Id) -> Id;
 
     /// Reconstruct a key from an [`Id`]
@@ -69,130 +72,184 @@ impl DataKey for (usize, usize) {
     }
 }
 
-/// Trait for shared data
+/// Accessor for data
 ///
-/// By design, all methods take only `&self` and only allow immutable access to
-/// data.
-#[autoimpl(for<T: trait + ?Sized>
-    &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
-pub trait SharedData: Debug {
+/// The trait covers access to data (especially important for data which must be retrieved from a
+/// remote database or generated on demand). The implementation may optionally support filtering.
+///
+/// Type parameter `Index` is `usize` for `ListView` or `(usize, usize)` for `MatrixView`.
+///
+/// # Implementing `DataAccessor`
+///
+/// Data keys ([`Self::key`]) should always be independent of the search query
+/// or filter. The key may simply be the input `index` if the `index` will
+/// always correspond to a fixed data `Item`. This may not be the case if a
+/// (variable) filter or query is used or if the items available through the
+/// data set are not fixed.
+///
+/// ## Local fixed data sets
+///
+/// Accessing data stored within `self` or the input `data` type [`Self::Data`]
+/// is the simplest case; it may be sufficient to implement the required methods
+/// [`Self::len`], [`Self::key`] and [`Self::item`] only.
+///
+/// ## Dynamic local data sets
+///
+/// In case of a local data set which may change or where the query or filter
+/// used changes, the method [`Self::update`] must be implemented and it must be
+/// ensured that the widget's [`kas::Events::update`] method is called (the
+/// latter will already be the case when the changing data/query/filter is
+/// passed via input `data`).
+///
+/// The result of [`Self::len`] should be updated to return the number of
+/// available elements. (TODO: this should not be required provided that the
+/// available scroll range is provided or estimated somehow.)
+///
+/// ## Generated data
+///
+/// In some cases, data `Item`s may be generated on demand. This is problematic
+/// since [`Self::item`] must return a *reference to* the data. The solution is
+/// to generate this data using the [`Self::prepare_range`] method, caching
+/// generated values within `self`. (It is assumed that such use cases are
+/// relatively rare and/or simple, otherwise the return value may be changed to
+/// `Option<std::borrow::Cow<Item>>`.)
+///
+/// Note that [`Self::prepare_range`] may be called frequently, thus (at risk of
+/// premature optimization) it should not unnecessarily regenerate items on each
+/// call. In case input data changes, [`Self::update`] will be called followed
+/// by [`Self::prepare_range`].
+///
+/// If generation is slow, it should be performed asynchronously (see below)
+/// so that all methods may return quickly.
+///
+/// ## Non-local data (`async`)
+///
+/// Method implementations should never block. For non-local data, this requires
+/// the usage of `async` message handling; [`Self::update`],
+/// [`Self::prepare_range`] and [`Self::handle_messages`] may all dispatch
+/// `async` queries using `cx.send_async(id, QUERY)`.
+/// The result will be received by [`Self::handle_messages`].
+///
+/// The number of available elements (if not known in advance) should be
+/// requested by [`Self::update`] when required (note that the method may be
+/// called frequently and without changes to input `data`). It is acceptable if
+/// the result is updated asynchronously, nothing that [`Self::prepare_range`]
+/// will be limited to the current result of [`Self::len`].
+/// It is acceptable if not all indices less than `len` will return a valid key
+/// through [`Self::key`], though simply returning a very large `len` will not
+/// work well with scrollbars (TODO: better support for estimated lengths).
+///
+/// If data keys cannot be generated locally on demand they may be requested by
+/// [`Self::update`] and/or [`Self::prepare_range`].
+///
+/// Data items should be requested through [`Self::prepare_range`] as required,
+/// caching results locally when received by [`Self::handle_messages`]. It is up
+/// to the implementation whether to continue caching items outside of the
+/// latest requested `range`.
+pub trait DataAccessor<Index> {
+    /// Input data type (of parent widget)
+    type Data;
+
     /// Key type
+    ///
+    /// All data items should have a stable key so that data items may be
+    /// tracked through changing filters.
     type Key: DataKey;
 
     /// Item type
+    ///
+    /// `&Item` is passed to child view widgets as input data.
     type Item: Clone;
 
-    /// A borrow of the item type
+    /// Update the query
     ///
-    /// This type must support [`Borrow`] over [`Self::Item`]. This is, for
-    /// example, supported by `Self::Item` and `&Self::Item`.
+    /// This is called by [`kas::Events::update`]. It may be called frequently
+    /// and without changes to `data` and should use `async` execution for
+    /// expensive or slow calculations.
     ///
-    /// It is also recommended (but not required) that the type support
-    /// [`std::ops::Deref`]: this allows easier usage of [`Self::borrow`].
+    /// This method should perform any updates required to adjust [`Self::len`].
     ///
-    /// TODO(spec): once Rust supports some form of specialization, `AsRef` will
-    /// presumably get blanket impls over `T` and `&T`, and will then be more
-    /// appropriate to use than `Borrow`.
-    type ItemRef<'b>: Borrow<Self::Item>
-    where
-        Self: 'b;
-
-    /// Check whether a key has data
-    fn contains_key(&self, key: &Self::Key) -> bool;
-
-    /// Borrow an item by `key`
+    /// To receive (async) messages with [`Self::handle_messages`], send to `id`
+    /// using (for example) `cx.send_async(id, _)`.
     ///
-    /// Returns `None` if `key` has no associated item.
-    ///
-    /// Depending on the implementation, this may involve some form of lock
-    /// such as `RefCell::borrow` or `Mutex::lock`. The implementation should
-    /// panic on lock failure, not return `None`.
-    fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>>;
-
-    /// Access a borrow of an item
-    ///
-    /// This is a convenience method over [`Self::borrow`].
-    fn with_ref<V>(&self, key: &Self::Key, f: impl FnOnce(&Self::Item) -> V) -> Option<V>
-    where
-        Self: Sized,
-    {
-        self.borrow(key).map(|borrow| f(borrow.borrow()))
+    /// The default implementation does nothing.
+    fn update(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data) {
+        let _ = (cx, id, data);
     }
 
-    /// Get data by key (clone)
+    /// Get the total number of items
     ///
-    /// Returns `None` if `key` has no associated item.
+    /// The result should be one larger than the largest `index` yielding a
+    /// result from [`Self::key`]. This number may therefore be affected by
+    /// input `data` such as filters.
     ///
-    /// This has a default implementation over [`Self::borrow`].
-    #[inline]
-    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
-        self.borrow(key).map(|r| r.borrow().to_owned())
+    /// The result may change after a call to [`Self::update`] due to changes in
+    /// the data set query or filter. The result should not depend on `range`.
+    ///
+    /// TODO: revise how scrolling works and remove this method or make optional
+    /// since the result is sometimes expensive to calculate.
+    fn len(&self, data: &Self::Data) -> Index;
+
+    /// Prepare a range
+    ///
+    /// This method is called after [`Self::update`] and any time that the
+    /// accessed range might be expected to change. It may be called frequently
+    /// and without changes to `range` and should use `async` execution for
+    /// expensive or slow calculations.
+    ///
+    /// It should prepare for [`Self::key`] to be called on the given `range`
+    /// and [`Self::item`] to be called for the returnable keys. These methods
+    /// may be called immediately after this method, though it is acceptable for
+    /// them to return [`None`] until keys / data items are available.
+    ///
+    /// This method may update cached keys and items asynchronously (i.e. after
+    /// this method returns); in this case it should prioritise updating of keys
+    /// over items.
+    ///
+    /// To receive (async) messages with [`Self::handle_messages`], send to `id`
+    /// using (for example) `cx.send_async(id, _)`.
+    ///
+    /// The default implementation does nothing.
+    fn prepare_range(&mut self, cx: &mut ConfigCx, id: Id, data: &Self::Data, range: Range<Index>) {
+        let _ = (cx, id, data, range);
     }
-}
 
-/// Trait for viewable data lists
-///
-/// Provided implementations: `[T]`, `Vec<T>`.
-/// Warning: these implementations do not communicate changes to data.
-/// Non-static lists should use a custom type and trait implementation.
-#[allow(clippy::len_without_is_empty)]
-#[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
-pub trait ListData: SharedData {
-    /// No data is available
-    fn is_empty(&self) -> bool {
-        self.len() == 0
+    /// Handle an async message
+    ///
+    /// This method is called when a message is available, possibly the result
+    /// of an asynchronous message sent through [`Self::update`] or
+    /// [`Self::prepare_range`]. The implementation should
+    /// [try_pop](EventCx::try_pop) messages of types sent by this trait impl
+    /// but not messages of other types.
+    ///
+    /// To receive (async) messages with [`Self::handle_messages`], send to `id`
+    /// using (for example) `cx.send_async(id, _)`.
+    ///
+    /// The default implementation does nothing.
+    fn handle_messages(&mut self, cx: &mut EventCx, id: Id, data: &Self::Data) {
+        let _ = (cx, id, data);
     }
 
-    /// Number of data items available
+    /// Get a key for a given `index`, if available
     ///
-    /// Note: users may assume this is `O(1)`.
-    fn len(&self) -> usize;
-
-    /// Iterate over up to `limit` keys from `start`
+    /// This method should be fast since it may be called repeatedly.
+    /// The method may be called for each `index` in the given `range` after
+    /// calls to [`Self::update`].
     ///
-    /// An example where `type Key = usize`:
-    /// ```ignore
-    /// fn iter_from(&self, start: usize, limit: usize) -> impl Iterator<Item = usize> {
-    ///     start.min(self.len)..(start + limit).min(self.len)
-    /// }
-    /// ```
+    /// This may return `None` even when `index` is within the query's `range`
+    /// since data may be sparse or still loading (async).
     ///
-    /// This method is called on every update so should be reasonably fast.
-    fn iter_from(&self, start: usize, limit: usize) -> impl Iterator<Item = Self::Key>;
-}
+    /// In case the implementation applies some type of filter to an underlying
+    /// dataset, this method should not return hidden keys. The implementation
+    /// may either return [`None`] (resulting in empty list entries) or remap
+    /// indices such that hidden keys are skipped over.
+    fn key(&self, data: &Self::Data, index: Index) -> Option<Self::Key>;
 
-/// Trait for viewable data matrices
-///
-/// Data matrices are a kind of table where each cell has the same type.
-#[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
-pub trait MatrixData: SharedData {
-    /// Column key type
-    type ColKey;
-    /// Row key type
-    type RowKey;
-
-    /// No data is available
-    fn is_empty(&self) -> bool;
-
-    /// Number of `(cols, rows)` available
+    /// Get a data item, if available
     ///
-    /// Note: users may assume this is `O(1)`.
-    fn len(&self) -> (usize, usize);
-
-    /// Iterate over up to `limit` column keys from `start`
+    /// This method should be fast since it may be called repeatedly.
     ///
-    /// The result will be in deterministic implementation-defined order, with
-    /// a length of `max(limit, data_len - start)` where `data_len` is the number of
-    /// items available.
-    fn col_iter_from(&self, start: usize, limit: usize) -> impl Iterator<Item = Self::ColKey>;
-
-    /// Iterate over up to `limit` row keys from `start`
-    ///
-    /// The result will be in deterministic implementation-defined order, with
-    /// a length of `max(limit, data_len - start)` where `data_len` is the number of
-    /// items available.
-    fn row_iter_from(&self, start: usize, limit: usize) -> impl Iterator<Item = Self::RowKey>;
-
-    /// Make a key from parts
-    fn make_key(&self, col: &Self::ColKey, row: &Self::RowKey) -> Self::Key;
+    /// This may return `None` while data is still loading (async). The view
+    /// widget may display a loading animation in this case.
+    fn item<'r>(&'r self, data: &'r Self::Data, key: &'r Self::Key) -> Option<&'r Self::Item>;
 }

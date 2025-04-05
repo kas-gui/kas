@@ -175,14 +175,14 @@ impl_scope! {
 
             let size = self.rect().size.cast();
             if let Some(fut) = self.inner.get_mut().resize(size) {
-                cx.push_spawn(self.id(), fut);
+                cx.send_spawn(self.id(), fut);
             }
         }
 
         fn draw(&self, mut draw: DrawCx) {
             if let Ok(mut state) = self.inner.try_borrow_mut() {
                 if let Some(fut) = state.maybe_redraw() {
-                    draw.ev_state().push_spawn(self.id(), fut);
+                    draw.ev_state().send_spawn(self.id(), fut);
                 }
             }
 
@@ -230,7 +230,7 @@ impl_scope! {
                         *state = State::Initial(program);
                         return;
                     };
-                    cx.push_spawn(self.id(), draw(program, pixmap));
+                    cx.send_spawn(self.id(), draw(program, pixmap));
                 } else {
                     *state = State::Ready(program, pixmap);
                 }

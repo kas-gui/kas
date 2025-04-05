@@ -11,9 +11,10 @@
 //! to calculate the maximum scroll offset).
 
 use kas::prelude::*;
-use kas::view::{Driver, ListData, ListView, SharedData};
+use kas::view::{DataAccessor, Driver, ListView};
 use kas::widgets::{column, *};
 use std::collections::HashMap;
+use std::ops::Range;
 
 #[derive(Debug)]
 struct SelectEntry(usize);
@@ -47,7 +48,7 @@ impl Data {
             strings: HashMap::new(),
         }
     }
-    fn get(&self, index: usize) -> String {
+    fn get_string(&self, index: usize) -> String {
         self.strings
             .get(&index)
             .cloned()
@@ -80,7 +81,7 @@ impl Data {
         self.len = len;
         if self.active >= len && len > 0 {
             self.active = len - 1;
-            self.active_string = self.get(self.active);
+            self.active_string = self.get_string(self.active);
         }
     }
 }
@@ -139,32 +140,54 @@ impl_scope! {
     }
 }
 
-impl SharedData for Data {
+#[derive(Default)]
+struct MyAccessor {
+    start: usize,
+    len: usize,
+    items: Vec<Item>,
+}
+impl DataAccessor<usize> for MyAccessor {
+    type Data = Data;
     type Key = usize;
     type Item = Item;
-    type ItemRef<'b> = Item;
 
-    fn contains_key(&self, key: &Self::Key) -> bool {
-        *key < self.len()
-    }
-    fn borrow(&self, key: &Self::Key) -> Option<Item> {
-        Some((self.active, self.get(*key)))
-    }
-}
-impl ListData for Data {
-    fn len(&self) -> usize {
-        self.len
+    fn len(&self, data: &Self::Data) -> usize {
+        data.len
     }
 
-    fn iter_from(&self, start: usize, limit: usize) -> impl Iterator<Item = usize> {
-        let start = start.min(self.len);
-        let end = (start + limit).min(self.len);
-        (start..end).into_iter()
+    fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, data: &Self::Data, range: Range<usize>) {
+        let update_range;
+        if range.len() == self.len {
+            if range.start == self.start {
+                return;
+            } else if range.start > self.start {
+                update_range = (self.start + self.len)..range.end;
+            } else {
+                update_range = range.start..self.start;
+            }
+        } else {
+            self.len = range.len();
+            self.items.resize(self.len, Item::default());
+            update_range = range.clone();
+        }
+
+        self.start = range.start;
+        for index in update_range {
+            self.items[index % self.len] = (data.active, data.get_string(index));
+        }
+    }
+
+    fn key(&self, _: &Self::Data, index: usize) -> Option<Self::Key> {
+        Some(index)
+    }
+
+    fn item(&self, _: &Self::Data, key: &Self::Key) -> Option<&Item> {
+        Some(&self.items[key % self.len])
     }
 }
 
 struct MyDriver;
-impl Driver<Item, Data> for MyDriver {
+impl Driver<usize, Item> for MyDriver {
     type Widget = ListEntry;
 
     fn make(&mut self, key: &usize) -> Self::Widget {
@@ -200,7 +223,7 @@ fn main() -> kas::runner::Result<()> {
 
     let data = Data::new(5);
 
-    let list = ListView::new(MyDriver).on_update(|cx, list, data| {
+    let list = ListView::new(MyAccessor::default(), MyDriver).on_update(|cx, list, data: &Data| {
         list.set_direction(cx, data.dir);
     });
     let tree = column![

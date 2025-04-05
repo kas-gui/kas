@@ -93,7 +93,7 @@ impl_scope! {
         ///
         /// It is assumed that state is modified by this timer. Frequent usage
         /// of timers which don't do anything may be inefficient; prefer usage
-        /// of [`EventState::push_async`](kas::event::EventState::push_async).
+        /// of [`EventState::send_async`](kas::event::EventState::send_async).
         pub fn on_timer<H>(mut self, timer_id: TimerHandle, handler: H) -> Self
         where
             H: Fn(&mut AdaptEventCx, &mut W::Data, &A) + 'static,

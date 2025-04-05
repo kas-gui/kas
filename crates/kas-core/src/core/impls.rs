@@ -106,7 +106,7 @@ pub fn _replay<W: Events>(widget: &mut W, cx: &mut EventCx, data: &<W as Widget>
     } else if id == widget.id_ref() {
         widget.handle_messages(cx, data);
     } else {
-        // This implies use of push_async / push_spawn from a widget which was
+        // This implies use of send_async / send_spawn from a widget which was
         // unmapped or removed.
         #[cfg(debug_assertions)]
         log::debug!("_replay: {} cannot find path to {id}", widget.identify());

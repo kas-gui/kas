@@ -5,7 +5,7 @@
 
 //! List view controller
 
-use crate::{DataKey, Driver, ListData, SelectionMode, SelectionMsg};
+use crate::{DataAccessor, DataKey, Driver, SelectionMode, SelectionMsg};
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, FocusSource, Scroll, TimerHandle};
 use kas::layout::solve_size_rules;
@@ -15,7 +15,6 @@ use kas::NavAdvance;
 #[allow(unused)] // doc links
 use kas_widgets::ScrollBars;
 use linear_map::set::LinearSet;
-use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::time::Instant;
 
@@ -31,8 +30,8 @@ impl_scope! {
     /// View controller for 1D indexable data (list)
     ///
     /// This widget generates a view over a list of data items via the
-    /// [`ListData`] trait. "View widgets" are constructed via a [`Driver`] to
-    /// represent visible data items. These view widgets are reassigned as
+    /// [`DataAccessor`] trait. "View widgets" are constructed via a [`Driver`]
+    /// to represent visible data items. These view widgets are reassigned as
     /// required when the list is scrolled, keeping the number of widgets in
     /// use roughly proportional to the number of data items within the view.
     ///
@@ -48,14 +47,15 @@ impl_scope! {
     /// emit [`kas::messages::Select`] to have themselves be selected.
     #[derive(Clone, Debug)]
     #[widget]
-    pub struct ListView<A: ListData, V, D = Direction>
+    pub struct ListView<A: DataAccessor<usize>, V, D = Direction>
     where
-        V: Driver<A::Item, A>,
+        V: Driver<A::Key, A::Item>,
         D: Directional,
     {
         core: widget_core!(),
         frame_offset: Offset,
         frame_size: Size,
+        accessor: A,
         driver: V,
         widgets: Vec<WidgetData<A::Key, V::Widget>>,
         alloc_len: u32,
@@ -85,35 +85,35 @@ impl_scope! {
         D: Default,
     {
         /// Construct a new instance
-        pub fn new(driver: V) -> Self {
-            Self::new_dir(driver, D::default())
+        pub fn new(accessor: A, driver: V) -> Self {
+            Self::new_dir(accessor, driver, D::default())
         }
     }
-    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, kas::dir::Left> {
+    impl<A: DataAccessor<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Left> {
         /// Construct a new instance
-        pub fn left(driver: V) -> Self {
-            Self::new(driver)
+        pub fn left(accessor: A, driver: V) -> Self {
+            Self::new(accessor, driver)
         }
     }
-    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, kas::dir::Right> {
+    impl<A: DataAccessor<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Right> {
         /// Construct a new instance
-        pub fn right(driver: V) -> Self {
-            Self::new(driver)
+        pub fn right(accessor: A, driver: V) -> Self {
+            Self::new(accessor, driver)
         }
     }
-    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, kas::dir::Up> {
+    impl<A: DataAccessor<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Up> {
         /// Construct a new instance
-        pub fn up(driver: V) -> Self {
-            Self::new(driver)
+        pub fn up(accessor: A, driver: V) -> Self {
+            Self::new(accessor, driver)
         }
     }
-    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, kas::dir::Down> {
+    impl<A: DataAccessor<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Down> {
         /// Construct a new instance
-        pub fn down(driver: V) -> Self {
-            Self::new(driver)
+        pub fn down(accessor: A, driver: V) -> Self {
+            Self::new(accessor, driver)
         }
     }
-    impl<A: ListData, V: Driver<A::Item, A>> ListView<A, V, Direction> {
+    impl<A: DataAccessor<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, Direction> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, cx: &mut EventState, direction: Direction) {
             if direction != self.direction {
@@ -125,11 +125,12 @@ impl_scope! {
 
     impl Self {
         /// Construct a new instance
-        pub fn new_dir(driver: V, direction: D) -> Self {
+        pub fn new_dir(accessor: A, driver: V, direction: D) -> Self {
             ListView {
                 core: Default::default(),
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
+                accessor,
                 driver,
                 widgets: Default::default(),
                 alloc_len: 0,
@@ -152,6 +153,11 @@ impl_scope! {
             }
         }
 
+        /// Access the data accessor
+        pub fn accessor(&self) -> &A {
+            &self.accessor
+        }
+
         /// Get the current selection mode
         pub fn selection_mode(&self) -> SelectionMode {
             self.sel_mode
@@ -163,10 +169,10 @@ impl_scope! {
         /// [`Select`].
         ///
         /// On selection and deselection, a [`SelectionMsg`] message is emitted.
-        /// This is not sent to [`Driver::on_messages`].
+        /// This is not sent to [`Driver::handle_messages`].
         ///
         /// The driver may trigger selection by emitting [`Select`] from
-        /// [`Driver::on_messages`]. The driver is not notified of selection
+        /// [`Driver::handle_messages`]. The driver is not notified of selection
         /// except via [`Select`] from view widgets. (TODO: reconsider this.)
         ///
         /// [`Select`]: kas::messages::Select
@@ -274,6 +280,21 @@ impl_scope! {
             r
         }
 
+        /// Deselect all unavailable items
+        ///
+        /// By default, the set of selected keys persists when items filtered or
+        /// removed the data set. This allows the selection to survive changing
+        /// filters. To avoid this behaviour, call this method on update.
+        pub fn deselect_unavailable(&mut self, cx: &mut EventState) {
+            let len = self.selection.len();
+            self.selection.retain(|key| {
+                self.widgets.iter().any(|widget| widget.key.as_ref() == Some(key))
+            });
+            if len != self.selection.len() {
+                cx.redraw(self);
+            }
+        }
+
         /// Get the direction of contents
         pub fn direction(&self) -> Direction {
             self.direction.as_direction()
@@ -313,7 +334,7 @@ impl_scope! {
         }
 
         // If full, call cx.update on all view widgets
-        fn update_widgets(&mut self, cx: &mut ConfigCx, data: &A, full: bool) {
+        fn update_widgets(&mut self, cx: &mut ConfigCx, data: &A::Data, full: bool) {
             let time = Instant::now();
 
             let offset = u64::conv(self.scroll_offset().extract(self.direction));
@@ -326,20 +347,21 @@ impl_scope! {
             debug_assert!(self.num_children() <= self.widgets.len());
             self.first_data = first_data.cast();
 
-            let solver = self.position_solver();
-            let keys = data.iter_from(solver.first_data, solver.cur_len);
+            let range = first_data..(first_data + cur_len);
+            self.accessor.prepare_range(cx, self.id(), data, range);
 
-            let mut count = 0;
-            for (i, key) in keys.enumerate() {
-                count += 1;
-                let i = solver.first_data + i;
+            let solver = self.position_solver();
+            for i in solver.data_range() {
+                let Some(key) = self.accessor.key(data, i) else {
+                    continue;
+                };
                 let id = key.make_id(self.id_ref());
                 let w = &mut self.widgets[i % solver.cur_len];
                 if w.key.as_ref() != Some(&key) {
                     self.driver.set_key(&mut w.widget, &key);
 
-                    if let Some(item) = data.borrow(&key) {
-                        cx.configure(w.widget.as_node(item.borrow()), id);
+                    if let Some(item) = self.accessor.item(data, &key) {
+                        cx.configure(w.widget.as_node(&item), id);
 
                         solve_size_rules(
                             &mut w.widget,
@@ -352,19 +374,11 @@ impl_scope! {
                         w.key = None; // disables drawing and clicking
                     }
                 } else if full {
-                    if let Some(item) = data.borrow(&key) {
-                        cx.update(w.widget.as_node(item.borrow()));
+                    if let Some(item) = self.accessor.item(data, &key) {
+                        cx.update(w.widget.as_node(&item));
                     }
                 }
                 w.widget.set_rect(cx, solver.rect(i), self.align_hints);
-            }
-
-            if count < solver.cur_len {
-                log::warn!(
-                    "{}: data.iter_from({}, {}) yielded insufficient items (possibly incorrect data.len())", self.identify(),
-                    solver.first_data,
-                    solver.cur_len,
-                );
             }
 
             let dur = (Instant::now() - time).as_micros();
@@ -625,18 +639,17 @@ impl_scope! {
             let id = self.id();
             for w in &mut self.widgets {
                 if let Some(ref key) = w.key {
-                    if let Some(item) = data.borrow(&key) {
+                    if let Some(item) = self.accessor.item(data, &key) {
                         let id = key.make_id(&id);
-                        cx.configure(w.widget.as_node(item.borrow()), id);
+                        cx.configure(w.widget.as_node(&item), id);
                     }
                 }
             }
         }
 
-        fn update(&mut self, cx: &mut ConfigCx, data: &A) {
-            self.selection.retain(|key| data.contains_key(key));
-
-            let data_len = data.len().cast();
+        fn update(&mut self, cx: &mut ConfigCx, data: &A::Data) {
+            self.accessor.update(cx, self.id(), data);
+            let data_len = self.accessor.len(data).cast();
             if data_len != self.data_len {
                 self.data_len = data_len;
                 // We must call at least SET_RECT to update scrollable region
@@ -647,15 +660,16 @@ impl_scope! {
             }
 
             self.update_widgets(cx, data, true);
+
             self.update_content_size(cx);
         }
 
         fn update_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
 
-        fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &A::Data, event: Event) -> IsUsed {
             let is_used = match event {
                 Event::Command(cmd, _) => {
-                    let last = data.len().wrapping_sub(1);
+                    let last = self.accessor.len(data).wrapping_sub(1);
                     if last == usize::MAX {
                         return Unused;
                     }
@@ -744,7 +758,7 @@ impl_scope! {
             is_used | used_by_sber
         }
 
-        fn handle_messages(&mut self, cx: &mut EventCx, data: &A) {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &A::Data) {
             let key: A::Key;
             if let Some(index) = cx.last_child() {
                 let w = &mut self.widgets[index];
@@ -753,8 +767,12 @@ impl_scope! {
                     None => return,
                 };
 
-                self.driver.on_messages(cx, &mut w.widget, data, &key);
+                if let Some(item) = self.accessor.item(data, &key) {
+                    self.driver.handle_messages(cx, &mut w.widget, item, &key);
+                }
             } else {
+                self.accessor.handle_messages(cx, self.id(), data);
+
                 // Message is from self
                 key = match self.press_target.as_ref() {
                     Some((_, k)) => k.clone(),
@@ -784,7 +802,7 @@ impl_scope! {
             }
         }
 
-        fn handle_scroll(&mut self, cx: &mut EventCx, data: &A, scroll: Scroll) {
+        fn handle_scroll(&mut self, cx: &mut EventCx, data: &A::Data, scroll: Scroll) {
             let act = self.scroll.scroll(cx, self.rect(), scroll);
             self.update_widgets(&mut cx.config_cx(), data, false);
             cx.action(self, act);
@@ -793,18 +811,18 @@ impl_scope! {
 
     // Direct implementation of this trait outside of Kas code is not supported!
     impl Widget for Self {
-        type Data = A;
+        type Data = A::Data;
 
         fn for_child_node(
             &mut self,
-            data: &A,
+            data: &A::Data,
             index: usize,
             closure: Box<dyn FnOnce(Node<'_>) + '_>,
         ) {
             if let Some(w) = self.widgets.get_mut(index) {
                 if let Some(ref key) = w.key {
-                    if let Some(item) = data.borrow(key) {
-                        closure(w.widget.as_node(item.borrow()));
+                    if let Some(item) = self.accessor.item(data, key) {
+                        closure(w.widget.as_node(&item));
                     }
                 }
             }
@@ -814,7 +832,7 @@ impl_scope! {
         fn _nav_next(
             &mut self,
             cx: &mut ConfigCx,
-            data: &A,
+            data: &A::Data,
             focus: Option<&Id>,
             advance: NavAdvance,
         ) -> Option<Id> {
@@ -842,7 +860,7 @@ impl_scope! {
             let mut starting_child = child;
             loop {
                 let solver = self.position_solver();
-                let last_data = data.len() - 1;
+                let last_data = self.accessor.len(data) - 1;
                 let data_index = if let Some(index) = child {
                     let data = solver.child_to_data(index);
                     if !reverse && data < last_data {
@@ -894,6 +912,11 @@ struct PositionSolver {
 }
 
 impl PositionSolver {
+    /// Data range
+    fn data_range(&self) -> std::ops::Range<usize> {
+        self.first_data..(self.first_data + self.cur_len)
+    }
+
     /// Map a child index to a data index
     fn child_to_data(&self, index: usize) -> usize {
         let mut data = (self.first_data / self.cur_len) * self.cur_len + index;
