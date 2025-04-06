@@ -28,88 +28,54 @@ pub struct Activate(pub Option<PhysicalKey>);
 #[derive(Clone, Debug)]
 pub struct Select;
 
+trait AnyDebug: Any + Debug {}
+impl<T: Any + Debug> AnyDebug for T {}
+
 /// A type-erased value
 ///
 /// This is vaguely a wrapper over `Box<dyn (Any + Debug)>`, except that Rust
 /// doesn't (yet) support multi-trait objects.
-pub struct Erased {
-    // TODO: use trait_upcasting feature when stable: Box<dyn AnyDebug>
-    // where trait AnyDebug: Any + Debug {}. This replaces the fmt field.
-    any: Box<dyn Any>,
-    #[cfg(debug_assertions)]
-    fmt: String,
-}
+#[derive(Debug)]
+pub struct Erased(Box<dyn AnyDebug>);
 
 impl Erased {
     /// Construct
     pub fn new<V: Any + Debug>(v: V) -> Self {
-        #[cfg(debug_assertions)]
-        let fmt = format!("{}::{:?}", std::any::type_name::<V>(), &v);
-        let any = Box::new(v);
-        Erased {
-            #[cfg(debug_assertions)]
-            fmt,
-            any,
-        }
+        Erased(Box::new(v))
     }
 
     /// Returns `true` if the inner type is the same as `T`.
     pub fn is<T: 'static>(&self) -> bool {
-        self.any.is::<T>()
+        (&*self.0 as &dyn Any).is::<T>()
     }
 
     /// Attempt to downcast self to a concrete type.
     pub fn downcast<T: 'static>(self) -> Result<Box<T>, Box<dyn Any>> {
-        self.any.downcast::<T>()
+        (self.0 as Box<dyn Any>).downcast::<T>()
     }
 
     /// Returns some reference to the inner value if it is of type `T`, or `None` if it isn’t.
     pub fn downcast_ref<T: 'static>(&self) -> Option<&T> {
-        self.any.downcast_ref::<T>()
+        (&*self.0 as &dyn Any).downcast_ref::<T>()
     }
 }
 
-/// Support debug formatting
-///
-/// Debug builds only. On release builds, a placeholder message is printed.
-impl std::fmt::Debug for Erased {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        #[cfg(debug_assertions)]
-        let r = f.write_str(&self.fmt);
-        #[cfg(not(debug_assertions))]
-        let r = f.write_str("[use debug build to see value]");
-        r
-    }
-}
+trait AnySendDebug: AnyDebug + Send {}
+impl<T: Any + Send + Debug> AnySendDebug for T {}
 
 /// Like Erased, but supporting Send
 #[derive(Debug)]
-pub(crate) struct SendErased {
-    any: Box<dyn Any + Send>,
-    #[cfg(debug_assertions)]
-    fmt: String,
-}
+pub(crate) struct SendErased(Box<dyn AnySendDebug>);
 
 impl SendErased {
     /// Construct
     pub fn new<V: Any + Send + Debug>(v: V) -> Self {
-        #[cfg(debug_assertions)]
-        let fmt = format!("{}::{:?}", std::any::type_name::<V>(), &v);
-        let any = Box::new(v);
-        SendErased {
-            #[cfg(debug_assertions)]
-            fmt,
-            any,
-        }
+        SendErased(Box::new(v))
     }
 
     /// Convert to [`Erased`]
     pub fn into_erased(self) -> Erased {
-        Erased {
-            any: self.any,
-            #[cfg(debug_assertions)]
-            fmt: self.fmt,
-        }
+        Erased(self.0)
     }
 }
 
@@ -194,24 +160,9 @@ impl MessageStack {
         }
     }
 
-    /// Try getting a debug representation of the last message on the stack
-    ///
-    /// Note: this method will always return `None` in release builds.
-    /// This may or may not change in future versions.
-    pub fn try_debug(&self) -> Option<&dyn Debug> {
-        cfg_if::cfg_if! {
-            if #[cfg(debug_assertions)] {
-                if let Some(m) = self.stack.last(){
-                    println!("message: {:?}", &m.fmt);
-                } else {
-                    println!("empty stack");
-                }
-                self.stack.last().map(|m| &m.fmt as &dyn Debug)
-            } else {
-                println!("release");
-                None
-            }
-        }
+    /// Debug the last message on the stack, if any
+    pub fn peek_debug(&self) -> Option<&dyn Debug> {
+        self.stack.last().map(|m| &m.0 as &dyn Debug)
     }
 }
 
