@@ -7,7 +7,7 @@
 //!
 //! This is a copy-cat of Druid's async event example, demonstrating usage of
 //! `Runner::create_proxy()`. For a more integrated approach to async, see
-//! `EventState::push_async()` and `push_spawn()`.
+//! `EventState::send_async()` and `send_spawn()`.
 
 use std::thread;
 use std::time::{Duration, Instant};

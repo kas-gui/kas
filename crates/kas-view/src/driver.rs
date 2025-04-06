@@ -17,34 +17,49 @@
 //! Intended usage is to import the module name rather than its contents, thus
 //! allowing referal to e.g. `driver::View`.
 
-use super::*;
 use kas::prelude::*;
 use kas_widgets::{CheckBox, NavFrame, Text};
 use std::default::Default;
 
 /// View widget driver
 ///
-/// This trait is implemented to "drive" a [`ListView`] or [`MatrixView`],
+/// This trait is implemented to "drive" a controller widget,
 /// constructing, updating, and optionally intercepting messages from so called
 /// "view widgets".
 /// A few simple implementations are provided: [`View`], [`NavView`].
 ///
 /// Each view widget has an [`Id`] corresponding to its data item, and
 /// handles events like any other widget. In order to associate a returned
-/// message with a [`SharedData::Key`], either embed that key while constructing
+/// message with a `Key`, either embed that key while constructing
 /// the widget with [`Driver::make`] or intercept the message in
-/// [`Driver::on_messages`].
+/// [`Driver::handle_messages`].
 ///
-/// NOTE: `Item` is a direct type parameter (in addition to an assoc. type
-/// param. of `SharedData`) only to avoid "conflicting implementations" errors.
-/// Similar to: rust#20400, rust#92894. Given fixes, we may remove the param.
+/// # Example implementations
+///
+/// It is expected that a custom implementation is created for each usage. A
+/// simple example might just map input data to a [`Text`] widget:
+/// ```
+/// use kas_view::Driver;
+/// use kas_widgets::Text;
+///
+/// struct MyDriver;
+/// impl<Key> Driver<Key, f32> for MyDriver {
+///     type Widget = Text<f32, String>;
+///     fn make(&mut self, _: &Key) -> Self::Widget {
+///         Text::new(|_, data: &f32| data.to_string())
+///     }
+///     fn set_key(&mut self, _: &mut Self::Widget, _: &Key) {
+///         // Text has no metadata that needs to be reset
+///     }
+/// }
+/// ```
 #[autoimpl(for<T: trait + ?Sized> &mut T, Box<T>)]
-pub trait Driver<Item, Data: SharedData<Item = Item>> {
+pub trait Driver<Key, Item> {
     /// Type of the widget used to view data
     type Widget: kas::Widget<Data = Item>;
 
     /// Construct a new view widget
-    fn make(&mut self, key: &Data::Key) -> Self::Widget;
+    fn make(&mut self, key: &Key) -> Self::Widget;
 
     /// Called to bind an existing view widget to a new key
     ///
@@ -56,7 +71,7 @@ pub trait Driver<Item, Data: SharedData<Item = Item>> {
     ///
     /// The default implementation simply replaces widget with `self.make(key)`,
     /// which is sufficient, if not always optimal.
-    fn set_key(&mut self, widget: &mut Self::Widget, key: &Data::Key) {
+    fn set_key(&mut self, widget: &mut Self::Widget, key: &Key) {
         *widget = self.make(key);
     }
 
@@ -67,12 +82,12 @@ pub trait Driver<Item, Data: SharedData<Item = Item>> {
     /// message then [push](EventCx::push) a new one with the associated `key`.
     ///
     /// Default implementation: do nothing.
-    fn on_messages(
+    fn handle_messages(
         &mut self,
         cx: &mut EventCx,
         widget: &mut Self::Widget,
-        data: &Data,
-        key: &Data::Key,
+        data: &Item,
+        key: &Key,
     ) {
         let _ = (cx, data, key, widget);
     }
@@ -100,21 +115,21 @@ pub struct NavView;
 
 macro_rules! impl_via_to_string {
     ($t:ty) => {
-        impl<Data: SharedData<Item = $t>> Driver<$t, Data> for View {
+        impl<Key> Driver<Key, $t> for View {
             type Widget = Text<$t, String>;
-            fn make(&mut self, _: &Data::Key) -> Self::Widget {
+            fn make(&mut self, _: &Key) -> Self::Widget {
                 Text::new(|_, data: &$t| data.to_string())
             }
-            fn set_key(&mut self, _: &mut Self::Widget, _: &Data::Key) {
+            fn set_key(&mut self, _: &mut Self::Widget, _: &Key) {
                 // Text has no metadata that needs to be reset
             }
         }
-        impl<Data: SharedData<Item = $t>> Driver<$t, Data> for NavView {
+        impl<Key> Driver<Key, $t> for NavView {
             type Widget = NavFrame<Text<$t, String>>;
-            fn make(&mut self, _: &Data::Key) -> Self::Widget {
+            fn make(&mut self, _: &Key) -> Self::Widget {
                 NavFrame::new(Text::new(|_, data: &$t| data.to_string()))
             }
-            fn set_key(&mut self, _: &mut Self::Widget, _: &Data::Key) {
+            fn set_key(&mut self, _: &mut Self::Widget, _: &Key) {
                 // NavFrame and Text have no metadata that needs to be reset
             }
         }
@@ -129,21 +144,22 @@ impl_via_to_string!(i8, i16, i32, i64, i128, isize);
 impl_via_to_string!(u8, u16, u32, u64, u128, usize);
 impl_via_to_string!(f32, f64);
 
-impl<Data: SharedData<Item = bool>> Driver<bool, Data> for View {
+impl<Key> Driver<Key, bool> for View {
     type Widget = CheckBox<bool>;
-    fn make(&mut self, _: &Data::Key) -> Self::Widget {
+    fn make(&mut self, _: &Key) -> Self::Widget {
         CheckBox::new(|_, data: &bool| *data).with_editable(false)
     }
-    fn set_key(&mut self, _: &mut Self::Widget, _: &Data::Key) {
+    fn set_key(&mut self, _: &mut Self::Widget, _: &Key) {
         // CheckBox has no metadata that needs to be reset
     }
 }
-impl<Data: SharedData<Item = bool>> Driver<bool, Data> for NavView {
+
+impl<Key> Driver<Key, bool> for NavView {
     type Widget = CheckBox<bool>;
-    fn make(&mut self, _: &Data::Key) -> Self::Widget {
+    fn make(&mut self, _: &Key) -> Self::Widget {
         CheckBox::new(|_, data: &bool| *data).with_editable(false)
     }
-    fn set_key(&mut self, _: &mut Self::Widget, _: &Data::Key) {
+    fn set_key(&mut self, _: &mut Self::Widget, _: &Key) {
         // CheckBox has no metadata that needs to be reset
     }
 }

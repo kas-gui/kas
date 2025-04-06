@@ -9,7 +9,7 @@
 //! Model-View-Controller pattern or Elm's Model-View-Update design, but with
 //! no direct link between Model and Controller:
 //!
-//! 1.  Model traits describe data **models**: [`ListData`], [`MatrixData`]
+//! 1.  The [`DataAccessor`] trait provides data access
 //! 2.  [**Drivers**](`driver`) describe how to build a widget view over data
 //!     and (optionally) how to handle **messages** from view widgets
 //! 3.  **Controllers** are special widgets which manage views over data
@@ -27,7 +27,6 @@
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
-mod data_impls;
 mod data_traits;
 pub use data_traits::*;
 
