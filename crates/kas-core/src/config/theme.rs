@@ -177,8 +177,8 @@ mod defaults {
     pub fn default_scheme() -> String {
         use dark_light::Mode;
         match dark_light::detect() {
-            Mode::Dark => "dark".to_string(),
-            Mode::Light | Mode::Default => "light".to_string(),
+            Ok(Mode::Dark) => "dark".to_string(),
+            _ => "light".to_string(),
         }
     }
 
