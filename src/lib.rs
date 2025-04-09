@@ -12,7 +12,7 @@
 //! - [`kas_core`] is re-export at the top-level
 //! - [`easy-cast`](https://crates.io/crates/easy-cast) is re-export as [`cast`]
 //! - `kas_macros` is an extended version of [`impl-tools`](https://crates.io/crates/impl-tools),
-//!     re-export at the top-level
+//!   re-export at the top-level
 //! - [`kas_widgets`](https://crates.io/crates/kas-widgets) is re-export as [`widgets`](mod@widgets)
 //! - [`kas_resvg`](https://crates.io/crates/kas-resvg) is re-export as [`resvg`] (`resvg` or `tiny-skia` feature)
 //! - [`kas_view`](https://crates.io/crates/kas-view) is re-export as [`view`] (`view` feature)

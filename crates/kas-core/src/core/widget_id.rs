@@ -56,8 +56,8 @@ enum Variant<'a> {
 }
 
 impl IntOrPtr {
-    const ROOT: Self = IntOrPtr(unsafe { NonZeroU64::new_unchecked(USE_BITS) }, PhantomData);
-    const INVALID: Self = IntOrPtr(unsafe { NonZeroU64::new_unchecked(INVALID) }, PhantomData);
+    const ROOT: Self = IntOrPtr(NonZeroU64::new(USE_BITS).unwrap(), PhantomData);
+    const INVALID: Self = IntOrPtr(NonZeroU64::new(INVALID).unwrap(), PhantomData);
 
     #[inline]
     fn get_ptr(&self) -> Option<*mut usize> {
@@ -490,7 +490,7 @@ impl Id {
                 if req_bits <= 3 * avail_blocks {
                     let (bits, bit_len) = encode(key);
                     let used_blocks = bit_len / 4;
-                    debug_assert_eq!(used_blocks, (req_bits + 2) / 3);
+                    debug_assert_eq!(used_blocks, req_bits.div_ceil(3));
                     let len = (block_len as u64 + used_blocks as u64) << SHIFT_LEN;
                     let rest = bits << 4 * avail_blocks - bit_len + 8;
                     let id = (self_x & MASK_BITS) | rest | len | USE_BITS;
