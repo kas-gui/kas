@@ -771,12 +771,9 @@ impl<'a> EventCx<'a> {
         self.messages.try_peek()
     }
 
-    /// Try getting a debug representation of the last message on the stack
-    ///
-    /// Note: this method will always return `None` in release builds.
-    /// This may or may not change in future versions.
-    pub fn try_debug(&self) -> Option<&dyn Debug> {
-        self.messages.try_debug()
+    /// Debug the last message on the stack, if any
+    pub fn peek_debug(&self) -> Option<&dyn Debug> {
+        self.messages.peek_debug()
     }
 
     /// Get the message stack operation count

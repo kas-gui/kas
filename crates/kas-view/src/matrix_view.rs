@@ -280,7 +280,7 @@ impl_scope! {
                             self.driver.set_key(&mut w.widget, &key);
 
                             if let Some(item) = self.accessor.item(data, &key) {
-                                cx.configure(w.widget.as_node(&item), id);
+                                cx.configure(w.widget.as_node(item), id);
 
                                 w.key = Some(key);
                                 solve_size_rules(
@@ -294,7 +294,7 @@ impl_scope! {
                             }
                         } else if full {
                             if let Some(item) = self.accessor.item(data, &key) {
-                                cx.update(w.widget.as_node(&item));
+                                cx.update(w.widget.as_node(item));
                             }
                         }
                         w.widget.set_rect(cx, solver.rect(ci, ri), self.align_hints);
@@ -558,9 +558,9 @@ impl_scope! {
             let id = self.id();
             for w in &mut self.widgets {
                 if let Some(ref key) = w.key {
-                    if let Some(item) = self.accessor.item(data, &key) {
+                    if let Some(item) = self.accessor.item(data, key) {
                         let id = key.make_id(&id);
-                        cx.configure(w.widget.as_node(&item), id);
+                        cx.configure(w.widget.as_node(item), id);
                     }
                 }
             }
@@ -700,7 +700,7 @@ impl_scope! {
                 };
 
                 if let Some(item) = self.accessor.item(data, &key) {
-                    self.driver.handle_messages(cx, &mut w.widget, &item, &key);
+                    self.driver.handle_messages(cx, &mut w.widget, item, &key);
                 }
             } else {
                 self.accessor.handle_messages(cx, self.id(), data);
@@ -753,8 +753,8 @@ impl_scope! {
         ) {
             if let Some(w) = self.widgets.get_mut(index) {
                 if let Some(ref key) = w.key {
-                    if let Some(item) = self.accessor.item(data, &key) {
-                        closure(w.widget.as_node(&item));
+                    if let Some(item) = self.accessor.item(data, key) {
+                        closure(w.widget.as_node(item));
                     }
                 }
             }

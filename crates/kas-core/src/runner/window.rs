@@ -585,7 +585,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             self.ev_state
                 .next_resume()
                 .into_iter()
-                .chain(w.queued_frame_time.into_iter())
+                .chain(w.queued_frame_time)
                 .min()
         })
     }
