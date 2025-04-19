@@ -813,19 +813,16 @@ impl_scope! {
     impl Widget for Self {
         type Data = A::Data;
 
-        fn for_child_node(
-            &mut self,
-            data: &A::Data,
-            index: usize,
-            closure: Box<dyn FnOnce(Node<'_>) + '_>,
-        ) {
+        fn child_node<'n>(&'n mut self, data: &'n A::Data, index: usize) -> Option<Node<'n>> {
             if let Some(w) = self.widgets.get_mut(index) {
                 if let Some(ref key) = w.key {
                     if let Some(item) = self.accessor.item(data, key) {
-                        closure(w.widget.as_node(item));
+                        return Some(w.widget.as_node(item));
                     }
                 }
             }
+
+            None
         }
 
         // Non-standard implementation to allow mapping new children
@@ -845,7 +842,9 @@ impl_scope! {
             if let Some(index) = child {
                 let mut opt_id = None;
                 let out = &mut opt_id;
-                self.as_node(data).for_child(index, |mut node| *out = node._nav_next(cx, focus, advance));
+                if let Some(mut node) = self.as_node(data).get_child(index) {
+                    *out = node._nav_next(cx, focus, advance);
+                }
                 if let Some(id) = opt_id {
                     return Some(id);
                 }
@@ -886,7 +885,9 @@ impl_scope! {
 
                 let mut opt_id = None;
                 let out = &mut opt_id;
-                self.as_node(data).for_child(index, |mut node| *out = node._nav_next(cx, focus, advance));
+                if let Some(mut node) = self.as_node(data).get_child(index) {
+                    *out = node._nav_next(cx, focus, advance);
+                }
                 if let Some(id) = opt_id {
                     return Some(id);
                 }

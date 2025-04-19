@@ -37,7 +37,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
     let mut num_children = None;
     let mut get_child = None;
-    let mut for_child_node = None;
+    let mut child_node = None;
     let mut find_child_index = None;
     let mut make_child_id = None;
     for (index, impl_) in scope.impls.iter().enumerate() {
@@ -50,8 +50,8 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
                 for item in &impl_.items {
                     if let ImplItem::Fn(ref item) = item {
-                        if item.sig.ident == "for_child_node" {
-                            for_child_node = Some(item.sig.ident.clone());
+                        if item.sig.ident == "child_node" {
+                            child_node = Some(item.sig.ident.clone());
                         }
                     } else if let ImplItem::Type(ref item) = item {
                         if item.ident == "Data" {
@@ -293,11 +293,11 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         if get_child.is_none() {
             emit_warning!(span, "fn num_children without fn get_child");
         }
-        if for_child_node.is_none() {
-            emit_warning!(span, "fn num_children without fn for_child_node");
+        if child_node.is_none() {
+            emit_warning!(span, "fn num_children without fn child_node");
         }
     }
-    if let Some(span) = get_child.as_ref().or(for_child_node.as_ref()) {
+    if let Some(span) = get_child.as_ref().or(child_node.as_ref()) {
         if num_children.is_none() {
             emit_warning!(span, "associated impl of `fn Tile::num_children` required");
         }
@@ -321,7 +321,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         #core_path.status.require_rect(&#core_path._id);
     };
 
-    let do_impl_widget_children = get_child.is_none() && for_child_node.is_none();
+    let do_impl_widget_children = get_child.is_none() && child_node.is_none();
     let fns_get_child = if do_impl_widget_children {
         let mut get_rules = quote! {};
         for (index, child) in children.iter().enumerate() {
@@ -349,7 +349,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         let item_idents = collect_idents(widget_impl);
         let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
 
-        // If the user impls Widget, they must supply type Data and fn for_child_node
+        // If the user impls Widget, they must supply type Data and fn child_node
 
         // Always impl fn as_node
         widget_impl.items.push(Verbatim(widget_as_node()));
@@ -841,26 +841,25 @@ pub fn impl_widget(
             };
 
             get_mut_rules.append_all(if let Some(ref data) = child.data_binding {
-                quote! { #i => closure(#path.as_node(#data)), }
+                quote! { #i => Some(#path.as_node(#data)), }
             } else {
                 if let Some(ref span) = child.attr_span {
-                    quote_spanned! {*span=> #i => closure(#path.as_node(data)), }
+                    quote_spanned! {*span=> #i => Some(#path.as_node(data)), }
                 } else {
-                    quote! { #i => closure(#path.as_node(data)), }
+                    quote! { #i => Some(#path.as_node(data)), }
                 }
             });
         }
 
         quote! {
-            fn for_child_node(
-                &mut self,
-                data: &Self::Data,
+            fn child_node<'__n>(
+                &'__n mut self,
+                data: &'__n Self::Data,
                 index: usize,
-                closure: Box<dyn FnOnce(::kas::Node<'_>) + '_>,
-            ) {
+            ) -> Option<::kas::Node<'__n>> {
                 match index {
                     #get_mut_rules
-                    _ => (),
+                    _ => None,
                 }
             }
         }
@@ -885,7 +884,7 @@ pub fn impl_widget(
 pub fn widget_as_node() -> Toks {
     quote! {
         #[inline]
-        fn as_node<'a>(&'a mut self, data: &'a Self::Data) -> ::kas::Node<'a> {
+        fn as_node<'__a>(&'__a mut self, data: &'__a Self::Data) -> ::kas::Node<'__a> {
             ::kas::Node::new(self, data)
         }
     }

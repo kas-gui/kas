@@ -38,12 +38,7 @@ pub trait Collection {
     fn get_mut_tile(&mut self, index: usize) -> Option<&mut dyn Tile>;
 
     /// Operate on a widget as a [`Node`]
-    fn for_node(
-        &mut self,
-        data: &Self::Data,
-        index: usize,
-        closure: Box<dyn FnOnce(Node<'_>) + '_>,
-    );
+    fn child_node<'n>(&'n mut self, data: &'n Self::Data, index: usize) -> Option<Node<'n>>;
 
     /// Iterate over elements as [`Tile`] items within `range`
     ///
@@ -255,15 +250,12 @@ macro_rules! impl_slice {
             }
 
             #[inline]
-            fn for_node(
-                &mut self,
-                data: &W::Data,
+            fn child_node<'n>(
+                &'n mut self,
+                data: &'n Self::Data,
                 index: usize,
-                closure: Box<dyn FnOnce(Node<'_>) + '_>,
-            ) {
-                if let Some($pat) = self.get_mut(index) {
-                    closure($w.as_node(data));
-                }
+            ) -> Option<Node<'n>> {
+                self.get_mut(index).map(|$pat| $w.as_node(data))
             }
 
             #[inline]

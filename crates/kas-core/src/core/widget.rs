@@ -102,8 +102,9 @@ pub trait Events: Widget + Sized {
         for index in 0..self.num_children() {
             let id = self.make_child_id(index);
             if id.is_valid() {
-                self.as_node(data)
-                    .for_child(index, |node| cx.configure(node, id));
+                if let Some(node) = self.as_node(data).get_child(index) {
+                    cx.configure(node, id);
+                }
             }
         }
     }
@@ -134,7 +135,9 @@ pub trait Events: Widget + Sized {
     /// Use [`ConfigCx::update`].
     fn update_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
         for index in 0..self.num_children() {
-            self.as_node(data).for_child(index, |node| cx.update(node));
+            if let Some(node) = self.as_node(data).get_child(index) {
+                cx.update(node);
+            }
         }
     }
 
@@ -315,7 +318,7 @@ pub enum NavAdvance {
 /// -   **Core** methods of [`Tile`] are *always* implemented via the [`#widget`]
 ///     macro, whether or not an `impl Tile { ... }` item is present.
 /// -   **Introspection** methods [`Tile::num_children`], [`Tile::get_child`]
-///     and [`Widget::for_child_node`] are implemented by the [`#widget`] macro
+///     and [`Widget::child_node`] are implemented by the [`#widget`] macro
 ///     in most cases: child widgets embedded within a layout descriptor or
 ///     included as fields marked with `#[widget]` are enumerated.
 /// -   **Introspection** methods [`Tile::find_child_index`] and
@@ -362,13 +365,8 @@ pub trait Widget: Tile {
     ///
     /// It is recommended to use the methods on [`Node`]
     /// instead of calling this method.
-    fn for_child_node(
-        &mut self,
-        data: &Self::Data,
-        index: usize,
-        closure: Box<dyn FnOnce(Node<'_>) + '_>,
-    ) {
-        let _ = (data, index, closure);
+    fn child_node<'n>(&'n mut self, data: &'n Self::Data, index: usize) -> Option<Node<'n>> {
+        let _ = (data, index);
         unimplemented!() // make rustdoc show that this is a provided method
     }
 

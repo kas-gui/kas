@@ -162,13 +162,9 @@ impl_scope! {
     impl Widget for Self {
         type Data = C::Data;
 
-        fn for_child_node(
-            &mut self,
-            data: &C::Data,
-            index: usize,
-            closure: Box<dyn FnOnce(Node<'_>) + '_>,
-        ) {
-            self.widgets.for_node(data, index, closure);
+        #[inline]
+        fn child_node<'n>(&'n mut self, data: &'n Self::Data, index: usize) -> Option<Node<'n>> {
+            self.widgets.child_node(data, index)
         }
     }
 }

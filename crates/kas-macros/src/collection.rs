@@ -356,7 +356,7 @@ impl Collection {
                 #index => Some(&mut self.#path),
             });
             for_node_rules.append_all(quote! {
-                #index => closure(self.#path.as_node(data)),
+                #index => Some(self.#path.as_node(data)),
             });
         }
 
@@ -398,16 +398,16 @@ impl Collection {
                     _ => None,
                 }
             }
-            fn for_node(
-                &mut self,
-                data: &Self::Data,
+            #[inline]
+            fn child_node<'__n>(
+                &'__n mut self,
+                data: &'__n Self::Data,
                 index: usize,
-                closure: Box<dyn FnOnce(::kas::Node<'_>) + '_>,
-            ) {
+            ) -> Option<::kas::Node<'__n>> {
                 use ::kas::Widget;
                 match index {
                     #for_node_rules
-                    _ => (),
+                    _ => None,
                 }
             }
         };

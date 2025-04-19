@@ -91,7 +91,7 @@ pub trait Tile: Layout {
     ///
     /// This method is usually implemented automatically by the `#[widget]`
     /// macro. It should be implemented directly if and only if
-    /// [`Tile::get_child`] and [`Widget::for_child_node`] are
+    /// [`Tile::get_child`] and [`Widget::child_node`] are
     /// implemented directly.
     fn num_children(&self) -> usize {
         unimplemented!() // make rustdoc show that this is a provided method
