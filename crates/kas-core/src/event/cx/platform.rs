@@ -10,7 +10,6 @@ use crate::theme::ThemeSize;
 use crate::Window;
 use std::task::Poll;
 
-/// Platform API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 impl EventState {
@@ -198,7 +197,6 @@ impl EventState {
     }
 }
 
-/// Platform API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 impl<'a> EventCx<'a> {

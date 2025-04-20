@@ -108,7 +108,6 @@ pub struct EventState {
     pub(crate) action: Action,
 }
 
-/// internals
 impl EventState {
     #[inline]
     fn key_focus(&self) -> Option<Id> {
@@ -221,7 +220,6 @@ impl<'a> DerefMut for EventCx<'a> {
     }
 }
 
-/// Internal methods
 impl<'a> EventCx<'a> {
     fn start_key_event(&mut self, mut widget: Node<'_>, vkey: Key, code: PhysicalKey) {
         log::trace!(

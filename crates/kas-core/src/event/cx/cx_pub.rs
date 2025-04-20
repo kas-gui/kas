@@ -20,7 +20,6 @@ use crate::util::warn_about_error;
 #[allow(unused)] use crate::{Events, Layout, Tile}; // for doc-links
 use crate::{HasId, Window};
 
-/// Public API
 impl EventState {
     /// Get the platform
     pub fn platform(&self) -> Platform {
@@ -572,7 +571,6 @@ impl EventState {
     }
 }
 
-/// Public API
 impl<'a> EventCx<'a> {
     /// Configure a widget
     ///

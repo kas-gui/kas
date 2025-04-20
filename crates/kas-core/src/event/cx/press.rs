@@ -341,6 +341,25 @@ impl EventState {
         false
     }
 
+    /// Get whether the widget is under the mouse cursor
+    #[inline]
+    pub fn is_hovered(&self, w_id: &Id) -> bool {
+        self.mouse.mouse_grab.is_none() && *w_id == self.mouse.hover
+    }
+
+    /// Set the cursor icon
+    ///
+    /// This is normally called when handling [`Event::MouseHover`]. In other
+    /// cases, calling this method may be ineffective. The cursor is
+    /// automatically "unset" when the widget is no longer hovered.
+    ///
+    /// See also [`EventCx::set_grab_cursor`]: if a mouse grab
+    /// ([`Press::grab`]) is active, its icon takes precedence.
+    pub fn set_hover_cursor(&mut self, icon: CursorIcon) {
+        // Note: this is acted on by EventState::update
+        self.mouse.hover_icon = icon;
+    }
+
     /// Set a grab's depress target
     ///
     /// When a grab on mouse or touch input is in effect
@@ -398,5 +417,20 @@ impl EventState {
             return true;
         }
         self.touch.touch_grab.iter().any(|grab| grab.start_id == id)
+    }
+}
+
+impl<'a> EventCx<'a> {
+    /// Update the mouse cursor used during a grab
+    ///
+    /// This only succeeds if widget `id` has an active mouse-grab (see
+    /// [`Press::grab`]). The cursor will be reset when the mouse-grab
+    /// ends.
+    pub fn set_grab_cursor(&mut self, id: &Id, icon: CursorIcon) {
+        if let Some(ref grab) = self.mouse.mouse_grab {
+            if grab.start_id == *id {
+                self.window.set_cursor_icon(icon);
+            }
+        }
     }
 }
