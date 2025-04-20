@@ -46,8 +46,7 @@ impl EventState {
             last_click_repetitions: 0,
             last_click_timeout: Instant::now(), // unimportant value
             mouse_grab: None,
-            touch_grab: Default::default(),
-            pan_grab: SmallVec::new(),
+            touch: Default::default(),
             access_layers: Default::default(),
             popups: Default::default(),
             popup_removed: Default::default(),
@@ -166,28 +165,7 @@ impl EventState {
                 }
             }
 
-            let mut i = 0;
-            while i < cx.touch_grab.len() {
-                let action = cx.touch_grab[i].flush_click_move();
-                cx.state.action |= action;
-
-                if cx.touch_grab[i].cancel {
-                    let grab = cx.remove_touch(i);
-
-                    let press = Press {
-                        source: PressSource::Touch(grab.id),
-                        id: grab.cur_id,
-                        coord: grab.coord,
-                    };
-                    let event = Event::PressEnd {
-                        press,
-                        success: false,
-                    };
-                    cx.send_event(win.as_node(data), grab.start_id, event);
-                } else {
-                    i += 1;
-                }
-            }
+            cx.touch_handle_pending(win, data);
 
             if let Some((id, reconf)) = cx.pending_update.take() {
                 if reconf {
@@ -244,10 +222,6 @@ impl EventState {
                 // Update hovered widget
                 let hover = win.try_probe(cx.last_mouse_coord);
                 cx.set_hover(win.as_node(data), hover);
-
-                for grab in cx.touch_grab.iter_mut() {
-                    grab.cur_id = win.try_probe(grab.coord);
-                }
             }
         });
 
@@ -294,48 +268,7 @@ impl<'a> EventCx<'a> {
             }
         }
 
-        for gi in 0..self.pan_grab.len() {
-            let grab = &mut self.pan_grab[gi];
-            debug_assert!(grab.mode != GrabMode::Grab);
-            assert!(grab.n > 0);
-
-            // Terminology: pi are old coordinates, qi are new coords
-            let (p1, q1) = (DVec2::conv(grab.coords[0].0), DVec2::conv(grab.coords[0].1));
-            grab.coords[0].0 = grab.coords[0].1;
-
-            let alpha;
-            let delta;
-
-            if grab.mode == GrabMode::PanOnly || grab.n == 1 {
-                alpha = DVec2(1.0, 0.0);
-                delta = q1 - p1;
-            } else {
-                // We don't use more than two touches: information would be
-                // redundant (although it could be averaged).
-                let (p2, q2) = (DVec2::conv(grab.coords[1].0), DVec2::conv(grab.coords[1].1));
-                grab.coords[1].0 = grab.coords[1].1;
-                let (pd, qd) = (p2 - p1, q2 - q1);
-
-                alpha = match grab.mode {
-                    GrabMode::PanFull => qd.complex_div(pd),
-                    GrabMode::PanScale => DVec2((qd.sum_square() / pd.sum_square()).sqrt(), 0.0),
-                    GrabMode::PanRotate => {
-                        let a = qd.complex_div(pd);
-                        a / a.sum_square().sqrt()
-                    }
-                    _ => unreachable!(),
-                };
-
-                // Average delta from both movements:
-                delta = (q1 - alpha.complex_mul(p1) + q2 - alpha.complex_mul(p2)) * 0.5;
-            }
-
-            let id = grab.id.clone();
-            if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
-                let event = Event::Pan { alpha, delta };
-                self.send_event(widget.re(), id, event);
-            }
-        }
+        self.touch_frame_update(widget.re());
 
         let frame_updates = std::mem::take(&mut self.frame_updates);
         for (id, handle) in frame_updates.into_iter() {
@@ -392,7 +325,7 @@ impl<'a> EventCx<'a> {
         data: &A,
         event: winit::event::WindowEvent,
     ) {
-        use winit::event::{MouseScrollDelta, TouchPhase, WindowEvent::*};
+        use winit::event::{MouseScrollDelta, WindowEvent::*};
 
         match event {
             CloseRequested => self.action(Id::ROOT, Action::CLOSE),
@@ -573,86 +506,7 @@ impl<'a> EventCx<'a> {
             }
             // TouchpadPressure { pressure: f32, stage: i64, },
             // AxisMotion { axis: AxisId, value: f64, },
-            Touch(touch) => {
-                let source = PressSource::Touch(touch.id);
-                let coord = touch.location.cast_approx();
-                match touch.phase {
-                    TouchPhase::Started => {
-                        let start_id = win.try_probe(coord);
-                        if let Some(id) = start_id.as_ref() {
-                            if self.config.event().touch_nav_focus() {
-                                if let Some(id) =
-                                    self.nav_next(win.as_node(data), Some(id), NavAdvance::None)
-                                {
-                                    self.set_nav_focus(id, FocusSource::Pointer);
-                                }
-                            }
-
-                            let press = Press {
-                                source,
-                                id: start_id.clone(),
-                                coord,
-                            };
-                            let event = Event::PressStart { press };
-                            self.send_popup_first(win.as_node(data), start_id, event);
-                        }
-                    }
-                    TouchPhase::Moved => {
-                        let cur_id = win.try_probe(coord);
-
-                        let mut redraw = false;
-                        let mut pan_grab = None;
-                        if let Some(grab) = self.get_touch(touch.id) {
-                            if grab.mode == GrabMode::Grab {
-                                // Only when 'depressed' status changes:
-                                redraw = grab.cur_id != cur_id
-                                    && (grab.start_id == grab.cur_id || grab.start_id == cur_id);
-
-                                grab.cur_id = cur_id;
-                                grab.coord = coord;
-
-                                if grab.last_move != grab.coord {
-                                    let delta = grab.coord - grab.last_move;
-                                    let target = grab.start_id.clone();
-                                    let press = Press {
-                                        source: PressSource::Touch(grab.id),
-                                        id: grab.cur_id.clone(),
-                                        coord: grab.coord,
-                                    };
-                                    let event = Event::PressMove { press, delta };
-                                    grab.last_move = grab.coord;
-                                    self.send_event(win.as_node(data), target, event);
-                                }
-                            } else {
-                                pan_grab = Some(grab.pan_grab);
-                            }
-                        }
-
-                        if redraw {
-                            self.action(Id::ROOT, Action::REDRAW);
-                        } else if let Some(pan_grab) = pan_grab {
-                            if usize::conv(pan_grab.1) < MAX_PAN_GRABS {
-                                if let Some(pan) = self.pan_grab.get_mut(usize::conv(pan_grab.0)) {
-                                    pan.coords[usize::conv(pan_grab.1)].1 = coord;
-                                }
-                            }
-                        }
-                    }
-                    ev @ (TouchPhase::Ended | TouchPhase::Cancelled) => {
-                        if let Some(index) = self.get_touch_index(touch.id) {
-                            let grab = self.remove_touch(index);
-
-                            if !grab.mode.is_pan() {
-                                let id = grab.cur_id.clone();
-                                let press = Press { source, id, coord };
-                                let success = ev == TouchPhase::Ended;
-                                let event = Event::PressEnd { press, success };
-                                self.send_event(win.as_node(data), grab.start_id, event);
-                            }
-                        }
-                    }
-                }
-            }
+            Touch(touch) => self.handle_touch_event(win, data, touch),
             _ => (),
         }
     }

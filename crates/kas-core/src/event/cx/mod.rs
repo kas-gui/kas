@@ -9,6 +9,7 @@
 #![cfg_attr(not(winit), allow(unused))]
 
 use linear_map::{set::LinearSet, LinearMap};
+use press::Touch;
 use smallvec::SmallVec;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::future::Future;
@@ -82,47 +83,6 @@ struct MouseGrab {
     coords: (Coord, Coord),
 }
 
-#[derive(Clone, Debug)]
-struct TouchGrab {
-    id: u64,
-    start_id: Id,
-    depress: Option<Id>,
-    cur_id: Option<Id>,
-    last_move: Coord,
-    coord: Coord,
-    mode: GrabMode,
-    pan_grab: (u16, u16),
-    cancel: bool,
-}
-
-impl TouchGrab {
-    fn flush_click_move(&mut self) -> Action {
-        if self.mode == GrabMode::Click && self.last_move != self.coord {
-            self.last_move = self.coord;
-            if self.start_id == self.cur_id {
-                if self.depress != self.cur_id {
-                    self.depress = self.cur_id.clone();
-                    return Action::REDRAW;
-                }
-            } else if self.depress.is_some() {
-                self.depress = None;
-                return Action::REDRAW;
-            }
-        }
-        Action::empty()
-    }
-}
-
-const MAX_PAN_GRABS: usize = 2;
-
-#[derive(Clone, Debug)]
-struct PanGrab {
-    id: Id,
-    mode: GrabMode,
-    n: u16,
-    coords: [(Coord, Coord); MAX_PAN_GRABS],
-}
-
 #[derive(Debug)]
 struct PendingSelFocus {
     target: Option<Id>,
@@ -185,8 +145,7 @@ pub struct EventState {
     last_click_repetitions: u32,
     last_click_timeout: Instant,
     mouse_grab: Option<MouseGrab>,
-    touch_grab: SmallVec<[TouchGrab; 8]>,
-    pan_grab: SmallVec<[PanGrab; 4]>,
+    touch: Touch,
     access_layers: BTreeMap<Id, AccessLayer>,
     // For each: (WindowId of popup, popup descriptor, old nav focus)
     popups: SmallVec<[(WindowId, crate::PopupDescriptor, Option<Id>); 16]>,
@@ -231,98 +190,6 @@ impl EventState {
                 });
             }
         }
-    }
-
-    fn set_pan_on(&mut self, id: Id, mode: GrabMode, coord: Coord) -> (u16, u16) {
-        for (gi, grab) in self.pan_grab.iter_mut().enumerate() {
-            if grab.id == id {
-                debug_assert_eq!(grab.mode, mode);
-
-                let index = grab.n;
-                if usize::from(index) < MAX_PAN_GRABS {
-                    grab.coords[usize::from(index)] = (coord, coord);
-                }
-                grab.n = index + 1;
-                return (gi.cast(), index);
-            }
-        }
-
-        let gj = self.pan_grab.len().cast();
-        let n = 1;
-        let mut coords: [(Coord, Coord); MAX_PAN_GRABS] = Default::default();
-        coords[0] = (coord, coord);
-        log::trace!("set_pan_on: index={}, id={id}", self.pan_grab.len());
-        self.pan_grab.push(PanGrab {
-            id,
-            mode,
-            n,
-            coords,
-        });
-        (gj, 0)
-    }
-
-    fn remove_pan(&mut self, index: usize) {
-        log::trace!("remove_pan: index={index}");
-        self.pan_grab.remove(index);
-        for grab in self.touch_grab.iter_mut() {
-            let p0 = grab.pan_grab.0;
-            if usize::from(p0) >= index && p0 != u16::MAX {
-                grab.pan_grab.0 = p0 - 1;
-            }
-        }
-    }
-
-    fn remove_pan_grab(&mut self, g: (u16, u16)) {
-        if let Some(grab) = self.pan_grab.get_mut(usize::from(g.0)) {
-            grab.n -= 1;
-            if grab.n == 0 {
-                return self.remove_pan(g.0.into());
-            }
-            for i in (usize::from(g.1))..(usize::from(grab.n) - 1) {
-                grab.coords[i] = grab.coords[i + 1];
-            }
-        } else {
-            return;
-        }
-
-        for grab in self.touch_grab.iter_mut() {
-            if grab.pan_grab.0 == g.0 && grab.pan_grab.1 > g.1 {
-                grab.pan_grab.1 -= 1;
-                if usize::from(grab.pan_grab.1) == MAX_PAN_GRABS - 1 {
-                    let v = grab.coord;
-                    self.pan_grab[usize::from(g.0)].coords[usize::from(grab.pan_grab.1)] = (v, v);
-                }
-            }
-        }
-    }
-
-    #[inline]
-    fn get_touch_index(&self, touch_id: u64) -> Option<usize> {
-        self.touch_grab
-            .iter()
-            .enumerate()
-            .find_map(|(i, grab)| (grab.id == touch_id).then_some(i))
-    }
-
-    #[inline]
-    fn get_touch(&mut self, touch_id: u64) -> Option<&mut TouchGrab> {
-        self.touch_grab.iter_mut().find(|grab| grab.id == touch_id)
-    }
-
-    // Clears touch grab and pan grab and redraws
-    //
-    // Returns the grab. Panics on out-of-bounds error.
-    fn remove_touch(&mut self, index: usize) -> TouchGrab {
-        let mut grab = self.touch_grab.remove(index);
-        log::trace!(
-            "remove_touch: touch_id={}, start_id={}",
-            grab.id,
-            grab.start_id
-        );
-        self.opt_action(grab.depress.clone(), Action::REDRAW);
-        self.remove_pan_grab(grab.pan_grab);
-        self.action(Id::ROOT, grab.flush_click_move());
-        grab
     }
 
     // Remove popup at index and return its [`WindowId`]
@@ -385,11 +252,7 @@ impl EventState {
             }
         }
 
-        for grab in self.touch_grab.iter_mut() {
-            if grab.start_id == target {
-                grab.cancel = true;
-            }
-        }
+        self.touch.cancel_event_focus(target);
     }
 }
 

@@ -5,12 +5,28 @@
 
 //! Event handling: events
 
+mod touch;
+
 #[allow(unused)] use super::{Event, EventState}; // for doc-links
-use super::{EventCx, GrabMode, IsUsed, MouseGrab, TouchGrab};
+use super::{EventCx, GrabMode, IsUsed, MouseGrab};
 use crate::event::cx::GrabDetails;
 use crate::event::{CursorIcon, MouseButton, Unused, Used};
 use crate::geom::Coord;
 use crate::{Action, Id};
+pub(super) use touch::Touch;
+
+#[derive(Clone, Debug)]
+struct TouchGrab {
+    id: u64,
+    start_id: Id,
+    depress: Option<Id>,
+    cur_id: Option<Id>,
+    last_move: Coord,
+    coord: Coord,
+    mode: GrabMode,
+    pan_grab: (u16, u16),
+    cancel: bool,
+}
 
 /// Source of `EventChild::Press`
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -209,7 +225,7 @@ impl GrabBuilder {
                 }
             }
             PressSource::Touch(touch_id) => {
-                if let Some(grab) = cx.get_touch(touch_id) {
+                if let Some(grab) = cx.touch.get_touch(touch_id) {
                     if grab.mode.is_pan() != mode.is_pan() || grab.cancel {
                         return Unused;
                     }
@@ -222,9 +238,9 @@ impl GrabBuilder {
                 } else {
                     let mut pan_grab = (u16::MAX, 0);
                     if mode.is_pan() {
-                        pan_grab = cx.set_pan_on(id.clone(), mode, coord);
+                        pan_grab = cx.touch.set_pan_on(id.clone(), mode, coord);
                     }
-                    cx.touch_grab.push(TouchGrab {
+                    cx.touch.touch_grab.push(TouchGrab {
                         id: touch_id,
                         start_id: id.clone(),
                         depress: Some(id.clone()),
@@ -241,5 +257,94 @@ impl GrabBuilder {
 
         cx.action(id, Action::REDRAW);
         Used
+    }
+}
+
+/// Mouse and touch methods
+impl EventState {
+    /// Check whether the given widget is visually depressed
+    pub fn is_depressed(&self, w_id: &Id) -> bool {
+        for (_, id) in &self.key_depress {
+            if *id == w_id {
+                return true;
+            }
+        }
+        if self
+            .mouse_grab
+            .as_ref()
+            .map(|grab| *w_id == grab.depress)
+            .unwrap_or(false)
+        {
+            return true;
+        }
+        for grab in self.touch.touch_grab.iter() {
+            if *w_id == grab.depress {
+                return true;
+            }
+        }
+        for popup in &self.popups {
+            if *w_id == popup.1.parent {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Set a grab's depress target
+    ///
+    /// When a grab on mouse or touch input is in effect
+    /// ([`Press::grab`]), the widget owning the grab may set itself
+    /// or any other widget as *depressed* ("pushed down"). Each grab depresses
+    /// at most one widget, thus setting a new depress target clears any
+    /// existing target. Initially a grab depresses its owner.
+    ///
+    /// This effect is purely visual. A widget is depressed when one or more
+    /// grabs targets the widget to depress, or when a keyboard binding is used
+    /// to activate a widget (for the duration of the key-press).
+    ///
+    /// Assumption: this method will only be called by handlers of a grab (i.e.
+    /// recipients of [`Event::PressStart`] after initiating a successful grab,
+    /// [`Event::PressMove`] or [`Event::PressEnd`]).
+    ///
+    /// Queues a redraw and returns `true` if the depress target changes,
+    /// otherwise returns `false`.
+    pub fn set_grab_depress(&mut self, source: PressSource, target: Option<Id>) -> bool {
+        let mut old = None;
+        let mut redraw = false;
+        match source {
+            PressSource::Mouse(_, _) => {
+                if let Some(grab) = self.mouse_grab.as_mut() {
+                    redraw = grab.depress != target;
+                    old = grab.depress.take();
+                    grab.depress = target.clone();
+                }
+            }
+            PressSource::Touch(id) => {
+                if let Some(grab) = self.touch.get_touch(id) {
+                    redraw = grab.depress != target;
+                    old = grab.depress.take();
+                    grab.depress = target.clone();
+                }
+            }
+        }
+        if redraw {
+            log::trace!(target: "kas_core::event", "set_grab_depress: target={target:?}");
+            self.opt_action(old, Action::REDRAW);
+            self.opt_action(target, Action::REDRAW);
+        }
+        redraw
+    }
+
+    /// Returns true if there is a mouse or touch grab on `id` or any descendant of `id`
+    pub fn any_grab_on(&self, id: &Id) -> bool {
+        if self
+            .mouse_grab
+            .as_ref()
+            .map(|grab| grab.start_id == id)
+            .unwrap_or(false)
+        {
+            return true;
+        }
+        self.touch.touch_grab.iter().any(|grab| grab.start_id == id)
     }
 }
