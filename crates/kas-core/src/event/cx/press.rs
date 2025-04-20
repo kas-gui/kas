@@ -177,8 +177,7 @@ impl GrabBuilder {
                     GrabMode::Grab => GrabDetails::Grab,
                     mode => {
                         assert!(mode.is_pan());
-                        let g = cx.set_pan_on(id.clone(), mode, false, coord);
-                        GrabDetails::Pan(g)
+                        GrabDetails::Pan
                     }
                 };
                 if let Some(ref mut grab) = cx.mouse_grab {
@@ -202,6 +201,7 @@ impl GrabBuilder {
                         depress: Some(id.clone()),
                         details,
                         cancel: false,
+                        coords: (coord, coord),
                     });
                 }
                 if let Some(icon) = cursor {
@@ -222,7 +222,7 @@ impl GrabBuilder {
                 } else {
                     let mut pan_grab = (u16::MAX, 0);
                     if mode.is_pan() {
-                        pan_grab = cx.set_pan_on(id.clone(), mode, true, coord);
+                        pan_grab = cx.set_pan_on(id.clone(), mode, coord);
                     }
                     cx.touch_grab.push(TouchGrab {
                         id: touch_id,

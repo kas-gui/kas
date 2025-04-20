@@ -62,12 +62,12 @@ impl GrabMode {
 enum GrabDetails {
     Click,
     Grab,
-    Pan((u16, u16)),
+    Pan,
 }
 
 impl GrabDetails {
     fn is_pan(&self) -> bool {
-        matches!(self, GrabDetails::Pan(_))
+        matches!(self, GrabDetails::Pan)
     }
 }
 
@@ -79,6 +79,7 @@ struct MouseGrab {
     depress: Option<Id>,
     details: GrabDetails,
     cancel: bool,
+    coords: (Coord, Coord),
 }
 
 #[derive(Clone, Debug)]
@@ -118,7 +119,6 @@ const MAX_PAN_GRABS: usize = 2;
 struct PanGrab {
     id: Id,
     mode: GrabMode,
-    source_is_touch: bool,
     n: u16,
     coords: [(Coord, Coord); MAX_PAN_GRABS],
 }
@@ -233,20 +233,9 @@ impl EventState {
         }
     }
 
-    fn set_pan_on(
-        &mut self,
-        id: Id,
-        mode: GrabMode,
-        source_is_touch: bool,
-        coord: Coord,
-    ) -> (u16, u16) {
+    fn set_pan_on(&mut self, id: Id, mode: GrabMode, coord: Coord) -> (u16, u16) {
         for (gi, grab) in self.pan_grab.iter_mut().enumerate() {
             if grab.id == id {
-                if grab.source_is_touch != source_is_touch {
-                    self.remove_pan(gi);
-                    break;
-                }
-
                 debug_assert_eq!(grab.mode, mode);
 
                 let index = grab.n;
@@ -266,7 +255,6 @@ impl EventState {
         self.pan_grab.push(PanGrab {
             id,
             mode,
-            source_is_touch,
             n,
             coords,
         });
@@ -276,13 +264,6 @@ impl EventState {
     fn remove_pan(&mut self, index: usize) {
         log::trace!("remove_pan: index={index}");
         self.pan_grab.remove(index);
-        if let Some(grab) = &mut self.mouse_grab {
-            if let GrabDetails::Pan(ref mut g) = grab.details {
-                if usize::from(g.0) >= index {
-                    g.0 -= 1;
-                }
-            }
-        }
         for grab in self.touch_grab.iter_mut() {
             let p0 = grab.pan_grab.0;
             if usize::from(p0) >= index && p0 != u16::MAX {
@@ -297,7 +278,6 @@ impl EventState {
             if grab.n == 0 {
                 return self.remove_pan(g.0.into());
             }
-            assert!(grab.source_is_touch);
             for i in (usize::from(g.1))..(usize::from(grab.n) - 1) {
                 grab.coords[i] = grab.coords[i + 1];
             }
@@ -305,7 +285,6 @@ impl EventState {
             return;
         }
 
-        // Note: the fact that grab.n > 0 implies source is a touch event!
         for grab in self.touch_grab.iter_mut() {
             if grab.pan_grab.0 == g.0 && grab.pan_grab.1 > g.1 {
                 grab.pan_grab.1 -= 1;
@@ -552,8 +531,7 @@ impl<'a> EventCx<'a> {
             );
             self.window.set_cursor_icon(self.hover_icon);
             self.opt_action(grab.depress.clone(), Action::REDRAW);
-            if let GrabDetails::Pan(g) = grab.details {
-                self.remove_pan_grab(g);
+            if grab.details.is_pan() {
                 // Pan grabs do not receive Event::PressEnd
                 None
             } else {

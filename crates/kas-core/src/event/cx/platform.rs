@@ -278,6 +278,22 @@ impl<'a> EventCx<'a> {
     /// frame before a long sleep.
     pub(crate) fn frame_update(&mut self, mut widget: Node<'_>) {
         log::debug!(target: "kas_core::event", "Processing frame update");
+        if let Some(grab) = self.mouse_grab.as_mut() {
+            if grab.details.is_pan() {
+                // Terminology: pi are old coordinates, qi are new coords
+                let (p1, q1) = (DVec2::conv(grab.coords.0), DVec2::conv(grab.coords.1));
+                grab.coords.0 = grab.coords.1;
+
+                let delta = q1 - p1;
+                if delta != DVec2::ZERO {
+                    let id = grab.start_id.clone();
+                    let alpha = DVec2(1.0, 0.0);
+                    let event = Event::Pan { alpha, delta };
+                    self.send_event(widget.re(), id, event);
+                }
+            }
+        }
+
         for gi in 0..self.pan_grab.len() {
             let grab = &mut self.pan_grab[gi];
             debug_assert!(grab.mode != GrabMode::Grab);
@@ -464,10 +480,8 @@ impl<'a> EventCx<'a> {
                             let event = Event::PressMove { press, delta };
                             self.send_event(win.as_node(data), target, event);
                         }
-                        GrabDetails::Pan(g) => {
-                            if let Some(pan) = self.state.pan_grab.get_mut(usize::conv(g.0)) {
-                                pan.coords[usize::conv(g.1)].1 = coord;
-                            }
+                        GrabDetails::Pan => {
+                            grab.coords.1 = coord;
                         }
                     }
                 } else if let Some(popup_id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
