@@ -61,12 +61,6 @@ impl EventState {
         *w_id == self.nav_focus
     }
 
-    /// Get whether the widget is under the mouse cursor
-    #[inline]
-    pub fn is_hovered(&self, w_id: &Id) -> bool {
-        self.mouse_grab.is_none() && *w_id == self.hover
-    }
-
     /// Check whether a widget is disabled
     ///
     /// A widget is disabled if any ancestor is.
@@ -500,19 +494,6 @@ impl EventState {
         };
     }
 
-    /// Set the cursor icon
-    ///
-    /// This is normally called when handling [`Event::MouseHover`]. In other
-    /// cases, calling this method may be ineffective. The cursor is
-    /// automatically "unset" when the widget is no longer hovered.
-    ///
-    /// See also [`EventCx::set_grab_cursor`]: if a mouse grab
-    /// ([`Press::grab`]) is active, its icon takes precedence.
-    pub fn set_hover_cursor(&mut self, icon: CursorIcon) {
-        // Note: this is acted on by EventState::update
-        self.hover_icon = icon;
-    }
-
     /// Send a message to `id`
     ///
     /// Similar to [`EventCx::push`], the message is sent as part of a widget
@@ -898,18 +879,5 @@ impl<'a> EventCx<'a> {
     #[cfg(winit)]
     pub fn winit_window(&self) -> Option<&winit::window::Window> {
         self.window.winit_window()
-    }
-
-    /// Update the mouse cursor used during a grab
-    ///
-    /// This only succeeds if widget `id` has an active mouse-grab (see
-    /// [`Press::grab`]). The cursor will be reset when the mouse-grab
-    /// ends.
-    pub fn set_grab_cursor(&mut self, id: &Id, icon: CursorIcon) {
-        if let Some(ref grab) = self.mouse_grab {
-            if grab.start_id == *id {
-                self.window.set_cursor_icon(icon);
-            }
-        }
     }
 }

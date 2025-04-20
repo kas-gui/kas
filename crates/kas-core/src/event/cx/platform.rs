@@ -5,19 +5,10 @@
 
 //! Event manager — platform API
 
-use std::task::Poll;
-use std::time::Duration;
-
 use super::*;
-use crate::cast::traits::*;
-use crate::geom::DVec2;
 use crate::theme::ThemeSize;
 use crate::Window;
-
-// TODO: this should be configurable or derived from the system
-const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
-
-const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
+use std::task::Poll;
 
 /// Platform API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -37,15 +28,8 @@ impl EventState {
             sel_focus: None,
             nav_focus: None,
             nav_fallback: None,
-            hover: None,
-            hover_icon: CursorIcon::Default,
-            old_hover_icon: CursorIcon::Default,
             key_depress: Default::default(),
-            last_mouse_coord: Coord::ZERO,
-            last_click_button: FAKE_MOUSE_BUTTON,
-            last_click_repetitions: 0,
-            last_click_timeout: Instant::now(), // unimportant value
-            mouse_grab: None,
+            mouse: Default::default(),
             touch: Default::default(),
             access_layers: Default::default(),
             popups: Default::default(),
@@ -143,28 +127,7 @@ impl EventState {
                 cx.send_event(win.as_node(data), id, Event::PopupClosed(wid));
             }
 
-            let mut cancel = false;
-            if let Some(grab) = cx.state.mouse_grab.as_mut() {
-                cancel = grab.cancel;
-                if let GrabDetails::Click = grab.details {
-                    let hover = cx.state.hover.as_ref();
-                    if grab.start_id == hover {
-                        if grab.depress.as_ref() != hover {
-                            grab.depress = hover.cloned();
-                            cx.action |= Action::REDRAW;
-                        }
-                    } else if grab.depress.is_some() {
-                        grab.depress = None;
-                        cx.action |= Action::REDRAW;
-                    }
-                }
-            }
-            if cancel {
-                if let Some((id, event)) = cx.remove_mouse_grab(false) {
-                    cx.send_event(win.as_node(data), id, event);
-                }
-            }
-
+            cx.mouse_handle_pending(win, data);
             cx.touch_handle_pending(win, data);
 
             if let Some((id, reconf)) = cx.pending_update.take() {
@@ -215,20 +178,13 @@ impl EventState {
             // but just in frame_update is insufficient.
             cx.poll_futures(win.as_node(data));
 
-            // Finally, clear the region_moved flag.
-            if cx.action.contains(Action::REGION_MOVED) {
-                cx.action.remove(Action::REGION_MOVED);
-
-                // Update hovered widget
-                let hover = win.try_probe(cx.last_mouse_coord);
-                cx.set_hover(win.as_node(data), hover);
-            }
+            // Finally, clear the region_moved flag (mouse and touch sub-systems handle this).
+            cx.action.remove(Action::REGION_MOVED);
         });
 
-        if self.hover_icon != self.old_hover_icon && self.mouse_grab.is_none() {
-            window.set_cursor_icon(self.hover_icon);
+        if let Some(icon) = self.mouse.update_hover_icon() {
+            window.set_cursor_icon(icon);
         }
-        self.old_hover_icon = self.hover_icon;
 
         std::mem::take(&mut self.action)
     }
@@ -252,22 +208,9 @@ impl<'a> EventCx<'a> {
     /// frame before a long sleep.
     pub(crate) fn frame_update(&mut self, mut widget: Node<'_>) {
         log::debug!(target: "kas_core::event", "Processing frame update");
-        if let Some(grab) = self.mouse_grab.as_mut() {
-            if grab.details.is_pan() {
-                // Terminology: pi are old coordinates, qi are new coords
-                let (p1, q1) = (DVec2::conv(grab.coords.0), DVec2::conv(grab.coords.1));
-                grab.coords.0 = grab.coords.1;
-
-                let delta = q1 - p1;
-                if delta != DVec2::ZERO {
-                    let id = grab.start_id.clone();
-                    let alpha = DVec2(1.0, 0.0);
-                    let event = Event::Pan { alpha, delta };
-                    self.send_event(widget.re(), id, event);
-                }
-            }
+        if let Some((target, event)) = self.mouse.frame_update() {
+            self.send_event(widget.re(), target, event);
         }
-
         self.touch_frame_update(widget.re());
 
         let frame_updates = std::mem::take(&mut self.frame_updates);
@@ -325,7 +268,8 @@ impl<'a> EventCx<'a> {
         data: &A,
         event: winit::event::WindowEvent,
     ) {
-        use winit::event::{MouseScrollDelta, WindowEvent::*};
+        use cast::CastApprox;
+        use winit::event::WindowEvent::*;
 
         match event {
             CloseRequested => self.action(Id::ROOT, Action::CLOSE),
@@ -392,117 +336,13 @@ impl<'a> EventCx<'a> {
                 self.modifiers = state;
             }
             CursorMoved { position, .. } => {
-                self.last_click_button = FAKE_MOUSE_BUTTON;
-                let coord = position.cast_approx();
-
-                // Update hovered win
-                let id = win.try_probe(coord);
-                self.set_hover(win.as_node(data), id.clone());
-
-                if let Some(grab) = self.state.mouse_grab.as_mut() {
-                    match grab.details {
-                        GrabDetails::Click => (),
-                        GrabDetails::Grab => {
-                            let target = grab.start_id.clone();
-                            let press = Press {
-                                source: PressSource::Mouse(grab.button, grab.repetitions),
-                                id,
-                                coord,
-                            };
-                            let delta = coord - self.last_mouse_coord;
-                            let event = Event::PressMove { press, delta };
-                            self.send_event(win.as_node(data), target, event);
-                        }
-                        GrabDetails::Pan => {
-                            grab.coords.1 = coord;
-                        }
-                    }
-                } else if let Some(popup_id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
-                    let press = Press {
-                        source: PressSource::Mouse(FAKE_MOUSE_BUTTON, 0),
-                        id,
-                        coord,
-                    };
-                    let event = Event::CursorMove { press };
-                    self.send_event(win.as_node(data), popup_id, event);
-                } else {
-                    // We don't forward move events without a grab
-                }
-
-                self.last_mouse_coord = coord;
+                self.handle_cursor_moved(win, data, position.cast_approx())
             }
-            // CursorEntered { .. },
-            CursorLeft { .. } => {
-                self.last_click_button = FAKE_MOUSE_BUTTON;
-
-                if self.mouse_grab.is_none() {
-                    // If there's a mouse grab, we will continue to receive
-                    // coordinates; if not, set a fake coordinate off the window
-                    self.last_mouse_coord = Coord(-1, -1);
-                    self.set_hover(win.as_node(data), None);
-                }
-            }
-            MouseWheel { delta, .. } => {
-                self.last_click_button = FAKE_MOUSE_BUTTON;
-
-                let event = Event::Scroll(match delta {
-                    MouseScrollDelta::LineDelta(x, y) => ScrollDelta::LineDelta(x, y),
-                    MouseScrollDelta::PixelDelta(pos) => {
-                        // The delta is given as a PhysicalPosition, so we need
-                        // to convert to our vector type (Offset) here.
-                        let coord = Coord::conv_approx(pos);
-                        ScrollDelta::PixelDelta(coord.cast())
-                    }
-                });
-                if let Some(id) = self.hover.clone() {
-                    self.send_event(win.as_node(data), id, event);
-                }
-            }
+            CursorEntered { .. } => self.handle_cursor_entered(),
+            CursorLeft { .. } => self.handle_cursor_left(win.as_node(data)),
+            MouseWheel { delta, .. } => self.handle_mouse_wheel(win.as_node(data), delta),
             MouseInput { state, button, .. } => {
-                let coord = self.last_mouse_coord;
-
-                if state == ElementState::Pressed {
-                    let now = Instant::now();
-                    if button != self.last_click_button || self.last_click_timeout < now {
-                        self.last_click_button = button;
-                        self.last_click_repetitions = 0;
-                    }
-                    self.last_click_repetitions += 1;
-                    self.last_click_timeout = now + DOUBLE_CLICK_TIMEOUT;
-                }
-
-                if self
-                    .mouse_grab
-                    .as_ref()
-                    .map(|g| g.button == button)
-                    .unwrap_or(false)
-                {
-                    if let Some((id, event)) = self.remove_mouse_grab(true) {
-                        self.send_event(win.as_node(data), id, event);
-                    }
-                }
-
-                if state == ElementState::Pressed {
-                    if let Some(start_id) = self.hover.clone() {
-                        // No mouse grab but have a hover target
-                        if self.config.event().mouse_nav_focus() {
-                            if let Some(id) =
-                                self.nav_next(win.as_node(data), Some(&start_id), NavAdvance::None)
-                            {
-                                self.set_nav_focus(id, FocusSource::Pointer);
-                            }
-                        }
-                    }
-
-                    let source = PressSource::Mouse(button, self.last_click_repetitions);
-                    let press = Press {
-                        source,
-                        id: self.hover.clone(),
-                        coord,
-                    };
-                    let event = Event::PressStart { press };
-                    self.send_popup_first(win.as_node(data), self.hover.clone(), event);
-                }
+                self.handle_mouse_input(win.as_node(data), state, button)
             }
             // TouchpadPressure { pressure: f32, stage: i64, },
             // AxisMotion { axis: AxisId, value: f64, },

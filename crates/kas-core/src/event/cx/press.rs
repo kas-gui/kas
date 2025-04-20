@@ -5,15 +5,65 @@
 
 //! Event handling: events
 
+mod mouse;
 mod touch;
 
 #[allow(unused)] use super::{Event, EventState}; // for doc-links
-use super::{EventCx, GrabMode, IsUsed, MouseGrab};
-use crate::event::cx::GrabDetails;
+use super::{EventCx, IsUsed};
 use crate::event::{CursorIcon, MouseButton, Unused, Used};
 use crate::geom::Coord;
 use crate::{Action, Id};
+pub(super) use mouse::Mouse;
 pub(super) use touch::Touch;
+
+/// Controls the types of events delivered by [`Press::grab`]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum GrabMode {
+    /// Deliver [`Event::PressEnd`] only for each grabbed press
+    Click,
+    /// Deliver [`Event::PressMove`] and [`Event::PressEnd`] for each grabbed press
+    Grab,
+    /// Deliver [`Event::Pan`] events, without scaling or rotation
+    PanOnly,
+    /// Deliver [`Event::Pan`] events, with rotation
+    PanRotate,
+    /// Deliver [`Event::Pan`] events, with scaling
+    PanScale,
+    /// Deliver [`Event::Pan`] events, with scaling and rotation
+    PanFull,
+}
+
+impl GrabMode {
+    /// True for "pan" variants
+    pub fn is_pan(self) -> bool {
+        use GrabMode::*;
+        matches!(self, PanFull | PanScale | PanRotate | PanOnly)
+    }
+}
+
+#[derive(Clone, Debug)]
+enum GrabDetails {
+    Click,
+    Grab,
+    Pan,
+}
+
+impl GrabDetails {
+    fn is_pan(&self) -> bool {
+        matches!(self, GrabDetails::Pan)
+    }
+}
+
+#[derive(Clone, Debug)]
+struct MouseGrab {
+    button: MouseButton,
+    repetitions: u32,
+    start_id: Id,
+    depress: Option<Id>,
+    details: GrabDetails,
+    cancel: bool,
+    coords: (Coord, Coord),
+}
 
 #[derive(Clone, Debug)]
 struct TouchGrab {
@@ -196,7 +246,7 @@ impl GrabBuilder {
                         GrabDetails::Pan
                     }
                 };
-                if let Some(ref mut grab) = cx.mouse_grab {
+                if let Some(ref mut grab) = cx.mouse.mouse_grab {
                     if grab.start_id != id
                         || grab.button != button
                         || grab.details.is_pan() != mode.is_pan()
@@ -210,7 +260,7 @@ impl GrabBuilder {
                     grab.depress = Some(id.clone());
                     grab.details = details;
                 } else {
-                    cx.mouse_grab = Some(MouseGrab {
+                    cx.mouse.mouse_grab = Some(MouseGrab {
                         button,
                         repetitions,
                         start_id: id.clone(),
@@ -270,6 +320,7 @@ impl EventState {
             }
         }
         if self
+            .mouse
             .mouse_grab
             .as_ref()
             .map(|grab| *w_id == grab.depress)
@@ -313,7 +364,7 @@ impl EventState {
         let mut redraw = false;
         match source {
             PressSource::Mouse(_, _) => {
-                if let Some(grab) = self.mouse_grab.as_mut() {
+                if let Some(grab) = self.mouse.mouse_grab.as_mut() {
                     redraw = grab.depress != target;
                     old = grab.depress.take();
                     grab.depress = target.clone();
@@ -338,6 +389,7 @@ impl EventState {
     /// Returns true if there is a mouse or touch grab on `id` or any descendant of `id`
     pub fn any_grab_on(&self, id: &Id) -> bool {
         if self
+            .mouse
             .mouse_grab
             .as_ref()
             .map(|grab| grab.start_id == id)

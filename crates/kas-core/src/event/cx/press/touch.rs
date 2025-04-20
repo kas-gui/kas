@@ -5,8 +5,8 @@
 
 //! Event handling: touch events
 
-use super::{Press, PressSource, TouchGrab};
-use crate::event::{Event, EventCx, EventState, FocusSource, GrabMode};
+use super::{GrabMode, Press, PressSource, TouchGrab};
+use crate::event::{Event, EventCx, EventState, FocusSource};
 use crate::geom::{Coord, DVec2};
 use crate::{Action, Id, NavAdvance, Node, Widget, Window};
 use cast::{Cast, CastApprox, Conv};
