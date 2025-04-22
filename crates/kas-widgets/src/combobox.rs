@@ -124,7 +124,7 @@ impl_scope! {
                     }
                     Used
                 }
-                Event::Scroll(ScrollDelta::LineDelta(_, y)) if !self.popup.is_open() => {
+                Event::Scroll(ScrollDelta::Lines(_, y)) if !self.popup.is_open() => {
                     if y > 0.0 {
                         self.set_active(cx, self.active.saturating_sub(1));
                     } else if y < 0.0 {

@@ -311,7 +311,7 @@ impl_scope! {
                     }
                     _ => return Unused,
                 },
-                Event::Scroll(ScrollDelta::LineDelta(_, y)) => {
+                Event::Scroll(ScrollDelta::Lines(_, y)) => {
                     if y > 0.0 {
                         SpinBtn::Up
                     } else if y < 0.0 {

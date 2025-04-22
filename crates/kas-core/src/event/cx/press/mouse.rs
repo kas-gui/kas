@@ -252,12 +252,12 @@ impl<'a> EventCx<'a> {
         self.mouse.last_click_button = FAKE_MOUSE_BUTTON;
 
         let event = Event::Scroll(match delta {
-            MouseScrollDelta::LineDelta(x, y) => ScrollDelta::LineDelta(x, y),
+            MouseScrollDelta::LineDelta(x, y) => ScrollDelta::Lines(x, y),
             MouseScrollDelta::PixelDelta(pos) => {
                 // The delta is given as a PhysicalPosition, so we need
                 // to convert to our vector type (Offset) here.
                 let coord = Coord::conv_approx(pos);
-                ScrollDelta::PixelDelta(coord.cast())
+                ScrollDelta::Pixels(coord.cast())
             }
         });
         if let Some(id) = self.mouse.hover.clone() {

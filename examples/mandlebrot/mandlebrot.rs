@@ -393,11 +393,7 @@ impl_scope! {
                     }
                 }
                 Event::Scroll(delta) => {
-                    let factor = match delta {
-                        event::ScrollDelta::LineDelta(_, y) => -0.5 * y as f64,
-                        event::ScrollDelta::PixelDelta(coord) => -0.01 * coord.1 as f64,
-                    };
-                    self.alpha = self.alpha * 2f64.powf(factor);
+                    self.alpha = self.alpha * 2f64.powf(delta.as_factor(cx));
                 }
                 Event::Pan { alpha, delta } => {
                     // Our full transform (from screen coordinates to world coordinates) is:
