@@ -63,17 +63,14 @@ impl_scope! {
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             let msg = (self.state_fn)(cx, data);
-            if let Some(index) = self.popup
+            let opt_index = self.popup
                 .inner
                 .inner
                 .iter()
                 .enumerate()
-                .find_map(|(i, w)| (*w == msg).then_some(i))
-            {
-                if index != self.active {
-                    self.active = index;
-                    cx.redraw(&self);
-                }
+                .find_map(|(i, w)| (*w == msg).then_some(i));
+            if let Some(index) = opt_index {
+                self.set_active(cx, index);
             } else {
                 log::warn!("ComboBox::update: unknown entry {msg:?}");
             };
