@@ -723,4 +723,31 @@ impl ScrollDelta {
             ScrollDelta::Pixels(Offset(_, y)) => -0.01 * y as f64,
         }
     }
+
+    /// Convert to a pan offset or zoom factor
+    ///
+    /// This is used for surfaces where panning/scrolling is preferred over
+    /// zooming, though both are supported (for example, a web page).
+    /// The <kbd>Ctrl</kbd> key is used to select between the two modes.
+    pub fn as_offset_or_factor(self, cx: &EventState) -> Result<Offset, f64> {
+        if cx.modifiers().control_key() {
+            Err(self.as_factor(cx))
+        } else {
+            Ok(self.as_offset(cx))
+        }
+    }
+
+    /// Convert to a zoom factor or pan offset
+    ///
+    /// This is used for surfaces where zooming is preferred over panning,
+    /// though both are supported (for example, a map view where click-and-drag
+    /// may also be used to pan). Mouse wheel actions always zoom while the
+    /// touchpad scrolling may cause either effect.
+    pub fn as_factor_or_offset(self, cx: &EventState) -> Result<f64, Offset> {
+        if matches!(self, ScrollDelta::Lines(_, _)) || cx.modifiers().control_key() {
+            Ok(self.as_factor(cx))
+        } else {
+            Err(self.as_offset(cx))
+        }
+    }
 }
