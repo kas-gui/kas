@@ -41,19 +41,6 @@ impl GrabMode {
     }
 }
 
-#[derive(Clone, Debug)]
-enum GrabDetails {
-    Click,
-    Grab,
-    Pan,
-}
-
-impl GrabDetails {
-    fn is_pan(&self) -> bool {
-        matches!(self, GrabDetails::Pan)
-    }
-}
-
 /// Source of `EventChild::Press`
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PressSource {

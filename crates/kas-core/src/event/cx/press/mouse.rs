@@ -5,7 +5,7 @@
 
 //! Event handling: mouse events
 
-use super::{GrabDetails, GrabMode, Press, PressSource};
+use super::{GrabMode, Press, PressSource};
 use crate::event::{Event, EventCx, FocusSource, ScrollDelta};
 use crate::geom::{Coord, DVec2};
 use crate::{Action, Id, NavAdvance, Node, Widget, Window};
@@ -20,6 +20,25 @@ const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
 const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 
 #[derive(Clone, Debug)]
+struct PanDetails {
+    c0: Coord,
+    c1: Coord,
+}
+
+#[derive(Clone, Debug)]
+enum GrabDetails {
+    Click,
+    Grab,
+    Pan(PanDetails),
+}
+
+impl GrabDetails {
+    fn is_pan(&self) -> bool {
+        matches!(self, GrabDetails::Pan(_))
+    }
+}
+
+#[derive(Clone, Debug)]
 pub(super) struct MouseGrab {
     button: MouseButton,
     repetitions: u32,
@@ -27,7 +46,6 @@ pub(super) struct MouseGrab {
     pub(super) depress: Option<Id>,
     details: GrabDetails,
     cancel: bool,
-    coords: (Coord, Coord),
 }
 
 pub(in crate::event::cx) struct Mouse {
@@ -77,10 +95,10 @@ impl Mouse {
 
     pub fn frame_update(&mut self) -> Option<(Id, Event)> {
         if let Some(grab) = self.mouse_grab.as_mut() {
-            if grab.details.is_pan() {
+            if let GrabDetails::Pan(details) = &mut grab.details {
                 // Terminology: pi are old coordinates, qi are new coords
-                let (p1, q1) = (DVec2::conv(grab.coords.0), DVec2::conv(grab.coords.1));
-                grab.coords.0 = grab.coords.1;
+                let (p1, q1) = (DVec2::conv(details.c0), DVec2::conv(details.c1));
+                details.c0 = details.c1;
 
                 let delta = q1 - p1;
                 if delta != DVec2::ZERO {
@@ -133,7 +151,10 @@ impl Mouse {
             GrabMode::Grab => GrabDetails::Grab,
             mode => {
                 assert!(mode.is_pan());
-                GrabDetails::Pan
+                GrabDetails::Pan(PanDetails {
+                    c0: coord,
+                    c1: coord,
+                })
             }
         };
         if let Some(ref mut grab) = self.mouse_grab {
@@ -157,7 +178,6 @@ impl Mouse {
                 depress: Some(id.clone()),
                 details,
                 cancel: false,
-                coords: (coord, coord),
             });
         }
         true
@@ -249,7 +269,7 @@ impl<'a> EventCx<'a> {
         self.set_hover(win.as_node(data), id.clone());
 
         if let Some(grab) = self.mouse.mouse_grab.as_mut() {
-            match grab.details {
+            match &mut grab.details {
                 GrabDetails::Click => (),
                 GrabDetails::Grab => {
                     let target = grab.start_id.clone();
@@ -262,8 +282,8 @@ impl<'a> EventCx<'a> {
                     let event = Event::PressMove { press, delta };
                     self.send_event(win.as_node(data), target, event);
                 }
-                GrabDetails::Pan => {
-                    grab.coords.1 = coord;
+                GrabDetails::Pan(details) => {
+                    details.c1 = coord;
                 }
             }
         } else if let Some(popup_id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
