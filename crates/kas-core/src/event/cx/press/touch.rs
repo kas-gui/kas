@@ -5,13 +5,26 @@
 
 //! Event handling: touch events
 
-use super::{GrabMode, Press, PressSource, TouchGrab};
+use super::{GrabMode, Press, PressSource};
 use crate::event::{Event, EventCx, EventState, FocusSource};
 use crate::geom::{Coord, DVec2};
 use crate::{Action, Id, NavAdvance, Node, Widget, Window};
 use cast::{Cast, CastApprox, Conv};
 use smallvec::SmallVec;
 use winit::event::TouchPhase;
+
+#[derive(Clone, Debug)]
+pub(super) struct TouchGrab {
+    id: u64,
+    pub(super) start_id: Id,
+    pub(super) depress: Option<Id>,
+    cur_id: Option<Id>,
+    last_move: Coord,
+    coord: Coord,
+    mode: GrabMode,
+    pan_grab: (u16, u16),
+    cancel: bool,
+}
 
 impl TouchGrab {
     fn flush_click_move(&mut self) -> Action {
@@ -130,6 +143,44 @@ impl Touch {
     #[inline]
     pub(super) fn get_touch(&mut self, touch_id: u64) -> Option<&mut TouchGrab> {
         self.touch_grab.iter_mut().find(|grab| grab.id == touch_id)
+    }
+
+    /// Returns `true` on success
+    pub(super) fn start_grab(
+        &mut self,
+        touch_id: u64,
+        id: Id,
+        coord: Coord,
+        mode: GrabMode,
+    ) -> bool {
+        if let Some(grab) = self.get_touch(touch_id) {
+            if grab.mode.is_pan() != mode.is_pan() || grab.cancel {
+                return false;
+            }
+
+            grab.depress = Some(id.clone());
+            grab.cur_id = Some(id.clone());
+            grab.last_move = coord;
+            grab.coord = coord;
+            grab.mode = grab.mode.max(mode);
+        } else {
+            let mut pan_grab = (u16::MAX, 0);
+            if mode.is_pan() {
+                pan_grab = self.set_pan_on(id.clone(), mode, coord);
+            }
+            self.touch_grab.push(TouchGrab {
+                id: touch_id,
+                start_id: id.clone(),
+                depress: Some(id.clone()),
+                cur_id: Some(id.clone()),
+                last_move: coord,
+                coord,
+                mode,
+                pan_grab,
+                cancel: false,
+            });
+        }
+        true
     }
 }
 

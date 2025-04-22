@@ -5,7 +5,7 @@
 
 //! Event handling: mouse events
 
-use super::{GrabDetails, MouseGrab, Press, PressSource};
+use super::{GrabDetails, GrabMode, Press, PressSource};
 use crate::event::{Event, EventCx, FocusSource, ScrollDelta};
 use crate::geom::{Coord, DVec2};
 use crate::{Action, Id, NavAdvance, Node, Widget, Window};
@@ -18,6 +18,17 @@ use winit::window::CursorIcon;
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
 
 const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
+
+#[derive(Clone, Debug)]
+pub(super) struct MouseGrab {
+    button: MouseButton,
+    repetitions: u32,
+    pub(super) start_id: Id,
+    pub(super) depress: Option<Id>,
+    details: GrabDetails,
+    cancel: bool,
+    coords: (Coord, Coord),
+}
 
 pub(in crate::event::cx) struct Mouse {
     pub(super) hover: Option<Id>,
@@ -106,6 +117,50 @@ impl Mouse {
             }
         }
         (cancel, redraw)
+    }
+
+    /// Returns `true` on success
+    pub(crate) fn start_grab(
+        &mut self,
+        button: MouseButton,
+        repetitions: u32,
+        id: Id,
+        coord: Coord,
+        mode: GrabMode,
+    ) -> bool {
+        let details = match mode {
+            GrabMode::Click => GrabDetails::Click,
+            GrabMode::Grab => GrabDetails::Grab,
+            mode => {
+                assert!(mode.is_pan());
+                GrabDetails::Pan
+            }
+        };
+        if let Some(ref mut grab) = self.mouse_grab {
+            if grab.start_id != id
+                || grab.button != button
+                || grab.details.is_pan() != mode.is_pan()
+                || grab.cancel
+            {
+                return false;
+            }
+
+            debug_assert!(repetitions >= grab.repetitions);
+            grab.repetitions = repetitions;
+            grab.depress = Some(id.clone());
+            grab.details = details;
+        } else {
+            self.mouse_grab = Some(MouseGrab {
+                button,
+                repetitions,
+                start_id: id.clone(),
+                depress: Some(id.clone()),
+                details,
+                cancel: false,
+                coords: (coord, coord),
+            });
+        }
+        true
     }
 }
 

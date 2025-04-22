@@ -54,30 +54,6 @@ impl GrabDetails {
     }
 }
 
-#[derive(Clone, Debug)]
-struct MouseGrab {
-    button: MouseButton,
-    repetitions: u32,
-    start_id: Id,
-    depress: Option<Id>,
-    details: GrabDetails,
-    cancel: bool,
-    coords: (Coord, Coord),
-}
-
-#[derive(Clone, Debug)]
-struct TouchGrab {
-    id: u64,
-    start_id: Id,
-    depress: Option<Id>,
-    cur_id: Option<Id>,
-    last_move: Coord,
-    coord: Coord,
-    mode: GrabMode,
-    pan_grab: (u16, u16),
-    cancel: bool,
-}
-
 /// Source of `EventChild::Press`
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PressSource {
@@ -236,77 +212,29 @@ impl GrabBuilder {
             cursor,
         } = self;
         log::trace!(target: "kas_core::event", "grab_press: start_id={id}, source={source:?}");
+        let success;
         match source {
             PressSource::Mouse(button, repetitions) => {
-                let details = match mode {
-                    GrabMode::Click => GrabDetails::Click,
-                    GrabMode::Grab => GrabDetails::Grab,
-                    mode => {
-                        assert!(mode.is_pan());
-                        GrabDetails::Pan
+                success = cx
+                    .mouse
+                    .start_grab(button, repetitions, id.clone(), coord, mode);
+                if success {
+                    if let Some(icon) = cursor {
+                        cx.window.set_cursor_icon(icon);
                     }
-                };
-                if let Some(ref mut grab) = cx.mouse.mouse_grab {
-                    if grab.start_id != id
-                        || grab.button != button
-                        || grab.details.is_pan() != mode.is_pan()
-                        || grab.cancel
-                    {
-                        return Unused;
-                    }
-
-                    debug_assert!(repetitions >= grab.repetitions);
-                    grab.repetitions = repetitions;
-                    grab.depress = Some(id.clone());
-                    grab.details = details;
-                } else {
-                    cx.mouse.mouse_grab = Some(MouseGrab {
-                        button,
-                        repetitions,
-                        start_id: id.clone(),
-                        depress: Some(id.clone()),
-                        details,
-                        cancel: false,
-                        coords: (coord, coord),
-                    });
-                }
-                if let Some(icon) = cursor {
-                    cx.window.set_cursor_icon(icon);
                 }
             }
             PressSource::Touch(touch_id) => {
-                if let Some(grab) = cx.touch.get_touch(touch_id) {
-                    if grab.mode.is_pan() != mode.is_pan() || grab.cancel {
-                        return Unused;
-                    }
-
-                    grab.depress = Some(id.clone());
-                    grab.cur_id = Some(id.clone());
-                    grab.last_move = coord;
-                    grab.coord = coord;
-                    grab.mode = grab.mode.max(mode);
-                } else {
-                    let mut pan_grab = (u16::MAX, 0);
-                    if mode.is_pan() {
-                        pan_grab = cx.touch.set_pan_on(id.clone(), mode, coord);
-                    }
-                    cx.touch.touch_grab.push(TouchGrab {
-                        id: touch_id,
-                        start_id: id.clone(),
-                        depress: Some(id.clone()),
-                        cur_id: Some(id.clone()),
-                        last_move: coord,
-                        coord,
-                        mode,
-                        pan_grab,
-                        cancel: false,
-                    });
-                }
+                success = cx.touch.start_grab(touch_id, id.clone(), coord, mode)
             }
-        }
+        };
 
-        cx.action(id, Action::REDRAW);
-        Used
+        if success {
+            cx.action(id, Action::REDRAW);
+            Used
+        } else {
+            Unused
+        }
     }
 }
 
