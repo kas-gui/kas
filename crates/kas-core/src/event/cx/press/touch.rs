@@ -272,7 +272,10 @@ impl<'a> EventCx<'a> {
             }
 
             let id = grab.id.clone();
-            if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
+            if alpha.is_finite()
+                && delta.is_finite()
+                && (alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO)
+            {
                 let event = Event::Pan { alpha, delta };
                 self.send_event(node.re(), id, event);
             }

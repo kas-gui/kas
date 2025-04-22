@@ -147,7 +147,10 @@ impl Mouse {
                     unreachable!()
                 }
 
-                if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
+                if alpha.is_finite()
+                    && delta.is_finite()
+                    && (alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO)
+                {
                     let id = grab.start_id.clone();
                     let event = Event::Pan { alpha, delta };
                     return Some((id, event));

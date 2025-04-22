@@ -349,6 +349,18 @@ macro_rules! impl_vec2 {
                     true => self.1,
                 }
             }
+
+            /// Returns `true` if all components are neither infinite nor NaN
+            #[inline]
+            pub fn is_finite(self) -> bool {
+                self.0.is_finite() && self.1.is_finite()
+            }
+
+            /// Returns `true` if no components are zero, infinite, submormal or NaN
+            #[inline]
+            pub fn is_normal(self) -> bool {
+                self.0.is_normal() && self.1.is_normal()
+            }
         }
 
         impl Neg for $T {
