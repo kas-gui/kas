@@ -341,8 +341,9 @@ impl<'a> EventCx<'a> {
                 }
 
                 if redraw {
-                    self.action(Id::ROOT, Action::REDRAW);
+                    self.window_action(Action::REDRAW);
                 } else if let Some(pan_grab) = pan_grab {
+                    self.need_frame_update = true;
                     if usize::conv(pan_grab.1) < MAX_PAN_GRABS {
                         if let Some(pan) = self.touch.pan_grab.get_mut(usize::conv(pan_grab.0)) {
                             pan.coords[usize::conv(pan_grab.1)].1 = coord;

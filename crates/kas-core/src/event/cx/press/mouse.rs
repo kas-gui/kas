@@ -284,6 +284,7 @@ impl<'a> EventCx<'a> {
                 }
                 GrabDetails::Pan(details) => {
                     details.c1 = coord;
+                    self.need_frame_update = true;
                 }
             }
         } else if let Some(popup_id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {

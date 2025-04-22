@@ -95,6 +95,7 @@ pub struct EventState {
     popup_removed: SmallVec<[(Id, WindowId); 16]>,
     time_updates: Vec<(Instant, Id, TimerHandle)>,
     frame_updates: LinearSet<(Id, TimerHandle)>,
+    need_frame_update: bool,
     // Set of messages awaiting sending
     send_queue: VecDeque<(Id, Erased)>,
     // Set of futures of messages together with id of sending widget

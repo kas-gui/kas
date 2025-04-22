@@ -35,6 +35,7 @@ impl EventState {
             popup_removed: Default::default(),
             time_updates: vec![],
             frame_updates: Default::default(),
+            need_frame_update: false,
             send_queue: Default::default(),
             fut_messages: vec![],
             pending_update: None,
@@ -85,8 +86,8 @@ impl EventState {
         self.time_updates.last().map(|time| time.0)
     }
 
-    pub(crate) fn have_pending(&self) -> bool {
-        !self.frame_updates.is_empty() || !self.fut_messages.is_empty()
+    pub(crate) fn need_frame_update(&self) -> bool {
+        self.need_frame_update || !self.frame_updates.is_empty() || !self.fut_messages.is_empty()
     }
 
     /// Construct a [`EventCx`] referring to this state
@@ -205,6 +206,7 @@ impl<'a> EventCx<'a> {
     /// This method should be called once per frame as well as after the last
     /// frame before a long sleep.
     pub(crate) fn frame_update(&mut self, mut widget: Node<'_>) {
+        self.need_frame_update = false;
         log::debug!(target: "kas_core::event", "Processing frame update");
         if let Some((target, event)) = self.mouse.frame_update() {
             self.send_event(widget.re(), target, event);

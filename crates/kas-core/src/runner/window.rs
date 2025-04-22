@@ -313,13 +313,19 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         let mut resume = self.ev_state.next_resume();
 
         let window = self.window.as_mut().unwrap();
-        if let Some(time) = window.queued_frame_time {
+        if window.need_redraw {
+            window.request_redraw();
+            window.queued_frame_time = None;
+        } else if let Some(time) = window.queued_frame_time {
             if time <= Instant::now() {
                 window.request_redraw();
                 window.queued_frame_time = None;
             } else {
                 resume = resume.map(|t| t.min(time)).or(Some(time));
             }
+        } else if self.ev_state.need_frame_update() {
+            window.next_avail_frame_time = Instant::now() + self.ev_state.config().frame_dur();
+            window.queued_frame_time = Some(window.next_avail_frame_time);
         }
 
         (action, resume)
@@ -388,13 +394,6 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
                 .with(&mut state.shared, window, &mut messages, |cx| {
                     cx.frame_update(widget);
                 });
-
-            if window.need_redraw || self.ev_state.action.contains(Action::REDRAW) {
-                window.request_redraw();
-            } else if self.ev_state.have_pending() {
-                window.next_avail_frame_time = Instant::now() + self.ev_state.config().frame_dur();
-                window.queued_frame_time = Some(window.next_avail_frame_time);
-            }
         } else {
             self.ev_state
                 .with(&mut state.shared, window, &mut messages, |cx| {
