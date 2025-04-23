@@ -11,12 +11,13 @@ use super::{AppData, GraphicsBuilder};
 use crate::cast::{Cast, Conv};
 use crate::config::WindowConfig;
 use crate::decorations::Decorations;
+use crate::draw::PassType;
 use crate::draw::{color::Rgba, AnimationState, DrawSharedImpl};
 use crate::event::{ConfigCx, CursorIcon, EventState};
-use crate::geom::{Coord, Rect, Size};
+use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::SolveCache;
 use crate::messages::MessageStack;
-use crate::theme::{DrawCx, SizeCx, Theme, ThemeSize, Window as _};
+use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, ThemeSize, Window as _};
 use crate::{autoimpl, Action, Id, Tile, Widget, WindowId};
 use std::mem::take;
 use std::sync::Arc;
@@ -519,6 +520,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         window.next_avail_frame_time = start + self.ev_state.config().frame_dur();
 
         {
+            let rect = Rect::new(Coord::ZERO, window.surface.size());
             let draw = window.surface.draw_iface(&mut state.shared.draw);
 
             let mut draw =
@@ -528,6 +530,13 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
                     .draw(draw, &mut self.ev_state, &mut window.theme_window);
             let draw_cx = DrawCx::new(&mut draw, self.widget.id());
             self.widget.draw(draw_cx);
+
+            draw.new_pass(
+                rect,
+                Offset::ZERO,
+                PassType::Clip,
+                Box::new(|draw: &mut dyn ThemeDraw| draw.event_state_overlay()),
+            );
         }
         let time2 = Instant::now();
 

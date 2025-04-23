@@ -236,7 +236,7 @@ impl EventState {
         }
         if self
             .mouse
-            .mouse_grab
+            .grab
             .as_ref()
             .map(|grab| *w_id == grab.depress)
             .unwrap_or(false)
@@ -259,7 +259,7 @@ impl EventState {
     /// Get whether the widget is under the mouse cursor
     #[inline]
     pub fn is_hovered(&self, w_id: &Id) -> bool {
-        self.mouse.mouse_grab.is_none() && *w_id == self.mouse.hover
+        self.mouse.grab.is_none() && *w_id == self.mouse.hover
     }
 
     /// Set the cursor icon
@@ -298,7 +298,7 @@ impl EventState {
         let mut redraw = false;
         match source {
             PressSource::Mouse(_, _) => {
-                if let Some(grab) = self.mouse.mouse_grab.as_mut() {
+                if let Some(grab) = self.mouse.grab.as_mut() {
                     redraw = grab.depress != target;
                     old = grab.depress.take();
                     grab.depress = target.clone();
@@ -324,7 +324,7 @@ impl EventState {
     pub fn any_grab_on(&self, id: &Id) -> bool {
         if self
             .mouse
-            .mouse_grab
+            .grab
             .as_ref()
             .map(|grab| grab.start_id == id)
             .unwrap_or(false)
@@ -342,7 +342,7 @@ impl<'a> EventCx<'a> {
     /// [`Press::grab`]). The cursor will be reset when the mouse-grab
     /// ends.
     pub fn set_grab_cursor(&mut self, id: &Id, icon: CursorIcon) {
-        if let Some(ref grab) = self.mouse.mouse_grab {
+        if let Some(ref grab) = self.mouse.grab {
             if grab.start_id == *id {
                 self.window.set_cursor_icon(icon);
             }

@@ -252,6 +252,20 @@ where
         self.draw.get_clip_rect()
     }
 
+    fn event_state_overlay(&mut self) {
+        if let Some((coord, used)) = self.ev.mouse_pin() {
+            // let r = self.w.dims.scale * 6.0;
+            // let inner = if used { 0.0 } else { 0.6 };
+            let (r, inner) = match used {
+                false => (self.w.dims.scale * 3.6, 0.0),
+                true => (self.w.dims.scale * 6.0, 0.6),
+            };
+            let c = self.cols.accent;
+            self.draw
+                .circle(Quad::from_center(coord.cast(), r), inner, c);
+        }
+    }
+
     fn frame(&mut self, id: &Id, rect: Rect, style: FrameStyle, bg: Background) {
         let outer = Quad::conv(rect);
         match style {

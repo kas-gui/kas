@@ -64,6 +64,10 @@ impl Extends {
                 (#base).get_clip_rect()
             }
 
+            fn event_state_overlay(&mut self) {
+                (#base).event_state_overlay();
+            }
+
             fn frame(&mut self, id: &Id, rect: Rect, style: ::kas::theme::FrameStyle, bg: Background) {
                 (#base).frame(id, rect, style, bg);
             }

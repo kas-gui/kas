@@ -48,6 +48,16 @@ impl Quad {
         }
     }
 
+    /// Construct with center and radius
+    #[inline]
+    pub fn from_center(pos: Vec2, r: f32) -> Self {
+        let v = Vec2::splat(r);
+        Quad {
+            a: pos - v,
+            b: pos + v,
+        }
+    }
+
     /// Get the size
     #[inline]
     pub fn size(&self) -> Vec2 {
