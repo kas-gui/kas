@@ -6,7 +6,7 @@
 //! Spinner widget
 
 use crate::{EditField, EditGuard, MarkButton};
-use kas::event::{Command, ScrollDelta};
+use kas::event::Command;
 use kas::prelude::*;
 use kas::theme::{FrameStyle, MarkStyle, TextClass};
 use std::ops::RangeInclusive;
@@ -80,7 +80,7 @@ macro_rules! impl_int {
 impl_int!(i8, i16, i32, i64, i128, isize);
 impl_int!(u8, u16, u32, u64, u128, usize);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 enum SpinBtn {
     Down,
     Up,
@@ -299,31 +299,40 @@ impl_scope! {
         type Data = A;
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
-            let btn = match event {
-                Event::Command(cmd, code) => match cmd {
-                    Command::Down => {
-                        cx.depress_with_key(self.b_down.id(), code);
-                        SpinBtn::Down
-                    }
-                    Command::Up => {
-                        cx.depress_with_key(self.b_up.id(), code);
-                        SpinBtn::Up
-                    }
-                    _ => return Unused,
+            let mut value = None;
+            match event {
+                Event::Command(cmd, code) => {
+                    let btn = match cmd {
+                        Command::Down => {
+                            cx.depress_with_key(self.b_down.id(), code);
+                            SpinBtn::Down
+                        }
+                        Command::Up => {
+                            cx.depress_with_key(self.b_up.id(), code);
+                            SpinBtn::Up
+                        }
+                        _ => return Unused,
+                    };
+                    value = self.edit.guard.handle_btn(cx, data, btn);
                 },
-                Event::Scroll(ScrollDelta::Lines(_, y)) => {
-                    if y > 0.0 {
-                        SpinBtn::Up
-                    } else if y < 0.0 {
-                        SpinBtn::Down
+                Event::Scroll(delta) => {
+                    if let Some(y) = delta.as_wheel_action(cx) {
+                        let (count, btn) = if y > 0 {
+                            (y as u32, SpinBtn::Up)
+                        } else {
+                            ((-y) as u32, SpinBtn::Down)
+                        };
+                        for _ in 0..count {
+                            value = self.edit.guard.handle_btn(cx, data, btn);
+                        }
                     } else {
                         return Unused;
                     }
                 }
                 _ => return Unused,
-            };
+            }
 
-            if let Some(value) = self.edit.guard.handle_btn(cx, data, btn) {
+            if let Some(value) = value {
                 if let Some(ref f) = self.on_change {
                     f(cx, data, value);
                 }

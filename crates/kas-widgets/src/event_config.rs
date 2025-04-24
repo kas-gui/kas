@@ -50,12 +50,14 @@ impl_scope! {
             (0, 8) => "Mouse text pan:",
             (1..3, 8) => self.mouse_text_pan,
 
-            (1..3, 9) => self.mouse_nav_focus,
+            (1..3, 9) => self.mouse_wheel_actions,
 
-            (1..3, 10) => self.touch_nav_focus,
+            (1..3, 10) => self.mouse_nav_focus,
 
-            (0, 11) => "Restore default values:",
-            (1..3, 11) => Button::label_msg("&Reset", EventConfigMsg::ResetToDefault),
+            (1..3, 11) => self.touch_nav_focus,
+
+            (0, 12) => "Restore default values:",
+            (1..3, 12) => Button::label_msg("&Reset", EventConfigMsg::ResetToDefault),
         };
     }]
     #[impl_default(EventConfig::new())]
@@ -79,6 +81,8 @@ impl_scope! {
         mouse_pan: ComboBox<(), MousePan>,
         #[widget]
         mouse_text_pan: ComboBox<(), MousePan>,
+        #[widget]
+        mouse_wheel_actions: CheckButton<()>,
         #[widget]
         mouse_nav_focus: CheckButton<()>,
         #[widget]
@@ -135,6 +139,11 @@ impl_scope! {
                     pan_options,
                     |cx: &ConfigCx, _| cx.config().base().event.mouse_text_pan,
                     EventConfigMsg::MouseTextPan,
+                ),
+                mouse_wheel_actions: CheckButton::new_msg(
+                    "Mouse &wheel actions",
+                    |cx: &ConfigCx, _| cx.config().base().event.mouse_wheel_actions,
+                    EventConfigMsg::MouseWheelActions,
                 ),
                 mouse_nav_focus: CheckButton::new_msg(
                     "&Mouse navigation focus",

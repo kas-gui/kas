@@ -7,7 +7,7 @@
 
 use crate::adapt::AdaptEvents;
 use crate::{menu::MenuEntry, Column, Label, Mark};
-use kas::event::{Command, FocusSource, ScrollDelta};
+use kas::event::{Command, FocusSource};
 use kas::prelude::*;
 use kas::theme::FrameStyle;
 use kas::theme::{MarkStyle, TextClass};
@@ -121,14 +121,18 @@ impl_scope! {
                     }
                     Used
                 }
-                Event::Scroll(ScrollDelta::Lines(_, y)) if !self.popup.is_open() => {
-                    if y > 0.0 {
-                        self.set_active(cx, self.active.saturating_sub(1));
-                    } else if y < 0.0 {
-                        let last = self.len().saturating_sub(1);
-                        self.set_active(cx, (self.active + 1).min(last));
+                Event::Scroll(delta) if !self.popup.is_open() => {
+                    if let Some(y) = delta.as_wheel_action(cx) {
+                        let index = if y > 0 {
+                            self.active.saturating_sub(y as usize)
+                        } else {
+                            self.active.saturating_add((-y) as usize).min(self.len().saturating_sub(1))
+                        };
+                        self.set_active(cx, index);
+                        Used
+                    } else {
+                        Unused
                     }
-                    Used
                 }
                 Event::PressStart { press } => {
                     if press.id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {

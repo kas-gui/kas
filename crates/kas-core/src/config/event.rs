@@ -27,6 +27,7 @@ pub enum EventConfigMsg {
     PanDistThresh(f32),
     MousePan(MousePan),
     MouseTextPan(MousePan),
+    MouseWheelActions(bool),
     MouseNavFocus(bool),
     TouchNavFocus(bool),
     /// Reset all config values to default (not saved) values
@@ -81,6 +82,9 @@ pub struct EventConfig {
     #[cfg_attr(feature = "serde", serde(default = "defaults::mouse_text_pan"))]
     pub mouse_text_pan: MousePan,
 
+    #[cfg_attr(feature = "serde", serde(default = "defaults::mouse_wheel_actions"))]
+    pub mouse_wheel_actions: bool,
+
     #[cfg_attr(feature = "serde", serde(default = "defaults::mouse_nav_focus"))]
     pub mouse_nav_focus: bool,
     #[cfg_attr(feature = "serde", serde(default = "defaults::touch_nav_focus"))]
@@ -99,6 +103,7 @@ impl Default for EventConfig {
             pan_dist_thresh: defaults::pan_dist_thresh(),
             mouse_pan: defaults::mouse_pan(),
             mouse_text_pan: defaults::mouse_text_pan(),
+            mouse_wheel_actions: defaults::mouse_wheel_actions(),
             mouse_nav_focus: defaults::mouse_nav_focus(),
             touch_nav_focus: defaults::touch_nav_focus(),
         }
@@ -117,6 +122,7 @@ impl EventConfig {
             EventConfigMsg::PanDistThresh(v) => self.pan_dist_thresh = v,
             EventConfigMsg::MousePan(v) => self.mouse_pan = v,
             EventConfigMsg::MouseTextPan(v) => self.mouse_text_pan = v,
+            EventConfigMsg::MouseWheelActions(v) => self.mouse_wheel_actions = v,
             EventConfigMsg::MouseNavFocus(v) => self.mouse_nav_focus = v,
             EventConfigMsg::TouchNavFocus(v) => self.touch_nav_focus = v,
             EventConfigMsg::ResetToDefault => *self = EventConfig::default(),
@@ -196,6 +202,12 @@ impl<'a> EventWindowConfig<'a> {
     #[inline]
     pub fn pan_dist_thresh(&self) -> f32 {
         self.0.pan_dist_thresh
+    }
+
+    /// Whether the mouse wheel may trigger actions such as switching to the next item in a list
+    #[inline]
+    pub fn mouse_wheel_actions(&self) -> bool {
+        self.base().mouse_wheel_actions
     }
 
     /// When to pan general widgets (unhandled events) with the mouse
@@ -281,6 +293,9 @@ mod defaults {
     }
     pub fn pan_dist_thresh() -> f32 {
         5.0
+    }
+    pub fn mouse_wheel_actions() -> bool {
+        true
     }
     pub fn mouse_pan() -> MousePan {
         MousePan::Always
