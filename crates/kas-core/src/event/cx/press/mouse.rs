@@ -5,11 +5,11 @@
 
 //! Event handling: mouse events
 
-use super::{GrabMode, Press, PressSource};
+use super::{velocity, GrabMode, Press, PressSource};
 use crate::event::{Event, EventCx, EventState, FocusSource, ScrollDelta};
-use crate::geom::{Coord, DVec2};
+use crate::geom::{Coord, DVec2, Vec2};
 use crate::{Action, Id, NavAdvance, Node, Widget, Window};
-use cast::{Cast, Conv, ConvApprox};
+use cast::{Cast, CastApprox, Conv, ConvApprox};
 use std::time::{Duration, Instant};
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 use winit::window::CursorIcon;
@@ -77,6 +77,8 @@ pub(in crate::event::cx) struct Mouse {
     last_click_timeout: Instant,
     last_pin: Option<(Id, Coord)>,
     pub(super) grab: Option<MouseGrab>,
+    last_position: Vec2,
+    pub(super) samples: velocity::Samples,
 }
 
 impl Default for Mouse {
@@ -91,6 +93,8 @@ impl Default for Mouse {
             last_click_timeout: Instant::now(),
             last_pin: None,
             grab: None,
+            last_position: Vec2::ZERO,
+            samples: Default::default(),
         }
     }
 }
@@ -340,9 +344,14 @@ impl<'a> EventCx<'a> {
         &mut self,
         win: &mut Window<A>,
         data: &A,
-        coord: Coord,
+        position: DVec2,
     ) {
+        let position: Vec2 = position.cast_approx();
+        let delta = position - self.mouse.last_position;
+        self.mouse.samples.push_delta(delta);
+        self.mouse.last_position = position;
         self.mouse.last_click_button = FAKE_MOUSE_BUTTON;
+        let coord = position.cast_approx();
 
         // Update hovered win
         let id = win.try_probe(coord);

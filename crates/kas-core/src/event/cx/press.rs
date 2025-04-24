@@ -7,11 +7,12 @@
 
 mod mouse;
 mod touch;
+pub(crate) mod velocity;
 
 #[allow(unused)] use super::{Event, EventState}; // for doc-links
 use super::{EventCx, IsUsed};
 use crate::event::{CursorIcon, MouseButton, Unused, Used};
-use crate::geom::Coord;
+use crate::geom::{Coord, Vec2};
 use crate::{Action, Id};
 pub(super) use mouse::Mouse;
 pub(super) use touch::Touch;
@@ -332,6 +333,27 @@ impl EventState {
             return true;
         }
         self.touch.touch_grab.iter().any(|grab| grab.start_id == id)
+    }
+
+    /// Get velocity of the mouse cursor or a touch
+    ///
+    /// The velocity is calculated at the time this method is called using
+    /// existing samples of motion.
+    ///
+    /// For [`PressSource::Mouse`] this always succeeds (the `button` and
+    /// `repetitions` payloads are ignored).
+    ///
+    /// For [`PressSource::Touch`] this requires an active grab and is not
+    /// guaranteed to succeed; currently only a limited number of presses with
+    /// mode [`GrabMode::Grab`] are tracked for velocity.
+    pub fn press_velocity(&self, press: PressSource) -> Option<Vec2> {
+        let evc = self.config().event();
+        match press {
+            PressSource::Mouse(_, _) => {
+                Some(self.mouse.samples.velocity(evc.scroll_flick_timeout()))
+            }
+            PressSource::Touch(id) => self.touch.velocity(id, evc),
+        }
     }
 }
 

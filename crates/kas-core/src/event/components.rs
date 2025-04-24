@@ -497,7 +497,7 @@ impl TextInput {
                 self.glide.press_start(press.source);
                 action
             }
-            Event::PressMove { press, delta } if press.is_primary() => {
+            Event::PressMove { press, delta, .. } if press.is_primary() => {
                 self.glide.press_move(press.source, delta);
                 match press.source {
                     PressSource::Touch(touch_id) => match self.touch_phase {

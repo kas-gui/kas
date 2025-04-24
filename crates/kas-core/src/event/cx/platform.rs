@@ -268,7 +268,6 @@ impl<'a> EventCx<'a> {
         data: &A,
         event: winit::event::WindowEvent,
     ) {
-        use cast::CastApprox;
         use winit::event::WindowEvent::*;
 
         match event {
@@ -335,9 +334,7 @@ impl<'a> EventCx<'a> {
                 }
                 self.modifiers = state;
             }
-            CursorMoved { position, .. } => {
-                self.handle_cursor_moved(win, data, position.cast_approx())
-            }
+            CursorMoved { position, .. } => self.handle_cursor_moved(win, data, position.into()),
             CursorEntered { .. } => self.handle_cursor_entered(),
             CursorLeft { .. } => self.handle_cursor_left(win.as_node(data)),
             MouseWheel { delta, .. } => self.handle_mouse_wheel(win.as_node(data), delta),
