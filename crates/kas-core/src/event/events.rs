@@ -673,7 +673,81 @@ impl FocusSource {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ScrollDelta {
     /// Scroll a given number of lines
-    LineDelta(f32, f32),
+    ///
+    /// Positive values indicate that the content that is being scrolled should
+    /// move right and down (revealing more content left and up).
+    /// Typically values are integral but this is not guaranteed.
+    Lines(f32, f32),
     /// Scroll a given number of pixels
-    PixelDelta(Offset),
+    ///
+    /// For a ‘natural scrolling’ touch pad (that acts like a touch screen) this
+    /// means moving your fingers right and down should give positive values,
+    /// and move the content right and down (to reveal more things left and up).
+    Pixels(Offset),
+}
+
+impl ScrollDelta {
+    /// True if the x-axis delta is zero
+    pub fn is_vertical(self) -> bool {
+        match self {
+            ScrollDelta::Lines(0.0, _) => true,
+            ScrollDelta::Pixels(Offset(0, _)) => true,
+            _ => false,
+        }
+    }
+
+    /// True if the y-axis delta is zero
+    pub fn is_horizontal(self) -> bool {
+        match self {
+            ScrollDelta::Lines(_, 0.0) => true,
+            ScrollDelta::Pixels(Offset(_, 0)) => true,
+            _ => false,
+        }
+    }
+
+    /// Convert to a pan offset
+    ///
+    /// Line deltas are converted to a distance based on `scroll_distance` configuration.
+    pub fn as_offset(self, cx: &EventState) -> Offset {
+        match self {
+            ScrollDelta::Lines(x, y) => cx.config().event().scroll_distance((x, y)),
+            ScrollDelta::Pixels(d) => d,
+        }
+    }
+
+    /// Convert to a zoom factor
+    pub fn as_factor(self, _: &EventState) -> f64 {
+        // TODO: this should be configurable?
+        match self {
+            ScrollDelta::Lines(_, y) => -0.5 * y as f64,
+            ScrollDelta::Pixels(Offset(_, y)) => -0.01 * y as f64,
+        }
+    }
+
+    /// Convert to a pan offset or zoom factor
+    ///
+    /// This is used for surfaces where panning/scrolling is preferred over
+    /// zooming, though both are supported (for example, a web page).
+    /// The <kbd>Ctrl</kbd> key is used to select between the two modes.
+    pub fn as_offset_or_factor(self, cx: &EventState) -> Result<Offset, f64> {
+        if cx.modifiers().control_key() {
+            Err(self.as_factor(cx))
+        } else {
+            Ok(self.as_offset(cx))
+        }
+    }
+
+    /// Convert to a zoom factor or pan offset
+    ///
+    /// This is used for surfaces where zooming is preferred over panning,
+    /// though both are supported (for example, a map view where click-and-drag
+    /// may also be used to pan). Mouse wheel actions always zoom while the
+    /// touchpad scrolling may cause either effect.
+    pub fn as_factor_or_offset(self, cx: &EventState) -> Result<f64, Offset> {
+        if matches!(self, ScrollDelta::Lines(_, _)) || cx.modifiers().control_key() {
+            Ok(self.as_factor(cx))
+        } else {
+            Err(self.as_offset(cx))
+        }
+    }
 }

@@ -63,17 +63,14 @@ impl_scope! {
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             let msg = (self.state_fn)(cx, data);
-            if let Some(index) = self.popup
+            let opt_index = self.popup
                 .inner
                 .inner
                 .iter()
                 .enumerate()
-                .find_map(|(i, w)| (*w == msg).then_some(i))
-            {
-                if index != self.active {
-                    self.active = index;
-                    cx.redraw(&self);
-                }
+                .find_map(|(i, w)| (*w == msg).then_some(i));
+            if let Some(index) = opt_index {
+                self.set_active(cx, index);
             } else {
                 log::warn!("ComboBox::update: unknown entry {msg:?}");
             };
@@ -124,7 +121,7 @@ impl_scope! {
                     }
                     Used
                 }
-                Event::Scroll(ScrollDelta::LineDelta(_, y)) if !self.popup.is_open() => {
+                Event::Scroll(ScrollDelta::Lines(_, y)) if !self.popup.is_open() => {
                     if y > 0.0 {
                         self.set_active(cx, self.active.saturating_sub(1));
                     } else if y < 0.0 {

@@ -5,7 +5,6 @@
 
 //! Event handling components
 
-use super::ScrollDelta::{LineDelta, PixelDelta};
 use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
@@ -287,31 +286,27 @@ impl ScrollComponent {
                     Command::End => self.max_offset,
                     cmd => {
                         let delta = match cmd {
-                            Command::Left => LineDelta(-1.0, 0.0),
-                            Command::Right => LineDelta(1.0, 0.0),
-                            Command::Up => LineDelta(0.0, 1.0),
-                            Command::Down => LineDelta(0.0, -1.0),
-                            Command::PageUp => PixelDelta(Offset(0, window_rect.size.1 / 2)),
-                            Command::PageDown => PixelDelta(Offset(0, -(window_rect.size.1 / 2))),
+                            Command::Left => ScrollDelta::Lines(-1.0, 0.0),
+                            Command::Right => ScrollDelta::Lines(1.0, 0.0),
+                            Command::Up => ScrollDelta::Lines(0.0, 1.0),
+                            Command::Down => ScrollDelta::Lines(0.0, -1.0),
+                            Command::PageUp => {
+                                ScrollDelta::Pixels(Offset(0, window_rect.size.1 / 2))
+                            }
+                            Command::PageDown => {
+                                ScrollDelta::Pixels(Offset(0, -(window_rect.size.1 / 2)))
+                            }
                             _ => return (false, Unused),
                         };
-                        let delta = match delta {
-                            LineDelta(x, y) => cx.config().event().scroll_distance((x, y)),
-                            PixelDelta(d) => d,
-                        };
-                        self.offset - delta
+                        self.offset - delta.as_offset(cx)
                     }
                 };
                 action = self.set_offset(offset);
                 cx.set_scroll(Scroll::Rect(window_rect));
             }
             Event::Scroll(delta) => {
-                let delta = match delta {
-                    LineDelta(x, y) => cx.config().event().scroll_distance((x, y)),
-                    PixelDelta(d) => d,
-                };
                 self.glide.stop();
-                action = self.scroll_by_delta(cx, delta);
+                action = self.scroll_by_delta(cx, delta.as_offset(cx));
             }
             Event::PressStart { press, .. }
                 if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>

@@ -7,7 +7,7 @@
 
 use super::{ScrollBar, ScrollMsg};
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{Command, CursorIcon, FocusSource, Scroll, ScrollDelta};
+use kas::event::{Command, CursorIcon, FocusSource, Scroll};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::FormattableText;
@@ -235,11 +235,7 @@ impl_scope! {
                     Used
                 }
                 Event::Scroll(delta) => {
-                    let delta2 = match delta {
-                        ScrollDelta::LineDelta(x, y) => cx.config().event().scroll_distance((x, y)),
-                        ScrollDelta::PixelDelta(coord) => coord,
-                    };
-                    self.pan_delta(cx, delta2)
+                    self.pan_delta(cx, delta.as_offset(cx))
                 }
                 event => match self.input_handler.handle(cx, self.id(), event) {
                     TextInputAction::None => Used,
