@@ -19,7 +19,7 @@ const TIMER_GLIDE: TimerHandle = TimerHandle::new((1 << 60) + 1, true);
 const GLIDE_MAX_SAMPLES: usize = 8;
 const GLIDE_RESIDUAL_VEL_REDUCTION_FACTOR: f32 = 0.5;
 
-/// Details used to initiate glide scrolling
+/// Details used to initiate glide (momentum) scrolling
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct GlideStart {
     vel: Vec2,
@@ -428,7 +428,9 @@ pub enum TextInputAction {
     /// Event not used
     Unused,
     /// Pan text using the given `delta`
-    Pan(Offset),
+    ///
+    /// The second payload, `glide`, should be passed to [`TextInput::set_scroll_residual`].
+    Pan(Offset, bool),
     /// Focus, optionally updating position and selection
     ///
     /// To handle:
@@ -500,19 +502,19 @@ impl TextInput {
                             let delta = press.coord - start_coord;
                             if cx.config_test_pan_thresh(delta) {
                                 self.touch_phase = TouchPhase::Pan(id);
-                                Action::Pan(delta)
+                                Action::Pan(delta, false)
                             } else {
                                 Action::None
                             }
                         }
-                        TouchPhase::Pan(id) if id == touch_id => Action::Pan(delta),
+                        TouchPhase::Pan(id) if id == touch_id => Action::Pan(delta, false),
                         _ => Action::Focus {
                             coord: Some(press.coord),
                             action: SelectionAction::new(false, false, 1),
                         },
                     },
                     PressSource::Mouse(..) if cx.config_enable_mouse_text_pan() => {
-                        Action::Pan(delta)
+                        Action::Pan(delta, false)
                     }
                     PressSource::Mouse(_, repeats) => Action::Focus {
                         coord: Some(press.coord),
@@ -548,12 +550,25 @@ impl TextInput {
                 let decay = cx.config().event().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(timeout, decay) {
                     cx.request_frame_timer(w_id, TIMER_GLIDE);
-                    Action::Pan(delta)
+                    Action::Pan(delta, true)
                 } else {
                     Action::None
                 }
             }
             _ => Action::Unused,
         }
+    }
+
+    /// Call to call [`EventCx::set_scroll`] with the correct parameter
+    ///
+    /// Parameter `glide` should be passed from [`TextInputAction::Pan`] or be
+    /// `false` for direct (non-glide) scrolling.
+    pub fn set_scroll_residual(&mut self, cx: &mut EventCx, delta: Offset, glide: bool) {
+        let scroll = match glide {
+            _ if delta == Offset::ZERO => Scroll::Scrolled,
+            false => Scroll::Offset(delta),
+            true => Scroll::Glide(self.glide.stop_with_residual(delta)),
+        };
+        cx.set_scroll(scroll);
     }
 }
