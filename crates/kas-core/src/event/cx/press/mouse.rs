@@ -276,43 +276,52 @@ impl<'a> EventCx<'a> {
     }
 
     // Clears mouse grab and pan grab, resets cursor and redraws
-    fn remove_mouse_grab(&mut self, success: bool) -> Option<(Id, Event)> {
-        if let Some(grab) = self.mouse.grab.take() {
+    fn remove_mouse_grab(&mut self, node: Node<'_>, success: bool) {
+        let mut to_send = None;
+        let last_pin;
+        let redraw;
+        if let Some(grab) = self.mouse.grab.as_ref() {
             log::trace!(
                 "remove_mouse_grab: start_id={}, success={success}",
                 grab.start_id
             );
             self.window.set_cursor_icon(self.mouse.hover_icon);
-            self.opt_action(grab.depress.clone(), Action::REDRAW);
+            redraw = grab.depress.clone();
             if let GrabDetails::Pan(details) = &grab.details {
-                if !details.moved {
-                    self.mouse.last_pin = Some((grab.start_id.clone(), self.mouse.last_coord));
+                if success && !details.moved {
+                    last_pin = Some((grab.start_id.clone(), self.mouse.last_coord));
                 } else {
-                    self.mouse.last_pin = None;
+                    last_pin = None;
                 }
                 // Pan grabs do not receive Event::PressEnd
-                None
             } else {
-                self.mouse.last_pin = None;
+                last_pin = None;
                 let press = Press {
                     source: PressSource::Mouse(grab.button, grab.repetitions),
                     id: self.mouse.hover.clone(),
                     coord: self.mouse.last_coord,
                 };
                 let event = Event::PressEnd { press, success };
-                Some((grab.start_id, event))
+                to_send = Some((grab.start_id.clone(), event));
             }
         } else {
-            None
+            return;
         }
+
+        // We must send Event::PressEnd before removing the grab
+        if let Some((id, event)) = to_send {
+            self.send_event(node, id, event);
+        }
+        self.mouse.last_pin = last_pin;
+        self.opt_action(redraw, Action::REDRAW);
+
+        self.mouse.grab = None;
     }
 
     pub(in crate::event::cx) fn mouse_handle_pending<A>(&mut self, win: &mut Window<A>, data: &A) {
         let (cancel, redraw) = self.mouse.update_hover();
         if cancel {
-            if let Some((id, event)) = self.remove_mouse_grab(false) {
-                self.send_event(win.as_node(data), id, event);
-            }
+            self.remove_mouse_grab(win.as_node(data), false);
         }
 
         if redraw {
@@ -438,9 +447,7 @@ impl<'a> EventCx<'a> {
             .map(|g| g.button == button)
             .unwrap_or(false)
         {
-            if let Some((id, event)) = self.remove_mouse_grab(true) {
-                self.send_event(node.re(), id, event);
-            }
+            self.remove_mouse_grab(node.re(), true);
         }
 
         if state == ElementState::Pressed {

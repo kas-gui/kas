@@ -356,15 +356,23 @@ impl<'a> EventCx<'a> {
             }
             ev @ (TouchPhase::Ended | TouchPhase::Cancelled) => {
                 if let Some(index) = self.touch.get_touch_index(touch.id) {
-                    let grab = self.remove_touch(index);
-
-                    if !grab.mode.is_pan() {
-                        let id = grab.cur_id.clone();
-                        let press = Press { source, id, coord };
-                        let success = ev == TouchPhase::Ended;
-                        let event = Event::PressEnd { press, success };
-                        self.send_event(win.as_node(data), grab.start_id, event);
+                    let mut to_send = None;
+                    if let Some(grab) = self.touch.touch_grab.get(index) {
+                        if !grab.mode.is_pan() {
+                            let id = grab.cur_id.clone();
+                            let press = Press { source, id, coord };
+                            let success = ev == TouchPhase::Ended;
+                            let event = Event::PressEnd { press, success };
+                            to_send = Some((grab.start_id.clone(), event));
+                        }
                     }
+
+                    // We must send Event::PressEnd before removing the grab
+                    if let Some((id, event)) = to_send {
+                        self.send_event(win.as_node(data), id, event);
+                    }
+
+                    self.remove_touch(index);
                 }
             }
         }
