@@ -141,9 +141,7 @@ impl_scope! {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
-            self.scroll
-                .scroll_by_event(cx, event, self.id(), self.rect())
-                .1
+            self.scroll.scroll_by_event(cx, event, self.id(), self.rect())
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, scroll: Scroll) {

@@ -232,17 +232,13 @@ impl ScrollComponent {
         }
     }
 
-    // Returns Action::REGION_MOVED or Action::empty()
-    fn scroll_by_delta(&mut self, cx: &mut EventCx, d: Offset) -> Action {
+    fn scroll_by_delta(&mut self, cx: &mut EventCx, id: Id, d: Offset) {
         let mut delta = d;
-        let action;
         let offset = (self.offset - d).clamp(Offset::ZERO, self.max_offset);
         if offset != self.offset {
             delta = d - (self.offset - offset);
             self.offset = offset;
-            action = Action::REGION_MOVED;
-        } else {
-            action = Action::empty();
+            cx.action(id, Action::REGION_MOVED);
         }
 
         cx.set_scroll(if delta != Offset::ZERO {
@@ -250,8 +246,6 @@ impl ScrollComponent {
         } else {
             Scroll::Scrolled
         });
-
-        action
     }
 
     /// Use an event to scroll, if possible
@@ -268,17 +262,13 @@ impl ScrollComponent {
     /// depend on modifiers), and if so grabs press events from this `source`.
     /// `PressMove` is used to scroll by the motion delta and to track speed;
     /// `PressEnd` initiates momentum-scrolling if the speed is high enough.
-    ///
-    /// Returns `(moved, is_used)` where `moved` means *this component
-    /// scrolled* (scrolling of a parent is possible even if `!moved`).
     pub fn scroll_by_event(
         &mut self,
         cx: &mut EventCx,
         event: Event,
         id: Id,
         window_rect: Rect,
-    ) -> (bool, IsUsed) {
-        let mut action = Action::empty();
+    ) -> IsUsed {
         match event {
             Event::Command(cmd, _) => {
                 let offset = match cmd {
@@ -296,23 +286,23 @@ impl ScrollComponent {
                             Command::PageDown => {
                                 ScrollDelta::Pixels(Offset(0, -(window_rect.size.1 / 2)))
                             }
-                            _ => return (false, Unused),
+                            _ => return Unused,
                         };
                         self.offset - delta.as_offset(cx)
                     }
                 };
-                action = self.set_offset(offset);
+                cx.action(id, self.set_offset(offset));
                 cx.set_scroll(Scroll::Rect(window_rect));
             }
             Event::Scroll(delta) => {
                 self.glide.stop();
-                action = self.scroll_by_delta(cx, delta.as_offset(cx));
+                self.scroll_by_delta(cx, id, delta.as_offset(cx));
             }
             Event::PressStart { press, .. }
                 if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>
             {
                 let _ = press
-                    .grab(id.clone(), GrabMode::Grab)
+                    .grab(id, GrabMode::Grab)
                     .with_icon(CursorIcon::Grabbing)
                     .complete(cx);
                 self.glide.press_start();
@@ -321,7 +311,7 @@ impl ScrollComponent {
                 if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>
             {
                 if self.glide.press_move(delta) {
-                    action = self.scroll_by_delta(cx, delta);
+                    self.scroll_by_delta(cx, id, delta);
                 }
             }
             Event::PressEnd { press, .. }
@@ -330,7 +320,7 @@ impl ScrollComponent {
                 let timeout = cx.config().event().scroll_flick_timeout();
                 let pan_dist_thresh = cx.config().event().pan_dist_thresh();
                 if self.glide.press_end(timeout, pan_dist_thresh) {
-                    cx.request_frame_timer(id.clone(), TIMER_GLIDE);
+                    cx.request_frame_timer(id, TIMER_GLIDE);
                 }
             }
             Event::Timer(TIMER_GLIDE) => {
@@ -338,22 +328,17 @@ impl ScrollComponent {
                 let timeout = cx.config().event().scroll_flick_timeout();
                 let decay = cx.config().event().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(timeout, decay) {
-                    action = self.scroll_by_delta(cx, delta);
+                    self.scroll_by_delta(cx, id.clone(), delta);
                     cx.set_scroll(Scroll::Scrolled);
                 }
 
                 if self.glide.vel != Vec2::ZERO {
-                    cx.request_frame_timer(id.clone(), TIMER_GLIDE);
+                    cx.request_frame_timer(id, TIMER_GLIDE);
                 }
             }
-            _ => return (false, Unused),
+            _ => return Unused,
         }
-        if !action.is_empty() {
-            cx.action(id, action);
-            (true, Used)
-        } else {
-            (false, Used)
-        }
+        Used
     }
 }
 
