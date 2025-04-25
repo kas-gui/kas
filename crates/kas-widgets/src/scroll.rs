@@ -145,8 +145,7 @@ impl_scope! {
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, scroll: Scroll) {
-            let action = self.scroll.scroll(cx, self.rect(), scroll);
-            cx.action(self, action);
+            self.scroll.scroll(cx, self.id(), self.rect(), scroll);
         }
     }
 }

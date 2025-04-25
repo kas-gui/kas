@@ -17,6 +17,14 @@ use std::time::{Duration, Instant};
 const TIMER_SELECT: TimerHandle = TimerHandle::new(1 << 60, true);
 const TIMER_GLIDE: TimerHandle = TimerHandle::new((1 << 60) + 1, true);
 const GLIDE_MAX_SAMPLES: usize = 8;
+const GLIDE_RESIDUAL_VEL_REDUCTION_FACTOR: f32 = 0.5;
+
+/// Details used to initiate glide scrolling
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct GlideStart {
+    vel: Vec2,
+    rest: Vec2,
+}
 
 #[derive(Clone, Debug)]
 struct Glide {
@@ -88,6 +96,17 @@ impl Glide {
         is_start
     }
 
+    /// Start (or accelerate) scrolling
+    ///
+    /// Returns any offset which should be applied immediately.
+    fn start(&mut self, start: GlideStart) -> Offset {
+        self.vel += start.vel;
+        let d = self.rest + start.rest;
+        let delta = Offset::conv_trunc(d);
+        self.rest = d - Vec2::conv(delta);
+        delta
+    }
+
     fn step(&mut self, timeout: Duration, (decay_mul, decay_sub): (f32, f32)) -> Option<Offset> {
         // Stop on click+hold as well as min velocity. Do not stop on reaching
         // the maximum scroll offset since we might still be scrolling a parent!
@@ -115,6 +134,26 @@ impl Glide {
     fn stop(&mut self) {
         self.vel = Vec2::ZERO;
         self.rest = Vec2::ZERO;
+    }
+
+    /// Stop scrolling on any axis were `delta` is non-zero
+    ///
+    /// Returns a [`GlideStart`] message from the residual velocity and delta.
+    fn stop_with_residual(&mut self, delta: Offset) -> GlideStart {
+        let mut start = GlideStart::default();
+        if delta.0 != 0 {
+            start.vel.0 = self.vel.0 * GLIDE_RESIDUAL_VEL_REDUCTION_FACTOR;
+            start.rest.0 = self.rest.0 + f32::conv(delta.0);
+            self.vel.0 = 0.0;
+            self.rest.0 = 0.0;
+        }
+        if delta.1 != 0 {
+            start.vel.1 = self.vel.1 * GLIDE_RESIDUAL_VEL_REDUCTION_FACTOR;
+            start.rest.1 = self.rest.1 + f32::conv(delta.1);
+            self.vel.1 = 0.0;
+            self.rest.1 = 0.0;
+        }
+        start
     }
 }
 
@@ -216,23 +255,38 @@ impl ScrollComponent {
     }
 
     /// Handle a [`Scroll`] action
-    pub fn scroll(&mut self, cx: &mut EventCx, window_rect: Rect, scroll: Scroll) -> Action {
+    pub fn scroll(&mut self, cx: &mut EventCx, id: Id, window_rect: Rect, scroll: Scroll) {
         match scroll {
-            Scroll::None | Scroll::Scrolled => Action::empty(),
+            Scroll::None | Scroll::Scrolled => (),
             Scroll::Offset(delta) => {
                 let old_offset = self.offset;
                 let action = self.set_offset(old_offset - delta);
+                cx.action(id, action);
                 cx.set_scroll(match delta - old_offset + self.offset {
                     delta if delta == Offset::ZERO => Scroll::Scrolled,
                     delta => Scroll::Offset(delta),
                 });
-                action
             }
-            Scroll::Rect(rect) => self.focus_rect(cx, rect, window_rect),
+            Scroll::Glide(start) => {
+                let delta = self.glide.start(start);
+                let delta = self.scroll_self_by_delta(cx, id, delta);
+                if delta == Offset::ZERO {
+                    cx.set_scroll(Scroll::Scrolled);
+                } else {
+                    cx.set_scroll(Scroll::Glide(self.glide.stop_with_residual(delta)));
+                }
+            }
+            Scroll::Rect(rect) => {
+                let action = self.focus_rect(cx, rect, window_rect);
+                cx.action(id, action);
+            }
         }
     }
 
-    fn scroll_by_delta(&mut self, cx: &mut EventCx, id: Id, d: Offset) {
+    /// Scroll self, returning any excess delta
+    ///
+    /// Caller is expected to call [`EventCx::set_scroll`].
+    fn scroll_self_by_delta(&mut self, cx: &mut EventCx, id: Id, d: Offset) -> Offset {
         let mut delta = d;
         let offset = (self.offset - d).clamp(Offset::ZERO, self.max_offset);
         if offset != self.offset {
@@ -240,7 +294,11 @@ impl ScrollComponent {
             self.offset = offset;
             cx.action(id, Action::REGION_MOVED);
         }
+        delta
+    }
 
+    fn scroll_by_delta(&mut self, cx: &mut EventCx, id: Id, d: Offset) {
+        let delta = self.scroll_self_by_delta(cx, id, d);
         cx.set_scroll(if delta != Offset::ZERO {
             Scroll::Offset(delta)
         } else {
@@ -328,8 +386,13 @@ impl ScrollComponent {
                 let timeout = cx.config().event().scroll_flick_timeout();
                 let decay = cx.config().event().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(timeout, decay) {
-                    self.scroll_by_delta(cx, id.clone(), delta);
-                    cx.set_scroll(Scroll::Scrolled);
+                    let delta = self.scroll_self_by_delta(cx, id.clone(), delta);
+                    let scroll = if delta == Offset::ZERO {
+                        Scroll::Scrolled
+                    } else {
+                        Scroll::Glide(self.glide.stop_with_residual(delta))
+                    };
+                    cx.set_scroll(scroll);
                 }
 
                 if self.glide.vel != Vec2::ZERO {
