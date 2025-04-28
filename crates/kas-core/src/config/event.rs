@@ -20,9 +20,10 @@ use std::time::Duration;
 pub enum EventConfigMsg {
     MenuDelay(u32),
     TouchSelectDelay(u32),
-    ScrollFlickTimeout(u32),
-    ScrollFlickMul(f32),
-    ScrollFlickSub(f32),
+    KineticTimeout(u32),
+    KineticDecayMul(f32),
+    KineticDecaySub(f32),
+    KineticGrabSub(f32),
     ScrollDistEm(f32),
     PanDistThresh(f32),
     MousePan(MousePan),
@@ -40,9 +41,10 @@ pub enum EventConfigMsg {
 ///
 /// > `menu_delay_ms`: `u32` (milliseconds) \
 /// > `touch_select_delay_ms`: `u32` (milliseconds) \
-/// > `scroll_flick_timeout_ms`: `u32` (milliseconds) \
-/// > `scroll_flick_mul`: `f32` (unitless, applied each second) \
-/// > `scroll_flick_sub`: `f32` (pixels per second) \
+/// > `kinetic_timeout_ms`: `u32` (milliseconds) \
+/// > `kinetic_decay_mul`: `f32` (unitless, applied each second) \
+/// > `kinetic_decay_sub`: `f32` (pixels per second) \
+/// > `kinetic_grab_sub`: `f32` (pixels per second) \
 /// > `pan_dist_thresh`: `f32` (pixels) \
 /// > `mouse_pan`: [`MousePan`] \
 /// > `mouse_text_pan`: [`MousePan`] \
@@ -59,17 +61,17 @@ pub struct EventConfig {
     #[cfg_attr(feature = "serde", serde(default = "defaults::touch_select_delay_ms"))]
     pub touch_select_delay_ms: u32,
 
-    #[cfg_attr(
-        feature = "serde",
-        serde(default = "defaults::scroll_flick_timeout_ms")
-    )]
-    pub scroll_flick_timeout_ms: u32,
+    #[cfg_attr(feature = "serde", serde(default = "defaults::kinetic_timeout_ms"))]
+    pub kinetic_timeout_ms: u32,
 
-    #[cfg_attr(feature = "serde", serde(default = "defaults::scroll_flick_mul"))]
-    pub scroll_flick_mul: f32,
+    #[cfg_attr(feature = "serde", serde(default = "defaults::kinetic_decay_mul"))]
+    pub kinetic_decay_mul: f32,
 
-    #[cfg_attr(feature = "serde", serde(default = "defaults::scroll_flick_sub"))]
-    pub scroll_flick_sub: f32,
+    #[cfg_attr(feature = "serde", serde(default = "defaults::kinetic_decay_sub"))]
+    pub kinetic_decay_sub: f32,
+
+    #[cfg_attr(feature = "serde", serde(default = "defaults::kinetic_grab_sub"))]
+    pub kinetic_grab_sub: f32,
 
     #[cfg_attr(feature = "serde", serde(default = "defaults::scroll_dist_em"))]
     pub scroll_dist_em: f32,
@@ -96,9 +98,10 @@ impl Default for EventConfig {
         EventConfig {
             menu_delay_ms: defaults::menu_delay_ms(),
             touch_select_delay_ms: defaults::touch_select_delay_ms(),
-            scroll_flick_timeout_ms: defaults::scroll_flick_timeout_ms(),
-            scroll_flick_mul: defaults::scroll_flick_mul(),
-            scroll_flick_sub: defaults::scroll_flick_sub(),
+            kinetic_timeout_ms: defaults::kinetic_timeout_ms(),
+            kinetic_decay_mul: defaults::kinetic_decay_mul(),
+            kinetic_decay_sub: defaults::kinetic_decay_sub(),
+            kinetic_grab_sub: defaults::kinetic_grab_sub(),
             scroll_dist_em: defaults::scroll_dist_em(),
             pan_dist_thresh: defaults::pan_dist_thresh(),
             mouse_pan: defaults::mouse_pan(),
@@ -115,9 +118,10 @@ impl EventConfig {
         match msg {
             EventConfigMsg::MenuDelay(v) => self.menu_delay_ms = v,
             EventConfigMsg::TouchSelectDelay(v) => self.touch_select_delay_ms = v,
-            EventConfigMsg::ScrollFlickTimeout(v) => self.scroll_flick_timeout_ms = v,
-            EventConfigMsg::ScrollFlickMul(v) => self.scroll_flick_mul = v,
-            EventConfigMsg::ScrollFlickSub(v) => self.scroll_flick_sub = v,
+            EventConfigMsg::KineticTimeout(v) => self.kinetic_timeout_ms = v,
+            EventConfigMsg::KineticDecayMul(v) => self.kinetic_decay_mul = v,
+            EventConfigMsg::KineticDecaySub(v) => self.kinetic_decay_sub = v,
+            EventConfigMsg::KineticGrabSub(v) => self.kinetic_grab_sub = v,
             EventConfigMsg::ScrollDistEm(v) => self.scroll_dist_em = v,
             EventConfigMsg::PanDistThresh(v) => self.pan_dist_thresh = v,
             EventConfigMsg::MousePan(v) => self.mouse_pan = v,
@@ -158,17 +162,17 @@ impl<'a> EventWindowConfig<'a> {
         Duration::from_millis(self.base().touch_select_delay_ms.cast())
     }
 
-    /// Controls activation of glide/momentum scrolling
+    /// Controls activation of kinetic scrolling
     ///
     /// This is the maximum time between the last press-movement and final
-    /// release to activate momentum scrolling mode. The last few `PressMove`
+    /// release to activate kinetic scrolling mode. The last few `PressMove`
     /// events within this time window are used to calculate the initial speed.
     #[inline]
-    pub fn scroll_flick_timeout(&self) -> Duration {
-        Duration::from_millis(self.base().scroll_flick_timeout_ms.cast())
+    pub fn kinetic_timeout(&self) -> Duration {
+        Duration::from_millis(self.base().kinetic_timeout_ms.cast())
     }
 
-    /// Scroll flick velocity decay: `(mul, sub)`
+    /// Kinetic scrolling decay: `(mul, sub)`
     ///
     /// The `mul` factor describes exponential decay: effectively, velocity is
     /// multiplied by `mul` every second. This is the dominant decay factor at
@@ -179,8 +183,19 @@ impl<'a> EventWindowConfig<'a> {
     /// by `sub` every second. This is the dominant decay factor at low speeds.
     /// Units are pixels/second (output is adjusted for the window's scale factor).
     #[inline]
-    pub fn scroll_flick_decay(&self) -> (f32, f32) {
-        (self.base().scroll_flick_mul, self.0.scroll_flick_sub)
+    pub fn kinetic_decay(&self) -> (f32, f32) {
+        (self.base().kinetic_decay_mul, self.0.kinetic_decay_sub)
+    }
+
+    /// Kinetic scrolling decay while grabbed: `sub`
+    ///
+    /// When a kinetic-scrolling element is grabbed while in motion, speed
+    /// relative to the grab velocity is reduced by this value each second.
+    /// This is applied in addition to the usual velocity decay (see
+    /// [`Self::kinetic_decay`]).
+    #[inline]
+    pub fn kinetic_grab_sub(&self) -> f32 {
+        self.base().kinetic_grab_sub
     }
 
     /// Get distance in pixels to scroll due to mouse wheel
@@ -279,14 +294,17 @@ mod defaults {
     pub fn touch_select_delay_ms() -> u32 {
         1000
     }
-    pub fn scroll_flick_timeout_ms() -> u32 {
+    pub fn kinetic_timeout_ms() -> u32 {
         50
     }
-    pub fn scroll_flick_mul() -> f32 {
+    pub fn kinetic_decay_mul() -> f32 {
         0.625
     }
-    pub fn scroll_flick_sub() -> f32 {
+    pub fn kinetic_decay_sub() -> f32 {
         200.0
+    }
+    pub fn kinetic_grab_sub() -> f32 {
+        10000.0
     }
     pub fn scroll_dist_em() -> f32 {
         4.5

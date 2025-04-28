@@ -349,9 +349,7 @@ impl EventState {
     pub fn press_velocity(&self, press: PressSource) -> Option<Vec2> {
         let evc = self.config().event();
         match press {
-            PressSource::Mouse(_, _) => {
-                Some(self.mouse.samples.velocity(evc.scroll_flick_timeout()))
-            }
+            PressSource::Mouse(_, _) => Some(self.mouse.samples.velocity(evc.kinetic_timeout())),
             PressSource::Touch(id) => self.touch.velocity(id, evc),
         }
     }

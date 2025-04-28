@@ -228,7 +228,7 @@ impl Touch {
             .unwrap_or(u16::MAX);
         self.velocity
             .get(v as usize)
-            .map(|sampler| sampler.velocity(evc.scroll_flick_timeout()))
+            .map(|sampler| sampler.velocity(evc.kinetic_timeout()))
     }
 }
 

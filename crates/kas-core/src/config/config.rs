@@ -90,7 +90,7 @@ impl Config {
 pub struct WindowConfig {
     pub(super) config: Rc<RefCell<Config>>,
     pub(super) scale_factor: f32,
-    pub(super) scroll_flick_sub: f32,
+    pub(super) kinetic_decay_sub: f32,
     pub(super) scroll_dist: f32,
     pub(super) pan_dist_thresh: f32,
     /// Whether navigation focus is enabled for this application window
@@ -106,7 +106,7 @@ impl WindowConfig {
         WindowConfig {
             config,
             scale_factor: f32::NAN,
-            scroll_flick_sub: f32::NAN,
+            kinetic_decay_sub: f32::NAN,
             scroll_dist: f32::NAN,
             pan_dist_thresh: f32::NAN,
             nav_focus: true,
@@ -118,7 +118,7 @@ impl WindowConfig {
     pub(crate) fn update(&mut self, scale_factor: f32) {
         let base = self.config.borrow();
         self.scale_factor = scale_factor;
-        self.scroll_flick_sub = base.event.scroll_flick_sub * scale_factor;
+        self.kinetic_decay_sub = base.event.kinetic_decay_sub * scale_factor;
         let dpem = base.font.size() * scale_factor;
         self.scroll_dist = base.event.scroll_dist_em * dpem;
         self.pan_dist_thresh = base.event.pan_dist_thresh * scale_factor;

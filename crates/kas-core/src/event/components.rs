@@ -87,21 +87,19 @@ impl Glide {
 
     fn step(&mut self, cx: &EventState) -> Option<Offset> {
         let evc = cx.config().event();
-        let (decay_mul, decay_sub) = evc.scroll_flick_decay();
-
         let now = Instant::now();
         let dur = (now - self.t_step).as_secs_f32();
         self.t_step = now;
 
         if let Some(source) = self.press {
-            let grab_mul = 50.0;
-            let decay_sub = decay_sub * grab_mul;
+            let decay_sub = evc.kinetic_grab_sub();
             let grab_vel = cx.press_velocity(source).unwrap_or_default() + self.vel;
 
             let v = self.vel - grab_vel;
             self.vel -= v.abs().min(Vec2::splat(decay_sub * dur)) * v.sign();
         }
 
+        let (decay_mul, decay_sub) = evc.kinetic_decay();
         let v = self.vel * decay_mul.powf(dur);
         self.vel = v - v.abs().min(Vec2::splat(decay_sub * dur)) * v.sign();
 
