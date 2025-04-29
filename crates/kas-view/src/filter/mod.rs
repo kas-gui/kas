@@ -17,7 +17,7 @@ pub trait FilterValue: Default + 'static {
 }
 
 /// Types usable as a filter
-pub trait Filter<T>: FilterValue {
+pub trait Filter<T: ?Sized>: FilterValue {
     /// Returns true if the given item matches this filter
     fn matches(&self, item: &T) -> bool;
 }
@@ -45,14 +45,14 @@ impl FilterValue for ContainsString {
     }
 }
 
-impl<'a> Filter<&'a str> for ContainsString {
-    fn matches(&self, item: &&str) -> bool {
+impl Filter<str> for ContainsString {
+    fn matches(&self, item: &str) -> bool {
         item.contains(&self.0)
     }
 }
 impl Filter<String> for ContainsString {
     fn matches(&self, item: &String) -> bool {
-        Filter::<&str>::matches(self, &item.as_str())
+        Filter::<str>::matches(self, item.as_str())
     }
 }
 
@@ -86,13 +86,13 @@ impl FilterValue for ContainsCaseInsensitive {
     }
 }
 
-impl<'a> Filter<&'a str> for ContainsCaseInsensitive {
-    fn matches(&self, item: &&str) -> bool {
+impl Filter<str> for ContainsCaseInsensitive {
+    fn matches(&self, item: &str) -> bool {
         item.to_string().to_uppercase().contains(&self.0)
     }
 }
 impl Filter<String> for ContainsCaseInsensitive {
     fn matches(&self, item: &String) -> bool {
-        Filter::<&str>::matches(self, &item.as_str())
+        Filter::<str>::matches(self, item.as_str())
     }
 }
