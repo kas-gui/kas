@@ -99,7 +99,7 @@ pub trait Tile: Layout {
 
     /// Access a child as a `dyn Tile`
     ///
-    /// This method returns `None` exactly when `index >= self.num_children()`.
+    /// This method should return `Some(_)` when `index < self.num_children()`.
     /// A returned child may not be configured or sized or visible even when
     /// the parent widget is.
     ///
@@ -137,7 +137,7 @@ pub trait Tile: Layout {
     ///     `reverse`) navigable child (if any)
     ///
     /// The return value mut be `None` or `Some(index)` where
-    /// `self.get_child(index).is_some()` (see [`Tile::get_child`]).
+    /// `index < self.num_children()` (see [`Tile::get_child`]).
     ///
     /// It is not required that all children (all indices `i` for
     /// `i < self.num_children()`) are returnable from this method.

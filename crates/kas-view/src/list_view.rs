@@ -378,7 +378,10 @@ impl_scope! {
                         cx.update(w.widget.as_node(item));
                     }
                 }
-                w.widget.set_rect(cx, solver.rect(i), self.align_hints);
+
+                if w.key.is_some() {
+                    w.widget.set_rect(cx, solver.rect(i), self.align_hints);
+                }
             }
 
             let dur = (Instant::now() - time).as_micros();
@@ -562,8 +565,8 @@ impl_scope! {
                         if self.selection.contains(key) {
                             draw.selection(child.widget.rect(), self.sel_style);
                         }
+                        child.widget.draw(draw.re());
                     }
-                    child.widget.draw(draw.re());
                 }
             });
         }
@@ -575,7 +578,7 @@ impl_scope! {
             self.cur_len.cast()
         }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
-            self.widgets.get(index).map(|w| w.widget.as_tile())
+            self.widgets.get(index).filter(|w| w.key.is_some()).map(|w| w.widget.as_tile())
         }
         fn find_child_index(&self, id: &Id) -> Option<usize> {
             let key = A::Key::reconstruct_key(self.id_ref(), id);
@@ -703,7 +706,10 @@ impl_scope! {
                             self.update_widgets(&mut cx.config_cx(), data, false);
                         }
                         let index = i_data % usize::conv(self.cur_len);
-                        cx.next_nav_focus(self.widgets[index].widget.id(), false, FocusSource::Key);
+                        let w = &self.widgets[index];
+                        if w.key.is_some() {
+                            cx.next_nav_focus(w.widget.id(), false, FocusSource::Key);
+                        }
                         Used
                     } else {
                         Unused
