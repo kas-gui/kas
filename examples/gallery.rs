@@ -8,6 +8,9 @@
 //! This is a test-bed to demonstrate most toolkit functionality
 //! (excepting custom graphics).
 
+extern crate chrono;
+
+use chrono::Datelike;
 use kas::collection;
 use kas::config::{ConfigMsg, ThemeConfigMsg};
 use kas::dir::Right;
@@ -16,6 +19,7 @@ use kas::prelude::*;
 use kas::resvg::Svg;
 use kas::theme::MarginStyle;
 use kas::widgets::{column, *};
+use std::ops::Range;
 
 #[derive(Debug, Default)]
 struct AppData {
@@ -357,6 +361,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 }
 
 fn filter_list() -> Box<dyn Widget<Data = AppData>> {
+    use filter::Filter;
     use kas::view::{driver, filter, DataClerk, ListView, SelectionMode, SelectionMsg};
 
     const MONTHS: &[&str] = &[
@@ -374,6 +379,11 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
         "December",
     ];
 
+    const START_YEAR: usize = 1000;
+    let now = chrono::Local::now();
+    let years = now.year() as usize - START_YEAR;
+    let end_month = (now.month() - 1) as u8;
+
     #[derive(Debug)]
     struct Data {
         mode: SelectionMode,
@@ -382,24 +392,34 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
         mode: SelectionMode::None,
     };
 
-    struct MonthsAccessor {
-        filter: filter::ContainsCaseInsensitive,
-        // NOTE: list should perhaps be stored in struct Data, but we need to
-        // access it in fn item(). Ideally `&Data` would be passed as input data
-        // but we pass the filter instead; we can't pass both without making
-        // type Widget::Data generic over a lifetime (requires dyn-safe GAT).
-        list: Vec<String>,
-        filtered: Vec<usize>,
+    struct MonthsClerk {
+        months: Vec<u8>,
+        end: usize,
+        years: usize,
+        end_month: u8,
+        end_month_filtered: u8,
+        cache_start: usize,
+        cache: Vec<(usize, String)>,
     }
-    let accessor = MonthsAccessor {
-        filter: Default::default(),
-        list: (2019..=2025)
-            .flat_map(|year| MONTHS.iter().map(move |m| format!("{m} {year}")))
-            .collect(),
-        filtered: Vec::new(),
+    let accessor = MonthsClerk {
+        months: Vec::new(),
+        end: 0,
+        years,
+        end_month,
+        end_month_filtered: end_month,
+        cache_start: 0,
+        cache: Vec::new(),
     };
 
-    impl DataClerk<usize> for MonthsAccessor {
+    impl MonthsClerk {
+        fn text(&self, key: usize) -> String {
+            let year = key / 12;
+            let month = key % 12;
+            format!("{} {year}", &MONTHS[month])
+        }
+    }
+
+    impl DataClerk<usize> for MonthsClerk {
         type Data = filter::ContainsCaseInsensitive;
 
         type Key = usize;
@@ -407,29 +427,59 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
         type Item = String;
 
         fn update(&mut self, _: &mut ConfigCx, _: Id, filter: &Self::Data) {
-            if *filter != self.filter || self.filtered.is_empty() {
-                self.filter = filter.clone();
-                self.filtered.clear();
-                self.filtered.reserve(self.list.len());
-                for (i, item) in self.list.iter().enumerate() {
-                    use filter::Filter;
-                    if filter.matches(item) {
-                        self.filtered.push(i);
-                    }
-                }
+            let mut months = Vec::with_capacity(12);
+            months.extend(
+                MONTHS
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, month)| filter.matches(*month).then_some(i as u8)),
+            );
+
+            if months != self.months {
+                self.end_month_filtered =
+                    months.iter().filter(|i| **i < self.end_month).count() as u8;
+                self.end = self.years * months.len() + self.end_month_filtered as usize;
+                self.months = months;
+                // TODO: apply filter to years also (requires a custom filter)
             }
         }
 
         fn len(&self, _: &Self::Data) -> usize {
-            self.filtered.len()
+            self.end
+        }
+
+        fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, _: &Self::Data, range: Range<usize>) {
+            self.cache.clear();
+            self.cache.reserve(range.len());
+            self.cache_start = range.start;
+            self.cache.extend(range.clone().map(|index| {
+                let i = self.end - index;
+                let m = self.months.len(); // number of months (filtered)
+                let year = START_YEAR + i / m;
+                let month = self.months[i % m] as usize;
+                let text = format!("{} {year}", &MONTHS[month]);
+                (year * 12 + month, text)
+            }));
         }
 
         fn key(&self, _: &Self::Data, index: usize) -> Option<usize> {
-            self.filtered.get(index).cloned()
+            if index >= self.end {
+                return None;
+            }
+
+            let i = self.end - index;
+            let m = self.months.len(); // number of months (filtered)
+            let year = START_YEAR + i / m;
+            let month = self.months[i % m] as usize;
+            Some(year * 12 + month)
         }
 
         fn item(&self, _: &Self::Data, key: &usize) -> Option<&String> {
-            self.list.get(*key)
+            let i = self
+                .cache
+                .binary_search_by(|x| x.0.cmp(key).reverse())
+                .ok()?;
+            self.cache.get(i).map(|x| &x.1)
         }
     }
 
@@ -441,7 +491,9 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
             list.list_mut().set_selection_mode(cx, data.mode);
         })
         .on_message(|_, fblv, selection: SelectionMsg<usize>| match selection {
-            SelectionMsg::Select(i) => println!("Selected: {}", &fblv.list().clerk().list[i]),
+            SelectionMsg::Select(key) => {
+                println!("Selected: {}", &fblv.list().clerk().text(key))
+            }
             _ => (),
         });
 
