@@ -30,7 +30,7 @@ pub struct GlideStart {
 struct Glide {
     samples: [(Instant, Offset); GLIDE_MAX_SAMPLES],
     last: u32,
-    pressed: bool,
+    press: Option<PressSource>,
     t_step: Instant,
     vel: Vec2,
     rest: Vec2,
@@ -44,7 +44,7 @@ impl Default for Glide {
         Glide {
             samples: [(now, Offset::ZERO); GLIDE_MAX_SAMPLES],
             last: 0,
-            pressed: false,
+            press: None,
             t_step: now,
             vel: Vec2::ZERO,
             rest: Vec2::ZERO,
@@ -53,24 +53,27 @@ impl Default for Glide {
 }
 
 impl Glide {
-    fn press_start(&mut self) {
+    fn press_start(&mut self, press: PressSource) {
         let next = (self.last as usize + 1) % GLIDE_MAX_SAMPLES;
         self.samples[next] = (Instant::now(), Offset::ZERO);
         self.last = next.cast();
-        self.pressed = true;
+        self.press = Some(press);
     }
 
     /// Returns true if component should immediately scroll by delta
-    fn press_move(&mut self, delta: Offset) -> bool {
+    fn press_move(&mut self, press: PressSource, delta: Offset) -> bool {
         let next = (self.last as usize + 1) % GLIDE_MAX_SAMPLES;
         self.samples[next] = (Instant::now(), delta);
         self.last = next.cast();
-        self.vel == Vec2::ZERO
+        self.press == Some(press) && self.vel == Vec2::ZERO
     }
 
     /// Returns true if momentum scrolling starts
-    fn press_end(&mut self, timeout: Duration, pan_dist_thresh: f32) -> bool {
-        self.pressed = false;
+    fn press_end(&mut self, press: PressSource, timeout: Duration, pan_dist_thresh: f32) -> bool {
+        if self.press != Some(press) {
+            return false;
+        }
+        self.press = None;
 
         let now = Instant::now();
         let mut delta = Offset::ZERO;
@@ -110,7 +113,7 @@ impl Glide {
     fn step(&mut self, timeout: Duration, (decay_mul, decay_sub): (f32, f32)) -> Option<Offset> {
         // Stop on click+hold as well as min velocity. Do not stop on reaching
         // the maximum scroll offset since we might still be scrolling a parent!
-        let stop = self.pressed && self.samples[self.last as usize].0.elapsed() > timeout;
+        let stop = self.press.is_some() && self.samples[self.last as usize].0.elapsed() > timeout;
         if stop || self.vel.abs().max_comp() < 1.0 {
             self.vel = Vec2::ZERO;
             self.rest = Vec2::ZERO;
@@ -363,12 +366,12 @@ impl ScrollComponent {
                     .grab(id, GrabMode::Grab)
                     .with_icon(CursorIcon::Grabbing)
                     .complete(cx);
-                self.glide.press_start();
+                self.glide.press_start(press.source);
             }
             Event::PressMove { press, delta, .. }
                 if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>
             {
-                if self.glide.press_move(delta) {
+                if self.glide.press_move(press.source, delta) {
                     self.scroll_by_delta(cx, id, delta);
                 }
             }
@@ -377,7 +380,7 @@ impl ScrollComponent {
             {
                 let timeout = cx.config().event().scroll_flick_timeout();
                 let pan_dist_thresh = cx.config().event().pan_dist_thresh();
-                if self.glide.press_end(timeout, pan_dist_thresh) {
+                if self.glide.press_end(press.source, timeout, pan_dist_thresh) {
                     cx.request_frame_timer(id, TIMER_GLIDE);
                 }
             }
@@ -491,11 +494,11 @@ impl TextInput {
                     .grab(w_id, GrabMode::Grab)
                     .with_opt_icon(icon)
                     .complete(cx);
-                self.glide.press_start();
+                self.glide.press_start(press.source);
                 action
             }
             Event::PressMove { press, delta } if press.is_primary() => {
-                self.glide.press_move(delta);
+                self.glide.press_move(press.source, delta);
                 match press.source {
                     PressSource::Touch(touch_id) => match self.touch_phase {
                         TouchPhase::Start(id, start_coord) if id == touch_id => {
@@ -525,7 +528,7 @@ impl TextInput {
             Event::PressEnd { press, .. } if press.is_primary() => {
                 let timeout = cx.config().event().scroll_flick_timeout();
                 let pan_dist_thresh = cx.config().event().pan_dist_thresh();
-                if self.glide.press_end(timeout, pan_dist_thresh)
+                if self.glide.press_end(press.source, timeout, pan_dist_thresh)
                     && (matches!(press.source, PressSource::Touch(id) if self.touch_phase == TouchPhase::Pan(id))
                         || matches!(press.source, PressSource::Mouse(..) if cx.config_enable_mouse_text_pan()))
                 {
