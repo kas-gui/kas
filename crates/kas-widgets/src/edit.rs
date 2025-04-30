@@ -423,6 +423,19 @@ impl_scope! {
     }
 
     impl Self {
+        /// Construct an `EditBox` with an [`EditGuard`]
+        #[inline]
+        pub fn new(guard: G) -> Self {
+            EditBox {
+                core: Default::default(),
+                inner: EditField::new(guard),
+                bar: Default::default(),
+                frame_offset: Default::default(),
+                frame_size: Default::default(),
+                inner_margin: Default::default(),
+            }
+        }
+
         fn update_scroll_bar(&mut self, cx: &mut EventState) {
             let max_offset = self.inner.max_scroll_offset().1;
             self.bar.set_limits(cx, max_offset, self.inner.rect().size.1);
@@ -446,20 +459,11 @@ impl_scope! {
         pub fn set_string(&mut self, cx: &mut EventState, text: String) {
             self.inner.set_string(cx, text);
         }
-    }
-}
 
-impl<G: EditGuard> EditBox<G> {
-    /// Construct an `EditBox` with an [`EditGuard`]
-    #[inline]
-    pub fn new(guard: G) -> EditBox<G> {
-        EditBox {
-            core: Default::default(),
-            inner: EditField::new(guard),
-            bar: Default::default(),
-            frame_offset: Default::default(),
-            frame_size: Default::default(),
-            inner_margin: Default::default(),
+        /// Access the edit guard
+        #[inline]
+        pub fn guard(&self) -> &G {
+            &self.inner.guard
         }
     }
 }
@@ -688,7 +692,6 @@ impl_scope! {
     /// scope for optimization, given that currently layout is re-run from
     /// scratch on each key stroke). Regardless, this approach is not designed
     /// to scale to handle large documents via a single `EditField` widget.
-    #[impl_default(where G: Default)]
     #[autoimpl(Clone, Debug where G: trait)]
     #[widget{
         navigable = true;
@@ -701,8 +704,8 @@ impl_scope! {
         frame_style: FrameStyle,
         view_offset: Offset,
         editable: bool,
-        width: (f32, f32) = (8.0, 16.0),
-        lines: (i32, i32) = (1, 1),
+        width: (f32, f32),
+        lines: (i32, i32),
         text: Text<String>,
         text_size: Size,
         selection: SelectionHelper,
@@ -949,7 +952,38 @@ impl_scope! {
         }
     }
 
+    impl Default for Self where G: Default {
+        #[inline]
+        fn default() -> Self {
+            EditField::new(G::default())
+        }
+    }
+
     impl Self {
+        /// Construct an `EditBox` with an [`EditGuard`]
+        #[inline]
+        pub fn new(guard: G) -> EditField<G> {
+            EditField {
+                core: Default::default(),
+                outer_rect: Rect::ZERO,
+                frame_style: FrameStyle::None,
+                view_offset: Default::default(),
+                editable: true,
+                width: (8.0, 16.0),
+                lines: (1, 1),
+                text: Text::default().with_class(TextClass::Edit(false)),
+                text_size: Default::default(),
+                selection: Default::default(),
+                edit_x_coord: None,
+                old_state: None,
+                last_edit: Default::default(),
+                has_key_focus: false,
+                error_state: false,
+                input_handler: Default::default(),
+                guard,
+            }
+        }
+
         /// Get text contents
         #[inline]
         pub fn as_str(&self) -> &str {
@@ -980,32 +1014,6 @@ impl_scope! {
                 self.view_offset = view_offset;
             }
             self.set_error_state(cx, false);
-        }
-    }
-}
-
-impl<G: EditGuard> EditField<G> {
-    /// Construct an `EditBox` with an [`EditGuard`]
-    #[inline]
-    pub fn new(guard: G) -> EditField<G> {
-        EditField {
-            core: Default::default(),
-            outer_rect: Rect::ZERO,
-            frame_style: FrameStyle::None,
-            view_offset: Default::default(),
-            editable: true,
-            width: (8.0, 16.0),
-            lines: (1, 1),
-            text: Text::default().with_class(TextClass::Edit(false)),
-            text_size: Default::default(),
-            selection: Default::default(),
-            edit_x_coord: None,
-            old_state: None,
-            last_edit: Default::default(),
-            has_key_focus: false,
-            error_state: false,
-            input_handler: Default::default(),
-            guard,
         }
     }
 }
