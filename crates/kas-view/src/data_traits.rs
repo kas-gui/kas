@@ -94,7 +94,7 @@ impl_2D!(u64);
 /// The trait covers access to data (especially important for data which must be retrieved from a
 /// remote database or generated on demand). The implementation may optionally support filtering.
 ///
-/// Type parameter `Index` is `usize` for `ListView` or `(usize, usize)` for `MatrixView`.
+/// Type parameter `Index` is `usize` for `ListView` or `MatrixIndex` for `MatrixView`.
 ///
 /// # Implementing `DataAccessor`
 ///
