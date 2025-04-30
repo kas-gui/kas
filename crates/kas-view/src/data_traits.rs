@@ -233,18 +233,30 @@ pub trait DataAccessor<Index> {
 
     /// Handle an async message
     ///
-    /// This method is called when a message is available, possibly the result
-    /// of an asynchronous message sent through [`Self::update`] or
-    /// [`Self::prepare_range`]. The implementation should
-    /// [try_pop](EventCx::try_pop) messages of types sent by this trait impl
-    /// but not messages of other types.
+    /// This method is called when a message is available. Such messages may be
+    /// taken using [`EventCx::try_pop`]. It is not required that all messages
+    /// be handled (some may be intended for other recipients).
+    ///
+    /// When `key.is_some()`, the message's source is a view widget over the
+    /// data item with this key. This allows a custom view widget to send a
+    /// custom message, possibly affecting the data set.
+    ///
+    /// When `key.is_none()` the message may be from the view controller or may
+    /// be the result of an asynchronous message sent through [`Self::update`]
+    /// or [`Self::prepare_range`].
     ///
     /// To receive (async) messages with [`Self::handle_messages`], send to `id`
     /// using (for example) `cx.send_async(id, _)`.
     ///
     /// The default implementation does nothing.
-    fn handle_messages(&mut self, cx: &mut EventCx, id: Id, data: &Self::Data) {
-        let _ = (cx, id, data);
+    fn handle_messages(
+        &mut self,
+        cx: &mut EventCx,
+        id: Id,
+        data: &Self::Data,
+        key: Option<&Self::Key>,
+    ) {
+        let _ = (cx, id, data, key);
     }
 
     /// Get a key for a given `index`, if available

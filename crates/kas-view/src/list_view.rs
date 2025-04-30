@@ -169,11 +169,6 @@ impl_scope! {
         /// [`Select`].
         ///
         /// On selection and deselection, a [`SelectionMsg`] message is emitted.
-        /// This is not sent to [`Driver::handle_messages`].
-        ///
-        /// The driver may trigger selection by emitting [`Select`] from
-        /// [`Driver::handle_messages`]. The driver is not notified of selection
-        /// except via [`Select`] from view widgets. (TODO: reconsider this.)
         ///
         /// [`Select`]: kas::messages::Select
         pub fn set_selection_mode(&mut self, cx: &mut EventState, mode: SelectionMode) {
@@ -765,28 +760,26 @@ impl_scope! {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &A::Data) {
-            let key: A::Key;
+            let mut opt_key = None;
             if let Some(index) = cx.last_child() {
-                let w = &mut self.widgets[index];
-                key = match w.key.as_ref() {
-                    Some(k) => k.clone(),
-                    None => return,
-                };
-
-                if let Some(item) = self.accessor.item(data, &key) {
-                    self.driver.handle_messages(cx, &mut w.widget, item, &key);
-                }
-            } else {
-                self.accessor.handle_messages(cx, self.id(), data);
-
-                // Message is from self
-                key = match self.press_target.as_ref() {
-                    Some((_, k)) => k.clone(),
-                    None => return,
+                // Message is from a child
+                opt_key = match self.widgets[index].key.as_ref() {
+                    Some(k) => Some(k.clone()),
+                    None => return, // should be unreachable
                 };
             }
 
+            self.accessor.handle_messages(cx, self.id(), data, opt_key.as_ref());
+
             if let Some(kas::messages::Select) = cx.try_pop() {
+                let key = match opt_key {
+                    Some(key) => key,
+                    None => match self.press_target.as_ref() {
+                        Some((_, k)) => k.clone(),
+                        None => return,
+                    }
+                };
+
                 match self.sel_mode {
                     SelectionMode::None => (),
                     SelectionMode::Single => {
