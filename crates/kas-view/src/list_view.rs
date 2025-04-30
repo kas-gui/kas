@@ -403,8 +403,7 @@ impl_scope! {
             let data_len: i32 = self.data_len.cast();
             let inner_size = (size - self.frame_size).extract(self.direction());
             let child_size = (inner_size / self.ideal_visible)
-                .min(self.child_size_ideal)
-                .max(self.child_size_min);
+                .clamp(self.child_size_min, self.child_size_ideal);
             let m = self.child_inter_margin;
             let step = child_size + m;
             let content_size = (step * data_len - m).max(0);
@@ -451,8 +450,7 @@ impl_scope! {
                 size -= self.frame_size.extract(other_axis);
                 if self.direction.is_horizontal() == other_axis.is_horizontal() {
                     size = (size / self.ideal_visible)
-                        .min(self.child_size_ideal)
-                        .max(self.child_size_min);
+                        .clamp(self.child_size_min, self.child_size_ideal);
                 }
                 size
             });
@@ -470,11 +468,12 @@ impl_scope! {
                 }
             }
             if self.child_size_min == i32::MAX {
-                self.child_size_min = 0;
+                self.child_size_min = 1;
             }
+            self.child_size_min = self.child_size_min.max(1);
 
             if axis.is_vertical() == self.direction.is_vertical() {
-                self.child_size_ideal = rules.ideal_size();
+                self.child_size_ideal = rules.ideal_size().max(sizer.min_element_size());
                 let m = rules.margins();
                 self.child_inter_margin =
                     m.0.max(m.1).max(inner_margin.0).max(inner_margin.1).cast();
@@ -497,14 +496,12 @@ impl_scope! {
             let (size, skip);
             if self.direction.is_horizontal() {
                 child_size.0 = (child_size.0 / self.ideal_visible)
-                    .min(self.child_size_ideal)
-                    .max(self.child_size_min);
+                    .clamp(self.child_size_min, self.child_size_ideal);
                 size = rect.size.0;
                 skip = child_size.0 + self.child_inter_margin;
             } else {
                 child_size.1 = (child_size.1 / self.ideal_visible)
-                    .min(self.child_size_ideal)
-                    .max(self.child_size_min);
+                    .clamp(self.child_size_min, self.child_size_ideal);
                 size = rect.size.1;
                 skip = child_size.1 + self.child_inter_margin;
             }

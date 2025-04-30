@@ -413,8 +413,12 @@ impl_scope! {
                     rules = rules.max(child_rules);
                 }
             }
+            if child_size_min == i32::MAX {
+                child_size_min = 1;
+            }
+            child_size_min = child_size_min.max(1);
             self.child_size_min.set_component(axis, child_size_min);
-            self.child_size_ideal.set_component(axis, rules.ideal_size());
+            self.child_size_ideal.set_component(axis, rules.ideal_size().max(sizer.min_element_size()));
 
             let m = rules.margins();
             self.child_inter_margin.set_component(
@@ -441,8 +445,7 @@ impl_scope! {
 
             let avail = rect.size - self.frame_size;
             let child_size = Size(avail.0 / self.ideal_len.cols, avail.1 / self.ideal_len.rows)
-                .min(self.child_size_ideal)
-                .max(self.child_size_min);
+                .clamp(self.child_size_min, self.child_size_ideal);
             self.child_size = child_size;
             self.update_content_size(cx);
 

@@ -193,6 +193,10 @@ impl<D: 'static> ThemeSize for Window<D> {
         self.dims.dpem
     }
 
+    fn min_element_size(&self) -> i32 {
+        (self.dims.scale * 8.0).cast_nearest()
+    }
+
     fn min_scroll_size(&self, axis_is_vertical: bool) -> i32 {
         if axis_is_vertical {
             (self.dims.dpem * 3.0).cast_ceil()
