@@ -5,7 +5,7 @@
 
 //! List view controller
 
-use crate::{DataAccessor, DataKey, Driver, SelectionMode, SelectionMsg};
+use crate::{DataClerk, DataKey, Driver, SelectionMode, SelectionMsg};
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, FocusSource, Scroll, TimerHandle};
 use kas::layout::solve_size_rules;
@@ -29,8 +29,8 @@ struct WidgetData<K, W> {
 impl_scope! {
     /// View controller for 1D indexable data (list)
     ///
-    /// This widget generates a view over a list of data items via the
-    /// [`DataAccessor`] trait. "View widgets" are constructed via a [`Driver`]
+    /// This widget generates a view over a list of data items via a
+    /// [`DataClerk`]. "View widgets" are constructed via a [`Driver`]
     /// to represent visible data items. These view widgets are reassigned as
     /// required when the list is scrolled, keeping the number of widgets in
     /// use roughly proportional to the number of data items within the view.
@@ -47,7 +47,7 @@ impl_scope! {
     /// emit [`kas::messages::Select`] to have themselves be selected.
     #[derive(Clone, Debug)]
     #[widget]
-    pub struct ListView<A: DataAccessor<usize>, V, D = Direction>
+    pub struct ListView<A: DataClerk<usize>, V, D = Direction>
     where
         V: Driver<A::Key, A::Item>,
         D: Directional,
@@ -89,31 +89,31 @@ impl_scope! {
             Self::new_dir(accessor, driver, D::default())
         }
     }
-    impl<A: DataAccessor<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Left> {
+    impl<A: DataClerk<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Left> {
         /// Construct a new instance
         pub fn left(accessor: A, driver: V) -> Self {
             Self::new(accessor, driver)
         }
     }
-    impl<A: DataAccessor<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Right> {
+    impl<A: DataClerk<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Right> {
         /// Construct a new instance
         pub fn right(accessor: A, driver: V) -> Self {
             Self::new(accessor, driver)
         }
     }
-    impl<A: DataAccessor<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Up> {
+    impl<A: DataClerk<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Up> {
         /// Construct a new instance
         pub fn up(accessor: A, driver: V) -> Self {
             Self::new(accessor, driver)
         }
     }
-    impl<A: DataAccessor<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Down> {
+    impl<A: DataClerk<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Down> {
         /// Construct a new instance
         pub fn down(accessor: A, driver: V) -> Self {
             Self::new(accessor, driver)
         }
     }
-    impl<A: DataAccessor<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, Direction> {
+    impl<A: DataClerk<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, Direction> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, cx: &mut EventState, direction: Direction) {
             if direction != self.direction {

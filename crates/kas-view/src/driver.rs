@@ -23,16 +23,16 @@ use std::default::Default;
 
 /// View widget driver
 ///
-/// This trait is implemented to "drive" a controller widget,
-/// constructing, updating, and optionally intercepting messages from so called
-/// "view widgets".
-/// A few simple implementations are provided: [`View`], [`NavView`].
+/// Implementations of this trait [make](Self::make) new view widgets and
+/// optionally [reassign](Self::set_key) existing view widgets.
+///
+/// View widgets may also need to update themselves using [`Events::update`].
 ///
 /// Each view widget has an [`Id`] corresponding to its data item, and
 /// handles events like any other widget. In order to associate a returned
 /// message with a `Key`, either embed that key while constructing
 /// the widget with [`Driver::make`] or handle the message in
-/// [`crate::DataAccessor::handle_messages`].
+/// [`crate::DataClerk::handle_messages`].
 ///
 /// # Example implementations
 ///

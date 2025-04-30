@@ -1,7 +1,7 @@
 //! Do you know your times tables?
 
 use kas::prelude::*;
-use kas::view::{driver, DataAccessor, MatrixIndex, MatrixView, SelectionMode, SelectionMsg};
+use kas::view::{driver, DataClerk, MatrixIndex, MatrixView, SelectionMode, SelectionMsg};
 use kas::widgets::{column, row, EditBox, ScrollBars};
 use std::ops::Range;
 
@@ -21,7 +21,7 @@ fn product(x: u32, y: u32) -> u64 {
     x * y
 }
 
-impl DataAccessor<MatrixIndex> for TableCache {
+impl DataClerk<MatrixIndex> for TableCache {
     /// Our table is square; it's size is input.
     type Data = u32;
 

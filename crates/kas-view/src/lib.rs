@@ -3,27 +3,34 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! View widgets and shared data
+//! # Views
 //!
-//! View widgets allow data-oriented design. This is vaguely similar to the
-//! Model-View-Controller pattern or Elm's Model-View-Update design, but with
-//! no direct link between Model and Controller:
+//! Views allow virtual scrolling and query views over a data set, supporting
+//! both sync and async access.
 //!
-//! 1.  The [`DataAccessor`] trait provides data access
-//! 2.  [**Drivers**](`driver`) describe how to build a widget view over data
-//!     and (optionally) how to handle **messages** from view widgets
-//! 3.  **Controllers** are special widgets which manage views over data
+//! Each visible data `Item` is assigned a **view widget**, with dynamic
+//! re-assignment as the view changes.
 //!
-//! Three controllers are provided by this crate:
+//! ## Data sets and clerks
 //!
-//! -   [`ListView`] constructs a row or column of views over indexable data
-//! -   [`MatrixView`] constructs a table/sheet of views over two-dimensional
-//!     indexable data
+//! The full data set might be available in local memory, on disk, or on a
+//! remote server.
 //!
-//! Both [`ListView`] and [`MatrixView`] support virtual scrolling: the number
-//! of view widget instances is limited (approximately) to the number required
-//! to cover the visible area, and these are re-used to enable fast scrolling
-//! through large data sets.
+//! A [`DataClerk`] manages all interactions between the view and the data as
+//! well as providing a local cache of (at least) the currently visible data.
+//!
+//! ## View controller
+//!
+//! This crate provides the following **view controllers**:
+//!
+//! -   [`ListView`] constructs a row or column view over items indexed by type `usize`
+//! -   [`MatrixView`] constructs a table over items indexed by type `(u32, u32)`
+//!
+//! ## Driver
+//!
+//! A view controller uses a **driver** to construct and re-assign view widgets.
+//! Simple types (strings and numbers) may use a pre-defined [`driver`],
+//! otherwise a custom implementation of [`Driver`] is required.
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 

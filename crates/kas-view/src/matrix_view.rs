@@ -66,8 +66,8 @@ impl crate::DataKey for MatrixIndex {
 impl_scope! {
     /// View controller for 2D indexable data (matrix)
     ///
-    /// This widget generates a view over a list of data items via the
-    /// [`DataAccessor`] trait. "View widgets" are constructed via a [`Driver`]
+    /// This widget generates a view over a list of data items via a
+    /// [`DataClerk`]. "View widgets" are constructed via a [`Driver`]
     /// to represent visible data items. These view widgets are reassigned as
     /// required when the matrix is scrolled, keeping the number of widgets in
     /// use roughly proportional to the number of data items within the view.
@@ -84,7 +84,7 @@ impl_scope! {
     /// emit [`kas::messages::Select`] to have themselves be selected.
     #[derive(Clone, Debug)]
     #[widget]
-    pub struct MatrixView<A: DataAccessor<MatrixIndex>, V: Driver<A::Key, A::Item>> {
+    pub struct MatrixView<A: DataClerk<MatrixIndex>, V: Driver<A::Key, A::Item>> {
         core: widget_core!(),
         frame_offset: Offset,
         frame_size: Size,

@@ -11,7 +11,7 @@
 //! to calculate the maximum scroll offset).
 
 use kas::prelude::*;
-use kas::view::{DataAccessor, Driver, ListView};
+use kas::view::{DataClerk, Driver, ListView};
 use kas::widgets::{column, *};
 use std::collections::HashMap;
 use std::ops::Range;
@@ -141,11 +141,11 @@ impl_scope! {
 }
 
 #[derive(Default)]
-struct MyAccessor {
+struct Clerk {
     start: usize,
     items: Vec<Item>,
 }
-impl DataAccessor<usize> for MyAccessor {
+impl DataClerk<usize> for Clerk {
     type Data = Data;
     type Key = usize;
     type Item = Item;
@@ -222,7 +222,7 @@ fn main() -> kas::runner::Result<()> {
 
     let data = Data::new(5);
 
-    let list = ListView::new(MyAccessor::default(), MyDriver).on_update(|cx, list, data: &Data| {
+    let list = ListView::new(Clerk::default(), MyDriver).on_update(|cx, list, data: &Data| {
         list.set_direction(cx, data.dir);
     });
     let tree = column![

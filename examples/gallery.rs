@@ -357,7 +357,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 }
 
 fn filter_list() -> Box<dyn Widget<Data = AppData>> {
-    use kas::view::{driver, filter, DataAccessor, ListView, SelectionMode, SelectionMsg};
+    use kas::view::{driver, filter, DataClerk, ListView, SelectionMode, SelectionMsg};
 
     const MONTHS: &[&str] = &[
         "January",
@@ -399,7 +399,7 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
         filtered: Vec::new(),
     };
 
-    impl DataAccessor<usize> for MonthsAccessor {
+    impl DataClerk<usize> for MonthsAccessor {
         type Data = filter::ContainsCaseInsensitive;
 
         type Key = usize;
