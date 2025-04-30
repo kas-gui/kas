@@ -47,17 +47,17 @@ impl_scope! {
     /// emit [`kas::messages::Select`] to have themselves be selected.
     #[derive(Clone, Debug)]
     #[widget]
-    pub struct ListView<A: DataClerk<usize>, V, D = Direction>
+    pub struct ListView<C: DataClerk<usize>, V, D = Direction>
     where
-        V: Driver<A::Key, A::Item>,
+        V: Driver<C::Key, C::Item>,
         D: Directional,
     {
         core: widget_core!(),
         frame_offset: Offset,
         frame_size: Size,
-        accessor: A,
+        clerk: C,
         driver: V,
-        widgets: Vec<WidgetData<A::Key, V::Widget>>,
+        widgets: Vec<WidgetData<C::Key, V::Widget>>,
         alloc_len: u32,
         data_len: u32,
         /// The number of widgets in use (cur_len ≤ alloc_len ≤ widgets.len())
@@ -76,8 +76,8 @@ impl_scope! {
         sel_mode: SelectionMode,
         sel_style: SelectionStyle,
         // TODO(opt): replace selection list with RangeOrSet type?
-        selection: LinearSet<A::Key>,
-        press_target: Option<(usize, A::Key)>,
+        selection: LinearSet<C::Key>,
+        press_target: Option<(usize, C::Key)>,
     }
 
     impl Self
@@ -85,35 +85,35 @@ impl_scope! {
         D: Default,
     {
         /// Construct a new instance
-        pub fn new(accessor: A, driver: V) -> Self {
-            Self::new_dir(accessor, driver, D::default())
+        pub fn new(clerk: C, driver: V) -> Self {
+            Self::new_dir(clerk, driver, D::default())
         }
     }
-    impl<A: DataClerk<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Left> {
+    impl<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Left> {
         /// Construct a new instance
-        pub fn left(accessor: A, driver: V) -> Self {
-            Self::new(accessor, driver)
+        pub fn left(clerk: C, driver: V) -> Self {
+            Self::new(clerk, driver)
         }
     }
-    impl<A: DataClerk<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Right> {
+    impl<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Right> {
         /// Construct a new instance
-        pub fn right(accessor: A, driver: V) -> Self {
-            Self::new(accessor, driver)
+        pub fn right(clerk: C, driver: V) -> Self {
+            Self::new(clerk, driver)
         }
     }
-    impl<A: DataClerk<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Up> {
+    impl<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Up> {
         /// Construct a new instance
-        pub fn up(accessor: A, driver: V) -> Self {
-            Self::new(accessor, driver)
+        pub fn up(clerk: C, driver: V) -> Self {
+            Self::new(clerk, driver)
         }
     }
-    impl<A: DataClerk<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, kas::dir::Down> {
+    impl<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, kas::dir::Down> {
         /// Construct a new instance
-        pub fn down(accessor: A, driver: V) -> Self {
-            Self::new(accessor, driver)
+        pub fn down(clerk: C, driver: V) -> Self {
+            Self::new(clerk, driver)
         }
     }
-    impl<A: DataClerk<usize>, V: Driver<A::Key, A::Item>> ListView<A, V, Direction> {
+    impl<C: DataClerk<usize>, V: Driver<C::Key, C::Item>> ListView<C, V, Direction> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, cx: &mut EventState, direction: Direction) {
             if direction != self.direction {
@@ -125,12 +125,12 @@ impl_scope! {
 
     impl Self {
         /// Construct a new instance
-        pub fn new_dir(accessor: A, driver: V, direction: D) -> Self {
+        pub fn new_dir(clerk: C, driver: V, direction: D) -> Self {
             ListView {
                 core: Default::default(),
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
-                accessor,
+                clerk,
                 driver,
                 widgets: Default::default(),
                 alloc_len: 0,
@@ -153,9 +153,9 @@ impl_scope! {
             }
         }
 
-        /// Access the data accessor
-        pub fn accessor(&self) -> &A {
-            &self.accessor
+        /// Access the data clerk
+        pub fn clerk(&self) -> &C {
+            &self.clerk
         }
 
         /// Get the current selection mode
@@ -224,12 +224,12 @@ impl_scope! {
         ///
         /// With mode [`SelectionMode::Single`] this may contain zero or one entry;
         /// use `selected_iter().next()` to extract only the first (optional) entry.
-        pub fn selected_iter(&'_ self) -> impl Iterator<Item = &'_ A::Key> + '_ {
+        pub fn selected_iter(&'_ self) -> impl Iterator<Item = &'_ C::Key> + '_ {
             self.selection.iter()
         }
 
         /// Check whether an entry is selected
-        pub fn is_selected(&self, key: &A::Key) -> bool {
+        pub fn is_selected(&self, key: &C::Key) -> bool {
             self.selection.contains(key)
         }
 
@@ -250,7 +250,7 @@ impl_scope! {
         /// Returns `true` if newly selected, `false` if
         /// already selected. Fails if selection mode does not permit selection
         /// or if the key is invalid.
-        pub fn select(&mut self, cx: &mut EventState, key: A::Key) -> bool {
+        pub fn select(&mut self, cx: &mut EventState, key: C::Key) -> bool {
             match self.sel_mode {
                 SelectionMode::None => return false,
                 SelectionMode::Single => self.selection.clear(),
@@ -267,7 +267,7 @@ impl_scope! {
         ///
         /// Returns `true` if deselected, `false` if not
         /// previously selected or if the key is invalid.
-        pub fn deselect(&mut self, cx: &mut EventState, key: &A::Key) -> bool {
+        pub fn deselect(&mut self, cx: &mut EventState, key: &C::Key) -> bool {
             let r = self.selection.remove(key);
             if r {
                 cx.redraw(self);
@@ -329,7 +329,7 @@ impl_scope! {
         }
 
         // If full, call cx.update on all view widgets
-        fn update_widgets(&mut self, cx: &mut ConfigCx, data: &A::Data, full: bool) {
+        fn update_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data, full: bool) {
             let time = Instant::now();
 
             let offset = u64::conv(self.scroll_offset().extract(self.direction));
@@ -343,11 +343,11 @@ impl_scope! {
             self.first_data = first_data.cast();
 
             let range = first_data..(first_data + cur_len);
-            self.accessor.prepare_range(cx, self.id(), data, range);
+            self.clerk.prepare_range(cx, self.id(), data, range);
 
             let solver = self.position_solver();
             for i in solver.data_range() {
-                let Some(key) = self.accessor.key(data, i) else {
+                let Some(key) = self.clerk.key(data, i) else {
                     continue;
                 };
                 let id = key.make_id(self.id_ref());
@@ -355,7 +355,7 @@ impl_scope! {
                 if w.key.as_ref() != Some(&key) {
                     self.driver.set_key(&mut w.widget, &key);
 
-                    if let Some(item) = self.accessor.item(data, &key) {
+                    if let Some(item) = self.clerk.item(data, &key) {
                         cx.configure(w.widget.as_node(item), id);
 
                         solve_size_rules(
@@ -369,7 +369,7 @@ impl_scope! {
                         w.key = None; // disables drawing and clicking
                     }
                 } else if full {
-                    if let Some(item) = self.accessor.item(data, &key) {
+                    if let Some(item) = self.clerk.item(data, &key) {
                         cx.update(w.widget.as_node(item));
                     }
                 }
@@ -529,7 +529,7 @@ impl_scope! {
                     req_widgets
                 );
                 self.widgets.reserve(req_widgets - avail_widgets);
-                let key = A::Key::default();
+                let key = C::Key::default();
                 for _ in avail_widgets..req_widgets {
                     let widget = self.driver.make(&key);
                     self.widgets.push(WidgetData { key: None, widget });
@@ -576,7 +576,7 @@ impl_scope! {
             self.widgets.get(index).filter(|w| w.key.is_some()).map(|w| w.widget.as_tile())
         }
         fn find_child_index(&self, id: &Id) -> Option<usize> {
-            let key = A::Key::reconstruct_key(self.id_ref(), id);
+            let key = C::Key::reconstruct_key(self.id_ref(), id);
             if key.is_some() {
                 let num = self.num_children();
                 for (i, w) in self.widgets[..num].iter().enumerate() {
@@ -620,7 +620,7 @@ impl_scope! {
                 self.skip = 1; // hack: avoid div by 0
 
                 let len = self.ideal_visible.cast();
-                let key = A::Key::default();
+                let key = C::Key::default();
                 self.widgets.resize_with(len, || {
                     WidgetData {
                         key: None,
@@ -637,7 +637,7 @@ impl_scope! {
             let id = self.id();
             for w in &mut self.widgets {
                 if let Some(ref key) = w.key {
-                    if let Some(item) = self.accessor.item(data, key) {
+                    if let Some(item) = self.clerk.item(data, key) {
                         let id = key.make_id(&id);
                         cx.configure(w.widget.as_node(item), id);
                     }
@@ -645,9 +645,9 @@ impl_scope! {
             }
         }
 
-        fn update(&mut self, cx: &mut ConfigCx, data: &A::Data) {
-            self.accessor.update(cx, self.id(), data);
-            let data_len = self.accessor.len(data).cast();
+        fn update(&mut self, cx: &mut ConfigCx, data: &C::Data) {
+            self.clerk.update(cx, self.id(), data);
+            let data_len = self.clerk.len(data).cast();
             if data_len != self.data_len {
                 self.data_len = data_len;
                 // We must call at least SET_RECT to update scrollable region
@@ -664,10 +664,10 @@ impl_scope! {
 
         fn update_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
 
-        fn handle_event(&mut self, cx: &mut EventCx, data: &A::Data, event: Event) -> IsUsed {
+        fn handle_event(&mut self, cx: &mut EventCx, data: &C::Data, event: Event) -> IsUsed {
             let is_used = match event {
                 Event::Command(cmd, _) => {
-                    let last = self.accessor.len(data).wrapping_sub(1);
+                    let last = self.clerk.len(data).wrapping_sub(1);
                     if last == usize::MAX {
                         return Unused;
                     }
@@ -759,7 +759,7 @@ impl_scope! {
             is_used | used_by_sber
         }
 
-        fn handle_messages(&mut self, cx: &mut EventCx, data: &A::Data) {
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &C::Data) {
             let mut opt_key = None;
             if let Some(index) = cx.last_child() {
                 // Message is from a child
@@ -769,7 +769,7 @@ impl_scope! {
                 };
             }
 
-            self.accessor.handle_messages(cx, self.id(), data, opt_key.as_ref());
+            self.clerk.handle_messages(cx, self.id(), data, opt_key.as_ref());
 
             if let Some(kas::messages::Select) = cx.try_pop() {
                 let key = match opt_key {
@@ -801,7 +801,7 @@ impl_scope! {
             }
         }
 
-        fn handle_scroll(&mut self, cx: &mut EventCx, data: &A::Data, scroll: Scroll) {
+        fn handle_scroll(&mut self, cx: &mut EventCx, data: &C::Data, scroll: Scroll) {
             let act = self.scroll.scroll(cx, self.rect(), scroll);
             self.update_widgets(&mut cx.config_cx(), data, false);
             cx.action(self, act);
@@ -810,12 +810,12 @@ impl_scope! {
 
     // Direct implementation of this trait outside of Kas code is not supported!
     impl Widget for Self {
-        type Data = A::Data;
+        type Data = C::Data;
 
-        fn child_node<'n>(&'n mut self, data: &'n A::Data, index: usize) -> Option<Node<'n>> {
+        fn child_node<'n>(&'n mut self, data: &'n C::Data, index: usize) -> Option<Node<'n>> {
             if let Some(w) = self.widgets.get_mut(index) {
                 if let Some(ref key) = w.key {
-                    if let Some(item) = self.accessor.item(data, key) {
+                    if let Some(item) = self.clerk.item(data, key) {
                         return Some(w.widget.as_node(item));
                     }
                 }
@@ -828,7 +828,7 @@ impl_scope! {
         fn _nav_next(
             &mut self,
             cx: &mut ConfigCx,
-            data: &A::Data,
+            data: &C::Data,
             focus: Option<&Id>,
             advance: NavAdvance,
         ) -> Option<Id> {
@@ -858,7 +858,7 @@ impl_scope! {
             let mut starting_child = child;
             loop {
                 let solver = self.position_solver();
-                let last_data = self.accessor.len(data) - 1;
+                let last_data = self.clerk.len(data) - 1;
                 let data_index = if let Some(index) = child {
                     let data = solver.child_to_data(index);
                     if !reverse && data < last_data {

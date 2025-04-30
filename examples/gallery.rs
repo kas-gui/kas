@@ -441,7 +441,7 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
             list.list_mut().set_selection_mode(cx, data.mode);
         })
         .on_message(|_, fblv, selection: SelectionMsg<usize>| match selection {
-            SelectionMsg::Select(i) => println!("Selected: {}", &fblv.list().accessor().list[i]),
+            SelectionMsg::Select(i) => println!("Selected: {}", &fblv.list().clerk().list[i]),
             _ => (),
         });
 
