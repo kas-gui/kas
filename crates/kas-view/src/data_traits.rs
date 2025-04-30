@@ -5,6 +5,7 @@
 
 //! Traits for shared data objects
 
+use kas::cast::Cast;
 use kas::event::{ConfigCx, EventCx};
 use kas::Id;
 #[allow(unused)] // doc links
@@ -49,28 +50,44 @@ impl DataKey for () {
 
 // NOTE: we cannot use this blanket impl without specialisation / negative impls
 // impl<Key: Cast<usize> + Clone + Debug + PartialEq + Eq + 'static> DataKey for Key
-impl DataKey for usize {
-    fn make_id(&self, parent: &Id) -> Id {
-        parent.make_child(*self)
-    }
+macro_rules! impl_1D {
+    ($t:ty) => {
+        impl DataKey for $t {
+            fn make_id(&self, parent: &Id) -> Id {
+                parent.make_child((*self).cast())
+            }
 
-    fn reconstruct_key(parent: &Id, child: &Id) -> Option<Self> {
-        child.next_key_after(parent)
-    }
+            fn reconstruct_key(parent: &Id, child: &Id) -> Option<Self> {
+                child.next_key_after(parent).map(|i| i.cast())
+            }
+        }
+    };
 }
+impl_1D!(usize);
+impl_1D!(u32);
+#[cfg(target_pointer_width = "64")]
+impl_1D!(u64);
 
-impl DataKey for (usize, usize) {
-    fn make_id(&self, parent: &Id) -> Id {
-        parent.make_child(self.0).make_child(self.1)
-    }
+macro_rules! impl_2D {
+    ($t:ty) => {
+        impl DataKey for ($t, $t) {
+            fn make_id(&self, parent: &Id) -> Id {
+                parent.make_child(self.0.cast()).make_child(self.1.cast())
+            }
 
-    fn reconstruct_key(parent: &Id, child: &Id) -> Option<Self> {
-        let mut iter = child.iter_keys_after(parent);
-        let col = iter.next();
-        let row = iter.next();
-        col.zip(row)
-    }
+            fn reconstruct_key(parent: &Id, child: &Id) -> Option<Self> {
+                let mut iter = child.iter_keys_after(parent);
+                let col = iter.next().map(|i| i.cast());
+                let row = iter.next().map(|i| i.cast());
+                col.zip(row)
+            }
+        }
+    };
 }
+impl_2D!(usize);
+impl_2D!(u32);
+#[cfg(target_pointer_width = "64")]
+impl_2D!(u64);
 
 /// Accessor for data
 ///
