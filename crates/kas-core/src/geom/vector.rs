@@ -48,6 +48,16 @@ impl Quad {
         }
     }
 
+    /// Construct with center and radius
+    #[inline]
+    pub fn from_center(pos: Vec2, r: f32) -> Self {
+        let v = Vec2::splat(r);
+        Quad {
+            a: pos - v,
+            b: pos + v,
+        }
+    }
+
     /// Get the size
     #[inline]
     pub fn size(&self) -> Vec2 {
@@ -348,6 +358,18 @@ macro_rules! impl_vec2 {
                     false => self.0,
                     true => self.1,
                 }
+            }
+
+            /// Returns `true` if all components are neither infinite nor NaN
+            #[inline]
+            pub fn is_finite(self) -> bool {
+                self.0.is_finite() && self.1.is_finite()
+            }
+
+            /// Returns `true` if no components are zero, infinite, submormal or NaN
+            #[inline]
+            pub fn is_normal(self) -> bool {
+                self.0.is_normal() && self.1.is_normal()
             }
         }
 

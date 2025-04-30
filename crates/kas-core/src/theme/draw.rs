@@ -415,6 +415,9 @@ pub trait ThemeDraw {
     /// This may be used to cull hidden items from lists inside a scrollable view.
     fn get_clip_rect(&mut self) -> Rect;
 
+    /// Draw [`EventState`] overlay
+    fn event_state_overlay(&mut self);
+
     /// Draw a frame inside the given `rect`
     ///
     /// The frame dimensions are given by [`ThemeSize::frame`].

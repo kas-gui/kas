@@ -6,7 +6,7 @@
 //! Event handling: mouse events
 
 use super::{GrabMode, Press, PressSource};
-use crate::event::{Event, EventCx, FocusSource, ScrollDelta};
+use crate::event::{Event, EventCx, EventState, FocusSource, ScrollDelta};
 use crate::geom::{Coord, DVec2};
 use crate::{Action, Id, NavAdvance, Node, Widget, Window};
 use cast::{Cast, Conv, ConvApprox};
@@ -19,10 +19,20 @@ const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
 
 const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum PanMode {
+    Pan,
+    Rotate,
+    Scale,
+    Full,
+}
+
 #[derive(Clone, Debug)]
 struct PanDetails {
     c0: Coord,
     c1: Coord,
+    moved: bool,
+    mode: PanMode,
 }
 
 #[derive(Clone, Debug)]
@@ -35,6 +45,15 @@ enum GrabDetails {
 impl GrabDetails {
     fn is_pan(&self) -> bool {
         matches!(self, GrabDetails::Pan(_))
+    }
+
+    fn pan(coord: Coord, mode: PanMode) -> Self {
+        GrabDetails::Pan(PanDetails {
+            c0: coord,
+            c1: coord,
+            moved: false,
+            mode,
+        })
     }
 }
 
@@ -56,7 +75,8 @@ pub(in crate::event::cx) struct Mouse {
     last_click_button: MouseButton,
     last_click_repetitions: u32,
     last_click_timeout: Instant,
-    pub(super) mouse_grab: Option<MouseGrab>,
+    last_pin: Option<(Id, Coord)>,
+    pub(super) grab: Option<MouseGrab>,
 }
 
 impl Default for Mouse {
@@ -69,7 +89,8 @@ impl Default for Mouse {
             last_click_button: FAKE_MOUSE_BUTTON,
             last_click_repetitions: 0,
             last_click_timeout: Instant::now(),
-            mouse_grab: None,
+            last_pin: None,
+            grab: None,
         }
     }
 }
@@ -77,7 +98,7 @@ impl Default for Mouse {
 impl Mouse {
     /// Clear all focus and grabs on `target`
     pub(in crate::event::cx) fn cancel_event_focus(&mut self, target: &Id) {
-        if let Some(grab) = self.mouse_grab.as_mut() {
+        if let Some(grab) = self.grab.as_mut() {
             if grab.start_id == target {
                 grab.cancel = true;
             }
@@ -86,7 +107,7 @@ impl Mouse {
 
     pub(in crate::event::cx) fn update_hover_icon(&mut self) -> Option<CursorIcon> {
         let mut icon = None;
-        if self.hover_icon != self.old_hover_icon && self.mouse_grab.is_none() {
+        if self.hover_icon != self.old_hover_icon && self.grab.is_none() {
             icon = Some(self.hover_icon);
         }
         self.old_hover_icon = self.hover_icon;
@@ -94,16 +115,43 @@ impl Mouse {
     }
 
     pub fn frame_update(&mut self) -> Option<(Id, Event)> {
-        if let Some(grab) = self.mouse_grab.as_mut() {
+        if let Some(grab) = self.grab.as_mut() {
             if let GrabDetails::Pan(details) = &mut grab.details {
                 // Terminology: pi are old coordinates, qi are new coords
                 let (p1, q1) = (DVec2::conv(details.c0), DVec2::conv(details.c1));
                 details.c0 = details.c1;
 
-                let delta = q1 - p1;
-                if delta != DVec2::ZERO {
+                let alpha;
+                let delta;
+
+                if details.mode == PanMode::Pan {
+                    alpha = DVec2(1.0, 0.0);
+                    delta = q1 - p1;
+                } else if let Some((_, coord)) = self.last_pin.as_ref() {
+                    let p2 = DVec2::conv(*coord);
+                    let (pd, qd) = (p2 - p1, p2 - q1);
+
+                    alpha = match details.mode {
+                        PanMode::Full => qd.complex_div(pd),
+                        PanMode::Scale => DVec2((qd.sum_square() / pd.sum_square()).sqrt(), 0.0),
+                        PanMode::Rotate => {
+                            let a = qd.complex_div(pd);
+                            a / a.sum_square().sqrt()
+                        }
+                        _ => unreachable!(),
+                    };
+
+                    // Average delta from both movements:
+                    delta = (q1 - alpha.complex_mul(p1) + p2 - alpha.complex_mul(p2)) * 0.5;
+                } else {
+                    unreachable!()
+                }
+
+                if alpha.is_finite()
+                    && delta.is_finite()
+                    && (alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO)
+                {
                     let id = grab.start_id.clone();
-                    let alpha = DVec2(1.0, 0.0);
                     let event = Event::Pan { alpha, delta };
                     return Some((id, event));
                 }
@@ -119,7 +167,7 @@ impl Mouse {
 
     fn update_hover(&mut self) -> (bool, bool) {
         let (mut cancel, mut redraw) = (false, false);
-        if let Some(grab) = self.mouse_grab.as_mut() {
+        if let Some(grab) = self.grab.as_mut() {
             cancel = grab.cancel;
             if let GrabDetails::Click = grab.details {
                 let hover = self.hover.as_ref();
@@ -146,18 +194,19 @@ impl Mouse {
         coord: Coord,
         mode: GrabMode,
     ) -> bool {
+        let have_pin = matches!(&self.last_pin, Some((id2, _)) if id == *id2);
         let details = match mode {
             GrabMode::Click => GrabDetails::Click,
             GrabMode::Grab => GrabDetails::Grab,
+            GrabMode::PanRotate if have_pin => GrabDetails::pan(coord, PanMode::Rotate),
+            GrabMode::PanScale if have_pin => GrabDetails::pan(coord, PanMode::Scale),
+            GrabMode::PanFull if have_pin => GrabDetails::pan(coord, PanMode::Full),
             mode => {
                 assert!(mode.is_pan());
-                GrabDetails::Pan(PanDetails {
-                    c0: coord,
-                    c1: coord,
-                })
+                GrabDetails::pan(coord, PanMode::Pan)
             }
         };
-        if let Some(ref mut grab) = self.mouse_grab {
+        if let Some(ref mut grab) = self.grab {
             if grab.start_id != id
                 || grab.button != button
                 || grab.details.is_pan() != mode.is_pan()
@@ -171,7 +220,7 @@ impl Mouse {
             grab.depress = Some(id.clone());
             grab.details = details;
         } else {
-            self.mouse_grab = Some(MouseGrab {
+            self.grab = Some(MouseGrab {
                 button,
                 repetitions,
                 start_id: id.clone(),
@@ -181,6 +230,22 @@ impl Mouse {
             });
         }
         true
+    }
+}
+
+impl EventState {
+    pub(crate) fn mouse_pin(&self) -> Option<(Coord, bool)> {
+        if let Some((_, coord)) = self.mouse.last_pin.as_ref() {
+            let used = self
+                .mouse
+                .grab
+                .as_ref()
+                .map(|grab| grab.details.is_pan())
+                .unwrap_or(false);
+            Some((*coord, used))
+        } else {
+            None
+        }
     }
 }
 
@@ -212,17 +277,23 @@ impl<'a> EventCx<'a> {
 
     // Clears mouse grab and pan grab, resets cursor and redraws
     fn remove_mouse_grab(&mut self, success: bool) -> Option<(Id, Event)> {
-        if let Some(grab) = self.mouse.mouse_grab.take() {
+        if let Some(grab) = self.mouse.grab.take() {
             log::trace!(
                 "remove_mouse_grab: start_id={}, success={success}",
                 grab.start_id
             );
             self.window.set_cursor_icon(self.mouse.hover_icon);
             self.opt_action(grab.depress.clone(), Action::REDRAW);
-            if grab.details.is_pan() {
+            if let GrabDetails::Pan(details) = &grab.details {
+                if !details.moved {
+                    self.mouse.last_pin = Some((grab.start_id.clone(), self.mouse.last_coord));
+                } else {
+                    self.mouse.last_pin = None;
+                }
                 // Pan grabs do not receive Event::PressEnd
                 None
             } else {
+                self.mouse.last_pin = None;
                 let press = Press {
                     source: PressSource::Mouse(grab.button, grab.repetitions),
                     id: self.mouse.hover.clone(),
@@ -268,7 +339,7 @@ impl<'a> EventCx<'a> {
         let id = win.try_probe(coord);
         self.set_hover(win.as_node(data), id.clone());
 
-        if let Some(grab) = self.mouse.mouse_grab.as_mut() {
+        if let Some(grab) = self.mouse.grab.as_mut() {
             match &mut grab.details {
                 GrabDetails::Click => (),
                 GrabDetails::Grab => {
@@ -284,6 +355,8 @@ impl<'a> EventCx<'a> {
                 }
                 GrabDetails::Pan(details) => {
                     details.c1 = coord;
+                    details.moved = true;
+                    self.need_frame_update = true;
                 }
             }
         } else if let Some(popup_id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
@@ -309,7 +382,7 @@ impl<'a> EventCx<'a> {
     pub(in crate::event::cx) fn handle_cursor_left(&mut self, node: Node<'_>) {
         self.mouse.last_click_button = FAKE_MOUSE_BUTTON;
 
-        if self.mouse.mouse_grab.is_none() {
+        if self.mouse.grab.is_none() {
             // If there's a mouse grab, we will continue to receive
             // coordinates; if not, set a fake coordinate off the window
             self.mouse.last_coord = Coord(-1, -1);
@@ -360,7 +433,7 @@ impl<'a> EventCx<'a> {
 
         if self
             .mouse
-            .mouse_grab
+            .grab
             .as_ref()
             .map(|g| g.button == button)
             .unwrap_or(false)
@@ -373,6 +446,9 @@ impl<'a> EventCx<'a> {
         if state == ElementState::Pressed {
             if let Some(start_id) = self.mouse.hover.clone() {
                 // No mouse grab but have a hover target
+                if matches!(self.mouse.last_pin.as_ref(), Some((id, _)) if *id != start_id) {
+                    self.mouse.last_pin = None;
+                }
                 if self.config.event().mouse_nav_focus() {
                     if let Some(id) = self.nav_next(node.re(), Some(&start_id), NavAdvance::None) {
                         self.set_nav_focus(id, FocusSource::Pointer);

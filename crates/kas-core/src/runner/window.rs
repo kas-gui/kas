@@ -11,12 +11,13 @@ use super::{AppData, GraphicsBuilder};
 use crate::cast::{Cast, Conv};
 use crate::config::WindowConfig;
 use crate::decorations::Decorations;
+use crate::draw::PassType;
 use crate::draw::{color::Rgba, AnimationState, DrawSharedImpl};
 use crate::event::{ConfigCx, CursorIcon, EventState};
-use crate::geom::{Coord, Rect, Size};
+use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::SolveCache;
 use crate::messages::MessageStack;
-use crate::theme::{DrawCx, SizeCx, Theme, ThemeSize, Window as _};
+use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, ThemeSize, Window as _};
 use crate::{autoimpl, Action, Id, Tile, Widget, WindowId};
 use std::mem::take;
 use std::sync::Arc;
@@ -313,13 +314,19 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         let mut resume = self.ev_state.next_resume();
 
         let window = self.window.as_mut().unwrap();
-        if let Some(time) = window.queued_frame_time {
+        if window.need_redraw {
+            window.request_redraw();
+            window.queued_frame_time = None;
+        } else if let Some(time) = window.queued_frame_time {
             if time <= Instant::now() {
                 window.request_redraw();
                 window.queued_frame_time = None;
             } else {
                 resume = resume.map(|t| t.min(time)).or(Some(time));
             }
+        } else if self.ev_state.need_frame_update() {
+            window.next_avail_frame_time = Instant::now() + self.ev_state.config().frame_dur();
+            window.queued_frame_time = Some(window.next_avail_frame_time);
         }
 
         (action, resume)
@@ -388,13 +395,6 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
                 .with(&mut state.shared, window, &mut messages, |cx| {
                     cx.frame_update(widget);
                 });
-
-            if window.need_redraw || self.ev_state.action.contains(Action::REDRAW) {
-                window.request_redraw();
-            } else if self.ev_state.have_pending() {
-                window.next_avail_frame_time = Instant::now() + self.ev_state.config().frame_dur();
-                window.queued_frame_time = Some(window.next_avail_frame_time);
-            }
         } else {
             self.ev_state
                 .with(&mut state.shared, window, &mut messages, |cx| {
@@ -520,6 +520,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         window.next_avail_frame_time = start + self.ev_state.config().frame_dur();
 
         {
+            let rect = Rect::new(Coord::ZERO, window.surface.size());
             let draw = window.surface.draw_iface(&mut state.shared.draw);
 
             let mut draw =
@@ -529,6 +530,13 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
                     .draw(draw, &mut self.ev_state, &mut window.theme_window);
             let draw_cx = DrawCx::new(&mut draw, self.widget.id());
             self.widget.draw(draw_cx);
+
+            draw.new_pass(
+                rect,
+                Offset::ZERO,
+                PassType::Clip,
+                Box::new(|draw: &mut dyn ThemeDraw| draw.event_state_overlay()),
+            );
         }
         let time2 = Instant::now();
 

@@ -272,7 +272,10 @@ impl<'a> EventCx<'a> {
             }
 
             let id = grab.id.clone();
-            if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
+            if alpha.is_finite()
+                && delta.is_finite()
+                && (alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO)
+            {
                 let event = Event::Pan { alpha, delta };
                 self.send_event(node.re(), id, event);
             }
@@ -341,8 +344,9 @@ impl<'a> EventCx<'a> {
                 }
 
                 if redraw {
-                    self.action(Id::ROOT, Action::REDRAW);
+                    self.window_action(Action::REDRAW);
                 } else if let Some(pan_grab) = pan_grab {
+                    self.need_frame_update = true;
                     if usize::conv(pan_grab.1) < MAX_PAN_GRABS {
                         if let Some(pan) = self.touch.pan_grab.get_mut(usize::conv(pan_grab.0)) {
                             pan.coords[usize::conv(pan_grab.1)].1 = coord;
