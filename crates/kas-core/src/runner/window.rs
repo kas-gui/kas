@@ -312,9 +312,11 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         self.handle_action(state, action);
 
         let mut resume = self.ev_state.next_resume();
-
         let window = self.window.as_mut().unwrap();
-        if window.need_redraw {
+
+        // NOTE: need_frame_update() does not imply a need to redraw, but other
+        // approaches do not yield good frame timing for e.g. kinetic scrolling.
+        if window.need_redraw || self.ev_state.need_frame_update() {
             window.request_redraw();
             window.queued_frame_time = None;
         } else if let Some(time) = window.queued_frame_time {
@@ -324,9 +326,6 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             } else {
                 resume = resume.map(|t| t.min(time)).or(Some(time));
             }
-        } else if self.ev_state.need_frame_update() {
-            window.next_avail_frame_time = Instant::now() + self.ev_state.config().frame_dur();
-            window.queued_frame_time = Some(window.next_avail_frame_time);
         }
 
         (action, resume)
