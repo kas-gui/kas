@@ -11,7 +11,7 @@
 //! to calculate the maximum scroll offset).
 
 use kas::prelude::*;
-use kas::view::{DataAccessor, Driver, ListView};
+use kas::view::{DataClerk, Driver, ListView};
 use kas::widgets::{column, *};
 use std::collections::HashMap;
 use std::ops::Range;
@@ -141,12 +141,11 @@ impl_scope! {
 }
 
 #[derive(Default)]
-struct MyAccessor {
+struct Clerk {
     start: usize,
-    len: usize,
     items: Vec<Item>,
 }
-impl DataAccessor<usize> for MyAccessor {
+impl DataClerk<usize> for Clerk {
     type Data = Data;
     type Key = usize;
     type Item = Item;
@@ -156,24 +155,24 @@ impl DataAccessor<usize> for MyAccessor {
     }
 
     fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, data: &Self::Data, range: Range<usize>) {
+        let len = range.len();
         let update_range;
-        if range.len() == self.len {
+        if range.len() == self.items.len() {
             if range.start == self.start {
                 return;
             } else if range.start > self.start {
-                update_range = (self.start + self.len)..range.end;
+                update_range = (self.start + self.items.len())..range.end;
             } else {
                 update_range = range.start..self.start;
             }
         } else {
-            self.len = range.len();
-            self.items.resize(self.len, Item::default());
+            self.items.resize(len, Item::default());
             update_range = range.clone();
         }
 
         self.start = range.start;
         for index in update_range {
-            self.items[index % self.len] = (data.active, data.get_string(index));
+            self.items[index % len] = (data.active, data.get_string(index));
         }
     }
 
@@ -182,7 +181,7 @@ impl DataAccessor<usize> for MyAccessor {
     }
 
     fn item(&self, _: &Self::Data, key: &Self::Key) -> Option<&Item> {
-        Some(&self.items[key % self.len])
+        Some(&self.items[key % self.items.len()])
     }
 }
 
@@ -223,7 +222,7 @@ fn main() -> kas::runner::Result<()> {
 
     let data = Data::new(5);
 
-    let list = ListView::new(MyAccessor::default(), MyDriver).on_update(|cx, list, data: &Data| {
+    let list = ListView::new(Clerk::default(), MyDriver).on_update(|cx, list, data: &Data| {
         list.set_direction(cx, data.dir);
     });
     let tree = column![

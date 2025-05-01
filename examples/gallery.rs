@@ -8,14 +8,18 @@
 //! This is a test-bed to demonstrate most toolkit functionality
 //! (excepting custom graphics).
 
+extern crate chrono;
+
+use chrono::Datelike;
 use kas::collection;
 use kas::config::{ConfigMsg, ThemeConfigMsg};
-use kas::dir::Right;
+use kas::dir::{Down, Right};
 use kas::event::Key;
 use kas::prelude::*;
 use kas::resvg::Svg;
 use kas::theme::MarginStyle;
 use kas::widgets::{column, *};
+use std::ops::Range;
 
 #[derive(Debug, Default)]
 struct AppData {
@@ -357,7 +361,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 }
 
 fn filter_list() -> Box<dyn Widget<Data = AppData>> {
-    use kas::view::{driver, filter, DataAccessor, ListView, SelectionMode, SelectionMsg};
+    use kas::view::{driver, DataClerk, ListView, SelectionMode, SelectionMsg};
 
     const MONTHS: &[&str] = &[
         "January",
@@ -374,6 +378,10 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
         "December",
     ];
 
+    let now = chrono::Local::now();
+    let years = 0..now.year() as u32; // range of complete years
+    let end_month = now.month() as u8; // month after current month of final (incomplete) year
+
     #[derive(Debug)]
     struct Data {
         mode: SelectionMode,
@@ -382,68 +390,255 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
         mode: SelectionMode::None,
     };
 
-    struct MonthsAccessor {
-        filter: filter::ContainsCaseInsensitive,
-        // NOTE: list should perhaps be stored in struct Data, but we need to
-        // access it in fn item(). Ideally `&Data` would be passed as input data
-        // but we pass the filter instead; we can't pass both without making
-        // type Widget::Data generic over a lifetime (requires dyn-safe GAT).
-        list: Vec<String>,
-        filtered: Vec<usize>,
+    #[derive(Debug)]
+    struct FilterUpdate;
+
+    struct FilteredRange {
+        start: u32,
+        end: u32,
+        tail: u32,
+        denom: u32,
     }
-    let accessor = MonthsAccessor {
-        filter: Default::default(),
-        list: (2019..=2025)
-            .flat_map(|year| MONTHS.iter().map(move |m| format!("{m} {year}")))
-            .collect(),
-        filtered: Vec::new(),
+
+    impl FilteredRange {
+        fn new(Range { start, end }: Range<u32>) -> Self {
+            Self {
+                start,
+                end,
+                tail: 0,
+                denom: 1,
+            }
+        }
+
+        fn len(&self) -> usize {
+            (self.end - self.start).cast()
+        }
+
+        fn get(&self, index: usize) -> usize {
+            debug_assert!(index <= self.len(), "FilteredRange::get({index})");
+            usize::conv(self.denom) * (usize::conv(self.start) + index) + usize::conv(self.tail)
+        }
+
+        fn end_year(&self) -> u32 {
+            self.end * self.denom + self.tail
+        }
+    }
+
+    impl_scope! {
+        #[derive(Debug, Clone, PartialEq, Eq)]
+        #[impl_default]
+        struct MonthYearFilter {
+            text: String,
+            month_end: usize,
+            year_tail: u32,
+            year_denom: u32 = 1,
+        }
+    }
+
+    impl MonthYearFilter {
+        fn matches_month(&self, item: &str) -> bool {
+            item.to_string()
+                .to_uppercase()
+                .contains(&self.text[..self.month_end])
+        }
+
+        fn years_filtered(&self, Range { start, end }: Range<u32>) -> FilteredRange {
+            let (tail, denom) = (self.year_tail, self.year_denom);
+            let (mut start1, mut end1) = (start / denom, end / denom);
+            if start > tail {
+                start1 += 1;
+            }
+            if end1 * denom + tail < end {
+                end1 += 1
+            }
+            let (start, end) = (start1, end1);
+            FilteredRange {
+                start,
+                end,
+                tail,
+                denom,
+            }
+        }
+    }
+
+    #[derive(Debug, Default)]
+    struct MonthYearFilterGuard(MonthYearFilter);
+    impl EditGuard for MonthYearFilterGuard {
+        type Data = ();
+
+        fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &Self::Data) {
+            let mut filter = MonthYearFilter {
+                text: edit.as_str().to_uppercase(),
+                month_end: edit.as_str().len(),
+                year_tail: 0,
+                year_denom: 1,
+            };
+            if let Some(i) = filter.text.find(|c: char| c.is_digit(10)) {
+                if i == 0 {
+                    filter.month_end = 0;
+                } else {
+                    if filter.text.as_bytes()[i - 1] != b' ' {
+                        edit.set_error_state(cx, true);
+                        return;
+                    }
+                    filter.month_end = i - 1;
+                }
+
+                let text = filter.text.split_at(i).1;
+                filter.year_tail = match text.parse() {
+                    Ok(y) => y,
+                    Err(_) => {
+                        edit.set_error_state(cx, true);
+                        return;
+                    }
+                };
+                filter.year_denom = 10u32.pow((filter.text.len() - i).cast());
+            }
+
+            if filter != edit.guard.0 {
+                eprintln!("New filter: {filter:?}");
+                edit.guard.0 = filter;
+                cx.push(FilterUpdate);
+            }
+
+            edit.set_error_state(cx, false);
+        }
+    }
+
+    struct MonthsClerk {
+        months: Vec<u8>,
+        end: usize,
+        years: Range<u32>,
+        filtered_years: FilteredRange,
+        end_month: u8,
+        end_month_filtered: u8,
+        cache_start: usize,
+        cache: Vec<(usize, String)>,
+        filter: MonthYearFilter,
+    }
+    let clerk = MonthsClerk {
+        months: Vec::new(),
+        end: usize::MAX,
+        years: years.clone(),
+        filtered_years: FilteredRange::new(years),
+        end_month,
+        end_month_filtered: end_month,
+        cache_start: 0,
+        cache: Vec::new(),
+        filter: MonthYearFilter::default(),
     };
 
-    impl DataAccessor<usize> for MonthsAccessor {
-        type Data = filter::ContainsCaseInsensitive;
+    impl MonthsClerk {
+        fn text(&self, key: usize) -> String {
+            let year = key / 12;
+            let month = key % 12;
+            format!("{} {year}", &MONTHS[month])
+        }
+    }
+
+    impl DataClerk<usize> for MonthsClerk {
+        type Data = MonthYearFilter;
 
         type Key = usize;
 
         type Item = String;
 
         fn update(&mut self, _: &mut ConfigCx, _: Id, filter: &Self::Data) {
-            if *filter != self.filter || self.filtered.is_empty() {
-                self.filter = filter.clone();
-                self.filtered.clear();
-                self.filtered.reserve(self.list.len());
-                for (i, item) in self.list.iter().enumerate() {
-                    use filter::Filter;
-                    if filter.matches(item) {
-                        self.filtered.push(i);
-                    }
+            if self.filter == *filter && self.end != usize::MAX {
+                return;
+            }
+            self.filter = filter.clone();
+
+            self.filtered_years = filter.years_filtered(self.years.clone());
+
+            let mut months = Vec::with_capacity(12);
+            months.extend(
+                MONTHS
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, month)| filter.matches_month(month).then_some(i as u8)),
+            );
+
+            if self.filtered_years.end_year() == self.years.end {
+                self.end_month_filtered =
+                    months.iter().filter(|i| **i < self.end_month).count() as u8;
+            } else {
+                self.end_month_filtered = 0;
+            }
+
+            self.end = self.filtered_years.len() * months.len() + self.end_month_filtered as usize;
+            self.months = months;
+        }
+
+        fn len(&self, _: &Self::Data) -> usize {
+            self.end
+        }
+
+        fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, _: &Self::Data, range: Range<usize>) {
+            self.cache.clear();
+            self.cache.reserve(range.len());
+            self.cache_start = range.start;
+            self.cache.extend(range.clone().map(|index| {
+                let i = self.end - index - 1;
+                let m = self.months.len(); // number of months (filtered)
+                let year = self.filtered_years.get(i / m);
+                let month = self.months[i % m] as usize;
+                let text = format!("{} {year}", &MONTHS[month]);
+                (year * 12 + month, text)
+            }));
+        }
+
+        fn key(&self, _: &Self::Data, index: usize) -> Option<usize> {
+            if index >= self.end {
+                return None;
+            }
+
+            let i = self.end - index - 1;
+            let m = self.months.len(); // number of months (filtered)
+            let year = self.filtered_years.get(i / m);
+            let month = self.months[i % m] as usize;
+            Some(year * 12 + month)
+        }
+
+        fn item(&self, _: &Self::Data, key: &usize) -> Option<&String> {
+            let i = self
+                .cache
+                .binary_search_by(|x| x.0.cmp(key).reverse())
+                .ok()?;
+            self.cache.get(i).map(|x| &x.1)
+        }
+    }
+
+    let list_view = impl_anon! {
+        #[widget {
+            layout = column! [self.filter, self.list];
+        }]
+        struct {
+            core: widget_core!(),
+            #[widget(&())] filter: EditBox<MonthYearFilterGuard> =
+                EditBox::default().with_multi_line(false),
+            #[widget(&self.filter.guard().0)] list: ListView<MonthsClerk, driver::NavView, Down> =
+                ListView::new(clerk, driver::NavView),
+        }
+
+        impl Events for Self {
+            type Data = Data;
+
+            fn update(&mut self, cx: &mut ConfigCx, data: &Data) {
+                self.list.set_selection_mode(cx, data.mode);
+            }
+
+            fn handle_messages(&mut self, cx: &mut EventCx, data: &Data) {
+                if let Some(FilterUpdate) = cx.try_pop() {
+                    cx.update(self.as_node(data));
+                } else if let Some(SelectionMsg::Select(key)) = cx.try_pop() {
+                    println!("Selected: {}", &self.list.clerk().text(key))
                 }
             }
         }
 
-        fn len(&self, _: &Self::Data) -> usize {
-            self.filtered.len()
-        }
-
-        fn key(&self, _: &Self::Data, index: usize) -> Option<usize> {
-            self.filtered.get(index).cloned()
-        }
-
-        fn item(&self, _: &Self::Data, key: &usize) -> Option<&String> {
-            self.list.get(*key)
-        }
-    }
-
-    let filter = filter::ContainsCaseInsensitive::new();
-    let list_view = ListView::down(accessor, driver::NavView);
-    let list_view = filter::FilterBoxListView::new(filter, list_view, filter::KeystrokeGuard)
-        .map_any()
-        .on_update(|cx, list, data: &Data| {
-            list.list_mut().set_selection_mode(cx, data.mode);
-        })
-        .on_message(|_, fblv, selection: SelectionMsg<usize>| match selection {
-            SelectionMsg::Select(i) => println!("Selected: {}", &fblv.list().accessor().list[i]),
-            _ => (),
-        });
+        impl Layout for Self {}
+    };
 
     let sel_buttons = row![
         "Selection:",

@@ -5,6 +5,7 @@
 
 //! Traits for shared data objects
 
+use kas::cast::Cast;
 use kas::event::{ConfigCx, EventCx};
 use kas::Id;
 #[allow(unused)] // doc links
@@ -49,49 +50,67 @@ impl DataKey for () {
 
 // NOTE: we cannot use this blanket impl without specialisation / negative impls
 // impl<Key: Cast<usize> + Clone + Debug + PartialEq + Eq + 'static> DataKey for Key
-impl DataKey for usize {
-    fn make_id(&self, parent: &Id) -> Id {
-        parent.make_child(*self)
-    }
+macro_rules! impl_1D {
+    ($t:ty) => {
+        impl DataKey for $t {
+            fn make_id(&self, parent: &Id) -> Id {
+                parent.make_child((*self).cast())
+            }
 
-    fn reconstruct_key(parent: &Id, child: &Id) -> Option<Self> {
-        child.next_key_after(parent)
-    }
+            fn reconstruct_key(parent: &Id, child: &Id) -> Option<Self> {
+                child.next_key_after(parent).map(|i| i.cast())
+            }
+        }
+    };
 }
+impl_1D!(usize);
+impl_1D!(u32);
+#[cfg(target_pointer_width = "64")]
+impl_1D!(u64);
 
-impl DataKey for (usize, usize) {
-    fn make_id(&self, parent: &Id) -> Id {
-        parent.make_child(self.0).make_child(self.1)
-    }
+macro_rules! impl_2D {
+    ($t:ty) => {
+        impl DataKey for ($t, $t) {
+            fn make_id(&self, parent: &Id) -> Id {
+                parent.make_child(self.0.cast()).make_child(self.1.cast())
+            }
 
-    fn reconstruct_key(parent: &Id, child: &Id) -> Option<Self> {
-        let mut iter = child.iter_keys_after(parent);
-        let col = iter.next();
-        let row = iter.next();
-        col.zip(row)
-    }
+            fn reconstruct_key(parent: &Id, child: &Id) -> Option<Self> {
+                let mut iter = child.iter_keys_after(parent);
+                let col = iter.next().map(|i| i.cast());
+                let row = iter.next().map(|i| i.cast());
+                col.zip(row)
+            }
+        }
+    };
 }
+impl_2D!(usize);
+impl_2D!(u32);
+#[cfg(target_pointer_width = "64")]
+impl_2D!(u64);
 
-/// Accessor for data
+/// Data access manager
 ///
-/// The trait covers access to data (especially important for data which must be retrieved from a
-/// remote database or generated on demand). The implementation may optionally support filtering.
+/// A `DataClerk` manages access to a data set, using an `Index` type specified by
+/// the [view controller](crate#view-controller).
 ///
-/// Type parameter `Index` is `usize` for `ListView` or `(usize, usize)` for `MatrixView`.
+/// Instances are expected to provide access to a subset of data elements (as
+/// specified by [`Self::prepare_range`]), either via direct access or via an
+/// internal cache.
 ///
-/// # Implementing `DataAccessor`
+/// Each data item must have a unique key of type [`Self::Key`]. Where the data
+/// view is affected by a variable filter or query the index-item relationship
+/// may vary; the key-item relationship must not vary.
 ///
-/// Data keys ([`Self::key`]) should always be independent of the search query
-/// or filter. The key may simply be the input `index` if the `index` will
-/// always correspond to a fixed data `Item`. This may not be the case if a
-/// (variable) filter or query is used or if the items available through the
-/// data set are not fixed.
+/// # Implementing `DataClerk`
 ///
 /// ## Local fixed data sets
 ///
-/// Accessing data stored within `self` or the input `data` type [`Self::Data`]
-/// is the simplest case; it may be sufficient to implement the required methods
-/// [`Self::len`], [`Self::key`] and [`Self::item`] only.
+/// If the data set is immutable and stored within `self` or within input data
+/// (see type [`Self::Data`]) it is sufficient to implement only [`Self::len`],
+/// [`Self::key`] and [`Self::item`]. All these methods take a `data` parameter
+/// thus enabling direct referencing of data items from either `self` or input
+/// data.
 ///
 /// ## Dynamic local data sets
 ///
@@ -105,19 +124,23 @@ impl DataKey for (usize, usize) {
 /// available elements. (TODO: this should not be required provided that the
 /// available scroll range is provided or estimated somehow.)
 ///
+/// As above, it may be possible to implement [`Self::item`] by referencing the
+/// data directly.
+///
 /// ## Generated data
 ///
-/// In some cases, data `Item`s may be generated on demand. This is problematic
-/// since [`Self::item`] must return a *reference to* the data. The solution is
-/// to generate this data using the [`Self::prepare_range`] method, caching
-/// generated values within `self`. (It is assumed that such use cases are
-/// relatively rare and/or simple, otherwise the return value may be changed to
-/// `Option<std::borrow::Cow<Item>>`.)
+/// In some cases, data `Item`s may be generated on demand. This is not
+/// *directly* supported since [`Self::item`] must return a *reference to* the
+/// data (and is expected to be very fast). Instead, a cache of (at least) the
+/// currently visible items must be generated by [`Self::prepare_range`].
 ///
 /// Note that [`Self::prepare_range`] may be called frequently, thus (at risk of
 /// premature optimization) it should not unnecessarily regenerate items on each
-/// call. In case input data changes, [`Self::update`] will be called followed
-/// by [`Self::prepare_range`].
+/// call. The `range.len()` will rarely change and frequently this range will
+/// only move a little from the previously-visible range, thus it may be
+/// sensible to use a
+/// [circular buffer](https://en.wikipedia.org/wiki/Circular_buffer) for the
+/// cache; elements may then be indexed by `index % range.len()`.
 ///
 /// If generation is slow, it should be performed asynchronously (see below)
 /// so that all methods may return quickly.
@@ -130,14 +153,12 @@ impl DataKey for (usize, usize) {
 /// `async` queries using `cx.send_async(id, QUERY)`.
 /// The result will be received by [`Self::handle_messages`].
 ///
-/// The number of available elements (if not known in advance) should be
-/// requested by [`Self::update`] when required (note that the method may be
-/// called frequently and without changes to input `data`). It is acceptable if
-/// the result is updated asynchronously, nothing that [`Self::prepare_range`]
-/// will be limited to the current result of [`Self::len`].
-/// It is acceptable if not all indices less than `len` will return a valid key
-/// through [`Self::key`], though simply returning a very large `len` will not
-/// work well with scrollbars (TODO: better support for estimated lengths).
+/// If the number of available elements (i.e. [`Self::len`]) is not known in
+/// advance then [`Self::update`] should request this. Note that
+/// [`Self::prepare_range`] will never attempt to access elements beyond the
+/// current result of [`Self::len`] and that it is safe (but possibly
+/// undesirable) for [`Self::len`] to report too large a value.
+/// (TODO: rework this; the main thing affected is the length of scrollbars.)
 ///
 /// If data keys cannot be generated locally on demand they may be requested by
 /// [`Self::update`] and/or [`Self::prepare_range`].
@@ -146,14 +167,18 @@ impl DataKey for (usize, usize) {
 /// caching results locally when received by [`Self::handle_messages`]. It is up
 /// to the implementation whether to continue caching items outside of the
 /// latest requested `range`.
-pub trait DataAccessor<Index> {
+pub trait DataClerk<Index> {
     /// Input data type (of parent widget)
+    ///
+    /// This input data might provide access to the data set or might be used
+    /// for some other purpose (such as passing in a filter from an input field)
+    /// or might not be used at all.
     type Data;
 
     /// Key type
     ///
     /// All data items should have a stable key so that data items may be
-    /// tracked through changing filters.
+    /// tracked through changing queries.
     type Key: DataKey;
 
     /// Item type
@@ -177,7 +202,7 @@ pub trait DataAccessor<Index> {
         let _ = (cx, id, data);
     }
 
-    /// Get the total number of items
+    /// Get the number of indexable items
     ///
     /// The result should be one larger than the largest `index` yielding a
     /// result from [`Self::key`]. This number may therefore be affected by
@@ -216,18 +241,30 @@ pub trait DataAccessor<Index> {
 
     /// Handle an async message
     ///
-    /// This method is called when a message is available, possibly the result
-    /// of an asynchronous message sent through [`Self::update`] or
-    /// [`Self::prepare_range`]. The implementation should
-    /// [try_pop](EventCx::try_pop) messages of types sent by this trait impl
-    /// but not messages of other types.
+    /// This method is called when a message is available. Such messages may be
+    /// taken using [`EventCx::try_pop`]. It is not required that all messages
+    /// be handled (some may be intended for other recipients).
+    ///
+    /// When `key.is_some()`, the message's source is a view widget over the
+    /// data item with this key. This allows a custom view widget to send a
+    /// custom message, possibly affecting the data set.
+    ///
+    /// When `key.is_none()` the message may be from the view controller or may
+    /// be the result of an asynchronous message sent through [`Self::update`]
+    /// or [`Self::prepare_range`].
     ///
     /// To receive (async) messages with [`Self::handle_messages`], send to `id`
     /// using (for example) `cx.send_async(id, _)`.
     ///
     /// The default implementation does nothing.
-    fn handle_messages(&mut self, cx: &mut EventCx, id: Id, data: &Self::Data) {
-        let _ = (cx, id, data);
+    fn handle_messages(
+        &mut self,
+        cx: &mut EventCx,
+        id: Id,
+        data: &Self::Data,
+        key: Option<&Self::Key>,
+    ) {
+        let _ = (cx, id, data, key);
     }
 
     /// Get a key for a given `index`, if available
@@ -240,7 +277,7 @@ pub trait DataAccessor<Index> {
     /// since data may be sparse or still loading (async).
     ///
     /// In case the implementation applies some type of filter to an underlying
-    /// dataset, this method should not return hidden keys. The implementation
+    /// data set, this method should not return hidden keys. The implementation
     /// may either return [`None`] (resulting in empty list entries) or remap
     /// indices such that hidden keys are skipped over.
     fn key(&self, data: &Self::Data, index: Index) -> Option<Self::Key>;

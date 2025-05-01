@@ -6,7 +6,7 @@
 //! Filter-list adapter
 
 use super::Filter;
-use crate::{DataAccessor, Driver, ListView};
+use crate::{DataClerk, Driver, ListView};
 use kas::dir::{Direction, Directional};
 use kas::event::{EventCx, EventState};
 use kas::{autoimpl, impl_scope, Events, Widget};
@@ -58,7 +58,7 @@ impl_scope! {
     pub struct FilterBoxListView<F, A, V, G = KeystrokeGuard, D = Direction>
     where
         F: Filter<A::Item, Value = String>,
-        A: DataAccessor<usize, Data = F>,
+        A: DataClerk<usize, Data = F>,
         V: Driver<A::Key, A::Item>,
         G: EditGuard<Data = ()>,
         D: Directional,

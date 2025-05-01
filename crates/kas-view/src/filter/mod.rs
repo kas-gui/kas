@@ -12,12 +12,12 @@ pub use filter_list::*;
 pub trait FilterValue: Default + 'static {
     type Value: std::fmt::Debug;
 
-    /// Update the filter, returning `true` on change
-    fn set_filter(&mut self, value: Self::Value) -> bool;
+    /// Update the filter
+    fn set_filter(&mut self, value: Self::Value);
 }
 
 /// Types usable as a filter
-pub trait Filter<T>: FilterValue {
+pub trait Filter<T: ?Sized>: FilterValue {
     /// Returns true if the given item matches this filter
     fn matches(&self, item: &T) -> bool;
 }
@@ -35,24 +35,19 @@ impl ContainsString {
 
 impl FilterValue for ContainsString {
     type Value = String;
-    fn set_filter(&mut self, value: String) -> bool {
-        if self.0 != value {
-            self.0 = value;
-            true
-        } else {
-            false
-        }
+    fn set_filter(&mut self, value: String) {
+        self.0 = value;
     }
 }
 
-impl<'a> Filter<&'a str> for ContainsString {
-    fn matches(&self, item: &&str) -> bool {
+impl Filter<str> for ContainsString {
+    fn matches(&self, item: &str) -> bool {
         item.contains(&self.0)
     }
 }
 impl Filter<String> for ContainsString {
     fn matches(&self, item: &String) -> bool {
-        Filter::<&str>::matches(self, &item.as_str())
+        Filter::<str>::matches(self, item.as_str())
     }
 }
 
@@ -75,24 +70,18 @@ impl ContainsCaseInsensitive {
 
 impl FilterValue for ContainsCaseInsensitive {
     type Value = String;
-    fn set_filter(&mut self, value: String) -> bool {
-        let filter = value.to_uppercase();
-        if filter != self.0 {
-            self.0 = filter;
-            true
-        } else {
-            false
-        }
+    fn set_filter(&mut self, value: String) {
+        self.0 = value.to_uppercase();
     }
 }
 
-impl<'a> Filter<&'a str> for ContainsCaseInsensitive {
-    fn matches(&self, item: &&str) -> bool {
+impl Filter<str> for ContainsCaseInsensitive {
+    fn matches(&self, item: &str) -> bool {
         item.to_string().to_uppercase().contains(&self.0)
     }
 }
 impl Filter<String> for ContainsCaseInsensitive {
     fn matches(&self, item: &String) -> bool {
-        Filter::<&str>::matches(self, &item.as_str())
+        Filter::<str>::matches(self, item.as_str())
     }
 }

@@ -88,6 +88,13 @@ impl<'a> SizeCx<'a> {
         self.0.dpem()
     }
 
+    /// The smallest reasonable size for a visible (non-frame) component
+    ///
+    /// This is used as a suggestion by some heuristics.
+    pub fn min_element_size(&self) -> i32 {
+        self.0.min_element_size()
+    }
+
     /// The minimum size of a scrollable area
     pub fn min_scroll_size(&self, axis: impl Directional) -> i32 {
         self.0.min_scroll_size(axis.is_vertical())
@@ -198,6 +205,11 @@ pub trait ThemeSize {
 
     /// Get the Em size of the standard font in pixels
     fn dpem(&self) -> f32;
+
+    /// The smallest reasonable size for a visible (non-frame) component
+    ///
+    /// This is used as a suggestion by some heuristics.
+    fn min_element_size(&self) -> i32;
 
     /// The minimum size of a scrollable area
     fn min_scroll_size(&self, axis_is_vertical: bool) -> i32;

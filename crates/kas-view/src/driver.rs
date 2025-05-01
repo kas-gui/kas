@@ -23,16 +23,16 @@ use std::default::Default;
 
 /// View widget driver
 ///
-/// This trait is implemented to "drive" a controller widget,
-/// constructing, updating, and optionally intercepting messages from so called
-/// "view widgets".
-/// A few simple implementations are provided: [`View`], [`NavView`].
+/// Implementations of this trait [make](Self::make) new view widgets and
+/// optionally [reassign](Self::set_key) existing view widgets.
+///
+/// View widgets may also need to update themselves using [`Events::update`].
 ///
 /// Each view widget has an [`Id`] corresponding to its data item, and
 /// handles events like any other widget. In order to associate a returned
 /// message with a `Key`, either embed that key while constructing
-/// the widget with [`Driver::make`] or intercept the message in
-/// [`Driver::handle_messages`].
+/// the widget with [`Driver::make`] or handle the message in
+/// [`crate::DataClerk::handle_messages`].
 ///
 /// # Example implementations
 ///
@@ -73,23 +73,6 @@ pub trait Driver<Key, Item> {
     /// which is sufficient, if not always optimal.
     fn set_key(&mut self, widget: &mut Self::Widget, key: &Key) {
         *widget = self.make(key);
-    }
-
-    /// Handle a message from a widget
-    ///
-    /// This method is called when a view widget returns a message. Often
-    /// it won't be used, but it may, for example, [pop](EventCx::try_pop) a
-    /// message then [push](EventCx::push) a new one with the associated `key`.
-    ///
-    /// Default implementation: do nothing.
-    fn handle_messages(
-        &mut self,
-        cx: &mut EventCx,
-        widget: &mut Self::Widget,
-        data: &Item,
-        key: &Key,
-    ) {
-        let _ = (cx, data, key, widget);
     }
 }
 
