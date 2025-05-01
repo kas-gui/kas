@@ -87,23 +87,23 @@ impl Glide {
 
     fn step(&mut self, cx: &EventState) -> Option<Offset> {
         let evc = cx.config().event();
-        let (mut decay_mul, mut decay_sub) = evc.scroll_flick_decay();
-        let mut grab_vel = Vec2::ZERO;
-        if let Some(source) = self.press {
-            let grab_mul = 50.0;
-            decay_mul *= grab_mul;
-            decay_sub *= grab_mul;
-            grab_vel = cx.press_velocity(source).unwrap_or_default() * 2.0;
-        }
+        let (decay_mul, decay_sub) = evc.scroll_flick_decay();
 
         let now = Instant::now();
         let dur = (now - self.t_step).as_secs_f32();
         self.t_step = now;
 
-        let rel = self.vel - grab_vel;
-        let v = rel * decay_mul.powf(dur);
-        let rel = v - v.abs().min(Vec2::splat(decay_sub * dur)) * v.sign();
-        self.vel = rel + grab_vel;
+        if let Some(source) = self.press {
+            let grab_mul = 50.0;
+            let decay_sub = decay_sub * grab_mul;
+            let grab_vel = cx.press_velocity(source).unwrap_or_default() + self.vel;
+
+            let v = self.vel - grab_vel;
+            self.vel -= v.abs().min(Vec2::splat(decay_sub * dur)) * v.sign();
+        }
+
+        let v = self.vel * decay_mul.powf(dur);
+        self.vel = v - v.abs().min(Vec2::splat(decay_sub * dur)) * v.sign();
 
         if self.press.is_none() && self.vel.distance_l_inf() < 1.0 {
             self.stop();
