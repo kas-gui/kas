@@ -15,30 +15,30 @@ use kas_macros::impl_default;
 use std::time::Instant;
 
 const TIMER_SELECT: TimerHandle = TimerHandle::new(1 << 60, true);
-const TIMER_GLIDE: TimerHandle = TimerHandle::new((1 << 60) + 1, true);
-const GLIDE_RESIDUAL_VEL_REDUCTION_FACTOR: f32 = 0.5;
+const TIMER_KINETIC: TimerHandle = TimerHandle::new((1 << 60) + 1, true);
+const KINETIC_RESIDUAL_VEL_REDUCTION_FACTOR: f32 = 0.5;
 
-/// Details used to initiate glide (momentum) scrolling
+/// Details used to initiate kinetic scrolling
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct GlideStart {
+pub struct KineticStart {
     vel: Vec2,
     rest: Vec2,
 }
 
 #[derive(Clone, Debug)]
-struct Glide {
+struct Kinetic {
     press: Option<PressSource>,
     t_step: Instant,
     vel: Vec2,
     rest: Vec2,
 }
 
-impl Default for Glide {
+impl Default for Kinetic {
     #[inline]
     fn default() -> Self {
         let now = Instant::now();
 
-        Glide {
+        Kinetic {
             press: None,
             t_step: now,
             vel: Vec2::ZERO,
@@ -47,7 +47,7 @@ impl Default for Glide {
     }
 }
 
-impl Glide {
+impl Kinetic {
     fn press_start(&mut self, press: PressSource) {
         self.press = Some(press);
     }
@@ -57,7 +57,7 @@ impl Glide {
         self.press == Some(press) && self.vel == Vec2::ZERO
     }
 
-    /// Returns true if momentum scrolling starts
+    /// Returns true if kinetic scrolling starts
     fn press_end(&mut self, press: PressSource, vel: Vec2) -> bool {
         if self.press != Some(press) {
             return false;
@@ -77,7 +77,7 @@ impl Glide {
     /// Start (or accelerate) scrolling
     ///
     /// Returns any offset which should be applied immediately.
-    fn start(&mut self, start: GlideStart) -> Offset {
+    fn start(&mut self, start: KineticStart) -> Offset {
         self.vel += start.vel;
         let d = self.rest + start.rest;
         let delta = Offset::conv_trunc(d);
@@ -123,17 +123,17 @@ impl Glide {
 
     /// Stop scrolling on any axis were `delta` is non-zero
     ///
-    /// Returns a [`GlideStart`] message from the residual velocity and delta.
-    fn stop_with_residual(&mut self, delta: Offset) -> GlideStart {
-        let mut start = GlideStart::default();
+    /// Returns a [`KineticStart`] message from the residual velocity and delta.
+    fn stop_with_residual(&mut self, delta: Offset) -> KineticStart {
+        let mut start = KineticStart::default();
         if delta.0 != 0 {
-            start.vel.0 = self.vel.0 * GLIDE_RESIDUAL_VEL_REDUCTION_FACTOR;
+            start.vel.0 = self.vel.0 * KINETIC_RESIDUAL_VEL_REDUCTION_FACTOR;
             start.rest.0 = self.rest.0 + f32::conv(delta.0);
             self.vel.0 = 0.0;
             self.rest.0 = 0.0;
         }
         if delta.1 != 0 {
-            start.vel.1 = self.vel.1 * GLIDE_RESIDUAL_VEL_REDUCTION_FACTOR;
+            start.vel.1 = self.vel.1 * KINETIC_RESIDUAL_VEL_REDUCTION_FACTOR;
             start.rest.1 = self.rest.1 + f32::conv(delta.1);
             self.vel.1 = 0.0;
             self.rest.1 = 0.0;
@@ -149,14 +149,14 @@ impl Glide {
 pub struct ScrollComponent {
     max_offset: Offset,
     offset: Offset,
-    glide: Glide,
+    kinetic: Kinetic,
 }
 
 impl ScrollComponent {
-    /// True if momentum scrolling is active
+    /// True if kinetic scrolling is active
     #[inline]
-    pub fn is_gliding(&self) -> bool {
-        self.glide.vel != Vec2::ZERO
+    pub fn is_kinetic_scrolling(&self) -> bool {
+        self.kinetic.vel != Vec2::ZERO
     }
 
     /// Get the maximum offset
@@ -196,14 +196,14 @@ impl ScrollComponent {
     /// Returns [`Action::empty()`] if the offset is identical to the old offset,
     /// or [`Action::REGION_MOVED`] if the offset changes.
     ///
-    /// Also cancels any momentum scrolling, but only if `offset` is not equal
+    /// Also cancels any kinetic scrolling, but only if `offset` is not equal
     /// to the current offset.
     pub fn set_offset(&mut self, offset: Offset) -> Action {
         let offset = offset.clamp(Offset::ZERO, self.max_offset);
         if offset == self.offset {
             Action::empty()
         } else {
-            self.glide.stop();
+            self.kinetic.stop();
             self.offset = offset;
             Action::REGION_MOVED
         }
@@ -232,7 +232,7 @@ impl ScrollComponent {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
     pub fn self_focus_rect(&mut self, rect: Rect, window_rect: Rect) -> Action {
-        self.glide.stop();
+        self.kinetic.stop();
         let v = rect.pos - window_rect.pos;
         let off = Offset::conv(rect.size) - Offset::conv(window_rect.size);
         let offset = self.offset.max(v + off).min(v);
@@ -252,13 +252,13 @@ impl ScrollComponent {
                     delta => Scroll::Offset(delta),
                 });
             }
-            Scroll::Glide(start) => {
-                let delta = self.glide.start(start);
+            Scroll::Kinetic(start) => {
+                let delta = self.kinetic.start(start);
                 let delta = self.scroll_self_by_delta(cx, id, delta);
                 if delta == Offset::ZERO {
                     cx.set_scroll(Scroll::Scrolled);
                 } else {
-                    cx.set_scroll(Scroll::Glide(self.glide.stop_with_residual(delta)));
+                    cx.set_scroll(Scroll::Kinetic(self.kinetic.stop_with_residual(delta)));
                 }
             }
             Scroll::Rect(rect) => {
@@ -304,7 +304,7 @@ impl ScrollComponent {
     /// and event configuration enables panning for this press `source` (may
     /// depend on modifiers), and if so grabs press events from this `source`.
     /// `PressMove` is used to scroll by the motion delta and to track speed;
-    /// `PressEnd` initiates momentum-scrolling if the speed is high enough.
+    /// `PressEnd` initiates kinetic-scrolling if the speed is high enough.
     pub fn scroll_by_event(
         &mut self,
         cx: &mut EventCx,
@@ -338,7 +338,7 @@ impl ScrollComponent {
                 cx.set_scroll(Scroll::Rect(window_rect));
             }
             Event::Scroll(delta) => {
-                self.glide.stop();
+                self.kinetic.stop();
                 self.scroll_by_delta(cx, id, delta.as_offset(cx));
             }
             Event::PressStart { press, .. }
@@ -348,12 +348,12 @@ impl ScrollComponent {
                     .grab(id, GrabMode::Grab)
                     .with_icon(CursorIcon::Grabbing)
                     .complete(cx);
-                self.glide.press_start(press.source);
+                self.kinetic.press_start(press.source);
             }
             Event::PressMove { press, delta }
                 if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>
             {
-                if self.glide.press_move(press.source) {
+                if self.kinetic.press_move(press.source) {
                     self.scroll_by_delta(cx, id, delta);
                 }
             }
@@ -361,25 +361,24 @@ impl ScrollComponent {
                 if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>
             {
                 if let Some(velocity) = cx.press_velocity(press.source) {
-                    if self.glide.press_end(press.source, velocity) {
-                        cx.request_frame_timer(id, TIMER_GLIDE);
+                    if self.kinetic.press_end(press.source, velocity) {
+                        cx.request_frame_timer(id, TIMER_KINETIC);
                     }
                 }
             }
-            Event::Timer(TIMER_GLIDE) => {
-                // Momentum/glide scrolling: update per arbitrary step time until movment stops.
-                if let Some(delta) = self.glide.step(cx) {
+            Event::Timer(TIMER_KINETIC) => {
+                if let Some(delta) = self.kinetic.step(cx) {
                     let delta = self.scroll_self_by_delta(cx, id.clone(), delta);
                     let scroll = if delta == Offset::ZERO {
                         Scroll::Scrolled
                     } else {
-                        Scroll::Glide(self.glide.stop_with_residual(delta))
+                        Scroll::Kinetic(self.kinetic.stop_with_residual(delta))
                     };
                     cx.set_scroll(scroll);
                 }
 
-                if self.glide.vel != Vec2::ZERO {
-                    cx.request_frame_timer(id, TIMER_GLIDE);
+                if self.kinetic.vel != Vec2::ZERO {
+                    cx.request_frame_timer(id, TIMER_KINETIC);
                 }
             }
             _ => return Unused,
@@ -401,7 +400,7 @@ enum TouchPhase {
 #[derive(Clone, Debug, Default)]
 pub struct TextInput {
     touch_phase: TouchPhase,
-    glide: Glide,
+    kinetic: Kinetic,
 }
 
 /// Result of [`TextInput::handle`]
@@ -412,7 +411,7 @@ pub enum TextInputAction {
     Unused,
     /// Pan text using the given `delta`
     ///
-    /// The second payload, `glide`, should be passed to [`TextInput::set_scroll_residual`].
+    /// The second payload, `kinetic`, should be passed to [`TextInput::set_scroll_residual`].
     Pan(Offset, bool),
     /// Focus, optionally updating position and selection
     ///
@@ -474,11 +473,11 @@ impl TextInput {
                     .grab(w_id, GrabMode::Grab)
                     .with_opt_icon(icon)
                     .complete(cx);
-                self.glide.press_start(press.source);
+                self.kinetic.press_start(press.source);
                 action
             }
             Event::PressMove { press, delta } if press.is_primary() => {
-                self.glide.press_move(press.source);
+                self.kinetic.press_move(press.source);
                 match press.source {
                     PressSource::Touch(touch_id) => match self.touch_phase {
                         TouchPhase::Start(id, start_coord) if id == touch_id => {
@@ -507,12 +506,12 @@ impl TextInput {
             }
             Event::PressEnd { press, .. } if press.is_primary() => {
                 if let Some(velocity) = cx.press_velocity(press.source) {
-                    if self.glide.press_end(press.source, velocity)
+                    if self.kinetic.press_end(press.source, velocity)
                         && (matches!(press.source, PressSource::Touch(id) if self.touch_phase == TouchPhase::Pan(id))
                             || matches!(press.source, PressSource::Mouse(..) if cx.config_enable_mouse_text_pan()))
                     {
                         self.touch_phase = TouchPhase::None;
-                        cx.request_frame_timer(w_id, TIMER_GLIDE);
+                        cx.request_frame_timer(w_id, TIMER_KINETIC);
                     }
                 }
                 Action::None
@@ -527,10 +526,9 @@ impl TextInput {
                 }
                 _ => Action::None,
             },
-            Event::Timer(TIMER_GLIDE) => {
-                // Momentum/glide scrolling: update per arbitrary step time until movment stops.
-                if let Some(delta) = self.glide.step(cx) {
-                    cx.request_frame_timer(w_id, TIMER_GLIDE);
+            Event::Timer(TIMER_KINETIC) => {
+                if let Some(delta) = self.kinetic.step(cx) {
+                    cx.request_frame_timer(w_id, TIMER_KINETIC);
                     Action::Pan(delta, true)
                 } else {
                     Action::None
@@ -542,13 +540,13 @@ impl TextInput {
 
     /// Call to call [`EventCx::set_scroll`] with the correct parameter
     ///
-    /// Parameter `glide` should be passed from [`TextInputAction::Pan`] or be
-    /// `false` for direct (non-glide) scrolling.
-    pub fn set_scroll_residual(&mut self, cx: &mut EventCx, delta: Offset, glide: bool) {
-        let scroll = match glide {
+    /// Parameter `kinetic` should be passed from [`TextInputAction::Pan`] or be
+    /// `false` for direct (non-kinetic) scrolling.
+    pub fn set_scroll_residual(&mut self, cx: &mut EventCx, delta: Offset, kinetic: bool) {
+        let scroll = match kinetic {
             _ if delta == Offset::ZERO => Scroll::Scrolled,
             false => Scroll::Offset(delta),
-            true => Scroll::Glide(self.glide.stop_with_residual(delta)),
+            true => Scroll::Kinetic(self.kinetic.stop_with_residual(delta)),
         };
         cx.set_scroll(scroll);
     }

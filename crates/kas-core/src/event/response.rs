@@ -9,7 +9,7 @@ use crate::geom::{Offset, Rect};
 
 pub use IsUsed::{Unused, Used};
 
-use super::components::GlideStart;
+use super::components::KineticStart;
 
 /// Return type of event-handling methods
 ///
@@ -93,8 +93,8 @@ pub enum Scroll {
     /// With the usual scroll offset conventions, this delta must be subtracted
     /// from the scroll offset.
     Offset(Offset),
-    /// Start glide scrolling
-    Glide(GlideStart),
+    /// Start kinetic scrolling
+    Kinetic(KineticStart),
     /// Focus the given rect
     Rect(Rect),
 }

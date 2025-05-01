@@ -729,7 +729,7 @@ impl_scope! {
                         let w = &mut self.widgets[index];
                         if success
                             && !matches!(self.sel_mode, SelectionMode::None)
-                            && !self.scroll.is_gliding()
+                            && !self.scroll.is_kinetic_scrolling()
                             && w.key.as_ref().map(|k| k == key).unwrap_or(false)
                             && w.widget.rect().contains(press.coord + self.scroll.offset())
                         {

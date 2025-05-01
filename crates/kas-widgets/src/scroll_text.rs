@@ -122,7 +122,7 @@ impl_scope! {
         }
 
         // Pan by given delta.
-        fn pan_delta(&mut self, cx: &mut EventCx, mut delta: Offset, glide: bool) -> IsUsed {
+        fn pan_delta(&mut self, cx: &mut EventCx, mut delta: Offset, kinetic: bool) -> IsUsed {
             let new_offset = (self.view_offset - delta)
                 .min(self.max_scroll_offset())
                 .max(Offset::ZERO);
@@ -131,7 +131,7 @@ impl_scope! {
                 self.set_offset(cx, new_offset);
             }
 
-            self.input_handler.set_scroll_residual(cx, delta, glide);
+            self.input_handler.set_scroll_residual(cx, delta, kinetic);
             Used
         }
 
@@ -236,7 +236,7 @@ impl_scope! {
                 event => match self.input_handler.handle(cx, self.id(), event) {
                     TextInputAction::None => Used,
                     TextInputAction::Unused => Unused,
-                    TextInputAction::Pan(delta, glide) => self.pan_delta(cx, delta, glide),
+                    TextInputAction::Pan(delta, kinetic) => self.pan_delta(cx, delta, kinetic),
                     TextInputAction::Focus { coord, action } => {
                         if let Some(coord) = coord {
                             self.set_edit_pos_from_coord(cx, coord);
