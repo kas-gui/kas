@@ -496,7 +496,6 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
             }
 
             if filter != edit.guard.0 {
-                eprintln!("New filter: {filter:?}");
                 edit.guard.0 = filter;
                 cx.push(FilterUpdate);
             }
