@@ -25,8 +25,9 @@ pub struct KineticStart {
     rest: Vec2,
 }
 
+/// Kinetic scrolling model
 #[derive(Clone, Debug)]
-struct Kinetic {
+pub struct Kinetic {
     press: Option<PressSource>,
     t_step: Instant,
     vel: Vec2,
@@ -48,17 +49,23 @@ impl Default for Kinetic {
 }
 
 impl Kinetic {
-    fn press_start(&mut self, press: PressSource) {
+    /// Call on [`Event::PressStart`]
+    pub fn press_start(&mut self, press: PressSource) {
         self.press = Some(press);
     }
 
+    /// Call on [`Event::PressMove`]
+    ///
     /// Returns true if component should immediately scroll by delta
-    fn press_move(&mut self, press: PressSource) -> bool {
+    pub fn press_move(&mut self, press: PressSource) -> bool {
         self.press == Some(press) && self.vel == Vec2::ZERO
     }
 
-    /// Returns true if kinetic scrolling starts
-    fn press_end(&mut self, press: PressSource, vel: Vec2) -> bool {
+    /// Call on [`Event::PressEnd`]
+    ///
+    /// Returns true when a frame timer ([`EventState::request_frame_timer`])
+    /// should be requested (see [`Self::step`]).
+    pub fn press_end(&mut self, press: PressSource, vel: Vec2) -> bool {
         if self.press != Some(press) {
             return false;
         }
@@ -74,10 +81,10 @@ impl Kinetic {
         }
     }
 
-    /// Start (or accelerate) scrolling
+    /// Call on [`Scroll::Kinetic`] to immediately start (or accelerate) scrolling
     ///
     /// Returns any offset which should be applied immediately.
-    fn start(&mut self, start: KineticStart) -> Offset {
+    pub fn start(&mut self, start: KineticStart) -> Offset {
         self.vel += start.vel;
         let d = self.rest + start.rest;
         let delta = Offset::conv_trunc(d);
@@ -85,7 +92,12 @@ impl Kinetic {
         delta
     }
 
-    fn step(&mut self, cx: &EventState) -> Option<Offset> {
+    /// Call this regularly using a frame timer
+    ///
+    /// On [`Self::press_end`] and while in motion ([`Self::is_scrolling`]), a
+    /// frame timer ([`EventState::request_frame_timer`]) should be requested
+    /// and used to call this method.
+    pub fn step(&mut self, cx: &EventState) -> Option<Offset> {
         let evc = cx.config().event();
         let now = Instant::now();
         let dur = (now - self.t_step).as_secs_f32();
@@ -115,8 +127,9 @@ impl Kinetic {
         Some(delta)
     }
 
+    /// Stop scrolling immediately
     #[inline]
-    fn stop(&mut self) {
+    pub fn stop(&mut self) {
         self.vel = Vec2::ZERO;
         self.rest = Vec2::ZERO;
     }
@@ -124,7 +137,7 @@ impl Kinetic {
     /// Stop scrolling on any axis were `delta` is non-zero
     ///
     /// Returns a [`KineticStart`] message from the residual velocity and delta.
-    fn stop_with_residual(&mut self, delta: Offset) -> KineticStart {
+    pub fn stop_with_residual(&mut self, delta: Offset) -> KineticStart {
         let mut start = KineticStart::default();
         if delta.0 != 0 {
             start.vel.0 = self.vel.0 * KINETIC_RESIDUAL_VEL_REDUCTION_FACTOR;
@@ -139,6 +152,12 @@ impl Kinetic {
             self.rest.1 = 0.0;
         }
         start
+    }
+
+    /// True while kinetic scrolling
+    #[inline]
+    pub fn is_scrolling(&self) -> bool {
+        self.vel != Vec2::ZERO
     }
 }
 
@@ -156,7 +175,7 @@ impl ScrollComponent {
     /// True if kinetic scrolling is active
     #[inline]
     pub fn is_kinetic_scrolling(&self) -> bool {
-        self.kinetic.vel != Vec2::ZERO
+        self.kinetic.is_scrolling()
     }
 
     /// Get the maximum offset
@@ -377,7 +396,7 @@ impl ScrollComponent {
                     cx.set_scroll(scroll);
                 }
 
-                if self.kinetic.vel != Vec2::ZERO {
+                if self.kinetic.is_scrolling() {
                     cx.request_frame_timer(id, TIMER_KINETIC);
                 }
             }
