@@ -28,34 +28,39 @@ impl_scope! {
             (1, 1) => self.touch_select_delay,
             (2, 1) => "ms",
 
-            (0, 2) => "Scroll flick timeout:",
-            (1, 2) => self.scroll_flick_timeout,
+            (0, 2) => "Kinetic scrolling timeout:",
+            (1, 2) => self.kinetic_timeout,
             (2, 2) => "ms",
 
-            (0, 3) => "Scroll flick multiply:",
-            (1, 3) => self.scroll_flick_mul,
+            (0, 3) => "Kinetic decay (relative):",
+            (1, 3) => self.kinetic_decay_mul,
 
-            (0, 4) => "Scroll flick subtract:",
-            (1, 4) => self.scroll_flick_sub,
+            (0, 4) => "Kinetic decay (absolute):",
+            (1, 4) => self.kinetic_decay_sub,
 
-            (0, 5) => "Scroll wheel distance:",
-            (1, 5) => self.scroll_dist_em, (2, 5) => "em",
+            (0, 5) => "Kinetic decay when grabbed:",
+            (1, 5) => self.kinetic_grab_sub,
 
-            (0, 6) => "Pan distance threshold:",
-            (1, 6) => self.pan_dist_thresh,
+            (0, 6) => "Scroll wheel distance:",
+            (1, 6) => self.scroll_dist_em, (2, 6) => "em",
 
-            (0, 7) => "Mouse pan:",
-            (1..3, 7) => self.mouse_pan,
+            (0, 7) => "Pan distance threshold:",
+            (1, 7) => self.pan_dist_thresh,
 
-            (0, 8) => "Mouse text pan:",
-            (1..3, 8) => self.mouse_text_pan,
+            (0, 8) => "Mouse pan:",
+            (1..3, 8) => self.mouse_pan,
 
-            (1..3, 9) => self.mouse_nav_focus,
+            (0, 9) => "Mouse text pan:",
+            (1..3, 9) => self.mouse_text_pan,
 
-            (1..3, 10) => self.touch_nav_focus,
+            (1..3, 10) => self.mouse_wheel_actions,
 
-            (0, 11) => "Restore default values:",
-            (1..3, 11) => Button::label_msg("&Reset", EventConfigMsg::ResetToDefault),
+            (1..3, 11) => self.mouse_nav_focus,
+
+            (1..3, 12) => self.touch_nav_focus,
+
+            (0, 13) => "Restore default values:",
+            (1..3, 13) => Button::label_msg("&Reset", EventConfigMsg::ResetToDefault),
         };
     }]
     #[impl_default(EventConfig::new())]
@@ -66,11 +71,13 @@ impl_scope! {
         #[widget]
         touch_select_delay: Spinner<(), u32>,
         #[widget]
-        scroll_flick_timeout: Spinner<(), u32>,
+        kinetic_timeout: Spinner<(), u32>,
         #[widget]
-        scroll_flick_mul: Spinner<(), f32>,
+        kinetic_decay_mul: Spinner<(), f32>,
         #[widget]
-        scroll_flick_sub: Spinner<(), f32>,
+        kinetic_decay_sub: Spinner<(), f32>,
+        #[widget]
+        kinetic_grab_sub: Spinner<(), f32>,
         #[widget]
         scroll_dist_em: Spinner<(), f32>,
         #[widget]
@@ -79,6 +86,8 @@ impl_scope! {
         mouse_pan: ComboBox<(), MousePan>,
         #[widget]
         mouse_text_pan: ComboBox<(), MousePan>,
+        #[widget]
+        mouse_wheel_actions: CheckButton<()>,
         #[widget]
         mouse_nav_focus: CheckButton<()>,
         #[widget]
@@ -111,15 +120,18 @@ impl_scope! {
                 touch_select_delay: Spinner::new(0..=5_000, |cx: &ConfigCx, _| cx.config().base().event.touch_select_delay_ms)
                     .with_step(50)
                     .with_msg(EventConfigMsg::TouchSelectDelay),
-                scroll_flick_timeout: Spinner::new(0..=500, |cx: &ConfigCx, _| cx.config().base().event.scroll_flick_timeout_ms)
+                kinetic_timeout: Spinner::new(0..=500, |cx: &ConfigCx, _| cx.config().base().event.kinetic_timeout_ms)
                     .with_step(5)
-                    .with_msg(EventConfigMsg::ScrollFlickTimeout),
-                scroll_flick_mul: Spinner::new(0.0..=1.0, |cx: &ConfigCx, _| cx.config().base().event.scroll_flick_mul)
+                    .with_msg(EventConfigMsg::KineticTimeout),
+                kinetic_decay_mul: Spinner::new(0.0..=1.0, |cx: &ConfigCx, _| cx.config().base().event.kinetic_decay_mul)
                     .with_step(0.0625)
-                    .with_msg(EventConfigMsg::ScrollFlickMul),
-                scroll_flick_sub: Spinner::new(0.0..=1.0e4, |cx: &ConfigCx, _| cx.config().base().event.scroll_flick_sub)
+                    .with_msg(EventConfigMsg::KineticDecayMul),
+                kinetic_decay_sub: Spinner::new(0.0..=1.0e4, |cx: &ConfigCx, _| cx.config().base().event.kinetic_decay_sub)
                     .with_step(10.0)
-                    .with_msg(EventConfigMsg::ScrollFlickSub),
+                    .with_msg(EventConfigMsg::KineticDecaySub),
+                kinetic_grab_sub: Spinner::new(0.0..=1.0e4, |cx: &ConfigCx, _| cx.config().base().event.kinetic_grab_sub)
+                    .with_step(5.0)
+                    .with_msg(EventConfigMsg::KineticGrabSub),
                 scroll_dist_em: Spinner::new(0.125..=125.0, |cx: &ConfigCx, _| cx.config().base().event.scroll_dist_em)
                     .with_step(0.125)
                     .with_msg(EventConfigMsg::ScrollDistEm),
@@ -135,6 +147,11 @@ impl_scope! {
                     pan_options,
                     |cx: &ConfigCx, _| cx.config().base().event.mouse_text_pan,
                     EventConfigMsg::MouseTextPan,
+                ),
+                mouse_wheel_actions: CheckButton::new_msg(
+                    "Mouse &wheel actions",
+                    |cx: &ConfigCx, _| cx.config().base().event.mouse_wheel_actions,
+                    EventConfigMsg::MouseWheelActions,
                 ),
                 mouse_nav_focus: CheckButton::new_msg(
                     "&Mouse navigation focus",

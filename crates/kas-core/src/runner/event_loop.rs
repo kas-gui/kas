@@ -44,33 +44,20 @@ where
         el.set_control_flow(ControlFlow::Wait);
 
         match cause {
-            StartCause::ResumeTimeReached {
-                requested_resume, ..
-            } => {
-                let item = self
-                    .resumes
-                    .first()
-                    .cloned()
-                    .unwrap_or_else(|| panic!("timer wakeup without resume"));
-                assert_eq!(item.0, requested_resume);
-                log::trace!("Wakeup: timer (window={:?})", item.1);
+            StartCause::ResumeTimeReached { .. } | StartCause::WaitCancelled { .. } => {
+                let mut first_future = 0;
+                for (i, resume) in self.resumes.iter().enumerate() {
+                    if resume.0 > Instant::now() {
+                        break;
+                    }
+                    first_future = i;
 
-                let resume = if let Some(w) = self.windows.get_mut(&item.1) {
-                    w.update_timer(&mut self.state, requested_resume)
-                } else {
-                    // presumably, some window with active timers was removed
-                    None
-                };
-
-                if let Some(instant) = resume {
-                    self.resumes[0].0 = instant;
-                } else {
-                    self.resumes.remove(0);
+                    if let Some(w) = self.windows.get_mut(&resume.1) {
+                        w.update_timer(&mut self.state, resume.0)
+                    }
                 }
-            }
-            StartCause::WaitCancelled { .. } => {
-                // This event serves no purpose?
-                // log::debug!("Wakeup: WaitCancelled (ignoring)");
+
+                self.resumes.drain(..first_future);
             }
             StartCause::Poll => (),
             StartCause::Init => (),

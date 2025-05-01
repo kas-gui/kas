@@ -312,9 +312,11 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         self.handle_action(state, action);
 
         let mut resume = self.ev_state.next_resume();
-
         let window = self.window.as_mut().unwrap();
-        if window.need_redraw {
+
+        // NOTE: need_frame_update() does not imply a need to redraw, but other
+        // approaches do not yield good frame timing for e.g. kinetic scrolling.
+        if window.need_redraw || self.ev_state.need_frame_update() {
             window.request_redraw();
             window.queued_frame_time = None;
         } else if let Some(time) = window.queued_frame_time {
@@ -324,9 +326,6 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             } else {
                 resume = resume.map(|t| t.min(time)).or(Some(time));
             }
-        } else if self.ev_state.need_frame_update() {
-            window.next_avail_frame_time = Instant::now() + self.ev_state.config().frame_dur();
-            window.queued_frame_time = Some(window.next_avail_frame_time);
         }
 
         (action, resume)
@@ -378,32 +377,33 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         }
     }
 
-    pub(super) fn update_timer(
-        &mut self,
-        state: &mut State<A, G, T>,
-        requested_resume: Instant,
-    ) -> Option<Instant> {
-        let window = self.window.as_mut()?;
+    pub(super) fn update_timer(&mut self, state: &mut State<A, G, T>, requested_resume: Instant) {
+        let Some(ref mut window) = self.window else {
+            return;
+        };
 
-        let widget = self.widget.as_node(&state.data);
         let mut messages = MessageStack::new();
+        let mut widget = self.widget.as_node(&state.data);
 
         if Some(requested_resume) == window.queued_frame_time {
             window.queued_frame_time = None;
 
             self.ev_state
                 .with(&mut state.shared, window, &mut messages, |cx| {
-                    cx.frame_update(widget);
+                    cx.frame_update(widget.re());
                 });
-        } else {
+        }
+
+        if Some(requested_resume) == self.ev_state.next_resume() {
             self.ev_state
                 .with(&mut state.shared, window, &mut messages, |cx| {
                     cx.update_timer(widget);
                 });
+        } else {
+            drop(widget); // make the borrow checker happy
         }
 
         state.handle_messages(&mut messages);
-        self.next_resume()
     }
 
     pub(super) fn add_popup(
@@ -586,16 +586,6 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         }
 
         Ok(())
-    }
-
-    fn next_resume(&self) -> Option<Instant> {
-        self.window.as_ref().and_then(|w| {
-            self.ev_state
-                .next_resume()
-                .into_iter()
-                .chain(w.queued_frame_time)
-                .min()
-        })
     }
 }
 

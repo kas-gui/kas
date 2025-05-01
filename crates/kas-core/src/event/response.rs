@@ -9,6 +9,8 @@ use crate::geom::{Offset, Rect};
 
 pub use IsUsed::{Unused, Used};
 
+use super::components::KineticStart;
+
 /// Return type of event-handling methods
 ///
 /// This type is convertible to/from `bool` and supports the expected bit-wise
@@ -71,7 +73,7 @@ impl std::ops::Not for IsUsed {
 /// Request to / notification of scrolling from a child
 ///
 /// See: [`EventCx::set_scroll`](super::EventCx::set_scroll).
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq)]
 #[must_use]
 pub enum Scroll {
     /// No scrolling
@@ -91,6 +93,8 @@ pub enum Scroll {
     /// With the usual scroll offset conventions, this delta must be subtracted
     /// from the scroll offset.
     Offset(Offset),
+    /// Start kinetic scrolling
+    Kinetic(KineticStart),
     /// Focus the given rect
     Rect(Rect),
 }

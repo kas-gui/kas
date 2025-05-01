@@ -5,6 +5,7 @@
 
 //! Event handling: events
 
+use cast::CastApprox;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -284,7 +285,7 @@ impl Event {
             Event::PressStart { press, .. } if press.is_primary() => {
                 press.grab(id, GrabMode::Click).complete(cx)
             }
-            Event::PressEnd { press, success } => {
+            Event::PressEnd { press, success, .. } => {
                 if success && id == press.id {
                     f(cx)
                 } else {
@@ -748,6 +749,21 @@ impl ScrollDelta {
             Ok(self.as_factor(cx))
         } else {
             Err(self.as_offset(cx))
+        }
+    }
+
+    /// Attempt to interpret as a mouse wheel action
+    ///
+    /// Infers the "scroll delta" as an integral step, if appropriate.
+    /// This may be used e.g. to change the selected value of a `ComboBox`.
+    ///
+    /// Positive values indicate scrolling up.
+    pub fn as_wheel_action(self, cx: &EventState) -> Option<i32> {
+        match self {
+            ScrollDelta::Lines(_, y) if cx.config().event().mouse_wheel_actions() => {
+                y.try_cast_approx().ok()
+            }
+            _ => None,
         }
     }
 }

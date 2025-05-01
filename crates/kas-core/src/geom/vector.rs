@@ -348,6 +348,18 @@ macro_rules! impl_vec2 {
                 self.0 * self.0 + self.1 * self.1
             }
 
+            /// Return the L1 (rectilinear / taxicab) distance
+            #[inline]
+            pub fn distance_l1(self) -> $f {
+                self.0.abs() + self.1.abs()
+            }
+
+            /// Return the L-inf (max) distance
+            #[inline]
+            pub fn distance_l_inf(self) -> $f {
+                self.0.abs().max(self.1.abs())
+            }
+
             /// Extract one component, based on a direction
             ///
             /// This merely extracts the horizontal or vertical component.
@@ -516,6 +528,22 @@ macro_rules! impl_vec2 {
             #[inline]
             fn try_conv(v: $T) -> Result<Self> {
                 Ok(Self::conv(v))
+            }
+        }
+
+        #[cfg(winit)]
+        impl From<winit::dpi::PhysicalPosition<$f>> for $T {
+            #[inline]
+            fn from(pos: winit::dpi::PhysicalPosition<$f>) -> Self {
+                $T(pos.x, pos.y)
+            }
+        }
+
+        #[cfg(winit)]
+        impl From<winit::dpi::PhysicalSize<$f>> for $T {
+            #[inline]
+            fn from(size: winit::dpi::PhysicalSize<$f>) -> Self {
+                $T(size.width, size.height)
             }
         }
     };

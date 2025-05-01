@@ -623,7 +623,7 @@ impl_scope! {
         fn update_recurse(&mut self, _: &mut ConfigCx, _: &Self::Data) {}
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &C::Data, event: Event) -> IsUsed {
-            let is_used = match event {
+            let mut is_used = match event {
                 Event::Command(cmd, _) => {
                     if self.data_len == Size::ZERO {
                         return Unused;
@@ -703,7 +703,7 @@ impl_scope! {
                         let w = &mut self.widgets[index];
                         if success
                             && !matches!(self.sel_mode, SelectionMode::None)
-                            && !self.scroll.is_gliding()
+                            && !self.scroll.is_kinetic_scrolling()
                             && w.key.as_ref().map(|k| k == key).unwrap_or(false)
                             && w.widget.rect().contains(press.coord + self.scroll.offset())
                         {
@@ -719,15 +719,14 @@ impl_scope! {
                 _ => Unused, // fall through to scroll handler
             };
 
-            let (moved, used_by_sber) = self
-                .scroll
-                .scroll_by_event(cx, event, self.id(), self.rect());
-            if moved {
+            let offset = self.scroll.offset();
+            is_used |= self.scroll.scroll_by_event(cx, event, self.id(), self.rect());
+            if offset != self.scroll.offset() {
                 // We may process multiple 'moved' events per frame; TIMER_UPDATE_WIDGETS will only
                 // be processed once per frame.
                 cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
             }
-            is_used | used_by_sber
+            is_used
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &C::Data) {
@@ -773,9 +772,8 @@ impl_scope! {
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, data: &C::Data, scroll: Scroll) {
-            let act = self.scroll.scroll(cx, self.rect(), scroll);
+            self.scroll.scroll(cx, self.id(), self.rect(), scroll);
             self.update_widgets(&mut cx.config_cx(), data, false);
-            cx.action(self, act);
         }
     }
 

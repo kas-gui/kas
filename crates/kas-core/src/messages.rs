@@ -169,6 +169,11 @@ impl MessageStack {
 impl Drop for MessageStack {
     fn drop(&mut self) {
         for msg in self.stack.drain(..) {
+            if msg.is::<crate::event::components::KineticStart>() {
+                // We can safely ignore this message
+                continue;
+            }
+
             log::warn!(target: "kas_core::erased", "unhandled: {msg:?}");
         }
     }
