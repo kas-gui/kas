@@ -378,32 +378,33 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         }
     }
 
-    pub(super) fn update_timer(
-        &mut self,
-        state: &mut State<A, G, T>,
-        requested_resume: Instant,
-    ) -> Option<Instant> {
-        let window = self.window.as_mut()?;
+    pub(super) fn update_timer(&mut self, state: &mut State<A, G, T>, requested_resume: Instant) {
+        let Some(ref mut window) = self.window else {
+            return;
+        };
 
-        let widget = self.widget.as_node(&state.data);
         let mut messages = MessageStack::new();
+        let mut widget = self.widget.as_node(&state.data);
 
         if Some(requested_resume) == window.queued_frame_time {
             window.queued_frame_time = None;
 
             self.ev_state
                 .with(&mut state.shared, window, &mut messages, |cx| {
-                    cx.frame_update(widget);
+                    cx.frame_update(widget.re());
                 });
-        } else {
+        }
+
+        if Some(requested_resume) == self.ev_state.next_resume() {
             self.ev_state
                 .with(&mut state.shared, window, &mut messages, |cx| {
                     cx.update_timer(widget);
                 });
+        } else {
+            drop(widget); // make the borrow checker happy
         }
 
         state.handle_messages(&mut messages);
-        self.next_resume()
     }
 
     pub(super) fn add_popup(
@@ -586,16 +587,6 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         }
 
         Ok(())
-    }
-
-    fn next_resume(&self) -> Option<Instant> {
-        self.window.as_ref().and_then(|w| {
-            self.ev_state
-                .next_resume()
-                .into_iter()
-                .chain(w.queued_frame_time)
-                .min()
-        })
     }
 }
 
