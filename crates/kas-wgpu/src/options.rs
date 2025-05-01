@@ -61,8 +61,9 @@ impl Options {
     /// The default backend is `PRIMARY`. Note that secondary backends are less
     /// well supported by WGPU, possibly leading to other issues.
     ///
-    /// WGPU has an [API tracing] feature for debugging. To use this, ensure the
-    /// `wgpu/trace` feature is enabled and set the output path:
+    /// ~~WGPU has an [API tracing] feature for debugging.~~
+    /// NOTE: WGPU has temporarily removed this feature.
+    /// To use this, ensure the `wgpu/trace` feature is enabled and set the output path:
     /// ```sh
     /// export KAS_WGPU_TRACE_PATH="api_trace"
     /// ```
