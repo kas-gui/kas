@@ -280,7 +280,7 @@ impl<'a> EventCx<'a> {
             if matches!(cmd, Command::Debug) {
                 let hover = self.mouse.hover();
                 let hier = WidgetHierarchy::new(widget.as_tile(), hover.clone());
-                log::debug!("Widget heirarchy (filter={:?}): {hier}", hover);
+                log::debug!("Widget heirarchy (filter={hover:?}): {hier}");
                 return;
             }
         }

@@ -465,9 +465,7 @@ impl_scope! {
             let avail_widgets = self.widgets.len();
             if avail_widgets < req_widgets {
                 log::debug!(
-                    "set_rect: allocating widgets (old len = {}, new = {})",
-                    avail_widgets,
-                    req_widgets
+                    "set_rect: allocating widgets (old len = {avail_widgets}, new = {req_widgets})",
                 );
                 self.widgets.resize_with(req_widgets, || {
                     WidgetData {

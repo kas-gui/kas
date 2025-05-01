@@ -139,3 +139,5 @@ features = ["rwh_06"]
 module_inception = "allow"
 needless_lifetimes = "allow"
 unit_arg = "allow"
+match_like_matches_macro = "allow"
+needless_range_loop = "allow"

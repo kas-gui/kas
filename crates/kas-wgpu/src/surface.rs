@@ -112,7 +112,7 @@ impl<'a, C: CustomPipe> WindowSurface for Surface<'a, C> {
             Err(e) => {
                 // This error has not been observed. Can it be fixed by
                 // re-configuring the surface? Does it ever occur anyway?
-                log::error!("WindowSurface::present: failed to get frame texture: {}", e);
+                log::error!("WindowSurface::present: failed to get frame texture: {e}");
                 return Instant::now();
             }
         };

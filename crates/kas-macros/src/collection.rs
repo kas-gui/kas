@@ -306,7 +306,7 @@ impl Collection {
         let mut data_ty = None;
         for (index, item) in self.0.iter().enumerate() {
             if let Item::Widget(_, expr) = item {
-                let ty = Ident::new(&format!("_W{}", index), expr.span());
+                let ty = Ident::new(&format!("_W{index}"), expr.span());
                 data_ty = Some(quote! {<#ty as ::kas::Widget>::Data});
                 break;
             }
@@ -340,7 +340,7 @@ impl Collection {
                 }
                 Item::Widget(stor, expr) => {
                     let span = expr.span();
-                    let ty = Ident::new(&format!("_W{}", index), span);
+                    let ty = Ident::new(&format!("_W{index}"), span);
                     stor_ty.append_all(quote! { #stor: #ty, });
                     stor_def.append_all(quote_spanned! {span=> #stor: Box::new(#expr), });
                     ty_generics.push(ty);
