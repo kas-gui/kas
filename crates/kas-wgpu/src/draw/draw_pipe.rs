@@ -20,12 +20,6 @@ use kas::geom::{Quad, Size, Vec2};
 use kas::runner::Error;
 use kas::text::{Effect, TextDisplay};
 
-/// Failure while constructing a [`Runner`]: no graphics adapter found
-#[non_exhaustive]
-#[derive(thiserror::Error, Debug)]
-#[error("no graphics adapter found")]
-pub struct NoAdapter;
-
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
     pub fn new<CB: CustomPipeBuilder<Pipe = C>>(
@@ -39,8 +33,8 @@ impl<C: CustomPipe> DrawPipe<C> {
         let adapter_options = options.adapter_options();
         let req = instance.request_adapter(&adapter_options);
         let adapter = match block_on(req) {
-            Some(a) => a,
-            None => return Err(Error::Graphics(Box::new(NoAdapter))),
+            Ok(a) => a,
+            Err(e) => return Err(Error::Graphics(Box::new(e))),
         };
         log::info!("Using graphics adapter: {}", adapter.get_info().name);
 
@@ -48,8 +42,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let mut desc = CB::device_descriptor();
         desc.required_limits = desc.required_limits.using_resolution(adapter.limits());
 
-        let trace_path = options.wgpu_trace_path.as_deref();
-        let req = adapter.request_device(&desc, trace_path);
+        let req = adapter.request_device(&desc);
         let (device, queue) = block_on(req).map_err(|e| Error::Graphics(Box::new(e)))?;
 
         let shaders = ShaderManager::new(&device);

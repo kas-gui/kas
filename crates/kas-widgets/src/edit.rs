@@ -247,7 +247,7 @@ impl_scope! {
                 // Reset data on focus loss (update is inhibited with focus).
                 // No need if we just sent a message (should cause an update).
                 let value = (edit.guard.value_fn)(data);
-                edit.set_string(cx, format!("{}", value));
+                edit.set_string(cx, format!("{value}"));
             }
         }
 
@@ -259,7 +259,7 @@ impl_scope! {
         fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
             if !edit.has_edit_focus() {
                 let value = (edit.guard.value_fn)(data);
-                edit.set_string(cx, format!("{}", value));
+                edit.set_string(cx, format!("{value}"));
                 edit.guard.parsed = None;
             }
         }
@@ -305,7 +305,7 @@ impl_scope! {
         fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, data: &A) {
             // Always reset data on focus loss
             let value = (edit.guard.value_fn)(data);
-            edit.set_string(cx, format!("{}", value));
+            edit.set_string(cx, format!("{value}"));
         }
 
         fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &A) {
@@ -319,7 +319,7 @@ impl_scope! {
         fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
             if !edit.has_edit_focus() {
                 let value = (edit.guard.value_fn)(data);
-                edit.set_string(cx, format!("{}", value));
+                edit.set_string(cx, format!("{value}"));
             }
         }
     }

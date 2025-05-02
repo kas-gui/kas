@@ -160,9 +160,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
 
         let size: Size = window.inner_size().cast();
         log::info!(
-            "Window::resume: constructed with physical size {:?}, scale factor {}",
-            size,
-            scale_factor,
+            "Window::resume: constructed with physical size {size:?}, scale factor {scale_factor}",
         );
 
         #[cfg(all(wayland_platform, feature = "clipboard"))]

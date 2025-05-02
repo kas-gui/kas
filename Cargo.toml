@@ -22,12 +22,12 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 #########  meta / build features  #########
 
-# The minimal feature set needed to build basic applications (with assumptions
+# The minimal feature set needed to run basic applications (with assumptions
 # about target platforms).
 #
 # Note: only some examples build in this configuration; others need view,
 # markdown, resvg. Recommended also: clipboard, ron (or some config format).
-minimal = ["wgpu", "winit", "wayland"]
+minimal = ["wgpu", "winit", "wayland", "vulkan", "dx12", "metal"]
 # All recommended features for optimal experience
 default = ["minimal", "view", "image", "resvg", "clipboard", "markdown", "shaping", "spawn"]
 # All standard test target features
@@ -53,6 +53,12 @@ view = ["dep:kas-view"]
 
 #Enable WGPU backend:
 wgpu = ["dep:kas-wgpu"]
+
+# WGPU backends
+vulkan = ["kas-wgpu?/vulkan"]
+gles = ["kas-wgpu?/gles"]
+dx12 = ["kas-wgpu?/dx12"]
+metal = ["kas-wgpu?/metal"]
 
 # Enables documentation of APIs for graphics library and platform backends.
 # This API is not intended for use by end-user applications and

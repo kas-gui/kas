@@ -521,9 +521,7 @@ impl_scope! {
             let avail_widgets = self.widgets.len();
             if avail_widgets < req_widgets {
                 log::debug!(
-                    "set_rect: allocating widgets (old len = {}, new = {})",
-                    avail_widgets,
-                    req_widgets
+                    "set_rect: allocating widgets (old len = {avail_widgets}, new = {req_widgets})",
                 );
                 self.widgets.reserve(req_widgets - avail_widgets);
                 let key = C::Key::default();

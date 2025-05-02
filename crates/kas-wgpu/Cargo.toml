@@ -25,6 +25,12 @@ default = ["shaping", "raster"]
 # This flag does not change the API, only built documentation.
 internal_doc = []
 
+# WGPU backends
+vulkan = ["wgpu/vulkan"]
+gles = ["wgpu/gles"]
+dx12 = ["wgpu/dx12"]
+metal = ["wgpu/metal"]
+
 shaping = ["kas-text/shaping"]
 harfbuzz = ["kas-text/harfbuzz"]
 raster = ["kas-text/raster"]
@@ -47,7 +53,7 @@ path = "../kas-core"
 version = "0.7.0"
 
 [dependencies.wgpu]
-version = "24.0.1"
+version = "25.0.0"
 default-features = false
 features = ["spirv"]
 

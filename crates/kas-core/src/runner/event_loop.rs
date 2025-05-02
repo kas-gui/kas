@@ -95,7 +95,7 @@ where
                         self.id_map.insert(winit_id, window.window_id());
                     }
                     Err(e) => {
-                        log::error!("Unable to create window: {}", e);
+                        log::error!("Unable to create window: {e}");
                     }
                 }
             }
@@ -182,7 +182,7 @@ where
                                 self.id_map.insert(winit_id, id);
                             }
                             Err(e) => {
-                                log::error!("Unable to create window: {}", e);
+                                log::error!("Unable to create window: {e}");
                             }
                         }
                     }

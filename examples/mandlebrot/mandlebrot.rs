@@ -325,10 +325,10 @@ impl_scope! {
             let d1 = self.delta.1.abs();
             let s = self.alpha.sum_square().sqrt().ln();
             #[cfg(not(feature = "shader64"))] {
-                format!("Location: {:.7} {} {:.7}i; scale: {:.2}", d0, op, d1, s)
+                format!("Location: {d0:.7} {op} {d1:.7}i; scale: {s:.2}")
             }
             #[cfg(feature = "shader64")] {
-                format!("Location: {:.15} {} {:.15}i; scale: {:.2}", d0, op, d1, s)
+                format!("Location: {d0:.15} {op} {d1:.15}i; scale: {s:.2}")
             }
         }
     }
