@@ -7,18 +7,24 @@
 
 use super::{AppData, GraphicsBuilder, Platform, ProxyAction, Result, State};
 use crate::config::{Config, Options};
-use crate::draw::{DrawShared, DrawSharedImpl};
+use crate::draw::DrawSharedImpl;
 use crate::theme::{self, Theme};
 use crate::util::warn_about_error;
-use crate::{impl_scope, Window, WindowId};
+use crate::{impl_scope, Window, WindowId, WindowIdFactory};
 use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
 use winit::event_loop::{EventLoop, EventLoopProxy};
 
 pub struct Runner<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
+    options: Options,
+    config: Rc<RefCell<Config>>,
+    data: Data,
+    graphical: G,
+    theme: T,
     el: EventLoop<ProxyAction>,
+    platform: Platform,
+    window_id_factory: WindowIdFactory,
     windows: Vec<Box<super::Window<Data, G, T>>>,
-    state: State<Data, G, T>,
 }
 
 impl_scope! {
@@ -71,7 +77,7 @@ impl_scope! {
         }
 
         /// Build with `data`
-        pub fn build<Data: AppData>(self, data: Data) -> Result<Runner<Data, G, T>> {
+        pub fn build<Data: AppData>(mut self, data: Data) -> Result<Runner<Data, G, T>> {
             let options = self.options.unwrap_or_else(Options::from_env);
 
             let config = self.config.unwrap_or_else(|| match options.read_config() {
@@ -83,18 +89,21 @@ impl_scope! {
             });
             config.borrow_mut().init();
 
+            self.theme.init(&config);
+
             let el = EventLoop::with_user_event().build()?;
-
-            let mut draw_shared = self.graphical.build()?;
-            draw_shared.set_raster_config(config.borrow().font.raster());
-
-            let pw = PlatformWrapper(&el);
-            let state = State::new(data, pw, draw_shared, self.theme, options, config)?;
+            let platform = PlatformWrapper(&el).platform();
 
             Ok(Runner {
+                options,
+                config,
+                data,
+                graphical: self.graphical,
+                theme: self.theme,
                 el,
+                platform,
+                window_id_factory: Default::default(),
                 windows: vec![],
-                state,
             })
         }
     }
@@ -157,41 +166,40 @@ where
     T: Theme<G::Shared> + 'static,
     T::Window: theme::Window,
 {
-    /// Access shared draw state
-    #[inline]
-    pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
-        &mut self.state.shared.draw
-    }
-
     /// Access config
     #[inline]
     pub fn config(&self) -> Ref<Config> {
-        self.state.shared.config.borrow()
+        self.config.borrow()
     }
 
     /// Access config mutably
     #[inline]
     pub fn config_mut(&mut self) -> RefMut<Config> {
-        self.state.shared.config.borrow_mut()
+        self.config.borrow_mut()
     }
 
     /// Access the theme by ref
     #[inline]
     pub fn theme(&self) -> &T {
-        &self.state.shared.theme
+        &self.theme
     }
 
     /// Access the theme by ref mut
     #[inline]
     pub fn theme_mut(&mut self) -> &mut T {
-        &mut self.state.shared.theme
+        &mut self.theme
     }
 
     /// Assume ownership of and display a window
     #[inline]
     pub fn add(&mut self, window: Window<Data>) -> WindowId {
-        let id = self.state.shared.next_window_id();
-        let win = Box::new(super::Window::new(&self.state.shared, id, window));
+        let id = self.window_id_factory.make_next();
+        let win = Box::new(super::Window::new(
+            self.config.clone(),
+            self.platform,
+            id,
+            window,
+        ));
         self.windows.push(win);
         id
     }
@@ -211,7 +219,21 @@ where
     /// Run the main loop.
     #[inline]
     pub fn run(self) -> Result<()> {
-        let mut l = super::Loop::new(self.windows, self.state);
+        let mut draw_shared = self.graphical.build()?;
+        draw_shared.set_raster_config(self.config.borrow().font.raster());
+
+        let pw = PlatformWrapper(&self.el);
+        let state = State::new(
+            self.data,
+            pw,
+            draw_shared,
+            self.theme,
+            self.options,
+            self.config,
+            self.window_id_factory,
+        )?;
+
+        let mut l = super::Loop::new(self.windows, state);
         self.el.run_app(&mut l)?;
         Ok(())
     }

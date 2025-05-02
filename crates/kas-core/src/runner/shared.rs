@@ -10,11 +10,11 @@ use crate::config::{Config, Options};
 use crate::draw::DrawShared;
 use crate::theme::Theme;
 use crate::util::warn_about_error;
+use crate::WindowIdFactory;
 use crate::{draw, messages::MessageStack, Action, WindowId};
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::VecDeque;
-use std::num::NonZeroU32;
 use std::rc::Rc;
 use std::task::Waker;
 
@@ -30,7 +30,7 @@ pub(super) struct SharedState<Data: AppData, G: GraphicsBuilder, T: Theme<G::Sha
     pub(super) theme: T,
     pub(super) pending: VecDeque<Pending<Data, G, T>>,
     pub(super) waker: Waker,
-    window_id: u32,
+    window_id_factory: WindowIdFactory,
 }
 
 /// Runner state shared by all windows
@@ -50,13 +50,13 @@ where
         data: Data,
         pw: super::PlatformWrapper,
         draw_shared: G::Shared,
-        mut theme: T,
+        theme: T,
         options: Options,
         config: Rc<RefCell<Config>>,
+        window_id_factory: WindowIdFactory,
     ) -> Result<Self, Error> {
         let platform = pw.platform();
         let draw = kas::draw::SharedState::new(draw_shared);
-        theme.init(&config);
 
         #[cfg(feature = "clipboard")]
         let clipboard = match Clipboard::new() {
@@ -77,7 +77,7 @@ where
                 theme,
                 pending: Default::default(),
                 waker: pw.create_waker(),
-                window_id: 0,
+                window_id_factory,
             },
             data,
             options,
@@ -103,18 +103,6 @@ where
             Ok(()) => (),
             Err(error) => warn_about_error("Failed to save config", &error),
         }
-    }
-}
-
-impl<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> SharedState<Data, G, T> {
-    /// Return the next window identifier
-    ///
-    /// TODO(opt): this should recycle used identifiers since Id does not
-    /// efficiently represent large numbers.
-    pub(crate) fn next_window_id(&mut self) -> WindowId {
-        let id = self.window_id + 1;
-        self.window_id = id;
-        WindowId::new(NonZeroU32::new(id).unwrap())
     }
 }
 
@@ -202,7 +190,7 @@ pub(crate) trait RunnerT {
 
 impl<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> RunnerT for SharedState<Data, G, T> {
     fn add_popup(&mut self, parent_id: WindowId, popup: kas::PopupDescriptor) -> WindowId {
-        let id = self.next_window_id();
+        let id = self.window_id_factory.make_next();
         self.pending
             .push_back(Pending::AddPopup(parent_id, id, popup));
         id
@@ -222,8 +210,13 @@ impl<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> RunnerT for SharedS
         // In theory we could pass the `ActiveEventLoop` for *each* event
         // handled to create the winit window here or use statics to generate
         // errors now, but user code can't do much with this error anyway.
-        let id = self.next_window_id();
-        let window = Box::new(super::Window::new(self, id, window));
+        let id = self.window_id_factory.make_next();
+        let window = Box::new(super::Window::new(
+            self.config.clone(),
+            self.platform,
+            id,
+            window,
+        ));
         self.pending.push_back(Pending::AddWindow(id, window));
         id
     }

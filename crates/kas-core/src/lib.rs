@@ -35,6 +35,7 @@ pub use kas_macros::{cell_collection, collection, impl_anon, impl_scope};
 pub use kas_macros::{widget, widget_index, widget_set_rect};
 #[doc(inline)] pub use popup::Popup;
 #[doc(inline)] pub(crate) use popup::PopupDescriptor;
+#[doc(inline)] pub(crate) use root::WindowIdFactory;
 #[doc(inline)]
 pub use root::{Window, WindowCommand, WindowId};
 

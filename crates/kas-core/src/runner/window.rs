@@ -6,10 +6,10 @@
 //! Window types
 
 use super::common::WindowSurface;
-use super::shared::{SharedState, State};
-use super::{AppData, GraphicsBuilder};
+use super::shared::State;
+use super::{AppData, GraphicsBuilder, Platform};
 use crate::cast::{Cast, Conv};
-use crate::config::WindowConfig;
+use crate::config::{Config, WindowConfig};
 use crate::decorations::Decorations;
 use crate::draw::PassType;
 use crate::draw::{color::Rgba, AnimationState, DrawSharedImpl};
@@ -19,7 +19,9 @@ use crate::layout::SolveCache;
 use crate::messages::MessageStack;
 use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, ThemeSize, Window as _};
 use crate::{autoimpl, Action, Id, Tile, Widget, WindowId};
+use std::cell::RefCell;
 use std::mem::take;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use winit::event::WindowEvent;
@@ -58,15 +60,16 @@ pub struct Window<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
 impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
     /// Construct window state (widget)
     pub(super) fn new(
-        shared: &SharedState<A, G, T>,
+        config: Rc<RefCell<Config>>,
+        platform: Platform,
         window_id: WindowId,
         widget: kas::Window<A>,
     ) -> Self {
-        let config = WindowConfig::new(shared.config.clone());
+        let config = WindowConfig::new(config);
         Window {
             _data: std::marker::PhantomData,
             widget,
-            ev_state: EventState::new(window_id, config, shared.platform),
+            ev_state: EventState::new(window_id, config, platform),
             window: None,
         }
     }

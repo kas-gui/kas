@@ -24,16 +24,24 @@ use std::num::NonZeroU32;
 pub struct WindowId(NonZeroU32);
 
 impl WindowId {
-    /// Construct a [`WindowId`]
-    ///
-    /// Only for use by the graphics/platform backend!
-    #[allow(unused)]
-    pub(crate) fn new(n: NonZeroU32) -> WindowId {
-        WindowId(n)
-    }
-
     pub(crate) fn get(self) -> u32 {
         self.0.get()
+    }
+}
+
+/// Constructor for [`WindowId`]
+#[derive(Default)]
+pub(crate) struct WindowIdFactory(u32);
+
+impl WindowIdFactory {
+    /// Get the next identifier
+    ///
+    /// TODO(opt): this should recycle used identifiers since Id does not
+    /// efficiently represent large numbers.
+    pub(crate) fn make_next(&mut self) -> WindowId {
+        let id = self.0 + 1;
+        self.0 = id;
+        WindowId(NonZeroU32::new(id).unwrap())
     }
 }
 
