@@ -53,16 +53,19 @@ pub struct DrawPipe<C> {
     pub(crate) text: text_pipe::Pipeline,
 }
 
-/// Per-window pipeline data
-pub struct DrawWindow<CW: CustomWindow> {
-    pub(crate) common: WindowCommon,
-    scale: Scale,
-    clip_regions: Vec<(Rect, Offset)>,
-    images: images::Window,
-    shaded_square: shaded_square::Window,
-    shaded_round: shaded_round::Window,
-    flat_round: flat_round::Window,
-    round_2col: round_2col::Window,
-    custom: CW,
-    pub(crate) text: text_pipe::Window,
+kas::impl_scope! {
+    /// Per-window pipeline data
+    #[impl_default(where CW: Default)]
+    pub struct DrawWindow<CW: CustomWindow> {
+        pub(crate) common: WindowCommon,
+        scale: Scale,
+        clip_regions: Vec<(Rect, Offset)> = vec![Default::default()],
+        images: images::Window,
+        shaded_square: shaded_square::Window,
+        shaded_round: shaded_round::Window,
+        flat_round: flat_round::Window,
+        round_2col: round_2col::Window,
+        custom: CW,
+        pub(crate) text: text_pipe::Window,
+    }
 }

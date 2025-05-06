@@ -174,6 +174,7 @@ struct Pipe {
     render_pipeline: wgpu::RenderPipeline,
 }
 
+#[derive(Default)]
 struct PipeWindow {
     push_constants: PushConstants,
     passes: Vec<(Vec<Vertex>, Option<Buffer>, u32)>,
@@ -181,13 +182,6 @@ struct PipeWindow {
 
 impl CustomPipe for Pipe {
     type Window = PipeWindow;
-
-    fn new_window(&self, _: &wgpu::Device) -> Self::Window {
-        PipeWindow {
-            push_constants: Default::default(),
-            passes: vec![],
-        }
-    }
 
     fn prepare(
         &self,

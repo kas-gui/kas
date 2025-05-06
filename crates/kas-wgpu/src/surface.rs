@@ -40,7 +40,7 @@ impl<'a, C: CustomPipe> Surface<'a, C> {
             surface,
             size: Size::ZERO,
             transparent,
-            draw: shared.new_window(),
+            draw: Default::default(),
         })
     }
 }

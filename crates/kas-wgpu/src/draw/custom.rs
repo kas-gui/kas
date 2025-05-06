@@ -58,14 +58,11 @@ pub trait CustomPipeBuilder {
 /// one custom graphics pipeline, you must implement your own multiplexer.
 pub trait CustomPipe: 'static {
     /// Associated per-window state for the custom pipe
-    type Window: CustomWindow;
-
-    /// Construct a window associated with this pipeline
-    ///
-    /// Note: [`Self::resize`] will be called before usage.
-    fn new_window(&self, device: &wgpu::Device) -> Self::Window;
+    type Window: CustomWindow + Default;
 
     /// Called whenever the window is resized
+    ///
+    /// This method is called on construction and after the window is resized.
     fn resize(
         &self,
         window: &mut Self::Window,
@@ -163,7 +160,6 @@ pub enum Void {}
 /// A dummy implementation (does nothing)
 impl CustomPipe for () {
     type Window = ();
-    fn new_window(&self, _: &wgpu::Device) -> Self::Window {}
     fn resize(&self, _: &mut Self::Window, _: &wgpu::Device, _: &wgpu::Queue, _: Size) {}
 }
 

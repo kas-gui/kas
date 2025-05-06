@@ -119,24 +119,6 @@ impl<C: CustomPipe> DrawPipe<C> {
         })
     }
 
-    /// Construct per-window state
-    pub fn new_window(&self) -> DrawWindow<C::Window> {
-        let custom = self.custom.new_window(&self.device);
-
-        DrawWindow {
-            common: WindowCommon::default(),
-            scale: Default::default(),
-            clip_regions: vec![Default::default()],
-            images: Default::default(),
-            shaded_square: Default::default(),
-            shaded_round: Default::default(),
-            flat_round: Default::default(),
-            round_2col: Default::default(),
-            custom,
-            text: Default::default(),
-        }
-    }
-
     /// Process window resize
     pub fn resize(&self, window: &mut DrawWindow<C::Window>, size: Size) {
         window.clip_regions[0].0.size = size;
