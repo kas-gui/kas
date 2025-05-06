@@ -296,19 +296,21 @@ mod test {
     impl GraphicsBuilder for AGB {
         type DefaultTheme = crate::theme::SimpleTheme;
 
+        type Instance = ();
+
         type Shared = DrawShared;
 
         type Surface<'a> = Surface;
 
-        fn build(self) -> Result<Self::Shared> {
+        fn build(self, _: &()) -> Result<Self::Shared> {
             todo!()
         }
 
-        fn new_surface<'window, W>(
-            _: &mut Self::Shared,
-            _: W,
-            _: bool,
-        ) -> Result<Self::Surface<'window>>
+        fn new_instance(&mut self) -> Self::Instance {
+            ()
+        }
+
+        fn new_surface<'window, W>(_: &(), _: W, _: bool) -> Result<Self::Surface<'window>>
         where
             W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
             Self: Sized,

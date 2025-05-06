@@ -7,7 +7,7 @@
 
 use super::{AppData, Error, GraphicsBuilder, Pending, Platform};
 use crate::config::{Config, Options};
-use crate::draw::DrawShared;
+use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::theme::Theme;
 use crate::util::warn_about_error;
 use crate::WindowIdFactory;
@@ -35,6 +35,7 @@ pub(super) struct SharedState<Data: AppData, G: GraphicsBuilder, T: Theme<G::Sha
 
 /// Runner state shared by all windows
 pub(super) struct State<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
+    pub(super) instance: G::Instance,
     pub(super) shared: SharedState<Data, G, T>,
     pub(super) data: Data,
     /// Estimated scale factor (from last window constructed or available screens)
@@ -49,13 +50,16 @@ where
     pub(super) fn new(
         data: Data,
         pw: super::PlatformWrapper,
-        draw_shared: G::Shared,
+        mut graphical: G,
         theme: T,
         options: Options,
         config: Rc<RefCell<Config>>,
         window_id_factory: WindowIdFactory,
     ) -> Result<Self, Error> {
-        let platform = pw.platform();
+        let instance = graphical.new_instance();
+
+        let mut draw_shared = graphical.build(&instance)?;
+        draw_shared.set_raster_config(config.borrow().font.raster());
         let draw = kas::draw::SharedState::new(draw_shared);
 
         #[cfg(feature = "clipboard")]
@@ -68,8 +72,9 @@ where
         };
 
         Ok(State {
+            instance,
             shared: SharedState {
-                platform,
+                platform: pw.platform(),
                 config,
                 #[cfg(feature = "clipboard")]
                 clipboard,

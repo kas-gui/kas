@@ -179,20 +179,28 @@ pub trait GraphicsBuilder {
     /// The default theme
     type DefaultTheme: Default + Theme<Self::Shared>;
 
+    /// Instance
+    ///
+    /// Context for all graphics objects.
+    type Instance;
+
     /// Shared draw state
     type Shared: DrawSharedImpl;
 
     /// Window surface
     type Surface<'a>: WindowSurface<Shared = Self::Shared>;
 
+    /// Construct a new instance
+    fn new_instance(&mut self) -> Self::Instance;
+
     /// Construct shared state
-    fn build(self) -> Result<Self::Shared>;
+    fn build(self, instance: &Self::Instance) -> Result<Self::Shared>;
 
     /// Construct a window surface
     ///
     /// It is required to call [`WindowSurface::configure`] after this.
     fn new_surface<'window, W>(
-        shared: &mut Self::Shared,
+        instance: &Self::Instance,
         window: W,
         transparent: bool,
     ) -> Result<Self::Surface<'window>>

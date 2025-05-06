@@ -23,13 +23,10 @@ use kas::text::{Effect, TextDisplay};
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
     pub fn new<CB: CustomPipeBuilder<Pipe = C>>(
+        instance: &wgpu::Instance,
         mut custom: CB,
         options: &Options,
     ) -> Result<Self, Error> {
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends: options.backend(),
-            ..Default::default()
-        });
         let adapter_options = options.adapter_options();
         let req = instance.request_adapter(&adapter_options);
         let adapter = match block_on(req) {
@@ -101,7 +98,6 @@ impl<C: CustomPipe> DrawPipe<C> {
         let text = text_pipe::Pipeline::new(&device, &shaders, &bgl_common);
 
         Ok(DrawPipe {
-            instance,
             adapter,
             device,
             queue,

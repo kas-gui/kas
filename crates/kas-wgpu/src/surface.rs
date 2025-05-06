@@ -22,17 +22,12 @@ pub struct Surface<'a, C: CustomPipe> {
 }
 
 impl<'a, C: CustomPipe> Surface<'a, C> {
-    pub fn new<W>(
-        shared: &mut <Self as WindowSurface>::Shared,
-        window: W,
-        transparent: bool,
-    ) -> Result<Self, Error>
+    pub fn new<W>(instance: &wgpu::Instance, window: W, transparent: bool) -> Result<Self, Error>
     where
         W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'a,
         Self: Sized,
     {
-        let surface = shared
-            .instance
+        let surface = instance
             .create_surface(window)
             .map_err(|e| Error::Graphics(Box::new(e)))?;
 

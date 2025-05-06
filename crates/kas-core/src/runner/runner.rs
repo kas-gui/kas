@@ -219,14 +219,11 @@ where
     /// Run the main loop.
     #[inline]
     pub fn run(self) -> Result<()> {
-        let mut draw_shared = self.graphical.build()?;
-        draw_shared.set_raster_config(self.config.borrow().font.raster());
-
         let pw = PlatformWrapper(&self.el);
         let state = State::new(
             self.data,
             pw,
-            draw_shared,
+            self.graphical,
             self.theme,
             self.options,
             self.config,

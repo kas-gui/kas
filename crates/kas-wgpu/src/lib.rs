@@ -46,20 +46,29 @@ pub struct Builder<CB: CustomPipeBuilder> {
 impl<CB: CustomPipeBuilder> runner::GraphicsBuilder for Builder<CB> {
     type DefaultTheme = FlatTheme;
 
+    type Instance = wgpu::Instance;
+
     type Shared = DrawPipe<CB::Pipe>;
 
     type Surface<'a> = surface::Surface<'a, CB::Pipe>;
 
-    fn build(self) -> runner::Result<Self::Shared> {
-        let mut options = self.options;
+    fn new_instance(&mut self) -> Self::Instance {
         if self.read_env_vars {
-            options.load_from_env();
+            self.options.load_from_env();
         }
-        DrawPipe::new(self.custom, &options)
+
+        wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends: self.options.backend(),
+            ..Default::default()
+        })
+    }
+
+    fn build(self, instance: &Self::Instance) -> runner::Result<Self::Shared> {
+        DrawPipe::new(instance, self.custom, &self.options)
     }
 
     fn new_surface<'window, W>(
-        shared: &mut Self::Shared,
+        instance: &Self::Instance,
         window: W,
         transparent: bool,
     ) -> runner::Result<Self::Surface<'window>>
@@ -67,7 +76,7 @@ impl<CB: CustomPipeBuilder> runner::GraphicsBuilder for Builder<CB> {
         W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
         Self: Sized,
     {
-        surface::Surface::new(shared, window, transparent)
+        surface::Surface::new(instance, window, transparent)
     }
 }
 
