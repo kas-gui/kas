@@ -190,7 +190,7 @@ pub trait GraphicsBuilder {
 
     /// Construct a window surface
     ///
-    /// It is required to call [`WindowSurface::do_resize`] after this.
+    /// It is required to call [`WindowSurface::configure`] after this.
     fn new_surface<'window, W>(
         shared: &mut Self::Shared,
         window: W,
@@ -212,7 +212,7 @@ pub trait WindowSurface {
     /// Resize surface
     ///
     /// Returns `true` when the new `size` did not match the old surface size.
-    fn do_resize(&mut self, shared: &mut Self::Shared, size: Size) -> bool;
+    fn configure(&mut self, shared: &mut Self::Shared, size: Size) -> bool;
 
     /// Construct a DrawIface object
     fn draw_iface<'iface>(

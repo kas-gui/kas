@@ -186,7 +186,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             window.clone(),
             self.widget.transparent(),
         )?;
-        surface.do_resize(&mut state.shared.draw.draw, size);
+        surface.configure(&mut state.shared.draw.draw, size);
 
         let winit_id = window.id();
 
@@ -248,7 +248,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             WindowEvent::Resized(size) => {
                 if window
                     .surface
-                    .do_resize(&mut state.shared.draw.draw, size.cast())
+                    .configure(&mut state.shared.draw.draw, size.cast())
                 {
                     self.apply_size(state, false);
                 }

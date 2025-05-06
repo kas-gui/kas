@@ -272,7 +272,7 @@ mod test {
             todo!()
         }
 
-        fn do_resize(&mut self, _: &mut Self::Shared, _: crate::prelude::Size) -> bool {
+        fn configure(&mut self, _: &mut Self::Shared, _: crate::prelude::Size) -> bool {
             todo!()
         }
 
