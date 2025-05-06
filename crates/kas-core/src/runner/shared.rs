@@ -6,7 +6,7 @@
 //! Shared state
 
 use super::{AppData, Error, GraphicsBuilder, Pending, Platform};
-use crate::config::{Config, ConfigFactory};
+use crate::config::Config;
 use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::theme::Theme;
 use crate::util::warn_about_error;
@@ -38,8 +38,7 @@ pub(super) struct State<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> 
     pub(super) instance: G::Instance,
     pub(super) shared: SharedState<Data, G, T>,
     pub(super) data: Data,
-    /// Estimated scale factor (from last window constructed or available screens)
-    options: ConfigFactory,
+    config_writer: Option<Box<dyn FnMut(&Config)>>,
 }
 
 impl<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> State<Data, G, T>
@@ -52,8 +51,8 @@ where
         pw: super::PlatformWrapper,
         mut graphical: G,
         theme: T,
-        options: ConfigFactory,
         config: Rc<RefCell<Config>>,
+        config_writer: Option<Box<dyn FnMut(&Config)>>,
         window_id_factory: WindowIdFactory,
     ) -> Result<Self, Error> {
         let instance = graphical.new_instance();
@@ -85,7 +84,7 @@ where
                 window_id_factory,
             },
             data,
-            options,
+            config_writer,
         })
     }
 
@@ -104,9 +103,8 @@ where
     pub(crate) fn suspended(&mut self) {
         self.data.suspended();
 
-        match self.options.write_config(&self.shared.config.borrow()) {
-            Ok(()) => (),
-            Err(error) => warn_about_error("Failed to save config", &error),
+        if let Some(writer) = self.config_writer.as_mut() {
+            self.shared.config.borrow_mut().write_if_dirty(writer);
         }
     }
 }

@@ -33,7 +33,7 @@ pub enum ConfigMsg {
 /// > `theme`: [`ThemeConfig`]
 ///
 /// For descriptions of configuration effects, see [`WindowConfig`] methods.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Config {
     pub event: EventConfig,
@@ -71,6 +71,13 @@ impl Config {
     #[inline]
     pub fn is_dirty(&self) -> bool {
         self.is_dirty
+    }
+
+    pub(crate) fn write_if_dirty(&mut self, writer: &mut dyn FnMut(&Self)) {
+        if self.is_dirty {
+            writer(self);
+            self.is_dirty = false;
+        }
     }
 }
 

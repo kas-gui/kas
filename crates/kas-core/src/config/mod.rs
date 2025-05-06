@@ -18,7 +18,7 @@ mod format;
 pub use format::{Error, Format};
 
 mod factory;
-pub use factory::{ConfigFactory, ConfigMode};
+pub use factory::*;
 
 mod shortcuts;
 pub use shortcuts::Shortcuts;

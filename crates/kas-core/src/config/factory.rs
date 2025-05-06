@@ -8,12 +8,40 @@
 #[cfg(feature = "serde")] use super::Format;
 use super::{Config, Error};
 #[cfg(feature = "serde")] use crate::util::warn_about_error;
-use std::env::var;
-use std::path::PathBuf;
+use std::cell::RefCell;
+#[cfg(feature = "serde")] use std::path::PathBuf;
+use std::rc::Rc;
+
+/// A factory able to source and (optionally) save [`Config`]
+pub trait ConfigFactory {
+    /// Construct a [`Config`] object
+    ///
+    /// Returning an [`Error`] here will prevent startup of the UI. As such,
+    /// it may be preferable to return [`Config::default()`] than to fail.
+    fn read_config(&self) -> Result<Rc<RefCell<Config>>, Error>;
+
+    /// Return optional config-writing fn
+    fn writer(self) -> Option<Box<dyn FnMut(&Config)>>;
+}
+
+/// Always use default [`Config`]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct DefaultFactory;
+
+impl ConfigFactory for DefaultFactory {
+    fn read_config(&self) -> Result<Rc<RefCell<Config>>, Error> {
+        Ok(Rc::new(RefCell::new(Config::default())))
+    }
+
+    fn writer(self) -> Option<Box<dyn FnMut(&Config)>> {
+        None
+    }
+}
 
 /// Config mode
 ///
-/// See [`Options::from_env`] documentation.
+/// See [`ReadWriteFactory::from_env()`] documentation.
+#[cfg(feature = "serde")]
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ConfigMode {
     /// Read-only mode
@@ -28,25 +56,35 @@ pub enum ConfigMode {
     WriteDefault,
 }
 
-/// Application configuration options
+/// Read and write config from disk
+#[cfg(feature = "serde")]
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ConfigFactory {
-    /// Config file path. Default: empty. See `KAS_CONFIG` doc.
-    pub config_path: PathBuf,
-    /// Config mode. Default: Read.
-    pub config_mode: ConfigMode,
+pub struct ReadWriteFactory {
+    path: PathBuf,
+    mode: ConfigMode,
+    fail_on_error: bool,
 }
 
-impl Default for ConfigFactory {
-    fn default() -> Self {
-        ConfigFactory {
-            config_path: PathBuf::new(),
-            config_mode: ConfigMode::Read,
+#[cfg(feature = "serde")]
+impl ReadWriteFactory {
+    /// Construct with specified `path` and `mode`
+    pub fn new(path: PathBuf, mode: ConfigMode) -> Self {
+        let fail_on_error = false;
+        ReadWriteFactory {
+            path,
+            mode,
+            fail_on_error,
         }
     }
-}
 
-impl ConfigFactory {
+    /// Fail immediately in case of read error
+    ///
+    /// By default, [`Config::default`] will be returned on read error.
+    pub fn fail_on_error(mut self) -> Self {
+        self.fail_on_error = true;
+        self
+    }
+
     /// Construct a new instance, reading from environment variables
     ///
     /// The following environment variables are read, in case-insensitive mode.
@@ -71,66 +109,131 @@ impl ConfigFactory {
     ///
     /// Note: in the future, the default will likely change to a read-write mode,
     /// allowing changes to be written out.
+    ///
+    /// If `KAS_CONFIG_FAIL_ON_ERROR` is true, config read errors are fatal.
+    /// Otherwise default configuration will be used on read error.
     pub fn from_env() -> Self {
-        let mut options = ConfigFactory::default();
+        use std::env::var;
+
+        let mut path = PathBuf::new();
+        let mut mode = ConfigMode::Read;
+        let mut fail_on_error = false;
 
         if let Ok(v) = var("KAS_CONFIG") {
-            options.config_path = v.into();
+            path = v.into();
         }
 
         if let Ok(mut v) = var("KAS_CONFIG_MODE") {
             v.make_ascii_uppercase();
-            options.config_mode = match v.as_str() {
+            mode = match v.as_str() {
                 "READ" => ConfigMode::Read,
                 "READWRITE" => ConfigMode::ReadWrite,
                 "WRITEDEFAULT" => ConfigMode::WriteDefault,
                 other => {
                     log::error!("from_env: bad var KAS_CONFIG_MODE={other}");
                     log::error!("from_env: supported config modes: READ, READWRITE, WRITEDEFAULT");
-                    options.config_mode
+                    mode
                 }
             };
         }
 
-        options
-    }
-
-    /// Load/save KAS config on start
-    ///
-    /// Requires feature "serde" to load/save config.
-    pub fn read_config(&self) -> Result<Config, Error> {
-        #[cfg(feature = "serde")]
-        if !self.config_path.as_os_str().is_empty() {
-            return match self.config_mode {
-                #[cfg(feature = "serde")]
-                ConfigMode::Read | ConfigMode::ReadWrite => {
-                    Ok(Format::guess_and_read_path(&self.config_path)?)
+        if let Ok(v) = var("KAS_CONFIG_FAIL_ON_ERROR") {
+            fail_on_error = match v.parse() {
+                Ok(b) => b,
+                _ => {
+                    log::error!("from_env: bad var KAS_CONFIG_FAIL_ON_ERROR={v}");
+                    true
                 }
-                #[cfg(feature = "serde")]
-                ConfigMode::WriteDefault => {
-                    let config: Config = Default::default();
-                    if let Err(error) = Format::guess_and_write_path(&self.config_path, &config) {
-                        warn_about_error("failed to write default config: ", &error);
+            };
+        }
+
+        ReadWriteFactory {
+            path,
+            mode,
+            fail_on_error,
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl ConfigFactory for ReadWriteFactory {
+    fn read_config(&self) -> Result<Rc<RefCell<Config>>, Error> {
+        let config = match self.mode {
+            _ if self.path.as_os_str().is_empty() => Config::default(),
+            ConfigMode::Read | ConfigMode::ReadWrite => {
+                match Format::guess_and_read_path(&self.path) {
+                    Ok(config) => config,
+                    Err(error) => {
+                        warn_about_error("failed to read config", &error);
+                        if self.fail_on_error {
+                            return Err(error);
+                        }
+                        Config::default()
                     }
-                    Ok(config)
                 }
-            };
-        }
+            }
+            ConfigMode::WriteDefault => {
+                let config: Config = Default::default();
+                if let Err(error) = Format::guess_and_write_path(&self.path, &config) {
+                    warn_about_error("failed to write default config: ", &error);
+                }
+                config
+            }
+        };
 
-        Ok(Default::default())
+        Ok(Rc::new(RefCell::new(config)))
     }
 
-    /// Save all config (on exit or after changes)
-    ///
-    /// Requires feature "serde" to save config.
-    pub fn write_config(&self, _config: &Config) -> Result<(), Error> {
-        #[cfg(feature = "serde")]
-        if self.config_mode == ConfigMode::ReadWrite {
-            if !self.config_path.as_os_str().is_empty() && _config.is_dirty() {
-                Format::guess_and_write_path(&self.config_path, &_config)?;
-            }
+    fn writer(self) -> Option<Box<dyn FnMut(&Config)>> {
+        if self.path.as_os_str().is_empty() || self.mode != ConfigMode::ReadWrite {
+            return None;
         }
 
-        Ok(())
+        Some(Box::new(move |config| {
+            if let Err(error) = Format::guess_and_write_path(&self.path, config) {
+                warn_about_error("failed to write config: ", &error);
+            }
+        }))
+    }
+}
+
+/// A selected [`ConfigFactory`] implementation
+///
+/// This is a newtype over an implementation of [`ConfigFactory`], dependent on
+/// feature flags. Currently, this uses:
+///
+/// -   `cfg(feature = "serde")`: [`ReadWriteFactory::from_env()`]
+/// -   Otherwise: [`DefaultFactory::default()`]
+#[cfg(not(feature = "serde"))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct AutoFactory(DefaultFactory);
+
+/// A selected [`ConfigFactory`] implementation
+///
+/// This is a newtype over an implementation of [`ConfigFactory`], dependent on
+/// feature flags. Currently, this uses:
+///
+/// -   `cfg(feature = "serde")`: [`ReadWriteFactory::from_env()`]
+/// -   Otherwise: [`DefaultFactory::default()`]
+#[cfg(feature = "serde")]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct AutoFactory(ReadWriteFactory);
+
+#[cfg(feature = "serde")]
+impl Default for AutoFactory {
+    fn default() -> Self {
+        AutoFactory(ReadWriteFactory::from_env())
+    }
+}
+
+impl ConfigFactory for AutoFactory {
+    #[inline]
+    fn read_config(&self) -> Result<Rc<RefCell<Config>>, Error> {
+        self.0.read_config()
+    }
+
+    #[inline]
+    fn writer(self) -> Option<Box<dyn FnMut(&Config)>> {
+        self.0.writer()
     }
 }

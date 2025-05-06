@@ -6,18 +6,17 @@
 //! [`Runner`] and supporting elements
 
 use super::{AppData, GraphicsBuilder, Platform, ProxyAction, Result, State};
-use crate::config::{Config, ConfigFactory};
+use crate::config::{AutoFactory, Config, ConfigFactory};
 use crate::draw::DrawSharedImpl;
 use crate::theme::{self, Theme};
-use crate::util::warn_about_error;
 use crate::{impl_scope, Window, WindowId, WindowIdFactory};
 use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
 use winit::event_loop::{EventLoop, EventLoopProxy};
 
 pub struct Runner<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
-    options: ConfigFactory,
     config: Rc<RefCell<Config>>,
+    config_writer: Option<Box<dyn FnMut(&Config)>>,
     data: Data,
     graphical: G,
     theme: T,
@@ -28,65 +27,41 @@ pub struct Runner<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
 }
 
 impl_scope! {
-    pub struct Builder<G: GraphicsBuilder, T: Theme<G::Shared>> {
+    pub struct Builder<G: GraphicsBuilder, T: Theme<G::Shared>, C: ConfigFactory> {
         graphical: G,
         theme: T,
-        options: Option<ConfigFactory>,
-        config: Option<Rc<RefCell<Config>>>,
+        config: C,
     }
 
-    impl Self {
+    impl<G: GraphicsBuilder, T: Theme<G::Shared>> Builder<G, T, AutoFactory> {
         /// Construct from a graphics backend and a theme
+        ///
+        /// Configuration uses [`AutoFactory`]. Call [`Self::with_config`] to override.
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
         #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
         pub fn new(graphical: G, theme: T) -> Self {
             Builder {
                 graphical,
                 theme,
-                options: None,
-                config: None,
+                config: AutoFactory::default(),
             }
         }
+    }
 
-        /// Use the specified `options`
-        ///
-        /// If omitted, options are provided by [`Options::from_env`].
+    impl Self {
+        /// Use the specified [`ConfigFactory`]
         #[inline]
-        pub fn with_options(mut self, options: ConfigFactory) -> Self {
-            self.options = Some(options);
-            self
-        }
-
-        /// Use the specified event `config`
-        ///
-        /// This is a wrapper around [`Self::with_config_rc`].
-        ///
-        /// If omitted, config is provided by [`Options::read_config`].
-        #[inline]
-        pub fn with_config(self, config: Config) -> Self {
-            self.with_config_rc(Rc::new(RefCell::new(config)))
-        }
-
-        /// Use the specified event `config`
-        ///
-        /// If omitted, config is provided by [`Options::read_config`].
-        #[inline]
-        pub fn with_config_rc(mut self, config: Rc<RefCell<Config>>) -> Self {
-            self.config = Some(config);
-            self
+        pub fn with_config<CF: ConfigFactory>(self, config: CF) -> Builder<G, T, CF> {
+            Builder {
+                graphical: self.graphical,
+                theme: self.theme,
+                config,
+            }
         }
 
         /// Build with `data`
         pub fn build<Data: AppData>(mut self, data: Data) -> Result<Runner<Data, G, T>> {
-            let options = self.options.unwrap_or_else(ConfigFactory::from_env);
-
-            let config = self.config.unwrap_or_else(|| match options.read_config() {
-                Ok(config) => Rc::new(RefCell::new(config)),
-                Err(error) => {
-                    warn_about_error("kas::app::Builder::build: failed to read config", &error);
-                    Default::default()
-                }
-            });
+            let config = self.config.read_config()?;
             config.borrow_mut().init();
 
             self.theme.init(&config);
@@ -95,8 +70,8 @@ impl_scope! {
             let platform = PlatformWrapper(&el).platform();
 
             Ok(Runner {
-                options,
                 config,
+                config_writer: self.config.writer(),
                 data,
                 graphical: self.graphical,
                 theme: self.theme,
@@ -134,9 +109,7 @@ where
     /// All user interfaces are expected to provide `data: Data`: widget data
     /// shared across all windows. If not required this may be `()`.
     ///
-    /// Environment variables may affect option selection; see documentation
-    /// of [`Options::from_env`]. KAS config is provided by
-    /// [`Options::read_config`].
+    /// Configuration is supplied by [`AutoFactory`].
     #[inline]
     pub fn new(data: Data) -> Result<Self> {
         Self::with_default_theme().build(data)
@@ -144,7 +117,7 @@ where
 
     /// Construct a builder with the default theme
     #[inline]
-    pub fn with_default_theme() -> Builder<G, G::DefaultTheme> {
+    pub fn with_default_theme() -> Builder<G, G::DefaultTheme, AutoFactory> {
         Builder::new(G::default(), G::DefaultTheme::default())
     }
 }
@@ -156,7 +129,7 @@ where
 {
     /// Construct a builder with the given `theme`
     #[inline]
-    pub fn with_theme(theme: T) -> Builder<G, T> {
+    pub fn with_theme(theme: T) -> Builder<G, T, AutoFactory> {
         Builder::new(G::default(), theme)
     }
 }
@@ -225,8 +198,8 @@ where
             pw,
             self.graphical,
             self.theme,
-            self.options,
             self.config,
+            self.config_writer,
             self.window_id_factory,
         )?;
 

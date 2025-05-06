@@ -121,13 +121,16 @@ impl<CB: CustomPipeBuilder> Builder<CB> {
 
     /// Convert to a [`runner::Builder`] using the default theme
     #[inline]
-    pub fn with_default_theme(self) -> runner::Builder<Self, FlatTheme> {
+    pub fn with_default_theme(self) -> runner::Builder<Self, FlatTheme, kas::config::AutoFactory> {
         runner::Builder::new(self, FlatTheme::new())
     }
 
     /// Convert to a [`runner::Builder`] using the specified `theme`
     #[inline]
-    pub fn with_theme<T: Theme<DrawPipe<CB::Pipe>>>(self, theme: T) -> runner::Builder<Self, T> {
+    pub fn with_theme<T>(self, theme: T) -> runner::Builder<Self, T, kas::config::AutoFactory>
+    where
+        T: Theme<DrawPipe<CB::Pipe>>,
+    {
         runner::Builder::new(self, theme)
     }
 }
