@@ -30,23 +30,23 @@ pub enum ConfigMode {
 
 /// Application configuration options
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Options {
+pub struct ConfigFactory {
     /// Config file path. Default: empty. See `KAS_CONFIG` doc.
     pub config_path: PathBuf,
     /// Config mode. Default: Read.
     pub config_mode: ConfigMode,
 }
 
-impl Default for Options {
+impl Default for ConfigFactory {
     fn default() -> Self {
-        Options {
+        ConfigFactory {
             config_path: PathBuf::new(),
             config_mode: ConfigMode::Read,
         }
     }
 }
 
-impl Options {
+impl ConfigFactory {
     /// Construct a new instance, reading from environment variables
     ///
     /// The following environment variables are read, in case-insensitive mode.
@@ -72,7 +72,7 @@ impl Options {
     /// Note: in the future, the default will likely change to a read-write mode,
     /// allowing changes to be written out.
     pub fn from_env() -> Self {
-        let mut options = Options::default();
+        let mut options = ConfigFactory::default();
 
         if let Ok(v) = var("KAS_CONFIG") {
             options.config_path = v.into();

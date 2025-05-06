@@ -6,7 +6,7 @@
 //! [`Runner`] and supporting elements
 
 use super::{AppData, GraphicsBuilder, Platform, ProxyAction, Result, State};
-use crate::config::{Config, Options};
+use crate::config::{Config, ConfigFactory};
 use crate::draw::DrawSharedImpl;
 use crate::theme::{self, Theme};
 use crate::util::warn_about_error;
@@ -16,7 +16,7 @@ use std::rc::Rc;
 use winit::event_loop::{EventLoop, EventLoopProxy};
 
 pub struct Runner<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
-    options: Options,
+    options: ConfigFactory,
     config: Rc<RefCell<Config>>,
     data: Data,
     graphical: G,
@@ -31,7 +31,7 @@ impl_scope! {
     pub struct Builder<G: GraphicsBuilder, T: Theme<G::Shared>> {
         graphical: G,
         theme: T,
-        options: Option<Options>,
+        options: Option<ConfigFactory>,
         config: Option<Rc<RefCell<Config>>>,
     }
 
@@ -52,7 +52,7 @@ impl_scope! {
         ///
         /// If omitted, options are provided by [`Options::from_env`].
         #[inline]
-        pub fn with_options(mut self, options: Options) -> Self {
+        pub fn with_options(mut self, options: ConfigFactory) -> Self {
             self.options = Some(options);
             self
         }
@@ -78,7 +78,7 @@ impl_scope! {
 
         /// Build with `data`
         pub fn build<Data: AppData>(mut self, data: Data) -> Result<Runner<Data, G, T>> {
-            let options = self.options.unwrap_or_else(Options::from_env);
+            let options = self.options.unwrap_or_else(ConfigFactory::from_env);
 
             let config = self.config.unwrap_or_else(|| match options.read_config() {
                 Ok(config) => Rc::new(RefCell::new(config)),

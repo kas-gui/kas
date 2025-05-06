@@ -6,7 +6,7 @@
 //! Shared state
 
 use super::{AppData, Error, GraphicsBuilder, Pending, Platform};
-use crate::config::{Config, Options};
+use crate::config::{Config, ConfigFactory};
 use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::theme::Theme;
 use crate::util::warn_about_error;
@@ -39,7 +39,7 @@ pub(super) struct State<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> 
     pub(super) shared: SharedState<Data, G, T>,
     pub(super) data: Data,
     /// Estimated scale factor (from last window constructed or available screens)
-    options: Options,
+    options: ConfigFactory,
 }
 
 impl<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> State<Data, G, T>
@@ -52,7 +52,7 @@ where
         pw: super::PlatformWrapper,
         mut graphical: G,
         theme: T,
-        options: Options,
+        options: ConfigFactory,
         config: Rc<RefCell<Config>>,
         window_id_factory: WindowIdFactory,
     ) -> Result<Self, Error> {
