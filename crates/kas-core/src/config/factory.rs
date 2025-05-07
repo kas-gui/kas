@@ -7,7 +7,8 @@
 
 #[cfg(feature = "serde")] use super::Format;
 use super::{Config, Error};
-#[cfg(feature = "serde")] use crate::util::warn_about_error;
+#[cfg(feature = "serde")]
+use crate::util::warn_about_error_with_path;
 use std::cell::RefCell;
 #[cfg(feature = "serde")] use std::path::PathBuf;
 use std::rc::Rc;
@@ -18,7 +19,7 @@ pub trait ConfigFactory {
     ///
     /// Returning an [`Error`] here will prevent startup of the UI. As such,
     /// it may be preferable to return [`Config::default()`] than to fail.
-    fn read_config(&self) -> Result<Rc<RefCell<Config>>, Error>;
+    fn read_config(&mut self) -> Result<Rc<RefCell<Config>>, Error>;
 
     /// Return optional config-writing fn
     fn writer(self) -> Option<Box<dyn FnMut(&Config)>>;
@@ -29,7 +30,7 @@ pub trait ConfigFactory {
 pub struct DefaultFactory;
 
 impl ConfigFactory for DefaultFactory {
-    fn read_config(&self) -> Result<Rc<RefCell<Config>>, Error> {
+    fn read_config(&mut self) -> Result<Rc<RefCell<Config>>, Error> {
         Ok(Rc::new(RefCell::new(Config::default())))
     }
 
@@ -44,6 +45,8 @@ impl ConfigFactory for DefaultFactory {
 #[cfg(feature = "serde")]
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ConfigMode {
+    /// Automatically determine mode based on the path
+    Auto,
     /// Read-only mode
     Read,
     /// Read-write mode
@@ -52,7 +55,7 @@ pub enum ConfigMode {
     ReadWrite,
     /// Use default config and write out
     ///
-    /// This mode only writes initial (default) config and does not update.
+    /// This mode only writes initial (default) config and any writes changes on exit.
     WriteDefault,
 }
 
@@ -102,13 +105,12 @@ impl ReadWriteFactory {
     ///
     /// The `KAS_CONFIG_MODE` variable determines the read/write mode:
     ///
-    /// -   `Read` (default): read-only
+    /// -   `Read`: read-only
     /// -   `ReadWrite`: read on start-up, write on exit
     /// -   `WriteDefault`: generate platform-default configuration and write
     ///     it to the config path(s) specified, overwriting any existing config
-    ///
-    /// Note: in the future, the default will likely change to a read-write mode,
-    /// allowing changes to be written out.
+    /// -   If not specified the mode is automatically determined depending on
+    ///     what `path` resolves to.
     ///
     /// If `KAS_CONFIG_FAIL_ON_ERROR` is true, config read errors are fatal.
     /// Otherwise default configuration will be used on read error.
@@ -116,7 +118,7 @@ impl ReadWriteFactory {
         use std::env::var;
 
         let mut path = PathBuf::new();
-        let mut mode = ConfigMode::Read;
+        let mut mode = ConfigMode::Auto;
         let mut fail_on_error = false;
 
         if let Ok(v) = var("KAS_CONFIG") {
@@ -157,41 +159,59 @@ impl ReadWriteFactory {
 
 #[cfg(feature = "serde")]
 impl ConfigFactory for ReadWriteFactory {
-    fn read_config(&self) -> Result<Rc<RefCell<Config>>, Error> {
+    fn read_config(&mut self) -> Result<Rc<RefCell<Config>>, Error> {
         let config = match self.mode {
             _ if self.path.as_os_str().is_empty() => Config::default(),
-            ConfigMode::Read | ConfigMode::ReadWrite => {
+            ConfigMode::Auto | ConfigMode::Read | ConfigMode::ReadWrite => {
                 match Format::guess_and_read_path(&self.path) {
-                    Ok(config) => config,
+                    Ok(config) => {
+                        self.mode = match std::fs::metadata(&self.path) {
+                            Ok(meta) if meta.is_file() && !meta.permissions().readonly() => {
+                                ConfigMode::ReadWrite
+                            }
+                            _ => ConfigMode::Read,
+                        };
+
+                        config
+                    }
                     Err(error) => {
-                        warn_about_error("failed to read config", &error);
-                        if self.fail_on_error {
-                            return Err(error);
+                        if matches!(&error, Error::IoError(e) if e.kind() == std::io::ErrorKind::NotFound)
+                        {
+                            self.mode = ConfigMode::WriteDefault;
+                        } else {
+                            warn_about_error_with_path("failed to read config", &error, &self.path);
+                            if self.fail_on_error {
+                                return Err(error);
+                            }
                         }
                         Config::default()
                     }
                 }
             }
-            ConfigMode::WriteDefault => {
-                let config: Config = Default::default();
-                if let Err(error) = Format::guess_and_write_path(&self.path, &config) {
-                    warn_about_error("failed to write default config: ", &error);
-                }
-                config
-            }
+            ConfigMode::WriteDefault => Default::default(),
         };
+
+        if self.mode == ConfigMode::WriteDefault {
+            if let Err(error) = Format::guess_and_write_path(&self.path, &config) {
+                self.mode = ConfigMode::Read;
+                warn_about_error_with_path("failed to write default config: ", &error, &self.path);
+            }
+        }
 
         Ok(Rc::new(RefCell::new(config)))
     }
 
     fn writer(self) -> Option<Box<dyn FnMut(&Config)>> {
-        if self.path.as_os_str().is_empty() || self.mode != ConfigMode::ReadWrite {
+        if self.path.as_os_str().is_empty()
+            || matches!(self.mode, ConfigMode::Read | ConfigMode::ReadWrite)
+        {
             return None;
         }
 
+        let path = self.path;
         Some(Box::new(move |config| {
-            if let Err(error) = Format::guess_and_write_path(&self.path, config) {
-                warn_about_error("failed to write config: ", &error);
+            if let Err(error) = Format::guess_and_write_path(&path, config) {
+                warn_about_error_with_path("failed to write config: ", &error, &path);
             }
         }))
     }
@@ -228,7 +248,7 @@ impl Default for AutoFactory {
 
 impl ConfigFactory for AutoFactory {
     #[inline]
-    fn read_config(&self) -> Result<Rc<RefCell<Config>>, Error> {
+    fn read_config(&mut self) -> Result<Rc<RefCell<Config>>, Error> {
         self.0.read_config()
     }
 
