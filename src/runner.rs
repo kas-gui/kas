@@ -34,7 +34,7 @@ use std::cell::{Ref, RefMut};
 pub struct Runner<
     Data: AppData,
     T: Theme<G::Shared> = FlatTheme,
-    G: GraphicsBuilder = kas_wgpu::Builder<()>,
+    G: GraphicsInstance = kas_wgpu::Instance<()>,
 > {
     data: Data,
     graphical: G,
@@ -44,9 +44,11 @@ pub struct Runner<
 }
 
 impl_scope! {
+    /// Builder for a [`Runner`]
+    #[derive(Default)]
     pub struct Builder<T = FlatTheme, G = kas_wgpu::Builder<()>, C = AutoFactory>
     where
-        T: Theme<G::Shared>,
+        T: Theme<<G::Instance as GraphicsInstance>::Shared> + 'static,
         G: GraphicsBuilder,
         C: ConfigFactory,
     {
@@ -98,14 +100,14 @@ impl_scope! {
         }
 
         /// Build with `data`
-        pub fn build<Data: AppData>(mut self, data: Data) -> Result<Runner<Data, T, G>> {
+        pub fn build<Data: AppData>(mut self, data: Data) -> Result<Runner<Data, T, G::Instance>> {
             let state = PreLaunchState::new(self.config)?;
 
             self.theme.init(state.config());
 
             Ok(Runner {
                 data,
-                graphical: self.graphical,
+                graphical: self.graphical.build()?,
                 theme: self.theme,
                 state,
                 windows: vec![],
@@ -122,7 +124,7 @@ pub trait RunnerInherent {
     type DrawShared: DrawSharedImpl;
 }
 
-impl<A: AppData, G: GraphicsBuilder, T> RunnerInherent for Runner<A, T, G>
+impl<A: AppData, G: GraphicsInstance, T> RunnerInherent for Runner<A, T, G>
 where
     T: Theme<G::Shared> + 'static,
 {
@@ -156,7 +158,7 @@ impl<T: Theme<kas_wgpu::draw::DrawPipe<()>>> Runner<(), T> {
     }
 }
 
-impl<Data: AppData, G: GraphicsBuilder, T> Runner<Data, T, G>
+impl<Data: AppData, G: GraphicsInstance, T> Runner<Data, T, G>
 where
     T: Theme<G::Shared> + 'static,
 {

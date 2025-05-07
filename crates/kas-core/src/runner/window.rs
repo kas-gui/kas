@@ -7,7 +7,7 @@
 
 use super::common::WindowSurface;
 use super::shared::State;
-use super::{AppData, GraphicsBuilder, Platform};
+use super::{AppData, GraphicsInstance, Platform};
 use crate::cast::{Cast, Conv};
 use crate::config::{Config, WindowConfig};
 use crate::decorations::Decorations;
@@ -30,7 +30,7 @@ use winit::window::WindowAttributes;
 
 /// Window fields requiring a frame or surface
 #[crate::autoimpl(Deref, DerefMut using self.window)]
-struct WindowData<G: GraphicsBuilder, T: Theme<G::Shared>> {
+struct WindowData<G: GraphicsInstance, T: Theme<G::Shared>> {
     window: Arc<winit::window::Window>,
     #[cfg(all(wayland_platform, feature = "clipboard"))]
     wayland_clipboard: Option<smithay_clipboard::Clipboard>,
@@ -49,7 +49,7 @@ struct WindowData<G: GraphicsBuilder, T: Theme<G::Shared>> {
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 #[autoimpl(Debug ignore self._data, self.widget, self.ev_state, self.window)]
-pub struct Window<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
+pub struct Window<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
     _data: std::marker::PhantomData<A>,
     pub(super) widget: kas::Window<A>,
     ev_state: EventState,
@@ -57,7 +57,7 @@ pub struct Window<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
 }
 
 // Public functions, for use by the toolkit
-impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
+impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     /// Construct window state (widget)
     pub fn new(
         config: Rc<RefCell<Config>>,
@@ -181,8 +181,9 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
 
         // NOTE: usage of Arc is inelegant, but avoids lots of unsafe code
         let window = Arc::new(window);
-        let mut surface =
-            G::new_surface(&state.instance, window.clone(), self.widget.transparent())?;
+        let mut surface = state
+            .instance
+            .new_surface(window.clone(), self.widget.transparent())?;
         surface.configure(&mut state.shared.draw.draw, size);
 
         let winit_id = window.id();
@@ -416,7 +417,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
 }
 
 // Internal functions
-impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
+impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     fn reconfigure(&mut self, state: &State<A, G, T>) {
         let time = Instant::now();
         let Some(ref mut window) = self.window else {
@@ -582,7 +583,7 @@ pub(crate) trait WindowDataErased {
     fn winit_window(&self) -> Option<&winit::window::Window>;
 }
 
-impl<G: GraphicsBuilder, T: Theme<G::Shared>> WindowDataErased for WindowData<G, T> {
+impl<G: GraphicsInstance, T: Theme<G::Shared>> WindowDataErased for WindowData<G, T> {
     fn window_id(&self) -> WindowId {
         self.window_id
     }

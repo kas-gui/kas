@@ -5,7 +5,7 @@
 
 //! Event loop and handling
 
-use super::{AppData, GraphicsBuilder, Pending, State};
+use super::{AppData, GraphicsInstance, Pending, State};
 use super::{ProxyAction, Window};
 use crate::theme::Theme;
 use crate::{Action, WindowId};
@@ -17,7 +17,7 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow};
 use winit::window as ww;
 
 /// Event-loop data structure (i.e. all run-time state)
-pub(super) struct Loop<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>>
+pub(super) struct Loop<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>>
 where
     T::Window: kas::theme::Window,
 {
@@ -36,7 +36,7 @@ where
 
 impl<A: AppData, G, T> ApplicationHandler<ProxyAction> for Loop<A, G, T>
 where
-    G: GraphicsBuilder,
+    G: GraphicsInstance,
     T: Theme<G::Shared>,
     T::Window: kas::theme::Window,
 {
@@ -146,7 +146,7 @@ where
     }
 }
 
-impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Loop<A, G, T>
+impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Loop<A, G, T>
 where
     T::Window: kas::theme::Window,
 {

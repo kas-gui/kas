@@ -5,7 +5,7 @@
 
 //! [`Runner`] and supporting elements
 
-use super::{AppData, GraphicsBuilder, Platform, ProxyAction, Result, State};
+use super::{AppData, GraphicsInstance, Platform, ProxyAction, Result, State};
 use crate::config::{Config, ConfigFactory};
 use crate::theme::Theme;
 use crate::{WindowId, WindowIdFactory};
@@ -69,7 +69,7 @@ impl PreLaunchState {
     }
 
     /// Run the main loop
-    pub fn run<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>>(
+    pub fn run<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>>(
         self,
         data: Data,
         graphical: G,

@@ -175,26 +175,30 @@ impl Platform {
 pub trait GraphicsBuilder {
     /// Instance
     ///
-    /// Context for all graphics objects.
-    type Instance;
+    /// Context for all graphics objects. This object is created before any
+    /// windows.
+    type Instance: GraphicsInstance;
 
-    /// Shared draw state
+    /// Construct an instance
+    fn build(self) -> Result<Self::Instance>;
+}
+
+/// Context for a graphics backend
+pub trait GraphicsInstance {
+    /// Draw state shared by all windows
     type Shared: DrawSharedImpl;
 
     /// Window surface
     type Surface<'a>: WindowSurface<Shared = Self::Shared>;
 
-    /// Construct a new instance
-    fn new_instance(&mut self) -> Self::Instance;
-
     /// Construct shared state
-    fn build(self, instance: &Self::Instance) -> Result<Self::Shared>;
+    fn new_shared(&mut self) -> Result<Self::Shared>;
 
     /// Construct a window surface
     ///
     /// It is required to call [`WindowSurface::configure`] after this.
     fn new_surface<'window, W>(
-        instance: &Self::Instance,
+        &mut self,
         window: W,
         transparent: bool,
     ) -> Result<Self::Surface<'window>>

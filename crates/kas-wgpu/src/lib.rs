@@ -27,7 +27,7 @@ mod shaded_theme;
 mod surface;
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
-use kas::runner;
+use kas::runner::{self, Result};
 use wgpu::rwh;
 
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
@@ -40,47 +40,6 @@ pub struct Builder<CB: CustomPipeBuilder> {
     custom: CB,
     options: Options,
     read_env_vars: bool,
-}
-
-impl<CB: CustomPipeBuilder> runner::GraphicsBuilder for Builder<CB> {
-    type Instance = wgpu::Instance;
-
-    type Shared = DrawPipe<CB::Pipe>;
-
-    type Surface<'a> = surface::Surface<'a, CB::Pipe>;
-
-    fn new_instance(&mut self) -> Self::Instance {
-        if self.read_env_vars {
-            self.options.load_from_env();
-        }
-
-        wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends: self.options.backend(),
-            ..Default::default()
-        })
-    }
-
-    fn build(self, instance: &Self::Instance) -> runner::Result<Self::Shared> {
-        DrawPipe::new(instance, self.custom, &self.options)
-    }
-
-    fn new_surface<'window, W>(
-        instance: &Self::Instance,
-        window: W,
-        transparent: bool,
-    ) -> runner::Result<Self::Surface<'window>>
-    where
-        W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
-        Self: Sized,
-    {
-        surface::Surface::new(instance, window, transparent)
-    }
-}
-
-impl Default for Builder<()> {
-    fn default() -> Self {
-        Builder::new(())
-    }
 }
 
 impl<CB: CustomPipeBuilder> Builder<CB> {
@@ -114,5 +73,65 @@ impl<CB: CustomPipeBuilder> Builder<CB> {
     pub fn read_env_vars(mut self, read_env_vars: bool) -> Self {
         self.read_env_vars = read_env_vars;
         self
+    }
+}
+
+impl<CB: CustomPipeBuilder> runner::GraphicsBuilder for Builder<CB> {
+    type Instance = Instance<CB>;
+
+    fn build(mut self) -> Result<Instance<CB>> {
+        if self.read_env_vars {
+            self.options.load_from_env();
+        }
+
+        Ok(Instance::new(self.options, self.custom))
+    }
+}
+
+/// Graphics context
+pub struct Instance<CB: CustomPipeBuilder> {
+    options: Options,
+    instance: wgpu::Instance,
+    custom: CB,
+}
+
+impl<CB: CustomPipeBuilder> Instance<CB> {
+    /// Construct a new `Instance`
+    ///
+    /// [`Options`] are typically default-constructed then
+    /// [loaded from enviroment variables](Options::load_from_env).
+    pub fn new(options: Options, custom: CB) -> Self {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends: options.backend(),
+            ..Default::default()
+        });
+
+        Instance {
+            options,
+            instance,
+            custom,
+        }
+    }
+}
+
+impl<CB: CustomPipeBuilder> runner::GraphicsInstance for Instance<CB> {
+    type Shared = DrawPipe<CB::Pipe>;
+
+    type Surface<'a> = surface::Surface<'a, CB::Pipe>;
+
+    fn new_shared(&mut self) -> Result<Self::Shared> {
+        DrawPipe::new(&self.instance, &mut self.custom, &self.options)
+    }
+
+    fn new_surface<'window, W>(
+        &mut self,
+        window: W,
+        transparent: bool,
+    ) -> Result<Self::Surface<'window>>
+    where
+        W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
+        Self: Sized,
+    {
+        surface::Surface::new(&self.instance, window, transparent)
     }
 }

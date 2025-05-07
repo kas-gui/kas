@@ -5,7 +5,7 @@
 
 //! Shared state
 
-use super::{AppData, Error, GraphicsBuilder, Pending, Platform};
+use super::{AppData, Error, GraphicsInstance, Pending, Platform};
 use crate::config::Config;
 use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::theme::Theme;
@@ -21,7 +21,7 @@ use std::task::Waker;
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
 /// Runner state used by [`RunnerT`]
-pub(super) struct SharedState<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
+pub(super) struct SharedState<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
     pub(super) platform: Platform,
     pub(super) config: Rc<RefCell<Config>>,
     #[cfg(feature = "clipboard")]
@@ -34,14 +34,14 @@ pub(super) struct SharedState<Data: AppData, G: GraphicsBuilder, T: Theme<G::Sha
 }
 
 /// Runner state shared by all windows
-pub(super) struct State<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
-    pub(super) instance: G::Instance,
+pub(super) struct State<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
+    pub(super) instance: G,
     pub(super) shared: SharedState<Data, G, T>,
     pub(super) data: Data,
     config_writer: Option<Box<dyn FnMut(&Config)>>,
 }
 
-impl<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> State<Data, G, T>
+impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> State<Data, G, T>
 where
     T::Window: kas::theme::Window,
 {
@@ -49,16 +49,14 @@ where
     pub(super) fn new(
         platform: Platform,
         data: Data,
-        mut graphical: G,
+        mut instance: G,
         theme: T,
         config: Rc<RefCell<Config>>,
         config_writer: Option<Box<dyn FnMut(&Config)>>,
         waker: Waker,
         window_id_factory: WindowIdFactory,
     ) -> Result<Self, Error> {
-        let instance = graphical.new_instance();
-
-        let mut draw_shared = graphical.build(&instance)?;
+        let mut draw_shared = instance.new_shared()?;
         draw_shared.set_raster_config(config.borrow().font.raster());
         let draw = kas::draw::SharedState::new(draw_shared);
 
@@ -192,7 +190,7 @@ pub(crate) trait RunnerT {
     fn waker(&self) -> &std::task::Waker;
 }
 
-impl<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> RunnerT for SharedState<Data, G, T> {
+impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for SharedState<Data, G, T> {
     fn add_popup(&mut self, parent_id: WindowId, popup: kas::PopupDescriptor) -> WindowId {
         let id = self.window_id_factory.make_next();
         self.pending

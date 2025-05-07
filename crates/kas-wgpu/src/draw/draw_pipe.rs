@@ -24,7 +24,7 @@ impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
     pub fn new<CB: CustomPipeBuilder<Pipe = C>>(
         instance: &wgpu::Instance,
-        mut custom: CB,
+        custom: &mut CB,
         options: &Options,
     ) -> Result<Self, Error> {
         let adapter_options = options.adapter_options();
