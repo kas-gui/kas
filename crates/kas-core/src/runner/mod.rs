@@ -14,7 +14,6 @@ mod common;
 use crate::messages::MessageStack;
 #[cfg(winit)] use crate::WindowId;
 #[cfg(winit)] use event_loop::Loop;
-#[cfg(winit)] use runner::PlatformWrapper;
 #[cfg(winit)] pub(crate) use shared::RunnerT;
 #[cfg(winit)] use shared::State;
 #[cfg(winit)]

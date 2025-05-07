@@ -47,12 +47,13 @@ where
 {
     /// Construct
     pub(super) fn new(
+        platform: Platform,
         data: Data,
-        pw: super::PlatformWrapper,
         mut graphical: G,
         theme: T,
         config: Rc<RefCell<Config>>,
         config_writer: Option<Box<dyn FnMut(&Config)>>,
+        waker: Waker,
         window_id_factory: WindowIdFactory,
     ) -> Result<Self, Error> {
         let instance = graphical.new_instance();
@@ -73,14 +74,14 @@ where
         Ok(State {
             instance,
             shared: SharedState {
-                platform: pw.platform(),
+                platform,
                 config,
                 #[cfg(feature = "clipboard")]
                 clipboard,
                 draw,
                 theme,
                 pending: Default::default(),
-                waker: pw.create_waker(),
+                waker,
                 window_id_factory,
             },
             data,
