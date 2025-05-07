@@ -8,7 +8,7 @@
 use super::{AppData, GraphicsBuilder, Platform, ProxyAction, Result, State};
 use crate::config::{AutoFactory, Config, ConfigFactory};
 use crate::draw::DrawSharedImpl;
-use crate::theme::{self, Theme};
+use crate::theme::Theme;
 use crate::{impl_scope, Window, WindowId, WindowIdFactory};
 use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
@@ -95,7 +95,6 @@ pub trait RunnerInherent {
 impl<A: AppData, G: GraphicsBuilder, T> RunnerInherent for Runner<A, G, T>
 where
     T: Theme<G::Shared> + 'static,
-    T::Window: theme::Window,
 {
     type DrawShared = G::Shared;
 }
@@ -137,7 +136,6 @@ where
 impl<Data: AppData, G: GraphicsBuilder, T> Runner<Data, G, T>
 where
     T: Theme<G::Shared> + 'static,
-    T::Window: theme::Window,
 {
     /// Access config
     #[inline]
