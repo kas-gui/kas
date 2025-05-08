@@ -12,7 +12,7 @@ use crate::cast::{Cast, Conv};
 use crate::config::{Config, WindowConfig};
 use crate::decorations::Decorations;
 use crate::draw::PassType;
-use crate::draw::{color::Rgba, AnimationState, DrawSharedImpl};
+use crate::draw::{color::Rgba, AnimationState};
 use crate::event::{ConfigCx, CursorIcon, EventState};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::SolveCache;
@@ -103,7 +103,10 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         // Opening a zero-size window causes a crash, so force at least 1x1:
         let min_size = Size(1, 1);
-        let max_size = Size::splat(state.shared.draw.draw.max_texture_dimension_2d().cast());
+        let mut max_size = Size::splat(512);
+        for monitor in el.available_monitors() {
+            max_size = max_size.max(monitor.size().cast());
+        }
 
         let ideal = solve_cache
             .ideal(true)
