@@ -9,6 +9,7 @@
 //! type-def (requires a backend be enabled, e.g. "wgpu").
 
 pub use kas_core::runner::*;
+use kas_core::theme::FlatTheme;
 
 use crate::config::{AutoFactory, Config, ConfigFactory};
 use crate::draw::DrawSharedImpl;
@@ -20,15 +21,21 @@ use std::cell::{Ref, RefMut};
 ///
 /// Suggested construction patterns:
 ///
-/// -   <code>kas::runner::[Default](type@Default)::[new](Runner::new)(data)?</code>
-/// -   <code>kas::runner::[Default](type@Default)::[with_theme](Runner::with_theme)(theme).[build](Builder::build)(data)?</code>
+/// -   <code>kas::runner::[Runner](type@Runner)::[new](Runner::new)(data)?</code>
+/// -   <code>kas::runner::[Runner](type@Runner)::[with_theme](Runner::with_theme)(theme).[build](Builder::build)(data)?</code>
+/// -   <code>kas::runner::[Builder](type@Builder)::[new](Builder::new)(theme).[build](Builder::build)(data)?</code>
+/// -   <code>kas::runner::[Builder](type@Builder)::[with_wgpu_pipe](Builder::with_wgpu_pipe)(custom_wgpu_pipe, theme).[build](Builder::build)(data)?</code>
 ///
 /// Where:
 ///
 /// -   `data` is `()` or some object implementing [`AppData`]
 /// -   `theme` is some object implementing [`Theme`]
 /// -   `custom_wgpu_pipe` is a custom WGPU graphics pipeline
-pub struct Runner<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
+pub struct Runner<
+    Data: AppData,
+    T: Theme<G::Shared> = FlatTheme,
+    G: GraphicsBuilder = kas_wgpu::Builder<()>,
+> {
     data: Data,
     graphical: G,
     state: PreLaunchState,
@@ -37,21 +44,42 @@ pub struct Runner<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
 }
 
 impl_scope! {
-    pub struct Builder<G: GraphicsBuilder, T: Theme<G::Shared>, C: ConfigFactory> {
+    pub struct Builder<T = FlatTheme, G = kas_wgpu::Builder<()>, C = AutoFactory>
+    where
+        T: Theme<G::Shared>,
+        G: GraphicsBuilder,
+        C: ConfigFactory,
+    {
         graphical: G,
         theme: T,
         config: C,
     }
 
-    impl<G: GraphicsBuilder, T: Theme<G::Shared>> Builder<G, T, AutoFactory> {
-        /// Construct from a graphics backend and a theme
+    impl<T: Theme<kas_wgpu::draw::DrawPipe<()>>> Builder<T> {
+        /// Construct a WGPU runner with a given `theme`
         ///
         /// Configuration uses [`AutoFactory`]. Call [`Self::with_config`] to override.
-        #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-        #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-        pub fn new(graphical: G, theme: T) -> Self {
+        pub fn new(theme: T) -> Self {
             Builder {
-                graphical,
+                graphical: kas_wgpu::Builder::new(()),
+                theme,
+                config: AutoFactory::default(),
+            }
+        }
+    }
+
+    impl<CB: kas_wgpu::draw::CustomPipeBuilder, T: Theme<kas_wgpu::draw::DrawPipe<CB::Pipe>>>
+        Builder<T, kas_wgpu::Builder<CB>>
+    {
+        /// Construct a WGPU runner with a custom pipe builder `cb` and `theme`
+        ///
+        /// Use `cb = ()` when not using a custom pipe.
+        ///
+        /// Configuration uses [`AutoFactory`]. Call [`Self::with_config`] to override.
+        #[cfg(feature = "wgpu")]
+        pub fn with_wgpu_pipe(cb: CB, theme: T) -> Self {
+            Builder {
+                graphical: kas_wgpu::Builder::new(cb),
                 theme,
                 config: AutoFactory::default(),
             }
@@ -61,7 +89,7 @@ impl_scope! {
     impl Self {
         /// Use the specified [`ConfigFactory`]
         #[inline]
-        pub fn with_config<CF: ConfigFactory>(self, config: CF) -> Builder<G, T, CF> {
+        pub fn with_config<CF: ConfigFactory>(self, config: CF) -> Builder<T, G, CF> {
             Builder {
                 graphical: self.graphical,
                 theme: self.theme,
@@ -70,7 +98,7 @@ impl_scope! {
         }
 
         /// Build with `data`
-        pub fn build<Data: AppData>(mut self, data: Data) -> Result<Runner<Data, G, T>> {
+        pub fn build<Data: AppData>(mut self, data: Data) -> Result<Runner<Data, T, G>> {
             let state = PreLaunchState::new(self.config)?;
 
             self.theme.init(state.config());
@@ -94,17 +122,14 @@ pub trait RunnerInherent {
     type DrawShared: DrawSharedImpl;
 }
 
-impl<A: AppData, G: GraphicsBuilder, T> RunnerInherent for Runner<A, G, T>
+impl<A: AppData, G: GraphicsBuilder, T> RunnerInherent for Runner<A, T, G>
 where
     T: Theme<G::Shared> + 'static,
 {
     type DrawShared = G::Shared;
 }
 
-impl<Data: AppData, G> Runner<Data, G, G::DefaultTheme>
-where
-    G: GraphicsBuilder + std::default::Default,
-{
+impl<Data: AppData> Runner<Data> {
     /// Construct a new instance with default options and theme
     ///
     /// All user interfaces are expected to provide `data: Data`: widget data
@@ -118,24 +143,20 @@ where
 
     /// Construct a builder with the default theme
     #[inline]
-    pub fn with_default_theme() -> Builder<G, G::DefaultTheme, AutoFactory> {
-        Builder::new(G::default(), G::DefaultTheme::default())
+    pub fn with_default_theme() -> Builder {
+        Builder::new(FlatTheme::default())
     }
 }
 
-impl<G, T> Runner<(), G, T>
-where
-    G: GraphicsBuilder + std::default::Default,
-    T: Theme<G::Shared>,
-{
+impl<T: Theme<kas_wgpu::draw::DrawPipe<()>>> Runner<(), T> {
     /// Construct a builder with the given `theme`
     #[inline]
-    pub fn with_theme(theme: T) -> Builder<G, T, AutoFactory> {
-        Builder::new(G::default(), theme)
+    pub fn with_theme(theme: T) -> Builder<T> {
+        Builder::new(theme)
     }
 }
 
-impl<Data: AppData, G: GraphicsBuilder, T> Runner<Data, G, T>
+impl<Data: AppData, G: GraphicsBuilder, T> Runner<Data, T, G>
 where
     T: Theme<G::Shared> + 'static,
 {
@@ -196,7 +217,3 @@ where
             .run(self.data, self.graphical, self.theme, self.windows)
     }
 }
-
-/// Runner pre-launch state, configured with the default graphics backend
-#[cfg(feature = "wgpu")]
-pub type Default<Data, T = crate::theme::FlatTheme> = Runner<Data, kas_wgpu::Builder<()>, T>;

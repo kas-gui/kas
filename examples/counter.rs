@@ -29,7 +29,7 @@ fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
     let theme = kas::theme::SimpleTheme::new();
-    let mut app = kas::runner::Default::with_theme(theme).build(())?;
+    let mut app = kas::runner::Runner::with_theme(theme).build(())?;
     let _ = app.config_mut().font.set_size(24.0);
     app.with(Window::new(counter(), "Counter")).run()
 }

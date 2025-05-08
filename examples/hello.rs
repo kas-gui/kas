@@ -10,5 +10,5 @@ use kas::widgets::dialog::MessageBox;
 fn main() -> kas::runner::Result<()> {
     let window = MessageBox::new("Message").into_window("Hello world");
 
-    kas::runner::Default::new(())?.with(window).run()
+    kas::runner::Runner::new(())?.with(window).run()
 }

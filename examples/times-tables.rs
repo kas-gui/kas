@@ -110,7 +110,7 @@ fn main() -> kas::runner::Result<()> {
     let window = Window::new(ui, "Times-Tables");
 
     let theme = kas::theme::SimpleTheme::new();
-    kas::runner::Default::with_theme(theme)
+    kas::runner::Runner::with_theme(theme)
         .build(())?
         .with(window)
         .run()

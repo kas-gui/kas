@@ -25,7 +25,7 @@ use kas::prelude::*;
 use kas::runner::RunnerInherent;
 use kas::text::Text;
 
-type Runner = kas::runner::Default<(), kas::theme::SimpleTheme>;
+type Runner = kas::runner::Runner<(), kas::theme::SimpleTheme>;
 
 const TIMER: TimerHandle = TimerHandle::new(0, true);
 

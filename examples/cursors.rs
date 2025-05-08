@@ -82,5 +82,5 @@ fn main() -> kas::runner::Result<()> {
     ]);
 
     let window = Window::new(column, "Cursor gallery");
-    kas::runner::Default::new(())?.with(window).run()
+    kas::runner::Runner::new(())?.with(window).run()
 }

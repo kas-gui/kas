@@ -28,7 +28,6 @@ mod surface;
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
 use kas::runner;
-use kas::theme::FlatTheme;
 use wgpu::rwh;
 
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
@@ -44,8 +43,6 @@ pub struct Builder<CB: CustomPipeBuilder> {
 }
 
 impl<CB: CustomPipeBuilder> runner::GraphicsBuilder for Builder<CB> {
-    type DefaultTheme = FlatTheme;
-
     type Instance = wgpu::Instance;
 
     type Shared = DrawPipe<CB::Pipe>;

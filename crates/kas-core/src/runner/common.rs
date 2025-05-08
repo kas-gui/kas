@@ -8,7 +8,6 @@
 use crate::draw::DrawSharedImpl;
 use crate::draw::{color::Rgba, DrawIface, WindowCommon};
 use crate::geom::Size;
-use crate::theme::Theme;
 use raw_window_handle as rwh;
 use std::time::Instant;
 use thiserror::Error;
@@ -174,9 +173,6 @@ impl Platform {
 
 /// Builder for a graphics backend
 pub trait GraphicsBuilder {
-    /// The default theme
-    type DefaultTheme: Default + Theme<Self::Shared>;
-
     /// Instance
     ///
     /// Context for all graphics objects.
