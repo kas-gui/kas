@@ -46,6 +46,8 @@ struct WindowData<G: GraphicsBuilder, T: Theme<G::Shared>> {
 }
 
 /// Per-window data
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 #[autoimpl(Debug ignore self._data, self.widget, self.ev_state, self.window)]
 pub struct Window<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
     _data: std::marker::PhantomData<A>,
@@ -57,7 +59,7 @@ pub struct Window<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
 // Public functions, for use by the toolkit
 impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
     /// Construct window state (widget)
-    pub(super) fn new(
+    pub fn new(
         config: Rc<RefCell<Config>>,
         platform: Platform,
         window_id: WindowId,

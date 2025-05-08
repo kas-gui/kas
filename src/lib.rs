@@ -62,33 +62,7 @@ pub mod resvg {
     pub use kas_resvg::*;
 }
 
-pub mod runner {
-    //! [`Runner`], platforms and backends
-    //!
-    //! Start by constructing a [`Runner`] or its [`Default`](type@Default)
-    //! type-def (requires a backend be enabled, e.g. "wgpu").
-
-    /// Runner pre-launch state
-    ///
-    /// Suggested construction patterns:
-    ///
-    /// -   <code>kas::runner::[Default](type@Default)::[new](Runner::new)(data)?</code>
-    /// -   <code>kas::runner::[Default](type@Default)::[with_theme](Runner::with_theme)(theme).[build](Builder::build)(data)?</code>
-    ///
-    /// Where:
-    ///
-    /// -   `data` is `()` or some object implementing [`AppData`]
-    /// -   `theme` is some object implementing [`Theme`](crate::theme::Theme)
-    /// -   `custom_wgpu_pipe` is a custom WGPU graphics pipeline
-    #[doc(inline)]
-    pub use kas_core::runner::Runner;
-
-    pub use kas_core::runner::*;
-
-    /// Runner pre-launch state, configured with the default graphics backend
-    #[cfg(feature = "wgpu")]
-    pub type Default<Data, T = crate::theme::FlatTheme> = Runner<Data, kas_wgpu::Builder<()>, T>;
-}
+pub mod runner;
 
 #[cfg(feature = "dynamic")]
 #[allow(unused_imports)]

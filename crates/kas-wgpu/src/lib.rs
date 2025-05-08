@@ -28,7 +28,7 @@ mod surface;
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
 use kas::runner;
-use kas::theme::{FlatTheme, Theme};
+use kas::theme::FlatTheme;
 use wgpu::rwh;
 
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
@@ -36,7 +36,7 @@ pub use options::Options;
 pub use shaded_theme::ShadedTheme;
 pub extern crate wgpu;
 
-/// Builder for a [`kas::runner::Runner`] using WGPU
+/// Builder for a `kas_wgpu` instance
 pub struct Builder<CB: CustomPipeBuilder> {
     custom: CB,
     options: Options,
@@ -117,20 +117,5 @@ impl<CB: CustomPipeBuilder> Builder<CB> {
     pub fn read_env_vars(mut self, read_env_vars: bool) -> Self {
         self.read_env_vars = read_env_vars;
         self
-    }
-
-    /// Convert to a [`runner::Builder`] using the default theme
-    #[inline]
-    pub fn with_default_theme(self) -> runner::Builder<Self, FlatTheme, kas::config::AutoFactory> {
-        runner::Builder::new(self, FlatTheme::new())
-    }
-
-    /// Convert to a [`runner::Builder`] using the specified `theme`
-    #[inline]
-    pub fn with_theme<T>(self, theme: T) -> runner::Builder<Self, T, kas::config::AutoFactory>
-    where
-        T: Theme<DrawPipe<CB::Pipe>>,
-    {
-        runner::Builder::new(self, theme)
     }
 }

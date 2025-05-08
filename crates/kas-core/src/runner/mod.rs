@@ -16,12 +16,12 @@ use crate::messages::MessageStack;
 #[cfg(winit)] use event_loop::Loop;
 #[cfg(winit)] pub(crate) use shared::RunnerT;
 #[cfg(winit)] use shared::State;
-#[cfg(winit)]
-pub(crate) use window::{Window, WindowDataErased};
+#[cfg(winit)] pub use window::Window;
+#[cfg(winit)] pub(crate) use window::WindowDataErased;
 
 pub use common::{Error, Platform, Result};
 #[cfg(winit)]
-pub use runner::{Builder, ClosedError, PreLaunchState, Proxy, Runner, RunnerInherent};
+pub use runner::{ClosedError, PreLaunchState, Proxy};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]

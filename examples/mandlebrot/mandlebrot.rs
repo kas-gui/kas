@@ -491,9 +491,8 @@ fn main() -> kas::runner::Result<()> {
     let window =
         Window::new(MandlebrotUI::new(), "Mandlebrot").with_decorations(Decorations::Border);
     let theme = kas::theme::FlatTheme::new();
-    let mut runner = kas_wgpu::Builder::new(PipeBuilder)
-        .with_theme(theme)
-        .build(())?;
+    let mut runner =
+        kas::runner::Builder::new(kas_wgpu::Builder::new(PipeBuilder), theme).build(())?;
     let _ = runner.config_mut().theme.set_active_scheme("dark");
     runner.with(window).run()
 }
