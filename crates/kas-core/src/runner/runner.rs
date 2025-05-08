@@ -14,15 +14,91 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
 use winit::event_loop::{EventLoop, EventLoopProxy};
 
-pub struct Runner<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
+/// State used to launch the UI
+///
+/// This is a low-level type; it is recommended to instead use
+/// [`Runner`](https://docs.rs/kas/latest/kas/runner/struct.Runner.html).
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+pub struct PreLaunchState {
     config: Rc<RefCell<Config>>,
     config_writer: Option<Box<dyn FnMut(&Config)>>,
-    data: Data,
-    graphical: G,
-    theme: T,
     el: EventLoop<ProxyAction>,
     platform: Platform,
     window_id_factory: WindowIdFactory,
+}
+
+impl PreLaunchState {
+    /// Construct
+    pub fn new<C: ConfigFactory>(config: C) -> Result<Self> {
+        let mut cf = config;
+        let config = cf.read_config()?;
+        config.borrow_mut().init();
+
+        let el = EventLoop::with_user_event().build()?;
+        let platform = Platform::new(&el);
+        Ok(PreLaunchState {
+            config,
+            config_writer: cf.writer(),
+            el,
+            platform,
+            window_id_factory: Default::default(),
+        })
+    }
+
+    /// Access config
+    #[inline]
+    pub fn config(&self) -> &Rc<RefCell<Config>> {
+        &self.config
+    }
+
+    /// Generate a [`WindowId`]
+    #[inline]
+    pub fn next_window_id(&mut self) -> WindowId {
+        self.window_id_factory.make_next()
+    }
+
+    /// Get the platform
+    #[inline]
+    pub fn platform(&self) -> Platform {
+        self.platform
+    }
+
+    /// Create a proxy which can be used to update the UI from another thread
+    pub fn create_proxy(&self) -> Proxy {
+        Proxy(self.el.create_proxy())
+    }
+
+    /// Run the main loop
+    pub fn run<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>>(
+        self,
+        data: Data,
+        graphical: G,
+        theme: T,
+        windows: Vec<Box<super::Window<Data, G, T>>>,
+    ) -> Result<()> {
+        let state = State::new(
+            self.platform,
+            data,
+            graphical,
+            theme,
+            self.config,
+            self.config_writer,
+            create_waker(&self.el),
+            self.window_id_factory,
+        )?;
+
+        let mut l = super::Loop::new(windows, state);
+        self.el.run_app(&mut l)?;
+        Ok(())
+    }
+}
+
+pub struct Runner<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
+    data: Data,
+    graphical: G,
+    state: PreLaunchState,
+    theme: T,
     windows: Vec<Box<super::Window<Data, G, T>>>,
 }
 
@@ -61,23 +137,15 @@ impl_scope! {
 
         /// Build with `data`
         pub fn build<Data: AppData>(mut self, data: Data) -> Result<Runner<Data, G, T>> {
-            let config = self.config.read_config()?;
-            config.borrow_mut().init();
+            let state = PreLaunchState::new(self.config)?;
 
-            self.theme.init(&config);
-
-            let el = EventLoop::with_user_event().build()?;
-            let platform = Platform::new(&el);
+            self.theme.init(state.config());
 
             Ok(Runner {
-                config,
-                config_writer: self.config.writer(),
                 data,
                 graphical: self.graphical,
                 theme: self.theme,
-                el,
-                platform,
-                window_id_factory: Default::default(),
+                state,
                 windows: vec![],
             })
         }
@@ -140,13 +208,13 @@ where
     /// Access config
     #[inline]
     pub fn config(&self) -> Ref<Config> {
-        self.config.borrow()
+        self.state.config().borrow()
     }
 
     /// Access config mutably
     #[inline]
     pub fn config_mut(&mut self) -> RefMut<Config> {
-        self.config.borrow_mut()
+        self.state.config().borrow_mut()
     }
 
     /// Access the theme by ref
@@ -164,10 +232,10 @@ where
     /// Assume ownership of and display a window
     #[inline]
     pub fn add(&mut self, window: Window<Data>) -> WindowId {
-        let id = self.window_id_factory.make_next();
+        let id = self.state.next_window_id();
         let win = Box::new(super::Window::new(
-            self.config.clone(),
-            self.platform,
+            self.state.config().clone(),
+            self.state.platform(),
             id,
             window,
         ));
@@ -184,26 +252,14 @@ where
 
     /// Create a proxy which can be used to update the UI from another thread
     pub fn create_proxy(&self) -> Proxy {
-        Proxy(self.el.create_proxy())
+        self.state.create_proxy()
     }
 
     /// Run the main loop.
     #[inline]
     pub fn run(self) -> Result<()> {
-        let state = State::new(
-            self.platform,
-            self.data,
-            self.graphical,
-            self.theme,
-            self.config,
-            self.config_writer,
-            create_waker(&self.el),
-            self.window_id_factory,
-        )?;
-
-        let mut l = super::Loop::new(self.windows, state);
-        self.el.run_app(&mut l)?;
-        Ok(())
+        self.state
+            .run(self.data, self.graphical, self.theme, self.windows)
     }
 }
 

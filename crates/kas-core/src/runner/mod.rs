@@ -21,7 +21,7 @@ pub(crate) use window::{Window, WindowDataErased};
 
 pub use common::{Error, Platform, Result};
 #[cfg(winit)]
-pub use runner::{Builder, ClosedError, Proxy, Runner, RunnerInherent};
+pub use runner::{Builder, ClosedError, PreLaunchState, Proxy, Runner, RunnerInherent};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
