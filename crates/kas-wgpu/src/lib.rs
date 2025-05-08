@@ -35,59 +35,6 @@ pub use options::Options;
 pub use shaded_theme::ShadedTheme;
 pub extern crate wgpu;
 
-/// Builder for a `kas_wgpu` instance
-pub struct Builder<CB: CustomPipeBuilder> {
-    custom: CB,
-    options: Options,
-    read_env_vars: bool,
-}
-
-impl<CB: CustomPipeBuilder> Builder<CB> {
-    /// Construct with the given pipe builder
-    ///
-    /// Pass `()` or use [`Self::default`] when not using a custom pipe.
-    #[inline]
-    pub fn new(cb: CB) -> Self {
-        Builder {
-            custom: cb,
-            options: Options::default(),
-            read_env_vars: true,
-        }
-    }
-
-    /// Specify the default WGPU options
-    ///
-    /// These options serve as a default, but may still be replaced by values
-    /// read from env vars unless disabled via [`Self::read_env_vars`].
-    #[inline]
-    pub fn with_wgpu_options(mut self, options: Options) -> Self {
-        self.options = options;
-        self
-    }
-
-    /// En/dis-able reading options from environment variables
-    ///
-    /// Default: `true`. If enabled, options will be read from env vars where
-    /// present (see [`Options::load_from_env`]).
-    #[inline]
-    pub fn read_env_vars(mut self, read_env_vars: bool) -> Self {
-        self.read_env_vars = read_env_vars;
-        self
-    }
-}
-
-impl<CB: CustomPipeBuilder> runner::GraphicsBuilder for Builder<CB> {
-    type Instance = Instance<CB>;
-
-    fn build(mut self) -> Result<Instance<CB>> {
-        if self.read_env_vars {
-            self.options.load_from_env();
-        }
-
-        Ok(Instance::new(self.options, self.custom))
-    }
-}
-
 /// Graphics context
 pub struct Instance<CB: CustomPipeBuilder> {
     options: Options,

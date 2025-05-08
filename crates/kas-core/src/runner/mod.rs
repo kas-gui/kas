@@ -25,7 +25,7 @@ pub use runner::{ClosedError, PreLaunchState, Proxy};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-pub use common::{GraphicsBuilder, GraphicsInstance, WindowSurface};
+pub use common::{GraphicsInstance, WindowSurface};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
@@ -292,24 +292,16 @@ mod test {
     }
 
     struct AGB;
-    impl GraphicsBuilder for AGB {
-        type DefaultTheme = crate::theme::SimpleTheme;
-
-        type Instance = ();
-
+    impl GraphicsInstance for AGB {
         type Shared = DrawShared;
 
         type Surface<'a> = Surface;
 
-        fn build(self, _: &()) -> Result<Self::Shared> {
+        fn new_shared(&mut self) -> Result<Self::Shared> {
             todo!()
         }
 
-        fn new_instance(&mut self) -> Self::Instance {
-            ()
-        }
-
-        fn new_surface<'window, W>(_: &(), _: W, _: bool) -> Result<Self::Surface<'window>>
+        fn new_surface<'window, W>(&mut self, _: W, _: bool) -> Result<Self::Surface<'window>>
         where
             W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
             Self: Sized,

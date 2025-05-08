@@ -171,18 +171,6 @@ impl Platform {
     }
 }
 
-/// Builder for a graphics backend
-pub trait GraphicsBuilder {
-    /// Instance
-    ///
-    /// Context for all graphics objects. This object is created before any
-    /// windows.
-    type Instance: GraphicsInstance;
-
-    /// Construct an instance
-    fn build(self) -> Result<Self::Instance>;
-}
-
 /// Context for a graphics backend
 pub trait GraphicsInstance {
     /// Draw state shared by all windows
