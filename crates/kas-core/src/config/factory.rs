@@ -222,7 +222,7 @@ impl ConfigFactory for ReadWriteFactory {
 /// This is a newtype over an implementation of [`ConfigFactory`], dependent on
 /// feature flags. Currently, this uses:
 ///
-/// -   `cfg(feature = "serde")`: [`ReadWriteFactory::from_env()`]
+/// -   `cfg(feature = "serde")`: `ReadWriteFactory::from_env()`
 /// -   Otherwise: [`DefaultFactory::default()`]
 #[cfg(not(feature = "serde"))]
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]

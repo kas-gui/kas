@@ -9,6 +9,7 @@ use super::{AppData, Error, GraphicsInstance, Pending, Platform};
 use crate::config::Config;
 use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::theme::Theme;
+#[cfg(feature = "clipboard")]
 use crate::util::warn_about_error;
 use crate::WindowIdFactory;
 use crate::{draw, messages::MessageStack, Action, WindowId};

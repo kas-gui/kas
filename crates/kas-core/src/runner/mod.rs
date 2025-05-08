@@ -297,7 +297,7 @@ mod test {
 
         type Surface<'a> = Surface;
 
-        fn new_shared(&mut self) -> Result<Self::Shared> {
+        fn new_shared(&mut self, _: Option<&Self::Surface<'_>>) -> Result<Self::Shared> {
             todo!()
         }
 
