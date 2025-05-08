@@ -180,7 +180,10 @@ pub trait GraphicsInstance {
     type Surface<'a>: WindowSurface<Shared = Self::Shared>;
 
     /// Construct shared state
-    fn new_shared(&mut self) -> Result<Self::Shared>;
+    ///
+    /// Providing a `surface` may aid construction of a graphics adapter
+    /// (see [`compatible_surface`](https://docs.rs/wgpu/latest/wgpu/type.RequestAdapterOptions.html#structfield.compatible_surface)).
+    fn new_shared(&mut self, surface: Option<&Self::Surface<'_>>) -> Result<Self::Shared>;
 
     /// Construct a window surface
     ///

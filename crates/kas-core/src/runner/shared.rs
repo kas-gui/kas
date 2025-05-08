@@ -95,9 +95,9 @@ where
         }
     }
 
-    pub(crate) fn resume(&mut self) -> Result<(), Error> {
+    pub(crate) fn resume(&mut self, surface: &G::Surface<'_>) -> Result<(), Error> {
         if self.shared.draw.is_none() {
-            let mut draw_shared = self.instance.new_shared()?;
+            let mut draw_shared = self.instance.new_shared(Some(surface))?;
             draw_shared.set_raster_config(self.shared.config.borrow().font.raster());
             self.shared.draw = Some(kas::draw::SharedState::new(draw_shared));
         }

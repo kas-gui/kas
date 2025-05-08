@@ -26,8 +26,10 @@ impl<C: CustomPipe> DrawPipe<C> {
         instance: &wgpu::Instance,
         custom: &mut CB,
         options: &Options,
+        surface: Option<&wgpu::Surface>,
     ) -> Result<Self, Error> {
-        let adapter_options = options.adapter_options();
+        let mut adapter_options = options.adapter_options();
+        adapter_options.compatible_surface = surface;
         let req = instance.request_adapter(&adapter_options);
         let adapter = match block_on(req) {
             Ok(a) => a,

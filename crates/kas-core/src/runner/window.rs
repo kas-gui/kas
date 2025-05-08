@@ -187,7 +187,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let mut surface = state
             .instance
             .new_surface(window.clone(), self.widget.transparent())?;
-        state.resume()?;
+        state.resume(&surface)?;
         surface.configure(&mut state.shared.draw.as_mut().unwrap().draw, size);
 
         let winit_id = window.id();

@@ -15,7 +15,7 @@ use std::time::Instant;
 
 /// Per-window data
 pub struct Surface<'a, C: CustomPipe> {
-    surface: wgpu::Surface<'a>,
+    pub(super) surface: wgpu::Surface<'a>,
     size: Size,
     transparent: bool,
     draw: DrawWindow<C::Window>,
