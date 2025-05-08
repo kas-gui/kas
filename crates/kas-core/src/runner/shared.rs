@@ -26,7 +26,7 @@ pub(super) struct SharedState<Data: AppData, G: GraphicsInstance, T: Theme<G::Sh
     pub(super) config: Rc<RefCell<Config>>,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Clipboard>,
-    pub(super) draw: draw::SharedState<G::Shared>,
+    pub(super) draw: Option<draw::SharedState<G::Shared>>,
     pub(super) theme: T,
     pub(super) pending: VecDeque<Pending<Data, G, T>>,
     pub(super) waker: Waker,
@@ -49,17 +49,13 @@ where
     pub(super) fn new(
         platform: Platform,
         data: Data,
-        mut instance: G,
+        instance: G,
         theme: T,
         config: Rc<RefCell<Config>>,
         config_writer: Option<Box<dyn FnMut(&Config)>>,
         waker: Waker,
         window_id_factory: WindowIdFactory,
     ) -> Result<Self, Error> {
-        let mut draw_shared = instance.new_shared()?;
-        draw_shared.set_raster_config(config.borrow().font.raster());
-        let draw = kas::draw::SharedState::new(draw_shared);
-
         #[cfg(feature = "clipboard")]
         let clipboard = match Clipboard::new() {
             Ok(cb) => Some(cb),
@@ -76,7 +72,7 @@ where
                 config,
                 #[cfg(feature = "clipboard")]
                 clipboard,
-                draw,
+                draw: None,
                 theme,
                 pending: Default::default(),
                 waker,
@@ -99,12 +95,25 @@ where
         }
     }
 
+    pub(crate) fn resume(&mut self) -> Result<(), Error> {
+        if self.shared.draw.is_none() {
+            let mut draw_shared = self.instance.new_shared()?;
+            draw_shared.set_raster_config(self.shared.config.borrow().font.raster());
+            self.shared.draw = Some(kas::draw::SharedState::new(draw_shared));
+        }
+
+        Ok(())
+    }
+
     pub(crate) fn suspended(&mut self) {
         self.data.suspended();
 
         if let Some(writer) = self.config_writer.as_mut() {
             self.shared.config.borrow_mut().write_if_dirty(writer);
         }
+
+        // NOTE: we assume that all windows are suspended when this is called
+        self.shared.draw = None;
     }
 }
 
@@ -294,7 +303,8 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
     }
 
     fn draw_shared(&mut self) -> &mut dyn DrawShared {
-        &mut self.draw
+        // We can expect draw to be initialized from any context where this trait is used
+        self.draw.as_mut().unwrap()
     }
 
     #[inline]

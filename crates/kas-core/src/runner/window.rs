@@ -187,7 +187,8 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let mut surface = state
             .instance
             .new_surface(window.clone(), self.widget.transparent())?;
-        surface.configure(&mut state.shared.draw.draw, size);
+        state.resume()?;
+        surface.configure(&mut state.shared.draw.as_mut().unwrap().draw, size);
 
         let winit_id = window.id();
 
@@ -247,7 +248,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             WindowEvent::Resized(size) => {
                 if window
                     .surface
-                    .configure(&mut state.shared.draw.draw, size.cast())
+                    .configure(&mut state.shared.draw.as_mut().unwrap().draw, size.cast())
                 {
                     self.apply_size(state, false);
                 }
@@ -501,7 +502,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         {
             let rect = Rect::new(Coord::ZERO, window.surface.size());
-            let draw = window.surface.draw_iface(&mut state.shared.draw);
+            let draw = window
+                .surface
+                .draw_iface(state.shared.draw.as_mut().unwrap());
 
             let mut draw =
                 state
@@ -534,7 +537,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         };
         let time3 = window
             .surface
-            .present(&mut state.shared.draw.draw, clear_color);
+            .present(&mut state.shared.draw.as_mut().unwrap().draw, clear_color);
 
         let text_dur_micros = take(&mut window.surface.common_mut().dur_text);
         let end = Instant::now();
