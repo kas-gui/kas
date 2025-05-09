@@ -5,59 +5,58 @@
 
 //! Shared state
 
-use super::{AppData, Error, GraphicsBuilder, Pending, Platform};
-use crate::config::{Config, Options};
-use crate::draw::DrawShared;
+use super::{AppData, Error, GraphicsInstance, Pending, Platform};
+use crate::config::Config;
+use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::theme::Theme;
+#[cfg(feature = "clipboard")]
 use crate::util::warn_about_error;
+use crate::WindowIdFactory;
 use crate::{draw, messages::MessageStack, Action, WindowId};
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::VecDeque;
-use std::num::NonZeroU32;
 use std::rc::Rc;
 use std::task::Waker;
 
 #[cfg(feature = "clipboard")] use arboard::Clipboard;
 
 /// Runner state used by [`RunnerT`]
-pub(super) struct SharedState<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
+pub(super) struct SharedState<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
     pub(super) platform: Platform,
     pub(super) config: Rc<RefCell<Config>>,
     #[cfg(feature = "clipboard")]
     clipboard: Option<Clipboard>,
-    pub(super) draw: draw::SharedState<G::Shared>,
+    pub(super) draw: Option<draw::SharedState<G::Shared>>,
     pub(super) theme: T,
     pub(super) pending: VecDeque<Pending<Data, G, T>>,
     pub(super) waker: Waker,
-    window_id: u32,
+    window_id_factory: WindowIdFactory,
 }
 
 /// Runner state shared by all windows
-pub(super) struct State<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
+pub(super) struct State<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
+    pub(super) instance: G,
     pub(super) shared: SharedState<Data, G, T>,
     pub(super) data: Data,
-    /// Estimated scale factor (from last window constructed or available screens)
-    options: Options,
+    config_writer: Option<Box<dyn FnMut(&Config)>>,
 }
 
-impl<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> State<Data, G, T>
+impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> State<Data, G, T>
 where
     T::Window: kas::theme::Window,
 {
     /// Construct
     pub(super) fn new(
+        platform: Platform,
         data: Data,
-        pw: super::PlatformWrapper,
-        draw_shared: G::Shared,
-        mut theme: T,
-        options: Options,
+        instance: G,
+        theme: T,
         config: Rc<RefCell<Config>>,
+        config_writer: Option<Box<dyn FnMut(&Config)>>,
+        waker: Waker,
+        window_id_factory: WindowIdFactory,
     ) -> Result<Self, Error> {
-        let platform = pw.platform();
-        let draw = kas::draw::SharedState::new(draw_shared);
-        theme.init(&config);
-
         #[cfg(feature = "clipboard")]
         let clipboard = match Clipboard::new() {
             Ok(cb) => Some(cb),
@@ -68,19 +67,20 @@ where
         };
 
         Ok(State {
+            instance,
             shared: SharedState {
                 platform,
                 config,
                 #[cfg(feature = "clipboard")]
                 clipboard,
-                draw,
+                draw: None,
                 theme,
                 pending: Default::default(),
-                waker: pw.create_waker(),
-                window_id: 0,
+                waker,
+                window_id_factory,
             },
             data,
-            options,
+            config_writer,
         })
     }
 
@@ -96,25 +96,25 @@ where
         }
     }
 
+    pub(crate) fn resume(&mut self, surface: &G::Surface<'_>) -> Result<(), Error> {
+        if self.shared.draw.is_none() {
+            let mut draw_shared = self.instance.new_shared(Some(surface))?;
+            draw_shared.set_raster_config(self.shared.config.borrow().font.raster());
+            self.shared.draw = Some(kas::draw::SharedState::new(draw_shared));
+        }
+
+        Ok(())
+    }
+
     pub(crate) fn suspended(&mut self) {
         self.data.suspended();
 
-        match self.options.write_config(&self.shared.config.borrow()) {
-            Ok(()) => (),
-            Err(error) => warn_about_error("Failed to save config", &error),
+        if let Some(writer) = self.config_writer.as_mut() {
+            self.shared.config.borrow_mut().write_if_dirty(writer);
         }
-    }
-}
 
-impl<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> SharedState<Data, G, T> {
-    /// Return the next window identifier
-    ///
-    /// TODO(opt): this should recycle used identifiers since Id does not
-    /// efficiently represent large numbers.
-    pub(crate) fn next_window_id(&mut self) -> WindowId {
-        let id = self.window_id + 1;
-        self.window_id = id;
-        WindowId::new(NonZeroU32::new(id).unwrap())
+        // NOTE: we assume that all windows are suspended when this is called
+        self.shared.draw = None;
     }
 }
 
@@ -200,9 +200,9 @@ pub(crate) trait RunnerT {
     fn waker(&self) -> &std::task::Waker;
 }
 
-impl<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> RunnerT for SharedState<Data, G, T> {
+impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for SharedState<Data, G, T> {
     fn add_popup(&mut self, parent_id: WindowId, popup: kas::PopupDescriptor) -> WindowId {
-        let id = self.next_window_id();
+        let id = self.window_id_factory.make_next();
         self.pending
             .push_back(Pending::AddPopup(parent_id, id, popup));
         id
@@ -222,8 +222,13 @@ impl<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> RunnerT for SharedS
         // In theory we could pass the `ActiveEventLoop` for *each* event
         // handled to create the winit window here or use statics to generate
         // errors now, but user code can't do much with this error anyway.
-        let id = self.next_window_id();
-        let window = Box::new(super::Window::new(self, id, window));
+        let id = self.window_id_factory.make_next();
+        let window = Box::new(super::Window::new(
+            self.config.clone(),
+            self.platform,
+            id,
+            window,
+        ));
         self.pending.push_back(Pending::AddWindow(id, window));
         id
     }
@@ -299,7 +304,8 @@ impl<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> RunnerT for SharedS
     }
 
     fn draw_shared(&mut self) -> &mut dyn DrawShared {
-        &mut self.draw
+        // We can expect draw to be initialized from any context where this trait is used
+        self.draw.as_mut().unwrap()
     }
 
     #[inline]

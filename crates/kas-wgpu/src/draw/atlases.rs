@@ -79,6 +79,7 @@ impl Atlas {
 /// A pipeline for rendering from image atlases
 pub struct Pipeline<I: bytemuck::Pod> {
     tex_size: i32,
+    max_size: i32,
     tex_format: wgpu::TextureFormat,
     bg_tex_layout: wgpu::BindGroupLayout,
     render_pipeline: wgpu::RenderPipeline,
@@ -161,6 +162,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
 
         Pipeline {
             tex_size,
+            max_size: device.limits().max_texture_dimension_2d.cast(),
             tex_format,
             bg_tex_layout,
             render_pipeline,
@@ -197,8 +199,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
 
         if size.0 > self.tex_size || size.1 > self.tex_size {
             // Too large to fit in a regular atlas: use a special allocation
-            let max_supported = i32::conv(wgpu::Limits::default().max_texture_dimension_2d);
-            if size.0 > max_supported || size.1 > max_supported {
+            if size.0 > self.max_size || size.1 > self.max_size {
                 return Err(AllocError);
             }
             tex_size = size;

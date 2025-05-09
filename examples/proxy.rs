@@ -35,7 +35,7 @@ fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
     let data = AppData { color: None };
-    let app = kas::runner::Default::new(data)?;
+    let app = kas::runner::Runner::new(data)?;
 
     // We construct a proxy from the app to enable cross-thread communication.
     let proxy = app.create_proxy();

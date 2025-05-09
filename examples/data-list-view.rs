@@ -240,5 +240,5 @@ fn main() -> kas::runner::Result<()> {
 
     let window = Window::new(ui, "Dynamic widget demo");
 
-    kas::runner::Default::new(())?.with(window).run()
+    kas::runner::Runner::new(())?.with(window).run()
 }

@@ -15,29 +15,52 @@ use std::time::Instant;
 
 /// Per-window data
 pub struct Surface<'a, C: CustomPipe> {
-    surface: wgpu::Surface<'a>,
-    sc_desc: wgpu::SurfaceConfiguration,
+    pub(super) surface: wgpu::Surface<'a>,
+    size: Size,
+    transparent: bool,
     draw: DrawWindow<C::Window>,
 }
 
 impl<'a, C: CustomPipe> Surface<'a, C> {
-    pub fn new<W>(
-        shared: &mut <Self as WindowSurface>::Shared,
-        window: W,
-        transparent: bool,
-    ) -> Result<Self, Error>
+    pub fn new<W>(instance: &wgpu::Instance, window: W, transparent: bool) -> Result<Self, Error>
     where
         W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'a,
         Self: Sized,
     {
-        let surface = shared
-            .instance
+        let surface = instance
             .create_surface(window)
             .map_err(|e| Error::Graphics(Box::new(e)))?;
 
+        Ok(Surface {
+            surface,
+            size: Size::ZERO,
+            transparent,
+            draw: Default::default(),
+        })
+    }
+}
+
+impl<'a, C: CustomPipe> WindowSurface for Surface<'a, C> {
+    type Shared = DrawPipe<C>;
+
+    fn size(&self) -> Size {
+        self.size
+    }
+
+    fn configure(&mut self, shared: &mut Self::Shared, size: Size) -> bool {
+        if size == self.size() {
+            return false;
+        }
+        let size = size.min(Size::splat(shared.max_texture_dimension_2d().cast()));
+        self.size = size;
+
+        let time = Instant::now();
+
+        shared.resize(&mut self.draw, size);
+
         use wgpu::CompositeAlphaMode::{Inherit, Opaque, PostMultiplied, PreMultiplied};
-        let caps = surface.get_capabilities(&shared.adapter);
-        let alpha_mode = match transparent {
+        let caps = self.surface.get_capabilities(&shared.adapter);
+        let alpha_mode = match self.transparent {
             // FIXME: data conversion is needed somewhere:
             true if caps.alpha_modes.contains(&PreMultiplied) => PreMultiplied,
             true if caps.alpha_modes.contains(&PostMultiplied) => PostMultiplied,
@@ -49,42 +72,15 @@ impl<'a, C: CustomPipe> Surface<'a, C> {
         let sc_desc = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: crate::draw::RENDER_TEX_FORMAT,
-            width: 0,
-            height: 0,
+            width: size.0.cast(),
+            height: size.1.cast(),
             present_mode: wgpu::PresentMode::Fifo,
             desired_maximum_frame_latency: 2,
             alpha_mode,
             view_formats: vec![],
         };
 
-        Ok(Surface {
-            surface,
-            sc_desc,
-            draw: shared.new_window(),
-        })
-    }
-}
-
-impl<'a, C: CustomPipe> WindowSurface for Surface<'a, C> {
-    type Shared = DrawPipe<C>;
-
-    fn size(&self) -> Size {
-        Size::new(self.sc_desc.width.cast(), self.sc_desc.height.cast())
-    }
-
-    fn do_resize(&mut self, shared: &mut Self::Shared, size: Size) -> bool {
-        if size == self.size() {
-            return false;
-        }
-        let size = size.min(Size::splat(shared.max_texture_dimension_2d().cast()));
-
-        let time = Instant::now();
-
-        shared.resize(&mut self.draw, size);
-
-        self.sc_desc.width = size.0.cast();
-        self.sc_desc.height = size.1.cast();
-        self.surface.configure(&shared.device, &self.sc_desc);
+        self.surface.configure(&shared.device, &sc_desc);
 
         log::trace!(
             target: "kas_perf::wgpu::window",

@@ -17,8 +17,8 @@ pub use font::{FontConfig, FontConfigMsg, RasterConfig};
 mod format;
 pub use format::{Error, Format};
 
-mod options;
-pub use options::{ConfigMode, Options};
+mod factory;
+pub use factory::*;
 
 mod shortcuts;
 pub use shortcuts::Shortcuts;

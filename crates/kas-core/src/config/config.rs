@@ -7,14 +7,12 @@
 
 use super::{EventConfig, EventConfigMsg, EventWindowConfig};
 use super::{FontConfig, FontConfigMsg, ThemeConfig, ThemeConfigMsg};
-use crate::cast::Cast;
 use crate::config::Shortcuts;
 use crate::Action;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::cell::{Ref, RefCell};
 use std::rc::Rc;
-use std::time::Duration;
 
 /// A message which may be used to update [`Config`]
 #[derive(Clone, Debug)]
@@ -32,11 +30,10 @@ pub enum ConfigMsg {
 /// > `event`: [`EventConfig`] \
 /// > `font`: [`FontConfig`] \
 /// > `shortcuts`: [`Shortcuts`] \
-/// > `theme`: [`ThemeConfig`] \
-/// > `max_fps`: `u32`
+/// > `theme`: [`ThemeConfig`]
 ///
 /// For descriptions of configuration effects, see [`WindowConfig`] methods.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Config {
     pub event: EventConfig,
@@ -47,13 +44,6 @@ pub struct Config {
     pub shortcuts: Shortcuts,
 
     pub theme: ThemeConfig,
-
-    /// FPS limiter
-    ///
-    /// This forces a minimum delay between frames to limit the frame rate.
-    /// `0` is treated specially as no delay.
-    #[cfg_attr(feature = "serde", serde(default = "defaults::max_fps"))]
-    pub max_fps: u32,
 
     #[cfg_attr(feature = "serde", serde(skip))]
     is_dirty: bool,
@@ -66,7 +56,6 @@ impl Default for Config {
             font: Default::default(),
             shortcuts: Shortcuts::platform_defaults(),
             theme: Default::default(),
-            max_fps: defaults::max_fps(),
             is_dirty: false,
         }
     }
@@ -83,6 +72,13 @@ impl Config {
     pub fn is_dirty(&self) -> bool {
         self.is_dirty
     }
+
+    pub(crate) fn write_if_dirty(&mut self, writer: &mut dyn FnMut(&Self)) {
+        if self.is_dirty {
+            writer(self);
+            self.is_dirty = false;
+        }
+    }
 }
 
 /// Configuration, adapted for the application and window scale
@@ -95,7 +91,6 @@ pub struct WindowConfig {
     pub(super) pan_dist_thresh: f32,
     /// Whether navigation focus is enabled for this application window
     pub(crate) nav_focus: bool,
-    pub(super) frame_dur: Duration,
 }
 
 impl WindowConfig {
@@ -110,7 +105,6 @@ impl WindowConfig {
             scroll_dist: f32::NAN,
             pan_dist_thresh: f32::NAN,
             nav_focus: true,
-            frame_dur: Default::default(),
         }
     }
 
@@ -122,12 +116,6 @@ impl WindowConfig {
         let dpem = base.font.size() * scale_factor;
         self.scroll_dist = base.event.scroll_dist_em * dpem;
         self.pan_dist_thresh = base.event.pan_dist_thresh * scale_factor;
-        let dur_ns = if base.max_fps == 0 {
-            0
-        } else {
-            1_000_000_000 / base.max_fps.max(1)
-        };
-        self.frame_dur = Duration::from_nanos(dur_ns.cast());
     }
 
     /// Access base (unscaled) [`Config`]
@@ -245,19 +233,5 @@ impl WindowConfig {
             ConfigMsg::Font(FontConfigMsg::Size(size)) => self.set_font_size(size),
             ConfigMsg::Theme(msg) => self.update_theme(|theme| theme.change_config(msg)),
         }
-    }
-
-    /// Minimum frame time
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-    #[inline]
-    pub fn frame_dur(&self) -> Duration {
-        self.frame_dur
-    }
-}
-
-mod defaults {
-    pub fn max_fps() -> u32 {
-        80
     }
 }

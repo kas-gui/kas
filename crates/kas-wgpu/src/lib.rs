@@ -27,8 +27,7 @@ mod shaded_theme;
 mod surface;
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
-use kas::runner;
-use kas::theme::{FlatTheme, Theme};
+use kas::runner::{self, Result};
 use wgpu::rwh;
 
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
@@ -36,89 +35,55 @@ pub use options::Options;
 pub use shaded_theme::ShadedTheme;
 pub extern crate wgpu;
 
-/// Builder for a [`kas::runner::Runner`] using WGPU
-pub struct Builder<CB: CustomPipeBuilder> {
-    custom: CB,
+/// Graphics context
+pub struct Instance<CB: CustomPipeBuilder> {
     options: Options,
-    read_env_vars: bool,
+    instance: wgpu::Instance,
+    custom: CB,
 }
 
-impl<CB: CustomPipeBuilder> runner::GraphicsBuilder for Builder<CB> {
-    type DefaultTheme = FlatTheme;
+impl<CB: CustomPipeBuilder> Instance<CB> {
+    /// Construct a new `Instance`
+    ///
+    /// [`Options`] are typically default-constructed then
+    /// [loaded from enviroment variables](Options::load_from_env).
+    pub fn new(options: Options, custom: CB) -> Self {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends: options.backend(),
+            ..Default::default()
+        });
 
+        Instance {
+            options,
+            instance,
+            custom,
+        }
+    }
+}
+
+impl<CB: CustomPipeBuilder> runner::GraphicsInstance for Instance<CB> {
     type Shared = DrawPipe<CB::Pipe>;
 
     type Surface<'a> = surface::Surface<'a, CB::Pipe>;
 
-    fn build(self) -> runner::Result<Self::Shared> {
-        let mut options = self.options;
-        if self.read_env_vars {
-            options.load_from_env();
-        }
-        DrawPipe::new(self.custom, &options)
+    fn new_shared(&mut self, surface: Option<&Self::Surface<'_>>) -> Result<Self::Shared> {
+        DrawPipe::new(
+            &self.instance,
+            &mut self.custom,
+            &self.options,
+            surface.map(|s| &s.surface),
+        )
     }
 
     fn new_surface<'window, W>(
-        shared: &mut Self::Shared,
+        &mut self,
         window: W,
         transparent: bool,
-    ) -> runner::Result<Self::Surface<'window>>
+    ) -> Result<Self::Surface<'window>>
     where
         W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
         Self: Sized,
     {
-        surface::Surface::new(shared, window, transparent)
-    }
-}
-
-impl Default for Builder<()> {
-    fn default() -> Self {
-        Builder::new(())
-    }
-}
-
-impl<CB: CustomPipeBuilder> Builder<CB> {
-    /// Construct with the given pipe builder
-    ///
-    /// Pass `()` or use [`Self::default`] when not using a custom pipe.
-    #[inline]
-    pub fn new(cb: CB) -> Self {
-        Builder {
-            custom: cb,
-            options: Options::default(),
-            read_env_vars: true,
-        }
-    }
-
-    /// Specify the default WGPU options
-    ///
-    /// These options serve as a default, but may still be replaced by values
-    /// read from env vars unless disabled via [`Self::read_env_vars`].
-    #[inline]
-    pub fn with_wgpu_options(mut self, options: Options) -> Self {
-        self.options = options;
-        self
-    }
-
-    /// En/dis-able reading options from environment variables
-    ///
-    /// Default: `true`. If enabled, options will be read from env vars where
-    /// present (see [`Options::load_from_env`]).
-    #[inline]
-    pub fn read_env_vars(mut self, read_env_vars: bool) -> Self {
-        self.read_env_vars = read_env_vars;
-        self
-    }
-
-    /// Convert to a [`runner::Builder`] using the default theme
-    #[inline]
-    pub fn with_default_theme(self) -> runner::Builder<Self, FlatTheme> {
-        runner::Builder::new(self, FlatTheme::new())
-    }
-
-    /// Convert to a [`runner::Builder`] using the specified `theme`
-    #[inline]
-    pub fn with_theme<T: Theme<DrawPipe<CB::Pipe>>>(self, theme: T) -> runner::Builder<Self, T> {
-        runner::Builder::new(self, theme)
+        surface::Surface::new(&self.instance, window, transparent)
     }
 }

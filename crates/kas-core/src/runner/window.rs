@@ -6,20 +6,22 @@
 //! Window types
 
 use super::common::WindowSurface;
-use super::shared::{SharedState, State};
-use super::{AppData, GraphicsBuilder};
+use super::shared::State;
+use super::{AppData, GraphicsInstance, Platform};
 use crate::cast::{Cast, Conv};
-use crate::config::WindowConfig;
+use crate::config::{Config, WindowConfig};
 use crate::decorations::Decorations;
 use crate::draw::PassType;
-use crate::draw::{color::Rgba, AnimationState, DrawSharedImpl};
+use crate::draw::{color::Rgba, AnimationState};
 use crate::event::{ConfigCx, CursorIcon, EventState};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::SolveCache;
 use crate::messages::MessageStack;
 use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, ThemeSize, Window as _};
 use crate::{autoimpl, Action, Id, Tile, Widget, WindowId};
+use std::cell::RefCell;
 use std::mem::take;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use winit::event::WindowEvent;
@@ -28,7 +30,7 @@ use winit::window::WindowAttributes;
 
 /// Window fields requiring a frame or surface
 #[crate::autoimpl(Deref, DerefMut using self.window)]
-struct WindowData<G: GraphicsBuilder, T: Theme<G::Shared>> {
+struct WindowData<G: GraphicsInstance, T: Theme<G::Shared>> {
     window: Arc<winit::window::Window>,
     #[cfg(all(wayland_platform, feature = "clipboard"))]
     wayland_clipboard: Option<smithay_clipboard::Clipboard>,
@@ -40,14 +42,14 @@ struct WindowData<G: GraphicsBuilder, T: Theme<G::Shared>> {
     window_id: WindowId,
     solve_cache: SolveCache,
     theme_window: T::Window,
-    next_avail_frame_time: Instant,
-    queued_frame_time: Option<Instant>,
     need_redraw: bool,
 }
 
 /// Per-window data
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 #[autoimpl(Debug ignore self._data, self.widget, self.ev_state, self.window)]
-pub struct Window<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
+pub struct Window<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
     _data: std::marker::PhantomData<A>,
     pub(super) widget: kas::Window<A>,
     ev_state: EventState,
@@ -55,18 +57,19 @@ pub struct Window<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
 }
 
 // Public functions, for use by the toolkit
-impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
+impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     /// Construct window state (widget)
-    pub(super) fn new(
-        shared: &SharedState<A, G, T>,
+    pub fn new(
+        config: Rc<RefCell<Config>>,
+        platform: Platform,
         window_id: WindowId,
         widget: kas::Window<A>,
     ) -> Self {
-        let config = WindowConfig::new(shared.config.clone());
+        let config = WindowConfig::new(config);
         Window {
             _data: std::marker::PhantomData,
             widget,
-            ev_state: EventState::new(window_id, config, shared.platform),
+            ev_state: EventState::new(window_id, config, platform),
             window: None,
         }
     }
@@ -100,7 +103,10 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
 
         // Opening a zero-size window causes a crash, so force at least 1x1:
         let min_size = Size(1, 1);
-        let max_size = Size::splat(state.shared.draw.draw.max_texture_dimension_2d().cast());
+        let mut max_size = Size::splat(512);
+        for monitor in el.available_monitors() {
+            max_size = max_size.max(monitor.size().cast());
+        }
 
         let ideal = solve_cache
             .ideal(true)
@@ -178,12 +184,11 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
 
         // NOTE: usage of Arc is inelegant, but avoids lots of unsafe code
         let window = Arc::new(window);
-        let mut surface = G::new_surface(
-            &mut state.shared.draw.draw,
-            window.clone(),
-            self.widget.transparent(),
-        )?;
-        surface.do_resize(&mut state.shared.draw.draw, size);
+        let mut surface = state
+            .instance
+            .new_surface(window.clone(), self.widget.transparent())?;
+        state.resume(&surface)?;
+        surface.configure(&mut state.shared.draw.as_mut().unwrap().draw, size);
 
         let winit_id = window.id();
 
@@ -197,8 +202,6 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             window_id: self.ev_state.window_id,
             solve_cache,
             theme_window,
-            next_avail_frame_time: time,
-            queued_frame_time: Some(time),
             need_redraw: true,
         });
 
@@ -245,7 +248,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             WindowEvent::Resized(size) => {
                 if window
                     .surface
-                    .do_resize(&mut state.shared.draw.draw, size.cast())
+                    .configure(&mut state.shared.draw.as_mut().unwrap().draw, size.cast())
                 {
                     self.apply_size(state, false);
                 }
@@ -309,21 +312,13 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         }
         self.handle_action(state, action);
 
-        let mut resume = self.ev_state.next_resume();
+        let resume = self.ev_state.next_resume();
         let window = self.window.as_mut().unwrap();
 
         // NOTE: need_frame_update() does not imply a need to redraw, but other
         // approaches do not yield good frame timing for e.g. kinetic scrolling.
         if window.need_redraw || self.ev_state.need_frame_update() {
             window.request_redraw();
-            window.queued_frame_time = None;
-        } else if let Some(time) = window.queued_frame_time {
-            if time <= Instant::now() {
-                window.request_redraw();
-                window.queued_frame_time = None;
-            } else {
-                resume = resume.map(|t| t.min(time)).or(Some(time));
-            }
         }
 
         (action, resume)
@@ -369,7 +364,6 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         debug_assert!(!action.contains(Action::REGION_MOVED));
         if !action.is_empty() {
             if let Some(ref mut window) = self.window {
-                window.queued_frame_time = Some(window.next_avail_frame_time);
                 window.need_redraw = true;
             }
         }
@@ -381,16 +375,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         };
 
         let mut messages = MessageStack::new();
-        let mut widget = self.widget.as_node(&state.data);
-
-        if Some(requested_resume) == window.queued_frame_time {
-            window.queued_frame_time = None;
-
-            self.ev_state
-                .with(&mut state.shared, window, &mut messages, |cx| {
-                    cx.frame_update(widget.re());
-                });
-        }
+        let widget = self.widget.as_node(&state.data);
 
         if Some(requested_resume) == self.ev_state.next_resume() {
             self.ev_state
@@ -436,7 +421,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
 }
 
 // Internal functions
-impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
+impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     fn reconfigure(&mut self, state: &State<A, G, T>) {
         let time = Instant::now();
         let Some(ref mut window) = self.window else {
@@ -515,11 +500,11 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
             });
         state.handle_messages(&mut messages);
 
-        window.next_avail_frame_time = start + self.ev_state.config().frame_dur();
-
         {
             let rect = Rect::new(Coord::ZERO, window.surface.size());
-            let draw = window.surface.draw_iface(&mut state.shared.draw);
+            let draw = window
+                .surface
+                .draw_iface(state.shared.draw.as_mut().unwrap());
 
             let mut draw =
                 state
@@ -539,10 +524,6 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         let time2 = Instant::now();
 
         let anim = take(&mut window.surface.common_mut().anim);
-        window.queued_frame_time = match anim {
-            AnimationState::None | AnimationState::Animate => Some(window.next_avail_frame_time),
-            AnimationState::Timed(time) => Some(time.max(window.next_avail_frame_time)),
-        };
         window.need_redraw = anim != AnimationState::None;
         self.ev_state.action -= Action::REDRAW;
         // NOTE: we used to return Err(()) if !action.is_empty() here, e.g. if a
@@ -556,7 +537,7 @@ impl<A: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> Window<A, G, T> {
         };
         let time3 = window
             .surface
-            .present(&mut state.shared.draw.draw, clear_color);
+            .present(&mut state.shared.draw.as_mut().unwrap().draw, clear_color);
 
         let text_dur_micros = take(&mut window.surface.common_mut().dur_text);
         let end = Instant::now();
@@ -608,7 +589,7 @@ pub(crate) trait WindowDataErased {
     fn winit_window(&self) -> Option<&winit::window::Window>;
 }
 
-impl<G: GraphicsBuilder, T: Theme<G::Shared>> WindowDataErased for WindowData<G, T> {
+impl<G: GraphicsInstance, T: Theme<G::Shared>> WindowDataErased for WindowData<G, T> {
     fn window_id(&self) -> WindowId {
         self.window_id
     }

@@ -8,12 +8,11 @@
 use crate::draw::DrawSharedImpl;
 use crate::draw::{color::Rgba, DrawIface, WindowCommon};
 use crate::geom::Size;
-use crate::theme::Theme;
 use raw_window_handle as rwh;
 use std::time::Instant;
 use thiserror::Error;
 
-/// Possible failures from constructing a [`Runner`](super::Runner)
+/// Possible launch failures
 ///
 /// Some variants are undocumented. Users should not match these variants since
 /// they are not considered part of the public API.
@@ -172,27 +171,25 @@ impl Platform {
     }
 }
 
-/// Builder for a graphics backend
-///
-/// See also [`Runner`](super::Runner).
-pub trait GraphicsBuilder {
-    /// The default theme
-    type DefaultTheme: Default + Theme<Self::Shared>;
-
-    /// Shared draw state
+/// Context for a graphics backend
+pub trait GraphicsInstance {
+    /// Draw state shared by all windows
     type Shared: DrawSharedImpl;
 
     /// Window surface
     type Surface<'a>: WindowSurface<Shared = Self::Shared>;
 
     /// Construct shared state
-    fn build(self) -> Result<Self::Shared>;
+    ///
+    /// Providing a `surface` may aid construction of a graphics adapter
+    /// (see [`compatible_surface`](https://docs.rs/wgpu/latest/wgpu/type.RequestAdapterOptions.html#structfield.compatible_surface)).
+    fn new_shared(&mut self, surface: Option<&Self::Surface<'_>>) -> Result<Self::Shared>;
 
     /// Construct a window surface
     ///
-    /// It is required to call [`WindowSurface::do_resize`] after this.
+    /// It is required to call [`WindowSurface::configure`] after this.
     fn new_surface<'window, W>(
-        shared: &mut Self::Shared,
+        &mut self,
         window: W,
         transparent: bool,
     ) -> Result<Self::Surface<'window>>
@@ -212,7 +209,7 @@ pub trait WindowSurface {
     /// Resize surface
     ///
     /// Returns `true` when the new `size` did not match the old surface size.
-    fn do_resize(&mut self, shared: &mut Self::Shared, size: Size) -> bool;
+    fn configure(&mut self, shared: &mut Self::Shared, size: Size) -> bool;
 
     /// Construct a DrawIface object
     fn draw_iface<'iface>(

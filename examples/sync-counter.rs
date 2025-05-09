@@ -59,7 +59,7 @@ fn main() -> kas::runner::Result<()> {
     let count = Count(0);
     let theme = kas_wgpu::ShadedTheme::new();
 
-    let mut runner = kas::runner::Default::with_theme(theme).build(count)?;
+    let mut runner = kas::runner::Runner::with_theme(theme).build(count)?;
     let _ = runner.config_mut().font.set_size(24.0);
     runner
         .with(counter("Counter 1"))

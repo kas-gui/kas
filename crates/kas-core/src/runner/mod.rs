@@ -14,19 +14,18 @@ mod common;
 use crate::messages::MessageStack;
 #[cfg(winit)] use crate::WindowId;
 #[cfg(winit)] use event_loop::Loop;
-#[cfg(winit)] use runner::PlatformWrapper;
 #[cfg(winit)] pub(crate) use shared::RunnerT;
 #[cfg(winit)] use shared::State;
-#[cfg(winit)]
-pub(crate) use window::{Window, WindowDataErased};
+#[cfg(winit)] pub use window::Window;
+#[cfg(winit)] pub(crate) use window::WindowDataErased;
 
 pub use common::{Error, Platform, Result};
 #[cfg(winit)]
-pub use runner::{Builder, ClosedError, Proxy, Runner, RunnerInherent};
+pub use runner::{ClosedError, PreLaunchState, Proxy};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-pub use common::{GraphicsBuilder, WindowSurface};
+pub use common::{GraphicsInstance, WindowSurface};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
@@ -69,7 +68,7 @@ impl AppData for () {
 
 #[crate::autoimpl(Debug)]
 #[cfg(winit)]
-enum Pending<A: AppData, G: GraphicsBuilder, T: kas::theme::Theme<G::Shared>> {
+enum Pending<A: AppData, G: GraphicsInstance, T: kas::theme::Theme<G::Shared>> {
     AddPopup(WindowId, WindowId, kas::PopupDescriptor),
     // NOTE: we don't need G, T here if we construct the Window later.
     // But this way we can pass a single boxed value.
@@ -272,7 +271,7 @@ mod test {
             todo!()
         }
 
-        fn do_resize(&mut self, _: &mut Self::Shared, _: crate::prelude::Size) -> bool {
+        fn configure(&mut self, _: &mut Self::Shared, _: crate::prelude::Size) -> bool {
             todo!()
         }
 
@@ -293,22 +292,16 @@ mod test {
     }
 
     struct AGB;
-    impl GraphicsBuilder for AGB {
-        type DefaultTheme = crate::theme::SimpleTheme;
-
+    impl GraphicsInstance for AGB {
         type Shared = DrawShared;
 
         type Surface<'a> = Surface;
 
-        fn build(self) -> Result<Self::Shared> {
+        fn new_shared(&mut self, _: Option<&Self::Surface<'_>>) -> Result<Self::Shared> {
             todo!()
         }
 
-        fn new_surface<'window, W>(
-            _: &mut Self::Shared,
-            _: W,
-            _: bool,
-        ) -> Result<Self::Surface<'window>>
+        fn new_surface<'window, W>(&mut self, _: W, _: bool) -> Result<Self::Surface<'window>>
         where
             W: rwh::HasWindowHandle + rwh::HasDisplayHandle + Send + Sync + 'window,
             Self: Sized,

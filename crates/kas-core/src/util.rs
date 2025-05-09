@@ -9,7 +9,7 @@ use crate::geom::Coord;
 #[cfg(all(feature = "image", feature = "winit"))]
 use crate::Icon;
 use crate::{Id, Tile};
-use std::fmt;
+use std::{error::Error, fmt, path::Path};
 
 enum IdentifyContents<'a> {
     Simple(&'a Id),
@@ -189,9 +189,7 @@ pub fn nav_next(reverse: bool, from: Option<usize>, len: usize) -> Option<usize>
 
 /// Load a window icon from a path
 #[cfg(all(feature = "image", feature = "winit"))]
-pub fn load_icon_from_path<P: AsRef<std::path::Path>>(
-    path: P,
-) -> Result<Icon, Box<dyn std::error::Error>> {
+pub fn load_icon_from_path<P: AsRef<std::path::Path>>(path: P) -> Result<Icon, Box<dyn Error>> {
     // TODO(opt): image loading could be de-duplicated with
     // DrawShared::image_from_path, but this may not be worthwhile.
     let im = image::ImageReader::open(path)?
@@ -205,10 +203,18 @@ pub fn load_icon_from_path<P: AsRef<std::path::Path>>(
 /// Log a warning regarding an error message
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-pub fn warn_about_error(msg: &str, mut error: &dyn std::error::Error) {
+pub fn warn_about_error(msg: &str, mut error: &dyn Error) {
     log::warn!("{msg}: {error}");
     while let Some(source) = error.source() {
         log::warn!("Source: {source}");
         error = source;
     }
+}
+
+/// Log a warning regarding an error message with a path
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+pub fn warn_about_error_with_path(msg: &str, error: &dyn Error, path: &Path) {
+    warn_about_error(msg, error);
+    log::warn!("Path: {}", path.display());
 }

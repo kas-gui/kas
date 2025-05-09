@@ -5,202 +5,62 @@
 
 //! [`Runner`] and supporting elements
 
-use super::{AppData, GraphicsBuilder, Platform, ProxyAction, Result, State};
-use crate::config::{Config, Options};
-use crate::draw::{DrawShared, DrawSharedImpl};
-use crate::theme::{self, Theme};
-use crate::util::warn_about_error;
-use crate::{impl_scope, Window, WindowId};
-use std::cell::{Ref, RefCell, RefMut};
+use super::{AppData, GraphicsInstance, Platform, ProxyAction, Result, State};
+use crate::config::{Config, ConfigFactory};
+use crate::theme::Theme;
+use crate::{WindowId, WindowIdFactory};
+use std::cell::RefCell;
 use std::rc::Rc;
 use winit::event_loop::{EventLoop, EventLoopProxy};
 
-pub struct Runner<Data: AppData, G: GraphicsBuilder, T: Theme<G::Shared>> {
-    el: EventLoop<ProxyAction>,
-    windows: Vec<Box<super::Window<Data, G, T>>>,
-    state: State<Data, G, T>,
-}
-
-impl_scope! {
-    pub struct Builder<G: GraphicsBuilder, T: Theme<G::Shared>> {
-        graphical: G,
-        theme: T,
-        options: Option<Options>,
-        config: Option<Rc<RefCell<Config>>>,
-    }
-
-    impl Self {
-        /// Construct from a graphics backend and a theme
-        #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-        #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-        pub fn new(graphical: G, theme: T) -> Self {
-            Builder {
-                graphical,
-                theme,
-                options: None,
-                config: None,
-            }
-        }
-
-        /// Use the specified `options`
-        ///
-        /// If omitted, options are provided by [`Options::from_env`].
-        #[inline]
-        pub fn with_options(mut self, options: Options) -> Self {
-            self.options = Some(options);
-            self
-        }
-
-        /// Use the specified event `config`
-        ///
-        /// This is a wrapper around [`Self::with_config_rc`].
-        ///
-        /// If omitted, config is provided by [`Options::read_config`].
-        #[inline]
-        pub fn with_config(self, config: Config) -> Self {
-            self.with_config_rc(Rc::new(RefCell::new(config)))
-        }
-
-        /// Use the specified event `config`
-        ///
-        /// If omitted, config is provided by [`Options::read_config`].
-        #[inline]
-        pub fn with_config_rc(mut self, config: Rc<RefCell<Config>>) -> Self {
-            self.config = Some(config);
-            self
-        }
-
-        /// Build with `data`
-        pub fn build<Data: AppData>(self, data: Data) -> Result<Runner<Data, G, T>> {
-            let options = self.options.unwrap_or_else(Options::from_env);
-
-            let config = self.config.unwrap_or_else(|| match options.read_config() {
-                Ok(config) => Rc::new(RefCell::new(config)),
-                Err(error) => {
-                    warn_about_error("kas::app::Builder::build: failed to read config", &error);
-                    Default::default()
-                }
-            });
-            config.borrow_mut().init();
-
-            let el = EventLoop::with_user_event().build()?;
-
-            let mut draw_shared = self.graphical.build()?;
-            draw_shared.set_raster_config(config.borrow().font.raster());
-
-            let pw = PlatformWrapper(&el);
-            let state = State::new(data, pw, draw_shared, self.theme, options, config)?;
-
-            Ok(Runner {
-                el,
-                windows: vec![],
-                state,
-            })
-        }
-    }
-}
-
-/// Inherenet associated types of [`Runner`]
+/// State used to launch the UI
 ///
-/// Note: these could be inherent associated types of [`Runner`] when Rust#8995 is stable.
-pub trait RunnerInherent {
-    /// Shared draw state type
-    type DrawShared: DrawSharedImpl;
+/// This is a low-level type; it is recommended to instead use
+/// [`Runner`](https://docs.rs/kas/latest/kas/runner/struct.Runner.html).
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+pub struct PreLaunchState {
+    config: Rc<RefCell<Config>>,
+    config_writer: Option<Box<dyn FnMut(&Config)>>,
+    el: EventLoop<ProxyAction>,
+    platform: Platform,
+    window_id_factory: WindowIdFactory,
 }
 
-impl<A: AppData, G: GraphicsBuilder, T> RunnerInherent for Runner<A, G, T>
-where
-    T: Theme<G::Shared> + 'static,
-    T::Window: theme::Window,
-{
-    type DrawShared = G::Shared;
-}
+impl PreLaunchState {
+    /// Construct
+    pub fn new<C: ConfigFactory>(config: C) -> Result<Self> {
+        let mut cf = config;
+        let config = cf.read_config()?;
+        config.borrow_mut().init();
 
-impl<Data: AppData, G> Runner<Data, G, G::DefaultTheme>
-where
-    G: GraphicsBuilder + Default,
-{
-    /// Construct a new instance with default options and theme
-    ///
-    /// All user interfaces are expected to provide `data: Data`: widget data
-    /// shared across all windows. If not required this may be `()`.
-    ///
-    /// Environment variables may affect option selection; see documentation
-    /// of [`Options::from_env`]. KAS config is provided by
-    /// [`Options::read_config`].
-    #[inline]
-    pub fn new(data: Data) -> Result<Self> {
-        Self::with_default_theme().build(data)
-    }
-
-    /// Construct a builder with the default theme
-    #[inline]
-    pub fn with_default_theme() -> Builder<G, G::DefaultTheme> {
-        Builder::new(G::default(), G::DefaultTheme::default())
-    }
-}
-
-impl<G, T> Runner<(), G, T>
-where
-    G: GraphicsBuilder + Default,
-    T: Theme<G::Shared>,
-{
-    /// Construct a builder with the given `theme`
-    #[inline]
-    pub fn with_theme(theme: T) -> Builder<G, T> {
-        Builder::new(G::default(), theme)
-    }
-}
-
-impl<Data: AppData, G: GraphicsBuilder, T> Runner<Data, G, T>
-where
-    T: Theme<G::Shared> + 'static,
-    T::Window: theme::Window,
-{
-    /// Access shared draw state
-    #[inline]
-    pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
-        &mut self.state.shared.draw
+        let el = EventLoop::with_user_event().build()?;
+        let platform = Platform::new(&el);
+        Ok(PreLaunchState {
+            config,
+            config_writer: cf.writer(),
+            el,
+            platform,
+            window_id_factory: Default::default(),
+        })
     }
 
     /// Access config
     #[inline]
-    pub fn config(&self) -> Ref<Config> {
-        self.state.shared.config.borrow()
+    pub fn config(&self) -> &Rc<RefCell<Config>> {
+        &self.config
     }
 
-    /// Access config mutably
+    /// Generate a [`WindowId`]
     #[inline]
-    pub fn config_mut(&mut self) -> RefMut<Config> {
-        self.state.shared.config.borrow_mut()
+    pub fn next_window_id(&mut self) -> WindowId {
+        self.window_id_factory.make_next()
     }
 
-    /// Access the theme by ref
+    /// Get the platform
     #[inline]
-    pub fn theme(&self) -> &T {
-        &self.state.shared.theme
-    }
-
-    /// Access the theme by ref mut
-    #[inline]
-    pub fn theme_mut(&mut self) -> &mut T {
-        &mut self.state.shared.theme
-    }
-
-    /// Assume ownership of and display a window
-    #[inline]
-    pub fn add(&mut self, window: Window<Data>) -> WindowId {
-        let id = self.state.shared.next_window_id();
-        let win = Box::new(super::Window::new(&self.state.shared, id, window));
-        self.windows.push(win);
-        id
-    }
-
-    /// Assume ownership of and display a window, inline
-    #[inline]
-    pub fn with(mut self, window: Window<Data>) -> Self {
-        let _ = self.add(window);
-        self
+    pub fn platform(&self) -> Platform {
+        self.platform
     }
 
     /// Create a proxy which can be used to update the UI from another thread
@@ -208,20 +68,35 @@ where
         Proxy(self.el.create_proxy())
     }
 
-    /// Run the main loop.
-    #[inline]
-    pub fn run(self) -> Result<()> {
-        let mut l = super::Loop::new(self.windows, self.state);
+    /// Run the main loop
+    pub fn run<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>>(
+        self,
+        data: Data,
+        graphical: G,
+        theme: T,
+        windows: Vec<Box<super::Window<Data, G, T>>>,
+    ) -> Result<()> {
+        let state = State::new(
+            self.platform,
+            data,
+            graphical,
+            theme,
+            self.config,
+            self.config_writer,
+            create_waker(&self.el),
+            self.window_id_factory,
+        )?;
+
+        let mut l = super::Loop::new(windows, state);
         self.el.run_app(&mut l)?;
         Ok(())
     }
 }
 
-pub(super) struct PlatformWrapper<'a>(&'a EventLoop<ProxyAction>);
-impl<'a> PlatformWrapper<'a> {
+impl Platform {
     /// Get platform
     #[allow(clippy::needless_return)]
-    pub(super) fn platform(&self) -> Platform {
+    fn new(_el: &EventLoop<ProxyAction>) -> Platform {
         // Logic copied from winit::platform_impl module.
 
         #[cfg(target_os = "windows")]
@@ -238,7 +113,7 @@ impl<'a> PlatformWrapper<'a> {
             cfg_if::cfg_if! {
                 if #[cfg(all(feature = "wayland", feature = "x11"))] {
                     use winit::platform::wayland::EventLoopExtWayland;
-                    return if self.0.is_wayland() {
+                    return if _el.is_wayland() {
                         Platform::Wayland
                     } else {
                         Platform::X11
@@ -267,56 +142,56 @@ impl<'a> PlatformWrapper<'a> {
 
         // Otherwise platform is unsupported!
     }
+}
 
-    /// Create a waker
-    ///
-    /// This waker may be used by a [`Future`](std::future::Future) to revive
-    /// event handling.
-    pub(super) fn create_waker(&self) -> std::task::Waker {
-        use std::sync::{Arc, Mutex};
-        use std::task::{RawWaker, RawWakerVTable, Waker};
+/// Create a waker
+///
+/// This waker may be used by a [`Future`](std::future::Future) to revive
+/// event handling.
+fn create_waker(el: &EventLoop<ProxyAction>) -> std::task::Waker {
+    use std::sync::{Arc, Mutex};
+    use std::task::{RawWaker, RawWakerVTable, Waker};
 
-        // NOTE: Proxy is Send but not Sync. Mutex<T> is Sync for T: Send.
-        // We wrap with Arc which is a Sync type supporting Clone and into_raw.
-        type Data = Mutex<Proxy>;
-        let proxy = Proxy(self.0.create_proxy());
-        let a: Arc<Data> = Arc::new(Mutex::new(proxy));
-        let data = Arc::into_raw(a);
+    // NOTE: Proxy is Send but not Sync. Mutex<T> is Sync for T: Send.
+    // We wrap with Arc which is a Sync type supporting Clone and into_raw.
+    type Data = Mutex<Proxy>;
+    let proxy = Proxy(el.create_proxy());
+    let a: Arc<Data> = Arc::new(Mutex::new(proxy));
+    let data = Arc::into_raw(a);
 
-        const VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake_by_ref, drop);
+    const VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake_by_ref, drop);
 
-        unsafe fn clone(data: *const ()) -> RawWaker {
-            let a = Arc::from_raw(data as *const Data);
-            let c = Arc::into_raw(a.clone());
-            let _do_not_drop = Arc::into_raw(a);
-            RawWaker::new(c as *const (), &VTABLE)
-        }
-        unsafe fn wake(data: *const ()) {
-            let a = Arc::from_raw(data as *const Data);
-            a.lock().unwrap().wake_async();
-        }
-        unsafe fn wake_by_ref(data: *const ()) {
-            let a = Arc::from_raw(data as *const Data);
-            a.lock().unwrap().wake_async();
-            let _do_not_drop = Arc::into_raw(a);
-        }
-        unsafe fn drop(data: *const ()) {
-            let _ = Arc::from_raw(data as *const Data);
-        }
-
-        let raw_waker = RawWaker::new(data as *const (), &VTABLE);
-        unsafe { Waker::from_raw(raw_waker) }
+    unsafe fn clone(data: *const ()) -> RawWaker {
+        let a = Arc::from_raw(data as *const Data);
+        let c = Arc::into_raw(a.clone());
+        let _do_not_drop = Arc::into_raw(a);
+        RawWaker::new(c as *const (), &VTABLE)
     }
+    unsafe fn wake(data: *const ()) {
+        let a = Arc::from_raw(data as *const Data);
+        a.lock().unwrap().wake_async();
+    }
+    unsafe fn wake_by_ref(data: *const ()) {
+        let a = Arc::from_raw(data as *const Data);
+        a.lock().unwrap().wake_async();
+        let _do_not_drop = Arc::into_raw(a);
+    }
+    unsafe fn drop(data: *const ()) {
+        let _ = Arc::from_raw(data as *const Data);
+    }
+
+    let raw_waker = RawWaker::new(data as *const (), &VTABLE);
+    unsafe { Waker::from_raw(raw_waker) }
 }
 
 /// A proxy allowing control of a UI from another thread.
 ///
-/// Created by [`Runner::create_proxy`].
+/// Created by [`Runner::create_proxy`](https://docs.rs/kas/latest/kas/runner/struct.Runner.html#method.create_proxy).
 pub struct Proxy(EventLoopProxy<ProxyAction>);
 
 /// Error type returned by [`Proxy`] functions.
 ///
-/// This error occurs only if the [`Runner`] already terminated.
+/// This error occurs only if the [`Runner`](https://docs.rs/kas/latest/kas/runner/struct.Runner.html) already terminated.
 pub struct ClosedError;
 
 impl Proxy {

@@ -23,14 +23,13 @@ use kas::text::{Effect, TextDisplay};
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
     pub fn new<CB: CustomPipeBuilder<Pipe = C>>(
-        mut custom: CB,
+        instance: &wgpu::Instance,
+        custom: &mut CB,
         options: &Options,
+        surface: Option<&wgpu::Surface>,
     ) -> Result<Self, Error> {
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends: options.backend(),
-            ..Default::default()
-        });
-        let adapter_options = options.adapter_options();
+        let mut adapter_options = options.adapter_options();
+        adapter_options.compatible_surface = surface;
         let req = instance.request_adapter(&adapter_options);
         let adapter = match block_on(req) {
             Ok(a) => a,
@@ -101,7 +100,6 @@ impl<C: CustomPipe> DrawPipe<C> {
         let text = text_pipe::Pipeline::new(&device, &shaders, &bgl_common);
 
         Ok(DrawPipe {
-            instance,
             adapter,
             device,
             queue,
@@ -117,24 +115,6 @@ impl<C: CustomPipe> DrawPipe<C> {
             custom,
             text,
         })
-    }
-
-    /// Construct per-window state
-    pub fn new_window(&self) -> DrawWindow<C::Window> {
-        let custom = self.custom.new_window(&self.device);
-
-        DrawWindow {
-            common: WindowCommon::default(),
-            scale: Default::default(),
-            clip_regions: vec![Default::default()],
-            images: Default::default(),
-            shaded_square: Default::default(),
-            shaded_round: Default::default(),
-            flat_round: Default::default(),
-            round_2col: Default::default(),
-            custom,
-            text: Default::default(),
-        }
     }
 
     /// Process window resize

@@ -174,6 +174,7 @@ struct Pipe {
     render_pipeline: wgpu::RenderPipeline,
 }
 
+#[derive(Default)]
 struct PipeWindow {
     push_constants: PushConstants,
     passes: Vec<(Vec<Vertex>, Option<Buffer>, u32)>,
@@ -181,13 +182,6 @@ struct PipeWindow {
 
 impl CustomPipe for Pipe {
     type Window = PipeWindow;
-
-    fn new_window(&self, _: &wgpu::Device) -> Self::Window {
-        PipeWindow {
-            push_constants: Default::default(),
-            passes: vec![],
-        }
-    }
 
     fn prepare(
         &self,
@@ -496,9 +490,8 @@ fn main() -> kas::runner::Result<()> {
 
     let window =
         Window::new(MandlebrotUI::new(), "Mandlebrot").with_decorations(Decorations::Border);
-    let theme = kas::theme::FlatTheme::new();
-    let mut runner = kas_wgpu::Builder::new(PipeBuilder)
-        .with_theme(theme)
+    let mut runner = kas::runner::Runner::with_wgpu_pipe(PipeBuilder)
+        .with_theme(kas::theme::FlatTheme::new())
         .build(())?;
     let _ = runner.config_mut().theme.set_active_scheme("dark");
     runner.with(window).run()

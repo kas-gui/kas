@@ -22,10 +22,11 @@ use kas::draw::{Draw, DrawRounded};
 use kas::event::TimerHandle;
 use kas::geom::{Quad, Vec2};
 use kas::prelude::*;
-use kas::runner::RunnerInherent;
+use kas::runner;
 use kas::text::Text;
 
-type Runner = kas::runner::Default<(), kas::theme::SimpleTheme>;
+type Runner = kas::runner::Runner<(), kas::theme::SimpleTheme>;
+type DrawShared = <Runner as runner::RunnerInherent>::DrawShared;
 
 const TIMER: TimerHandle = TimerHandle::new(0, true);
 
@@ -81,7 +82,7 @@ impl_scope! {
 
             // We use the low-level draw device to draw our clock. This means it is
             // not themeable, but gives us much more flexible draw routines.
-            let mut draw = draw.draw_iface::<<Runner as RunnerInherent>::DrawShared>().unwrap();
+            let mut draw = draw.draw_iface::<DrawShared>().unwrap();
 
             let rect = self.rect();
             let quad = Quad::conv(rect);
