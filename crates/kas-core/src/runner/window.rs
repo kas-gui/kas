@@ -26,7 +26,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
-use winit::window::WindowAttributes;
+use winit::window::{ImePurpose, WindowAttributes};
 
 /// Window fields requiring a frame or surface
 #[crate::autoimpl(Deref, DerefMut using self.window)]
@@ -582,6 +582,9 @@ pub(crate) trait WindowDataErased {
     /// Set the mouse cursor
     fn set_cursor_icon(&self, icon: CursorIcon);
 
+    /// Enable / disable IME and set purpose
+    fn set_ime_allowed(&self, purpose: Option<ImePurpose>);
+
     /// Directly access Winit Window
     ///
     /// This is a temporary API, allowing e.g. to minimize the window.
@@ -606,6 +609,13 @@ impl<G: GraphicsInstance, T: Theme<G::Shared>> WindowDataErased for WindowData<G
     #[inline]
     fn set_cursor_icon(&self, icon: CursorIcon) {
         self.window.set_cursor(icon);
+    }
+
+    fn set_ime_allowed(&self, purpose: Option<ImePurpose>) {
+        self.window.set_ime_allowed(purpose.is_some());
+        if let Some(purpose) = purpose {
+            self.window.set_ime_purpose(purpose);
+        }
     }
 
     #[cfg(winit)]

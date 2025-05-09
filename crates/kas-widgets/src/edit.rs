@@ -7,7 +7,7 @@
 
 use crate::{ScrollBar, ScrollMsg};
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{Command, CursorIcon, ElementState, FocusSource, PhysicalKey, Scroll};
+use kas::event::{Command, CursorIcon, ElementState, FocusSource, ImePurpose, PhysicalKey, Scroll};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::{NotReady, SelectionHelper};
@@ -802,7 +802,8 @@ impl_scope! {
             match event {
                 Event::NavFocus(source) if source.key_or_synthetic() => {
                     if !self.has_key_focus {
-                        cx.request_key_focus(self.id(), source);
+                        let ime = Some(ImePurpose::Normal);
+                        cx.request_key_focus(self.id(), ime, source);
                     }
                     if source == FocusSource::Key && !self.class().multi_line() {
                         self.selection.clear();
@@ -916,7 +917,8 @@ impl_scope! {
                         if self.has_key_focus {
                             self.set_primary(cx);
                         } else {
-                            cx.request_key_focus(self.id(), FocusSource::Pointer);
+                            let ime = Some(ImePurpose::Normal);
+                            cx.request_key_focus(self.id(), ime, FocusSource::Pointer);
                         }
                         Used
                     }

@@ -24,6 +24,8 @@ impl EventState {
             window_has_focus: false,
             modifiers: ModifiersState::empty(),
             key_focus: false,
+            ime: None,
+            old_ime_target: None,
             sel_focus: None,
             nav_focus: None,
             nav_fallback: None,
@@ -155,7 +157,7 @@ impl EventState {
 
             // Update sel focus after nav focus:
             if let Some(pending) = cx.pending_sel_focus.take() {
-                cx.set_sel_focus(win.as_node(data), pending);
+                cx.set_sel_focus(cx.window, win.as_node(data), pending);
             }
 
             while let Some((id, cmd)) = cx.pending_cmds.pop_front() {
@@ -333,6 +335,27 @@ impl<'a> EventCx<'a> {
                     self.action(Id::ROOT, Action::REDRAW);
                 }
                 self.modifiers = state;
+            }
+            Ime(winit::event::Ime::Enabled) => {
+                // We expect self.ime.is_some(), but it's possible that the request is outdated
+                if self.ime.is_some() {
+                    if let Some(id) = self.sel_focus.clone() {
+                        self.send_event(win.as_node(data), id, Event::ImeFocus);
+                    }
+                }
+            }
+            Ime(winit::event::Ime::Disabled) => {
+                // We can only assume that this is received due to us disabling
+                // IME if self.old_ime_target is set, and is otherwise due to an
+                // external cause.
+                let mut target = self.old_ime_target.take();
+                if target.is_none() && self.ime.is_some() {
+                    target = self.sel_focus.clone();
+                    self.ime = None;
+                }
+                if let Some(id) = target {
+                    self.send_event(win.as_node(data), id, Event::LostImeFocus);
+                }
             }
             CursorMoved { position, .. } => self.handle_cursor_moved(win, data, position.into()),
             CursorEntered { .. } => self.handle_cursor_entered(),

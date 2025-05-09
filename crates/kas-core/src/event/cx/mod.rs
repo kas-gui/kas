@@ -37,6 +37,7 @@ pub use press::{GrabBuilder, GrabMode, Press, PressSource};
 struct PendingSelFocus {
     target: Option<Id>,
     key_focus: bool,
+    ime: Option<ImePurpose>,
     source: FocusSource,
 }
 
@@ -81,8 +82,10 @@ pub struct EventState {
     disabled: Vec<Id>,
     window_has_focus: bool,
     modifiers: ModifiersState,
-    /// key focus is on same widget as sel_focus; otherwise its value is ignored
+    /// Key (and IME) focus is on same widget as sel_focus; otherwise its value is ignored
     key_focus: bool,
+    ime: Option<ImePurpose>,
+    old_ime_target: Option<Id>,
     sel_focus: Option<Id>,
     nav_focus: Option<Id>,
     nav_fallback: Option<Id>,
@@ -129,6 +132,7 @@ impl EventState {
                 self.pending_sel_focus = Some(PendingSelFocus {
                     target: None,
                     key_focus: false,
+                    ime: None,
                     source: FocusSource::Synthetic,
                 });
             }
@@ -167,6 +171,7 @@ impl EventState {
                     self.pending_sel_focus = Some(PendingSelFocus {
                         target: None,
                         key_focus: false,
+                        ime: None,
                         source: FocusSource::Synthetic,
                     });
                 }
@@ -409,42 +414,60 @@ impl<'a> EventCx<'a> {
     }
 
     // Set selection focus to `wid` immediately; if `key_focus` also set that
-    fn set_sel_focus(&mut self, mut widget: Node<'_>, pending: PendingSelFocus) {
+    fn set_sel_focus(
+        &mut self,
+        window: &dyn WindowDataErased,
+        mut widget: Node<'_>,
+        pending: PendingSelFocus,
+    ) {
         let PendingSelFocus {
             target,
             key_focus,
+            ime,
             source,
         } = pending;
+        let target_is_new = target != self.sel_focus;
 
         log::trace!("set_sel_focus: target={target:?}, key_focus={key_focus}");
 
-        if target == self.sel_focus {
-            self.key_focus = target.is_some() && (self.key_focus || key_focus);
-            return;
-        }
-
         if let Some(id) = self.sel_focus.clone() {
-            if self.key_focus {
+            if self.ime.is_some() && target_is_new {
+                window.set_ime_allowed(None);
+                self.old_ime_target = Some(id.clone());
+                self.ime = None;
+            }
+
+            if self.key_focus && (!key_focus || target_is_new) {
                 // If widget has key focus, this is lost
                 self.send_event(widget.re(), id.clone(), Event::LostKeyFocus);
             }
 
-            // Selection focus is lost if another widget receives key focus
-            self.send_event(widget.re(), id, Event::LostSelFocus);
+            if target_is_new {
+                // Selection focus is lost if another widget receives key focus
+                self.send_event(widget.re(), id, Event::LostSelFocus);
+            }
+        }
+
+        if let Some(id) = target.clone() {
+            if target_is_new {
+                // The widget probably already has nav focus, but anyway:
+                self.set_nav_focus(id.clone(), FocusSource::Synthetic);
+
+                self.send_event(widget.re(), id.clone(), Event::SelFocus(source));
+            }
+
+            if key_focus && (!self.key_focus || target_is_new) {
+                self.send_event(widget.re(), id.clone(), Event::KeyFocus);
+            }
+
+            if ime.is_some() && ime != self.ime {
+                window.set_ime_allowed(ime);
+                self.ime = ime;
+            }
         }
 
         self.key_focus = key_focus;
-        self.sel_focus = target.clone();
-
-        if let Some(id) = target {
-            // The widget probably already has nav focus, but anyway:
-            self.set_nav_focus(id.clone(), FocusSource::Synthetic);
-
-            self.send_event(widget.re(), id.clone(), Event::SelFocus(source));
-            if key_focus {
-                self.send_event(widget, id, Event::KeyFocus);
-            }
-        }
+        self.sel_focus = target;
     }
 
     /// Set navigation focus immediately

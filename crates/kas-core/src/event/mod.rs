@@ -66,7 +66,7 @@ pub use winit::event::{ElementState, KeyEvent, MouseButton};
 #[cfg(winit)]
 pub use winit::keyboard::{Key, ModifiersState, NamedKey, PhysicalKey};
 #[cfg(winit)]
-pub use winit::window::{CursorIcon, ResizeDirection}; // used by Key
+pub use winit::window::{CursorIcon, ImePurpose, ResizeDirection}; // used by Key
 
 #[allow(unused)] use crate::{Events, Widget};
 pub use cx::*;

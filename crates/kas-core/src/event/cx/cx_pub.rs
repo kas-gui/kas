@@ -394,15 +394,20 @@ impl EventState {
     /// translation of key events to [`Event::Command`] while key focus is
     /// active.
     ///
+    /// Providing an [`ImePurpose`] enables Input Method Editor events
+    /// (see [`Event::ImeFocus`]). TODO: this feature is incomplete; winit does
+    /// not currently support setting surrounding text.
+    ///
     /// The `source` parameter is used by [`Event::SelFocus`].
     ///
     /// Key focus implies sel focus (see [`Self::request_sel_focus`]) and
     /// navigation focus.
     #[inline]
-    pub fn request_key_focus(&mut self, target: Id, source: FocusSource) {
+    pub fn request_key_focus(&mut self, target: Id, ime: Option<ImePurpose>, source: FocusSource) {
         self.pending_sel_focus = Some(PendingSelFocus {
             target: Some(target),
             key_focus: true,
+            ime,
             source,
         });
     }
@@ -431,6 +436,7 @@ impl EventState {
         self.pending_sel_focus = Some(PendingSelFocus {
             target: Some(target),
             key_focus: false,
+            ime: None,
             source,
         });
     }

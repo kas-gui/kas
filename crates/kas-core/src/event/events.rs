@@ -225,6 +225,10 @@ pub enum Event {
     KeyFocus,
     /// Notification that a widget has lost keyboard input focus
     LostKeyFocus,
+    /// Notification that a widget has gained IME focus
+    ImeFocus,
+    /// Notification that a widget has lost IME focus
+    LostImeFocus,
     /// Notification that a widget gains or loses mouse hover
     ///
     /// The payload is `true` when focus is gained, `false` when lost.
@@ -314,8 +318,8 @@ impl Event {
             CursorMove { .. } | PressStart { .. } => false,
             Pan { .. } | PressMove { .. } | PressEnd { .. } => true,
             Timer(_) | PopupClosed(_) => true,
-            NavFocus { .. } | SelFocus(_) | KeyFocus | MouseHover(true) => false,
-            LostNavFocus | LostKeyFocus | LostSelFocus | MouseHover(false) => true,
+            NavFocus { .. } | SelFocus(_) | KeyFocus | ImeFocus | MouseHover(true) => false,
+            LostNavFocus | LostKeyFocus | LostSelFocus | LostImeFocus | MouseHover(false) => true,
         }
     }
 
@@ -354,6 +358,7 @@ impl Event {
             NavFocus { .. } | LostNavFocus => false,
             SelFocus(_) | LostSelFocus => false,
             KeyFocus | LostKeyFocus => false,
+            ImeFocus | LostImeFocus => false,
             MouseHover(_) => true,
         }
     }
