@@ -226,6 +226,11 @@ pub enum Event {
     /// Notification that a widget has lost keyboard input focus
     LostKeyFocus,
     /// Notification that a widget has gained IME focus
+    ///
+    /// The widget should call [`EventState::set_ime_cursor_area`] immediately
+    /// and each time the area changes (relative to the widget's coordinate
+    /// space), until [`Event::LostImeFocus`] is received. Failure to do so will
+    /// result in the widget's entire `rect` being used as the IME cursor area.
     ImeFocus,
     /// Notification that a widget has lost IME focus
     LostImeFocus,

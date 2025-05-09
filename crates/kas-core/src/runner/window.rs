@@ -585,6 +585,9 @@ pub(crate) trait WindowDataErased {
     /// Enable / disable IME and set purpose
     fn set_ime_allowed(&self, purpose: Option<ImePurpose>);
 
+    /// Set IME cursor area
+    fn set_ime_cursor_area(&self, rect: Rect);
+
     /// Directly access Winit Window
     ///
     /// This is a temporary API, allowing e.g. to minimize the window.
@@ -616,6 +619,11 @@ impl<G: GraphicsInstance, T: Theme<G::Shared>> WindowDataErased for WindowData<G
         if let Some(purpose) = purpose {
             self.window.set_ime_purpose(purpose);
         }
+    }
+
+    fn set_ime_cursor_area(&self, rect: Rect) {
+        self.window
+            .set_ime_cursor_area(rect.pos.as_physical(), rect.size.as_physical());
     }
 
     #[cfg(winit)]

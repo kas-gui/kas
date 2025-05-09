@@ -416,6 +416,23 @@ impl EventState {
         });
     }
 
+    /// Set IME cursor area
+    ///
+    /// This should be called after receiving [`Event::ImeFocus`], and any time
+    /// that the `rect` parameter changes, until [`Event::LostImeFocus`] is
+    /// received.
+    ///
+    /// This sets the text cursor's area, `rect`, relative to the widget's own
+    /// coordinate space. If never called, then the widget's whole rect is used.
+    ///
+    /// This does nothing if `target` does not have IME-enabled input focus.
+    #[inline]
+    pub fn set_ime_cursor_area(&mut self, target: &Id, rect: Rect) {
+        if self.ime.is_some() && self.sel_focus.as_ref() == Some(target) {
+            self.ime_cursor_area = rect;
+        }
+    }
+
     /// Request selection focus
     ///
     /// To prevent multiple simultaneous selections (e.g. of text) in the UI,

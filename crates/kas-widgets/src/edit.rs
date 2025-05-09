@@ -712,6 +712,7 @@ impl_scope! {
         old_state: Option<(String, usize, usize)>,
         last_edit: LastEdit,
         has_key_focus: bool,
+        ime_focus: bool,
         error_state: bool,
         input_handler: TextInput,
         /// The associated [`EditGuard`] implementation
@@ -743,6 +744,9 @@ impl_scope! {
             self.text.set_rect(cx, rect, hints);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
+            if self.ime_focus {
+                self.set_ime_cursor_area(cx);
+            }
         }
 
         fn draw(&self, mut draw: DrawCx) {
@@ -821,6 +825,15 @@ impl_scope! {
                     self.has_key_focus = true;
                     cx.set_scroll(Scroll::Rect(self.rect()));
                     G::focus_gained(self, cx, data);
+                    Used
+                }
+                Event::ImeFocus => {
+                    self.ime_focus = true;
+                    self.set_ime_cursor_area(cx);
+                    Used
+                }
+                Event::LostImeFocus => {
+                    self.ime_focus = false;
                     Used
                 }
                 Event::LostKeyFocus => {
@@ -929,6 +942,9 @@ impl_scope! {
             let new_offset = offset.min(self.max_scroll_offset()).max(Offset::ZERO);
             if new_offset != self.view_offset {
                 self.view_offset = new_offset;
+                if self.ime_focus {
+                    self.set_ime_cursor_area(cx);
+                }
                 // No widget moves so do not need to report Action::REGION_MOVED
                 cx.redraw(self);
             }
@@ -962,6 +978,7 @@ impl_scope! {
                 old_state: None,
                 last_edit: Default::default(),
                 has_key_focus: false,
+                ime_focus: false,
                 error_state: false,
                 input_handler: Default::default(),
                 guard,
@@ -997,7 +1014,20 @@ impl_scope! {
                 cx.action(&self, Action::SCROLLED);
                 self.view_offset = view_offset;
             }
+            if self.ime_focus {
+                self.set_ime_cursor_area(cx);
+            }
             self.set_error_state(cx, false);
+        }
+
+        // Call only if self.ime_focus
+        fn set_ime_cursor_area(&self, cx: &mut EventState) {
+            if let Ok(display) = self.text.display() {
+                if let Some(mut rect) = self.selection.cursor_rect(display) {
+                    rect.pos += Offset::conv(self.rect().pos) - self.view_offset;
+                    cx.set_ime_cursor_area(self.id_ref(), rect);
+                }
+            }
         }
     }
 }
@@ -1615,6 +1645,9 @@ impl<G: EditGuard> EditField<G> {
         if new_offset != self.view_offset {
             delta -= self.view_offset - new_offset;
             self.view_offset = new_offset;
+            if self.ime_focus {
+                self.set_ime_cursor_area(cx);
+            }
         }
 
         self.input_handler.set_scroll_residual(cx, delta, kinetic);
@@ -1647,6 +1680,9 @@ impl<G: EditGuard> EditField<G> {
                 self.view_offset = new_offset;
                 cx.set_scroll(Scroll::Scrolled);
             }
+        }
+        if self.ime_focus {
+            self.set_ime_cursor_area(cx);
         }
     }
 }

@@ -20,10 +20,11 @@ use std::time::Instant;
 use super::*;
 use crate::cast::Cast;
 use crate::config::WindowConfig;
+use crate::geom::{Rect, Size};
 use crate::messages::{Erased, MessageStack};
 use crate::runner::{Platform, RunnerT, WindowDataErased};
 use crate::util::WidgetHierarchy;
-use crate::{Action, Id, NavAdvance, Node, WindowId};
+use crate::{Action, Id, NavAdvance, Node, TileExt, WindowId};
 
 mod config;
 mod cx_pub;
@@ -86,6 +87,9 @@ pub struct EventState {
     key_focus: bool,
     ime: Option<ImePurpose>,
     old_ime_target: Option<Id>,
+    /// Rect is cursor area in sel_focus's coordinate space if size != ZERO
+    ime_cursor_area: Rect,
+    last_ime_rect: Rect,
     sel_focus: Option<Id>,
     nav_focus: Option<Id>,
     nav_fallback: Option<Id>,
@@ -437,6 +441,7 @@ impl<'a> EventCx<'a> {
                 window.set_ime_allowed(None);
                 self.old_ime_target = Some(id.clone());
                 self.ime = None;
+                self.ime_cursor_area = Rect::ZERO;
             }
 
             if old_key_focus && (!key_focus || target_is_new) {

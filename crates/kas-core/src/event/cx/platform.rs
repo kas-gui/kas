@@ -26,6 +26,8 @@ impl EventState {
             key_focus: false,
             ime: None,
             old_ime_target: None,
+            ime_cursor_area: Rect::ZERO,
+            last_ime_rect: Rect::ZERO,
             sel_focus: None,
             nav_focus: None,
             nav_fallback: None,
@@ -219,6 +221,22 @@ impl<'a> EventCx<'a> {
         for (id, handle) in frame_updates.into_iter() {
             self.send_event(widget.re(), id, Event::Timer(handle));
         }
+
+        // Set IME cursor area, if moved.
+        if self.ime.is_some() {
+            if let Some(target) = self.sel_focus.as_ref() {
+                if let Some((mut rect, translation)) = widget.as_tile().find_widget_rect(target) {
+                    if self.ime_cursor_area.size != Size::ZERO {
+                        rect = self.ime_cursor_area;
+                    }
+                    rect += translation;
+                    if rect != self.last_ime_rect {
+                        self.window.set_ime_cursor_area(rect);
+                        self.last_ime_rect = rect;
+                    }
+                }
+            }
+        }
     }
 
     /// Update widgets due to timer
@@ -352,6 +370,7 @@ impl<'a> EventCx<'a> {
                 if target.is_none() && self.ime.is_some() {
                     target = self.sel_focus.clone();
                     self.ime = None;
+                    self.ime_cursor_area = Rect::ZERO;
                 }
                 if let Some(id) = target {
                     self.send_event(win.as_node(data), id, Event::LostImeFocus);
