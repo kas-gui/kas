@@ -446,35 +446,6 @@ impl<Data: 'static> Window<Data> {
     }
 }
 
-// Search for a widget by `id`. On success, return that widget's [`Rect`] and
-// the translation of its children.
-fn find_rect(widget: &dyn Tile, id: Id, mut translation: Offset) -> Option<(Rect, Offset)> {
-    let mut widget = widget;
-    loop {
-        if widget.eq_id(&id) {
-            if widget.translation() != Offset::ZERO {
-                // Unvalidated: does this cause issues with the parent's event handlers?
-                log::warn!(
-                    "Parent of pop-up {} has non-zero translation",
-                    widget.identify()
-                );
-            }
-
-            let rect = widget.rect();
-            return Some((rect, translation));
-        } else if let Some(child) = widget
-            .find_child_index(&id)
-            .and_then(|i| widget.get_child(i))
-        {
-            translation += widget.translation();
-            widget = child;
-            continue;
-        } else {
-            return None;
-        }
-    }
-}
-
 impl<Data: 'static> Window<Data> {
     fn resize_popup(&mut self, cx: &mut ConfigCx, data: &Data, index: usize) {
         // Notation: p=point/coord, s=size, m=margin
@@ -508,7 +479,11 @@ impl<Data: 'static> Window<Data> {
             (pos, size)
         };
 
-        let (c, t) = find_rect(self.inner.as_tile(), popup.parent.clone(), Offset::ZERO).unwrap();
+        let (c, t) = self
+            .inner
+            .as_tile()
+            .find_widget_rect(&popup.parent)
+            .unwrap();
         *translation = t;
         let r = r + t; // work in translated coordinate space
         let result = self.inner.as_node(data).find_node(&popup.id, |mut node| {
