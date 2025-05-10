@@ -664,6 +664,7 @@ enum CurrentAction {
     None,
     DragSelect,
     ImeStart,
+    ImeEdit,
 }
 
 impl CurrentAction {
@@ -672,7 +673,7 @@ impl CurrentAction {
     }
 
     fn is_ime(self) -> bool {
-        matches!(self, CurrentAction::ImeStart)
+        matches!(self, CurrentAction::ImeStart | CurrentAction::ImeEdit)
     }
 
     fn is_active_ime(self) -> bool {
@@ -680,7 +681,7 @@ impl CurrentAction {
     }
 
     fn clear_active(&mut self) {
-        if matches!(self, CurrentAction::DragSelect) {
+        if matches!(self, CurrentAction::DragSelect | CurrentAction::ImeEdit) {
             *self = CurrentAction::None;
         }
     }
@@ -838,7 +839,7 @@ impl_scope! {
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> IsUsed {
             match event {
-                Event::NavFocus(source) if source.key_or_synthetic() => {
+                Event::NavFocus(source) if source == FocusSource::Key => {
                     if !self.has_key_focus && !self.current.is_select() {
                         let ime = Some(ImePurpose::Normal);
                         cx.request_key_focus(self.id(), ime, source);
@@ -906,6 +907,43 @@ impl_scope! {
                             Unused
                         }
                     }
+                }
+                Event::ImePreedit(text, cursor) => {
+                    if self.current != CurrentAction::ImeEdit {
+                        if cursor.is_some() {
+                            self.selection.set_anchor_to_range_start();
+                            self.current = CurrentAction::ImeEdit;
+                        } else {
+                            return Used;
+                        }
+                    }
+
+                    let range = self.selection.anchor_to_edit_range();
+                    self.text.replace_range(range.clone(), &text);
+
+                    if let Some((start, end)) = cursor {
+                        self.selection.set_sel_pos_only(range.start + start);
+                        self.selection.set_edit_pos(range.start + end);
+                    } else {
+                        self.selection.set_pos(range.start + text.len());
+                    }
+                    self.edit_x_coord = None;
+                    self.prepare_text(cx);
+                    Used
+                }
+                Event::ImeCommit(text) => {
+                    if self.current != CurrentAction::ImeEdit {
+                        self.selection.set_anchor_to_range_start();
+                    }
+                    self.current = CurrentAction::None;
+
+                    let range = self.selection.anchor_to_edit_range();
+                    self.text.replace_range(range.clone(), &text);
+
+                    self.selection.set_pos(range.start + text.len());
+                    self.edit_x_coord = None;
+                    self.prepare_text(cx);
+                    Used
                 }
                 Event::Scroll(delta) => {
                     // In single-line mode we do not handle purely vertical

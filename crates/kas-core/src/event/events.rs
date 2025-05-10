@@ -61,6 +61,22 @@ pub enum Event {
     /// <kbd>Ctrl</kbd>, <kbd>Alt</kbd> or <kbd>Super</kbd> modifier keys are
     /// pressed. This is subject to change.
     Key(KeyEvent, bool),
+    /// Input Method Editor: composed text changed
+    ///
+    /// Parameters are `text, cursor`.
+    ///
+    /// This is only received after
+    /// [requesting key focus](EventState::request_key_focus) with some `ime`
+    /// purpose.
+    ImePreedit(String, Option<(usize, usize)>),
+    /// Input Method Editor: composed text committed
+    ///
+    /// Parameters are `text`.
+    ///
+    /// This is only received after
+    /// [requesting key focus](EventState::request_key_focus) with some `ime`
+    /// purpose.
+    ImeCommit(String),
     /// A mouse or touchpad scroll event
     Scroll(ScrollDelta),
     /// A mouse or touch-screen move/zoom/rotate event
@@ -319,7 +335,7 @@ impl Event {
         use Event::*;
         match self {
             Command(_, _) => false,
-            Key(_, _) | Scroll(_) => false,
+            Key(_, _) | ImePreedit(_, _) | ImeCommit(_) | Scroll(_) => false,
             CursorMove { .. } | PressStart { .. } => false,
             Pan { .. } | PressMove { .. } | PressEnd { .. } => true,
             Timer(_) | PopupClosed(_) => true,
@@ -354,7 +370,7 @@ impl Event {
             CursorMove { .. } | PressStart { .. } => true,
 
             // Events sent to requester
-            Key(_, _) => false,
+            Key(_, _) | ImePreedit(_, _) | ImeCommit(_) => false,
             PressMove { .. } | PressEnd { .. } => false,
             Timer(_) => false,
 

@@ -376,6 +376,20 @@ impl<'a> EventCx<'a> {
                     self.send_event(win.as_node(data), id, Event::LostImeFocus);
                 }
             }
+            Ime(winit::event::Ime::Preedit(text, cursor)) => {
+                if self.ime.is_some() {
+                    if let Some(id) = self.sel_focus.clone() {
+                        self.send_event(win.as_node(data), id, Event::ImePreedit(text, cursor));
+                    }
+                }
+            }
+            Ime(winit::event::Ime::Commit(text)) => {
+                if self.ime.is_some() {
+                    if let Some(id) = self.sel_focus.clone() {
+                        self.send_event(win.as_node(data), id, Event::ImeCommit(text));
+                    }
+                }
+            }
             CursorMoved { position, .. } => self.handle_cursor_moved(win, data, position.into()),
             CursorEntered { .. } => self.handle_cursor_entered(),
             CursorLeft { .. } => self.handle_cursor_left(win.as_node(data)),

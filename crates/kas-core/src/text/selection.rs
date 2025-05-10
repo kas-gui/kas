@@ -70,12 +70,14 @@ impl SelectionHelper {
     /// Clear selection without changing edit pos
     pub fn set_empty(&mut self) {
         self.sel_pos = self.edit_pos;
+        self.anchor_pos = self.edit_pos;
     }
 
-    /// Set both edit and selection positions to this value
+    /// Set all positions to this value
     pub fn set_pos(&mut self, pos: usize) {
         self.edit_pos = pos;
         self.sel_pos = pos;
+        self.anchor_pos = pos;
     }
 
     /// Get the edit pos
@@ -92,7 +94,16 @@ impl SelectionHelper {
         self.sel_pos
     }
     /// Set the selection pos without adjusting the edit pos
+    ///
+    /// The anchor position is also set to the selection position.
     pub fn set_sel_pos(&mut self, pos: usize) {
+        self.sel_pos = pos;
+        self.anchor_pos = pos;
+    }
+    /// Set the selection pos only
+    ///
+    /// Prefer [`Self::set_sel_pos`] unless you know you don't want to set the anchor.
+    pub fn set_sel_pos_only(&mut self, pos: usize) {
         self.sel_pos = pos;
     }
 
@@ -118,16 +129,30 @@ impl SelectionHelper {
         range
     }
 
+    /// Set the anchor position to the start of the selection range
+    pub fn set_anchor_to_range_start(&mut self) {
+        self.anchor_pos = self.range().start;
+    }
+
+    /// Get the range from the anchor position to the edit position
+    ///
+    /// This is used following [`Self::set_anchor_to_range_start`] to get the
+    /// IME pre-edit range.
+    pub fn anchor_to_edit_range(&self) -> Range<usize> {
+        debug_assert!(self.anchor_pos <= self.edit_pos);
+        self.anchor_pos..self.edit_pos
+    }
+
     /// Expand the selection from the range between edit pos and anchor pos
     ///
     /// This moves both edit pos and sel pos. To obtain repeatable behaviour,
-    /// first use [`SelectionHelper::set_anchor`] to set the anchor position,
+    /// first set `self.anchor_pos`.
     /// then before each time this method is called set the edit position.
     ///
     /// If `repeats <= 2`, the selection is expanded by words, otherwise it is
     /// expanded by lines. Line expansion only works if text is line-wrapped
     /// (layout has been solved).
-    pub fn expand<T: FormattableText>(&mut self, text: &Text<T>, repeats: u32) {
+    fn expand<T: FormattableText>(&mut self, text: &Text<T>, repeats: u32) {
         let string = text.as_str();
         let mut range = self.edit_pos..self.anchor_pos;
         if range.start > range.end {
