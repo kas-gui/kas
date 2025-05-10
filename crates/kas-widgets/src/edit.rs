@@ -29,7 +29,6 @@ enum LastEdit {
 
 enum EditAction {
     None,
-    Unused,
     Activate,
     Edit,
 }
@@ -805,21 +804,10 @@ impl_scope! {
                         let ime = Some(ImePurpose::Normal);
                         cx.request_key_focus(self.id(), ime, source);
                     }
-                    if source == FocusSource::Key && !self.class().multi_line() {
-                        self.selection.clear();
-                        self.selection.set_edit_pos(self.text.str_len());
-                        cx.redraw(self);
-                    }
                     Used
                 }
                 Event::NavFocus(_) => Used,
-                Event::LostNavFocus => {
-                    if !self.class().multi_line() {
-                        self.selection.set_empty();
-                        cx.redraw(self);
-                    }
-                    Used
-                }
+                Event::LostNavFocus => Used,
                 Event::SelFocus(source) => {
                     // NOTE: sel focus implies key focus since we only request
                     // the latter. We must set before calling self.set_primary.
@@ -846,16 +834,10 @@ impl_scope! {
                     cx.redraw(self);
                     Used
                 }
-                Event::Command(cmd, code) => {
-                    if self.has_key_focus {
-                        match self.control_key(cx, data, cmd, code) {
-                            Ok(r) => r,
-                            Err(NotReady) => Used,
-                        }
-                    } else {
-                        Unused
-                    }
-                }
+                Event::Command(cmd, code) => match self.control_key(cx, data, cmd, code) {
+                    Ok(r) => r,
+                    Err(NotReady) => Used,
+                },
                 Event::Key(event, false) if event.state == ElementState::Pressed => {
                     if let Some(text) = event.text {
                         self.received_text(cx, data, &text)
@@ -1326,7 +1308,6 @@ impl<G: EditGuard> EditField<G> {
 
         enum Action<'a> {
             None,
-            Unused,
             Activate,
             Edit,
             Insert(&'a str, LastEdit),
@@ -1531,12 +1512,18 @@ impl<G: EditGuard> EditField<G> {
                 }
                 Action::Edit
             }
-            _ => Action::Unused,
+            _ => return Ok(Unused),
         };
+
+        if !self.has_key_focus {
+            // This can happen if we still had selection focus, then received
+            // e.g. Command::Copy.
+            let ime = Some(ImePurpose::Normal);
+            cx.request_key_focus(self.id(), ime, FocusSource::Synthetic);
+        }
 
         let result = match action {
             Action::None => EditAction::None,
-            Action::Unused => EditAction::Unused,
             Action::Activate => EditAction::Activate,
             Action::Edit => EditAction::Edit,
             Action::Insert(s, edit) => {
@@ -1590,7 +1577,6 @@ impl<G: EditGuard> EditField<G> {
 
         Ok(match result {
             EditAction::None => Used,
-            EditAction::Unused => Unused,
             EditAction::Activate => {
                 cx.depress_with_key(self.id(), code);
                 G::activate(self, cx, data)

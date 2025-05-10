@@ -404,6 +404,10 @@ impl EventState {
     /// navigation focus.
     #[inline]
     pub fn request_key_focus(&mut self, target: Id, ime: Option<ImePurpose>, source: FocusSource) {
+        if self.nav_focus.as_ref() != Some(&target) {
+            self.set_nav_focus(target.clone(), source);
+        }
+
         self.pending_sel_focus = Some(PendingSelFocus {
             target: Some(target),
             key_focus: true,
@@ -427,6 +431,10 @@ impl EventState {
     /// When key focus is lost, [`Event::LostSelFocus`] is sent.
     #[inline]
     pub fn request_sel_focus(&mut self, target: Id, source: FocusSource) {
+        if self.nav_focus.as_ref() != Some(&target) {
+            self.set_nav_focus(target.clone(), source);
+        }
+
         if let Some(ref pending) = self.pending_sel_focus {
             if pending.target.as_ref() == Some(&target) {
                 return;

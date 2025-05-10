@@ -427,6 +427,8 @@ impl<'a> EventCx<'a> {
             source,
         } = pending;
         let target_is_new = target != self.sel_focus;
+        let old_key_focus = self.key_focus;
+        self.key_focus = key_focus;
 
         log::trace!("set_sel_focus: target={target:?}, key_focus={key_focus}");
 
@@ -437,12 +439,15 @@ impl<'a> EventCx<'a> {
                 self.ime = None;
             }
 
-            if self.key_focus && (!key_focus || target_is_new) {
+            if old_key_focus && (!key_focus || target_is_new) {
                 // If widget has key focus, this is lost
                 self.send_event(widget.re(), id.clone(), Event::LostKeyFocus);
             }
 
-            if target_is_new {
+            if target.is_none() {
+                // Retain selection focus without a new target
+                return;
+            } else if target_is_new {
                 // Selection focus is lost if another widget receives key focus
                 self.send_event(widget.re(), id, Event::LostSelFocus);
             }
@@ -450,13 +455,10 @@ impl<'a> EventCx<'a> {
 
         if let Some(id) = target.clone() {
             if target_is_new {
-                // The widget probably already has nav focus, but anyway:
-                self.set_nav_focus(id.clone(), FocusSource::Synthetic);
-
                 self.send_event(widget.re(), id.clone(), Event::SelFocus(source));
             }
 
-            if key_focus && (!self.key_focus || target_is_new) {
+            if key_focus && (!old_key_focus || target_is_new) {
                 self.send_event(widget.re(), id.clone(), Event::KeyFocus);
             }
 
@@ -466,7 +468,6 @@ impl<'a> EventCx<'a> {
             }
         }
 
-        self.key_focus = key_focus;
         self.sel_focus = target;
     }
 
