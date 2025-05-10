@@ -416,6 +416,23 @@ impl EventState {
         });
     }
 
+    /// End Input Method Editor focus on `target`, if present
+    #[inline]
+    pub fn cancel_ime_focus(&mut self, target: Id) {
+        if let Some(pending) = self.pending_sel_focus.as_mut() {
+            if pending.target.as_ref() == Some(&target) {
+                pending.ime = None;
+            }
+        } else if self.ime.is_some() && self.sel_focus.as_ref() == Some(&target) {
+            self.pending_sel_focus = Some(PendingSelFocus {
+                target: Some(target),
+                key_focus: self.key_focus,
+                ime: None,
+                source: FocusSource::Synthetic,
+            });
+        }
+    }
+
     /// Set IME cursor area
     ///
     /// This should be called after receiving [`Event::ImeFocus`], and any time

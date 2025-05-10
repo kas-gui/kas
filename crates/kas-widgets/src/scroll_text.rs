@@ -234,13 +234,11 @@ impl_scope! {
                     self.pan_delta(cx, delta.as_offset(cx), false)
                 }
                 event => match self.input_handler.handle(cx, self.id(), event) {
-                    TextInputAction::None => Used,
+                    TextInputAction::Used | TextInputAction::Finish => Used,
                     TextInputAction::Unused => Unused,
                     TextInputAction::Pan(delta, kinetic) => self.pan_delta(cx, delta, kinetic),
                     TextInputAction::Focus { coord, action } => {
-                        if let Some(coord) = coord {
-                            self.set_edit_pos_from_coord(cx, coord);
-                        }
+                        self.set_edit_pos_from_coord(cx, coord);
                         self.selection.action(&self.text, action);
 
                         if self.has_sel_focus {

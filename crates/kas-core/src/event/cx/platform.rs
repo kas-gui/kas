@@ -7,7 +7,7 @@
 
 use super::*;
 use crate::theme::ThemeSize;
-use crate::Window;
+use crate::{TileExt, Window};
 use std::task::Poll;
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]

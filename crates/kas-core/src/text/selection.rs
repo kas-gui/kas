@@ -118,9 +118,9 @@ impl SelectionHelper {
         range
     }
 
-    /// Set the anchor position from the edit position
+    /// Set the anchor position to the selection position
     pub fn set_anchor(&mut self) {
-        self.anchor_pos = self.edit_pos;
+        self.anchor_pos = self.sel_pos;
     }
 
     /// Expand the selection from the range between edit pos and anchor pos
@@ -178,7 +178,7 @@ impl SelectionHelper {
     /// Handle an action
     pub fn action<T: FormattableText>(&mut self, text: &Text<T>, action: SelectionAction) {
         if action.anchor {
-            self.set_anchor();
+            self.anchor_pos = self.edit_pos;
         }
         if action.clear {
             self.set_empty();

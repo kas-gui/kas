@@ -24,7 +24,7 @@ use crate::geom::{Rect, Size};
 use crate::messages::{Erased, MessageStack};
 use crate::runner::{Platform, RunnerT, WindowDataErased};
 use crate::util::WidgetHierarchy;
-use crate::{Action, Id, NavAdvance, Node, TileExt, WindowId};
+use crate::{Action, Id, NavAdvance, Node, WindowId};
 
 mod config;
 mod cx_pub;
@@ -437,7 +437,7 @@ impl<'a> EventCx<'a> {
         log::trace!("set_sel_focus: target={target:?}, key_focus={key_focus}");
 
         if let Some(id) = self.sel_focus.clone() {
-            if self.ime.is_some() && target_is_new {
+            if self.ime.is_some() && (ime.is_none() || target_is_new) {
                 window.set_ime_allowed(None);
                 self.old_ime_target = Some(id.clone());
                 self.ime = None;
@@ -467,7 +467,7 @@ impl<'a> EventCx<'a> {
                 self.send_event(widget.re(), id.clone(), Event::KeyFocus);
             }
 
-            if ime.is_some() && ime != self.ime {
+            if ime.is_some() && (ime != self.ime || target_is_new) {
                 window.set_ime_allowed(ime);
                 self.ime = ime;
             }

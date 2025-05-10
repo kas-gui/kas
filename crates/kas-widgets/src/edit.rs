@@ -713,6 +713,7 @@ impl_scope! {
         last_edit: LastEdit,
         has_key_focus: bool,
         ime_focus: bool,
+        sel_action: bool,
         error_state: bool,
         input_handler: TextInput,
         /// The associated [`EditGuard`] implementation
@@ -804,7 +805,7 @@ impl_scope! {
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> IsUsed {
             match event {
                 Event::NavFocus(source) if source.key_or_synthetic() => {
-                    if !self.has_key_focus {
+                    if !self.has_key_focus && !self.sel_action {
                         let ime = Some(ImePurpose::Normal);
                         cx.request_key_focus(self.id(), ime, source);
                     }
@@ -829,6 +830,7 @@ impl_scope! {
                 }
                 Event::ImeFocus => {
                     self.ime_focus = true;
+                    self.sel_action = false;
                     self.set_ime_cursor_area(cx);
                     Used
                 }
@@ -843,6 +845,7 @@ impl_scope! {
                     Used
                 }
                 Event::LostSelFocus => {
+                    self.sel_action = false;
                     self.selection.set_empty();
                     cx.redraw(self);
                     Used
@@ -881,6 +884,7 @@ impl_scope! {
                 Event::PressEnd { press, .. } if press.is_tertiary() => {
                     if let Some(content) = cx.get_primary() {
                         self.set_edit_pos_from_coord(cx, press.coord);
+                        self.sel_action = false;
                         self.selection.set_empty();
                         let pos = self.selection.edit_pos();
                         let range = self.trim_paste(&content);
@@ -900,23 +904,33 @@ impl_scope! {
                     Used
                 }
                 event => match self.input_handler.handle(cx, self.id(), event) {
-                    TextInputAction::None => Used,
+                    TextInputAction::Used => Used,
                     TextInputAction::Unused => Unused,
                     TextInputAction::Pan(delta, kinetic) => self.pan_delta(cx, delta, kinetic),
-                    TextInputAction::Focus { coord, action } => {
-                        if let Some(coord) = coord {
-                            self.set_edit_pos_from_coord(cx, coord);
+                    TextInputAction::Focus { coord, action } if self.sel_action || action.anchor => {
+                        if self.ime_focus {
+                            cx.cancel_ime_focus(self.id());
+                            self.ime_focus = false;
                         }
+                        self.sel_action = true;
+                        self.set_edit_pos_from_coord(cx, coord);
                         self.selection.action(&self.text, action);
 
                         if self.has_key_focus {
                             self.set_primary(cx);
-                        } else {
+                        }
+                        Used
+                    }
+                    TextInputAction::Finish if self.sel_action => {
+                        self.sel_action = false;
+                        self.selection.set_anchor();
+                        if !self.ime_focus {
                             let ime = Some(ImePurpose::Normal);
                             cx.request_key_focus(self.id(), ime, FocusSource::Pointer);
                         }
                         Used
                     }
+                    _ => Used,
                 },
             }
         }
@@ -979,6 +993,7 @@ impl_scope! {
                 last_edit: Default::default(),
                 has_key_focus: false,
                 ime_focus: false,
+                sel_action: false,
                 error_state: false,
                 input_handler: Default::default(),
                 guard,
@@ -1006,6 +1021,7 @@ impl_scope! {
                 return;
             }
 
+            self.sel_action = false;
             self.selection.set_max_len(self.text.str_len());
             cx.redraw(&self);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
@@ -1130,6 +1146,7 @@ impl<G: EditGuard> EditField<G> {
     #[inline]
     #[must_use]
     pub fn with_text(mut self, text: impl ToString) -> Self {
+        debug_assert!(!self.ime_focus && !self.sel_action);
         let text = text.to_string();
         let len = text.len();
         self.text.set_string(text);
@@ -1292,6 +1309,7 @@ impl<G: EditGuard> EditField<G> {
             return Unused;
         }
 
+        self.sel_action = false;
         let pos = self.selection.edit_pos();
         let selection = self.selection.range();
         let have_sel = selection.start < selection.end;
@@ -1347,6 +1365,7 @@ impl<G: EditGuard> EditField<G> {
 
         let action = match cmd {
             Command::Escape | Command::Deselect if !selection.is_empty() => {
+                self.sel_action = false;
                 self.selection.set_empty();
                 cx.redraw(&self);
                 Action::None
@@ -1550,6 +1569,10 @@ impl<G: EditGuard> EditField<G> {
             // e.g. Command::Copy.
             let ime = Some(ImePurpose::Normal);
             cx.request_key_focus(self.id(), ime, FocusSource::Synthetic);
+        }
+
+        if !matches!(action, Action::None) {
+            self.sel_action = false;
         }
 
         let result = match action {
