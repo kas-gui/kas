@@ -657,6 +657,41 @@ impl<G: EditGuard> EditBox<G> {
     }
 }
 
+/// Used to track ongoing incompatible actions
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum CurrentAction {
+    #[default]
+    None,
+    DragSelect,
+    ImeStart,
+}
+
+impl CurrentAction {
+    fn is_select(self) -> bool {
+        matches!(self, CurrentAction::DragSelect)
+    }
+
+    fn is_ime(self) -> bool {
+        matches!(self, CurrentAction::ImeStart)
+    }
+
+    fn is_active_ime(self) -> bool {
+        false
+    }
+
+    fn clear_active(&mut self) {
+        if matches!(self, CurrentAction::DragSelect) {
+            *self = CurrentAction::None;
+        }
+    }
+
+    fn clear_selection(&mut self) {
+        if matches!(self, CurrentAction::DragSelect) {
+            *self = CurrentAction::None;
+        }
+    }
+}
+
 impl_scope! {
     /// A text-edit field (single- or multi-line)
     ///
@@ -712,8 +747,7 @@ impl_scope! {
         old_state: Option<(String, usize, usize)>,
         last_edit: LastEdit,
         has_key_focus: bool,
-        ime_focus: bool,
-        sel_action: bool,
+        current: CurrentAction,
         error_state: bool,
         input_handler: TextInput,
         /// The associated [`EditGuard`] implementation
@@ -745,7 +779,7 @@ impl_scope! {
             self.text.set_rect(cx, rect, hints);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
-            if self.ime_focus {
+            if self.current.is_ime() {
                 self.set_ime_cursor_area(cx);
             }
         }
@@ -805,7 +839,7 @@ impl_scope! {
         fn handle_event(&mut self, cx: &mut EventCx, data: &G::Data, event: Event) -> IsUsed {
             match event {
                 Event::NavFocus(source) if source.key_or_synthetic() => {
-                    if !self.has_key_focus && !self.sel_action {
+                    if !self.has_key_focus && !self.current.is_select() {
                         let ime = Some(ImePurpose::Normal);
                         cx.request_key_focus(self.id(), ime, source);
                     }
@@ -829,13 +863,14 @@ impl_scope! {
                     Used
                 }
                 Event::ImeFocus => {
-                    self.ime_focus = true;
-                    self.sel_action = false;
+                    self.current = CurrentAction::ImeStart;
                     self.set_ime_cursor_area(cx);
                     Used
                 }
                 Event::LostImeFocus => {
-                    self.ime_focus = false;
+                    if self.current.is_ime() {
+                        self.current = CurrentAction::None;
+                    }
                     Used
                 }
                 Event::LostKeyFocus => {
@@ -845,7 +880,8 @@ impl_scope! {
                     Used
                 }
                 Event::LostSelFocus => {
-                    self.sel_action = false;
+                    // IME focus without selection focus is impossible, so we can clear all current actions
+                    self.current = CurrentAction::None;
                     self.selection.set_empty();
                     cx.redraw(self);
                     Used
@@ -884,7 +920,7 @@ impl_scope! {
                 Event::PressEnd { press, .. } if press.is_tertiary() => {
                     if let Some(content) = cx.get_primary() {
                         self.set_edit_pos_from_coord(cx, press.coord);
-                        self.sel_action = false;
+                        self.current.clear_selection();
                         self.selection.set_empty();
                         let pos = self.selection.edit_pos();
                         let range = self.trim_paste(&content);
@@ -907,12 +943,11 @@ impl_scope! {
                     TextInputAction::Used => Used,
                     TextInputAction::Unused => Unused,
                     TextInputAction::Pan(delta, kinetic) => self.pan_delta(cx, delta, kinetic),
-                    TextInputAction::Focus { coord, action } if self.sel_action || action.anchor => {
-                        if self.ime_focus {
+                    TextInputAction::Focus { coord, action } if self.current.is_select() || action.anchor => {
+                        if self.current.is_ime() {
                             cx.cancel_ime_focus(self.id());
-                            self.ime_focus = false;
                         }
-                        self.sel_action = true;
+                        self.current = CurrentAction::DragSelect;
                         self.set_edit_pos_from_coord(cx, coord);
                         self.selection.action(&self.text, action);
 
@@ -921,13 +956,10 @@ impl_scope! {
                         }
                         Used
                     }
-                    TextInputAction::Finish if self.sel_action => {
-                        self.sel_action = false;
-                        self.selection.set_anchor();
-                        if !self.ime_focus {
-                            let ime = Some(ImePurpose::Normal);
-                            cx.request_key_focus(self.id(), ime, FocusSource::Pointer);
-                        }
+                    TextInputAction::Finish if self.current.is_select() => {
+                        self.current = CurrentAction::None;
+                        let ime = Some(ImePurpose::Normal);
+                        cx.request_key_focus(self.id(), ime, FocusSource::Pointer);
                         Used
                     }
                     _ => Used,
@@ -956,7 +988,7 @@ impl_scope! {
             let new_offset = offset.min(self.max_scroll_offset()).max(Offset::ZERO);
             if new_offset != self.view_offset {
                 self.view_offset = new_offset;
-                if self.ime_focus {
+                if self.current.is_ime() {
                     self.set_ime_cursor_area(cx);
                 }
                 // No widget moves so do not need to report Action::REGION_MOVED
@@ -992,8 +1024,7 @@ impl_scope! {
                 old_state: None,
                 last_edit: Default::default(),
                 has_key_focus: false,
-                ime_focus: false,
-                sel_action: false,
+                current: CurrentAction::None,
                 error_state: false,
                 input_handler: Default::default(),
                 guard,
@@ -1021,7 +1052,7 @@ impl_scope! {
                 return;
             }
 
-            self.sel_action = false;
+            self.current.clear_active();
             self.selection.set_max_len(self.text.str_len());
             cx.redraw(&self);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
@@ -1030,7 +1061,7 @@ impl_scope! {
                 cx.action(&self, Action::SCROLLED);
                 self.view_offset = view_offset;
             }
-            if self.ime_focus {
+            if self.current.is_ime() {
                 self.set_ime_cursor_area(cx);
             }
             self.set_error_state(cx, false);
@@ -1146,7 +1177,7 @@ impl<G: EditGuard> EditField<G> {
     #[inline]
     #[must_use]
     pub fn with_text(mut self, text: impl ToString) -> Self {
-        debug_assert!(!self.ime_focus && !self.sel_action);
+        debug_assert!(self.current == CurrentAction::None);
         let text = text.to_string();
         let len = text.len();
         self.text.set_string(text);
@@ -1305,11 +1336,11 @@ impl<G: EditGuard> EditField<G> {
     }
 
     fn received_text(&mut self, cx: &mut EventCx, data: &G::Data, text: &str) -> IsUsed {
-        if !self.editable {
+        if !self.editable || self.current.is_active_ime() {
             return Unused;
         }
 
-        self.sel_action = false;
+        self.current.clear_selection();
         let pos = self.selection.edit_pos();
         let selection = self.selection.range();
         let have_sel = selection.start < selection.end;
@@ -1364,8 +1395,10 @@ impl<G: EditGuard> EditField<G> {
         }
 
         let action = match cmd {
-            Command::Escape | Command::Deselect if !selection.is_empty() => {
-                self.sel_action = false;
+            Command::Escape | Command::Deselect
+                if !self.current.is_active_ime() && !selection.is_empty() =>
+            {
+                self.current.clear_selection();
                 self.selection.set_empty();
                 cx.redraw(&self);
                 Action::None
@@ -1572,7 +1605,7 @@ impl<G: EditGuard> EditField<G> {
         }
 
         if !matches!(action, Action::None) {
-            self.sel_action = false;
+            self.current = CurrentAction::None;
         }
 
         let result = match action {
@@ -1668,7 +1701,7 @@ impl<G: EditGuard> EditField<G> {
         if new_offset != self.view_offset {
             delta -= self.view_offset - new_offset;
             self.view_offset = new_offset;
-            if self.ime_focus {
+            if self.current.is_ime() {
                 self.set_ime_cursor_area(cx);
             }
         }
@@ -1704,7 +1737,7 @@ impl<G: EditGuard> EditField<G> {
                 cx.set_scroll(Scroll::Scrolled);
             }
         }
-        if self.ime_focus {
+        if self.current.is_ime() {
             self.set_ime_cursor_area(cx);
         }
     }
