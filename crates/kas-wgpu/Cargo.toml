@@ -33,7 +33,9 @@ metal = ["wgpu/metal"]
 
 shaping = ["kas-text/shaping"]
 harfbuzz = ["kas-text/harfbuzz"]
+
 raster = ["kas-text/raster"]
+fontdue = ["kas-text/fontdue"]
 
 [dependencies]
 bytemuck = "1.7.0"

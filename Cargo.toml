@@ -153,3 +153,7 @@ members = [
     "crates/kas-view",
     "examples/mandlebrot",
 ]
+
+[patch.crates-io.kas-text]
+git = "https://github.com/kas-gui/kas-text.git"
+rev = "f226c7e"

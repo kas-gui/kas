@@ -10,7 +10,7 @@ use kas::cast::traits::*;
 use kas::config::RasterConfig;
 use kas::draw::{color::Rgba, AllocError, PassId};
 use kas::geom::{Quad, Rect, Vec2};
-use kas::text::fonts::FaceId;
+use kas::text::fonts::{self, FaceId};
 use kas::text::{Effect, Glyph, TextDisplay};
 use kas_text::raster::{raster, Config, SpriteDescriptor};
 use rustc_hash::FxHashMap as HashMap;
@@ -23,6 +23,9 @@ pub enum RasterError {
     Alloc(#[from] AllocError),
     #[error("failed")]
     Failed,
+    #[allow(unused)]
+    #[error("zero-sized")]
+    Zero,
 }
 
 /// A Sprite
@@ -220,7 +223,13 @@ impl Pipeline {
         // NOTE: we only need the allocation and coordinates now; the
         // rendering could be offloaded (though this may not be useful).
 
-        let sprite = match self.raster_kas_text_glyph(desc) {
+        #[cfg(feature = "fontdue")]
+        let result = self.raster_fontdue(desc);
+
+        #[cfg(not(feature = "fontdue"))]
+        let result = self.raster_kas_text_glyph(desc);
+
+        let sprite = match result {
             Ok(sprite) => sprite,
             Err(err) => {
                 log::warn!("raster_glyph failed: {err}");
@@ -243,6 +252,33 @@ impl Pipeline {
             valid: true,
             size: Vec2(rs.size.0.cast(), rs.size.1.cast()),
             offset: Vec2(rs.offset.0.cast(), rs.offset.1.cast()),
+            tex_quad,
+        })
+    }
+
+    #[cfg(feature = "fontdue")]
+    fn raster_fontdue(&mut self, desc: SpriteDescriptor) -> Result<Sprite, RasterError> {
+        let face = desc.face();
+        let face = fonts::library().get_face_store(face).fontdue();
+
+        let (metrics, data) = face.rasterize_indexed(desc.glyph().0, desc.dpem(&self.config));
+
+        let size = (u32::conv(metrics.width), u32::conv(metrics.height));
+        let h_off = -metrics.ymin - i32::conv(metrics.height);
+        let offset = (metrics.xmin, h_off);
+        if size.0 == 0 || size.1 == 0 {
+            return Err(RasterError::Zero);
+        }
+
+        let (atlas, _, origin, tex_quad) = self.atlas_pipe.allocate(size)?;
+
+        self.prepare.push((atlas, origin, size, data));
+
+        Ok(Sprite {
+            atlas,
+            valid: true,
+            size: Vec2(size.0.cast(), size.1.cast()),
+            offset: Vec2(offset.0.cast(), offset.1.cast()),
             tex_quad,
         })
     }
