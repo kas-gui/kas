@@ -6,15 +6,24 @@
 //! Text drawing pipeline
 
 use super::{atlases, ShaderManager};
-use kas::cast::*;
+use kas::cast::traits::*;
 use kas::config::RasterConfig;
-use kas::draw::{color::Rgba, PassId};
+use kas::draw::{color::Rgba, AllocError, PassId};
 use kas::geom::{Quad, Rect, Vec2};
 use kas::text::fonts::FaceId;
 use kas::text::{Effect, Glyph, TextDisplay};
 use kas_text::raster::{raster, Config, SpriteDescriptor};
 use rustc_hash::FxHashMap as HashMap;
 use std::mem::size_of;
+
+/// Configuration read/write/format errors
+#[derive(thiserror::Error, Debug)]
+pub enum RasterError {
+    #[error("allocation failed")]
+    Alloc(#[from] AllocError),
+    #[error("failed")]
+    Failed,
+}
 
 /// A Sprite
 ///
@@ -210,38 +219,32 @@ impl Pipeline {
     fn raster_glyph(&mut self, desc: SpriteDescriptor) -> Sprite {
         // NOTE: we only need the allocation and coordinates now; the
         // rendering could be offloaded (though this may not be useful).
-        let mut sprite = Sprite::default();
-        if let Some(rs) = raster(&self.config, desc) {
-            match self.atlas_pipe.allocate(rs.size) {
-                Ok((atlas, _, origin, tex_quad)) => {
-                    sprite = Sprite {
-                        atlas,
-                        valid: true,
-                        size: Vec2(rs.size.0.cast(), rs.size.1.cast()),
-                        offset: Vec2(rs.offset.0.cast(), rs.offset.1.cast()),
-                        tex_quad,
-                    };
 
-                    self.prepare.push((atlas, origin, rs.size, rs.data));
-                }
-                Err(_) => {
-                    log::warn!(
-                        "raster_glyph: failed to allocate glyph with size {:?}",
-                        rs.size
-                    );
-                }
-            };
-        } else {
-            // This comes up a lot and is usually harmless
-            log::debug!(
-                "raster_glyph: failed to raster glyph {:?} of face {:?}",
-                desc.glyph(),
-                desc.face()
-            );
+        let sprite = match self.raster_kas_text_glyph(desc) {
+            Ok(sprite) => sprite,
+            Err(err) => {
+                log::warn!("raster_glyph failed: {err}");
+                Sprite::default()
+            }
         };
 
         self.glyphs.insert(desc, sprite.clone());
         sprite
+    }
+
+    fn raster_kas_text_glyph(&mut self, desc: SpriteDescriptor) -> Result<Sprite, RasterError> {
+        let rs = raster(&self.config, desc).ok_or(RasterError::Failed)?;
+        let (atlas, _, origin, tex_quad) = self.atlas_pipe.allocate(rs.size)?;
+
+        self.prepare.push((atlas, origin, rs.size, rs.data));
+
+        Ok(Sprite {
+            atlas,
+            valid: true,
+            size: Vec2(rs.size.0.cast(), rs.size.1.cast()),
+            offset: Vec2(rs.offset.0.cast(), rs.offset.1.cast()),
+            tex_quad,
+        })
     }
 }
 
