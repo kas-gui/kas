@@ -394,17 +394,60 @@ impl EventState {
     /// translation of key events to [`Event::Command`] while key focus is
     /// active.
     ///
+    /// Providing an [`ImePurpose`] enables Input Method Editor events
+    /// (see [`Event::ImeFocus`]). TODO: this feature is incomplete; winit does
+    /// not currently support setting surrounding text.
+    ///
     /// The `source` parameter is used by [`Event::SelFocus`].
     ///
     /// Key focus implies sel focus (see [`Self::request_sel_focus`]) and
     /// navigation focus.
     #[inline]
-    pub fn request_key_focus(&mut self, target: Id, source: FocusSource) {
+    pub fn request_key_focus(&mut self, target: Id, ime: Option<ImePurpose>, source: FocusSource) {
+        if self.nav_focus.as_ref() != Some(&target) {
+            self.set_nav_focus(target.clone(), source);
+        }
+
         self.pending_sel_focus = Some(PendingSelFocus {
             target: Some(target),
             key_focus: true,
+            ime,
             source,
         });
+    }
+
+    /// End Input Method Editor focus on `target`, if present
+    #[inline]
+    pub fn cancel_ime_focus(&mut self, target: Id) {
+        if let Some(pending) = self.pending_sel_focus.as_mut() {
+            if pending.target.as_ref() == Some(&target) {
+                pending.ime = None;
+            }
+        } else if self.ime.is_some() && self.sel_focus.as_ref() == Some(&target) {
+            self.pending_sel_focus = Some(PendingSelFocus {
+                target: Some(target),
+                key_focus: self.key_focus,
+                ime: None,
+                source: FocusSource::Synthetic,
+            });
+        }
+    }
+
+    /// Set IME cursor area
+    ///
+    /// This should be called after receiving [`Event::ImeFocus`], and any time
+    /// that the `rect` parameter changes, until [`Event::LostImeFocus`] is
+    /// received.
+    ///
+    /// This sets the text cursor's area, `rect`, relative to the widget's own
+    /// coordinate space. If never called, then the widget's whole rect is used.
+    ///
+    /// This does nothing if `target` does not have IME-enabled input focus.
+    #[inline]
+    pub fn set_ime_cursor_area(&mut self, target: &Id, rect: Rect) {
+        if self.ime.is_some() && self.sel_focus.as_ref() == Some(target) {
+            self.ime_cursor_area = rect;
+        }
     }
 
     /// Request selection focus
@@ -422,6 +465,10 @@ impl EventState {
     /// When key focus is lost, [`Event::LostSelFocus`] is sent.
     #[inline]
     pub fn request_sel_focus(&mut self, target: Id, source: FocusSource) {
+        if self.nav_focus.as_ref() != Some(&target) {
+            self.set_nav_focus(target.clone(), source);
+        }
+
         if let Some(ref pending) = self.pending_sel_focus {
             if pending.target.as_ref() == Some(&target) {
                 return;
@@ -431,6 +478,7 @@ impl EventState {
         self.pending_sel_focus = Some(PendingSelFocus {
             target: Some(target),
             key_focus: false,
+            ime: None,
             source,
         });
     }

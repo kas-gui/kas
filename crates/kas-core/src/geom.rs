@@ -551,6 +551,15 @@ impl Rect {
         Rect { pos, size }
     }
 
+    /// Construct from two coords
+    ///
+    /// It is expected that `pos.le(pos2)`.
+    #[inline]
+    pub fn from_coords(pos: Coord, pos2: Coord) -> Self {
+        let size = (pos2 - pos).cast();
+        Rect { pos, size }
+    }
+
     /// Get the second point (pos + size)
     #[inline]
     pub fn pos2(&self) -> Coord {
@@ -649,6 +658,18 @@ mod winit_impls {
         #[inline]
         fn try_conv(size: PhysicalSize<X>) -> Result<Self> {
             Ok(Size(size.width.cast(), size.height.cast()))
+        }
+    }
+
+    impl Coord {
+        /// Convert to a "physical" [`winit::dpi::Position`]
+        ///
+        /// This implies that the [`Coord`] was calculated using the correct
+        /// scale factor. Before the window has been constructed (when the
+        /// scale factor is supposedly unknown) this should not be used.
+        #[inline]
+        pub fn as_physical(self) -> winit::dpi::Position {
+            winit::dpi::Position::Physical(PhysicalPosition::new(self.0, self.1))
         }
     }
 

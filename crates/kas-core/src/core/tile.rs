@@ -5,7 +5,7 @@
 
 //! Layout, Tile and TileExt traits
 
-use crate::geom::{Coord, Offset};
+use crate::geom::{Coord, Offset, Rect};
 use crate::util::IdentifyWidget;
 use crate::{HasId, Id, Layout};
 use kas_macros::autoimpl;
@@ -285,6 +285,39 @@ pub trait TileExt: Tile {
             Some(self.as_tile())
         } else {
             None
+        }
+    }
+
+    /// Find the [`Rect`] of the descendant with this `id`, if any
+    ///
+    /// The [`Rect`] is returned in the widgets own coordinate space where this
+    /// space is translated by the [`Offset`] returned. The result is thus
+    /// `rect + translation` in the caller's coordinate space.
+    fn find_widget_rect(&self, id: &Id) -> Option<(Rect, Offset)> {
+        let mut widget = self.as_tile();
+        let mut translation = Offset::ZERO;
+        loop {
+            if widget.eq_id(id) {
+                if widget.translation() != Offset::ZERO {
+                    // Unvalidated: does this cause issues with the parent's event handlers?
+                    log::warn!(
+                        "Parent of pop-up {} has non-zero translation",
+                        widget.identify()
+                    );
+                }
+
+                let rect = widget.rect();
+                return Some((rect, translation));
+            } else if let Some(child) = widget
+                .find_child_index(id)
+                .and_then(|i| widget.get_child(i))
+            {
+                translation += widget.translation();
+                widget = child;
+                continue;
+            } else {
+                return None;
+            }
         }
     }
 }

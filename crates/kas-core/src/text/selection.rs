@@ -5,11 +5,12 @@
 
 //! Tools for text selection
 
-use kas_text::format::FormattableText;
+use crate::geom::{Rect, Vec2};
+use crate::theme::Text;
+use cast::CastFloat;
+use kas_text::{format::FormattableText, TextDisplay};
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
-
-use crate::theme::Text;
 
 /// Action used by [`crate::event::components::TextInput`]
 #[derive(Default)]
@@ -69,12 +70,14 @@ impl SelectionHelper {
     /// Clear selection without changing edit pos
     pub fn set_empty(&mut self) {
         self.sel_pos = self.edit_pos;
+        self.anchor_pos = self.edit_pos;
     }
 
-    /// Set both edit and selection positions to this value
+    /// Set all positions to this value
     pub fn set_pos(&mut self, pos: usize) {
         self.edit_pos = pos;
         self.sel_pos = pos;
+        self.anchor_pos = pos;
     }
 
     /// Get the edit pos
@@ -91,7 +94,16 @@ impl SelectionHelper {
         self.sel_pos
     }
     /// Set the selection pos without adjusting the edit pos
+    ///
+    /// The anchor position is also set to the selection position.
     pub fn set_sel_pos(&mut self, pos: usize) {
+        self.sel_pos = pos;
+        self.anchor_pos = pos;
+    }
+    /// Set the selection pos only
+    ///
+    /// Prefer [`Self::set_sel_pos`] unless you know you don't want to set the anchor.
+    pub fn set_sel_pos_only(&mut self, pos: usize) {
         self.sel_pos = pos;
     }
 
@@ -117,21 +129,30 @@ impl SelectionHelper {
         range
     }
 
-    /// Set the anchor position from the edit position
-    pub fn set_anchor(&mut self) {
-        self.anchor_pos = self.edit_pos;
+    /// Set the anchor position to the start of the selection range
+    pub fn set_anchor_to_range_start(&mut self) {
+        self.anchor_pos = self.range().start;
+    }
+
+    /// Get the range from the anchor position to the edit position
+    ///
+    /// This is used following [`Self::set_anchor_to_range_start`] to get the
+    /// IME pre-edit range.
+    pub fn anchor_to_edit_range(&self) -> Range<usize> {
+        debug_assert!(self.anchor_pos <= self.edit_pos);
+        self.anchor_pos..self.edit_pos
     }
 
     /// Expand the selection from the range between edit pos and anchor pos
     ///
     /// This moves both edit pos and sel pos. To obtain repeatable behaviour,
-    /// first use [`SelectionHelper::set_anchor`] to set the anchor position,
+    /// first set `self.anchor_pos`.
     /// then before each time this method is called set the edit position.
     ///
     /// If `repeats <= 2`, the selection is expanded by words, otherwise it is
     /// expanded by lines. Line expansion only works if text is line-wrapped
     /// (layout has been solved).
-    pub fn expand<T: FormattableText>(&mut self, text: &Text<T>, repeats: u32) {
+    fn expand<T: FormattableText>(&mut self, text: &Text<T>, repeats: u32) {
         let string = text.as_str();
         let mut range = self.edit_pos..self.anchor_pos;
         if range.start > range.end {
@@ -177,13 +198,45 @@ impl SelectionHelper {
     /// Handle an action
     pub fn action<T: FormattableText>(&mut self, text: &Text<T>, action: SelectionAction) {
         if action.anchor {
-            self.set_anchor();
+            self.anchor_pos = self.edit_pos;
         }
         if action.clear {
             self.set_empty();
         }
         if action.repeats > 1 {
             self.expand(text, action.repeats);
+        }
+    }
+
+    /// Return a [`Rect`] encompassing the cursor(s) and selection
+    pub fn cursor_rect(&self, text: &TextDisplay) -> Option<Rect> {
+        let (m1, m2);
+        if self.sel_pos == self.edit_pos {
+            let mut iter = text.text_glyph_pos(self.edit_pos);
+            m1 = iter.next();
+            m2 = iter.next();
+        } else if self.sel_pos < self.edit_pos {
+            m1 = text.text_glyph_pos(self.sel_pos).next_back();
+            m2 = text.text_glyph_pos(self.edit_pos).next();
+        } else {
+            m1 = text.text_glyph_pos(self.edit_pos).next_back();
+            m2 = text.text_glyph_pos(self.sel_pos).next();
+        }
+
+        if let Some((c1, c2)) = m1.zip(m2) {
+            let left = c1.pos.0.min(c2.pos.0);
+            let right = c1.pos.0.max(c2.pos.0);
+            let top = (c1.pos.1 - c1.ascent).min(c2.pos.1 - c2.ascent);
+            let bottom = (c1.pos.1 - c1.descent).max(c2.pos.1 - c2.ascent);
+            let p1 = Vec2(left, top).cast_floor();
+            let p2 = Vec2(right, bottom).cast_ceil();
+            Some(Rect::from_coords(p1, p2))
+        } else if let Some(c) = m1.or(m2) {
+            let p1 = Vec2(c.pos.0, c.pos.1 - c.ascent).cast_floor();
+            let p2 = Vec2(c.pos.0, c.pos.1 - c.descent).cast_ceil();
+            Some(Rect::from_coords(p1, p2))
+        } else {
+            None
         }
     }
 }

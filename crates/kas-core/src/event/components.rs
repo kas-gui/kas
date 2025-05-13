@@ -424,29 +424,35 @@ pub struct TextInput {
 
 /// Result of [`TextInput::handle`]
 pub enum TextInputAction {
-    /// No action (event consumed)
-    None,
+    /// Event is used, no action
+    Used,
     /// Event not used
     Unused,
     /// Pan text using the given `delta`
     ///
     /// The second payload, `kinetic`, should be passed to [`TextInput::set_scroll_residual`].
     Pan(Offset, bool),
-    /// Focus, optionally updating position and selection
+    /// Set the text cursor near to `coord` (mouse or touch position)
+    ///
+    /// If `action.anchor`, this is a new set-focus action; the selection anchor
+    /// should be set to the current position (this is used to expand the
+    /// selection on double- or triple-click). If `!action.anchor`, this is an
+    /// update due to pointer motion used to drag a selection.
     ///
     /// To handle:
     ///
-    /// 1.  If a `coord` is included, translate to a text index then call
-    ///     [`SelectionHelper::set_edit_pos`].
+    /// 1.  Translate `coord` to a text index and call [`SelectionHelper::set_edit_pos`].
     /// 2.  Call [`SelectionHelper::action`].
     /// 3.  If supporting the primary buffer (Unix), set its contents now if the
     ///     widget has selection focus or otherwise when handling
     ///     [`Event::SelFocus`] for a pointer source.
     /// 4.  Request keyboard or selection focus if not already gained.
     Focus {
-        coord: Option<Coord>,
+        coord: Coord,
         action: SelectionAction,
     },
+    /// Current action is concluded
+    Finish,
 }
 
 impl TextInput {
@@ -462,10 +468,7 @@ impl TextInput {
         use TextInputAction as Action;
         match event {
             Event::PressStart { press } if press.is_primary() => {
-                let mut action = Action::Focus {
-                    coord: None,
-                    action: SelectionAction::default(),
-                };
+                let mut action = Action::Used;
                 let icon = match *press {
                     PressSource::Touch(touch_id) => {
                         self.touch_phase = TouchPhase::Start(touch_id, press.coord);
@@ -478,7 +481,7 @@ impl TextInput {
                     }
                     PressSource::Mouse(_, repeats) => {
                         action = Action::Focus {
-                            coord: Some(press.coord),
+                            coord: press.coord,
                             action: SelectionAction {
                                 anchor: true,
                                 clear: !cx.modifiers().shift_key(),
@@ -505,12 +508,12 @@ impl TextInput {
                                 self.touch_phase = TouchPhase::Pan(id);
                                 Action::Pan(delta, false)
                             } else {
-                                Action::None
+                                Action::Used
                             }
                         }
                         TouchPhase::Pan(id) if id == touch_id => Action::Pan(delta, false),
                         _ => Action::Focus {
-                            coord: Some(press.coord),
+                            coord: press.coord,
                             action: SelectionAction::new(false, false, 1),
                         },
                     },
@@ -518,7 +521,7 @@ impl TextInput {
                         Action::Pan(delta, false)
                     }
                     PressSource::Mouse(_, repeats) => Action::Focus {
-                        coord: Some(press.coord),
+                        coord: press.coord,
                         action: SelectionAction::new(false, false, repeats),
                     },
                 }
@@ -531,26 +534,27 @@ impl TextInput {
                     {
                         self.touch_phase = TouchPhase::None;
                         cx.request_frame_timer(w_id, TIMER_KINETIC);
+                        return Action::Used;
                     }
                 }
-                Action::None
+                Action::Finish
             }
             Event::Timer(TIMER_SELECT) => match self.touch_phase {
                 TouchPhase::Start(touch_id, coord) => {
                     self.touch_phase = TouchPhase::Cursor(touch_id);
                     Action::Focus {
-                        coord: Some(coord),
+                        coord,
                         action: SelectionAction::new(true, !cx.modifiers().shift_key(), 1),
                     }
                 }
-                _ => Action::None,
+                _ => Action::Unused,
             },
             Event::Timer(TIMER_KINETIC) => {
                 if let Some(delta) = self.kinetic.step(cx) {
                     cx.request_frame_timer(w_id, TIMER_KINETIC);
                     Action::Pan(delta, true)
                 } else {
-                    Action::None
+                    Action::Finish
                 }
             }
             _ => Action::Unused,

@@ -7,7 +7,7 @@
 
 use super::*;
 use crate::theme::ThemeSize;
-use crate::Window;
+use crate::{TileExt, Window};
 use std::task::Poll;
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -24,6 +24,10 @@ impl EventState {
             window_has_focus: false,
             modifiers: ModifiersState::empty(),
             key_focus: false,
+            ime: None,
+            old_ime_target: None,
+            ime_cursor_area: Rect::ZERO,
+            last_ime_rect: Rect::ZERO,
             sel_focus: None,
             nav_focus: None,
             nav_fallback: None,
@@ -155,7 +159,7 @@ impl EventState {
 
             // Update sel focus after nav focus:
             if let Some(pending) = cx.pending_sel_focus.take() {
-                cx.set_sel_focus(win.as_node(data), pending);
+                cx.set_sel_focus(cx.window, win.as_node(data), pending);
             }
 
             while let Some((id, cmd)) = cx.pending_cmds.pop_front() {
@@ -216,6 +220,22 @@ impl<'a> EventCx<'a> {
         let frame_updates = std::mem::take(&mut self.frame_updates);
         for (id, handle) in frame_updates.into_iter() {
             self.send_event(widget.re(), id, Event::Timer(handle));
+        }
+
+        // Set IME cursor area, if moved.
+        if self.ime.is_some() {
+            if let Some(target) = self.sel_focus.as_ref() {
+                if let Some((mut rect, translation)) = widget.as_tile().find_widget_rect(target) {
+                    if self.ime_cursor_area.size != Size::ZERO {
+                        rect = self.ime_cursor_area;
+                    }
+                    rect += translation;
+                    if rect != self.last_ime_rect {
+                        self.window.set_ime_cursor_area(rect);
+                        self.last_ime_rect = rect;
+                    }
+                }
+            }
         }
     }
 
@@ -333,6 +353,42 @@ impl<'a> EventCx<'a> {
                     self.action(Id::ROOT, Action::REDRAW);
                 }
                 self.modifiers = state;
+            }
+            Ime(winit::event::Ime::Enabled) => {
+                // We expect self.ime.is_some(), but it's possible that the request is outdated
+                if self.ime.is_some() {
+                    if let Some(id) = self.sel_focus.clone() {
+                        self.send_event(win.as_node(data), id, Event::ImeFocus);
+                    }
+                }
+            }
+            Ime(winit::event::Ime::Disabled) => {
+                // We can only assume that this is received due to us disabling
+                // IME if self.old_ime_target is set, and is otherwise due to an
+                // external cause.
+                let mut target = self.old_ime_target.take();
+                if target.is_none() && self.ime.is_some() {
+                    target = self.sel_focus.clone();
+                    self.ime = None;
+                    self.ime_cursor_area = Rect::ZERO;
+                }
+                if let Some(id) = target {
+                    self.send_event(win.as_node(data), id, Event::LostImeFocus);
+                }
+            }
+            Ime(winit::event::Ime::Preedit(text, cursor)) => {
+                if self.ime.is_some() {
+                    if let Some(id) = self.sel_focus.clone() {
+                        self.send_event(win.as_node(data), id, Event::ImePreedit(text, cursor));
+                    }
+                }
+            }
+            Ime(winit::event::Ime::Commit(text)) => {
+                if self.ime.is_some() {
+                    if let Some(id) = self.sel_focus.clone() {
+                        self.send_event(win.as_node(data), id, Event::ImeCommit(text));
+                    }
+                }
             }
             CursorMoved { position, .. } => self.handle_cursor_moved(win, data, position.into()),
             CursorEntered { .. } => self.handle_cursor_entered(),

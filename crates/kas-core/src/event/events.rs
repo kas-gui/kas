@@ -61,6 +61,22 @@ pub enum Event {
     /// <kbd>Ctrl</kbd>, <kbd>Alt</kbd> or <kbd>Super</kbd> modifier keys are
     /// pressed. This is subject to change.
     Key(KeyEvent, bool),
+    /// Input Method Editor: composed text changed
+    ///
+    /// Parameters are `text, cursor`.
+    ///
+    /// This is only received after
+    /// [requesting key focus](EventState::request_key_focus) with some `ime`
+    /// purpose.
+    ImePreedit(String, Option<(usize, usize)>),
+    /// Input Method Editor: composed text committed
+    ///
+    /// Parameters are `text`.
+    ///
+    /// This is only received after
+    /// [requesting key focus](EventState::request_key_focus) with some `ime`
+    /// purpose.
+    ImeCommit(String),
     /// A mouse or touchpad scroll event
     Scroll(ScrollDelta),
     /// A mouse or touch-screen move/zoom/rotate event
@@ -225,6 +241,15 @@ pub enum Event {
     KeyFocus,
     /// Notification that a widget has lost keyboard input focus
     LostKeyFocus,
+    /// Notification that a widget has gained IME focus
+    ///
+    /// The widget should call [`EventState::set_ime_cursor_area`] immediately
+    /// and each time the area changes (relative to the widget's coordinate
+    /// space), until [`Event::LostImeFocus`] is received. Failure to do so will
+    /// result in the widget's entire `rect` being used as the IME cursor area.
+    ImeFocus,
+    /// Notification that a widget has lost IME focus
+    LostImeFocus,
     /// Notification that a widget gains or loses mouse hover
     ///
     /// The payload is `true` when focus is gained, `false` when lost.
@@ -310,12 +335,12 @@ impl Event {
         use Event::*;
         match self {
             Command(_, _) => false,
-            Key(_, _) | Scroll(_) => false,
+            Key(_, _) | ImePreedit(_, _) | ImeCommit(_) | Scroll(_) => false,
             CursorMove { .. } | PressStart { .. } => false,
             Pan { .. } | PressMove { .. } | PressEnd { .. } => true,
             Timer(_) | PopupClosed(_) => true,
-            NavFocus { .. } | SelFocus(_) | KeyFocus | MouseHover(true) => false,
-            LostNavFocus | LostKeyFocus | LostSelFocus | MouseHover(false) => true,
+            NavFocus { .. } | SelFocus(_) | KeyFocus | ImeFocus | MouseHover(true) => false,
+            LostNavFocus | LostKeyFocus | LostSelFocus | LostImeFocus | MouseHover(false) => true,
         }
     }
 
@@ -345,7 +370,7 @@ impl Event {
             CursorMove { .. } | PressStart { .. } => true,
 
             // Events sent to requester
-            Key(_, _) => false,
+            Key(_, _) | ImePreedit(_, _) | ImeCommit(_) => false,
             PressMove { .. } | PressEnd { .. } => false,
             Timer(_) => false,
 
@@ -354,6 +379,7 @@ impl Event {
             NavFocus { .. } | LostNavFocus => false,
             SelFocus(_) | LostSelFocus => false,
             KeyFocus | LostKeyFocus => false,
+            ImeFocus | LostImeFocus => false,
             MouseHover(_) => true,
         }
     }
