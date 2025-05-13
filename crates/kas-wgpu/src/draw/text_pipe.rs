@@ -46,13 +46,26 @@ impl Default for Rasterer {
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct SpriteDescriptor(u64);
 
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+struct SpriteFaceId(u16);
+
+impl From<FaceId> for SpriteFaceId {
+    #[inline]
+    fn from(face: FaceId) -> Self {
+        let face_id: u16 = face.get().cast();
+        assert!(face_id < 0x8000);
+        SpriteFaceId(face_id)
+    }
+}
+
 impl std::fmt::Debug for SpriteDescriptor {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let face = self.0 as u16;
         let dpem_steps = ((self.0 & 0x00FF_FFFF_0000_0000) >> 32) as u32;
         let x_steps = ((self.0 & 0x0F00_0000_0000_0000) >> 56) as u8;
         let y_steps = ((self.0 & 0xF000_0000_0000_0000) >> 60) as u8;
         f.debug_struct("SpriteDescriptor")
-            .field("face", &self.face())
+            .field("face", &face)
             .field("glyph", &self.glyph())
             .field("dpem_steps", &dpem_steps)
             .field("offset_steps", &(x_steps, y_steps))
@@ -72,11 +85,10 @@ impl SpriteDescriptor {
         }
     }
 
-    /// Construct
+    /// Construct for a `kas_text` font
     ///
     /// Most parameters come from [`TextDisplay::glyphs`] output. See also [`raster`].
-    pub fn new(config: &Config, face: FaceId, glyph: Glyph, dpem: f32) -> Self {
-        let face: u16 = face.get().cast();
+    fn new(config: &Config, face_id: SpriteFaceId, glyph: Glyph, dpem: f32) -> Self {
         let glyph_id: u16 = glyph.id.0;
         let steps = Self::sub_pixel_from_dpem(config, dpem);
         let mult = f32::conv(steps);
@@ -84,17 +96,12 @@ impl SpriteDescriptor {
         let x_off = u8::conv_trunc(glyph.position.0.fract() * mult) % steps;
         let y_off = u8::conv_trunc(glyph.position.1.fract() * mult) % steps;
         assert!(dpem & 0xFF00_0000 == 0 && x_off & 0xF0 == 0 && y_off & 0xF0 == 0);
-        let packed = face as u64
+        let packed = face_id.0 as u64
             | ((glyph_id as u64) << 16)
             | ((dpem as u64) << 32)
             | ((x_off as u64) << 56)
             | ((y_off as u64) << 60);
         SpriteDescriptor(packed)
-    }
-
-    /// Get `FaceId` descriptor
-    pub fn face(self) -> FaceId {
-        FaceId::from((self.0 & 0x0000_0000_0000_FFFF) as u32)
     }
 
     /// Get `GlyphId` descriptor
@@ -226,7 +233,7 @@ impl Pipeline {
         let face_store = fonts::library().get_face_store(face_id);
 
         for glyph in glyphs {
-            let desc = SpriteDescriptor::new(&self.text.config, face_id, glyph, dpem);
+            let desc = SpriteDescriptor::new(&self.text.config, face_id.into(), glyph, dpem);
             if self.text.glyphs.contains_key(&desc) {
                 continue;
             }
@@ -331,7 +338,7 @@ impl Pipeline {
         let embolden = if synthesis.embolden() { dpem * 0.02 } else { 0.0 };
 
         for glyph in glyphs {
-            let desc = SpriteDescriptor::new(&self.text.config, face_id, glyph, dpem);
+            let desc = SpriteDescriptor::new(&self.text.config, face_id.into(), glyph, dpem);
             if self.text.glyphs.contains_key(&desc) {
                 continue;
             }
@@ -469,7 +476,7 @@ impl Window {
             let face = run.face_id();
             let dpem = run.dpem();
             for glyph in run.glyphs() {
-                let desc = SpriteDescriptor::new(&pipe.text.config, face, glyph, dpem);
+                let desc = SpriteDescriptor::new(&pipe.text.config, face.into(), glyph, dpem);
                 let sprite = match pipe.text.glyphs.get(&desc) {
                     Some(sprite) => sprite,
                     None => {
@@ -513,7 +520,7 @@ impl Window {
             let face = run.face_id();
             let dpem = run.dpem();
             let for_glyph = |glyph: Glyph, e: u16| {
-                let desc = SpriteDescriptor::new(&pipe.text.config, face, glyph, dpem);
+                let desc = SpriteDescriptor::new(&pipe.text.config, face.into(), glyph, dpem);
                 let sprite = match pipe.text.glyphs.get(&desc) {
                     Some(sprite) => sprite,
                     None => {
