@@ -20,13 +20,21 @@ use std::mem::size_of;
 ///
 /// A "sprite" is a glyph rendered to a texture with fixed properties. This
 /// struct contains everything needed to draw from the sprite.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 struct Sprite {
     atlas: u32,
     // TODO(opt): u16 or maybe even u8 would be enough
+    valid: bool,
     size: Vec2,
     offset: Vec2,
     tex_quad: Quad,
+}
+
+impl Sprite {
+    /// Is this a valid sprite or a non-renderable placeholder?
+    fn is_valid(&self) -> bool {
+        self.valid
+    }
 }
 
 /// Screen and texture coordinates
@@ -76,7 +84,7 @@ impl Instance {
 pub struct Pipeline {
     config: Config,
     atlas_pipe: atlases::Pipeline<Instance>,
-    glyphs: HashMap<SpriteDescriptor, Option<Sprite>>,
+    glyphs: HashMap<SpriteDescriptor, Sprite>,
     #[allow(clippy::type_complexity)]
     prepare: Vec<(u32, (u32, u32), (u32, u32), Vec<u8>)>,
 }
@@ -187,12 +195,11 @@ impl Pipeline {
 
     /// Get a rendered sprite
     ///
-    /// This returns `None` if there's nothing to render. It may also return
-    /// `None` (with a warning) on error.
-    fn get_glyph(&mut self, face: FaceId, dpem: f32, glyph: Glyph) -> Option<Sprite> {
+    /// The result may not be valid; see [`Sprite::is_valid`].
+    fn get_glyph(&mut self, face: FaceId, dpem: f32, glyph: Glyph) -> Sprite {
         let desc = SpriteDescriptor::new(&self.config, face, glyph, dpem);
-        if let Some(opt_sprite) = self.glyphs.get(&desc).cloned() {
-            opt_sprite
+        if let Some(sprite) = self.glyphs.get(&desc).cloned() {
+            sprite
         } else {
             // NOTE: this branch is *rare*. We don't use HashMap::entry and push
             // rastering to another function to optimise for the common case.
@@ -200,22 +207,22 @@ impl Pipeline {
         }
     }
 
-    fn raster_glyph(&mut self, desc: SpriteDescriptor) -> Option<Sprite> {
+    fn raster_glyph(&mut self, desc: SpriteDescriptor) -> Sprite {
         // NOTE: we only need the allocation and coordinates now; the
         // rendering could be offloaded (though this may not be useful).
-        let mut sprite = None;
+        let mut sprite = Sprite::default();
         if let Some(rs) = raster(&self.config, desc) {
             match self.atlas_pipe.allocate(rs.size) {
                 Ok((atlas, _, origin, tex_quad)) => {
-                    let s = Sprite {
+                    sprite = Sprite {
                         atlas,
+                        valid: true,
                         size: Vec2(rs.size.0.cast(), rs.size.1.cast()),
                         offset: Vec2(rs.offset.0.cast(), rs.offset.1.cast()),
                         tex_quad,
                     };
 
-                    self.prepare.push((s.atlas, origin, rs.size, rs.data));
-                    sprite = Some(s);
+                    self.prepare.push((atlas, origin, rs.size, rs.data));
                 }
                 Err(_) => {
                     log::warn!(
@@ -266,7 +273,8 @@ impl Window {
         let rect = Quad::conv(rect);
 
         let for_glyph = |face: FaceId, dpem: f32, glyph: Glyph| {
-            if let Some(sprite) = pipe.get_glyph(face, dpem, glyph) {
+            let sprite = pipe.get_glyph(face, dpem, glyph);
+            if sprite.is_valid() {
                 let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
                 let b = a + sprite.size;
                 if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
@@ -291,7 +299,8 @@ impl Window {
         let rect = Quad::conv(rect);
 
         let mut for_glyph = |face: FaceId, dpem: f32, glyph: Glyph, _: usize, _: ()| {
-            if let Some(sprite) = pipe.get_glyph(face, dpem, glyph) {
+            let sprite = pipe.get_glyph(face, dpem, glyph);
+            if sprite.is_valid() {
                 let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
                 let b = a + sprite.size;
                 if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
@@ -345,7 +354,8 @@ impl Window {
         let rect = Quad::conv(rect);
 
         let for_glyph = |face: FaceId, dpem: f32, glyph: Glyph, _, col: Rgba| {
-            if let Some(sprite) = pipe.get_glyph(face, dpem, glyph) {
+            let sprite = pipe.get_glyph(face, dpem, glyph);
+            if sprite.is_valid() {
                 let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
                 let b = a + sprite.size;
                 if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
