@@ -217,7 +217,29 @@ impl Pipeline {
         match self.text.rasterer {
             #[cfg(feature = "ab_glyph")]
             Rasterer::AbGlyph => self.raster_ab_glyph(face_id, dpem, &mut glyphs),
-            Rasterer::Swash => self.raster_swash(face_id, dpem, &mut glyphs),
+            Rasterer::Swash => {
+                let face = fonts::library().get_face_store(face_id);
+                let font = face.swash();
+                let synthesis = face.synthesis();
+
+                let hint = self.text.hint;
+                self.raster_swash(
+                    face_id.into(),
+                    |scale_cx| {
+                        scale_cx
+                            .builder(font)
+                            .size(dpem)
+                            .hint(hint)
+                            .variations(synthesis.variation_settings().iter().map(
+                                |(tag, value)| (swash::tag_from_bytes(&tag.to_be_bytes()), *value),
+                            ))
+                            .build()
+                    },
+                    *synthesis,
+                    dpem,
+                    &mut glyphs,
+                );
+            }
         }
     }
 
@@ -297,30 +319,16 @@ impl Pipeline {
     // NOTE: using dyn Iterator over impl Iterator is slightly slower but saves 2-4kB
     fn raster_swash(
         &mut self,
-        face_id: FaceId,
+        face_id: SpriteFaceId,
+        scaler: impl Fn(&mut swash::scale::ScaleContext) -> swash::scale::Scaler<'_>,
+        synthesis: parley::fontique::Synthesis,
         dpem: f32,
         glyphs: &mut dyn Iterator<Item = Glyph>,
     ) {
         use swash::scale::{Render, Source, StrikeWith, image::Content};
         use swash::zeno::{Angle, Format, Transform};
 
-        let face = fonts::library().get_face_store(face_id);
-        let font = face.swash();
-        let synthesis = face.synthesis();
-
-        let mut scaler = self
-            .text
-            .scale_cx
-            .builder(font)
-            .size(dpem)
-            .hint(self.text.hint)
-            .variations(
-                synthesis
-                    .variation_settings()
-                    .iter()
-                    .map(|(tag, value)| (swash::tag_from_bytes(&tag.to_be_bytes()), *value)),
-            )
-            .build();
+        let mut scaler = scaler(&mut self.text.scale_cx);
 
         let sources = &[
             // TODO: Support coloured rendering? These can replace Source::Bitmap
