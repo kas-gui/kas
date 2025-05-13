@@ -37,6 +37,7 @@ harfbuzz = ["kas-text/harfbuzz"]
 raster = ["ab_glyph"]
 ab_glyph = ["kas-text/ab_glyph", "dep:ab_glyph"]
 fontdue = ["kas-text/fontdue"]
+swash = ["kas-text/swash", "dep:swash"]
 
 [dependencies]
 bytemuck = "1.7.0"
@@ -55,6 +56,11 @@ path = "../kas-core"
 
 [dependencies.kas-text]
 version = "0.7.0"
+
+[dependencies.swash]
+version = "0.2.4"
+optional = true
+features = ["scale"]
 
 [dependencies.wgpu]
 version = "25.0.0"

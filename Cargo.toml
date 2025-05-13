@@ -75,6 +75,10 @@ markdown = ["kas-core/markdown"]
 # Enable text shaping
 shaping = ["kas-core/shaping"]
 
+# Use Swash or fontdue to raster glyphs (instead of ab_glyph)
+swash = ["kas-wgpu?/swash"]
+fontdue = ["kas-wgpu?/fontdue"]
+
 # Enable serde support (mainly config read/write)
 serde = ["kas-core/serde"]
 

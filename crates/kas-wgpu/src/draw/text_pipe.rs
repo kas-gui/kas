@@ -198,6 +198,8 @@ pub struct Pipeline {
     glyphs: HashMap<SpriteDescriptor, Sprite>,
     #[allow(clippy::type_complexity)]
     prepare: Vec<(u32, (u32, u32), (u32, u32), Vec<u8>)>,
+    #[cfg(feature = "swash")]
+    scale_cx: swash::scale::ScaleContext,
 }
 
 impl Pipeline {
@@ -244,6 +246,8 @@ impl Pipeline {
             atlas_pipe,
             glyphs: Default::default(),
             prepare: Default::default(),
+            #[cfg(feature = "swash")]
+            scale_cx: Default::default(),
         }
     }
 
@@ -324,10 +328,13 @@ impl Pipeline {
         // NOTE: we only need the allocation and coordinates now; the
         // rendering could be offloaded (though this may not be useful).
 
-        #[cfg(feature = "fontdue")]
+        #[cfg(feature = "swash")]
+        let result = self.raster_swash(desc);
+
+        #[cfg(all(feature = "fontdue", not(feature = "swash")))]
         let result = self.raster_fontdue(desc);
 
-        #[cfg(not(feature = "fontdue"))]
+        #[cfg(all(feature = "ab_glyph", not(feature = "fontdue"), not(feature = "swash")))]
         let result = self.raster_ab_glyph(desc);
 
         let sprite = match result {
@@ -342,7 +349,7 @@ impl Pipeline {
         sprite
     }
 
-    #[cfg(not(feature = "fontdue"))]
+    #[cfg(all(feature = "ab_glyph", not(feature = "fontdue")))]
     fn raster_ab_glyph(&mut self, desc: SpriteDescriptor) -> Result<Sprite, RasterError> {
         use ab_glyph::Font;
 
@@ -418,6 +425,56 @@ impl Pipeline {
             offset: Vec2(offset.0.cast(), offset.1.cast()),
             tex_quad,
         })
+    }
+
+    #[cfg(feature = "swash")]
+    fn raster_swash(&mut self, desc: SpriteDescriptor) -> Result<Sprite, RasterError> {
+        use swash::scale::{image::Content, Render, Source, StrikeWith};
+        use swash::zeno::Format;
+
+        // TODO: we should re-use scaler when rendering glyphs for a layout/run
+        let font = fonts::library().get_face_store(desc.face()).swash();
+        let dpem = desc.dpem(&self.config);
+        let hint = true; // TODO: max_hint_size configurable?
+        let mut scaler = self.scale_cx.builder(font).size(dpem).hint(hint).build();
+
+        let sources = &[
+            // TODO: Support coloured rendering? These can replace Source::Bitmap
+            // Source::ColorOutline(0),
+            // Source::ColorBitmap(StrikeWith::BestFit),
+            Source::Bitmap(StrikeWith::BestFit),
+            Source::Outline,
+        ];
+
+        let image = Render::new(sources)
+            .format(Format::Alpha)
+            .offset(desc.fractional_position(&self.config).into())
+            .render(&mut scaler, desc.glyph().0.into())
+            .ok_or(RasterError::Failed)?;
+
+        let offset = (image.placement.left, -image.placement.top);
+        let size = (image.placement.width, image.placement.height);
+        if size.0 == 0 || size.1 == 0 {
+            return Err(RasterError::Zero);
+        }
+
+        match image.content {
+            Content::Mask => {
+                let (atlas, _, origin, tex_quad) = self.atlas_pipe.allocate(size)?;
+
+                self.prepare.push((atlas, origin, size, image.data));
+
+                Ok(Sprite {
+                    atlas,
+                    valid: true,
+                    size: Vec2(size.0.cast(), size.1.cast()),
+                    offset: Vec2(offset.0.cast(), offset.1.cast()),
+                    tex_quad,
+                })
+            }
+            Content::SubpixelMask => unimplemented!(),
+            Content::Color => unimplemented!(),
+        }
     }
 }
 
