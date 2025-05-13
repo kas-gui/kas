@@ -79,6 +79,13 @@ impl Default for FontConfig {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RasterConfig {
     //// Raster mode/engine (backend dependent)
+    ////
+    /// The `mode` parameter selects rendering mode (though depending on crate
+    /// features, not all options will be available):
+    ///
+    /// -   `mode == 0` (default): use `ab_glyph` for rastering
+    /// -   `mode == 1`: use `ab_glyph` and align glyphs to side bearings
+    /// -   `mode == 2`: use `fontdue` for rastering
     #[cfg_attr(feature = "serde", serde(default))]
     pub mode: u8,
     /// Scale multiplier for fixed-precision

@@ -34,7 +34,8 @@ metal = ["wgpu/metal"]
 shaping = ["kas-text/shaping"]
 harfbuzz = ["kas-text/harfbuzz"]
 
-raster = ["kas-text/raster"]
+raster = ["ab_glyph"]
+ab_glyph = ["kas-text/ab_glyph", "dep:ab_glyph"]
 fontdue = ["kas-text/fontdue"]
 
 [dependencies]
@@ -44,6 +45,7 @@ log = "0.4"
 thiserror = "2.0.3"
 guillotiere = "0.6.0"
 rustc-hash = "2.0"
+ab_glyph = { version = "0.2.10", optional = true }
 
 [dependencies.kas]
 # Rename package purely for convenience:
