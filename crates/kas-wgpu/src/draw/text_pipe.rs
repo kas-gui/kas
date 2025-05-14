@@ -10,8 +10,8 @@ use kas::cast::traits::*;
 use kas::config::RasterConfig;
 use kas::draw::{color::Rgba, AllocError, PassId};
 use kas::geom::{Quad, Rect, Vec2};
-use kas::text::fonts::{self, FaceId};
-use kas::text::{Effect, Glyph, GlyphId, TextDisplay};
+use kas_text::fonts::{self, FaceId};
+use kas_text::{Effect, Glyph, GlyphId, TextDisplay};
 use rustc_hash::FxHashMap as HashMap;
 use std::mem::size_of;
 
