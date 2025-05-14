@@ -16,7 +16,6 @@ features = ["kas/winit", "kas/wayland"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-# WARNING: if "raster" is disabled, an alternative like "kas-text/fontdue" is required!
 default = ["shaping", "raster"]
 
 # Enables documentation of APIs for graphics library and platform backends.
@@ -34,7 +33,8 @@ metal = ["wgpu/metal"]
 shaping = ["kas-text/shaping"]
 harfbuzz = ["kas-text/harfbuzz"]
 
-raster = ["ab_glyph"]
+# Raster backends
+raster = ["ab_glyph"] # default choice
 ab_glyph = ["kas-text/ab_glyph", "dep:ab_glyph"]
 fontdue = ["kas-text/fontdue"]
 swash = ["kas-text/swash", "dep:swash"]

@@ -20,13 +20,35 @@ kas::impl_scope! {
     #[derive(Debug, PartialEq)]
     #[impl_default]
     pub struct Config {
-        #[allow(unused)]
-        sb_align: bool = false,
-        #[allow(unused)]
-        fontdue: bool = false,
         scale_steps: f32 = 4.0,
         subpixel_threshold: f32 = 18.0,
         subpixel_steps: u8 = 5,
+    }
+}
+
+enum Rasterer {
+    #[cfg(feature = "ab_glyph")]
+    AbGlyph,
+    #[cfg(feature = "fontdue")]
+    Fontdue,
+    #[cfg(feature = "swash")]
+    Swash,
+}
+
+impl Default for Rasterer {
+    #[allow(clippy::needless_return, unreachable_code)]
+    fn default() -> Self {
+        #[cfg(feature = "swash")]
+        return Rasterer::Swash;
+
+        #[cfg(feature = "fontdue")]
+        return Rasterer::Fontdue;
+
+        #[cfg(feature = "ab_glyph")]
+        return Rasterer::AbGlyph;
+
+        #[cfg(not(any(feature = "swash", feature = "fontdue", feature = "ab_glyph")))]
+        compile_error!("No rasterer is enabled! Enable one of the following features: raster, swash, fontdue, ab_glyph");
     }
 }
 
@@ -193,6 +215,11 @@ impl Instance {
 
 /// A pipeline for rendering text
 pub struct Pipeline {
+    rasterer: Rasterer,
+    #[allow(unused)]
+    sb_align: bool,
+    #[allow(unused)]
+    hint: bool,
     config: Config,
     atlas_pipe: atlases::Pipeline<Instance>,
     glyphs: HashMap<SpriteDescriptor, Sprite>,
@@ -242,6 +269,9 @@ impl Pipeline {
             },
         );
         Pipeline {
+            rasterer: Default::default(),
+            sb_align: false,
+            hint: false,
             config: Config::default(),
             atlas_pipe,
             glyphs: Default::default(),
@@ -252,9 +282,20 @@ impl Pipeline {
     }
 
     pub fn set_raster_config(&mut self, config: &RasterConfig) {
+        match config.mode {
+            #[cfg(feature = "ab_glyph")]
+            0 | 1 => self.rasterer = Rasterer::AbGlyph,
+            #[cfg(feature = "fontdue")]
+            2 => self.rasterer = Rasterer::Fontdue,
+            #[cfg(feature = "swash")]
+            3 | 4 => self.rasterer = Rasterer::Swash,
+            x => log::warn!("raster mode {x} unavailable; falling back to default"),
+        };
+
+        self.sb_align = config.mode == 1;
+        self.hint = config.mode == 4;
+
         self.config = Config {
-            sb_align: config.mode == 1,
-            fontdue: config.mode == 2,
             scale_steps: config.scale_steps.cast(),
             subpixel_threshold: config.subpixel_threshold.cast(),
             subpixel_steps: config.subpixel_steps.clamp(1, 16),
@@ -328,14 +369,14 @@ impl Pipeline {
         // NOTE: we only need the allocation and coordinates now; the
         // rendering could be offloaded (though this may not be useful).
 
-        #[cfg(feature = "swash")]
-        let result = self.raster_swash(desc);
-
-        #[cfg(all(feature = "fontdue", not(feature = "swash")))]
-        let result = self.raster_fontdue(desc);
-
-        #[cfg(all(feature = "ab_glyph", not(feature = "fontdue"), not(feature = "swash")))]
-        let result = self.raster_ab_glyph(desc);
+        let result = match self.rasterer {
+            #[cfg(feature = "ab_glyph")]
+            Rasterer::AbGlyph => self.raster_ab_glyph(desc),
+            #[cfg(feature = "fontdue")]
+            Rasterer::Fontdue => self.raster_fontdue(desc),
+            #[cfg(feature = "swash")]
+            Rasterer::Swash => self.raster_swash(desc),
+        };
 
         let sprite = match result {
             Ok(sprite) => sprite,
@@ -349,7 +390,7 @@ impl Pipeline {
         sprite
     }
 
-    #[cfg(all(feature = "ab_glyph", not(feature = "fontdue")))]
+    #[cfg(feature = "ab_glyph")]
     fn raster_ab_glyph(&mut self, desc: SpriteDescriptor) -> Result<Sprite, RasterError> {
         use ab_glyph::Font;
 
@@ -359,7 +400,7 @@ impl Pipeline {
         let dpem = desc.dpem(&self.config);
 
         let (mut x, y) = desc.fractional_position(&self.config);
-        if self.config.sb_align && desc.dpem(&self.config) >= self.config.subpixel_threshold {
+        if self.sb_align && desc.dpem(&self.config) >= self.config.subpixel_threshold {
             let sf = face_store.face_ref().scale_by_dpem(dpem);
             x -= sf.h_side_bearing(id);
         }
@@ -434,9 +475,12 @@ impl Pipeline {
 
         // TODO: we should re-use scaler when rendering glyphs for a layout/run
         let font = fonts::library().get_face_store(desc.face()).swash();
-        let dpem = desc.dpem(&self.config);
-        let hint = true; // TODO: max_hint_size configurable?
-        let mut scaler = self.scale_cx.builder(font).size(dpem).hint(hint).build();
+        let mut scaler = self
+            .scale_cx
+            .builder(font)
+            .size(desc.dpem(&self.config))
+            .hint(self.hint)
+            .build();
 
         let sources = &[
             // TODO: Support coloured rendering? These can replace Source::Bitmap

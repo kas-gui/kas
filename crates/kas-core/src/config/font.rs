@@ -83,10 +83,12 @@ pub struct RasterConfig {
     /// The `mode` parameter selects rendering mode (though depending on crate
     /// features, not all options will be available):
     ///
-    /// -   `mode == 0` (default): use `ab_glyph` for rastering
+    /// -   `mode == 0`: use `ab_glyph` for rastering
     /// -   `mode == 1`: use `ab_glyph` and align glyphs to side bearings
     /// -   `mode == 2`: use `fontdue` for rastering
-    #[cfg_attr(feature = "serde", serde(default))]
+    /// -   `mode == 3`: use `swash` for rastering
+    /// -   `mode == 4`: use `swash` for rastering with hinting
+    #[cfg_attr(feature = "serde", serde(default = "defaults::mode"))]
     pub mode: u8,
     /// Scale multiplier for fixed-precision
     ///
@@ -223,6 +225,9 @@ mod defaults {
         list.iter().cloned().collect()
     }
 
+    pub fn mode() -> u8 {
+        4
+    }
     pub fn scale_steps() -> u8 {
         4
     }
