@@ -126,7 +126,7 @@ pub struct RasterConfig {
 impl Default for RasterConfig {
     fn default() -> Self {
         RasterConfig {
-            mode: 0,
+            mode: defaults::mode(),
             scale_steps: defaults::scale_steps(),
             subpixel_threshold: defaults::subpixel_threshold(),
             subpixel_steps: defaults::subpixel_steps(),

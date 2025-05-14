@@ -380,6 +380,10 @@ impl Pipeline {
 
         let sprite = match result {
             Ok(sprite) => sprite,
+            Err(RasterError::Zero) => {
+                // Ignore this common error
+                Sprite::default()
+            }
             Err(err) => {
                 log::warn!("raster_glyph failed: {err}");
                 Sprite::default()
