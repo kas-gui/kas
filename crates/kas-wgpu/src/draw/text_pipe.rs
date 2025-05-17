@@ -58,6 +58,17 @@ impl From<FaceId> for SpriteFaceId {
     }
 }
 
+impl From<&parley::FontData> for SpriteFaceId {
+    #[inline]
+    fn from(face: &parley::FontData) -> Self {
+        let font_id: u16 = face.data.id().cast();
+        assert!(font_id < 0x1000);
+        assert!(face.index < 0x8);
+        let face_id = 0x8000 + u16::conv(face.index) << 12 + font_id;
+        SpriteFaceId(face_id)
+    }
+}
+
 impl std::fmt::Debug for SpriteDescriptor {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let face = self.0 as u16;
@@ -317,10 +328,10 @@ impl Pipeline {
     }
 
     // NOTE: using dyn Iterator over impl Iterator is slightly slower but saves 2-4kB
-    fn raster_swash(
-        &mut self,
+    fn raster_swash<'a, 'b: 'a>(
+        &'b mut self,
         face_id: SpriteFaceId,
-        scaler: impl Fn(&mut swash::scale::ScaleContext) -> swash::scale::Scaler<'_>,
+        scaler: impl Fn(&'b mut swash::scale::ScaleContext) -> swash::scale::Scaler<'a>,
         synthesis: parley::fontique::Synthesis,
         dpem: f32,
         glyphs: &mut dyn Iterator<Item = Glyph>,
@@ -424,6 +435,152 @@ impl Pipeline {
 }
 
 impl Window {
+    #[cfg(feature = "parley")]
+    #[inline(never)]
+    fn raster_glyph_run<'a>(
+        &mut self,
+        pipe: &mut Pipeline,
+        glyph_run: &'a parley::layout::GlyphRun<'a, ()>,
+    ) {
+        let mut run_x = glyph_run.offset();
+        let run_y = glyph_run.baseline();
+
+        let font = glyph_run.run().font();
+        let dpem = glyph_run.run().font_size();
+        let normalized_coords = glyph_run.run().normalized_coords();
+
+        // TODO: this creates a new CacheKey. Does that matter? It seems we never use this, so maybe not?
+        let font_ref = swash::FontRef::from_index(font.data.as_ref(), font.index as usize).unwrap();
+
+        pipe.raster_swash(
+            font.into(),
+            |scale_cx| {
+                scale_cx
+                    .builder(font_ref)
+                    .size(dpem)
+                    .hint(true)
+                    .normalized_coords(normalized_coords)
+                    .build()
+            },
+            glyph_run.run().synthesis(),
+            dpem,
+            &mut glyph_run.glyphs().map(move |glyph| {
+                let position = kas_text::Vec2(run_x + glyph.x, run_y - glyph.y);
+                run_x += glyph.advance;
+                Glyph {
+                    index: 0, // not used
+                    id: GlyphId(glyph.id.cast()),
+                    position,
+                }
+            }),
+        );
+    }
+
+    #[cfg(feature = "parley")]
+    fn render_glyph_run(
+        &mut self,
+        pipe: &mut Pipeline,
+        pass: PassId,
+        rect: Quad,
+        glyph_run: &parley::layout::GlyphRun<'_, ()>,
+        mut draw_quad: impl FnMut(Quad, Rgba),
+    ) {
+        let mut run_x = glyph_run.offset();
+        let run_y = glyph_run.baseline();
+        // NOTE: can we assume this? If so we can simplify below.
+        debug_assert!(run_x.fract() == 0.0 && run_y.fract() == 0.0);
+
+        let col = Rgba::BLACK;
+        let font = glyph_run.run().font();
+        let dpem = glyph_run.run().font_size();
+
+        let mut rastered = false;
+
+        // Iterates over the glyphs in the GlyphRun
+        for glyph in glyph_run.glyphs() {
+            let position = kas_text::Vec2(run_x + glyph.x, run_y - glyph.y);
+            run_x += glyph.advance;
+
+            let glyph = Glyph {
+                index: 0, // not used
+                id: GlyphId(glyph.id.cast()),
+                position,
+            };
+            let desc = SpriteDescriptor::new(&pipe.text.config, font.into(), glyph, dpem);
+            let sprite = if let Some(sprite) = pipe.text.glyphs.get(&desc).cloned() {
+                sprite
+            } else if !rastered {
+                // NOTE: this branch is *rare*. We push rastering to another
+                // function to optimise for the common case.
+                self.raster_glyph_run(pipe, glyph_run);
+                rastered = true;
+
+                // Try again:
+                pipe.text.glyphs.get(&desc).cloned().unwrap_or_default()
+            } else {
+                Sprite::default()
+            };
+
+            if sprite.is_valid() {
+                let a = rect.a + Vec2::from(position).floor() + sprite.offset;
+                let b = a + sprite.size;
+                let (ta, tb) = (sprite.tex_quad.a, sprite.tex_quad.b);
+                let instance = InstanceA { a, b, ta, tb, col };
+                self.atlas_a.rect(pass, sprite.atlas, instance);
+            }
+        }
+
+        // Draw decorations: underline & strikethrough
+        let metrics = glyph_run.run().metrics();
+        if let Some(decoration) = glyph_run.style().underline.as_ref() {
+            let offset = decoration.offset.unwrap_or(metrics.underline_offset);
+            let size = decoration.size.unwrap_or(metrics.underline_size);
+
+            let y0 = glyph_run.baseline() - offset;
+            let x0 = glyph_run.offset();
+            let a = Vec2(x0, y0);
+            let b = Vec2(x0 + glyph_run.advance(), y0 + size);
+            draw_quad(Quad::from_coords(a, b), col);
+        }
+        if let Some(decoration) = glyph_run.style().strikethrough.as_ref() {
+            let offset = decoration.offset.unwrap_or(metrics.strikethrough_offset);
+            let size = decoration.size.unwrap_or(metrics.strikethrough_size);
+
+            let y0 = glyph_run.baseline() - offset;
+            let x0 = glyph_run.offset();
+            let a = Vec2(x0, y0);
+            let b = Vec2(x0 + glyph_run.advance(), y0 + size);
+            draw_quad(Quad::from_coords(a, b), col);
+        }
+    }
+
+    /// Render a [`parley::Layout`]
+    ///
+    /// It is assumed that the `layout` has already had lines broken and been
+    /// aligned.
+    #[cfg(feature = "parley")]
+    pub fn parley(
+        &mut self,
+        pipe: &mut Pipeline,
+        pass: PassId,
+        rect: Quad,
+        layout: &parley::Layout<()>,
+        mut draw_quad: impl FnMut(Quad, Rgba),
+    ) {
+        for line in layout.lines() {
+            for item in line.items() {
+                match item {
+                    parley::PositionedLayoutItem::GlyphRun(run) => {
+                        self.render_glyph_run(pipe, pass, rect, &run, |rect, col| {
+                            draw_quad(rect, col)
+                        });
+                    }
+                    parley::PositionedLayoutItem::InlineBox(_) => todo!(),
+                }
+            }
+        }
+    }
+
     fn push_sprite(
         &mut self,
         pass: PassId,
