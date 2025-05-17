@@ -11,7 +11,7 @@ use crate::cast::Cast;
 #[allow(unused)] use crate::event::ConfigCx;
 use crate::geom::{Rect, Size};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
-use crate::text::fonts::{FaceId, FontId, InvalidFontId};
+use crate::text::fonts::{FontId, InvalidFontId};
 use crate::text::format::{EditableText, FormattableText};
 use crate::text::*;
 use crate::{Action, Layout};
@@ -600,47 +600,6 @@ impl<T: FormattableText> Text<T> {
     /// See [`TextDisplay::text_glyph_pos`].
     pub fn text_glyph_pos(&self, index: usize) -> Result<MarkerPosIter, NotReady> {
         Ok(self.display()?.text_glyph_pos(index))
-    }
-
-    /// Yield a sequence of positioned glyphs
-    ///
-    /// See [`TextDisplay::glyphs`].
-    pub fn glyphs<F: FnMut(FaceId, f32, Glyph)>(&self, f: F) -> Result<(), NotReady> {
-        Ok(self.display()?.glyphs(f))
-    }
-
-    /// Like [`TextDisplay::glyphs`] but with added effects
-    ///
-    /// See [`TextDisplay::glyphs_with_effects`].
-    pub fn glyphs_with_effects<X, F, G>(
-        &self,
-        effects: &[Effect<X>],
-        default_aux: X,
-        f: F,
-        g: G,
-    ) -> Result<(), NotReady>
-    where
-        X: Copy,
-        F: FnMut(FaceId, f32, Glyph, usize, X),
-        G: FnMut(f32, f32, f32, f32, usize, X),
-    {
-        Ok(self
-            .display()?
-            .glyphs_with_effects(effects, default_aux, f, g))
-    }
-
-    /// Yield a sequence of rectangles to highlight a given text range
-    ///
-    /// Calls `f(top_left, bottom_right)` for each highlighting rectangle.
-    pub fn highlight_range<F>(
-        &self,
-        range: std::ops::Range<usize>,
-        mut f: F,
-    ) -> Result<(), NotReady>
-    where
-        F: FnMut(Vec2, Vec2),
-    {
-        Ok(self.display()?.highlight_range(range, &mut f))
     }
 }
 

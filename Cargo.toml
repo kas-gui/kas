@@ -75,6 +75,11 @@ markdown = ["kas-core/markdown"]
 # Enable text shaping
 shaping = ["kas-core/shaping"]
 
+# Enable Swash and/or fontdue glyph rasterers
+# See field mode of struct RasterConfig for selection.
+swash = ["kas-wgpu?/swash"]
+fontdue = ["kas-wgpu?/fontdue"]
+
 # Enable serde support (mainly config read/write)
 serde = ["kas-core/serde"]
 
@@ -153,3 +158,7 @@ members = [
     "crates/kas-view",
     "examples/mandlebrot",
 ]
+
+[patch.crates-io.kas-text]
+git = "https://github.com/kas-gui/kas-text.git"
+rev = "1f5a9a4c"
