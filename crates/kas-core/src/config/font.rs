@@ -81,7 +81,9 @@ pub struct RasterConfig {
     //// Raster mode/engine (backend dependent)
     ////
     /// The `mode` parameter selects rendering mode (though depending on crate
-    /// features, not all options will be available):
+    /// features, not all options will be available). The default mode is `4`.
+    /// In case the crate is built without the required `fontdue` or `swash`
+    /// feature, the rasterer falls back to mode `0`.
     ///
     /// -   `mode == 0`: use `ab_glyph` for rastering
     /// -   `mode == 1`: use `ab_glyph` and align glyphs to side bearings

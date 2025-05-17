@@ -75,7 +75,8 @@ markdown = ["kas-core/markdown"]
 # Enable text shaping
 shaping = ["kas-core/shaping"]
 
-# Use Swash or fontdue to raster glyphs (instead of ab_glyph)
+# Enable Swash and/or fontdue glyph rasterers
+# See field mode of struct RasterConfig for selection.
 swash = ["kas-wgpu?/swash"]
 fontdue = ["kas-wgpu?/fontdue"]
 
