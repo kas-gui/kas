@@ -16,7 +16,6 @@ features = ["kas/winit", "kas/wayland"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-# WARNING: if "raster" is disabled, an alternative like "kas-text/fontdue" is required!
 default = ["shaping", "raster"]
 
 # Enables documentation of APIs for graphics library and platform backends.
@@ -33,7 +32,12 @@ metal = ["wgpu/metal"]
 
 shaping = ["kas-text/shaping"]
 harfbuzz = ["kas-text/harfbuzz"]
-raster = ["kas-text/raster"]
+
+# Raster backends
+raster = ["ab_glyph"] # default choice
+ab_glyph = ["kas-text/ab_glyph", "dep:ab_glyph"]
+fontdue = ["kas-text/fontdue"]
+swash = ["kas-text/swash", "dep:swash"]
 
 [dependencies]
 bytemuck = "1.7.0"
@@ -42,6 +46,7 @@ log = "0.4"
 thiserror = "2.0.3"
 guillotiere = "0.6.0"
 rustc-hash = "2.0"
+ab_glyph = { version = "0.2.10", optional = true }
 
 [dependencies.kas]
 # Rename package purely for convenience:
@@ -51,6 +56,11 @@ path = "../kas-core"
 
 [dependencies.kas-text]
 version = "0.7.0"
+
+[dependencies.swash]
+version = "0.2.4"
+optional = true
+features = ["scale"]
 
 [dependencies.wgpu]
 version = "25.0.0"

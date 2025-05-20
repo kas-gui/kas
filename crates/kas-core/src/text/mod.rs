@@ -13,7 +13,10 @@
 //!
 //! [KAS Text]: https://github.com/kas-gui/kas-text/
 
-pub use kas_text::*;
+pub use kas_text::{
+    fonts, format, Align, Direction, Effect, EffectFlags, MarkerPos, MarkerPosIter, NotReady,
+    OwningVecIter, Range, Status, Text, TextDisplay, Vec2, DPU,
+};
 
 mod selection;
 pub use selection::{SelectionAction, SelectionHelper};

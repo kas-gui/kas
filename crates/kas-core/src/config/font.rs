@@ -79,7 +79,18 @@ impl Default for FontConfig {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RasterConfig {
     //// Raster mode/engine (backend dependent)
-    #[cfg_attr(feature = "serde", serde(default))]
+    ////
+    /// The `mode` parameter selects rendering mode (though depending on crate
+    /// features, not all options will be available). The default mode is `4`.
+    /// In case the crate is built without the required `fontdue` or `swash`
+    /// feature, the rasterer falls back to mode `0`.
+    ///
+    /// -   `mode == 0`: use `ab_glyph` for rastering
+    /// -   `mode == 1`: use `ab_glyph` and align glyphs to side bearings
+    /// -   `mode == 2`: use `fontdue` for rastering
+    /// -   `mode == 3`: use `swash` for rastering
+    /// -   `mode == 4`: use `swash` for rastering with hinting
+    #[cfg_attr(feature = "serde", serde(default = "defaults::mode"))]
     pub mode: u8,
     /// Scale multiplier for fixed-precision
     ///
@@ -117,7 +128,7 @@ pub struct RasterConfig {
 impl Default for RasterConfig {
     fn default() -> Self {
         RasterConfig {
-            mode: 0,
+            mode: defaults::mode(),
             scale_steps: defaults::scale_steps(),
             subpixel_threshold: defaults::subpixel_threshold(),
             subpixel_steps: defaults::subpixel_steps(),
@@ -216,6 +227,9 @@ mod defaults {
         list.iter().cloned().collect()
     }
 
+    pub fn mode() -> u8 {
+        4
+    }
     pub fn scale_steps() -> u8 {
         4
     }
