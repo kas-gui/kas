@@ -14,6 +14,27 @@ const MULT_DEPRESS: f32 = 0.75;
 const MULT_HIGHLIGHT: f32 = 1.25;
 const MIN_HIGHLIGHT: f32 = 0.2;
 
+/// A text color specifier
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
+pub enum TextBrush {
+    /// The theme-specified contextual text color
+    #[default]
+    Default,
+    /// A specified sRGB color
+    Srgb(Rgba8Srgb),
+}
+
+impl TextBrush {
+    /// Resolve to a specific color
+    pub fn resolve(self, colors: &ColorsLinear, is_disabled: bool) -> Rgba {
+        match self {
+            _ if is_disabled => colors.text_disabled,
+            TextBrush::Default => colors.text,
+            TextBrush::Srgb(srgb) => srgb.into(),
+        }
+    }
+}
+
 bitflags::bitflags! {
     /// Input and highlighting state of a widget
     ///

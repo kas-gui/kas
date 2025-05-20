@@ -440,7 +440,7 @@ impl Window {
     fn raster_glyph_run<'a>(
         &mut self,
         pipe: &mut Pipeline,
-        glyph_run: &'a parley::layout::GlyphRun<'a, ()>,
+        glyph_run: &'a parley::layout::GlyphRun<'a, kas::theme::TextBrush>,
     ) {
         let mut run_x = glyph_run.offset();
         let run_y = glyph_run.baseline();
@@ -482,7 +482,7 @@ impl Window {
         pipe: &mut Pipeline,
         pass: PassId,
         rect: Quad,
-        glyph_run: &parley::layout::GlyphRun<'_, ()>,
+        glyph_run: &parley::layout::GlyphRun<'_, kas::theme::TextBrush>,
         mut draw_quad: impl FnMut(Quad, Rgba),
     ) {
         let mut run_x = glyph_run.offset();
@@ -564,7 +564,7 @@ impl Window {
         pipe: &mut Pipeline,
         pass: PassId,
         rect: Quad,
-        layout: &parley::Layout<()>,
+        layout: &parley::Layout<kas::theme::TextBrush>,
         mut draw_quad: impl FnMut(Quad, Rgba),
     ) {
         for line in layout.lines() {

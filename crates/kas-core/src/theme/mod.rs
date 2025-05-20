@@ -28,7 +28,7 @@ mod traits;
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 pub mod dimensions;
 
-pub use colors::{Colors, ColorsLinear, ColorsSrgb, InputState};
+pub use colors::{Colors, ColorsLinear, ColorsSrgb, InputState, TextBrush};
 pub use draw::{Background, DrawCx};
 pub use flat_theme::FlatTheme;
 pub use multi::{MultiTheme, MultiThemeBuilder};
