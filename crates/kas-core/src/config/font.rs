@@ -5,7 +5,7 @@
 
 //! Font configuration
 
-use crate::text::fonts::{library, AddMode, FontSelector};
+use crate::text::fonts::{FontSelector, GenericFamily};
 use crate::theme::TextClass;
 use crate::Action;
 use std::collections::BTreeMap;
@@ -28,32 +28,9 @@ pub struct FontConfig {
     #[cfg_attr(feature = "serde", serde(default = "defaults::size"))]
     pub size: f32,
 
-    /// Font aliases, used when searching for a font family matching the key.
-    ///
-    /// Example:
-    /// ```yaml
-    /// aliases:
-    ///   sans-serif:
-    ///     mode: Prepend
-    ///     list:
-    ///     - noto sans
-    /// ```
-    ///
-    /// Fonts are named by *family*. Several standard families exist, e.g.
-    /// "serif", "sans-serif", "monospace"; these resolve to a list
-    /// of aliases (e.g. "Noto Sans", "DejaVu Sans", "Arial"), each of which may
-    /// have further aliases.
-    ///
-    /// In the above example, "noto sans" is inserted at the top of the alias
-    /// list for "sans-serif".
-    ///
-    /// Supported modes: `Prepend`, `Append`, `Replace`.
-    #[cfg_attr(feature = "serde", serde(default))]
-    pub aliases: BTreeMap<String, FontAliases>,
-
     /// Standard fonts
     #[cfg_attr(feature = "serde", serde(default))]
-    pub fonts: BTreeMap<TextClass, FontSelector<'static>>,
+    pub fonts: BTreeMap<TextClass, FontSelector>,
 
     /// Text glyph rastering settings
     #[cfg_attr(feature = "serde", serde(default))]
@@ -64,7 +41,6 @@ impl Default for FontConfig {
     fn default() -> Self {
         FontConfig {
             size: defaults::size(),
-            aliases: Default::default(),
             fonts: defaults::fonts(),
             raster: Default::default(),
         }
@@ -150,7 +126,7 @@ impl FontConfig {
 
     /// Get an iterator over font mappings
     #[inline]
-    pub fn iter_fonts(&self) -> impl Iterator<Item = (&TextClass, &FontSelector<'static>)> {
+    pub fn iter_fonts(&self) -> impl Iterator<Item = (&TextClass, &FontSelector)> {
         self.fonts.iter()
     }
 }
@@ -175,19 +151,7 @@ impl FontConfig {
 /// Other functions
 impl FontConfig {
     /// Apply config effects which only happen on startup
-    pub(super) fn init(&self) {
-        if !self.aliases.is_empty() {
-            library().adjust_resolver(|resolver| {
-                for (family, aliases) in self.aliases.iter() {
-                    resolver.add_aliases(
-                        family.to_string().into(),
-                        aliases.list.iter().map(|s| s.to_string().into()),
-                        aliases.mode,
-                    );
-                }
-            });
-        }
-    }
+    pub(super) fn init(&self) {}
 
     /// Get raster config
     #[inline]
@@ -196,30 +160,16 @@ impl FontConfig {
     }
 }
 
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct FontAliases {
-    #[cfg_attr(feature = "serde", serde(default = "defaults::add_mode"))]
-    mode: AddMode,
-    list: Vec<String>,
-}
-
 mod defaults {
     use super::*;
-
-    #[cfg(feature = "serde")]
-    pub fn add_mode() -> AddMode {
-        AddMode::Prepend
-    }
 
     pub fn size() -> f32 {
         16.0
     }
 
-    pub fn fonts() -> BTreeMap<TextClass, FontSelector<'static>> {
+    pub fn fonts() -> BTreeMap<TextClass, FontSelector> {
         let mut selector = FontSelector::new();
-        selector.set_families(vec!["serif".into()]);
+        selector.set_families([GenericFamily::UiSerif, GenericFamily::Serif]);
         let list = [
             (TextClass::Edit(false), selector.clone()),
             (TextClass::Edit(true), selector),

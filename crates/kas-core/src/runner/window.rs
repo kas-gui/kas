@@ -267,6 +267,11 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 // NOTE: we could try resizing here in case the window is too
                 // small due to non-linear scaling, but it appears unnecessary.
                 window.solve_cache.invalidate_rule_cache();
+
+                // Force a reconfigure to update text objects:
+                self.reconfigure(state);
+                self.ev_state.action.remove(Action::RECONFIGURE);
+
                 false
             }
             WindowEvent::RedrawRequested => self.do_draw(state).is_err(),
