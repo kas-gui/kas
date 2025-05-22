@@ -80,6 +80,16 @@ impl Extends {
                 (#base).selection(rect, style);
             }
 
+            #[cfg(feature = "parley")]
+            fn parley(
+                &mut self,
+                id: &::kas::Id,
+                rect: Rect,
+                layout: &::parley::Layout<::kas::theme::TextBrush>,
+            ) {
+                (#base).parley(id, rect, layout);
+            }
+
             fn text(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay) {
                 (#base).text(id, pos, rect, text);
             }

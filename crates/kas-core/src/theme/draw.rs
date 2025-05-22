@@ -6,6 +6,7 @@
 //! Widget-facing high-level draw API
 
 use winit::keyboard::Key;
+#[cfg(feature = "parley")] use super::TextBrush;
 
 use super::{FrameStyle, MarkStyle, SelectionStyle, SizeCx, Text, ThemeSize};
 use crate::dir::Direction;
@@ -268,6 +269,15 @@ impl<'a> DrawCx<'a> {
         self.h.selection(rect, style);
     }
 
+    /// Render a [`parley::Layout`] over [`TextBrush`]
+    ///
+    /// It is assumed that the `layout` has already had lines broken and been
+    /// aligned.
+    #[cfg(feature = "parley")]
+    pub fn parley(&mut self, rect: Rect, layout: &parley::Layout<TextBrush>) {
+        self.h.parley(&self.id, rect, layout);
+    }
+
     /// Draw text with effects
     ///
     /// Text is drawn from `rect.pos` and clipped to `rect`.
@@ -507,6 +517,13 @@ pub trait ThemeDraw {
 
     /// Draw a selection highlight / frame
     fn selection(&mut self, rect: Rect, style: SelectionStyle);
+
+    /// Render a [`parley::Layout`] over [`TextBrush`]
+    ///
+    /// It is assumed that the `layout` has already had lines broken and been
+    /// aligned.
+    #[cfg(feature = "parley")]
+    fn parley(&mut self, id: &Id, rect: Rect, layout: &parley::Layout<TextBrush>);
 
     /// Draw text
     ///

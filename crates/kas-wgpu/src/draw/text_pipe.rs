@@ -476,21 +476,23 @@ impl Window {
         );
     }
 
+    /// Render a [`parley::layout::GlyphRun`] with the given `color`
     #[cfg(feature = "parley")]
-    fn render_glyph_run(
+    pub fn parley_run(
         &mut self,
         pipe: &mut Pipeline,
         pass: PassId,
         rect: Quad,
+        color: Rgba,
         glyph_run: &parley::layout::GlyphRun<'_, kas::theme::TextBrush>,
-        mut draw_quad: impl FnMut(Quad, Rgba),
+        mut draw_quad: impl FnMut(Quad),
     ) {
         let mut run_x = glyph_run.offset();
         let run_y = glyph_run.baseline();
         // NOTE: can we assume this? If so we can simplify below.
         debug_assert!(run_x.fract() == 0.0 && run_y.fract() == 0.0);
+        let col = color;
 
-        let col = Rgba::BLACK;
         let font = glyph_run.run().font();
         let dpem = glyph_run.run().font_size();
 
@@ -540,7 +542,7 @@ impl Window {
             let x0 = glyph_run.offset();
             let a = Vec2(x0, y0);
             let b = Vec2(x0 + glyph_run.advance(), y0 + size);
-            draw_quad(Quad::from_coords(a, b), col);
+            draw_quad(Quad::from_coords(a, b));
         }
         if let Some(decoration) = glyph_run.style().strikethrough.as_ref() {
             let offset = decoration.offset.unwrap_or(metrics.strikethrough_offset);
@@ -550,34 +552,7 @@ impl Window {
             let x0 = glyph_run.offset();
             let a = Vec2(x0, y0);
             let b = Vec2(x0 + glyph_run.advance(), y0 + size);
-            draw_quad(Quad::from_coords(a, b), col);
-        }
-    }
-
-    /// Render a [`parley::Layout`]
-    ///
-    /// It is assumed that the `layout` has already had lines broken and been
-    /// aligned.
-    #[cfg(feature = "parley")]
-    pub fn parley(
-        &mut self,
-        pipe: &mut Pipeline,
-        pass: PassId,
-        rect: Quad,
-        layout: &parley::Layout<kas::theme::TextBrush>,
-        mut draw_quad: impl FnMut(Quad, Rgba),
-    ) {
-        for line in layout.lines() {
-            for item in line.items() {
-                match item {
-                    parley::PositionedLayoutItem::GlyphRun(run) => {
-                        self.render_glyph_run(pipe, pass, rect, &run, |rect, col| {
-                            draw_quad(rect, col)
-                        });
-                    }
-                    parley::PositionedLayoutItem::InlineBox(_) => todo!(),
-                }
-            }
+            draw_quad(Quad::from_coords(a, b));
         }
     }
 

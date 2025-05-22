@@ -346,6 +346,22 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         };
     }
 
+    #[cfg(feature = "parley")]
+    #[inline]
+    fn parley_run(
+        &mut self,
+        draw: &mut Self::Draw,
+        pass: PassId,
+        rect: Quad,
+        col: Rgba,
+        run: &parley::layout::GlyphRun<'_, kas::theme::TextBrush>,
+    ) {
+        draw.images
+            .parley_run(&mut self.images, pass, rect, col, run, |quad| {
+                draw.shaded_square.rect(pass, quad, col);
+            });
+    }
+
     #[inline]
     fn draw_text(
         &mut self,

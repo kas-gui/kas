@@ -442,6 +442,24 @@ where
         }
     }
 
+    #[cfg(feature = "parley")]
+    fn parley(&mut self, id: &Id, rect: Rect, layout: &parley::Layout<super::TextBrush>) {
+        let rect = Quad::conv(rect);
+        let is_disabled = self.ev.is_disabled(id);
+
+        for line in layout.lines() {
+            for item in line.items() {
+                match item {
+                    parley::PositionedLayoutItem::GlyphRun(run) => {
+                        let color = run.style().brush.resolve(&self.cols, is_disabled);
+                        self.draw.parley_run(rect, color, &run);
+                    }
+                    parley::PositionedLayoutItem::InlineBox(_) => todo!(),
+                }
+            }
+        }
+    }
+
     fn check_box(&mut self, id: &Id, rect: Rect, checked: bool, _: Option<Instant>) {
         let state = InputState::new_all(self.ev, id);
         let outer = Quad::conv(rect);

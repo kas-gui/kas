@@ -19,7 +19,7 @@ features = ["kas/wayland"]
 default = []
 
 # Enable Parley text backend
-parley = ["dep:parley"]
+parley = ["dep:parley", "kas/parley"]
 
 # WGPU backends
 vulkan = ["wgpu/vulkan"]

@@ -173,6 +173,17 @@ pub trait DrawSharedImpl: Any {
     /// Draw the image in the given `rect`
     fn draw_image(&self, draw: &mut Self::Draw, pass: PassId, id: ImageId, rect: Quad);
 
+    /// Draw Parley text
+    #[cfg(feature = "parley")]
+    fn parley_run(
+        &mut self,
+        draw: &mut Self::Draw,
+        pass: PassId,
+        rect: Quad,
+        col: Rgba,
+        run: &parley::layout::GlyphRun<'_, crate::theme::TextBrush>,
+    );
+
     /// Draw text with a colour
     fn draw_text(
         &mut self,
