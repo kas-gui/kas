@@ -180,8 +180,12 @@ mod defaults {
     }
 
     pub fn fonts() -> BTreeMap<TextClass, FontSelector> {
+        let sans_serifrif = FamilySelector::SANS_SERIF;
         let serif = FamilySelector::SERIF;
         let list = [
+            (TextClass::Label(false), sans_serif.into()),
+            (TextClass::Label(true), sans_serif.into()),
+            (TextClass::LabelScroll, sans_serif.into()),
             (TextClass::Edit(false), serif.into()),
             (TextClass::Edit(true), serif.into()),
         ];

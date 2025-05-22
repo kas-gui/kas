@@ -21,6 +21,8 @@ rustdoc-args = ["--cfg", "docsrs"]
 # The minimal feature set needed to build basic applications (with assumptions
 # about target platforms).
 minimal = ["wayland"]
+# HACK
+default = ["minimal", "parley"]
 # All standard test target features
 stable = ["minimal", "clipboard", "markdown", "spawn", "x11", "serde", "toml", "yaml", "json", "ron", "macros_log"]
 # Enables all "recommended" features for nightly rustc

@@ -26,3 +26,6 @@ pub use selection::SelectionHelper;
 
 mod string;
 pub use string::AccessString;
+
+mod parley;
+pub use parley::ParleyText;

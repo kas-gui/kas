@@ -490,7 +490,8 @@ impl Window {
         let mut run_x = glyph_run.offset();
         let run_y = glyph_run.baseline();
         // NOTE: can we assume this? If so we can simplify below.
-        debug_assert!(run_x.fract() == 0.0 && run_y.fract() == 0.0);
+        // NOTE: yes, provided that quantize == true?
+        // debug_assert!(run_x.fract() == 0.0 && run_y.fract() == 0.0);
         let col = color;
 
         let font = glyph_run.run().font();

@@ -117,6 +117,7 @@ pub struct Dimensions {
 
 impl Dimensions {
     pub fn new(params: &Parameters, scale: f32, dpem: f32) -> Self {
+        eprintln!("dpem: {dpem}");
         let min_line_len = (8.0 * dpem).cast_nearest();
 
         let text_m0 = (params.m_text.0 * scale).cast_nearest();
@@ -423,6 +424,7 @@ impl<D: 'static> ThemeSize for Window<D> {
         } else {
             let wrap_width = axis.other().map(|w| w.cast()).unwrap_or(f32::INFINITY);
             text.break_all_lines(Some(wrap_width));
+
             let mut size: i32 = text.height().cast_ceil();
 
             if editable {

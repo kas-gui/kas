@@ -194,7 +194,7 @@ impl<'a> SizeCx<'a> {
     ///
     /// This method will run line-breaking to determine vertical size.
     #[inline]
-    fn parley_rules(
+    pub fn parley_rules(
         &self,
         text: &mut parley::Layout<TextBrush>,
         class: TextClass,
