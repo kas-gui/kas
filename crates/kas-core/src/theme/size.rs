@@ -5,7 +5,7 @@
 
 //! "Handle" types used by themes
 
-use super::{Feature, FrameStyle, MarginStyle, SizableText, Text, TextClass};
+use super::{Feature, FrameStyle, MarginStyle, SizableText, Text, TextBrush, TextClass};
 use crate::autoimpl;
 use crate::dir::Directional;
 use crate::event::EventState;
@@ -189,6 +189,19 @@ impl<'a> SizeCx<'a> {
         let class = text.class();
         self.w.text_rules(text, class, axis)
     }
+
+    /// Get [`SizeRules`] for a Parley text element
+    ///
+    /// This method will run line-breaking to determine vertical size.
+    #[inline]
+    fn parley_rules(
+        &self,
+        text: &mut parley::Layout<TextBrush>,
+        class: TextClass,
+        axis: AxisInfo,
+    ) -> SizeRules {
+        self.0.parley_rules(text, class, axis)
+    }
 }
 
 /// Theme sizing implementation
@@ -238,4 +251,12 @@ pub trait ThemeSize {
     /// theme-defined margins.
     fn text_rules(&self, text: &mut dyn SizableText, class: TextClass, axis: AxisInfo)
     -> SizeRules;
+
+    /// Get [`SizeRules`] for a Parley text element
+    fn parley_rules(
+        &self,
+        text: &mut parley::Layout<TextBrush>,
+        class: TextClass,
+        axis: AxisInfo,
+    ) -> SizeRules;
 }

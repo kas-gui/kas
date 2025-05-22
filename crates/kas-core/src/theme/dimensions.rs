@@ -11,7 +11,9 @@ use std::f32;
 use std::rc::Rc;
 
 use super::anim::AnimState;
-use super::{Feature, FrameStyle, MarginStyle, MarkStyle, SizableText, TextClass, ThemeSize};
+use super::{
+    Feature, FrameStyle, MarginStyle, MarkStyle, SizableText, TextBrush, TextClass, ThemeSize,
+};
 use crate::cast::traits::*;
 use crate::config::{Config, WindowConfig};
 use crate::dir::Directional;
@@ -87,7 +89,11 @@ pub struct Dimensions {
     pub scale: f32,
     pub dpem: f32,
     pub mark_line: f32,
-    pub min_line_length: i32,
+    /// Minimum length of a wrapped line
+    ///
+    /// This prevents empty edit boxes from being zero-sized.
+    pub min_line_len: i32,
+    pub ideal_line_len: i32,
     pub m_inner: u16,
     pub m_tiny: u16,
     pub m_small: u16,
@@ -111,6 +117,8 @@ pub struct Dimensions {
 
 impl Dimensions {
     pub fn new(params: &Parameters, scale: f32, dpem: f32) -> Self {
+        let min_line_len = (8.0 * dpem).cast_nearest();
+
         let text_m0 = (params.m_text.0 * scale).cast_nearest();
         let text_m1 = (params.m_text.1 * scale).cast_nearest();
 
@@ -121,7 +129,8 @@ impl Dimensions {
             scale,
             dpem,
             mark_line: (1.6 * scale).round().max(1.0),
-            min_line_length: (8.0 * dpem).cast_nearest(),
+            min_line_len,
+            ideal_line_len: min_line_len * 2,
             m_inner: (params.m_inner * scale).cast_nearest(),
             m_tiny: (params.m_tiny * scale).cast_nearest(),
             m_small: (params.m_small * scale).cast_nearest(),
@@ -203,7 +212,7 @@ impl<D: 'static> ThemeSize for Window<D> {
         if axis_is_vertical {
             (self.dims.dpem * 3.0).cast_ceil()
         } else {
-            self.dims.min_line_length
+            self.dims.min_line_len
         }
     }
 
@@ -347,8 +356,8 @@ impl<D: 'static> ThemeSize for Window<D> {
 
         let rules = if axis.is_horizontal() {
             if wrap {
-                let min = self.dims.min_line_length;
-                let limit = 2 * min;
+                let min = self.dims.min_line_len;
+                let limit = self.dims.ideal_line_len;
                 let bound: i32 = text.measure_width(limit.cast()).cast_ceil();
 
                 // NOTE: using different variable-width stretch policies here can
@@ -364,13 +373,64 @@ impl<D: 'static> ThemeSize for Window<D> {
                 .then(|| axis.other().map(|w| w.cast()))
                 .flatten()
                 .unwrap_or(f32::INFINITY);
-            let bound: i32 = text.measure_height(wrap_width).cast_ceil();
-            SizeRules::new(bound, bound, Stretch::Filler)
+            let mut size: i32 = text.measure_height(wrap_width).cast_ceil();
+            if class.editable() {
+                let line_height = self.dims.dpem.cast_ceil();
+                size = size.max(line_height);
+            }
+            SizeRules::new(size, size, Stretch::Filler)
         };
 
         rules.with_margin(match axis.is_horizontal() {
             true => self.dims.m_text.0,
             false => self.dims.m_text.1,
         })
+    }
+
+    fn parley_rules(
+        &self,
+        text: &mut parley::Layout<TextBrush>,
+        class: TextClass,
+        axis: AxisInfo,
+    ) -> SizeRules {
+        let margin = match axis.is_horizontal() {
+            true => self.dims.m_text.0,
+            false => self.dims.m_text.1,
+        };
+        let margins = (margin, margin);
+
+        let wrap = class.multi_line();
+        let editable = class.editable();
+
+        if axis.is_horizontal() {
+            if wrap {
+                let content = text.content_widths();
+                let mut min: i32 = content.min.cast_ceil();
+                let ideal = self.dims.ideal_line_len.min(content.max.cast_ceil());
+
+                if editable {
+                    min = min.max(self.dims.min_line_len);
+                }
+
+                // NOTE: using different variable-width stretch policies here can
+                // cause problems (e.g. edit boxes greedily consuming too much
+                // space). This is a hard layout problem; for now don't do this.
+                SizeRules::new(min, ideal, margins, Stretch::Filler)
+            } else {
+                let bound = text.max_content_width().cast_ceil();
+                SizeRules::new(bound, bound, margins, Stretch::Filler)
+            }
+        } else {
+            let wrap_width = axis.other().map(|w| w.cast()).unwrap_or(f32::INFINITY);
+            text.break_all_lines(Some(wrap_width));
+            let mut size: i32 = text.height().cast_ceil();
+
+            if editable {
+                let line_height = self.dims.dpem.cast_ceil();
+                size = size.max(line_height)
+            }
+
+            SizeRules::new(size, size, margins, Stretch::Filler)
+        }
     }
 }
