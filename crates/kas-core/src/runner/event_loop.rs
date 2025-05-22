@@ -277,7 +277,7 @@ where
                         win_id = id;
                     }
                     if let Some(window) = self.windows.get_mut(&win_id) {
-                        window.send_close(target);
+                        window.send_close(&mut self.state, target);
                     }
                 }
                 Pending::Exit => close_all = true,

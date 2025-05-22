@@ -7,8 +7,9 @@
 
 use crate::event::EventState;
 use crate::text::format::FormattableText;
-use crate::theme::{SizeCx, Text, ThemeSize};
+use crate::theme::{SizeCx, Text, ThemeSize, TextBrush};
 use crate::{ActionResize, Id, Node};
+use crate::runner::ParleyContext;
 use std::any::TypeId;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
@@ -22,6 +23,7 @@ use std::ops::{Deref, DerefMut};
 #[must_use]
 pub struct ConfigCx<'a> {
     pub(super) theme: &'a dyn ThemeSize,
+    pub(super) parley: &'a mut ParleyContext,
     pub(crate) state: &'a mut EventState,
     pub(crate) resize: ActionResize,
     pub(crate) redraw: bool,
@@ -31,9 +33,11 @@ impl<'a> ConfigCx<'a> {
     /// Construct
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-    pub fn new(sh: &'a dyn ThemeSize, ev: &'a mut EventState) -> Self {
+    pub fn new(sh: &'a dyn ThemeSize,
+        parley: &'a mut ParleyContext, ev: &'a mut EventState) -> Self {
         ConfigCx {
             theme: sh,
+            parley,
             state: ev,
             resize: ActionResize(false),
             redraw: false,
@@ -78,6 +82,27 @@ impl<'a> ConfigCx<'a> {
         let start_resize = std::mem::take(&mut self.resize);
         widget._update(self);
         self.resize |= start_resize;
+    }
+
+    /// Create a ranged style builder for a [`parley::Layout`]
+    pub fn ranged_builder<'b>(&'b mut self, text: &'b str) -> parley::RangedBuilder<'b, TextBrush> {
+        let scale = self.config.scale_factor();
+        let quantize = true;
+        self.pcx
+            .lcx
+            .ranged_builder(&mut self.pcx.fcx, text, scale, quantize)
+    }
+
+    /// Create a tree style builder for a [`parley::Layout`]
+    pub fn tree_builder<'b>(
+        &'b mut self,
+        raw_style: &parley::style::TextStyle<'_, TextBrush>,
+    ) -> parley::TreeBuilder<'b, TextBrush> {
+        let scale = self.config.scale_factor();
+        let quantize = true;
+        self.pcx
+            .lcx
+            .tree_builder(&mut self.pcx.fcx, scale, quantize, raw_style)
     }
 
     /// Configure a text object
