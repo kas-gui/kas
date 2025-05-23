@@ -344,6 +344,7 @@ where
         rect: Rect,
         text: &TextDisplay,
         effects: &[Effect],
+        is_access_key: bool,
     ) {
         let bb = Quad::conv(rect);
         let col = if self.ev.is_disabled(id) {

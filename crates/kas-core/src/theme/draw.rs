@@ -321,12 +321,13 @@ impl<'a> DrawCx<'a> {
         text: &Text<T>,
         effects: &[Effect],
     ) {
+        let is_access_key = text.class().is_access_key();
         if let Ok(display) = text.display() {
             if effects.is_empty() {
                 // Use the faster and simpler implementation when we don't have effects
                 self.h.text(&self.id, pos, rect, display);
             } else {
-                self.h.text_effects(&self.id, pos, rect, display, effects);
+                self.h.text_effects(&self.id, pos, rect, display, effects, is_access_key);
             }
         }
     }
@@ -351,7 +352,7 @@ impl<'a> DrawCx<'a> {
             return;
         };
 
-        self.h
+        self.h.text_selected_range(&self.id, rect, display, range);
             .text_selected_range(&self.id, pos, rect, display, range);
     }
 
@@ -527,8 +528,7 @@ pub trait ThemeDraw {
 
     /// Draw text
     ///
-    /// [`ConfigCx::text_configure`] should be called prior to this method to
-    /// select a font, font size and wrap options (based on the [`TextClass`]).
+    /// Text should be fully prepared before calling this method.
     fn text(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay);
 
     /// Draw text with effects
@@ -540,8 +540,7 @@ pub trait ThemeDraw {
     /// If `effects` is empty or all [`Effect::flags`] are default then it is
     /// equivalent (and faster) to call [`Self::text`] instead.
     ///
-    /// [`ConfigCx::text_configure`] should be called prior to this method to
-    /// select a font, font size and wrap options (based on the [`TextClass`]).
+    /// Text should be fully prepared before calling this method.
     fn text_effects(
         &mut self,
         id: &Id,
@@ -549,22 +548,15 @@ pub trait ThemeDraw {
         rect: Rect,
         text: &TextDisplay,
         effects: &[Effect],
+        is_access_key: bool,
     );
 
     /// Method used to implement [`DrawCx::text_selected`]
-    fn text_selected_range(
-        &mut self,
-        id: &Id,
+    fn text_selected_range(&mut self, id: &Id, rect: Rect, text: &TextDisplay, range: Range<usize>);
         pos: Coord,
-        rect: Rect,
-        text: &TextDisplay,
-        range: Range<usize>,
-    );
 
     /// Draw an edit marker at the given `byte` index on this `text`
-    ///
-    /// [`ConfigCx::text_configure`] should be called prior to this method to
-    /// select a font, font size and wrap options (based on the [`TextClass`]).
+    /// Text should be fully prepared before calling this method.
     fn text_cursor(&mut self, id: &Id, pos: Coord, rect: Rect, text: &TextDisplay, byte: usize);
 
     /// Draw UI element: check box
