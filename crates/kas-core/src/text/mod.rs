@@ -18,9 +18,8 @@ pub use kas_text::{
     OwningVecIter, Status, Text, TextDisplay, Vec2, fonts, format,
 };
 
-mod class;
-pub(crate) use class::{BuildKeyHasher, KeyHasher};
-pub use class::{Key, TextClass};
+pub mod class;
+pub use class::TextClass;
 
 mod selection;
 pub use selection::SelectionHelper;

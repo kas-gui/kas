@@ -5,39 +5,46 @@
 
 //! Text classes
 
+use std::borrow::Cow;
 use std::hash::Hasher;
 use std::cmp::{Ordering, PartialEq, PartialOrd};
 
 /// Class key
 ///
 /// This is a name plus a pre-computed hash value. It is used for font mapping.
-#[derive(Copy, Clone, Debug, Eq)]
-pub struct Key(&'static str, u64);
+//
+// NOTE: the requirement to serialize this makes things much more complex:
+// either we need an owning variant or we need a registry of all possible values
+// before deserialization (which happens before the UI is constructed).
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(into = "SerializeName"))]
+#[derive(Clone, Debug, Eq)]
+pub struct Key(Cow<'static, str>, u64);
 
 impl Key {
     /// Construct a key
     pub const fn new(name: &'static str) -> Self {
         let hash = const_fnv1a_hash::fnv1a_hash_str_64(name);
-        Key(name, hash)
+        Key(Cow::Borrowed(name), hash)
     }
 }
 
 impl PartialEq for Key {
-    fn eq(&self, rhs: &Self) -> bool {
-        // NOTE: if we test for collisions we could skip testing against field 0
-        self.1 == rhs.1 && self.0 == rhs.0
+    fn eq(&self, other: &Self) -> bool {
+        // TODO: this requires that we check for collisions somewhere
+        self.1 == other.1
     }
 }
 
 impl PartialOrd for Key {
-    fn partial_cmp(&self, rhs: &Key) -> Option<Ordering> {
-        self.1.partial_cmp(&rhs.1)
+    fn partial_cmp(&self, other: &Key) -> Option<Ordering> {
+        self.1.partial_cmp(&other.1)
     }
 }
 
 impl Ord for Key {
-    fn cmp(&self, rhs: &Key) -> Ordering {
-        self.1.cmp(&rhs.1)
+    fn cmp(&self, other: &Key) -> Ordering {
+        self.1.cmp(&other.1)
     }
 }
 
@@ -47,12 +54,37 @@ impl std::hash::Hash for Key {
     }
 }
 
+#[cfg(feature = "serde")]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", serde(transparent))]
+struct SerializeName(String);
+
+#[cfg(feature = "serde")]
+impl From<Key> for SerializeName {
+    fn from(key: Key) -> Self {
+        SerializeName(key.0.to_string())
+    }
+}
+
+#[cfg(feature = "serde")]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(transparent))]
+struct SerializedName(String);
+
+#[cfg(feature = "serde")]
+impl From<SerializedName> for Key {
+    fn from(name: SerializedName) -> Self {
+        let hash = const_fnv1a_hash::fnv1a_hash_str_64(&name.0);
+        Key(Cow::Owned(name.0), hash)
+    }
+}
+
 /// A [`Hasher`] optimized for [`Key`]
 ///
 /// Warning: this hasher should only be used for keys of type [`Key`].
 /// In most other cases it will panic or give poor results.
 #[derive(Default)]
-pub(crate) struct KeyHasher(u64);
+pub struct KeyHasher(u64);
 
 impl Hasher for KeyHasher {
     #[inline]
@@ -72,42 +104,27 @@ impl Hasher for KeyHasher {
 }
 
 /// A hash builder for [`KeyHasher`]
-pub(crate) type BuildKeyHasher = std::hash::BuildHasherDefault<KeyHasher>;
+pub type BuildKeyHasher = std::hash::BuildHasherDefault<KeyHasher>;
 
-bitflags! {
-    /// Text class properties
-    #[must_use]
-    #[derive(Copy, Clone, Debug, Default)]
-    pub struct Properties: u32 {
-        /// Perform line-wrapping
-        ///
-        /// If `true`, long lines are broken at appropriate positions (see
-        /// Unicode UAX 14) to respect some maximum line length.
-        ///
-        /// If `false`, only explicit line breaks result in new lines.
-        const WRAP = 1 << 0;
-
-        /// Is an access key
-        ///
-        /// If `true`, then text decorations (underline, strikethrough) are only
-        /// drawn when access key mode is active (usually, this means
-        /// <kbd>Alt</kbd> is held).
-        const ACCESS = 1 << 8;
-
-        /// Limit minimum size
-        ///
-        /// This is used to prevent empty edit-fields from collapsing to nothing.
-        const LIMIT_MIN_SIZE = 1 << 9;
-    }
-}
+// /// Text wrap mode
+// enum WrapMode {
+//     /// Do not break long lines
+//     None,
+//
+// }
 
 /// A text class
 pub trait TextClass {
     /// Each text class must have a unique key, used for lookups
     const KEY: Key;
 
-    /// Get text properties
-    fn properties(&self) -> Properties;
+    /// Whether to perform line-breaking
+    ///
+    /// If `true`, long lines are broken at appropriate positions (see Unicode
+    /// UAX 14) to respect some maximum line length.
+    ///
+    /// If `false`, only explicit line breaks result in new lines.
+    fn wrap(&self) -> bool;
 
     // /// Whether to wrap even where plenty of space is available
     // ///
@@ -115,58 +132,50 @@ pub trait TextClass {
     // /// at some sensible (theme-defined) maximum paragraph width even when
     // /// plenty of space is availble.
     // fn restrict_width(&self) -> bool;
+
+    /// Whether to enforce a minimum size
+    ///
+    /// Default value: `false`.
+    fn editable(&self) -> bool {
+        false
+    }
+
+    /// Access key mode
+    ///
+    /// If `true`, then text decorations (underline, strikethrough) are only
+    /// drawn when access key mode is active (usually, this means <kbd>Alt</kbd>
+    /// is held).
+    ///
+    /// Default value: `false`.
+    fn is_access_key(&self) -> bool {
+        false
+    }
 }
 
 /// Text class: label
 ///
-/// This will wrap long lines if and only if its field is true.
+/// This will wrap text if and only if the field is true.
 #[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
 pub struct Label(pub bool);
 
 impl TextClass for Label {
-    const KEY = Key::new("Label");
+    const KEY: Key = Key::new("kas::Label");
 
-    fn properties(&self) -> Properties {
-        if self.0 {
-            Properties::WRAP
-        } else {
-            Properties::empty()
-        }
+    fn wrap(&self) -> bool {
+        self.0
     }
 }
 
-/// Text class: access label
-///
-/// This is identical to [`Label`] except that effects are only drawn if
-/// access key mode is activated (usually the `Alt` key).
-///
-/// This will wrap long lines if and only if its field is true.
-#[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
-pub struct AccessLabel(pub bool);
-
-/// Text class: scrollable label
-///
-/// The occupied vertical space may be less than the height of the text object.
-/// This will wrap long lines.
-#[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
-pub struct ScrollLabel(pub bool);
-
-/// Text class: menu label
-///
-/// This is equivalent to [`AccessLabel`] `(false)`, but may use different
-/// styling and does not stretch to fill extra space.
-#[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
-pub struct MenuLabel;
-
-/// Text class: button
-///
-/// This is equivalent to [`AccessLabel`] `(false)`, but may use different
-/// styling.
-#[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
-pub struct Button;
-
 /// Text class: edit field
 ///
-/// This is a multi-line edit field if and only if its field is true.
+/// This will wrap text if and only if the field is true.
 #[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
-pub struct Edit(pub bool);
+pub struct EditField(pub bool);
+
+impl TextClass for EditField {
+    const KEY: Key = Key::new("kas::EditField");
+
+    fn wrap(&self) -> bool {
+        self.0
+    }
+}
