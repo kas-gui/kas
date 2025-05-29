@@ -80,7 +80,7 @@ where
                 .borrow()
                 .font
                 .iter_fonts()
-                .filter_map(|(c, s)| fonts.select_font(s).ok().map(|id| (*c, id)))
+                .map(|(c, s)| (*c, fonts.select_font(s)))
                 .collect(),
         ));
     }
