@@ -75,8 +75,6 @@ markdown = ["kas-core/markdown"]
 # Enable text shaping
 shaping = ["kas-wgpu/shaping"]
 
-fontdue = ["kas-wgpu?/fontdue"]
-
 # Enable serde support (mainly config read/write)
 serde = ["kas-core/serde"]
 

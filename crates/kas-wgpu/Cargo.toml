@@ -35,7 +35,6 @@ harfbuzz = ["kas-text/harfbuzz"]
 
 # Enable ab_glyph backend (redundant)
 ab_glyph = ["kas-text/ab_glyph", "dep:ab_glyph"]
-fontdue = ["kas-text/fontdue"]
 
 [dependencies]
 bytemuck = "1.7.0"

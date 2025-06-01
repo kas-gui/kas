@@ -29,8 +29,6 @@ kas::impl_scope! {
 enum Rasterer {
     #[cfg(feature = "ab_glyph")]
     AbGlyph,
-    #[cfg(feature = "fontdue")]
-    Fontdue,
     Swash,
 }
 
@@ -272,8 +270,6 @@ impl Pipeline {
         match config.mode {
             #[cfg(feature = "ab_glyph")]
             0 | 1 => self.rasterer = Rasterer::AbGlyph,
-            #[cfg(feature = "fontdue")]
-            2 => self.rasterer = Rasterer::Fontdue,
             3 | 4 => self.rasterer = Rasterer::Swash,
             x => log::warn!("raster mode {x} unavailable; falling back to default"),
         };
@@ -358,8 +354,6 @@ impl Pipeline {
         let result = match self.rasterer {
             #[cfg(feature = "ab_glyph")]
             Rasterer::AbGlyph => self.raster_ab_glyph(desc),
-            #[cfg(feature = "fontdue")]
-            Rasterer::Fontdue => self.raster_fontdue(desc),
             Rasterer::Swash => self.raster_swash(desc),
         };
 
@@ -416,33 +410,6 @@ impl Pipeline {
             // Convert to u8 with saturating conversion, rounding down:
             data[usize::conv((y * size.0) + x)] = (c * 256.0) as u8;
         });
-
-        let (atlas, _, origin, tex_quad) = self.atlas_pipe.allocate(size)?;
-
-        self.prepare.push((atlas, origin, size, data));
-
-        Ok(Sprite {
-            atlas,
-            valid: true,
-            size: Vec2(size.0.cast(), size.1.cast()),
-            offset: Vec2(offset.0.cast(), offset.1.cast()),
-            tex_quad,
-        })
-    }
-
-    #[cfg(feature = "fontdue")]
-    fn raster_fontdue(&mut self, desc: SpriteDescriptor) -> Result<Sprite, RasterError> {
-        let face = desc.face();
-        let face = fonts::library().get_face_store(face).fontdue();
-
-        let (metrics, data) = face.rasterize_indexed(desc.glyph().0, desc.dpem(&self.config));
-
-        let size = (u32::conv(metrics.width), u32::conv(metrics.height));
-        let h_off = -metrics.ymin - i32::conv(metrics.height);
-        let offset = (metrics.xmin, h_off);
-        if size.0 == 0 || size.1 == 0 {
-            return Err(RasterError::Zero);
-        }
 
         let (atlas, _, origin, tex_quad) = self.atlas_pipe.allocate(size)?;
 
