@@ -155,4 +155,4 @@ members = [
 
 [patch.crates-io.kas-text]
 git = "https://github.com/kas-gui/kas-text.git"
-rev = "5e6720f5"
+rev = "9312d06"

@@ -31,7 +31,6 @@ dx12 = ["wgpu/dx12"]
 metal = ["wgpu/metal"]
 
 shaping = ["kas-text/shaping"]
-harfbuzz = ["kas-text/harfbuzz"]
 
 # Enable ab_glyph backend (redundant)
 ab_glyph = ["kas-text/ab_glyph", "dep:ab_glyph"]
@@ -52,7 +51,7 @@ package = "kas-core"
 path = "../kas-core"
 
 [dependencies.kas-text]
-version = "0.7.0"
+version = "0.8.0"
 
 [dependencies.swash]
 version = "0.2.4"
