@@ -11,18 +11,17 @@ use crate::cast::Cast;
 #[allow(unused)] use crate::event::ConfigCx;
 use crate::geom::{Rect, Size};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
-use crate::text::fonts::{FontId, InvalidFontId};
+use crate::text::fonts::{FontSelector, InvalidFontId};
 use crate::text::format::{EditableText, FormattableText};
 use crate::text::*;
 use crate::{Action, Layout};
 
 /// Text type-setting object (theme aware)
 ///
-/// This struct is a theme-aware variant of [`crate::text::Text`]. It contains:
-/// -   A [`Rect`]
-/// -   A [`TextClass`]
+/// This struct contains:
 /// -   A [`FormattableText`]
 /// -   A [`TextDisplay`]
+/// -   A [`FontSelector`]
 /// -   Type-setting configuration. Values have reasonable defaults:
 ///     -   The font is derived from the [`TextClass`] by
 ///         [`ConfigCx::text_configure`]. Otherwise, the default font will be
@@ -42,7 +41,7 @@ use crate::{Action, Layout};
 #[derive(Clone, Debug)]
 pub struct Text<T: FormattableText> {
     rect: Rect,
-    font_id: FontId,
+    font: FontSelector,
     dpem: f32,
     class: TextClass,
     /// Alignment (`horiz`, `vert`)
@@ -100,7 +99,7 @@ impl<T: FormattableText> Text<T> {
     pub fn new(text: T, class: TextClass) -> Self {
         Text {
             rect: Rect::default(),
-            font_id: FontId::default(),
+            font: FontSelector::default(),
             dpem: 16.0,
             class,
             align: Default::default(),
@@ -213,22 +212,22 @@ impl<T: FormattableText> Text<T> {
 
     /// Get the default font
     #[inline]
-    pub fn font(&self) -> FontId {
-        self.font_id
+    pub fn font(&self) -> FontSelector {
+        self.font
     }
 
-    /// Set the default [`FontId`]
+    /// Set the default [`FontSelector`]
     ///
     /// This is derived from the [`TextClass`] by [`ConfigCx::text_configure`].
     ///
-    /// This `font_id` is used by all unformatted texts and by any formatted
+    /// This `font` is used by all unformatted texts and by any formatted
     /// texts which don't immediately set formatting.
     ///
     /// It is necessary to [`prepare`][Self::prepare] the text after calling this.
     #[inline]
-    pub fn set_font(&mut self, font_id: FontId) {
-        if font_id != self.font_id {
-            self.font_id = font_id;
+    pub fn set_font(&mut self, font: FontSelector) {
+        if font != self.font {
+            self.font = font;
             self.set_max_status(Status::Configured);
         }
     }
@@ -402,8 +401,6 @@ impl<T: FormattableText> Text<T> {
     /// Text objects must be configured before use.
     #[inline]
     pub fn configure(&mut self) -> Result<(), InvalidFontId> {
-        // Validate default_font_id
-        let _ = fonts::library().first_face_for(self.font_id)?;
 
         self.status = self.status.max(Status::Configured);
         Ok(())
@@ -414,7 +411,7 @@ impl<T: FormattableText> Text<T> {
             Status::New => return Err(NotReady),
             Status::Configured => self
                 .display
-                .prepare_runs(&self.text, self.direction, self.font_id, self.dpem)
+                .prepare_runs(&self.text, self.direction, self.font, self.dpem)
                 .map_err(|_| {
                     debug_assert!(false, "font_id should be validated by configure");
                     NotReady
@@ -649,7 +646,7 @@ impl Text<String> {
 /// Required functionality on [`Text`] objects for sizing by the theme
 pub trait SizableText {
     /// Set font face and size
-    fn set_font(&mut self, font_id: FontId, dpem: f32);
+    fn set_font(&mut self, font: FontSelector, dpem: f32);
 
     /// Configure text
     fn configure(&mut self) -> Result<(), InvalidFontId>;
@@ -662,9 +659,9 @@ pub trait SizableText {
 }
 
 impl<T: FormattableText> SizableText for Text<T> {
-    fn set_font(&mut self, font_id: FontId, dpem: f32) {
-        if font_id != self.font_id {
-            self.font_id = font_id;
+    fn set_font(&mut self, font: FontSelector, dpem: f32) {
+        if font != self.font {
+            self.font = font;
             self.dpem = dpem;
             self.set_max_status(Status::Configured);
         } else if dpem != self.dpem {

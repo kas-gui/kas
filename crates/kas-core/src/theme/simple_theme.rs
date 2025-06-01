@@ -5,6 +5,7 @@
 
 //! Simple theme
 
+use kas_text::fonts::FontSelector;
 use linear_map::LinearMap;
 use std::cell::RefCell;
 use std::f32;
@@ -18,7 +19,7 @@ use crate::dir::{Direction, Directional};
 use crate::draw::{color::Rgba, *};
 use crate::event::EventState;
 use crate::geom::*;
-use crate::text::{fonts, Effect, TextDisplay};
+use crate::text::{Effect, TextDisplay};
 use crate::theme::dimensions as dim;
 use crate::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use crate::theme::{ColorsLinear, InputState, Theme};
@@ -35,7 +36,7 @@ use super::ColorsSrgb;
 pub struct SimpleTheme {
     pub cols: ColorsLinear,
     dims: dim::Parameters,
-    pub fonts: Option<Rc<LinearMap<TextClass, fonts::FontId>>>,
+    pub fonts: Option<Rc<LinearMap<TextClass, FontSelector>>>,
 }
 
 impl Default for SimpleTheme {
@@ -71,16 +72,12 @@ where
     type Draw<'a> = DrawHandle<'a, DS>;
 
     fn init(&mut self, config: &RefCell<Config>) {
-        let fonts = fonts::library();
-        if let Err(e) = fonts.init() {
-            panic!("Error initializing fonts: {e}");
-        }
         self.fonts = Some(Rc::new(
             config
                 .borrow()
                 .font
                 .iter_fonts()
-                .map(|(c, s)| (*c, fonts.select_font(s)))
+                .map(|(c, s)| (*c, *s))
                 .collect(),
         ));
     }

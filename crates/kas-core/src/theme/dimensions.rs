@@ -5,6 +5,7 @@
 
 //! A shared implementation of [`ThemeSize`]
 
+use kas_text::fonts::FontSelector;
 use linear_map::LinearMap;
 use std::any::Any;
 use std::f32;
@@ -17,7 +18,6 @@ use crate::config::WindowConfig;
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
 use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
-use crate::text::fonts::FontId;
 
 crate::impl_scope! {
     /// Parameterisation of [`Dimensions`]
@@ -152,7 +152,7 @@ impl Dimensions {
 /// A convenient implementation of [`crate::Window`]
 pub struct Window<D> {
     pub dims: Dimensions,
-    pub fonts: Rc<LinearMap<TextClass, FontId>>,
+    pub fonts: Rc<LinearMap<TextClass, FontSelector>>,
     pub anim: AnimState<D>,
 }
 
@@ -160,7 +160,7 @@ impl<D> Window<D> {
     pub fn new(
         dims: &Parameters,
         config: &WindowConfig,
-        fonts: Rc<LinearMap<TextClass, FontId>>,
+        fonts: Rc<LinearMap<TextClass, FontSelector>>,
     ) -> Self {
         Window {
             dims: Dimensions::new(dims, config),
