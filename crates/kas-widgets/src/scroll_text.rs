@@ -40,7 +40,7 @@ impl_scope! {
             let mut rules = sizer.text_rules(&mut self.text, axis);
             let _ = self.bar.size_rules(sizer.re(), axis);
             if axis.is_vertical() {
-                rules.reduce_min_to(sizer.text_line_height(&self.text) * 4);
+                rules.reduce_min_to((sizer.dpem() * 4.0).cast_ceil());
             }
             rules.with_stretch(Stretch::Low)
         }

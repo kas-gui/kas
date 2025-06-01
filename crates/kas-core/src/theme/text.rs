@@ -427,23 +427,6 @@ impl<T: FormattableText> Text<T> {
         Ok(())
     }
 
-    /// Returns the height of horizontal text
-    ///
-    /// Returns an error if called before [`Self::configure`].
-    ///
-    /// This depends on the font and font size, but is independent of the text.
-    pub fn line_height(&self) -> Result<f32, NotReady> {
-        self.check_status(Status::Configured)?;
-
-        fonts::library()
-            .get_first_face(self.font())
-            .map(|face| face.height(self.font_size()))
-            .map_err(|_| {
-                debug_assert!(false, "font_id should be validated by configure");
-                NotReady
-            })
-    }
-
     /// Measure required width, up to some `max_width`
     ///
     /// [`configure`][Self::configure] must be called before this method.

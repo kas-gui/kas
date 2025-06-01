@@ -322,15 +322,6 @@ impl<D: 'static> ThemeSize for Window<D> {
         }
     }
 
-    fn line_height(&self, class: TextClass) -> i32 {
-        let font_id = self.fonts.get(&class).cloned().unwrap_or_default();
-        crate::text::fonts::library()
-            .get_first_face(font_id)
-            .expect("invalid font_id")
-            .height(self.dims.dpem)
-            .cast_ceil()
-    }
-
     fn text_configure(&self, text: &mut dyn SizableText, class: TextClass) {
         let font_id = self.fonts.get(&class).cloned().unwrap_or_default();
         let dpem = self.dims.dpem;

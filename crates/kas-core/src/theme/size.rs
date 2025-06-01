@@ -5,8 +5,6 @@
 
 //! "Handle" types used by themes
 
-use cast::CastFloat;
-
 use super::{Feature, FrameStyle, MarginStyle, SizableText, Text, TextClass};
 use crate::autoimpl;
 use crate::dir::Directional;
@@ -80,7 +78,6 @@ impl<'a> SizeCx<'a> {
     ///
     /// The Em is a unit of typography (variously defined as the point-size of
     /// the font, the height of the font or the width of an upper-case `M`).
-    /// The method [`Self::line_height`] returns a related but distinct value.
     ///
     /// This method returns the size of 1 Em in physical pixels, derived from
     /// the font size in use by the theme and the screen's scale factor.
@@ -156,23 +153,6 @@ impl<'a> SizeCx<'a> {
         self.0.frame(style, axis.is_vertical())
     }
 
-    /// The height of a line of text using the corresponding font
-    ///
-    /// This method looks up the font face corresponding to the given `class`,
-    /// scales this according to [`Self::dpem`], then measures the line height.
-    /// The result is typically 100% - 150% of the value returned by
-    /// [`Self::dpem`], depending on the font face.
-    ///
-    /// Prefer to use [`Self::text_line_height`] where possible.
-    pub fn line_height(&self, class: TextClass) -> i32 {
-        self.0.line_height(class)
-    }
-
-    /// Get the line-height of a configured text object
-    pub fn text_line_height<T: FormattableText>(&self, text: &Text<T>) -> i32 {
-        text.line_height().expect("not configured").cast_ceil()
-    }
-
     /// Get [`SizeRules`] for a text element
     ///
     /// The [`TextClass`] is used to select a font and controls whether line
@@ -234,11 +214,6 @@ pub trait ThemeSize {
 
     /// Size of a frame around another element
     fn frame(&self, style: FrameStyle, axis_is_vertical: bool) -> FrameRules;
-
-    /// The height of a line of text by class
-    ///
-    /// Prefer to use [`SizeCx::text_line_height`] where possible.
-    fn line_height(&self, class: TextClass) -> i32;
 
     /// Configure a text object, setting font properties
     fn text_configure(&self, text: &mut dyn SizableText, class: TextClass);
