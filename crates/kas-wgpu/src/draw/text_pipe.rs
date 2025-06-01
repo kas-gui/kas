@@ -31,24 +31,13 @@ enum Rasterer {
     AbGlyph,
     #[cfg(feature = "fontdue")]
     Fontdue,
-    #[cfg(feature = "swash")]
     Swash,
 }
 
 impl Default for Rasterer {
     #[allow(clippy::needless_return, unreachable_code)]
     fn default() -> Self {
-        #[cfg(feature = "swash")]
         return Rasterer::Swash;
-
-        #[cfg(feature = "fontdue")]
-        return Rasterer::Fontdue;
-
-        #[cfg(feature = "ab_glyph")]
-        return Rasterer::AbGlyph;
-
-        #[cfg(not(any(feature = "swash", feature = "fontdue", feature = "ab_glyph")))]
-        compile_error!("No rasterer is enabled! Enable one of the following features: raster, swash, fontdue, ab_glyph");
     }
 }
 
@@ -225,7 +214,6 @@ pub struct Pipeline {
     glyphs: HashMap<SpriteDescriptor, Sprite>,
     #[allow(clippy::type_complexity)]
     prepare: Vec<(u32, (u32, u32), (u32, u32), Vec<u8>)>,
-    #[cfg(feature = "swash")]
     scale_cx: swash::scale::ScaleContext,
 }
 
@@ -276,7 +264,6 @@ impl Pipeline {
             atlas_pipe,
             glyphs: Default::default(),
             prepare: Default::default(),
-            #[cfg(feature = "swash")]
             scale_cx: Default::default(),
         }
     }
@@ -287,7 +274,6 @@ impl Pipeline {
             0 | 1 => self.rasterer = Rasterer::AbGlyph,
             #[cfg(feature = "fontdue")]
             2 => self.rasterer = Rasterer::Fontdue,
-            #[cfg(feature = "swash")]
             3 | 4 => self.rasterer = Rasterer::Swash,
             x => log::warn!("raster mode {x} unavailable; falling back to default"),
         };
@@ -374,7 +360,6 @@ impl Pipeline {
             Rasterer::AbGlyph => self.raster_ab_glyph(desc),
             #[cfg(feature = "fontdue")]
             Rasterer::Fontdue => self.raster_fontdue(desc),
-            #[cfg(feature = "swash")]
             Rasterer::Swash => self.raster_swash(desc),
         };
 
@@ -472,7 +457,6 @@ impl Pipeline {
         })
     }
 
-    #[cfg(feature = "swash")]
     fn raster_swash(&mut self, desc: SpriteDescriptor) -> Result<Sprite, RasterError> {
         use swash::scale::{image::Content, Render, Source, StrikeWith};
         use swash::zeno::Format;

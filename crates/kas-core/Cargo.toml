@@ -21,7 +21,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 # about target platforms).
 minimal = ["winit", "wayland"]
 # All standard test target features
-stable = ["minimal", "clipboard", "markdown", "shaping", "spawn", "x11", "serde", "toml", "yaml", "json", "ron", "macros_log", "image"]
+stable = ["minimal", "clipboard", "markdown", "spawn", "x11", "serde", "toml", "yaml", "json", "ron", "macros_log", "image"]
 # Enables all "recommended" features for nightly rustc
 nightly = ["stable", "nightly-diagnostics"]
 # Additional, less recommendation-worthy features
@@ -41,9 +41,6 @@ internal_doc = []
 
 # Enable Markdown parsing
 markdown = ["kas-text/markdown"]
-
-# Enable text shaping
-shaping = ["kas-text/shaping"]
 
 # Enable support for YAML (de)serialisation
 yaml = ["serde", "dep:serde_yaml2"]

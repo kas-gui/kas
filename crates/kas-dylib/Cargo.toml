@@ -18,8 +18,6 @@ features = ["docs_rs"]
 crate-type = ["dylib"]
 
 [features]
-default = ["raster"]
-raster = ["kas-wgpu/raster"]
 resvg = ["dep:kas-resvg"]
 
 # Non-local features required for doc builds.
