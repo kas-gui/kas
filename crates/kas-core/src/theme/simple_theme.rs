@@ -5,12 +5,9 @@
 
 //! Simple theme
 
-use kas_text::fonts::FontSelector;
-use linear_map::LinearMap;
 use std::cell::RefCell;
 use std::f32;
 use std::ops::Range;
-use std::rc::Rc;
 use std::time::Instant;
 
 use crate::cast::traits::*;
@@ -36,7 +33,6 @@ use super::ColorsSrgb;
 pub struct SimpleTheme {
     pub cols: ColorsLinear,
     dims: dim::Parameters,
-    pub fonts: Option<Rc<LinearMap<TextClass, FontSelector>>>,
 }
 
 impl Default for SimpleTheme {
@@ -52,7 +48,6 @@ impl SimpleTheme {
         SimpleTheme {
             cols: ColorsSrgb::LIGHT.into(), // value is unimportant
             dims: Default::default(),
-            fonts: None,
         }
     }
 }
@@ -71,21 +66,11 @@ where
     type Window = dim::Window<DS::Draw>;
     type Draw<'a> = DrawHandle<'a, DS>;
 
-    fn init(&mut self, config: &RefCell<Config>) {
-        self.fonts = Some(Rc::new(
-            config
-                .borrow()
-                .font
-                .iter_fonts()
-                .map(|(c, s)| (*c, *s))
-                .collect(),
-        ));
-    }
+    fn init(&mut self, _: &RefCell<Config>) {}
 
     fn new_window(&mut self, config: &WindowConfig) -> Self::Window {
         self.cols = config.theme().get_active_scheme().into();
-        let fonts = self.fonts.as_ref().unwrap().clone();
-        dim::Window::new(&self.dims, config, fonts)
+        dim::Window::new(&self.dims, config)
     }
 
     fn update_window(&mut self, w: &mut Self::Window, config: &WindowConfig) {

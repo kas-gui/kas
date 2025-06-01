@@ -85,8 +85,7 @@ where
 
     fn new_window(&mut self, config: &WindowConfig) -> Self::Window {
         self.base.cols = config.theme().get_active_scheme().into();
-        let fonts = self.base.fonts.as_ref().unwrap().clone();
-        dim::Window::new(&dimensions(), config, fonts)
+        dim::Window::new(&dimensions(), config)
     }
 
     fn update_window(&mut self, w: &mut Self::Window, config: &WindowConfig) {

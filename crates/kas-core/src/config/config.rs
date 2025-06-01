@@ -123,6 +123,11 @@ impl WindowConfig {
         self.config.borrow()
     }
 
+    /// Get a clone of the base (unscaled) [`Config`]
+    pub fn clone_base(&self) -> Rc<RefCell<Config>> {
+        self.config.clone()
+    }
+
     /// Update the base config
     ///
     /// Since it is not known which parts of the configuration are updated, all

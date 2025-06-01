@@ -5,16 +5,15 @@
 
 //! A shared implementation of [`ThemeSize`]
 
-use kas_text::fonts::FontSelector;
-use linear_map::LinearMap;
 use std::any::Any;
+use std::cell::RefCell;
 use std::f32;
 use std::rc::Rc;
 
 use super::anim::AnimState;
 use super::{Feature, FrameStyle, MarginStyle, MarkStyle, SizableText, TextClass, ThemeSize};
 use crate::cast::traits::*;
-use crate::config::WindowConfig;
+use crate::config::{Config, WindowConfig};
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
 use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
@@ -151,20 +150,16 @@ impl Dimensions {
 
 /// A convenient implementation of [`crate::Window`]
 pub struct Window<D> {
+    pub config: Rc<RefCell<Config>>,
     pub dims: Dimensions,
-    pub fonts: Rc<LinearMap<TextClass, FontSelector>>,
     pub anim: AnimState<D>,
 }
 
 impl<D> Window<D> {
-    pub fn new(
-        dims: &Parameters,
-        config: &WindowConfig,
-        fonts: Rc<LinearMap<TextClass, FontSelector>>,
-    ) -> Self {
+    pub fn new(dims: &Parameters, config: &WindowConfig) -> Self {
         Window {
+            config: config.clone_base(),
             dims: Dimensions::new(dims, config),
-            fonts,
             anim: AnimState::new(&config.theme()),
         }
     }
@@ -323,7 +318,14 @@ impl<D: 'static> ThemeSize for Window<D> {
     }
 
     fn text_configure(&self, text: &mut dyn SizableText, class: TextClass) {
-        let font = self.fonts.get(&class).cloned().unwrap_or_default();
+        let font = self
+            .config
+            .borrow()
+            .font
+            .fonts
+            .get(&class)
+            .cloned()
+            .unwrap_or_default();
         let dpem = self.dims.dpem;
         text.set_font(font, dpem);
     }
