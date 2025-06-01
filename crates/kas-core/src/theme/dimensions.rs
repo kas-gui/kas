@@ -323,10 +323,9 @@ impl<D: 'static> ThemeSize for Window<D> {
     }
 
     fn text_configure(&self, text: &mut dyn SizableText, class: TextClass) {
-        let font_id = self.fonts.get(&class).cloned().unwrap_or_default();
+        let font = self.fonts.get(&class).cloned().unwrap_or_default();
         let dpem = self.dims.dpem;
-        text.set_font(font_id, dpem);
-        text.configure().expect("invalid font_id");
+        text.set_font(font, dpem);
     }
 
     fn text_rules(

@@ -130,9 +130,7 @@ impl_scope! {
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             self.date.set_align(AlignPair::CENTER.into());
-            self.date.configure().unwrap();
             self.time.set_align(AlignPair::CENTER.into());
-            self.time.configure().unwrap();
             cx.request_timer(self.id(), TIMER, Duration::ZERO);
         }
 

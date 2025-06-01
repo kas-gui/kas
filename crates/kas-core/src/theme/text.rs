@@ -11,7 +11,7 @@ use crate::cast::Cast;
 #[allow(unused)] use crate::event::ConfigCx;
 use crate::geom::{Rect, Size};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
-use crate::text::fonts::{FontSelector, InvalidFontId};
+use crate::text::fonts::FontSelector;
 use crate::text::format::{EditableText, FormattableText};
 use crate::text::*;
 use crate::{Action, Layout};
@@ -165,7 +165,7 @@ impl<T: FormattableText> Text<T> {
         }
 
         self.text = text;
-        self.set_max_status(Status::Configured);
+        self.set_max_status(Status::New);
     }
 
     /// Length of text
@@ -228,7 +228,7 @@ impl<T: FormattableText> Text<T> {
     pub fn set_font(&mut self, font: FontSelector) {
         if font != self.font {
             self.font = font;
-            self.set_max_status(Status::Configured);
+            self.set_max_status(Status::New);
         }
     }
 
@@ -282,7 +282,7 @@ impl<T: FormattableText> Text<T> {
     pub fn set_direction(&mut self, direction: Direction) {
         if direction != self.direction {
             self.direction = direction;
-            self.set_max_status(Status::Configured);
+            self.set_max_status(Status::New);
         }
     }
 
@@ -396,20 +396,9 @@ impl<T: FormattableText> Text<T> {
         Ok(self.unchecked_display())
     }
 
-    /// Configure text
-    ///
-    /// Text objects must be configured before use.
-    #[inline]
-    pub fn configure(&mut self) -> Result<(), InvalidFontId> {
-
-        self.status = self.status.max(Status::Configured);
-        Ok(())
-    }
-
     fn prepare_runs(&mut self) -> Result<(), NotReady> {
         match self.status {
-            Status::New => return Err(NotReady),
-            Status::Configured => self
+            Status::New => self
                 .display
                 .prepare_runs(&self.text, self.direction, self.font, self.dpem)
                 .map_err(|_| {
@@ -595,7 +584,7 @@ impl Text<String> {
     #[inline]
     pub fn insert_char(&mut self, index: usize, c: char) {
         self.text.insert_char(index, c);
-        self.set_max_status(Status::Configured);
+        self.set_max_status(Status::New);
     }
 
     /// Replace a section of text
@@ -610,7 +599,7 @@ impl Text<String> {
     #[inline]
     pub fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str) {
         self.text.replace_range(range, replace_with);
-        self.set_max_status(Status::Configured);
+        self.set_max_status(Status::New);
     }
 
     /// Set text to a raw `String`
@@ -625,7 +614,7 @@ impl Text<String> {
         }
 
         self.text.set_string(text);
-        self.set_max_status(Status::Configured);
+        self.set_max_status(Status::New);
         true
     }
 
@@ -639,7 +628,7 @@ impl Text<String> {
     #[inline]
     pub fn swap_string(&mut self, string: &mut String) {
         self.text.swap_string(string);
-        self.set_max_status(Status::Configured);
+        self.set_max_status(Status::New);
     }
 }
 
@@ -647,9 +636,6 @@ impl Text<String> {
 pub trait SizableText {
     /// Set font face and size
     fn set_font(&mut self, font: FontSelector, dpem: f32);
-
-    /// Configure text
-    fn configure(&mut self) -> Result<(), InvalidFontId>;
 
     /// Measure required width, up to some `max_width`
     fn measure_width(&mut self, max_width: f32) -> Result<f32, NotReady>;
@@ -663,15 +649,11 @@ impl<T: FormattableText> SizableText for Text<T> {
         if font != self.font {
             self.font = font;
             self.dpem = dpem;
-            self.set_max_status(Status::Configured);
+            self.set_max_status(Status::New);
         } else if dpem != self.dpem {
             self.dpem = dpem;
             self.set_max_status(Status::ResizeLevelRuns);
         }
-    }
-
-    fn configure(&mut self) -> Result<(), InvalidFontId> {
-        Text::configure(self)
     }
 
     fn measure_width(&mut self, max_width: f32) -> Result<f32, NotReady> {
