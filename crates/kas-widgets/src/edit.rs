@@ -1087,7 +1087,7 @@ impl_scope! {
         /// NOTE: we could add a `set_str` variant of this method but there
         /// doesn't appear to be a need.
         pub fn set_string(&mut self, cx: &mut EventState, string: String) {
-            if !self.text.set_string(string) || self.text.prepare() != Ok(true) {
+            if !self.text.set_string(string) || !self.text.prepare() {
                 return;
             }
 
@@ -1338,13 +1338,8 @@ impl<G: EditGuard> EditField<G> {
     fn prepare_text(&mut self, cx: &mut EventCx) {
         let start = std::time::Instant::now();
 
-        match self.text.prepare() {
-            Err(NotReady) => {
-                debug_assert!(false, "text not ready");
-                return;
-            }
-            Ok(false) => return,
-            Ok(true) => (),
+        if !self.text.prepare() {
+            return;
         }
 
         self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();

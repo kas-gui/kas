@@ -346,28 +346,19 @@ impl<D: 'static> ThemeSize for Window<D> {
             if wrap {
                 let min = self.dims.min_line_length;
                 let limit = 2 * min;
-                let bound: i32 = text
-                    .measure_width(limit.cast())
-                    .expect("not configured")
-                    .cast_ceil();
+                let bound: i32 = text.measure_width(limit.cast()).cast_ceil();
 
                 // NOTE: using different variable-width stretch policies here can
                 // cause problems (e.g. edit boxes greedily consuming too much
                 // space). This is a hard layout problem; for now don't do this.
                 SizeRules::new(bound.min(min), bound.min(limit), margins, Stretch::Filler)
             } else {
-                let bound: i32 = text
-                    .measure_width(f32::INFINITY)
-                    .expect("not configured")
-                    .cast_ceil();
+                let bound: i32 = text.measure_width(f32::INFINITY).cast_ceil();
                 SizeRules::new(bound, bound, margins, Stretch::Filler)
             }
         } else {
             let wrap_width = axis.other().map(|w| w.cast()).unwrap_or(f32::INFINITY);
-            let bound: i32 = text
-                .measure_height(wrap_width)
-                .expect("not configured")
-                .cast_ceil();
+            let bound: i32 = text.measure_height(wrap_width).cast_ceil();
 
             let line_height = self.dims.dpem.cast_ceil();
             let min = bound.max(line_height);

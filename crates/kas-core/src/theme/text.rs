@@ -83,7 +83,7 @@ impl<T: FormattableText> Layout for Text<T> {
             }
         }
         self.rect = rect;
-        self.prepare().expect("not configured");
+        self.prepare();
     }
 
     fn draw(&self, mut draw: DrawCx) {
@@ -396,26 +396,20 @@ impl<T: FormattableText> Text<T> {
         Ok(self.unchecked_display())
     }
 
-    fn prepare_runs(&mut self) -> Result<(), NotReady> {
+    fn prepare_runs(&mut self) {
         match self.status {
             Status::New => self
                 .display
                 .prepare_runs(&self.text, self.direction, self.font, self.dpem)
-                .map_err(|_| {
-                    debug_assert!(false, "font_id should be validated by configure");
-                    NotReady
-                })?,
+                .expect("no suitable font found"),
             Status::ResizeLevelRuns => self.display.resize_runs(&self.text, self.dpem),
             _ => (),
         }
 
         self.status = Status::LevelRuns;
-        Ok(())
     }
 
     /// Measure required width, up to some `max_width`
-    ///
-    /// [`configure`][Self::configure] must be called before this method.
     ///
     /// This method partially prepares the [`TextDisplay`] as required.
     ///
@@ -424,43 +418,40 @@ impl<T: FormattableText> Text<T> {
     /// exceeds `max_width`, the algorithm stops early, returning `max_width`.
     ///
     /// The return value is unaffected by alignment and wrap configuration.
-    pub fn measure_width(&mut self, max_width: f32) -> Result<f32, NotReady> {
-        self.prepare_runs()?;
-
-        Ok(self.display.measure_width(max_width))
+    pub fn measure_width(&mut self, max_width: f32) -> f32 {
+        self.prepare_runs();
+        self.display.measure_width(max_width)
     }
 
     /// Measure required vertical height
     ///
-    /// [`configure`][Self::configure] must be called before this method.
     /// May partially prepare the text for display, but does not otherwise
     /// modify `self`.
-    pub fn measure_height(&mut self, wrap_width: f32) -> Result<f32, NotReady> {
+    pub fn measure_height(&mut self, wrap_width: f32) -> f32 {
         if self.status >= Status::Wrapped {
             let (tl, br) = self.display.bounding_box();
-            return Ok(br.1 - tl.1);
+            return br.1 - tl.1;
         }
 
-        self.prepare_runs()?;
-        Ok(self.display.measure_height(wrap_width))
+        self.prepare_runs();
+        self.display.measure_height(wrap_width)
     }
 
     /// Prepare text for display, as necessary
     ///
-    /// [`Self::configure`] and [`Self::set_rect`] must be called before this
-    /// method.
+    /// [`Self::set_rect`] must be called before this method.
     ///
     /// Does all preparation steps necessary in order to display or query the
     /// layout of this text. Text is aligned within the set [`Rect`].
     ///
-    /// Returns `Ok(true)` on success when some action is performed, `Ok(false)`
+    /// Returns `true` on success when some action is performed, `false`
     /// when the text is already prepared.
-    pub fn prepare(&mut self) -> Result<bool, NotReady> {
+    pub fn prepare(&mut self) -> bool {
         if self.is_prepared() {
-            return Ok(false);
+            return false;
         }
 
-        self.prepare_runs()?;
+        self.prepare_runs();
         debug_assert!(self.status >= Status::LevelRuns);
 
         if self.status == Status::LevelRuns {
@@ -474,7 +465,7 @@ impl<T: FormattableText> Text<T> {
         }
 
         self.status = Status::Ready;
-        Ok(true)
+        true
     }
 
     /// Re-prepare, if previously prepared, and return an [`Action`]
@@ -491,9 +482,8 @@ impl<T: FormattableText> Text<T> {
     /// This is typically called after updating a `Text` object in a widget.
     pub fn reprepare_action(&mut self) -> Action {
         match self.prepare() {
-            Err(NotReady) => Action::empty(),
-            Ok(false) => Action::REDRAW,
-            Ok(true) => {
+            false => Action::REDRAW,
+            true => {
                 let (tl, br) = self.display.bounding_box();
                 let bounds: Vec2 = self.rect.size.cast();
                 if tl.0 < 0.0 || tl.1 < 0.0 || br.0 > bounds.0 || br.1 > bounds.1 {
@@ -638,10 +628,10 @@ pub trait SizableText {
     fn set_font(&mut self, font: FontSelector, dpem: f32);
 
     /// Measure required width, up to some `max_width`
-    fn measure_width(&mut self, max_width: f32) -> Result<f32, NotReady>;
+    fn measure_width(&mut self, max_width: f32) -> f32;
 
     /// Measure required vertical height, wrapping as configured
-    fn measure_height(&mut self, wrap_width: f32) -> Result<f32, NotReady>;
+    fn measure_height(&mut self, wrap_width: f32) -> f32;
 }
 
 impl<T: FormattableText> SizableText for Text<T> {
@@ -656,11 +646,11 @@ impl<T: FormattableText> SizableText for Text<T> {
         }
     }
 
-    fn measure_width(&mut self, max_width: f32) -> Result<f32, NotReady> {
+    fn measure_width(&mut self, max_width: f32) -> f32 {
         Text::measure_width(self, max_width)
     }
 
-    fn measure_height(&mut self, wrap_width: f32) -> Result<f32, NotReady> {
+    fn measure_height(&mut self, wrap_width: f32) -> f32 {
         Text::measure_height(self, wrap_width)
     }
 }
