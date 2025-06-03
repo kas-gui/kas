@@ -426,15 +426,24 @@ impl Pipeline {
 
     fn raster_swash(&mut self, desc: SpriteDescriptor) -> Result<Sprite, RasterError> {
         use swash::scale::{image::Content, Render, Source, StrikeWith};
-        use swash::zeno::Format;
+        use swash::zeno::{Angle, Format, Transform};
 
         // TODO: we should re-use scaler when rendering glyphs for a layout/run
-        let font = fonts::library().get_face_store(desc.face()).swash();
+        let face = fonts::library().get_face_store(desc.face());
+        let font = face.swash();
+        let synthesis = face.synthesis();
+        let dpem = desc.dpem(&self.config);
         let mut scaler = self
             .scale_cx
             .builder(font)
-            .size(desc.dpem(&self.config))
+            .size(dpem)
             .hint(self.hint)
+            .variations(
+                synthesis
+                    .variation_settings()
+                    .into_iter()
+                    .map(|(tag, value)| (swash::tag_from_bytes(&tag.to_be_bytes()), *value)),
+            )
             .build();
 
         let sources = &[
@@ -445,9 +454,18 @@ impl Pipeline {
             Source::Outline,
         ];
 
+        // Faux italic skew:
+        let transform = synthesis
+            .skew()
+            .map(|angle| Transform::skew(Angle::from_degrees(angle), Angle::ZERO));
+        // Faux bold:
+        let embolden = if synthesis.embolden() { dpem * 0.02 } else { 0.0 };
+
         let image = Render::new(sources)
             .format(Format::Alpha)
             .offset(desc.fractional_position(&self.config).into())
+            .transform(transform)
+            .embolden(embolden)
             .render(&mut scaler, desc.glyph().0.into())
             .ok_or(RasterError::Failed)?;
 
