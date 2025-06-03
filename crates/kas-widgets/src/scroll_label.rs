@@ -40,7 +40,7 @@ impl_scope! {
             let mut rules = sizer.text_rules(&mut self.text, axis);
             let _ = self.bar.size_rules(sizer.re(), axis);
             if axis.is_vertical() {
-                rules.reduce_min_to(sizer.text_line_height(&self.text) * 4);
+                rules.reduce_min_to((sizer.dpem() * 4.0).cast_ceil());
             }
             rules.with_stretch(Stretch::Low)
         }
@@ -107,7 +107,7 @@ impl_scope! {
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, cx: &mut EventState, text: T) {
             self.text.set_text(text);
-            if self.text.prepare() != Ok(true) {
+            if !self.text.prepare() {
                 return;
             }
 
@@ -198,7 +198,8 @@ impl_scope! {
     impl ScrollLabel<String> {
         /// Set text contents from a string
         pub fn set_string(&mut self, cx: &mut EventState, string: String) {
-            if self.text.set_string(string) && self.text.prepare().is_ok() {
+            if self.text.set_string(string) {
+                self.text.prepare();
                 cx.action(self, Action::SET_RECT);
             }
         }

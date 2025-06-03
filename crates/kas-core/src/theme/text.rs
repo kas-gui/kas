@@ -11,18 +11,17 @@ use crate::cast::Cast;
 #[allow(unused)] use crate::event::ConfigCx;
 use crate::geom::{Rect, Size};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
-use crate::text::fonts::{FontId, InvalidFontId};
+use crate::text::fonts::FontSelector;
 use crate::text::format::{EditableText, FormattableText};
 use crate::text::*;
 use crate::{Action, Layout};
 
 /// Text type-setting object (theme aware)
 ///
-/// This struct is a theme-aware variant of [`crate::text::Text`]. It contains:
-/// -   A [`Rect`]
-/// -   A [`TextClass`]
+/// This struct contains:
 /// -   A [`FormattableText`]
 /// -   A [`TextDisplay`]
+/// -   A [`FontSelector`]
 /// -   Type-setting configuration. Values have reasonable defaults:
 ///     -   The font is derived from the [`TextClass`] by
 ///         [`ConfigCx::text_configure`]. Otherwise, the default font will be
@@ -42,7 +41,7 @@ use crate::{Action, Layout};
 #[derive(Clone, Debug)]
 pub struct Text<T: FormattableText> {
     rect: Rect,
-    font_id: FontId,
+    font: FontSelector,
     dpem: f32,
     class: TextClass,
     /// Alignment (`horiz`, `vert`)
@@ -84,7 +83,7 @@ impl<T: FormattableText> Layout for Text<T> {
             }
         }
         self.rect = rect;
-        self.prepare().expect("not configured");
+        self.prepare();
     }
 
     fn draw(&self, mut draw: DrawCx) {
@@ -100,7 +99,7 @@ impl<T: FormattableText> Text<T> {
     pub fn new(text: T, class: TextClass) -> Self {
         Text {
             rect: Rect::default(),
-            font_id: FontId::default(),
+            font: FontSelector::default(),
             dpem: 16.0,
             class,
             align: Default::default(),
@@ -166,7 +165,7 @@ impl<T: FormattableText> Text<T> {
         }
 
         self.text = text;
-        self.set_max_status(Status::Configured);
+        self.set_max_status(Status::New);
     }
 
     /// Length of text
@@ -213,23 +212,23 @@ impl<T: FormattableText> Text<T> {
 
     /// Get the default font
     #[inline]
-    pub fn font(&self) -> FontId {
-        self.font_id
+    pub fn font(&self) -> FontSelector {
+        self.font
     }
 
-    /// Set the default [`FontId`]
+    /// Set the default [`FontSelector`]
     ///
     /// This is derived from the [`TextClass`] by [`ConfigCx::text_configure`].
     ///
-    /// This `font_id` is used by all unformatted texts and by any formatted
+    /// This `font` is used by all unformatted texts and by any formatted
     /// texts which don't immediately set formatting.
     ///
     /// It is necessary to [`prepare`][Self::prepare] the text after calling this.
     #[inline]
-    pub fn set_font(&mut self, font_id: FontId) {
-        if font_id != self.font_id {
-            self.font_id = font_id;
-            self.set_max_status(Status::Configured);
+    pub fn set_font(&mut self, font: FontSelector) {
+        if font != self.font {
+            self.font = font;
+            self.set_max_status(Status::New);
         }
     }
 
@@ -283,7 +282,7 @@ impl<T: FormattableText> Text<T> {
     pub fn set_direction(&mut self, direction: Direction) {
         if direction != self.direction {
             self.direction = direction;
-            self.set_max_status(Status::Configured);
+            self.set_max_status(Status::New);
         }
     }
 
@@ -397,56 +396,20 @@ impl<T: FormattableText> Text<T> {
         Ok(self.unchecked_display())
     }
 
-    /// Configure text
-    ///
-    /// Text objects must be configured before use.
-    #[inline]
-    pub fn configure(&mut self) -> Result<(), InvalidFontId> {
-        // Validate default_font_id
-        let _ = fonts::library().first_face_for(self.font_id)?;
-
-        self.status = self.status.max(Status::Configured);
-        Ok(())
-    }
-
-    fn prepare_runs(&mut self) -> Result<(), NotReady> {
+    fn prepare_runs(&mut self) {
         match self.status {
-            Status::New => return Err(NotReady),
-            Status::Configured => self
+            Status::New => self
                 .display
-                .prepare_runs(&self.text, self.direction, self.font_id, self.dpem)
-                .map_err(|_| {
-                    debug_assert!(false, "font_id should be validated by configure");
-                    NotReady
-                })?,
+                .prepare_runs(&self.text, self.direction, self.font, self.dpem)
+                .expect("no suitable font found"),
             Status::ResizeLevelRuns => self.display.resize_runs(&self.text, self.dpem),
             _ => (),
         }
 
         self.status = Status::LevelRuns;
-        Ok(())
-    }
-
-    /// Returns the height of horizontal text
-    ///
-    /// Returns an error if called before [`Self::configure`].
-    ///
-    /// This depends on the font and font size, but is independent of the text.
-    pub fn line_height(&self) -> Result<f32, NotReady> {
-        self.check_status(Status::Configured)?;
-
-        fonts::library()
-            .get_first_face(self.font())
-            .map(|face| face.height(self.font_size()))
-            .map_err(|_| {
-                debug_assert!(false, "font_id should be validated by configure");
-                NotReady
-            })
     }
 
     /// Measure required width, up to some `max_width`
-    ///
-    /// [`configure`][Self::configure] must be called before this method.
     ///
     /// This method partially prepares the [`TextDisplay`] as required.
     ///
@@ -455,43 +418,40 @@ impl<T: FormattableText> Text<T> {
     /// exceeds `max_width`, the algorithm stops early, returning `max_width`.
     ///
     /// The return value is unaffected by alignment and wrap configuration.
-    pub fn measure_width(&mut self, max_width: f32) -> Result<f32, NotReady> {
-        self.prepare_runs()?;
-
-        Ok(self.display.measure_width(max_width))
+    pub fn measure_width(&mut self, max_width: f32) -> f32 {
+        self.prepare_runs();
+        self.display.measure_width(max_width)
     }
 
     /// Measure required vertical height
     ///
-    /// [`configure`][Self::configure] must be called before this method.
     /// May partially prepare the text for display, but does not otherwise
     /// modify `self`.
-    pub fn measure_height(&mut self, wrap_width: f32) -> Result<f32, NotReady> {
+    pub fn measure_height(&mut self, wrap_width: f32) -> f32 {
         if self.status >= Status::Wrapped {
             let (tl, br) = self.display.bounding_box();
-            return Ok(br.1 - tl.1);
+            return br.1 - tl.1;
         }
 
-        self.prepare_runs()?;
-        Ok(self.display.measure_height(wrap_width))
+        self.prepare_runs();
+        self.display.measure_height(wrap_width)
     }
 
     /// Prepare text for display, as necessary
     ///
-    /// [`Self::configure`] and [`Self::set_rect`] must be called before this
-    /// method.
+    /// [`Self::set_rect`] must be called before this method.
     ///
     /// Does all preparation steps necessary in order to display or query the
     /// layout of this text. Text is aligned within the set [`Rect`].
     ///
-    /// Returns `Ok(true)` on success when some action is performed, `Ok(false)`
+    /// Returns `true` on success when some action is performed, `false`
     /// when the text is already prepared.
-    pub fn prepare(&mut self) -> Result<bool, NotReady> {
+    pub fn prepare(&mut self) -> bool {
         if self.is_prepared() {
-            return Ok(false);
+            return false;
         }
 
-        self.prepare_runs()?;
+        self.prepare_runs();
         debug_assert!(self.status >= Status::LevelRuns);
 
         if self.status == Status::LevelRuns {
@@ -505,7 +465,7 @@ impl<T: FormattableText> Text<T> {
         }
 
         self.status = Status::Ready;
-        Ok(true)
+        true
     }
 
     /// Re-prepare, if previously prepared, and return an [`Action`]
@@ -522,9 +482,8 @@ impl<T: FormattableText> Text<T> {
     /// This is typically called after updating a `Text` object in a widget.
     pub fn reprepare_action(&mut self) -> Action {
         match self.prepare() {
-            Err(NotReady) => Action::empty(),
-            Ok(false) => Action::REDRAW,
-            Ok(true) => {
+            false => Action::REDRAW,
+            true => {
                 let (tl, br) = self.display.bounding_box();
                 let bounds: Vec2 = self.rect.size.cast();
                 if tl.0 < 0.0 || tl.1 < 0.0 || br.0 > bounds.0 || br.1 > bounds.1 {
@@ -615,7 +574,7 @@ impl Text<String> {
     #[inline]
     pub fn insert_char(&mut self, index: usize, c: char) {
         self.text.insert_char(index, c);
-        self.set_max_status(Status::Configured);
+        self.set_max_status(Status::New);
     }
 
     /// Replace a section of text
@@ -630,7 +589,7 @@ impl Text<String> {
     #[inline]
     pub fn replace_range(&mut self, range: std::ops::Range<usize>, replace_with: &str) {
         self.text.replace_range(range, replace_with);
-        self.set_max_status(Status::Configured);
+        self.set_max_status(Status::New);
     }
 
     /// Set text to a raw `String`
@@ -645,7 +604,7 @@ impl Text<String> {
         }
 
         self.text.set_string(text);
-        self.set_max_status(Status::Configured);
+        self.set_max_status(Status::New);
         true
     }
 
@@ -659,46 +618,39 @@ impl Text<String> {
     #[inline]
     pub fn swap_string(&mut self, string: &mut String) {
         self.text.swap_string(string);
-        self.set_max_status(Status::Configured);
+        self.set_max_status(Status::New);
     }
 }
 
 /// Required functionality on [`Text`] objects for sizing by the theme
 pub trait SizableText {
     /// Set font face and size
-    fn set_font(&mut self, font_id: FontId, dpem: f32);
-
-    /// Configure text
-    fn configure(&mut self) -> Result<(), InvalidFontId>;
+    fn set_font(&mut self, font: FontSelector, dpem: f32);
 
     /// Measure required width, up to some `max_width`
-    fn measure_width(&mut self, max_width: f32) -> Result<f32, NotReady>;
+    fn measure_width(&mut self, max_width: f32) -> f32;
 
     /// Measure required vertical height, wrapping as configured
-    fn measure_height(&mut self, wrap_width: f32) -> Result<f32, NotReady>;
+    fn measure_height(&mut self, wrap_width: f32) -> f32;
 }
 
 impl<T: FormattableText> SizableText for Text<T> {
-    fn set_font(&mut self, font_id: FontId, dpem: f32) {
-        if font_id != self.font_id {
-            self.font_id = font_id;
+    fn set_font(&mut self, font: FontSelector, dpem: f32) {
+        if font != self.font {
+            self.font = font;
             self.dpem = dpem;
-            self.set_max_status(Status::Configured);
+            self.set_max_status(Status::New);
         } else if dpem != self.dpem {
             self.dpem = dpem;
             self.set_max_status(Status::ResizeLevelRuns);
         }
     }
 
-    fn configure(&mut self) -> Result<(), InvalidFontId> {
-        Text::configure(self)
-    }
-
-    fn measure_width(&mut self, max_width: f32) -> Result<f32, NotReady> {
+    fn measure_width(&mut self, max_width: f32) -> f32 {
         Text::measure_width(self, max_width)
     }
 
-    fn measure_height(&mut self, wrap_width: f32) -> Result<f32, NotReady> {
+    fn measure_height(&mut self, wrap_width: f32) -> f32 {
         Text::measure_height(self, wrap_width)
     }
 }

@@ -5,11 +5,9 @@
 
 //! Simple theme
 
-use linear_map::LinearMap;
 use std::cell::RefCell;
 use std::f32;
 use std::ops::Range;
-use std::rc::Rc;
 use std::time::Instant;
 
 use crate::cast::traits::*;
@@ -18,7 +16,7 @@ use crate::dir::{Direction, Directional};
 use crate::draw::{color::Rgba, *};
 use crate::event::EventState;
 use crate::geom::*;
-use crate::text::{fonts, Effect, TextDisplay};
+use crate::text::{Effect, TextDisplay};
 use crate::theme::dimensions as dim;
 use crate::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use crate::theme::{ColorsLinear, InputState, Theme};
@@ -35,7 +33,6 @@ use super::ColorsSrgb;
 pub struct SimpleTheme {
     pub cols: ColorsLinear,
     dims: dim::Parameters,
-    pub fonts: Option<Rc<LinearMap<TextClass, fonts::FontId>>>,
 }
 
 impl Default for SimpleTheme {
@@ -51,7 +48,6 @@ impl SimpleTheme {
         SimpleTheme {
             cols: ColorsSrgb::LIGHT.into(), // value is unimportant
             dims: Default::default(),
-            fonts: None,
         }
     }
 }
@@ -70,25 +66,11 @@ where
     type Window = dim::Window<DS::Draw>;
     type Draw<'a> = DrawHandle<'a, DS>;
 
-    fn init(&mut self, config: &RefCell<Config>) {
-        let fonts = fonts::library();
-        if let Err(e) = fonts.init() {
-            panic!("Error initializing fonts: {e}");
-        }
-        self.fonts = Some(Rc::new(
-            config
-                .borrow()
-                .font
-                .iter_fonts()
-                .filter_map(|(c, s)| fonts.select_font(s).ok().map(|id| (*c, id)))
-                .collect(),
-        ));
-    }
+    fn init(&mut self, _: &RefCell<Config>) {}
 
     fn new_window(&mut self, config: &WindowConfig) -> Self::Window {
         self.cols = config.theme().get_active_scheme().into();
-        let fonts = self.fonts.as_ref().unwrap().clone();
-        dim::Window::new(&self.dims, config, fonts)
+        dim::Window::new(&self.dims, config)
     }
 
     fn update_window(&mut self, w: &mut Self::Window, config: &WindowConfig) {

@@ -36,9 +36,6 @@ pub trait Theme<DS: DrawSharedImpl> {
     ///
     /// The toolkit must call this method before [`Theme::new_window`]
     /// to allow initialisation specific to the `DrawIface`.
-    ///
-    /// At a minimum, a theme must load a font to [`crate::text::fonts`].
-    /// The first font loaded (by any theme) becomes the default font.
     fn init(&mut self, config: &RefCell<Config>);
 
     /// Construct per-window storage

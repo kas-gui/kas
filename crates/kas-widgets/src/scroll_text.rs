@@ -11,7 +11,7 @@ use kas::event::{Command, CursorIcon, FocusSource, Scroll};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::FormattableText;
-use kas::text::{NotReady, SelectionHelper};
+use kas::text::SelectionHelper;
 use kas::theme::{Text, TextClass};
 
 impl_scope! {
@@ -40,7 +40,7 @@ impl_scope! {
             let mut rules = sizer.text_rules(&mut self.text, axis);
             let _ = self.bar.size_rules(sizer.re(), axis);
             if axis.is_vertical() {
-                rules.reduce_min_to(sizer.text_line_height(&self.text) * 4);
+                rules.reduce_min_to((sizer.dpem() * 4.0).cast_ceil());
             }
             rules.with_stretch(Stretch::Low)
         }
@@ -186,12 +186,8 @@ impl_scope! {
                 return;
             }
             self.text.set_text(text);
-            let action = match self.text.prepare() {
-                Err(NotReady) => Action::empty(),
-                Ok(_) => Action::SET_RECT,
-            };
-            debug_assert!(!action.is_empty(), "update before configure");
-            cx.action(self, action);
+            self.text.prepare();
+            cx.action(self, Action::SET_RECT);
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {

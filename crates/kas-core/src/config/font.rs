@@ -5,7 +5,7 @@
 
 //! Font configuration
 
-use crate::text::fonts::{FontSelector, GenericFamily};
+use crate::text::fonts::FontSelector;
 use crate::theme::TextClass;
 use crate::Action;
 use std::collections::BTreeMap;
@@ -29,7 +29,9 @@ pub struct FontConfig {
     pub size: f32,
 
     /// Standard fonts
-    #[cfg_attr(feature = "serde", serde(default))]
+    ///
+    /// TODO: read/write support.
+    #[cfg_attr(feature = "serde", serde(skip, default))]
     pub fonts: BTreeMap<TextClass, FontSelector>,
 
     /// Text glyph rastering settings
@@ -161,6 +163,8 @@ impl FontConfig {
 }
 
 mod defaults {
+    use kas_text::fonts::FamilySelector;
+
     use super::*;
 
     pub fn size() -> f32 {
@@ -168,11 +172,10 @@ mod defaults {
     }
 
     pub fn fonts() -> BTreeMap<TextClass, FontSelector> {
-        let mut selector = FontSelector::new();
-        selector.set_families([GenericFamily::UiSerif, GenericFamily::Serif]);
+        let serif = FamilySelector::SERIF;
         let list = [
-            (TextClass::Edit(false), selector.clone()),
-            (TextClass::Edit(true), selector),
+            (TextClass::Edit(false), serif.into()),
+            (TextClass::Edit(true), serif.into()),
         ];
         list.iter().cloned().collect()
     }

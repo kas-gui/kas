@@ -5,19 +5,18 @@
 
 //! A shared implementation of [`ThemeSize`]
 
-use linear_map::LinearMap;
 use std::any::Any;
+use std::cell::RefCell;
 use std::f32;
 use std::rc::Rc;
 
 use super::anim::AnimState;
 use super::{Feature, FrameStyle, MarginStyle, MarkStyle, SizableText, TextClass, ThemeSize};
 use crate::cast::traits::*;
-use crate::config::WindowConfig;
+use crate::config::{Config, WindowConfig};
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
 use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
-use crate::text::fonts::FontId;
 
 crate::impl_scope! {
     /// Parameterisation of [`Dimensions`]
@@ -151,20 +150,16 @@ impl Dimensions {
 
 /// A convenient implementation of [`crate::Window`]
 pub struct Window<D> {
+    pub config: Rc<RefCell<Config>>,
     pub dims: Dimensions,
-    pub fonts: Rc<LinearMap<TextClass, FontId>>,
     pub anim: AnimState<D>,
 }
 
 impl<D> Window<D> {
-    pub fn new(
-        dims: &Parameters,
-        config: &WindowConfig,
-        fonts: Rc<LinearMap<TextClass, FontId>>,
-    ) -> Self {
+    pub fn new(dims: &Parameters, config: &WindowConfig) -> Self {
         Window {
+            config: config.clone_base(),
             dims: Dimensions::new(dims, config),
-            fonts,
             anim: AnimState::new(&config.theme()),
         }
     }
@@ -322,20 +317,17 @@ impl<D: 'static> ThemeSize for Window<D> {
         }
     }
 
-    fn line_height(&self, class: TextClass) -> i32 {
-        let font_id = self.fonts.get(&class).cloned().unwrap_or_default();
-        crate::text::fonts::library()
-            .get_first_face(font_id)
-            .expect("invalid font_id")
-            .height(self.dims.dpem)
-            .cast_ceil()
-    }
-
     fn text_configure(&self, text: &mut dyn SizableText, class: TextClass) {
-        let font_id = self.fonts.get(&class).cloned().unwrap_or_default();
+        let font = self
+            .config
+            .borrow()
+            .font
+            .fonts
+            .get(&class)
+            .cloned()
+            .unwrap_or_default();
         let dpem = self.dims.dpem;
-        text.set_font(font_id, dpem);
-        text.configure().expect("invalid font_id");
+        text.set_font(font, dpem);
     }
 
     fn text_rules(
@@ -356,28 +348,19 @@ impl<D: 'static> ThemeSize for Window<D> {
             if wrap {
                 let min = self.dims.min_line_length;
                 let limit = 2 * min;
-                let bound: i32 = text
-                    .measure_width(limit.cast())
-                    .expect("not configured")
-                    .cast_ceil();
+                let bound: i32 = text.measure_width(limit.cast()).cast_ceil();
 
                 // NOTE: using different variable-width stretch policies here can
                 // cause problems (e.g. edit boxes greedily consuming too much
                 // space). This is a hard layout problem; for now don't do this.
                 SizeRules::new(bound.min(min), bound.min(limit), margins, Stretch::Filler)
             } else {
-                let bound: i32 = text
-                    .measure_width(f32::INFINITY)
-                    .expect("not configured")
-                    .cast_ceil();
+                let bound: i32 = text.measure_width(f32::INFINITY).cast_ceil();
                 SizeRules::new(bound, bound, margins, Stretch::Filler)
             }
         } else {
             let wrap_width = axis.other().map(|w| w.cast()).unwrap_or(f32::INFINITY);
-            let bound: i32 = text
-                .measure_height(wrap_width)
-                .expect("not configured")
-                .cast_ceil();
+            let bound: i32 = text.measure_height(wrap_width).cast_ceil();
 
             let line_height = self.dims.dpem.cast_ceil();
             let min = bound.max(line_height);

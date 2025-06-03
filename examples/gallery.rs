@@ -330,7 +330,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
         Splitter::new(collection![
             EditBox::new(Guard)
                 .with_multi_line(true)
-                .with_lines(4, 12)
+                .with_lines(4.0, 12.0)
                 .with_text(DOC),
             ScrollLabel::new(Markdown::new(DOC).unwrap())
                 .on_configure(|cx, label| {

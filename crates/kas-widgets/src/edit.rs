@@ -608,14 +608,14 @@ impl<G: EditGuard> EditBox<G> {
 
     /// Adjust the height allocation
     #[inline]
-    pub fn set_lines(&mut self, min_lines: i32, ideal_lines: i32) {
+    pub fn set_lines(&mut self, min_lines: f32, ideal_lines: f32) {
         self.inner.set_lines(min_lines, ideal_lines);
     }
 
     /// Adjust the height allocation (inline)
     #[inline]
     #[must_use]
-    pub fn with_lines(mut self, min_lines: i32, ideal_lines: i32) -> Self {
+    pub fn with_lines(mut self, min_lines: f32, ideal_lines: f32) -> Self {
         self.set_lines(min_lines, ideal_lines);
         self
     }
@@ -740,7 +740,7 @@ impl_scope! {
         view_offset: Offset,
         editable: bool,
         width: (f32, f32),
-        lines: (i32, i32),
+        lines: (f32, f32),
         text: Text<String>,
         text_size: Size,
         selection: SelectionHelper,
@@ -761,9 +761,10 @@ impl_scope! {
                 let dpem = sizer.dpem();
                 ((self.width.0 * dpem).cast_ceil(), (self.width.1 * dpem).cast_ceil())
             } else {
-                let height = sizer.line_height(self.class());
-                (self.lines.0 * height, self.lines.1 * height)
+                let dpem = sizer.dpem();
+                ((self.lines.0 * dpem).cast_ceil(), (self.lines.1 * dpem).cast_ceil())
             };
+
             let margins = sizer.text_margins().extract(axis);
             let stretch = if axis.is_horizontal() || self.multi_line() {
                 Stretch::High
@@ -1054,7 +1055,7 @@ impl_scope! {
                 view_offset: Default::default(),
                 editable: true,
                 width: (8.0, 16.0),
-                lines: (1, 1),
+                lines: (1.0, 1.0),
                 text: Text::default().with_class(TextClass::Edit(false)),
                 text_size: Default::default(),
                 selection: Default::default(),
@@ -1086,7 +1087,7 @@ impl_scope! {
         /// NOTE: we could add a `set_str` variant of this method but there
         /// doesn't appear to be a need.
         pub fn set_string(&mut self, cx: &mut EventState, string: String) {
-            if !self.text.set_string(string) || self.text.prepare() != Ok(true) {
+            if !self.text.set_string(string) || !self.text.prepare() {
                 return;
             }
 
@@ -1254,8 +1255,8 @@ impl<G: EditGuard> EditField<G> {
     pub fn with_multi_line(mut self, multi_line: bool) -> Self {
         self.text.set_class(TextClass::Edit(multi_line));
         self.lines = match multi_line {
-            false => (1, 1),
-            true => (4, 7),
+            false => (1.0, 1.0),
+            true => (4.0, 7.0),
         };
         self
     }
@@ -1284,14 +1285,14 @@ impl<G: EditGuard> EditField<G> {
 
     /// Adjust the height allocation
     #[inline]
-    pub fn set_lines(&mut self, min_lines: i32, ideal_lines: i32) {
+    pub fn set_lines(&mut self, min_lines: f32, ideal_lines: f32) {
         self.lines = (min_lines, ideal_lines);
     }
 
     /// Adjust the height allocation (inline)
     #[inline]
     #[must_use]
-    pub fn with_lines(mut self, min_lines: i32, ideal_lines: i32) -> Self {
+    pub fn with_lines(mut self, min_lines: f32, ideal_lines: f32) -> Self {
         self.set_lines(min_lines, ideal_lines);
         self
     }
@@ -1337,13 +1338,8 @@ impl<G: EditGuard> EditField<G> {
     fn prepare_text(&mut self, cx: &mut EventCx) {
         let start = std::time::Instant::now();
 
-        match self.text.prepare() {
-            Err(NotReady) => {
-                debug_assert!(false, "text not ready");
-                return;
-            }
-            Ok(false) => return,
-            Ok(true) => (),
+        if !self.text.prepare() {
+            return;
         }
 
         self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
