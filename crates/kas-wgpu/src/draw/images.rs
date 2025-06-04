@@ -65,10 +65,10 @@ impl Image {
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct InstanceRgba {
-    a: Vec2,
-    b: Vec2,
-    ta: Vec2,
-    tb: Vec2,
+    pub(super) a: Vec2,
+    pub(super) b: Vec2,
+    pub(super) ta: Vec2,
+    pub(super) tb: Vec2,
 }
 unsafe impl bytemuck::Zeroable for InstanceRgba {}
 unsafe impl bytemuck::Pod for InstanceRgba {}
@@ -77,51 +77,15 @@ unsafe impl bytemuck::Pod for InstanceRgba {}
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct InstanceA {
-    a: Vec2,
-    b: Vec2,
-    ta: Vec2,
-    tb: Vec2,
-    col: Rgba,
+    pub(super) a: Vec2,
+    pub(super) b: Vec2,
+    pub(super) ta: Vec2,
+    pub(super) tb: Vec2,
+    pub(super) col: Rgba,
 }
 
 unsafe impl bytemuck::Zeroable for InstanceA {}
 unsafe impl bytemuck::Pod for InstanceA {}
-
-impl InstanceA {
-    /// Construct, clamping to rect
-    // TODO(opt): should this use a buffer? Should TextDisplay::prepare_lines prune glyphs?
-    pub(super) fn new(
-        rect: Quad,
-        mut a: Vec2,
-        mut b: Vec2,
-        tex_quad: Quad,
-        col: Rgba,
-    ) -> Option<Self> {
-        if !(a.0 < rect.b.0 && a.1 < rect.b.1 && b.0 > rect.a.0 && b.1 > rect.a.1) {
-            return None;
-        }
-
-        let (mut ta, mut tb) = (tex_quad.a, tex_quad.b);
-        if !a.ge(rect.a) || !b.le(rect.b) {
-            let size_inv = 1.0 / (b - a);
-            let fa0 = 0f32.max((rect.a.0 - a.0) * size_inv.0);
-            let fa1 = 0f32.max((rect.a.1 - a.1) * size_inv.1);
-            let fb0 = 1f32.min((rect.b.0 - a.0) * size_inv.0);
-            let fb1 = 1f32.min((rect.b.1 - a.1) * size_inv.1);
-
-            let ts = tb - ta;
-            tb = ta + ts * Vec2(fb0, fb1);
-            ta += ts * Vec2(fa0, fa1);
-
-            a.0 = a.0.clamp(rect.a.0, rect.b.0);
-            a.1 = a.1.clamp(rect.a.1, rect.b.1);
-            b.0 = b.0.clamp(rect.a.0, rect.b.0);
-            b.1 = b.1.clamp(rect.a.1, rect.b.1);
-        }
-
-        Some(InstanceA { a, b, ta, tb, col })
-    }
-}
 
 /// Image loader and storage
 pub struct Images {
@@ -283,10 +247,27 @@ impl Images {
         if !self.text.prepare.is_empty() {
             log::trace!("prepare: uploading {} sprites", self.text.prepare.len());
         }
-        for (atlas, origin, size, data) in self.text.prepare.drain(..) {
+        for (atlas, color, origin, size, data) in self.text.prepare.drain(..) {
+            let (texture, texel_layout);
+            if !color {
+                texture = self.atlas_a.get_texture(atlas);
+                texel_layout = wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(size.0),
+                    rows_per_image: Some(size.1),
+                };
+            } else {
+                texture = self.atlas_rgba.get_texture(atlas);
+                texel_layout = wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(4 * size.0),
+                    rows_per_image: Some(size.1),
+                };
+            }
+
             queue.write_texture(
                 wgpu::TexelCopyTextureInfo {
-                    texture: self.atlas_a.get_texture(atlas),
+                    texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d {
                         x: origin.0,
@@ -296,11 +277,7 @@ impl Images {
                     aspect: wgpu::TextureAspect::All,
                 },
                 &data,
-                wgpu::TexelCopyBufferLayout {
-                    offset: 0,
-                    bytes_per_row: Some(size.0),
-                    rows_per_image: Some(size.1),
-                },
+                texel_layout,
                 wgpu::Extent3d {
                     width: size.0,
                     height: size.1,

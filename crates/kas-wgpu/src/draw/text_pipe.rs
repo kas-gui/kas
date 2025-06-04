@@ -5,7 +5,7 @@
 
 //! Text drawing pipeline
 
-use super::images::{Images as Pipeline, InstanceA, Window};
+use super::images::{Images as Pipeline, InstanceA, InstanceRgba, Window};
 use kas::cast::traits::*;
 use kas::config::RasterConfig;
 use kas::draw::{color::Rgba, AllocError, PassId};
@@ -140,7 +140,9 @@ impl SpriteDescriptor {
 #[derive(Clone, Debug, Default)]
 struct Sprite {
     atlas: u32,
-    // TODO(opt): u16 or maybe even u8 would be enough
+    /// If true, use atlas_rgba; if false use atlas_a
+    color: bool,
+    /// If false, this is not drawable (used for zero-sized glyphs)
     valid: bool,
     size: Vec2,
     offset: Vec2,
@@ -164,7 +166,7 @@ pub struct State {
     config: Config,
     glyphs: HashMap<SpriteDescriptor, Sprite>,
     #[allow(clippy::type_complexity)]
-    pub(super) prepare: Vec<(u32, (u32, u32), (u32, u32), Vec<u8>)>,
+    pub(super) prepare: Vec<(u32, bool, (u32, u32), (u32, u32), Vec<u8>)>,
     scale_cx: swash::scale::ScaleContext,
 }
 
@@ -282,10 +284,11 @@ impl Pipeline {
                 continue;
             };
 
-            self.text.prepare.push((atlas, origin, size, data));
+            self.text.prepare.push((atlas, false, origin, size, data));
 
             self.text.glyphs.insert(desc, Sprite {
                 atlas,
+                color: false,
                 valid: true,
                 size: Vec2(size.0.cast(), size.1.cast()),
                 offset: Vec2(offset.0.cast(), offset.1.cast()),
@@ -324,8 +327,8 @@ impl Pipeline {
 
         let sources = &[
             // TODO: Support coloured rendering? These can replace Source::Bitmap
-            // Source::ColorOutline(0),
-            // Source::ColorBitmap(StrikeWith::BestFit),
+            Source::ColorOutline(0),
+            Source::ColorBitmap(StrikeWith::BestFit),
             Source::Bitmap(StrikeWith::BestFit),
             Source::Outline,
         ];
@@ -371,10 +374,13 @@ impl Pipeline {
                         continue;
                     };
 
-                    self.text.prepare.push((atlas, origin, size, image.data));
+                    self.text
+                        .prepare
+                        .push((atlas, false, origin, size, image.data));
 
                     Sprite {
                         atlas,
+                        color: false,
                         valid: true,
                         size: Vec2(size.0.cast(), size.1.cast()),
                         offset: Vec2(offset.0.cast(), offset.1.cast()),
@@ -382,7 +388,29 @@ impl Pipeline {
                     }
                 }
                 Content::SubpixelMask => unimplemented!(),
-                Content::Color => unimplemented!(),
+                Content::Color => {
+                    let Ok((atlas, _, origin, tex_quad)) = self.atlas_rgba.allocate(size) else {
+                        log::warn!("raster_glyphs failed: unable to allocate");
+                        self.text.glyphs.insert(desc, Sprite::default());
+                        continue;
+                    };
+
+                    assert!(atlas & 0x8000_0000 == 0);
+                    let atlas = atlas | 0x8000_0000;
+
+                    self.text
+                        .prepare
+                        .push((atlas, true, origin, size, image.data));
+
+                    Sprite {
+                        atlas,
+                        color: true,
+                        valid: true,
+                        size: Vec2(size.0.cast(), size.1.cast()),
+                        offset: Vec2(offset.0.cast(), offset.1.cast()),
+                        tex_quad,
+                    }
+                }
             };
 
             self.text.glyphs.insert(desc, sprite);
@@ -391,6 +419,50 @@ impl Pipeline {
 }
 
 impl Window {
+    fn push_sprite(
+        &mut self,
+        pass: PassId,
+        rect: Quad,
+        col: Rgba,
+        glyph_pos: Vec2,
+        sprite: &Sprite,
+    ) {
+        let mut a = rect.a + glyph_pos.floor() + sprite.offset;
+        let mut b = a + sprite.size;
+
+        if !sprite.is_valid()
+            || !(a.0 < rect.b.0 && a.1 < rect.b.1 && b.0 > rect.a.0 && b.1 > rect.a.1)
+        {
+            return;
+        }
+
+        let (mut ta, mut tb) = (sprite.tex_quad.a, sprite.tex_quad.b);
+        if !a.ge(rect.a) || !b.le(rect.b) {
+            let size_inv = 1.0 / (b - a);
+            let fa0 = 0f32.max((rect.a.0 - a.0) * size_inv.0);
+            let fa1 = 0f32.max((rect.a.1 - a.1) * size_inv.1);
+            let fb0 = 1f32.min((rect.b.0 - a.0) * size_inv.0);
+            let fb1 = 1f32.min((rect.b.1 - a.1) * size_inv.1);
+
+            let ts = tb - ta;
+            tb = ta + ts * Vec2(fb0, fb1);
+            ta += ts * Vec2(fa0, fa1);
+
+            a.0 = a.0.clamp(rect.a.0, rect.b.0);
+            a.1 = a.1.clamp(rect.a.1, rect.b.1);
+            b.0 = b.0.clamp(rect.a.0, rect.b.0);
+            b.1 = b.1.clamp(rect.a.1, rect.b.1);
+        }
+
+        if !sprite.color {
+            let instance = InstanceA { a, b, ta, tb, col };
+            self.atlas_a.rect(pass, sprite.atlas, instance);
+        } else {
+            let instance = InstanceRgba { a, b, ta, tb };
+            self.atlas_rgba.rect(pass, sprite.atlas, instance);
+        }
+    }
+
     pub fn text(
         &mut self,
         pipe: &mut Pipeline,
@@ -416,13 +488,7 @@ impl Window {
                         }
                     }
                 };
-                if sprite.is_valid() {
-                    let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
-                    let b = a + sprite.size;
-                    if let Some(instance) = InstanceA::new(rect, a, b, sprite.tex_quad, col) {
-                        self.atlas_a.rect(pass, sprite.atlas, instance);
-                    }
-                }
+                self.push_sprite(pass, rect, col, glyph.position.into(), sprite);
             }
         }
     }
@@ -466,13 +532,7 @@ impl Window {
                         }
                     }
                 };
-                if sprite.is_valid() {
-                    let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
-                    let b = a + sprite.size;
-                    if let Some(instance) = InstanceA::new(rect, a, b, sprite.tex_quad, col) {
-                        self.atlas_a.rect(pass, sprite.atlas, instance);
-                    }
-                }
+                self.push_sprite(pass, rect, col, glyph.position.into(), sprite);
             };
 
             let for_rect = |x1, x2, y: f32, h: f32, _, _| {
@@ -527,13 +587,7 @@ impl Window {
                         }
                     }
                 };
-                if sprite.is_valid() {
-                    let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
-                    let b = a + sprite.size;
-                    if let Some(instance) = InstanceA::new(rect, a, b, sprite.tex_quad, col) {
-                        self.atlas_a.rect(pass, sprite.atlas, instance);
-                    }
-                }
+                self.push_sprite(pass, rect, col, glyph.position.into(), sprite);
             };
 
             let for_rect = |x1, x2, y: f32, h: f32, _, col: Rgba| {
