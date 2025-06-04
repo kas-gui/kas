@@ -44,8 +44,6 @@ impl Default for Rasterer {
 pub enum RasterError {
     #[error("allocation failed")]
     Alloc(#[from] AllocError),
-    #[error("failed")]
-    Failed,
     #[allow(unused)]
     #[error("zero-sized")]
     Zero,
@@ -333,106 +331,108 @@ impl Pipeline {
             .render(&window.atlas, pass, rpass, bg_common);
     }
 
-    /// Get a rendered sprite
-    ///
-    /// The result may not be valid; see [`Sprite::is_valid`].
-    fn get_glyph(&mut self, face: FaceId, dpem: f32, glyph: Glyph) -> Sprite {
-        let desc = SpriteDescriptor::new(&self.config, face, glyph, dpem);
-        if let Some(sprite) = self.glyphs.get(&desc).cloned() {
-            sprite
-        } else {
-            // NOTE: this branch is *rare*. We don't use HashMap::entry and push
-            // rastering to another function to optimise for the common case.
-            self.raster_glyph(desc)
-        }
-    }
-
-    fn raster_glyph(&mut self, desc: SpriteDescriptor) -> Sprite {
+    /// Raster a sequence of glyphs
+    #[inline]
+    fn raster_glyphs(
+        &mut self,
+        face_id: FaceId,
+        dpem: f32,
+        mut glyphs: impl Iterator<Item = Glyph>,
+    ) {
         // NOTE: we only need the allocation and coordinates now; the
         // rendering could be offloaded (though this may not be useful).
 
-        let result = match self.rasterer {
+        match self.rasterer {
             #[cfg(feature = "ab_glyph")]
-            Rasterer::AbGlyph => self.raster_ab_glyph(desc),
-            Rasterer::Swash => self.raster_swash(desc),
-        };
-
-        let sprite = match result {
-            Ok(sprite) => sprite,
-            Err(RasterError::Zero) => {
-                // Ignore this common error
-                Sprite::default()
-            }
-            Err(err) => {
-                log::warn!("raster_glyph failed: {err}");
-                Sprite::default()
-            }
-        };
-
-        self.glyphs.insert(desc, sprite.clone());
-        sprite
+            Rasterer::AbGlyph => self.raster_ab_glyph(face_id, dpem, &mut glyphs),
+            Rasterer::Swash => self.raster_swash(face_id, dpem, &mut glyphs),
+        }
     }
 
     #[cfg(feature = "ab_glyph")]
-    fn raster_ab_glyph(&mut self, desc: SpriteDescriptor) -> Result<Sprite, RasterError> {
+    fn raster_ab_glyph(
+        &mut self,
+        face_id: FaceId,
+        dpem: f32,
+        glyphs: &mut dyn Iterator<Item = Glyph>,
+    ) {
         use ab_glyph::Font;
 
-        let id = desc.glyph();
-        let face = desc.face();
-        let face_store = fonts::library().get_face_store(face);
-        let dpem = desc.dpem(&self.config);
+        let face_store = fonts::library().get_face_store(face_id);
 
-        let (mut x, y) = desc.fractional_position(&self.config);
-        if self.sb_align && desc.dpem(&self.config) >= self.config.subpixel_threshold {
-            let sf = face_store.face_ref().scale_by_dpem(dpem);
-            x -= sf.h_side_bearing(id);
+        for glyph in glyphs {
+            let desc = SpriteDescriptor::new(&self.config, face_id, glyph, dpem);
+            if self.glyphs.contains_key(&desc) {
+                continue;
+            }
+
+            let (mut x, y) = desc.fractional_position(&self.config);
+            if self.sb_align && desc.dpem(&self.config) >= self.config.subpixel_threshold {
+                let sf = face_store.face_ref().scale_by_dpem(dpem);
+                x -= sf.h_side_bearing(glyph.id);
+            }
+
+            let font = face_store.ab_glyph();
+            let scale = dpem * font.height_unscaled() / font.units_per_em().unwrap();
+            let glyph = ab_glyph::Glyph {
+                id: ab_glyph::GlyphId(glyph.id.0),
+                scale: scale.into(),
+                position: ab_glyph::point(x, y),
+            };
+            let Some(outline) = font.outline_glyph(glyph) else {
+                log::warn!("raster_glyphs failed: unable to outline glyph");
+                self.glyphs.insert(desc, Sprite::default());
+                continue;
+            };
+
+            let bounds = outline.px_bounds();
+            let offset: (i32, i32) = (bounds.min.x.cast_trunc(), bounds.min.y.cast_trunc());
+            let size = bounds.max - bounds.min;
+            let size = (u32::conv_trunc(size.x), u32::conv_trunc(size.y));
+            if size.0 == 0 || size.1 == 0 {
+                // Ignore this common error
+                self.glyphs.insert(desc, Sprite::default());
+                continue;
+            }
+
+            let mut data = vec![0; usize::conv(size.0 * size.1)];
+            outline.draw(|x, y, c| {
+                // Convert to u8 with saturating conversion, rounding down:
+                data[usize::conv((y * size.0) + x)] = (c * 256.0) as u8;
+            });
+
+            let Ok((atlas, _, origin, tex_quad)) = self.atlas_pipe.allocate(size) else {
+                log::warn!("raster_glyphs failed: unable to allocate");
+                self.glyphs.insert(desc, Sprite::default());
+                continue;
+            };
+
+            self.prepare.push((atlas, origin, size, data));
+
+            self.glyphs.insert(desc, Sprite {
+                atlas,
+                valid: true,
+                size: Vec2(size.0.cast(), size.1.cast()),
+                offset: Vec2(offset.0.cast(), offset.1.cast()),
+                tex_quad,
+            });
         }
-
-        let font = face_store.ab_glyph();
-        let scale = dpem * font.height_unscaled() / font.units_per_em().unwrap();
-        let glyph = ab_glyph::Glyph {
-            id: ab_glyph::GlyphId(id.0),
-            scale: scale.into(),
-            position: ab_glyph::point(x, y),
-        };
-        let outline = font.outline_glyph(glyph).ok_or(RasterError::Failed)?;
-
-        let bounds = outline.px_bounds();
-        let offset: (i32, i32) = (bounds.min.x.cast_trunc(), bounds.min.y.cast_trunc());
-        let size = bounds.max - bounds.min;
-        let size = (u32::conv_trunc(size.x), u32::conv_trunc(size.y));
-        if size.0 == 0 || size.1 == 0 {
-            return Err(RasterError::Zero);
-        }
-
-        let mut data = vec![0; usize::conv(size.0 * size.1)];
-        outline.draw(|x, y, c| {
-            // Convert to u8 with saturating conversion, rounding down:
-            data[usize::conv((y * size.0) + x)] = (c * 256.0) as u8;
-        });
-
-        let (atlas, _, origin, tex_quad) = self.atlas_pipe.allocate(size)?;
-
-        self.prepare.push((atlas, origin, size, data));
-
-        Ok(Sprite {
-            atlas,
-            valid: true,
-            size: Vec2(size.0.cast(), size.1.cast()),
-            offset: Vec2(offset.0.cast(), offset.1.cast()),
-            tex_quad,
-        })
     }
 
-    fn raster_swash(&mut self, desc: SpriteDescriptor) -> Result<Sprite, RasterError> {
+    // NOTE: using dyn Iterator over impl Iterator is slightly slower but saves 2-4kB
+    fn raster_swash(
+        &mut self,
+        face_id: FaceId,
+        dpem: f32,
+        glyphs: &mut dyn Iterator<Item = Glyph>,
+    ) {
         use swash::scale::{image::Content, Render, Source, StrikeWith};
         use swash::zeno::{Angle, Format, Transform};
 
-        // TODO: we should re-use scaler when rendering glyphs for a layout/run
-        let face = fonts::library().get_face_store(desc.face());
+        let face = fonts::library().get_face_store(face_id);
         let font = face.swash();
         let synthesis = face.synthesis();
-        let dpem = desc.dpem(&self.config);
+
         let mut scaler = self
             .scale_cx
             .builder(font)
@@ -461,36 +461,55 @@ impl Pipeline {
         // Faux bold:
         let embolden = if synthesis.embolden() { dpem * 0.02 } else { 0.0 };
 
-        let image = Render::new(sources)
-            .format(Format::Alpha)
-            .offset(desc.fractional_position(&self.config).into())
-            .transform(transform)
-            .embolden(embolden)
-            .render(&mut scaler, desc.glyph().0.into())
-            .ok_or(RasterError::Failed)?;
-
-        let offset = (image.placement.left, -image.placement.top);
-        let size = (image.placement.width, image.placement.height);
-        if size.0 == 0 || size.1 == 0 {
-            return Err(RasterError::Zero);
-        }
-
-        match image.content {
-            Content::Mask => {
-                let (atlas, _, origin, tex_quad) = self.atlas_pipe.allocate(size)?;
-
-                self.prepare.push((atlas, origin, size, image.data));
-
-                Ok(Sprite {
-                    atlas,
-                    valid: true,
-                    size: Vec2(size.0.cast(), size.1.cast()),
-                    offset: Vec2(offset.0.cast(), offset.1.cast()),
-                    tex_quad,
-                })
+        for glyph in glyphs {
+            let desc = SpriteDescriptor::new(&self.config, face_id, glyph, dpem);
+            if self.glyphs.contains_key(&desc) {
+                continue;
             }
-            Content::SubpixelMask => unimplemented!(),
-            Content::Color => unimplemented!(),
+
+            let Some(image) = Render::new(sources)
+                .format(Format::Alpha)
+                .offset(desc.fractional_position(&self.config).into())
+                .transform(transform)
+                .embolden(embolden)
+                .render(&mut scaler, desc.glyph().0.into())
+            else {
+                log::warn!("raster_glyphs failed: unable to construct renderer");
+                self.glyphs.insert(desc, Sprite::default());
+                continue;
+            };
+
+            let offset = (image.placement.left, -image.placement.top);
+            let size = (image.placement.width, image.placement.height);
+            if size.0 == 0 || size.1 == 0 {
+                // Ignore this common error
+                self.glyphs.insert(desc, Sprite::default());
+                continue;
+            }
+
+            let sprite = match image.content {
+                Content::Mask => {
+                    let Ok((atlas, _, origin, tex_quad)) = self.atlas_pipe.allocate(size) else {
+                        log::warn!("raster_glyphs failed: unable to allocate");
+                        self.glyphs.insert(desc, Sprite::default());
+                        continue;
+                    };
+
+                    self.prepare.push((atlas, origin, size, image.data));
+
+                    Sprite {
+                        atlas,
+                        valid: true,
+                        size: Vec2(size.0.cast(), size.1.cast()),
+                        offset: Vec2(offset.0.cast(), offset.1.cast()),
+                        tex_quad,
+                    }
+                }
+                Content::SubpixelMask => unimplemented!(),
+                Content::Color => unimplemented!(),
+            };
+
+            self.glyphs.insert(desc, sprite);
         }
     }
 }
@@ -522,17 +541,30 @@ impl Window {
     ) {
         let rect = Quad::conv(rect);
 
-        let for_glyph = |face: FaceId, dpem: f32, glyph: Glyph| {
-            let sprite = pipe.get_glyph(face, dpem, glyph);
-            if sprite.is_valid() {
-                let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
-                let b = a + sprite.size;
-                if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
-                    self.atlas.rect(pass, sprite.atlas, instance);
+        for run in text.runs() {
+            let face = run.face_id();
+            let dpem = run.dpem();
+            for glyph in run.glyphs() {
+                let desc = SpriteDescriptor::new(&pipe.config, face, glyph, dpem);
+                let sprite = match pipe.glyphs.get(&desc) {
+                    Some(sprite) => sprite,
+                    None => {
+                        pipe.raster_glyphs(face, dpem, run.glyphs());
+                        match pipe.glyphs.get(&desc) {
+                            Some(sprite) => sprite,
+                            None => continue,
+                        }
+                    }
+                };
+                if sprite.is_valid() {
+                    let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
+                    let b = a + sprite.size;
+                    if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
+                        self.atlas.rect(pass, sprite.atlas, instance);
+                    }
                 }
             }
-        };
-        text.glyphs(for_glyph);
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -546,25 +578,43 @@ impl Window {
         effects: &[Effect<()>],
         mut draw_quad: impl FnMut(Quad),
     ) {
+        // Optimisation: use cheaper TextDisplay::runs method
+        if effects.len() <= 1
+            && effects
+                .first()
+                .map(|e| e.flags == Default::default())
+                .unwrap_or(true)
+        {
+            self.text(pipe, pass, rect, text, col);
+            return;
+        }
+
         let rect = Quad::conv(rect);
 
-        let mut for_glyph = |face: FaceId, dpem: f32, glyph: Glyph, _: usize, _: ()| {
-            let sprite = pipe.get_glyph(face, dpem, glyph);
-            if sprite.is_valid() {
-                let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
-                let b = a + sprite.size;
-                if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
-                    self.atlas.rect(pass, sprite.atlas, instance);
+        for run in text.runs_with_effects(effects, ()) {
+            let face = run.face_id();
+            let dpem = run.dpem();
+            let for_glyph = |glyph: Glyph, _: usize, _: ()| {
+                let desc = SpriteDescriptor::new(&pipe.config, face, glyph, dpem);
+                let sprite = match pipe.glyphs.get(&desc) {
+                    Some(sprite) => sprite,
+                    None => {
+                        pipe.raster_glyphs(face, dpem, run.glyphs());
+                        match pipe.glyphs.get(&desc) {
+                            Some(sprite) => sprite,
+                            None => return,
+                        }
+                    }
+                };
+                if sprite.is_valid() {
+                    let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
+                    let b = a + sprite.size;
+                    if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
+                        self.atlas.rect(pass, sprite.atlas, instance);
+                    }
                 }
-            }
-        };
+            };
 
-        if effects.len() > 1
-            || effects
-                .first()
-                .map(|e| *e != Effect::default(()))
-                .unwrap_or(false)
-        {
             let for_rect = |x1, x2, y: f32, h: f32, _, _| {
                 let y = y.ceil();
                 let y2 = y + h.ceil();
@@ -574,10 +624,9 @@ impl Window {
                     draw_quad(quad);
                 }
             };
-            text.glyphs_with_effects(effects, (), for_glyph, for_rect)
-        } else {
-            text.glyphs(|face, dpem, glyph| for_glyph(face, dpem, glyph, 0, ()))
-        };
+
+            run.glyphs_with_effects(for_glyph, for_rect);
+        }
     }
 
     pub fn text_effects_rgba(
@@ -589,7 +638,7 @@ impl Window {
         effects: &[Effect<Rgba>],
         mut draw_quad: impl FnMut(Quad, Rgba),
     ) {
-        // Optimisation: use cheaper TextDisplay::glyphs method
+        // Optimisation: use cheaper TextDisplay::runs method
         if effects.len() <= 1
             && effects
                 .first()
@@ -603,27 +652,41 @@ impl Window {
 
         let rect = Quad::conv(rect);
 
-        let for_glyph = |face: FaceId, dpem: f32, glyph: Glyph, _, col: Rgba| {
-            let sprite = pipe.get_glyph(face, dpem, glyph);
-            if sprite.is_valid() {
-                let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
-                let b = a + sprite.size;
-                if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
-                    self.atlas.rect(pass, sprite.atlas, instance);
+        for run in text.runs_with_effects(effects, Rgba::BLACK) {
+            let face = run.face_id();
+            let dpem = run.dpem();
+            let for_glyph = |glyph: Glyph, _, col: Rgba| {
+                let desc = SpriteDescriptor::new(&pipe.config, face, glyph, dpem);
+                let sprite = match pipe.glyphs.get(&desc) {
+                    Some(sprite) => sprite,
+                    None => {
+                        pipe.raster_glyphs(face, dpem, run.glyphs());
+                        match pipe.glyphs.get(&desc) {
+                            Some(sprite) => sprite,
+                            None => return,
+                        }
+                    }
+                };
+                if sprite.is_valid() {
+                    let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
+                    let b = a + sprite.size;
+                    if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
+                        self.atlas.rect(pass, sprite.atlas, instance);
+                    }
                 }
-            }
-        };
+            };
 
-        let for_rect = |x1, x2, y: f32, h: f32, _, col: Rgba| {
-            let y = y.ceil();
-            let y2 = y + h.ceil();
-            if let Some(quad) =
-                Quad::from_coords(rect.a + Vec2(x1, y), rect.a + Vec2(x2, y2)).intersection(&rect)
-            {
-                draw_quad(quad, col);
-            }
-        };
+            let for_rect = |x1, x2, y: f32, h: f32, _, col: Rgba| {
+                let y = y.ceil();
+                let y2 = y + h.ceil();
+                if let Some(quad) = Quad::from_coords(rect.a + Vec2(x1, y), rect.a + Vec2(x2, y2))
+                    .intersection(&rect)
+                {
+                    draw_quad(quad, col);
+                }
+            };
 
-        text.glyphs_with_effects(effects, Rgba::BLACK, for_glyph, for_rect)
+            run.glyphs_with_effects(for_glyph, for_rect);
+        }
     }
 }
