@@ -16,7 +16,7 @@ features = ["kas/winit", "kas/wayland"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["shaping", "raster"]
+default = []
 
 # Enables documentation of APIs for graphics library and platform backends.
 # This API is not intended for use by end-user applications and
@@ -31,13 +31,9 @@ dx12 = ["wgpu/dx12"]
 metal = ["wgpu/metal"]
 
 shaping = ["kas-text/shaping"]
-harfbuzz = ["kas-text/harfbuzz"]
 
-# Raster backends
-raster = ["ab_glyph"] # default choice
+# Enable ab_glyph backend (redundant)
 ab_glyph = ["kas-text/ab_glyph", "dep:ab_glyph"]
-fontdue = ["kas-text/fontdue"]
-swash = ["kas-text/swash", "dep:swash"]
 
 [dependencies]
 bytemuck = "1.7.0"
@@ -55,11 +51,10 @@ package = "kas-core"
 path = "../kas-core"
 
 [dependencies.kas-text]
-version = "0.7.0"
+version = "0.8.0"
 
 [dependencies.swash]
 version = "0.2.4"
-optional = true
 features = ["scale"]
 
 [dependencies.wgpu]

@@ -47,9 +47,8 @@ jobs:
           cargo test --manifest-path crates/kas-resvg/Cargo.toml --all-features --features kas/winit,kas/wayland
       - name: Test kas-wgpu
         run: |
-          cargo test --manifest-path crates/kas-wgpu/Cargo.toml --features kas/winit,kas/wayland
-          cargo test --manifest-path crates/kas-wgpu/Cargo.toml --no-default-features --features kas/winit,raster,kas/wayland
-          cargo test --manifest-path crates/kas-wgpu/Cargo.toml --all-features --features kas/x11,kas/winit
+          cargo test --manifest-path crates/kas-wgpu/Cargo.toml --no-default-features --features kas/winit,kas/wayland
+          cargo test --manifest-path crates/kas-wgpu/Cargo.toml --all-features --features kas/winit,kas/wayland
       - name: Test kas-dylib
         run: |
           cargo test --manifest-path crates/kas-dylib/Cargo.toml --features kas-core/winit,kas-core/wayland

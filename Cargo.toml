@@ -73,12 +73,7 @@ clipboard = ["kas-core/clipboard"]
 markdown = ["kas-core/markdown"]
 
 # Enable text shaping
-shaping = ["kas-core/shaping"]
-
-# Enable Swash and/or fontdue glyph rasterers
-# See field mode of struct RasterConfig for selection.
-swash = ["kas-wgpu?/swash"]
-fontdue = ["kas-wgpu?/fontdue"]
+shaping = ["kas-wgpu/shaping"]
 
 # Enable serde support (mainly config read/write)
 serde = ["kas-core/serde"]
@@ -140,7 +135,6 @@ version = "0.15.0"
 path = "crates/kas-wgpu"
 optional = true
 default-features = false
-features = ["raster"]
 
 [dev-dependencies]
 chrono = "0.4"
@@ -161,4 +155,4 @@ members = [
 
 [patch.crates-io.kas-text]
 git = "https://github.com/kas-gui/kas-text.git"
-rev = "5e6720f5"
+rev = "9312d06"

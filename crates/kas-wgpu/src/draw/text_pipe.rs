@@ -29,26 +29,13 @@ kas::impl_scope! {
 enum Rasterer {
     #[cfg(feature = "ab_glyph")]
     AbGlyph,
-    #[cfg(feature = "fontdue")]
-    Fontdue,
-    #[cfg(feature = "swash")]
     Swash,
 }
 
 impl Default for Rasterer {
     #[allow(clippy::needless_return, unreachable_code)]
     fn default() -> Self {
-        #[cfg(feature = "swash")]
         return Rasterer::Swash;
-
-        #[cfg(feature = "fontdue")]
-        return Rasterer::Fontdue;
-
-        #[cfg(feature = "ab_glyph")]
-        return Rasterer::AbGlyph;
-
-        #[cfg(not(any(feature = "swash", feature = "fontdue", feature = "ab_glyph")))]
-        compile_error!("No rasterer is enabled! Enable one of the following features: raster, swash, fontdue, ab_glyph");
     }
 }
 
@@ -225,7 +212,6 @@ pub struct Pipeline {
     glyphs: HashMap<SpriteDescriptor, Sprite>,
     #[allow(clippy::type_complexity)]
     prepare: Vec<(u32, (u32, u32), (u32, u32), Vec<u8>)>,
-    #[cfg(feature = "swash")]
     scale_cx: swash::scale::ScaleContext,
 }
 
@@ -276,7 +262,6 @@ impl Pipeline {
             atlas_pipe,
             glyphs: Default::default(),
             prepare: Default::default(),
-            #[cfg(feature = "swash")]
             scale_cx: Default::default(),
         }
     }
@@ -285,9 +270,6 @@ impl Pipeline {
         match config.mode {
             #[cfg(feature = "ab_glyph")]
             0 | 1 => self.rasterer = Rasterer::AbGlyph,
-            #[cfg(feature = "fontdue")]
-            2 => self.rasterer = Rasterer::Fontdue,
-            #[cfg(feature = "swash")]
             3 | 4 => self.rasterer = Rasterer::Swash,
             x => log::warn!("raster mode {x} unavailable; falling back to default"),
         };
@@ -372,9 +354,6 @@ impl Pipeline {
         let result = match self.rasterer {
             #[cfg(feature = "ab_glyph")]
             Rasterer::AbGlyph => self.raster_ab_glyph(desc),
-            #[cfg(feature = "fontdue")]
-            Rasterer::Fontdue => self.raster_fontdue(desc),
-            #[cfg(feature = "swash")]
             Rasterer::Swash => self.raster_swash(desc),
         };
 
@@ -445,45 +424,26 @@ impl Pipeline {
         })
     }
 
-    #[cfg(feature = "fontdue")]
-    fn raster_fontdue(&mut self, desc: SpriteDescriptor) -> Result<Sprite, RasterError> {
-        let face = desc.face();
-        let face = fonts::library().get_face_store(face).fontdue();
-
-        let (metrics, data) = face.rasterize_indexed(desc.glyph().0, desc.dpem(&self.config));
-
-        let size = (u32::conv(metrics.width), u32::conv(metrics.height));
-        let h_off = -metrics.ymin - i32::conv(metrics.height);
-        let offset = (metrics.xmin, h_off);
-        if size.0 == 0 || size.1 == 0 {
-            return Err(RasterError::Zero);
-        }
-
-        let (atlas, _, origin, tex_quad) = self.atlas_pipe.allocate(size)?;
-
-        self.prepare.push((atlas, origin, size, data));
-
-        Ok(Sprite {
-            atlas,
-            valid: true,
-            size: Vec2(size.0.cast(), size.1.cast()),
-            offset: Vec2(offset.0.cast(), offset.1.cast()),
-            tex_quad,
-        })
-    }
-
-    #[cfg(feature = "swash")]
     fn raster_swash(&mut self, desc: SpriteDescriptor) -> Result<Sprite, RasterError> {
         use swash::scale::{image::Content, Render, Source, StrikeWith};
-        use swash::zeno::Format;
+        use swash::zeno::{Angle, Format, Transform};
 
         // TODO: we should re-use scaler when rendering glyphs for a layout/run
-        let font = fonts::library().get_face_store(desc.face()).swash();
+        let face = fonts::library().get_face_store(desc.face());
+        let font = face.swash();
+        let synthesis = face.synthesis();
+        let dpem = desc.dpem(&self.config);
         let mut scaler = self
             .scale_cx
             .builder(font)
-            .size(desc.dpem(&self.config))
+            .size(dpem)
             .hint(self.hint)
+            .variations(
+                synthesis
+                    .variation_settings()
+                    .into_iter()
+                    .map(|(tag, value)| (swash::tag_from_bytes(&tag.to_be_bytes()), *value)),
+            )
             .build();
 
         let sources = &[
@@ -494,9 +454,18 @@ impl Pipeline {
             Source::Outline,
         ];
 
+        // Faux italic skew:
+        let transform = synthesis
+            .skew()
+            .map(|angle| Transform::skew(Angle::from_degrees(angle), Angle::ZERO));
+        // Faux bold:
+        let embolden = if synthesis.embolden() { dpem * 0.02 } else { 0.0 };
+
         let image = Render::new(sources)
             .format(Format::Alpha)
             .offset(desc.fractional_position(&self.config).into())
+            .transform(transform)
+            .embolden(embolden)
             .render(&mut scaler, desc.glyph().0.into())
             .ok_or(RasterError::Failed)?;
 
