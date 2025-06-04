@@ -522,17 +522,20 @@ impl Window {
     ) {
         let rect = Quad::conv(rect);
 
-        let for_glyph = |face: FaceId, dpem: f32, glyph: Glyph| {
-            let sprite = pipe.get_glyph(face, dpem, glyph);
-            if sprite.is_valid() {
-                let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
-                let b = a + sprite.size;
-                if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
-                    self.atlas.rect(pass, sprite.atlas, instance);
+        for run in text.runs() {
+            let face = run.face_id();
+            let dpem = run.dpem();
+            for glyph in run.glyphs() {
+                let sprite = pipe.get_glyph(face, dpem, glyph);
+                if sprite.is_valid() {
+                    let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
+                    let b = a + sprite.size;
+                    if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
+                        self.atlas.rect(pass, sprite.atlas, instance);
+                    }
                 }
             }
-        };
-        text.glyphs(for_glyph);
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -546,25 +549,33 @@ impl Window {
         effects: &[Effect<()>],
         mut draw_quad: impl FnMut(Quad),
     ) {
+        // Optimisation: use cheaper TextDisplay::runs method
+        if effects.len() <= 1
+            && effects
+                .first()
+                .map(|e| e.flags == Default::default())
+                .unwrap_or(true)
+        {
+            self.text(pipe, pass, rect, text, col);
+            return;
+        }
+
         let rect = Quad::conv(rect);
 
-        let mut for_glyph = |face: FaceId, dpem: f32, glyph: Glyph, _: usize, _: ()| {
-            let sprite = pipe.get_glyph(face, dpem, glyph);
-            if sprite.is_valid() {
-                let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
-                let b = a + sprite.size;
-                if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
-                    self.atlas.rect(pass, sprite.atlas, instance);
+        for run in text.runs_with_effects(effects, ()) {
+            let face = run.face_id();
+            let dpem = run.dpem();
+            let for_glyph = |glyph: Glyph, _: usize, _: ()| {
+                let sprite = pipe.get_glyph(face, dpem, glyph);
+                if sprite.is_valid() {
+                    let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
+                    let b = a + sprite.size;
+                    if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
+                        self.atlas.rect(pass, sprite.atlas, instance);
+                    }
                 }
-            }
-        };
+            };
 
-        if effects.len() > 1
-            || effects
-                .first()
-                .map(|e| *e != Effect::default(()))
-                .unwrap_or(false)
-        {
             let for_rect = |x1, x2, y: f32, h: f32, _, _| {
                 let y = y.ceil();
                 let y2 = y + h.ceil();
@@ -574,10 +585,9 @@ impl Window {
                     draw_quad(quad);
                 }
             };
-            text.glyphs_with_effects(effects, (), for_glyph, for_rect)
-        } else {
-            text.glyphs(|face, dpem, glyph| for_glyph(face, dpem, glyph, 0, ()))
-        };
+
+            run.glyphs_with_effects(for_glyph, for_rect);
+        }
     }
 
     pub fn text_effects_rgba(
@@ -589,7 +599,7 @@ impl Window {
         effects: &[Effect<Rgba>],
         mut draw_quad: impl FnMut(Quad, Rgba),
     ) {
-        // Optimisation: use cheaper TextDisplay::glyphs method
+        // Optimisation: use cheaper TextDisplay::runs method
         if effects.len() <= 1
             && effects
                 .first()
@@ -603,27 +613,31 @@ impl Window {
 
         let rect = Quad::conv(rect);
 
-        let for_glyph = |face: FaceId, dpem: f32, glyph: Glyph, _, col: Rgba| {
-            let sprite = pipe.get_glyph(face, dpem, glyph);
-            if sprite.is_valid() {
-                let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
-                let b = a + sprite.size;
-                if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
-                    self.atlas.rect(pass, sprite.atlas, instance);
+        for run in text.runs_with_effects(effects, Rgba::BLACK) {
+            let face = run.face_id();
+            let dpem = run.dpem();
+            let for_glyph = |glyph: Glyph, _, col: Rgba| {
+                let sprite = pipe.get_glyph(face, dpem, glyph);
+                if sprite.is_valid() {
+                    let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
+                    let b = a + sprite.size;
+                    if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
+                        self.atlas.rect(pass, sprite.atlas, instance);
+                    }
                 }
-            }
-        };
+            };
 
-        let for_rect = |x1, x2, y: f32, h: f32, _, col: Rgba| {
-            let y = y.ceil();
-            let y2 = y + h.ceil();
-            if let Some(quad) =
-                Quad::from_coords(rect.a + Vec2(x1, y), rect.a + Vec2(x2, y2)).intersection(&rect)
-            {
-                draw_quad(quad, col);
-            }
-        };
+            let for_rect = |x1, x2, y: f32, h: f32, _, col: Rgba| {
+                let y = y.ceil();
+                let y2 = y + h.ceil();
+                if let Some(quad) = Quad::from_coords(rect.a + Vec2(x1, y), rect.a + Vec2(x2, y2))
+                    .intersection(&rect)
+                {
+                    draw_quad(quad, col);
+                }
+            };
 
-        text.glyphs_with_effects(effects, Rgba::BLACK, for_glyph, for_rect)
+            run.glyphs_with_effects(for_glyph, for_rect);
+        }
     }
 }
