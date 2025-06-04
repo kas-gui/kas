@@ -155,20 +155,21 @@ impl Sprite {
     }
 }
 
-/// Screen and texture coordinates
+/// Screen and texture coordinates (alpha-only texture)
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-pub struct Instance {
+pub struct InstanceA {
     a: Vec2,
     b: Vec2,
     ta: Vec2,
     tb: Vec2,
     col: Rgba,
 }
-unsafe impl bytemuck::Zeroable for Instance {}
-unsafe impl bytemuck::Pod for Instance {}
 
-impl Instance {
+unsafe impl bytemuck::Zeroable for InstanceA {}
+unsafe impl bytemuck::Pod for InstanceA {}
+
+impl InstanceA {
     /// Construct, clamping to rect
     // TODO(opt): should this use a buffer? Should TextDisplay::prepare_lines prune glyphs?
     fn new(rect: Quad, mut a: Vec2, mut b: Vec2, tex_quad: Quad, col: Rgba) -> Option<Self> {
@@ -194,7 +195,7 @@ impl Instance {
             b.1 = b.1.clamp(rect.a.1, rect.b.1);
         }
 
-        Some(Instance { a, b, ta, tb, col })
+        Some(InstanceA { a, b, ta, tb, col })
     }
 }
 
@@ -206,7 +207,7 @@ pub struct Pipeline {
     #[allow(unused)]
     hint: bool,
     config: Config,
-    atlas_pipe: atlases::Pipeline<Instance>,
+    atlas_a: atlases::Pipeline<InstanceA>,
     glyphs: HashMap<SpriteDescriptor, Sprite>,
     #[allow(clippy::type_complexity)]
     prepare: Vec<(u32, (u32, u32), (u32, u32), Vec<u8>)>,
@@ -219,7 +220,7 @@ impl Pipeline {
         shaders: &ShaderManager,
         bgl_common: &wgpu::BindGroupLayout,
     ) -> Self {
-        let atlas_pipe = atlases::Pipeline::new(
+        let atlas_a = atlases::Pipeline::new(
             device,
             Some("text pipe"),
             bgl_common,
@@ -230,7 +231,7 @@ impl Pipeline {
                 entry_point: Some("main"),
                 compilation_options: Default::default(),
                 buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: size_of::<Instance>() as wgpu::BufferAddress,
+                    array_stride: size_of::<InstanceA>() as wgpu::BufferAddress,
                     step_mode: wgpu::VertexStepMode::Instance,
                     attributes: &wgpu::vertex_attr_array![
                         0 => Float32x2,
@@ -257,7 +258,7 @@ impl Pipeline {
             sb_align: false,
             hint: false,
             config: Config::default(),
-            atlas_pipe,
+            atlas_a,
             glyphs: Default::default(),
             prepare: Default::default(),
             scale_cx: Default::default(),
@@ -287,7 +288,7 @@ impl Pipeline {
 
     /// Write to textures
     pub fn prepare(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        self.atlas_pipe.prepare(device);
+        self.atlas_a.prepare(device);
 
         if !self.prepare.is_empty() {
             log::trace!("prepare: uploading {} sprites", self.prepare.len());
@@ -295,7 +296,7 @@ impl Pipeline {
         for (atlas, origin, size, data) in self.prepare.drain(..) {
             queue.write_texture(
                 wgpu::TexelCopyTextureInfo {
-                    texture: self.atlas_pipe.get_texture(atlas),
+                    texture: self.atlas_a.get_texture(atlas),
                     mip_level: 0,
                     origin: wgpu::Origin3d {
                         x: origin.0,
@@ -327,8 +328,7 @@ impl Pipeline {
         rpass: &mut wgpu::RenderPass<'a>,
         bg_common: &'a wgpu::BindGroup,
     ) {
-        self.atlas_pipe
-            .render(&window.atlas, pass, rpass, bg_common);
+        self.atlas_a.render(&window.atlas_a, pass, rpass, bg_common);
     }
 
     /// Raster a sequence of glyphs
@@ -401,7 +401,7 @@ impl Pipeline {
                 data[usize::conv((y * size.0) + x)] = (c * 256.0) as u8;
             });
 
-            let Ok((atlas, _, origin, tex_quad)) = self.atlas_pipe.allocate(size) else {
+            let Ok((atlas, _, origin, tex_quad)) = self.atlas_a.allocate(size) else {
                 log::warn!("raster_glyphs failed: unable to allocate");
                 self.glyphs.insert(desc, Sprite::default());
                 continue;
@@ -489,7 +489,7 @@ impl Pipeline {
 
             let sprite = match image.content {
                 Content::Mask => {
-                    let Ok((atlas, _, origin, tex_quad)) = self.atlas_pipe.allocate(size) else {
+                    let Ok((atlas, _, origin, tex_quad)) = self.atlas_a.allocate(size) else {
                         log::warn!("raster_glyphs failed: unable to allocate");
                         self.glyphs.insert(desc, Sprite::default());
                         continue;
@@ -517,7 +517,7 @@ impl Pipeline {
 /// Per-window state
 #[derive(Debug, Default)]
 pub struct Window {
-    atlas: atlases::Window<Instance>,
+    atlas_a: atlases::Window<InstanceA>,
 }
 
 impl Window {
@@ -528,7 +528,7 @@ impl Window {
         staging_belt: &mut wgpu::util::StagingBelt,
         encoder: &mut wgpu::CommandEncoder,
     ) {
-        self.atlas.write_buffers(device, staging_belt, encoder);
+        self.atlas_a.write_buffers(device, staging_belt, encoder);
     }
 
     pub fn text(
@@ -559,8 +559,8 @@ impl Window {
                 if sprite.is_valid() {
                     let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
                     let b = a + sprite.size;
-                    if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
-                        self.atlas.rect(pass, sprite.atlas, instance);
+                    if let Some(instance) = InstanceA::new(rect, a, b, sprite.tex_quad, col) {
+                        self.atlas_a.rect(pass, sprite.atlas, instance);
                     }
                 }
             }
@@ -609,8 +609,8 @@ impl Window {
                 if sprite.is_valid() {
                     let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
                     let b = a + sprite.size;
-                    if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
-                        self.atlas.rect(pass, sprite.atlas, instance);
+                    if let Some(instance) = InstanceA::new(rect, a, b, sprite.tex_quad, col) {
+                        self.atlas_a.rect(pass, sprite.atlas, instance);
                     }
                 }
             };
@@ -670,8 +670,8 @@ impl Window {
                 if sprite.is_valid() {
                     let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
                     let b = a + sprite.size;
-                    if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
-                        self.atlas.rect(pass, sprite.atlas, instance);
+                    if let Some(instance) = InstanceA::new(rect, a, b, sprite.tex_quad, col) {
+                        self.atlas_a.rect(pass, sprite.atlas, instance);
                     }
                 }
             };
