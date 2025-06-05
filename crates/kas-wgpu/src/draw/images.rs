@@ -6,10 +6,11 @@
 //! Images pipeline
 
 use guillotiere::AllocId;
+use kas::draw::color::Rgba;
 use std::collections::HashMap;
 use std::mem::size_of;
 
-use super::{atlases, ShaderManager};
+use super::{atlases, text_pipe, ShaderManager};
 use kas::cast::Conv;
 use kas::draw::{AllocError, ImageFormat, ImageId, PassId};
 use kas::geom::{Quad, Vec2};
@@ -72,9 +73,61 @@ pub struct InstanceRgba {
 unsafe impl bytemuck::Zeroable for InstanceRgba {}
 unsafe impl bytemuck::Pod for InstanceRgba {}
 
+/// Screen and texture coordinates (alpha-only texture)
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct InstanceA {
+    a: Vec2,
+    b: Vec2,
+    ta: Vec2,
+    tb: Vec2,
+    col: Rgba,
+}
+
+unsafe impl bytemuck::Zeroable for InstanceA {}
+unsafe impl bytemuck::Pod for InstanceA {}
+
+impl InstanceA {
+    /// Construct, clamping to rect
+    // TODO(opt): should this use a buffer? Should TextDisplay::prepare_lines prune glyphs?
+    pub(super) fn new(
+        rect: Quad,
+        mut a: Vec2,
+        mut b: Vec2,
+        tex_quad: Quad,
+        col: Rgba,
+    ) -> Option<Self> {
+        if !(a.0 < rect.b.0 && a.1 < rect.b.1 && b.0 > rect.a.0 && b.1 > rect.a.1) {
+            return None;
+        }
+
+        let (mut ta, mut tb) = (tex_quad.a, tex_quad.b);
+        if !a.ge(rect.a) || !b.le(rect.b) {
+            let size_inv = 1.0 / (b - a);
+            let fa0 = 0f32.max((rect.a.0 - a.0) * size_inv.0);
+            let fa1 = 0f32.max((rect.a.1 - a.1) * size_inv.1);
+            let fb0 = 1f32.min((rect.b.0 - a.0) * size_inv.0);
+            let fb1 = 1f32.min((rect.b.1 - a.1) * size_inv.1);
+
+            let ts = tb - ta;
+            tb = ta + ts * Vec2(fb0, fb1);
+            ta += ts * Vec2(fa0, fa1);
+
+            a.0 = a.0.clamp(rect.a.0, rect.b.0);
+            a.1 = a.1.clamp(rect.a.1, rect.b.1);
+            b.0 = b.0.clamp(rect.a.0, rect.b.0);
+            b.1 = b.1.clamp(rect.a.1, rect.b.1);
+        }
+
+        Some(InstanceA { a, b, ta, tb, col })
+    }
+}
+
 /// Image loader and storage
 pub struct Images {
-    atlas_rgba: atlases::Pipeline<InstanceRgba>,
+    pub(super) text: text_pipe::State,
+    pub(super) atlas_rgba: atlases::Pipeline<InstanceRgba>,
+    pub(super) atlas_a: atlases::Pipeline<InstanceA>,
     last_image_n: u32,
     images: HashMap<ImageId, Image>,
 }
@@ -86,7 +139,7 @@ impl Images {
         shaders: &ShaderManager,
         bgl_common: &wgpu::BindGroupLayout,
     ) -> Self {
-        let atlas_pipe = atlases::Pipeline::new(
+        let atlas_rgba = atlases::Pipeline::new(
             device,
             Some("images pipe"),
             bgl_common,
@@ -118,8 +171,45 @@ impl Images {
                 })],
             },
         );
+
+        let atlas_a = atlases::Pipeline::new(
+            device,
+            Some("text pipe"),
+            bgl_common,
+            512,
+            wgpu::TextureFormat::R8Unorm,
+            wgpu::VertexState {
+                module: &shaders.vert_glyph,
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: size_of::<InstanceA>() as wgpu::BufferAddress,
+                    step_mode: wgpu::VertexStepMode::Instance,
+                    attributes: &wgpu::vertex_attr_array![
+                        0 => Float32x2,
+                        1 => Float32x2,
+                        2 => Float32x2,
+                        3 => Float32x2,
+                        4 => Float32x4,
+                    ],
+                }],
+            },
+            wgpu::FragmentState {
+                module: &shaders.frag_glyph,
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: super::RENDER_TEX_FORMAT,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            },
+        );
+
         Images {
-            atlas_rgba: atlas_pipe,
+            text: text_pipe::State::new(),
+            atlas_rgba,
+            atlas_a,
             last_image_n: 0,
             images: Default::default(),
         }
@@ -184,9 +274,41 @@ impl Images {
         &mut self,
         window: &mut Window,
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         staging_belt: &mut wgpu::util::StagingBelt,
         encoder: &mut wgpu::CommandEncoder,
     ) {
+        self.atlas_a.prepare(device);
+
+        if !self.text.prepare.is_empty() {
+            log::trace!("prepare: uploading {} sprites", self.text.prepare.len());
+        }
+        for (atlas, origin, size, data) in self.text.prepare.drain(..) {
+            queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture: self.atlas_a.get_texture(atlas),
+                    mip_level: 0,
+                    origin: wgpu::Origin3d {
+                        x: origin.0,
+                        y: origin.1,
+                        z: 0,
+                    },
+                    aspect: wgpu::TextureAspect::All,
+                },
+                &data,
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(size.0),
+                    rows_per_image: Some(size.1),
+                },
+                wgpu::Extent3d {
+                    width: size.0,
+                    height: size.1,
+                    depth_or_array_layers: 1,
+                },
+            );
+        }
+
         window.write_buffers(device, staging_belt, encoder);
     }
 
@@ -205,12 +327,14 @@ impl Images {
     ) {
         self.atlas_rgba
             .render(&window.atlas_rgba, pass, rpass, bg_common);
+        self.atlas_a.render(&window.atlas_a, pass, rpass, bg_common);
     }
 }
 
 #[derive(Debug, Default)]
 pub struct Window {
-    atlas_rgba: atlases::Window<InstanceRgba>,
+    pub(super) atlas_rgba: atlases::Window<InstanceRgba>,
+    pub(super) atlas_a: atlases::Window<InstanceA>,
 }
 
 impl Window {
@@ -222,6 +346,7 @@ impl Window {
         encoder: &mut wgpu::CommandEncoder,
     ) {
         self.atlas_rgba.write_buffers(device, staging_belt, encoder);
+        self.atlas_a.write_buffers(device, staging_belt, encoder);
     }
 
     /// Add a rectangle to the buffer
