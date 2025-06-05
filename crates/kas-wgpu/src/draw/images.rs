@@ -26,7 +26,7 @@ struct Image {
 impl Image {
     fn upload(
         &mut self,
-        atlas_pipe: &atlases::Pipeline<Instance>,
+        atlas_rgba: &atlases::Pipeline<InstanceRgba>,
         queue: &wgpu::Queue,
         data: &[u8],
     ) {
@@ -36,7 +36,7 @@ impl Image {
         assert_eq!(data.len(), 4 * usize::conv(size.0) * usize::conv(size.1));
         queue.write_texture(
             wgpu::TexelCopyTextureInfo {
-                texture: atlas_pipe.get_texture(self.atlas),
+                texture: atlas_rgba.get_texture(self.atlas),
                 mip_level: 0,
                 origin: wgpu::Origin3d {
                     x: self.origin.0,
@@ -63,18 +63,18 @@ impl Image {
 /// Screen and texture coordinates
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-pub struct Instance {
+pub struct InstanceRgba {
     a: Vec2,
     b: Vec2,
     ta: Vec2,
     tb: Vec2,
 }
-unsafe impl bytemuck::Zeroable for Instance {}
-unsafe impl bytemuck::Pod for Instance {}
+unsafe impl bytemuck::Zeroable for InstanceRgba {}
+unsafe impl bytemuck::Pod for InstanceRgba {}
 
 /// Image loader and storage
 pub struct Images {
-    atlas_pipe: atlases::Pipeline<Instance>,
+    atlas_rgba: atlases::Pipeline<InstanceRgba>,
     last_image_n: u32,
     images: HashMap<ImageId, Image>,
 }
@@ -97,7 +97,7 @@ impl Images {
                 entry_point: Some("main"),
                 compilation_options: Default::default(),
                 buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: size_of::<Instance>() as wgpu::BufferAddress,
+                    array_stride: size_of::<InstanceRgba>() as wgpu::BufferAddress,
                     step_mode: wgpu::VertexStepMode::Instance,
                     attributes: &wgpu::vertex_attr_array![
                         0 => Float32x2,
@@ -119,7 +119,7 @@ impl Images {
             },
         );
         Images {
-            atlas_pipe,
+            atlas_rgba: atlas_pipe,
             last_image_n: 0,
             images: Default::default(),
         }
@@ -134,7 +134,7 @@ impl Images {
     /// Allocate an image
     pub fn alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError> {
         let id = self.next_image_id();
-        let (atlas, alloc, origin, tex_quad) = self.atlas_pipe.allocate(size)?;
+        let (atlas, alloc, origin, tex_quad) = self.atlas_rgba.allocate(size)?;
         let image = Image {
             atlas,
             alloc,
@@ -156,21 +156,21 @@ impl Images {
         format: ImageFormat,
     ) {
         // The atlas pipe allocates textures lazily. Ensure ours is ready:
-        self.atlas_pipe.prepare(device);
+        self.atlas_rgba.prepare(device);
 
         match format {
             ImageFormat::Rgba8 => (),
         }
 
         if let Some(image) = self.images.get_mut(&id) {
-            image.upload(&self.atlas_pipe, queue, data);
+            image.upload(&self.atlas_rgba, queue, data);
         }
     }
 
     /// Free an image allocation
     pub fn free(&mut self, id: ImageId) {
         if let Some(im) = self.images.remove(&id) {
-            self.atlas_pipe.deallocate(im.atlas, im.alloc);
+            self.atlas_rgba.deallocate(im.atlas, im.alloc);
         }
     }
 
@@ -203,14 +203,14 @@ impl Images {
         rpass: &mut wgpu::RenderPass<'a>,
         bg_common: &'a wgpu::BindGroup,
     ) {
-        self.atlas_pipe
-            .render(&window.atlas, pass, rpass, bg_common);
+        self.atlas_rgba
+            .render(&window.atlas_rgba, pass, rpass, bg_common);
     }
 }
 
 #[derive(Debug, Default)]
 pub struct Window {
-    atlas: atlases::Window<Instance>,
+    atlas_rgba: atlases::Window<InstanceRgba>,
 }
 
 impl Window {
@@ -221,7 +221,7 @@ impl Window {
         staging_belt: &mut wgpu::util::StagingBelt,
         encoder: &mut wgpu::CommandEncoder,
     ) {
-        self.atlas.write_buffers(device, staging_belt, encoder);
+        self.atlas_rgba.write_buffers(device, staging_belt, encoder);
     }
 
     /// Add a rectangle to the buffer
@@ -231,12 +231,12 @@ impl Window {
             return;
         }
 
-        let instance = Instance {
+        let instance = InstanceRgba {
             a: rect.a,
             b: rect.b,
             ta: tex.a,
             tb: tex.b,
         };
-        self.atlas.rect(pass, atlas, instance);
+        self.atlas_rgba.rect(pass, atlas, instance);
     }
 }
