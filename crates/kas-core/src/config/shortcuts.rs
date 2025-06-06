@@ -327,10 +327,8 @@ mod common {
             let mut state = ModifiersState::empty();
 
             let adv_dash_if_not_empty = |v: &mut &str| {
-                if !v.is_empty() {
-                    if v.starts_with('-') {
-                        *v = &v[1..];
-                    }
+                if !v.is_empty() && v.starts_with('-') {
+                    *v = &v[1..];
                 }
             };
 

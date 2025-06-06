@@ -320,7 +320,7 @@ impl Pipeline {
             .variations(
                 synthesis
                     .variation_settings()
-                    .into_iter()
+                    .iter()
                     .map(|(tag, value)| (swash::tag_from_bytes(&tag.to_be_bytes()), *value)),
             )
             .build();
@@ -351,7 +351,7 @@ impl Pipeline {
                 .offset(desc.fractional_position(&self.text.config).into())
                 .transform(transform)
                 .embolden(embolden)
-                .render(&mut scaler, desc.glyph().0.into())
+                .render(&mut scaler, desc.glyph().0)
             else {
                 log::warn!("raster_glyphs failed: unable to construct renderer");
                 self.text.glyphs.insert(desc, Sprite::default());
@@ -430,8 +430,11 @@ impl Window {
         let mut a = rect.a + glyph_pos.floor() + sprite.offset;
         let mut b = a + sprite.size;
 
-        if !sprite.is_valid()
-            || !(a.0 < rect.b.0 && a.1 < rect.b.1 && b.0 > rect.a.0 && b.1 > rect.a.1)
+        if !(sprite.is_valid()
+            && a.0 < rect.b.0
+            && a.1 < rect.b.1
+            && b.0 > rect.a.0
+            && b.1 > rect.a.1)
         {
             return;
         }
