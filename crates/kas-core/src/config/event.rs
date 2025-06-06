@@ -146,7 +146,7 @@ pub struct EventWindowConfig<'a>(pub(super) &'a super::WindowConfig);
 impl<'a> EventWindowConfig<'a> {
     /// Access base (unscaled) event [`EventConfig`]
     #[inline]
-    pub fn base(&self) -> Ref<EventConfig> {
+    pub fn base(&self) -> Ref<'_, EventConfig> {
         Ref::map(self.0.config.borrow(), |c| &c.event)
     }
 

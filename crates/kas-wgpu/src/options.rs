@@ -109,7 +109,7 @@ impl Options {
         }
     }
 
-    pub(crate) fn adapter_options(&self) -> wgpu::RequestAdapterOptions {
+    pub(crate) fn adapter_options(&self) -> wgpu::RequestAdapterOptions<'_, '_> {
         wgpu::RequestAdapterOptions {
             power_preference: self.power_preference,
             force_fallback_adapter: self.backends.is_empty(),

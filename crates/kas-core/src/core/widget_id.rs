@@ -95,7 +95,7 @@ impl IntOrPtr {
         u
     }
 
-    fn get(&self) -> Variant {
+    fn get(&self) -> Variant<'_> {
         if let Some(p) = self.get_ptr() {
             unsafe {
                 let len = *p.offset(1);
@@ -323,7 +323,7 @@ impl Id {
     }
 
     /// Iterate over path components
-    pub fn iter(&self) -> WidgetPathIter {
+    pub fn iter(&self) -> WidgetPathIter<'_> {
         match self.0.get() {
             Variant::Invalid => panic!("Id::iter: invalid"),
             Variant::Int(x) => WidgetPathIter(PathIter::Bits(BitsIter::new(x))),
@@ -381,7 +381,7 @@ impl Id {
         r
     }
 
-    pub fn iter_keys_after(&self, id: &Self) -> WidgetPathIter {
+    pub fn iter_keys_after(&self, id: &Self) -> WidgetPathIter<'_> {
         let mut self_iter = self.iter();
         for v in id.iter() {
             if self_iter.next() != Some(v) {

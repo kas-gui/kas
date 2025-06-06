@@ -119,7 +119,7 @@ impl WindowConfig {
     }
 
     /// Access base (unscaled) [`Config`]
-    pub fn base(&self) -> Ref<Config> {
+    pub fn base(&self) -> Ref<'_, Config> {
         self.config.borrow()
     }
 
@@ -157,7 +157,7 @@ impl WindowConfig {
     }
 
     /// Access event config
-    pub fn event(&self) -> EventWindowConfig {
+    pub fn event(&self) -> EventWindowConfig<'_> {
         EventWindowConfig(self)
     }
 
@@ -172,7 +172,7 @@ impl WindowConfig {
     }
 
     /// Access font config
-    pub fn font(&self) -> Ref<FontConfig> {
+    pub fn font(&self) -> Ref<'_, FontConfig> {
         Ref::map(self.config.borrow(), |c| &c.font)
     }
 
@@ -193,12 +193,12 @@ impl WindowConfig {
     }
 
     /// Access shortcut config
-    pub fn shortcuts(&self) -> Ref<Shortcuts> {
+    pub fn shortcuts(&self) -> Ref<'_, Shortcuts> {
         Ref::map(self.config.borrow(), |c| &c.shortcuts)
     }
 
     /// Access theme config
-    pub fn theme(&self) -> Ref<ThemeConfig> {
+    pub fn theme(&self) -> Ref<'_, ThemeConfig> {
         Ref::map(self.config.borrow(), |c| &c.theme)
     }
 
