@@ -97,7 +97,6 @@ impl<C: CustomPipe> DrawPipe<C> {
         let flat_round = flat_round::Pipeline::new(&device, &shaders, &bgl_common);
         let round_2col = round_2col::Pipeline::new(&device, &shaders, &bgl_common);
         let custom = custom.build(&device, &bgl_common, RENDER_TEX_FORMAT);
-        let text = text_pipe::Pipeline::new(&device, &shaders, &bgl_common);
 
         Ok(DrawPipe {
             adapter,
@@ -113,7 +112,6 @@ impl<C: CustomPipe> DrawPipe<C> {
             flat_round,
             round_2col,
             custom,
-            text,
         })
     }
 
@@ -201,6 +199,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         self.images.prepare(
             &mut window.images,
             &self.device,
+            &self.queue,
             &mut self.staging_belt,
             &mut encoder,
         );
@@ -222,10 +221,6 @@ impl<C: CustomPipe> DrawPipe<C> {
             &mut self.staging_belt,
             &mut encoder,
         );
-        self.text.prepare(&self.device, &self.queue);
-        window
-            .text
-            .write_buffers(&self.device, &mut self.staging_belt, &mut encoder);
 
         let mut color_attachments = [Some(wgpu::RenderPassColorAttachment {
             view: frame_view,
@@ -275,7 +270,6 @@ impl<C: CustomPipe> DrawPipe<C> {
                     &mut rpass,
                     bg_common,
                 );
-                self.text.render(&window.text, pass, &mut rpass, bg_common);
             }
 
             color_attachments[0].as_mut().unwrap().ops.load = wgpu::LoadOp::Load;
@@ -309,7 +303,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
     }
 
     fn set_raster_config(&mut self, config: &RasterConfig) {
-        self.text.set_raster_config(config);
+        self.images.text.set_raster_config(config);
     }
 
     #[inline]
@@ -350,7 +344,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         col: Rgba,
     ) {
         let time = std::time::Instant::now();
-        draw.text.text(&mut self.text, pass, rect, text, col);
+        draw.images.text(&mut self.images, pass, rect, text, col);
         draw.common.report_dur_text(time.elapsed());
     }
 
@@ -364,8 +358,8 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         effects: &[Effect<()>],
     ) {
         let time = std::time::Instant::now();
-        draw.text
-            .text_effects(&mut self.text, pass, rect, text, col, effects, |quad| {
+        draw.images
+            .text_effects(&mut self.images, pass, rect, text, col, effects, |quad| {
                 draw.shaded_square.rect(pass, quad, col);
             });
         draw.common.report_dur_text(time.elapsed());
@@ -380,8 +374,8 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         effects: &[Effect<Rgba>],
     ) {
         let time = std::time::Instant::now();
-        draw.text
-            .text_effects_rgba(&mut self.text, pass, rect, text, effects, |quad, col| {
+        draw.images
+            .text_effects_rgba(&mut self.images, pass, rect, text, effects, |quad, col| {
                 draw.shaded_square.rect(pass, quad, col);
             });
         draw.common.report_dur_text(time.elapsed());

@@ -76,7 +76,7 @@ pub trait Menu: Widget {
     /// # }
     /// ```
     // TODO: adding frame spacing like this is quite hacky. Find a better approach?
-    fn sub_items(&mut self) -> Option<SubItems> {
+    fn sub_items(&mut self) -> Option<SubItems<'_>> {
         None
     }
 
@@ -110,7 +110,7 @@ pub trait Menu: Widget {
 }
 
 impl<A, W: Menu<Data = ()>> Menu for MapAny<A, W> {
-    fn sub_items(&mut self) -> Option<SubItems> {
+    fn sub_items(&mut self) -> Option<SubItems<'_>> {
         self.inner.sub_items()
     }
 

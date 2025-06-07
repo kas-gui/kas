@@ -91,7 +91,7 @@ impl_scope! {
     }
 
     impl Menu for Self {
-        fn sub_items(&mut self) -> Option<SubItems> {
+        fn sub_items(&mut self) -> Option<SubItems<'_>> {
             Some(SubItems {
                 label: Some(&mut self.label),
                 ..Default::default()
@@ -146,7 +146,7 @@ impl_scope! {
     }
 
     impl Menu for Self {
-        fn sub_items(&mut self) -> Option<SubItems> {
+        fn sub_items(&mut self) -> Option<SubItems<'_>> {
             Some(SubItems {
                 label: Some(&mut self.label),
                 toggle: Some(&mut self.checkbox),

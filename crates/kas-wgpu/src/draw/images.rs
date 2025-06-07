@@ -6,10 +6,11 @@
 //! Images pipeline
 
 use guillotiere::AllocId;
+use kas::draw::color::Rgba;
 use std::collections::HashMap;
 use std::mem::size_of;
 
-use super::{atlases, ShaderManager};
+use super::{atlases, text_pipe, ShaderManager};
 use kas::cast::Conv;
 use kas::draw::{AllocError, ImageFormat, ImageId, PassId};
 use kas::geom::{Quad, Vec2};
@@ -26,7 +27,7 @@ struct Image {
 impl Image {
     fn upload(
         &mut self,
-        atlas_pipe: &atlases::Pipeline<Instance>,
+        atlas_rgba: &atlases::Pipeline<InstanceRgba>,
         queue: &wgpu::Queue,
         data: &[u8],
     ) {
@@ -36,7 +37,7 @@ impl Image {
         assert_eq!(data.len(), 4 * usize::conv(size.0) * usize::conv(size.1));
         queue.write_texture(
             wgpu::TexelCopyTextureInfo {
-                texture: atlas_pipe.get_texture(self.atlas),
+                texture: atlas_rgba.get_texture(self.atlas),
                 mip_level: 0,
                 origin: wgpu::Origin3d {
                     x: self.origin.0,
@@ -63,18 +64,34 @@ impl Image {
 /// Screen and texture coordinates
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-pub struct Instance {
-    a: Vec2,
-    b: Vec2,
-    ta: Vec2,
-    tb: Vec2,
+pub struct InstanceRgba {
+    pub(super) a: Vec2,
+    pub(super) b: Vec2,
+    pub(super) ta: Vec2,
+    pub(super) tb: Vec2,
 }
-unsafe impl bytemuck::Zeroable for Instance {}
-unsafe impl bytemuck::Pod for Instance {}
+unsafe impl bytemuck::Zeroable for InstanceRgba {}
+unsafe impl bytemuck::Pod for InstanceRgba {}
+
+/// Screen and texture coordinates (alpha-only texture)
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct InstanceA {
+    pub(super) a: Vec2,
+    pub(super) b: Vec2,
+    pub(super) ta: Vec2,
+    pub(super) tb: Vec2,
+    pub(super) col: Rgba,
+}
+
+unsafe impl bytemuck::Zeroable for InstanceA {}
+unsafe impl bytemuck::Pod for InstanceA {}
 
 /// Image loader and storage
 pub struct Images {
-    atlas_pipe: atlases::Pipeline<Instance>,
+    pub(super) text: text_pipe::State,
+    pub(super) atlas_rgba: atlases::Pipeline<InstanceRgba>,
+    pub(super) atlas_a: atlases::Pipeline<InstanceA>,
     last_image_n: u32,
     images: HashMap<ImageId, Image>,
 }
@@ -86,7 +103,7 @@ impl Images {
         shaders: &ShaderManager,
         bgl_common: &wgpu::BindGroupLayout,
     ) -> Self {
-        let atlas_pipe = atlases::Pipeline::new(
+        let atlas_rgba = atlases::Pipeline::new(
             device,
             Some("images pipe"),
             bgl_common,
@@ -97,7 +114,7 @@ impl Images {
                 entry_point: Some("main"),
                 compilation_options: Default::default(),
                 buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: size_of::<Instance>() as wgpu::BufferAddress,
+                    array_stride: size_of::<InstanceRgba>() as wgpu::BufferAddress,
                     step_mode: wgpu::VertexStepMode::Instance,
                     attributes: &wgpu::vertex_attr_array![
                         0 => Float32x2,
@@ -118,8 +135,45 @@ impl Images {
                 })],
             },
         );
+
+        let atlas_a = atlases::Pipeline::new(
+            device,
+            Some("text pipe"),
+            bgl_common,
+            512,
+            wgpu::TextureFormat::R8Unorm,
+            wgpu::VertexState {
+                module: &shaders.vert_glyph,
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: size_of::<InstanceA>() as wgpu::BufferAddress,
+                    step_mode: wgpu::VertexStepMode::Instance,
+                    attributes: &wgpu::vertex_attr_array![
+                        0 => Float32x2,
+                        1 => Float32x2,
+                        2 => Float32x2,
+                        3 => Float32x2,
+                        4 => Float32x4,
+                    ],
+                }],
+            },
+            wgpu::FragmentState {
+                module: &shaders.frag_glyph,
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: super::RENDER_TEX_FORMAT,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            },
+        );
+
         Images {
-            atlas_pipe,
+            text: text_pipe::State::new(),
+            atlas_rgba,
+            atlas_a,
             last_image_n: 0,
             images: Default::default(),
         }
@@ -134,7 +188,7 @@ impl Images {
     /// Allocate an image
     pub fn alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError> {
         let id = self.next_image_id();
-        let (atlas, alloc, origin, tex_quad) = self.atlas_pipe.allocate(size)?;
+        let (atlas, alloc, origin, tex_quad) = self.atlas_rgba.allocate(size)?;
         let image = Image {
             atlas,
             alloc,
@@ -156,21 +210,21 @@ impl Images {
         format: ImageFormat,
     ) {
         // The atlas pipe allocates textures lazily. Ensure ours is ready:
-        self.atlas_pipe.prepare(device);
+        self.atlas_rgba.prepare(device);
 
         match format {
             ImageFormat::Rgba8 => (),
         }
 
         if let Some(image) = self.images.get_mut(&id) {
-            image.upload(&self.atlas_pipe, queue, data);
+            image.upload(&self.atlas_rgba, queue, data);
         }
     }
 
     /// Free an image allocation
     pub fn free(&mut self, id: ImageId) {
         if let Some(im) = self.images.remove(&id) {
-            self.atlas_pipe.deallocate(im.atlas, im.alloc);
+            self.atlas_rgba.deallocate(im.atlas, im.alloc);
         }
     }
 
@@ -184,9 +238,54 @@ impl Images {
         &mut self,
         window: &mut Window,
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         staging_belt: &mut wgpu::util::StagingBelt,
         encoder: &mut wgpu::CommandEncoder,
     ) {
+        self.atlas_a.prepare(device);
+
+        if !self.text.prepare.is_empty() {
+            log::trace!("prepare: uploading {} sprites", self.text.prepare.len());
+        }
+        for (atlas, color, origin, size, data) in self.text.prepare.drain(..) {
+            let (texture, texel_layout);
+            if !color {
+                texture = self.atlas_a.get_texture(atlas);
+                texel_layout = wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(size.0),
+                    rows_per_image: Some(size.1),
+                };
+            } else {
+                texture = self.atlas_rgba.get_texture(atlas);
+                texel_layout = wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(4 * size.0),
+                    rows_per_image: Some(size.1),
+                };
+            }
+
+            queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d {
+                        x: origin.0,
+                        y: origin.1,
+                        z: 0,
+                    },
+                    aspect: wgpu::TextureAspect::All,
+                },
+                &data,
+                texel_layout,
+                wgpu::Extent3d {
+                    width: size.0,
+                    height: size.1,
+                    depth_or_array_layers: 1,
+                },
+            );
+        }
+
         window.write_buffers(device, staging_belt, encoder);
     }
 
@@ -203,14 +302,16 @@ impl Images {
         rpass: &mut wgpu::RenderPass<'a>,
         bg_common: &'a wgpu::BindGroup,
     ) {
-        self.atlas_pipe
-            .render(&window.atlas, pass, rpass, bg_common);
+        self.atlas_rgba
+            .render(&window.atlas_rgba, pass, rpass, bg_common);
+        self.atlas_a.render(&window.atlas_a, pass, rpass, bg_common);
     }
 }
 
 #[derive(Debug, Default)]
 pub struct Window {
-    atlas: atlases::Window<Instance>,
+    pub(super) atlas_rgba: atlases::Window<InstanceRgba>,
+    pub(super) atlas_a: atlases::Window<InstanceA>,
 }
 
 impl Window {
@@ -221,7 +322,8 @@ impl Window {
         staging_belt: &mut wgpu::util::StagingBelt,
         encoder: &mut wgpu::CommandEncoder,
     ) {
-        self.atlas.write_buffers(device, staging_belt, encoder);
+        self.atlas_rgba.write_buffers(device, staging_belt, encoder);
+        self.atlas_a.write_buffers(device, staging_belt, encoder);
     }
 
     /// Add a rectangle to the buffer
@@ -231,12 +333,12 @@ impl Window {
             return;
         }
 
-        let instance = Instance {
+        let instance = InstanceRgba {
             a: rect.a,
             b: rect.b,
             ta: tex.a,
             tb: tex.b,
         };
-        self.atlas.rect(pass, atlas, instance);
+        self.atlas_rgba.rect(pass, atlas, instance);
     }
 }

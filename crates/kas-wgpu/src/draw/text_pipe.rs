@@ -5,7 +5,7 @@
 
 //! Text drawing pipeline
 
-use super::{atlases, ShaderManager};
+use super::images::{Images as Pipeline, InstanceA, InstanceRgba, Window};
 use kas::cast::traits::*;
 use kas::config::RasterConfig;
 use kas::draw::{color::Rgba, AllocError, PassId};
@@ -13,7 +13,6 @@ use kas::geom::{Quad, Rect, Vec2};
 use kas_text::fonts::{self, FaceId};
 use kas_text::{Effect, Glyph, GlyphId, TextDisplay};
 use rustc_hash::FxHashMap as HashMap;
-use std::mem::size_of;
 
 kas::impl_scope! {
     /// Raster configuration
@@ -141,7 +140,9 @@ impl SpriteDescriptor {
 #[derive(Clone, Debug, Default)]
 struct Sprite {
     atlas: u32,
-    // TODO(opt): u16 or maybe even u8 would be enough
+    /// If true, use atlas_rgba; if false use atlas_a
+    color: bool,
+    /// If false, this is not drawable (used for zero-sized glyphs)
     valid: bool,
     size: Vec2,
     offset: Vec2,
@@ -155,109 +156,27 @@ impl Sprite {
     }
 }
 
-/// Screen and texture coordinates
-#[repr(C)]
-#[derive(Clone, Copy, Debug)]
-pub struct Instance {
-    a: Vec2,
-    b: Vec2,
-    ta: Vec2,
-    tb: Vec2,
-    col: Rgba,
-}
-unsafe impl bytemuck::Zeroable for Instance {}
-unsafe impl bytemuck::Pod for Instance {}
-
-impl Instance {
-    /// Construct, clamping to rect
-    // TODO(opt): should this use a buffer? Should TextDisplay::prepare_lines prune glyphs?
-    fn new(rect: Quad, mut a: Vec2, mut b: Vec2, tex_quad: Quad, col: Rgba) -> Option<Self> {
-        if !(a.0 < rect.b.0 && a.1 < rect.b.1 && b.0 > rect.a.0 && b.1 > rect.a.1) {
-            return None;
-        }
-
-        let (mut ta, mut tb) = (tex_quad.a, tex_quad.b);
-        if !a.ge(rect.a) || !b.le(rect.b) {
-            let size_inv = 1.0 / (b - a);
-            let fa0 = 0f32.max((rect.a.0 - a.0) * size_inv.0);
-            let fa1 = 0f32.max((rect.a.1 - a.1) * size_inv.1);
-            let fb0 = 1f32.min((rect.b.0 - a.0) * size_inv.0);
-            let fb1 = 1f32.min((rect.b.1 - a.1) * size_inv.1);
-
-            let ts = tb - ta;
-            tb = ta + ts * Vec2(fb0, fb1);
-            ta += ts * Vec2(fa0, fa1);
-
-            a.0 = a.0.clamp(rect.a.0, rect.b.0);
-            a.1 = a.1.clamp(rect.a.1, rect.b.1);
-            b.0 = b.0.clamp(rect.a.0, rect.b.0);
-            b.1 = b.1.clamp(rect.a.1, rect.b.1);
-        }
-
-        Some(Instance { a, b, ta, tb, col })
-    }
-}
-
 /// A pipeline for rendering text
-pub struct Pipeline {
+pub struct State {
     rasterer: Rasterer,
     #[allow(unused)]
     sb_align: bool,
     #[allow(unused)]
     hint: bool,
     config: Config,
-    atlas_pipe: atlases::Pipeline<Instance>,
     glyphs: HashMap<SpriteDescriptor, Sprite>,
     #[allow(clippy::type_complexity)]
-    prepare: Vec<(u32, (u32, u32), (u32, u32), Vec<u8>)>,
+    pub(super) prepare: Vec<(u32, bool, (u32, u32), (u32, u32), Vec<u8>)>,
     scale_cx: swash::scale::ScaleContext,
 }
 
-impl Pipeline {
-    pub fn new(
-        device: &wgpu::Device,
-        shaders: &ShaderManager,
-        bgl_common: &wgpu::BindGroupLayout,
-    ) -> Self {
-        let atlas_pipe = atlases::Pipeline::new(
-            device,
-            Some("text pipe"),
-            bgl_common,
-            512,
-            wgpu::TextureFormat::R8Unorm,
-            wgpu::VertexState {
-                module: &shaders.vert_glyph,
-                entry_point: Some("main"),
-                compilation_options: Default::default(),
-                buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: size_of::<Instance>() as wgpu::BufferAddress,
-                    step_mode: wgpu::VertexStepMode::Instance,
-                    attributes: &wgpu::vertex_attr_array![
-                        0 => Float32x2,
-                        1 => Float32x2,
-                        2 => Float32x2,
-                        3 => Float32x2,
-                        4 => Float32x4,
-                    ],
-                }],
-            },
-            wgpu::FragmentState {
-                module: &shaders.frag_glyph,
-                entry_point: Some("main"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: super::RENDER_TEX_FORMAT,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            },
-        );
-        Pipeline {
+impl State {
+    pub fn new() -> Self {
+        State {
             rasterer: Default::default(),
             sb_align: false,
             hint: false,
             config: Config::default(),
-            atlas_pipe,
             glyphs: Default::default(),
             prepare: Default::default(),
             scale_cx: Default::default(),
@@ -284,53 +203,9 @@ impl Pipeline {
         // NOTE: possibly this should force re-drawing of all glyphs, but for
         // now that is out of scope
     }
+}
 
-    /// Write to textures
-    pub fn prepare(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        self.atlas_pipe.prepare(device);
-
-        if !self.prepare.is_empty() {
-            log::trace!("prepare: uploading {} sprites", self.prepare.len());
-        }
-        for (atlas, origin, size, data) in self.prepare.drain(..) {
-            queue.write_texture(
-                wgpu::TexelCopyTextureInfo {
-                    texture: self.atlas_pipe.get_texture(atlas),
-                    mip_level: 0,
-                    origin: wgpu::Origin3d {
-                        x: origin.0,
-                        y: origin.1,
-                        z: 0,
-                    },
-                    aspect: wgpu::TextureAspect::All,
-                },
-                &data,
-                wgpu::TexelCopyBufferLayout {
-                    offset: 0,
-                    bytes_per_row: Some(size.0),
-                    rows_per_image: Some(size.1),
-                },
-                wgpu::Extent3d {
-                    width: size.0,
-                    height: size.1,
-                    depth_or_array_layers: 1,
-                },
-            );
-        }
-    }
-
-    /// Enqueue render commands
-    pub fn render<'a>(
-        &'a self,
-        window: &'a Window,
-        pass: usize,
-        rpass: &mut wgpu::RenderPass<'a>,
-        bg_common: &'a wgpu::BindGroup,
-    ) {
-        self.atlas_pipe
-            .render(&window.atlas, pass, rpass, bg_common);
-    }
-
+impl Pipeline {
     /// Raster a sequence of glyphs
     #[inline]
     fn raster_glyphs(
@@ -342,7 +217,7 @@ impl Pipeline {
         // NOTE: we only need the allocation and coordinates now; the
         // rendering could be offloaded (though this may not be useful).
 
-        match self.rasterer {
+        match self.text.rasterer {
             #[cfg(feature = "ab_glyph")]
             Rasterer::AbGlyph => self.raster_ab_glyph(face_id, dpem, &mut glyphs),
             Rasterer::Swash => self.raster_swash(face_id, dpem, &mut glyphs),
@@ -361,13 +236,15 @@ impl Pipeline {
         let face_store = fonts::library().get_face_store(face_id);
 
         for glyph in glyphs {
-            let desc = SpriteDescriptor::new(&self.config, face_id, glyph, dpem);
-            if self.glyphs.contains_key(&desc) {
+            let desc = SpriteDescriptor::new(&self.text.config, face_id, glyph, dpem);
+            if self.text.glyphs.contains_key(&desc) {
                 continue;
             }
 
-            let (mut x, y) = desc.fractional_position(&self.config);
-            if self.sb_align && desc.dpem(&self.config) >= self.config.subpixel_threshold {
+            let (mut x, y) = desc.fractional_position(&self.text.config);
+            if self.text.sb_align
+                && desc.dpem(&self.text.config) >= self.text.config.subpixel_threshold
+            {
                 let sf = face_store.face_ref().scale_by_dpem(dpem);
                 x -= sf.h_side_bearing(glyph.id);
             }
@@ -381,7 +258,7 @@ impl Pipeline {
             };
             let Some(outline) = font.outline_glyph(glyph) else {
                 log::warn!("raster_glyphs failed: unable to outline glyph");
-                self.glyphs.insert(desc, Sprite::default());
+                self.text.glyphs.insert(desc, Sprite::default());
                 continue;
             };
 
@@ -391,7 +268,7 @@ impl Pipeline {
             let size = (u32::conv_trunc(size.x), u32::conv_trunc(size.y));
             if size.0 == 0 || size.1 == 0 {
                 // Ignore this common error
-                self.glyphs.insert(desc, Sprite::default());
+                self.text.glyphs.insert(desc, Sprite::default());
                 continue;
             }
 
@@ -401,16 +278,17 @@ impl Pipeline {
                 data[usize::conv((y * size.0) + x)] = (c * 256.0) as u8;
             });
 
-            let Ok((atlas, _, origin, tex_quad)) = self.atlas_pipe.allocate(size) else {
+            let Ok((atlas, _, origin, tex_quad)) = self.atlas_a.allocate(size) else {
                 log::warn!("raster_glyphs failed: unable to allocate");
-                self.glyphs.insert(desc, Sprite::default());
+                self.text.glyphs.insert(desc, Sprite::default());
                 continue;
             };
 
-            self.prepare.push((atlas, origin, size, data));
+            self.text.prepare.push((atlas, false, origin, size, data));
 
-            self.glyphs.insert(desc, Sprite {
+            self.text.glyphs.insert(desc, Sprite {
                 atlas,
+                color: false,
                 valid: true,
                 size: Vec2(size.0.cast(), size.1.cast()),
                 offset: Vec2(offset.0.cast(), offset.1.cast()),
@@ -434,22 +312,23 @@ impl Pipeline {
         let synthesis = face.synthesis();
 
         let mut scaler = self
+            .text
             .scale_cx
             .builder(font)
             .size(dpem)
-            .hint(self.hint)
+            .hint(self.text.hint)
             .variations(
                 synthesis
                     .variation_settings()
-                    .into_iter()
+                    .iter()
                     .map(|(tag, value)| (swash::tag_from_bytes(&tag.to_be_bytes()), *value)),
             )
             .build();
 
         let sources = &[
             // TODO: Support coloured rendering? These can replace Source::Bitmap
-            // Source::ColorOutline(0),
-            // Source::ColorBitmap(StrikeWith::BestFit),
+            Source::ColorOutline(0),
+            Source::ColorBitmap(StrikeWith::BestFit),
             Source::Bitmap(StrikeWith::BestFit),
             Source::Outline,
         ];
@@ -462,20 +341,20 @@ impl Pipeline {
         let embolden = if synthesis.embolden() { dpem * 0.02 } else { 0.0 };
 
         for glyph in glyphs {
-            let desc = SpriteDescriptor::new(&self.config, face_id, glyph, dpem);
-            if self.glyphs.contains_key(&desc) {
+            let desc = SpriteDescriptor::new(&self.text.config, face_id, glyph, dpem);
+            if self.text.glyphs.contains_key(&desc) {
                 continue;
             }
 
             let Some(image) = Render::new(sources)
                 .format(Format::Alpha)
-                .offset(desc.fractional_position(&self.config).into())
+                .offset(desc.fractional_position(&self.text.config).into())
                 .transform(transform)
                 .embolden(embolden)
-                .render(&mut scaler, desc.glyph().0.into())
+                .render(&mut scaler, desc.glyph().0)
             else {
                 log::warn!("raster_glyphs failed: unable to construct renderer");
-                self.glyphs.insert(desc, Sprite::default());
+                self.text.glyphs.insert(desc, Sprite::default());
                 continue;
             };
 
@@ -483,22 +362,25 @@ impl Pipeline {
             let size = (image.placement.width, image.placement.height);
             if size.0 == 0 || size.1 == 0 {
                 // Ignore this common error
-                self.glyphs.insert(desc, Sprite::default());
+                self.text.glyphs.insert(desc, Sprite::default());
                 continue;
             }
 
             let sprite = match image.content {
                 Content::Mask => {
-                    let Ok((atlas, _, origin, tex_quad)) = self.atlas_pipe.allocate(size) else {
+                    let Ok((atlas, _, origin, tex_quad)) = self.atlas_a.allocate(size) else {
                         log::warn!("raster_glyphs failed: unable to allocate");
-                        self.glyphs.insert(desc, Sprite::default());
+                        self.text.glyphs.insert(desc, Sprite::default());
                         continue;
                     };
 
-                    self.prepare.push((atlas, origin, size, image.data));
+                    self.text
+                        .prepare
+                        .push((atlas, false, origin, size, image.data));
 
                     Sprite {
                         atlas,
+                        color: false,
                         valid: true,
                         size: Vec2(size.0.cast(), size.1.cast()),
                         offset: Vec2(offset.0.cast(), offset.1.cast()),
@@ -506,29 +388,82 @@ impl Pipeline {
                     }
                 }
                 Content::SubpixelMask => unimplemented!(),
-                Content::Color => unimplemented!(),
+                Content::Color => {
+                    let Ok((atlas, _, origin, tex_quad)) = self.atlas_rgba.allocate(size) else {
+                        log::warn!("raster_glyphs failed: unable to allocate");
+                        self.text.glyphs.insert(desc, Sprite::default());
+                        continue;
+                    };
+
+                    assert!(atlas & 0x8000_0000 == 0);
+                    let atlas = atlas | 0x8000_0000;
+
+                    self.text
+                        .prepare
+                        .push((atlas, true, origin, size, image.data));
+
+                    Sprite {
+                        atlas,
+                        color: true,
+                        valid: true,
+                        size: Vec2(size.0.cast(), size.1.cast()),
+                        offset: Vec2(offset.0.cast(), offset.1.cast()),
+                        tex_quad,
+                    }
+                }
             };
 
-            self.glyphs.insert(desc, sprite);
+            self.text.glyphs.insert(desc, sprite);
         }
     }
 }
 
-/// Per-window state
-#[derive(Debug, Default)]
-pub struct Window {
-    atlas: atlases::Window<Instance>,
-}
-
 impl Window {
-    /// Prepare vertex buffers
-    pub fn write_buffers(
+    fn push_sprite(
         &mut self,
-        device: &wgpu::Device,
-        staging_belt: &mut wgpu::util::StagingBelt,
-        encoder: &mut wgpu::CommandEncoder,
+        pass: PassId,
+        rect: Quad,
+        col: Rgba,
+        glyph_pos: Vec2,
+        sprite: &Sprite,
     ) {
-        self.atlas.write_buffers(device, staging_belt, encoder);
+        let mut a = rect.a + glyph_pos.floor() + sprite.offset;
+        let mut b = a + sprite.size;
+
+        if !(sprite.is_valid()
+            && a.0 < rect.b.0
+            && a.1 < rect.b.1
+            && b.0 > rect.a.0
+            && b.1 > rect.a.1)
+        {
+            return;
+        }
+
+        let (mut ta, mut tb) = (sprite.tex_quad.a, sprite.tex_quad.b);
+        if !a.ge(rect.a) || !b.le(rect.b) {
+            let size_inv = 1.0 / (b - a);
+            let fa0 = 0f32.max((rect.a.0 - a.0) * size_inv.0);
+            let fa1 = 0f32.max((rect.a.1 - a.1) * size_inv.1);
+            let fb0 = 1f32.min((rect.b.0 - a.0) * size_inv.0);
+            let fb1 = 1f32.min((rect.b.1 - a.1) * size_inv.1);
+
+            let ts = tb - ta;
+            tb = ta + ts * Vec2(fb0, fb1);
+            ta += ts * Vec2(fa0, fa1);
+
+            a.0 = a.0.clamp(rect.a.0, rect.b.0);
+            a.1 = a.1.clamp(rect.a.1, rect.b.1);
+            b.0 = b.0.clamp(rect.a.0, rect.b.0);
+            b.1 = b.1.clamp(rect.a.1, rect.b.1);
+        }
+
+        if !sprite.color {
+            let instance = InstanceA { a, b, ta, tb, col };
+            self.atlas_a.rect(pass, sprite.atlas, instance);
+        } else {
+            let instance = InstanceRgba { a, b, ta, tb };
+            self.atlas_rgba.rect(pass, sprite.atlas, instance);
+        }
     }
 
     pub fn text(
@@ -545,24 +480,18 @@ impl Window {
             let face = run.face_id();
             let dpem = run.dpem();
             for glyph in run.glyphs() {
-                let desc = SpriteDescriptor::new(&pipe.config, face, glyph, dpem);
-                let sprite = match pipe.glyphs.get(&desc) {
+                let desc = SpriteDescriptor::new(&pipe.text.config, face, glyph, dpem);
+                let sprite = match pipe.text.glyphs.get(&desc) {
                     Some(sprite) => sprite,
                     None => {
                         pipe.raster_glyphs(face, dpem, run.glyphs());
-                        match pipe.glyphs.get(&desc) {
+                        match pipe.text.glyphs.get(&desc) {
                             Some(sprite) => sprite,
                             None => continue,
                         }
                     }
                 };
-                if sprite.is_valid() {
-                    let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
-                    let b = a + sprite.size;
-                    if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
-                        self.atlas.rect(pass, sprite.atlas, instance);
-                    }
-                }
+                self.push_sprite(pass, rect, col, glyph.position.into(), sprite);
             }
         }
     }
@@ -595,24 +524,18 @@ impl Window {
             let face = run.face_id();
             let dpem = run.dpem();
             let for_glyph = |glyph: Glyph, _: usize, _: ()| {
-                let desc = SpriteDescriptor::new(&pipe.config, face, glyph, dpem);
-                let sprite = match pipe.glyphs.get(&desc) {
+                let desc = SpriteDescriptor::new(&pipe.text.config, face, glyph, dpem);
+                let sprite = match pipe.text.glyphs.get(&desc) {
                     Some(sprite) => sprite,
                     None => {
                         pipe.raster_glyphs(face, dpem, run.glyphs());
-                        match pipe.glyphs.get(&desc) {
+                        match pipe.text.glyphs.get(&desc) {
                             Some(sprite) => sprite,
                             None => return,
                         }
                     }
                 };
-                if sprite.is_valid() {
-                    let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
-                    let b = a + sprite.size;
-                    if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
-                        self.atlas.rect(pass, sprite.atlas, instance);
-                    }
-                }
+                self.push_sprite(pass, rect, col, glyph.position.into(), sprite);
             };
 
             let for_rect = |x1, x2, y: f32, h: f32, _, _| {
@@ -656,24 +579,18 @@ impl Window {
             let face = run.face_id();
             let dpem = run.dpem();
             let for_glyph = |glyph: Glyph, _, col: Rgba| {
-                let desc = SpriteDescriptor::new(&pipe.config, face, glyph, dpem);
-                let sprite = match pipe.glyphs.get(&desc) {
+                let desc = SpriteDescriptor::new(&pipe.text.config, face, glyph, dpem);
+                let sprite = match pipe.text.glyphs.get(&desc) {
                     Some(sprite) => sprite,
                     None => {
                         pipe.raster_glyphs(face, dpem, run.glyphs());
-                        match pipe.glyphs.get(&desc) {
+                        match pipe.text.glyphs.get(&desc) {
                             Some(sprite) => sprite,
                             None => return,
                         }
                     }
                 };
-                if sprite.is_valid() {
-                    let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
-                    let b = a + sprite.size;
-                    if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
-                        self.atlas.rect(pass, sprite.atlas, instance);
-                    }
-                }
+                self.push_sprite(pass, rect, col, glyph.position.into(), sprite);
             };
 
             let for_rect = |x1, x2, y: f32, h: f32, _, col: Rgba| {

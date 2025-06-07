@@ -49,7 +49,6 @@ pub struct DrawPipe<C> {
     flat_round: flat_round::Pipeline,
     round_2col: round_2col::Pipeline,
     custom: C,
-    pub(crate) text: text_pipe::Pipeline,
 }
 
 kas::impl_scope! {
@@ -65,6 +64,5 @@ kas::impl_scope! {
         flat_round: flat_round::Window,
         round_2col: round_2col::Window,
         custom: CW,
-        pub(crate) text: text_pipe::Window,
     }
 }

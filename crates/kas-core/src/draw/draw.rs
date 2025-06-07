@@ -113,7 +113,7 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
     /// Case `class == PassType::Overlay`: the new pass is derived from the
     /// base pass (i.e. the window). Draw operations still happen after those in
     /// `parent_pass`.
-    pub fn new_pass(&mut self, rect: Rect, offset: Offset, class: PassType) -> DrawIface<DS> {
+    pub fn new_pass(&mut self, rect: Rect, offset: Offset, class: PassType) -> DrawIface<'_, DS> {
         let pass = self.draw.new_pass(self.pass, rect, offset, class);
         DrawIface {
             draw: &mut *self.draw,

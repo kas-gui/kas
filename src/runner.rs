@@ -207,13 +207,13 @@ where
 {
     /// Access config
     #[inline]
-    pub fn config(&self) -> Ref<Config> {
+    pub fn config(&self) -> Ref<'_, Config> {
         self.state.config().borrow()
     }
 
     /// Access config mutably
     #[inline]
-    pub fn config_mut(&mut self) -> RefMut<Config> {
+    pub fn config_mut(&mut self) -> RefMut<'_, Config> {
         self.state.config().borrow_mut()
     }
 

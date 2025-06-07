@@ -117,7 +117,7 @@ impl<'a> DrawCx<'a> {
     }
 
     /// Access a [`SizeCx`]
-    pub fn size_cx(&mut self) -> SizeCx {
+    pub fn size_cx(&mut self) -> SizeCx<'_> {
         SizeCx::new(self.h.components().0)
     }
 
@@ -145,7 +145,7 @@ impl<'a> DrawCx<'a> {
     /// Access the low-level draw device (implementation type)
     ///
     /// The implementing type must be specified. See [`DrawIface::downcast_from`].
-    pub fn draw_iface<DS: DrawSharedImpl>(&mut self) -> Option<DrawIface<DS>> {
+    pub fn draw_iface<DS: DrawSharedImpl>(&mut self) -> Option<DrawIface<'_, DS>> {
         DrawIface::downcast_from(self.draw_device())
     }
 
