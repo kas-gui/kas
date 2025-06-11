@@ -26,7 +26,7 @@ mod widget_derive;
 
 /// Implement `Default`
 ///
-/// See [`impl_tools::impl_default`](https://docs.rs/impl-tools/0.6/impl_tools/attr.impl_default.html)
+/// See [`impl_tools::impl_default`](https://docs.rs/impl-tools/latest/impl_tools/attr.impl_default.html)
 /// for full documentation.
 #[proc_macro_attribute]
 #[proc_macro_error]
@@ -45,7 +45,7 @@ pub fn impl_default(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 /// A variant of the standard `derive` macro
 ///
-/// See [`impl_tools::autoimpl`](https://docs.rs/impl-tools/0.6/impl_tools/attr.autoimpl.html)
+/// See [`impl_tools::autoimpl`](https://docs.rs/impl-tools/latest/impl_tools/attr.autoimpl.html)
 /// for full documentation.
 ///
 /// The following traits are supported:
@@ -131,7 +131,7 @@ fn find_attr(path: &syn::Path) -> Option<&'static dyn scope::ScopeAttr> {
 /// -   [`#[widget]`](macro@widget): implement `kas::Widget` trait family
 ///
 /// Note: matching these macros within `impl_scope!` does not use path
-/// resolution. Using `#[impl_tools::impl_default]` would resolve the variant
+/// resolution. Using `#[kas_macros::impl_default]` would resolve the variant
 /// of this macro which *doesn't support* field initializers.
 #[proc_macro_error]
 #[proc_macro]

@@ -30,7 +30,7 @@ proc-macro-error2 = { version = "2.0", default-features = false }
 bitflags = "2.3.3"
 
 [dependencies.impl-tools-lib]
-version = "0.11.0" # version used in doc links
+version = "0.11.2" # version used in doc links
 
 [dependencies.syn]
 version = "2.0.22"
