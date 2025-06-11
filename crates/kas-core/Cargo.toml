@@ -1,15 +1,16 @@
 [package]
 name = "kas-core"
 version = "0.15.0"
-authors = ["Diggory Hardy <git@dhardy.name>"]
-edition = "2021"
-license = "Apache-2.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
 description = "KAS GUI / core"
 readme = "README.md"
 documentation = "https://docs.rs/kas-core/"
 keywords = ["gui"]
 categories = ["gui"]
-repository = "https://github.com/kas-gui/kas"
+repository.workspace = true
+rust-version.workspace = true
 exclude = ["/screenshots"]
 
 [package.metadata.docs.rs]
