@@ -232,7 +232,8 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
     {
         let mut menu = Vec::new();
         f(SubMenuBuilder { menu: &mut menu });
-        self.menu.push(Box::new(SubMenu::new(label, menu, dir)));
+        self.menu
+            .push(Box::new(SubMenu::<false, _>::new(label, menu, dir)));
     }
 
     /// Append a [`SubMenu`], chain style

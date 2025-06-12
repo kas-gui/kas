@@ -19,9 +19,8 @@ mod SubMenu {
     #[widget {
         layout = self.label;
     }]
-    pub struct SubMenu<Data> {
+    pub struct SubMenu<const TOP_LEVEL: bool, Data> {
         core: widget_core!(),
-        pub(crate) navigable: bool,
         #[widget(&())]
         label: AccessLabel,
         // mark is not used in layout but may be used by sub_items
@@ -51,7 +50,6 @@ mod SubMenu {
         ) -> Self {
             SubMenu {
                 core: Default::default(),
-                navigable: true,
                 label: AccessLabel::new(label).with_class(TextClass::MenuLabel),
                 mark: Mark::new(MarkStyle::Point(direction)),
                 popup: Popup::new(MenuView::new(list), direction),
@@ -126,7 +124,7 @@ mod SubMenu {
         type Data = Data;
 
         fn navigable(&self) -> bool {
-            self.navigable
+            !TOP_LEVEL
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> IsUsed {
