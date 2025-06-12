@@ -41,7 +41,9 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 || *path == parse_quote! { kas::Widget }
                 || *path == parse_quote! { Widget }
             {
-                widget_impl = Some(index);
+                if widget_impl.is_none() {
+                    widget_impl = Some(index);
+                }
 
                 for item in &impl_.items {
                     if let ImplItem::Fn(ref item) = item {

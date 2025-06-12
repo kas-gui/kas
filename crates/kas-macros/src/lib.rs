@@ -250,9 +250,8 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// Implementations of these traits are generated if missing or augmented with
 /// missing method implementations.
 ///
-/// This macro may inject methods into existing [`Layout`] / [`Tile`] / [`Events`] / [`Widget`] implementations.
-/// This is used both to provide default implementations which could not be
-/// written on the trait and to implement properties like `navigable`.
+/// This macro may inject methods into existing [`Layout`] / [`Tile`] /
+/// [`Events`] / [`Widget`] implementations.
 /// (In the case of multiple implementations of the same trait, as used for
 /// specialization, only the first implementation of each trait is extended.)
 ///
