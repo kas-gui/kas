@@ -238,7 +238,8 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 
 /// Attribute to implement the `kas::Widget` family of traits
 ///
-/// This may *only* be used within the [`impl_scope!`] macro.
+/// This may *only* be used within the [`macro@impl_self`], [`impl_scope!`]
+/// and [`impl_anon!`] macros.
 ///
 /// Assists implementation of the [`Widget`], [`Events`], [`Layout`] and [`Tile`] traits.
 /// Implementations of these traits are generated if missing or augmented with
@@ -336,7 +337,8 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// [`Frame`](https://docs.rs/kas-widgets/latest/kas_widgets/struct.Frame.html) widget:
 ///
 /// ```ignore
-/// impl_scope! {
+/// #[impl_self]
+/// mod Frame {
 ///     /// A frame around content
 ///     #[derive(Clone, Default)]
 ///     #[widget{
@@ -367,7 +369,8 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// It is possible to derive from a field which is itself a widget, e.g.:
 /// ```ignore
-/// impl_scope! {
+/// #[impl_self]
+/// mod ScrollBarRegion {
 ///     #[autoimpl(Deref, DerefMut using self.0)]
 ///     #[derive(Clone, Default)]
 ///     #[widget{ derive = self.0; }]
@@ -429,7 +432,7 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
-    emit_call_site_error!("must be used within impl_scope! { ... }");
+    emit_call_site_error!("must be used within scope of #[impl_self], impl_scope! or impl_anon!");
     item
 }
 
@@ -496,8 +499,8 @@ pub fn impl_anon(input: TokenStream) -> TokenStream {
 
 /// Index of a child widget
 ///
-/// This macro is usable only within an [`impl_scope!`]  macro using the
-/// [`widget`](macro@widget) attribute.
+/// This macro is usable only within an [`macro@impl_self`], [`impl_scope!`] or
+/// [`impl_anon!`] macro using the [`macro@widget`] attribute.
 ///
 /// Example usage: `widget_index![self.a]`. If `a` is a child widget (a field
 /// marked with the `#[widget]` attribute), then this expands to the child
@@ -517,7 +520,8 @@ pub fn widget_index(input: TokenStream) -> TokenStream {
 /// to implement method [`Layout::rect`]. This macro assigns to that field.
 ///
 /// This macro is usable only within the definition of `Layout::set_rect` within
-/// an [`impl_scope!`] macro using the [`widget`](macro@widget) attribute.
+/// an [`macro@impl_self`], [`impl_scope!`] or [`impl_anon!`] macro using the
+/// [`macro@widget`] attribute.
 ///
 /// The method `Layout::rect` will be generated if this macro is used by the
 /// widget, otherwise a definition of the method must be provided.

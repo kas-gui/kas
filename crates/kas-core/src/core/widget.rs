@@ -283,8 +283,9 @@ pub enum NavAdvance {
 /// # Implementing Widget
 ///
 /// To implement a widget, use the [`#widget`] macro within an
-/// [`impl_scope`](macros::impl_scope). **This is the only supported method of
-/// implementing `Widget`.**
+/// [`impl_self`](macros::impl_self), [`impl_scope!`](macros::impl_scope) or
+/// [`impl_anon!`](macros::impl_anon) macro.
+/// **This is the only supported method of implementing `Widget`.**
 ///
 /// Explicit (partial) implementations of [`Widget`], [`Layout`], [`Tile`] and [`Events`]
 /// are optional. The [`#widget`] macro completes implementations.

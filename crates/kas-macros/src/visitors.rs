@@ -28,7 +28,7 @@ impl Parse for UnscopedInput {
             let _ = input.parse::<kw::error_emitted>()?;
             Ok(UnscopedInput(input.parse()?))
         } else {
-            let msg = "usage invalid outside of `impl_scope!` macro with `#[widget]` attribute";
+            let msg = "usage invalid outside of #[impl_self], impl_scope! or impl_anon! macro with #[widget] attribute";
             Err(Error::new(Span::call_site(), msg))
         }
     }
