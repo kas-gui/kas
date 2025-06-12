@@ -29,7 +29,8 @@ impl State {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod Stack {
     /// A stack of widgets
     ///
     /// A stack consists a set of child widgets, "pages", all of equal size.
@@ -42,7 +43,6 @@ impl_scope! {
     /// By default, all pages are configured and sized. To avoid configuring
     /// hidden pages (thus preventing these pages from affecting size)
     /// call [`Self::set_size_limit`] or [`Self::with_size_limit`].
-    #[impl_default]
     #[derive(Clone, Debug)]
     #[widget]
     pub struct Stack<W: Widget> {
@@ -50,9 +50,23 @@ impl_scope! {
         align_hints: AlignHints,
         widgets: Vec<(W, State)>,
         active: usize,
-        size_limit: usize = usize::MAX,
+        size_limit: usize,
         next: usize,
         id_map: HashMap<usize, usize>, // map key of Id to index
+    }
+
+    impl Default for Self {
+        fn default() -> Self {
+            Stack {
+                core: Default::default(),
+                align_hints: AlignHints::NONE,
+                widgets: Vec::new(),
+                active: 0,
+                size_limit: usize::MAX,
+                next: 0,
+                id_map: HashMap::new(),
+            }
+        }
     }
 
     impl Widget for Self {
@@ -141,7 +155,10 @@ impl_scope! {
         fn make_child_id(&mut self, index: usize) -> Id {
             if let Some((child, state)) = self.widgets.get(index) {
                 // Use the widget's existing identifier, if valid
-                if state.is_configured() && child.id_ref().is_valid() && self.id_ref().is_ancestor_of(child.id_ref()) {
+                if state.is_configured()
+                    && child.id_ref().is_valid()
+                    && self.id_ref().is_ancestor_of(child.id_ref())
+                {
                     if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
                         if let Entry::Vacant(entry) = self.id_map.entry(key) {
                             entry.insert(index);
