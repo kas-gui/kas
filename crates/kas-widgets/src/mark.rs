@@ -9,7 +9,8 @@ use kas::prelude::*;
 use kas::theme::MarkStyle;
 use std::fmt::Debug;
 
-impl_scope! {
+#[impl_self]
+mod Mark {
     /// A mark
     ///
     /// These are small theme-defined "glyphs"; see [`MarkStyle`]. They may be
@@ -56,7 +57,8 @@ impl_scope! {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod MarkButton {
     /// A mark which is also a button
     ///
     /// A clickable button over a [`Mark`].

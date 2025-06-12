@@ -9,7 +9,8 @@ use crate::{Button, CheckButton, ComboBox, Spinner};
 use kas::config::{ConfigMsg, EventConfigMsg, MousePan};
 use kas::prelude::*;
 
-impl_scope! {
+#[impl_self]
+mod EventConfig {
     /// A widget for configuring event config
     ///
     /// This only needs to be added to a UI to be functional.
@@ -117,27 +118,41 @@ impl_scope! {
                 menu_delay: Spinner::new(0..=5_000, |cx, _| cx.config().base().event.menu_delay_ms)
                     .with_step(50)
                     .with_msg(EventConfigMsg::MenuDelay),
-                touch_select_delay: Spinner::new(0..=5_000, |cx: &ConfigCx, _| cx.config().base().event.touch_select_delay_ms)
-                    .with_step(50)
-                    .with_msg(EventConfigMsg::TouchSelectDelay),
-                kinetic_timeout: Spinner::new(0..=500, |cx: &ConfigCx, _| cx.config().base().event.kinetic_timeout_ms)
-                    .with_step(5)
-                    .with_msg(EventConfigMsg::KineticTimeout),
-                kinetic_decay_mul: Spinner::new(0.0..=1.0, |cx: &ConfigCx, _| cx.config().base().event.kinetic_decay_mul)
-                    .with_step(0.0625)
-                    .with_msg(EventConfigMsg::KineticDecayMul),
-                kinetic_decay_sub: Spinner::new(0.0..=1.0e4, |cx: &ConfigCx, _| cx.config().base().event.kinetic_decay_sub)
-                    .with_step(10.0)
-                    .with_msg(EventConfigMsg::KineticDecaySub),
-                kinetic_grab_sub: Spinner::new(0.0..=1.0e4, |cx: &ConfigCx, _| cx.config().base().event.kinetic_grab_sub)
-                    .with_step(5.0)
-                    .with_msg(EventConfigMsg::KineticGrabSub),
-                scroll_dist_em: Spinner::new(0.125..=125.0, |cx: &ConfigCx, _| cx.config().base().event.scroll_dist_em)
-                    .with_step(0.125)
-                    .with_msg(EventConfigMsg::ScrollDistEm),
-                pan_dist_thresh: Spinner::new(0.25..=25.0, |cx: &ConfigCx, _| cx.config().base().event.pan_dist_thresh)
-                    .with_step(0.25)
-                    .with_msg(EventConfigMsg::PanDistThresh),
+                touch_select_delay: Spinner::new(0..=5_000, |cx: &ConfigCx, _| {
+                    cx.config().base().event.touch_select_delay_ms
+                })
+                .with_step(50)
+                .with_msg(EventConfigMsg::TouchSelectDelay),
+                kinetic_timeout: Spinner::new(0..=500, |cx: &ConfigCx, _| {
+                    cx.config().base().event.kinetic_timeout_ms
+                })
+                .with_step(5)
+                .with_msg(EventConfigMsg::KineticTimeout),
+                kinetic_decay_mul: Spinner::new(0.0..=1.0, |cx: &ConfigCx, _| {
+                    cx.config().base().event.kinetic_decay_mul
+                })
+                .with_step(0.0625)
+                .with_msg(EventConfigMsg::KineticDecayMul),
+                kinetic_decay_sub: Spinner::new(0.0..=1.0e4, |cx: &ConfigCx, _| {
+                    cx.config().base().event.kinetic_decay_sub
+                })
+                .with_step(10.0)
+                .with_msg(EventConfigMsg::KineticDecaySub),
+                kinetic_grab_sub: Spinner::new(0.0..=1.0e4, |cx: &ConfigCx, _| {
+                    cx.config().base().event.kinetic_grab_sub
+                })
+                .with_step(5.0)
+                .with_msg(EventConfigMsg::KineticGrabSub),
+                scroll_dist_em: Spinner::new(0.125..=125.0, |cx: &ConfigCx, _| {
+                    cx.config().base().event.scroll_dist_em
+                })
+                .with_step(0.125)
+                .with_msg(EventConfigMsg::ScrollDistEm),
+                pan_dist_thresh: Spinner::new(0.25..=25.0, |cx: &ConfigCx, _| {
+                    cx.config().base().event.pan_dist_thresh
+                })
+                .with_step(0.25)
+                .with_msg(EventConfigMsg::PanDistThresh),
                 mouse_pan: ComboBox::new_msg(
                     pan_options,
                     |cx: &ConfigCx, _| cx.config().base().event.mouse_pan,
