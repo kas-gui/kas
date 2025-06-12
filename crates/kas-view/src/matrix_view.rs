@@ -63,7 +63,8 @@ impl crate::DataKey for MatrixIndex {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod MatrixView {
     /// View controller for 2D indexable data (matrix)
     ///
     /// This widget generates a view over a list of data items via a
@@ -280,7 +281,12 @@ impl_scope! {
         }
 
         // If full, call cx.update on all view widgets
-        fn update_widgets(&mut self, cx: &mut ConfigCx, data: &C::Data, full: bool) -> PositionSolver {
+        fn update_widgets(
+            &mut self,
+            cx: &mut ConfigCx,
+            data: &C::Data,
+            full: bool,
+        ) -> PositionSolver {
             let time = Instant::now();
 
             let offset = self.scroll_offset();
@@ -288,17 +294,26 @@ impl_scope! {
             let data_len = self.clerk.len(data);
             let col_len = data_len.col.min(self.alloc_len.cols.cast());
             let row_len = data_len.row.min(self.alloc_len.rows.cast());
-            let first_col = u32::conv(u64::conv(offset.0) / u64::conv(skip.0))
-                .min(data_len.col - col_len);
-            let first_row = u32::conv(u64::conv(offset.1) / u64::conv(skip.1))
-                .min(data_len.row - row_len);
-            self.cur_len = MatrixIndex { col: col_len.cast(), row: row_len.cast() };
+            let first_col =
+                u32::conv(u64::conv(offset.0) / u64::conv(skip.0)).min(data_len.col - col_len);
+            let first_row =
+                u32::conv(u64::conv(offset.1) / u64::conv(skip.1)).min(data_len.row - row_len);
+            self.cur_len = MatrixIndex {
+                col: col_len.cast(),
+                row: row_len.cast(),
+            };
             debug_assert!(self.num_children() <= self.widgets.len());
 
-            let start = MatrixIndex { col: first_col, row: first_row };
+            let start = MatrixIndex {
+                col: first_col,
+                row: first_row,
+            };
             self.first_data = start;
 
-            let end = MatrixIndex { col: first_col + col_len, row: first_row + row_len };
+            let end = MatrixIndex {
+                col: first_col + col_len,
+                row: first_row + row_len,
+            };
             self.clerk.prepare_range(cx, self.id(), data, start..end);
 
             let solver = self.position_solver();
@@ -348,8 +363,8 @@ impl_scope! {
         fn update_content_size(&mut self, cx: &mut ConfigCx) {
             let view_size = self.rect().size - self.frame_size;
             let skip = self.child_size + self.child_inter_margin;
-            let content_size = (skip.cwise_mul(self.data_len) - self.child_inter_margin)
-                .max(Size::ZERO);
+            let content_size =
+                (skip.cwise_mul(self.data_len) - self.child_inter_margin).max(Size::ZERO);
             let action = self.scroll.set_sizes(view_size, content_size);
             cx.action(self, action);
         }
@@ -418,7 +433,8 @@ impl_scope! {
             }
             child_size_min = child_size_min.max(1);
             self.child_size_min.set_component(axis, child_size_min);
-            self.child_size_ideal.set_component(axis, rules.ideal_size().max(sizer.min_element_size()));
+            self.child_size_ideal
+                .set_component(axis, rules.ideal_size().max(sizer.min_element_size()));
 
             let m = rules.margins();
             self.child_inter_margin.set_component(
@@ -467,11 +483,9 @@ impl_scope! {
                 log::debug!(
                     "set_rect: allocating widgets (old len = {avail_widgets}, new = {req_widgets})",
                 );
-                self.widgets.resize_with(req_widgets, || {
-                    WidgetData {
-                        key: None,
-                        widget: self.driver.make(&C::Key::default()),
-                    }
+                self.widgets.resize_with(req_widgets, || WidgetData {
+                    key: None,
+                    widget: self.driver.make(&C::Key::default()),
                 });
 
                 cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
@@ -492,12 +506,14 @@ impl_scope! {
                 let ri = self.first_data.row + rn;
                 for cn in 0..col_len {
                     let ci = self.first_data.col + cn;
-                    let i = usize::conv(ci % col_len) + usize::conv(ri % row_len) * usize::conv(col_len);
+                    let i = usize::conv(ci % col_len)
+                        + usize::conv(ri % row_len) * usize::conv(col_len);
 
                     let w = &mut self.widgets[i];
                     if w.key.is_some() {
                         let pos = pos_start + skip.cwise_mul(Size(ci.cast(), ri.cast()));
-                        w.widget.set_rect(cx, Rect::new(pos, child_size), self.align_hints);
+                        w.widget
+                            .set_rect(cx, Rect::new(pos, child_size), self.align_hints);
                     }
                 }
             }
@@ -530,7 +546,10 @@ impl_scope! {
             usize::conv(self.cur_len.col) * usize::conv(self.cur_len.row)
         }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
-            self.widgets.get(index).filter(|w| w.key.is_some()).map(|w| w.widget.as_tile())
+            self.widgets
+                .get(index)
+                .filter(|w| w.key.is_some())
+                .map(|w| w.widget.as_tile())
         }
         fn find_child_index(&self, id: &Id) -> Option<usize> {
             let key = C::Key::reconstruct_key(self.id_ref(), id);
@@ -578,11 +597,9 @@ impl_scope! {
                 self.child_size = Size::splat(1); // hack: avoid div by 0
 
                 let len = self.ideal_len.cols * self.ideal_len.rows;
-                self.widgets.resize_with(len.cast(), || {
-                    WidgetData {
-                        key: None,
-                        widget: self.driver.make(&C::Key::default()),
-                    }
+                self.widgets.resize_with(len.cast(), || WidgetData {
+                    key: None,
+                    widget: self.driver.make(&C::Key::default()),
                 });
                 self.alloc_len = self.ideal_len;
             }
@@ -679,8 +696,8 @@ impl_scope! {
                         Unused
                     };
                 }
-                Event::PressStart { ref press } if
-                    press.is_primary() && cx.config().event().mouse_nav_focus() =>
+                Event::PressStart { ref press }
+                    if press.is_primary() && cx.config().event().mouse_nav_focus() =>
                 {
                     if let Some(index) = cx.last_child() {
                         self.press_target = self.widgets[index].key.clone().map(|k| (index, k));
@@ -694,7 +711,9 @@ impl_scope! {
 
                     // Press may also be grabbed by scroll component (replacing
                     // this). Either way we can select on PressEnd.
-                    press.grab(self.id(), kas::event::GrabMode::Click).complete(cx)
+                    press
+                        .grab(self.id(), kas::event::GrabMode::Click)
+                        .complete(cx)
                 }
                 Event::PressEnd { ref press, success } if press.is_primary() => {
                     if let Some((index, ref key)) = self.press_target {
@@ -718,7 +737,9 @@ impl_scope! {
             };
 
             let offset = self.scroll.offset();
-            is_used |= self.scroll.scroll_by_event(cx, event, self.id(), self.rect());
+            is_used |= self
+                .scroll
+                .scroll_by_event(cx, event, self.id(), self.rect());
             if offset != self.scroll.offset() {
                 // We may process multiple 'moved' events per frame; TIMER_UPDATE_WIDGETS will only
                 // be processed once per frame.
@@ -737,7 +758,8 @@ impl_scope! {
                 };
             }
 
-            self.clerk.handle_messages(cx, self.id(), data, opt_key.as_ref());
+            self.clerk
+                .handle_messages(cx, self.id(), data, opt_key.as_ref());
 
             if let Some(kas::messages::Select) = cx.try_pop() {
                 let key = match opt_key {
@@ -745,7 +767,7 @@ impl_scope! {
                     None => match self.press_target.as_ref() {
                         Some((_, k)) => k.clone(),
                         None => return,
-                    }
+                    },
                 };
 
                 match self.sel_mode {
@@ -833,7 +855,10 @@ impl_scope! {
                         if cell.col + 1 < len.col {
                             cell.col += 1;
                         } else if cell.row + 1 < len.row {
-                            cell = MatrixIndex { col: 0, row: cell.row + 1 };
+                            cell = MatrixIndex {
+                                col: 0,
+                                row: cell.row + 1,
+                            };
                         } else {
                             return None;
                         }
@@ -841,7 +866,10 @@ impl_scope! {
                         if cell.col > 0 {
                             cell.col -= 1;
                         } else if cell.row > 0 {
-                            cell = MatrixIndex { col: len.col - 1, row: cell.row - 1 };
+                            cell = MatrixIndex {
+                                col: len.col - 1,
+                                row: cell.row - 1,
+                            };
                         } else {
                             return None;
                         }
@@ -849,7 +877,10 @@ impl_scope! {
                 } else if !reverse {
                     cell = MatrixIndex::ZERO;
                 } else {
-                    cell = MatrixIndex { col: len.col - 1, row: len.row - 1 };
+                    cell = MatrixIndex {
+                        col: len.col - 1,
+                        row: len.row - 1,
+                    };
                 }
 
                 let action = self.scroll.self_focus_rect(solver.rect(cell), self.rect());

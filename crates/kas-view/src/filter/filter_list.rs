@@ -9,7 +9,7 @@ use super::Filter;
 use crate::{DataClerk, Driver, ListView};
 use kas::dir::{Direction, Directional};
 use kas::event::{EventCx, EventState};
-use kas::{autoimpl, impl_scope, Events, Widget};
+use kas::{autoimpl, impl_self, Events, Widget};
 use kas_widgets::edit::{EditBox, EditField, EditGuard};
 use kas_widgets::{ScrollBarMode, ScrollBars};
 use std::fmt::Debug;
@@ -42,7 +42,8 @@ impl EditGuard for AflGuard {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod FilterBoxListView {
     /// An [`EditBox`] above a filtered [`ListView`]
     ///
     /// This is essentially just two widgets with "glue" to handle a

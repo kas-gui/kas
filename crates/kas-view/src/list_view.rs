@@ -26,7 +26,8 @@ struct WidgetData<K, W> {
     widget: W,
 }
 
-impl_scope! {
+#[impl_self]
+mod ListView {
     /// View controller for 1D indexable data (list)
     ///
     /// This widget generates a view over a list of data items via a
@@ -283,7 +284,9 @@ impl_scope! {
         pub fn deselect_unavailable(&mut self, cx: &mut EventState) {
             let len = self.selection.len();
             self.selection.retain(|key| {
-                self.widgets.iter().any(|widget| widget.key.as_ref() == Some(key))
+                self.widgets
+                    .iter()
+                    .any(|widget| widget.key.as_ref() == Some(key))
             });
             if len != self.selection.len() {
                 cx.redraw(self);
@@ -402,8 +405,8 @@ impl_scope! {
 
             let data_len: i32 = self.data_len.cast();
             let inner_size = (size - self.frame_size).extract(self.direction());
-            let child_size = (inner_size / self.ideal_visible)
-                .clamp(self.child_size_min, self.child_size_ideal);
+            let child_size =
+                (inner_size / self.ideal_visible).clamp(self.child_size_min, self.child_size_ideal);
             let m = self.child_inter_margin;
             let step = child_size + m;
             let content_size = (step * data_len - m).max(0);
@@ -568,7 +571,10 @@ impl_scope! {
             self.cur_len.cast()
         }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
-            self.widgets.get(index).filter(|w| w.key.is_some()).map(|w| w.widget.as_tile())
+            self.widgets
+                .get(index)
+                .filter(|w| w.key.is_some())
+                .map(|w| w.widget.as_tile())
         }
         fn find_child_index(&self, id: &Id) -> Option<usize> {
             let key = C::Key::reconstruct_key(self.id_ref(), id);
@@ -616,11 +622,9 @@ impl_scope! {
 
                 let len = self.ideal_visible.cast();
                 let key = C::Key::default();
-                self.widgets.resize_with(len, || {
-                    WidgetData {
-                        key: None,
-                        widget: self.driver.make(&key),
-                    }
+                self.widgets.resize_with(len, || WidgetData {
+                    key: None,
+                    widget: self.driver.make(&key),
                 });
                 self.alloc_len = len.cast();
             }
@@ -705,8 +709,8 @@ impl_scope! {
                         Unused
                     };
                 }
-                Event::PressStart { ref press } if
-                    press.is_primary() && cx.config().event().mouse_nav_focus() =>
+                Event::PressStart { ref press }
+                    if press.is_primary() && cx.config().event().mouse_nav_focus() =>
                 {
                     if let Some(index) = cx.last_child() {
                         self.press_target = self.widgets[index].key.clone().map(|k| (index, k));
@@ -720,7 +724,9 @@ impl_scope! {
 
                     // Press may also be grabbed by scroll component (replacing
                     // this). Either way we can select on PressEnd.
-                    press.grab(self.id(), kas::event::GrabMode::Click).complete(cx)
+                    press
+                        .grab(self.id(), kas::event::GrabMode::Click)
+                        .complete(cx)
                 }
                 Event::PressEnd { ref press, success } if press.is_primary() => {
                     if let Some((index, ref key)) = self.press_target {
@@ -744,7 +750,9 @@ impl_scope! {
             };
 
             let offset = self.scroll.offset();
-            is_used |= self.scroll.scroll_by_event(cx, event, self.id(), self.rect());
+            is_used |= self
+                .scroll
+                .scroll_by_event(cx, event, self.id(), self.rect());
             if offset != self.scroll.offset() {
                 // We may process multiple 'moved' events per frame; TIMER_UPDATE_WIDGETS will only
                 // be processed once per frame.
@@ -763,7 +771,8 @@ impl_scope! {
                 };
             }
 
-            self.clerk.handle_messages(cx, self.id(), data, opt_key.as_ref());
+            self.clerk
+                .handle_messages(cx, self.id(), data, opt_key.as_ref());
 
             if let Some(kas::messages::Select) = cx.try_pop() {
                 let key = match opt_key {
@@ -771,7 +780,7 @@ impl_scope! {
                     None => match self.press_target.as_ref() {
                         Some((_, k)) => k.clone(),
                         None => return,
-                    }
+                    },
                 };
 
                 match self.sel_mode {
@@ -867,7 +876,9 @@ impl_scope! {
                     last_data
                 };
 
-                let act = self.scroll.self_focus_rect(solver.rect(data_index), self.rect());
+                let act = self
+                    .scroll
+                    .self_focus_rect(solver.rect(data_index), self.rect());
                 if !act.is_empty() {
                     cx.action(&self, act);
                     self.update_widgets(cx, data, false);
