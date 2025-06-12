@@ -208,7 +208,7 @@ fn find_impl_self_attrs(path: &syn::Path) -> Option<&'static dyn scope::ScopeAtt
 /// ## Example
 ///
 /// ```
-/// #[impl_tools::impl_self]
+/// #[kas_macros::impl_self]
 /// mod Pair {
 ///     /// A pair of values of type `T`
 ///     pub struct Pair<T>(T, T);
