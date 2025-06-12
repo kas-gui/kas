@@ -250,10 +250,11 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
         let mut other_attrs = Vec::with_capacity(field.attrs.len());
         for attr in field.attrs.drain(..) {
             if *attr.path() == parse_quote! { widget } {
-                let data_binding = match &attr.meta {
+                let attr_span = Some(attr.span());
+                let data_binding = match attr.meta {
                     Meta::Path(_) => None,
                     Meta::List(list) if matches!(&list.delimiter, MacroDelimiter::Paren(_)) => {
-                        Some(parse2(list.tokens.clone())?)
+                        Some(parse2(list.tokens)?)
                     }
                     Meta::List(list) => {
                         let span = list.delimiter.span().join();
@@ -266,7 +267,7 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                 };
                 children.push(Child {
                     ident: ChildIdent::Field(ident.clone()),
-                    attr_span: Some(attr.span()),
+                    attr_span,
                     data_binding,
                 });
             } else {

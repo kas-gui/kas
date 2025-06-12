@@ -148,7 +148,7 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
                 }
                 inner = Some(member(i, field.ident.clone()));
 
-                match &attr.meta {
+                match attr.meta {
                     Meta::Path(_) => {
                         if data_ty.is_none() {
                             let ty = &field.ty;
@@ -157,9 +157,9 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
                     }
                     Meta::List(list) if matches!(&list.delimiter, MacroDelimiter::Paren(_)) => {
                         if data_ty.is_none() {
-                            emit_error!(&attr.meta, "usage requires definition of `type Data`");
+                            emit_error!(list, "usage requires definition of `type Data`");
                         }
-                        data_binding = Some(parse2(list.tokens.clone())?);
+                        data_binding = Some(parse2(list.tokens)?);
                     }
                     Meta::List(list) => {
                         let span = list.delimiter.span().join();
