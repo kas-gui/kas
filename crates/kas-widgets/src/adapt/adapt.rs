@@ -12,7 +12,8 @@ use linear_map::LinearMap;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
-impl_scope! {
+#[impl_self]
+mod Adapt {
     /// Data adaption node
     ///
     /// Where [`Map`] allows mapping to a sub-set of input data, `Adapt` allows
@@ -177,7 +178,8 @@ impl_scope! {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod Map {
     /// Data mapping
     ///
     /// This is a generic data-mapping widget-wrapper.

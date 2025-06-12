@@ -6,13 +6,14 @@
 //! Event adapters
 
 use super::{AdaptConfigCx, AdaptEventCx};
-use kas::autoimpl;
 use kas::event::{ConfigCx, Event, EventCx, IsUsed};
 #[allow(unused)] use kas::Events;
+use kas::{autoimpl, impl_self};
 use kas::{Id, Node, Widget};
 use std::fmt::Debug;
 
-kas::impl_scope! {
+#[impl_self]
+mod AdaptEvents {
     /// Wrapper with configure / update / message handling callbacks.
     ///
     /// This type is constructed by some [`AdaptWidget`](super::AdaptWidget) methods.

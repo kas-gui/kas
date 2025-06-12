@@ -9,7 +9,8 @@ use kas::dir::Directions;
 use kas::prelude::*;
 use kas::theme::MarginStyle;
 
-impl_scope! {
+#[impl_self]
+mod Reserve {
     /// A generic widget for size reservations
     ///
     /// In a few cases it is desirable to reserve more space for a widget than
@@ -57,7 +58,8 @@ impl_scope! {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod Margins {
     /// Specify margins
     ///
     /// This replaces a widget's margins.
