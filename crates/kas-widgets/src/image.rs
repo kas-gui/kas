@@ -32,7 +32,8 @@ impl From<kas::draw::AllocError> for ImageError {
 #[cfg(feature = "image")]
 pub type Result<T> = std::result::Result<T, ImageError>;
 
-impl_scope! {
+#[impl_self]
+mod Image {
     /// An image with margins
     ///
     /// May be default constructed (result is empty).

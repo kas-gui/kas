@@ -42,7 +42,8 @@ macro_rules! frame {
     };
 }
 
-impl_scope! {
+#[impl_self]
+mod Frame {
     /// A frame around content
     ///
     /// This widget provides a simple abstraction: drawing a frame around its

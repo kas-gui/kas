@@ -7,7 +7,8 @@
 
 use kas::prelude::*;
 
-impl_scope! {
+#[impl_self]
+mod Filler {
     /// A space filler
     ///
     /// This widget has zero minimum size but can expand according to the given

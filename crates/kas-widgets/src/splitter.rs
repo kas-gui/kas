@@ -14,7 +14,8 @@ use kas::prelude::*;
 use kas::theme::Feature;
 use kas::Collection;
 
-impl_scope! {
+#[impl_self]
+mod Splitter {
     /// A resizable row/column widget
     ///
     /// Similar to [`crate::List`] but with draggable grips between items.
@@ -33,7 +34,10 @@ impl_scope! {
         id_map: HashMap<usize, usize>, // map key of Id to index
     }
 
-    impl Self where D: Default {
+    impl Self
+    where
+        D: Default,
+    {
         /// Construct a new instance with default-constructed direction
         #[inline]
         pub fn new(widgets: C) -> Self {

@@ -128,7 +128,8 @@ macro_rules! aligned_row {
     };
 }
 
-impl_scope! {
+#[impl_self]
+mod Grid {
     /// A generic grid widget
     ///
     /// Child widgets are displayed in a grid, according to each child's
@@ -178,7 +179,9 @@ impl_scope! {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, &mut self.layout);
             for n in 0..self.widgets.len() {
-                if let Some((info, child)) = self.widgets.cell_info(n).zip(self.widgets.get_mut_tile(n)) {
+                if let Some((info, child)) =
+                    self.widgets.cell_info(n).zip(self.widgets.get_mut_tile(n))
+                {
                     solver.for_child(&mut self.layout, info, |axis| {
                         child.size_rules(sizer.re(), axis)
                     });
@@ -191,7 +194,9 @@ impl_scope! {
             widget_set_rect!(rect);
             let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, &mut self.layout);
             for n in 0..self.widgets.len() {
-                if let Some((info, child)) = self.widgets.cell_info(n).zip(self.widgets.get_mut_tile(n)) {
+                if let Some((info, child)) =
+                    self.widgets.cell_info(n).zip(self.widgets.get_mut_tile(n))
+                {
                     child.set_rect(cx, setter.child_rect(&mut self.layout, info), hints);
                 }
             }

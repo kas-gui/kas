@@ -15,7 +15,8 @@ use std::fmt::Debug;
 #[derive(Clone, Debug)]
 struct MsgSelectIndex(usize);
 
-impl_scope! {
+#[impl_self]
+mod Tab {
     /// A tab
     ///
     /// This is a special variant of `Button` which sends a [`Select`] on press.
@@ -81,7 +82,8 @@ impl_scope! {
 /// This is a parametrisation of [`TabStack`].
 pub type BoxTabStack<Data> = TabStack<Box<dyn Widget<Data = Data>>>;
 
-impl_scope! {
+#[impl_self]
+mod TabStack {
     /// A tabbed stack of widgets
     ///
     /// A stack consists a set of child widgets, "pages", all of equal size.

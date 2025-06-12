@@ -70,7 +70,8 @@ macro_rules! float {
     };
 }
 
-impl_scope! {
+#[impl_self]
+mod Float {
     /// A float widget
     ///
     /// All widgets occupy the same space with the first child on top.
