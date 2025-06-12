@@ -13,7 +13,8 @@ use kas::prelude::*;
 use kas::theme::{FrameStyle, MarkStyle, TextClass};
 use kas::Popup;
 
-impl_scope! {
+#[impl_self]
+mod SubMenu {
     /// A sub-menu
     #[widget {
         layout = self.label;
@@ -198,7 +199,8 @@ const fn menu_view_row_info(row: u32) -> layout::GridCellInfo {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod MenuView {
     /// A menu view
     #[widget]
     struct MenuView<W: Menu> {

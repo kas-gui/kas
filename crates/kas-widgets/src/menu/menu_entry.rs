@@ -11,7 +11,8 @@ use kas::prelude::*;
 use kas::theme::{FrameStyle, TextClass};
 use std::fmt::Debug;
 
-impl_scope! {
+#[impl_self]
+mod MenuEntry {
     /// A standard menu entry
     ///
     /// # Messages
@@ -99,7 +100,10 @@ impl_scope! {
         }
     }
 
-    impl PartialEq<M> for Self where M: PartialEq {
+    impl PartialEq<M> for Self
+    where
+        M: PartialEq,
+    {
         #[inline]
         fn eq(&self, rhs: &M) -> bool {
             self.msg == *rhs
@@ -107,7 +111,8 @@ impl_scope! {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod MenuToggle {
     /// A menu entry which can be toggled
     #[widget {
         layout = row! [self.checkbox, self.label];

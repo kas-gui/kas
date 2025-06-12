@@ -13,7 +13,8 @@ use kas::theme::FrameStyle;
 
 const TIMER_SHOW: TimerHandle = TimerHandle::new(0, false);
 
-impl_scope! {
+#[impl_self]
+mod MenuBar {
     /// A menu-bar
     ///
     /// This widget houses a sequence of menu buttons, allowing input actions across
@@ -38,7 +39,10 @@ impl_scope! {
 
         /// Construct a menu builder
         pub fn builder() -> MenuBuilder<Data, D> {
-            MenuBuilder { menus: vec![], direction: D::default() }
+            MenuBuilder {
+                menus: vec![],
+                direction: D::default(),
+            }
         }
     }
     impl<Data> MenuBar<Data, kas::dir::Right> {
@@ -135,7 +139,8 @@ impl_scope! {
                     Used
                 }
                 Event::PressStart { press } => {
-                    if press.id
+                    if press
+                        .id
                         .as_ref()
                         .map(|id| self.is_ancestor_of(id))
                         .unwrap_or(false)
@@ -145,7 +150,9 @@ impl_scope! {
                             let press_in_the_bar = self.rect().contains(press.coord);
 
                             if !press_in_the_bar || !any_menu_open {
-                                press.grab(self.id(), kas::event::GrabMode::Grab).complete(cx);
+                                press
+                                    .grab(self.id(), kas::event::GrabMode::Grab)
+                                    .complete(cx);
                             }
                             cx.set_grab_depress(*press, press.id.clone());
                             if press_in_the_bar {
@@ -195,11 +202,7 @@ impl_scope! {
                     }
                     Used
                 }
-                Event::PressEnd {
-                    press,
-                    success,
-                    ..
-                } if success => {
+                Event::PressEnd { press, success, .. } if success => {
                     let id = match press.id {
                         Some(x) => x,
                         None => return Used,
