@@ -13,7 +13,7 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
 use crate::{Action, Events, Icon, Id, Layout, Tile, TileExt, Widget};
-use kas_macros::{impl_scope, widget_set_rect};
+use kas_macros::{impl_self, widget_set_rect};
 use smallvec::SmallVec;
 use std::num::NonZeroU32;
 
@@ -56,7 +56,8 @@ pub enum WindowCommand {
     SetIcon(Option<Icon>),
 }
 
-impl_scope! {
+#[impl_self]
+mod Window {
     /// The window widget
     ///
     /// This widget is the root of any UI tree used as a window. It manages
@@ -76,14 +77,22 @@ impl_scope! {
         inner: Box<dyn Widget<Data = Data>>,
         #[widget(&())]
         title_bar: TitleBar,
-        #[widget(&())] b_w: Border,
-        #[widget(&())] b_e: Border,
-        #[widget(&())] b_n: Border,
-        #[widget(&())] b_s: Border,
-        #[widget(&())] b_nw: Border,
-        #[widget(&())] b_ne: Border,
-        #[widget(&())] b_sw: Border,
-        #[widget(&())] b_se: Border,
+        #[widget(&())]
+        b_w: Border,
+        #[widget(&())]
+        b_e: Border,
+        #[widget(&())]
+        b_n: Border,
+        #[widget(&())]
+        b_s: Border,
+        #[widget(&())]
+        b_nw: Border,
+        #[widget(&())]
+        b_ne: Border,
+        #[widget(&())]
+        b_sw: Border,
+        #[widget(&())]
+        b_se: Border,
         bar_h: i32,
         dec_offset: Offset,
         dec_size: Size,
@@ -136,18 +145,43 @@ impl_scope! {
             let mut p_in = p_nw + self.dec_offset;
             let p_se = p_in + s_in;
 
-            self.b_w.set_rect(cx, Rect::new(Coord(p_nw.0, p_in.1), Size(s_nw.0, s_in.1)), hints);
-            self.b_e.set_rect(cx, Rect::new(Coord(p_se.0, p_in.1), Size(s_se.0, s_in.1)), hints);
-            self.b_n.set_rect(cx, Rect::new(Coord(p_in.0, p_nw.1), Size(s_in.0, s_nw.1)), hints);
-            self.b_s.set_rect(cx, Rect::new(Coord(p_in.0, p_se.1), Size(s_in.0, s_se.1)), hints);
+            self.b_w.set_rect(
+                cx,
+                Rect::new(Coord(p_nw.0, p_in.1), Size(s_nw.0, s_in.1)),
+                hints,
+            );
+            self.b_e.set_rect(
+                cx,
+                Rect::new(Coord(p_se.0, p_in.1), Size(s_se.0, s_in.1)),
+                hints,
+            );
+            self.b_n.set_rect(
+                cx,
+                Rect::new(Coord(p_in.0, p_nw.1), Size(s_in.0, s_nw.1)),
+                hints,
+            );
+            self.b_s.set_rect(
+                cx,
+                Rect::new(Coord(p_in.0, p_se.1), Size(s_in.0, s_se.1)),
+                hints,
+            );
             self.b_nw.set_rect(cx, Rect::new(p_nw, s_nw), hints);
-            self.b_ne.set_rect(cx, Rect::new(Coord(p_se.0, p_nw.1), Size(s_se.0, s_nw.1)), hints);
+            self.b_ne.set_rect(
+                cx,
+                Rect::new(Coord(p_se.0, p_nw.1), Size(s_se.0, s_nw.1)),
+                hints,
+            );
             self.b_se.set_rect(cx, Rect::new(p_se, s_se), hints);
-            self.b_sw.set_rect(cx, Rect::new(Coord(p_nw.0, p_se.1), Size(s_nw.0, s_se.1)), hints);
+            self.b_sw.set_rect(
+                cx,
+                Rect::new(Coord(p_nw.0, p_se.1), Size(s_nw.0, s_se.1)),
+                hints,
+            );
 
             if self.bar_h > 0 {
                 let bar_size = Size(s_in.0, self.bar_h);
-                self.title_bar.set_rect(cx, Rect::new(p_in, bar_size), hints);
+                self.title_bar
+                    .set_rect(cx, Rect::new(p_in, bar_size), hints);
                 p_in.1 += self.bar_h;
                 s_in -= Size(0, self.bar_h);
             }
@@ -176,7 +210,8 @@ impl_scope! {
                     return Some(id);
                 }
             }
-            self.inner.try_probe(coord)
+            self.inner
+                .try_probe(coord)
                 .or_else(|| self.b_w.try_probe(coord))
                 .or_else(|| self.b_e.try_probe(coord))
                 .or_else(|| self.b_n.try_probe(coord))

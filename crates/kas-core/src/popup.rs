@@ -8,7 +8,7 @@
 use crate::dir::Direction;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};
 use crate::{Events, Id, Tile, TileExt, Widget, WindowId};
-use kas_macros::{impl_scope, widget_index};
+use kas_macros::{impl_self, widget_index};
 
 #[allow(unused)] use crate::event::EventState;
 
@@ -19,7 +19,8 @@ pub(crate) struct PopupDescriptor {
     pub direction: Direction,
 }
 
-impl_scope! {
+#[impl_self]
+mod Popup {
     /// A popup (e.g. menu or tooltip)
     ///
     /// A pop-up is a box used for things like tool-tips and menus which escapes
@@ -69,7 +70,12 @@ impl_scope! {
         fn handle_event(&mut self, cx: &mut EventCx, _: &W::Data, event: Event) -> IsUsed {
             match event {
                 Event::PressStart { press } => {
-                    if press.id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
+                    if press
+                        .id
+                        .as_ref()
+                        .map(|id| self.is_ancestor_of(id))
+                        .unwrap_or(false)
+                    {
                         Unused
                     } else {
                         self.close(cx);

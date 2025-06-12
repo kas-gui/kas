@@ -15,9 +15,10 @@ use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{SizeCx, Text, TextClass};
 #[allow(unused)] use crate::Action;
 use crate::{Events, Layout, Widget};
-use kas_macros::{autoimpl, impl_scope};
+use kas_macros::{autoimpl, impl_self};
 
-impl_scope! {
+#[impl_self]
+mod StrLabel {
     /// A simple text label
     ///
     /// Vertical alignment defaults to centred, horizontal
@@ -51,7 +52,8 @@ impl_scope! {
 
     impl Layout for Self {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.text.set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
+            self.text
+                .set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
         }
     }
 
@@ -62,7 +64,8 @@ impl_scope! {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod MapAny {
     /// Map any input data to `()`
     ///
     /// This is a generic data-mapping widget-wrapper with fixed `()` input
@@ -96,7 +99,8 @@ impl_scope! {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod Align {
     /// Apply an alignment hint
     ///
     /// The inner widget chooses how to apply (or ignore) this hint.
@@ -127,7 +131,8 @@ impl_scope! {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod Pack {
     /// Apply an alignment hint, squash and align the result
     ///
     /// The inner widget chooses how to apply (or ignore) this hint.
@@ -150,7 +155,11 @@ impl_scope! {
         /// Construct
         #[inline]
         pub fn new(inner: W, hints: AlignHints) -> Self {
-            Pack { inner, hints, size: Size::ZERO }
+            Pack {
+                inner,
+                hints,
+                size: Size::ZERO,
+            }
         }
     }
 

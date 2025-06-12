@@ -21,7 +21,8 @@ use kas::text::format::FormattableText;
 #[derive(Copy, Clone, Debug)]
 struct MessageBoxOk;
 
-impl_scope! {
+#[impl_self]
+mod MessageBox {
     /// A simple message box.
     #[widget{
         layout = column! [self.label, self.button];
@@ -47,10 +48,8 @@ impl_scope! {
 
         /// Build a [`Window`]
         pub fn into_window<A: 'static>(self, title: impl ToString) -> Window<A> {
-            Window::new(self.map_any(), title)
-                .with_restrictions(true, true)
+            Window::new(self.map_any(), title).with_restrictions(true, true)
         }
-
     }
 
     impl Events for Self {
@@ -78,7 +77,8 @@ pub enum TextEditResult {
 #[derive(Clone, Debug)]
 struct MsgClose(bool);
 
-impl_scope! {
+#[impl_self]
+mod TextEdit {
     #[widget{
         layout = grid! {
             (0..3, 0) => self.edit,

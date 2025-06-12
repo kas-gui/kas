@@ -27,7 +27,7 @@ use kas_macros::autoimpl;
 ///
 /// The [`#widget`] macro will, when its `layout` property is specified,
 /// generate an implementation of this trait (if omitted from the surrounding
-/// `impl_scope!`) or provide default implementations of its methods (if an
+/// `#[impl_self]`) or provide default implementations of its methods (if an
 /// explicit impl of `Layout` is found but some methods are missing).
 ///
 /// [`#widget`]: macros::widget

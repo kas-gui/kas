@@ -151,7 +151,8 @@ impl<A, T: SpinnerValue> EditGuard for SpinnerGuard<A, T> {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod Spinner {
     /// A numeric entry widget with up/down arrows
     ///
     /// The value is constrained to a given `range`. Increment and decrement
@@ -183,7 +184,10 @@ impl_scope! {
         /// Values vary within the given `range`. The default step size is
         /// 1 for common types (see [`SpinnerValue::default_step`]).
         #[inline]
-        pub fn new(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+        pub fn new(
+            range: RangeInclusive<T>,
+            state_fn: impl Fn(&ConfigCx, &A) -> T + 'static,
+        ) -> Self {
             Spinner {
                 core: Default::default(),
                 edit: EditField::new(SpinnerGuard::new(range, Box::new(state_fn)))
@@ -289,7 +293,8 @@ impl_scope! {
 
     impl Tile for Self {
         fn probe(&self, coord: Coord) -> Id {
-            self.b_up.try_probe(coord)
+            self.b_up
+                .try_probe(coord)
                 .or_else(|| self.b_down.try_probe(coord))
                 .unwrap_or_else(|| self.edit.id())
         }
@@ -314,7 +319,7 @@ impl_scope! {
                         _ => return Unused,
                     };
                     value = self.edit.guard.handle_btn(cx, data, btn);
-                },
+                }
                 Event::Scroll(delta) => {
                     if let Some(y) = delta.as_wheel_action(cx) {
                         let (count, btn) = if y > 0 {

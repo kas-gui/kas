@@ -204,7 +204,8 @@ pub type Row<C> = List<C, Right>;
 /// See documentation of [`List`] type.
 pub type Column<C> = List<C, Down>;
 
-impl_scope! {
+#[impl_self]
+mod List {
     /// A generic row/column widget
     ///
     /// A linear widget over a [`Collection`] of widgets.
@@ -267,7 +268,9 @@ impl_scope! {
             let mut solver = RowSolver::new(axis, dim, &mut self.layout);
             for n in 0..self.widgets.len() {
                 if let Some(child) = self.widgets.get_mut_tile(n) {
-                    solver.for_child(&mut self.layout, n, |axis| child.size_rules(sizer.re(), axis));
+                    solver.for_child(&mut self.layout, n, |axis| {
+                        child.size_rules(sizer.re(), axis)
+                    });
                 }
             }
             solver.finish(&mut self.layout)

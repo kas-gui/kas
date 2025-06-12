@@ -8,7 +8,8 @@
 use kas::prelude::*;
 use kas::theme::Feature;
 
-impl_scope! {
+#[impl_self]
+mod ProgressBar {
     /// A progress bar
     ///
     /// The "progress" value may range from 0.0 to 1.0.

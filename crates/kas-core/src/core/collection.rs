@@ -7,7 +7,7 @@
 
 use crate::layout::{GridCellInfo, GridDimensions};
 use crate::{Node, Tile, Widget};
-use kas_macros::impl_scope;
+use kas_macros::impl_self;
 use std::ops::RangeBounds;
 
 /// A collection of (child) widgets
@@ -155,7 +155,8 @@ pub trait CellCollection: Collection {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod CollectionIterTile {
     /// An iterator over a [`Collection`] as [`Tile`] elements
     pub struct CollectionIterTile<'a, C: Collection + ?Sized> {
         start: usize,
@@ -192,7 +193,8 @@ impl_scope! {
     impl ExactSizeIterator for Self {}
 }
 
-impl_scope! {
+#[impl_self]
+mod CollectionIterCellInfo {
     /// An iterator over a [`Collection`] as [`GridCellInfo`] elements
     pub struct CollectionIterCellInfo<'a, C: CellCollection + ?Sized> {
         start: usize,

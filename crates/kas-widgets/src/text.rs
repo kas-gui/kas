@@ -9,7 +9,8 @@ use kas::prelude::*;
 use kas::text::format::FormattableText;
 use kas::theme::{self, TextClass};
 
-impl_scope! {
+#[impl_self]
+mod Text {
     /// A text label (derived from data)
     ///
     /// `Text` derives its contents from input data. Use [`Label`](crate::Label)
@@ -31,7 +32,10 @@ impl_scope! {
         text_fn: Box<dyn Fn(&ConfigCx, &A) -> T>,
     }
 
-    impl Default for Self where for<'a> &'a A: Into<T> {
+    impl Default for Self
+    where
+        for<'a> &'a A: Into<T>,
+    {
         fn default() -> Self {
             Text {
                 core: Default::default(),
@@ -107,7 +111,8 @@ impl_scope! {
 
     impl Layout for Self {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.text.set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
+            self.text
+                .set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
         }
     }
 

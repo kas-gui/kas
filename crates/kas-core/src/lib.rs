@@ -8,7 +8,7 @@
 //! Re-exports:
 //!
 //! -   [`kas::cast`] is a re-export of [`easy-cast`](https://crates.io/crates/easy-cast)
-//! -   [`impl_scope!`], [`impl_anon!`], [`autoimpl`] and [`impl_default`] are
+//! -   [`impl_self`], [`impl_scope!`], [`impl_anon!`], [`autoimpl`] and [`impl_default`] are
 //!     re-implementations of [`impl-tools`](https://crates.io/crates/impl-tools) macros
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
@@ -31,7 +31,7 @@ mod root;
 pub use crate::core::*;
 pub use action::Action;
 pub use kas_macros::{autoimpl, extends, impl_default};
-pub use kas_macros::{cell_collection, collection, impl_anon, impl_scope};
+pub use kas_macros::{cell_collection, collection, impl_anon, impl_scope, impl_self};
 pub use kas_macros::{widget, widget_index, widget_set_rect};
 #[doc(inline)] pub use popup::Popup;
 #[doc(inline)] pub(crate) use popup::PopupDescriptor;

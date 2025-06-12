@@ -102,7 +102,8 @@ impl SliderValue for Duration {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod Slider {
     /// A slider
     ///
     /// Sliders allow user input of a value from a fixed range.
@@ -139,28 +140,40 @@ impl_scope! {
         /// To make the slider interactive, assign an event handler with
         /// [`Self::with`] or [`Self::with_msg`].
         #[inline]
-        pub fn new(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+        pub fn new(
+            range: RangeInclusive<T>,
+            state_fn: impl Fn(&ConfigCx, &A) -> T + 'static,
+        ) -> Self {
             Slider::new_dir(range, state_fn, D::default())
         }
     }
     impl<A, T: SliderValue> Slider<A, T, kas::dir::Left> {
         /// Construct with fixed direction
         #[inline]
-        pub fn left(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+        pub fn left(
+            range: RangeInclusive<T>,
+            state_fn: impl Fn(&ConfigCx, &A) -> T + 'static,
+        ) -> Self {
             Slider::new(range, state_fn)
         }
     }
     impl<A, T: SliderValue> Slider<A, T, kas::dir::Right> {
         /// Construct with fixed direction
         #[inline]
-        pub fn right(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+        pub fn right(
+            range: RangeInclusive<T>,
+            state_fn: impl Fn(&ConfigCx, &A) -> T + 'static,
+        ) -> Self {
             Slider::new(range, state_fn)
         }
     }
     impl<A, T: SliderValue> Slider<A, T, kas::dir::Up> {
         /// Construct with fixed direction
         #[inline]
-        pub fn up(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+        pub fn up(
+            range: RangeInclusive<T>,
+            state_fn: impl Fn(&ConfigCx, &A) -> T + 'static,
+        ) -> Self {
             Slider::new(range, state_fn)
         }
     }
@@ -168,7 +181,10 @@ impl_scope! {
     impl<A, T: SliderValue> Slider<A, T, kas::dir::Down> {
         /// Construct with fixed direction
         #[inline]
-        pub fn down(range: RangeInclusive<T>, state_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self {
+        pub fn down(
+            range: RangeInclusive<T>,
+            state_fn: impl Fn(&ConfigCx, &A) -> T + 'static,
+        ) -> Self {
             Slider::new(range, state_fn)
         }
     }
@@ -311,7 +327,8 @@ impl_scope! {
 
             // Set the grip size (we could instead call set_size but the widget
             // model requires we call set_rect anyway):
-            rect.size.set_component(self.direction, cx.size_cx().grip_len());
+            rect.size
+                .set_component(self.direction, cx.size_cx().grip_len());
             self.grip.set_rect(cx, rect, AlignHints::NONE);
             // Correct the position:
             self.grip.set_offset(cx, self.offset());

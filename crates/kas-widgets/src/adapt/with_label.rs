@@ -8,7 +8,8 @@
 use crate::AccessLabel;
 use kas::prelude::*;
 
-impl_scope! {
+#[impl_self]
+mod WithLabel {
     /// A wrapper widget with a label
     ///
     /// The label supports access keys, which activate `self.inner` on
@@ -31,7 +32,10 @@ impl_scope! {
 
     impl Self {
         /// Construct a wrapper around `inner` placing a `label` in the given `direction`
-        pub fn new<T: Into<AccessString>>(inner: W, label: T) -> Self where D: Default {
+        pub fn new<T: Into<AccessString>>(inner: W, label: T) -> Self
+        where
+            D: Default,
+        {
             Self::new_dir(inner, D::default(), label)
         }
     }

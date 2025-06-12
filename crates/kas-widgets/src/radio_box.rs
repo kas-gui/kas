@@ -11,7 +11,8 @@ use kas::theme::Feature;
 use std::fmt::Debug;
 use std::time::Instant;
 
-impl_scope! {
+#[impl_self]
+mod RadioBox {
     /// A bare radio box (no label)
     ///
     /// See also [`RadioButton`] which includes a label.
@@ -99,8 +100,7 @@ impl_scope! {
             state_fn: impl Fn(&ConfigCx, &A) -> bool + 'static,
             msg_fn: impl Fn() -> M + 'static,
         ) -> Self {
-            RadioBox::new(state_fn)
-                .with(move |cx, _| cx.push(msg_fn()))
+            RadioBox::new(state_fn).with(move |cx, _| cx.push(msg_fn()))
         }
 
         /// Construct a radio box
@@ -114,8 +114,7 @@ impl_scope! {
             A: Clone + Debug + Eq + 'static,
         {
             let v2 = value.clone();
-            Self::new(move |_, data| *data == value)
-                .with(move |cx, _| cx.push(v2.clone()))
+            Self::new(move |_, data| *data == value).with(move |cx, _| cx.push(v2.clone()))
         }
 
         fn select(&mut self, cx: &mut EventCx, data: &A) {
@@ -130,7 +129,8 @@ impl_scope! {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod RadioButton {
     /// A radio button with label
     ///
     /// See also [`RadioBox`] which excludes the label.
@@ -215,8 +215,7 @@ impl_scope! {
             state_fn: impl Fn(&ConfigCx, &A) -> bool + 'static,
             msg_fn: impl Fn() -> M + 'static,
         ) -> Self {
-            RadioButton::new(label, state_fn)
-                .with(move |cx, _| cx.push(msg_fn()))
+            RadioButton::new(label, state_fn).with(move |cx, _| cx.push(msg_fn()))
         }
 
         /// Construct a radio button
@@ -230,8 +229,7 @@ impl_scope! {
             A: Clone + Debug + Eq + 'static,
         {
             let v2 = value.clone();
-            Self::new(label, move |_, data| *data == value)
-                .with(move |cx, _| cx.push(v2.clone()))
+            Self::new(label, move |_, data| *data == value).with(move |cx, _| cx.push(v2.clone()))
         }
 
         fn direction(&self) -> Direction {

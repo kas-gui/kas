@@ -9,7 +9,8 @@ use kas::event::CursorIcon;
 use kas::prelude::*;
 use kas::widgets::{Column, Label};
 
-impl_scope! {
+#[impl_self]
+mod CursorWidget {
     #[widget{
         Data = ();
         layout = self.label;

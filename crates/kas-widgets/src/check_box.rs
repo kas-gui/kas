@@ -11,7 +11,8 @@ use kas::theme::Feature;
 use std::fmt::Debug;
 use std::time::Instant;
 
-impl_scope! {
+#[impl_self]
+mod CheckBox {
     /// A bare check box (no label)
     ///
     /// See also [`CheckButton`] which includes a label.
@@ -169,7 +170,8 @@ pub(crate) fn shrink_to_text(rect: &mut Rect, direction: Direction, label: &Acce
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod CheckButton {
     /// A check button with label
     ///
     /// This is a [`CheckBox`] with a label.

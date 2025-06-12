@@ -283,7 +283,8 @@ impl PipeWindow {
 #[derive(Debug)]
 struct ViewUpdate(String);
 
-impl_scope! {
+#[impl_self]
+mod Mandlebrot {
     #[widget]
     struct Mandlebrot {
         core: widget_core!(),
@@ -318,10 +319,12 @@ impl_scope! {
             let op = if self.delta.1 < 0.0 { "−" } else { "+" };
             let d1 = self.delta.1.abs();
             let s = self.alpha.sum_square().sqrt().ln();
-            #[cfg(not(feature = "shader64"))] {
+            #[cfg(not(feature = "shader64"))]
+            {
                 format!("Location: {d0:.7} {op} {d1:.7}i; scale: {s:.2}")
             }
-            #[cfg(feature = "shader64")] {
+            #[cfg(feature = "shader64")]
+            {
                 format!("Location: {d0:.15} {op} {d1:.15}i; scale: {s:.2}")
             }
         }
@@ -368,28 +371,28 @@ impl_scope! {
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &i32, event: Event) -> IsUsed {
             match event {
-                Event::Command(cmd, _) => {
-                    match cmd {
-                        Command::Home | Command::End => self.reset_view(),
-                        Command::PageUp => self.alpha = self.alpha / 2f64.sqrt(),
-                        Command::PageDown => self.alpha = self.alpha * 2f64.sqrt(),
-                        cmd => {
-                            let d = 0.2;
-                            let delta = match cmd {
-                                Command::Up => DVec2(0.0, -d),
-                                Command::Down => DVec2(0.0, d),
-                                Command::Left => DVec2(-d, 0.0),
-                                Command::Right => DVec2(d, 0.0),
-                                _ => return Unused,
-                            };
-                            self.delta += self.alpha.complex_mul(delta);
-                        }
+                Event::Command(cmd, _) => match cmd {
+                    Command::Home | Command::End => self.reset_view(),
+                    Command::PageUp => self.alpha = self.alpha / 2f64.sqrt(),
+                    Command::PageDown => self.alpha = self.alpha * 2f64.sqrt(),
+                    cmd => {
+                        let d = 0.2;
+                        let delta = match cmd {
+                            Command::Up => DVec2(0.0, -d),
+                            Command::Down => DVec2(0.0, d),
+                            Command::Left => DVec2(-d, 0.0),
+                            Command::Right => DVec2(d, 0.0),
+                            _ => return Unused,
+                        };
+                        self.delta += self.alpha.complex_mul(delta);
                     }
-                }
+                },
                 Event::Scroll(delta) => match delta.as_factor_or_offset(cx) {
                     Ok(factor) => self.alpha = self.alpha * 2f64.powf(factor),
-                    Err(offset) => self.delta -= self.alpha.complex_mul(offset.cast()) * self.view_alpha,
-                }
+                    Err(offset) => {
+                        self.delta -= self.alpha.complex_mul(offset.cast()) * self.view_alpha
+                    }
+                },
                 Event::Pan { alpha, delta } => {
                     // Our full transform (from screen coordinates to world coordinates) is:
                     // f(p) = α_w * α_v * p + α_w * δ_v + δ_w
@@ -406,7 +409,8 @@ impl_scope! {
                     self.alpha = new_alpha;
                 }
                 Event::PressStart { press } => {
-                    return press.grab(self.id(), event::GrabMode::PanFull)
+                    return press
+                        .grab(self.id(), event::GrabMode::PanFull)
                         .with_icon(event::CursorIcon::Grabbing)
                         .complete(cx);
                 }
@@ -420,7 +424,8 @@ impl_scope! {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod MandlebrotUI {
     #[widget{
         layout = grid! {
             (1, 0) => self.label,
@@ -459,10 +464,8 @@ impl_scope! {
                 label: format_value!("{}"),
                 title: Label::new("Mandlebrot"),
                 buttons: Default::default(),
-                iters_label: format_value!("{}")
-                    .with_min_size_em(3.0, 0.0),
-                slider: Slider::up(0..=256, |_, iters| *iters)
-                    .with_msg(|iters| iters),
+                iters_label: format_value!("{}").with_min_size_em(3.0, 0.0),
+                slider: Slider::up(0..=256, |_, iters| *iters).with_msg(|iters| iters),
                 mbrot,
                 iters: 64,
                 loc,

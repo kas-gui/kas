@@ -9,7 +9,8 @@ use crate::menu::Menu;
 use kas::prelude::*;
 use std::marker::PhantomData;
 
-impl_scope! {
+#[impl_self]
+mod Separator {
     /// A separator
     ///
     /// This widget draws a bar when in a list.

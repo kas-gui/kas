@@ -120,7 +120,8 @@ impl<A: 'static> EditGuard for DefaultGuard<A> {
     type Data = A;
 }
 
-impl_scope! {
+#[impl_self]
+mod StringGuard {
     /// An [`EditGuard`] for read-only strings
     ///
     /// This may be used with read-only edit fields, essentially resulting in a
@@ -197,7 +198,8 @@ impl_scope! {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod ParseGuard {
     /// An [`EditGuard`] for parsable types
     ///
     /// This guard displays a value formatted from input data, updates the error
@@ -265,7 +267,8 @@ impl_scope! {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod InstantParseGuard {
     /// An as-you-type [`EditGuard`] for parsable types
     ///
     /// This guard displays a value formatted from input data, updates the error
@@ -324,7 +327,8 @@ impl_scope! {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod EditBox {
     /// A text-edit box
     ///
     /// A single- or multi-line editor for unformatted text.
@@ -437,7 +441,8 @@ impl_scope! {
 
         fn update_scroll_bar(&mut self, cx: &mut EventState) {
             let max_offset = self.inner.max_scroll_offset().1;
-            self.bar.set_limits(cx, max_offset, self.inner.rect().size.1);
+            self.bar
+                .set_limits(cx, max_offset, self.inner.rect().size.1);
             self.bar.set_value(cx, self.inner.view_offset.1);
         }
 
@@ -693,7 +698,8 @@ impl CurrentAction {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod EditField {
     /// A text-edit field (single- or multi-line)
     ///
     /// This widget implements the mechanics of text layout and event handling.
@@ -759,10 +765,16 @@ impl_scope! {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let (min, ideal) = if axis.is_horizontal() {
                 let dpem = sizer.dpem();
-                ((self.width.0 * dpem).cast_ceil(), (self.width.1 * dpem).cast_ceil())
+                (
+                    (self.width.0 * dpem).cast_ceil(),
+                    (self.width.1 * dpem).cast_ceil(),
+                )
             } else {
                 let dpem = sizer.dpem();
-                ((self.lines.0 * dpem).cast_ceil(), (self.lines.1 * dpem).cast_ceil())
+                (
+                    (self.lines.0 * dpem).cast_ceil(),
+                    (self.lines.1 * dpem).cast_ceil(),
+                )
             };
 
             let margins = sizer.text_margins().extract(axis);
@@ -777,7 +789,11 @@ impl_scope! {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, mut hints: AlignHints) {
             widget_set_rect!(rect);
             self.outer_rect = rect;
-            hints.vert = Some(if self.multi_line() { Align::Default } else { Align::Center });
+            hints.vert = Some(if self.multi_line() {
+                Align::Default
+            } else {
+                Align::Center
+            });
             self.text.set_rect(cx, rect, hints);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
@@ -803,18 +819,10 @@ impl_scope! {
                     // TODO(opt): we could cache the selection rectangles here to make
                     // drawing more efficient (self.text.highlight_lines(range) output).
                     // The same applies to the edit marker below.
-                    draw.text_selected(
-                        rect,
-                        &self.text,
-                        self.selection.range(),
-                    );
+                    draw.text_selected(rect, &self.text, self.selection.range());
                 }
                 if self.editable && draw.ev_state().has_key_focus(self.id_ref()).0 {
-                    draw.text_cursor(
-                        rect,
-                        &self.text,
-                        self.selection.edit_pos(),
-                    );
+                    draw.text_cursor(rect, &self.text, self.selection.edit_pos());
                 }
             });
         }
@@ -896,7 +904,8 @@ impl_scope! {
                     if let Some(text) = event.text {
                         self.received_text(cx, data, &text)
                     } else {
-                        let opt_cmd = cx.config()
+                        let opt_cmd = cx
+                            .config()
                             .shortcuts()
                             .try_match(cx.modifiers(), &event.logical_key);
                         if let Some(cmd) = opt_cmd {
@@ -954,8 +963,9 @@ impl_scope! {
                     }
                     self.pan_delta(cx, delta.as_offset(cx), false)
                 }
-                Event::PressStart { press } if press.is_tertiary() =>
-                    press.grab(self.id(), kas::event::GrabMode::Click).complete(cx),
+                Event::PressStart { press } if press.is_tertiary() => press
+                    .grab(self.id(), kas::event::GrabMode::Click)
+                    .complete(cx),
                 Event::PressEnd { press, .. } if press.is_tertiary() => {
                     if let Some(content) = cx.get_primary() {
                         self.set_edit_pos_from_coord(cx, press.coord);
@@ -982,7 +992,9 @@ impl_scope! {
                     TextInputAction::Used => Used,
                     TextInputAction::Unused => Unused,
                     TextInputAction::Pan(delta, kinetic) => self.pan_delta(cx, delta, kinetic),
-                    TextInputAction::Focus { coord, action } if self.current.is_select() || action.anchor => {
+                    TextInputAction::Focus { coord, action }
+                        if self.current.is_select() || action.anchor =>
+                    {
                         if self.current.is_ime() {
                             cx.cancel_ime_focus(self.id());
                         }
@@ -1037,7 +1049,10 @@ impl_scope! {
         }
     }
 
-    impl Default for Self where G: Default {
+    impl Default for Self
+    where
+        G: Default,
+    {
         #[inline]
         fn default() -> Self {
             EditField::new(G::default())

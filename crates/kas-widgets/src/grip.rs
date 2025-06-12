@@ -31,7 +31,8 @@ pub enum GripMsg {
     PressEnd(bool),
 }
 
-impl_scope! {
+#[impl_self]
+mod GripPart {
     /// A draggable grip part
     ///
     /// [`Slider`](crate::Slider), [`ScrollBar`](crate::ScrollBar) and
@@ -102,7 +103,8 @@ impl_scope! {
             match event {
                 Event::PressStart { press, .. } => {
                     cx.push(GripMsg::PressStart);
-                    press.grab(self.id(), kas::event::GrabMode::Grab)
+                    press
+                        .grab(self.id(), kas::event::GrabMode::Grab)
                         .with_icon(CursorIcon::Grabbing)
                         .complete(cx);
 

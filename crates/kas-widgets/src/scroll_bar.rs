@@ -39,7 +39,8 @@ pub struct ScrollMsg(pub i32);
 
 const TIMER_HIDE: TimerHandle = TimerHandle::new(0, false);
 
-impl_scope! {
+#[impl_self]
+mod ScrollBar {
     /// A scroll bar
     ///
     /// Scroll bars allow user-input of a value between 0 and a defined maximum,
@@ -59,7 +60,7 @@ impl_scope! {
         direction: D,
         // Terminology assumes vertical orientation:
         min_grip_len: i32, // units: px
-        grip_len: i32, // units: px
+        grip_len: i32,     // units: px
         // grip_size, max_value and value are all in arbitrary (user-provided) units:
         grip_size: i32, // contract: > 0; relative to max_value
         max_value: i32,
@@ -378,7 +379,8 @@ impl_scope! {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod ScrollBars {
     /// Scroll bar controls
     ///
     /// This is a wrapper adding scroll bar controls around a child. Note that this
@@ -388,8 +390,7 @@ impl_scope! {
     /// the result looks poor when content is scrolled. Instead the content should
     /// force internal margins by wrapping contents with a (zero-sized) frame.
     /// [`ScrollRegion`] already does this.
-    #[impl_default(where W: trait)]
-    #[derive(Clone, Debug)]
+    #[derive(Clone, Debug, Default)]
     #[widget {
         Data = W::Data;
     }]
@@ -552,8 +553,10 @@ impl_scope! {
             if self.show_bars.0 {
                 let pos = Coord(pos.0, rect.pos2().1 - bar_width);
                 let size = Size::new(child_size.0, bar_width);
-                self.horiz_bar.set_rect(cx, Rect { pos, size }, AlignHints::NONE);
-                self.horiz_bar.set_limits(cx, max_scroll_offset.0, rect.size.0);
+                self.horiz_bar
+                    .set_rect(cx, Rect { pos, size }, AlignHints::NONE);
+                self.horiz_bar
+                    .set_limits(cx, max_scroll_offset.0, rect.size.0);
             } else {
                 self.horiz_bar.set_rect(cx, Rect::ZERO, AlignHints::NONE);
             }
@@ -561,8 +564,10 @@ impl_scope! {
             if self.show_bars.1 {
                 let pos = Coord(rect.pos2().0 - bar_width, pos.1);
                 let size = Size::new(bar_width, self.rect().size.1);
-                self.vert_bar.set_rect(cx, Rect { pos, size }, AlignHints::NONE);
-                self.vert_bar.set_limits(cx, max_scroll_offset.1, rect.size.1);
+                self.vert_bar
+                    .set_rect(cx, Rect { pos, size }, AlignHints::NONE);
+                self.vert_bar
+                    .set_limits(cx, max_scroll_offset.1, rect.size.1);
             } else {
                 self.vert_bar.set_rect(cx, Rect::ZERO, AlignHints::NONE);
             }
@@ -583,7 +588,8 @@ impl_scope! {
 
     impl Tile for Self {
         fn probe(&self, coord: Coord) -> Id {
-            self.vert_bar.try_probe(coord)
+            self.vert_bar
+                .try_probe(coord)
                 .or_else(|| self.horiz_bar.try_probe(coord))
                 .or_else(|| self.inner.try_probe(coord))
                 .unwrap_or_else(|| self.id())
@@ -615,7 +621,8 @@ impl_scope! {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod ScrollBarRegion {
     /// A scrollable region with bars
     ///
     /// This is essentially a `ScrollBars<ScrollRegion<W>>`:

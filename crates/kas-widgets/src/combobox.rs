@@ -17,7 +17,8 @@ use std::fmt::Debug;
 #[derive(Clone, Debug)]
 struct IndexMsg(usize);
 
-impl_scope! {
+#[impl_self]
+mod ComboBox {
     /// A pop-up multiple choice menu
     ///
     /// # Messages
@@ -63,7 +64,8 @@ impl_scope! {
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
             let msg = (self.state_fn)(cx, data);
-            let opt_index = self.popup
+            let opt_index = self
+                .popup
                 .inner
                 .inner
                 .iter()
@@ -126,7 +128,9 @@ impl_scope! {
                         let index = if y > 0 {
                             self.active.saturating_sub(y as usize)
                         } else {
-                            self.active.saturating_add((-y) as usize).min(self.len().saturating_sub(1))
+                            self.active
+                                .saturating_add((-y) as usize)
+                                .min(self.len().saturating_sub(1))
                         };
                         self.set_active(cx, index);
                         Used
@@ -135,9 +139,16 @@ impl_scope! {
                     }
                 }
                 Event::PressStart { press } => {
-                    if press.id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
+                    if press
+                        .id
+                        .as_ref()
+                        .map(|id| self.is_ancestor_of(id))
+                        .unwrap_or(false)
+                    {
                         if press.is_primary() {
-                            press.grab(self.id(), kas::event::GrabMode::Grab).complete(cx);
+                            press
+                                .grab(self.id(), kas::event::GrabMode::Grab)
+                                .complete(cx);
                             cx.set_grab_depress(*press, press.id);
                             self.opening = !self.popup.is_open();
                         }

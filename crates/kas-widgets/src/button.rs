@@ -11,7 +11,8 @@ use kas::prelude::*;
 use kas::theme::{Background, FrameStyle};
 use std::fmt::Debug;
 
-impl_scope! {
+#[impl_self]
+mod Button {
     /// A push-button with a generic label
     ///
     /// Default alignment of content is centered.
