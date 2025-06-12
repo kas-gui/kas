@@ -17,9 +17,7 @@ mod RadioBox {
     ///
     /// See also [`RadioButton`] which includes a label.
     #[autoimpl(Debug ignore self.state_fn, self.on_select)]
-    #[widget {
-        navigable = true;
-    }]
+    #[widget]
     pub struct RadioBox<A> {
         core: widget_core!(),
         state: bool,
@@ -30,6 +28,7 @@ mod RadioBox {
 
     impl Events for Self {
         const REDRAW_ON_HOVER: bool = true;
+        const NAVIGABLE: bool = true;
 
         type Data = A;
 

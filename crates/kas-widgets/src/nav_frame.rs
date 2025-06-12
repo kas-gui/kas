@@ -21,8 +21,6 @@ mod NavFrame {
     /// [`Select`]: kas::messages::Select
     #[derive(Clone, Default)]
     #[widget{
-        Data = W::Data;
-        navigable = true;
         layout = frame!(self.inner).with_style(kas::theme::FrameStyle::NavFocus);
     }]
     pub struct NavFrame<W: Widget> {
@@ -44,6 +42,10 @@ mod NavFrame {
     }
 
     impl Events for Self {
+        const NAVIGABLE: bool = true;
+
+        type Data = W::Data;
+
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
                 Event::Command(cmd, code) if cmd.is_activate() => {

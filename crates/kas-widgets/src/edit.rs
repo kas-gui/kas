@@ -734,9 +734,7 @@ mod EditField {
     /// scratch on each key stroke). Regardless, this approach is not designed
     /// to scale to handle large documents via a single `EditField` widget.
     #[autoimpl(Clone, Debug where G: trait)]
-    #[widget{
-        navigable = true;
-    }]
+    #[widget]
     pub struct EditField<G: EditGuard = DefaultGuard<()>> {
         core: widget_core!(),
         outer_rect: Rect,
@@ -834,6 +832,7 @@ mod EditField {
 
     impl Events for Self {
         const REDRAW_ON_HOVER: bool = true;
+        const NAVIGABLE: bool = true;
 
         type Data = G::Data;
 

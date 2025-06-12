@@ -355,6 +355,8 @@ mod Mandlebrot {
     }
 
     impl Events for Mandlebrot {
+        const NAVIGABLE: bool = true;
+
         type Data = i32;
 
         fn configure(&mut self, cx: &mut ConfigCx) {
@@ -363,10 +365,6 @@ mod Mandlebrot {
 
         fn update(&mut self, _: &mut ConfigCx, data: &i32) {
             self.iters = *data;
-        }
-
-        fn navigable(&self) -> bool {
-            true
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &i32, event: Event) -> IsUsed {

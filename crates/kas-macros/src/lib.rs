@@ -266,9 +266,6 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// Supported arguments (_WidgetAttrArg_) are:
 ///
 /// -   <code>Data = Type</code>: the `Widget::Data` associated type
-/// -   <code>navigable = <em>bool</em></code> — a quick implementation of
-///     `Events::navigable`: whether this widget supports keyboard focus via
-///     the <kbd>Tab</kbd> key (default is `false`)
 /// -   <code>layout = <em>layout</em></code> — defines widget layout via an
 ///     expression; [see below for documentation](#layout)
 ///

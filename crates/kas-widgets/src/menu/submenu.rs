@@ -121,11 +121,9 @@ mod SubMenu {
     }
 
     impl Events for Self {
-        type Data = Data;
+        const NAVIGABLE: bool = !TOP_LEVEL;
 
-        fn navigable(&self) -> bool {
-            !TOP_LEVEL
-        }
+        type Data = Data;
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> IsUsed {
             match event {

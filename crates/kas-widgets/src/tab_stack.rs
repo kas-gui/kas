@@ -22,7 +22,6 @@ mod Tab {
     /// This is a special variant of `Button` which sends a [`Select`] on press.
     #[widget {
         layout = frame!(self.label).with_style(FrameStyle::Tab);
-        navigable = true;
     }]
     pub struct Tab {
         core: widget_core!(),
@@ -54,6 +53,7 @@ mod Tab {
 
     impl Events for Self {
         const REDRAW_ON_HOVER: bool = true;
+        const NAVIGABLE: bool = true;
 
         type Data = ();
 

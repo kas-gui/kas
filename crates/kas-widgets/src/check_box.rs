@@ -17,9 +17,7 @@ mod CheckBox {
     ///
     /// See also [`CheckButton`] which includes a label.
     #[autoimpl(Debug ignore self.state_fn, self.on_toggle)]
-    #[widget{
-        navigable = true;
-    }]
+    #[widget]
     pub struct CheckBox<A> {
         core: widget_core!(),
         state: bool,
@@ -31,6 +29,7 @@ mod CheckBox {
 
     impl Events for Self {
         const REDRAW_ON_HOVER: bool = true;
+        const NAVIGABLE: bool = true;
 
         type Data = A;
 

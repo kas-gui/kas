@@ -7,7 +7,7 @@ use crate::make_layout;
 use impl_tools_lib::scope::{Scope, ScopeAttr};
 use impl_tools_lib::SimplePath;
 use proc_macro2::{Span, TokenStream as Toks};
-use quote::{quote, quote_spanned, ToTokens};
+use quote::{quote, ToTokens};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::token::Eq;
@@ -18,7 +18,6 @@ mod kw {
     use syn::custom_keyword;
 
     custom_keyword!(layout);
-    custom_keyword!(navigable);
     custom_keyword!(Data);
 }
 
@@ -48,14 +47,12 @@ pub struct Layout {
 #[derive(Debug, Default)]
 pub struct WidgetArgs {
     pub data_ty: Option<DataTy>,
-    pub navigable: Option<Toks>,
     pub layout: Option<Layout>,
 }
 
 impl Parse for WidgetArgs {
     fn parse(content: ParseStream) -> Result<Self> {
         let mut data_ty = None;
-        let mut navigable = None;
         let mut layout = None;
 
         while !content.is_empty() {
@@ -65,13 +62,6 @@ impl Parse for WidgetArgs {
                     kw: content.parse()?,
                     eq: content.parse()?,
                     ty: content.parse()?,
-                });
-            } else if lookahead.peek(kw::navigable) && navigable.is_none() {
-                let span = content.parse::<kw::navigable>()?.span();
-                let _: Eq = content.parse()?;
-                let value = content.parse::<syn::LitBool>()?;
-                navigable = Some(quote_spanned! {span=>
-                    fn navigable(&self) -> bool { #value }
                 });
             } else if lookahead.peek(kw::layout) && layout.is_none() {
                 layout = Some(Layout {
@@ -86,11 +76,7 @@ impl Parse for WidgetArgs {
             let _ = content.parse::<Token![;]>()?;
         }
 
-        Ok(WidgetArgs {
-            data_ty,
-            navigable,
-            layout,
-        })
+        Ok(WidgetArgs { data_ty, layout })
     }
 }
 

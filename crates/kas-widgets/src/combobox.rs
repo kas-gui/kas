@@ -33,7 +33,6 @@ mod ComboBox {
         layout = frame!(row! [self.label, Mark::new(MarkStyle::Point(Direction::Down))])
             .with_style(FrameStyle::Button)
             .align(AlignHints::CENTER);
-        navigable = true;
     }]
     pub struct ComboBox<A, V: Clone + Debug + Eq + 'static> {
         core: widget_core!(),
@@ -60,6 +59,7 @@ mod ComboBox {
 
     impl Events for Self {
         const REDRAW_ON_HOVER: bool = true;
+        const NAVIGABLE: bool = true;
 
         type Data = A;
 

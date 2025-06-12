@@ -22,7 +22,6 @@ mod Button {
             .with_style(FrameStyle::Button)
             .with_background(self.bg)
             .align(AlignHints::CENTER);
-        navigable = true;
     }]
     pub struct Button<W: Widget> {
         core: widget_core!(),
@@ -102,6 +101,7 @@ mod Button {
 
     impl Events for Self {
         const REDRAW_ON_HOVER: bool = true;
+        const NAVIGABLE: bool = true;
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             if let Some(key) = self.key.clone() {

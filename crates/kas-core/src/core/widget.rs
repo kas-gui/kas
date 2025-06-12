@@ -59,6 +59,16 @@ pub trait Events: Widget + Sized {
     /// Defaults to `false`.
     const REDRAW_ON_HOVER: bool = false;
 
+    /// Is this widget navigable via <kbd>Tab</kbd> key?
+    ///
+    /// Note that when this is `false` then the widget will not receive
+    /// navigation focus via the <kbd>Tab</kbd> key, but it may still receive
+    /// navigation focus through some other means, for example a keyboard
+    /// shortcut or a mouse click.
+    ///
+    /// Defaults to `false`.
+    const NAVIGABLE: bool = false;
+
     /// The mouse cursor icon to use on hover
     ///
     /// Defaults to `None`.
@@ -156,20 +166,6 @@ pub trait Events: Widget + Sized {
                 cx.update(node);
             }
         }
-    }
-
-    /// Is this widget navigable via <kbd>Tab</kbd> key?
-    ///
-    /// Note that when this method returns `false` the widget will not receive
-    /// navigation focus via the <kbd>Tab</kbd> key, but it may still receive
-    /// navigation focus through some other means, for example a keyboard
-    /// shortcut or a mouse click.
-    ///
-    /// Defaults to `false`. May instead be set via the `navigable` property of
-    /// the `#[widget]` macro.
-    #[inline]
-    fn navigable(&self) -> bool {
-        false
     }
 
     /// Mouse focus handler

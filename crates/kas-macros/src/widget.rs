@@ -538,7 +538,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         }
     };
 
-    let fn_navigable = args.navigable;
     let fn_handle_event = quote! {
             fn handle_event(
             &mut self,
@@ -554,10 +553,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     if let Some(index) = events_impl {
         let events_impl = &mut scope.impls[index];
         let item_idents = collect_idents(events_impl);
-
-        if let Some(method) = fn_navigable {
-            events_impl.items.push(Verbatim(method));
-        }
 
         if let Some((index, _)) = item_idents
             .iter()
@@ -578,7 +573,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     } else {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Events for #impl_target {
-                #fn_navigable
                 #fn_handle_event
             }
         });
