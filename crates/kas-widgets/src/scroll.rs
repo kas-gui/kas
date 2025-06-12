@@ -9,7 +9,8 @@ use kas::event::{components::ScrollComponent, Scroll};
 use kas::prelude::*;
 use std::fmt::Debug;
 
-impl_scope! {
+#[impl_self]
+mod ScrollRegion {
     /// A scrollable region
     ///
     /// This region supports scrolling via mouse wheel and click/touch drag.
@@ -130,7 +131,8 @@ impl_scope! {
         }
 
         fn probe(&self, coord: Coord) -> Id {
-            self.inner.try_probe(coord + self.translation())
+            self.inner
+                .try_probe(coord + self.translation())
                 .unwrap_or_else(|| self.id())
         }
     }
@@ -141,7 +143,8 @@ impl_scope! {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
-            self.scroll.scroll_by_event(cx, event, self.id(), self.rect())
+            self.scroll
+                .scroll_by_event(cx, event, self.id(), self.rect())
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, scroll: Scroll) {

@@ -14,7 +14,8 @@ use kas::text::format::FormattableText;
 use kas::text::SelectionHelper;
 use kas::theme::{Text, TextClass};
 
-impl_scope! {
+#[impl_self]
+mod ScrollText {
     /// A dynamic text label supporting scrolling and selection
     ///
     /// Line-wrapping is enabled; default alignment is derived from the script
@@ -226,9 +227,7 @@ impl_scope! {
                     cx.redraw(self);
                     Used
                 }
-                Event::Scroll(delta) => {
-                    self.pan_delta(cx, delta.as_offset(cx), false)
-                }
+                Event::Scroll(delta) => self.pan_delta(cx, delta.as_offset(cx), false),
                 event => match self.input_handler.handle(cx, self.id(), event) {
                     TextInputAction::Used | TextInputAction::Finish => Used,
                     TextInputAction::Unused => Unused,
