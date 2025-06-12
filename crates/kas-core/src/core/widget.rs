@@ -292,7 +292,8 @@ pub enum NavAdvance {
 ///
 /// Synopsis:
 /// ```ignore
-/// impl_scope! {
+/// #[impl_self]
+/// mod MyWidget {
 ///     #[widget {
 ///         // macro properties (all optional)
 ///         Data = T;

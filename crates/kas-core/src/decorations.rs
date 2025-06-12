@@ -11,7 +11,7 @@ use crate::event::{CursorIcon, ResizeDirection};
 use crate::prelude::*;
 use crate::theme::MarkStyle;
 use crate::theme::{Text, TextClass};
-use kas_macros::impl_scope;
+use kas_macros::impl_self;
 use std::fmt::Debug;
 
 /// Available decoration modes
@@ -40,7 +40,8 @@ pub enum Decorations {
     Server,
 }
 
-impl_scope! {
+#[impl_self]
+mod Border {
     /// A border region
     ///
     /// Does not draw anything; used solely for event handling.
@@ -98,7 +99,8 @@ impl_scope! {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod Label {
     /// A simple label
     #[derive(Clone, Debug, Default)]
     #[widget {
@@ -123,7 +125,8 @@ impl_scope! {
 
     impl Layout for Self {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.text.set_rect(cx, rect, hints.combine(AlignHints::CENTER));
+            self.text
+                .set_rect(cx, rect, hints.combine(AlignHints::CENTER));
         }
     }
 
@@ -143,7 +146,8 @@ impl_scope! {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod MarkButton {
     /// A mark which is also a button
     ///
     /// This button is not keyboard navigable; only mouse/touch interactive.
@@ -201,7 +205,8 @@ enum TitleBarButton {
     Close,
 }
 
-impl_scope! {
+#[impl_self]
+mod TitleBarButtons {
     /// A set of title-bar buttons
     ///
     /// Currently, this consists of minimise, maximise and close buttons.
@@ -233,13 +238,15 @@ impl_scope! {
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             if let Some(msg) = cx.try_pop() {
                 match msg {
-                    TitleBarButton::Minimize => {
+                    TitleBarButton::Minimize =>
+                    {
                         #[cfg(winit)]
                         if let Some(w) = cx.winit_window() {
                             w.set_minimized(true);
                         }
                     }
-                    TitleBarButton::Maximize => {
+                    TitleBarButton::Maximize =>
+                    {
                         #[cfg(winit)]
                         if let Some(w) = cx.winit_window() {
                             w.set_maximized(!w.is_maximized());
@@ -252,7 +259,8 @@ impl_scope! {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod TitleBar {
     /// A window's title bar (part of decoration)
     #[derive(Clone, Default)]
     #[widget{
