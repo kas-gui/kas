@@ -109,7 +109,8 @@ impl EditGuard for ListEntryGuard {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod ListEntry {
     // The list entry
     #[widget{
         layout = column! [

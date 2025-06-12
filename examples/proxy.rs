@@ -47,7 +47,8 @@ fn main() -> kas::runner::Result<()> {
     app.with(window).run()
 }
 
-impl_scope! {
+#[impl_self]
+mod ColourSquare {
     // A custom widget incorporating "Loading..." text, drawing and layout.
     #[widget]
     struct ColourSquare {
@@ -71,7 +72,8 @@ impl_scope! {
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
-            self.loading_text.set_rect(cx, rect, hints.combine(AlignHints::CENTER));
+            self.loading_text
+                .set_rect(cx, rect, hints.combine(AlignHints::CENTER));
         }
 
         fn draw(&self, mut draw: DrawCx) {

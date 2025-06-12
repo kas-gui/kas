@@ -30,7 +30,8 @@ type DrawShared = <Runner as runner::RunnerInherent>::DrawShared;
 
 const TIMER: TimerHandle = TimerHandle::new(0, true);
 
-impl_scope! {
+#[impl_self]
+mod Clock {
     #[derive(Clone)]
     #[widget]
     struct Clock {
