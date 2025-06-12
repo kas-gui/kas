@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::widget_args::{member, Child, ChildIdent, Layout, WidgetArgs};
+use crate::widget_args::{member, Child, ChildIdent, WidgetArgs};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::scope::{Scope, ScopeItem};
 use proc_macro2::{Span, TokenStream as Toks};
@@ -20,10 +20,28 @@ use syn::{FnArg, Ident, ItemImpl, MacroDelimiter, Member, Meta, Pat, Type};
 /// This macro may inject impls and inject items into existing impls.
 /// It may also inject code into existing methods such that the only observable
 /// behaviour is a panic.
-pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
+pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     scope.expand_impl_self();
     let name = &scope.ident;
     let mut data_ty = args.data_ty.map(|data_ty| data_ty.ty);
+
+    let mut layout: Option<crate::make_layout::Tree> = None;
+    let mut other_attrs = Vec::with_capacity(scope.attrs.len());
+    for attr in scope.attrs.drain(..) {
+        if *attr.path() == parse_quote! { layout } {
+            match attr.meta {
+                Meta::List(list) => {
+                    layout = Some(parse2(list.tokens)?);
+                }
+                _ => {
+                    return Err(Error::new(attr.span(), "expected `#[layout(...)]`"));
+                }
+            };
+        } else {
+            other_attrs.push(attr);
+        }
+    }
+    scope.attrs = other_attrs;
 
     let mut widget_impl = None;
     let mut layout_impl = None;
@@ -180,7 +198,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             core_data = Some(ident.clone());
 
             let mut stor_defs = Default::default();
-            if let Some(Layout { ref tree, .. }) = args.layout {
+            if let Some(ref tree) = layout {
                 stor_defs = tree.storage_fields(&mut children);
             }
             if !stor_defs.ty_toks.is_empty() {
@@ -380,7 +398,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     };
     let fn_try_probe;
     let mut fn_draw = None;
-    if let Some(Layout { tree, .. }) = args.layout.take() {
+    if let Some(tree) = layout {
         // TODO(opt): omit field widget.core._rect if not set here
         let mut set_rect = quote! {};
         let tree_rect = tree.rect(&core_path).unwrap_or_else(|| {

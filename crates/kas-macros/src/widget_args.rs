@@ -3,7 +3,6 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::make_layout;
 use impl_tools_lib::scope::{Scope, ScopeAttr};
 use impl_tools_lib::SimplePath;
 use proc_macro2::{Span, TokenStream as Toks};
@@ -35,25 +34,14 @@ impl ToTokens for DataTy {
     }
 }
 
-#[derive(Debug)]
-pub struct Layout {
-    #[allow(dead_code)]
-    pub kw: kw::layout,
-    #[allow(dead_code)]
-    pub eq: Eq,
-    pub tree: make_layout::Tree,
-}
-
 #[derive(Debug, Default)]
 pub struct WidgetArgs {
     pub data_ty: Option<DataTy>,
-    pub layout: Option<Layout>,
 }
 
 impl Parse for WidgetArgs {
     fn parse(content: ParseStream) -> Result<Self> {
         let mut data_ty = None;
-        let mut layout = None;
 
         while !content.is_empty() {
             let lookahead = content.lookahead1();
@@ -63,12 +51,6 @@ impl Parse for WidgetArgs {
                     eq: content.parse()?,
                     ty: content.parse()?,
                 });
-            } else if lookahead.peek(kw::layout) && layout.is_none() {
-                layout = Some(Layout {
-                    kw: content.parse()?,
-                    eq: content.parse()?,
-                    tree: content.parse()?,
-                });
             } else {
                 return Err(lookahead.error());
             }
@@ -76,7 +58,7 @@ impl Parse for WidgetArgs {
             let _ = content.parse::<Token![;]>()?;
         }
 
-        Ok(WidgetArgs { data_ty, layout })
+        Ok(WidgetArgs { data_ty })
     }
 }
 

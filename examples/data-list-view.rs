@@ -112,12 +112,11 @@ impl EditGuard for ListEntryGuard {
 #[impl_self]
 mod ListEntry {
     // The list entry
-    #[widget{
-        layout = column! [
-            row! [self.label, self.radio],
-            self.edit,
-        ];
-    }]
+    #[widget]
+    #[layout(column! [
+        row! [self.label, self.radio],
+        self.edit,
+    ])]
     struct ListEntry {
         core: widget_core!(),
         #[widget(&())]

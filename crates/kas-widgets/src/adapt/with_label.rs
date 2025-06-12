@@ -19,8 +19,8 @@ mod WithLabel {
     #[derive(Clone, Default)]
     #[widget {
         Data = W::Data;
-        layout = list![self.inner, self.label].with_direction(self.dir);
     }]
+    #[layout(list![self.inner, self.label].with_direction(self.dir))]
     pub struct WithLabel<W: Widget, D: Directional = Direction> {
         core: widget_core!(),
         dir: D,

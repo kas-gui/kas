@@ -308,8 +308,8 @@ pub enum NavAdvance {
 ///     #[widget {
 ///         // macro properties (all optional)
 ///         Data = T;
-///         layout = self.foo;
 ///     }]
+///     #[layout(self.foo)]
 ///     struct MyWidget {
 ///         core: widget_core!(),
 ///         #[widget] foo: impl Widget<Data = T> = make_foo(),

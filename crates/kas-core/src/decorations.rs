@@ -101,10 +101,8 @@ mod Border {
 mod Label {
     /// A simple label
     #[derive(Clone, Debug, Default)]
-    #[widget {
-        Data = ();
-        layout = self.text;
-    }]
+    #[widget]
+    #[layout(self.text)]
     pub(crate) struct Label {
         core: widget_core!(),
         text: Text<String>,
@@ -129,6 +127,8 @@ mod Label {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.text_configure(&mut self.text);
         }
@@ -209,13 +209,12 @@ mod TitleBarButtons {
     ///
     /// Currently, this consists of minimise, maximise and close buttons.
     #[derive(Clone, Default)]
-    #[widget{
-        layout = row! [
-            MarkButton::new(MarkStyle::Point(Direction::Down), TitleBarButton::Minimize),
-            MarkButton::new(MarkStyle::Point(Direction::Up), TitleBarButton::Maximize),
-            MarkButton::new(MarkStyle::X, TitleBarButton::Close),
-        ];
-    }]
+    #[widget]
+    #[layout(row! [
+        MarkButton::new(MarkStyle::Point(Direction::Down), TitleBarButton::Minimize),
+        MarkButton::new(MarkStyle::Point(Direction::Up), TitleBarButton::Maximize),
+        MarkButton::new(MarkStyle::X, TitleBarButton::Close),
+    ])]
     pub struct TitleBarButtons {
         core: widget_core!(),
     }
@@ -261,13 +260,8 @@ mod TitleBarButtons {
 mod TitleBar {
     /// A window's title bar (part of decoration)
     #[derive(Clone, Default)]
-    #[widget{
-        layout = row! [
-            // self.icon,
-            self.title,
-            self.buttons,
-        ];
-    }]
+    #[widget]
+    #[layout(row! [self.title, self.buttons])]
     pub struct TitleBar {
         core: widget_core!(),
         #[widget]

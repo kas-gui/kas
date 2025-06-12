@@ -424,17 +424,16 @@ mod Mandlebrot {
 
 #[impl_self]
 mod MandlebrotUI {
-    #[widget{
-        layout = grid! {
-            (1, 0) => self.label,
-            (2, 0) => self.title,
-            (3, 0) => self.buttons,
-            (0, 1) => self.iters_label.align(AlignHints::CENTER),
-            (0, 2) => self.slider,
-            // extra col span allows use of Label's margin
-            (1..5, 1..4) => self.mbrot,
-        };
-    }]
+    #[widget]
+    #[layout(grid! {
+        (1, 0) => self.label,
+        (2, 0) => self.title,
+        (3, 0) => self.buttons,
+        (0, 1) => self.iters_label.align(AlignHints::CENTER),
+        (0, 2) => self.slider,
+        // extra col span allows use of Label's margin
+        (1..5, 1..4) => self.mbrot,
+    })]
     struct MandlebrotUI {
         core: widget_core!(),
         #[widget(&self.loc)]

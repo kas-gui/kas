@@ -39,9 +39,8 @@ mod Adapt {
     /// stale, experimental and unsound. But even if Rust did gain this feature,
     /// it is not clear that [`Widget::Data`] should be generic.)
     #[autoimpl(Scrollable using self.inner where W: trait)]
-    #[widget {
-        layout = self.inner;
-    }]
+    #[widget]
+    #[layout(self.inner)]
     pub struct Adapt<A, W: Widget> {
         core: widget_core!(),
         state: W::Data,

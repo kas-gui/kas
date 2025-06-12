@@ -16,9 +16,8 @@ use kas::Popup;
 #[impl_self]
 mod SubMenu {
     /// A sub-menu
-    #[widget {
-        layout = self.label;
-    }]
+    #[widget]
+    #[layout(self.label)]
     pub struct SubMenu<const TOP_LEVEL: bool, Data> {
         core: widget_core!(),
         #[widget(&())]

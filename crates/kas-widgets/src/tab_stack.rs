@@ -20,9 +20,8 @@ mod Tab {
     /// A tab
     ///
     /// This is a special variant of `Button` which sends a [`Select`] on press.
-    #[widget {
-        layout = frame!(self.label).with_style(FrameStyle::Tab);
-    }]
+    #[widget]
+    #[layout(frame!(self.label).with_style(FrameStyle::Tab))]
     pub struct Tab {
         core: widget_core!(),
         #[widget]
@@ -102,9 +101,8 @@ mod TabStack {
     ///
     /// See also the main implementing widget: [`Stack`].
     #[impl_default(Self::new())]
-    #[widget {
-        layout = list![self.stack, self.tabs].with_direction(self.direction);
-    }]
+    #[widget]
+    #[layout(list![self.stack, self.tabs].with_direction(self.direction))]
     pub struct TabStack<W: Widget> {
         core: widget_core!(),
         direction: Direction,

@@ -20,9 +20,8 @@ mod MenuEntry {
     /// A `MenuEntry` has an associated message value of type `M`. A clone of
     /// this value is pushed when the entry is activated.
     #[derive(Clone, Debug, Default)]
-    #[widget {
-        layout = self.label;
-    }]
+    #[widget]
+    #[layout(self.label)]
     pub struct MenuEntry<M: Clone + Debug + 'static> {
         core: widget_core!(),
         #[widget]
@@ -115,9 +114,8 @@ mod MenuEntry {
 #[impl_self]
 mod MenuToggle {
     /// A menu entry which can be toggled
-    #[widget {
-        layout = row! [self.checkbox, self.label];
-    }]
+    #[widget]
+    #[layout(row! [self.checkbox, self.label])]
     pub struct MenuToggle<A> {
         core: widget_core!(),
         #[widget]

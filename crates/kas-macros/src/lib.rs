@@ -266,8 +266,6 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// Supported arguments (_WidgetAttrArg_) are:
 ///
 /// -   <code>Data = Type</code>: the `Widget::Data` associated type
-/// -   <code>layout = <em>layout</em></code> — defines widget layout via an
-///     expression; [see below for documentation](#layout)
 ///
 /// The struct must contain a field of type `widget_core!()` (usually named
 /// `core`). The macro `widget_core!()` is a placeholder, expanded by
@@ -287,11 +285,12 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// ## Layout
 ///
-/// Widget layout may be specified either by implementing the `Layout` trait or
-/// via the `layout` property of `#[widget]`. The latter accepts the following
+/// Widget layout may be specified by implementing the `Layout` trait and/or
+/// with a `#[layout(...)]` attribute (this must appear after `#[widget]` on the
+/// type definition). The latter accepts the following
 /// syntax, where _Layout_ is any of the below.
 ///
-/// Using the `layout = ...;` property will also generate a corresponding
+/// Using the `#[layout]` attribute will also generate a corresponding
 /// implementation of `Tile::nav_next`, with a couple of exceptions
 /// (where macro-time analysis is insufficient to implement this method).
 ///
@@ -332,9 +331,8 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// mod Frame {
 ///     /// A frame around content
 ///     #[derive(Clone, Default)]
-///     #[widget{
-///         layout = frame!(self.inner);
-///     }]
+///     #[widget]
+///     #[layout(frame!(self.inner))]
 ///     pub struct Frame<W: Widget> {
 ///         core: widget_core!(),
 ///         #[widget]
@@ -353,8 +351,6 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 ///     }
 /// }
 /// ```
-///
-/// A simple row layout: `layout = row! [self.a, self.b];`
 ///
 /// ## Method modification
 ///
@@ -384,9 +380,6 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// [`Layout`]: https://docs.rs/kas/latest/kas/trait.Layout.html
 /// [`Tile`]: https://docs.rs/kas/latest/kas/trait.Tile.html
 /// [`Events`]: https://docs.rs/kas/latest/kas/trait.Events.html
-/// [`CursorIcon`]: https://docs.rs/kas/latest/kas/event/enum.CursorIcon.html
-/// [`IsUsed`]: https://docs.rs/kas/latest/kas/event/enum.IsUsed.html
-/// [`Deref`]: std::ops::Deref
 /// [_Column_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.column.html
 /// [_Row_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.row.html
 /// [_List_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.list.html

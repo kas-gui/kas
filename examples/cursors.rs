@@ -11,9 +11,8 @@ use kas::widgets::{Column, Label};
 
 #[impl_self]
 mod CursorWidget {
-    #[widget{
-        layout = self.label;
-    }]
+    #[widget]
+    #[layout(self.label)]
     struct CursorWidget {
         core: widget_core!(),
         #[widget]

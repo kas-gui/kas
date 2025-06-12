@@ -134,9 +134,8 @@ mod RadioButton {
     /// A radio button with label
     ///
     /// See also [`RadioBox`] which excludes the label.
-    #[widget{
-        layout = list![self.inner, self.label].with_direction(self.direction());
-    }]
+    #[widget]
+    #[layout(list![self.inner, self.label].with_direction(self.direction()))]
     pub struct RadioButton<A> {
         core: widget_core!(),
         #[widget]

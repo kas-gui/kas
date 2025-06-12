@@ -49,13 +49,8 @@ mod FilterBoxListView {
     /// This is essentially just two widgets with "glue" to handle a
     /// [`SetFilter`] message from the [`EditBox`].
     #[autoimpl(Scrollable using self.list)]
-    #[widget {
-        Data = ();
-        layout = column! [
-            self.edit,
-            self.list,
-        ];
-    }]
+    #[widget]
+    #[layout(column! [self.edit, self.list])]
     pub struct FilterBoxListView<F, A, V, G = KeystrokeGuard, D = Direction>
     where
         F: Filter<A::Item, Value = String>,
@@ -134,6 +129,8 @@ mod FilterBoxListView {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn handle_messages(&mut self, cx: &mut EventCx, data: &()) {
             if let Some(SetFilter(value)) = cx.try_pop() {
                 self.filter.set_filter(value);

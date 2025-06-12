@@ -109,12 +109,8 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
     struct MsgEdit;
 
     let popup_edit_box = impl_anon! {
-        #[widget{
-            layout = row! [
-                self.text,
-                Button::label_msg("&Edit", MsgEdit),
-            ];
-        }]
+        #[widget]
+        #[layout(row! [self.text, Button::label_msg("&Edit", MsgEdit)])]
         struct {
             core: widget_core!(),
             #[widget] text: Text<Data, String> = format_data!(data: &Data, "{}", &data.text),
@@ -609,9 +605,8 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
     }
 
     let list_view = impl_anon! {
-        #[widget {
-            layout = column! [self.filter, self.list];
-        }]
+        #[widget]
+        #[layout(column! [self.filter, self.list])]
         struct {
             core: widget_core!(),
             #[widget(&())] filter: EditBox<MonthYearFilterGuard> =

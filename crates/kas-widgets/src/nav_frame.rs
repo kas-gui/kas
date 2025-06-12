@@ -20,9 +20,8 @@ mod NavFrame {
     ///
     /// [`Select`]: kas::messages::Select
     #[derive(Clone, Default)]
-    #[widget{
-        layout = frame!(self.inner).with_style(kas::theme::FrameStyle::NavFocus);
-    }]
+    #[widget]
+    #[layout(frame!(self.inner).with_style(kas::theme::FrameStyle::NavFocus))]
     pub struct NavFrame<W: Widget> {
         core: widget_core!(),
         /// The inner widget

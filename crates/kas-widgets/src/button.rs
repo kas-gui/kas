@@ -18,11 +18,13 @@ mod Button {
     /// Default alignment of content is centered.
     #[widget {
         Data = W::Data;
-        layout = frame!(self.inner)
+    }]
+    #[layout(
+        frame!(self.inner)
             .with_style(FrameStyle::Button)
             .with_background(self.bg)
-            .align(AlignHints::CENTER);
-    }]
+            .align(AlignHints::CENTER)
+    )]
     pub struct Button<W: Widget> {
         core: widget_core!(),
         key: Option<Key>,

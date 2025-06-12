@@ -54,8 +54,8 @@ mod Frame {
     #[derive(Clone, Default)]
     #[widget{
         Data = W::Data;
-        layout = frame!(self.inner).with_style(self.style);
     }]
+    #[layout(frame!(self.inner).with_style(self.style))]
     pub struct Frame<W: Widget> {
         core: widget_core!(),
         style: FrameStyle,

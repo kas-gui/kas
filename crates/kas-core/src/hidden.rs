@@ -25,10 +25,8 @@ mod StrLabel {
     /// alignment depends on the script direction if not specified.
     /// Line-wrapping is enabled.
     #[derive(Clone, Debug, Default)]
-    #[widget {
-        Data = ();
-        layout = self.text;
-    }]
+    #[widget]
+    #[layout(self.text)]
     pub struct StrLabel {
         core: widget_core!(),
         text: Text<&'static str>,
@@ -58,6 +56,8 @@ mod StrLabel {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.text_configure(&mut self.text);
         }

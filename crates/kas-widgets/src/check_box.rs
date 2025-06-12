@@ -175,9 +175,8 @@ mod CheckButton {
     /// A check button with label
     ///
     /// This is a [`CheckBox`] with a label.
-    #[widget{
-        layout = list![self.inner, self.label].with_direction(self.direction());
-    }]
+    #[widget]
+    #[layout(list![self.inner, self.label].with_direction(self.direction()))]
     pub struct CheckButton<A> {
         core: widget_core!(),
         #[widget]
