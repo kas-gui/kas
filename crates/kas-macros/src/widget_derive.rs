@@ -4,72 +4,68 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use crate::widget::{collect_idents, widget_as_node};
-use crate::widget_args::{member, DataExpr, Layout, WidgetArgs};
+use crate::widget_args::member;
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
-use impl_tools_lib::scope::{Scope, ScopeItem};
+use impl_tools_lib::scope::{Scope, ScopeAttr, ScopeItem};
+use impl_tools_lib::SimplePath;
 use proc_macro2::Span;
 use proc_macro_error2::{emit_error, emit_warning};
 use quote::{quote, ToTokens};
-use syn::parse::{Error, Result};
-use syn::parse_quote;
+use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::ImplItem::Verbatim;
+use syn::{parse2, parse_quote, MacroDelimiter, Meta, Token};
+
+#[allow(non_camel_case_types)]
+mod kw {
+    syn::custom_keyword!(Data);
+}
+
+#[derive(Debug, Default)]
+struct DeriveArgs {
+    data_ty: Option<syn::Type>,
+}
+
+impl Parse for DeriveArgs {
+    fn parse(content: ParseStream) -> Result<Self> {
+        let data_ty = if !content.is_empty() {
+            let _: Token![type] = content.parse()?;
+            let _ = content.parse::<kw::Data>()?;
+            let _: Token![=] = content.parse()?;
+            Some(content.parse()?)
+        } else {
+            None
+        };
+
+        Ok(DeriveArgs { data_ty })
+    }
+}
+
+pub struct AttrDeriveWidget;
+impl ScopeAttr for AttrDeriveWidget {
+    fn path(&self) -> SimplePath {
+        SimplePath::new(&["derive_widget"])
+    }
+
+    fn apply(&self, attr: syn::Attribute, scope: &mut Scope) -> Result<()> {
+        let span = attr.span();
+        let args = match &attr.meta {
+            Meta::Path(_) => DeriveArgs::default(),
+            _ => attr.parse_args()?,
+        };
+        derive_widget(span, args, scope)
+    }
+}
 
 /// Custom widget definition
 ///
 /// This macro may inject impls and inject items into existing impls.
 /// It may also inject code into existing methods such that the only observable
 /// behaviour is a panic.
-pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()> {
-    let derive = args.derive.unwrap();
-    let derive_span = proc_macro_error2::SpanRange {
-        first: derive.kw.span(),
-        last: derive.field.span(),
-    }
-    .collapse();
-    let inner = &derive.field;
-
-    let mut data_ty = if let Some(item) = args.data_ty {
-        if args.data_expr.is_none() {
-            emit_error!(
-                &item, "usage requires `data_expr` definition in derive mode";
-                note = derive_span  => "usage of derive mode";
-            );
-        }
-        Some(item.ty)
-    } else {
-        None
-    };
-    if let Some(ref item) = args.data_expr {
-        if data_ty.is_none() {
-            emit_error!(&item, "usage requires `Data` type definition");
-        }
-    }
-
-    if let Some(ref toks) = args.navigable {
-        emit_error!(
-            toks, "not supported by #[widget(derive=FIELD)]";
-            note = derive_span  => "usage of derive mode";
-        )
-    }
-    if let Some(ref toks) = args.hover_highlight {
-        emit_error!(
-            toks.span(), "not supported by #[widget(derive=FIELD)]";
-            note = derive_span  => "usage of derive mode";
-        )
-    }
-    if let Some(ref toks) = args.cursor_icon {
-        emit_error!(
-            toks, "not supported by #[widget(derive=FIELD)]";
-            note = derive_span  => "usage of derive mode";
-        )
-    }
-    if let Some(Layout { ref kw, .. }) = args.layout {
-        emit_error!(
-            kw, "not supported by #[widget(derive=FIELD)]";
-            note = derive_span  => "usage of derive mode";
-        )
-    }
+fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result<()> {
+    let mut data_ty = args.data_ty;
+    let mut data_binding: Option<syn::Expr> = None;
+    let mut inner = None;
 
     scope.expand_impl_self();
     let name = &scope.ident;
@@ -98,16 +94,24 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
                 || *path == parse_quote! { kas::Events }
                 || *path == parse_quote! { Events }
             {
-                emit_warning!(
-                    path, "Events impl is not used by #[widget(derive=FIELD)]";
-                    note = derive_span  => "usage of derive mode";
-                );
+                emit_warning!(path, "Events impl is not used by #[derive_widget]");
             } else if *path == parse_quote! { ::kas::Widget }
                 || *path == parse_quote! { kas::Widget }
                 || *path == parse_quote! { Widget }
             {
                 if widget_impl.is_none() {
                     widget_impl = Some(index);
+                }
+
+                if data_ty.is_none() {
+                    for item in &impl_.items {
+                        if let syn::ImplItem::Type(ref ty_item) = item {
+                            if ty_item.ident == "Data" {
+                                data_ty = Some(ty_item.ty.clone());
+                                break;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -130,6 +134,55 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
             return Err(syn::Error::new(item.token_span(), "expected struct"));
         }
     };
+
+    for (i, field) in fields.iter_mut().enumerate() {
+        let mut other_attrs = Vec::with_capacity(field.attrs.len());
+        for attr in field.attrs.drain(..) {
+            if *attr.path() == parse_quote! { widget } {
+                if inner.is_some() {
+                    emit_error!(
+                        attr,
+                        "`#[derive_widget]` expects `#[widget]` on only one field"
+                    );
+                    continue;
+                }
+                inner = Some(member(i, field.ident.clone()));
+
+                match &attr.meta {
+                    Meta::Path(_) => {
+                        if data_ty.is_none() {
+                            let ty = &field.ty;
+                            data_ty = Some(parse_quote! { <#ty as ::kas::Widget>::Data });
+                        }
+                    }
+                    Meta::List(list) if matches!(&list.delimiter, MacroDelimiter::Paren(_)) => {
+                        if data_ty.is_none() {
+                            emit_error!(&attr.meta, "usage requires definition of `type Data`");
+                        }
+                        data_binding = Some(parse2(list.tokens.clone())?);
+                    }
+                    Meta::List(list) => {
+                        let span = list.delimiter.span().join();
+                        return Err(Error::new(span, "expected `#[widget]` or `#[widget(..)]`"));
+                    }
+                    Meta::NameValue(nv) => {
+                        let span = nv.eq_token.span();
+                        return Err(Error::new(span, "unexpected"));
+                    }
+                };
+            } else {
+                other_attrs.push(attr);
+            }
+        }
+        field.attrs = other_attrs;
+    }
+
+    let inner = if let Some(ident) = inner {
+        ident
+    } else {
+        return Err(Error::new(attr_span, "expected `#[widget]` on inner field"));
+    };
+    let data_ty = data_ty.unwrap();
 
     let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
     let impl_generics = impl_generics.to_token_stream();
@@ -240,33 +293,7 @@ pub fn widget(_attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<(
         });
     }
 
-    if data_ty.is_none() {
-        if let Some(index) = widget_impl {
-            let widget_impl = &mut scope.impls[index];
-            for item in &widget_impl.items {
-                if let syn::ImplItem::Type(ref ty_item) = item {
-                    if ty_item.ident == "Data" {
-                        data_ty = Some(ty_item.ty.clone());
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    let data_ty = if let Some(ty) = data_ty {
-        ty
-    } else {
-        'outer: {
-            for (i, field) in fields.iter_mut().enumerate() {
-                if *inner == member(i, field.ident.clone()) {
-                    let ty = &field.ty;
-                    break 'outer parse_quote! { <#ty as ::kas::Widget>::Data };
-                }
-            }
-            return Err(Error::new(inner.span(), "field not found"));
-        }
-    };
-    let map_data = if let Some(DataExpr { ref expr, .. }) = args.data_expr {
+    let map_data = if let Some(ref expr) = data_binding {
         quote! { let data = #expr; }
     } else {
         quote! {}

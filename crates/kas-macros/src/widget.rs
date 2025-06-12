@@ -21,14 +21,9 @@ use syn::{FnArg, Ident, ItemImpl, MacroDelimiter, Member, Meta, Pat, Type};
 /// It may also inject code into existing methods such that the only observable
 /// behaviour is a panic.
 pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
-    assert!(args.derive.is_none());
     scope.expand_impl_self();
     let name = &scope.ident;
     let mut data_ty = args.data_ty.map(|data_ty| data_ty.ty);
-
-    if let Some(ref item) = args.data_expr {
-        emit_error!(item, "only supported in `derive` mode");
-    }
 
     let mut widget_impl = None;
     let mut layout_impl = None;

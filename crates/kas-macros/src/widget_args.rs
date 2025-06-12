@@ -21,9 +21,7 @@ mod kw {
     custom_keyword!(navigable);
     custom_keyword!(hover_highlight);
     custom_keyword!(cursor_icon);
-    custom_keyword!(derive);
     custom_keyword!(Data);
-    custom_keyword!(data_expr);
 }
 
 #[derive(Debug)]
@@ -37,20 +35,6 @@ impl ToTokens for DataTy {
         self.kw.to_tokens(tokens);
         self.eq.to_tokens(tokens);
         self.ty.to_tokens(tokens);
-    }
-}
-
-#[derive(Debug)]
-pub struct DataExpr {
-    pub kw: kw::data_expr,
-    pub eq: Eq,
-    pub expr: syn::Expr,
-}
-impl ToTokens for DataExpr {
-    fn to_tokens(&self, tokens: &mut Toks) {
-        self.kw.to_tokens(tokens);
-        self.eq.to_tokens(tokens);
-        self.expr.to_tokens(tokens);
     }
 }
 
@@ -83,13 +67,8 @@ impl ToTokens for CursorIcon {
 }
 
 #[derive(Debug)]
-pub struct Derive {
-    pub kw: kw::derive,
-    pub field: syn::Member,
-}
-
-#[derive(Debug)]
 pub struct Layout {
+    #[allow(dead_code)]
     pub kw: kw::layout,
     #[allow(dead_code)]
     pub eq: Eq,
@@ -99,22 +78,18 @@ pub struct Layout {
 #[derive(Debug, Default)]
 pub struct WidgetArgs {
     pub data_ty: Option<DataTy>,
-    pub data_expr: Option<DataExpr>,
     pub navigable: Option<Toks>,
     pub hover_highlight: Option<HoverHighlight>,
     pub cursor_icon: Option<CursorIcon>,
-    pub derive: Option<Derive>,
     pub layout: Option<Layout>,
 }
 
 impl Parse for WidgetArgs {
     fn parse(content: ParseStream) -> Result<Self> {
         let mut data_ty = None;
-        let mut data_expr = None;
         let mut navigable = None;
         let mut hover_highlight = None;
         let mut cursor_icon = None;
-        let mut derive = None;
         let mut layout = None;
 
         while !content.is_empty() {
@@ -124,12 +99,6 @@ impl Parse for WidgetArgs {
                     kw: content.parse()?,
                     eq: content.parse()?,
                     ty: content.parse()?,
-                });
-            } else if lookahead.peek(kw::data_expr) && data_expr.is_none() {
-                data_expr = Some(DataExpr {
-                    kw: content.parse()?,
-                    eq: content.parse()?,
-                    expr: content.parse()?,
                 });
             } else if lookahead.peek(kw::navigable) && navigable.is_none() {
                 let span = content.parse::<kw::navigable>()?.span();
@@ -150,13 +119,6 @@ impl Parse for WidgetArgs {
                     eq: content.parse()?,
                     expr: content.parse()?,
                 });
-            } else if lookahead.peek(kw::derive) && derive.is_none() {
-                let kw = content.parse::<kw::derive>()?;
-                let _: Eq = content.parse()?;
-                let _: Token![self] = content.parse()?;
-                let _: Token![.] = content.parse()?;
-                let field = content.parse()?;
-                derive = Some(Derive { kw, field });
             } else if lookahead.peek(kw::layout) && layout.is_none() {
                 layout = Some(Layout {
                     kw: content.parse()?,
@@ -172,11 +134,9 @@ impl Parse for WidgetArgs {
 
         Ok(WidgetArgs {
             data_ty,
-            data_expr,
             navigable,
             hover_highlight,
             cursor_icon,
-            derive,
             layout,
         })
     }
@@ -204,11 +164,7 @@ impl ScopeAttr for AttrImplWidget {
             Meta::Path(_) => WidgetArgs::default(),
             _ => attr.parse_args()?,
         };
-        if args.derive.is_some() {
-            crate::widget_derive::widget(span, args, scope)
-        } else {
-            crate::widget::widget(span, args, scope)
-        }
+        crate::widget::widget(span, args, scope)
     }
 }
 

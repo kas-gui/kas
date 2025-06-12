@@ -630,10 +630,8 @@ mod ScrollBarRegion {
     /// while [`ScrollBars`] adds scroll bar controls.
     #[autoimpl(Deref, DerefMut, Scrollable using self.0)]
     #[derive(Clone, Debug, Default)]
-    #[widget{
-        derive = self.0;
-    }]
-    pub struct ScrollBarRegion<W: Widget>(ScrollBars<ScrollRegion<W>>);
+    #[derive_widget]
+    pub struct ScrollBarRegion<W: Widget>(#[widget] ScrollBars<ScrollRegion<W>>);
 
     impl Self {
         /// Construct a `ScrollBarRegion<W>`

@@ -190,16 +190,13 @@ mod Map {
     /// [`DerefMut`](std::ops::DerefMut) to the inner widget.
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(Scrollable using self.inner where W: trait)]
-    #[widget {
-        Data = A;
-        data_expr = (self.map_fn)(data);
-        derive = self.inner;
-    }]
+    #[derive_widget(type Data = A)]
     pub struct Map<A, W: Widget, F>
     where
         F: for<'a> Fn(&'a A) -> &'a W::Data,
     {
         /// The inner widget
+        #[widget((self.map_fn)(data))]
         pub inner: W,
         map_fn: F,
         _data: PhantomData<A>,
