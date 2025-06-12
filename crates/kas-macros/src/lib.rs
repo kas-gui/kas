@@ -282,6 +282,7 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 ///     an expression returning a reference to the child widget's input data;
 ///     available inputs are `self`, `data` (own input data) and `index`
 ///     (of the child).
+/// -   `#[widget = expr]`: an alternative way of writing the above
 ///
 /// ## Layout
 ///

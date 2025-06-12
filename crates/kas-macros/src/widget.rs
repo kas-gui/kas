@@ -260,10 +260,7 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                         let span = list.delimiter.span().join();
                         return Err(Error::new(span, "expected `#[widget]` or `#[widget(..)]`"));
                     }
-                    Meta::NameValue(nv) => {
-                        let span = nv.eq_token.span();
-                        return Err(Error::new(span, "unexpected"));
-                    }
+                    Meta::NameValue(nv) => Some(nv.value),
                 };
                 children.push(Child {
                     ident: ChildIdent::Field(ident.clone()),
