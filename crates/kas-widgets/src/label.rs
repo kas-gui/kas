@@ -10,7 +10,8 @@ use kas::prelude::*;
 use kas::text::format::FormattableText;
 use kas::theme::{Text, TextClass};
 
-impl_scope! {
+#[impl_self]
+mod Label {
     /// A text label
     ///
     /// `Label` derives its contents from input data. Use [`Text`](crate::Text)
@@ -22,8 +23,7 @@ impl_scope! {
     ///
     /// This type is generic over the text type.
     /// See also: [`AccessLabel`].
-    #[impl_default(where T: Default)]
-    #[derive(Clone, Debug)]
+    #[derive(Clone, Debug, Default)]
     #[widget {
         Data = ();
         layout = self.text;
@@ -116,7 +116,8 @@ impl_scope! {
 
     impl Layout for Self {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.text.set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
+            self.text
+                .set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
         }
     }
 
@@ -159,7 +160,8 @@ impl<'a> From<&'a str> for Label<String> {
 // NOTE: AccessLabel requires a different text class. Once specialization is
 // stable we can simply replace the `draw` method, but for now we use a whole
 // new type.
-impl_scope! {
+#[impl_self]
+mod AccessLabel {
     /// A label supporting an access key
     ///
     /// An `AccessLabel` is a variant of [`Label`] supporting [`AccessString`],
@@ -170,8 +172,7 @@ impl_scope! {
     /// A text label. Vertical alignment defaults to centred, horizontal
     /// alignment depends on the script direction if not specified.
     /// Line-wrapping is enabled by default.
-    #[impl_default]
-    #[derive(Clone, Debug)]
+    #[derive(Clone, Debug, Default)]
     #[widget {
         layout = self.text;
     }]
@@ -257,7 +258,8 @@ impl_scope! {
 
     impl Layout for Self {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.text.set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
+            self.text
+                .set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
         }
     }
 
@@ -278,7 +280,7 @@ impl_scope! {
                     cx.push(kas::messages::Activate(code));
                     Used
                 }
-                _ => Unused
+                _ => Unused,
             }
         }
     }
