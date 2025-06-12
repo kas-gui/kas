@@ -23,7 +23,7 @@ use syn::{FnArg, Ident, ItemImpl, MacroDelimiter, Member, Meta, Pat, Type};
 pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     scope.expand_impl_self();
     let name = &scope.ident;
-    let mut data_ty = args.data_ty.map(|data_ty| data_ty.ty);
+    let mut data_ty = args.data_ty;
 
     let mut layout: Option<crate::make_layout::Tree> = None;
     let mut other_attrs = Vec::with_capacity(scope.attrs.len());

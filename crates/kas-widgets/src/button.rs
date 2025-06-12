@@ -16,9 +16,7 @@ mod Button {
     /// A push-button with a generic label
     ///
     /// Default alignment of content is centered.
-    #[widget {
-        Data = W::Data;
-    }]
+    #[widget]
     #[layout(
         frame!(self.inner)
             .with_style(FrameStyle::Button)
@@ -104,6 +102,8 @@ mod Button {
     impl Events for Self {
         const REDRAW_ON_HOVER: bool = true;
         const NAVIGABLE: bool = true;
+
+        type Data = W::Data;
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             if let Some(key) = self.key.clone() {

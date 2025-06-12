@@ -393,9 +393,7 @@ mod ScrollBars {
     /// force internal margins by wrapping contents with a (zero-sized) frame.
     /// [`ScrollRegion`] already does this.
     #[derive(Clone, Debug, Default)]
-    #[widget {
-        Data = W::Data;
-    }]
+    #[widget(type Data = W::Data)]
     pub struct ScrollBars<W: Scrollable + Widget> {
         core: widget_core!(),
         mode: ScrollBarMode,

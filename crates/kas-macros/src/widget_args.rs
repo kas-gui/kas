@@ -6,10 +6,9 @@
 use impl_tools_lib::scope::{Scope, ScopeAttr};
 use impl_tools_lib::SimplePath;
 use proc_macro2::{Span, TokenStream as Toks};
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::token::Eq;
 use syn::{Expr, Ident, Index, Member, Meta, Token};
 
 #[allow(non_camel_case_types)]
@@ -20,43 +19,21 @@ mod kw {
     custom_keyword!(Data);
 }
 
-#[derive(Debug)]
-pub struct DataTy {
-    pub kw: kw::Data,
-    pub eq: Eq,
-    pub ty: syn::Type,
-}
-impl ToTokens for DataTy {
-    fn to_tokens(&self, tokens: &mut Toks) {
-        self.kw.to_tokens(tokens);
-        self.eq.to_tokens(tokens);
-        self.ty.to_tokens(tokens);
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct WidgetArgs {
-    pub data_ty: Option<DataTy>,
+    pub data_ty: Option<syn::Type>,
 }
 
 impl Parse for WidgetArgs {
     fn parse(content: ParseStream) -> Result<Self> {
-        let mut data_ty = None;
-
-        while !content.is_empty() {
-            let lookahead = content.lookahead1();
-            if lookahead.peek(kw::Data) && data_ty.is_none() {
-                data_ty = Some(DataTy {
-                    kw: content.parse()?,
-                    eq: content.parse()?,
-                    ty: content.parse()?,
-                });
-            } else {
-                return Err(lookahead.error());
-            }
-
-            let _ = content.parse::<Token![;]>()?;
-        }
+        let data_ty = if !content.is_empty() {
+            let _: Token![type] = content.parse()?;
+            let _ = content.parse::<kw::Data>()?;
+            let _: Token![=] = content.parse()?;
+            Some(content.parse()?)
+        } else {
+            None
+        };
 
         Ok(WidgetArgs { data_ty })
     }

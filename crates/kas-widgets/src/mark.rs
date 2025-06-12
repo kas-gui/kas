@@ -18,9 +18,7 @@ mod Mark {
     ///
     /// TODO: expand or replace.
     #[derive(Clone, Debug)]
-    #[widget {
-        Data = ();
-    }]
+    #[widget(type Data = ())]
     pub struct Mark {
         core: widget_core!(),
         style: MarkStyle,
