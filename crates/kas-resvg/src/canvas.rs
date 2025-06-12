@@ -88,7 +88,8 @@ impl<P: CanvasProgram> State<P> {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod Canvas {
     /// A canvas widget over the `tiny-skia` library
     ///
     /// The widget is essentially a cached image drawn from a [`Pixmap`]

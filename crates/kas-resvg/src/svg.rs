@@ -130,13 +130,13 @@ impl State {
     }
 }
 
-impl_scope! {
+#[impl_self]
+mod Svg {
     /// An SVG image loaded from a path
     ///
     /// May be default constructed (result is empty).
     #[autoimpl(Debug ignore self.inner)]
-    #[impl_default]
-    #[derive(Clone)]
+    #[derive(Clone, Default)]
     #[widget]
     pub struct Svg {
         core: widget_core!(),
@@ -295,9 +295,9 @@ impl_scope! {
                 cx.redraw(&self);
                 self.inner = match std::mem::take(&mut self.inner) {
                     State::None => State::None,
-                    State::Initial(source) |
-                    State::Rendering(source) |
-                    State::Ready(source, _) => State::Ready(source, pixmap),
+                    State::Initial(source) | State::Rendering(source) | State::Ready(source, _) => {
+                        State::Ready(source, pixmap)
+                    }
                 };
 
                 let own_size: (u32, u32) = self.rect().size.cast();
