@@ -270,10 +270,6 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// -   <code>navigable = <em>bool</em></code> — a quick implementation of
 ///     `Events::navigable`: whether this widget supports keyboard focus via
 ///     the <kbd>Tab</kbd> key (default is `false`)
-/// -   <code>hover_highlight = <em>bool</em></code> — if true, generate
-///     `Events::handle_hover` to request a redraw on focus gained/lost
-/// -   <code>cursor_icon = <em>expr</em></code> — if used, generate
-///     `Event::handle_hover`, calling `cx.set_hover_cursor(expr)`
 /// -   <code>layout = <em>layout</em></code> — defines widget layout via an
 ///     expression; [see below for documentation](#layout)
 ///

@@ -66,10 +66,7 @@ mod GripPart {
     /// when a [`Event::PressStart`] occurs on the track area (which identifies
     /// as being the parent widget).
     #[derive(Clone, Debug, Default)]
-    #[widget{
-        hover_highlight = true;
-        cursor_icon = CursorIcon::Grab;
-    }]
+    #[widget]
     pub struct GripPart {
         core: widget_core!(),
         // The track is the area within which this GripPart may move
@@ -97,7 +94,14 @@ mod GripPart {
     }
 
     impl Events for GripPart {
+        const REDRAW_ON_HOVER: bool = true;
+
         type Data = ();
+
+        #[inline]
+        fn hover_icon(&self) -> Option<CursorIcon> {
+            Some(CursorIcon::Grab)
+        }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {

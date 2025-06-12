@@ -21,10 +21,8 @@ mod Tab {
     ///
     /// This is a special variant of `Button` which sends a [`Select`] on press.
     #[widget {
-        Data = ();
         layout = frame!(self.label).with_style(FrameStyle::Tab);
         navigable = true;
-        hover_highlight = true;
     }]
     pub struct Tab {
         core: widget_core!(),
@@ -55,6 +53,10 @@ mod Tab {
     }
 
     impl Events for Self {
+        const REDRAW_ON_HOVER: bool = true;
+
+        type Data = ();
+
         fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> IsUsed {
             event.on_activate(cx, self.id(), |cx| {
                 cx.push(Select);

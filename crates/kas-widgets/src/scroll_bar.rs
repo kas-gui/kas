@@ -54,7 +54,7 @@ mod ScrollBar {
     ///
     /// It is safe to not call `size_rules` before `set_rect` for this type.
     #[derive(Clone, Debug, Default)]
-    #[widget(hover_highlight = true;)]
+    #[widget]
     pub struct ScrollBar<D: Directional = Direction> {
         core: widget_core!(),
         direction: D,
@@ -339,6 +339,8 @@ mod ScrollBar {
     }
 
     impl Events for Self {
+        const REDRAW_ON_HOVER: bool = true;
+
         type Data = ();
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {

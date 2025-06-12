@@ -19,8 +19,6 @@ mod kw {
 
     custom_keyword!(layout);
     custom_keyword!(navigable);
-    custom_keyword!(hover_highlight);
-    custom_keyword!(cursor_icon);
     custom_keyword!(Data);
 }
 
@@ -39,34 +37,6 @@ impl ToTokens for DataTy {
 }
 
 #[derive(Debug)]
-pub struct HoverHighlight {
-    pub kw: kw::hover_highlight,
-    pub eq: Eq,
-    pub lit: syn::LitBool,
-}
-impl ToTokens for HoverHighlight {
-    fn to_tokens(&self, tokens: &mut Toks) {
-        self.kw.to_tokens(tokens);
-        self.eq.to_tokens(tokens);
-        self.lit.to_tokens(tokens);
-    }
-}
-
-#[derive(Debug)]
-pub struct CursorIcon {
-    pub kw: kw::cursor_icon,
-    pub eq: Eq,
-    pub expr: syn::Expr,
-}
-impl ToTokens for CursorIcon {
-    fn to_tokens(&self, tokens: &mut Toks) {
-        self.kw.to_tokens(tokens);
-        self.eq.to_tokens(tokens);
-        self.expr.to_tokens(tokens);
-    }
-}
-
-#[derive(Debug)]
 pub struct Layout {
     #[allow(dead_code)]
     pub kw: kw::layout,
@@ -79,8 +49,6 @@ pub struct Layout {
 pub struct WidgetArgs {
     pub data_ty: Option<DataTy>,
     pub navigable: Option<Toks>,
-    pub hover_highlight: Option<HoverHighlight>,
-    pub cursor_icon: Option<CursorIcon>,
     pub layout: Option<Layout>,
 }
 
@@ -88,8 +56,6 @@ impl Parse for WidgetArgs {
     fn parse(content: ParseStream) -> Result<Self> {
         let mut data_ty = None;
         let mut navigable = None;
-        let mut hover_highlight = None;
-        let mut cursor_icon = None;
         let mut layout = None;
 
         while !content.is_empty() {
@@ -107,18 +73,6 @@ impl Parse for WidgetArgs {
                 navigable = Some(quote_spanned! {span=>
                     fn navigable(&self) -> bool { #value }
                 });
-            } else if lookahead.peek(kw::hover_highlight) && hover_highlight.is_none() {
-                hover_highlight = Some(HoverHighlight {
-                    kw: content.parse()?,
-                    eq: content.parse()?,
-                    lit: content.parse()?,
-                });
-            } else if lookahead.peek(kw::cursor_icon) && cursor_icon.is_none() {
-                cursor_icon = Some(CursorIcon {
-                    kw: content.parse()?,
-                    eq: content.parse()?,
-                    expr: content.parse()?,
-                });
             } else if lookahead.peek(kw::layout) && layout.is_none() {
                 layout = Some(Layout {
                     kw: content.parse()?,
@@ -135,8 +89,6 @@ impl Parse for WidgetArgs {
         Ok(WidgetArgs {
             data_ty,
             navigable,
-            hover_highlight,
-            cursor_icon,
             layout,
         })
     }

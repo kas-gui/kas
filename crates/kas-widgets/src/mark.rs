@@ -66,9 +66,7 @@ mod MarkButton {
     ///
     /// Uses stretch policy [`Stretch::Low`].
     #[derive(Clone, Debug)]
-    #[widget {
-        hover_highlight = true;
-    }]
+    #[widget]
     pub struct MarkButton<M: Clone + Debug + 'static> {
         core: widget_core!(),
         style: MarkStyle,
@@ -99,6 +97,8 @@ mod MarkButton {
     }
 
     impl Events for Self {
+        const REDRAW_ON_HOVER: bool = true;
+
         type Data = ();
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {

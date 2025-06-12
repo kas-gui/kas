@@ -19,7 +19,6 @@ mod RadioBox {
     #[autoimpl(Debug ignore self.state_fn, self.on_select)]
     #[widget {
         navigable = true;
-        hover_highlight = true;
     }]
     pub struct RadioBox<A> {
         core: widget_core!(),
@@ -30,6 +29,8 @@ mod RadioBox {
     }
 
     impl Events for Self {
+        const REDRAW_ON_HOVER: bool = true;
+
         type Data = A;
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {

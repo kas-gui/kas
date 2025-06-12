@@ -19,7 +19,6 @@ mod CheckBox {
     #[autoimpl(Debug ignore self.state_fn, self.on_toggle)]
     #[widget{
         navigable = true;
-        hover_highlight = true;
     }]
     pub struct CheckBox<A> {
         core: widget_core!(),
@@ -31,6 +30,8 @@ mod CheckBox {
     }
 
     impl Events for Self {
+        const REDRAW_ON_HOVER: bool = true;
+
         type Data = A;
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {

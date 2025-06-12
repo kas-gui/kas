@@ -12,9 +12,7 @@ use kas::widgets::{Column, Label};
 #[impl_self]
 mod CursorWidget {
     #[widget{
-        Data = ();
         layout = self.label;
-        cursor_icon = self.cursor;
     }]
     struct CursorWidget {
         core: widget_core!(),
@@ -22,10 +20,19 @@ mod CursorWidget {
         label: Label<&'static str>,
         cursor: CursorIcon,
     }
+
     impl Tile for Self {
         fn probe(&self, _: Coord) -> Id {
             // Steal mouse focus: hover points to self, not self.label
             self.id()
+        }
+    }
+
+    impl Events for Self {
+        type Data = ();
+
+        fn hover_icon(&self) -> Option<CursorIcon> {
+            Some(self.cursor)
         }
     }
 }

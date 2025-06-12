@@ -110,7 +110,6 @@ mod Slider {
     #[autoimpl(Debug ignore self.state_fn, self.on_move)]
     #[widget{
         navigable = true;
-        hover_highlight = true;
     }]
     pub struct Slider<A, T: SliderValue, D: Directional = Direction> {
         core: widget_core!(),
@@ -352,6 +351,8 @@ mod Slider {
     }
 
     impl Events for Self {
+        const REDRAW_ON_HOVER: bool = true;
+
         type Data = A;
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {

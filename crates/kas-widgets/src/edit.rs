@@ -736,8 +736,6 @@ mod EditField {
     #[autoimpl(Clone, Debug where G: trait)]
     #[widget{
         navigable = true;
-        hover_highlight = true;
-        cursor_icon = CursorIcon::Text;
     }]
     pub struct EditField<G: EditGuard = DefaultGuard<()>> {
         core: widget_core!(),
@@ -835,7 +833,14 @@ mod EditField {
     }
 
     impl Events for Self {
+        const REDRAW_ON_HOVER: bool = true;
+
         type Data = G::Data;
+
+        #[inline]
+        fn hover_icon(&self) -> Option<CursorIcon> {
+            Some(CursorIcon::Text)
+        }
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.text_configure(&mut self.text);

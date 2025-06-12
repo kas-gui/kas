@@ -23,7 +23,6 @@ mod Button {
             .with_background(self.bg)
             .align(AlignHints::CENTER);
         navigable = true;
-        hover_highlight = true;
     }]
     pub struct Button<W: Widget> {
         core: widget_core!(),
@@ -102,6 +101,8 @@ mod Button {
     }
 
     impl Events for Self {
+        const REDRAW_ON_HOVER: bool = true;
+
         fn configure(&mut self, cx: &mut ConfigCx) {
             if let Some(key) = self.key.clone() {
                 cx.add_access_key(self.id_ref(), key);

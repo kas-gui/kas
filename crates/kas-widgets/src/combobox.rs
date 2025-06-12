@@ -34,7 +34,6 @@ mod ComboBox {
             .with_style(FrameStyle::Button)
             .align(AlignHints::CENTER);
         navigable = true;
-        hover_highlight = true;
     }]
     pub struct ComboBox<A, V: Clone + Debug + Eq + 'static> {
         core: widget_core!(),
@@ -60,6 +59,8 @@ mod ComboBox {
     }
 
     impl Events for Self {
+        const REDRAW_ON_HOVER: bool = true;
+
         type Data = A;
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {

@@ -536,38 +536,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         }
     };
 
-    let hover_highlight = args
-        .hover_highlight
-        .map(|tok| tok.lit.value)
-        .unwrap_or(false);
-    let icon_expr = args.cursor_icon.map(|tok| tok.expr);
-    let fn_handle_hover = match (hover_highlight, icon_expr) {
-        (false, None) => quote! {},
-        (true, None) => quote! {
-            #[inline]
-            fn handle_hover(&mut self, cx: &mut EventCx, _: bool) {
-                cx.redraw(self);
-            }
-        },
-        (false, Some(icon_expr)) => quote! {
-            #[inline]
-            fn handle_hover(&mut self, cx: &mut EventCx, state: bool) {
-                if state {
-                    cx.set_hover_cursor(#icon_expr);
-                }
-            }
-        },
-        (true, Some(icon_expr)) => quote! {
-            #[inline]
-            fn handle_hover(&mut self, cx: &mut EventCx, state: bool) {
-                cx.redraw(self);
-                if state {
-                    cx.set_hover_cursor(#icon_expr);
-                }
-            }
-        },
-    };
-
     let fn_navigable = args.navigable;
     let fn_handle_event = quote! {
             fn handle_event(
@@ -589,8 +557,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             events_impl.items.push(Verbatim(method));
         }
 
-        events_impl.items.push(Verbatim(fn_handle_hover));
-
         if let Some((index, _)) = item_idents
             .iter()
             .find(|(_, ident)| *ident == "handle_event")
@@ -611,7 +577,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Events for #impl_target {
                 #fn_navigable
-                #fn_handle_hover
                 #fn_handle_event
             }
         });
