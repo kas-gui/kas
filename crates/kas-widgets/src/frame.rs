@@ -30,7 +30,7 @@ use kas::theme::{Background, FrameStyle};
 /// let my_widget = kas_widgets::frame!(kas_widgets::Label::new("content"));
 /// ```
 ///
-/// [widget layout syntax]: macro@widget#layout-1
+/// [widget layout syntax]: macro@kas::layout
 /// [`map_any`]: crate::AdaptWidgetAny::map_any
 /// [`align`]: crate::AdaptWidget::align
 /// [`pack`]: crate::AdaptWidget::pack

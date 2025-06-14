@@ -255,6 +255,9 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// (In the case of multiple implementations of the same trait, as used for
 /// specialization, only the first implementation of each trait is extended.)
 ///
+/// See also the [`macro@layout`] attribute which assists in implementing
+/// [`Layout`].
+///
 /// ## Syntax
 ///
 /// > _WidgetAttr_ :\
@@ -283,44 +286,6 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 ///     available inputs are `self`, `data` (own input data) and `index`
 ///     (of the child).
 /// -   `#[widget = expr]`: an alternative way of writing the above
-///
-/// ## Layout
-///
-/// Widget layout may be specified by implementing the `Layout` trait and/or
-/// with a `#[layout(...)]` attribute (this must appear after `#[widget]` on the
-/// type definition). The latter accepts the following
-/// syntax, where _Layout_ is any of the below.
-///
-/// Using the `#[layout]` attribute will also generate a corresponding
-/// implementation of `Tile::nav_next`, with a couple of exceptions
-/// (where macro-time analysis is insufficient to implement this method).
-///
-/// > [_Column_], [_Row_], [_List_] [_AlignedColumn_], [_AlignedRow_], [_Grid_],
-/// > [_Float_], [_Frame_] :\
-/// > &nbsp;&nbsp; These stand-alone macros are explicitly supported in this position.\
-/// >
-/// > _Single_ :\
-/// > &nbsp;&nbsp; `self` `.` _Member_\
-/// > &nbsp;&nbsp; A named child: `self.foo` (more precisely, this matches any
-/// > expression starting `self`, and uses `&mut (#expr)`).
-/// >
-/// > _WidgetConstructor_ :\
-/// > &nbsp;&nbsp; _Expr_\
-/// > &nbsp;&nbsp; An expression yielding a widget, e.g.
-/// > `Label::new("Hello world")`. The result must be an object of some type
-/// > `W: Widget<Data = ()>`. This widget will be stored in a hidden field and
-/// > is accessible through `Tile::get_child` but does not receive input data.
-/// >
-/// > _LabelLit_ :\
-/// > &nbsp;&nbsp; _StrLit_\
-/// > &nbsp;&nbsp; A string literal generates a label widget, e.g. "Hello
-/// > world". This is an internal type without text wrapping.
-///
-/// Additional syntax rules (not layout items):
-///
-/// > _Member_ :\
-/// > &nbsp;&nbsp; _Ident_ | _Index_\
-/// > &nbsp;&nbsp; The name of a struct field or an index into a tuple struct.
 ///
 /// ## Examples
 ///
@@ -381,6 +346,63 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// [`Layout`]: https://docs.rs/kas/latest/kas/trait.Layout.html
 /// [`Tile`]: https://docs.rs/kas/latest/kas/trait.Tile.html
 /// [`Events`]: https://docs.rs/kas/latest/kas/trait.Events.html
+#[proc_macro_attribute]
+#[proc_macro_error]
+pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
+    emit_call_site_error!("must be used within scope of #[impl_self], impl_scope! or impl_anon!");
+    item
+}
+
+/// Provide a default implementation of the [`Layout`] trait for a widget
+///
+/// The [`macro@widget`] macro uses this attribute to implement
+/// [`MacroDefinedLayout`] for the widget, then adjusts the default
+/// implementations of each [`Layout`] method to call the corresponding
+/// [`MacroDefinedLayout`] method.
+///
+/// This attribute may *only* appear after the [`macro@widget`] attribute (it is
+/// not a stand-alone macro).
+///
+/// ## Layout
+///
+/// Widget layout may be specified by implementing the `Layout` trait and/or
+/// with a `#[layout(...)]` attribute (this must appear after `#[widget]` on the
+/// type definition). The latter accepts the following
+/// syntax, where _Layout_ is any of the below.
+///
+/// Using the `#[layout]` attribute will also generate a corresponding
+/// implementation of `Tile::nav_next`, with a couple of exceptions
+/// (where macro-time analysis is insufficient to implement this method).
+///
+/// > [_Column_], [_Row_], [_List_] [_AlignedColumn_], [_AlignedRow_], [_Grid_],
+/// > [_Float_], [_Frame_] :\
+/// > &nbsp;&nbsp; These stand-alone macros are explicitly supported in this position.\
+/// >
+/// > _Single_ :\
+/// > &nbsp;&nbsp; `self` `.` _Member_\
+/// > &nbsp;&nbsp; A named child: `self.foo` (more precisely, this matches any
+/// > expression starting `self`, and uses `&mut (#expr)`).
+/// >
+/// > _WidgetConstructor_ :\
+/// > &nbsp;&nbsp; _Expr_\
+/// > &nbsp;&nbsp; An expression yielding a widget, e.g.
+/// > `Label::new("Hello world")`. The result must be an object of some type
+/// > `W: Widget<Data = ()>`. This widget will be stored in a hidden field and
+/// > is accessible through `Tile::get_child` but does not receive input data.
+/// >
+/// > _LabelLit_ :\
+/// > &nbsp;&nbsp; _StrLit_\
+/// > &nbsp;&nbsp; A string literal generates a label widget, e.g. "Hello
+/// > world". This is an internal type without text wrapping.
+///
+/// Additional syntax rules (not layout items):
+///
+/// > _Member_ :\
+/// > &nbsp;&nbsp; _Ident_ | _Index_\
+/// > &nbsp;&nbsp; The name of a struct field or an index into a tuple struct.
+///
+/// [`Layout`]: https://docs.rs/kas/latest/kas/trait.Layout.html
+/// [`MacroDefinedLayout`]: https://docs.rs/kas/latest/kas/trait.MacroDefinedLayout.html
 /// [_Column_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.column.html
 /// [_Row_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.row.html
 /// [_List_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.list.html
@@ -391,8 +413,8 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// [_AlignedRow_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.aligned_row.html
 #[proc_macro_attribute]
 #[proc_macro_error]
-pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
-    emit_call_site_error!("must be used within scope of #[impl_self], impl_scope! or impl_anon!");
+pub fn layout(_: TokenStream, item: TokenStream) -> TokenStream {
+    emit_call_site_error!("must follow use of #[widget]");
     item
 }
 
