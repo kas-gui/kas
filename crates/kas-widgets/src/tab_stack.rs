@@ -20,12 +20,8 @@ mod Tab {
     /// A tab
     ///
     /// This is a special variant of `Button` which sends a [`Select`] on press.
-    #[widget {
-        Data = ();
-        layout = frame!(self.label).with_style(FrameStyle::Tab);
-        navigable = true;
-        hover_highlight = true;
-    }]
+    #[widget]
+    #[layout(frame!(self.label).with_style(FrameStyle::Tab))]
     pub struct Tab {
         core: widget_core!(),
         #[widget]
@@ -55,6 +51,11 @@ mod Tab {
     }
 
     impl Events for Self {
+        const REDRAW_ON_HOVER: bool = true;
+        const NAVIGABLE: bool = true;
+
+        type Data = ();
+
         fn handle_event(&mut self, cx: &mut EventCx, _: &(), event: Event) -> IsUsed {
             event.on_activate(cx, self.id(), |cx| {
                 cx.push(Select);
@@ -100,9 +101,8 @@ mod TabStack {
     ///
     /// See also the main implementing widget: [`Stack`].
     #[impl_default(Self::new())]
-    #[widget {
-        layout = list![self.stack, self.tabs].with_direction(self.direction);
-    }]
+    #[widget]
+    #[layout(list![self.stack, self.tabs].with_direction(self.direction))]
     pub struct TabStack<W: Widget> {
         core: widget_core!(),
         direction: Direction,

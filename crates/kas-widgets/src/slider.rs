@@ -108,10 +108,7 @@ mod Slider {
     ///
     /// Sliders allow user input of a value from a fixed range.
     #[autoimpl(Debug ignore self.state_fn, self.on_move)]
-    #[widget{
-        navigable = true;
-        hover_highlight = true;
-    }]
+    #[widget]
     pub struct Slider<A, T: SliderValue, D: Directional = Direction> {
         core: widget_core!(),
         direction: D,
@@ -352,6 +349,9 @@ mod Slider {
     }
 
     impl Events for Self {
+        const REDRAW_ON_HOVER: bool = true;
+        const NAVIGABLE: bool = true;
+
         type Data = A;
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {

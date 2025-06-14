@@ -35,9 +35,8 @@ mod Popup {
     /// NOTE: currently only the emulated approach is implemented.
     ///
     /// A popup receives input data from its parent like any other widget.
-    #[widget {
-        layout = frame!(self.inner).with_style(kas::theme::FrameStyle::Popup);
-    }]
+    #[widget]
+    #[layout(frame!(self.inner).with_style(kas::theme::FrameStyle::Popup))]
     pub struct Popup<W: Widget> {
         core: widget_core!(),
         direction: Direction,

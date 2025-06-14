@@ -54,7 +54,7 @@ mod ScrollBar {
     ///
     /// It is safe to not call `size_rules` before `set_rect` for this type.
     #[derive(Clone, Debug, Default)]
-    #[widget(hover_highlight = true;)]
+    #[widget]
     pub struct ScrollBar<D: Directional = Direction> {
         core: widget_core!(),
         direction: D,
@@ -339,6 +339,8 @@ mod ScrollBar {
     }
 
     impl Events for Self {
+        const REDRAW_ON_HOVER: bool = true;
+
         type Data = ();
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
@@ -391,9 +393,7 @@ mod ScrollBars {
     /// force internal margins by wrapping contents with a (zero-sized) frame.
     /// [`ScrollRegion`] already does this.
     #[derive(Clone, Debug, Default)]
-    #[widget {
-        Data = W::Data;
-    }]
+    #[widget(type Data = W::Data)]
     pub struct ScrollBars<W: Scrollable + Widget> {
         core: widget_core!(),
         mode: ScrollBarMode,
@@ -630,10 +630,8 @@ mod ScrollBarRegion {
     /// while [`ScrollBars`] adds scroll bar controls.
     #[autoimpl(Deref, DerefMut, Scrollable using self.0)]
     #[derive(Clone, Debug, Default)]
-    #[widget{
-        derive = self.0;
-    }]
-    pub struct ScrollBarRegion<W: Widget>(ScrollBars<ScrollRegion<W>>);
+    #[derive_widget]
+    pub struct ScrollBarRegion<W: Widget>(#[widget] ScrollBars<ScrollRegion<W>>);
 
     impl Self {
         /// Construct a `ScrollBarRegion<W>`

@@ -20,9 +20,7 @@ mod ScrollText {
     ///
     /// Line-wrapping is enabled; default alignment is derived from the script
     /// (usually top-left).
-    #[widget{
-        cursor_icon = CursorIcon::Text;
-    }]
+    #[widget]
     pub struct ScrollText<A, T: Default + FormattableText + 'static> {
         core: widget_core!(),
         view_offset: Offset,
@@ -174,6 +172,11 @@ mod ScrollText {
 
     impl Events for Self {
         type Data = A;
+
+        #[inline]
+        fn hover_icon(&self) -> Option<CursorIcon> {
+            Some(CursorIcon::Text)
+        }
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.text_configure(&mut self.text);

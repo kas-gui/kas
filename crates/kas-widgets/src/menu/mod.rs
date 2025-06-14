@@ -50,7 +50,7 @@ pub struct SubItems<'a> {
 /// Implementations will automatically receive nav focus on mouse-hover, thus
 /// should ensure that [`Tile::probe`] returns the identifier of the widget
 /// which should be focussed, and that this widget has
-/// [`Events::navigable`] return true.
+/// [`Events::NAVIGABLE`] return true.
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Menu: Widget {
     /// Access row items for aligned layout
@@ -232,7 +232,8 @@ impl<'a, Data: 'static> SubMenuBuilder<'a, Data> {
     {
         let mut menu = Vec::new();
         f(SubMenuBuilder { menu: &mut menu });
-        self.menu.push(Box::new(SubMenu::new(label, menu, dir)));
+        self.menu
+            .push(Box::new(SubMenu::<false, _>::new(label, menu, dir)));
     }
 
     /// Append a [`SubMenu`], chain style

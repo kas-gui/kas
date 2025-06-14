@@ -24,9 +24,8 @@ struct MessageBoxOk;
 #[impl_self]
 mod MessageBox {
     /// A simple message box.
-    #[widget{
-        layout = column! [self.label, self.button];
-    }]
+    #[widget]
+    #[layout(column! [self.label, self.button])]
     pub struct MessageBox<T: FormattableText + 'static> {
         core: widget_core!(),
         #[widget]
@@ -79,14 +78,13 @@ struct MsgClose(bool);
 
 #[impl_self]
 mod TextEdit {
-    #[widget{
-        layout = grid! {
-            (0..3, 0) => self.edit,
-            (0, 1) => Filler::maximize(),
-            (1, 1) => Button::label_msg("&Cancel", MsgClose(false)),
-            (2, 1) => Button::label_msg("&Save", MsgClose(true)),
-        };
-    }]
+    #[widget]
+    #[layout(grid! {
+        (0..3, 0) => self.edit,
+        (0, 1) => Filler::maximize(),
+        (1, 1) => Button::label_msg("&Cancel", MsgClose(false)),
+        (2, 1) => Button::label_msg("&Save", MsgClose(true)),
+    })]
     /// An editor over a `String`
     ///
     /// Emits a [`TextEditResult`] message when the "Ok" or "Cancel" button is

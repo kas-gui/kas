@@ -68,7 +68,7 @@ use std::ops::{Index, IndexMut};
 /// };
 /// ```
 ///
-/// [widget layout syntax]: macro@widget#layout-1
+/// [widget layout syntax]: macro@kas::layout
 /// [`align`]: crate::AdaptWidget::align
 /// [`pack`]: crate::AdaptWidget::pack
 /// [`float!`]: crate::float

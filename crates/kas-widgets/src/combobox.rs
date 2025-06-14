@@ -29,13 +29,12 @@ mod ComboBox {
     /// If no selection handler exists, then the choice's message is emitted
     /// when selected. If a handler is specified via [`Self::with`] or
     /// [`Self::with_msg`] then this message is passed to the handler and not emitted.
-    #[widget {
-        layout = frame!(row! [self.label, Mark::new(MarkStyle::Point(Direction::Down))])
+    #[widget]
+    #[layout(
+        frame!(row! [self.label, Mark::new(MarkStyle::Point(Direction::Down))])
             .with_style(FrameStyle::Button)
-            .align(AlignHints::CENTER);
-        navigable = true;
-        hover_highlight = true;
-    }]
+            .align(AlignHints::CENTER)
+    )]
     pub struct ComboBox<A, V: Clone + Debug + Eq + 'static> {
         core: widget_core!(),
         #[widget(&())]
@@ -60,6 +59,9 @@ mod ComboBox {
     }
 
     impl Events for Self {
+        const REDRAW_ON_HOVER: bool = true;
+        const NAVIGABLE: bool = true;
+
         type Data = A;
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {

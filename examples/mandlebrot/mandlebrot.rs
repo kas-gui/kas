@@ -355,6 +355,8 @@ mod Mandlebrot {
     }
 
     impl Events for Mandlebrot {
+        const NAVIGABLE: bool = true;
+
         type Data = i32;
 
         fn configure(&mut self, cx: &mut ConfigCx) {
@@ -363,10 +365,6 @@ mod Mandlebrot {
 
         fn update(&mut self, _: &mut ConfigCx, data: &i32) {
             self.iters = *data;
-        }
-
-        fn navigable(&self) -> bool {
-            true
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &i32, event: Event) -> IsUsed {
@@ -426,17 +424,16 @@ mod Mandlebrot {
 
 #[impl_self]
 mod MandlebrotUI {
-    #[widget{
-        layout = grid! {
-            (1, 0) => self.label,
-            (2, 0) => self.title,
-            (3, 0) => self.buttons,
-            (0, 1) => self.iters_label.align(AlignHints::CENTER),
-            (0, 2) => self.slider,
-            // extra col span allows use of Label's margin
-            (1..5, 1..4) => self.mbrot,
-        };
-    }]
+    #[widget]
+    #[layout(grid! {
+        (1, 0) => self.label,
+        (2, 0) => self.title,
+        (3, 0) => self.buttons,
+        (0, 1) => self.iters_label.align(AlignHints::CENTER),
+        (0, 2) => self.slider,
+        // extra col span allows use of Label's margin
+        (1..5, 1..4) => self.mbrot,
+    })]
     struct MandlebrotUI {
         core: widget_core!(),
         #[widget(&self.loc)]

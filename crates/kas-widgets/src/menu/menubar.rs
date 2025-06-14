@@ -23,7 +23,7 @@ mod MenuBar {
     pub struct MenuBar<Data, D: Directional = kas::dir::Right> {
         core: widget_core!(),
         direction: D,
-        widgets: Vec<SubMenu<Data>>,
+        widgets: Vec<SubMenu<true, Data>>,
         layout_store: layout::DynRowStorage,
         delayed_open: Option<Id>,
     }
@@ -33,7 +33,7 @@ mod MenuBar {
         D: Default,
     {
         /// Construct a menubar
-        pub fn new(menus: Vec<SubMenu<Data>>) -> Self {
+        pub fn new(menus: Vec<SubMenu<true, Data>>) -> Self {
             MenuBar::new_dir(menus, Default::default())
         }
 
@@ -47,17 +47,14 @@ mod MenuBar {
     }
     impl<Data> MenuBar<Data, kas::dir::Right> {
         /// Construct a menubar
-        pub fn right(menus: Vec<SubMenu<Data>>) -> Self {
+        pub fn right(menus: Vec<SubMenu<true, Data>>) -> Self {
             MenuBar::new(menus)
         }
     }
 
     impl Self {
         /// Construct a menubar with explicit direction
-        pub fn new_dir(mut menus: Vec<SubMenu<Data>>, direction: D) -> Self {
-            for menu in menus.iter_mut() {
-                menu.navigable = false;
-            }
+        pub fn new_dir(menus: Vec<SubMenu<true, Data>>, direction: D) -> Self {
             MenuBar {
                 core: Default::default(),
                 direction,
@@ -280,7 +277,7 @@ mod MenuBar {
 ///
 /// Access through [`MenuBar::builder`].
 pub struct MenuBuilder<Data, D: Directional> {
-    menus: Vec<SubMenu<Data>>,
+    menus: Vec<SubMenu<true, Data>>,
     direction: D,
 }
 

@@ -19,8 +19,9 @@ mod Reserve {
     ///
     /// Usually, this type will be constructed through one of the methods on
     /// [`AdaptWidget`](crate::adapt::AdaptWidget).
-    #[widget{ derive = self.inner; }]
+    #[derive_widget]
     pub struct Reserve<W: Widget> {
+        #[widget]
         pub inner: W,
         reserve: Box<dyn Fn(SizeCx, AxisInfo) -> SizeRules + 'static>,
     }
@@ -66,8 +67,9 @@ mod Margins {
     ///
     /// Usually, this type will be constructed through one of the methods on
     /// [`AdaptWidget`](crate::adapt::AdaptWidget).
-    #[widget{ derive = self.inner; }]
+    #[derive_widget]
     pub struct Margins<W: Widget> {
+        #[widget]
         pub inner: W,
         dirs: Directions,
         style: MarginStyle,

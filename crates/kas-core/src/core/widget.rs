@@ -8,7 +8,7 @@
 #[allow(unused)] use super::Layout;
 use super::{Node, Tile};
 #[allow(unused)] use crate::event::EventState;
-use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused};
+use crate::event::{ConfigCx, CursorIcon, Event, EventCx, IsUsed, Scroll, Unused};
 use crate::Id;
 #[allow(unused)] use kas_macros as macros;
 use kas_macros::autoimpl;
@@ -50,6 +50,29 @@ use kas_macros::autoimpl;
 ///
 /// [`#widget`]: macros::widget
 pub trait Events: Widget + Sized {
+    /// Does this widget have a different appearance when hovered?
+    ///
+    /// If `true`, then mouse hover and loss of mouse hover will cause a redraw.
+    /// (Note that [`Layout::draw`] can infer the hover state and start
+    /// animations.)
+    const REDRAW_ON_HOVER: bool = false;
+
+    /// Is this widget navigable via <kbd>Tab</kbd> key?
+    ///
+    /// Note that when this is `false` then the widget will not receive
+    /// navigation focus via the <kbd>Tab</kbd> key, but it may still receive
+    /// navigation focus through some other means, for example a keyboard
+    /// shortcut or a mouse click.
+    const NAVIGABLE: bool = false;
+
+    /// The mouse cursor icon to use on hover
+    ///
+    /// Defaults to `None`.
+    #[inline]
+    fn hover_icon(&self) -> Option<CursorIcon> {
+        None
+    }
+
     /// Make an identifier for a child
     ///
     /// This is used to assign children identifiers. It may return
@@ -141,36 +164,20 @@ pub trait Events: Widget + Sized {
         }
     }
 
-    /// Is this widget navigable via <kbd>Tab</kbd> key?
-    ///
-    /// Note that when this method returns `false` the widget will not receive
-    /// navigation focus via the <kbd>Tab</kbd> key, but it may still receive
-    /// navigation focus through some other means, for example a keyboard
-    /// shortcut or a mouse click.
-    ///
-    /// Defaults to `false`. May instead be set via the `navigable` property of
-    /// the `#[widget]` macro.
-    #[inline]
-    fn navigable(&self) -> bool {
-        false
-    }
-
     /// Mouse focus handler
     ///
-    /// Called when mouse hover state changes.
-    ///
-    /// When the [`#widget`] macro properties `hover_highlight` or `cursor_icon`
-    /// are used, an instance of this method is generated. Otherwise, the
-    /// default implementation of this method does nothing.
-    ///
-    /// Note: to implement `hover_highlight`, simply request a redraw on
-    /// hover gain and loss. To implement `cursor_icon`, call
-    /// [`EventState::set_hover_cursor`] on hover gain only.
-    ///
-    /// [`#widget`]: macros::widget
+    /// Called when mouse hover state changes. (This is a low-level alternative
+    /// to [`Self::REDRAW_ON_HOVER`] and [`Self::hover_icon`].)
     #[inline]
     fn handle_hover(&mut self, cx: &mut EventCx, is_hovered: bool) {
-        let _ = (cx, is_hovered);
+        if Self::REDRAW_ON_HOVER {
+            cx.redraw(&self);
+        }
+        if is_hovered {
+            if let Some(icon) = self.hover_icon() {
+                cx.set_hover_cursor(icon);
+            }
+        }
     }
 
     /// Handle an [`Event`]
@@ -297,8 +304,8 @@ pub enum NavAdvance {
 ///     #[widget {
 ///         // macro properties (all optional)
 ///         Data = T;
-///         layout = self.foo;
 ///     }]
+///     #[layout(self.foo)]
 ///     struct MyWidget {
 ///         core: widget_core!(),
 ///         #[widget] foo: impl Widget<Data = T> = make_foo(),

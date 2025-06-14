@@ -23,7 +23,7 @@ pub use crate::layout::{Align, AlignHints, AlignPair, AxisInfo, SizeRules, Stret
 #[doc(no_inline)]
 pub use crate::{autoimpl, impl_anon, impl_default, impl_scope, impl_self};
 #[doc(no_inline)]
-pub use crate::{widget, widget_index, widget_set_rect};
+pub use crate::{widget_index, widget_set_rect};
 #[doc(no_inline)]
 pub use crate::{Events, Layout, Tile, TileExt, Widget, Window, WindowCommand};
 #[doc(no_inline)] pub use crate::{HasId, Id};

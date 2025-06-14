@@ -25,9 +25,7 @@ mod ScrollRegion {
     ///
     /// [`ScrollBarRegion`]: crate::ScrollBarRegion
     #[derive(Clone, Debug, Default)]
-    #[widget {
-        Data = W::Data;
-    }]
+    #[widget(type Data = W::Data)]
     pub struct ScrollRegion<W: Widget> {
         core: widget_core!(),
         min_child_size: Size,

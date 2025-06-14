@@ -57,7 +57,7 @@ use std::ops::{Index, IndexMut};
 /// let my_widget = kas_widgets::row!["one", "two"];
 /// ```
 ///
-/// [widget layout syntax]: macro@widget#layout-1
+/// [widget layout syntax]: macro@kas::layout
 /// [`map_any`]: crate::AdaptWidgetAny::map_any
 /// [`align`]: crate::AdaptWidget::align
 /// [`pack`]: crate::AdaptWidget::pack
@@ -117,7 +117,7 @@ macro_rules! row {
 /// ];
 /// ```
 ///
-/// [widget layout syntax]: macro@widget#layout-1
+/// [widget layout syntax]: macro@kas::layout
 /// [`map_any`]: crate::AdaptWidgetAny::map_any
 /// [`align`]: crate::AdaptWidget::align
 /// [`pack`]: crate::AdaptWidget::pack
@@ -179,7 +179,7 @@ macro_rules! column {
 ///     .with_direction(kas::dir::Left);
 /// ```
 ///
-/// [widget layout syntax]: macro@widget#layout-1
+/// [widget layout syntax]: macro@kas::layout
 /// [`map_any`]: crate::AdaptWidgetAny::map_any
 /// [`align`]: crate::AdaptWidget::align
 /// [`pack`]: crate::AdaptWidget::pack

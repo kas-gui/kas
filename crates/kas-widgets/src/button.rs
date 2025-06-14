@@ -16,15 +16,13 @@ mod Button {
     /// A push-button with a generic label
     ///
     /// Default alignment of content is centered.
-    #[widget {
-        Data = W::Data;
-        layout = frame!(self.inner)
+    #[widget]
+    #[layout(
+        frame!(self.inner)
             .with_style(FrameStyle::Button)
             .with_background(self.bg)
-            .align(AlignHints::CENTER);
-        navigable = true;
-        hover_highlight = true;
-    }]
+            .align(AlignHints::CENTER)
+    )]
     pub struct Button<W: Widget> {
         core: widget_core!(),
         key: Option<Key>,
@@ -102,6 +100,11 @@ mod Button {
     }
 
     impl Events for Self {
+        const REDRAW_ON_HOVER: bool = true;
+        const NAVIGABLE: bool = true;
+
+        type Data = W::Data;
+
         fn configure(&mut self, cx: &mut ConfigCx) {
             if let Some(key) = self.key.clone() {
                 cx.add_access_key(self.id_ref(), key);

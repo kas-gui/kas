@@ -98,8 +98,11 @@ pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
     toks
 }
 
-const IMPL_SCOPE_RULES: [&dyn scope::ScopeAttr; 2] =
-    [&scope::AttrImplDefault, &widget_args::AttrImplWidget];
+const IMPL_SCOPE_RULES: [&dyn scope::ScopeAttr; 3] = [
+    &scope::AttrImplDefault,
+    &widget_args::AttrImplWidget,
+    &widget_derive::AttrDeriveWidget,
+];
 
 fn find_attr(path: &syn::Path) -> Option<&'static dyn scope::ScopeAttr> {
     IMPL_SCOPE_RULES
@@ -150,6 +153,8 @@ fn find_impl_self_attrs(path: &syn::Path) -> Option<&'static dyn scope::ScopeAtt
     use scope::ScopeAttr;
     if widget_args::AttrImplWidget.path().matches(path) {
         Some(&widget_args::AttrImplWidget)
+    } else if widget_derive::AttrDeriveWidget.path().matches(path) {
+        Some(&widget_derive::AttrDeriveWidget)
     } else {
         None
     }
@@ -239,17 +244,20 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// Attribute to implement the `kas::Widget` family of traits
 ///
 /// This may *only* be used within the [`macro@impl_self`], [`impl_scope!`]
-/// and [`impl_anon!`] macros.
+/// and [`impl_anon!`] macros. It does not need to be imported (it is resolved
+/// by the afore-mentioned macros).
 ///
 /// Assists implementation of the [`Widget`], [`Events`], [`Layout`] and [`Tile`] traits.
 /// Implementations of these traits are generated if missing or augmented with
 /// missing method implementations.
 ///
-/// This macro may inject methods into existing [`Layout`] / [`Tile`] / [`Events`] / [`Widget`] implementations.
-/// This is used both to provide default implementations which could not be
-/// written on the trait and to implement properties like `navigable`.
+/// This macro may inject methods into existing [`Layout`] / [`Tile`] /
+/// [`Events`] / [`Widget`] implementations.
 /// (In the case of multiple implementations of the same trait, as used for
 /// specialization, only the first implementation of each trait is extended.)
+///
+/// See also the [`macro@layout`] attribute which assists in implementing
+/// [`Layout`].
 ///
 /// ## Syntax
 ///
@@ -262,21 +270,6 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// Supported arguments (_WidgetAttrArg_) are:
 ///
 /// -   <code>Data = Type</code>: the `Widget::Data` associated type
-/// -   <code>data_expr = expr</code>: a mapping expression for the derived
-///     widget's input data; requires `derive` and `Data` arguments.
-///     Inputs available to this expression are `self` and `data`.
-/// -   <code>derive = self.<em>field</em></code> where
-///     <code><em>field</em></code> is the name (or number) of a field:
-///     enables "derive mode" ([see below](#derive)) over the given field
-/// -   <code>navigable = <em>bool</em></code> — a quick implementation of
-///     `Events::navigable`: whether this widget supports keyboard focus via
-///     the <kbd>Tab</kbd> key (default is `false`)
-/// -   <code>hover_highlight = <em>bool</em></code> — if true, generate
-///     `Events::handle_hover` to request a redraw on focus gained/lost
-/// -   <code>cursor_icon = <em>expr</em></code> — if used, generate
-///     `Event::handle_hover`, calling `cx.set_hover_cursor(expr)`
-/// -   <code>layout = <em>layout</em></code> — defines widget layout via an
-///     expression; [see below for documentation](#layout)
 ///
 /// The struct must contain a field of type `widget_core!()` (usually named
 /// `core`). The macro `widget_core!()` is a placeholder, expanded by
@@ -293,14 +286,93 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 ///     an expression returning a reference to the child widget's input data;
 ///     available inputs are `self`, `data` (own input data) and `index`
 ///     (of the child).
+/// -   `#[widget = expr]`: an alternative way of writing the above
+///
+/// ## Examples
+///
+/// A simple example is the
+/// [`Frame`](https://docs.rs/kas-widgets/latest/kas_widgets/struct.Frame.html) widget:
+///
+/// ```ignore
+/// #[impl_self]
+/// mod Frame {
+///     /// A frame around content
+///     #[derive(Clone, Default)]
+///     #[widget]
+///     #[layout(frame!(self.inner))]
+///     pub struct Frame<W: Widget> {
+///         core: widget_core!(),
+///         #[widget]
+///         pub inner: W,
+///     }
+///
+///     impl Self {
+///         /// Construct a frame
+///         #[inline]
+///         pub fn new(inner: W) -> Self {
+///             Frame {
+///                 core: Default::default(),
+///                 inner,
+///             }
+///         }
+///     }
+/// }
+/// ```
+///
+/// ## Method modification
+///
+/// As a policy, this macro *may* inject code into user-defined methods of
+/// `Widget` and its super traits, such that:
+///
+/// -   The modification cannot have harmful side effects (other than reported
+///     errors).
+/// -   All side effects observable outside of reported error cases must be
+///     documented in the widget method documentation.
+///
+/// As an example, status checks are injected into some `Layout` methods to
+/// enforce the expected call order of methods at runtime in debug builds.
+///
+/// ## Debugging
+///
+/// To inspect the output of this macro, set the environment variable
+/// `KAS_DEBUG_WIDGET` to the name of the widget concerned, dump the output to
+/// a temporary file and format. For example:
+/// ```sh
+/// KAS_DEBUG_WIDGET=Border cargo build > temp.rs
+/// rustfmt temp.rs
+/// ```
+///
+/// [`Widget`]: https://docs.rs/kas/latest/kas/trait.Widget.html
+/// [`Widget::get_child`]: https://docs.rs/kas/latest/kas/trait.Widget.html#method.get_child
+/// [`Layout`]: https://docs.rs/kas/latest/kas/trait.Layout.html
+/// [`Tile`]: https://docs.rs/kas/latest/kas/trait.Tile.html
+/// [`Events`]: https://docs.rs/kas/latest/kas/trait.Events.html
+#[proc_macro_attribute]
+#[proc_macro_error]
+pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
+    emit_call_site_error!("must be used within scope of #[impl_self], impl_scope! or impl_anon!");
+    item
+}
+
+/// Provide a default implementation of the [`Layout`] trait for a widget
+///
+/// The [`macro@widget`] macro uses this attribute to implement
+/// [`MacroDefinedLayout`] for the widget, then adjusts the default
+/// implementations of each [`Layout`] method to call the corresponding
+/// [`MacroDefinedLayout`] method.
+///
+/// This attribute may *only* appear after the [`macro@widget`] attribute (it is
+/// not a stand-alone macro). It does not need to be imported (it is resolved by
+/// [`macro@widget`]).
 ///
 /// ## Layout
 ///
-/// Widget layout may be specified either by implementing the `Layout` trait or
-/// via the `layout` property of `#[widget]`. The latter accepts the following
+/// Widget layout may be specified by implementing the `Layout` trait and/or
+/// with a `#[layout(...)]` attribute (this must appear after `#[widget]` on the
+/// type definition). The latter accepts the following
 /// syntax, where _Layout_ is any of the below.
 ///
-/// Using the `layout = ...;` property will also generate a corresponding
+/// Using the `#[layout]` attribute will also generate a corresponding
 /// implementation of `Tile::nav_next`, with a couple of exceptions
 /// (where macro-time analysis is insufficient to implement this method).
 ///
@@ -331,96 +403,8 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; _Ident_ | _Index_\
 /// > &nbsp;&nbsp; The name of a struct field or an index into a tuple struct.
 ///
-/// ## Examples
-///
-/// A simple example is the
-/// [`Frame`](https://docs.rs/kas-widgets/latest/kas_widgets/struct.Frame.html) widget:
-///
-/// ```ignore
-/// #[impl_self]
-/// mod Frame {
-///     /// A frame around content
-///     #[derive(Clone, Default)]
-///     #[widget{
-///         layout = frame!(self.inner);
-///     }]
-///     pub struct Frame<W: Widget> {
-///         core: widget_core!(),
-///         #[widget]
-///         pub inner: W,
-///     }
-///
-///     impl Self {
-///         /// Construct a frame
-///         #[inline]
-///         pub fn new(inner: W) -> Self {
-///             Frame {
-///                 core: Default::default(),
-///                 inner,
-///             }
-///         }
-///     }
-/// }
-/// ```
-///
-/// A simple row layout: `layout = row! [self.a, self.b];`
-///
-/// ## Derive
-///
-/// It is possible to derive from a field which is itself a widget, e.g.:
-/// ```ignore
-/// #[impl_self]
-/// mod ScrollBarRegion {
-///     #[autoimpl(Deref, DerefMut using self.0)]
-///     #[derive(Clone, Default)]
-///     #[widget{ derive = self.0; }]
-///     pub struct ScrollBarRegion<W: Widget>(ScrollBars<ScrollRegion<W>>);
-/// }
-/// ```
-///
-/// This is a special mode where most features of `#[widget]` are not
-/// available; most notably, the deriving widget does not have its own `Id`.
-///
-/// ### A note on `Deref`
-///
-/// The "derive" example implements [`Deref`] over the inner widget. This is
-/// acceptable for a simple wrapping "derive widget". It is not recommended to
-/// implement [`Deref`] outside of derive mode (i.e. when the outer widget has
-/// its own `Id`) due to the potential for method collision (e.g. `outer.id()`
-/// may resolve to `outer.deref().id()` when the trait providing `fn id` is not
-/// in scope, yet is available through a bound on the field).
-///
-/// ## Method modification
-///
-/// As a policy, this macro *may* inject code into user-defined methods of
-/// `Widget` and its super traits, such that:
-///
-/// -   The modification cannot have harmful side effects (other than reported
-///     errors).
-/// -   All side effects observable outside of reported error cases must be
-///     documented in the widget method documentation.
-///
-/// As an example, status checks are injected into some `Layout` methods to
-/// enforce the expected call order of methods at runtime in debug builds.
-///
-/// ## Debugging
-///
-/// To inspect the output of this macro, set the environment variable
-/// `KAS_DEBUG_WIDGET` to the name of the widget concerned, dump the output to
-/// a temporary file and format. For example:
-/// ```sh
-/// KAS_DEBUG_WIDGET=Border cargo build > temp.rs
-/// rustfmt temp.rs
-/// ```
-///
-/// [`Widget`]: https://docs.rs/kas/latest/kas/trait.Widget.html
-/// [`Widget::get_child`]: https://docs.rs/kas/latest/kas/trait.Widget.html#method.get_child
 /// [`Layout`]: https://docs.rs/kas/latest/kas/trait.Layout.html
-/// [`Tile`]: https://docs.rs/kas/latest/kas/trait.Tile.html
-/// [`Events`]: https://docs.rs/kas/latest/kas/trait.Events.html
-/// [`CursorIcon`]: https://docs.rs/kas/latest/kas/event/enum.CursorIcon.html
-/// [`IsUsed`]: https://docs.rs/kas/latest/kas/event/enum.IsUsed.html
-/// [`Deref`]: std::ops::Deref
+/// [`MacroDefinedLayout`]: https://docs.rs/kas/latest/kas/trait.MacroDefinedLayout.html
 /// [_Column_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.column.html
 /// [_Row_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.row.html
 /// [_List_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.list.html
@@ -431,7 +415,70 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// [_AlignedRow_]: https://docs.rs/kas-widgets/latest/kas_widgets/macro.aligned_row.html
 #[proc_macro_attribute]
 #[proc_macro_error]
-pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
+pub fn layout(_: TokenStream, item: TokenStream) -> TokenStream {
+    emit_call_site_error!("must follow use of #[widget]");
+    item
+}
+
+/// Derive the [`Widget`] family of traits
+///
+/// This may *only* be used within the [`macro@impl_self`], [`impl_scope!`]
+/// and [`impl_anon!`] macros.
+///
+/// This macro derives a [`Widget`] implementation from the inner field
+/// annotated with `#[widget]`.
+///
+/// ## Example
+///
+/// ```ignore
+/// #[impl_self]
+/// mod ScrollBarRegion {
+///     #[autoimpl(Deref, DerefMut using self.0)]
+///     #[derive(Clone, Default)]
+///     #[derive_widget]
+///     pub struct ScrollBarRegion<W: Widget>(#[widget] ScrollBars<ScrollRegion<W>>);
+/// }
+/// ```
+///
+/// ### Example mapping data
+///
+/// This macro supports mapping the data passed to the inner widget. The
+/// attribute annotating the inner field specifies the data map. It is required
+/// to specify the data type, either via an explicit `impl` of `Widget` or as
+/// below.
+///
+/// ```ignore
+/// #[impl_self]
+/// mod Map {
+///     #[autoimpl(Deref, DerefMut using self.inner)]
+///     #[autoimpl(Scrollable using self.inner where W: trait)]
+///     #[derive_widget(type Data = A)]
+///     pub struct Map<A, W: Widget, F>
+///     where
+///         F: for<'a> Fn(&'a A) -> &'a W::Data,
+///     {
+///         #[widget((self.map_fn)(data))]
+///         pub inner: W,
+///         map_fn: F,
+///         _data: PhantomData<A>,
+///     }
+/// }
+/// ```
+///
+/// ### A note on `Deref`
+///
+/// The above examples implement [`Deref`] over the inner widget. This is
+/// acceptable for a simple wrapping "derive widget". It is not recommended to
+/// implement [`Deref`] for non-derived widgets (i.e. when the outer widget has
+/// its own `Id`) due to the potential for method collision (e.g. `outer.id()`
+/// may resolve to `outer.deref().id()` when the trait providing `fn id` is not
+/// in scope, yet is available through a bound on the field).
+///
+/// [`Widget`]: https://docs.rs/kas/latest/kas/trait.Widget.html
+/// [`Deref`]: std::ops::Deref
+#[proc_macro_attribute]
+#[proc_macro_error]
+pub fn derive_widget(_: TokenStream, item: TokenStream) -> TokenStream {
     emit_call_site_error!("must be used within scope of #[impl_self], impl_scope! or impl_anon!");
     item
 }

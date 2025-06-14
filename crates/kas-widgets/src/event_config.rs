@@ -18,52 +18,50 @@ mod EventConfig {
     /// Changes take effect immediately. A "Reset" button restores all
     /// configuration to compiled (not saved) default values.
     /// TODO: support undo and/or revert to saved values.
-    #[widget{
-        Data = ();
-        layout = grid! {
-            (0, 0) => "Menu delay:",
-            (1, 0) => self.menu_delay,
-            (2, 0) => "ms",
+    #[widget]
+    #[layout(grid! {
+        (0, 0) => "Menu delay:",
+        (1, 0) => self.menu_delay,
+        (2, 0) => "ms",
 
-            (0, 1) => "Touch-selection delay:",
-            (1, 1) => self.touch_select_delay,
-            (2, 1) => "ms",
+        (0, 1) => "Touch-selection delay:",
+        (1, 1) => self.touch_select_delay,
+        (2, 1) => "ms",
 
-            (0, 2) => "Kinetic scrolling timeout:",
-            (1, 2) => self.kinetic_timeout,
-            (2, 2) => "ms",
+        (0, 2) => "Kinetic scrolling timeout:",
+        (1, 2) => self.kinetic_timeout,
+        (2, 2) => "ms",
 
-            (0, 3) => "Kinetic decay (relative):",
-            (1, 3) => self.kinetic_decay_mul,
+        (0, 3) => "Kinetic decay (relative):",
+        (1, 3) => self.kinetic_decay_mul,
 
-            (0, 4) => "Kinetic decay (absolute):",
-            (1, 4) => self.kinetic_decay_sub,
+        (0, 4) => "Kinetic decay (absolute):",
+        (1, 4) => self.kinetic_decay_sub,
 
-            (0, 5) => "Kinetic decay when grabbed:",
-            (1, 5) => self.kinetic_grab_sub,
+        (0, 5) => "Kinetic decay when grabbed:",
+        (1, 5) => self.kinetic_grab_sub,
 
-            (0, 6) => "Scroll wheel distance:",
-            (1, 6) => self.scroll_dist_em, (2, 6) => "em",
+        (0, 6) => "Scroll wheel distance:",
+        (1, 6) => self.scroll_dist_em, (2, 6) => "em",
 
-            (0, 7) => "Pan distance threshold:",
-            (1, 7) => self.pan_dist_thresh,
+        (0, 7) => "Pan distance threshold:",
+        (1, 7) => self.pan_dist_thresh,
 
-            (0, 8) => "Mouse pan:",
-            (1..3, 8) => self.mouse_pan,
+        (0, 8) => "Mouse pan:",
+        (1..3, 8) => self.mouse_pan,
 
-            (0, 9) => "Mouse text pan:",
-            (1..3, 9) => self.mouse_text_pan,
+        (0, 9) => "Mouse text pan:",
+        (1..3, 9) => self.mouse_text_pan,
 
-            (1..3, 10) => self.mouse_wheel_actions,
+        (1..3, 10) => self.mouse_wheel_actions,
 
-            (1..3, 11) => self.mouse_nav_focus,
+        (1..3, 11) => self.mouse_nav_focus,
 
-            (1..3, 12) => self.touch_nav_focus,
+        (1..3, 12) => self.touch_nav_focus,
 
-            (0, 13) => "Restore default values:",
-            (1..3, 13) => Button::label_msg("&Reset", EventConfigMsg::ResetToDefault),
-        };
-    }]
+        (0, 13) => "Restore default values:",
+        (1..3, 13) => Button::label_msg("&Reset", EventConfigMsg::ResetToDefault),
+    })]
     #[impl_default(EventConfig::new())]
     pub struct EventConfig {
         core: widget_core!(),
@@ -96,6 +94,8 @@ mod EventConfig {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn handle_messages(&mut self, cx: &mut EventCx, _: &()) {
             if let Some(msg) = cx.try_pop() {
                 cx.change_config(ConfigMsg::Event(msg));
