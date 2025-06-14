@@ -55,8 +55,6 @@ pub trait Events: Widget + Sized {
     /// If `true`, then mouse hover and loss of mouse hover will cause a redraw.
     /// (Note that [`Layout::draw`] can infer the hover state and start
     /// animations.)
-    ///
-    /// Defaults to `false`.
     const REDRAW_ON_HOVER: bool = false;
 
     /// Is this widget navigable via <kbd>Tab</kbd> key?
@@ -65,8 +63,6 @@ pub trait Events: Widget + Sized {
     /// navigation focus via the <kbd>Tab</kbd> key, but it may still receive
     /// navigation focus through some other means, for example a keyboard
     /// shortcut or a mouse click.
-    ///
-    /// Defaults to `false`.
     const NAVIGABLE: bool = false;
 
     /// The mouse cursor icon to use on hover
