@@ -244,7 +244,8 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// Attribute to implement the `kas::Widget` family of traits
 ///
 /// This may *only* be used within the [`macro@impl_self`], [`impl_scope!`]
-/// and [`impl_anon!`] macros.
+/// and [`impl_anon!`] macros. It does not need to be imported (it is resolved
+/// by the afore-mentioned macros).
 ///
 /// Assists implementation of the [`Widget`], [`Events`], [`Layout`] and [`Tile`] traits.
 /// Implementations of these traits are generated if missing or augmented with
@@ -361,7 +362,8 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// [`MacroDefinedLayout`] method.
 ///
 /// This attribute may *only* appear after the [`macro@widget`] attribute (it is
-/// not a stand-alone macro).
+/// not a stand-alone macro). It does not need to be imported (it is resolved by
+/// [`macro@widget`]).
 ///
 /// ## Layout
 ///
