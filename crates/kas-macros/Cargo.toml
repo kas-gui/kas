@@ -20,6 +20,10 @@ proc-macro = true
 # Requires that all crates using these macros depend on the log crate.
 log = []
 
+# Enable AccessKit integration for widgets
+# This expects kas-core/accesskit to be enabled.
+accesskit = []
+
 # Enable reporting of warnings from proc-macros
 nightly = ["proc-macro-error2/nightly"]
 
