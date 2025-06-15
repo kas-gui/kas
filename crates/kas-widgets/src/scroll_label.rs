@@ -21,9 +21,7 @@ mod ScrollLabel {
     /// Line-wrapping is enabled; default alignment is derived from the script
     /// (usually top-left).
     #[derive(Clone, Default, Debug)]
-    #[widget{
-        cursor_icon = CursorIcon::Text;
-    }]
+    #[widget]
     pub struct ScrollLabel<T: FormattableText + 'static> {
         core: widget_core!(),
         view_offset: Offset,
@@ -208,6 +206,11 @@ mod ScrollLabel {
 
     impl Events for Self {
         type Data = ();
+
+        #[inline]
+        fn hover_icon(&self) -> Option<CursorIcon> {
+            Some(CursorIcon::Text)
+        }
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.text_configure(&mut self.text);

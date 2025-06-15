@@ -17,10 +17,7 @@ mod CheckBox {
     ///
     /// See also [`CheckButton`] which includes a label.
     #[autoimpl(Debug ignore self.state_fn, self.on_toggle)]
-    #[widget{
-        navigable = true;
-        hover_highlight = true;
-    }]
+    #[widget]
     pub struct CheckBox<A> {
         core: widget_core!(),
         state: bool,
@@ -31,6 +28,9 @@ mod CheckBox {
     }
 
     impl Events for Self {
+        const REDRAW_ON_HOVER: bool = true;
+        const NAVIGABLE: bool = true;
+
         type Data = A;
 
         fn update(&mut self, cx: &mut ConfigCx, data: &A) {
@@ -175,9 +175,8 @@ mod CheckButton {
     /// A check button with label
     ///
     /// This is a [`CheckBox`] with a label.
-    #[widget{
-        layout = list![self.inner, self.label].with_direction(self.direction());
-    }]
+    #[widget]
+    #[layout(list![self.inner, self.label].with_direction(self.direction()))]
     pub struct CheckButton<A> {
         core: widget_core!(),
         #[widget]

@@ -30,7 +30,7 @@ use kas::theme::{Background, FrameStyle};
 /// let my_widget = kas_widgets::frame!(kas_widgets::Label::new("content"));
 /// ```
 ///
-/// [widget layout syntax]: macro@widget#layout-1
+/// [widget layout syntax]: macro@kas::layout
 /// [`map_any`]: crate::AdaptWidgetAny::map_any
 /// [`align`]: crate::AdaptWidget::align
 /// [`pack`]: crate::AdaptWidget::pack
@@ -52,10 +52,8 @@ mod Frame {
     // NOTE: this would use derive mode if that supported custom layout syntax,
     // but it does not. This would allow us to implement Deref to self.inner.
     #[derive(Clone, Default)]
-    #[widget{
-        Data = W::Data;
-        layout = frame!(self.inner).with_style(self.style);
-    }]
+    #[widget(type Data = W::Data)]
+    #[layout(frame!(self.inner).with_style(self.style))]
     pub struct Frame<W: Widget> {
         core: widget_core!(),
         style: FrameStyle,

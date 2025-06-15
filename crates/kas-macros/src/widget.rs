@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::widget_args::{member, Child, ChildIdent, Layout, WidgetArgs};
+use crate::widget_args::{member, Child, ChildIdent, WidgetArgs};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::scope::{Scope, ScopeItem};
 use proc_macro2::{Span, TokenStream as Toks};
@@ -20,15 +20,28 @@ use syn::{FnArg, Ident, ItemImpl, MacroDelimiter, Member, Meta, Pat, Type};
 /// This macro may inject impls and inject items into existing impls.
 /// It may also inject code into existing methods such that the only observable
 /// behaviour is a panic.
-pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
-    assert!(args.derive.is_none());
+pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     scope.expand_impl_self();
     let name = &scope.ident;
-    let mut data_ty = args.data_ty.map(|data_ty| data_ty.ty);
+    let mut data_ty = args.data_ty;
 
-    if let Some(ref item) = args.data_expr {
-        emit_error!(item, "only supported in `derive` mode");
+    let mut layout: Option<crate::make_layout::Tree> = None;
+    let mut other_attrs = Vec::with_capacity(scope.attrs.len());
+    for attr in scope.attrs.drain(..) {
+        if *attr.path() == parse_quote! { layout } {
+            match attr.meta {
+                Meta::List(list) => {
+                    layout = Some(parse2(list.tokens)?);
+                }
+                _ => {
+                    return Err(Error::new(attr.span(), "expected `#[layout(...)]`"));
+                }
+            };
+        } else {
+            other_attrs.push(attr);
+        }
     }
+    scope.attrs = other_attrs;
 
     let mut widget_impl = None;
     let mut layout_impl = None;
@@ -46,7 +59,9 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
                 || *path == parse_quote! { kas::Widget }
                 || *path == parse_quote! { Widget }
             {
-                widget_impl = Some(index);
+                if widget_impl.is_none() {
+                    widget_impl = Some(index);
+                }
 
                 for item in &impl_.items {
                     if let ImplItem::Fn(ref item) = item {
@@ -169,6 +184,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
     for (i, field) in fields.iter_mut().enumerate() {
         let ident = member(i, field.ident.clone());
+        let mut is_child = false;
 
         if matches!(&field.ty, Type::Macro(mac) if mac.mac == parse_quote!{ widget_core!() }) {
             if let Some(ref cd) = core_data {
@@ -183,7 +199,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
             core_data = Some(ident.clone());
 
             let mut stor_defs = Default::default();
-            if let Some(Layout { ref tree, .. }) = args.layout {
+            if let Some(ref tree) = layout {
                 stor_defs = tree.storage_fields(&mut children);
             }
             if !stor_defs.ty_toks.is_empty() {
@@ -234,24 +250,23 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
 
         let mut other_attrs = Vec::with_capacity(field.attrs.len());
         for attr in field.attrs.drain(..) {
-            if *attr.path() == parse_quote! { widget } {
-                let data_binding = match &attr.meta {
+            if !is_child && *attr.path() == parse_quote! { widget } {
+                is_child = true;
+                let attr_span = Some(attr.span());
+                let data_binding = match attr.meta {
                     Meta::Path(_) => None,
                     Meta::List(list) if matches!(&list.delimiter, MacroDelimiter::Paren(_)) => {
-                        Some(parse2(list.tokens.clone())?)
+                        Some(parse2(list.tokens)?)
                     }
                     Meta::List(list) => {
                         let span = list.delimiter.span().join();
                         return Err(Error::new(span, "expected `#[widget]` or `#[widget(..)]`"));
                     }
-                    Meta::NameValue(nv) => {
-                        let span = nv.eq_token.span();
-                        return Err(Error::new(span, "unexpected"));
-                    }
+                    Meta::NameValue(nv) => Some(nv.value),
                 };
                 children.push(Child {
                     ident: ChildIdent::Field(ident.clone()),
-                    attr_span: Some(attr.span()),
+                    attr_span,
                     data_binding,
                 });
             } else {
@@ -383,7 +398,7 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     };
     let fn_try_probe;
     let mut fn_draw = None;
-    if let Some(Layout { tree, .. }) = args.layout.take() {
+    if let Some(tree) = layout {
         // TODO(opt): omit field widget.core._rect if not set here
         let mut set_rect = quote! {};
         let tree_rect = tree.rect(&core_path).unwrap_or_else(|| {
@@ -541,39 +556,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
         }
     };
 
-    let hover_highlight = args
-        .hover_highlight
-        .map(|tok| tok.lit.value)
-        .unwrap_or(false);
-    let icon_expr = args.cursor_icon.map(|tok| tok.expr);
-    let fn_handle_hover = match (hover_highlight, icon_expr) {
-        (false, None) => quote! {},
-        (true, None) => quote! {
-            #[inline]
-            fn handle_hover(&mut self, cx: &mut EventCx, _: bool) {
-                cx.redraw(self);
-            }
-        },
-        (false, Some(icon_expr)) => quote! {
-            #[inline]
-            fn handle_hover(&mut self, cx: &mut EventCx, state: bool) {
-                if state {
-                    cx.set_hover_cursor(#icon_expr);
-                }
-            }
-        },
-        (true, Some(icon_expr)) => quote! {
-            #[inline]
-            fn handle_hover(&mut self, cx: &mut EventCx, state: bool) {
-                cx.redraw(self);
-                if state {
-                    cx.set_hover_cursor(#icon_expr);
-                }
-            }
-        },
-    };
-
-    let fn_navigable = args.navigable;
     let fn_handle_event = quote! {
             fn handle_event(
             &mut self,
@@ -589,12 +571,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     if let Some(index) = events_impl {
         let events_impl = &mut scope.impls[index];
         let item_idents = collect_idents(events_impl);
-
-        if let Some(method) = fn_navigable {
-            events_impl.items.push(Verbatim(method));
-        }
-
-        events_impl.items.push(Verbatim(fn_handle_hover));
 
         if let Some((index, _)) = item_idents
             .iter()
@@ -615,8 +591,6 @@ pub fn widget(attr_span: Span, mut args: WidgetArgs, scope: &mut Scope) -> Resul
     } else {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Events for #impl_target {
-                #fn_navigable
-                #fn_handle_hover
                 #fn_handle_event
             }
         });

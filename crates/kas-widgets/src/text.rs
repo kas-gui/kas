@@ -23,9 +23,8 @@ mod Text {
     /// Vertical alignment defaults to centred, horizontal alignment depends on
     /// the script direction if not specified. Line-wrapping is enabled by
     /// default.
-    #[widget {
-        layout = self.text;
-    }]
+    #[widget]
+    #[layout(self.text)]
     pub struct Text<A, T: Default + FormattableText + 'static> {
         core: widget_core!(),
         text: theme::Text<T>,

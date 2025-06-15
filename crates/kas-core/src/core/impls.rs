@@ -122,16 +122,37 @@ pub fn _nav_next<W: Events>(
     focus: Option<&Id>,
     advance: NavAdvance,
 ) -> Option<Id> {
-    let navigable = widget.navigable();
-    nav_next(widget.as_node(data), cx, focus, advance, navigable)
+    if !W::NAVIGABLE {
+        nav_next_non_nav(widget.as_node(data), cx, focus, advance)
+    } else {
+        nav_next_nav(widget.as_node(data), cx, focus, advance)
+    }
 }
 
-fn nav_next(
+// Monomorphize nav_next here, not in _nav_next (which would push monomorphization up to the caller)
+fn nav_next_non_nav(
+    widget: Node<'_>,
+    cx: &mut ConfigCx,
+    focus: Option<&Id>,
+    advance: NavAdvance,
+) -> Option<Id> {
+    nav_next::<false>(widget, cx, focus, advance)
+}
+
+fn nav_next_nav(
+    widget: Node<'_>,
+    cx: &mut ConfigCx,
+    focus: Option<&Id>,
+    advance: NavAdvance,
+) -> Option<Id> {
+    nav_next::<true>(widget, cx, focus, advance)
+}
+
+fn nav_next<const NAVIGABLE: bool>(
     mut widget: Node<'_>,
     cx: &mut ConfigCx,
     focus: Option<&Id>,
     advance: NavAdvance,
-    navigable: bool,
 ) -> Option<Id> {
     let id = widget.id_ref();
     if !id.is_valid() {
@@ -155,7 +176,7 @@ fn nav_next(
         }
     }
 
-    if navigable {
+    if NAVIGABLE {
         let can_match_self = match advance {
             NavAdvance::None => true,
             NavAdvance::Forward(true) => true,
@@ -186,7 +207,7 @@ fn nav_next(
         child = Some(index);
     }
 
-    if navigable {
+    if NAVIGABLE {
         let can_match_self = match advance {
             NavAdvance::Reverse(true) => true,
             NavAdvance::Reverse(false) => is_not_focus,

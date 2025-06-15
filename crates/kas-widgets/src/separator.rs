@@ -15,9 +15,7 @@ mod Separator {
     ///
     /// This widget draws a bar when in a list.
     #[autoimpl(Clone, Debug, Default)]
-    #[widget {
-        Data = A;
-    }]
+    #[widget(type Data = A)]
     pub struct Separator<A> {
         core: widget_core!(),
         _pd: PhantomData<A>,

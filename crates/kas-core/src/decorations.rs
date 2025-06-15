@@ -45,9 +45,7 @@ mod Border {
     /// A border region
     ///
     /// Does not draw anything; used solely for event handling.
-    #[widget {
-        cursor_icon = self.cursor_icon();
-    }]
+    #[widget]
     pub(crate) struct Border {
         core: widget_core!(),
         resizable: bool,
@@ -66,14 +64,6 @@ mod Border {
         pub fn set_resizable(&mut self, resizable: bool) {
             self.resizable = resizable;
         }
-
-        fn cursor_icon(&self) -> CursorIcon {
-            if self.resizable {
-                self.direction.into()
-            } else {
-                CursorIcon::default()
-            }
-        }
     }
 
     impl Layout for Self {
@@ -86,6 +76,14 @@ mod Border {
 
     impl Events for Self {
         type Data = ();
+
+        fn hover_icon(&self) -> Option<CursorIcon> {
+            if self.resizable {
+                Some(self.direction.into())
+            } else {
+                None
+            }
+        }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
@@ -103,10 +101,8 @@ mod Border {
 mod Label {
     /// A simple label
     #[derive(Clone, Debug, Default)]
-    #[widget {
-        Data = ();
-        layout = self.text;
-    }]
+    #[widget]
+    #[layout(self.text)]
     pub(crate) struct Label {
         core: widget_core!(),
         text: Text<String>,
@@ -131,6 +127,8 @@ mod Label {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.text_configure(&mut self.text);
         }
@@ -154,9 +152,7 @@ mod MarkButton {
     ///
     /// Uses stretch policy [`Stretch::Low`].
     #[derive(Clone, Debug)]
-    #[widget {
-        hover_highlight = true;
-    }]
+    #[widget]
     pub(crate) struct MarkButton<M: Clone + Debug + 'static> {
         core: widget_core!(),
         style: MarkStyle,
@@ -187,6 +183,8 @@ mod MarkButton {
     }
 
     impl Events for Self {
+        const REDRAW_ON_HOVER: bool = true;
+
         type Data = ();
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
@@ -211,13 +209,12 @@ mod TitleBarButtons {
     ///
     /// Currently, this consists of minimise, maximise and close buttons.
     #[derive(Clone, Default)]
-    #[widget{
-        layout = row! [
-            MarkButton::new(MarkStyle::Point(Direction::Down), TitleBarButton::Minimize),
-            MarkButton::new(MarkStyle::Point(Direction::Up), TitleBarButton::Maximize),
-            MarkButton::new(MarkStyle::X, TitleBarButton::Close),
-        ];
-    }]
+    #[widget]
+    #[layout(row! [
+        MarkButton::new(MarkStyle::Point(Direction::Down), TitleBarButton::Minimize),
+        MarkButton::new(MarkStyle::Point(Direction::Up), TitleBarButton::Maximize),
+        MarkButton::new(MarkStyle::X, TitleBarButton::Close),
+    ])]
     pub struct TitleBarButtons {
         core: widget_core!(),
     }
@@ -263,13 +260,8 @@ mod TitleBarButtons {
 mod TitleBar {
     /// A window's title bar (part of decoration)
     #[derive(Clone, Default)]
-    #[widget{
-        layout = row! [
-            // self.icon,
-            self.title,
-            self.buttons,
-        ];
-    }]
+    #[widget]
+    #[layout(row! [self.title, self.buttons])]
     pub struct TitleBar {
         core: widget_core!(),
         #[widget]

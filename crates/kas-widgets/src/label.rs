@@ -24,10 +24,8 @@ mod Label {
     /// This type is generic over the text type.
     /// See also: [`AccessLabel`].
     #[derive(Clone, Debug, Default)]
-    #[widget {
-        Data = ();
-        layout = self.text;
-    }]
+    #[widget]
+    #[layout(self.text)]
     pub struct Label<T: FormattableText + 'static> {
         core: widget_core!(),
         text: Text<T>,
@@ -122,6 +120,8 @@ mod Label {
     }
 
     impl Events for Self {
+        type Data = ();
+
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.text_configure(&mut self.text);
         }
@@ -173,9 +173,8 @@ mod AccessLabel {
     /// alignment depends on the script direction if not specified.
     /// Line-wrapping is enabled by default.
     #[derive(Clone, Debug, Default)]
-    #[widget {
-        layout = self.text;
-    }]
+    #[widget]
+    #[layout(self.text)]
     pub struct AccessLabel {
         core: widget_core!(),
         text: Text<AccessString>,
