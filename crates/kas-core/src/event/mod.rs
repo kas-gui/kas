@@ -56,20 +56,15 @@
 
 pub mod components;
 mod cx;
-#[cfg(not(winit))] mod enums;
 mod events;
 mod response;
 
 pub use smol_str::SmolStr;
-#[cfg(winit)]
 pub use winit::event::{ElementState, KeyEvent, MouseButton};
-#[cfg(winit)]
 pub use winit::keyboard::{Key, ModifiersState, NamedKey, PhysicalKey};
-#[cfg(winit)]
 pub use winit::window::{CursorIcon, ImePurpose, ResizeDirection}; // used by Key
 
 #[allow(unused)] use crate::{Events, Widget};
 pub use cx::*;
-#[cfg(not(winit))] pub use enums::*;
 pub use events::*;
 pub use response::{IsUsed, Scroll, Unused, Used};

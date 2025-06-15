@@ -20,7 +20,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 # Non-local features required for doc builds.
 # Note: docs.rs does not support direct usage of transitive features.
-docs_rs = ["kas/winit", "kas/wayland"]
+docs_rs = ["kas/wayland"]
 
 # Support SVG images
 svg = ["dep:resvg", "dep:usvg"]

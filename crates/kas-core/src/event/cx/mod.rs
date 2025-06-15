@@ -5,9 +5,6 @@
 
 //! Event context state
 
-// Without winit, several things go unused
-#![cfg_attr(not(winit), allow(unused))]
-
 use linear_map::{set::LinearSet, LinearMap};
 use press::{Mouse, Touch};
 use smallvec::SmallVec;
@@ -68,8 +65,7 @@ type AccessLayer = (bool, HashMap<Key, Id>);
 ///
 /// Some methods are intended only for usage by graphics and platform backends
 /// and are hidden from generated documentation unless the `internal_doc`
-/// feature is enabled. Only [winit]
-/// events are currently supported; changes will be required to generalise this.
+/// feature is enabled. Event handling assumes [winit].
 ///
 /// [winit]: https://github.com/rust-windowing/winit
 //

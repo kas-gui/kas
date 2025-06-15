@@ -596,7 +596,6 @@ pub(crate) trait WindowDataErased {
     /// Directly access Winit Window
     ///
     /// This is a temporary API, allowing e.g. to minimize the window.
-    #[cfg(winit)]
     fn winit_window(&self) -> Option<&winit::window::Window>;
 }
 
@@ -631,7 +630,6 @@ impl<G: GraphicsInstance, T: Theme<G::Shared>> WindowDataErased for WindowData<G
             .set_ime_cursor_area(rect.pos.as_physical(), rect.size.as_physical());
     }
 
-    #[cfg(winit)]
     #[inline]
     fn winit_window(&self) -> Option<&winit::window::Window> {
         Some(&self.window)

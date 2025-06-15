@@ -803,7 +803,6 @@ impl<'a> EventCx<'a> {
     ///
     /// This calls [`winit::window::Window::drag_window`](https://docs.rs/winit/latest/winit/window/struct.Window.html#method.drag_window). Errors are ignored.
     pub fn drag_window(&self) {
-        #[cfg(winit)]
         if let Some(ww) = self.window.winit_window() {
             if let Err(e) = ww.drag_window() {
                 log::warn!("EventCx::drag_window: {e}");
@@ -815,7 +814,6 @@ impl<'a> EventCx<'a> {
     ///
     /// This calls [`winit::window::Window::drag_resize_window`](https://docs.rs/winit/latest/winit/window/struct.Window.html#method.drag_resize_window). Errors are ignored.
     pub fn drag_resize_window(&self, direction: ResizeDirection) {
-        #[cfg(winit)]
         if let Some(ww) = self.window.winit_window() {
             if let Err(e) = ww.drag_resize_window(direction) {
                 log::warn!("EventCx::drag_resize_window: {e}");
@@ -922,7 +920,6 @@ impl<'a> EventCx<'a> {
     /// Directly access Winit Window
     ///
     /// This is a temporary API, allowing e.g. to minimize the window.
-    #[cfg(winit)]
     pub fn winit_window(&self) -> Option<&winit::window::Window> {
         self.window.winit_window()
     }

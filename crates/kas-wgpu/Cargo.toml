@@ -13,7 +13,7 @@ readme = "README.md"
 documentation = "https://docs.rs/kas-wgpu/"
 
 [package.metadata.docs.rs]
-features = ["kas/winit", "kas/wayland"]
+features = ["kas/wayland"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]

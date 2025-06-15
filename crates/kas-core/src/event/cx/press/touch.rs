@@ -330,7 +330,6 @@ impl<'a> EventCx<'a> {
         }
     }
 
-    #[cfg(winit)]
     pub(in crate::event::cx) fn handle_touch_event<A>(
         &mut self,
         win: &mut Window<A>,

@@ -223,7 +223,6 @@ mod Window {
                 .or_else(|| Some(self.id()))
         }
 
-        #[cfg(winit)]
         pub(crate) fn draw(&self, mut draw: DrawCx) {
             if self.dec_size != Size::ZERO {
                 draw.frame(self.rect(), FrameStyle::Window, Default::default());
@@ -270,7 +269,6 @@ mod Window {
                 match cmd {
                     WindowCommand::SetTitle(title) => {
                         self.title_bar.set_title(cx, title);
-                        #[cfg(winit)]
                         if self.decorations == Decorations::Server {
                             if let Some(w) = cx.winit_window() {
                                 w.set_title(self.title());
@@ -278,7 +276,6 @@ mod Window {
                         }
                     }
                     WindowCommand::SetIcon(icon) => {
-                        #[cfg(winit)]
                         if self.decorations == Decorations::Server {
                             if let Some(w) = cx.winit_window() {
                                 w.set_window_icon(icon);
