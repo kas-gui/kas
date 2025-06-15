@@ -37,6 +37,8 @@ struct WindowData<G: GraphicsInstance, T: Theme<G::Shared>> {
     surface: G::Surface<'static>,
     /// Frame rate counter
     frame_count: (Instant, u32),
+    #[cfg(feature = "accesskit")]
+    accesskit: accesskit_winit::Adapter,
 
     // NOTE: cached components could be here or in Window
     window_id: WindowId,
@@ -192,6 +194,11 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         let winit_id = window.id();
 
+        #[cfg(feature = "accesskit")]
+        let proxy = state.shared.proxy.0.clone();
+        #[cfg(feature = "accesskit")]
+        let accesskit = accesskit_winit::Adapter::with_event_loop_proxy(el, &window, proxy);
+
         self.window = Some(WindowData {
             window,
             #[cfg(all(wayland_platform, feature = "clipboard"))]
@@ -199,11 +206,16 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             surface,
             frame_count: (Instant::now(), 0),
 
+            #[cfg(feature = "accesskit")]
+            accesskit,
+
             window_id: self.ev_state.window_id,
             solve_cache,
             theme_window,
             need_redraw: true,
         });
+
+        // TODO: construct accesskit adapter
 
         self.apply_size(state, true);
 
@@ -242,6 +254,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let Some(ref mut window) = self.window else {
             return false;
         };
+
+        #[cfg(feature = "accesskit")]
+        window.accesskit.process_event(&window.window, &event);
 
         match event {
             WindowEvent::Moved(_) | WindowEvent::Destroyed => false,
@@ -371,6 +386,16 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             if let Some(ref mut window) = self.window {
                 window.need_redraw = true;
             }
+        }
+    }
+
+    #[cfg(feature = "accesskit")]
+    pub(super) fn accesskit_event(&mut self, event: accesskit_winit::WindowEvent) {
+        use accesskit_winit::WindowEvent as WE;
+        match event {
+            WE::InitialTreeRequested => (),     // TODO
+            WE::ActionRequested(action) => (),  // TODO
+            WE::AccessibilityDeactivated => (), // TODO
         }
     }
 
