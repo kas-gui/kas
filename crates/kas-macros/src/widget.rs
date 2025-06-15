@@ -184,6 +184,7 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
 
     for (i, field) in fields.iter_mut().enumerate() {
         let ident = member(i, field.ident.clone());
+        let mut is_child = false;
 
         if matches!(&field.ty, Type::Macro(mac) if mac.mac == parse_quote!{ widget_core!() }) {
             if let Some(ref cd) = core_data {
@@ -249,7 +250,8 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
 
         let mut other_attrs = Vec::with_capacity(field.attrs.len());
         for attr in field.attrs.drain(..) {
-            if *attr.path() == parse_quote! { widget } {
+            if !is_child && *attr.path() == parse_quote! { widget } {
+                is_child = true;
                 let attr_span = Some(attr.span());
                 let data_binding = match attr.meta {
                     Meta::Path(_) => None,
