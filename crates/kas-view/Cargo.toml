@@ -14,8 +14,12 @@ rust-version.workspace = true
 exclude = ["/screenshots"]
 
 [package.metadata.docs.rs]
-features = ["kas/wayland"]
+features = ["kas/wayland", "accesskit"]
 rustdoc-args = ["--cfg", "docsrs"]
+
+[features]
+# Enable AccessKit integration
+accesskit = ["kas/accesskit"]
 
 [dependencies]
 kas-widgets = { version = "0.15.0", path = "../kas-widgets" }

@@ -14,7 +14,7 @@ rust-version.workspace = true
 exclude = ["/screenshots"]
 
 [package.metadata.docs.rs]
-features = ["docs_rs", "svg"]
+features = ["docs_rs", "svg", "accesskit"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
@@ -24,6 +24,9 @@ docs_rs = ["kas/wayland"]
 
 # Support SVG images
 svg = ["dep:resvg", "dep:usvg"]
+
+# Enable AccessKit integration
+accesskit = ["kas/accesskit"]
 
 [dependencies]
 tiny-skia = { version = "0.11.0" }

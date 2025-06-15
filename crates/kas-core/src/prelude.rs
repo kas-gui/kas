@@ -8,6 +8,9 @@
 //! It is recommended to use `kas::prelude` instead, which is an extension of
 //! this crate's prelude.
 
+#[cfg(feature = "accesskit")]
+#[doc(no_inline)]
+pub use crate::accesskit;
 #[doc(no_inline)] pub use crate::cast::traits::*;
 #[doc(no_inline)]
 pub use crate::dir::{Direction, Directional};
