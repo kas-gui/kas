@@ -76,6 +76,9 @@ internal_doc = ["kas-core/internal_doc", "kas-wgpu?/internal_doc"]
 # Enables clipboard read/write
 clipboard = ["kas-core/clipboard"]
 
+# Enable AccessKit integration
+accesskit = ["kas-core/accesskit"]
+
 # Enable Markdown parsing
 markdown = ["kas-core/markdown"]
 
