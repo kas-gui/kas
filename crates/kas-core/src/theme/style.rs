@@ -53,6 +53,21 @@ pub enum MarkStyle {
     X,
 }
 
+impl MarkStyle {
+    /// A descriptive label
+    ///
+    /// This may be used for accessibility purposes.
+    pub fn label(self) -> &'static str {
+        match self {
+            MarkStyle::Point(Direction::Right) => "right",
+            MarkStyle::Point(Direction::Down) => "down",
+            MarkStyle::Point(Direction::Left) => "left",
+            MarkStyle::Point(Direction::Up) => "up",
+            MarkStyle::X => "X",
+        }
+    }
+}
+
 /// Various features which may be sized and drawn
 ///
 /// Includes most types of features excepting text and frames.

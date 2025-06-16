@@ -74,6 +74,13 @@ mod Border {
         fn draw(&self, _: DrawCx) {}
     }
 
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            None
+        }
+    }
+
     impl Events for Self {
         type Data = ();
 
@@ -126,6 +133,15 @@ mod Label {
         }
     }
 
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            let mut node = accesskit::Node::new(accesskit::Role::Label);
+            node.set_value(self.text.as_str());
+            Some(node)
+        }
+    }
+
     impl Events for Self {
         type Data = ();
 
@@ -138,6 +154,7 @@ mod Label {
         /// Set text from a string
         pub fn set_string(&mut self, cx: &mut EventState, string: String) {
             if self.text.set_string(string) {
+                // TODO: can we assume that RESIZE will cause an accesskit_node?
                 cx.action(self.id(), self.text.reprepare_action());
             }
         }
@@ -179,6 +196,16 @@ mod MarkButton {
 
         fn draw(&self, mut draw: DrawCx) {
             draw.mark(self.rect(), self.style);
+        }
+    }
+
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            let mut node = accesskit::Node::new(accesskit::Role::Button);
+            node.add_action(accesskit::Action::Click);
+            node.set_label(self.style.label());
+            Some(node)
         }
     }
 
@@ -226,6 +253,19 @@ mod TitleBarButtons {
             TitleBarButtons {
                 core: Default::default(),
             }
+        }
+    }
+
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            let mut node = accesskit::Node::new(accesskit::Role::GenericContainer);
+            node.set_children(
+                self.children()
+                    .map(|child| child.id_ref().into())
+                    .collect::<Vec<_>>(),
+            );
+            Some(node)
         }
     }
 
@@ -285,6 +325,19 @@ mod TitleBar {
         /// Set the title
         pub fn set_title(&mut self, cx: &mut EventState, title: String) {
             self.title.set_string(cx, title)
+        }
+    }
+
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            let mut node = accesskit::Node::new(accesskit::Role::GenericContainer);
+            node.set_children(
+                self.children()
+                    .map(|child| child.id_ref().into())
+                    .collect::<Vec<_>>(),
+            );
+            Some(node)
         }
     }
 

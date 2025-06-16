@@ -53,6 +53,8 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
     let mut child_node = None;
     let mut find_child_index = None;
     let mut make_child_id = None;
+    #[cfg(feature = "accesskit")]
+    let mut have_accesskit_node = false;
     for (index, impl_) in scope.impls.iter().enumerate() {
         if let Some((_, ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::Widget }
@@ -105,6 +107,11 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                         } else if item.sig.ident == "find_child_index" {
                             find_child_index = Some(item.sig.ident.clone());
                         }
+
+                        #[cfg(feature = "accesskit")]
+                        if item.sig.ident == "accesskit_node" {
+                            have_accesskit_node = true;
+                        }
                     }
                 }
             } else if *path == parse_quote! { ::kas::Events }
@@ -143,6 +150,16 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
         }
     } else if let Some(ref span) = make_child_id {
         emit_warning!(span, "fn make_child_id without fn find_child_index");
+    }
+
+    #[cfg(feature = "accesskit")]
+    if !have_accesskit_node {
+        let span = if let Some(index) = tile_impl {
+            scope.impls[index].impl_token.span
+        } else {
+            attr_span
+        };
+        emit_warning!(span, "fn Tile::accesskit_node not defined");
     }
 
     let fields = match &mut scope.item {

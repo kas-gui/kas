@@ -432,16 +432,27 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
             self.#inner.translation()
         }
     };
+    #[cfg(not(feature = "accesskit"))]
+    let tile_accesskit_methods: Option<syn::Ident> = None;
+    #[cfg(feature = "accesskit")]
+    let tile_accesskit_methods = quote! {
+        #[inline]
+        fn accesskit_node(&self) -> Option<::kas::accesskit::Node> {
+            self.#inner.accesskit_node()
+        }
+    };
 
     if let Some(index) = tile_impl {
         let tile_impl = &mut scope.impls[index];
         tile_impl.items.push(Verbatim(required_tile_methods));
         tile_impl.items.push(Verbatim(tile_methods));
+        tile_impl.items.push(Verbatim(tile_accesskit_methods));
     } else {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Tile for #impl_target {
                 #required_tile_methods
                 #tile_methods
+                #tile_accesskit_methods
             }
         });
     }
