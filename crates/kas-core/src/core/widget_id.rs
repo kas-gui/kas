@@ -737,6 +737,28 @@ impl fmt::Display for Id {
     }
 }
 
+/// Convert to a `NodeId` using [`Id::to_nzu64`]
+///
+/// Use [`Id::try_from_u64`] for the inverse conversion.
+#[cfg(feature = "accesskit")]
+impl From<Id> for accesskit::NodeId {
+    #[inline]
+    fn from(id: Id) -> Self {
+        accesskit::NodeId(id.to_nzu64().get())
+    }
+}
+
+/// Convert to a `NodeId` using [`Id::to_nzu64`]
+///
+/// Use [`Id::try_from_u64`] for the inverse conversion.
+#[cfg(feature = "accesskit")]
+impl From<&Id> for accesskit::NodeId {
+    #[inline]
+    fn from(id: &Id) -> Self {
+        accesskit::NodeId(id.to_nzu64().get())
+    }
+}
+
 /// Types supporting conversion to [`Id`]
 ///
 /// A method taking an `id: impl HasId` parameter supports an [`Id`],
