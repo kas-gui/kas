@@ -641,6 +641,40 @@ impl std::ops::SubAssign<Offset> for Rect {
     }
 }
 
+#[cfg(feature = "accesskit")]
+mod accesskit_impls {
+    use super::{Coord, Rect};
+    use crate::cast::{Cast, CastApprox, Conv, ConvApprox, Result};
+
+    impl ConvApprox<accesskit::Point> for Coord {
+        fn try_conv_approx(p: accesskit::Point) -> Result<Self> {
+            Ok(Coord(p.x.try_cast_approx()?, p.y.try_cast_approx()?))
+        }
+    }
+
+    impl Conv<Rect> for accesskit::Rect {
+        fn try_conv(rect: Rect) -> Result<Self> {
+            let p = rect.pos;
+            let p2 = rect.pos2();
+            Ok(accesskit::Rect {
+                x0: p.0.try_cast()?,
+                y0: p.1.try_cast()?,
+                x1: p2.0.try_cast()?,
+                y1: p2.1.try_cast()?,
+            })
+        }
+    }
+
+    impl ConvApprox<accesskit::Rect> for Rect {
+        fn try_conv_approx(rect: accesskit::Rect) -> Result<Self> {
+            let pos = Coord(rect.x0.try_cast_approx()?, rect.y0.try_cast_approx()?);
+            let p2 = Coord(rect.x1.try_cast_approx()?, rect.y1.try_cast_approx()?);
+            let size = (p2 - pos).cast();
+            Ok(Rect { pos, size })
+        }
+    }
+}
+
 mod winit_impls {
     use super::{Coord, Size};
     use crate::cast::{Cast, CastApprox, Conv, ConvApprox, Result};
@@ -649,7 +683,7 @@ mod winit_impls {
     impl<X: CastApprox<i32>> ConvApprox<PhysicalPosition<X>> for Coord {
         #[inline]
         fn try_conv_approx(pos: PhysicalPosition<X>) -> Result<Self> {
-            Ok(Coord(pos.x.cast_approx(), pos.y.cast_approx()))
+            Ok(Coord(pos.x.try_cast_approx()?, pos.y.try_cast_approx()?))
         }
     }
 
