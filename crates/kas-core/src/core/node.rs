@@ -229,6 +229,9 @@ impl<'a> Node<'a> {
     }
 
     /// Run a `f` on all children
+    ///
+    /// Note: this method could be replaced with an iterator-style method, but
+    /// that would require borrowing/streaming iterators.
     #[inline(always)]
     pub fn for_children(&mut self, mut f: impl FnMut(Node<'_>)) {
         for index in 0..self.0.num_children() {
