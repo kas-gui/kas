@@ -82,6 +82,14 @@ impl IntOrPtr {
         }
     }
 
+    fn get_slice(&self) -> Option<&[usize]> {
+        self.get_ptr().map(|p| unsafe {
+            let len = *p.offset(1);
+            let p = p.offset(2);
+            slice::from_raw_parts(p, len)
+        })
+    }
+
     /// Construct from an integer
     ///
     /// Note: requires `x & USE_MASK == USE_BITS`.
@@ -131,13 +139,8 @@ impl IntOrPtr {
     }
 
     fn get(&self) -> Variant<'_> {
-        if let Some(p) = self.get_ptr() {
-            unsafe {
-                let len = *p.offset(1);
-                let p = p.offset(2);
-                let slice = slice::from_raw_parts(p, len);
-                Variant::Slice(slice)
-            }
+        if let Some(slice) = self.get_slice() {
+            Variant::Slice(slice)
         } else if self.0.get() == INVALID {
             Variant::Invalid
         } else {
