@@ -21,27 +21,26 @@ use std::{fmt, slice};
 /// Invalid (default) identifier
 const INVALID: u64 = !0;
 
-/// `x & USE_BITS != 0`: rest is a sequence of 4-bit blocks; len is number of blocks used
+/// Mark for use; one of the below should be set (or both if INVALID)
+const USE_MASK: u64 = 0x3;
+/// `x & USE_MASK == USE_BITS`: rest is a sequence of 4-bit blocks; len is number of blocks used
 const USE_BITS: u64 = 0x01;
-/// Set when using a pointer as a safety feature.
-const USE_PTR: usize = 0x02;
+/// `x & USE_MASK == USE_PTR`: high 62 bits are a pointer
+const USE_PTR: u64 = 0x02;
 
 const MASK_LEN: u64 = 0xF0;
 const SHIFT_LEN: u8 = 4;
 const BLOCKS: u8 = 14;
 const MASK_BITS: u64 = 0xFFFF_FFFF_FFFF_FF00;
 
-#[cfg(target_pointer_width = "32")]
-const MASK_PTR: usize = 0xFFFF_FFFC;
-#[cfg(target_pointer_width = "64")]
-const MASK_PTR: usize = 0xFFFF_FFFF_FFFF_FFFC;
+const MASK_PTR: u64 = 0xFFFF_FFFF_FFFF_FFFC;
 
 /// Integer or pointer to a reference-counted slice.
 ///
 /// Use `Self::get_ptr` to determine the variant used. When reading a pointer,
 /// mask with MASK_PTR.
 ///
-/// `self.0 & USE_BITS` is the "flag bit" determining the variant used. This
+/// `self.0 & USE_MASK` are the "flag bits" determining the variant used. This
 /// overlaps with the pointer's lowest bit (which must be zero due to alignment).
 ///
 /// `PhantomData<Rc<()>>` is used to impl !Send and !Sync. We need atomic
@@ -61,8 +60,8 @@ impl IntOrPtr {
 
     #[inline]
     fn get_ptr(&self) -> Option<*mut usize> {
-        if self.0.get() & USE_BITS == 0 {
-            let p = usize::conv(self.0.get()) & MASK_PTR;
+        if self.0.get() & USE_MASK == USE_PTR {
+            let p = usize::conv(self.0.get() & MASK_PTR);
             Some(p as *mut usize)
         } else {
             None
@@ -71,9 +70,9 @@ impl IntOrPtr {
 
     /// Construct from an integer
     ///
-    /// Note: requires `x & USE_BITS != 0`.
+    /// Note: requires `x & USE_MASK == USE_BITS`.
     fn new_int(x: u64) -> Self {
-        assert!(x & USE_BITS != 0);
+        assert!(x & USE_MASK == USE_BITS);
         let x = NonZeroU64::new(x).unwrap();
         let u = IntOrPtr(x, PhantomData);
         assert!(u.get_ptr().is_none());
@@ -87,10 +86,10 @@ impl IntOrPtr {
         let v: Vec<usize> = once(ref_count).chain(once(len)).chain(iter).collect();
         let b = v.into_boxed_slice();
         let p = Box::leak(b) as *mut [usize] as *mut usize;
-        let p = p as usize;
+        let p: u64 = (p as usize).cast();
         debug_assert_eq!(p & 3, 0);
         let p = p | USE_PTR;
-        let u = IntOrPtr(NonZeroU64::new(p.cast()).unwrap(), PhantomData);
+        let u = IntOrPtr(NonZeroU64::new(p).unwrap(), PhantomData);
         assert!(u.get_ptr().is_some());
         u
     }
@@ -286,7 +285,7 @@ fn next_from_bits(mut x: u64) -> (usize, u8) {
 struct BitsIter(u8, u64);
 impl BitsIter {
     fn new(bits: u64) -> Self {
-        assert!((bits & USE_BITS) != 0);
+        assert!((bits & USE_MASK) == USE_BITS);
         let len = block_len(bits);
         BitsIter(len, bits & MASK_BITS)
     }
