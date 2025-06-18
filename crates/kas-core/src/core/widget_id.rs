@@ -461,12 +461,17 @@ impl Id {
                 None
             }
             Variant::Slice(path) => {
+                if path.is_empty() {
+                    return None;
+                }
+
                 let len = path.len();
-                if len > 1 {
-                    // TODO(opt): in some cases we could make Variant::Int
-                    Some(Id(IntOrPtr::new_iter(path[0..len - 1].iter().cloned())))
+                let path = &path[0..len - 1];
+
+                if len > BLOCKS as usize {
+                    Some(Id(IntOrPtr::new_iter(path.iter().cloned())))
                 } else {
-                    None
+                    Some(make_id(path))
                 }
             }
         }
@@ -706,17 +711,17 @@ impl HasId for &mut Id {
     }
 }
 
+fn make_id(seq: &[usize]) -> Id {
+    let mut id = Id::ROOT;
+    for x in seq {
+        id = id.make_child(*x);
+    }
+    id
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
-
-    fn make_id(seq: &[usize]) -> Id {
-        let mut id = Id::ROOT;
-        for x in seq {
-            id = id.make_child(*x);
-        }
-        id
-    }
 
     #[test]
     fn size_of_option_widget_id() {
