@@ -9,14 +9,22 @@
 #![allow(clippy::precedence)]
 
 use crate::cast::{Cast, Conv};
+use hash_hasher::{HashBuildHasher, HashedMap};
+use std::cell::RefCell;
 use std::cmp::Ordering;
-use std::hash::{Hash, Hasher};
+use std::collections::hash_map::Entry;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::iter::once;
 use std::marker::PhantomData;
 use std::mem::size_of;
 use std::num::NonZeroU64;
 use std::rc::Rc;
 use std::{fmt, slice};
+
+thread_local! {
+    // Map from hash of path to allocated path
+    static DB: RefCell<HashedMap<u64, *mut usize>> = RefCell::new(HashedMap::with_hasher(HashBuildHasher::new()));
+}
 
 /// Invalid (default) identifier
 const INVALID: u64 = !0;
@@ -54,6 +62,12 @@ enum Variant<'a> {
     Slice(&'a [usize]),
 }
 
+fn hash(path: &[usize]) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    path.hash(&mut hasher);
+    hasher.finish()
+}
+
 impl IntOrPtr {
     const ROOT: Self = IntOrPtr(NonZeroU64::new(USE_BITS).unwrap(), PhantomData);
     const INVALID: Self = IntOrPtr(NonZeroU64::new(INVALID).unwrap(), PhantomData);
@@ -84,9 +98,31 @@ impl IntOrPtr {
         let ref_count = 1;
         let len = iter.clone().count();
         let v: Vec<usize> = once(ref_count).chain(once(len)).chain(iter).collect();
-        let b = v.into_boxed_slice();
-        let p = Box::leak(b) as *mut [usize] as *mut usize;
-        let p: u64 = (p as usize).cast();
+        let x = hash(&v);
+
+        let mut p: Option<*mut usize> = None;
+        let pp = &mut p;
+        DB.with_borrow_mut(move |db| match db.entry(x) {
+            Entry::Occupied(entry) => {
+                let p = *entry.get();
+                let slice = unsafe { slice::from_raw_parts(p.offset(2), *p.offset(1)) };
+                if slice == &v[2..] {
+                    unsafe { increment_rc(p) };
+                    *pp = Some(p);
+                } else {
+                    // Hash collision: do not use the DB
+                    let p = Box::leak(v.into_boxed_slice()) as *mut [usize] as *mut usize;
+                    *pp = Some(p);
+                }
+            }
+            Entry::Vacant(entry) => {
+                let p = Box::leak(v.into_boxed_slice()) as *mut [usize] as *mut usize;
+                *pp = Some(p);
+                entry.insert(p);
+            }
+        });
+
+        let p: u64 = (p.expect("failed to access Id DB") as usize).cast();
         debug_assert_eq!(p & 3, 0);
         let p = p | USE_PTR;
         let u = IntOrPtr(NonZeroU64::new(p).unwrap(), PhantomData);
@@ -127,19 +163,26 @@ impl IntOrPtr {
     }
 }
 
+/// Increment a IntOrPtr pointer ref-count
+///
+/// Safety: the input must be a valid IntOrPtr pointer value.
+unsafe fn increment_rc(p: *mut usize) {
+    unsafe {
+        let ref_count = *p;
+
+        // Copy behaviour of Rc::clone:
+        if ref_count == 0 || ref_count == usize::MAX {
+            std::process::abort();
+        }
+
+        *p = ref_count + 1;
+    }
+}
+
 impl Clone for IntOrPtr {
     fn clone(&self) -> Self {
         if let Some(p) = self.get_ptr() {
-            unsafe {
-                let ref_count = *p;
-
-                // Copy behaviour of Rc::clone:
-                if ref_count == 0 || ref_count == usize::MAX {
-                    std::process::abort();
-                }
-
-                *p = ref_count + 1;
-            }
+            unsafe { increment_rc(p) };
         }
         IntOrPtr(self.0, PhantomData)
     }
@@ -156,6 +199,10 @@ impl Drop for IntOrPtr {
                     // len+2 because path len does not include ref_count or len "fields"
                     let len = *p.offset(1) + 2;
                     let slice = slice::from_raw_parts_mut(p, len);
+
+                    let x = hash(slice);
+                    DB.with_borrow_mut(|db| db.remove(&x));
+
                     let _ = Box::<[usize]>::from_raw(slice);
                 }
             }
@@ -943,5 +990,12 @@ mod test {
         test(&[0], &[0, 2], &[0]);
         test(&[2, 10, 1], &[2, 10], &[2, 10]);
         test(&[0, 5, 2], &[0, 5, 1], &[0, 5]);
+    }
+
+    #[test]
+    fn deduplicate_allocations() {
+        let id1 = make_id(&[2, 6, 1, 1, 0, 13, 0, 100, 1000]);
+        let id2 = make_id(&[2, 6, 1, 1, 0, 13, 0, 100, 1000]);
+        assert_eq!(id1.0 .0, id2.0 .0);
     }
 }
