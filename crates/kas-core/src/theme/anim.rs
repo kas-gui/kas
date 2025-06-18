@@ -71,7 +71,8 @@ impl<D: DrawImpl> AnimState<D> {
     /// Assumption: only one widget may draw a text cursor at any time.
     pub fn text_cursor(&mut self, draw: &mut D, id: &Id, byte: usize) -> bool {
         let entry = &mut self.text_cursor;
-        if entry.widget == id.as_u64() && entry.byte == byte {
+        let widget = id.to_nzu64().get();
+        if entry.widget == widget && entry.byte == byte {
             if entry.time < self.now {
                 entry.state = !entry.state;
                 entry.time += self.c.cursor_blink_rate;
@@ -79,7 +80,7 @@ impl<D: DrawImpl> AnimState<D> {
             draw.animate_at(entry.time);
             entry.state
         } else {
-            entry.widget = id.as_u64();
+            entry.widget = widget;
             entry.byte = byte;
             entry.state = true;
             entry.time = self.now + self.c.cursor_blink_rate;

@@ -9,8 +9,11 @@
 #![allow(clippy::precedence)]
 
 use crate::cast::{Cast, Conv};
+use hash_hasher::{HashBuildHasher, HashedMap};
+use std::cell::RefCell;
 use std::cmp::Ordering;
-use std::hash::{Hash, Hasher};
+use std::collections::hash_map::Entry;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::iter::once;
 use std::marker::PhantomData;
 use std::mem::size_of;
@@ -18,30 +21,34 @@ use std::num::NonZeroU64;
 use std::rc::Rc;
 use std::{fmt, slice};
 
+thread_local! {
+    // Map from hash of path to allocated path
+    static DB: RefCell<HashedMap<u64, *mut usize>> = RefCell::new(HashedMap::with_hasher(HashBuildHasher::new()));
+}
+
 /// Invalid (default) identifier
 const INVALID: u64 = !0;
 
-/// `x & USE_BITS != 0`: rest is a sequence of 4-bit blocks; len is number of blocks used
+/// Mark for use; one of the below should be set (or both if INVALID)
+const USE_MASK: u64 = 0x3;
+/// `x & USE_MASK == USE_BITS`: rest is a sequence of 4-bit blocks; len is number of blocks used
 const USE_BITS: u64 = 0x01;
-/// Set when using a pointer as a safety feature.
-const USE_PTR: usize = 0x02;
+/// `x & USE_MASK == USE_PTR`: high 62 bits are a pointer (or hash: see to_nzu64)
+const USE_PTR: u64 = 0x02;
 
 const MASK_LEN: u64 = 0xF0;
 const SHIFT_LEN: u8 = 4;
 const BLOCKS: u8 = 14;
 const MASK_BITS: u64 = 0xFFFF_FFFF_FFFF_FF00;
 
-#[cfg(target_pointer_width = "32")]
-const MASK_PTR: usize = 0xFFFF_FFFC;
-#[cfg(target_pointer_width = "64")]
-const MASK_PTR: usize = 0xFFFF_FFFF_FFFF_FFFC;
+const MASK_PTR: u64 = 0xFFFF_FFFF_FFFF_FFFC;
 
 /// Integer or pointer to a reference-counted slice.
 ///
 /// Use `Self::get_ptr` to determine the variant used. When reading a pointer,
 /// mask with MASK_PTR.
 ///
-/// `self.0 & USE_BITS` is the "flag bit" determining the variant used. This
+/// `self.0 & USE_MASK` are the "flag bits" determining the variant used. This
 /// overlaps with the pointer's lowest bit (which must be zero due to alignment).
 ///
 /// `PhantomData<Rc<()>>` is used to impl !Send and !Sync. We need atomic
@@ -55,25 +62,39 @@ enum Variant<'a> {
     Slice(&'a [usize]),
 }
 
+fn hash(path: &[usize]) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    path.hash(&mut hasher);
+    hasher.finish()
+}
+
 impl IntOrPtr {
     const ROOT: Self = IntOrPtr(NonZeroU64::new(USE_BITS).unwrap(), PhantomData);
     const INVALID: Self = IntOrPtr(NonZeroU64::new(INVALID).unwrap(), PhantomData);
 
     #[inline]
     fn get_ptr(&self) -> Option<*mut usize> {
-        if self.0.get() & USE_BITS == 0 {
-            let p = usize::conv(self.0.get()) & MASK_PTR;
+        if self.0.get() & USE_MASK == USE_PTR {
+            let p = usize::conv(self.0.get() & MASK_PTR);
             Some(p as *mut usize)
         } else {
             None
         }
     }
 
+    fn get_slice(&self) -> Option<&[usize]> {
+        self.get_ptr().map(|p| unsafe {
+            let len = *p.offset(1);
+            let p = p.offset(2);
+            slice::from_raw_parts(p, len)
+        })
+    }
+
     /// Construct from an integer
     ///
-    /// Note: requires `x & USE_BITS != 0`.
+    /// Note: requires `x & USE_MASK == USE_BITS`.
     fn new_int(x: u64) -> Self {
-        assert!(x & USE_BITS != 0);
+        assert!(x & USE_MASK == USE_BITS);
         let x = NonZeroU64::new(x).unwrap();
         let u = IntOrPtr(x, PhantomData);
         assert!(u.get_ptr().is_none());
@@ -85,24 +106,41 @@ impl IntOrPtr {
         let ref_count = 1;
         let len = iter.clone().count();
         let v: Vec<usize> = once(ref_count).chain(once(len)).chain(iter).collect();
-        let b = v.into_boxed_slice();
-        let p = Box::leak(b) as *mut [usize] as *mut usize;
-        let p = p as usize;
+        let x = hash(&v);
+
+        let mut p: Option<*mut usize> = None;
+        let pp = &mut p;
+        DB.with_borrow_mut(move |db| match db.entry(x) {
+            Entry::Occupied(entry) => {
+                let p = *entry.get();
+                let slice = unsafe { slice::from_raw_parts(p.offset(2), *p.offset(1)) };
+                if slice == &v[2..] {
+                    unsafe { increment_rc(p) };
+                    *pp = Some(p);
+                } else {
+                    // Hash collision: do not use the DB
+                    let p = Box::leak(v.into_boxed_slice()) as *mut [usize] as *mut usize;
+                    *pp = Some(p);
+                }
+            }
+            Entry::Vacant(entry) => {
+                let p = Box::leak(v.into_boxed_slice()) as *mut [usize] as *mut usize;
+                *pp = Some(p);
+                entry.insert(p);
+            }
+        });
+
+        let p: u64 = (p.expect("failed to access Id DB") as usize).cast();
         debug_assert_eq!(p & 3, 0);
         let p = p | USE_PTR;
-        let u = IntOrPtr(NonZeroU64::new(p.cast()).unwrap(), PhantomData);
+        let u = IntOrPtr(NonZeroU64::new(p).unwrap(), PhantomData);
         assert!(u.get_ptr().is_some());
         u
     }
 
     fn get(&self) -> Variant<'_> {
-        if let Some(p) = self.get_ptr() {
-            unsafe {
-                let len = *p.offset(1);
-                let p = p.offset(2);
-                let slice = slice::from_raw_parts(p, len);
-                Variant::Slice(slice)
-            }
+        if let Some(slice) = self.get_slice() {
+            Variant::Slice(slice)
         } else if self.0.get() == INVALID {
             Variant::Invalid
         } else {
@@ -110,37 +148,59 @@ impl IntOrPtr {
         }
     }
 
-    fn as_u64(&self) -> u64 {
-        self.0.get()
+    fn to_nzu64(&self) -> NonZeroU64 {
+        if let Some(slice) = self.get_slice() {
+            let x = hash(slice) & MASK_PTR;
+            NonZeroU64::new(x | USE_PTR).unwrap()
+        } else {
+            self.0
+        }
     }
 
-    // Compatible with values generated by `Self::as_u64`
-    unsafe fn opt_from_u64(n: u64) -> Option<IntOrPtr> {
-        if n == 0 {
-            None
-        } else {
-            // We expect either USE_BITS or USE_PTR here; anything else indicates an error
-            let v = n & 3;
-            assert!(v == 1 || v == 2, "Id::opt_from_u64: invalid value");
-            let x = NonZeroU64::new(n).unwrap();
-            Some(IntOrPtr(x, PhantomData))
+    fn try_from_u64(n: u64) -> Option<IntOrPtr> {
+        match n & USE_MASK {
+            USE_BITS => {
+                // TODO: sanity checks
+                Some(IntOrPtr(NonZeroU64::new(n).unwrap(), PhantomData))
+            }
+            USE_PTR => {
+                let mut result = None;
+                let r = &mut result;
+                DB.with_borrow(|db| {
+                    if let Some(p) = db.get(&n) {
+                        unsafe { increment_rc(*p) };
+                        let p: u64 = (*p as usize).cast();
+                        *r = Some(IntOrPtr(NonZeroU64::new(p).unwrap(), PhantomData))
+                    }
+                });
+                result
+            }
+            _ if n == !0 => Some(IntOrPtr::INVALID),
+            _ => None,
         }
+    }
+}
+
+/// Increment a IntOrPtr pointer ref-count
+///
+/// Safety: the input must be a valid IntOrPtr pointer value.
+unsafe fn increment_rc(p: *mut usize) {
+    unsafe {
+        let ref_count = *p;
+
+        // Copy behaviour of Rc::clone:
+        if ref_count == 0 || ref_count == usize::MAX {
+            std::process::abort();
+        }
+
+        *p = ref_count + 1;
     }
 }
 
 impl Clone for IntOrPtr {
     fn clone(&self) -> Self {
         if let Some(p) = self.get_ptr() {
-            unsafe {
-                let ref_count = *p;
-
-                // Copy behaviour of Rc::clone:
-                if ref_count == 0 || ref_count == usize::MAX {
-                    std::process::abort();
-                }
-
-                *p = ref_count + 1;
-            }
+            unsafe { increment_rc(p) };
         }
         IntOrPtr(self.0, PhantomData)
     }
@@ -157,6 +217,10 @@ impl Drop for IntOrPtr {
                     // len+2 because path len does not include ref_count or len "fields"
                     let len = *p.offset(1) + 2;
                     let slice = slice::from_raw_parts_mut(p, len);
+
+                    let x = hash(slice);
+                    DB.with_borrow_mut(|db| db.remove(&x));
+
                     let _ = Box::<[usize]>::from_raw(slice);
                 }
             }
@@ -286,7 +350,7 @@ fn next_from_bits(mut x: u64) -> (usize, u8) {
 struct BitsIter(u8, u64);
 impl BitsIter {
     fn new(bits: u64) -> Self {
-        assert!((bits & USE_BITS) != 0);
+        assert!((bits & USE_MASK) == USE_BITS);
         let len = block_len(bits);
         BitsIter(len, bits & MASK_BITS)
     }
@@ -439,9 +503,6 @@ impl Id {
     }
 
     /// Get the parent widget's identifier, if not root
-    ///
-    /// Note: there is no guarantee that [`Self::as_u64`] on the result will
-    /// match that of the original parent identifier.
     pub fn parent(&self) -> Option<Id> {
         match self.0.get() {
             Variant::Invalid => None,
@@ -461,12 +522,17 @@ impl Id {
                 None
             }
             Variant::Slice(path) => {
+                if path.is_empty() {
+                    return None;
+                }
+
                 let len = path.len();
-                if len > 1 {
-                    // TODO(opt): in some cases we could make Variant::Int
-                    Some(Id(IntOrPtr::new_iter(path[0..len - 1].iter().cloned())))
+                let path = &path[0..len - 1];
+
+                if len > BLOCKS as usize {
+                    Some(Id(IntOrPtr::new_iter(path.iter().cloned())))
                 } else {
-                    None
+                    Some(make_id(path))
                 }
             }
         }
@@ -503,53 +569,42 @@ impl Id {
         }
     }
 
-    /// Convert to a `u64`
+    /// Convert to a [`NonZeroU64`] representation
     ///
-    /// This value should not be interpreted, except as follows:
+    /// This conversion is infallible but not free.
     ///
-    /// -   it is guaranteed non-zero
-    /// -   it may be passed to [`Self::opt_from_u64`]
-    /// -   comparing two `u64` values generated this way will mostly work as
-    ///     an equality check of the source [`Id`], but can return false
-    ///     negatives (only if each id was generated through separate calls to
-    ///     [`Self::make_child`])
-    pub fn as_u64(&self) -> u64 {
-        self.0.as_u64()
+    /// The result may be used in equality checks (with a *very* small risk of
+    /// false positive due to hash collision) and may be passed to
+    /// [`Self::try_from_u64`].
+    pub fn to_nzu64(&self) -> NonZeroU64 {
+        self.0.to_nzu64()
     }
 
-    /// Convert `Option<Id>` to `u64`
+    /// Try converting a `u64` to an `Id`
     ///
-    /// This value should not be interpreted, except as follows:
+    /// This method is the inverse of [`Self::to_nzu64`]. Assuming that the
+    /// input `n` is the result of calling `id.to_nzu64().get()` for some `id`,
+    /// then this method will return:
     ///
-    /// -   it is zero if and only if `id == None`
-    /// -   it may be passed to [`Self::opt_from_u64`]
-    /// -   comparing two `u64` values generated this way will mostly work as
-    ///     an equality check of the source [`Id`], but can return false
-    ///     negatives (only if each id was generated through separate calls to
-    ///     [`Self::make_child`])
-    pub fn opt_to_u64(id: Option<&Id>) -> u64 {
-        match id {
-            None => 0,
-            Some(id) => id.0.as_u64(),
-        }
-    }
-
-    /// Convert `u64` to `Option<Id>`
+    /// -   `Some(Id::INVALID)` where `!id.is_valid()`
+    /// -   `Some(id)` where `id` uses the internal (non-allocated) representation
+    /// -   Either `None` or `Some(id2)` where `id == id2` where `id` uses an
+    ///     allocated representation, excepting the unlikely case of hash
+    ///     collision (in this case the resulting `id2` represents another path)
     ///
-    /// Returns `None` if and only if `n == 0`.
+    /// This method will return `None` where:
     ///
-    /// # Safety
+    /// -   `n == 0`
+    /// -   The originating `id` used an allocating representation and has
+    ///     been deallocated
+    /// -   The originating `id` used an allocating representation and was
+    ///     constructed on another thread (excepting the case where an `Id` with
+    ///     the same hash was constructed on this thread)
     ///
-    /// This may only be called with the output of [`Self::as_u64`],
-    /// [`Self::opt_from_u64`], or `0`.
-    ///
-    /// This is unsafe since `Self` has a heap-allocated variant. If `n` looks
-    /// like a heap-allocated variant but is not the result of [`Self::as_u64`],
-    /// or it is but the source instance of `Self` and all clones have been
-    /// destroyed, then some operations on the result of this method will
-    /// attempt to dereference an invalid pointer.
-    pub unsafe fn opt_from_u64(n: u64) -> Option<Id> {
-        IntOrPtr::opt_from_u64(n).map(Id)
+    /// Bad / random inputs may yield either `None` or `Some(bad_id)` and in the
+    /// latter case operations on `bad_id` may panic, but is memory safe.
+    pub fn try_from_u64(n: u64) -> Option<Id> {
+        IntOrPtr::try_from_u64(n).map(Id)
     }
 }
 
@@ -706,17 +761,17 @@ impl HasId for &mut Id {
     }
 }
 
+fn make_id(seq: &[usize]) -> Id {
+    let mut id = Id::ROOT;
+    for x in seq {
+        id = id.make_child(*x);
+    }
+    id
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
-
-    fn make_id(seq: &[usize]) -> Id {
-        let mut id = Id::ROOT;
-        for x in seq {
-            id = id.make_child(*x);
-        }
-        id
-    }
 
     #[test]
     fn size_of_option_widget_id() {
@@ -853,7 +908,7 @@ mod test {
     fn test_make_child() {
         fn test(seq: &[usize], x: u64) {
             let id = make_id(seq);
-            let v = id.as_u64();
+            let v = id.to_nzu64().get();
             if v != x {
                 panic!("test({seq:?}, {x:x}): found {v:x}");
             }
@@ -939,5 +994,12 @@ mod test {
         test(&[0], &[0, 2], &[0]);
         test(&[2, 10, 1], &[2, 10], &[2, 10]);
         test(&[0, 5, 2], &[0, 5, 1], &[0, 5]);
+    }
+
+    #[test]
+    fn deduplicate_allocations() {
+        let id1 = make_id(&[2, 6, 1, 1, 0, 13, 0, 100, 1000]);
+        let id2 = make_id(&[2, 6, 1, 1, 0, 13, 0, 100, 1000]);
+        assert_eq!(id1.0 .0, id2.0 .0);
     }
 }

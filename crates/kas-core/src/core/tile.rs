@@ -249,29 +249,9 @@ pub trait TileExt: Tile {
         !self.eq_id(id) && self.id_ref().is_ancestor_of(id)
     }
 
-    /// Run a closure on all children
-    fn for_children(&self, mut f: impl FnMut(&dyn Tile)) {
-        for index in 0..self.num_children() {
-            if let Some(child) = self.get_child(index) {
-                f(child);
-            }
-        }
-    }
-
-    /// Run a fallible closure on all children
-    ///
-    /// Returns early in case of error.
-    fn for_children_try<E>(&self, mut f: impl FnMut(&dyn Tile) -> Result<(), E>) -> Result<(), E> {
-        let mut result = Ok(());
-        for index in 0..self.num_children() {
-            if let Some(child) = self.get_child(index) {
-                result = f(child);
-            }
-            if result.is_err() {
-                break;
-            }
-        }
-        result
+    /// Return an iterator over direct children
+    fn children(&self) -> impl Iterator<Item = &dyn Tile> {
+        (0..self.num_children()).flat_map(|i| self.get_child(i))
     }
 
     /// Find the descendant with this `id`, if any
