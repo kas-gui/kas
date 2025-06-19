@@ -39,20 +39,20 @@ jobs:
           cargo test --manifest-path crates/kas-core/Cargo.toml --features nightly
       - name: Test kas-widgets
         run: |
-          cargo test --manifest-path crates/kas-widgets/Cargo.toml --features kas/winit,kas/wayland
-          cargo test --manifest-path crates/kas-widgets/Cargo.toml --all-features --features kas/winit,kas/wayland
+          cargo test --manifest-path crates/kas-widgets/Cargo.toml --features kas/wayland
+          cargo test --manifest-path crates/kas-widgets/Cargo.toml --all-features --features kas/wayland
       - name: Test kas-resvg
         run: |
-          cargo test --manifest-path crates/kas-resvg/Cargo.toml --features kas/winit,kas/wayland
-          cargo test --manifest-path crates/kas-resvg/Cargo.toml --all-features --features kas/winit,kas/wayland
+          cargo test --manifest-path crates/kas-resvg/Cargo.toml --features kas/wayland
+          cargo test --manifest-path crates/kas-resvg/Cargo.toml --all-features --features kas/wayland
       - name: Test kas-wgpu
         run: |
-          cargo test --manifest-path crates/kas-wgpu/Cargo.toml --no-default-features --features kas/winit,kas/wayland
-          cargo test --manifest-path crates/kas-wgpu/Cargo.toml --all-features --features kas/winit,kas/wayland
+          cargo test --manifest-path crates/kas-wgpu/Cargo.toml --no-default-features --features kas/wayland
+          cargo test --manifest-path crates/kas-wgpu/Cargo.toml --all-features --features kas/wayland
       - name: Test kas-dylib
         run: |
-          cargo test --manifest-path crates/kas-dylib/Cargo.toml --features kas-core/winit,kas-core/wayland
-          cargo test --manifest-path crates/kas-dylib/Cargo.toml --all-features --features kas-core/winit,kas-core/x11
+          cargo test --manifest-path crates/kas-dylib/Cargo.toml --features kas-core/wayland
+          cargo test --manifest-path crates/kas-dylib/Cargo.toml --all-features --features kas-core/x11
       - name: Test kas
         run: cargo test --features nightly -Zwarnings --config 'build.warnings="deny"'
       - name: Test kas (experimental; some warnings may be expected)
@@ -94,13 +94,13 @@ jobs:
       - name: Test kas-core
         run: cargo test --manifest-path crates/kas-core/Cargo.toml --features stable
       - name: Test kas-widgets
-        run: cargo test --manifest-path crates/kas-widgets/Cargo.toml --features kas/winit,kas/x11
+        run: cargo test --manifest-path crates/kas-widgets/Cargo.toml --features kas/x11
       - name: Test kas-resvg
-        run: cargo test --manifest-path crates/kas-resvg/Cargo.toml --all-features --features kas/winit,kas/wayland
+        run: cargo test --manifest-path crates/kas-resvg/Cargo.toml --all-features --features kas/wayland
       - name: Test kas-wgpu
-        run: cargo test --manifest-path crates/kas-wgpu/Cargo.toml --features kas/x11,kas/winit
+        run: cargo test --manifest-path crates/kas-wgpu/Cargo.toml --features kas/x11
       - name: Test kas-dylib
-        run: cargo test --manifest-path crates/kas-dylib/Cargo.toml --features kas-core/x11,kas-core/winit
+        run: cargo test --manifest-path crates/kas-dylib/Cargo.toml --features kas-core/x11
       - name: Test kas
         run: cargo test --features stable
       - name: Test examples/mandlebrot

@@ -641,7 +641,6 @@ impl std::ops::SubAssign<Offset> for Rect {
     }
 }
 
-#[cfg(winit)]
 mod winit_impls {
     use super::{Coord, Size};
     use crate::cast::{Cast, CastApprox, Conv, ConvApprox, Result};

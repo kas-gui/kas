@@ -34,7 +34,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 #
 # Note: only some examples build in this configuration; others need view,
 # markdown, resvg. Recommended also: clipboard, ron (or some config format).
-minimal = ["wgpu", "winit", "wayland", "vulkan", "dx12", "metal"]
+minimal = ["wgpu", "wayland", "vulkan", "dx12", "metal"]
 # All recommended features for optimal experience
 default = ["minimal", "view", "image", "resvg", "clipboard", "markdown", "shaping", "spawn"]
 # All standard test target features
@@ -118,8 +118,6 @@ spawn = ["kas-core/spawn"]
 # Inject logging into macro-generated code.
 # Requires that all crates using these macros depend on the log crate.
 macros_log = ["kas-core/macros_log"]
-
-winit = ["kas-core/winit"]
 
 # Support Wayland
 wayland = ["kas-core/wayland"]

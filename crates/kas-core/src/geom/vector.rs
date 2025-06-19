@@ -531,7 +531,6 @@ macro_rules! impl_vec2 {
             }
         }
 
-        #[cfg(winit)]
         impl From<winit::dpi::PhysicalPosition<$f>> for $T {
             #[inline]
             fn from(pos: winit::dpi::PhysicalPosition<$f>) -> Self {
@@ -539,7 +538,6 @@ macro_rules! impl_vec2 {
             }
         }
 
-        #[cfg(winit)]
         impl From<winit::dpi::PhysicalSize<$f>> for $T {
             #[inline]
             fn from(size: winit::dpi::PhysicalSize<$f>) -> Self {

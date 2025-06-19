@@ -6,21 +6,20 @@
 //! Runner, platforms and backends
 
 mod common;
-#[cfg(winit)] mod event_loop;
-#[cfg(winit)] mod runner;
-#[cfg(winit)] mod shared;
-#[cfg(winit)] mod window;
+mod event_loop;
+mod runner;
+mod shared;
+mod window;
 
 use crate::messages::MessageStack;
-#[cfg(winit)] use crate::WindowId;
-#[cfg(winit)] use event_loop::Loop;
-#[cfg(winit)] pub(crate) use shared::RunnerT;
-#[cfg(winit)] use shared::State;
-#[cfg(winit)] pub use window::Window;
-#[cfg(winit)] pub(crate) use window::WindowDataErased;
+use crate::WindowId;
+use event_loop::Loop;
+pub(crate) use shared::RunnerT;
+use shared::State;
+pub use window::Window;
+pub(crate) use window::WindowDataErased;
 
 pub use common::{Error, Platform, Result};
-#[cfg(winit)]
 pub use runner::{ClosedError, PreLaunchState, Proxy};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -67,7 +66,6 @@ impl AppData for () {
 }
 
 #[crate::autoimpl(Debug)]
-#[cfg(winit)]
 enum Pending<A: AppData, G: GraphicsInstance, T: kas::theme::Theme<G::Shared>> {
     AddPopup(WindowId, WindowId, kas::PopupDescriptor),
     // NOTE: we don't need G, T here if we construct the Window later.
@@ -78,7 +76,6 @@ enum Pending<A: AppData, G: GraphicsInstance, T: kas::theme::Theme<G::Shared>> {
     Exit,
 }
 
-#[cfg(winit)]
 #[derive(Debug)]
 enum ProxyAction {
     CloseAll,

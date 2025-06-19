@@ -6,8 +6,7 @@
 //! Utilities
 
 use crate::geom::Coord;
-#[cfg(all(feature = "image", feature = "winit"))]
-use crate::Icon;
+#[cfg(feature = "image")] use crate::Icon;
 use crate::{Id, Tile};
 use std::{error::Error, fmt, path::Path};
 
@@ -188,7 +187,7 @@ pub fn nav_next(reverse: bool, from: Option<usize>, len: usize) -> Option<usize>
 }
 
 /// Load a window icon from a path
-#[cfg(all(feature = "image", feature = "winit"))]
+#[cfg(feature = "image")]
 pub fn load_icon_from_path<P: AsRef<std::path::Path>>(path: P) -> Result<Icon, Box<dyn Error>> {
     // TODO(opt): image loading could be de-duplicated with
     // DrawShared::image_from_path, but this may not be worthwhile.

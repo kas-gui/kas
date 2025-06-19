@@ -9,27 +9,7 @@ use super::Id;
 #[allow(unused)] use super::Widget;
 use crate::geom::Rect;
 
-#[cfg(feature = "winit")] pub use winit::window::Icon;
-
-/// An icon used for the window titlebar, taskbar, etc.
-#[cfg(not(feature = "winit"))]
-#[derive(Clone)]
-pub struct Icon;
-#[cfg(not(feature = "winit"))]
-impl Icon {
-    /// Creates an `Icon` from 32bpp RGBA data.
-    ///
-    /// The length of `rgba` must be divisible by 4, and `width * height` must equal
-    /// `rgba.len() / 4`. Otherwise, this will return a `BadIcon` error.
-    pub fn from_rgba(
-        rgba: Vec<u8>,
-        width: u32,
-        height: u32,
-    ) -> Result<Self, impl std::error::Error> {
-        let _ = (rgba, width, height);
-        Result::<Self, std::convert::Infallible>::Ok(Icon)
-    }
-}
+pub use winit::window::Icon;
 
 /// Common widget data
 ///

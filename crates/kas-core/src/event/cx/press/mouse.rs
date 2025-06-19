@@ -409,7 +409,6 @@ impl<'a> EventCx<'a> {
     }
 
     /// Handle a mouse wheel event.
-    #[cfg(winit)]
     pub(in crate::event::cx) fn handle_mouse_wheel(
         &mut self,
         node: Node<'_>,
@@ -432,7 +431,6 @@ impl<'a> EventCx<'a> {
     }
 
     /// Handle a mouse click / release.
-    #[cfg(winit)]
     pub(in crate::event::cx) fn handle_mouse_input(
         &mut self,
         mut node: Node<'_>,

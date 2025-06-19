@@ -281,7 +281,6 @@ impl<'a> EventCx<'a> {
     /// Note that some event types are not handled, since for these
     /// events the graphics backend must take direct action anyway:
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
-    #[cfg(winit)]
     pub(crate) fn handle_winit<A>(
         &mut self,
         win: &mut Window<A>,

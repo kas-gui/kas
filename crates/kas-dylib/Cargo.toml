@@ -23,7 +23,7 @@ resvg = ["dep:kas-resvg"]
 
 # Non-local features required for doc builds.
 # Note: docs.rs does not support direct usage of transitive features.
-docs_rs = ["kas-core/winit", "kas-core/wayland"]
+docs_rs = ["kas-core/wayland"]
 
 [dependencies]
 kas-core = { version = "0.15.0", path = "../kas-core" }
