@@ -22,6 +22,7 @@ extern crate self as kas;
 #[doc(inline)] pub extern crate easy_cast as cast;
 
 // internal modules:
+#[cfg(feature = "accesskit")] pub(crate) mod accesskit;
 mod action;
 mod core;
 pub mod decorations;
