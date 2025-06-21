@@ -124,6 +124,16 @@ mod MenuBar {
                 .and_then(|child| child.try_probe(coord))
                 .unwrap_or_else(|| self.id())
         }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::MenuBar))
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_recurse(&self, cx: &mut AccessKitCx) {
+            cx.extend(self.widgets.iter().map(|m| m.as_tile()));
+        }
     }
 
     impl Events for Self {

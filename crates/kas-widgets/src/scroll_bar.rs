@@ -336,6 +336,11 @@ mod ScrollBar {
             }
             self.grip.try_probe(coord).unwrap_or_else(|| self.id())
         }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::ScrollBar))
+        }
     }
 
     impl Events for Self {
@@ -593,6 +598,18 @@ mod ScrollBars {
                 .or_else(|| self.horiz_bar.try_probe(coord))
                 .or_else(|| self.inner.try_probe(coord))
                 .unwrap_or_else(|| self.id())
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::GenericContainer))
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_recurse(&self, cx: &mut AccessKitCx) {
+            cx.push(self.horiz_bar.as_tile());
+            cx.push(self.vert_bar.as_tile());
+            cx.push(self.inner.as_tile());
         }
     }
 

@@ -115,6 +115,15 @@ mod Text {
         }
     }
 
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            let mut node = accesskit::Node::new(accesskit::Role::Label);
+            node.set_value(self.text.as_str());
+            Some(node)
+        }
+    }
+
     impl Events for Self {
         type Data = A;
 

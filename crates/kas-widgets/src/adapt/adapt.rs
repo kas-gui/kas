@@ -131,6 +131,13 @@ mod Adapt {
         }
     }
 
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            None
+        }
+    }
+
     impl Events for Self {
         type Data = A;
 

@@ -56,6 +56,11 @@ mod ComboBox {
         fn probe(&self, _: Coord) -> Id {
             self.id()
         }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::ComboBox))
+        }
     }
 
     impl Events for Self {

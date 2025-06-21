@@ -48,6 +48,11 @@ mod Tab {
         fn probe(&self, _: Coord) -> Id {
             self.id()
         }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::Tab))
+        }
     }
 
     impl Events for Self {
@@ -168,6 +173,11 @@ mod TabStack {
         fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
             let reverse = reverse ^ !self.direction.is_reversed();
             kas::util::nav_next(reverse, from, self.num_children())
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::GenericContainer))
         }
     }
 

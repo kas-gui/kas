@@ -42,6 +42,13 @@ mod Separator {
         }
     }
 
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            None
+        }
+    }
+
     /// A separator is a valid menu widget
     impl Menu for Self {}
 }

@@ -149,6 +149,21 @@ mod Stack {
             }
             self.id()
         }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::GenericContainer))
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_recurse(&self, cx: &mut AccessKitCx) {
+            // TODO: perhaps also include pages we know have been sized, e.g.
+            // previously viewed pages up until we get resized or reconfigured?
+
+            if let Some((w, _)) = self.widgets.get(self.active) {
+                cx.push(w.as_tile());
+            }
+        }
     }
 
     impl Events for Self {
