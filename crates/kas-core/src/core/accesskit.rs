@@ -14,6 +14,14 @@ use accesskit::{Node, NodeId};
 pub struct AccessKitCx(Vec<(NodeId, Node)>, usize);
 
 impl AccessKitCx {
+    pub(crate) fn new() -> Self {
+        AccessKitCx(Vec::new(), 0)
+    }
+
+    pub(crate) fn take_nodes(self) -> Vec<(NodeId, Node)> {
+        self.0
+    }
+
     /// Push a [`Tile`] to the list of updated nodes
     ///
     /// This method calls [`Tile::accesskit_recurse`], assuming that all newly

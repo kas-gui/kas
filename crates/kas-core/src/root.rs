@@ -240,6 +240,25 @@ mod Window {
                 }
             }
         }
+
+        #[cfg(feature = "accesskit")]
+        pub(crate) fn accesskit_tree(
+            &self,
+            ev: &crate::event::EventState,
+        ) -> accesskit::TreeUpdate {
+            let mut cx = crate::AccessKitCx::new();
+            cx.push(self);
+
+            accesskit::TreeUpdate {
+                nodes: cx.take_nodes(),
+                tree: Some(accesskit::Tree {
+                    root: self.id_ref().into(),
+                    toolkit_name: Some("Kas".to_string()),
+                    toolkit_version: None, // TODO: make version accessible to code in one place
+                }),
+                focus: ev.nav_focus().unwrap_or(self.id_ref()).into(),
+            }
+        }
     }
 
     impl Tile for Self {

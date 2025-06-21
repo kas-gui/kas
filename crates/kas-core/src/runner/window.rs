@@ -391,9 +391,15 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
     #[cfg(feature = "accesskit")]
     pub(super) fn accesskit_event(&mut self, event: accesskit_winit::WindowEvent) {
+        let Some(ref mut window) = self.window else {
+            return;
+        };
+
         use accesskit_winit::WindowEvent as WE;
         match event {
-            WE::InitialTreeRequested => (),     // TODO
+            WE::InitialTreeRequested => window
+                .accesskit
+                .update_if_active(|| self.widget.accesskit_tree(&self.ev_state)),
             WE::ActionRequested(action) => (),  // TODO
             WE::AccessibilityDeactivated => (), // TODO
         }
