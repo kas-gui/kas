@@ -5,6 +5,9 @@
 
 //! Action enum
 
+#[allow(unused)]
+use crate::event::{ConfigCx, EventCx, EventState};
+
 bitflags! {
     /// Action required after processing
     ///
@@ -12,8 +15,10 @@ bitflags! {
     /// while others don't reqiure a context but do require that some *action*
     /// is performed afterwards. This enum is used to convey that action.
     ///
-    /// An `Action` produced at run-time should be passed to a context:
-    /// `cx.action(self.id(), action)` (assuming `self` is a widget).
+    /// An `Action` produced at run-time should be passed to a context, usually
+    /// via [`EventState::action`] (to associate the `Action` with a widget)
+    /// or [`EventState::window_action`] (if no particular widget is relevant).
+    ///
     /// An `Action` produced before starting the GUI may be discarded, for
     /// example: `let _ = runner.config_mut().font.set_size(24.0);`.
     ///
@@ -23,8 +28,7 @@ bitflags! {
     pub struct Action: u32 {
         /// The whole window requires redrawing
         ///
-        /// Note that [`event::EventCx::redraw`] can instead be used for more
-        /// selective redrawing.
+        /// See also [`EventState::redraw`].
         const REDRAW = 1 << 0;
         /// Some widgets within a region moved
         ///
@@ -33,6 +37,8 @@ bitflags! {
         /// Identifier is that of the parent widget/window encapsulating the region.
         ///
         /// Implies window redraw.
+        ///
+        /// See also [`EventState::region_moved`].
         const REGION_MOVED = 1 << 4;
         /// A widget was scrolled
         ///
@@ -42,6 +48,8 @@ bitflags! {
         /// Reset size of all widgets without recalculating requirements
         const SET_RECT = 1 << 8;
         /// Resize all widgets in the window
+        ///
+        /// See also [`EventState::resize`].
         const RESIZE = 1 << 9;
         /// Update [`Dimensions`](crate::theme::dimensions::Dimensions) instances
         /// and theme configuration.
@@ -74,6 +82,8 @@ bitflags! {
         /// This is a notification that input data has changed.
         const UPDATE = 1 << 17;
         /// The current window should be closed
+        ///
+        /// See also [`EventState::exit`] which closes the UI (all windows).
         const CLOSE = 1 << 30;
     }
 }
