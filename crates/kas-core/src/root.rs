@@ -482,6 +482,12 @@ impl<Data: 'static> Window<Data> {
             self.resize_popup(cx, data, i);
         }
     }
+
+    /// Iterate over popups
+    #[cfg(feature = "accesskit")]
+    pub(crate) fn iter_popups(&self) -> impl Iterator<Item = &kas::PopupDescriptor> {
+        self.popups.iter().map(|(_, popup, _)| popup)
+    }
 }
 
 impl<Data: 'static> Window<Data> {
