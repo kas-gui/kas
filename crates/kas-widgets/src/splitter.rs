@@ -275,6 +275,17 @@ mod Splitter {
 
             self.id()
         }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::Splitter))
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_recurse(&self, cx: &mut AccessKitCx) {
+            // Ignore grips which don't have accessibility representations
+            cx.extend_collection(&self.widgets);
+        }
     }
 
     impl Events for Self {

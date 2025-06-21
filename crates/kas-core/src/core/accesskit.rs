@@ -5,7 +5,7 @@
 
 //! AccessKit utilities
 
-use super::Tile;
+use super::{Collection, Tile};
 use crate::cast::Cast;
 use accesskit::{Node, NodeId};
 
@@ -77,6 +77,14 @@ impl AccessKitCx {
             // Note that there may be unclaimed children; we could synthesise a
             // node with Role::GenericContainer, but it's also fine to leave
             // these unclaimed for our parent node.
+        }
+    }
+
+    /// Extend self from a collection
+    pub fn extend_collection<C: Collection>(&mut self, collection: &C) {
+        self.0.reserve(collection.len());
+        for tile in collection.iter_tile(..) {
+            self.push(tile);
         }
     }
 

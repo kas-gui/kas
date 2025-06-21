@@ -316,6 +316,16 @@ mod List {
                 .and_then(|child| child.try_probe(coord))
                 .unwrap_or_else(|| self.id())
         }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::GenericContainer))
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_recurse(&self, cx: &mut AccessKitCx) {
+            cx.extend_collection(&self.widgets);
+        }
     }
 
     impl Events for Self {
