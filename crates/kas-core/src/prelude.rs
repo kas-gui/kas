@@ -8,9 +8,6 @@
 //! It is recommended to use `kas::prelude` instead, which is an extension of
 //! this crate's prelude.
 
-#[cfg(feature = "accesskit")]
-#[doc(no_inline)]
-pub use crate::accesskit;
 #[doc(no_inline)] pub use crate::cast::traits::*;
 #[doc(no_inline)]
 pub use crate::dir::{Direction, Directional};
@@ -23,6 +20,9 @@ pub use crate::layout::{Align, AlignHints, AlignPair, AxisInfo, SizeRules, Stret
 #[doc(no_inline)] pub use crate::text::AccessString;
 #[doc(no_inline)] pub use crate::theme::{DrawCx, SizeCx};
 #[doc(no_inline)] pub use crate::Action;
+#[cfg(feature = "accesskit")]
+#[doc(no_inline)]
+pub use crate::{accesskit, AccessKitCx};
 #[doc(no_inline)]
 pub use crate::{autoimpl, impl_anon, impl_default, impl_scope, impl_self};
 #[doc(no_inline)]

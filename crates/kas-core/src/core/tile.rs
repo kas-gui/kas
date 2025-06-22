@@ -10,7 +10,7 @@ use crate::util::IdentifyWidget;
 use crate::{HasId, Id, Layout};
 use kas_macros::autoimpl;
 
-#[allow(unused)] use super::{Events, Widget};
+#[allow(unused)] use super::{AccessKitCx, Events, Widget};
 #[allow(unused)] use crate::layout::{self, AlignPair};
 #[allow(unused)] use crate::theme::DrawCx;
 #[allow(unused)] use kas_macros as macros;
@@ -236,6 +236,23 @@ pub trait Tile: Layout {
     fn accesskit_node(&self) -> Option<accesskit::Node> {
         None
     }
+
+    /// Generate [AccessKit] nodes for descendants
+    ///
+    /// This method should call [`Self::accesskit_recurse`] and
+    /// [`Self::accesskit_node`] on each child visible to the accessibility
+    /// tree. It does not add its own [`accesskit::Node`] to the tree;
+    /// [`Self::accesskit_node`] is called by the parent to do that.
+    ///
+    /// If a `#[layout]` attribute is used, this method will be generated to
+    /// over all children; this implementation may be optionally overridden.
+    /// If a `#[layout]` attribute is not used this method *should* be
+    /// implemented; failing to do so results in a warning (requires feature
+    /// `nightly-diagnostics`).
+    ///
+    /// [AccessKit]: https://accesskit.dev/
+    #[cfg(feature = "accesskit")]
+    fn accesskit_recurse(&self, cx: &mut AccessKitCx);
 }
 
 impl<W: Tile + ?Sized> HasId for &W {

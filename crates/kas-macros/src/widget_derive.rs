@@ -440,6 +440,11 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
         fn accesskit_node(&self) -> Option<::kas::accesskit::Node> {
             self.#inner.accesskit_node()
         }
+
+        #[inline]
+        fn accesskit_recurse(&self, cx: &mut ::kas::AccessKitCx) {
+            self.#inner.accesskit_recurse(cx);
+        }
     };
 
     if let Some(index) = tile_impl {

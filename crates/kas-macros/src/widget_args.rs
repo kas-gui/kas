@@ -73,10 +73,10 @@ pub enum ChildIdent {
     CoreField(Member),
 }
 impl ChildIdent {
-    pub fn get_rule(&self, core_path: &Toks, i: usize) -> Toks {
+    pub fn path(&self, core_path: &Toks) -> Toks {
         match self {
-            ChildIdent::Field(ident) => quote! { #i => Some(self.#ident.as_tile()), },
-            ChildIdent::CoreField(ident) => quote! { #i => Some(#core_path.#ident.as_tile()), },
+            ChildIdent::Field(ident) => quote! { self.#ident },
+            ChildIdent::CoreField(ident) => quote! { #core_path.#ident },
         }
     }
 }
