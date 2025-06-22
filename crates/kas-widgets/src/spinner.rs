@@ -94,6 +94,7 @@ struct SpinnerGuard<A, T: SpinnerValue> {
     start: T,
     end: T,
     step: T,
+    value: T,
     parsed: Option<T>,
     state_fn: Box<dyn Fn(&ConfigCx, &A) -> T>,
 }
@@ -105,19 +106,21 @@ impl<A, T: SpinnerValue> SpinnerGuard<A, T> {
             start,
             end,
             step: T::default_step(),
+            value: start,
             parsed: None,
             state_fn,
         }
     }
 
     /// Returns new value if different
-    fn handle_btn(&self, cx: &mut EventCx, data: &A, btn: SpinBtn) -> Option<T> {
-        let old_value = (self.state_fn)(&cx.config_cx(), data);
+    fn handle_btn(&mut self, btn: SpinBtn) -> Option<T> {
+        let old_value = self.value;
         let value = match btn {
             SpinBtn::Down => old_value.sub_step(self.step, self.start),
             SpinBtn::Up => old_value.add_step(self.step, self.end),
         };
 
+        self.value = value;
         (value != old_value).then_some(value)
     }
 }
@@ -126,23 +129,24 @@ impl<A, T: SpinnerValue> EditGuard for SpinnerGuard<A, T> {
     type Data = A;
 
     fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
-        let value = (edit.guard.state_fn)(cx, data);
-        edit.set_string(cx, value.to_string());
+        edit.guard.value = (edit.guard.state_fn)(cx, data);
+        edit.set_string(cx, edit.guard.value.to_string());
     }
 
-    fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, data: &A) {
+    fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, _: &A) {
         if let Some(value) = edit.guard.parsed.take() {
+            edit.guard.value = value;
             cx.push(ValueMsg(value));
         } else {
-            let value = (edit.guard.state_fn)(&cx.config_cx(), data);
-            edit.set_string(cx, value.to_string());
+            edit.set_string(cx, edit.guard.value.to_string());
         }
     }
 
     fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &A) {
         let is_err;
         if let Ok(value) = edit.as_str().parse::<T>() {
-            edit.guard.parsed = Some(value.clamp(edit.guard.start, edit.guard.end));
+            edit.guard.value = value.clamp(edit.guard.start, edit.guard.end);
+            edit.guard.parsed = Some(edit.guard.value);
             is_err = false;
         } else {
             is_err = true;
@@ -319,7 +323,7 @@ mod Spinner {
                         }
                         _ => return Unused,
                     };
-                    value = self.edit.guard.handle_btn(cx, data, btn);
+                    value = self.edit.guard.handle_btn(btn);
                 }
                 Event::Scroll(delta) => {
                     if let Some(y) = delta.as_wheel_action(cx) {
@@ -329,7 +333,7 @@ mod Spinner {
                             ((-y) as u32, SpinBtn::Down)
                         };
                         for _ in 0..count {
-                            value = self.edit.guard.handle_btn(cx, data, btn);
+                            value = self.edit.guard.handle_btn(btn);
                         }
                     } else {
                         return Unused;
@@ -350,7 +354,7 @@ mod Spinner {
             let new_value = if let Some(ValueMsg(value)) = cx.try_pop() {
                 Some(value)
             } else if let Some(btn) = cx.try_pop::<SpinBtn>() {
-                self.edit.guard.handle_btn(cx, data, btn)
+                self.edit.guard.handle_btn(btn)
             } else {
                 None
             };
