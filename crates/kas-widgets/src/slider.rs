@@ -16,49 +16,28 @@ use std::ops::{Add, RangeInclusive, Sub};
 ///
 /// Implementations are provided for standard float and integer types.
 pub trait SliderValue:
-    Copy + Debug + PartialOrd + Add<Output = Self> + Sub<Output = Self> + 'static
+    Copy
+    + Debug
+    + PartialOrd
+    + Add<Output = Self>
+    + Sub<Output = Self>
+    + Cast<f64>
+    + ConvApprox<f64>
+    + 'static
 {
     /// The default step size (usually 1)
     fn default_step() -> Self;
-
-    /// Divide self by another instance of this type, returning an `f64`
-    ///
-    /// Note: in practice, we always have `rhs >= self` and expect the result
-    /// to be between 0 and 1.
-    fn div_as_f64(self, rhs: Self) -> f64;
-
-    /// Return the result of multiplying self by an `f64` scalar
-    ///
-    /// Note: the `scalar` is expected to be between 0 and 1, hence this
-    /// operation should not produce a value larger than self.
-    ///
-    /// Also note that this method is not required to preserve precision
-    /// (e.g. `u128::mul_64` may drop some low-order bits with large numbers).
-    #[must_use]
-    fn mul_f64(self, scalar: f64) -> Self;
 }
 
 impl SliderValue for f64 {
     fn default_step() -> Self {
         1.0
     }
-    fn div_as_f64(self, rhs: Self) -> f64 {
-        self / rhs
-    }
-    fn mul_f64(self, scalar: f64) -> Self {
-        self * scalar
-    }
 }
 
 impl SliderValue for f32 {
     fn default_step() -> Self {
         1.0
-    }
-    fn div_as_f64(self, rhs: Self) -> f64 {
-        self as f64 / rhs as f64
-    }
-    fn mul_f64(self, scalar: f64) -> Self {
-        (self as f64 * scalar) as f32
     }
 }
 
@@ -67,14 +46,6 @@ macro_rules! impl_slider_ty {
         impl SliderValue for $ty {
             fn default_step() -> Self {
                 1
-            }
-            fn div_as_f64(self, rhs: Self) -> f64 {
-                self as f64 / rhs as f64
-            }
-            fn mul_f64(self, scalar: f64) -> Self {
-                let r = (self as f64 * scalar).round();
-                assert!(<$ty>::MIN as f64 <= r && r <= <$ty>::MAX as f64);
-                r as $ty
             }
         }
     };
@@ -262,7 +233,7 @@ mod Slider {
             let a = self.value - self.range.0;
             let b = self.range.1 - self.range.0;
             let max_offset = self.grip.max_offset();
-            let mut frac = a.div_as_f64(b);
+            let mut frac = a.cast() / b.cast();
             assert!((0.0..=1.0).contains(&frac));
             if self.direction.is_reversed() {
                 frac = 1.0 - frac;
@@ -276,10 +247,13 @@ mod Slider {
         fn apply_grip_offset(&mut self, cx: &mut EventCx, data: &A, offset: Offset) {
             let b = self.range.1 - self.range.0;
             let max_offset = self.grip.max_offset();
-            let mut a = match self.direction.is_vertical() {
-                false => b.mul_f64(offset.0 as f64 / max_offset.0 as f64),
-                true => b.mul_f64(offset.1 as f64 / max_offset.1 as f64),
+            let (offset, max) = match self.direction.is_vertical() {
+                false => (offset.0, max_offset.0),
+                true => (offset.1, max_offset.1),
             };
+            let mut a = (b.cast() * (offset as f64 / max as f64))
+                .round()
+                .cast_approx();
             if self.direction.is_reversed() {
                 a = b - a;
             }
