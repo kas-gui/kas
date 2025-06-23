@@ -26,6 +26,18 @@ mod RadioBox {
         on_select: Option<Box<dyn Fn(&mut EventCx, &A)>>,
     }
 
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            let mut node = accesskit::Node::new(accesskit::Role::RadioButton);
+            node.set_toggled(match self.state {
+                false => accesskit::Toggled::False,
+                true => accesskit::Toggled::True,
+            });
+            Some(node)
+        }
+    }
+
     impl Events for Self {
         const REDRAW_ON_HOVER: bool = true;
         const NAVIGABLE: bool = true;
@@ -159,6 +171,19 @@ mod RadioButton {
 
         fn probe(&self, _: Coord) -> Id {
             self.inner.id()
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::GenericContainer))
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_recurse(&self, cx: &mut AccessKitCx) {
+            cx.push_with(&self.inner, |node| {
+                node.push_labelled_by(self.label.id_ref().into())
+            });
+            cx.push(&self.label);
         }
     }
 

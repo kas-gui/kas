@@ -112,5 +112,18 @@ mod WithLabel {
         fn probe(&self, _: Coord) -> Id {
             self.inner.id()
         }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::GenericContainer))
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_recurse(&self, cx: &mut AccessKitCx) {
+            cx.push_with(&self.inner, |node| {
+                node.push_labelled_by(self.label.id_ref().into())
+            });
+            cx.push(&self.label);
+        }
     }
 }
