@@ -581,6 +581,18 @@ mod MatrixView {
             }
             self.id()
         }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::GenericContainer))
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_recurse(&self, cx: &mut AccessKitCx) {
+            for child in &self.widgets[..self.num_children()] {
+                cx.push(child.widget.as_tile());
+            }
+        }
     }
 
     impl Events for Self {

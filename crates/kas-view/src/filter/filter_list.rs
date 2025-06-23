@@ -9,7 +9,7 @@ use super::Filter;
 use crate::{DataClerk, Driver, ListView};
 use kas::dir::{Direction, Directional};
 use kas::event::{EventCx, EventState};
-use kas::{autoimpl, impl_self, Events, Widget};
+use kas::{accesskit, autoimpl, impl_self, Events, Tile, Widget};
 use kas_widgets::edit::{EditBox, EditField, EditGuard};
 use kas_widgets::{ScrollBarMode, ScrollBars};
 use std::fmt::Debug;
@@ -125,6 +125,13 @@ mod FilterBoxListView {
         #[inline]
         pub fn list_mut(&mut self) -> &mut ListView<A, V, D> {
             self.list.inner_mut()
+        }
+    }
+
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            None
         }
     }
 
