@@ -7,7 +7,7 @@
 
 use crate::dir::Direction;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};
-use crate::{Events, Id, Tile, TileExt, Widget, WindowId};
+use crate::{AccessKitCx, Events, Id, Tile, TileExt, Widget, WindowId};
 use kas_macros::{impl_self, widget_index};
 
 #[allow(unused)] use crate::event::EventState;
@@ -50,6 +50,11 @@ mod Popup {
         #[cfg(feature = "accesskit")]
         fn accesskit_node(&self) -> Option<accesskit::Node> {
             None
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_recurse(&self, cx: &mut AccessKitCx) {
+            cx.push_root(&self.inner);
         }
     }
 
