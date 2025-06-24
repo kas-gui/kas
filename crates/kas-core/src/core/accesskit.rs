@@ -10,6 +10,7 @@ use crate::cast::Cast;
 use accesskit::{Node, NodeId};
 
 /// Context for accessibility shadow-tree recursion
+// NOTE: invariant: 0 <= self.2 <= self.1 <= self.0.len()
 #[derive(Debug)]
 pub struct AccessKitCx(Vec<(NodeId, Node)>, usize, usize);
 
@@ -46,11 +47,11 @@ impl AccessKitCx {
     }
 
     fn _push_with(&mut self, tile: &dyn Tile, cb: Option<&mut dyn FnMut(&mut Node)>, force: bool) {
-        // Invariant at fn start/end: nodes in self.0[..self.1] have a parent
+        // Invariant at fn start/end: nodes in self.0[self.2..self.1] have a parent
         // This is the number of unclaimed children (not ours):
         let extra = self.0.len() - self.1;
 
-        // Recursion may place additional claimed children in self.0[..self.1]
+        // Recursion may place additional claimed children in self.0[self.2..self.1]
         // (increases self.1) and unclaimed children in self.0[self.1+extra..]:
         tile.accesskit_recurse(self);
         let start = self.1 + extra;
@@ -64,15 +65,16 @@ impl AccessKitCx {
             node.set_bounds(tile.rect().cast());
 
             if start < self.0.len() {
-                // Claim children, and move under self.1:
+                // Claim children:
                 node.set_children(
                     self.0[start..]
                         .iter()
                         .map(|pair| pair.0)
                         .collect::<Vec<_>>(),
                 );
+                // Move self.0[self.1..self.1+extra] to self.0[len-extra..len] maintaining order:
                 let unclaimed_start = self.0.len() - extra;
-                for i in 0..(unclaimed_start - self.1) {
+                for i in (0..extra).rev() {
                     self.0.swap(self.1 + i, unclaimed_start + i);
                 }
                 self.1 = unclaimed_start;
