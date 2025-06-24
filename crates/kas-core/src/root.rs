@@ -240,38 +240,6 @@ mod Window {
                 }
             }
         }
-
-        #[cfg(feature = "accesskit")]
-        pub(crate) fn accesskit_tree(
-            &self,
-            ev: &crate::event::EventState,
-        ) -> accesskit::TreeUpdate {
-            let self_id = self.id_ref().into();
-
-            let mut cx = crate::AccessKitCx::new();
-            self.accesskit_recurse(&mut cx);
-            let (unclaimed_start, root_children_end) = cx.indices();
-            let mut nodes = cx.take_nodes();
-
-            let mut node = self.accesskit_node().unwrap();
-            let children: Vec<_> = nodes[0..root_children_end]
-                .iter()
-                .chain(nodes[unclaimed_start..].iter())
-                .map(|pair| pair.0)
-                .collect();
-            node.set_children(children);
-            nodes.push((self_id, node));
-
-            accesskit::TreeUpdate {
-                nodes,
-                tree: Some(accesskit::Tree {
-                    root: self_id,
-                    toolkit_name: Some("Kas".to_string()),
-                    toolkit_version: None, // TODO: make version accessible to code in one place
-                }),
-                focus: ev.nav_focus().unwrap_or(self.id_ref()).into(),
-            }
-        }
     }
 
     impl Tile for Self {

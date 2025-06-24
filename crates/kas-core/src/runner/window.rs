@@ -397,11 +397,14 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         use accesskit_winit::WindowEvent as WE;
         match event {
-            WE::InitialTreeRequested => window
-                .accesskit
-                .update_if_active(|| self.widget.accesskit_tree(&self.ev_state)),
-            WE::ActionRequested(action) => (),  // TODO
-            WE::AccessibilityDeactivated => (), // TODO
+            WE::InitialTreeRequested => window.accesskit.update_if_active(|| {
+                self.ev_state
+                    .accesskit_tree_update(self.widget.as_tile(), true)
+            }),
+            WE::ActionRequested(action) => (), // TODO
+            WE::AccessibilityDeactivated => {
+                self.ev_state.disable_accesskit();
+            }
         }
     }
 

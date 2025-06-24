@@ -7,7 +7,7 @@
 
 use super::*;
 use crate::theme::ThemeSize;
-use crate::{TileExt, Window};
+use crate::{Tile, TileExt, Window};
 use std::task::Poll;
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -22,6 +22,8 @@ impl EventState {
             platform,
             disabled: vec![],
             window_has_focus: false,
+            #[cfg(feature = "accesskit")]
+            accesskit_is_enabled: false,
             modifiers: ModifiersState::empty(),
             key_focus: false,
             ime: None,
@@ -48,6 +50,53 @@ impl EventState {
             pending_cmds: Default::default(),
             action: Action::empty(),
         }
+    }
+
+    #[cfg(feature = "accesskit")]
+    #[cfg(feature = "accesskit")]
+    pub(crate) fn accesskit_tree_update(
+        &mut self,
+        root: &dyn Tile,
+        mut whole_tree: bool,
+    ) -> accesskit::TreeUpdate {
+        self.accesskit_is_enabled = true;
+
+        let mut cx = crate::AccessKitCx::new();
+
+        let root_id = root.id_ref().into();
+        let mut nodes;
+        if whole_tree {
+            // Special handling for popups which are children of root
+            root.accesskit_recurse(&mut cx);
+            let (unclaimed_start, root_children_end) = cx.indices();
+            nodes = cx.take_nodes();
+
+            let mut node = root.accesskit_node().unwrap();
+            let children: Vec<_> = nodes[0..root_children_end]
+                .iter()
+                .chain(nodes[unclaimed_start..].iter())
+                .map(|pair| pair.0)
+                .collect();
+            node.set_children(children);
+            nodes.push((root_id, node));
+        } else {
+            nodes = cx.take_nodes();
+        }
+
+        accesskit::TreeUpdate {
+            nodes,
+            tree: Some(accesskit::Tree {
+                root: root_id,
+                toolkit_name: Some("Kas".to_string()),
+                toolkit_version: None, // TODO: make version accessible to code in one place
+            }),
+            focus: self.nav_focus().unwrap_or(root.id_ref()).into(),
+        }
+    }
+
+    #[cfg(feature = "accesskit")]
+    pub(crate) fn disable_accesskit(&mut self) {
+        self.accesskit_is_enabled = false;
     }
 
     /// Update scale factor
