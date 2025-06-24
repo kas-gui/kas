@@ -259,13 +259,7 @@ mod TitleBarButtons {
     impl Tile for Self {
         #[cfg(feature = "accesskit")]
         fn accesskit_node(&self) -> Option<accesskit::Node> {
-            let mut node = accesskit::Node::new(accesskit::Role::GenericContainer);
-            node.set_children(
-                self.children()
-                    .map(|child| child.id_ref().into())
-                    .collect::<Vec<_>>(),
-            );
-            Some(node)
+            Some(accesskit::Node::new(accesskit::Role::GenericContainer))
         }
     }
 
@@ -331,12 +325,7 @@ mod TitleBar {
     impl Tile for Self {
         #[cfg(feature = "accesskit")]
         fn accesskit_node(&self) -> Option<accesskit::Node> {
-            let mut node = accesskit::Node::new(accesskit::Role::GenericContainer);
-            node.set_children(
-                self.children()
-                    .map(|child| child.id_ref().into())
-                    .collect::<Vec<_>>(),
-            );
+            let node = accesskit::Node::new(accesskit::Role::TitleBar);
             Some(node)
         }
     }
