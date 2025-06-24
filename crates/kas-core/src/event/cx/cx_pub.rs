@@ -32,6 +32,13 @@ impl EventState {
         self.window_has_focus
     }
 
+    /// True if [AccessKit](https://accesskit.dev/) is enabled
+    #[cfg(feature = "accesskit")]
+    #[inline]
+    pub(crate) fn accesskit_is_enabled(&self) -> bool {
+        self.accesskit_is_enabled
+    }
+
     /// True when access key labels should be shown
     ///
     /// (True when Alt is held and no widget has character focus.)

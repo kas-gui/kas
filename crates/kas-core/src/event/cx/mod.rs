@@ -78,6 +78,8 @@ pub struct EventState {
     platform: Platform,
     disabled: Vec<Id>,
     window_has_focus: bool,
+    #[cfg(feature = "accesskit")]
+    accesskit_is_enabled: bool,
     modifiers: ModifiersState,
     /// Key (and IME) focus is on same widget as sel_focus; otherwise its value is ignored
     key_focus: bool,
