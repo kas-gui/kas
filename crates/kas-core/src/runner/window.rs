@@ -387,9 +387,13 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         use accesskit_winit::WindowEvent as WE;
         match event {
-            WE::InitialTreeRequested => (),     // TODO
-            WE::ActionRequested(action) => (),  // TODO
-            WE::AccessibilityDeactivated => (), // TODO
+            WE::InitialTreeRequested => window
+                .accesskit
+                .update_if_active(|| self.ev_state.accesskit_tree_update(&self.widget)),
+            WE::ActionRequested(action) => (), // TODO
+            WE::AccessibilityDeactivated => {
+                self.ev_state.disable_accesskit();
+            }
         }
     }
 
@@ -523,6 +527,13 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 cx.frame_update(widget);
             });
         state.handle_messages(&mut messages);
+
+        #[cfg(feature = "accesskit")]
+        if self.ev_state.accesskit_is_enabled() {
+            window
+                .accesskit
+                .update_if_active(|| self.ev_state.accesskit_tree_update(&self.widget))
+        }
 
         {
             let rect = Rect::new(Coord::ZERO, window.surface.size());

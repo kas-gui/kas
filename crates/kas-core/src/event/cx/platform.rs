@@ -22,6 +22,8 @@ impl EventState {
             platform,
             disabled: vec![],
             window_has_focus: false,
+            #[cfg(feature = "accesskit")]
+            accesskit_is_enabled: false,
             modifiers: ModifiersState::empty(),
             key_focus: false,
             ime: None,
@@ -47,6 +49,22 @@ impl EventState {
             pending_nav_focus: PendingNavFocus::None,
             action: Action::empty(),
         }
+    }
+
+    #[cfg(feature = "accesskit")]
+    pub(crate) fn accesskit_tree_update<A>(&mut self, root: &Window<A>) -> accesskit::TreeUpdate {
+        self.accesskit_is_enabled = true;
+        let (nodes, root_id) = crate::accesskit::window_nodes(root);
+        accesskit::TreeUpdate {
+            nodes,
+            tree: Some(accesskit::Tree::new(root_id)),
+            focus: self.nav_focus().map(|id| id.into()).unwrap_or(root_id),
+        }
+    }
+
+    #[cfg(feature = "accesskit")]
+    pub(crate) fn disable_accesskit(&mut self) {
+        self.accesskit_is_enabled = false;
     }
 
     /// Update scale factor
