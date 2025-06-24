@@ -55,6 +55,10 @@ impl AccessKitCx {
     }
 
     fn _push_with(&mut self, tile: &dyn Tile, cb: Option<&mut dyn FnMut(&mut Node)>, force: bool) {
+        if !tile.id_ref().is_valid() {
+            return;
+        }
+
         // Invariant at fn start/end: nodes in self.nodes[self.end_root..self.start_unclaimed] have a parent
         // This is the number of unclaimed children (not ours):
         let extra = self.nodes.len() - self.start_unclaimed;
