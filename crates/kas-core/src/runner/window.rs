@@ -17,7 +17,7 @@ use crate::event::{ConfigCx, CursorIcon, EventState};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::SolveCache;
 use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, ThemeSize, Window as _};
-use crate::{Action, Id, Tile, Widget, WindowId, autoimpl};
+use crate::{Action, Tile, Widget, WindowId, autoimpl};
 use std::cell::RefCell;
 use std::mem::take;
 use std::rc::Rc;
@@ -433,12 +433,12 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     }
 
     pub(super) fn send_action(&mut self, action: Action) {
-        self.ev_state.action(Id::ROOT, action);
+        self.ev_state.action(self.widget.id(), action);
     }
 
     pub(super) fn send_close(&mut self, id: WindowId) {
         if id == self.ev_state.window_id {
-            self.ev_state.action(Id::ROOT, Action::CLOSE);
+            self.ev_state.action(self.widget.id(), Action::CLOSE);
         } else if let Some(window) = self.window.as_ref() {
             let widget = &mut self.widget;
             let size = window.theme_window.size();
