@@ -18,7 +18,7 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::SolveCache;
 use crate::messages::MessageStack;
 use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, ThemeSize, Window as _};
-use crate::{autoimpl, Action, Id, Tile, Widget, WindowId};
+use crate::{autoimpl, Action, Tile, Widget, WindowId};
 use std::cell::RefCell;
 use std::mem::take;
 use std::rc::Rc;
@@ -388,7 +388,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             // this unnecessary, but we don't know that the action wasn't also
             // required globally. There are already TODO items for handling
             // these locally instead of globally, so we should solve that way.
-            self.ev_state.force_accesskit_update();
+            self.ev_state.accessibility_update(&self.widget);
         }
         debug_assert!(!action.contains(Action::REGION_MOVED));
         if !action.is_empty() {
@@ -453,12 +453,12 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     }
 
     pub(super) fn send_action(&mut self, action: Action) {
-        self.ev_state.action(Id::ROOT, action);
+        self.ev_state.action(self.widget.id(), action);
     }
 
     pub(super) fn send_close(&mut self, id: WindowId) {
         if id == self.ev_state.window_id {
-            self.ev_state.action(Id::ROOT, Action::CLOSE);
+            self.ev_state.action(self.widget.id(), Action::CLOSE);
         } else if let Some(window) = self.window.as_ref() {
             let widget = &mut self.widget;
             let size = window.theme_window.size();

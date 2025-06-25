@@ -458,7 +458,10 @@ impl<Data: 'static> Window<Data> {
         let index = self.popups.len();
         self.popups.push((id, popup, Offset::ZERO));
         self.resize_popup(cx, data, index);
-        cx.action(Id::ROOT, Action::REGION_MOVED);
+        cx.action(self.id(), Action::REGION_MOVED);
+
+        // Action changes accessibility children of self
+        cx.accessibility_update(self);
     }
 
     /// Trigger closure of a pop-up
@@ -468,10 +471,13 @@ impl<Data: 'static> Window<Data> {
         for i in 0..self.popups.len() {
             if id == self.popups[i].0 {
                 self.popups.remove(i);
-                cx.action(Id::ROOT, Action::REGION_MOVED);
+                cx.action(self.id(), Action::REGION_MOVED);
                 return;
             }
         }
+
+        // Action changes accessibility children of self
+        cx.accessibility_update(self);
     }
 
     /// Resize popups

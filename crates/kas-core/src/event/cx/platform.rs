@@ -60,12 +60,6 @@ impl EventState {
     }
 
     #[cfg(feature = "accesskit")]
-    pub(crate) fn force_accesskit_update(&mut self) {
-        self.accesskit_updates.clear();
-        self.accesskit_updates.push(Id::ROOT);
-    }
-
-    #[cfg(feature = "accesskit")]
     pub(crate) fn accesskit_tree_update(
         &mut self,
         root: &dyn Tile,
@@ -153,7 +147,7 @@ impl EventState {
         self.action.remove(Action::RECONFIGURE);
 
         #[cfg(feature = "accesskit")]
-        self.force_accesskit_update();
+        self.accessibility_update(id.clone());
 
         // These are recreated during configure:
         self.access_layers.clear();
@@ -370,7 +364,7 @@ impl<'a> EventCx<'a> {
         use winit::event::WindowEvent::*;
 
         match event {
-            CloseRequested => self.action(Id::ROOT, Action::CLOSE),
+            CloseRequested => self.action(win.id(), Action::CLOSE),
             /* Not yet supported: see #98
             DroppedFile(path) => ,
             HoveredFile(path) => ,
@@ -380,7 +374,7 @@ impl<'a> EventCx<'a> {
                 self.window_has_focus = state;
                 if state {
                     // Required to restart theme animations
-                    self.action(Id::ROOT, Action::REDRAW);
+                    self.action(win.id(), Action::REDRAW);
                 } else {
                     // Window focus lost: close all popups
                     while let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
@@ -429,7 +423,7 @@ impl<'a> EventCx<'a> {
                 let state = modifiers.state();
                 if state.alt_key() != self.modifiers.alt_key() {
                     // This controls drawing of access key indicators
-                    self.action(Id::ROOT, Action::REDRAW);
+                    self.action(win.id(), Action::REDRAW);
                 }
                 self.modifiers = state;
             }
