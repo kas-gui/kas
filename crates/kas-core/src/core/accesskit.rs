@@ -10,12 +10,11 @@ use crate::cast::Cast;
 use accesskit::{Node, NodeId};
 
 /// Context for accessibility shadow-tree recursion
-// NOTE: invariant: 0 <= self.end_root <= self.start_unclaimed <= self.nodes.len()
+// NOTE: invariant: 0 <= self.start_unclaimed <= self.nodes.len()
 #[derive(Debug)]
 pub struct AccessKitCx {
     nodes: Vec<(NodeId, Node)>,
     start_unclaimed: usize,
-    end_root: usize,
 }
 
 impl AccessKitCx {
@@ -23,12 +22,11 @@ impl AccessKitCx {
         AccessKitCx {
             nodes: Vec::new(),
             start_unclaimed: 0,
-            end_root: 0,
         }
     }
 
-    pub(crate) fn indices(&self) -> (usize, usize) {
-        (self.start_unclaimed, self.end_root)
+    pub(crate) fn start_unclaimed(&self) -> usize {
+        self.start_unclaimed
     }
 
     pub(crate) fn take_nodes(self) -> Vec<(NodeId, Node)> {
@@ -43,7 +41,7 @@ impl AccessKitCx {
     /// [`Node`] to the list of new or updated nodes in the accessibility tree.
     #[inline]
     pub fn push(&mut self, tile: &dyn Tile) {
-        self._push_with(tile, None, false);
+        self._push_with(tile, None);
     }
 
     /// Push a [`Tile`], invoking a callback on the tile's [`accesskit::Node`]
@@ -51,30 +49,25 @@ impl AccessKitCx {
     /// This variant of [`Self::push`] may be used to attach additional
     /// information, for example the `labelled_by` property.
     pub fn push_with(&mut self, tile: &dyn Tile, mut cb: impl FnMut(&mut Node)) {
-        self._push_with(tile, Some(&mut cb), false);
+        self._push_with(tile, Some(&mut cb));
     }
 
-    fn _push_with(&mut self, tile: &dyn Tile, cb: Option<&mut dyn FnMut(&mut Node)>, force: bool) {
+    fn _push_with(&mut self, tile: &dyn Tile, cb: Option<&mut dyn FnMut(&mut Node)>) {
         assert!(
             tile.id_ref().is_valid(),
             "unconfigured widgets should not be included"
         );
 
-        // Invariant at fn start/end: nodes in self.nodes[self.end_root..self.start_unclaimed] have a parent
+        // Invariant at fn start/end: nodes in self.nodes[..self.start_unclaimed] have a parent
         // This is the number of unclaimed children (not ours):
         let extra = self.nodes.len() - self.start_unclaimed;
 
-        // Recursion may place additional claimed children in self.nodes[self.end_root..self.start_unclaimed]
+        // Recursion may place additional claimed children in self.nodes[..self.start_unclaimed]
         // (increases self.start_unclaimed) and unclaimed children in self.nodes[self.start_unclaimed+extra..]:
         tile.accesskit_recurse(self);
         let start = self.start_unclaimed + extra;
 
-        let mut opt_node = tile.accesskit_node();
-        if opt_node.is_none() && force && start < self.nodes.len() {
-            opt_node = Some(accesskit::Node::new(accesskit::Role::GenericContainer));
-        }
-
-        if let Some(mut node) = opt_node {
+        if let Some(mut node) = tile.accesskit_node() {
             node.set_bounds(tile.rect().cast());
 
             if start < self.nodes.len() {
@@ -104,25 +97,6 @@ impl AccessKitCx {
             // node with Role::GenericContainer, but it's also fine to leave
             // these unclaimed for our parent node.
         }
-    }
-
-    /// Push a [`Tile`] to the list of updated nodes as a child of the window (root)
-    #[inline]
-    pub(crate) fn push_root(&mut self, tile: &dyn Tile) {
-        let len = self.nodes.len();
-        self._push_with(tile, None, true);
-        if len == self.nodes.len() {
-            return; // no new node
-        }
-
-        // New node is in last position; move into self.nodes[0..self.end_root] and fix self.start_unclaimed
-        let last = self.nodes.len() - 1;
-        self.nodes.swap(self.end_root, last);
-        if self.start_unclaimed < last {
-            self.nodes.swap(self.start_unclaimed, last);
-        }
-        self.start_unclaimed += 1;
-        self.end_root += 1;
     }
 
     /// Extend self from a collection

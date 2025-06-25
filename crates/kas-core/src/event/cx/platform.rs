@@ -96,16 +96,12 @@ impl EventState {
         }
 
         let root_id = root.id_ref().into();
-        let (unclaimed_start, root_children_end) = cx.indices();
+        let unclaimed_start = cx.start_unclaimed();
         let mut nodes = cx.take_nodes();
         if whole_tree {
             // Special handling for popups which are children of root
             let mut node = root.accesskit_node().unwrap();
-            let children: Vec<_> = nodes[0..root_children_end]
-                .iter()
-                .chain(nodes[unclaimed_start..].iter())
-                .map(|pair| pair.0)
-                .collect();
+            let children: Vec<_> = nodes[unclaimed_start..].iter().map(|pair| pair.0).collect();
             node.set_children(children);
             nodes.push((root_id, node));
         }
