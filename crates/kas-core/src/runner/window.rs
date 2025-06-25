@@ -380,7 +380,11 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     }
 
     #[cfg(feature = "accesskit")]
-    pub(super) fn accesskit_event(&mut self, event: accesskit_winit::WindowEvent) {
+    pub(super) fn accesskit_event(
+        &mut self,
+        state: &mut State<A, G, T>,
+        event: accesskit_winit::WindowEvent,
+    ) {
         let Some(ref mut window) = self.window else {
             return;
         };
@@ -390,7 +394,14 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             WE::InitialTreeRequested => window
                 .accesskit
                 .update_if_active(|| self.ev_state.accesskit_tree_update(&self.widget)),
-            WE::ActionRequested(action) => (), // TODO
+            WE::ActionRequested(request) => {
+                let mut messages = MessageStack::new();
+                self.ev_state
+                    .with(&mut state.shared, window, &mut messages, |cx| {
+                        cx.handle_accesskit_action(self.widget.as_node(&state.data), request);
+                    });
+                state.handle_messages(&mut messages);
+            }
             WE::AccessibilityDeactivated => {
                 self.ev_state.disable_accesskit();
             }
