@@ -63,12 +63,18 @@ impl EventState {
     pub(crate) fn accesskit_tree_update(
         &mut self,
         root: &dyn Tile,
-        mut whole_tree: bool,
+        _whole_tree: bool,
     ) -> accesskit::TreeUpdate {
         self.accesskit_is_enabled = true;
 
         let mut cx = crate::AccessKitCx::new();
 
+        // HACK: Disable partial tree traversals for now since it may create orphan Nodes
+        // NOTE: We could keep a copy of the tree (`Id` values) and use that to find any parents
+        // which must have `set_children` called, though this is complex and misses removed
+        // children. We could just consider this a bug in widget could which should be fixed, but
+        // that is not very robust.
+        let mut whole_tree = true;
         if whole_tree {
             self.accesskit_updates.clear();
             root.accesskit_recurse(&mut cx);
