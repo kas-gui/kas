@@ -54,12 +54,19 @@ impl EventState {
     #[cfg(feature = "accesskit")]
     pub(crate) fn accesskit_tree_update<A>(&mut self, root: &Window<A>) -> accesskit::TreeUpdate {
         self.accesskit_is_enabled = true;
+
         let (nodes, root_id) = crate::accesskit::window_nodes(root);
-        accesskit::TreeUpdate {
-            nodes,
-            tree: Some(accesskit::Tree::new(root_id)),
-            focus: self.nav_focus().map(|id| id.into()).unwrap_or(root_id),
-        }
+        let tree = Some(accesskit::Tree::new(root_id));
+
+        // AccessKit does not like focus to point at a non-existant node, so we
+        // filter. See https://github.com/AccessKit/accesskit/issues/587
+        let focus = self
+            .nav_focus()
+            .map(|id| id.into())
+            .filter(|node_id| nodes.iter().any(|(id, _)| id == node_id))
+            .unwrap_or(root_id);
+
+        accesskit::TreeUpdate { nodes, tree, focus }
     }
 
     #[cfg(feature = "accesskit")]
