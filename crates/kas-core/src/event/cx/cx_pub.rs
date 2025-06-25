@@ -247,6 +247,41 @@ impl EventState {
         self.pending_cmds.push_back((Id::ROOT, Command::Exit));
     }
 
+    /// Trigger an accessibility update for `id`
+    ///
+    /// This is implied by [`Self::redraw`], [`Self::resize`] and some other
+    /// [`Action`]s with a target widget.
+    #[inline]
+    pub fn accessibility_update(&mut self, id: impl HasId) {
+        #[cfg(not(feature = "accesskit"))]
+        fn inner(cx: &mut EventState, _: Id) {}
+
+        #[cfg(feature = "accesskit")]
+        fn inner(cx: &mut EventState, id: Id) {
+            // Invariant: accesskit_updates is sorted, deduplicated and does
+            // not contain descendants of contained nodes
+            match cx.accesskit_updates.binary_search(&id) {
+                Ok(_) => (), // already present
+                Err(index) if index > 0 && cx.accesskit_updates[index - 1].is_ancestor_of(&id) => {
+                    // ancestor already present
+                }
+                Err(index) => {
+                    // Insert, but remove descendants first
+                    let mut last = index;
+                    while last < cx.accesskit_updates.len()
+                        && id.is_ancestor_of(&cx.accesskit_updates[last])
+                    {
+                        last += 1;
+                    }
+                    cx.accesskit_updates.drain(index..last);
+                    cx.accesskit_updates.insert(index, id);
+                }
+            }
+        }
+
+        inner(self, id.has_id());
+    }
+
     /// Notify that an [`Action`] should happen
     ///
     /// This causes the given action to happen after event handling.
@@ -257,6 +292,16 @@ impl EventState {
     #[inline]
     pub fn action(&mut self, id: impl HasId, action: Action) {
         fn inner(cx: &mut EventState, id: Id, mut action: Action) {
+            const RE: Action = Action::REDRAW
+                .union(Action::REGION_MOVED)
+                .union(Action::SCROLLED)
+                .union(Action::SET_RECT)
+                .union(Action::RESIZE)
+                .union(Action::RECONFIGURE);
+            if cx.accesskit_is_enabled() && !(action & RE).is_empty() {
+                cx.accessibility_update(id.clone());
+            }
+
             const RE_UP: Action = Action::RECONFIGURE.union(Action::UPDATE);
             if !(action & RE_UP).is_empty() {
                 cx.request_update(id, action.contains(Action::RECONFIGURE));

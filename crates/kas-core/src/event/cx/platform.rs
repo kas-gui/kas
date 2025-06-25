@@ -44,6 +44,8 @@ impl EventState {
             need_frame_update: false,
             send_queue: Default::default(),
             fut_messages: vec![],
+            #[cfg(feature = "accesskit")]
+            accesskit_updates: Default::default(),
             pending_update: None,
             pending_sel_focus: None,
             pending_nav_focus: PendingNavFocus::None,
@@ -53,6 +55,16 @@ impl EventState {
     }
 
     #[cfg(feature = "accesskit")]
+    pub(crate) fn need_accesskit_update(&self) -> bool {
+        !self.accesskit_updates.is_empty()
+    }
+
+    #[cfg(feature = "accesskit")]
+    pub(crate) fn force_accesskit_update(&mut self) {
+        self.accesskit_updates.clear();
+        self.accesskit_updates.push(Id::ROOT);
+    }
+
     #[cfg(feature = "accesskit")]
     pub(crate) fn accesskit_tree_update(
         &mut self,
@@ -63,14 +75,31 @@ impl EventState {
 
         let mut cx = crate::AccessKitCx::new();
 
+        if whole_tree {
+            self.accesskit_updates.clear();
+            root.accesskit_recurse(&mut cx);
+        }
+
+        // Assumption: self.accesskit_updates is deduplicated (including no descendants)
+        for id in self.accesskit_updates.drain(..) {
+            if root.eq_id(&id) {
+                whole_tree = true;
+                break;
+            }
+
+            if let Some(tile) = root.find_widget(&id) {
+                // Recursively add tile to the list of updated nodes
+                // Caveat: if the parent would add relationships such as `labelled_by`, those will
+                // be lost here. See also https://github.com/AccessKit/accesskit/issues/583
+                cx.push(tile);
+            }
+        }
+
         let root_id = root.id_ref().into();
-        let mut nodes;
+        let (unclaimed_start, root_children_end) = cx.indices();
+        let mut nodes = cx.take_nodes();
         if whole_tree {
             // Special handling for popups which are children of root
-            root.accesskit_recurse(&mut cx);
-            let (unclaimed_start, root_children_end) = cx.indices();
-            nodes = cx.take_nodes();
-
             let mut node = root.accesskit_node().unwrap();
             let children: Vec<_> = nodes[0..root_children_end]
                 .iter()
@@ -79,8 +108,6 @@ impl EventState {
                 .collect();
             node.set_children(children);
             nodes.push((root_id, node));
-        } else {
-            nodes = cx.take_nodes();
         }
 
         accesskit::TreeUpdate {
@@ -97,6 +124,7 @@ impl EventState {
     #[cfg(feature = "accesskit")]
     pub(crate) fn disable_accesskit(&mut self) {
         self.accesskit_is_enabled = false;
+        self.accesskit_updates.clear();
     }
 
     /// Update scale factor
@@ -123,6 +151,9 @@ impl EventState {
 
         log::debug!(target: "kas_core::event", "full_configure of Window{id}");
         self.action.remove(Action::RECONFIGURE);
+
+        #[cfg(feature = "accesskit")]
+        self.force_accesskit_update();
 
         // These are recreated during configure:
         self.access_layers.clear();

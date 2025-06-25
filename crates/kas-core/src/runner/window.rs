@@ -381,6 +381,15 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         } else if !(action & (Action::SET_RECT | Action::SCROLLED)).is_empty() {
             self.apply_size(state, false);
         }
+        if !(action & (Action::SCROLLED | Action::SET_RECT | Action::RESIZE | Action::RECONFIGURE))
+            .is_empty()
+        {
+            // TODO(opt): some of these may have been applied locally, making
+            // this unnecessary, but we don't know that the action wasn't also
+            // required globally. There are already TODO items for handling
+            // these locally instead of globally, so we should solve that way.
+            self.ev_state.force_accesskit_update();
+        }
         debug_assert!(!action.contains(Action::REGION_MOVED));
         if !action.is_empty() {
             if let Some(ref mut window) = self.window {
@@ -538,6 +547,14 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 cx.frame_update(widget);
             });
         state.handle_messages(&mut messages);
+
+        #[cfg(feature = "accesskit")]
+        if self.ev_state.need_accesskit_update() {
+            window.accesskit.update_if_active(|| {
+                self.ev_state
+                    .accesskit_tree_update(self.widget.as_tile(), false)
+            })
+        }
 
         {
             let rect = Rect::new(Coord::ZERO, window.surface.size());

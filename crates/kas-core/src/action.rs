@@ -23,6 +23,14 @@ bitflags! {
     /// example: `let _ = runner.config_mut().font.set_size(24.0);`.
     ///
     /// Two `Action` values may be combined via bit-or (`a | b`).
+    ///
+    /// There is no `Action` value for accessibility updates. Instead, any of
+    /// `REDRAW`, `REGION_MOVED`, `SCROLLED`, `SET_RECT`, `RESIZE` or
+    /// `RECONFIGURE` applied to a target widget will cause that widget
+    /// and descendants to update their accessibility sub-trees.
+    /// Any of `SCROLLED`, `SET_RECT, `RESIZE` or `RECONFIGURE` applied to the
+    /// root window (or without a target widget) will update the whole window's
+    /// accessibility tree.
     #[must_use]
     #[derive(Copy, Clone, Debug, Default)]
     pub struct Action: u32 {
