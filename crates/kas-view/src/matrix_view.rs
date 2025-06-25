@@ -355,6 +355,8 @@ mod MatrixView {
                 }
             }
 
+            cx.accessibility_update(self);
+
             let dur = (Instant::now() - time).as_micros();
             log::trace!(target: "kas_perf::view::matrix_view", "update_widgets: {dur}μs");
             solver
