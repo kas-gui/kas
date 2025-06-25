@@ -110,6 +110,14 @@ impl EventState {
             nodes.push((root_id, node));
         }
 
+        // nav_focus, but not when that points to a non-existant widget:
+        // BUG: this still allows focus to point to a widget which is not in the
+        // accessibility tree which causes a panic in AccessKit.
+        let focus = self
+            .nav_focus()
+            .filter(|id| root.find_widget(id).is_some())
+            .unwrap_or(root.id_ref());
+
         accesskit::TreeUpdate {
             nodes,
             tree: Some(accesskit::Tree {
@@ -117,7 +125,7 @@ impl EventState {
                 toolkit_name: Some("Kas".to_string()),
                 toolkit_version: None, // TODO: make version accessible to code in one place
             }),
-            focus: self.nav_focus().unwrap_or(root.id_ref()).into(),
+            focus: focus.into(),
         }
     }
 
