@@ -246,7 +246,7 @@ impl EventState {
         );
         self.opt_action(grab.depress.clone(), Action::REDRAW);
         self.touch.remove_pan_grab(grab.pan_grab);
-        self.action(Id::ROOT, grab.flush_click_move());
+        self.window_action(grab.flush_click_move());
         grab
     }
 }
