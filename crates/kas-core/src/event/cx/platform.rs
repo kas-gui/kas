@@ -289,6 +289,48 @@ impl EventState {
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 impl<'a> EventCx<'a> {
+    #[cfg(feature = "accesskit")]
+    pub(crate) fn handle_accesskit_action(
+        &mut self,
+        widget: Node<'_>,
+        request: accesskit::ActionRequest,
+    ) {
+        let Some(id) = Id::try_from_u64(request.target.0) else {
+            return;
+        };
+
+        // TODO: implement remaining actions
+        use accesskit::Action as AKA;
+        match request.action {
+            AKA::Click => {
+                self.send_event(widget, id, Event::Command(Command::Activate, None));
+            }
+            AKA::Focus => self.set_nav_focus(id, FocusSource::Synthetic),
+            AKA::Blur => (),
+            AKA::Collapse | AKA::Expand => (),
+            AKA::CustomAction => (),
+            AKA::Decrement | AKA::Increment => (),
+            AKA::HideTooltip | AKA::ShowTooltip => (),
+            AKA::ReplaceSelectedText => (),
+            AKA::ScrollBackward | AKA::ScrollForward => (),
+            AKA::ScrollDown | AKA::ScrollLeft | AKA::ScrollRight | AKA::ScrollUp => {
+                let delta = match request.action {
+                    AKA::ScrollDown => ScrollDelta::Lines(0.0, 1.0),
+                    AKA::ScrollLeft => ScrollDelta::Lines(-1.0, 0.0),
+                    AKA::ScrollRight => ScrollDelta::Lines(1.0, 0.0),
+                    AKA::ScrollUp => ScrollDelta::Lines(0.0, -1.0),
+                    _ => unreachable!(),
+                };
+                self.send_event(widget, id, Event::Scroll(delta));
+            }
+            AKA::ScrollIntoView | AKA::ScrollToPoint | AKA::SetScrollOffset => (),
+            AKA::SetTextSelection => (),
+            AKA::SetSequentialFocusNavigationStartingPoint => (),
+            AKA::SetValue => (),
+            AKA::ShowContextMenu => (),
+        }
+    }
+
     /// Pre-draw / pre-sleep
     ///
     /// This method should be called once per frame as well as after the last
