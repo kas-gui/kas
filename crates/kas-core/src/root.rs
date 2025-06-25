@@ -12,7 +12,7 @@ use crate::event::{ConfigCx, Event, EventCx, IsUsed, ResizeDirection, Scroll, Un
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
-use crate::{Action, Events, Icon, Id, Layout, Tile, TileExt, Widget};
+use crate::{AccessKitCx, Action, Events, Icon, Id, Layout, Tile, TileExt, Widget};
 use kas_macros::{impl_self, widget_set_rect};
 use smallvec::SmallVec;
 use std::num::NonZeroU32;
@@ -246,6 +246,20 @@ mod Window {
         #[cfg(feature = "accesskit")]
         fn accesskit_node(&self) -> Option<accesskit::Node> {
             Some(accesskit::Node::new(accesskit::Role::Window))
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_recurse(&self, cx: &mut AccessKitCx) {
+            cx.push(&self.inner);
+            cx.push(&self.title_bar);
+            // Assumption: Border widgets are not accessible
+
+            // Push popups as children of self
+            for (_, desc, _) in &self.popups {
+                if let Some(tile) = self.find_widget(&desc.id) {
+                    cx.push(tile);
+                }
+            }
         }
     }
 

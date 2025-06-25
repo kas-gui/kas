@@ -53,10 +53,8 @@ mod Popup {
         }
 
         #[cfg(feature = "accesskit")]
-        fn accesskit_recurse(&self, cx: &mut AccessKitCx) {
-            if self.win_id.is_some() {
-                cx.push_root(&self.inner);
-            }
+        fn accesskit_recurse(&self, _: &mut AccessKitCx) {
+            // The content is not considered a child of self
         }
     }
 
