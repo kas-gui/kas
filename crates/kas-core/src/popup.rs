@@ -54,7 +54,9 @@ mod Popup {
 
         #[cfg(feature = "accesskit")]
         fn accesskit_recurse(&self, cx: &mut AccessKitCx) {
-            cx.push_root(&self.inner);
+            if self.win_id.is_some() {
+                cx.push_root(&self.inner);
+            }
         }
     }
 
