@@ -6,6 +6,7 @@
 //! Event manager — platform API
 
 use super::*;
+use crate::cast::CastApprox;
 use crate::theme::ThemeSize;
 use crate::{Tile, TileExt, Window};
 use std::task::Poll;
@@ -259,7 +260,7 @@ impl EventState {
 
             while let Some((id, msg)) = cx.send_queue.pop_front() {
                 log::trace!(target: "kas_core::event", "sending message {msg:?} to {id}");
-                cx.replay(win.as_node(data), id, msg);
+                cx.replay(win.as_node(data), id, Some(msg), Scroll::None);
             }
 
             // Poll futures. TODO(opt): this does not need to happen so often,
@@ -300,7 +301,7 @@ impl<'a> EventCx<'a> {
         };
 
         // TODO: implement remaining actions
-        use accesskit::Action as AKA;
+        use accesskit::{Action as AKA, ActionData as AD};
         match request.action {
             AKA::Click => {
                 self.send_event(widget, id, Event::Command(Command::Activate, None));
@@ -323,7 +324,36 @@ impl<'a> EventCx<'a> {
                 };
                 self.send_event(widget, id, Event::Scroll(delta));
             }
-            AKA::ScrollIntoView | AKA::ScrollToPoint | AKA::SetScrollOffset => (),
+            AKA::ScrollIntoView | AKA::ScrollToPoint => {
+                // We assume input is in coordinate system of target
+                let scroll = match request.data {
+                    None => {
+                        debug_assert_eq!(request.action, AKA::ScrollIntoView);
+                        // NOTE: we shouldn't need two tree traversals, but it's fine
+                        if let Some(tile) = widget.as_tile().find_widget(&id) {
+                            Scroll::Rect(tile.rect())
+                        } else {
+                            return;
+                        }
+                    }
+                    Some(AD::ScrollTargetRect(rect)) => {
+                        debug_assert_eq!(request.action, AKA::ScrollIntoView);
+                        Scroll::Rect(rect.cast_approx())
+                    }
+                    Some(AD::ScrollToPoint(point)) => {
+                        debug_assert_eq!(request.action, AKA::ScrollToPoint);
+                        let pos = point.cast_approx();
+                        let size = Size::ZERO;
+                        Scroll::Rect(Rect { pos, size })
+                    }
+                    _ => {
+                        debug_assert!(false);
+                        return;
+                    }
+                };
+                self.replay(widget, id, None, scroll);
+            }
+            AKA::SetScrollOffset => (),
             AKA::SetTextSelection => (),
             AKA::SetSequentialFocusNavigationStartingPoint => (),
             AKA::SetValue => (),
@@ -396,7 +426,7 @@ impl<'a> EventCx<'a> {
 
                     // Replay message. This could push another future; if it
                     // does we should poll it immediately to start its work.
-                    self.replay(widget.re(), id, msg);
+                    self.replay(widget.re(), id, Some(msg), Scroll::None);
                 }
             }
         }

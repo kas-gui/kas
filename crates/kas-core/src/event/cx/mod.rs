@@ -335,15 +335,20 @@ impl<'a> EventCx<'a> {
         (self.scroll != Scroll::None).then_some(self.scroll.clone())
     }
 
-    /// Replay a message as if it was pushed by `id`
-    fn replay(&mut self, mut widget: Node<'_>, id: Id, msg: Erased) {
+    /// Replay widget traversal to `id`
+    ///
+    /// Optionally, push `msg` and set `scroll` as if pushed/set by `id`.
+    fn replay(&mut self, mut widget: Node<'_>, id: Id, msg: Option<Erased>, scroll: Scroll) {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
+        self.scroll = scroll;
         self.messages.set_base();
         log::trace!(target: "kas_core::event", "replay: id={id}: {msg:?}");
 
         self.target_is_disabled = false;
-        self.push_erased(msg);
+        if let Some(msg) = msg {
+            self.push_erased(msg);
+        }
         widget._replay(self, id);
         self.last_child = None;
         self.scroll = Scroll::None;
