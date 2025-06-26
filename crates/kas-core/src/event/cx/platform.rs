@@ -6,6 +6,7 @@
 //! Event manager — platform API
 
 use super::*;
+use crate::cast::CastApprox;
 use crate::theme::ThemeSize;
 use crate::{Tile, TileExt, Window};
 use std::task::Poll;
@@ -223,8 +224,8 @@ impl<'a> EventCx<'a> {
         };
 
         // TODO: implement remaining actions
+        use crate::messages::{Erased, SetValueF64, SetValueString};
         use accesskit::{Action as AKA, ActionData};
-        use crate::messages::{SetValueF64, SetValueString, Erased};
         match request.action {
             AKA::Click => {
                 self.send_event(widget, id, Event::Command(Command::Activate, None));
@@ -246,13 +247,38 @@ impl<'a> EventCx<'a> {
                 };
                 self.send_event(widget, id, Event::Scroll(delta));
             }
-            AKA::ScrollIntoView | AKA::ScrollToPoint | AKA::SetScrollOffset => (),
+            AKA::ScrollIntoView | AKA::ScrollToPoint => {
+                // We assume input is in coordinate system of target
+                let scroll = match request.data {
+                    None => {
+                        debug_assert_eq!(request.action, AKA::ScrollIntoView);
+                        // NOTE: we shouldn't need two tree traversals, but it's fine
+                        if let Some(tile) = widget.as_tile().find_tile(&id) {
+                            Scroll::Rect(tile.rect())
+                        } else {
+                            return;
+                        }
+                    }
+                    Some(ActionData::ScrollToPoint(point)) => {
+                        debug_assert_eq!(request.action, AKA::ScrollToPoint);
+                        let pos = point.cast_approx();
+                        let size = Size::ZERO;
+                        Scroll::Rect(Rect { pos, size })
+                    }
+                    _ => {
+                        debug_assert!(false);
+                        return;
+                    }
+                };
+                self.replay_scroll(widget, id, scroll);
+            }
+            AKA::SetScrollOffset => (),
             AKA::SetTextSelection => (),
             AKA::SetSequentialFocusNavigationStartingPoint => (),
             AKA::SetValue => {
                 let msg = match request.data {
                     Some(ActionData::Value(text)) => Erased::new(SetValueString(text.into())),
-                    Some(ActionData::NumericValue(n)) => Erased::new(SetValueF64(n))
+                    Some(ActionData::NumericValue(n)) => Erased::new(SetValueF64(n)),
                     _ => return,
                 };
                 self.send_or_replay(widget, id, msg);
