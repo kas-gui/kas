@@ -85,6 +85,12 @@ mod ColourSquare {
             }
         }
     }
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            None
+        }
+    }
     impl Events for ColourSquare {
         type Data = AppData;
 

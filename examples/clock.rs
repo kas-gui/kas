@@ -126,6 +126,13 @@ mod Clock {
         }
     }
 
+    impl Tile for Clock {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            None
+        }
+    }
+
     impl Events for Clock {
         type Data = ();
 

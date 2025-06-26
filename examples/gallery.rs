@@ -140,6 +140,13 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
                 }
             }
         }
+
+        impl Tile for Self {
+            #[cfg(feature = "accesskit")]
+            fn accesskit_node(&self) -> Option<accesskit::Node> {
+                Some(accesskit::Node::new(accesskit::Role::GenericContainer))
+            }
+        }
     };
 
     let text = "Example text in multiple languages.
@@ -632,6 +639,13 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
         }
 
         impl Layout for Self {}
+
+        impl Tile for Self {
+            #[cfg(feature = "accesskit")]
+            fn accesskit_node(&self) -> Option<accesskit::Node> {
+                Some(accesskit::Node::new(accesskit::Role::GenericContainer))
+            }
+        }
     };
 
     let sel_buttons = row![
