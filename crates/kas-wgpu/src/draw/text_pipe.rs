@@ -8,7 +8,7 @@
 use super::images::{Images as Pipeline, InstanceA, InstanceRgba, Window};
 use kas::cast::traits::*;
 use kas::config::RasterConfig;
-use kas::draw::{color::Rgba, AllocError, PassId};
+use kas::draw::{color::Rgba, PassId};
 use kas::geom::{Quad, Rect, Vec2};
 use kas_text::fonts::{self, FaceId};
 use kas_text::{Effect, Glyph, GlyphId, TextDisplay};
@@ -36,16 +36,6 @@ impl Default for Rasterer {
     fn default() -> Self {
         return Rasterer::Swash;
     }
-}
-
-/// Configuration read/write/format errors
-#[derive(thiserror::Error, Debug)]
-pub enum RasterError {
-    #[error("allocation failed")]
-    Alloc(#[from] AllocError),
-    #[allow(unused)]
-    #[error("zero-sized")]
-    Zero,
 }
 
 /// A Sprite descriptor
