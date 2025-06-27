@@ -3,7 +3,7 @@ authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/kas-gui/kas"
-rust-version = "1.86.0"
+rust-version = "1.88.0"
 
 [package]
 name = "kas"
