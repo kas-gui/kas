@@ -52,7 +52,7 @@ enum State<P: CanvasProgram> {
 impl<P: CanvasProgram> State<P> {
     /// Redraw if requested
     fn maybe_redraw(&mut self) -> Option<impl Future<Output = (P, Pixmap)>> {
-        if let State::Ready(ref mut p, _) = self {
+        if let State::Ready(p, _) = self {
             if p.need_redraw() {
                 if let State::Ready(p, px) = std::mem::replace(self, State::Rendering) {
                     return Some(draw(p, px));

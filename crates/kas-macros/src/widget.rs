@@ -64,11 +64,11 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                 }
 
                 for item in &impl_.items {
-                    if let ImplItem::Fn(ref item) = item {
+                    if let ImplItem::Fn(item) = item {
                         if item.sig.ident == "child_node" {
                             child_node = Some(item.sig.ident.clone());
                         }
-                    } else if let ImplItem::Type(ref item) = item {
+                    } else if let ImplItem::Type(item) = item {
                         if item.ident == "Data" {
                             if let Some(ref ty) = data_ty {
                                 emit_error!(
@@ -97,7 +97,7 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                 }
 
                 for item in &impl_.items {
-                    if let ImplItem::Fn(ref item) = item {
+                    if let ImplItem::Fn(item) = item {
                         if item.sig.ident == "num_children" {
                             num_children = Some(item.sig.ident.clone());
                         } else if item.sig.ident == "get_child" {
@@ -116,7 +116,7 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                 }
 
                 for item in &impl_.items {
-                    if let ImplItem::Type(ref item) = item {
+                    if let ImplItem::Type(item) = item {
                         if item.ident == "Data" {
                             if let Some(ref ty) = data_ty {
                                 emit_error!(
@@ -127,7 +127,7 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                                 data_ty = Some(item.ty.clone());
                             }
                         }
-                    } else if let ImplItem::Fn(ref item) = item {
+                    } else if let ImplItem::Fn(item) = item {
                         if item.sig.ident == "make_child_id" {
                             make_child_id = Some(item.sig.ident.clone());
                         }

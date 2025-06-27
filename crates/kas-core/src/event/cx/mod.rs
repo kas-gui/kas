@@ -180,7 +180,7 @@ impl EventState {
 
         if let Some(id) = self.nav_focus.as_ref() {
             if target.is_ancestor_of(id) {
-                if matches!(&self.pending_nav_focus, PendingNavFocus::Set { ref target, .. } if target.as_ref() == Some(id))
+                if matches!(&self.pending_nav_focus, PendingNavFocus::Set { target, .. } if target.as_ref() == Some(id))
                 {
                     self.pending_nav_focus = PendingNavFocus::None;
                 }

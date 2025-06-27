@@ -269,16 +269,16 @@ impl std::ops::Add<Offset> for Event {
 impl std::ops::AddAssign<Offset> for Event {
     fn add_assign(&mut self, offset: Offset) {
         match self {
-            Event::CursorMove { ref mut press } => {
+            Event::CursorMove { press } => {
                 press.coord += offset;
             }
-            Event::PressStart { ref mut press, .. } => {
+            Event::PressStart { press, .. } => {
                 press.coord += offset;
             }
-            Event::PressMove { ref mut press, .. } => {
+            Event::PressMove { press, .. } => {
                 press.coord += offset;
             }
-            Event::PressEnd { ref mut press, .. } => {
+            Event::PressEnd { press, .. } => {
                 press.coord += offset;
             }
             _ => (),

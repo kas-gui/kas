@@ -105,7 +105,7 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
 
                 if data_ty.is_none() {
                     for item in &impl_.items {
-                        if let syn::ImplItem::Type(ref ty_item) = item {
+                        if let syn::ImplItem::Type(ty_item) = item {
                             if ty_item.ident == "Data" {
                                 data_ty = Some(ty_item.ty.clone());
                                 break;
