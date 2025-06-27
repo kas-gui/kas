@@ -451,7 +451,7 @@ impl<Data: 'static> Window<Data> {
         let index = self.popups.len();
         self.popups.push((id, popup, Offset::ZERO));
         self.resize_popup(cx, data, index);
-        cx.action(Id::ROOT, Action::REDRAW);
+        cx.action(Id::ROOT, Action::REGION_MOVED);
     }
 
     /// Trigger closure of a pop-up

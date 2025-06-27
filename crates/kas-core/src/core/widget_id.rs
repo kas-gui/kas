@@ -305,7 +305,6 @@ impl<'a> Iterator for WidgetPathIter<'a> {
 /// based on the data key, thus *possibly* making identifiers persistent.
 ///
 /// [`Display`]: std::fmt::Display
-/// [`Action::RECONFIGURE`]: crate::Action::RECONFIGURE
 /// [`ConfigCx::configure`]: crate::event::ConfigCx::configure
 /// [`Events::configure`]: crate::Events::configure
 #[allow(clippy::assigning_clones)]

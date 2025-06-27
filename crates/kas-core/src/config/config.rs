@@ -219,10 +219,9 @@ impl WindowConfig {
             c.is_dirty = true;
 
             f(&mut c.shortcuts);
-            Action::UPDATE
-        } else {
-            Action::empty()
         }
+
+        Action::empty()
     }
 
     /// Scale factor
