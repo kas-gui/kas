@@ -7,7 +7,7 @@
 
 use super::common;
 use crate::draw::ShaderManager;
-use kas::draw::{color::Rgba, PassId};
+use kas::draw::{PassId, color::Rgba};
 use kas::geom::{Quad, Vec2};
 use std::mem::size_of;
 

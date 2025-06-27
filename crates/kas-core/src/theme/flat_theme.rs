@@ -11,6 +11,7 @@ use std::ops::Range;
 use std::time::Instant;
 
 use super::SimpleTheme;
+use crate::Id;
 use crate::cast::traits::*;
 use crate::config::{Config, WindowConfig};
 use crate::dir::{Direction, Directional};
@@ -22,7 +23,6 @@ use crate::theme::dimensions as dim;
 use crate::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use crate::theme::{ColorsLinear, InputState, Theme};
 use crate::theme::{ThemeDraw, ThemeSize};
-use crate::Id;
 
 // Used to ensure a rectangular background is inside a circular corner.
 // Also the maximum inner radius of circular borders to overlap with this rect.

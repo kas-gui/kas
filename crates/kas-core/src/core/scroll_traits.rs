@@ -5,9 +5,9 @@
 
 //! Scroll bar traits
 
+use crate::Widget;
 use crate::event::EventCx;
 use crate::geom::{Offset, Size};
-use crate::Widget;
 #[allow(unused)] use crate::{Events, Layout};
 
 /// Additional functionality on scrollable widgets

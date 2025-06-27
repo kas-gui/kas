@@ -6,12 +6,12 @@
 //! Combobox
 
 use crate::adapt::AdaptEvents;
-use crate::{menu::MenuEntry, Column, Label, Mark};
+use crate::{Column, Label, Mark, menu::MenuEntry};
+use kas::Popup;
 use kas::event::{Command, FocusSource};
 use kas::prelude::*;
 use kas::theme::FrameStyle;
 use kas::theme::{MarkStyle, TextClass};
-use kas::Popup;
 use std::fmt::Debug;
 
 #[derive(Clone, Debug)]

@@ -7,8 +7,8 @@
 
 use super::{EventConfig, EventConfigMsg, EventWindowConfig};
 use super::{FontConfig, FontConfigMsg, ThemeConfig, ThemeConfigMsg};
-use crate::config::Shortcuts;
 use crate::Action;
+use crate::config::Shortcuts;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::cell::{Ref, RefCell};

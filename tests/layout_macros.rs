@@ -1,6 +1,6 @@
+use kas::Widget;
 use kas::layout::AlignHints;
 use kas::widgets::{aligned_column, aligned_row, column, float, grid, list, row};
-use kas::Widget;
 
 fn use_widget<W: Widget<Data = ()>>(_: W) {}
 

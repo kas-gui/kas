@@ -5,7 +5,7 @@
 
 //! Event handling: touch events
 
-use super::{velocity, GrabMode, Press, PressSource};
+use super::{GrabMode, Press, PressSource, velocity};
 use crate::config::EventWindowConfig;
 use crate::event::{Event, EventCx, EventState, FocusSource};
 use crate::geom::{Coord, DVec2, Vec2};

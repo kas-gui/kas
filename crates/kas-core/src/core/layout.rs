@@ -5,11 +5,11 @@
 
 //! Layout, Tile and TileExt traits
 
+use crate::Id;
 use crate::event::ConfigCx;
 use crate::geom::{Coord, Rect};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, SizeCx};
-use crate::Id;
 use kas_macros::autoimpl;
 
 #[allow(unused)] use super::{Events, Tile, Widget};

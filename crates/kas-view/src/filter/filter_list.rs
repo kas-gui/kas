@@ -9,7 +9,7 @@ use super::Filter;
 use crate::{DataClerk, Driver, ListView};
 use kas::dir::{Direction, Directional};
 use kas::event::{EventCx, EventState};
-use kas::{autoimpl, impl_self, Events, Widget};
+use kas::{Events, Widget, autoimpl, impl_self};
 use kas_widgets::edit::{EditBox, EditField, EditGuard};
 use kas_widgets::{ScrollBarMode, ScrollBars};
 use std::fmt::Debug;

@@ -13,12 +13,12 @@ use kas::event::{self, Command};
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
 use kas::widgets::adapt::Reserve;
-use kas::widgets::{format_value, Label, Slider, Text};
+use kas::widgets::{Label, Slider, Text, format_value};
 use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawPipe};
 use kas_wgpu::wgpu;
 use std::mem::size_of;
 use wgpu::util::DeviceExt;
-use wgpu::{include_spirv, Buffer, ShaderModule};
+use wgpu::{Buffer, ShaderModule, include_spirv};
 
 #[cfg(not(feature = "shader64"))]
 type ShaderVec2 = Vec2;

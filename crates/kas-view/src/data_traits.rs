@@ -5,9 +5,9 @@
 
 //! Traits for shared data objects
 
+use kas::Id;
 use kas::cast::Cast;
 use kas::event::{ConfigCx, EventCx};
-use kas::Id;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;

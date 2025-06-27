@@ -5,7 +5,7 @@
 
 //! Event handling: mouse events
 
-use super::{velocity, GrabMode, Press, PressSource};
+use super::{GrabMode, Press, PressSource, velocity};
 use crate::event::{Event, EventCx, EventState, FocusSource, ScrollDelta};
 use crate::geom::{Coord, DVec2, Vec2};
 use crate::{Action, Id, NavAdvance, Node, Widget, Window};

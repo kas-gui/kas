@@ -6,12 +6,12 @@
 //! Matrix view controller
 
 use super::*;
+use kas::NavAdvance;
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, FocusSource, Scroll, TimerHandle};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
-use kas::NavAdvance;
 #[allow(unused)] // doc links
 use kas_widgets::ScrollBars;
 use linear_map::set::LinearSet;

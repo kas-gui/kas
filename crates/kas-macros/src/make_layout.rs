@@ -5,13 +5,13 @@
 
 use crate::collection::{CellInfo, GridDimensions, NameGenerator};
 use crate::widget_args::{Child, ChildIdent};
-use proc_macro2::{Span, TokenStream as Toks};
 use proc_macro_error2::emit_error;
-use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
+use proc_macro2::{Span, TokenStream as Toks};
+use quote::{ToTokens, TokenStreamExt, quote, quote_spanned};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::{braced, bracketed, parenthesized, token};
 use syn::{Expr, Ident, LitStr, Member, Token};
+use syn::{braced, bracketed, parenthesized, token};
 
 #[allow(non_camel_case_types)]
 mod kw {

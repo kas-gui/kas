@@ -5,9 +5,9 @@
 
 //! Font configuration
 
+use crate::Action;
 use crate::text::fonts::FontSelector;
 use crate::theme::TextClass;
-use crate::Action;
 use std::collections::BTreeMap;
 
 /// A message which may be used to update [`FontConfig`]

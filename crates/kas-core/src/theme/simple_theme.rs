@@ -10,6 +10,7 @@ use std::f32;
 use std::ops::Range;
 use std::time::Instant;
 
+use crate::Id;
 use crate::cast::traits::*;
 use crate::config::{Config, WindowConfig};
 use crate::dir::{Direction, Directional};
@@ -21,7 +22,6 @@ use crate::theme::dimensions as dim;
 use crate::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use crate::theme::{ColorsLinear, InputState, Theme};
 use crate::theme::{SelectionStyle, ThemeDraw, ThemeSize};
-use crate::Id;
 
 use super::ColorsSrgb;
 
@@ -455,11 +455,7 @@ where
             if self.ev.is_hovered(id) || is_depressed {
                 self.draw.rect(rect.cast(), self.cols.accent_soft);
             }
-            if is_depressed {
-                self.cols.accent
-            } else {
-                self.cols.text
-            }
+            if is_depressed { self.cols.accent } else { self.cols.text }
         };
 
         self.draw_mark(rect, style, col);

@@ -6,14 +6,14 @@
 //! Widget extension traits
 
 use super::*;
+#[allow(unused)] use kas::Events;
+use kas::Widget;
 use kas::cast::{Cast, CastFloat};
 use kas::dir::{Directional, Directions};
 use kas::geom::Vec2;
 use kas::layout::{AlignHints, AxisInfo, SizeRules};
 use kas::text::AccessString;
 use kas::theme::{MarginStyle, SizeCx};
-#[allow(unused)] use kas::Events;
-use kas::Widget;
 use std::fmt::Debug;
 
 /// Provides `.map_any()`

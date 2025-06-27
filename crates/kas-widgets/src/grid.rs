@@ -7,7 +7,7 @@
 
 use kas::layout::{DynGridStorage, GridCellInfo, GridDimensions};
 use kas::layout::{GridSetter, GridSolver, RulesSetter, RulesSolver};
-use kas::{layout, prelude::*, CellCollection};
+use kas::{CellCollection, layout, prelude::*};
 use std::ops::{Index, IndexMut};
 
 /// Make a [`Grid`] widget

@@ -8,7 +8,7 @@
 use super::{ColorsLinear, ThemeDraw, ThemeSize};
 use crate::autoimpl;
 use crate::config::{Config, WindowConfig};
-use crate::draw::{color, DrawIface, DrawSharedImpl};
+use crate::draw::{DrawIface, DrawSharedImpl, color};
 use crate::event::EventState;
 use std::any::Any;
 use std::cell::RefCell;

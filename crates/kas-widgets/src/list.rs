@@ -5,12 +5,12 @@
 
 //! A row or column with run-time adjustable contents
 
+use kas::Collection;
 use kas::dir::{Down, Right};
 use kas::layout::{
     DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage, RulesSetter, RulesSolver,
 };
 use kas::prelude::*;
-use kas::Collection;
 use std::collections::hash_map::{Entry, HashMap};
 use std::ops::{Index, IndexMut};
 

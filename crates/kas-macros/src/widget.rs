@@ -3,17 +3,17 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::widget_args::{member, Child, ChildIdent, WidgetArgs};
+use crate::widget_args::{Child, ChildIdent, WidgetArgs, member};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::scope::{Scope, ScopeItem};
-use proc_macro2::{Span, TokenStream as Toks};
 use proc_macro_error2::{emit_error, emit_warning};
-use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
+use proc_macro2::{Span, TokenStream as Toks};
+use quote::{ToTokens, TokenStreamExt, quote, quote_spanned};
+use syn::ImplItem::{self, Verbatim};
 use syn::parse::{Error, Result};
 use syn::spanned::Spanned;
-use syn::ImplItem::{self, Verbatim};
-use syn::{parse2, parse_quote};
 use syn::{FnArg, Ident, ItemImpl, MacroDelimiter, Member, Meta, Pat, Type};
+use syn::{parse_quote, parse2};
 
 /// Custom widget definition
 ///
@@ -613,7 +613,10 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                                 self.#core.status.size_rules(&self.#core._id, #axis);
                             });
                         } else {
-                            emit_error!(arg.pat, "hidden shenanigans require this parameter to have a name; suggestion: `_axis`");
+                            emit_error!(
+                                arg.pat,
+                                "hidden shenanigans require this parameter to have a name; suggestion: `_axis`"
+                            );
                         }
                     }
                 }
@@ -660,7 +663,10 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
         } else if fn_rect_is_provided {
             layout_impl.items.push(Verbatim(fn_rect));
         } else if let Some(span) = fn_set_rect_span {
-            emit_warning!(span, "cowardly refusing to provide an impl of `fn rect` with custom `fn set_rect` without usage of `widget_set_rect!` and without a property-defined layout");
+            emit_warning!(
+                span,
+                "cowardly refusing to provide an impl of `fn rect` with custom `fn set_rect` without usage of `widget_set_rect!` and without a property-defined layout"
+            );
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "try_probe") {

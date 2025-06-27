@@ -5,8 +5,8 @@
 
 //! Utilities
 
-use crate::geom::Coord;
 #[cfg(feature = "image")] use crate::Icon;
+use crate::geom::Coord;
 use crate::{Id, Tile};
 use std::{error::Error, fmt, path::Path};
 

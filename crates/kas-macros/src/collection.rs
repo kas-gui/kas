@@ -6,13 +6,13 @@
 //! Collection macro
 
 use proc_macro2::{Span, TokenStream as Toks};
-use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
+use quote::{ToTokens, TokenStreamExt, quote, quote_spanned};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
-use syn::{braced, bracketed, parenthesized};
 use syn::{Expr, Ident, LitInt, LitStr, Token};
+use syn::{braced, bracketed, parenthesized};
 
 #[allow(non_camel_case_types)]
 mod kw {

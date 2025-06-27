@@ -8,6 +8,7 @@
 //! It is recommended to use `kas::prelude` instead, which is an extension of
 //! this crate's prelude.
 
+#[doc(no_inline)] pub use crate::Action;
 #[doc(no_inline)] pub use crate::cast::traits::*;
 #[doc(no_inline)]
 pub use crate::dir::{Direction, Directional};
@@ -19,12 +20,11 @@ pub use crate::geom::{Coord, Offset, Rect, Size};
 pub use crate::layout::{Align, AlignHints, AlignPair, AxisInfo, SizeRules, Stretch};
 #[doc(no_inline)] pub use crate::text::AccessString;
 #[doc(no_inline)] pub use crate::theme::{DrawCx, SizeCx};
-#[doc(no_inline)] pub use crate::Action;
-#[doc(no_inline)]
-pub use crate::{autoimpl, impl_anon, impl_default, impl_scope, impl_self};
-#[doc(no_inline)]
-pub use crate::{widget_index, widget_set_rect};
 #[doc(no_inline)]
 pub use crate::{Events, Layout, Tile, TileExt, Widget, Window, WindowCommand};
 #[doc(no_inline)] pub use crate::{HasId, Id};
 #[doc(no_inline)] pub use crate::{Node, Scrollable};
+#[doc(no_inline)]
+pub use crate::{autoimpl, impl_anon, impl_default, impl_scope, impl_self};
+#[doc(no_inline)]
+pub use crate::{widget_index, widget_set_rect};

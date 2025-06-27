@@ -5,7 +5,7 @@
 
 //! Event context state
 
-use linear_map::{set::LinearSet, LinearMap};
+use linear_map::{LinearMap, set::LinearSet};
 use press::{Mouse, Touch};
 use smallvec::SmallVec;
 use std::collections::{BTreeMap, HashMap, VecDeque};
@@ -115,11 +115,7 @@ pub struct EventState {
 impl EventState {
     #[inline]
     fn key_focus(&self) -> Option<Id> {
-        if self.key_focus {
-            self.sel_focus.clone()
-        } else {
-            None
-        }
+        if self.key_focus { self.sel_focus.clone() } else { None }
     }
 
     fn clear_key_focus(&mut self) {

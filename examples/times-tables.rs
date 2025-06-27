@@ -1,8 +1,8 @@
 //! Do you know your times tables?
 
 use kas::prelude::*;
-use kas::view::{driver, DataClerk, MatrixIndex, MatrixView, SelectionMode, SelectionMsg};
-use kas::widgets::{column, row, EditBox, ScrollBars};
+use kas::view::{DataClerk, MatrixIndex, MatrixView, SelectionMode, SelectionMsg, driver};
+use kas::widgets::{EditBox, ScrollBars, column, row};
 use std::ops::Range;
 
 /// A cache of the visible part of our table

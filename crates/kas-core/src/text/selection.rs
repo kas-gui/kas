@@ -8,7 +8,7 @@
 use crate::geom::{Rect, Vec2};
 use crate::theme::Text;
 use cast::CastFloat;
-use kas_text::{format::FormattableText, TextDisplay};
+use kas_text::{TextDisplay, format::FormattableText};
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 

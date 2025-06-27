@@ -75,7 +75,9 @@ fn walk(pat: &str, shaderc: &Option<String>, runners: &mut Vec<Child>) {
                     "cargo:warning=Shader compilation required: {}",
                     path.display()
                 );
-                eprintln!("cargo:warning=No shader found. If you have a shader compiler such as glslc installed, try setting SHADERC=glslc");
+                eprintln!(
+                    "cargo:warning=No shader found. If you have a shader compiler such as glslc installed, try setting SHADERC=glslc"
+                );
             }
         }
     }

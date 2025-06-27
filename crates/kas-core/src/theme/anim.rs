@@ -5,8 +5,8 @@
 
 //! Animation helpers
 
-use crate::draw::DrawImpl;
 use crate::Id;
+use crate::draw::DrawImpl;
 use std::marker::PhantomData;
 use std::time::{Duration, Instant};
 
@@ -50,11 +50,7 @@ impl<D> AnimState<D> {
     }
 
     fn elapsed(&self, time: Instant) -> Option<Duration> {
-        if self.now > time {
-            Some(self.now - time)
-        } else {
-            None
-        }
+        if self.now > time { Some(self.now - time) } else { None }
     }
 }
 
