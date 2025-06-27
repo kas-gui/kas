@@ -57,14 +57,14 @@ fn walk(pat: &str, shaderc: &Option<String>, runners: &mut Vec<Child>) {
         let mut path_spv = path.clone().into_os_string();
         path_spv.push(".spv");
         let path_spv = PathBuf::from(path_spv);
-        let gen = match path_spv.metadata() {
+        let required = match path_spv.metadata() {
             Ok(meta) => {
                 let orig_meta = path.metadata().unwrap();
                 orig_meta.modified().unwrap() > meta.modified().unwrap()
             }
             Err(_) => true,
         };
-        if gen {
+        if required {
             if let Some(bin) = shaderc.as_ref() {
                 let mut cmd = Command::new(bin);
                 cmd.arg(&path).arg("-o").arg(&path_spv);
