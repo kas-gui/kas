@@ -51,7 +51,7 @@ enum State<P: CanvasProgram> {
 
 impl<P: CanvasProgram> State<P> {
     /// Redraw if requested
-    fn maybe_redraw(&mut self) -> Option<impl Future<Output = (P, Pixmap)>> {
+    fn maybe_redraw(&mut self) -> Option<impl Future<Output = (P, Pixmap)> + use<P>> {
         if let State::Ready(p, _) = self {
             if p.need_redraw() {
                 if let State::Ready(p, px) = std::mem::replace(self, State::Rendering) {
@@ -66,7 +66,7 @@ impl<P: CanvasProgram> State<P> {
     /// Resize if required, redrawing on resize
     ///
     /// Returns a future to redraw. Does nothing if currently redrawing.
-    fn resize(&mut self, (w, h): (u32, u32)) -> Option<impl Future<Output = (P, Pixmap)>> {
+    fn resize(&mut self, (w, h): (u32, u32)) -> Option<impl Future<Output = (P, Pixmap)> + use<P>> {
         let old_state = std::mem::replace(self, State::Rendering);
         let (program, pixmap) = match old_state {
             State::Ready(p, px) if (px.width(), px.height()) == (w, h) => {

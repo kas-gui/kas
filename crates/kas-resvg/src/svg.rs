@@ -107,7 +107,7 @@ impl State {
     /// Resize if required, redrawing on resize
     ///
     /// Returns a future to redraw. Does nothing if currently redrawing.
-    fn resize(&mut self, (w, h): (u32, u32)) -> Option<impl Future<Output = Pixmap>> {
+    fn resize(&mut self, (w, h): (u32, u32)) -> Option<impl Future<Output = Pixmap> + use<>> {
         let old_state = std::mem::replace(self, State::None);
         match old_state {
             State::None => (),
@@ -172,7 +172,7 @@ mod Svg {
             cx: &mut EventState,
             data: &'static [u8],
             resources_dir: Option<&Path>,
-        ) -> Result<(), impl std::error::Error> {
+        ) -> Result<(), impl std::error::Error + use<>> {
             let source = Source::Static(data, resources_dir.map(|p| p.to_owned()));
             self.load_source(source).map(|_| cx.resize(self))
         }
@@ -196,7 +196,7 @@ mod Svg {
             &mut self,
             cx: &mut EventState,
             path: P,
-        ) -> Result<(), impl std::error::Error> {
+        ) -> Result<(), impl std::error::Error + use<P>> {
             self._load_path(path.as_ref()).map(|_| cx.resize(self))
         }
 
