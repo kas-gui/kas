@@ -23,7 +23,7 @@ use std::{fmt, slice};
 
 thread_local! {
     // Map from hash of path to allocated path
-    static DB: RefCell<HashedMap<u64, *mut usize>> = RefCell::new(HashedMap::with_hasher(HashBuildHasher::new()));
+    static DB: RefCell<HashedMap<u64, *mut usize>> = const { RefCell::new(HashedMap::with_hasher(HashBuildHasher::new())) };
 }
 
 /// Invalid (default) identifier
