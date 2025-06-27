@@ -214,7 +214,7 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
             // If this fails it is not safe to add the window (though we could just return).
             panic!("add_window: window has wrong Data type!");
         }
-        let window: kas::Window<Data> = std::mem::transmute(window);
+        let window: kas::Window<Data> = unsafe { std::mem::transmute(window) };
 
         // By far the simplest way to implement this is to let our call
         // anscestor, event::Loop::handle, do the work.
