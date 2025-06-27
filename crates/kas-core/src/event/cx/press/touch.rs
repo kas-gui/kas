@@ -342,12 +342,11 @@ impl<'a> EventCx<'a> {
             TouchPhase::Started => {
                 let start_id = win.try_probe(coord);
                 if let Some(id) = start_id.as_ref() {
-                    if self.config.event().touch_nav_focus() {
-                        if let Some(id) =
+                    if self.config.event().touch_nav_focus()
+                        && let Some(id) =
                             self.nav_next(win.as_node(data), Some(id), NavAdvance::None)
-                        {
-                            self.set_nav_focus(id, FocusSource::Pointer);
-                        }
+                    {
+                        self.set_nav_focus(id, FocusSource::Pointer);
                     }
 
                     let press = Press {
@@ -411,25 +410,25 @@ impl<'a> EventCx<'a> {
                     self.window_action(Action::REDRAW);
                 } else if let Some(pan_grab) = pan_grab {
                     self.need_frame_update = true;
-                    if usize::conv(pan_grab.1) < MAX_PAN_GRABS {
-                        if let Some(pan) = self.touch.pan_grab.get_mut(usize::conv(pan_grab.0)) {
-                            pan.coords[usize::conv(pan_grab.1)].1 = coord;
-                        }
+                    if usize::conv(pan_grab.1) < MAX_PAN_GRABS
+                        && let Some(pan) = self.touch.pan_grab.get_mut(usize::conv(pan_grab.0))
+                    {
+                        pan.coords[usize::conv(pan_grab.1)].1 = coord;
                     }
                 }
             }
             ev @ (TouchPhase::Ended | TouchPhase::Cancelled) => {
                 if let Some(index) = self.touch.get_touch_index(touch.id) {
                     let mut to_send = None;
-                    if let Some(grab) = self.touch.touch_grab.get(index) {
-                        if !grab.mode.is_pan() {
-                            let id = grab.cur_id.clone();
-                            let press = Press { source, id, coord };
-                            let success = ev == TouchPhase::Ended;
+                    if let Some(grab) = self.touch.touch_grab.get(index)
+                        && !grab.mode.is_pan()
+                    {
+                        let id = grab.cur_id.clone();
+                        let press = Press { source, id, coord };
+                        let success = ev == TouchPhase::Ended;
 
-                            let event = Event::PressEnd { press, success };
-                            to_send = Some((grab.start_id.clone(), event));
-                        }
+                        let event = Event::PressEnd { press, success };
+                        to_send = Some((grab.start_id.clone(), event));
                     }
 
                     // We must send Event::PressEnd before removing the grab

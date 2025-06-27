@@ -206,10 +206,8 @@ impl GrabBuilder {
                 success = cx
                     .mouse
                     .start_grab(button, repetitions, id.clone(), coord, mode);
-                if success {
-                    if let Some(icon) = cursor {
-                        cx.window.set_cursor_icon(icon);
-                    }
+                if success && let Some(icon) = cursor {
+                    cx.window.set_cursor_icon(icon);
                 }
             }
             PressSource::Touch(touch_id) => {
@@ -362,10 +360,10 @@ impl<'a> EventCx<'a> {
     /// [`Press::grab`]). The cursor will be reset when the mouse-grab
     /// ends.
     pub fn set_grab_cursor(&mut self, id: &Id, icon: CursorIcon) {
-        if let Some(ref grab) = self.mouse.grab {
-            if grab.start_id == *id {
-                self.window.set_cursor_icon(icon);
-            }
+        if let Some(ref grab) = self.mouse.grab
+            && grab.start_id == *id
+        {
+            self.window.set_cursor_icon(icon);
         }
     }
 }

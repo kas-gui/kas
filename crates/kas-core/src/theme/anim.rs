@@ -92,12 +92,12 @@ impl<D: DrawImpl> AnimState<D> {
     /// Normally returns `1.0` if `state` else `0.0`, but within a short time
     /// after a state change will linearly transition between these values.
     pub fn fade_bool(&mut self, draw: &mut D, state: bool, last_change: Option<Instant>) -> f32 {
-        if let Some(dur) = last_change.and_then(|inst| self.elapsed(inst)) {
-            if dur < self.c.fade_dur {
-                draw.animate();
-                let f = dur.as_secs_f32() / self.c.fade_dur.as_secs_f32();
-                return if state { f } else { 1.0 - f };
-            }
+        if let Some(dur) = last_change.and_then(|inst| self.elapsed(inst))
+            && dur < self.c.fade_dur
+        {
+            draw.animate();
+            let f = dur.as_secs_f32() / self.c.fade_dur.as_secs_f32();
+            return if state { f } else { 1.0 - f };
         }
         state as u8 as f32
     }

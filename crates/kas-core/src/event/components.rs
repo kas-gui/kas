@@ -379,10 +379,10 @@ impl ScrollComponent {
             Event::PressEnd { press, .. }
                 if self.max_offset != Offset::ZERO && cx.config_enable_pan(*press) =>
             {
-                if let Some(velocity) = cx.press_velocity(press.source) {
-                    if self.kinetic.press_end(press.source, velocity) {
-                        cx.request_frame_timer(id, TIMER_KINETIC);
-                    }
+                if let Some(velocity) = cx.press_velocity(press.source)
+                    && self.kinetic.press_end(press.source, velocity)
+                {
+                    cx.request_frame_timer(id, TIMER_KINETIC);
                 }
             }
             Event::Timer(TIMER_KINETIC) => {
@@ -527,15 +527,14 @@ impl TextInput {
                 }
             }
             Event::PressEnd { press, .. } if press.is_primary() => {
-                if let Some(velocity) = cx.press_velocity(press.source) {
-                    if self.kinetic.press_end(press.source, velocity)
-                        && (matches!(press.source, PressSource::Touch(id) if self.touch_phase == TouchPhase::Pan(id))
-                            || matches!(press.source, PressSource::Mouse(..) if cx.config_enable_mouse_text_pan()))
-                    {
-                        self.touch_phase = TouchPhase::None;
-                        cx.request_frame_timer(w_id, TIMER_KINETIC);
-                        return Action::Used;
-                    }
+                if let Some(velocity) = cx.press_velocity(press.source)
+                    && self.kinetic.press_end(press.source, velocity)
+                    && (matches!(press.source, PressSource::Touch(id) if self.touch_phase == TouchPhase::Pan(id))
+                        || matches!(press.source, PressSource::Mouse(..) if cx.config_enable_mouse_text_pan()))
+                {
+                    self.touch_phase = TouchPhase::None;
+                    cx.request_frame_timer(w_id, TIMER_KINETIC);
+                    return Action::Used;
                 }
                 Action::Finish
             }

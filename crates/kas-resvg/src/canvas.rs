@@ -52,12 +52,11 @@ enum State<P: CanvasProgram> {
 impl<P: CanvasProgram> State<P> {
     /// Redraw if requested
     fn maybe_redraw(&mut self) -> Option<impl Future<Output = (P, Pixmap)> + use<P>> {
-        if let State::Ready(p, _) = self {
-            if p.need_redraw() {
-                if let State::Ready(p, px) = std::mem::replace(self, State::Rendering) {
-                    return Some(draw(p, px));
-                }
-            }
+        if let State::Ready(p, _) = self
+            && p.need_redraw()
+            && let State::Ready(p, px) = std::mem::replace(self, State::Rendering)
+        {
+            return Some(draw(p, px));
         }
 
         None
@@ -181,10 +180,10 @@ mod Canvas {
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            if let Ok(mut state) = self.inner.try_borrow_mut() {
-                if let Some(fut) = state.maybe_redraw() {
-                    draw.ev_state().send_spawn(self.id(), fut);
-                }
+            if let Ok(mut state) = self.inner.try_borrow_mut()
+                && let Some(fut) = state.maybe_redraw()
+            {
+                draw.ev_state().send_spawn(self.id(), fut);
             }
 
             if let Some(id) = self.image.as_ref().map(|h| h.id()) {
@@ -202,12 +201,11 @@ mod Canvas {
                 let size = (pixmap.width(), pixmap.height());
                 let ds = cx.draw_shared();
 
-                if let Some(im_size) = self.image.as_ref().and_then(|h| ds.image_size(h)) {
-                    if im_size != Size::conv(size) {
-                        if let Some(handle) = self.image.take() {
-                            ds.image_free(handle);
-                        }
-                    }
+                if let Some(im_size) = self.image.as_ref().and_then(|h| ds.image_size(h))
+                    && im_size != Size::conv(size)
+                    && let Some(handle) = self.image.take()
+                {
+                    ds.image_free(handle);
                 }
 
                 if self.image.is_none() {

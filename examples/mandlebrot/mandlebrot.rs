@@ -216,18 +216,18 @@ impl CustomPipe for Pipe {
         rpass: &mut wgpu::RenderPass<'a>,
         bg_common: &'a wgpu::BindGroup,
     ) {
-        if let Some(tuple) = window.passes.get(pass) {
-            if let Some(buffer) = tuple.1.as_ref() {
-                rpass.set_pipeline(&self.render_pipeline);
-                rpass.set_push_constants(
-                    wgpu::ShaderStages::FRAGMENT,
-                    0,
-                    bytemuck::bytes_of(&window.push_constants),
-                );
-                rpass.set_bind_group(0, bg_common, &[]);
-                rpass.set_vertex_buffer(0, buffer.slice(..));
-                rpass.draw(0..tuple.2, 0..1);
-            }
+        if let Some(tuple) = window.passes.get(pass)
+            && let Some(buffer) = tuple.1.as_ref()
+        {
+            rpass.set_pipeline(&self.render_pipeline);
+            rpass.set_push_constants(
+                wgpu::ShaderStages::FRAGMENT,
+                0,
+                bytemuck::bytes_of(&window.push_constants),
+            );
+            rpass.set_bind_group(0, bg_common, &[]);
+            rpass.set_vertex_buffer(0, buffer.slice(..));
+            rpass.draw(0..tuple.2, 0..1);
         }
     }
 }

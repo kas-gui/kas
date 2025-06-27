@@ -99,10 +99,10 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
     fn new_window(&mut self, config: &WindowConfig) -> Self::Window {
         // We may switch themes here
         let theme = &config.theme().active_theme;
-        if let Some(index) = self.names.get(theme).cloned() {
-            if index != self.active {
-                self.active = index;
-            }
+        if let Some(index) = self.names.get(theme).cloned()
+            && index != self.active
+        {
+            self.active = index;
         }
 
         self.themes[self.active].new_window(config)

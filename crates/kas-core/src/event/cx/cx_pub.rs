@@ -469,10 +469,10 @@ impl EventState {
             self.set_nav_focus(target.clone(), source);
         }
 
-        if let Some(ref pending) = self.pending_sel_focus {
-            if pending.target.as_ref() == Some(&target) {
-                return;
-            }
+        if let Some(ref pending) = self.pending_sel_focus
+            && pending.target.as_ref() == Some(&target)
+        {
+            return;
         }
 
         self.pending_sel_focus = Some(PendingSelFocus {
@@ -803,10 +803,10 @@ impl<'a> EventCx<'a> {
     ///
     /// This calls [`winit::window::Window::drag_window`](https://docs.rs/winit/latest/winit/window/struct.Window.html#method.drag_window). Errors are ignored.
     pub fn drag_window(&self) {
-        if let Some(ww) = self.window.winit_window() {
-            if let Err(e) = ww.drag_window() {
-                log::warn!("EventCx::drag_window: {e}");
-            }
+        if let Some(ww) = self.window.winit_window()
+            && let Err(e) = ww.drag_window()
+        {
+            log::warn!("EventCx::drag_window: {e}");
         }
     }
 
@@ -814,10 +814,10 @@ impl<'a> EventCx<'a> {
     ///
     /// This calls [`winit::window::Window::drag_resize_window`](https://docs.rs/winit/latest/winit/window/struct.Window.html#method.drag_resize_window). Errors are ignored.
     pub fn drag_resize_window(&self, direction: ResizeDirection) {
-        if let Some(ww) = self.window.winit_window() {
-            if let Err(e) = ww.drag_resize_window(direction) {
-                log::warn!("EventCx::drag_resize_window: {e}");
-            }
+        if let Some(ww) = self.window.winit_window()
+            && let Err(e) = ww.drag_resize_window(direction)
+        {
+            log::warn!("EventCx::drag_resize_window: {e}");
         }
     }
 

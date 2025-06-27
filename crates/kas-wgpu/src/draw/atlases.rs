@@ -280,19 +280,19 @@ impl<I: bytemuck::Pod> Pipeline<I> {
         rpass: &mut wgpu::RenderPass<'a>,
         bg_common: &'a wgpu::BindGroup,
     ) {
-        if let Some(buffer) = window.buffer.as_ref() {
-            if let Some(pass) = window.passes.get(pass) {
-                if pass.data_range.is_empty() {
-                    return;
-                }
-                rpass.set_pipeline(&self.render_pipeline);
-                rpass.set_bind_group(0, bg_common, &[]);
-                rpass.set_vertex_buffer(0, buffer.slice(pass.data_range.clone()));
-                for (a, atlas) in pass.atlases.iter().enumerate() {
-                    if !atlas.range.is_empty() {
-                        rpass.set_bind_group(1, &self.atlases[a].bg, &[]);
-                        rpass.draw(0..4, atlas.range.clone());
-                    }
+        if let Some(buffer) = window.buffer.as_ref()
+            && let Some(pass) = window.passes.get(pass)
+        {
+            if pass.data_range.is_empty() {
+                return;
+            }
+            rpass.set_pipeline(&self.render_pipeline);
+            rpass.set_bind_group(0, bg_common, &[]);
+            rpass.set_vertex_buffer(0, buffer.slice(pass.data_range.clone()));
+            for (a, atlas) in pass.atlases.iter().enumerate() {
+                if !atlas.range.is_empty() {
+                    rpass.set_bind_group(1, &self.atlases[a].bg, &[]);
+                    rpass.draw(0..4, atlas.range.clone());
                 }
             }
         }

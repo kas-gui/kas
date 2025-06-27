@@ -331,11 +331,11 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
     /// Handle an action (excludes handling of CLOSE and EXIT)
     pub(super) fn handle_action(&mut self, state: &mut State<A, G, T>, mut action: Action) {
-        if action.contains(Action::EVENT_CONFIG) {
-            if let Some(ref mut window) = self.window {
-                self.ev_state.update_config(window.scale_factor() as f32);
-                action |= Action::UPDATE;
-            }
+        if action.contains(Action::EVENT_CONFIG)
+            && let Some(ref mut window) = self.window
+        {
+            self.ev_state.update_config(window.scale_factor() as f32);
+            action |= Action::UPDATE;
         }
         if action.contains(Action::RECONFIGURE) {
             self.reconfigure(state);
@@ -367,10 +367,10 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             self.apply_size(state, false);
         }
         debug_assert!(!action.contains(Action::REGION_MOVED));
-        if !action.is_empty() {
-            if let Some(ref mut window) = self.window {
-                window.need_redraw = true;
-            }
+        if !action.is_empty()
+            && let Some(ref mut window) = self.window
+        {
+            window.need_redraw = true;
         }
     }
 

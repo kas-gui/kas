@@ -199,16 +199,16 @@ mod Window {
                 return None;
             }
             for (_, popup, translation) in self.popups.iter().rev() {
-                if let Some(widget) = self.inner.find_widget(&popup.id) {
-                    if let Some(id) = widget.try_probe(coord + *translation) {
-                        return Some(id);
-                    }
-                }
-            }
-            if self.bar_h > 0 {
-                if let Some(id) = self.title_bar.try_probe(coord) {
+                if let Some(widget) = self.inner.find_widget(&popup.id)
+                    && let Some(id) = widget.try_probe(coord + *translation)
+                {
                     return Some(id);
                 }
+            }
+            if self.bar_h > 0
+                && let Some(id) = self.title_bar.try_probe(coord)
+            {
+                return Some(id);
             }
             self.inner
                 .try_probe(coord)
@@ -269,18 +269,18 @@ mod Window {
                 match cmd {
                     WindowCommand::SetTitle(title) => {
                         self.title_bar.set_title(cx, title);
-                        if self.decorations == Decorations::Server {
-                            if let Some(w) = cx.winit_window() {
-                                w.set_title(self.title());
-                            }
+                        if self.decorations == Decorations::Server
+                            && let Some(w) = cx.winit_window()
+                        {
+                            w.set_title(self.title());
                         }
                     }
                     WindowCommand::SetIcon(icon) => {
-                        if self.decorations == Decorations::Server {
-                            if let Some(w) = cx.winit_window() {
-                                w.set_window_icon(icon);
-                                return; // do not set self.icon
-                            }
+                        if self.decorations == Decorations::Server
+                            && let Some(w) = cx.winit_window()
+                        {
+                            w.set_window_icon(icon);
+                            return; // do not set self.icon
                         }
                         self.icon = icon;
                     }
