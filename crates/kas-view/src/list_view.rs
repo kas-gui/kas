@@ -382,6 +382,8 @@ mod ListView {
                 }
             }
 
+            cx.accessibility_update(self);
+
             let dur = (Instant::now() - time).as_micros();
             log::trace!(target: "kas_perf::view::list_view", "update_widgets: {dur}μs");
         }
@@ -604,6 +606,18 @@ mod ListView {
                 }
             }
             self.id()
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::GenericContainer))
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_recurse(&self, cx: &mut AccessKitCx) {
+            for child in &self.widgets[..self.cur_len.cast()] {
+                cx.push(child.widget.as_tile());
+            }
         }
     }
 

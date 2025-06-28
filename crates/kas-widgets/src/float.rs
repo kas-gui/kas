@@ -158,6 +158,16 @@ mod Float {
             }
             self.id()
         }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::GenericContainer))
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_recurse(&self, cx: &mut AccessKitCx) {
+            cx.extend_collection(&self.widgets);
+        }
     }
 
     impl Widget for Self {

@@ -25,6 +25,11 @@ mod CursorWidget {
             // Steal mouse focus: hover points to self, not self.label
             self.id()
         }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            None
+        }
     }
 
     impl Events for Self {

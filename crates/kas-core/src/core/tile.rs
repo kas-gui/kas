@@ -10,7 +10,7 @@ use crate::util::IdentifyWidget;
 use crate::{HasId, Id, Layout};
 use kas_macros::autoimpl;
 
-#[allow(unused)] use super::{Events, Widget};
+#[allow(unused)] use super::{AccessKitCx, Events, Widget};
 #[allow(unused)] use crate::layout::{self, AlignPair};
 #[allow(unused)] use crate::theme::DrawCx;
 #[allow(unused)] use kas_macros as macros;
@@ -203,6 +203,56 @@ pub trait Tile: Layout {
         let _ = coord;
         unimplemented!() // make rustdoc show that this is a provided method
     }
+
+    /// Generate a node for the accessibility shadow-tree
+    ///
+    /// When accessibility is enabled (using [AccessKit]), this method will be
+    /// called to produce and update a shadow tree of widget nodes required for
+    /// accessibility.
+    ///
+    /// This method *should* be implemented for all widgets when the `accesskit`
+    /// feature is enabled (this implies that widget library crates should have
+    /// their own `accesskit` feature). Failing to provide an implementation
+    /// results in a warning (requires feature `nightly-diagnostics`).
+    ///
+    /// This method is not called before [`Layout::set_rect`] or
+    /// [`Events::configure`] or [`Events::update`].
+    ///
+    /// The implementation should return `None` if this widget is not applicable
+    /// to accessibility tools and has no children which are applicable.
+    ///
+    /// The implementation should not add `children` or `bounds` to the returned
+    /// [`accesskit::Node`]; this is done automatically by the caller.
+    ///
+    /// TODO: when do we call this?
+    /// A: when an initial tree is requested, from the root.
+    /// B: some actions, including SET_RECT, from the affected widgets.
+    /// C: `ListView` and similar must update themselves or selected children.
+    /// Is this enough? Need to ensure that any data update will cause an update.
+    ///
+    /// [AccessKit]: https://accesskit.dev/
+    #[cfg(feature = "accesskit")]
+    #[inline]
+    fn accesskit_node(&self) -> Option<accesskit::Node> {
+        None
+    }
+
+    /// Generate [AccessKit] nodes for descendants
+    ///
+    /// This method should call [`Self::accesskit_recurse`] and
+    /// [`Self::accesskit_node`] on each child visible to the accessibility
+    /// tree. It does not add its own [`accesskit::Node`] to the tree;
+    /// [`Self::accesskit_node`] is called by the parent to do that.
+    ///
+    /// If a `#[layout]` attribute is used, this method will be generated to
+    /// over all children; this implementation may be optionally overridden.
+    /// If a `#[layout]` attribute is not used this method *should* be
+    /// implemented; failing to do so results in a warning (requires feature
+    /// `nightly-diagnostics`).
+    ///
+    /// [AccessKit]: https://accesskit.dev/
+    #[cfg(feature = "accesskit")]
+    fn accesskit_recurse(&self, cx: &mut AccessKitCx);
 }
 
 impl<W: Tile + ?Sized> HasId for &W {

@@ -53,6 +53,13 @@ mod Mark {
             draw.mark(self.rect(), self.style);
         }
     }
+
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::Mark))
+        }
+    }
 }
 
 #[impl_self]
@@ -91,6 +98,13 @@ mod MarkButton {
 
         fn draw(&self, mut draw: DrawCx) {
             draw.mark(self.rect(), self.style);
+        }
+    }
+
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::Button))
         }
     }
 

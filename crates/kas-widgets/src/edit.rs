@@ -408,6 +408,11 @@ mod EditBox {
             // the event to self.inner without further question.
             self.inner.id()
         }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::GenericContainer))
+        }
     }
 
     impl Events for Self {
@@ -827,6 +832,20 @@ mod EditField {
     impl Tile for Self {
         fn probe(&self, _: Coord) -> Id {
             self.id()
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            let mut node = if self.multi_line() {
+                accesskit::Node::new(accesskit::Role::MultilineTextInput)
+            } else {
+                accesskit::Node::new(accesskit::Role::TextInput)
+            };
+            // TODO: should we wrap this with a Role::ScrollView node?
+            // TODO: text should be child Role::TextRun nodes?
+            // TODO: text_selection
+            node.set_value(self.as_str());
+            Some(node)
         }
     }
 

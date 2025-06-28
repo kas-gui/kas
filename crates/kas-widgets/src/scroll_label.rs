@@ -82,6 +82,16 @@ mod ScrollLabel {
         fn probe(&self, coord: Coord) -> Id {
             self.bar.try_probe(coord).unwrap_or_else(|| self.id())
         }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            // TODO: should we wrap this with a Role::ScrollView node?
+            // TODO: text should be child Role::TextRun nodes?
+            // TODO: text_selection
+            let mut node = accesskit::Node::new(accesskit::Role::Label);
+            node.set_value(self.text.as_str());
+            Some(node)
+        }
     }
 
     impl Self {

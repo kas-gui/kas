@@ -82,6 +82,15 @@ enum ProxyAction {
     Close(WindowId),
     Message(kas::messages::SendErased),
     WakeAsync,
+    #[cfg(feature = "accesskit")]
+    AccessKit(winit::window::WindowId, accesskit_winit::WindowEvent),
+}
+
+#[cfg(feature = "accesskit")]
+impl From<accesskit_winit::Event> for ProxyAction {
+    fn from(event: accesskit_winit::Event) -> Self {
+        ProxyAction::AccessKit(event.window_id, event.window_event)
+    }
 }
 
 #[cfg(test)]

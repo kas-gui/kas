@@ -53,6 +53,10 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
     let mut child_node = None;
     let mut find_child_index = None;
     let mut make_child_id = None;
+    #[cfg(feature = "accesskit")]
+    let mut have_accesskit_node = false;
+    #[cfg(feature = "accesskit")]
+    let mut have_accesskit_recurse = false;
     for (index, impl_) in scope.impls.iter().enumerate() {
         if let Some((_, ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::Widget }
@@ -105,6 +109,13 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                         } else if item.sig.ident == "find_child_index" {
                             find_child_index = Some(item.sig.ident.clone());
                         }
+
+                        #[cfg(feature = "accesskit")]
+                        if item.sig.ident == "accesskit_node" {
+                            have_accesskit_node = true;
+                        } else if item.sig.ident == "accesskit_recurse" {
+                            have_accesskit_recurse = true;
+                        }
                     }
                 }
             } else if *path == parse_quote! { ::kas::Events }
@@ -143,6 +154,16 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
         }
     } else if let Some(ref span) = make_child_id {
         emit_warning!(span, "fn make_child_id without fn find_child_index");
+    }
+
+    #[cfg(feature = "accesskit")]
+    if !have_accesskit_node {
+        let span = if let Some(index) = tile_impl {
+            scope.impls[index].impl_token.span
+        } else {
+            attr_span
+        };
+        emit_warning!(span, "fn Tile::accesskit_node not defined");
     }
 
     let fields = match &mut scope.item {
@@ -337,13 +358,34 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
     };
 
     let do_impl_widget_children = get_child.is_none() && child_node.is_none();
+
+    #[cfg(not(feature = "accesskit"))]
+    let fn_accesskit_recurse = None;
+    #[cfg(feature = "accesskit")]
+    let fn_accesskit_recurse;
+
     let fns_get_child = if do_impl_widget_children {
         let mut get_rules = quote! {};
+        #[cfg(feature = "accesskit")]
+        let mut child_tiles = quote! {};
         for (index, child) in children.iter().enumerate() {
-            get_rules.append_all(child.ident.get_rule(&core_path, index));
+            let path = child.ident.path(&core_path);
+            get_rules.append_all(quote! { #index => Some(#path.as_tile()), });
+            #[cfg(feature = "accesskit")]
+            child_tiles.append_all(quote! { #path.as_tile(), });
         }
 
         let count = children.len();
+
+        #[cfg(feature = "accesskit")]
+        {
+            fn_accesskit_recurse = Some(quote! {
+                fn accesskit_recurse(&self, cx: &mut ::kas::AccessKitCx) {
+                    cx.extend([#child_tiles]);
+                }
+            });
+        }
+
         Some(quote! {
             fn num_children(&self) -> usize {
                 #count
@@ -356,6 +398,25 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
             }
         })
     } else {
+        #[cfg(feature = "accesskit")]
+        if have_accesskit_recurse {
+            fn_accesskit_recurse = None;
+        } else {
+            let span = if let Some(index) = tile_impl {
+                scope.impls[index].impl_token.span
+            } else {
+                attr_span
+            };
+            emit_warning!(
+                span,
+                "fn Tile::accesskit_recurse should be specified when not using layout property"
+            );
+
+            fn_accesskit_recurse = Some(quote! {
+                fn accesskit_recurse(&self, _: &mut ::kas::AccessKitCx) {}
+            });
+        }
+
         None
     };
 
@@ -738,6 +799,15 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
         if !has_item("probe") {
             tile_impl.items.push(Verbatim(fn_probe));
         }
+
+        if !item_idents
+            .iter()
+            .any(|(_, ident)| *ident == "accesskit_recurse")
+        {
+            if let Some(method) = fn_accesskit_recurse {
+                tile_impl.items.push(Verbatim(method));
+            }
+        }
     } else {
         let fn_nav_next = match fn_nav_next {
             Ok(method) => Some(method),
@@ -753,6 +823,7 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                 #fns_get_child
                 #fn_nav_next
                 #fn_probe
+                #fn_accesskit_recurse
             }
         });
     }

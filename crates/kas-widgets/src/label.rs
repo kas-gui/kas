@@ -119,6 +119,15 @@ mod Label {
         }
     }
 
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            let mut node = accesskit::Node::new(accesskit::Role::Label);
+            node.set_value(self.text.as_str());
+            Some(node)
+        }
+    }
+
     impl Events for Self {
         type Data = ();
 
@@ -259,6 +268,18 @@ mod AccessLabel {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.text
                 .set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
+        }
+    }
+
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            let mut node = accesskit::Node::new(accesskit::Role::Label);
+            node.set_value(self.text.as_str());
+            if let Some(key) = self.text.text().key().and_then(|key| key.to_text()) {
+                node.set_access_key(key);
+            }
+            Some(node)
         }
     }
 

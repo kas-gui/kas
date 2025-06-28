@@ -29,6 +29,13 @@ mod Filler {
 
         fn draw(&self, _: DrawCx) {}
     }
+
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            None
+        }
+    }
 }
 
 impl Filler {

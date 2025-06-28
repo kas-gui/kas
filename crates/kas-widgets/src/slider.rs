@@ -22,11 +22,12 @@ pub trait SliderValue:
     /// The default step size (usually 1)
     fn default_step() -> Self;
 
-    /// Divide self by another instance of this type, returning an `f64`
+    /// Convert self to an `f64`
     ///
-    /// Note: in practice, we always have `rhs >= self` and expect the result
-    /// to be between 0 and 1.
-    fn div_as_f64(self, rhs: Self) -> f64;
+    /// Units are arbitrary since values are only ever compared to other values
+    /// of the same type. For example, the implementation for [`Duration`]
+    /// uses [`Duration::as_secs_f64`].
+    fn as_f64(self) -> f64;
 
     /// Return the result of multiplying self by an `f64` scalar
     ///
@@ -43,8 +44,8 @@ impl SliderValue for f64 {
     fn default_step() -> Self {
         1.0
     }
-    fn div_as_f64(self, rhs: Self) -> f64 {
-        self / rhs
+    fn as_f64(self) -> f64 {
+        self
     }
     fn mul_f64(self, scalar: f64) -> Self {
         self * scalar
@@ -55,8 +56,8 @@ impl SliderValue for f32 {
     fn default_step() -> Self {
         1.0
     }
-    fn div_as_f64(self, rhs: Self) -> f64 {
-        self as f64 / rhs as f64
+    fn as_f64(self) -> f64 {
+        self as f64
     }
     fn mul_f64(self, scalar: f64) -> Self {
         (self as f64 * scalar) as f32
@@ -69,8 +70,8 @@ macro_rules! impl_slider_ty {
             fn default_step() -> Self {
                 1
             }
-            fn div_as_f64(self, rhs: Self) -> f64 {
-                self as f64 / rhs as f64
+            fn as_f64(self) -> f64 {
+                self as f64
             }
             fn mul_f64(self, scalar: f64) -> Self {
                 let r = (self as f64 * scalar).round();
@@ -94,8 +95,8 @@ impl SliderValue for Duration {
     fn default_step() -> Self {
         Duration::from_secs(1)
     }
-    fn div_as_f64(self, rhs: Self) -> f64 {
-        self.as_secs_f64() / rhs.as_secs_f64()
+    fn as_f64(self) -> f64 {
+        self.as_secs_f64()
     }
     fn mul_f64(self, scalar: f64) -> Self {
         self.mul_f64(scalar)
@@ -278,7 +279,7 @@ mod Slider {
             let a = self.value - self.range.0;
             let b = self.range.1 - self.range.0;
             let max_offset = self.grip.max_offset();
-            let mut frac = a.div_as_f64(b);
+            let mut frac = a.as_f64() / b.as_f64();
             assert!((0.0..=1.0).contains(&frac));
             if self.direction.is_reversed() {
                 frac = 1.0 - frac;
@@ -345,6 +346,16 @@ mod Slider {
                 }
             }
             self.id()
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            let mut node = accesskit::Node::new(accesskit::Role::Slider);
+            node.set_numeric_value(self.value.as_f64());
+            node.set_min_numeric_value(self.range.0.as_f64());
+            node.set_max_numeric_value(self.range.1.as_f64());
+            node.set_numeric_value_step(self.step.as_f64());
+            Some(node)
         }
     }
 

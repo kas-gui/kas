@@ -14,7 +14,7 @@ use crate::geom::{Rect, Size};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{SizeCx, Text, TextClass};
 #[allow(unused)] use crate::Action;
-use crate::{Events, Layout, Widget};
+use crate::{Events, Layout, Tile, Widget};
 use kas_macros::{autoimpl, impl_self};
 
 #[impl_self]
@@ -52,6 +52,15 @@ mod StrLabel {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.text
                 .set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
+        }
+    }
+
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            let mut node = accesskit::Node::new(accesskit::Role::Label);
+            node.set_value(self.as_str());
+            Some(node)
         }
     }
 

@@ -93,6 +93,15 @@ mod GripPart {
         fn draw(&self, _: DrawCx) {}
     }
 
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            // There is no Role::Grip. There are roles for scrollbars, splitters
+            // and sliders (the widgets which use a grip).
+            None
+        }
+    }
+
     impl Events for GripPart {
         const REDRAW_ON_HOVER: bool = true;
 

@@ -193,6 +193,13 @@ mod Canvas {
         }
     }
 
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::Canvas))
+        }
+    }
+
     impl Events for Self {
         type Data = ();
 

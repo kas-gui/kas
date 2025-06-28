@@ -6,8 +6,9 @@
 //! Event manager — platform API
 
 use super::*;
+use crate::cast::CastApprox;
 use crate::theme::ThemeSize;
-use crate::{TileExt, Window};
+use crate::{Tile, TileExt, Window};
 use std::task::Poll;
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -22,6 +23,8 @@ impl EventState {
             platform,
             disabled: vec![],
             window_has_focus: false,
+            #[cfg(feature = "accesskit")]
+            accesskit_is_enabled: false,
             modifiers: ModifiersState::empty(),
             key_focus: false,
             ime: None,
@@ -42,12 +45,91 @@ impl EventState {
             need_frame_update: false,
             send_queue: Default::default(),
             fut_messages: vec![],
+            #[cfg(feature = "accesskit")]
+            accesskit_updates: Default::default(),
             pending_update: None,
             pending_sel_focus: None,
             pending_nav_focus: PendingNavFocus::None,
             pending_cmds: Default::default(),
             action: Action::empty(),
         }
+    }
+
+    #[cfg(feature = "accesskit")]
+    pub(crate) fn need_accesskit_update(&self) -> bool {
+        !self.accesskit_updates.is_empty()
+    }
+
+    #[cfg(feature = "accesskit")]
+    pub(crate) fn accesskit_tree_update(
+        &mut self,
+        root: &dyn Tile,
+        _whole_tree: bool,
+    ) -> accesskit::TreeUpdate {
+        self.accesskit_is_enabled = true;
+
+        let mut cx = crate::AccessKitCx::new();
+
+        // HACK: Disable partial tree traversals for now since it may create orphan Nodes
+        // NOTE: We could keep a copy of the tree (`Id` values) and use that to find any parents
+        // which must have `set_children` called, though this is complex and misses removed
+        // children. We could just consider this a bug in widget could which should be fixed, but
+        // that is not very robust.
+        let mut whole_tree = true;
+        if whole_tree {
+            self.accesskit_updates.clear();
+            root.accesskit_recurse(&mut cx);
+        }
+
+        // Assumption: self.accesskit_updates is deduplicated (including no descendants)
+        for id in self.accesskit_updates.drain(..) {
+            if root.eq_id(&id) {
+                whole_tree = true;
+                break;
+            }
+
+            if let Some(tile) = root.find_widget(&id) {
+                // Recursively add tile to the list of updated nodes
+                // Caveat: if the parent would add relationships such as `labelled_by`, those will
+                // be lost here. See also https://github.com/AccessKit/accesskit/issues/583
+                cx.push(tile);
+            }
+        }
+
+        let root_id = root.id_ref().into();
+        let unclaimed_start = cx.start_unclaimed();
+        let mut nodes = cx.take_nodes();
+        if whole_tree {
+            // Special handling for popups which are children of root
+            let mut node = root.accesskit_node().unwrap();
+            let children: Vec<_> = nodes[unclaimed_start..].iter().map(|pair| pair.0).collect();
+            node.set_children(children);
+            nodes.push((root_id, node));
+        }
+
+        // nav_focus, but not when that points to a non-existant widget:
+        // BUG: this still allows focus to point to a widget which is not in the
+        // accessibility tree which causes a panic in AccessKit.
+        let focus = self
+            .nav_focus()
+            .filter(|id| root.find_widget(id).is_some())
+            .unwrap_or(root.id_ref());
+
+        accesskit::TreeUpdate {
+            nodes,
+            tree: Some(accesskit::Tree {
+                root: root_id,
+                toolkit_name: Some("Kas".to_string()),
+                toolkit_version: None, // TODO: make version accessible to code in one place
+            }),
+            focus: focus.into(),
+        }
+    }
+
+    #[cfg(feature = "accesskit")]
+    pub(crate) fn disable_accesskit(&mut self) {
+        self.accesskit_is_enabled = false;
+        self.accesskit_updates.clear();
     }
 
     /// Update scale factor
@@ -74,6 +156,9 @@ impl EventState {
 
         log::debug!(target: "kas_core::event", "full_configure of Window{id}");
         self.action.remove(Action::RECONFIGURE);
+
+        #[cfg(feature = "accesskit")]
+        self.accessibility_update(id.clone());
 
         // These are recreated during configure:
         self.access_layers.clear();
@@ -175,7 +260,7 @@ impl EventState {
 
             while let Some((id, msg)) = cx.send_queue.pop_front() {
                 log::trace!(target: "kas_core::event", "sending message {msg:?} to {id}");
-                cx.replay(win.as_node(data), id, msg);
+                cx.replay(win.as_node(data), id, Some(msg), Scroll::None);
             }
 
             // Poll futures. TODO(opt): this does not need to happen so often,
@@ -205,6 +290,77 @@ impl EventState {
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 impl<'a> EventCx<'a> {
+    #[cfg(feature = "accesskit")]
+    pub(crate) fn handle_accesskit_action(
+        &mut self,
+        widget: Node<'_>,
+        request: accesskit::ActionRequest,
+    ) {
+        let Some(id) = Id::try_from_u64(request.target.0) else {
+            return;
+        };
+
+        // TODO: implement remaining actions
+        use accesskit::{Action as AKA, ActionData as AD};
+        match request.action {
+            AKA::Click => {
+                self.send_event(widget, id, Event::Command(Command::Activate, None));
+            }
+            AKA::Focus => self.set_nav_focus(id, FocusSource::Synthetic),
+            AKA::Blur => (),
+            AKA::Collapse | AKA::Expand => (),
+            AKA::CustomAction => (),
+            AKA::Decrement | AKA::Increment => (),
+            AKA::HideTooltip | AKA::ShowTooltip => (),
+            AKA::ReplaceSelectedText => (),
+            AKA::ScrollBackward | AKA::ScrollForward => (),
+            AKA::ScrollDown | AKA::ScrollLeft | AKA::ScrollRight | AKA::ScrollUp => {
+                let delta = match request.action {
+                    AKA::ScrollDown => ScrollDelta::Lines(0.0, 1.0),
+                    AKA::ScrollLeft => ScrollDelta::Lines(-1.0, 0.0),
+                    AKA::ScrollRight => ScrollDelta::Lines(1.0, 0.0),
+                    AKA::ScrollUp => ScrollDelta::Lines(0.0, -1.0),
+                    _ => unreachable!(),
+                };
+                self.send_event(widget, id, Event::Scroll(delta));
+            }
+            AKA::ScrollIntoView | AKA::ScrollToPoint => {
+                // We assume input is in coordinate system of target
+                let scroll = match request.data {
+                    None => {
+                        debug_assert_eq!(request.action, AKA::ScrollIntoView);
+                        // NOTE: we shouldn't need two tree traversals, but it's fine
+                        if let Some(tile) = widget.as_tile().find_widget(&id) {
+                            Scroll::Rect(tile.rect())
+                        } else {
+                            return;
+                        }
+                    }
+                    Some(AD::ScrollTargetRect(rect)) => {
+                        debug_assert_eq!(request.action, AKA::ScrollIntoView);
+                        Scroll::Rect(rect.cast_approx())
+                    }
+                    Some(AD::ScrollToPoint(point)) => {
+                        debug_assert_eq!(request.action, AKA::ScrollToPoint);
+                        let pos = point.cast_approx();
+                        let size = Size::ZERO;
+                        Scroll::Rect(Rect { pos, size })
+                    }
+                    _ => {
+                        debug_assert!(false);
+                        return;
+                    }
+                };
+                self.replay(widget, id, None, scroll);
+            }
+            AKA::SetScrollOffset => (),
+            AKA::SetTextSelection => (),
+            AKA::SetSequentialFocusNavigationStartingPoint => (),
+            AKA::SetValue => (),
+            AKA::ShowContextMenu => (),
+        }
+    }
+
     /// Pre-draw / pre-sleep
     ///
     /// This method should be called once per frame as well as after the last
@@ -270,7 +426,7 @@ impl<'a> EventCx<'a> {
 
                     // Replay message. This could push another future; if it
                     // does we should poll it immediately to start its work.
-                    self.replay(widget.re(), id, msg);
+                    self.replay(widget.re(), id, Some(msg), Scroll::None);
                 }
             }
         }
@@ -290,7 +446,7 @@ impl<'a> EventCx<'a> {
         use winit::event::WindowEvent::*;
 
         match event {
-            CloseRequested => self.action(Id::ROOT, Action::CLOSE),
+            CloseRequested => self.action(win.id(), Action::CLOSE),
             /* Not yet supported: see #98
             DroppedFile(path) => ,
             HoveredFile(path) => ,
@@ -300,7 +456,7 @@ impl<'a> EventCx<'a> {
                 self.window_has_focus = state;
                 if state {
                     // Required to restart theme animations
-                    self.action(Id::ROOT, Action::REDRAW);
+                    self.action(win.id(), Action::REDRAW);
                 } else {
                     // Window focus lost: close all popups
                     while let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
@@ -349,7 +505,7 @@ impl<'a> EventCx<'a> {
                 let state = modifiers.state();
                 if state.alt_key() != self.modifiers.alt_key() {
                     // This controls drawing of access key indicators
-                    self.action(Id::ROOT, Action::REDRAW);
+                    self.action(win.id(), Action::REDRAW);
                 }
                 self.modifiers = state;
             }

@@ -40,6 +40,11 @@ mod MenuEntry {
         fn probe(&self, _: Coord) -> Id {
             self.id()
         }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::MenuItem))
+        }
     }
 
     impl Self {
@@ -135,6 +140,11 @@ mod MenuToggle {
     impl Tile for Self {
         fn probe(&self, _: Coord) -> Id {
             self.checkbox.id()
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::MenuItemCheckBox))
         }
     }
 

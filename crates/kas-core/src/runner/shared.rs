@@ -31,6 +31,8 @@ pub(super) struct SharedState<Data: AppData, G: GraphicsInstance, T: Theme<G::Sh
     pub(super) theme: T,
     pub(super) pending: VecDeque<Pending<Data, G, T>>,
     pub(super) waker: Waker,
+    #[cfg(feature = "accesskit")]
+    pub(super) proxy: super::Proxy,
     window_id_factory: WindowIdFactory,
 }
 
@@ -55,6 +57,7 @@ where
         config: Rc<RefCell<Config>>,
         config_writer: Option<Box<dyn FnMut(&Config)>>,
         waker: Waker,
+        #[cfg(feature = "accesskit")] proxy: super::Proxy,
         window_id_factory: WindowIdFactory,
     ) -> Result<Self, Error> {
         #[cfg(feature = "clipboard")]
@@ -77,6 +80,8 @@ where
                 theme,
                 pending: Default::default(),
                 waker,
+                #[cfg(feature = "accesskit")]
+                proxy,
                 window_id_factory,
             },
             data,

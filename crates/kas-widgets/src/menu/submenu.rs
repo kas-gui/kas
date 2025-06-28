@@ -117,6 +117,11 @@ mod SubMenu {
         fn probe(&self, _: Coord) -> Id {
             self.id()
         }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::Menu))
+        }
     }
 
     impl Events for Self {
@@ -352,6 +357,16 @@ mod MenuView {
                 }
             }
             self.id()
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::Menu))
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_recurse(&self, cx: &mut AccessKitCx) {
+            cx.extend(self.list.iter().map(|m| m.as_tile()));
         }
     }
 

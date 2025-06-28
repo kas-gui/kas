@@ -18,7 +18,7 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::SolveCache;
 use crate::messages::MessageStack;
 use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, ThemeSize, Window as _};
-use crate::{autoimpl, Action, Id, Tile, Widget, WindowId};
+use crate::{autoimpl, Action, Tile, Widget, WindowId};
 use std::cell::RefCell;
 use std::mem::take;
 use std::rc::Rc;
@@ -37,6 +37,8 @@ struct WindowData<G: GraphicsInstance, T: Theme<G::Shared>> {
     surface: G::Surface<'static>,
     /// Frame rate counter
     frame_count: (Instant, u32),
+    #[cfg(feature = "accesskit")]
+    accesskit: accesskit_winit::Adapter,
 
     // NOTE: cached components could be here or in Window
     window_id: WindowId,
@@ -192,6 +194,11 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
         let winit_id = window.id();
 
+        #[cfg(feature = "accesskit")]
+        let proxy = state.shared.proxy.0.clone();
+        #[cfg(feature = "accesskit")]
+        let accesskit = accesskit_winit::Adapter::with_event_loop_proxy(el, &window, proxy);
+
         self.window = Some(WindowData {
             window,
             #[cfg(all(wayland_platform, feature = "clipboard"))]
@@ -199,11 +206,16 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             surface,
             frame_count: (Instant::now(), 0),
 
+            #[cfg(feature = "accesskit")]
+            accesskit,
+
             window_id: self.ev_state.window_id,
             solve_cache,
             theme_window,
             need_redraw: true,
         });
+
+        // TODO: construct accesskit adapter
 
         self.apply_size(state, true);
 
@@ -242,6 +254,9 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         let Some(ref mut window) = self.window else {
             return false;
         };
+
+        #[cfg(feature = "accesskit")]
+        window.accesskit.process_event(&window.window, &event);
 
         match event {
             WindowEvent::Moved(_) | WindowEvent::Destroyed => false,
@@ -366,10 +381,49 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         } else if !(action & (Action::SET_RECT | Action::SCROLLED)).is_empty() {
             self.apply_size(state, false);
         }
+        if !(action & (Action::SCROLLED | Action::SET_RECT | Action::RESIZE | Action::RECONFIGURE))
+            .is_empty()
+        {
+            // TODO(opt): some of these may have been applied locally, making
+            // this unnecessary, but we don't know that the action wasn't also
+            // required globally. There are already TODO items for handling
+            // these locally instead of globally, so we should solve that way.
+            self.ev_state.accessibility_update(&self.widget);
+        }
         debug_assert!(!action.contains(Action::REGION_MOVED));
         if !action.is_empty() {
             if let Some(ref mut window) = self.window {
                 window.need_redraw = true;
+            }
+        }
+    }
+
+    #[cfg(feature = "accesskit")]
+    pub(super) fn accesskit_event(
+        &mut self,
+        state: &mut State<A, G, T>,
+        event: accesskit_winit::WindowEvent,
+    ) {
+        let Some(ref mut window) = self.window else {
+            return;
+        };
+
+        use accesskit_winit::WindowEvent as WE;
+        match event {
+            WE::InitialTreeRequested => window.accesskit.update_if_active(|| {
+                self.ev_state
+                    .accesskit_tree_update(self.widget.as_tile(), true)
+            }),
+            WE::ActionRequested(request) => {
+                let mut messages = MessageStack::new();
+                self.ev_state
+                    .with(&mut state.shared, window, &mut messages, |cx| {
+                        cx.handle_accesskit_action(self.widget.as_node(&state.data), request);
+                    });
+                state.handle_messages(&mut messages);
+            }
+            WE::AccessibilityDeactivated => {
+                self.ev_state.disable_accesskit();
             }
         }
     }
@@ -410,12 +464,12 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
     }
 
     pub(super) fn send_action(&mut self, action: Action) {
-        self.ev_state.action(Id::ROOT, action);
+        self.ev_state.action(self.widget.id(), action);
     }
 
     pub(super) fn send_close(&mut self, id: WindowId) {
         if id == self.ev_state.window_id {
-            self.ev_state.action(Id::ROOT, Action::CLOSE);
+            self.ev_state.action(self.widget.id(), Action::CLOSE);
         } else if let Some(window) = self.window.as_ref() {
             let widget = &mut self.widget;
             let size = window.theme_window.size();
@@ -504,6 +558,14 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                 cx.frame_update(widget);
             });
         state.handle_messages(&mut messages);
+
+        #[cfg(feature = "accesskit")]
+        if self.ev_state.need_accesskit_update() {
+            window.accesskit.update_if_active(|| {
+                self.ev_state
+                    .accesskit_tree_update(self.widget.as_tile(), false)
+            })
+        }
 
         {
             let rect = Rect::new(Coord::ZERO, window.surface.size());

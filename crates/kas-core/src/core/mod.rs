@@ -5,6 +5,7 @@
 
 //! Core widget types
 
+#[cfg(feature = "accesskit")] mod accesskit;
 mod collection;
 mod data;
 mod layout;
@@ -18,6 +19,8 @@ mod widget_id;
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 pub mod impls;
 
+#[cfg(feature = "accesskit")]
+pub use accesskit::AccessKitCx;
 pub use collection::{CellCollection, Collection};
 pub use data::*;
 pub use layout::*;

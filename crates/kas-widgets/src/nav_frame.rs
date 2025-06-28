@@ -40,6 +40,15 @@ mod NavFrame {
         }
     }
 
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            // TODO: there is Role::Cell, which is close to the typical
+            // use-case of NavFrame. Replace NavFrame with a Cell widget?
+            Some(accesskit::Node::new(accesskit::Role::GenericContainer))
+        }
+    }
+
     impl Events for Self {
         const NAVIGABLE: bool = true;
 

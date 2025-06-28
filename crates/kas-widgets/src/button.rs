@@ -97,6 +97,14 @@ mod Button {
         fn probe(&self, _: Coord) -> Id {
             self.id()
         }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            let mut node = accesskit::Node::new(accesskit::Role::Button);
+            // Usually the inner widget is a label, so set this:
+            node.push_labelled_by(self.inner.id_ref().into());
+            Some(node)
+        }
     }
 
     impl Events for Self {

@@ -12,7 +12,7 @@ use crate::event::{ConfigCx, Event, EventCx, IsUsed, ResizeDirection, Scroll, Un
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
-use crate::{Action, Events, Icon, Id, Layout, Tile, TileExt, Widget};
+use crate::{AccessKitCx, Action, Events, Icon, Id, Layout, Tile, TileExt, Widget};
 use kas_macros::{impl_self, widget_set_rect};
 use smallvec::SmallVec;
 use std::num::NonZeroU32;
@@ -242,6 +242,27 @@ mod Window {
         }
     }
 
+    impl Tile for Self {
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            Some(accesskit::Node::new(accesskit::Role::Window))
+        }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_recurse(&self, cx: &mut AccessKitCx) {
+            cx.push(&self.inner);
+            cx.push(&self.title_bar);
+            // Assumption: Border widgets are not accessible
+
+            // Push popups as children of self
+            for (_, desc, _) in &self.popups {
+                if let Some(tile) = self.find_widget(&desc.id) {
+                    cx.push(tile);
+                }
+            }
+        }
+    }
+
     impl Events for Self {
         type Data = Data;
 
@@ -451,7 +472,10 @@ impl<Data: 'static> Window<Data> {
         let index = self.popups.len();
         self.popups.push((id, popup, Offset::ZERO));
         self.resize_popup(cx, data, index);
-        cx.action(Id::ROOT, Action::REGION_MOVED);
+        cx.action(self.id(), Action::REGION_MOVED);
+
+        // Action changes accessibility children of self
+        cx.accessibility_update(self);
     }
 
     /// Trigger closure of a pop-up
@@ -461,10 +485,13 @@ impl<Data: 'static> Window<Data> {
         for i in 0..self.popups.len() {
             if id == self.popups[i].0 {
                 self.popups.remove(i);
-                cx.action(Id::ROOT, Action::REGION_MOVED);
+                cx.action(self.id(), Action::REGION_MOVED);
                 return;
             }
         }
+
+        // Action changes accessibility children of self
+        cx.accessibility_update(self);
     }
 
     /// Resize popups

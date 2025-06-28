@@ -78,6 +78,8 @@ pub struct EventState {
     platform: Platform,
     disabled: Vec<Id>,
     window_has_focus: bool,
+    #[cfg(feature = "accesskit")]
+    accesskit_is_enabled: bool,
     modifiers: ModifiersState,
     /// Key (and IME) focus is on same widget as sel_focus; otherwise its value is ignored
     key_focus: bool,
@@ -103,6 +105,9 @@ pub struct EventState {
     send_queue: VecDeque<(Id, Erased)>,
     // Set of futures of messages together with id of sending widget
     fut_messages: Vec<(Id, Pin<Box<dyn Future<Output = Erased>>>)>,
+    // Widgets requiring accesskit update
+    #[cfg(feature = "accesskit")]
+    accesskit_updates: Vec<Id>,
     // Widget requiring update (and optionally configure)
     pending_update: Option<(Id, bool)>,
     // Optional new target for selection focus. bool is true if this also gains key focus.
@@ -330,15 +335,20 @@ impl<'a> EventCx<'a> {
         (self.scroll != Scroll::None).then_some(self.scroll.clone())
     }
 
-    /// Replay a message as if it was pushed by `id`
-    fn replay(&mut self, mut widget: Node<'_>, id: Id, msg: Erased) {
+    /// Replay widget traversal to `id`
+    ///
+    /// Optionally, push `msg` and set `scroll` as if pushed/set by `id`.
+    fn replay(&mut self, mut widget: Node<'_>, id: Id, msg: Option<Erased>, scroll: Scroll) {
         debug_assert!(self.scroll == Scroll::None);
         debug_assert!(self.last_child.is_none());
+        self.scroll = scroll;
         self.messages.set_base();
         log::trace!(target: "kas_core::event", "replay: id={id}: {msg:?}");
 
         self.target_is_disabled = false;
-        self.push_erased(msg);
+        if let Some(msg) = msg {
+            self.push_erased(msg);
+        }
         widget._replay(self, id);
         self.last_child = None;
         self.scroll = Scroll::None;

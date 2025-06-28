@@ -84,6 +84,8 @@ impl PreLaunchState {
             self.config,
             self.config_writer,
             create_waker(&self.el),
+            #[cfg(feature = "accesskit")]
+            Proxy(self.el.create_proxy()),
             self.window_id_factory,
         )?;
 
@@ -187,7 +189,8 @@ fn create_waker(el: &EventLoop<ProxyAction>) -> std::task::Waker {
 /// A proxy allowing control of a UI from another thread.
 ///
 /// Created by [`Runner::create_proxy`](https://docs.rs/kas/latest/kas/runner/struct.Runner.html#method.create_proxy).
-pub struct Proxy(EventLoopProxy<ProxyAction>);
+#[derive(Clone)]
+pub struct Proxy(pub(super) EventLoopProxy<ProxyAction>);
 
 /// Error type returned by [`Proxy`] functions.
 ///

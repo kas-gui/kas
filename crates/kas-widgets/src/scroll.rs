@@ -133,6 +133,20 @@ mod ScrollRegion {
                 .try_probe(coord + self.translation())
                 .unwrap_or_else(|| self.id())
         }
+
+        #[cfg(feature = "accesskit")]
+        fn accesskit_node(&self) -> Option<accesskit::Node> {
+            let mut node = accesskit::Node::new(accesskit::Role::ScrollView);
+            let offset = self.scroll.offset();
+            node.set_scroll_x(offset.0.cast());
+            node.set_scroll_y(offset.1.cast());
+            node.set_scroll_x_min(0.0);
+            node.set_scroll_y_min(0.0);
+            let max_offset = self.scroll.max_offset();
+            node.set_scroll_x_max(max_offset.0.cast());
+            node.set_scroll_y_max(max_offset.1.cast());
+            Some(node)
+        }
     }
 
     impl Events for Self {
