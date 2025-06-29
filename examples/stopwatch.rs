@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use kas::decorations::Decorations;
 use kas::event::TimerHandle;
 use kas::prelude::*;
-use kas::widgets::{format_data, row, Button};
+use kas::widgets::{Button, format_data, row};
 
 #[derive(Clone, Debug)]
 struct MsgReset;

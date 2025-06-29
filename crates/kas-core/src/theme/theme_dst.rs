@@ -9,7 +9,7 @@ use std::cell::RefCell;
 
 use super::{Theme, Window};
 use crate::config::{Config, WindowConfig};
-use crate::draw::{color, DrawIface, DrawSharedImpl};
+use crate::draw::{DrawIface, DrawSharedImpl, color};
 use crate::event::EventState;
 use crate::theme::ThemeDraw;
 

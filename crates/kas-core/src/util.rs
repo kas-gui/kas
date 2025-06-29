@@ -5,8 +5,8 @@
 
 //! Utilities
 
-use crate::geom::Coord;
 #[cfg(feature = "image")] use crate::Icon;
+use crate::geom::Coord;
 use crate::{Id, Tile};
 use std::{error::Error, fmt, path::Path};
 
@@ -99,21 +99,20 @@ impl<'a> fmt::Display for WidgetHierarchy<'a> {
 
         let indent = self.indent + 1;
 
-        if let Some(id) = self.filter.as_ref() {
-            if let Some(index) = self.widget.find_child_index(id) {
-                if let Some(widget) = self.widget.get_child(index) {
-                    return write!(f, "{}", WidgetHierarchy {
-                        widget,
-                        filter: self.filter.clone(),
-                        trail: Trail {
-                            parent: Some(trail),
-                            trail: trail_hook,
-                        },
-                        indent,
-                        have_next_sibling: false,
-                    });
-                }
-            }
+        if let Some(id) = self.filter.as_ref()
+            && let Some(index) = self.widget.find_child_index(id)
+            && let Some(widget) = self.widget.get_child(index)
+        {
+            return write!(f, "{}", WidgetHierarchy {
+                widget,
+                filter: self.filter.clone(),
+                trail: Trail {
+                    parent: Some(trail),
+                    trail: trail_hook,
+                },
+                indent,
+                have_next_sibling: false,
+            });
         }
 
         let num_children = self.widget.num_children();

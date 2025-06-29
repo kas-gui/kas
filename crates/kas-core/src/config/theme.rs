@@ -5,8 +5,8 @@
 
 //! Theme configuration
 
-use crate::theme::ColorsSrgb;
 use crate::Action;
+use crate::theme::ColorsSrgb;
 use std::collections::BTreeMap;
 use std::time::Duration;
 

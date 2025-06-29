@@ -8,7 +8,7 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::{parse_quote, Expr, ImplItem, ImplItemFn, ItemImpl, Token};
+use syn::{Expr, ImplItem, ImplItemFn, ItemImpl, Token, parse_quote};
 
 #[allow(non_camel_case_types)]
 mod kw {

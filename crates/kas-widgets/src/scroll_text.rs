@@ -10,8 +10,8 @@ use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{Command, CursorIcon, FocusSource, Scroll};
 use kas::geom::Vec2;
 use kas::prelude::*;
-use kas::text::format::FormattableText;
 use kas::text::SelectionHelper;
+use kas::text::format::FormattableText;
 use kas::theme::{Text, TextClass};
 
 #[impl_self]

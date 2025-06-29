@@ -6,10 +6,10 @@
 //! Event adapters
 
 use super::{AdaptConfigCx, AdaptEventCx};
-use kas::event::{ConfigCx, Event, EventCx, IsUsed};
 #[allow(unused)] use kas::Events;
-use kas::{autoimpl, impl_self};
+use kas::event::{ConfigCx, Event, EventCx, IsUsed};
 use kas::{Id, Node, Widget};
+use kas::{autoimpl, impl_self};
 use std::fmt::Debug;
 
 #[impl_self]

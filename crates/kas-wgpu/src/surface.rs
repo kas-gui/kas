@@ -10,7 +10,7 @@ use kas::cast::Cast;
 use kas::draw::color::Rgba;
 use kas::draw::{DrawIface, DrawSharedImpl, WindowCommon};
 use kas::geom::Size;
-use kas::runner::{raw_window_handle as rwh, Error, WindowSurface};
+use kas::runner::{Error, WindowSurface, raw_window_handle as rwh};
 use std::time::Instant;
 
 /// Per-window data

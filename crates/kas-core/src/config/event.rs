@@ -5,10 +5,10 @@
 
 //! Event handling configuration
 
+use crate::Action;
 use crate::cast::{Cast, CastFloat};
 use crate::event::ModifiersState;
 use crate::geom::Offset;
-use crate::Action;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::cell::Ref;

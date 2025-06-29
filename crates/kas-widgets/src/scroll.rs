@@ -5,7 +5,7 @@
 
 //! Scroll region
 
-use kas::event::{components::ScrollComponent, Scroll};
+use kas::event::{Scroll, components::ScrollComponent};
 use kas::prelude::*;
 use std::fmt::Debug;
 

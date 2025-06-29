@@ -6,13 +6,13 @@
 //! Collection macro
 
 use proc_macro2::{Span, TokenStream as Toks};
-use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
+use quote::{ToTokens, TokenStreamExt, quote, quote_spanned};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
-use syn::{braced, bracketed, parenthesized};
 use syn::{Expr, Ident, LitInt, LitStr, Token};
+use syn::{braced, bracketed, parenthesized};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -157,7 +157,7 @@ pub enum Item {
 }
 
 impl Item {
-    fn parse(input: ParseStream, gen: &mut NameGenerator) -> Result<Self> {
+    fn parse(input: ParseStream, names: &mut NameGenerator) -> Result<Self> {
         if input.peek(LitStr) {
             let text: LitStr = input.parse()?;
             let span = text.span();
@@ -186,9 +186,9 @@ impl Item {
                 def = quote! { ::kas::hidden::Pack::new(#def, #hints) };
             }
 
-            Ok(Item::Label(gen.next(), ty, def))
+            Ok(Item::Label(names.next(), ty, def))
         } else {
-            Ok(Item::Widget(gen.next(), input.parse()?))
+            Ok(Item::Widget(names.next(), input.parse()?))
         }
     }
 }
@@ -198,11 +198,11 @@ pub struct CellCollection(Vec<CellInfo>, Collection);
 
 impl Parse for Collection {
     fn parse(inner: ParseStream) -> Result<Self> {
-        let mut gen = NameGenerator::default();
+        let mut names = NameGenerator::default();
 
         let mut items = vec![];
         while !inner.is_empty() {
-            items.push(Item::parse(inner, &mut gen)?);
+            items.push(Item::parse(inner, &mut names)?);
 
             if inner.is_empty() {
                 break;
@@ -225,7 +225,7 @@ impl Parse for CellCollection {
             return Self::parse_aligned::<kw::column>(input, true);
         }
 
-        let mut gen = NameGenerator::default();
+        let mut names = NameGenerator::default();
 
         let mut cells = vec![];
         let mut items = vec![];
@@ -238,10 +238,10 @@ impl Parse for CellCollection {
             if input.peek(syn::token::Brace) {
                 let inner;
                 let _ = braced!(inner in input);
-                item = Item::parse(&inner, &mut gen)?;
+                item = Item::parse(&inner, &mut names)?;
                 require_comma = false;
             } else {
-                item = Item::parse(input, &mut gen)?;
+                item = Item::parse(input, &mut names)?;
                 require_comma = true;
             }
             items.push(item);
@@ -263,7 +263,7 @@ impl Parse for CellCollection {
 
 impl CellCollection {
     fn parse_aligned<Kw: Parse>(input: ParseStream, transmute: bool) -> Result<Self> {
-        let mut gen = NameGenerator::default();
+        let mut names = NameGenerator::default();
         let mut cells = vec![];
         let mut items = vec![];
 
@@ -281,7 +281,7 @@ impl CellCollection {
                     (a, b) = (b, a);
                 }
                 cells.push(CellInfo::new(a, b));
-                items.push(Item::parse(&inner, &mut gen)?);
+                items.push(Item::parse(&inner, &mut names)?);
 
                 if inner.is_empty() {
                     break;

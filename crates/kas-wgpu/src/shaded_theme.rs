@@ -11,6 +11,7 @@ use std::ops::Range;
 use std::time::Instant;
 
 use crate::{DrawShaded, DrawShadedImpl};
+use kas::Id;
 use kas::cast::traits::*;
 use kas::config::{Config, WindowConfig};
 use kas::dir::{Direction, Directional};
@@ -22,7 +23,6 @@ use kas::theme::dimensions as dim;
 use kas::theme::{Background, ThemeDraw, ThemeSize};
 use kas::theme::{ColorsLinear, FlatTheme, InputState, SimpleTheme, Theme};
 use kas::theme::{FrameStyle, MarkStyle, TextClass};
-use kas::Id;
 
 /// A theme using simple shading to give apparent depth to elements
 #[derive(Clone, Debug)]

@@ -5,8 +5,8 @@
 
 //! A pile of widgets "floating" over the top of each other
 
-use kas::prelude::*;
 use kas::Collection;
+use kas::prelude::*;
 
 /// Make a [`Float`] widget
 ///

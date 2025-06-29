@@ -3,12 +3,12 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use proc_macro2::{Span, TokenStream};
 use proc_macro_error2::emit_error;
+use proc_macro2::{Span, TokenStream};
 use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
 use syn::visit_mut::{self, VisitMut};
-use syn::{parse_quote, Error, Member, Result, Token};
+use syn::{Error, Member, Result, Token, parse_quote};
 
 #[allow(non_camel_case_types)]
 mod kw {

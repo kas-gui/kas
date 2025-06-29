@@ -7,7 +7,7 @@
 
 use kas::layout::{DynGridStorage, GridCellInfo, GridDimensions};
 use kas::layout::{GridSetter, GridSolver, RulesSetter, RulesSolver};
-use kas::{layout, prelude::*, CellCollection};
+use kas::{CellCollection, layout, prelude::*};
 use std::ops::{Index, IndexMut};
 
 /// Make a [`Grid`] widget
@@ -265,7 +265,7 @@ impl<C: CellCollection> Grid<C> {
     ///
     /// Use [`Self::dimensions`] to get expected dimensions.
     #[inline]
-    pub fn layout_storage(&mut self) -> &mut impl layout::GridStorage {
+    pub fn layout_storage(&mut self) -> &mut (impl layout::GridStorage + use<C>) {
         &mut self.layout
     }
 }
@@ -488,7 +488,7 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     }
 
     /// Mutably iterate over childern
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut (GridCellInfo, W)> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut (GridCellInfo, W)> + use<'_, W> {
         ListIterMut { list: self.0 }
     }
 }

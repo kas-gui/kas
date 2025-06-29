@@ -107,7 +107,7 @@ impl State {
     /// Resize if required, redrawing on resize
     ///
     /// Returns a future to redraw. Does nothing if currently redrawing.
-    fn resize(&mut self, (w, h): (u32, u32)) -> Option<impl Future<Output = Pixmap>> {
+    fn resize(&mut self, (w, h): (u32, u32)) -> Option<impl Future<Output = Pixmap> + use<>> {
         let old_state = std::mem::replace(self, State::None);
         match old_state {
             State::None => (),
@@ -172,7 +172,7 @@ mod Svg {
             cx: &mut EventState,
             data: &'static [u8],
             resources_dir: Option<&Path>,
-        ) -> Result<(), impl std::error::Error> {
+        ) -> Result<(), impl std::error::Error + use<>> {
             let source = Source::Static(data, resources_dir.map(|p| p.to_owned()));
             self.load_source(source).map(|_| cx.resize(self))
         }
@@ -196,7 +196,7 @@ mod Svg {
             &mut self,
             cx: &mut EventState,
             path: P,
-        ) -> Result<(), impl std::error::Error> {
+        ) -> Result<(), impl std::error::Error + use<P>> {
             self._load_path(path.as_ref()).map(|_| cx.resize(self))
         }
 
@@ -276,12 +276,11 @@ mod Svg {
                 let size = (pixmap.width(), pixmap.height());
                 let ds = cx.draw_shared();
 
-                if let Some(im_size) = self.image.as_ref().and_then(|h| ds.image_size(h)) {
-                    if im_size != Size::conv(size) {
-                        if let Some(handle) = self.image.take() {
-                            ds.image_free(handle);
-                        }
-                    }
+                if let Some(im_size) = self.image.as_ref().and_then(|h| ds.image_size(h))
+                    && im_size != Size::conv(size)
+                    && let Some(handle) = self.image.take()
+                {
+                    ds.image_free(handle);
                 }
 
                 if self.image.is_none() {
@@ -301,10 +300,10 @@ mod Svg {
                 };
 
                 let own_size: (u32, u32) = self.rect().size.cast();
-                if size != own_size {
-                    if let Some(fut) = self.inner.resize(own_size) {
-                        cx.send_spawn(self.id(), fut);
-                    }
+                if size != own_size
+                    && let Some(fut) = self.inner.resize(own_size)
+                {
+                    cx.send_spawn(self.id(), fut);
                 }
             }
         }

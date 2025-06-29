@@ -3,8 +3,8 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use impl_tools_lib::scope::{Scope, ScopeAttr};
 use impl_tools_lib::SimplePath;
+use impl_tools_lib::scope::{Scope, ScopeAttr};
 use proc_macro2::{Span, TokenStream as Toks};
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};

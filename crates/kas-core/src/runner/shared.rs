@@ -6,13 +6,13 @@
 //! Shared state
 
 use super::{AppData, Error, GraphicsInstance, Pending, Platform};
+use crate::WindowIdFactory;
 use crate::config::Config;
 use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::theme::Theme;
 #[cfg(feature = "clipboard")]
 use crate::util::warn_about_error;
-use crate::WindowIdFactory;
-use crate::{draw, messages::MessageStack, Action, WindowId};
+use crate::{Action, WindowId, draw, messages::MessageStack};
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -214,7 +214,7 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
             // If this fails it is not safe to add the window (though we could just return).
             panic!("add_window: window has wrong Data type!");
         }
-        let window: kas::Window<Data> = std::mem::transmute(window);
+        let window: kas::Window<Data> = unsafe { std::mem::transmute(window) };
 
         // By far the simplest way to implement this is to let our call
         // anscestor, event::Loop::handle, do the work.

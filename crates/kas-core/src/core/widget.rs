@@ -7,9 +7,9 @@
 
 #[allow(unused)] use super::Layout;
 use super::{Node, Tile};
+use crate::Id;
 #[allow(unused)] use crate::event::EventState;
 use crate::event::{ConfigCx, CursorIcon, Event, EventCx, IsUsed, Scroll, Unused};
-use crate::Id;
 #[allow(unused)] use kas_macros as macros;
 use kas_macros::autoimpl;
 
@@ -124,10 +124,10 @@ pub trait Events: Widget + Sized {
     fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
         for index in 0..self.num_children() {
             let id = self.make_child_id(index);
-            if id.is_valid() {
-                if let Some(node) = self.as_node(data).get_child(index) {
-                    cx.configure(node, id);
-                }
+            if id.is_valid()
+                && let Some(node) = self.as_node(data).get_child(index)
+            {
+                cx.configure(node, id);
             }
         }
     }
@@ -173,10 +173,8 @@ pub trait Events: Widget + Sized {
         if Self::REDRAW_ON_HOVER {
             cx.redraw(&self);
         }
-        if is_hovered {
-            if let Some(icon) = self.hover_icon() {
-                cx.set_hover_cursor(icon);
-            }
+        if is_hovered && let Some(icon) = self.hover_icon() {
+            cx.set_hover_cursor(icon);
         }
     }
 

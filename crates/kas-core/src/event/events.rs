@@ -13,8 +13,8 @@ use super::{EventCx, IsUsed, Unused, Used};
 #[allow(unused)] use super::{EventState, GrabMode};
 use super::{Key, KeyEvent, NamedKey, PhysicalKey, Press};
 use crate::geom::{DVec2, Offset};
-use crate::{dir::Direction, Id, WindowId};
 #[allow(unused)] use crate::{Events, Popup};
+use crate::{Id, WindowId, dir::Direction};
 
 /// Events addressed to a widget
 ///
@@ -269,16 +269,16 @@ impl std::ops::Add<Offset> for Event {
 impl std::ops::AddAssign<Offset> for Event {
     fn add_assign(&mut self, offset: Offset) {
         match self {
-            Event::CursorMove { ref mut press } => {
+            Event::CursorMove { press } => {
                 press.coord += offset;
             }
-            Event::PressStart { ref mut press, .. } => {
+            Event::PressStart { press, .. } => {
                 press.coord += offset;
             }
-            Event::PressMove { ref mut press, .. } => {
+            Event::PressMove { press, .. } => {
                 press.coord += offset;
             }
-            Event::PressEnd { ref mut press, .. } => {
+            Event::PressEnd { press, .. } => {
                 press.coord += offset;
             }
             _ => (),

@@ -5,7 +5,7 @@
 
 //! Drawing APIs — draw interface
 
-use super::{color::Rgba, AnimationState};
+use super::{AnimationState, color::Rgba};
 #[allow(unused)] use super::{DrawRounded, DrawRoundedImpl};
 use super::{DrawShared, DrawSharedImpl, ImageId, PassId, PassType, SharedState, WindowCommon};
 use crate::geom::{Offset, Quad, Rect};

@@ -109,12 +109,11 @@ where
         window_id: ww::WindowId,
         event: winit::event::WindowEvent,
     ) {
-        if let Some(id) = self.id_map.get(&window_id) {
-            if let Some(window) = self.windows.get_mut(id) {
-                if window.handle_event(&mut self.state, event) {
-                    el.set_control_flow(ControlFlow::Poll);
-                }
-            }
+        if let Some(id) = self.id_map.get(&window_id)
+            && let Some(window) = self.windows.get_mut(id)
+            && window.handle_event(&mut self.state, event)
+        {
+            el.set_control_flow(ControlFlow::Poll);
         }
     }
 

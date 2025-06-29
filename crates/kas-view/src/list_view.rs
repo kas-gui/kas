@@ -6,12 +6,12 @@
 //! List view controller
 
 use crate::{DataClerk, DataKey, Driver, SelectionMode, SelectionMsg};
+use kas::NavAdvance;
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, FocusSource, Scroll, TimerHandle};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
-use kas::NavAdvance;
 #[allow(unused)] // doc links
 use kas_widgets::ScrollBars;
 use linear_map::set::LinearSet;
@@ -371,10 +371,8 @@ mod ListView {
                     } else {
                         w.key = None; // disables drawing and clicking
                     }
-                } else if full {
-                    if let Some(item) = self.clerk.item(data, &key) {
-                        cx.update(w.widget.as_node(item));
-                    }
+                } else if full && let Some(item) = self.clerk.item(data, &key) {
+                    cx.update(w.widget.as_node(item));
                 }
 
                 if w.key.is_some() {
@@ -597,10 +595,10 @@ mod ListView {
         fn probe(&self, coord: Coord) -> Id {
             let coord = coord + self.scroll.offset();
             for child in &self.widgets[..self.cur_len.cast()] {
-                if child.key.is_some() {
-                    if let Some(id) = child.widget.try_probe(coord) {
-                        return id;
-                    }
+                if child.key.is_some()
+                    && let Some(id) = child.widget.try_probe(coord)
+                {
+                    return id;
                 }
             }
             self.id()
@@ -635,11 +633,11 @@ mod ListView {
         fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
             let id = self.id();
             for w in &mut self.widgets {
-                if let Some(ref key) = w.key {
-                    if let Some(item) = self.clerk.item(data, key) {
-                        let id = key.make_id(&id);
-                        cx.configure(w.widget.as_node(item), id);
-                    }
+                if let Some(ref key) = w.key
+                    && let Some(item) = self.clerk.item(data, key)
+                {
+                    let id = key.make_id(&id);
+                    cx.configure(w.widget.as_node(item), id);
                 }
             }
         }
@@ -815,12 +813,11 @@ mod ListView {
         type Data = C::Data;
 
         fn child_node<'n>(&'n mut self, data: &'n C::Data, index: usize) -> Option<Node<'n>> {
-            if let Some(w) = self.widgets.get_mut(index) {
-                if let Some(ref key) = w.key {
-                    if let Some(item) = self.clerk.item(data, key) {
-                        return Some(w.widget.as_node(item));
-                    }
-                }
+            if let Some(w) = self.widgets.get_mut(index)
+                && let Some(ref key) = w.key
+                && let Some(item) = self.clerk.item(data, key)
+            {
+                return Some(w.widget.as_node(item));
             }
 
             None

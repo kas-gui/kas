@@ -3,17 +3,17 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::widget_args::{member, Child, ChildIdent, WidgetArgs};
+use crate::widget_args::{Child, ChildIdent, WidgetArgs, member};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::scope::{Scope, ScopeItem};
-use proc_macro2::{Span, TokenStream as Toks};
 use proc_macro_error2::{emit_error, emit_warning};
-use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
+use proc_macro2::{Span, TokenStream as Toks};
+use quote::{ToTokens, TokenStreamExt, quote, quote_spanned};
+use syn::ImplItem::{self, Verbatim};
 use syn::parse::{Error, Result};
 use syn::spanned::Spanned;
-use syn::ImplItem::{self, Verbatim};
-use syn::{parse2, parse_quote};
 use syn::{FnArg, Ident, ItemImpl, MacroDelimiter, Member, Meta, Pat, Type};
+use syn::{parse_quote, parse2};
 
 /// Custom widget definition
 ///
@@ -64,11 +64,11 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                 }
 
                 for item in &impl_.items {
-                    if let ImplItem::Fn(ref item) = item {
+                    if let ImplItem::Fn(item) = item {
                         if item.sig.ident == "child_node" {
                             child_node = Some(item.sig.ident.clone());
                         }
-                    } else if let ImplItem::Type(ref item) = item {
+                    } else if let ImplItem::Type(item) = item {
                         if item.ident == "Data" {
                             if let Some(ref ty) = data_ty {
                                 emit_error!(
@@ -97,7 +97,7 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                 }
 
                 for item in &impl_.items {
-                    if let ImplItem::Fn(ref item) = item {
+                    if let ImplItem::Fn(item) = item {
                         if item.sig.ident == "num_children" {
                             num_children = Some(item.sig.ident.clone());
                         } else if item.sig.ident == "get_child" {
@@ -116,7 +116,7 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                 }
 
                 for item in &impl_.items {
-                    if let ImplItem::Type(ref item) = item {
+                    if let ImplItem::Type(item) = item {
                         if item.ident == "Data" {
                             if let Some(ref ty) = data_ty {
                                 emit_error!(
@@ -127,7 +127,7 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                                 data_ty = Some(item.ty.clone());
                             }
                         }
-                    } else if let ImplItem::Fn(ref item) = item {
+                    } else if let ImplItem::Fn(item) = item {
                         if item.sig.ident == "make_child_id" {
                             make_child_id = Some(item.sig.ident.clone());
                         }
@@ -613,7 +613,10 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                                 self.#core.status.size_rules(&self.#core._id, #axis);
                             });
                         } else {
-                            emit_error!(arg.pat, "hidden shenanigans require this parameter to have a name; suggestion: `_axis`");
+                            emit_error!(
+                                arg.pat,
+                                "hidden shenanigans require this parameter to have a name; suggestion: `_axis`"
+                            );
                         }
                     }
                 }
@@ -660,7 +663,10 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
         } else if fn_rect_is_provided {
             layout_impl.items.push(Verbatim(fn_rect));
         } else if let Some(span) = fn_set_rect_span {
-            emit_warning!(span, "cowardly refusing to provide an impl of `fn rect` with custom `fn set_rect` without usage of `widget_set_rect!` and without a property-defined layout");
+            emit_warning!(
+                span,
+                "cowardly refusing to provide an impl of `fn rect` with custom `fn set_rect` without usage of `widget_set_rect!` and without a property-defined layout"
+            );
         }
 
         if let Some((index, _)) = item_idents.iter().find(|(_, ident)| *ident == "try_probe") {

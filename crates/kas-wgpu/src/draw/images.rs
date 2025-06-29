@@ -10,7 +10,7 @@ use kas::draw::color::Rgba;
 use std::collections::HashMap;
 use std::mem::size_of;
 
-use super::{atlases, text_pipe, ShaderManager};
+use super::{ShaderManager, atlases, text_pipe};
 use kas::cast::Conv;
 use kas::draw::{AllocError, ImageFormat, ImageId, PassId};
 use kas::geom::{Quad, Vec2};

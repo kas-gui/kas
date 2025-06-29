@@ -12,10 +12,10 @@ pub use kas_core::runner::*;
 use kas_core::theme::FlatTheme;
 use kas_wgpu::draw::CustomPipeBuilder;
 
+use crate::WindowId;
 use crate::config::{AutoFactory, Config, ConfigFactory};
 use crate::draw::DrawSharedImpl;
 use crate::theme::Theme;
-use crate::WindowId;
 use std::cell::{Ref, RefMut};
 
 /// Builder for a [`Runner`]'s graphics instance

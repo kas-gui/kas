@@ -14,8 +14,8 @@
 //! [KAS Text]: https://github.com/kas-gui/kas-text/
 
 pub use kas_text::{
-    fonts, format, Align, Direction, Effect, EffectFlags, MarkerPos, MarkerPosIter, NotReady,
-    OwningVecIter, Range, Status, Text, TextDisplay, Vec2, DPU,
+    Align, DPU, Direction, Effect, EffectFlags, MarkerPos, MarkerPosIter, NotReady, OwningVecIter,
+    Range, Status, Text, TextDisplay, Vec2, fonts, format,
 };
 
 mod selection;

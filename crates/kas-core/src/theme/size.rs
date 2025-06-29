@@ -220,5 +220,5 @@ pub trait ThemeSize {
 
     /// Get [`SizeRules`] for a text element
     fn text_rules(&self, text: &mut dyn SizableText, class: TextClass, axis: AxisInfo)
-        -> SizeRules;
+    -> SizeRules;
 }

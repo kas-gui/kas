@@ -13,7 +13,7 @@
 //! At the current time, only a minimal selection of dialog boxes are provided
 //! and their design is likely to change.
 
-use crate::{adapt::AdaptWidgetAny, Button, EditBox, Filler, Label};
+use crate::{Button, EditBox, Filler, Label, adapt::AdaptWidgetAny};
 use kas::event::{Command, NamedKey};
 use kas::prelude::*;
 use kas::text::format::FormattableText;

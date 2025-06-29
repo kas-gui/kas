@@ -5,7 +5,7 @@
 
 //! Event handling: mouse events
 
-use super::{velocity, GrabMode, Press, PressSource};
+use super::{GrabMode, Press, PressSource, velocity};
 use crate::event::{Event, EventCx, EventState, FocusSource, ScrollDelta};
 use crate::geom::{Coord, DVec2, Vec2};
 use crate::{Action, Id, NavAdvance, Node, Widget, Window};
@@ -102,10 +102,10 @@ impl Default for Mouse {
 impl Mouse {
     /// Clear all focus and grabs on `target`
     pub(in crate::event::cx) fn cancel_event_focus(&mut self, target: &Id) {
-        if let Some(grab) = self.grab.as_mut() {
-            if grab.start_id == target {
-                grab.cancel = true;
-            }
+        if let Some(grab) = self.grab.as_mut()
+            && grab.start_id == target
+        {
+            grab.cancel = true;
         }
     }
 
@@ -119,46 +119,46 @@ impl Mouse {
     }
 
     pub fn frame_update(&mut self) -> Option<(Id, Event)> {
-        if let Some(grab) = self.grab.as_mut() {
-            if let GrabDetails::Pan(details) = &mut grab.details {
-                // Terminology: pi are old coordinates, qi are new coords
-                let (p1, q1) = (DVec2::conv(details.c0), DVec2::conv(details.c1));
-                details.c0 = details.c1;
+        if let Some(grab) = self.grab.as_mut()
+            && let GrabDetails::Pan(details) = &mut grab.details
+        {
+            // Terminology: pi are old coordinates, qi are new coords
+            let (p1, q1) = (DVec2::conv(details.c0), DVec2::conv(details.c1));
+            details.c0 = details.c1;
 
-                let alpha;
-                let delta;
+            let alpha;
+            let delta;
 
-                if details.mode == PanMode::Pan {
-                    alpha = DVec2(1.0, 0.0);
-                    delta = q1 - p1;
-                } else if let Some((_, coord)) = self.last_pin.as_ref() {
-                    let p2 = DVec2::conv(*coord);
-                    let (pd, qd) = (p2 - p1, p2 - q1);
+            if details.mode == PanMode::Pan {
+                alpha = DVec2(1.0, 0.0);
+                delta = q1 - p1;
+            } else if let Some((_, coord)) = self.last_pin.as_ref() {
+                let p2 = DVec2::conv(*coord);
+                let (pd, qd) = (p2 - p1, p2 - q1);
 
-                    alpha = match details.mode {
-                        PanMode::Full => qd.complex_div(pd),
-                        PanMode::Scale => DVec2((qd.sum_square() / pd.sum_square()).sqrt(), 0.0),
-                        PanMode::Rotate => {
-                            let a = qd.complex_div(pd);
-                            a / a.sum_square().sqrt()
-                        }
-                        _ => unreachable!(),
-                    };
+                alpha = match details.mode {
+                    PanMode::Full => qd.complex_div(pd),
+                    PanMode::Scale => DVec2((qd.sum_square() / pd.sum_square()).sqrt(), 0.0),
+                    PanMode::Rotate => {
+                        let a = qd.complex_div(pd);
+                        a / a.sum_square().sqrt()
+                    }
+                    _ => unreachable!(),
+                };
 
-                    // Average delta from both movements:
-                    delta = (q1 - alpha.complex_mul(p1) + p2 - alpha.complex_mul(p2)) * 0.5;
-                } else {
-                    unreachable!()
-                }
+                // Average delta from both movements:
+                delta = (q1 - alpha.complex_mul(p1) + p2 - alpha.complex_mul(p2)) * 0.5;
+            } else {
+                unreachable!()
+            }
 
-                if alpha.is_finite()
-                    && delta.is_finite()
-                    && (alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO)
-                {
-                    let id = grab.start_id.clone();
-                    let event = Event::Pan { alpha, delta };
-                    return Some((id, event));
-                }
+            if alpha.is_finite()
+                && delta.is_finite()
+                && (alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO)
+            {
+                let id = grab.start_id.clone();
+                let event = Event::Pan { alpha, delta };
+                return Some((id, event));
             }
         }
 
@@ -257,12 +257,11 @@ impl<'a> EventCx<'a> {
     // Clear old hover, set new hover, send events.
     // If there is a popup, only permit descendands of that.
     fn set_hover(&mut self, mut widget: Node<'_>, mut w_id: Option<Id>) {
-        if let Some(ref id) = w_id {
-            if let Some(popup) = self.popups.last() {
-                if !popup.1.id.is_ancestor_of(id) {
-                    w_id = None;
-                }
-            }
+        if let Some(ref id) = w_id
+            && let Some(popup) = self.popups.last()
+            && !popup.1.id.is_ancestor_of(id)
+        {
+            w_id = None;
         }
 
         if self.mouse.hover != w_id {
@@ -463,10 +462,10 @@ impl<'a> EventCx<'a> {
                 if matches!(self.mouse.last_pin.as_ref(), Some((id, _)) if *id != start_id) {
                     self.mouse.last_pin = None;
                 }
-                if self.config.event().mouse_nav_focus() {
-                    if let Some(id) = self.nav_next(node.re(), Some(&start_id), NavAdvance::None) {
-                        self.set_nav_focus(id, FocusSource::Pointer);
-                    }
+                if self.config.event().mouse_nav_focus()
+                    && let Some(id) = self.nav_next(node.re(), Some(&start_id), NavAdvance::None)
+                {
+                    self.set_nav_focus(id, FocusSource::Pointer);
                 }
             }
 

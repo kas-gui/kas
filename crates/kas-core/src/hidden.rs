@@ -9,11 +9,11 @@
 //! hidden by default and direct usage (outside of kas crates) is
 //! not supported (i.e. **changes are not considered breaking**).
 
+#[allow(unused)] use crate::Action;
 use crate::event::ConfigCx;
 use crate::geom::{Rect, Size};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{SizeCx, Text, TextClass};
-#[allow(unused)] use crate::Action;
 use crate::{Events, Layout, Widget};
 use kas_macros::{autoimpl, impl_self};
 

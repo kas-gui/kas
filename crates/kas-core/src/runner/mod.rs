@@ -11,8 +11,8 @@ mod runner;
 mod shared;
 mod window;
 
-use crate::messages::MessageStack;
 use crate::WindowId;
+use crate::messages::MessageStack;
 use event_loop::Loop;
 pub(crate) use shared::RunnerT;
 use shared::State;

@@ -162,22 +162,30 @@ fn create_waker(el: &EventLoop<ProxyAction>) -> std::task::Waker {
     const VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake_by_ref, drop);
 
     unsafe fn clone(data: *const ()) -> RawWaker {
-        let a = Arc::from_raw(data as *const Data);
-        let c = Arc::into_raw(a.clone());
-        let _do_not_drop = Arc::into_raw(a);
-        RawWaker::new(c as *const (), &VTABLE)
+        unsafe {
+            let a = Arc::from_raw(data as *const Data);
+            let c = Arc::into_raw(a.clone());
+            let _do_not_drop = Arc::into_raw(a);
+            RawWaker::new(c as *const (), &VTABLE)
+        }
     }
     unsafe fn wake(data: *const ()) {
-        let a = Arc::from_raw(data as *const Data);
-        a.lock().unwrap().wake_async();
+        unsafe {
+            let a = Arc::from_raw(data as *const Data);
+            a.lock().unwrap().wake_async();
+        }
     }
     unsafe fn wake_by_ref(data: *const ()) {
-        let a = Arc::from_raw(data as *const Data);
-        a.lock().unwrap().wake_async();
-        let _do_not_drop = Arc::into_raw(a);
+        unsafe {
+            let a = Arc::from_raw(data as *const Data);
+            a.lock().unwrap().wake_async();
+            let _do_not_drop = Arc::into_raw(a);
+        }
     }
     unsafe fn drop(data: *const ()) {
-        let _ = Arc::from_raw(data as *const Data);
+        unsafe {
+            let _ = Arc::from_raw(data as *const Data);
+        }
     }
 
     let raw_waker = RawWaker::new(data as *const (), &VTABLE);

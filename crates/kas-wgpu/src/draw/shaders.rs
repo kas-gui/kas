@@ -5,7 +5,7 @@
 
 //! Shader management
 
-use wgpu::{include_spirv, ShaderModule};
+use wgpu::{ShaderModule, include_spirv};
 
 /// Shader manager
 pub struct ShaderManager {
@@ -24,9 +24,7 @@ pub struct ShaderManager {
 }
 
 macro_rules! create {
-    ($device:ident, $path:expr) => {{
-        $device.create_shader_module(include_spirv!($path))
-    }};
+    ($device:ident, $path:expr) => {{ $device.create_shader_module(include_spirv!($path)) }};
 }
 
 impl ShaderManager {

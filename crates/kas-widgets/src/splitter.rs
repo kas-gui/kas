@@ -9,10 +9,10 @@ use std::collections::hash_map::{Entry, HashMap};
 use std::ops::{Index, IndexMut};
 
 use super::{GripMsg, GripPart};
+use kas::Collection;
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::theme::Feature;
-use kas::Collection;
 
 #[impl_self]
 mod Splitter {

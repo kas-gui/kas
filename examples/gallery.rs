@@ -27,8 +27,8 @@ struct AppData {
 }
 
 fn widgets() -> Box<dyn Widget<Data = AppData>> {
-    use kas::widgets::dialog::{TextEdit, TextEditResult};
     use kas::Popup;
+    use kas::widgets::dialog::{TextEdit, TextEditResult};
 
     // A real app might use async loading of resources here (Svg permits loading
     // from a data slice; DrawShared allows allocation from data slice).
@@ -357,7 +357,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 }
 
 fn filter_list() -> Box<dyn Widget<Data = AppData>> {
-    use kas::view::{driver, DataClerk, ListView, SelectionMode, SelectionMsg};
+    use kas::view::{DataClerk, ListView, SelectionMode, SelectionMsg, driver};
 
     const MONTHS: &[&str] = &[
         "January",

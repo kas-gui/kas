@@ -17,8 +17,8 @@
 //! -   [`MenuToggle`]
 //! -   [`Separator`]
 
-use crate::adapt::MapAny;
 use crate::Separator;
+use crate::adapt::MapAny;
 use kas::prelude::*;
 use std::fmt::Debug;
 

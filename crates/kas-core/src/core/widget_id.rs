@@ -23,7 +23,7 @@ use std::{fmt, slice};
 
 thread_local! {
     // Map from hash of path to allocated path
-    static DB: RefCell<HashedMap<u64, *mut usize>> = RefCell::new(HashedMap::with_hasher(HashBuildHasher::new()));
+    static DB: RefCell<HashedMap<u64, *mut usize>> = const { RefCell::new(HashedMap::with_hasher(HashBuildHasher::new())) };
 }
 
 /// Invalid (default) identifier
@@ -999,6 +999,6 @@ mod test {
     fn deduplicate_allocations() {
         let id1 = make_id(&[2, 6, 1, 1, 0, 13, 0, 100, 1000]);
         let id2 = make_id(&[2, 6, 1, 1, 0, 13, 0, 100, 1000]);
-        assert_eq!(id1.0 .0, id2.0 .0);
+        assert_eq!(id1.0.0, id2.0.0);
     }
 }

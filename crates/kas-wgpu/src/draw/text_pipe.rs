@@ -8,7 +8,7 @@
 use super::images::{Images as Pipeline, InstanceA, InstanceRgba, Window};
 use kas::cast::traits::*;
 use kas::config::RasterConfig;
-use kas::draw::{color::Rgba, PassId};
+use kas::draw::{PassId, color::Rgba};
 use kas::geom::{Quad, Rect, Vec2};
 use kas_text::fonts::{self, FaceId};
 use kas_text::{Effect, Glyph, GlyphId, TextDisplay};
@@ -294,7 +294,7 @@ impl Pipeline {
         dpem: f32,
         glyphs: &mut dyn Iterator<Item = Glyph>,
     ) {
-        use swash::scale::{image::Content, Render, Source, StrikeWith};
+        use swash::scale::{Render, Source, StrikeWith, image::Content};
         use swash::zeno::{Angle, Format, Transform};
 
         let face = fonts::library().get_face_store(face_id);

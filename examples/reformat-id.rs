@@ -29,7 +29,9 @@ fn main() {
     } else {
         eprintln!("Failed to convert {n}");
         if n & 3 == 2 {
-            eprintln!("Note: long paths are stack allocated and cannot be reconstructed outside of the constructing thread");
+            eprintln!(
+                "Note: long paths are stack allocated and cannot be reconstructed outside of the constructing thread"
+            );
         }
     }
 }

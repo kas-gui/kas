@@ -5,7 +5,7 @@
 
 //! Event context state
 
-use linear_map::{set::LinearSet, LinearMap};
+use linear_map::{LinearMap, set::LinearSet};
 use press::{Mouse, Touch};
 use smallvec::SmallVec;
 use std::collections::{BTreeMap, HashMap, VecDeque};
@@ -115,11 +115,7 @@ pub struct EventState {
 impl EventState {
     #[inline]
     fn key_focus(&self) -> Option<Id> {
-        if self.key_focus {
-            self.sel_focus.clone()
-        } else {
-            None
-        }
+        if self.key_focus { self.sel_focus.clone() } else { None }
     }
 
     fn clear_key_focus(&mut self) {
@@ -158,39 +154,39 @@ impl EventState {
 
     /// Clear all focus and grabs on `target`
     fn cancel_event_focus(&mut self, target: &Id) {
-        if let Some(id) = self.sel_focus.as_ref() {
-            if target.is_ancestor_of(id) {
-                if let Some(pending) = self.pending_sel_focus.as_mut() {
-                    if pending.target.as_ref() == Some(id) {
-                        pending.target = None;
-                        pending.key_focus = false;
-                    } else {
-                        // We have a new focus target, hence the old one will be cleared
-                    }
+        if let Some(id) = self.sel_focus.as_ref()
+            && target.is_ancestor_of(id)
+        {
+            if let Some(pending) = self.pending_sel_focus.as_mut() {
+                if pending.target.as_ref() == Some(id) {
+                    pending.target = None;
+                    pending.key_focus = false;
                 } else {
-                    self.pending_sel_focus = Some(PendingSelFocus {
-                        target: None,
-                        key_focus: false,
-                        ime: None,
-                        source: FocusSource::Synthetic,
-                    });
+                    // We have a new focus target, hence the old one will be cleared
                 }
+            } else {
+                self.pending_sel_focus = Some(PendingSelFocus {
+                    target: None,
+                    key_focus: false,
+                    ime: None,
+                    source: FocusSource::Synthetic,
+                });
             }
         }
 
-        if let Some(id) = self.nav_focus.as_ref() {
-            if target.is_ancestor_of(id) {
-                if matches!(&self.pending_nav_focus, PendingNavFocus::Set { ref target, .. } if target.as_ref() == Some(id))
-                {
-                    self.pending_nav_focus = PendingNavFocus::None;
-                }
+        if let Some(id) = self.nav_focus.as_ref()
+            && target.is_ancestor_of(id)
+        {
+            if matches!(&self.pending_nav_focus, PendingNavFocus::Set { target, .. } if target.as_ref() == Some(id))
+            {
+                self.pending_nav_focus = PendingNavFocus::None;
+            }
 
-                if matches!(self.pending_nav_focus, PendingNavFocus::None) {
-                    self.pending_nav_focus = PendingNavFocus::Set {
-                        target: None,
-                        source: FocusSource::Synthetic,
-                    };
-                }
+            if matches!(self.pending_nav_focus, PendingNavFocus::None) {
+                self.pending_nav_focus = PendingNavFocus::Set {
+                    target: None,
+                    source: FocusSource::Synthetic,
+                };
             }
         }
 
@@ -254,32 +250,30 @@ impl<'a> EventCx<'a> {
                 }
             };
 
-            if self.key_focus || cmd.suitable_for_sel_focus() {
-                if let Some(id) = self.sel_focus.clone() {
-                    if send(self, id, cmd) {
-                        return;
-                    }
-                }
+            if (self.key_focus || cmd.suitable_for_sel_focus())
+                && let Some(id) = self.sel_focus.clone()
+                && send(self, id, cmd)
+            {
+                return;
             }
 
-            if !self.modifiers.alt_key() {
-                if let Some(id) = self.nav_focus.clone() {
-                    if send(self, id, cmd) {
-                        return;
-                    }
-                }
+            if !self.modifiers.alt_key()
+                && let Some(id) = self.nav_focus.clone()
+                && send(self, id, cmd)
+            {
+                return;
             }
 
-            if let Some(id) = self.popups.last().map(|popup| popup.1.id.clone()) {
-                if send(self, id, cmd) {
-                    return;
-                }
+            if let Some(id) = self.popups.last().map(|popup| popup.1.id.clone())
+                && send(self, id, cmd)
+            {
+                return;
             }
 
-            if let Some(id) = self.nav_fallback.clone() {
-                if send(self, id, cmd) {
-                    return;
-                }
+            if let Some(id) = self.nav_fallback.clone()
+                && send(self, id, cmd)
+            {
+                return;
             }
 
             if matches!(cmd, Command::Debug) {
@@ -298,13 +292,12 @@ impl<'a> EventCx<'a> {
         {
             if let Some(layer) = self.access_layers.get(&id) {
                 // but only when Alt is held or alt-bypass is enabled:
-                if self.modifiers == ModifiersState::ALT
-                    || layer.0 && self.modifiers == ModifiersState::empty()
+                if (self.modifiers == ModifiersState::ALT
+                    || layer.0 && self.modifiers == ModifiersState::empty())
+                    && let Some(id) = layer.1.get(&vkey).cloned()
                 {
-                    if let Some(id) = layer.1.get(&vkey).cloned() {
-                        target = Some(id);
-                        break;
-                    }
+                    target = Some(id);
+                    break;
                 }
             }
         }
@@ -318,10 +311,10 @@ impl<'a> EventCx<'a> {
         } else if self.config.nav_focus && opt_cmd == Some(Command::Tab) {
             let shift = self.modifiers.shift_key();
             self.next_nav_focus_impl(widget.re(), None, shift, FocusSource::Key);
-        } else if opt_cmd == Some(Command::Escape) {
-            if let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
-                self.close_window(id);
-            }
+        } else if opt_cmd == Some(Command::Escape)
+            && let Some(id) = self.popups.last().map(|(id, _, _)| *id)
+        {
+            self.close_window(id);
         }
     }
 
@@ -376,10 +369,10 @@ impl<'a> EventCx<'a> {
     fn send_popup_first(&mut self, mut widget: Node<'_>, id: Option<Id>, event: Event) {
         while let Some(pid) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
             let mut target = pid;
-            if let Some(id) = id.clone() {
-                if target.is_ancestor_of(&id) {
-                    target = id;
-                }
+            if let Some(id) = id.clone()
+                && target.is_ancestor_of(&id)
+            {
+                target = id;
             }
             log::trace!("send_popup_first: id={target}: {event:?}");
             if self.send_event(widget.re(), target, event.clone()) {

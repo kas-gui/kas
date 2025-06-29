@@ -223,18 +223,17 @@ impl<'a> EventCx<'a> {
         }
 
         // Set IME cursor area, if moved.
-        if self.ime.is_some() {
-            if let Some(target) = self.sel_focus.as_ref() {
-                if let Some((mut rect, translation)) = widget.as_tile().find_widget_rect(target) {
-                    if self.ime_cursor_area.size != Size::ZERO {
-                        rect = self.ime_cursor_area;
-                    }
-                    rect += translation;
-                    if rect != self.last_ime_rect {
-                        self.window.set_ime_cursor_area(rect);
-                        self.last_ime_rect = rect;
-                    }
-                }
+        if self.ime.is_some()
+            && let Some(target) = self.sel_focus.as_ref()
+            && let Some((mut rect, translation)) = widget.as_tile().find_widget_rect(target)
+        {
+            if self.ime_cursor_area.size != Size::ZERO {
+                rect = self.ime_cursor_area;
+            }
+            rect += translation;
+            if rect != self.last_ime_rect {
+                self.window.set_ime_cursor_area(rect);
+                self.last_ime_rect = rect;
             }
         }
     }
@@ -339,10 +338,10 @@ impl<'a> EventCx<'a> {
 
                 if state == ElementState::Pressed && !is_synthetic {
                     self.start_key_event(win.as_node(data), logical_key, physical_key);
-                } else if state == ElementState::Released {
-                    if let Some(id) = self.key_depress.remove(&physical_key) {
-                        self.redraw(id);
-                    }
+                } else if state == ElementState::Released
+                    && let Some(id) = self.key_depress.remove(&physical_key)
+                {
+                    self.redraw(id);
                 }
             }
             ModifiersChanged(modifiers) => {
@@ -355,10 +354,10 @@ impl<'a> EventCx<'a> {
             }
             Ime(winit::event::Ime::Enabled) => {
                 // We expect self.ime.is_some(), but it's possible that the request is outdated
-                if self.ime.is_some() {
-                    if let Some(id) = self.sel_focus.clone() {
-                        self.send_event(win.as_node(data), id, Event::ImeFocus);
-                    }
+                if self.ime.is_some()
+                    && let Some(id) = self.sel_focus.clone()
+                {
+                    self.send_event(win.as_node(data), id, Event::ImeFocus);
                 }
             }
             Ime(winit::event::Ime::Disabled) => {
@@ -376,17 +375,17 @@ impl<'a> EventCx<'a> {
                 }
             }
             Ime(winit::event::Ime::Preedit(text, cursor)) => {
-                if self.ime.is_some() {
-                    if let Some(id) = self.sel_focus.clone() {
-                        self.send_event(win.as_node(data), id, Event::ImePreedit(text, cursor));
-                    }
+                if self.ime.is_some()
+                    && let Some(id) = self.sel_focus.clone()
+                {
+                    self.send_event(win.as_node(data), id, Event::ImePreedit(text, cursor));
                 }
             }
             Ime(winit::event::Ime::Commit(text)) => {
-                if self.ime.is_some() {
-                    if let Some(id) = self.sel_focus.clone() {
-                        self.send_event(win.as_node(data), id, Event::ImeCommit(text));
-                    }
+                if self.ime.is_some()
+                    && let Some(id) = self.sel_focus.clone()
+                {
+                    self.send_event(win.as_node(data), id, Event::ImeCommit(text));
                 }
             }
             CursorMoved { position, .. } => self.handle_cursor_moved(win, data, position.into()),

@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 use kas::event::NamedKey;
 use kas::prelude::*;
-use kas::widgets::{column, grid, AccessLabel, Adapt, Button, EditBox};
+use kas::widgets::{AccessLabel, Adapt, Button, EditBox, column, grid};
 
 type Key = kas::event::Key<kas::event::SmolStr>;
 

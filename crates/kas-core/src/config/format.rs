@@ -6,7 +6,7 @@
 //! Configuration formats and read/write support
 
 #[cfg(feature = "serde")]
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use std::path::Path;
 use thiserror::Error;
 

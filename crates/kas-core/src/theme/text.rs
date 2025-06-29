@@ -353,11 +353,7 @@ impl<T: FormattableText> Text<T> {
     /// Check whether the status is at least `status`
     #[inline]
     pub fn check_status(&self, status: Status) -> Result<(), NotReady> {
-        if self.status >= status {
-            Ok(())
-        } else {
-            Err(NotReady)
-        }
+        if self.status >= status { Ok(()) } else { Err(NotReady) }
     }
 
     /// Check whether the text is fully prepared and ready for usage

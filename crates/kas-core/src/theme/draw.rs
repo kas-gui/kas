@@ -6,14 +6,14 @@
 //! Widget-facing high-level draw API
 
 use super::{FrameStyle, MarkStyle, SelectionStyle, SizeCx, Text, TextClass, ThemeSize};
+#[allow(unused)] use crate::Layout;
 use crate::dir::Direction;
 use crate::draw::color::{ParseError, Rgb};
 use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType};
 use crate::event::{ConfigCx, EventState};
 use crate::geom::{Offset, Rect};
-use crate::text::{format::FormattableText, Effect, TextDisplay};
-#[allow(unused)] use crate::Layout;
-use crate::{autoimpl, Id, Tile};
+use crate::text::{Effect, TextDisplay, format::FormattableText};
+use crate::{Id, Tile, autoimpl};
 use std::ops::{Bound, Range, RangeBounds};
 use std::time::Instant;
 

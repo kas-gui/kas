@@ -5,10 +5,10 @@
 
 //! Colour schemes
 
+use crate::Id;
 use crate::draw::color::{Rgba, Rgba8Srgb};
 use crate::event::EventState;
 use crate::theme::Background;
-use crate::Id;
 
 const MULT_DEPRESS: f32 = 0.75;
 const MULT_HIGHLIGHT: f32 = 1.25;
