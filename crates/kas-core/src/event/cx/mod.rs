@@ -18,8 +18,8 @@ use super::*;
 use crate::cast::Cast;
 use crate::config::WindowConfig;
 use crate::geom::{Rect, Size};
-use crate::messages::{Erased, MessageStack};
-use crate::runner::{Platform, RunnerT, WindowDataErased};
+use crate::messages::Erased;
+use crate::runner::{MessageStack, Platform, RunnerT, WindowDataErased};
 use crate::util::WidgetHierarchy;
 use crate::{Action, Id, NavAdvance, Node, WindowId};
 

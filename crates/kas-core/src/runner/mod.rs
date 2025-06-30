@@ -12,10 +12,11 @@ mod shared;
 mod window;
 
 use crate::WindowId;
-use crate::messages::MessageStack;
+use crate::messages::Erased;
 use event_loop::Loop;
 pub(crate) use shared::RunnerT;
 use shared::State;
+use std::fmt::Debug;
 pub use window::Window;
 pub(crate) use window::WindowDataErased;
 
@@ -29,6 +30,109 @@ pub use common::{GraphicsInstance, WindowSurface};
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 pub extern crate raw_window_handle;
+
+/// A type-erased message stack
+///
+/// This is a stack over [`Erased`], with some downcasting methods.
+/// It is a component of [`EventCx`](crate::event::EventCx) and usually only
+/// used through that, thus the interface here is incomplete.
+#[must_use]
+#[derive(Debug, Default)]
+pub struct MessageStack {
+    base: usize,
+    count: usize,
+    stack: Vec<Erased>,
+}
+
+impl MessageStack {
+    /// Construct an empty stack
+    #[inline]
+    pub fn new() -> Self {
+        MessageStack::default()
+    }
+
+    /// Set the "stack base" to the current length
+    ///
+    /// Any messages on the stack before this method is called cannot be removed
+    /// until the base has been reset. This allows multiple widget tree
+    /// traversals with a single stack.
+    #[inline]
+    pub(crate) fn set_base(&mut self) {
+        self.base = self.stack.len();
+    }
+
+    /// Get the current operation count
+    ///
+    /// This is incremented every time the message stack is changed.
+    #[inline]
+    pub(crate) fn get_op_count(&self) -> usize {
+        self.count
+    }
+
+    /// Reset the base; return true if messages are available after reset
+    #[inline]
+    pub(crate) fn reset_and_has_any(&mut self) -> bool {
+        self.base = 0;
+        !self.stack.is_empty()
+    }
+
+    /// True if the stack has messages available
+    #[inline]
+    pub fn has_any(&self) -> bool {
+        self.stack.len() > self.base
+    }
+
+    /// Push a type-erased message to the stack
+    #[inline]
+    pub(crate) fn push_erased(&mut self, msg: Erased) {
+        self.count = self.count.wrapping_add(1);
+        self.stack.push(msg);
+    }
+
+    /// Pop a type-erased message from the stack, if non-empty
+    #[inline]
+    pub fn pop_erased(&mut self) -> Option<Erased> {
+        self.count = self.count.wrapping_add(1);
+        self.stack.pop()
+    }
+
+    /// Try popping the last message from the stack with the given type
+    pub fn try_pop<M: Debug + 'static>(&mut self) -> Option<M> {
+        if self.has_any() && self.stack.last().map(|m| m.is::<M>()).unwrap_or(false) {
+            self.count = self.count.wrapping_add(1);
+            self.stack.pop().unwrap().downcast::<M>().ok().map(|m| *m)
+        } else {
+            None
+        }
+    }
+
+    /// Try observing the last message on the stack without popping
+    pub fn try_peek<M: Debug + 'static>(&self) -> Option<&M> {
+        if self.has_any() {
+            self.stack.last().and_then(|m| m.downcast_ref::<M>())
+        } else {
+            None
+        }
+    }
+
+    /// Debug the last message on the stack, if any
+    pub fn peek_debug(&self) -> Option<&dyn Debug> {
+        self.stack.last().map(Erased::debug)
+    }
+}
+
+impl Drop for MessageStack {
+    fn drop(&mut self) {
+        for msg in self.stack.drain(..) {
+            if msg.is::<crate::event::components::KineticStart>() {
+                // We can safely ignore this message
+                continue;
+            }
+
+            log::warn!(target: "kas_core::erased", "unhandled: {msg:?}");
+        }
+    }
+}
 
 /// Application state
 ///

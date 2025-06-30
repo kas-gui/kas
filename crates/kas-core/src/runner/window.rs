@@ -7,7 +7,7 @@
 
 use super::common::WindowSurface;
 use super::shared::State;
-use super::{AppData, GraphicsInstance, Platform};
+use super::{AppData, GraphicsInstance, MessageStack, Platform};
 use crate::cast::{Cast, Conv};
 use crate::config::{Config, WindowConfig};
 use crate::decorations::Decorations;
@@ -16,7 +16,6 @@ use crate::draw::{AnimationState, color::Rgba};
 use crate::event::{ConfigCx, CursorIcon, EventState};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::SolveCache;
-use crate::messages::MessageStack;
 use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, ThemeSize, Window as _};
 use crate::{Action, Id, Tile, Widget, WindowId, autoimpl};
 use std::cell::RefCell;
