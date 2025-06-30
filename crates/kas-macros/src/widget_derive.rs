@@ -444,15 +444,29 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
         }
     };
 
+    let fn_role = quote! {
+        #[inline]
+        fn role(&self) -> ::kas::Role<'_> {
+            self.#inner.role()
+        }
+    };
+
     if let Some(index) = tile_impl {
         let tile_impl = &mut scope.impls[index];
+        let item_idents = collect_idents(tile_impl);
+        let has_item = |name| item_idents.iter().any(|(_, ident)| ident == name);
+
         tile_impl.items.push(Verbatim(required_tile_methods));
         tile_impl.items.push(Verbatim(tile_methods));
+        if !has_item("role") {
+            tile_impl.items.push(Verbatim(fn_role));
+        }
     } else {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Tile for #impl_target {
                 #required_tile_methods
                 #tile_methods
+                #fn_role
             }
         });
     }

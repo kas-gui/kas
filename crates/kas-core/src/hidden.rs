@@ -14,7 +14,7 @@ use crate::event::ConfigCx;
 use crate::geom::{Rect, Size};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{SizeCx, Text, TextClass};
-use crate::{Events, Layout, Widget};
+use crate::{Events, Layout, Role, Tile, Widget};
 use kas_macros::{autoimpl, impl_self};
 
 #[impl_self]
@@ -52,6 +52,12 @@ mod StrLabel {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.text
                 .set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
+        }
+    }
+
+    impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::Label(self.text.as_str())
         }
     }
 

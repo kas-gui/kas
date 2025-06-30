@@ -12,7 +12,7 @@ use crate::event::{ConfigCx, Event, EventCx, IsUsed, ResizeDirection, Scroll, Un
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
-use crate::{Action, Events, Icon, Id, Layout, Tile, TileExt, Widget};
+use crate::{Action, Events, Icon, Id, Layout, Role, Tile, TileExt, Widget};
 use kas_macros::{impl_self, widget_set_rect};
 use smallvec::SmallVec;
 use std::num::NonZeroU32;
@@ -239,6 +239,12 @@ mod Window {
                     });
                 }
             }
+        }
+    }
+
+    impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::Window
         }
     }
 

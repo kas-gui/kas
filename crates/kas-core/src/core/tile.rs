@@ -7,7 +7,7 @@
 
 use crate::geom::{Coord, Offset, Rect};
 use crate::util::IdentifyWidget;
-use crate::{ChildIndices, HasId, Id, Layout};
+use crate::{ChildIndices, HasId, Id, Layout, Role};
 use kas_macros::autoimpl;
 
 #[allow(unused)] use super::{Events, Widget};
@@ -81,6 +81,15 @@ pub trait Tile: Layout {
     /// [`Display`]: std::fmt::Display
     fn identify(&self) -> IdentifyWidget<'_> {
         unimplemented!() // make rustdoc show that this is a provided method
+    }
+
+    /// Describe the widget's role
+    ///
+    /// This descriptor supports accessibility tooling and UI introspection.
+    ///
+    /// The default implementation simply returns [`Role::Unknown`].
+    fn role(&self) -> Role<'_> {
+        Role::Unknown
     }
 
     /// Get child indices available to recursion

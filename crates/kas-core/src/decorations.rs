@@ -126,6 +126,12 @@ mod Label {
         }
     }
 
+    impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::Label(self.text.as_str())
+        }
+    }
+
     impl Events for Self {
         type Data = ();
 
@@ -179,6 +185,12 @@ mod MarkButton {
 
         fn draw(&self, mut draw: DrawCx) {
             draw.mark(self.rect(), self.style);
+        }
+    }
+
+    impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::Button
         }
     }
 
