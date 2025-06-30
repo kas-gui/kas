@@ -24,7 +24,7 @@ rust-version.workspace = true
 features = ["stable"]
 rustdoc-args = ["--cfg", "docsrs"]
 # To build locally:
-# RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --features=stable,internal_doc --all --no-deps --open
+# RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --features=stable,internal_doc --workspace --no-deps --open
 
 [features]
 #########  meta / build features  #########
