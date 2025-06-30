@@ -14,20 +14,48 @@ use std::ops::RangeInclusive;
 /// Requirements on type used by [`Spinner`]
 ///
 /// Implementations are provided for standard float and integer types.
+///
+/// The type must support conversion to and approximate conversion from `f64`
+/// in order to enable programmatic control (e.g. tests, accessibility tools).
+/// NOTE: this restriction might be revised in the future once Rust supports
+/// specialization.
 pub trait SpinnerValue:
-    Copy + PartialOrd + std::fmt::Debug + std::str::FromStr + ToString + 'static
+    Copy
+    + PartialOrd
+    + std::fmt::Debug
+    + std::str::FromStr
+    + ToString
+    + Cast<f64>
+    + ConvApprox<f64>
+    + 'static
 {
     /// The default step size (usually 1)
     fn default_step() -> Self;
 
+    /// Add `step` without wrapping
+    ///
+    /// The implementation should saturate on overflow, at least for fixed-precision types.
+    fn add_step(self, step: Self) -> Self;
+
+    /// Subtract `step` without wrapping
+    ///
+    /// The implementation should saturate on overflow, at least for fixed-precision types.
+    fn sub_step(self, step: Self) -> Self;
+
     /// Clamp `self` to the range `l_bound..=u_bound`
-    fn clamp(self, l_bound: Self, u_bound: Self) -> Self;
-
-    /// Add `x` without overflow, clamping the result to no more than `u_bound`
-    fn add_step(self, step: Self, u_bound: Self) -> Self;
-
-    /// Subtract `step` without overflow, clamping the result to no less than `l_bound`
-    fn sub_step(self, step: Self, l_bound: Self) -> Self;
+    ///
+    /// The default implementation is equivalent to the `std` implementations
+    /// for [`Ord`] and for floating-point types.
+    fn clamp(self, l_bound: Self, u_bound: Self) -> Self {
+        assert!(l_bound <= u_bound);
+        if self < l_bound {
+            l_bound
+        } else if self > u_bound {
+            u_bound
+        } else {
+            self
+        }
+    }
 }
 
 macro_rules! impl_float {
@@ -36,15 +64,14 @@ macro_rules! impl_float {
             fn default_step() -> Self {
                 1.0
             }
+            fn add_step(self, step: Self) -> Self {
+                self + step
+            }
+            fn sub_step(self, step: Self) -> Self {
+                self - step
+            }
             fn clamp(self, l_bound: Self, u_bound: Self) -> Self {
                 <$t>::clamp(self, l_bound, u_bound)
-            }
-
-            fn add_step(self, step: Self, u_bound: Self) -> Self {
-                ((self / step + 1.0).round() * step).min(u_bound)
-            }
-            fn sub_step(self, step: Self, l_bound: Self) -> Self {
-                ((self / step - 1.0).round() * step).max(l_bound)
             }
         }
     };
@@ -59,16 +86,14 @@ macro_rules! impl_int {
             fn default_step() -> Self {
                 1
             }
+            fn add_step(self, step: Self) -> Self {
+                self.saturating_add(step)
+            }
+            fn sub_step(self, step: Self) -> Self {
+                self.saturating_sub(step)
+            }
             fn clamp(self, l_bound: Self, u_bound: Self) -> Self {
                 Ord::clamp(self, l_bound, u_bound)
-            }
-
-            fn add_step(self, step: Self, u_bound: Self) -> Self {
-                ((self / step).saturating_add(1)).saturating_mul(step).min(u_bound)
-            }
-            fn sub_step(self, step: Self, l_bound: Self) -> Self {
-                #[allow(clippy::manual_div_ceil)] // only stable on a subset of types used
-                (((self + step - 1) / step).saturating_sub(1)).saturating_mul(step).max(l_bound)
             }
         }
     };
@@ -116,11 +141,11 @@ impl<A, T: SpinnerValue> SpinnerGuard<A, T> {
     fn handle_btn(&mut self, btn: SpinBtn) -> Option<T> {
         let old_value = self.value;
         let value = match btn {
-            SpinBtn::Down => old_value.sub_step(self.step, self.start),
-            SpinBtn::Up => old_value.add_step(self.step, self.end),
+            SpinBtn::Down => old_value.sub_step(self.step),
+            SpinBtn::Up => old_value.add_step(self.step),
         };
 
-        self.value = value;
+        self.value = value.clamp(self.start, self.end);
         (value != old_value).then_some(value)
     }
 }
