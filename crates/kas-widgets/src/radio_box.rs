@@ -134,6 +134,10 @@ mod RadioButton {
     /// A radio button with label
     ///
     /// See also [`RadioBox`] which excludes the label.
+    ///
+    /// # Messages
+    ///
+    /// [`kas::messages::Activate`] may be used to select this radio button.
     #[widget]
     #[layout(list![self.inner, self.label].with_direction(self.direction()))]
     pub struct RadioButton<A> {

@@ -175,6 +175,10 @@ mod CheckButton {
     /// A check button with label
     ///
     /// This is a [`CheckBox`] with a label.
+    ///
+    /// # Messages
+    ///
+    /// [`kas::messages::Activate`] may be used to toggle the state.
     #[widget]
     #[layout(list![self.inner, self.label].with_direction(self.direction()))]
     pub struct CheckButton<A> {

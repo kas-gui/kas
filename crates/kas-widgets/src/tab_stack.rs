@@ -20,6 +20,10 @@ mod Tab {
     /// A tab
     ///
     /// This is a special variant of `Button` which sends a [`Select`] on press.
+    ///
+    /// # Messages
+    ///
+    /// [`kas::messages::Activate`] may be used to open this tab.
     #[widget]
     #[layout(frame!(self.label).with_style(FrameStyle::Tab))]
     pub struct Tab {

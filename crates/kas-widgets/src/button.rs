@@ -16,6 +16,10 @@ mod Button {
     /// A push-button with a generic label
     ///
     /// Default alignment of content is centered.
+    ///
+    /// # Messages
+    ///
+    /// [`kas::messages::Activate`] may be used to trigger the button.
     #[widget]
     #[layout(
         frame!(self.inner)

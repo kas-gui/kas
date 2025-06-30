@@ -5,19 +5,25 @@
 
 //! Standard messages
 //!
-//! These are messages that may be sent via [`EventCx::push`](crate::event::EventCx::push).
+//! These are messages that may be sent via [`EventCx::push`] or [`EventState::send`].
 
+#[allow(unused)]
+use crate::{
+    Events,
+    event::{EventCx, EventState},
+};
 use std::any::Any;
 use std::fmt::Debug;
 
 use crate::event::PhysicalKey;
 
-/// Message: activate
+/// Synthetically trigger a "click" action
 ///
-/// Example: a button's label has a keyboard shortcut; this message is sent by the label to
-/// trigger the button.
+/// This message may be used to trigger a "click" action, for example to press a
+/// button or toggle a check box state.
 ///
 /// Payload: the key press which caused this message to be emitted, if any.
+/// (This allows a visual state change to be bound to the key's release.)
 #[derive(Copy, Clone, Debug)]
 pub struct Activate(pub Option<PhysicalKey>);
 
