@@ -3,15 +3,15 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Standard messages
+//! # Standard messages
 //!
-//! These are messages that may be sent via [`EventCx::push`] or [`EventState::send`].
+//! These are pre-defined message types which may be sent to a widget via
+//! [`EventCx::push`] or [`EventState::send`] in order to trigger some action.
+//!
+//! [`Erased`] is the type-erasure container allowing any type supporting
+//! [`Any`] + [`Debug`] to be sent or placed on the message stack.
 
-#[allow(unused)]
-use crate::{
-    Events,
-    event::{EventCx, EventState},
-};
+#[allow(unused)] use crate::event::{EventCx, EventState};
 use std::any::Any;
 use std::fmt::Debug;
 
@@ -27,7 +27,11 @@ use crate::event::PhysicalKey;
 #[derive(Copy, Clone, Debug)]
 pub struct Activate(pub Option<PhysicalKey>);
 
-/// Message: select child
+/// Request selection of the sender
+///
+/// This is only useful when pushed by a child widget or sent to a child widget
+/// for usage by a parent container supporting selection. The recipient must use
+/// [`EventCx::last_child`] to determine the selection target.
 ///
 /// Example: a list supports selection; a child emits this to cause itself to be selected.
 #[derive(Clone, Debug)]
@@ -36,7 +40,7 @@ pub struct Select;
 trait AnyDebug: Any + Debug {}
 impl<T: Any + Debug> AnyDebug for T {}
 
-/// A type-erased value
+/// A type-erased message
 ///
 /// This is vaguely a wrapper over `Box<dyn (Any + Debug)>`, except that Rust
 /// doesn't (yet) support multi-trait objects.
