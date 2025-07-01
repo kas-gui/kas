@@ -7,6 +7,7 @@
 
 use crate::{EditField, EditGuard, MarkButton};
 use kas::event::Command;
+use kas::messages::SetValueF64;
 use kas::prelude::*;
 use kas::theme::{FrameStyle, MarkStyle, Text, TextClass};
 use std::ops::RangeInclusive;
@@ -192,6 +193,10 @@ mod Spinner {
     /// -   Ensure that range end points are a multiple of `step`
     /// -   With floating-point types, ensure that `step` is exactly
     ///     representable, e.g. an integer or a power of 2.
+    ///
+    /// ### Messages
+    ///
+    /// [`SetValueF64`] may be used to set the input value.
     #[widget]
     #[layout(
         frame!(row![self.edit, self.unit, column! [self.b_up, self.b_down]])
@@ -404,6 +409,14 @@ mod Spinner {
                 Some(value)
             } else if let Some(btn) = cx.try_pop::<SpinBtn>() {
                 self.edit.guard.handle_btn(btn)
+            } else if let Some(SetValueF64(v)) = cx.try_pop() {
+                match v.try_cast_approx() {
+                    Ok(value) => Some(value),
+                    Err(err) => {
+                        log::warn!("Slider failed to handle SetValueF64: {err}");
+                        None
+                    }
+                }
             } else {
                 None
             };

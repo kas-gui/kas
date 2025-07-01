@@ -27,6 +27,12 @@ use crate::event::PhysicalKey;
 #[derive(Copy, Clone, Debug)]
 pub struct Activate(pub Option<PhysicalKey>);
 
+/// Set an input value from `f64`
+///
+/// This message may be used to set a numeric value to an input field.
+#[derive(Copy, Clone, Debug)]
+pub struct SetValueF64(pub f64);
+
 /// Request selection of the sender
 ///
 /// This is only useful when pushed by a child widget or sent to a child widget

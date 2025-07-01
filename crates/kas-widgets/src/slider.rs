@@ -7,6 +7,7 @@
 
 use super::{GripMsg, GripPart};
 use kas::event::{Command, FocusSource};
+use kas::messages::SetValueF64;
 use kas::prelude::*;
 use kas::theme::Feature;
 use std::fmt::Debug;
@@ -62,6 +63,10 @@ mod Slider {
     /// A slider
     ///
     /// Sliders allow user input of a value from a fixed range.
+    ///
+    /// ### Messages
+    ///
+    /// [`SetValueF64`] may be used to set the input value.
     #[autoimpl(Debug ignore self.state_fn, self.on_move)]
     #[widget]
     pub struct Slider<A, T: SliderValue, D: Directional = Direction> {
@@ -377,7 +382,21 @@ mod Slider {
                 Some(GripMsg::PressMove(pos)) => {
                     self.apply_grip_offset(cx, data, pos);
                 }
-                _ => (),
+                Some(GripMsg::PressEnd(_)) => (),
+                None => {
+                    if let Some(SetValueF64(v)) = cx.try_pop() {
+                        match v.try_cast_approx() {
+                            Ok(value) => {
+                                if self.set_value(cx, value) {
+                                    if let Some(ref f) = self.on_move {
+                                        f(cx, data, self.value);
+                                    }
+                                }
+                            }
+                            Err(err) => log::warn!("Slider failed to handle SetValueF64: {err}"),
+                        }
+                    }
+                }
             }
         }
     }
