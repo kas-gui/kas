@@ -11,7 +11,6 @@ use kas::prelude::*;
 use kas::theme::Feature;
 use std::fmt::Debug;
 use std::ops::{Add, RangeInclusive, Sub};
-use std::time::Duration;
 
 /// Requirements on type used by [`Slider`]
 ///
@@ -86,21 +85,6 @@ macro_rules! impl_slider_ty {
 }
 impl_slider_ty!(i8, i16, i32, i64, i128, isize);
 impl_slider_ty!(u8, u16, u32, u64, u128, usize);
-
-/// Implement for [`Duration`]
-///
-/// The default step size is 1 second.
-impl SliderValue for Duration {
-    fn default_step() -> Self {
-        Duration::from_secs(1)
-    }
-    fn div_as_f64(self, rhs: Self) -> f64 {
-        self.as_secs_f64() / rhs.as_secs_f64()
-    }
-    fn mul_f64(self, scalar: f64) -> Self {
-        self.mul_f64(scalar)
-    }
-}
 
 #[impl_self]
 mod Slider {
