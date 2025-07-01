@@ -69,7 +69,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
         Radio(u32),
         Edit(String),
         Slider(i32),
-        Spinner(i32),
+        SpinBox(i32),
         Text(String),
     }
 
@@ -207,8 +207,8 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
             ComboBox::new(entries, |_, data: &Data| data.entry).with_msg(|m| Item::Combo(m))
         ],
         row![
-            "Spinner",
-            Spinner::new_msg(0..=10, |_, data: &Data| data.value, Item::Spinner)
+            "SpinBox",
+            SpinBox::new_msg(0..=10, |_, data: &Data| data.value, Item::SpinBox)
         ],
         row![
             "Slider",
@@ -247,7 +247,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
                 Item::Check(v) => data.check = v,
                 Item::Radio(radio) => data.radio = radio,
                 Item::Combo(m) => data.entry = m,
-                Item::Spinner(value) | Item::Slider(value) => {
+                Item::SpinBox(value) | Item::Slider(value) => {
                     data.value = value;
                 }
                 Item::Text(text) => data.text = text,

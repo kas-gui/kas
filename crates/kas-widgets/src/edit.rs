@@ -961,7 +961,7 @@ mod EditField {
                 }
                 Event::Scroll(delta) => {
                     // In single-line mode we do not handle purely vertical
-                    // scrolling; this improves compatibility with Spinner.
+                    // scrolling; this improves compatibility with SpinBox.
                     if !self.multi_line() && delta.is_vertical() {
                         return Unused;
                     }

@@ -5,7 +5,7 @@
 
 //! Drivers for configuration types
 
-use crate::{Button, CheckButton, ComboBox, Spinner};
+use crate::{Button, CheckButton, ComboBox, SpinBox};
 use kas::config::{ConfigMsg, EventConfigMsg, MousePan};
 use kas::prelude::*;
 
@@ -63,21 +63,21 @@ mod EventConfig {
     pub struct EventConfig {
         core: widget_core!(),
         #[widget]
-        menu_delay: Spinner<(), u32>,
+        menu_delay: SpinBox<(), u32>,
         #[widget]
-        touch_select_delay: Spinner<(), u32>,
+        touch_select_delay: SpinBox<(), u32>,
         #[widget]
-        kinetic_timeout: Spinner<(), u32>,
+        kinetic_timeout: SpinBox<(), u32>,
         #[widget]
-        kinetic_decay_mul: Spinner<(), f32>,
+        kinetic_decay_mul: SpinBox<(), f32>,
         #[widget]
-        kinetic_decay_sub: Spinner<(), f32>,
+        kinetic_decay_sub: SpinBox<(), f32>,
         #[widget]
-        kinetic_grab_sub: Spinner<(), f32>,
+        kinetic_grab_sub: SpinBox<(), f32>,
         #[widget]
-        scroll_dist_em: Spinner<(), f32>,
+        scroll_dist_em: SpinBox<(), f32>,
         #[widget]
-        pan_dist_thresh: Spinner<(), f32>,
+        pan_dist_thresh: SpinBox<(), f32>,
         #[widget]
         mouse_pan: ComboBox<(), MousePan>,
         #[widget]
@@ -112,44 +112,44 @@ mod EventConfig {
 
             EventConfig {
                 core: Default::default(),
-                menu_delay: Spinner::new(0..=5_000, |cx, _| cx.config().base().event.menu_delay_ms)
+                menu_delay: SpinBox::new(0..=5_000, |cx, _| cx.config().base().event.menu_delay_ms)
                     .with_step(50)
                     .with_msg(EventConfigMsg::MenuDelay)
                     .with_unit("ms"),
-                touch_select_delay: Spinner::new(0..=5_000, |cx: &ConfigCx, _| {
+                touch_select_delay: SpinBox::new(0..=5_000, |cx: &ConfigCx, _| {
                     cx.config().base().event.touch_select_delay_ms
                 })
                 .with_step(50)
                 .with_msg(EventConfigMsg::TouchSelectDelay)
                 .with_unit("ms"),
-                kinetic_timeout: Spinner::new(0..=500, |cx: &ConfigCx, _| {
+                kinetic_timeout: SpinBox::new(0..=500, |cx: &ConfigCx, _| {
                     cx.config().base().event.kinetic_timeout_ms
                 })
                 .with_step(5)
                 .with_msg(EventConfigMsg::KineticTimeout)
                 .with_unit("ms"),
-                kinetic_decay_mul: Spinner::new(0.0..=1.0, |cx: &ConfigCx, _| {
+                kinetic_decay_mul: SpinBox::new(0.0..=1.0, |cx: &ConfigCx, _| {
                     cx.config().base().event.kinetic_decay_mul
                 })
                 .with_step(0.0625)
                 .with_msg(EventConfigMsg::KineticDecayMul),
-                kinetic_decay_sub: Spinner::new(0.0..=1.0e4, |cx: &ConfigCx, _| {
+                kinetic_decay_sub: SpinBox::new(0.0..=1.0e4, |cx: &ConfigCx, _| {
                     cx.config().base().event.kinetic_decay_sub
                 })
                 .with_step(10.0)
                 .with_msg(EventConfigMsg::KineticDecaySub),
-                kinetic_grab_sub: Spinner::new(0.0..=1.0e4, |cx: &ConfigCx, _| {
+                kinetic_grab_sub: SpinBox::new(0.0..=1.0e4, |cx: &ConfigCx, _| {
                     cx.config().base().event.kinetic_grab_sub
                 })
                 .with_step(5.0)
                 .with_msg(EventConfigMsg::KineticGrabSub),
-                scroll_dist_em: Spinner::new(0.125..=125.0, |cx: &ConfigCx, _| {
+                scroll_dist_em: SpinBox::new(0.125..=125.0, |cx: &ConfigCx, _| {
                     cx.config().base().event.scroll_dist_em
                 })
                 .with_step(0.125)
                 .with_msg(EventConfigMsg::ScrollDistEm)
                 .with_unit("em"),
-                pan_dist_thresh: Spinner::new(0.25..=25.0, |cx: &ConfigCx, _| {
+                pan_dist_thresh: SpinBox::new(0.25..=25.0, |cx: &ConfigCx, _| {
                     cx.config().base().event.pan_dist_thresh
                 })
                 .with_step(0.25)
