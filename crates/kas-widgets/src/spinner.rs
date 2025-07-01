@@ -8,7 +8,7 @@
 use crate::{EditField, EditGuard, MarkButton};
 use kas::event::Command;
 use kas::prelude::*;
-use kas::theme::{FrameStyle, MarkStyle, TextClass};
+use kas::theme::{FrameStyle, MarkStyle, Text, TextClass};
 use std::ops::RangeInclusive;
 
 /// Requirements on type used by [`Spinner`]
@@ -194,13 +194,14 @@ mod Spinner {
     ///     representable, e.g. an integer or a power of 2.
     #[widget]
     #[layout(
-        frame!(row![self.edit, column! [self.b_up, self.b_down]])
+        frame!(row![self.edit, self.unit, column! [self.b_up, self.b_down]])
             .with_style(FrameStyle::EditBox)
     )]
     pub struct Spinner<A, T: SpinnerValue> {
         core: widget_core!(),
         #[widget]
         edit: EditField<SpinnerGuard<A, T>>,
+        unit: Text<String>,
         #[widget(&())]
         b_up: MarkButton<SpinBtn>,
         #[widget(&())]
@@ -222,6 +223,7 @@ mod Spinner {
                 core: Default::default(),
                 edit: EditField::new(SpinnerGuard::new(range, Box::new(state_fn)))
                     .with_width_em(3.0, 8.0),
+                unit: Default::default(),
                 b_up: MarkButton::new_msg(MarkStyle::Point(Direction::Up), SpinBtn::Up),
                 b_down: MarkButton::new_msg(MarkStyle::Point(Direction::Down), SpinBtn::Down),
                 on_change: None,
@@ -299,6 +301,23 @@ mod Spinner {
             self
         }
 
+        /// Set the unit
+        ///
+        /// This is an annotation shown after the value.
+        pub fn set_unit(&mut self, cx: &mut EventState, unit: impl ToString) {
+            self.unit.set_text(unit.to_string());
+            let act = self.unit.reprepare_action();
+            cx.action(self, act);
+        }
+
+        /// Set the unit (inline)
+        ///
+        /// This method should only be used before the UI has started.
+        pub fn with_unit(mut self, unit: impl ToString) -> Self {
+            self.unit.set_text(unit.to_string());
+            self
+        }
+
         /// Set the step size
         #[inline]
         #[must_use]
@@ -316,6 +335,7 @@ mod Spinner {
 
         fn draw(&self, mut draw: DrawCx) {
             self.edit.draw(draw.re());
+            self.unit.draw(draw.re());
             self.b_up.draw(draw.re());
             self.b_down.draw(draw.re());
         }
@@ -332,6 +352,10 @@ mod Spinner {
 
     impl Events for Self {
         type Data = A;
+
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.text_configure(&mut self.unit);
+        }
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
             let mut value = None;
