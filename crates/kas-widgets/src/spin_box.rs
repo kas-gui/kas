@@ -7,7 +7,7 @@
 
 use crate::{EditField, EditGuard, MarkButton};
 use kas::event::Command;
-use kas::messages::SetValueF64;
+use kas::messages::{SetValueF64, SetValueString};
 use kas::prelude::*;
 use kas::theme::{FrameStyle, MarkStyle, Text, TextClass};
 use std::ops::RangeInclusive;
@@ -175,6 +175,7 @@ impl<A, T: SpinValue> EditGuard for SpinGuard<A, T> {
             edit.guard.parsed = Some(edit.guard.value);
             is_err = false;
         } else {
+            edit.guard.parsed = None;
             is_err = true;
         };
         edit.set_error_state(cx, is_err);
@@ -197,6 +198,8 @@ mod SpinBox {
     /// ### Messages
     ///
     /// [`SetValueF64`] may be used to set the input value.
+    ///
+    /// [`SetValueString`] may be used to set the input as a text value.
     #[widget]
     #[layout(
         frame!(row![self.edit, self.unit, column! [self.b_up, self.b_down]])
@@ -417,6 +420,10 @@ mod SpinBox {
                         None
                     }
                 }
+            } else if let Some(SetValueString(string)) = cx.try_pop() {
+                self.edit.set_string(cx, string);
+                SpinGuard::edit(&mut self.edit, cx, data);
+                self.edit.guard.parsed
             } else {
                 None
             };

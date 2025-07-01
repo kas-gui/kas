@@ -9,6 +9,7 @@ use crate::{ScrollBar, ScrollMsg};
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{Command, CursorIcon, ElementState, FocusSource, ImePurpose, PhysicalKey, Scroll};
 use kas::geom::Vec2;
+use kas::messages::SetValueString;
 use kas::prelude::*;
 use kas::text::{NotReady, SelectionHelper};
 use kas::theme::{Background, FrameStyle, Text, TextClass};
@@ -336,6 +337,12 @@ mod EditBox {
     ///
     /// By default, the editor supports a single-line only;
     /// [`Self::with_multi_line`] and [`Self::with_class`] can be used to change this.
+    ///
+    /// ### Messages
+    ///
+    /// [`SetValueString`] may be used to replace the entire text, where
+    /// [`Self::is_editable`]. This triggers the action handlers
+    /// [`EditGuard::edit`] followed by [`EditGuard::activate`].
     #[autoimpl(Clone, Default, Debug where G: trait)]
     #[widget]
     pub struct EditBox<G: EditGuard = DefaultGuard<()>> {
@@ -413,10 +420,18 @@ mod EditBox {
     impl Events for Self {
         type Data = G::Data;
 
-        fn handle_messages(&mut self, cx: &mut EventCx<'_>, _: &G::Data) {
+        fn handle_messages(&mut self, cx: &mut EventCx<'_>, data: &G::Data) {
             if let Some(ScrollMsg(y)) = cx.try_pop() {
                 self.inner
                     .set_scroll_offset(cx, Offset(self.inner.view_offset.0, y));
+            }
+
+            if self.is_editable()
+                && let Some(SetValueString(string)) = cx.try_pop()
+            {
+                self.set_string(cx, string);
+                G::edit(&mut self.inner, cx, data);
+                G::activate(&mut self.inner, cx, data);
             }
         }
 
@@ -459,6 +474,8 @@ mod EditBox {
         }
 
         /// Set text contents from a `String`
+        ///
+        /// This method does not call action handlers on the [`EditGuard`].
         #[inline]
         pub fn set_string(&mut self, cx: &mut EventState, text: String) {
             self.inner.set_string(cx, text);
@@ -733,6 +750,12 @@ mod EditField {
     /// scope for optimization, given that currently layout is re-run from
     /// scratch on each key stroke). Regardless, this approach is not designed
     /// to scale to handle large documents via a single `EditField` widget.
+    ///
+    /// ### Messages
+    ///
+    /// [`SetValueString`] may be used to replace the entire text, where
+    /// [`Self::is_editable`]. This triggers the action handlers
+    /// [`EditGuard::edit`] followed by [`EditGuard::activate`].
     #[autoimpl(Clone, Debug where G: trait)]
     #[widget]
     pub struct EditField<G: EditGuard = DefaultGuard<()>> {
@@ -1021,6 +1044,18 @@ mod EditField {
                 },
             }
         }
+
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &G::Data) {
+            if !self.editable {
+                return;
+            }
+
+            if let Some(SetValueString(string)) = cx.try_pop() {
+                self.set_string(cx, string);
+                G::edit(self, cx, data);
+                G::activate(self, cx, data);
+            }
+        }
     }
 
     impl Scrollable for Self {
@@ -1102,6 +1137,8 @@ mod EditField {
         }
 
         /// Set text contents from a `String`
+        ///
+        /// This method does not call action handlers on the [`EditGuard`].
         ///
         /// NOTE: we could add a `set_str` variant of this method but there
         /// doesn't appear to be a need.

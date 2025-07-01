@@ -33,6 +33,12 @@ pub struct Activate(pub Option<PhysicalKey>);
 #[derive(Copy, Clone, Debug)]
 pub struct SetValueF64(pub f64);
 
+/// Set an input value from a `String`
+///
+/// This message may be used to set a text value to an input field.
+#[derive(Clone, Debug)]
+pub struct SetValueString(pub String);
+
 /// Request selection of the sender
 ///
 /// This is only useful when pushed by a child widget or sent to a child widget
