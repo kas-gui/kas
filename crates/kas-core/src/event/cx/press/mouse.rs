@@ -118,7 +118,7 @@ impl Mouse {
         icon
     }
 
-    pub fn frame_update(&mut self) -> Option<(Id, Event)> {
+    pub fn frame_update(&mut self) -> Option<(Id, Event<'static>)> {
         if let Some(grab) = self.grab.as_mut()
             && let GrabDetails::Pan(details) = &mut grab.details
         {

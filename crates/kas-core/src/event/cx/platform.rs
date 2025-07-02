@@ -331,7 +331,7 @@ impl<'a> EventCx<'a> {
                         event.text = None;
                     }
 
-                    if self.send_event(win.as_node(data), id, Event::Key(event, is_synthetic)) {
+                    if self.send_event(win.as_node(data), id, Event::Key(&event, is_synthetic)) {
                         return;
                     }
                 }
@@ -378,14 +378,14 @@ impl<'a> EventCx<'a> {
                 if self.ime.is_some()
                     && let Some(id) = self.sel_focus.clone()
                 {
-                    self.send_event(win.as_node(data), id, Event::ImePreedit(text, cursor));
+                    self.send_event(win.as_node(data), id, Event::ImePreedit(&text, cursor));
                 }
             }
             Ime(winit::event::Ime::Commit(text)) => {
                 if self.ime.is_some()
                     && let Some(id) = self.sel_focus.clone()
                 {
-                    self.send_event(win.as_node(data), id, Event::ImeCommit(text));
+                    self.send_event(win.as_node(data), id, Event::ImeCommit(&text));
                 }
             }
             CursorMoved { position, .. } => self.handle_cursor_moved(win, data, position.into()),

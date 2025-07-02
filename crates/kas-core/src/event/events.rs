@@ -22,7 +22,7 @@ use crate::{Id, WindowId, dir::Direction};
 /// [`Event::pass_when_disabled`].
 #[non_exhaustive]
 #[derive(Clone, Debug, PartialEq)]
-pub enum Event {
+pub enum Event<'a> {
     /// Command input
     ///
     /// A generic "command". The source is often but not always a key press.
@@ -60,7 +60,7 @@ pub enum Event {
     /// NOTE: unlike Winit, we force `text = None` for control chars and when
     /// <kbd>Ctrl</kbd>, <kbd>Alt</kbd> or <kbd>Super</kbd> modifier keys are
     /// pressed. This is subject to change.
-    Key(KeyEvent, bool),
+    Key(&'a KeyEvent, bool),
     /// Input Method Editor: composed text changed
     ///
     /// Parameters are `text, cursor`.
@@ -68,7 +68,7 @@ pub enum Event {
     /// This is only received after
     /// [requesting key focus](EventState::request_key_focus) with some `ime`
     /// purpose.
-    ImePreedit(String, Option<(usize, usize)>),
+    ImePreedit(&'a str, Option<(usize, usize)>),
     /// Input Method Editor: composed text committed
     ///
     /// Parameters are `text`.
@@ -76,7 +76,7 @@ pub enum Event {
     /// This is only received after
     /// [requesting key focus](EventState::request_key_focus) with some `ime`
     /// purpose.
-    ImeCommit(String),
+    ImeCommit(&'a str),
     /// A mouse or touchpad scroll event
     Scroll(ScrollDelta),
     /// A mouse or touch-screen move/zoom/rotate event
@@ -256,17 +256,17 @@ pub enum Event {
     MouseHover(bool),
 }
 
-impl std::ops::Add<Offset> for Event {
+impl<'a> std::ops::Add<Offset> for Event<'a> {
     type Output = Self;
 
     #[inline]
-    fn add(mut self, offset: Offset) -> Event {
+    fn add(mut self, offset: Offset) -> Self {
         self += offset;
         self
     }
 }
 
-impl std::ops::AddAssign<Offset> for Event {
+impl<'a> std::ops::AddAssign<Offset> for Event<'a> {
     fn add_assign(&mut self, offset: Offset) {
         match self {
             Event::CursorMove { press } => {
@@ -286,7 +286,7 @@ impl std::ops::AddAssign<Offset> for Event {
     }
 }
 
-impl Event {
+impl<'a> Event<'a> {
     /// Call `f` on any "activation" event
     ///
     /// Activation is considered:
@@ -792,4 +792,19 @@ impl ScrollDelta {
             _ => None,
         }
     }
+}
+
+#[cfg(test)]
+#[test]
+fn sizes() {
+    use core::mem::size_of;
+    assert_eq!(size_of::<Command>(), 1);
+    assert_eq!(size_of::<PhysicalKey>(), 8);
+    assert_eq!(size_of::<KeyEvent>(), 128);
+    assert_eq!(size_of::<ScrollDelta>(), 12);
+    assert_eq!(size_of::<Affine>(), 32);
+    assert_eq!(size_of::<Press>(), 32);
+    assert_eq!(size_of::<TimerHandle>(), 8);
+    assert_eq!(size_of::<WindowId>(), 4);
+    assert_eq!(size_of::<FocusSource>(), 1);
 }
