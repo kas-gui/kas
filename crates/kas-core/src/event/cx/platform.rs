@@ -45,7 +45,6 @@ impl EventState {
             pending_update: None,
             pending_sel_focus: None,
             pending_nav_focus: PendingNavFocus::None,
-            pending_cmds: Default::default(),
             action: Action::empty(),
         }
     }
@@ -162,20 +161,8 @@ impl EventState {
                 cx.set_sel_focus(cx.window, win.as_node(data), pending);
             }
 
-            while let Some((id, cmd)) = cx.pending_cmds.pop_front() {
-                if cmd == Command::Exit {
-                    cx.runner.exit();
-                } else if cmd == Command::Close {
-                    cx.handle_close();
-                } else {
-                    log::trace!(target: "kas_core::event", "sending pending command {cmd:?} to {id}");
-                    cx.send_event(win.as_node(data), id, Event::Command(cmd, None));
-                }
-            }
-
             while let Some((id, msg)) = cx.send_queue.pop_front() {
-                log::trace!(target: "kas_core::event", "sending message {msg:?} to {id}");
-                cx.replay(win.as_node(data), id, msg);
+                cx.send_or_replay(win.as_node(data), id, msg);
             }
 
             // Poll futures. TODO(opt): this does not need to happen so often,
@@ -269,7 +256,7 @@ impl<'a> EventCx<'a> {
 
                     // Replay message. This could push another future; if it
                     // does we should poll it immediately to start its work.
-                    self.replay(widget.re(), id, msg);
+                    self.send_or_replay(widget.re(), id, msg);
                 }
             }
         }

@@ -177,7 +177,7 @@ mod ComboBox {
                                 return Used;
                             }
                         } else if self.popup.is_open() && self.popup.is_ancestor_of(&id) {
-                            cx.send_command(id, Command::Activate);
+                            cx.send(id, Command::Activate);
                             return Used;
                         }
                     }

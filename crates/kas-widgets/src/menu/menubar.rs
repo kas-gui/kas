@@ -208,7 +208,7 @@ mod MenuBar {
                     if !self.rect().contains(press.coord) {
                         // not on the menubar
                         self.delayed_open = None;
-                        cx.send_command(id, Command::Activate);
+                        cx.send(id, Command::Activate);
                     }
                     Used
                 }
