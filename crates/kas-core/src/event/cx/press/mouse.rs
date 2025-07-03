@@ -19,20 +19,12 @@ const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
 
 const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-enum PanMode {
-    Pan,
-    Rotate,
-    Scale,
-    Full,
-}
-
 #[derive(Clone, Debug)]
 struct PanDetails {
     c0: Coord,
     c1: Coord,
     moved: bool,
-    mode: PanMode,
+    mode: (bool, bool), // (scale, rotate)
 }
 
 #[derive(Clone, Debug)]
@@ -47,7 +39,8 @@ impl GrabDetails {
         matches!(self, GrabDetails::Pan(_))
     }
 
-    fn pan(coord: Coord, mode: PanMode) -> Self {
+    /// `mode` is `(scale, rotate)`
+    fn pan(coord: Coord, mode: (bool, bool)) -> Self {
         GrabDetails::Pan(PanDetails {
             c0: coord,
             c1: coord,
@@ -129,27 +122,25 @@ impl Mouse {
             let alpha;
             let delta;
 
-            if details.mode == PanMode::Pan {
-                alpha = DVec2(1.0, 0.0);
-                delta = q1 - p1;
-            } else if let Some((_, coord)) = self.last_pin.as_ref() {
+            if let Some((_, coord)) = self.last_pin.as_ref() {
                 let p2 = DVec2::conv(*coord);
                 let (pd, qd) = (p2 - p1, p2 - q1);
 
                 alpha = match details.mode {
-                    PanMode::Full => qd.complex_div(pd),
-                    PanMode::Scale => DVec2((qd.sum_square() / pd.sum_square()).sqrt(), 0.0),
-                    PanMode::Rotate => {
+                    (true, true) => qd.complex_div(pd),
+                    (true, false) => DVec2((qd.sum_square() / pd.sum_square()).sqrt(), 0.0),
+                    (false, true) => {
                         let a = qd.complex_div(pd);
                         a / a.sum_square().sqrt()
                     }
-                    _ => unreachable!(),
+                    (false, false) => DVec2(1.0, 0.0),
                 };
 
                 // Average delta from both movements:
                 delta = (q1 - alpha.complex_mul(p1) + p2 - alpha.complex_mul(p2)) * 0.5;
             } else {
-                unreachable!()
+                alpha = DVec2(1.0, 0.0);
+                delta = q1 - p1;
             }
 
             if alpha.is_finite()
@@ -198,16 +189,16 @@ impl Mouse {
         coord: Coord,
         mode: GrabMode,
     ) -> bool {
-        let have_pin = matches!(&self.last_pin, Some((id2, _)) if id == *id2);
         let details = match mode {
             GrabMode::Click => GrabDetails::Click,
             GrabMode::Grab => GrabDetails::Grab,
-            GrabMode::PanRotate if have_pin => GrabDetails::pan(coord, PanMode::Rotate),
-            GrabMode::PanScale if have_pin => GrabDetails::pan(coord, PanMode::Scale),
-            GrabMode::PanFull if have_pin => GrabDetails::pan(coord, PanMode::Full),
-            mode => {
-                assert!(mode.is_pan());
-                GrabDetails::pan(coord, PanMode::Pan)
+            GrabMode::Pan { scale, rotate } => {
+                // Do we have a pin?
+                if matches!(&self.last_pin, Some((id2, _)) if id == *id2) {
+                    GrabDetails::pan(coord, (scale, rotate))
+                } else {
+                    GrabDetails::pan(coord, (false, false))
+                }
             }
         };
         if let Some(ref mut grab) = self.grab {

@@ -55,7 +55,7 @@ impl TouchGrab {
 #[derive(Clone, Debug)]
 struct PanGrab {
     id: Id,
-    mode: GrabMode,
+    mode: (bool, bool), // (scale, rotate)
     n: u16,
     coords: [(Coord, Coord); MAX_PAN_GRABS],
 }
@@ -68,7 +68,8 @@ pub(in crate::event::cx) struct Touch {
 }
 
 impl Touch {
-    pub(super) fn set_pan_on(&mut self, id: Id, mode: GrabMode, coord: Coord) -> (u16, u16) {
+    /// `mode` is `(scale, rotate)`
+    pub(super) fn set_pan_on(&mut self, id: Id, mode: (bool, bool), coord: Coord) -> (u16, u16) {
         for (gi, grab) in self.pan_grab.iter_mut().enumerate() {
             if grab.id == id {
                 debug_assert_eq!(grab.mode, mode);
@@ -196,8 +197,8 @@ impl Touch {
             true
         } else if self.touch_grab.len() < MAX_TOUCHES {
             let mut pan_grab = (u16::MAX, 0);
-            if mode.is_pan() {
-                pan_grab = self.set_pan_on(id.clone(), mode, coord);
+            if let GrabMode::Pan { scale, rotate } = mode {
+                pan_grab = self.set_pan_on(id.clone(), (scale, rotate), coord);
             }
 
             self.touch_grab.push(TouchGrab {
@@ -285,7 +286,6 @@ impl<'a> EventCx<'a> {
     pub(in crate::event::cx) fn touch_frame_update(&mut self, mut node: Node<'_>) {
         for gi in 0..self.touch.pan_grab.len() {
             let grab = &mut self.touch.pan_grab[gi];
-            debug_assert!(grab.mode != GrabMode::Grab);
             assert!(grab.n > 0);
 
             // Terminology: pi are old coordinates, qi are new coords
@@ -295,7 +295,7 @@ impl<'a> EventCx<'a> {
             let alpha;
             let delta;
 
-            if grab.mode == GrabMode::PanOnly || grab.n == 1 {
+            if grab.n == 1 {
                 alpha = DVec2(1.0, 0.0);
                 delta = q1 - p1;
             } else {
@@ -306,13 +306,13 @@ impl<'a> EventCx<'a> {
                 let (pd, qd) = (p2 - p1, q2 - q1);
 
                 alpha = match grab.mode {
-                    GrabMode::PanFull => qd.complex_div(pd),
-                    GrabMode::PanScale => DVec2((qd.sum_square() / pd.sum_square()).sqrt(), 0.0),
-                    GrabMode::PanRotate => {
+                    (true, true) => qd.complex_div(pd),
+                    (true, false) => DVec2((qd.sum_square() / pd.sum_square()).sqrt(), 0.0),
+                    (false, true) => {
                         let a = qd.complex_div(pd);
                         a / a.sum_square().sqrt()
                     }
-                    _ => unreachable!(),
+                    (false, false) => DVec2(1.0, 0.0),
                 };
 
                 // Average delta from both movements:

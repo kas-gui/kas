@@ -408,7 +408,7 @@ mod Mandlebrot {
                 }
                 Event::PressStart { press } => {
                     return press
-                        .grab(self.id(), event::GrabMode::PanFull)
+                        .grab(self.id(), event::GrabMode::PAN_FULL)
                         .with_icon(event::CursorIcon::Grabbing)
                         .complete(cx);
                 }
