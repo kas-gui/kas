@@ -8,7 +8,7 @@
 use super::{GrabMode, Press, PressSource, velocity};
 use crate::config::EventWindowConfig;
 use crate::event::{Event, EventCx, EventState, FocusSource};
-use crate::geom::{Coord, DVec2, Vec2};
+use crate::geom::{Affine, Coord, DVec2, Vec2};
 use crate::{Action, Id, NavAdvance, Node, Widget, Window};
 use cast::{Cast, CastApprox, Conv};
 use smallvec::SmallVec;
@@ -292,39 +292,18 @@ impl<'a> EventCx<'a> {
             let (p1, q1) = (DVec2::conv(grab.coords[0].0), DVec2::conv(grab.coords[0].1));
             grab.coords[0].0 = grab.coords[0].1;
 
-            let alpha;
-            let delta;
-
-            if grab.n == 1 {
-                alpha = DVec2(1.0, 0.0);
-                delta = q1 - p1;
+            let transform = if grab.n == 1 {
+                Affine::translate(q1 - p1)
             } else {
-                // We don't use more than two touches: information would be
-                // redundant (although it could be averaged).
+                // Only use the first two touches (we don't need more info)
                 let (p2, q2) = (DVec2::conv(grab.coords[1].0), DVec2::conv(grab.coords[1].1));
                 grab.coords[1].0 = grab.coords[1].1;
-                let (pd, qd) = (p2 - p1, q2 - q1);
-
-                alpha = match grab.mode {
-                    (true, true) => qd.complex_div(pd),
-                    (true, false) => DVec2((qd.sum_square() / pd.sum_square()).sqrt(), 0.0),
-                    (false, true) => {
-                        let a = qd.complex_div(pd);
-                        a / a.sum_square().sqrt()
-                    }
-                    (false, false) => DVec2(1.0, 0.0),
-                };
-
-                // Average delta from both movements:
-                delta = (q1 - alpha.complex_mul(p1) + q2 - alpha.complex_mul(p2)) * 0.5;
-            }
+                Affine::pan(p1, q1, p2, q2, grab.mode)
+            };
 
             let id = grab.id.clone();
-            if alpha.is_finite()
-                && delta.is_finite()
-                && (alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO)
-            {
-                let event = Event::Pan { alpha, delta };
+            if transform.is_finite() && transform != Affine::IDENTITY {
+                let event = Event::Pan(transform);
                 self.send_event(node.re(), id, event);
             }
         }

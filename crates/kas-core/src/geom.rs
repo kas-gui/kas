@@ -19,7 +19,9 @@
 use crate::cast::*;
 use crate::dir::Directional;
 
+mod transform;
 mod vector;
+pub use transform::{Affine, Linear};
 pub use vector::{DVec2, Quad, Vec2, Vec3};
 
 macro_rules! impl_common {

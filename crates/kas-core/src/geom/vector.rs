@@ -329,6 +329,8 @@ macro_rules! impl_vec2 {
             }
 
             /// Take the complex reciprocal
+            ///
+            /// If both components are zero then the result will not be finite.
             #[inline]
             #[must_use = "method does not modify self but returns a new value"]
             pub fn complex_inv(self) -> Self {

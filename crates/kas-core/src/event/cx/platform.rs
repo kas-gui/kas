@@ -212,8 +212,8 @@ impl<'a> EventCx<'a> {
     pub(crate) fn frame_update(&mut self, mut widget: Node<'_>) {
         self.need_frame_update = false;
         log::debug!(target: "kas_core::event", "Processing frame update");
-        if let Some((target, event)) = self.mouse.frame_update() {
-            self.send_event(widget.re(), target, event);
+        if let Some((target, affine)) = self.mouse.frame_update() {
+            self.send_event(widget.re(), target, Event::Pan(affine));
         }
         self.touch_frame_update(widget.re());
 

@@ -7,7 +7,7 @@
 
 use super::{GrabMode, Press, PressSource, velocity};
 use crate::event::{Event, EventCx, EventState, FocusSource, ScrollDelta};
-use crate::geom::{Coord, DVec2, Vec2};
+use crate::geom::{Affine, Coord, DVec2, Vec2};
 use crate::{Action, Id, NavAdvance, Node, Widget, Window};
 use cast::{Cast, CastApprox, Conv, ConvApprox};
 use std::time::{Duration, Instant};
@@ -111,45 +111,24 @@ impl Mouse {
         icon
     }
 
-    pub fn frame_update(&mut self) -> Option<(Id, Event<'static>)> {
+    pub fn frame_update(&mut self) -> Option<(Id, Affine)> {
         if let Some(grab) = self.grab.as_mut()
             && let GrabDetails::Pan(details) = &mut grab.details
         {
-            // Terminology: pi are old coordinates, qi are new coords
-            let (p1, q1) = (DVec2::conv(details.c0), DVec2::conv(details.c1));
+            // Mouse coordinates:
+            let (old, new) = (DVec2::conv(details.c0), DVec2::conv(details.c1));
             details.c0 = details.c1;
 
-            let alpha;
-            let delta;
-
-            if let Some((_, coord)) = self.last_pin.as_ref() {
-                let p2 = DVec2::conv(*coord);
-                let (pd, qd) = (p2 - p1, p2 - q1);
-
-                alpha = match details.mode {
-                    (true, true) => qd.complex_div(pd),
-                    (true, false) => DVec2((qd.sum_square() / pd.sum_square()).sqrt(), 0.0),
-                    (false, true) => {
-                        let a = qd.complex_div(pd);
-                        a / a.sum_square().sqrt()
-                    }
-                    (false, false) => DVec2(1.0, 0.0),
-                };
-
-                // Average delta from both movements:
-                delta = (q1 - alpha.complex_mul(p1) + p2 - alpha.complex_mul(p2)) * 0.5;
+            let transform = if let Some((_, coord)) = self.last_pin.as_ref() {
+                let y = DVec2::conv(*coord); // pin coordinate
+                Affine::pan(old, new, y, y, details.mode)
             } else {
-                alpha = DVec2(1.0, 0.0);
-                delta = q1 - p1;
-            }
+                Affine::translate(new - old)
+            };
 
-            if alpha.is_finite()
-                && delta.is_finite()
-                && (alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO)
-            {
+            if transform.is_finite() && transform != Affine::IDENTITY {
                 let id = grab.start_id.clone();
-                let event = Event::Pan { alpha, delta };
-                return Some((id, event));
+                return Some((id, transform));
             }
         }
 
