@@ -244,7 +244,7 @@ where
             };
             let c = self.cols.accent;
             self.draw
-                .circle(Quad::from_center(coord.cast(), r), inner, c);
+                .circle(Quad::from_center(coord.cast_approx(), r), inner, c);
         }
     }
 
