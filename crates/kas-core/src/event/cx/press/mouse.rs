@@ -7,9 +7,9 @@
 
 use super::{GrabMode, Press, PressSource, velocity};
 use crate::event::{Event, EventCx, EventState, FocusSource, ScrollDelta};
-use crate::geom::{Coord, DVec2, Vec2};
+use crate::geom::{Affine, Coord, DVec2};
 use crate::{Action, Id, NavAdvance, Node, Widget, Window};
-use cast::{Cast, CastApprox, Conv, ConvApprox};
+use cast::{Cast, CastApprox, ConvApprox};
 use std::time::{Duration, Instant};
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 use winit::window::CursorIcon;
@@ -19,20 +19,12 @@ const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
 
 const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-enum PanMode {
-    Pan,
-    Rotate,
-    Scale,
-    Full,
-}
-
 #[derive(Clone, Debug)]
 struct PanDetails {
-    c0: Coord,
-    c1: Coord,
+    c0: DVec2,
+    c1: DVec2,
     moved: bool,
-    mode: PanMode,
+    mode: (bool, bool), // (scale, rotate)
 }
 
 #[derive(Clone, Debug)]
@@ -47,10 +39,11 @@ impl GrabDetails {
         matches!(self, GrabDetails::Pan(_))
     }
 
-    fn pan(coord: Coord, mode: PanMode) -> Self {
+    /// `mode` is `(scale, rotate)`
+    fn pan(position: DVec2, mode: (bool, bool)) -> Self {
         GrabDetails::Pan(PanDetails {
-            c0: coord,
-            c1: coord,
+            c0: position,
+            c1: position,
             moved: false,
             mode,
         })
@@ -75,9 +68,9 @@ pub(in crate::event::cx) struct Mouse {
     last_click_button: MouseButton,
     last_click_repetitions: u32,
     last_click_timeout: Instant,
-    last_pin: Option<(Id, Coord)>,
+    last_pin: Option<(Id, DVec2)>,
     pub(super) grab: Option<MouseGrab>,
-    last_position: Vec2,
+    last_position: DVec2,
     pub(super) samples: velocity::Samples,
 }
 
@@ -93,7 +86,7 @@ impl Default for Mouse {
             last_click_timeout: Instant::now(),
             last_pin: None,
             grab: None,
-            last_position: Vec2::ZERO,
+            last_position: DVec2::ZERO,
             samples: Default::default(),
         }
     }
@@ -118,47 +111,23 @@ impl Mouse {
         icon
     }
 
-    pub fn frame_update(&mut self) -> Option<(Id, Event)> {
+    pub fn frame_update(&mut self) -> Option<(Id, Affine)> {
         if let Some(grab) = self.grab.as_mut()
             && let GrabDetails::Pan(details) = &mut grab.details
         {
-            // Terminology: pi are old coordinates, qi are new coords
-            let (p1, q1) = (DVec2::conv(details.c0), DVec2::conv(details.c1));
+            // Mouse coordinates:
+            let (old, new) = (details.c0, details.c1);
             details.c0 = details.c1;
 
-            let alpha;
-            let delta;
-
-            if details.mode == PanMode::Pan {
-                alpha = DVec2(1.0, 0.0);
-                delta = q1 - p1;
-            } else if let Some((_, coord)) = self.last_pin.as_ref() {
-                let p2 = DVec2::conv(*coord);
-                let (pd, qd) = (p2 - p1, p2 - q1);
-
-                alpha = match details.mode {
-                    PanMode::Full => qd.complex_div(pd),
-                    PanMode::Scale => DVec2((qd.sum_square() / pd.sum_square()).sqrt(), 0.0),
-                    PanMode::Rotate => {
-                        let a = qd.complex_div(pd);
-                        a / a.sum_square().sqrt()
-                    }
-                    _ => unreachable!(),
-                };
-
-                // Average delta from both movements:
-                delta = (q1 - alpha.complex_mul(p1) + p2 - alpha.complex_mul(p2)) * 0.5;
+            let transform = if let Some((_, y)) = self.last_pin.as_ref() {
+                Affine::pan(old, new, *y, *y, details.mode)
             } else {
-                unreachable!()
-            }
+                Affine::translate(new - old)
+            };
 
-            if alpha.is_finite()
-                && delta.is_finite()
-                && (alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO)
-            {
+            if transform.is_finite() && transform != Affine::IDENTITY {
                 let id = grab.start_id.clone();
-                let event = Event::Pan { alpha, delta };
-                return Some((id, event));
+                return Some((id, transform));
             }
         }
 
@@ -198,16 +167,19 @@ impl Mouse {
         coord: Coord,
         mode: GrabMode,
     ) -> bool {
-        let have_pin = matches!(&self.last_pin, Some((id2, _)) if id == *id2);
         let details = match mode {
             GrabMode::Click => GrabDetails::Click,
             GrabMode::Grab => GrabDetails::Grab,
-            GrabMode::PanRotate if have_pin => GrabDetails::pan(coord, PanMode::Rotate),
-            GrabMode::PanScale if have_pin => GrabDetails::pan(coord, PanMode::Scale),
-            GrabMode::PanFull if have_pin => GrabDetails::pan(coord, PanMode::Full),
-            mode => {
-                assert!(mode.is_pan());
-                GrabDetails::pan(coord, PanMode::Pan)
+            GrabMode::Pan { scale, rotate } => {
+                let position = self.last_position;
+                debug_assert_eq!(coord, position.cast_approx());
+
+                // Do we have a pin?
+                if matches!(&self.last_pin, Some((id2, _)) if id == *id2) {
+                    GrabDetails::pan(position, (scale, rotate))
+                } else {
+                    GrabDetails::pan(position, (false, false))
+                }
             }
         };
         if let Some(ref mut grab) = self.grab {
@@ -238,15 +210,15 @@ impl Mouse {
 }
 
 impl EventState {
-    pub(crate) fn mouse_pin(&self) -> Option<(Coord, bool)> {
-        if let Some((_, coord)) = self.mouse.last_pin.as_ref() {
+    pub(crate) fn mouse_pin(&self) -> Option<(DVec2, bool)> {
+        if let Some((_, position)) = self.mouse.last_pin.as_ref() {
             let used = self
                 .mouse
                 .grab
                 .as_ref()
                 .map(|grab| grab.details.is_pan())
                 .unwrap_or(false);
-            Some((*coord, used))
+            Some((*position, used))
         } else {
             None
         }
@@ -292,7 +264,7 @@ impl<'a> EventCx<'a> {
             redraw = grab.depress.clone();
             if let GrabDetails::Pan(details) = &grab.details {
                 if success && !details.moved {
-                    last_pin = Some((grab.start_id.clone(), self.mouse.last_coord));
+                    last_pin = Some((grab.start_id.clone(), self.mouse.last_position));
                 } else {
                     last_pin = None;
                 }
@@ -345,9 +317,8 @@ impl<'a> EventCx<'a> {
         data: &A,
         position: DVec2,
     ) {
-        let position: Vec2 = position.cast_approx();
         let delta = position - self.mouse.last_position;
-        self.mouse.samples.push_delta(delta);
+        self.mouse.samples.push_delta(delta.cast_approx());
         self.mouse.last_position = position;
         self.mouse.last_click_button = FAKE_MOUSE_BUTTON;
         let coord = position.cast_approx();
@@ -371,7 +342,7 @@ impl<'a> EventCx<'a> {
                     self.send_event(win.as_node(data), target, event);
                 }
                 GrabDetails::Pan(details) => {
-                    details.c1 = coord;
+                    details.c1 = position;
                     details.moved = true;
                     self.need_frame_update = true;
                 }

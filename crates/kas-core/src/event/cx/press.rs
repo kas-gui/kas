@@ -24,21 +24,38 @@ pub enum GrabMode {
     Click,
     /// Deliver [`Event::PressMove`] and [`Event::PressEnd`] for each grabbed press
     Grab,
-    /// Deliver [`Event::Pan`] events, without scaling or rotation
-    PanOnly,
-    /// Deliver [`Event::Pan`] events, with rotation
-    PanRotate,
-    /// Deliver [`Event::Pan`] events, with scaling
-    PanScale,
-    /// Deliver [`Event::Pan`] events, with scaling and rotation
-    PanFull,
+    /// Deliver [`Event::Pan`] events
+    ///
+    /// Scaling and rotation are optional.
+    Pan { scale: bool, rotate: bool },
 }
 
 impl GrabMode {
+    /// [`GrabMode::Pan`] without scaling or rotation
+    pub const PAN_NONE: GrabMode = GrabMode::Pan {
+        scale: false,
+        rotate: false,
+    };
+    /// [`GrabMode::Pan`] with scaling only
+    pub const PAN_SCALE: GrabMode = GrabMode::Pan {
+        scale: true,
+        rotate: false,
+    };
+    /// [`GrabMode::Pan`] with rotation only
+    pub const PAN_ROTATE: GrabMode = GrabMode::Pan {
+        scale: false,
+        rotate: true,
+    };
+    /// [`GrabMode::Pan`] with scaling and rotation
+    pub const PAN_FULL: GrabMode = GrabMode::Pan {
+        scale: true,
+        rotate: true,
+    };
+
     /// True for "pan" variants
+    #[inline]
     pub fn is_pan(self) -> bool {
-        use GrabMode::*;
-        matches!(self, PanFull | PanScale | PanRotate | PanOnly)
+        matches!(self, GrabMode::Pan { .. })
     }
 }
 

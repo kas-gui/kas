@@ -121,7 +121,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         let vsize = Vec2::conv(size);
         let off = vsize * -0.5;
-        let scale = 2.0 / vsize;
+        let scale = Vec2::splat(2.0) / vsize;
         window.scale = [off.0, off.1, scale.0, -scale.1];
 
         self.custom

@@ -10,7 +10,7 @@
 use crate::cast::*;
 use crate::dir::Directional;
 use crate::geom::{Coord, Offset, Rect, Size};
-use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 /// Axis-aligned 2D cuboid, specified via two corners `a` and `b`
 ///
@@ -329,6 +329,8 @@ macro_rules! impl_vec2 {
             }
 
             /// Take the complex reciprocal
+            ///
+            /// If both components are zero then the result will not be finite.
             #[inline]
             #[must_use = "method does not modify self but returns a new value"]
             pub fn complex_inv(self) -> Self {
@@ -465,11 +467,27 @@ macro_rules! impl_vec2 {
             }
         }
 
+        impl MulAssign<$T> for $T {
+            #[inline]
+            fn mul_assign(&mut self, rhs: $T) {
+                self.0 *= rhs.0;
+                self.1 *= rhs.1;
+            }
+        }
+
         impl Mul<$f> for $T {
             type Output = $T;
             #[inline]
             fn mul(self, rhs: $f) -> Self::Output {
                 $T(self.0 * rhs, self.1 * rhs)
+            }
+        }
+
+        impl MulAssign<$f> for $T {
+            #[inline]
+            fn mul_assign(&mut self, rhs: $f) {
+                self.0 *= rhs;
+                self.1 *= rhs;
             }
         }
 
@@ -489,11 +507,11 @@ macro_rules! impl_vec2 {
             }
         }
 
-        impl Div<$T> for $f {
-            type Output = $T;
+        impl DivAssign<$f> for $T {
             #[inline]
-            fn div(self, rhs: $T) -> Self::Output {
-                $T(self / rhs.0, self / rhs.1)
+            fn div_assign(&mut self, rhs: $f) {
+                self.0 /= rhs;
+                self.1 /= rhs;
             }
         }
 

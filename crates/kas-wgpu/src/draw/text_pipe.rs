@@ -431,7 +431,7 @@ impl Window {
 
         let (mut ta, mut tb) = (sprite.tex_quad.a, sprite.tex_quad.b);
         if !a.ge(rect.a) || !b.le(rect.b) {
-            let size_inv = 1.0 / (b - a);
+            let size_inv = Vec2::splat(1.0) / (b - a);
             let fa0 = 0f32.max((rect.a.0 - a.0) * size_inv.0);
             let fa1 = 0f32.max((rect.a.1 - a.1) * size_inv.1);
             let fb0 = 1f32.min((rect.b.0 - a.0) * size_inv.0);

@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use super::{EventCx, IsUsed, Unused, Used};
 #[allow(unused)] use super::{EventState, GrabMode};
 use super::{Key, KeyEvent, NamedKey, PhysicalKey, Press};
-use crate::geom::{DVec2, Offset};
+use crate::geom::{Affine, Offset};
 #[allow(unused)] use crate::{Events, Popup};
 use crate::{Id, WindowId, dir::Direction};
 
@@ -22,7 +22,7 @@ use crate::{Id, WindowId, dir::Direction};
 /// [`Event::pass_when_disabled`].
 #[non_exhaustive]
 #[derive(Clone, Debug, PartialEq)]
-pub enum Event {
+pub enum Event<'a> {
     /// Command input
     ///
     /// A generic "command". The source is often but not always a key press.
@@ -60,7 +60,7 @@ pub enum Event {
     /// NOTE: unlike Winit, we force `text = None` for control chars and when
     /// <kbd>Ctrl</kbd>, <kbd>Alt</kbd> or <kbd>Super</kbd> modifier keys are
     /// pressed. This is subject to change.
-    Key(KeyEvent, bool),
+    Key(&'a KeyEvent, bool),
     /// Input Method Editor: composed text changed
     ///
     /// Parameters are `text, cursor`.
@@ -68,7 +68,7 @@ pub enum Event {
     /// This is only received after
     /// [requesting key focus](EventState::request_key_focus) with some `ime`
     /// purpose.
-    ImePreedit(String, Option<(usize, usize)>),
+    ImePreedit(&'a str, Option<(usize, usize)>),
     /// Input Method Editor: composed text committed
     ///
     /// Parameters are `text`.
@@ -76,7 +76,7 @@ pub enum Event {
     /// This is only received after
     /// [requesting key focus](EventState::request_key_focus) with some `ime`
     /// purpose.
-    ImeCommit(String),
+    ImeCommit(&'a str),
     /// A mouse or touchpad scroll event
     Scroll(ScrollDelta),
     /// A mouse or touch-screen move/zoom/rotate event
@@ -87,55 +87,7 @@ pub enum Event {
     /// Mouse-grabs generate translation (`delta` component) only. Touch grabs
     /// optionally also generate rotation and scaling components, depending on
     /// the [`GrabMode`].
-    ///
-    /// In general, a point `p` on the screen should be transformed as follows:
-    /// ```
-    /// # use kas_core::cast::{Cast, CastFloat};
-    /// # use kas_core::geom::{Coord, DVec2};
-    /// # let (alpha, delta) = (DVec2::ZERO, DVec2::ZERO);
-    /// let mut p = Coord::ZERO; // or whatever
-    /// p = (alpha.complex_mul(p.cast()) + delta).cast_nearest();
-    /// ```
-    ///
-    /// When it is known that there is no rotational component, one can use a
-    /// simpler transformation: `alpha.0 * p + delta`. When there is also no
-    /// scaling component, we just have a translation: `p + delta`.
-    /// Note however that if events are generated with rotation and/or scaling
-    /// components, these simplifications are invalid.
-    ///
-    /// Two such transforms may be combined as follows:
-    /// ```
-    /// # use kas_core::geom::DVec2;
-    /// # let (alpha1, delta1) = (DVec2::ZERO, DVec2::ZERO);
-    /// # let (alpha2, delta2) = (DVec2::ZERO, DVec2::ZERO);
-    /// let alpha = alpha2.complex_mul(alpha1);
-    /// let delta = alpha2.complex_mul(delta1) + delta2;
-    /// ```
-    /// If instead one uses a transform to map screen-space to world-space,
-    /// this transform should be adjusted as follows:
-    /// ```
-    /// # use kas_core::geom::DVec2;
-    /// # let (alpha, delta) = (DVec2::ZERO, DVec2::ZERO);
-    /// # let (mut world_alpha, mut world_delta) = (DVec2::ZERO, DVec2::ZERO);
-    /// world_alpha = world_alpha.complex_div(alpha.into());
-    /// world_delta = world_delta - world_alpha.complex_mul(delta.into());
-    /// ```
-    ///
-    /// Those familiar with complex numbers may recognise that
-    /// `alpha = a * e^{i*t}` where `a` is the scale component and `t` is the
-    /// angle of rotation. Calculate these components as follows:
-    /// ```
-    /// # use kas_core::geom::DVec2;
-    /// # let alpha = DVec2::ZERO;
-    /// let a = (alpha.0 * alpha.0 + alpha.1 * alpha.1).sqrt();
-    /// let t = (alpha.1).atan2(alpha.0);
-    /// ```
-    Pan {
-        /// Rotation and scale component
-        alpha: DVec2,
-        /// Translation component
-        delta: DVec2,
-    },
+    Pan(Affine),
     /// Movement of mouse cursor without press
     ///
     /// This event is only sent one case: when the mouse is moved while a
@@ -256,17 +208,17 @@ pub enum Event {
     MouseHover(bool),
 }
 
-impl std::ops::Add<Offset> for Event {
+impl<'a> std::ops::Add<Offset> for Event<'a> {
     type Output = Self;
 
     #[inline]
-    fn add(mut self, offset: Offset) -> Event {
+    fn add(mut self, offset: Offset) -> Self {
         self += offset;
         self
     }
 }
 
-impl std::ops::AddAssign<Offset> for Event {
+impl<'a> std::ops::AddAssign<Offset> for Event<'a> {
     fn add_assign(&mut self, offset: Offset) {
         match self {
             Event::CursorMove { press } => {
@@ -286,7 +238,7 @@ impl std::ops::AddAssign<Offset> for Event {
     }
 }
 
-impl Event {
+impl<'a> Event<'a> {
     /// Call `f` on any "activation" event
     ///
     /// Activation is considered:
@@ -792,4 +744,19 @@ impl ScrollDelta {
             _ => None,
         }
     }
+}
+
+#[cfg(test)]
+#[test]
+fn sizes() {
+    use core::mem::size_of;
+    assert_eq!(size_of::<Command>(), 1);
+    assert_eq!(size_of::<PhysicalKey>(), 8);
+    assert_eq!(size_of::<KeyEvent>(), 128);
+    assert_eq!(size_of::<ScrollDelta>(), 12);
+    assert_eq!(size_of::<Affine>(), 32);
+    assert_eq!(size_of::<Press>(), 32);
+    assert_eq!(size_of::<TimerHandle>(), 8);
+    assert_eq!(size_of::<WindowId>(), 4);
+    assert_eq!(size_of::<FocusSource>(), 1);
 }

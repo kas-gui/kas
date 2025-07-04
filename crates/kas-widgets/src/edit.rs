@@ -905,8 +905,8 @@ mod EditField {
                     Err(NotReady) => Used,
                 },
                 Event::Key(event, false) if event.state == ElementState::Pressed => {
-                    if let Some(text) = event.text {
-                        self.received_text(cx, data, &text)
+                    if let Some(text) = &event.text {
+                        self.received_text(cx, data, text)
                     } else {
                         let opt_cmd = cx
                             .config()
@@ -933,7 +933,7 @@ mod EditField {
                     }
 
                     let range = self.selection.anchor_to_edit_range();
-                    self.text.replace_range(range.clone(), &text);
+                    self.text.replace_range(range.clone(), text);
 
                     if let Some((start, end)) = cursor {
                         self.selection.set_sel_pos_only(range.start + start);
@@ -952,7 +952,7 @@ mod EditField {
                     self.current = CurrentAction::None;
 
                     let range = self.selection.anchor_to_edit_range();
-                    self.text.replace_range(range.clone(), &text);
+                    self.text.replace_range(range.clone(), text);
 
                     self.selection.set_pos(range.start + text.len());
                     self.edit_x_coord = None;

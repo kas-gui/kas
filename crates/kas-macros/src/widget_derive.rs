@@ -198,6 +198,10 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
         fn id_ref(&self) -> &::kas::Id {
             self.#inner.id_ref()
         }
+        #[inline]
+        fn id(&self) -> ::kas::Id {
+            self.#inner.id()
+        }
 
         #[inline]
         fn identify(&self) -> ::kas::util::IdentifyWidget<'_> {
@@ -430,6 +434,13 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
         #[inline]
         fn translation(&self) -> ::kas::geom::Offset {
             self.#inner.translation()
+        }
+        #[inline]
+        fn probe(&self, coord: ::kas::geom::Coord) -> ::kas::Id
+        where
+            Self: Sized,
+        {
+            self.#inner.probe(coord)
         }
     };
 

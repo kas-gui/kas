@@ -10,7 +10,7 @@
 use kas::decorations::{Decorations, TitleBarButtons};
 use kas::draw::{Draw, DrawIface, PassId};
 use kas::event::{self, Command};
-use kas::geom::{DVec2, Vec2, Vec3};
+use kas::geom::{Affine, DVec2, Linear, Vec2, Vec3};
 use kas::prelude::*;
 use kas::widgets::adapt::Reserve;
 use kas::widgets::{Label, Slider, Text, format_value};
@@ -283,13 +283,14 @@ impl PipeWindow {
 #[derive(Debug)]
 struct ViewUpdate(String);
 
+const INITIAL_OFFSET: DVec2 = DVec2(-0.5, 0.0);
+
 #[impl_self]
 mod Mandlebrot {
     #[widget]
     struct Mandlebrot {
         core: widget_core!(),
-        alpha: DVec2,
-        delta: DVec2,
+        transform: Affine,
         view_delta: DVec2,
         view_alpha: f64,
         rel_width: f32,
@@ -300,8 +301,7 @@ mod Mandlebrot {
         fn new() -> Self {
             Mandlebrot {
                 core: Default::default(),
-                alpha: DVec2(1.0, 0.0),
-                delta: DVec2(-0.5, 0.0),
+                transform: Affine::translate(INITIAL_OFFSET),
                 view_delta: DVec2::ZERO,
                 view_alpha: 0.0,
                 rel_width: 0.0,
@@ -310,15 +310,15 @@ mod Mandlebrot {
         }
 
         fn reset_view(&mut self) {
-            self.alpha = DVec2(1.0, 0.0);
-            self.delta = DVec2(-0.5, 0.0);
+            self.transform = Affine::translate(INITIAL_OFFSET);
         }
 
         fn loc(&self) -> String {
-            let d0 = self.delta.0;
-            let op = if self.delta.1 < 0.0 { "−" } else { "+" };
-            let d1 = self.delta.1.abs();
-            let s = self.alpha.sum_square().sqrt().ln();
+            let delta = self.transform.delta();
+            let d0 = delta.0;
+            let op = if delta.1 < 0.0 { "−" } else { "+" };
+            let d1 = delta.1.abs();
+            let s = self.transform.alpha().get_scale().ln();
             #[cfg(not(feature = "shader64"))]
             {
                 format!("Location: {d0:.7} {op} {d1:.7}i; scale: {s:.2}")
@@ -349,7 +349,9 @@ mod Mandlebrot {
         fn draw(&self, mut draw: DrawCx) {
             let draw = draw.draw_device();
             let draw = DrawIface::<DrawPipe<Pipe>>::downcast_from(draw).unwrap();
-            let p = (self.alpha, self.delta, self.rel_width, self.iters);
+            let alpha = self.transform.alpha().get_vec2();
+            let delta = self.transform.delta();
+            let p = (alpha, delta, self.rel_width, self.iters);
             draw.draw.custom(draw.get_pass(), self.rect(), p);
         }
     }
@@ -371,8 +373,8 @@ mod Mandlebrot {
             match event {
                 Event::Command(cmd, _) => match cmd {
                     Command::Home | Command::End => self.reset_view(),
-                    Command::PageUp => self.alpha = self.alpha / 2f64.sqrt(),
-                    Command::PageDown => self.alpha = self.alpha * 2f64.sqrt(),
+                    Command::PageUp => self.transform /= Linear::scale(2f64.sqrt()),
+                    Command::PageDown => self.transform *= Linear::scale(2f64.sqrt()),
                     cmd => {
                         let d = 0.2;
                         let delta = match cmd {
@@ -382,33 +384,35 @@ mod Mandlebrot {
                             Command::Right => DVec2(d, 0.0),
                             _ => return Unused,
                         };
-                        self.delta += self.alpha.complex_mul(delta);
+                        self.transform += self.transform.alpha() * delta;
                     }
                 },
                 Event::Scroll(delta) => match delta.as_factor_or_offset(cx) {
-                    Ok(factor) => self.alpha = self.alpha * 2f64.powf(factor),
+                    Ok(factor) => self.transform *= Linear::scale(2f64.powf(factor)),
                     Err(offset) => {
-                        self.delta -= self.alpha.complex_mul(offset.cast()) * self.view_alpha
+                        self.transform -=
+                            self.transform.alpha() * self.view_alpha * DVec2::conv(offset);
                     }
                 },
-                Event::Pan { alpha, delta } => {
+                Event::Pan(t) => {
                     // Our full transform (from screen coordinates to world coordinates) is:
                     // f(p) = α_w * α_v * p + α_w * δ_v + δ_w
-                    // where _w indicate world transforms (self.alpha, self.delta)
-                    // and _v indicate view transforms (see notes in PipeWindow::invoke).
+                    // where self.transform (α_w, δ_w) is the world transform
+                    // and α_v, δ_v are view transforms (see notes in PipeWindow::invoke).
                     //
                     // To adjust the world offset (in reverse), we use the following formulae:
-                    // α_w' = (1/α) * α_w
+                    // α_w' = α_w / α
                     // δ_w' = δ_w - α_w' * α_v * δ + (α_w - α_w') δ_v
-                    // where x' is the "new x".
-                    let new_alpha = self.alpha.complex_div(alpha);
-                    self.delta = self.delta - new_alpha.complex_mul(delta) * self.view_alpha
-                        + (self.alpha - new_alpha).complex_mul(self.view_delta);
-                    self.alpha = new_alpha;
+                    // where (α, δ) is t and x' is the "new x".
+                    let new_alpha = self.transform.alpha() / t.alpha();
+                    let new_delta = self.transform.delta()
+                        - new_alpha * self.view_alpha * t.delta()
+                        + (self.transform.alpha() - new_alpha) * self.view_delta;
+                    self.transform = Affine::new(new_alpha, new_delta);
                 }
                 Event::PressStart { press } => {
                     return press
-                        .grab(self.id(), event::GrabMode::PanFull)
+                        .grab(self.id(), event::GrabMode::PAN_FULL)
                         .with_icon(event::CursorIcon::Grabbing)
                         .complete(cx);
                 }
