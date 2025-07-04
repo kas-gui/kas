@@ -9,13 +9,11 @@ use crate::adapt::AdaptEvents;
 use crate::{Column, Label, Mark, menu::MenuEntry};
 use kas::Popup;
 use kas::event::{Command, FocusSource};
+use kas::messages::SetIndex;
 use kas::prelude::*;
 use kas::theme::FrameStyle;
 use kas::theme::{MarkStyle, TextClass};
 use std::fmt::Debug;
-
-#[derive(Clone, Debug)]
-struct IndexMsg(usize);
 
 #[impl_self]
 mod ComboBox {
@@ -29,6 +27,10 @@ mod ComboBox {
     /// If no selection handler exists, then the choice's message is emitted
     /// when selected. If a handler is specified via [`Self::with`] or
     /// [`Self::with_msg`] then this message is passed to the handler and not emitted.
+    ///
+    /// # Messages
+    ///
+    /// [`kas::messages::SetIndex`] may be used to change the page.
     #[widget]
     #[layout(
         frame!(row! [self.label, Mark::new(MarkStyle::Point(Direction::Down))])
@@ -189,7 +191,7 @@ mod ComboBox {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-            if let Some(IndexMsg(index)) = cx.try_pop() {
+            if let Some(SetIndex(index)) = cx.try_pop() {
                 self.set_active(cx, index);
                 self.popup.close(cx);
                 if let Some(ref f) = self.on_select {
@@ -249,7 +251,7 @@ impl<A, V: Clone + Debug + Eq + 'static> ComboBox<A, V> {
                 AdaptEvents::new(Column::new(entries)).on_messages(|cx, _, _| {
                     if let Some(_) = cx.try_peek::<V>() {
                         if let Some(index) = cx.last_child() {
-                            cx.push(IndexMsg(index));
+                            cx.push(SetIndex(index));
                         }
                     }
                 }),

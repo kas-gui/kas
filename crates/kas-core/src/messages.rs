@@ -39,6 +39,10 @@ pub struct SetValueF64(pub f64);
 #[derive(Clone, Debug)]
 pub struct SetValueString(pub String);
 
+/// Set an index
+#[derive(Clone, Debug)]
+pub struct SetIndex(pub usize);
+
 /// Request selection of the sender
 ///
 /// This is only useful when pushed by a child widget or sent to a child widget
