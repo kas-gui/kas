@@ -70,13 +70,6 @@ bitflags! {
         #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
         #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
         const THEME_SWITCH = 1 << 12;
-        /// Reconfigure all widgets of the window
-        ///
-        /// *Configuring* widgets assigns [`Id`](crate::Id) identifiers and calls
-        /// [`Events::configure`](crate::Events::configure).
-        ///
-        /// Implies [`Action::UPDATE`] since widgets are updated on configure.
-        const RECONFIGURE = 1 << 16;
         /// Update all widgets
         ///
         /// This is a notification that input data has changed.
