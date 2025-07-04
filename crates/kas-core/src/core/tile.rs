@@ -7,7 +7,7 @@
 
 use crate::geom::{Coord, Offset, Rect};
 use crate::util::IdentifyWidget;
-use crate::{HasId, Id, Layout};
+use crate::{ChildIndices, HasId, Id, Layout};
 use kas_macros::autoimpl;
 
 #[allow(unused)] use super::{Events, Widget};
@@ -94,6 +94,22 @@ pub trait Tile: Layout {
     /// [`Tile::get_child`] and [`Widget::child_node`] are
     /// implemented directly.
     fn num_children(&self) -> usize {
+        unimplemented!() // make rustdoc show that this is a provided method
+    }
+
+    /// Get child indices available to recursion
+    ///
+    /// This method returns a range of child indices for "visible" children.
+    /// These children are expected to be accessible through [`Self::get_child`]
+    /// and to be configured and sized (assuming that `self` is). They may
+    /// or may not be visible on the screen.
+    ///
+    /// Hidden children might be excluded from this list, for example a
+    /// collapsed element, closed menu or inactive stack page. (Such children
+    /// might also not be configured or sized.)
+    ///
+    /// The default implementation returns the range `0..self.num_children()`.
+    fn child_indices(&self) -> ChildIndices {
         unimplemented!() // make rustdoc show that this is a provided method
     }
 

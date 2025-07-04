@@ -8,8 +8,65 @@
 use super::Id;
 #[allow(unused)] use super::Widget;
 use crate::geom::Rect;
+use std::ops::Range;
 
 pub use winit::window::Icon;
+
+/// An opaque type indexible over `usize`
+///
+/// Currently, the only supported representation is a range. Construct using
+/// [`From`] impls, e.g. `(0..self.widgets.len()).into()`.
+//
+// NOTE: this API is extensible to other representations like an enum over
+// Range or Box<[usize]> (or Vec<usize>).
+#[derive(Clone, Debug)]
+pub struct ChildIndices(usize, usize);
+
+impl ChildIndices {
+    // pub fn iter(&self) -> ChildIndicesRefIter<'_> { .. }
+}
+
+impl IntoIterator for ChildIndices {
+    type Item = usize;
+    type IntoIter = ChildIndicesIter;
+
+    #[inline]
+    fn into_iter(self) -> ChildIndicesIter {
+        ChildIndicesIter(self.0..self.1)
+    }
+}
+
+impl From<Range<usize>> for ChildIndices {
+    #[inline]
+    fn from(range: Range<usize>) -> Self {
+        ChildIndices(range.start, range.end)
+    }
+}
+
+/// Owning iterator over [`ChildIndices`]
+#[derive(Clone, Debug)]
+pub struct ChildIndicesIter(Range<usize>);
+
+impl Iterator for ChildIndicesIter {
+    type Item = usize;
+
+    #[inline]
+    fn next(&mut self) -> Option<usize> {
+        self.0.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+impl ExactSizeIterator for ChildIndicesIter {}
+impl DoubleEndedIterator for ChildIndicesIter {
+    #[inline]
+    fn next_back(&mut self) -> Option<usize> {
+        self.0.next_back()
+    }
+}
 
 /// Common widget data
 ///
