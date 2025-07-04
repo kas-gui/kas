@@ -495,18 +495,6 @@ mod List {
             self.widgets.get_mut(index)
         }
 
-        /// Edit the list of children directly
-        ///
-        /// This may be used to edit children before window construction. It may
-        /// also be used from a running UI, but in this case a full reconfigure
-        /// of the window's widgets is required (triggered by the the return
-        /// value, [`Action::RECONFIGURE`]).
-        #[inline]
-        pub fn edit<F: FnOnce(&mut Vec<W>)>(&mut self, f: F) -> Action {
-            f(&mut self.widgets);
-            Action::RECONFIGURE
-        }
-
         /// Remove all child widgets
         pub fn clear(&mut self) {
             self.widgets.clear();

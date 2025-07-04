@@ -385,20 +385,6 @@ impl<W: Widget, D: Directional> IndexMut<usize> for Splitter<Vec<W>, D> {
 }
 
 impl<W: Widget, D: Directional> Splitter<Vec<W>, D> {
-    /// Edit the list of children directly
-    ///
-    /// This may be used to edit children before window construction. It may
-    /// also be used from a running UI, but in this case a full reconfigure
-    /// of the window's widgets is required (triggered by the the return
-    /// value, [`Action::RECONFIGURE`]).
-    #[inline]
-    pub fn edit<F: FnOnce(&mut Vec<W>)>(&mut self, f: F) -> Action {
-        f(&mut self.widgets);
-        let len = self.widgets.len().saturating_sub(1);
-        self.grips.resize_with(len, GripPart::new);
-        Action::RECONFIGURE
-    }
-
     /// Returns a reference to the child, if any
     pub fn get(&self, index: usize) -> Option<&W> {
         self.widgets.get(index)
