@@ -14,7 +14,9 @@ use kas_macros::{impl_self, widget_index};
 
 #[derive(Clone, Debug)]
 pub(crate) struct PopupDescriptor {
+    /// Widget of type [`Popup`]
     pub id: Id,
+    /// Visual parent: what the popup is placed next to
     pub parent: Id,
     pub direction: Direction,
 }
@@ -44,6 +46,16 @@ mod Popup {
         #[widget]
         pub inner: W,
         win_id: Option<WindowId>,
+    }
+
+    impl Tile for Self {
+        fn find_child_index(&self, id: &Id) -> Option<usize> {
+            let index = Some(widget_index!(self.inner));
+            if self.win_id.is_none() || id.next_key_after(self.id_ref()) != index {
+                return None;
+            }
+            index
+        }
     }
 
     impl Events for Self {

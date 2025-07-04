@@ -138,11 +138,9 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         }
     }
 
-    if let Some(ref span) = find_child_index {
-        if make_child_id.is_none() {
-            emit_warning!(span, "fn find_child_index without fn make_child_id");
-        }
-    } else if let Some(ref span) = make_child_id {
+    if find_child_index.is_none()
+        && let Some(ref span) = make_child_id
+    {
         emit_warning!(span, "fn make_child_id without fn find_child_index");
     }
 

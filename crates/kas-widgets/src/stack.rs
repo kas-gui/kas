@@ -127,8 +127,15 @@ mod Stack {
         }
 
         fn find_child_index(&self, id: &Id) -> Option<usize> {
+            // Filter only returns Some(index) on configured children
             id.next_key_after(self.id_ref())
                 .and_then(|k| self.id_map.get(&k).cloned())
+                .filter(|index| {
+                    self.widgets
+                        .get(*index)
+                        .map(|(_, state)| *state >= State::Configured)
+                        .unwrap_or(false)
+                })
         }
 
         fn nav_next(&self, _: bool, from: Option<usize>) -> Option<usize> {

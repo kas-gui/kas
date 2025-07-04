@@ -112,8 +112,13 @@ pub trait Tile: Layout {
 
     /// Find the child which is an ancestor of this `id`, if any
     ///
-    /// If `Some(index)` is returned, this is *probably* but not guaranteed
-    /// to be a valid child index.
+    /// The implementation must only return `Some(index)` such that:
+    ///
+    /// -   `index` is in `0..num_children`
+    /// -   Assuming that [`Events::configure_recurse`] has been called on
+    ///     `self`, any child accessible through `self.get_child(index)` must
+    ///     be configured. (In simpler terms, this method should not return the
+    ///     index of an unconfigured child.)
     ///
     /// The default implementation simply uses [`Id::next_key_after`].
     /// Widgets may choose to assign children custom keys by overriding this

@@ -125,6 +125,10 @@ pub trait Events: Widget + Sized {
     /// visible). To configure children explicitly, generate an [`Id`] by
     /// calling [`Events::make_child_id`] on `self` then pass this `id` to
     /// [`ConfigCx::configure`].
+    ///
+    /// In case the implemetation does not configure all children in the range
+    /// `0..self.num_children()`, [`Tile::find_child_index`] must not return the
+    /// indices of any unconfigured child.
     fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
         for index in 0..self.num_children() {
             let id = self.make_child_id(index);
