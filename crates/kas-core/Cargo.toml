@@ -137,3 +137,6 @@ unit_arg = "allow"
 match_like_matches_macro = "allow"
 needless_range_loop = "allow"
 too_many_arguments = "allow"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(internal_doc)'] }

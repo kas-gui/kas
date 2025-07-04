@@ -7,19 +7,19 @@
 
 use crate::adapt::{AdaptEvents, AdaptWidget};
 use crate::{AccessLabel, Row, Stack};
-use kas::messages::Select;
+use kas::messages::{Select, SetIndex};
 use kas::prelude::*;
 use kas::theme::FrameStyle;
-use std::fmt::Debug;
-
-#[derive(Clone, Debug)]
-struct MsgSelectIndex(usize);
 
 #[impl_self]
 mod Tab {
     /// A tab
     ///
     /// This is a special variant of `Button` which sends a [`Select`] on press.
+    ///
+    /// # Messages
+    ///
+    /// [`kas::messages::Activate`] may be used to open this tab.
     #[widget]
     #[layout(frame!(self.label).with_style(FrameStyle::Tab))]
     pub struct Tab {
@@ -100,6 +100,10 @@ mod TabStack {
     /// it will be necessary to box children (this is what [`BoxTabStack`] is).
     ///
     /// See also the main implementing widget: [`Stack`].
+    ///
+    /// # Messages
+    ///
+    /// [`kas::messages::SetIndex`] may be used to change the page.
     #[impl_default(Self::new())]
     #[widget]
     #[layout(list![self.stack, self.tabs].with_direction(self.direction))]
@@ -122,7 +126,7 @@ mod TabStack {
                 core: Default::default(),
                 direction: Direction::Up,
                 stack: Stack::new(),
-                tabs: Row::new(vec![]).map_message(|index, Select| MsgSelectIndex(index)),
+                tabs: Row::new(vec![]).map_message(|index, Select| SetIndex(index)),
                 on_change: None,
             }
         }
@@ -175,7 +179,7 @@ mod TabStack {
         type Data = W::Data;
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &W::Data) {
-            if let Some(MsgSelectIndex(index)) = cx.try_pop() {
+            if let Some(SetIndex(index)) = cx.try_pop() {
                 self.set_active(&mut cx.config_cx(), data, index);
                 if let Some(ref f) = self.on_change {
                     let title = self.tabs.inner[index].as_str();
@@ -367,7 +371,7 @@ where
         }
         Self {
             stack: Stack::from(stack),
-            tabs: Row::new(tabs).map_message(|index, Select| MsgSelectIndex(index)),
+            tabs: Row::new(tabs).map_message(|index, Select| SetIndex(index)),
             ..Default::default()
         }
     }

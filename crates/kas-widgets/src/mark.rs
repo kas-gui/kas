@@ -63,6 +63,10 @@ mod MarkButton {
     /// This button is not keyboard navigable; only mouse/touch interactive.
     ///
     /// Uses stretch policy [`Stretch::Low`].
+    ///
+    /// # Messages
+    ///
+    /// [`kas::messages::Activate`] may be used to trigger the button.
     #[derive(Clone, Debug)]
     #[widget]
     pub struct MarkButton<M: Clone + Debug + 'static> {
@@ -104,6 +108,13 @@ mod MarkButton {
                 cx.push(self.msg.clone());
                 Used
             })
+        }
+
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(kas::messages::Activate(code)) = cx.try_pop() {
+                cx.push(self.msg.clone());
+                cx.depress_with_key(self.id(), code);
+            }
         }
     }
 }

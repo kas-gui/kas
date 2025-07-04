@@ -5,7 +5,7 @@
 
 //! Drivers for configuration types
 
-use crate::{Button, CheckButton, ComboBox, Spinner};
+use crate::{Button, CheckButton, ComboBox, SpinBox};
 use kas::config::{ConfigMsg, EventConfigMsg, MousePan};
 use kas::prelude::*;
 
@@ -22,15 +22,12 @@ mod EventConfig {
     #[layout(grid! {
         (0, 0) => "Menu delay:",
         (1, 0) => self.menu_delay,
-        (2, 0) => "ms",
 
         (0, 1) => "Touch-selection delay:",
         (1, 1) => self.touch_select_delay,
-        (2, 1) => "ms",
 
         (0, 2) => "Kinetic scrolling timeout:",
         (1, 2) => self.kinetic_timeout,
-        (2, 2) => "ms",
 
         (0, 3) => "Kinetic decay (relative):",
         (1, 3) => self.kinetic_decay_mul,
@@ -42,45 +39,45 @@ mod EventConfig {
         (1, 5) => self.kinetic_grab_sub,
 
         (0, 6) => "Scroll wheel distance:",
-        (1, 6) => self.scroll_dist_em, (2, 6) => "em",
+        (1, 6) => self.scroll_dist_em,
 
         (0, 7) => "Pan distance threshold:",
         (1, 7) => self.pan_dist_thresh,
 
         (0, 8) => "Mouse pan:",
-        (1..3, 8) => self.mouse_pan,
+        (1, 8) => self.mouse_pan,
 
         (0, 9) => "Mouse text pan:",
-        (1..3, 9) => self.mouse_text_pan,
+        (1, 9) => self.mouse_text_pan,
 
-        (1..3, 10) => self.mouse_wheel_actions,
+        (1, 10) => self.mouse_wheel_actions,
 
-        (1..3, 11) => self.mouse_nav_focus,
+        (1, 11) => self.mouse_nav_focus,
 
-        (1..3, 12) => self.touch_nav_focus,
+        (1, 12) => self.touch_nav_focus,
 
         (0, 13) => "Restore default values:",
-        (1..3, 13) => Button::label_msg("&Reset", EventConfigMsg::ResetToDefault),
+        (1, 13) => Button::label_msg("&Reset", EventConfigMsg::ResetToDefault),
     })]
     #[impl_default(EventConfig::new())]
     pub struct EventConfig {
         core: widget_core!(),
         #[widget]
-        menu_delay: Spinner<(), u32>,
+        menu_delay: SpinBox<(), u32>,
         #[widget]
-        touch_select_delay: Spinner<(), u32>,
+        touch_select_delay: SpinBox<(), u32>,
         #[widget]
-        kinetic_timeout: Spinner<(), u32>,
+        kinetic_timeout: SpinBox<(), u32>,
         #[widget]
-        kinetic_decay_mul: Spinner<(), f32>,
+        kinetic_decay_mul: SpinBox<(), f32>,
         #[widget]
-        kinetic_decay_sub: Spinner<(), f32>,
+        kinetic_decay_sub: SpinBox<(), f32>,
         #[widget]
-        kinetic_grab_sub: Spinner<(), f32>,
+        kinetic_grab_sub: SpinBox<(), f32>,
         #[widget]
-        scroll_dist_em: Spinner<(), f32>,
+        scroll_dist_em: SpinBox<(), f32>,
         #[widget]
-        pan_dist_thresh: Spinner<(), f32>,
+        pan_dist_thresh: SpinBox<(), f32>,
         #[widget]
         mouse_pan: ComboBox<(), MousePan>,
         #[widget]
@@ -115,40 +112,44 @@ mod EventConfig {
 
             EventConfig {
                 core: Default::default(),
-                menu_delay: Spinner::new(0..=5_000, |cx, _| cx.config().base().event.menu_delay_ms)
+                menu_delay: SpinBox::new(0..=5_000, |cx, _| cx.config().base().event.menu_delay_ms)
                     .with_step(50)
-                    .with_msg(EventConfigMsg::MenuDelay),
-                touch_select_delay: Spinner::new(0..=5_000, |cx: &ConfigCx, _| {
+                    .with_msg(EventConfigMsg::MenuDelay)
+                    .with_unit("ms"),
+                touch_select_delay: SpinBox::new(0..=5_000, |cx: &ConfigCx, _| {
                     cx.config().base().event.touch_select_delay_ms
                 })
                 .with_step(50)
-                .with_msg(EventConfigMsg::TouchSelectDelay),
-                kinetic_timeout: Spinner::new(0..=500, |cx: &ConfigCx, _| {
+                .with_msg(EventConfigMsg::TouchSelectDelay)
+                .with_unit("ms"),
+                kinetic_timeout: SpinBox::new(0..=500, |cx: &ConfigCx, _| {
                     cx.config().base().event.kinetic_timeout_ms
                 })
                 .with_step(5)
-                .with_msg(EventConfigMsg::KineticTimeout),
-                kinetic_decay_mul: Spinner::new(0.0..=1.0, |cx: &ConfigCx, _| {
+                .with_msg(EventConfigMsg::KineticTimeout)
+                .with_unit("ms"),
+                kinetic_decay_mul: SpinBox::new(0.0..=1.0, |cx: &ConfigCx, _| {
                     cx.config().base().event.kinetic_decay_mul
                 })
                 .with_step(0.0625)
                 .with_msg(EventConfigMsg::KineticDecayMul),
-                kinetic_decay_sub: Spinner::new(0.0..=1.0e4, |cx: &ConfigCx, _| {
+                kinetic_decay_sub: SpinBox::new(0.0..=1.0e4, |cx: &ConfigCx, _| {
                     cx.config().base().event.kinetic_decay_sub
                 })
                 .with_step(10.0)
                 .with_msg(EventConfigMsg::KineticDecaySub),
-                kinetic_grab_sub: Spinner::new(0.0..=1.0e4, |cx: &ConfigCx, _| {
+                kinetic_grab_sub: SpinBox::new(0.0..=1.0e4, |cx: &ConfigCx, _| {
                     cx.config().base().event.kinetic_grab_sub
                 })
                 .with_step(5.0)
                 .with_msg(EventConfigMsg::KineticGrabSub),
-                scroll_dist_em: Spinner::new(0.125..=125.0, |cx: &ConfigCx, _| {
+                scroll_dist_em: SpinBox::new(0.125..=125.0, |cx: &ConfigCx, _| {
                     cx.config().base().event.scroll_dist_em
                 })
                 .with_step(0.125)
-                .with_msg(EventConfigMsg::ScrollDistEm),
-                pan_dist_thresh: Spinner::new(0.25..=25.0, |cx: &ConfigCx, _| {
+                .with_msg(EventConfigMsg::ScrollDistEm)
+                .with_unit("em"),
+                pan_dist_thresh: SpinBox::new(0.25..=25.0, |cx: &ConfigCx, _| {
                     cx.config().base().event.pan_dist_thresh
                 })
                 .with_step(0.25)

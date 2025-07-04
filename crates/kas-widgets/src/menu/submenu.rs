@@ -16,6 +16,10 @@ use kas::theme::{FrameStyle, MarkStyle, TextClass};
 #[impl_self]
 mod SubMenu {
     /// A sub-menu
+    ///
+    /// # Messages
+    ///
+    /// [`kas::messages::Activate`] may be used to open the sub-menu.
     #[widget]
     #[layout(self.label)]
     pub struct SubMenu<const TOP_LEVEL: bool, Data> {

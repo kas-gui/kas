@@ -230,7 +230,7 @@ impl EventState {
     /// Terminate the GUI
     #[inline]
     pub fn exit(&mut self) {
-        self.pending_cmds.push_back((Id::ROOT, Command::Exit));
+        self.send(Id::ROOT, Command::Exit);
     }
 
     /// Notify that an [`Action`] should happen
@@ -543,11 +543,28 @@ impl EventState {
 
     /// Send a message to `id`
     ///
-    /// Similar to [`EventCx::push`], the message is sent as part of a widget
-    /// tree traversal.
-    /// The message may be [popped](EventCx::try_pop) or
-    /// [peeked](EventCx::try_peek) from [`Events::handle_messages`]
-    /// by the widget itself, its parent, or any ancestor.
+    /// When calling this method, be aware that some widgets use an inner
+    /// component to handle events, thus calling with the outer widget's `id`
+    /// may not have the desired effect. [`Layout::try_probe`] and
+    /// [`EventState::next_nav_focus`] are usually able to find the appropriate
+    /// event-handling target.
+    ///
+    /// This uses a tree traversal as with event handling, thus ancestors will
+    /// have a chance to handle an unhandled event and any messages on the stack
+    /// after their child.
+    ///
+    /// ### Special cases sent as an [`Event`]
+    ///
+    /// When `M` is `Command`, this will send [`Event::Command`] to the widget.
+    ///
+    /// When `M` is `ScrollDelta`, this will send [`Event::Scroll`] to the
+    /// widget.
+    ///
+    /// ### Other messages
+    ///
+    /// The message is pushed to the message stack. The target widget may
+    /// [pop](EventCx::try_pop) or [peek](EventCx::try_peek) the message from
+    /// [`Events::handle_messages`].
     pub fn send<M: Debug + 'static>(&mut self, id: Id, msg: M) {
         self.send_erased(id, Erased::new(msg));
     }
@@ -650,21 +667,6 @@ impl<'a> EventCx<'a> {
     /// submitter of the message).
     pub fn last_child(&self) -> Option<usize> {
         self.last_child
-    }
-
-    /// Send a command to a widget
-    ///
-    /// Sends [`Event::Command`] to widget `id`. The event is queued to send
-    /// later, thus any actions by the receiving widget will not be immediately
-    /// visible to the caller of this method.
-    ///
-    /// When calling this method, be aware that some widgets use an inner
-    /// component to handle events, thus calling with the outer widget's `id`
-    /// may not have the desired effect. [`Layout::try_probe`] and
-    /// [`EventState::next_nav_focus`] are usually able to find the appropriate
-    /// event-handling target.
-    pub fn send_command(&mut self, id: Id, cmd: Command) {
-        self.pending_cmds.push_back((id, cmd));
     }
 
     /// Push a message to the stack

@@ -19,6 +19,10 @@ mod MenuEntry {
     ///
     /// A `MenuEntry` has an associated message value of type `M`. A clone of
     /// this value is pushed when the entry is activated.
+    ///
+    /// # Messages
+    ///
+    /// [`kas::messages::Activate`] may be used to trigger the menu entry.
     #[derive(Clone, Debug, Default)]
     #[widget]
     #[layout(self.label)]
@@ -114,6 +118,10 @@ mod MenuEntry {
 #[impl_self]
 mod MenuToggle {
     /// A menu entry which can be toggled
+    ///
+    /// # Messages
+    ///
+    /// [`kas::messages::Activate`] may be used to toggle the menu entry.
     #[widget]
     #[layout(row! [self.checkbox, self.label])]
     pub struct MenuToggle<A> {

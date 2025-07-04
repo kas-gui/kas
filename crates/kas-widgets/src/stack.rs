@@ -43,6 +43,10 @@ mod Stack {
     /// By default, all pages are configured and sized. To avoid configuring
     /// hidden pages (thus preventing these pages from affecting size)
     /// call [`Self::set_size_limit`] or [`Self::with_size_limit`].
+    ///
+    /// # Messages
+    ///
+    /// [`kas::messages::SetIndex`] may be used to change the page.
     #[derive(Clone, Debug)]
     #[widget]
     pub struct Stack<W: Widget> {
@@ -202,6 +206,12 @@ mod Stack {
         fn update_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
             if let Some((w, _)) = self.widgets.get_mut(self.active) {
                 cx.update(w.as_node(data));
+            }
+        }
+
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &W::Data) {
+            if let Some(kas::messages::SetIndex(index)) = cx.try_pop() {
+                self.set_active(&mut cx.config_cx(), data, index);
             }
         }
     }

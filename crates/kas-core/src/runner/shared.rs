@@ -5,14 +5,14 @@
 
 //! Shared state
 
-use super::{AppData, Error, GraphicsInstance, Pending, Platform};
+use super::{AppData, Error, GraphicsInstance, MessageStack, Pending, Platform};
 use crate::WindowIdFactory;
 use crate::config::Config;
 use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::theme::Theme;
 #[cfg(feature = "clipboard")]
 use crate::util::warn_about_error;
-use crate::{Action, WindowId, draw, messages::MessageStack};
+use crate::{Action, WindowId, draw};
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::collections::VecDeque;

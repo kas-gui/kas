@@ -37,7 +37,7 @@
 //! -   [`ScrollBar`]: a scroll bar; [`ScrollBars`]: a wrapper adding scroll
 //!     bars around an inner widget
 //! -   [`Slider`]: a slider
-//! -   [`Spinner`]: numeric entry
+//! -   [`SpinBox`]: numeric entry
 //!
 //! ## Displays
 //!
@@ -89,7 +89,7 @@ mod scroll_label;
 mod scroll_text;
 mod separator;
 mod slider;
-mod spinner;
+mod spin_box;
 mod splitter;
 mod stack;
 mod tab_stack;
@@ -119,7 +119,7 @@ pub use scroll_label::ScrollLabel;
 pub use scroll_text::ScrollText;
 pub use separator::Separator;
 pub use slider::{Slider, SliderValue};
-pub use spinner::{Spinner, SpinnerValue};
+pub use spin_box::{SpinBox, SpinValue};
 pub use splitter::Splitter;
 pub use stack::{BoxStack, Stack};
 pub use tab_stack::{BoxTabStack, Tab, TabStack};

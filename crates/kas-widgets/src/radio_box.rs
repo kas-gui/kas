@@ -16,6 +16,10 @@ mod RadioBox {
     /// A bare radio box (no label)
     ///
     /// See also [`RadioButton`] which includes a label.
+    ///
+    /// # Messages
+    ///
+    /// [`kas::messages::Activate`] may be used to select this radio button.
     #[autoimpl(Debug ignore self.state_fn, self.on_select)]
     #[widget]
     pub struct RadioBox<A> {
@@ -46,6 +50,13 @@ mod RadioBox {
                 self.select(cx, data);
                 Used
             })
+        }
+
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
+            if let Some(kas::messages::Activate(code)) = cx.try_pop() {
+                self.select(cx, data);
+                cx.depress_with_key(self.id(), code);
+            }
         }
     }
 
@@ -134,6 +145,10 @@ mod RadioButton {
     /// A radio button with label
     ///
     /// See also [`RadioBox`] which excludes the label.
+    ///
+    /// # Messages
+    ///
+    /// [`kas::messages::Activate`] may be used to select this radio button.
     #[widget]
     #[layout(list![self.inner, self.label].with_direction(self.direction()))]
     pub struct RadioButton<A> {

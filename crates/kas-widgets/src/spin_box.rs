@@ -3,48 +3,76 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Spinner widget
+//! SpinBox widget
 
 use crate::{EditField, EditGuard, MarkButton};
 use kas::event::Command;
+use kas::messages::{SetValueF64, SetValueString};
 use kas::prelude::*;
-use kas::theme::{FrameStyle, MarkStyle, TextClass};
+use kas::theme::{FrameStyle, MarkStyle, Text, TextClass};
 use std::ops::RangeInclusive;
 
-/// Requirements on type used by [`Spinner`]
+/// Requirements on type used by [`SpinBox`]
 ///
 /// Implementations are provided for standard float and integer types.
-pub trait SpinnerValue:
-    Copy + PartialOrd + std::fmt::Debug + std::str::FromStr + ToString + 'static
+///
+/// The type must support conversion to and approximate conversion from `f64`
+/// in order to enable programmatic control (e.g. tests, accessibility tools).
+/// NOTE: this restriction might be revised in the future once Rust supports
+/// specialization.
+pub trait SpinValue:
+    Copy
+    + PartialOrd
+    + std::fmt::Debug
+    + std::str::FromStr
+    + ToString
+    + Cast<f64>
+    + ConvApprox<f64>
+    + 'static
 {
     /// The default step size (usually 1)
     fn default_step() -> Self;
 
+    /// Add `step` without wrapping
+    ///
+    /// The implementation should saturate on overflow, at least for fixed-precision types.
+    fn add_step(self, step: Self) -> Self;
+
+    /// Subtract `step` without wrapping
+    ///
+    /// The implementation should saturate on overflow, at least for fixed-precision types.
+    fn sub_step(self, step: Self) -> Self;
+
     /// Clamp `self` to the range `l_bound..=u_bound`
-    fn clamp(self, l_bound: Self, u_bound: Self) -> Self;
-
-    /// Add `x` without overflow, clamping the result to no more than `u_bound`
-    fn add_step(self, step: Self, u_bound: Self) -> Self;
-
-    /// Subtract `step` without overflow, clamping the result to no less than `l_bound`
-    fn sub_step(self, step: Self, l_bound: Self) -> Self;
+    ///
+    /// The default implementation is equivalent to the `std` implementations
+    /// for [`Ord`] and for floating-point types.
+    fn clamp(self, l_bound: Self, u_bound: Self) -> Self {
+        assert!(l_bound <= u_bound);
+        if self < l_bound {
+            l_bound
+        } else if self > u_bound {
+            u_bound
+        } else {
+            self
+        }
+    }
 }
 
 macro_rules! impl_float {
     ($t:ty) => {
-        impl SpinnerValue for $t {
+        impl SpinValue for $t {
             fn default_step() -> Self {
                 1.0
             }
+            fn add_step(self, step: Self) -> Self {
+                self + step
+            }
+            fn sub_step(self, step: Self) -> Self {
+                self - step
+            }
             fn clamp(self, l_bound: Self, u_bound: Self) -> Self {
                 <$t>::clamp(self, l_bound, u_bound)
-            }
-
-            fn add_step(self, step: Self, u_bound: Self) -> Self {
-                ((self / step + 1.0).round() * step).min(u_bound)
-            }
-            fn sub_step(self, step: Self, l_bound: Self) -> Self {
-                ((self / step - 1.0).round() * step).max(l_bound)
             }
         }
     };
@@ -55,20 +83,18 @@ impl_float!(f64);
 
 macro_rules! impl_int {
     ($t:ty) => {
-        impl SpinnerValue for $t {
+        impl SpinValue for $t {
             fn default_step() -> Self {
                 1
             }
+            fn add_step(self, step: Self) -> Self {
+                self.saturating_add(step)
+            }
+            fn sub_step(self, step: Self) -> Self {
+                self.saturating_sub(step)
+            }
             fn clamp(self, l_bound: Self, u_bound: Self) -> Self {
                 Ord::clamp(self, l_bound, u_bound)
-            }
-
-            fn add_step(self, step: Self, u_bound: Self) -> Self {
-                ((self / step).saturating_add(1)).saturating_mul(step).min(u_bound)
-            }
-            fn sub_step(self, step: Self, l_bound: Self) -> Self {
-                #[allow(clippy::manual_div_ceil)] // only stable on a subset of types used
-                (((self + step - 1) / step).saturating_sub(1)).saturating_mul(step).max(l_bound)
             }
         }
     };
@@ -90,61 +116,66 @@ enum SpinBtn {
 struct ValueMsg<T>(T);
 
 #[autoimpl(Debug ignore self.state_fn where T: trait)]
-struct SpinnerGuard<A, T: SpinnerValue> {
+struct SpinGuard<A, T: SpinValue> {
     start: T,
     end: T,
     step: T,
+    value: T,
     parsed: Option<T>,
     state_fn: Box<dyn Fn(&ConfigCx, &A) -> T>,
 }
 
-impl<A, T: SpinnerValue> SpinnerGuard<A, T> {
+impl<A, T: SpinValue> SpinGuard<A, T> {
     fn new(range: RangeInclusive<T>, state_fn: Box<dyn Fn(&ConfigCx, &A) -> T>) -> Self {
         let (start, end) = range.into_inner();
-        SpinnerGuard {
+        SpinGuard {
             start,
             end,
             step: T::default_step(),
+            value: start,
             parsed: None,
             state_fn,
         }
     }
 
     /// Returns new value if different
-    fn handle_btn(&self, cx: &mut EventCx, data: &A, btn: SpinBtn) -> Option<T> {
-        let old_value = (self.state_fn)(&cx.config_cx(), data);
+    fn handle_btn(&mut self, btn: SpinBtn) -> Option<T> {
+        let old_value = self.value;
         let value = match btn {
-            SpinBtn::Down => old_value.sub_step(self.step, self.start),
-            SpinBtn::Up => old_value.add_step(self.step, self.end),
+            SpinBtn::Down => old_value.sub_step(self.step),
+            SpinBtn::Up => old_value.add_step(self.step),
         };
 
+        self.value = value.clamp(self.start, self.end);
         (value != old_value).then_some(value)
     }
 }
 
-impl<A, T: SpinnerValue> EditGuard for SpinnerGuard<A, T> {
+impl<A, T: SpinValue> EditGuard for SpinGuard<A, T> {
     type Data = A;
 
     fn update(edit: &mut EditField<Self>, cx: &mut ConfigCx, data: &A) {
-        let value = (edit.guard.state_fn)(cx, data);
-        edit.set_string(cx, value.to_string());
+        edit.guard.value = (edit.guard.state_fn)(cx, data);
+        edit.set_string(cx, edit.guard.value.to_string());
     }
 
-    fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, data: &A) {
+    fn focus_lost(edit: &mut EditField<Self>, cx: &mut EventCx, _: &A) {
         if let Some(value) = edit.guard.parsed.take() {
+            edit.guard.value = value;
             cx.push(ValueMsg(value));
         } else {
-            let value = (edit.guard.state_fn)(&cx.config_cx(), data);
-            edit.set_string(cx, value.to_string());
+            edit.set_string(cx, edit.guard.value.to_string());
         }
     }
 
     fn edit(edit: &mut EditField<Self>, cx: &mut EventCx, _: &A) {
         let is_err;
         if let Ok(value) = edit.as_str().parse::<T>() {
-            edit.guard.parsed = Some(value.clamp(edit.guard.start, edit.guard.end));
+            edit.guard.value = value.clamp(edit.guard.start, edit.guard.end);
+            edit.guard.parsed = Some(edit.guard.value);
             is_err = false;
         } else {
+            edit.guard.parsed = None;
             is_err = true;
         };
         edit.set_error_state(cx, is_err);
@@ -152,7 +183,7 @@ impl<A, T: SpinnerValue> EditGuard for SpinnerGuard<A, T> {
 }
 
 #[impl_self]
-mod Spinner {
+mod SpinBox {
     /// A numeric entry widget with up/down arrows
     ///
     /// The value is constrained to a given `range`. Increment and decrement
@@ -163,15 +194,22 @@ mod Spinner {
     /// -   Ensure that range end points are a multiple of `step`
     /// -   With floating-point types, ensure that `step` is exactly
     ///     representable, e.g. an integer or a power of 2.
+    ///
+    /// ### Messages
+    ///
+    /// [`SetValueF64`] may be used to set the input value.
+    ///
+    /// [`SetValueString`] may be used to set the input as a text value.
     #[widget]
     #[layout(
-        frame!(row![self.edit, column! [self.b_up, self.b_down]])
+        frame!(row![self.edit, self.unit, column! [self.b_up, self.b_down]])
             .with_style(FrameStyle::EditBox)
     )]
-    pub struct Spinner<A, T: SpinnerValue> {
+    pub struct SpinBox<A, T: SpinValue> {
         core: widget_core!(),
         #[widget]
-        edit: EditField<SpinnerGuard<A, T>>,
+        edit: EditField<SpinGuard<A, T>>,
+        unit: Text<String>,
         #[widget(&())]
         b_up: MarkButton<SpinBtn>,
         #[widget(&())]
@@ -180,29 +218,30 @@ mod Spinner {
     }
 
     impl Self {
-        /// Construct a spinner
+        /// Construct a spin box
         ///
         /// Values vary within the given `range`. The default step size is
-        /// 1 for common types (see [`SpinnerValue::default_step`]).
+        /// 1 for common types (see [`SpinValue::default_step`]).
         #[inline]
         pub fn new(
             range: RangeInclusive<T>,
             state_fn: impl Fn(&ConfigCx, &A) -> T + 'static,
         ) -> Self {
-            Spinner {
+            SpinBox {
                 core: Default::default(),
-                edit: EditField::new(SpinnerGuard::new(range, Box::new(state_fn)))
+                edit: EditField::new(SpinGuard::new(range, Box::new(state_fn)))
                     .with_width_em(3.0, 8.0),
+                unit: Default::default(),
                 b_up: MarkButton::new_msg(MarkStyle::Point(Direction::Up), SpinBtn::Up),
                 b_down: MarkButton::new_msg(MarkStyle::Point(Direction::Down), SpinBtn::Down),
                 on_change: None,
             }
         }
 
-        /// Construct a spinner
+        /// Construct a spin box
         ///
         /// - Values vary within the given `range`
-        /// - The default step size is 1 for common types (see [`SpinnerValue::default_step`])
+        /// - The default step size is 1 for common types (see [`SpinValue::default_step`])
         /// - `state_fn` extracts the current state from input data
         /// - A message generated by `msg_fn` is emitted when toggled
         #[inline]
@@ -211,7 +250,7 @@ mod Spinner {
             state_fn: impl Fn(&ConfigCx, &A) -> T + 'static,
             msg_fn: impl Fn(T) -> M + 'static,
         ) -> Self {
-            Spinner::new(range, state_fn).with_msg(msg_fn)
+            SpinBox::new(range, state_fn).with_msg(msg_fn)
         }
 
         /// Send the message generated by `f` on change
@@ -270,6 +309,23 @@ mod Spinner {
             self
         }
 
+        /// Set the unit
+        ///
+        /// This is an annotation shown after the value.
+        pub fn set_unit(&mut self, cx: &mut EventState, unit: impl ToString) {
+            self.unit.set_text(unit.to_string());
+            let act = self.unit.reprepare_action();
+            cx.action(self, act);
+        }
+
+        /// Set the unit (inline)
+        ///
+        /// This method should only be used before the UI has started.
+        pub fn with_unit(mut self, unit: impl ToString) -> Self {
+            self.unit.set_text(unit.to_string());
+            self
+        }
+
         /// Set the step size
         #[inline]
         #[must_use]
@@ -287,6 +343,7 @@ mod Spinner {
 
         fn draw(&self, mut draw: DrawCx) {
             self.edit.draw(draw.re());
+            self.unit.draw(draw.re());
             self.b_up.draw(draw.re());
             self.b_down.draw(draw.re());
         }
@@ -304,6 +361,10 @@ mod Spinner {
     impl Events for Self {
         type Data = A;
 
+        fn configure(&mut self, cx: &mut ConfigCx) {
+            cx.text_configure(&mut self.unit);
+        }
+
         fn handle_event(&mut self, cx: &mut EventCx, data: &A, event: Event) -> IsUsed {
             let mut value = None;
             match event {
@@ -319,7 +380,7 @@ mod Spinner {
                         }
                         _ => return Unused,
                     };
-                    value = self.edit.guard.handle_btn(cx, data, btn);
+                    value = self.edit.guard.handle_btn(btn);
                 }
                 Event::Scroll(delta) => {
                     if let Some(y) = delta.as_wheel_action(cx) {
@@ -329,7 +390,7 @@ mod Spinner {
                             ((-y) as u32, SpinBtn::Down)
                         };
                         for _ in 0..count {
-                            value = self.edit.guard.handle_btn(cx, data, btn);
+                            value = self.edit.guard.handle_btn(btn);
                         }
                     } else {
                         return Unused;
@@ -350,7 +411,19 @@ mod Spinner {
             let new_value = if let Some(ValueMsg(value)) = cx.try_pop() {
                 Some(value)
             } else if let Some(btn) = cx.try_pop::<SpinBtn>() {
-                self.edit.guard.handle_btn(cx, data, btn)
+                self.edit.guard.handle_btn(btn)
+            } else if let Some(SetValueF64(v)) = cx.try_pop() {
+                match v.try_cast_approx() {
+                    Ok(value) => Some(value),
+                    Err(err) => {
+                        log::warn!("Slider failed to handle SetValueF64: {err}");
+                        None
+                    }
+                }
+            } else if let Some(SetValueString(string)) = cx.try_pop() {
+                self.edit.set_string(cx, string);
+                SpinGuard::edit(&mut self.edit, cx, data);
+                self.edit.guard.parsed
             } else {
                 None
             };

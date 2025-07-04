@@ -16,6 +16,10 @@ mod CheckBox {
     /// A bare check box (no label)
     ///
     /// See also [`CheckButton`] which includes a label.
+    ///
+    /// # Messages
+    ///
+    /// [`kas::messages::Activate`] may be used to toggle the state.
     #[autoimpl(Debug ignore self.state_fn, self.on_toggle)]
     #[widget]
     pub struct CheckBox<A> {
@@ -47,6 +51,13 @@ mod CheckBox {
                 self.toggle(cx, data);
                 Used
             })
+        }
+
+        fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
+            if let Some(kas::messages::Activate(code)) = cx.try_pop() {
+                self.toggle(cx, data);
+                cx.depress_with_key(self.id(), code);
+            }
         }
     }
 
@@ -175,6 +186,10 @@ mod CheckButton {
     /// A check button with label
     ///
     /// This is a [`CheckBox`] with a label.
+    ///
+    /// # Messages
+    ///
+    /// [`kas::messages::Activate`] may be used to toggle the state.
     #[widget]
     #[layout(list![self.inner, self.label].with_direction(self.direction()))]
     pub struct CheckButton<A> {

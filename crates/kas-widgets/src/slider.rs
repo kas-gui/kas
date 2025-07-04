@@ -7,59 +7,38 @@
 
 use super::{GripMsg, GripPart};
 use kas::event::{Command, FocusSource};
+use kas::messages::SetValueF64;
 use kas::prelude::*;
 use kas::theme::Feature;
 use std::fmt::Debug;
 use std::ops::{Add, RangeInclusive, Sub};
-use std::time::Duration;
 
 /// Requirements on type used by [`Slider`]
 ///
 /// Implementations are provided for standard float and integer types.
 pub trait SliderValue:
-    Copy + Debug + PartialOrd + Add<Output = Self> + Sub<Output = Self> + 'static
+    Copy
+    + Debug
+    + PartialOrd
+    + Add<Output = Self>
+    + Sub<Output = Self>
+    + Cast<f64>
+    + ConvApprox<f64>
+    + 'static
 {
     /// The default step size (usually 1)
     fn default_step() -> Self;
-
-    /// Divide self by another instance of this type, returning an `f64`
-    ///
-    /// Note: in practice, we always have `rhs >= self` and expect the result
-    /// to be between 0 and 1.
-    fn div_as_f64(self, rhs: Self) -> f64;
-
-    /// Return the result of multiplying self by an `f64` scalar
-    ///
-    /// Note: the `scalar` is expected to be between 0 and 1, hence this
-    /// operation should not produce a value larger than self.
-    ///
-    /// Also note that this method is not required to preserve precision
-    /// (e.g. `u128::mul_64` may drop some low-order bits with large numbers).
-    #[must_use]
-    fn mul_f64(self, scalar: f64) -> Self;
 }
 
 impl SliderValue for f64 {
     fn default_step() -> Self {
         1.0
     }
-    fn div_as_f64(self, rhs: Self) -> f64 {
-        self / rhs
-    }
-    fn mul_f64(self, scalar: f64) -> Self {
-        self * scalar
-    }
 }
 
 impl SliderValue for f32 {
     fn default_step() -> Self {
         1.0
-    }
-    fn div_as_f64(self, rhs: Self) -> f64 {
-        self as f64 / rhs as f64
-    }
-    fn mul_f64(self, scalar: f64) -> Self {
-        (self as f64 * scalar) as f32
     }
 }
 
@@ -68,14 +47,6 @@ macro_rules! impl_slider_ty {
         impl SliderValue for $ty {
             fn default_step() -> Self {
                 1
-            }
-            fn div_as_f64(self, rhs: Self) -> f64 {
-                self as f64 / rhs as f64
-            }
-            fn mul_f64(self, scalar: f64) -> Self {
-                let r = (self as f64 * scalar).round();
-                assert!(<$ty>::MIN as f64 <= r && r <= <$ty>::MAX as f64);
-                r as $ty
             }
         }
     };
@@ -87,26 +58,15 @@ macro_rules! impl_slider_ty {
 impl_slider_ty!(i8, i16, i32, i64, i128, isize);
 impl_slider_ty!(u8, u16, u32, u64, u128, usize);
 
-/// Implement for [`Duration`]
-///
-/// The default step size is 1 second.
-impl SliderValue for Duration {
-    fn default_step() -> Self {
-        Duration::from_secs(1)
-    }
-    fn div_as_f64(self, rhs: Self) -> f64 {
-        self.as_secs_f64() / rhs.as_secs_f64()
-    }
-    fn mul_f64(self, scalar: f64) -> Self {
-        self.mul_f64(scalar)
-    }
-}
-
 #[impl_self]
 mod Slider {
     /// A slider
     ///
     /// Sliders allow user input of a value from a fixed range.
+    ///
+    /// ### Messages
+    ///
+    /// [`SetValueF64`] may be used to set the input value.
     #[autoimpl(Debug ignore self.state_fn, self.on_move)]
     #[widget]
     pub struct Slider<A, T: SliderValue, D: Directional = Direction> {
@@ -278,7 +238,7 @@ mod Slider {
             let a = self.value - self.range.0;
             let b = self.range.1 - self.range.0;
             let max_offset = self.grip.max_offset();
-            let mut frac = a.div_as_f64(b);
+            let mut frac = a.cast() / b.cast();
             assert!((0.0..=1.0).contains(&frac));
             if self.direction.is_reversed() {
                 frac = 1.0 - frac;
@@ -292,10 +252,13 @@ mod Slider {
         fn apply_grip_offset(&mut self, cx: &mut EventCx, data: &A, offset: Offset) {
             let b = self.range.1 - self.range.0;
             let max_offset = self.grip.max_offset();
-            let mut a = match self.direction.is_vertical() {
-                false => b.mul_f64(offset.0 as f64 / max_offset.0 as f64),
-                true => b.mul_f64(offset.1 as f64 / max_offset.1 as f64),
+            let (offset, max) = match self.direction.is_vertical() {
+                false => (offset.0, max_offset.0),
+                true => (offset.1, max_offset.1),
             };
+            let mut a = (b.cast() * (offset as f64 / max as f64))
+                .round()
+                .cast_approx();
             if self.direction.is_reversed() {
                 a = b - a;
             }
@@ -419,7 +382,21 @@ mod Slider {
                 Some(GripMsg::PressMove(pos)) => {
                     self.apply_grip_offset(cx, data, pos);
                 }
-                _ => (),
+                Some(GripMsg::PressEnd(_)) => (),
+                None => {
+                    if let Some(SetValueF64(v)) = cx.try_pop() {
+                        match v.try_cast_approx() {
+                            Ok(value) => {
+                                if self.set_value(cx, value) {
+                                    if let Some(ref f) = self.on_move {
+                                        f(cx, data, self.value);
+                                    }
+                                }
+                            }
+                            Err(err) => log::warn!("Slider failed to handle SetValueF64: {err}"),
+                        }
+                    }
+                }
             }
         }
     }

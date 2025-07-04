@@ -18,8 +18,8 @@ use super::*;
 use crate::cast::Cast;
 use crate::config::WindowConfig;
 use crate::geom::{Rect, Size};
-use crate::messages::{Erased, MessageStack};
-use crate::runner::{Platform, RunnerT, WindowDataErased};
+use crate::messages::Erased;
+use crate::runner::{MessageStack, Platform, RunnerT, WindowDataErased};
 use crate::util::WidgetHierarchy;
 use crate::{Action, Id, NavAdvance, Node, WindowId};
 
@@ -108,7 +108,6 @@ pub struct EventState {
     // Optional new target for selection focus. bool is true if this also gains key focus.
     pending_sel_focus: Option<PendingSelFocus>,
     pending_nav_focus: PendingNavFocus,
-    pending_cmds: VecDeque<(Id, Command)>,
     pub(crate) action: Action,
 }
 
@@ -323,18 +322,32 @@ impl<'a> EventCx<'a> {
         (self.scroll != Scroll::None).then_some(self.scroll.clone())
     }
 
-    /// Replay a message as if it was pushed by `id`
-    fn replay(&mut self, mut widget: Node<'_>, id: Id, msg: Erased) {
-        debug_assert!(self.scroll == Scroll::None);
-        debug_assert!(self.last_child.is_none());
-        self.messages.set_base();
-        log::trace!(target: "kas_core::event", "replay: id={id}: {msg:?}");
+    /// Send a few message types as an Event, replay other messages as if pushed by `id`
+    fn send_or_replay(&mut self, mut widget: Node<'_>, id: Id, msg: Erased) {
+        if msg.is::<Command>() {
+            let cmd = *msg.downcast().unwrap();
+            if !self.send_event(widget, id, Event::Command(cmd, None)) {
+                match cmd {
+                    Command::Exit => self.runner.exit(),
+                    Command::Close => self.handle_close(),
+                    _ => (),
+                }
+            }
+        } else if msg.is::<ScrollDelta>() {
+            let event = Event::Scroll(*msg.downcast().unwrap());
+            self.send_event(widget, id, event);
+        } else {
+            debug_assert!(self.scroll == Scroll::None);
+            debug_assert!(self.last_child.is_none());
+            self.messages.set_base();
+            log::trace!(target: "kas_core::event", "replay: id={id}: {msg:?}");
 
-        self.target_is_disabled = false;
-        self.push_erased(msg);
-        widget._replay(self, id);
-        self.last_child = None;
-        self.scroll = Scroll::None;
+            self.target_is_disabled = false;
+            self.push_erased(msg);
+            widget._replay(self, id);
+            self.last_child = None;
+            self.scroll = Scroll::None;
+        }
     }
 
     // Call Widget::_send; returns true when event is used
