@@ -103,6 +103,10 @@ pub trait Tile: Layout {
     /// A returned child may not be configured or sized or visible even when
     /// the parent widget is.
     ///
+    /// Valid `index` values may be discovered by calling [`Self::num_children`]
+    /// or [`Self::find_child_index`]. The `index`-to-child mapping is not
+    /// required to remain fixed; use an [`Id`] to track a widget over time.
+    ///
     /// This method is usually implemented automatically by the `#[widget]`
     /// macro.
     fn get_child(&self, index: usize) -> Option<&dyn Tile> {

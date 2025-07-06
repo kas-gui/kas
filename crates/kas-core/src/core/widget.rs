@@ -382,6 +382,10 @@ pub trait Widget: Tile {
     /// not need to implement this. Widgets with an explicit implementation of
     /// [`Tile::num_children`] also need to implement this.
     ///
+    /// Valid `index` values may be discovered by calling [`Self::num_children`]
+    /// or [`Self::find_child_index`]. The `index`-to-child mapping is not
+    /// required to remain fixed; use an [`Id`] to track a widget over time.
+    ///
     /// It is recommended to use the methods on [`Node`]
     /// instead of calling this method.
     fn child_node<'n>(&'n mut self, data: &'n Self::Data, index: usize) -> Option<Node<'n>> {
