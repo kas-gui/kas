@@ -7,7 +7,7 @@
 
 #[cfg(feature = "image")] use crate::Icon;
 use crate::geom::Coord;
-use crate::{Id, Tile};
+use crate::{Id, Tile, TileExt};
 use std::{error::Error, fmt, path::Path};
 
 enum IdentifyContents<'a> {
@@ -115,24 +115,25 @@ impl<'a> fmt::Display for WidgetHierarchy<'a> {
             });
         }
 
-        let num_children = self.widget.num_children();
-        for index in 0..num_children {
-            if let Some(widget) = self.widget.get_child(index) {
-                if !widget.id_ref().is_valid() {
-                    continue;
-                }
+        let mut iter = self.widget.children();
+        let mut next = iter.next();
+        while let Some(widget) = next {
+            next = iter.next();
 
-                write!(f, "{}", WidgetHierarchy {
-                    widget,
-                    filter: None,
-                    trail: Trail {
-                        parent: Some(trail),
-                        trail: trail_hook,
-                    },
-                    indent,
-                    have_next_sibling: index + 1 < num_children,
-                })?;
+            if !widget.id_ref().is_valid() {
+                continue;
             }
+
+            write!(f, "{}", WidgetHierarchy {
+                widget,
+                filter: None,
+                trail: Trail {
+                    parent: Some(trail),
+                    trail: trail_hook,
+                },
+                indent,
+                have_next_sibling: next.is_some(),
+            })?;
         }
         Ok(())
     }

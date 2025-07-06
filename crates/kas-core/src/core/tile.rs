@@ -274,9 +274,13 @@ pub trait TileExt: Tile {
         !self.eq_id(id) && self.id_ref().is_ancestor_of(id)
     }
 
-    /// Return an iterator over direct children
+    /// Return an iterator over visible children
+    ///
+    /// This method may exclude hidden children: see [`Tile::child_indices`].
     fn children(&self) -> impl Iterator<Item = &dyn Tile> {
-        (0..self.num_children()).flat_map(|i| self.get_child(i))
+        self.child_indices()
+            .into_iter()
+            .flat_map(|i| self.get_child(i))
     }
 
     /// Find the descendant with this `id`, if any
