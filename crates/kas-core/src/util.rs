@@ -7,7 +7,7 @@
 
 #[cfg(feature = "image")] use crate::Icon;
 use crate::geom::Coord;
-use crate::{Id, Tile, TileExt};
+use crate::{ChildIndices, Id, Tile, TileExt};
 use std::{error::Error, fmt, path::Path};
 
 enum IdentifyContents<'a> {
@@ -166,21 +166,22 @@ impl<'a, T: fmt::Debug + ?Sized> fmt::Debug for TryFormat<'a, T> {
 }
 
 /// Generic implementation of [`Tile::nav_next`]
-pub fn nav_next(reverse: bool, from: Option<usize>, len: usize) -> Option<usize> {
-    let last = len.wrapping_sub(1);
-    if last == usize::MAX {
+pub fn nav_next(reverse: bool, from: Option<usize>, indices: ChildIndices) -> Option<usize> {
+    let range = indices.as_range();
+    if range.is_empty() {
         return None;
     }
+    let (first, last) = (range.start, range.end - 1);
 
     if let Some(index) = from {
         match reverse {
             false if index < last => Some(index + 1),
-            true if 0 < index => Some(index - 1),
+            true if first < index => Some(index - 1),
             _ => None,
         }
     } else {
         match reverse {
-            false => Some(0),
+            false => Some(first),
             true => Some(last),
         }
     }

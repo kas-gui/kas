@@ -24,6 +24,12 @@ pub struct ChildIndices(usize, usize);
 
 impl ChildIndices {
     // pub fn iter(&self) -> ChildIndicesRefIter<'_> { .. }
+
+    /// Convert to a Range
+    #[inline]
+    pub(crate) fn as_range(&self) -> Range<usize> {
+        self.0..self.1
+    }
 }
 
 impl IntoIterator for ChildIndices {

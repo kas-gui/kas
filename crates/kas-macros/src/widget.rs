@@ -660,7 +660,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
 
         fn_nav_next = Ok(quote! {
             fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-                ::kas::util::nav_next(reverse, from, self.num_children())
+                ::kas::util::nav_next(reverse, from, self.child_indices())
             }
         });
     }
