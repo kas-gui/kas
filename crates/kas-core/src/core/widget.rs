@@ -357,6 +357,8 @@ pub trait Widget: Tile {
     /// Type `Data` should be specified either here (`impl Widget { ... }`) or
     /// in `impl Events { ... }`. Alternatively, if the widget has no children
     /// and no explicit `impl Events` or `impl Widget`, then `Data = ()` is
+    /// assumed; or, if the prior conditions are met and `#[collection]` is used
+    /// on some field, then `Data = <#field_ty as ::kas::Collection>::Data` is
     /// assumed.
     ///
     /// [`#widget`]: macros::widget

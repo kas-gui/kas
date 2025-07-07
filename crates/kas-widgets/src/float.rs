@@ -89,6 +89,7 @@ mod Float {
     #[widget]
     pub struct Float<C: Collection> {
         core: widget_core!(),
+        #[collection]
         widgets: C,
     }
 
@@ -139,15 +140,6 @@ mod Float {
     }
 
     impl Tile for Self {
-        #[inline]
-        fn num_children(&self) -> usize {
-            self.widgets.len()
-        }
-
-        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
-            self.widgets.get_tile(index)
-        }
-
         fn probe(&self, coord: Coord) -> Id {
             for i in 0..self.widgets.len() {
                 if let Some(child) = self.widgets.get_tile(i) {
@@ -157,15 +149,6 @@ mod Float {
                 }
             }
             self.id()
-        }
-    }
-
-    impl Widget for Self {
-        type Data = C::Data;
-
-        #[inline]
-        fn child_node<'n>(&'n mut self, data: &'n Self::Data, index: usize) -> Option<Node<'n>> {
-            self.widgets.child_node(data, index)
         }
     }
 }

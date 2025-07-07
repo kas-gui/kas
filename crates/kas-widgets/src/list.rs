@@ -256,6 +256,7 @@ mod List {
     pub struct List<C: Collection, D: Directional> {
         core: widget_core!(),
         layout: DynRowStorage,
+        #[collection]
         widgets: C,
         direction: D,
         next: usize,
@@ -295,15 +296,6 @@ mod List {
     }
 
     impl Tile for Self {
-        #[inline]
-        fn num_children(&self) -> usize {
-            self.widgets.len()
-        }
-
-        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
-            self.widgets.get_tile(index)
-        }
-
         fn find_child_index(&self, id: &Id) -> Option<usize> {
             id.next_key_after(self.id_ref())
                 .and_then(|k| self.id_map.get(&k).cloned())
@@ -319,6 +311,8 @@ mod List {
     }
 
     impl Events for Self {
+        type Data = C::Data;
+
         /// Make a fresh id based on `self.next` then insert into `self.id_map`
         fn make_child_id(&mut self, index: usize) -> Id {
             if let Some(child) = self.widgets.get_tile(index) {
@@ -346,14 +340,6 @@ mod List {
         fn configure(&mut self, _: &mut ConfigCx) {
             // All children will be re-configured which will rebuild id_map
             self.id_map.clear();
-        }
-    }
-
-    impl Widget for Self {
-        type Data = C::Data;
-
-        fn child_node<'n>(&'n mut self, data: &'n C::Data, index: usize) -> Option<Node<'n>> {
-            self.widgets.child_node(data, index)
         }
     }
 

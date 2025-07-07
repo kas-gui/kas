@@ -277,6 +277,7 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 ///     available inputs are `self`, `data` (own input data) and `index`
 ///     (of the child).
 /// -   `#[widget = expr]`: an alternative way of writing the above
+/// -   `#[collection]`: the field is a [`Collection`] of widgets
 ///
 /// ## Examples
 ///
@@ -337,6 +338,7 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// [`Layout`]: https://docs.rs/kas/latest/kas/trait.Layout.html
 /// [`Tile`]: https://docs.rs/kas/latest/kas/trait.Tile.html
 /// [`Events`]: https://docs.rs/kas/latest/kas/trait.Events.html
+/// [`Collection`]: https://docs.rs/kas/latest/kas/trait.Collection.html
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {

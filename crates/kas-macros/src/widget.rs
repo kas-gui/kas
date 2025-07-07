@@ -166,6 +166,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
 
     let mut core_data: Option<Member> = None;
     let mut children = Vec::with_capacity(fields.len());
+    let mut collection: Option<(Span, Member, Type)> = None;
 
     for (i, field) in fields.iter_mut().enumerate() {
         let ident = member(i, field.ident.clone());
@@ -254,6 +255,16 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                     attr_span,
                     data_binding,
                 });
+            } else if !is_child && *attr.path() == parse_quote! { collection } {
+                is_child = true;
+                if let Some((coll_span, _, _)) = collection {
+                    emit_error!(
+                        attr, "multiple usages of #[collection] within a widget is not currently supported";
+                        note = coll_span => "previous usage of #[collection]";
+                        note = "write impls of fns Tile::num_children, Tile::get_child and Widget::child_node instead";
+                    );
+                }
+                collection = Some((attr.span(), ident.clone(), field.ty.clone()));
             } else {
                 other_attrs.push(attr);
             }
@@ -263,7 +274,11 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
 
     if ty_data.is_some() {
     } else if children.is_empty() && events_impl.is_none() && widget_impl.is_none() {
-        ty_data = Some(parse_quote! { type Data = (); });
+        if let Some((_, _, ref ty)) = collection {
+            ty_data = Some(parse_quote! { type Data = <#ty as ::kas::Collection>::Data; });
+        } else {
+            ty_data = Some(parse_quote! { type Data = (); });
+        }
     } else {
         let span = if let Some(index) = widget_impl {
             scope.impls[index].brace_token.span.open()
@@ -297,14 +312,17 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     };
     let core_path = quote! { self.#core };
 
-    let named_child_iter = children
-        .iter()
-        .enumerate()
-        .filter_map(|(i, child)| match child.ident {
-            ChildIdent::Field(ref member) => Some((i, member)),
-            ChildIdent::CoreField(_) => None,
-        });
-    crate::visitors::widget_index(named_child_iter, &mut scope.impls);
+    if collection.is_none() {
+        let named_child_iter =
+            children
+                .iter()
+                .enumerate()
+                .filter_map(|(i, child)| match child.ident {
+                    ChildIdent::Field(ref member) => Some((i, member)),
+                    ChildIdent::CoreField(_) => None,
+                });
+        crate::visitors::widget_index(named_child_iter, &mut scope.impls);
+    }
 
     if let Some(ref span) = num_children {
         if get_child.is_none() {
@@ -325,6 +343,12 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 emit_error!(span, "impl forbidden when using layout-defined children");
             }
         }
+        if let Some((coll_span, _, _)) = collection {
+            emit_error!(
+                span, "impl forbidden when using `#[collection]` on a field";
+                note = coll_span => "this usage of #[collection]";
+            );
+        }
     }
     let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
     let impl_generics = impl_generics.to_token_stream();
@@ -339,54 +363,81 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     let mut fn_child_node = None;
     let get_child_span = get_child.as_ref().map(|item| item.span());
     if get_child.is_none() && child_node.is_none() {
-        let mut get_rules = quote! {};
-        for (index, child) in children.iter().enumerate() {
-            get_rules.append_all(child.ident.get_rule(&core_path, index));
-        }
+        if collection.is_none() {
+            let mut get_rules = quote! {};
+            for (index, child) in children.iter().enumerate() {
+                get_rules.append_all(child.ident.get_rule(&core_path, index));
+            }
 
-        let mut get_mut_rules = quote! {};
-        for (i, child) in children.iter().enumerate() {
-            let path = match &child.ident {
-                ChildIdent::Field(ident) => quote! { self.#ident },
-                ChildIdent::CoreField(ident) => quote! { #core_path.#ident },
-            };
+            let mut get_mut_rules = quote! {};
+            for (i, child) in children.iter().enumerate() {
+                let path = match &child.ident {
+                    ChildIdent::Field(ident) => quote! { self.#ident },
+                    ChildIdent::CoreField(ident) => quote! { #core_path.#ident },
+                };
 
-            get_mut_rules.append_all(if let Some(ref data) = child.data_binding {
-                quote! { #i => Some(#path.as_node(#data)), }
-            } else {
-                if let Some(ref span) = child.attr_span {
-                    quote_spanned! {*span=> #i => Some(#path.as_node(data)), }
+                get_mut_rules.append_all(if let Some(ref data) = child.data_binding {
+                    quote! { #i => Some(#path.as_node(#data)), }
                 } else {
-                    quote! { #i => Some(#path.as_node(data)), }
+                    if let Some(ref span) = child.attr_span {
+                        quote_spanned! {*span=> #i => Some(#path.as_node(data)), }
+                    } else {
+                        quote! { #i => Some(#path.as_node(data)), }
+                    }
+                });
+            }
+
+            let count = children.len();
+
+            fns_get_child = Some(quote! {
+                fn num_children(&self) -> usize {
+                    #count
+                }
+                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Tile> {
+                    match index {
+                        #get_rules
+                        _ => None,
+                    }
                 }
             });
+            fn_child_node = Some(quote! {
+                fn child_node<'__n>(
+                    &'__n mut self,
+                    data: &'__n Self::Data,
+                    index: usize,
+                ) -> Option<::kas::Node<'__n>> {
+                    match index {
+                        #get_mut_rules
+                        _ => None,
+                    }
+                }
+            });
+        } else if children.is_empty()
+            && let Some((_, ident, _)) = collection
+        {
+            fns_get_child = Some(quote! {
+                fn num_children(&self) -> usize {
+                    self.#ident.len()
+                }
+                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Tile> {
+                    self.#ident.get_tile(index)
+                }
+            });
+            fn_child_node = Some(quote! {
+                fn child_node<'__n>(
+                    &'__n mut self,
+                    data: &'__n Self::Data,
+                    index: usize,
+                ) -> Option<::kas::Node<'__n>> {
+                    self.#ident.child_node(data, index)
+                }
+            });
+        } else if let Some((span, _, _)) = collection {
+            emit_error!(
+                span, "unable to generate fns Tile::num_children, Tile::get_child, Widget::child_node";
+                note = "usage of #[collection] is not currently supported together with #[widget] fields or layout children";
+            );
         }
-
-        let count = children.len();
-
-        fns_get_child = Some(quote! {
-            fn num_children(&self) -> usize {
-                #count
-            }
-            fn get_child(&self, index: usize) -> Option<&dyn ::kas::Tile> {
-                match index {
-                    #get_rules
-                    _ => None,
-                }
-            }
-        });
-        fn_child_node = Some(quote! {
-            fn child_node<'__n>(
-                &'__n mut self,
-                data: &'__n Self::Data,
-                index: usize,
-            ) -> Option<::kas::Node<'__n>> {
-                match index {
-                    #get_mut_rules
-                    _ => None,
-                }
-            }
-        });
     };
 
     if let Some(index) = widget_impl {
