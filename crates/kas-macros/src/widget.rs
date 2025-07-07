@@ -308,9 +308,6 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
         if get_child.is_none() {
             emit_warning!(span, "fn num_children without fn get_child");
         }
-        if child_node.is_none() {
-            emit_warning!(span, "fn num_children without fn child_node");
-        }
     }
     if let Some(span) = get_child.as_ref().or(child_node.as_ref()) {
         if num_children.is_none() {
@@ -336,15 +333,36 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
         #core_path.status.require_rect(&#core_path._id);
     };
 
-    let do_impl_widget_children = get_child.is_none() && child_node.is_none();
-    let fns_get_child = if do_impl_widget_children {
+    let mut fns_get_child = None;
+    let mut fn_child_node = None;
+    let get_child_span = get_child.as_ref().map(|item| item.span());
+    if get_child.is_none() && child_node.is_none() {
         let mut get_rules = quote! {};
         for (index, child) in children.iter().enumerate() {
             get_rules.append_all(child.ident.get_rule(&core_path, index));
         }
 
+        let mut get_mut_rules = quote! {};
+        for (i, child) in children.iter().enumerate() {
+            let path = match &child.ident {
+                ChildIdent::Field(ident) => quote! { self.#ident },
+                ChildIdent::CoreField(ident) => quote! { #core_path.#ident },
+            };
+
+            get_mut_rules.append_all(if let Some(ref data) = child.data_binding {
+                quote! { #i => Some(#path.as_node(#data)), }
+            } else {
+                if let Some(ref span) = child.attr_span {
+                    quote_spanned! {*span=> #i => Some(#path.as_node(data)), }
+                } else {
+                    quote! { #i => Some(#path.as_node(data)), }
+                }
+            });
+        }
+
         let count = children.len();
-        Some(quote! {
+
+        fns_get_child = Some(quote! {
             fn num_children(&self) -> usize {
                 #count
             }
@@ -354,9 +372,19 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                     _ => None,
                 }
             }
-        })
-    } else {
-        None
+        });
+        fn_child_node = Some(quote! {
+            fn child_node<'__n>(
+                &'__n mut self,
+                data: &'__n Self::Data,
+                index: usize,
+            ) -> Option<::kas::Node<'__n>> {
+                match index {
+                    #get_mut_rules
+                    _ => None,
+                }
+            }
+        });
     };
 
     if let Some(index) = widget_impl {
@@ -369,6 +397,17 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
         // Always impl fn as_node
         widget_impl.items.push(Verbatim(widget_as_node()));
 
+        if !has_item("child_node") {
+            if let Some(method) = fn_child_node {
+                widget_impl.items.push(Verbatim(method));
+            } else {
+                emit_error!(
+                    widget_impl, "refusing to generate fn child_node";
+                    note = get_child_span.unwrap() => "due to explicit impl of fn Tile::get_child";
+                );
+            }
+        }
+
         if !has_item("_send") {
             widget_impl
                 .items
@@ -379,14 +418,27 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
             widget_impl.items.push(Verbatim(widget_nav_next()));
         }
     } else {
-        scope.generated.push(impl_widget(
-            &impl_generics,
-            &impl_target,
-            &data_ty,
-            &core_path,
-            &children,
-            do_impl_widget_children,
-        ));
+        let fns_as_node = widget_as_node();
+
+        if fn_child_node.is_none() {
+            emit_error!(
+                attr_span, "refusing to generate fn Widget::child_node";
+                note = get_child_span.unwrap() => "due to explicit impl of fn Tile::get_child";
+            );
+        }
+
+        let fns_recurse = widget_recursive_methods(&core_path);
+        let fn_nav_next = widget_nav_next();
+
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::Widget for #impl_target {
+                type Data = #data_ty;
+                #fns_as_node
+                #fn_child_node
+                #fns_recurse
+                #fn_nav_next
+            }
+        });
     }
 
     let fn_nav_next;
@@ -798,65 +850,6 @@ pub fn required_tile_methods(name: &str, core_path: &Toks) -> Toks {
         #[inline]
         fn identify(&self) -> ::kas::util::IdentifyWidget<'_> {
             ::kas::util::IdentifyWidget::simple(#name, self.id_ref())
-        }
-    }
-}
-
-pub fn impl_widget(
-    impl_generics: &Toks,
-    impl_target: &Toks,
-    data_ty: &Type,
-    core_path: &Toks,
-    children: &[Child],
-    do_impl_widget_children: bool,
-) -> Toks {
-    let fns_as_node = widget_as_node();
-
-    let fns_for_child = if do_impl_widget_children {
-        let mut get_mut_rules = quote! {};
-        for (i, child) in children.iter().enumerate() {
-            let path = match &child.ident {
-                ChildIdent::Field(ident) => quote! { self.#ident },
-                ChildIdent::CoreField(ident) => quote! { #core_path.#ident },
-            };
-
-            get_mut_rules.append_all(if let Some(ref data) = child.data_binding {
-                quote! { #i => Some(#path.as_node(#data)), }
-            } else {
-                if let Some(ref span) = child.attr_span {
-                    quote_spanned! {*span=> #i => Some(#path.as_node(data)), }
-                } else {
-                    quote! { #i => Some(#path.as_node(data)), }
-                }
-            });
-        }
-
-        quote! {
-            fn child_node<'__n>(
-                &'__n mut self,
-                data: &'__n Self::Data,
-                index: usize,
-            ) -> Option<::kas::Node<'__n>> {
-                match index {
-                    #get_mut_rules
-                    _ => None,
-                }
-            }
-        }
-    } else {
-        quote! {}
-    };
-
-    let fns_recurse = widget_recursive_methods(core_path);
-    let fn_nav_next = widget_nav_next();
-
-    quote! {
-        impl #impl_generics ::kas::Widget for #impl_target {
-            type Data = #data_ty;
-            #fns_as_node
-            #fns_for_child
-            #fns_recurse
-            #fn_nav_next
         }
     }
 }
