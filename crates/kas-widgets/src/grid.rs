@@ -172,6 +172,7 @@ mod Grid {
         core: widget_core!(),
         layout: DynGridStorage,
         dim: GridDimensions,
+        #[collection]
         widgets: C,
     }
 
@@ -212,14 +213,6 @@ mod Grid {
     }
 
     impl Tile for Self {
-        #[inline]
-        fn num_children(&self) -> usize {
-            self.widgets.len()
-        }
-        fn get_child(&self, index: usize) -> Option<&dyn Tile> {
-            self.widgets.get_tile(index).map(|w| w.as_tile())
-        }
-
         fn probe(&self, coord: Coord) -> Id {
             for n in 0..self.widgets.len() {
                 if let Some(child) = self.widgets.get_tile(n) {
@@ -229,14 +222,6 @@ mod Grid {
                 }
             }
             self.id()
-        }
-    }
-
-    impl Widget for Self {
-        type Data = C::Data;
-
-        fn child_node<'n>(&'n mut self, data: &'n C::Data, index: usize) -> Option<Node<'n>> {
-            self.widgets.child_node(data, index)
         }
     }
 }

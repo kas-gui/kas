@@ -9,7 +9,7 @@ use proc_macro2::{Span, TokenStream as Toks};
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::{Expr, Ident, Index, Member, Meta, Token};
+use syn::{Expr, Ident, Index, Member, Meta};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -20,22 +20,11 @@ mod kw {
 }
 
 #[derive(Debug, Default)]
-pub struct WidgetArgs {
-    pub data_ty: Option<syn::Type>,
-}
+pub struct WidgetArgs {}
 
 impl Parse for WidgetArgs {
-    fn parse(content: ParseStream) -> Result<Self> {
-        let data_ty = if !content.is_empty() {
-            let _: Token![type] = content.parse()?;
-            let _ = content.parse::<kw::Data>()?;
-            let _: Token![=] = content.parse()?;
-            Some(content.parse()?)
-        } else {
-            None
-        };
-
-        Ok(WidgetArgs { data_ty })
+    fn parse(_: ParseStream) -> Result<Self> {
+        Ok(WidgetArgs {})
     }
 }
 
@@ -57,11 +46,13 @@ impl ScopeAttr for AttrImplWidget {
 
     fn apply(&self, attr: syn::Attribute, scope: &mut Scope) -> Result<()> {
         let span = attr.span();
-        let args = match &attr.meta {
-            Meta::Path(_) => WidgetArgs::default(),
-            _ => attr.parse_args()?,
+        match &attr.meta {
+            Meta::Path(_) => (),
+            _ => {
+                let _: WidgetArgs = attr.parse_args()?;
+            }
         };
-        crate::widget::widget(span, args, scope)
+        crate::widget::widget(span, scope)
     }
 }
 

@@ -38,7 +38,7 @@ mod Image {
     ///
     /// May be default constructed (result is empty).
     #[derive(Clone, Debug, Default)]
-    #[widget(type Data = ())]
+    #[widget]
     pub struct Image {
         core: widget_core!(),
         scaling: PixmapScaling,

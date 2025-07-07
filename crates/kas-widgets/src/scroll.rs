@@ -25,7 +25,7 @@ mod ScrollRegion {
     ///
     /// [`ScrollBarRegion`]: crate::ScrollBarRegion
     #[derive(Clone, Debug, Default)]
-    #[widget(type Data = W::Data)]
+    #[widget]
     pub struct ScrollRegion<W: Widget> {
         core: widget_core!(),
         min_child_size: Size,
@@ -136,6 +136,8 @@ mod ScrollRegion {
     }
 
     impl Events for Self {
+        type Data = W::Data;
+
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.register_nav_fallback(self.id());
         }

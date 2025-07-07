@@ -393,7 +393,7 @@ mod ScrollBars {
     /// force internal margins by wrapping contents with a (zero-sized) frame.
     /// [`ScrollRegion`] already does this.
     #[derive(Clone, Debug, Default)]
-    #[widget(type Data = W::Data)]
+    #[widget]
     pub struct ScrollBars<W: Scrollable + Widget> {
         core: widget_core!(),
         mode: ScrollBarMode,
@@ -597,6 +597,8 @@ mod ScrollBars {
     }
 
     impl Events for Self {
+        type Data = W::Data;
+
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
             let index = cx.last_child();
             if index == Some(widget_index![self.horiz_bar]) {

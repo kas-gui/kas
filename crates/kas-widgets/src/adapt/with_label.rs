@@ -17,7 +17,7 @@ mod WithLabel {
     ///
     /// Mouse/touch input on the label sends events to the inner widget.
     #[derive(Clone, Default)]
-    #[widget(type Data = W::Data)]
+    #[widget]
     #[layout(list![self.inner, self.label].with_direction(self.dir))]
     pub struct WithLabel<W: Widget, D: Directional = Direction> {
         core: widget_core!(),
@@ -112,5 +112,9 @@ mod WithLabel {
         fn probe(&self, _: Coord) -> Id {
             self.inner.id()
         }
+    }
+
+    impl Events for Self {
+        type Data = W::Data;
     }
 }

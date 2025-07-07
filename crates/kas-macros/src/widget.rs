@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::widget_args::{Child, ChildIdent, WidgetArgs, member};
+use crate::widget_args::{Child, ChildIdent, member};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::scope::{Scope, ScopeItem};
 use proc_macro_error2::{emit_error, emit_warning};
@@ -20,10 +20,9 @@ use syn::{parse_quote, parse2};
 /// This macro may inject impls and inject items into existing impls.
 /// It may also inject code into existing methods such that the only observable
 /// behaviour is a panic.
-pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()> {
+pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     scope.expand_impl_self();
     let name = &scope.ident;
-    let mut data_ty = args.data_ty;
 
     let mut layout: Option<crate::make_layout::Tree> = None;
     let mut other_attrs = Vec::with_capacity(scope.attrs.len());
@@ -48,6 +47,8 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
     let mut tile_impl = None;
     let mut events_impl = None;
 
+    let mut ty_data: Option<syn::ImplItemType> = None;
+
     let mut num_children = None;
     let mut get_child = None;
     let mut child_node = None;
@@ -70,13 +71,13 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                         }
                     } else if let ImplItem::Type(item) = item {
                         if item.ident == "Data" {
-                            if let Some(ref ty) = data_ty {
+                            if let Some(ref old) = ty_data {
                                 emit_error!(
-                                    ty, "depulicate definition";
-                                    note = item.ty.span() => "also defined here";
+                                    item, "duplicate definitions with name `Data`";
+                                    note = old.span() => "also defined here";
                                 );
                             } else {
-                                data_ty = Some(item.ty.clone());
+                                ty_data = Some(item.clone());
                             }
                         }
                     }
@@ -118,13 +119,13 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                 for item in &impl_.items {
                     if let ImplItem::Type(item) = item {
                         if item.ident == "Data" {
-                            if let Some(ref ty) = data_ty {
+                            if let Some(ref old) = ty_data {
                                 emit_error!(
-                                    ty, "depulicate definition";
-                                    note = item.ty.span() => "also defined here";
+                                    item, "duplicate definitions with name `Data`";
+                                    note = old.span() => "also defined here";
                                 );
                             } else {
-                                data_ty = Some(item.ty.clone());
+                                ty_data = Some(item.clone());
                             }
                         }
                     } else if let ImplItem::Fn(item) = item {
@@ -163,24 +164,9 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
         }
     };
 
-    let data_ty = if let Some(ty) = data_ty {
-        ty
-    } else {
-        let span = if let Some(index) = widget_impl {
-            scope.impls[index].brace_token.span.open()
-        } else if let Some(index) = events_impl {
-            scope.impls[index].brace_token.span.open()
-        } else {
-            attr_span
-        };
-        return Err(Error::new(
-            span,
-            "expected a definition of Data in Widget, Events or via #[widget { Data = ...; }]",
-        ));
-    };
-
     let mut core_data: Option<Member> = None;
     let mut children = Vec::with_capacity(fields.len());
+    let mut collection: Option<(Span, Member, Type)> = None;
 
     for (i, field) in fields.iter_mut().enumerate() {
         let ident = member(i, field.ident.clone());
@@ -269,12 +255,43 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                     attr_span,
                     data_binding,
                 });
+            } else if !is_child && *attr.path() == parse_quote! { collection } {
+                is_child = true;
+                if let Some((coll_span, _, _)) = collection {
+                    emit_error!(
+                        attr, "multiple usages of #[collection] within a widget is not currently supported";
+                        note = coll_span => "previous usage of #[collection]";
+                        note = "write impls of fns Tile::num_children, Tile::get_child and Widget::child_node instead";
+                    );
+                }
+                collection = Some((attr.span(), ident.clone(), field.ty.clone()));
             } else {
                 other_attrs.push(attr);
             }
         }
         field.attrs = other_attrs;
     }
+
+    if ty_data.is_some() {
+    } else if children.is_empty() && events_impl.is_none() && widget_impl.is_none() {
+        if let Some((_, _, ref ty)) = collection {
+            ty_data = Some(parse_quote! { type Data = <#ty as ::kas::Collection>::Data; });
+        } else {
+            ty_data = Some(parse_quote! { type Data = (); });
+        }
+    } else {
+        let span = if let Some(index) = widget_impl {
+            scope.impls[index].brace_token.span.open()
+        } else if let Some(index) = events_impl {
+            scope.impls[index].brace_token.span.open()
+        } else {
+            attr_span
+        };
+        emit_error!(
+            span,
+            "expected a definition of Data in Widget, Events or via #[widget(type Data = ...)]",
+        );
+    };
 
     let Some(core) = core_data.clone() else {
         let span = match scope.item {
@@ -295,21 +312,21 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
     };
     let core_path = quote! { self.#core };
 
-    let named_child_iter = children
-        .iter()
-        .enumerate()
-        .filter_map(|(i, child)| match child.ident {
-            ChildIdent::Field(ref member) => Some((i, member)),
-            ChildIdent::CoreField(_) => None,
-        });
-    crate::visitors::widget_index(named_child_iter, &mut scope.impls);
+    if collection.is_none() {
+        let named_child_iter =
+            children
+                .iter()
+                .enumerate()
+                .filter_map(|(i, child)| match child.ident {
+                    ChildIdent::Field(ref member) => Some((i, member)),
+                    ChildIdent::CoreField(_) => None,
+                });
+        crate::visitors::widget_index(named_child_iter, &mut scope.impls);
+    }
 
     if let Some(ref span) = num_children {
         if get_child.is_none() {
             emit_warning!(span, "fn num_children without fn get_child");
-        }
-        if child_node.is_none() {
-            emit_warning!(span, "fn num_children without fn child_node");
         }
     }
     if let Some(span) = get_child.as_ref().or(child_node.as_ref()) {
@@ -326,6 +343,12 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                 emit_error!(span, "impl forbidden when using layout-defined children");
             }
         }
+        if let Some((coll_span, _, _)) = collection {
+            emit_error!(
+                span, "impl forbidden when using `#[collection]` on a field";
+                note = coll_span => "this usage of #[collection]";
+            );
+        }
     }
     let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
     let impl_generics = impl_generics.to_token_stream();
@@ -336,27 +359,85 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
         #core_path.status.require_rect(&#core_path._id);
     };
 
-    let do_impl_widget_children = get_child.is_none() && child_node.is_none();
-    let fns_get_child = if do_impl_widget_children {
-        let mut get_rules = quote! {};
-        for (index, child) in children.iter().enumerate() {
-            get_rules.append_all(child.ident.get_rule(&core_path, index));
-        }
+    let mut fns_get_child = None;
+    let mut fn_child_node = None;
+    let get_child_span = get_child.as_ref().map(|item| item.span());
+    if get_child.is_none() && child_node.is_none() {
+        if collection.is_none() {
+            let mut get_rules = quote! {};
+            for (index, child) in children.iter().enumerate() {
+                get_rules.append_all(child.ident.get_rule(&core_path, index));
+            }
 
-        let count = children.len();
-        Some(quote! {
-            fn num_children(&self) -> usize {
-                #count
+            let mut get_mut_rules = quote! {};
+            for (i, child) in children.iter().enumerate() {
+                let path = match &child.ident {
+                    ChildIdent::Field(ident) => quote! { self.#ident },
+                    ChildIdent::CoreField(ident) => quote! { #core_path.#ident },
+                };
+
+                get_mut_rules.append_all(if let Some(ref data) = child.data_binding {
+                    quote! { #i => Some(#path.as_node(#data)), }
+                } else {
+                    if let Some(ref span) = child.attr_span {
+                        quote_spanned! {*span=> #i => Some(#path.as_node(data)), }
+                    } else {
+                        quote! { #i => Some(#path.as_node(data)), }
+                    }
+                });
             }
-            fn get_child(&self, index: usize) -> Option<&dyn ::kas::Tile> {
-                match index {
-                    #get_rules
-                    _ => None,
+
+            let count = children.len();
+
+            fns_get_child = Some(quote! {
+                fn num_children(&self) -> usize {
+                    #count
                 }
-            }
-        })
-    } else {
-        None
+                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Tile> {
+                    match index {
+                        #get_rules
+                        _ => None,
+                    }
+                }
+            });
+            fn_child_node = Some(quote! {
+                fn child_node<'__n>(
+                    &'__n mut self,
+                    data: &'__n Self::Data,
+                    index: usize,
+                ) -> Option<::kas::Node<'__n>> {
+                    match index {
+                        #get_mut_rules
+                        _ => None,
+                    }
+                }
+            });
+        } else if children.is_empty()
+            && let Some((_, ident, _)) = collection
+        {
+            fns_get_child = Some(quote! {
+                fn num_children(&self) -> usize {
+                    self.#ident.len()
+                }
+                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Tile> {
+                    self.#ident.get_tile(index)
+                }
+            });
+            fn_child_node = Some(quote! {
+                fn child_node<'__n>(
+                    &'__n mut self,
+                    data: &'__n Self::Data,
+                    index: usize,
+                ) -> Option<::kas::Node<'__n>> {
+                    self.#ident.child_node(data, index)
+                }
+            });
+        } else if let Some((span, _, _)) = collection {
+            emit_error!(
+                span, "unable to generate fns Tile::num_children, Tile::get_child, Widget::child_node";
+                note = "usage of #[collection] is not currently supported together with #[widget] fields or layout children";
+            );
+        }
     };
 
     if let Some(index) = widget_impl {
@@ -369,6 +450,17 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
         // Always impl fn as_node
         widget_impl.items.push(Verbatim(widget_as_node()));
 
+        if !has_item("child_node") {
+            if let Some(method) = fn_child_node {
+                widget_impl.items.push(Verbatim(method));
+            } else {
+                emit_error!(
+                    widget_impl, "refusing to generate fn child_node";
+                    note = get_child_span.unwrap() => "due to explicit impl of fn Tile::get_child";
+                );
+            }
+        }
+
         if !has_item("_send") {
             widget_impl
                 .items
@@ -379,14 +471,27 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
             widget_impl.items.push(Verbatim(widget_nav_next()));
         }
     } else {
-        scope.generated.push(impl_widget(
-            &impl_generics,
-            &impl_target,
-            &data_ty,
-            &core_path,
-            &children,
-            do_impl_widget_children,
-        ));
+        let fns_as_node = widget_as_node();
+
+        if fn_child_node.is_none() {
+            emit_error!(
+                attr_span, "refusing to generate fn Widget::child_node";
+                note = get_child_span.unwrap() => "due to explicit impl of fn Tile::get_child";
+            );
+        }
+
+        let fns_recurse = widget_recursive_methods(&core_path);
+        let fn_nav_next = widget_nav_next();
+
+        scope.generated.push(quote_spanned! {attr_span=>
+            impl #impl_generics ::kas::Widget for #impl_target {
+                #ty_data
+                #fns_as_node
+                #fn_child_node
+                #fns_recurse
+                #fn_nav_next
+            }
+        });
     }
 
     let fn_nav_next;
@@ -798,65 +903,6 @@ pub fn required_tile_methods(name: &str, core_path: &Toks) -> Toks {
         #[inline]
         fn identify(&self) -> ::kas::util::IdentifyWidget<'_> {
             ::kas::util::IdentifyWidget::simple(#name, self.id_ref())
-        }
-    }
-}
-
-pub fn impl_widget(
-    impl_generics: &Toks,
-    impl_target: &Toks,
-    data_ty: &Type,
-    core_path: &Toks,
-    children: &[Child],
-    do_impl_widget_children: bool,
-) -> Toks {
-    let fns_as_node = widget_as_node();
-
-    let fns_for_child = if do_impl_widget_children {
-        let mut get_mut_rules = quote! {};
-        for (i, child) in children.iter().enumerate() {
-            let path = match &child.ident {
-                ChildIdent::Field(ident) => quote! { self.#ident },
-                ChildIdent::CoreField(ident) => quote! { #core_path.#ident },
-            };
-
-            get_mut_rules.append_all(if let Some(ref data) = child.data_binding {
-                quote! { #i => Some(#path.as_node(#data)), }
-            } else {
-                if let Some(ref span) = child.attr_span {
-                    quote_spanned! {*span=> #i => Some(#path.as_node(data)), }
-                } else {
-                    quote! { #i => Some(#path.as_node(data)), }
-                }
-            });
-        }
-
-        quote! {
-            fn child_node<'__n>(
-                &'__n mut self,
-                data: &'__n Self::Data,
-                index: usize,
-            ) -> Option<::kas::Node<'__n>> {
-                match index {
-                    #get_mut_rules
-                    _ => None,
-                }
-            }
-        }
-    } else {
-        quote! {}
-    };
-
-    let fns_recurse = widget_recursive_methods(core_path);
-    let fn_nav_next = widget_nav_next();
-
-    quote! {
-        impl #impl_generics ::kas::Widget for #impl_target {
-            type Data = #data_ty;
-            #fns_as_node
-            #fns_for_child
-            #fns_recurse
-            #fn_nav_next
         }
     }
 }
