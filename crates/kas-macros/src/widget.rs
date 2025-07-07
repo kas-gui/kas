@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::widget_args::{Child, ChildIdent, WidgetArgs, member};
+use crate::widget_args::{Child, ChildIdent, member};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::scope::{Scope, ScopeItem};
 use proc_macro_error2::{emit_error, emit_warning};
@@ -20,10 +20,9 @@ use syn::{parse_quote, parse2};
 /// This macro may inject impls and inject items into existing impls.
 /// It may also inject code into existing methods such that the only observable
 /// behaviour is a panic.
-pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()> {
+pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
     scope.expand_impl_self();
     let name = &scope.ident;
-    let mut data_ty = args.data_ty;
 
     let mut layout: Option<crate::make_layout::Tree> = None;
     let mut other_attrs = Vec::with_capacity(scope.attrs.len());
@@ -48,6 +47,8 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
     let mut tile_impl = None;
     let mut events_impl = None;
 
+    let mut ty_data: Option<syn::ImplItemType> = None;
+
     let mut num_children = None;
     let mut get_child = None;
     let mut child_node = None;
@@ -70,13 +71,13 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                         }
                     } else if let ImplItem::Type(item) = item {
                         if item.ident == "Data" {
-                            if let Some(ref ty) = data_ty {
+                            if let Some(ref old) = ty_data {
                                 emit_error!(
-                                    ty, "depulicate definition";
-                                    note = item.ty.span() => "also defined here";
+                                    item, "duplicate definitions with name `Data`";
+                                    note = old.span() => "also defined here";
                                 );
                             } else {
-                                data_ty = Some(item.ty.clone());
+                                ty_data = Some(item.clone());
                             }
                         }
                     }
@@ -118,13 +119,13 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
                 for item in &impl_.items {
                     if let ImplItem::Type(item) = item {
                         if item.ident == "Data" {
-                            if let Some(ref ty) = data_ty {
+                            if let Some(ref old) = ty_data {
                                 emit_error!(
-                                    ty, "depulicate definition";
-                                    note = item.ty.span() => "also defined here";
+                                    item, "duplicate definitions with name `Data`";
+                                    note = old.span() => "also defined here";
                                 );
                             } else {
-                                data_ty = Some(item.ty.clone());
+                                ty_data = Some(item.clone());
                             }
                         }
                     } else if let ImplItem::Fn(item) = item {
@@ -161,22 +162,6 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
         item => {
             return Err(syn::Error::new(item.token_span(), "expected struct"));
         }
-    };
-
-    let data_ty = if let Some(ty) = data_ty {
-        ty
-    } else {
-        let span = if let Some(index) = widget_impl {
-            scope.impls[index].brace_token.span.open()
-        } else if let Some(index) = events_impl {
-            scope.impls[index].brace_token.span.open()
-        } else {
-            attr_span
-        };
-        return Err(Error::new(
-            span,
-            "expected a definition of Data in Widget, Events or via #[widget { Data = ...; }]",
-        ));
     };
 
     let mut core_data: Option<Member> = None;
@@ -275,6 +260,23 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
         }
         field.attrs = other_attrs;
     }
+
+    if ty_data.is_some() {
+    } else if children.is_empty() && events_impl.is_none() && widget_impl.is_none() {
+        ty_data = Some(parse_quote! { type Data = (); });
+    } else {
+        let span = if let Some(index) = widget_impl {
+            scope.impls[index].brace_token.span.open()
+        } else if let Some(index) = events_impl {
+            scope.impls[index].brace_token.span.open()
+        } else {
+            attr_span
+        };
+        emit_error!(
+            span,
+            "expected a definition of Data in Widget, Events or via #[widget(type Data = ...)]",
+        );
+    };
 
     let Some(core) = core_data.clone() else {
         let span = match scope.item {
@@ -430,9 +432,9 @@ pub fn widget(attr_span: Span, args: WidgetArgs, scope: &mut Scope) -> Result<()
         let fns_recurse = widget_recursive_methods(&core_path);
         let fn_nav_next = widget_nav_next();
 
-        scope.generated.push(quote! {
+        scope.generated.push(quote_spanned! {attr_span=>
             impl #impl_generics ::kas::Widget for #impl_target {
-                type Data = #data_ty;
+                #ty_data
                 #fns_as_node
                 #fn_child_node
                 #fns_recurse

@@ -21,6 +21,10 @@ use kas_macros::autoimpl;
 /// The implementation of this method may be omitted where no event-handling is
 /// required. All methods have a default implementation.
 ///
+/// Type [`Widget::Data`] may be specified in `impl Events { ... }` instead of
+/// in `impl Widget { ... }` (this is permitted since it allows may `#[widget]`
+/// definitions to omit `impl Widget { ... }` altogether).
+///
 /// # Widget lifecycle
 ///
 /// 1.  The widget is configured ([`Events::configure`],
@@ -350,8 +354,10 @@ pub trait Widget: Tile {
     /// Widget expects data of this type to be provided by reference when
     /// calling any event-handling operation on this widget.
     ///
-    /// This type may be specified using a [`#widget`] macro property in case
-    /// this trait is not explicitly implemented.
+    /// Type `Data` should be specified either here (`impl Widget { ... }`) or
+    /// in `impl Events { ... }`. Alternatively, if the widget has no children
+    /// and no explicit `impl Events` or `impl Widget`, then `Data = ()` is
+    /// assumed.
     ///
     /// [`#widget`]: macros::widget
     type Data;

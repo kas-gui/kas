@@ -259,17 +259,7 @@ pub fn impl_self(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// See also the [`macro@layout`] attribute which assists in implementing
 /// [`Layout`].
 ///
-/// ## Syntax
-///
-/// > _WidgetAttr_ :\
-/// > &nbsp;&nbsp; `#` `[` `widget` _WidgetAttrArgs_? `]`
-/// >
-/// > _WidgetAttrArgs_ :\
-/// > &nbsp;&nbsp; `{` (_WidgetAttrArg_ `;`) * `}`
-///
-/// Supported arguments (_WidgetAttrArg_) are:
-///
-/// -   <code>Data = Type</code>: the `Widget::Data` associated type
+/// ## Fields
 ///
 /// The struct must contain a field of type `widget_core!()` (usually named
 /// `core`). The macro `widget_core!()` is a placeholder, expanded by

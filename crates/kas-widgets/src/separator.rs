@@ -15,7 +15,7 @@ mod Separator {
     ///
     /// This widget draws a bar when in a list.
     #[autoimpl(Clone, Debug, Default)]
-    #[widget(type Data = A)]
+    #[widget]
     pub struct Separator<A> {
         core: widget_core!(),
         _pd: PhantomData<A>,
@@ -40,6 +40,10 @@ mod Separator {
         fn draw(&self, mut draw: DrawCx) {
             draw.separator(self.rect());
         }
+    }
+
+    impl Events for Self {
+        type Data = A;
     }
 
     /// A separator is a valid menu widget
