@@ -240,6 +240,10 @@ mod Splitter {
         fn num_children(&self) -> usize {
             self.widgets.len() + self.grips.len()
         }
+        #[inline]
+        fn child_indices(&self) -> ChildIndices {
+            (0..self.widgets.len() + self.grips.len()).into()
+        }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             if (index & 1) != 0 {
                 self.grips.get(index >> 1).map(|w| w.as_tile())

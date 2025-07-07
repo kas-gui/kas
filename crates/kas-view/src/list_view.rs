@@ -568,6 +568,10 @@ mod ListView {
         fn num_children(&self) -> usize {
             self.cur_len.cast()
         }
+        #[inline]
+        fn child_indices(&self) -> ChildIndices {
+            (0..self.cur_len.cast()).into()
+        }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.widgets
                 .get(index)

@@ -122,6 +122,14 @@ mod Stack {
         fn num_children(&self) -> usize {
             self.widgets.len()
         }
+        #[inline]
+        fn child_indices(&self) -> ChildIndices {
+            let mut end = self.active;
+            if self.active < self.widgets.len() {
+                end += 1;
+            }
+            (self.active..end).into()
+        }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.widgets.get(index).map(|(w, _)| w.as_tile())
         }

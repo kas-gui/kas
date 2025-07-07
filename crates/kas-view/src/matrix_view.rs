@@ -543,6 +543,10 @@ mod MatrixView {
         fn num_children(&self) -> usize {
             usize::conv(self.cur_len.col) * usize::conv(self.cur_len.row)
         }
+        #[inline]
+        fn child_indices(&self) -> ChildIndices {
+            (0..self.num_children()).into()
+        }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.widgets
                 .get(index)
