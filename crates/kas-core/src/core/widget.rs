@@ -126,11 +126,11 @@ pub trait Events: Widget + Sized {
     /// calling [`Events::make_child_id`] on `self` then pass this `id` to
     /// [`ConfigCx::configure`].
     ///
-    /// In case the implemetation does not configure all children in the range
-    /// `0..self.num_children()`, [`Tile::find_child_index`] must not return the
-    /// indices of any unconfigured child.
+    /// The default implementation configures children in the range
+    /// [`Tile::child_indices`]. In cases where [`Tile::child_indices`] hides
+    /// some children, a custom implementation of this method might be needed.
     fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-        for index in 0..self.num_children() {
+        for index in self.child_indices().into_iter() {
             let id = self.make_child_id(index);
             if id.is_valid()
                 && let Some(node) = self.as_node(data).get_child(index)
@@ -160,12 +160,12 @@ pub trait Events: Widget + Sized {
     /// children. Children should be updated even if their data is `()` or is
     /// unchanged.
     ///
-    /// The default implementation suffices except where children should *not*
-    /// be updated (for example, to delay update of hidden children).
+    /// The default implementation updates children in the range
+    /// [`Tile::child_indices`]. This is usually sufficient.
     ///
     /// Use [`ConfigCx::update`].
     fn update_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-        for index in 0..self.num_children() {
+        for index in self.child_indices().into_iter() {
             if let Some(node) = self.as_node(data).get_child(index) {
                 cx.update(node);
             }

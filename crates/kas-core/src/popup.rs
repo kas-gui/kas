@@ -7,7 +7,7 @@
 
 use crate::dir::Direction;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};
-use crate::{Events, Id, Tile, TileExt, Widget, WindowId};
+use crate::{ChildIndices, Events, Id, Tile, TileExt, Widget, WindowId};
 use kas_macros::{impl_self, widget_index};
 
 #[allow(unused)] use crate::event::EventState;
@@ -49,6 +49,15 @@ mod Popup {
     }
 
     impl Tile for Self {
+        fn child_indices(&self) -> ChildIndices {
+            let start = widget_index!(self.inner);
+            let mut end = start;
+            if self.win_id.is_some() {
+                end += 1;
+            }
+            (start..end).into()
+        }
+
         fn find_child_index(&self, id: &Id) -> Option<usize> {
             let index = Some(widget_index!(self.inner));
             if self.win_id.is_none() || id.next_key_after(self.id_ref()) != index {
@@ -63,19 +72,6 @@ mod Popup {
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.new_access_layer(self.id(), true);
-        }
-
-        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-            if self.win_id.is_some() {
-                let id = self.make_child_id(widget_index!(self.inner));
-                cx.configure(self.inner.as_node(data), id)
-            }
-        }
-
-        fn update_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-            if self.win_id.is_some() {
-                cx.update(self.inner.as_node(data))
-            }
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &W::Data, event: Event) -> IsUsed {

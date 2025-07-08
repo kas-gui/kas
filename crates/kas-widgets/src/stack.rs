@@ -218,12 +218,6 @@ mod Stack {
             }
         }
 
-        fn update_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-            if let Some((w, _)) = self.widgets.get_mut(self.active) {
-                cx.update(w.as_node(data));
-            }
-        }
-
         fn handle_messages(&mut self, cx: &mut EventCx, data: &W::Data) {
             if let Some(kas::messages::SetIndex(index)) = cx.try_pop() {
                 self.set_active(&mut cx.config_cx(), data, index);
