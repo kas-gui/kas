@@ -143,6 +143,11 @@ mod Splitter {
                 }
             }
         }
+
+        #[inline]
+        fn dim(&self) -> (D, usize) {
+            (self.direction, self.widgets.len() + self.grips.len())
+        }
     }
 
     impl Layout for Self {
@@ -154,8 +159,7 @@ mod Splitter {
 
             let grip_rules = sizer.feature(Feature::Separator, axis);
 
-            let dim = (self.direction, self.num_children());
-            let mut solver = layout::RowSolver::new(axis, dim, &mut self.data);
+            let mut solver = layout::RowSolver::new(axis, self.dim(), &mut self.data);
 
             let mut n = 0;
             loop {
@@ -189,8 +193,8 @@ mod Splitter {
             }
             assert!(self.grips.len() + 1 == self.widgets.len());
 
-            let dim = (self.direction, self.num_children());
-            let mut setter = layout::RowSetter::<D, Vec<i32>, _>::new(rect, dim, &mut self.data);
+            let mut setter =
+                layout::RowSetter::<D, Vec<i32>, _>::new(rect, self.dim(), &mut self.data);
 
             let mut n = 0;
             loop {
@@ -334,7 +338,7 @@ impl<C: Collection, D: Directional> Splitter<C, D> {
         let width1 = (hrect.pos - self.rect().pos).extract(self.direction);
         let width2 = (self.rect().size - hrect.size).extract(self.direction) - width1;
 
-        let dim = (self.direction, self.num_children());
+        let dim = self.dim();
         let mut setter =
             layout::RowSetter::<D, Vec<i32>, _>::new_unsolved(self.rect(), dim, &mut self.data);
         setter.solve_range(&mut self.data, 0..index, width1);

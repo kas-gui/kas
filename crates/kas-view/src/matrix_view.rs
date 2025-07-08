@@ -270,6 +270,12 @@ mod MatrixView {
             self
         }
 
+        /// Widgets in the range `0..self.cur_end()` are currently in use
+        #[inline]
+        fn cur_end(&self) -> usize {
+            usize::conv(self.cur_len.col) * usize::conv(self.cur_len.row)
+        }
+
         fn position_solver(&self) -> PositionSolver {
             PositionSolver {
                 pos_start: self.rect().pos + self.frame_offset,
@@ -302,7 +308,7 @@ mod MatrixView {
                 col: col_len.cast(),
                 row: row_len.cast(),
             };
-            debug_assert!(self.num_children() <= self.widgets.len());
+            debug_assert!(self.cur_end() <= self.widgets.len());
 
             let start = MatrixIndex {
                 col: first_col,
@@ -520,7 +526,7 @@ mod MatrixView {
         fn draw(&self, mut draw: DrawCx) {
             let offset = self.scroll_offset();
             let rect = self.rect() + offset;
-            let num = self.num_children();
+            let num = self.cur_end();
             draw.with_clip_region(self.rect(), offset, |mut draw| {
                 for child in &self.widgets[..num] {
                     if let Some(ref key) = child.key {
@@ -545,7 +551,7 @@ mod MatrixView {
         }
         #[inline]
         fn child_indices(&self) -> ChildIndices {
-            (0..self.num_children()).into()
+            (0..self.cur_end()).into()
         }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.widgets
@@ -556,7 +562,7 @@ mod MatrixView {
         fn find_child_index(&self, id: &Id) -> Option<usize> {
             let key = C::Key::reconstruct_key(self.id_ref(), id);
             if key.is_some() {
-                let num = self.num_children();
+                let num = self.cur_end();
                 for (i, w) in self.widgets[..num].iter().enumerate() {
                     if key == w.key {
                         return Some(i);
@@ -572,7 +578,7 @@ mod MatrixView {
         }
 
         fn probe(&self, coord: Coord) -> Id {
-            let num = self.num_children();
+            let num = self.cur_end();
             let coord = coord + self.scroll.offset();
             for child in &self.widgets[..num] {
                 if child.key.is_some()
