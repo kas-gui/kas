@@ -201,9 +201,7 @@ impl<'a> Node<'a> {
         self.0.rect()
     }
 
-    /// Run `f` on some child by index.
-    ///
-    /// Calls the closure exactly when `index < self.num_children()`.
+    /// Access a child as a [`Node`], if available
     #[inline(always)]
     pub fn get_child(&mut self, index: usize) -> Option<Node<'_>> {
         cfg_if::cfg_if! {

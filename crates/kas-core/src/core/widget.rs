@@ -332,7 +332,7 @@ pub enum NavAdvance {
 ///     [`#widget`] macro or as [`Widget::Data`].
 /// -   **Core** methods of [`Tile`] are *always* implemented via the [`#widget`]
 ///     macro, whether or not an `impl Tile { ... }` item is present.
-/// -   **Introspection** methods [`Tile::num_children`], [`Tile::get_child`]
+/// -   **Introspection** methods [`Tile::child_indices`], [`Tile::get_child`]
 ///     and [`Widget::child_node`] are implemented by the [`#widget`] macro
 ///     in most cases: child widgets embedded within a layout descriptor or
 ///     included as fields marked with `#[widget]` are enumerated.
@@ -376,18 +376,20 @@ pub trait Widget: Tile {
         unimplemented!() // make rustdoc show that this is a provided method
     }
 
-    /// Call closure on child with given `index`, if `index < self.num_children()`.
+    /// Access a child as a [`Node`], if available
     ///
-    /// Widgets with no children or using the `#[widget]` attribute on fields do
-    /// not need to implement this. Widgets with an explicit implementation of
-    /// [`Tile::num_children`] also need to implement this.
+    /// This method is the `mut` version of [`Tile::get_child`] but which also
+    /// pairs the returned widget with its input `data`. It is expected to
+    /// succeed where [`Tile::get_child`] succeeds.
     ///
-    /// Valid `index` values may be discovered by calling [`Self::num_children`]
-    /// or [`Self::find_child_index`]. The `index`-to-child mapping is not
+    /// Valid `index` values may be discovered by calling
+    /// [`Tile::child_indices`], [`Tile::find_child_index`] or
+    /// [`Tile::nav_next`]. The `index`-to-child mapping is not
     /// required to remain fixed; use an [`Id`] to track a widget over time.
     ///
-    /// It is recommended to use the methods on [`Node`]
-    /// instead of calling this method.
+    /// This method must be implemented explicitly when [`Tile::get_child`] is.
+    /// It might also need to be implemented explicitly to map `data`, though
+    /// usually the `#[widget]` attribute on children specifies this mapping.
     fn child_node<'n>(&'n mut self, data: &'n Self::Data, index: usize) -> Option<Node<'n>> {
         let _ = (data, index);
         unimplemented!() // make rustdoc show that this is a provided method
