@@ -241,10 +241,6 @@ mod Splitter {
 
     impl Tile for Self {
         #[inline]
-        fn num_children(&self) -> usize {
-            self.widgets.len() + self.grips.len()
-        }
-        #[inline]
         fn child_indices(&self) -> ChildIndices {
             (0..self.widgets.len() + self.grips.len()).into()
         }

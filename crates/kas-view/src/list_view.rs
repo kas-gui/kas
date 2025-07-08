@@ -565,10 +565,6 @@ mod ListView {
 
     impl Tile for Self {
         #[inline]
-        fn num_children(&self) -> usize {
-            self.cur_len.cast()
-        }
-        #[inline]
         fn child_indices(&self) -> ChildIndices {
             (0..self.cur_len.cast()).into()
         }

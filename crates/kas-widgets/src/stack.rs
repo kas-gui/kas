@@ -119,10 +119,6 @@ mod Stack {
 
     impl Tile for Self {
         #[inline]
-        fn num_children(&self) -> usize {
-            self.widgets.len()
-        }
-        #[inline]
         fn child_indices(&self) -> ChildIndices {
             let mut end = self.active;
             if self.active < self.widgets.len() {

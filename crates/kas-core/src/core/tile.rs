@@ -83,20 +83,6 @@ pub trait Tile: Layout {
         unimplemented!() // make rustdoc show that this is a provided method
     }
 
-    /// Get the number of child widgets
-    ///
-    /// Every value in the range `0..self.num_children()` is a valid child
-    /// index (meaning that the child exists, though it may not be configured
-    /// or sized or visible even though the parent widget is).
-    ///
-    /// This method is usually implemented automatically by the `#[widget]`
-    /// macro. It should be implemented directly if and only if
-    /// [`Tile::get_child`] and [`Widget::child_node`] are
-    /// implemented directly.
-    fn num_children(&self) -> usize {
-        unimplemented!() // make rustdoc show that this is a provided method
-    }
-
     /// Get child indices available to recursion
     ///
     /// This method returns a range of child indices for "visible" children.

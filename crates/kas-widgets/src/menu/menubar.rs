@@ -110,10 +110,6 @@ mod MenuBar {
 
     impl Tile for Self {
         #[inline]
-        fn num_children(&self) -> usize {
-            self.widgets.len()
-        }
-        #[inline]
         fn child_indices(&self) -> ChildIndices {
             (0..self.widgets.len()).into()
         }
