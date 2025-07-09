@@ -19,7 +19,7 @@ use kas_macros::{autoimpl, impl_self};
 
 #[impl_self]
 mod StrLabel {
-    /// A simple text label
+    /// A simple text label with static contents
     ///
     /// Vertical alignment defaults to centred, horizontal
     /// alignment depends on the script direction if not specified.
