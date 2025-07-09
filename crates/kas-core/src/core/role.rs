@@ -30,6 +30,16 @@ pub enum Role<'a> {
     ///
     /// [`kas::messages::Activate`] may be used to trigger the button.
     Button,
+    /// A checkable box
+    ///
+    /// ### Messages
+    ///
+    /// [`kas::messages::Activate`] may be used to toggle the state.
+    CheckBox(bool),
+    /// A radio button
+    RadioButton(bool),
+    /// A tab handle
+    Tab,
     /// A window
     Window,
 }

@@ -45,6 +45,10 @@ mod Tab {
     }
 
     impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::Tab
+        }
+
         fn probe(&self, _: Coord) -> Id {
             self.id()
         }

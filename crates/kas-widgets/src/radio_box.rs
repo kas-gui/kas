@@ -76,6 +76,12 @@ mod RadioBox {
         }
     }
 
+    impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::RadioButton(self.state)
+        }
+    }
+
     impl Self {
         /// Construct a radio box
         ///

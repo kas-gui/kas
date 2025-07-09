@@ -76,6 +76,12 @@ mod CheckBox {
         }
     }
 
+    impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::CheckBox(self.state)
+        }
+    }
+
     impl Self {
         /// Construct a check box
         ///
