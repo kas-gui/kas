@@ -243,10 +243,9 @@ impl EventState {
     #[inline]
     pub fn action(&mut self, id: impl HasId, action: Action) {
         fn inner(cx: &mut EventState, id: Id, mut action: Action) {
-            const RE_UP: Action = Action::RECONFIGURE.union(Action::UPDATE);
-            if !(action & RE_UP).is_empty() {
-                cx.request_update(id, action.contains(Action::RECONFIGURE));
-                action.remove(RE_UP);
+            if action.contains(Action::UPDATE) {
+                cx.request_update(id);
+                action.remove(Action::UPDATE);
             }
 
             // TODO(opt): handle sub-tree SCROLLED. This is probably equivalent to using `_replay` without a message but with `scroll = Scroll::Scrolled`.
@@ -623,15 +622,14 @@ impl EventState {
         self.send_async(id, async_global_executor::spawn(fut.into_future()));
     }
 
-    /// Request update and optionally configure to widget `id`
+    /// Request update to widget `id`
     ///
-    /// If `reconf`, widget `id` will be [configured](Events::configure)
-    /// (includes update), otherwise `id` will only be [updated](Events::update).
-    pub fn request_update(&mut self, id: Id, reconf: bool) {
-        self.pending_update = if let Some((id2, rc2)) = self.pending_update.take() {
-            Some((id.common_ancestor(&id2), reconf || rc2))
+    /// This will call [`Events::update`] on `id`.
+    pub fn request_update(&mut self, id: Id) {
+        self.pending_update = if let Some(id2) = self.pending_update.take() {
+            Some(id.common_ancestor(&id2))
         } else {
-            Some((id, reconf))
+            Some(id)
         };
     }
 }

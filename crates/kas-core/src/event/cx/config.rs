@@ -72,9 +72,6 @@ impl<'a> ConfigCx<'a> {
     /// This method performs complete configuration of the widget by calling
     /// [`Events::configure`], [`Events::update`], [`Events::configure_recurse`].
     ///
-    /// To trigger (re)-configuration of the entire widget tree, use
-    /// [`Action::RECONFIGURE`].
-    ///
     /// Pass the `id` to assign to the widget. This is usually constructed with
     /// [`Events::make_child_id`].
     #[inline]

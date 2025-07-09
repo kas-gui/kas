@@ -72,7 +72,6 @@ impl EventState {
         let id = Id::ROOT.make_child(self.window_id.get().cast());
 
         log::debug!(target: "kas_core::event", "full_configure of Window{id}");
-        self.action.remove(Action::RECONFIGURE);
 
         // These are recreated during configure:
         self.access_layers.clear();
@@ -133,15 +132,8 @@ impl EventState {
             cx.mouse_handle_pending(win, data);
             cx.touch_handle_pending(win, data);
 
-            if let Some((id, reconf)) = cx.pending_update.take() {
-                if reconf {
-                    win.as_node(data)
-                        .find_node(&id, |node| cx.configure(node, id.clone()));
-
-                    cx.action |= Action::REGION_MOVED;
-                } else {
-                    win.as_node(data).find_node(&id, |node| cx.update(node));
-                }
+            if let Some(id) = cx.pending_update.take() {
+                win.as_node(data).find_node(&id, |node| cx.update(node));
             }
 
             match std::mem::take(&mut cx.pending_nav_focus) {

@@ -209,8 +209,8 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
         }
 
         #[inline]
-        fn num_children(&self) -> usize {
-            self.#inner.num_children()
+        fn child_indices(&self) -> ::kas::ChildIndices {
+            self.#inner.child_indices()
         }
         #[inline]
         fn get_child(&self, index: usize) -> Option<&dyn ::kas::Tile> {

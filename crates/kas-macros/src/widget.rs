@@ -49,7 +49,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
 
     let mut ty_data: Option<syn::ImplItemType> = None;
 
-    let mut num_children = None;
     let mut get_child = None;
     let mut child_node = None;
     let mut find_child_index = None;
@@ -99,9 +98,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
 
                 for item in &impl_.items {
                     if let ImplItem::Fn(item) = item {
-                        if item.sig.ident == "num_children" {
-                            num_children = Some(item.sig.ident.clone());
-                        } else if item.sig.ident == "get_child" {
+                        if item.sig.ident == "get_child" {
                             get_child = Some(item.sig.ident.clone());
                         } else if item.sig.ident == "find_child_index" {
                             find_child_index = Some(item.sig.ident.clone());
@@ -138,11 +135,9 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         }
     }
 
-    if let Some(ref span) = find_child_index {
-        if make_child_id.is_none() {
-            emit_warning!(span, "fn find_child_index without fn make_child_id");
-        }
-    } else if let Some(ref span) = make_child_id {
+    if find_child_index.is_none()
+        && let Some(ref span) = make_child_id
+    {
         emit_warning!(span, "fn make_child_id without fn find_child_index");
     }
 
@@ -261,7 +256,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                     emit_error!(
                         attr, "multiple usages of #[collection] within a widget is not currently supported";
                         note = coll_span => "previous usage of #[collection]";
-                        note = "write impls of fns Tile::num_children, Tile::get_child and Widget::child_node instead";
+                        note = "write impls of fns Tile::child_indices, Tile::get_child and Widget::child_node instead";
                     );
                 }
                 collection = Some((attr.span(), ident.clone(), field.ty.clone()));
@@ -324,15 +319,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         crate::visitors::widget_index(named_child_iter, &mut scope.impls);
     }
 
-    if let Some(ref span) = num_children {
-        if get_child.is_none() {
-            emit_warning!(span, "fn num_children without fn get_child");
-        }
-    }
     if let Some(span) = get_child.as_ref().or(child_node.as_ref()) {
-        if num_children.is_none() {
-            emit_warning!(span, "associated impl of `fn Tile::num_children` required");
-        }
         if !children.is_empty() {
             if children
                 .iter()
@@ -359,7 +346,8 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         #core_path.status.require_rect(&#core_path._id);
     };
 
-    let mut fns_get_child = None;
+    let mut fn_child_indices = None;
+    let mut fn_get_child = None;
     let mut fn_child_node = None;
     let get_child_span = get_child.as_ref().map(|item| item.span());
     if get_child.is_none() && child_node.is_none() {
@@ -389,10 +377,13 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
 
             let count = children.len();
 
-            fns_get_child = Some(quote! {
-                fn num_children(&self) -> usize {
-                    #count
+            fn_child_indices = Some(quote! {
+                #[inline]
+                fn child_indices(&self) -> ::kas::ChildIndices {
+                    (0..#count).into()
                 }
+            });
+            fn_get_child = Some(quote! {
                 fn get_child(&self, index: usize) -> Option<&dyn ::kas::Tile> {
                     match index {
                         #get_rules
@@ -415,10 +406,13 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         } else if children.is_empty()
             && let Some((_, ident, _)) = collection
         {
-            fns_get_child = Some(quote! {
-                fn num_children(&self) -> usize {
-                    self.#ident.len()
+            fn_child_indices = Some(quote! {
+                #[inline]
+                fn child_indices(&self) -> ::kas::ChildIndices {
+                    (0..self.#ident.len()).into()
                 }
+            });
+            fn_get_child = Some(quote! {
                 fn get_child(&self, index: usize) -> Option<&dyn ::kas::Tile> {
                     self.#ident.get_tile(index)
                 }
@@ -434,7 +428,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             });
         } else if let Some((span, _, _)) = collection {
             emit_error!(
-                span, "unable to generate fns Tile::num_children, Tile::get_child, Widget::child_node";
+                span, "unable to generate fns Tile::child_indices, Tile::get_child, Widget::child_node";
                 note = "usage of #[collection] is not currently supported together with #[widget] fields or layout children";
             );
         }
@@ -649,7 +643,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
 
         fn_nav_next = Ok(quote! {
             fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-                ::kas::util::nav_next(reverse, from, self.num_children())
+                ::kas::util::nav_next(reverse, from, self.child_indices())
             }
         });
     }
@@ -832,8 +826,19 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
 
         tile_impl.items.push(Verbatim(required_tile_methods));
 
-        if let Some(methods) = fns_get_child {
+        if let Some(methods) = fn_get_child {
             tile_impl.items.push(Verbatim(methods));
+        }
+
+        if !has_item("child_indices") {
+            if let Some(method) = fn_child_indices {
+                tile_impl.items.push(Verbatim(method));
+            } else {
+                emit_error!(
+                    tile_impl, "refusing to generate fn child_indices";
+                    note = get_child.unwrap().span() => "with explicit fn get_child implementation";
+                );
+            }
         }
 
         if !has_item("nav_next") {
@@ -841,7 +846,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
                 Ok(method) => tile_impl.items.push(Verbatim(method)),
                 Err((span, msg)) => {
                     // We emit a warning here only if nav_next is not explicitly defined
-                    emit_warning!(span, "unable to generate `fn Tile::nav_next`: {}", msg,);
+                    emit_warning!(span, "unable to generate `fn nav_next`: {}", msg,);
                 }
             }
         }
@@ -850,6 +855,13 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             tile_impl.items.push(Verbatim(fn_probe));
         }
     } else {
+        if fn_child_indices.is_none() {
+            emit_error!(
+                attr_span, "refusing to generate fn Tile::child_indices";
+                note = get_child.unwrap().span() => "with explicit fn Tile::get_child implementation";
+            );
+        }
+
         let fn_nav_next = match fn_nav_next {
             Ok(method) => Some(method),
             Err((span, msg)) => {
@@ -861,7 +873,8 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Tile for #impl_target {
                 #required_tile_methods
-                #fns_get_child
+                #fn_get_child
+                #fn_child_indices
                 #fn_nav_next
                 #fn_probe
             }

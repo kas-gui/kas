@@ -125,8 +125,12 @@ pub trait Events: Widget + Sized {
     /// visible). To configure children explicitly, generate an [`Id`] by
     /// calling [`Events::make_child_id`] on `self` then pass this `id` to
     /// [`ConfigCx::configure`].
+    ///
+    /// The default implementation configures children in the range
+    /// [`Tile::child_indices`]. In cases where [`Tile::child_indices`] hides
+    /// some children, a custom implementation of this method might be needed.
     fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-        for index in 0..self.num_children() {
+        for index in self.child_indices().into_iter() {
             let id = self.make_child_id(index);
             if id.is_valid()
                 && let Some(node) = self.as_node(data).get_child(index)
@@ -156,12 +160,12 @@ pub trait Events: Widget + Sized {
     /// children. Children should be updated even if their data is `()` or is
     /// unchanged.
     ///
-    /// The default implementation suffices except where children should *not*
-    /// be updated (for example, to delay update of hidden children).
+    /// The default implementation updates children in the range
+    /// [`Tile::child_indices`]. This is usually sufficient.
     ///
     /// Use [`ConfigCx::update`].
     fn update_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-        for index in 0..self.num_children() {
+        for index in self.child_indices().into_iter() {
             if let Some(node) = self.as_node(data).get_child(index) {
                 cx.update(node);
             }
@@ -328,7 +332,7 @@ pub enum NavAdvance {
 ///     [`#widget`] macro or as [`Widget::Data`].
 /// -   **Core** methods of [`Tile`] are *always* implemented via the [`#widget`]
 ///     macro, whether or not an `impl Tile { ... }` item is present.
-/// -   **Introspection** methods [`Tile::num_children`], [`Tile::get_child`]
+/// -   **Introspection** methods [`Tile::child_indices`], [`Tile::get_child`]
 ///     and [`Widget::child_node`] are implemented by the [`#widget`] macro
 ///     in most cases: child widgets embedded within a layout descriptor or
 ///     included as fields marked with `#[widget]` are enumerated.
@@ -372,14 +376,20 @@ pub trait Widget: Tile {
         unimplemented!() // make rustdoc show that this is a provided method
     }
 
-    /// Call closure on child with given `index`, if `index < self.num_children()`.
+    /// Access a child as a [`Node`], if available
     ///
-    /// Widgets with no children or using the `#[widget]` attribute on fields do
-    /// not need to implement this. Widgets with an explicit implementation of
-    /// [`Tile::num_children`] also need to implement this.
+    /// This method is the `mut` version of [`Tile::get_child`] but which also
+    /// pairs the returned widget with its input `data`. It is expected to
+    /// succeed where [`Tile::get_child`] succeeds.
     ///
-    /// It is recommended to use the methods on [`Node`]
-    /// instead of calling this method.
+    /// Valid `index` values may be discovered by calling
+    /// [`Tile::child_indices`], [`Tile::find_child_index`] or
+    /// [`Tile::nav_next`]. The `index`-to-child mapping is not
+    /// required to remain fixed; use an [`Id`] to track a widget over time.
+    ///
+    /// This method must be implemented explicitly when [`Tile::get_child`] is.
+    /// It might also need to be implemented explicitly to map `data`, though
+    /// usually the `#[widget]` attribute on children specifies this mapping.
     fn child_node<'n>(&'n mut self, data: &'n Self::Data, index: usize) -> Option<Node<'n>> {
         let _ = (data, index);
         unimplemented!() // make rustdoc show that this is a provided method

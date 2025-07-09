@@ -511,11 +511,9 @@ impl<Data: 'static> Window<Data> {
             (pos, size)
         };
 
-        let (c, t) = self
-            .inner
-            .as_tile()
-            .find_widget_rect(&popup.parent)
-            .unwrap();
+        let Some((c, t)) = self.inner.as_tile().find_widget_rect(&popup.parent) else {
+            return;
+        };
         *translation = t;
         let r = r + t; // work in translated coordinate space
         let result = self.inner.as_node(data).find_node(&popup.id, |mut node| {

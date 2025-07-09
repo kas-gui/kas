@@ -171,7 +171,7 @@ mod TabStack {
     impl Tile for Self {
         fn nav_next(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
             let reverse = reverse ^ !self.direction.is_reversed();
-            kas::util::nav_next(reverse, from, self.num_children())
+            kas::util::nav_next(reverse, from, self.child_indices())
         }
     }
 

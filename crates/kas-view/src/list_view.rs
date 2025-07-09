@@ -342,7 +342,7 @@ mod ListView {
             let cur_len: usize = data_len.min(self.alloc_len.cast());
             first_data = first_data.min(data_len - cur_len);
             self.cur_len = cur_len.cast();
-            debug_assert!(self.num_children() <= self.widgets.len());
+            debug_assert!(usize::conv(self.cur_len) <= self.widgets.len());
             self.first_data = first_data.cast();
 
             let range = first_data..(first_data + cur_len);
@@ -565,8 +565,8 @@ mod ListView {
 
     impl Tile for Self {
         #[inline]
-        fn num_children(&self) -> usize {
-            self.cur_len.cast()
+        fn child_indices(&self) -> ChildIndices {
+            (0..self.cur_len.cast()).into()
         }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.widgets
@@ -577,7 +577,7 @@ mod ListView {
         fn find_child_index(&self, id: &Id) -> Option<usize> {
             let key = C::Key::reconstruct_key(self.id_ref(), id);
             if key.is_some() {
-                let num = self.num_children();
+                let num = self.cur_len.cast();
                 for (i, w) in self.widgets[..num].iter().enumerate() {
                     if key == w.key {
                         return Some(i);

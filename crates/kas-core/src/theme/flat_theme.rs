@@ -170,8 +170,8 @@ where
         if shadow != ShadowStyle::None {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
             if shadow == ShadowStyle::Hover {
-                a = a * SHADOW_HOVER;
-                b = b * SHADOW_HOVER;
+                a *= SHADOW_HOVER;
+                b *= SHADOW_HOVER;
             }
             let shadow_outer = Quad::from_coords(a + inner.a, b + inner.b);
             let col1 = if self.cols.is_dark { col_frame } else { Rgba::BLACK };
@@ -409,8 +409,8 @@ where
             if state.hover() {
                 mult *= SHADOW_HOVER;
             }
-            a = a * mult;
-            b = b * mult;
+            a *= mult;
+            b *= mult;
             let shadow_outer = Quad::from_coords(a + outer.a, b + outer.b);
             let col1 = if self.cols.is_dark { col } else { Rgba::BLACK };
             let mut col2 = col1;
@@ -497,8 +497,8 @@ where
             if state.hover() {
                 mult *= SHADOW_HOVER;
             }
-            a = a * mult;
-            b = b * mult;
+            a *= mult;
+            b *= mult;
             let shadow_outer = Quad::from_coords(a + outer.a, b + outer.b);
             let col1 = if self.cols.is_dark { col } else { Rgba::BLACK };
             let mut col2 = col1;

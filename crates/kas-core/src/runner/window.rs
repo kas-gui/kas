@@ -269,7 +269,6 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
 
                 // Force a reconfigure to update text objects:
                 self.reconfigure(state);
-                self.ev_state.action.remove(Action::RECONFIGURE);
 
                 false
             }
@@ -281,12 +280,6 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
                         cx.handle_winit(&mut self.widget, &state.data, event);
                     });
                 state.handle_messages(&mut messages);
-
-                if self.ev_state.action.contains(Action::RECONFIGURE) {
-                    // Reconfigure must happen before further event handling
-                    self.reconfigure(state);
-                    self.ev_state.action.remove(Action::RECONFIGURE);
-                }
                 false
             }
         }
@@ -336,9 +329,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
             self.ev_state.update_config(window.scale_factor() as f32);
             action |= Action::UPDATE;
         }
-        if action.contains(Action::RECONFIGURE) {
-            self.reconfigure(state);
-        } else if action.contains(Action::UPDATE) {
+        if action.contains(Action::UPDATE) {
             self.update(state);
         }
         if action.contains(Action::THEME_SWITCH) {

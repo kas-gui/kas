@@ -7,7 +7,7 @@
 
 #[cfg(feature = "image")] use crate::Icon;
 use crate::geom::Coord;
-use crate::{Id, Tile};
+use crate::{ChildIndices, Id, Tile, TileExt};
 use std::{error::Error, fmt, path::Path};
 
 enum IdentifyContents<'a> {
@@ -115,24 +115,25 @@ impl<'a> fmt::Display for WidgetHierarchy<'a> {
             });
         }
 
-        let num_children = self.widget.num_children();
-        for index in 0..num_children {
-            if let Some(widget) = self.widget.get_child(index) {
-                if !widget.id_ref().is_valid() {
-                    continue;
-                }
+        let mut iter = self.widget.children();
+        let mut next = iter.next();
+        while let Some(widget) = next {
+            next = iter.next();
 
-                write!(f, "{}", WidgetHierarchy {
-                    widget,
-                    filter: None,
-                    trail: Trail {
-                        parent: Some(trail),
-                        trail: trail_hook,
-                    },
-                    indent,
-                    have_next_sibling: index + 1 < num_children,
-                })?;
+            if !widget.id_ref().is_valid() {
+                continue;
             }
+
+            write!(f, "{}", WidgetHierarchy {
+                widget,
+                filter: None,
+                trail: Trail {
+                    parent: Some(trail),
+                    trail: trail_hook,
+                },
+                indent,
+                have_next_sibling: next.is_some(),
+            })?;
         }
         Ok(())
     }
@@ -165,21 +166,22 @@ impl<'a, T: fmt::Debug + ?Sized> fmt::Debug for TryFormat<'a, T> {
 }
 
 /// Generic implementation of [`Tile::nav_next`]
-pub fn nav_next(reverse: bool, from: Option<usize>, len: usize) -> Option<usize> {
-    let last = len.wrapping_sub(1);
-    if last == usize::MAX {
+pub fn nav_next(reverse: bool, from: Option<usize>, indices: ChildIndices) -> Option<usize> {
+    let range = indices.as_range();
+    if range.is_empty() {
         return None;
     }
+    let (first, last) = (range.start, range.end - 1);
 
     if let Some(index) = from {
         match reverse {
             false if index < last => Some(index + 1),
-            true if 0 < index => Some(index - 1),
+            true if first < index => Some(index - 1),
             _ => None,
         }
     } else {
         match reverse {
-            false => Some(0),
+            false => Some(first),
             true => Some(last),
         }
     }

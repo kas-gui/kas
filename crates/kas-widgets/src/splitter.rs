@@ -143,6 +143,11 @@ mod Splitter {
                 }
             }
         }
+
+        #[inline]
+        fn dim(&self) -> (D, usize) {
+            (self.direction, self.widgets.len() + self.grips.len())
+        }
     }
 
     impl Layout for Self {
@@ -154,8 +159,7 @@ mod Splitter {
 
             let grip_rules = sizer.feature(Feature::Separator, axis);
 
-            let dim = (self.direction, self.num_children());
-            let mut solver = layout::RowSolver::new(axis, dim, &mut self.data);
+            let mut solver = layout::RowSolver::new(axis, self.dim(), &mut self.data);
 
             let mut n = 0;
             loop {
@@ -189,8 +193,8 @@ mod Splitter {
             }
             assert!(self.grips.len() + 1 == self.widgets.len());
 
-            let dim = (self.direction, self.num_children());
-            let mut setter = layout::RowSetter::<D, Vec<i32>, _>::new(rect, dim, &mut self.data);
+            let mut setter =
+                layout::RowSetter::<D, Vec<i32>, _>::new(rect, self.dim(), &mut self.data);
 
             let mut n = 0;
             loop {
@@ -237,8 +241,8 @@ mod Splitter {
 
     impl Tile for Self {
         #[inline]
-        fn num_children(&self) -> usize {
-            self.widgets.len() + self.grips.len()
+        fn child_indices(&self) -> ChildIndices {
+            (0..self.widgets.len() + self.grips.len()).into()
         }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             if (index & 1) != 0 {
@@ -330,7 +334,7 @@ impl<C: Collection, D: Directional> Splitter<C, D> {
         let width1 = (hrect.pos - self.rect().pos).extract(self.direction);
         let width2 = (self.rect().size - hrect.size).extract(self.direction) - width1;
 
-        let dim = (self.direction, self.num_children());
+        let dim = self.dim();
         let mut setter =
             layout::RowSetter::<D, Vec<i32>, _>::new_unsolved(self.rect(), dim, &mut self.data);
         setter.solve_range(&mut self.data, 0..index, width1);
@@ -385,20 +389,6 @@ impl<W: Widget, D: Directional> IndexMut<usize> for Splitter<Vec<W>, D> {
 }
 
 impl<W: Widget, D: Directional> Splitter<Vec<W>, D> {
-    /// Edit the list of children directly
-    ///
-    /// This may be used to edit children before window construction. It may
-    /// also be used from a running UI, but in this case a full reconfigure
-    /// of the window's widgets is required (triggered by the the return
-    /// value, [`Action::RECONFIGURE`]).
-    #[inline]
-    pub fn edit<F: FnOnce(&mut Vec<W>)>(&mut self, f: F) -> Action {
-        f(&mut self.widgets);
-        let len = self.widgets.len().saturating_sub(1);
-        self.grips.resize_with(len, GripPart::new);
-        Action::RECONFIGURE
-    }
-
     /// Returns a reference to the child, if any
     pub fn get(&self, index: usize) -> Option<&W> {
         self.widgets.get(index)

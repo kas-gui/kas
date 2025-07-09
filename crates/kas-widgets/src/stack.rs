@@ -119,16 +119,27 @@ mod Stack {
 
     impl Tile for Self {
         #[inline]
-        fn num_children(&self) -> usize {
-            self.widgets.len()
+        fn child_indices(&self) -> ChildIndices {
+            let mut end = self.active;
+            if self.active < self.widgets.len() {
+                end += 1;
+            }
+            (self.active..end).into()
         }
         fn get_child(&self, index: usize) -> Option<&dyn Tile> {
             self.widgets.get(index).map(|(w, _)| w.as_tile())
         }
 
         fn find_child_index(&self, id: &Id) -> Option<usize> {
+            // Filter only returns Some(index) on configured children
             id.next_key_after(self.id_ref())
                 .and_then(|k| self.id_map.get(&k).cloned())
+                .filter(|index| {
+                    self.widgets
+                        .get(*index)
+                        .map(|(_, state)| *state >= State::Configured)
+                        .unwrap_or(false)
+                })
         }
 
         fn nav_next(&self, _: bool, from: Option<usize>) -> Option<usize> {
@@ -200,12 +211,6 @@ mod Stack {
                     // Ensure widget will be reconfigured before becoming active
                     self.widgets[index].1 = State::None;
                 }
-            }
-        }
-
-        fn update_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
-            if let Some((w, _)) = self.widgets.get_mut(self.active) {
-                cx.update(w.as_node(data));
             }
         }
 

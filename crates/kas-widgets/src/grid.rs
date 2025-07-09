@@ -259,20 +259,19 @@ impl<W: Widget> Grid<Vec<(GridCellInfo, W)>> {
     /// Construct via a builder
     pub fn build<F: FnOnce(GridBuilder<W>)>(f: F) -> Self {
         let mut grid = Grid::new(vec![]);
-        let _ = grid.edit(f);
+        f(GridBuilder(&mut grid.widgets));
+        grid.dim = grid.widgets.grid_dimensions();
         grid
     }
 
     /// Edit an existing grid via a builder
     ///
-    /// This may be used to edit children before window construction. It may
-    /// also be used from a running UI, but in this case a full reconfigure
-    /// of the window's widgets is required (triggered by the the return
-    /// value, [`Action::RECONFIGURE`]).
-    pub fn edit<F: FnOnce(GridBuilder<W>)>(&mut self, f: F) -> Action {
+    /// This method will reconfigure `self` and all children.
+    pub fn edit<F: FnOnce(GridBuilder<W>)>(&mut self, cx: &mut ConfigCx, data: &W::Data, f: F) {
         f(GridBuilder(&mut self.widgets));
         self.dim = self.widgets.grid_dimensions();
-        Action::RECONFIGURE
+        let id = self.id();
+        cx.configure(self.as_node(data), id);
     }
 
     /// True if there are no child widgets

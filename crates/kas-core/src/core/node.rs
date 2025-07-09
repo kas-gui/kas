@@ -20,7 +20,6 @@ trait NodeT {
     fn clone_node(&mut self) -> Node<'_>;
     fn as_tile(&self) -> &dyn Tile;
 
-    fn num_children(&self) -> usize;
     fn find_child_index(&self, id: &Id) -> Option<usize>;
     fn child_node(&mut self, index: usize) -> Option<Node<'_>>;
 
@@ -57,9 +56,6 @@ impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
         self.0.as_tile()
     }
 
-    fn num_children(&self) -> usize {
-        self.0.num_children()
-    }
     fn find_child_index(&self, id: &Id) -> Option<usize> {
         self.0.find_child_index(id)
     }
@@ -205,18 +201,7 @@ impl<'a> Node<'a> {
         self.0.rect()
     }
 
-    /// Get the number of child widgets
-    ///
-    /// Every value in the range `0..self.num_children()` is a valid child
-    /// index.
-    #[inline]
-    pub fn num_children(&self) -> usize {
-        self.0.num_children()
-    }
-
-    /// Run `f` on some child by index.
-    ///
-    /// Calls the closure exactly when `index < self.num_children()`.
+    /// Access a child as a [`Node`], if available
     #[inline(always)]
     pub fn get_child(&mut self, index: usize) -> Option<Node<'_>> {
         cfg_if::cfg_if! {
@@ -224,29 +209,6 @@ impl<'a> Node<'a> {
                 self.0.child_node(self.1, index)
             } else {
                 self.0.child_node(index)
-            }
-        }
-    }
-
-    /// Run a `f` on all children
-    ///
-    /// Note: this method could be replaced with an iterator-style method, but
-    /// that would require borrowing/streaming iterators.
-    #[inline(always)]
-    pub fn for_children(&mut self, mut f: impl FnMut(Node<'_>)) {
-        for index in 0..self.0.num_children() {
-            let f: Box<dyn for<'b> FnOnce(Node<'b>)> = Box::new(&mut f);
-            let opt_node = {
-                cfg_if::cfg_if! {
-                    if #[cfg(feature = "unsafe_node")] {
-                        self.0.child_node(self.1, index)
-                    } else {
-                        self.0.child_node(index)
-                    }
-                }
-            };
-            if let Some(node) = opt_node {
-                f(node);
             }
         }
     }
