@@ -41,6 +41,10 @@ mod MenuEntry {
     }
 
     impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::Button
+        }
+
         fn probe(&self, _: Coord) -> Id {
             self.id()
         }

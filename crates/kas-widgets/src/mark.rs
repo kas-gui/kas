@@ -98,6 +98,12 @@ mod MarkButton {
         }
     }
 
+    impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::Button
+        }
+    }
+
     impl Events for Self {
         const REDRAW_ON_HOVER: bool = true;
 
