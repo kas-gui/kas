@@ -404,6 +404,10 @@ mod EditBox {
     }
 
     impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::Border
+        }
+
         fn probe(&self, coord: Coord) -> Id {
             if self.inner.max_scroll_offset().1 > 0 {
                 if let Some(id) = self.bar.try_probe(coord) {

@@ -42,6 +42,8 @@ pub enum Role<'a> {
     RadioButton(bool),
     /// A tab handle
     Tab,
+    /// A visible border surrounding or between other items
+    Border,
     /// A scrollable region
     ScrollRegion {
         /// The current scroll offset (from zero to `max_offset`)
@@ -58,6 +60,14 @@ pub enum Role<'a> {
         /// The maximum position (non-negative)
         max_value: i32,
     },
+    /// A small visual element
+    Indicator,
+    /// An image
+    Image,
+    /// A canvas
+    Canvas,
     /// A window
     Window,
+    /// The special bar at the top of a window titling contents and usually embedding window controls
+    TitleBar,
 }

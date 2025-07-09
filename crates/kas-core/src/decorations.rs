@@ -74,6 +74,12 @@ mod Border {
         fn draw(&self, _: DrawCx) {}
     }
 
+    impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::Border
+        }
+    }
+
     impl Events for Self {
         type Data = ();
 
@@ -308,6 +314,12 @@ mod TitleBar {
         /// Set the title
         pub fn set_title(&mut self, cx: &mut EventState, title: String) {
             self.title.set_string(cx, title)
+        }
+    }
+
+    impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::TitleBar
         }
     }
 

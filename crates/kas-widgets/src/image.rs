@@ -186,4 +186,10 @@ mod Image {
             }
         }
     }
+
+    impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::Image
+        }
+    }
 }

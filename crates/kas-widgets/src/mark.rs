@@ -53,6 +53,12 @@ mod Mark {
             draw.mark(self.rect(), self.style);
         }
     }
+
+    impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::Indicator
+        }
+    }
 }
 
 #[impl_self]

@@ -192,6 +192,12 @@ mod Canvas {
         }
     }
 
+    impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::Canvas
+        }
+    }
+
     impl Events for Self {
         type Data = ();
 
