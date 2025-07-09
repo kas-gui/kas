@@ -123,6 +123,13 @@ mod ScrollRegion {
     }
 
     impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::ScrollRegion {
+                offset: self.scroll_offset(),
+                max_offset: self.max_scroll_offset(),
+            }
+        }
+
         #[inline]
         fn translation(&self) -> Offset {
             self.scroll_offset()

@@ -6,7 +6,9 @@
 //! Widget roles
 
 #[allow(unused)] use crate::Tile;
+use crate::dir::Direction;
 #[allow(unused)] use crate::event::EventState;
+use crate::geom::Offset;
 
 /// Describes a widget's purpose and capabilities
 ///
@@ -40,6 +42,22 @@ pub enum Role<'a> {
     RadioButton(bool),
     /// A tab handle
     Tab,
+    /// A scrollable region
+    ScrollRegion {
+        /// The current scroll offset (from zero to `max_offset`)
+        offset: Offset,
+        /// The maximum offset (non-negative)
+        max_offset: Offset,
+    },
+    /// A scroll bar
+    ScrollBar {
+        /// Orientation (usually either `Down` or `Right`)
+        direction: Direction,
+        /// The current position (from zero to `max_value`)
+        value: i32,
+        /// The maximum position (non-negative)
+        max_value: i32,
+    },
     /// A window
     Window,
 }
