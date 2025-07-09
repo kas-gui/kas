@@ -90,6 +90,26 @@ pub enum Role<'a> {
         /// [`kas::text::SelectionHelper`].)
         sel_pos: usize,
     },
+    /// A progress bar
+    ///
+    /// The reported value should be between `0.0` and `1.0`.
+    ProgressBar(f32),
+    /// A menu bar
+    MenuBar,
+    /// An openable menu
+    ///
+    /// # Messages
+    ///
+    /// [`kas::messages::Activate`] may be used to open the menu.
+    Menu,
+    /// A drop-down combination box
+    ///
+    /// Includes the index and text of the active entry
+    ///
+    /// # Messages
+    ///
+    /// [`kas::messages::SetIndex`] may be used to set the selected entry.
+    ComboBox(usize, &'a str),
     /// A window
     Window,
     /// The special bar at the top of a window titling contents and usually embedding window controls

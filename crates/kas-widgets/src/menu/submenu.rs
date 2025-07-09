@@ -113,6 +113,10 @@ mod SubMenu {
     }
 
     impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::Menu
+        }
+
         fn nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None

@@ -109,6 +109,10 @@ mod MenuBar {
     }
 
     impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::MenuBar
+        }
+
         #[inline]
         fn child_indices(&self) -> ChildIndices {
             (0..self.widgets.len()).into()
