@@ -120,6 +120,12 @@ mod Label {
         }
     }
 
+    impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::Label(self.text.as_str())
+        }
+    }
+
     impl Events for Self {
         type Data = ();
 
@@ -260,6 +266,12 @@ mod AccessLabel {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.text
                 .set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
+        }
+    }
+
+    impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            Role::Label(self.text.as_str())
         }
     }
 

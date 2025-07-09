@@ -79,6 +79,16 @@ mod ScrollText {
     }
 
     impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            // TODO: this is both a ScrollRegion and Text!
+            Role::Text {
+                text: self.text.as_str(),
+                editable: false,
+                edit_pos: self.selection.edit_pos(),
+                sel_pos: self.selection.sel_pos(),
+            }
+        }
+
         fn probe(&self, coord: Coord) -> Id {
             self.bar.try_probe(coord).unwrap_or_else(|| self.id())
         }

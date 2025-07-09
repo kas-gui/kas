@@ -852,6 +852,16 @@ mod EditField {
     }
 
     impl Tile for Self {
+        fn role(&self) -> Role<'_> {
+            // TODO: this is also a ScrollRegion!
+            Role::Text {
+                text: self.text.as_str(),
+                editable: self.editable,
+                edit_pos: self.selection.edit_pos(),
+                sel_pos: self.selection.sel_pos(),
+            }
+        }
+
         fn probe(&self, _: Coord) -> Id {
             self.id()
         }

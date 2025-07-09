@@ -66,6 +66,30 @@ pub enum Role<'a> {
     Image,
     /// A canvas
     Canvas,
+    /// Text
+    ///
+    /// ### Messages
+    ///
+    /// If (but only if) `editable`, this item supports:
+    ///
+    /// [`kas::messages::SetValueString`] may be used to replace the entire
+    /// text.
+    Text {
+        /// Text contents
+        ///
+        /// NOTE: it is likely that the representation here changes to
+        /// accomodate more complex texts and potentially other details.
+        text: &'a str,
+        /// Whether the text is editable
+        editable: bool,
+        /// The cursor index within `contents`
+        edit_pos: usize,
+        /// The selection index. Equals `cursor` if the selection is empty.
+        /// May be less than or greater than `cursor`. (Aside: some toolkits
+        /// call this the selection anchor but Kas does not; see
+        /// [`kas::text::SelectionHelper`].)
+        sel_pos: usize,
+    },
     /// A window
     Window,
     /// The special bar at the top of a window titling contents and usually embedding window controls
