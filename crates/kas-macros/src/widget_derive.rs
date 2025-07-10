@@ -446,8 +446,8 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
 
     let fn_role = quote! {
         #[inline]
-        fn role(&self) -> ::kas::Role<'_> {
-            self.#inner.role()
+        fn role(&self, cx: &mut dyn ::kas::RoleCx) -> ::kas::Role<'_> {
+            self.#inner.role(cx)
         }
     };
 

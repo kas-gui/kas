@@ -404,7 +404,7 @@ mod EditBox {
     }
 
     impl Tile for Self {
-        fn role(&self) -> Role<'_> {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::Border
         }
 
@@ -852,7 +852,7 @@ mod EditField {
     }
 
     impl Tile for Self {
-        fn role(&self) -> Role<'_> {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             // TODO: this is also a ScrollRegion!
             Role::Text {
                 text: self.text.as_str(),

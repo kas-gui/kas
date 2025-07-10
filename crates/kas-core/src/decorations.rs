@@ -75,7 +75,7 @@ mod Border {
     }
 
     impl Tile for Self {
-        fn role(&self) -> Role<'_> {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::Border
         }
     }
@@ -133,7 +133,7 @@ mod Label {
     }
 
     impl Tile for Self {
-        fn role(&self) -> Role<'_> {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::Label(self.text.as_str())
         }
     }
@@ -199,7 +199,8 @@ mod MarkButton {
     }
 
     impl Tile for Self {
-        fn role(&self) -> Role<'_> {
+        fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
+            cx.set_label(self.style.label());
             Role::Button
         }
     }
@@ -318,7 +319,8 @@ mod TitleBar {
     }
 
     impl Tile for Self {
-        fn role(&self) -> Role<'_> {
+        fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
+            cx.set_label(self.title.id());
             Role::TitleBar
         }
     }

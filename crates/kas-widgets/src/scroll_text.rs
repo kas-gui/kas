@@ -79,7 +79,7 @@ mod ScrollText {
     }
 
     impl Tile for Self {
-        fn role(&self) -> Role<'_> {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             // TODO: this is both a ScrollRegion and Text!
             Role::Text {
                 text: self.text.as_str(),

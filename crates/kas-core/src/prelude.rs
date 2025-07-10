@@ -23,7 +23,9 @@ pub use crate::layout::{Align, AlignHints, AlignPair, AxisInfo, SizeRules, Stret
 #[doc(no_inline)]
 pub use crate::{ChildIndices, Node, Scrollable};
 #[doc(no_inline)]
-pub use crate::{Events, Layout, Role, Tile, TileExt, Widget, Window, WindowCommand};
+pub use crate::{
+    Events, Layout, Role, RoleCx, RoleCxExt, Tile, TileExt, Widget, Window, WindowCommand,
+};
 #[doc(no_inline)] pub use crate::{HasId, Id};
 #[doc(no_inline)]
 pub use crate::{autoimpl, impl_anon, impl_default, impl_scope, impl_self};

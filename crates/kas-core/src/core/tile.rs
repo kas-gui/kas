@@ -7,7 +7,7 @@
 
 use crate::geom::{Coord, Offset, Rect};
 use crate::util::IdentifyWidget;
-use crate::{ChildIndices, HasId, Id, Layout, Role};
+use crate::{ChildIndices, HasId, Id, Layout, Role, RoleCx};
 use kas_macros::autoimpl;
 
 #[allow(unused)] use super::{Events, Widget};
@@ -88,7 +88,8 @@ pub trait Tile: Layout {
     /// This descriptor supports accessibility tooling and UI introspection.
     ///
     /// The default implementation simply returns [`Role::Unknown`].
-    fn role(&self) -> Role<'_> {
+    fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
+        let _ = cx;
         Role::Unknown
     }
 

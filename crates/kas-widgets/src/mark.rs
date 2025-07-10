@@ -55,7 +55,8 @@ mod Mark {
     }
 
     impl Tile for Self {
-        fn role(&self) -> Role<'_> {
+        fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
+            cx.set_label(self.style.label());
             Role::Indicator
         }
     }
@@ -105,7 +106,8 @@ mod MarkButton {
     }
 
     impl Tile for Self {
-        fn role(&self) -> Role<'_> {
+        fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
+            cx.set_label(self.style.label());
             Role::Button
         }
     }

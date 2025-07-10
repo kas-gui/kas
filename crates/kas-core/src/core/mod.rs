@@ -23,7 +23,7 @@ pub use collection::{CellCollection, Collection};
 pub use data::*;
 pub use layout::*;
 pub use node::Node;
-pub use role::Role;
+pub use role::{Role, RoleCx, RoleCxExt, TextOrSource};
 pub use scroll_traits::*;
 pub use tile::*;
 pub use widget::*;

@@ -5,6 +5,7 @@
 
 //! Widget roles
 
+use crate::Id;
 #[allow(unused)] use crate::Tile;
 use crate::dir::Direction;
 #[allow(unused)] use crate::event::EventState;
@@ -115,3 +116,66 @@ pub enum Role<'a> {
     /// The special bar at the top of a window titling contents and usually embedding window controls
     TitleBar,
 }
+
+/// A copy-on-write text value or a reference to another source
+pub enum TextOrSource<'a> {
+    /// Borrowed text
+    Borrowed(&'a str),
+    /// Owned text
+    Owned(String),
+    /// A reference to another widget able to a text value
+    ///
+    /// It is expected that the given [`Id`] refers to a widget with role
+    /// [`Role::Label`] or [`Role::Text`].
+    Source(Id),
+}
+
+impl<'a> From<&'a str> for TextOrSource<'a> {
+    #[inline]
+    fn from(text: &'a str) -> Self {
+        Self::Borrowed(text)
+    }
+}
+
+impl From<String> for TextOrSource<'static> {
+    #[inline]
+    fn from(text: String) -> Self {
+        Self::Owned(text)
+    }
+}
+
+impl From<Id> for TextOrSource<'static> {
+    #[inline]
+    fn from(id: Id) -> Self {
+        Self::Source(id)
+    }
+}
+
+/// Context through which additional role properties may be specified
+///
+/// Unlike other widget method contexts, this is a trait; the caller provides an
+/// implementation.
+pub trait RoleCx {
+    /// Attach a label
+    ///
+    /// Do not use this for [`Role::Label`] and similar items where the label is
+    /// the widget's primary value. Do use this where a label exists which is
+    /// not the primary value, for example an image's alternate text or a label
+    /// next to a control.
+    fn set_label_impl(&mut self, label: TextOrSource<'_>);
+}
+
+/// Convenience methods over a [`RoleCx`]
+pub trait RoleCxExt: RoleCx {
+    /// Attach a label
+    ///
+    /// Do not use this for [`Role::Label`] and similar items where the label is
+    /// the widget's primary value. Do use this where a label exists which is
+    /// not the primary value, for example an image's alternate text or a label
+    /// next to a control.
+    fn set_label<'a>(&mut self, label: impl Into<TextOrSource<'a>>) {
+        self.set_label_impl(label.into());
+    }
+}
+
+impl<C: RoleCx + ?Sized> RoleCxExt for C {}

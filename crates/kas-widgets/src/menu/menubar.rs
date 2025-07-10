@@ -109,7 +109,7 @@ mod MenuBar {
     }
 
     impl Tile for Self {
-        fn role(&self) -> Role<'_> {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::MenuBar
         }
 
