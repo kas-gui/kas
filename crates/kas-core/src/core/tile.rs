@@ -10,7 +10,7 @@ use crate::util::IdentifyWidget;
 use crate::{ChildIndices, HasId, Id, Layout, Role, RoleCx};
 use kas_macros::autoimpl;
 
-#[allow(unused)] use super::{Events, Widget};
+#[allow(unused)] use super::{Events, RoleCxExt, Widget};
 #[allow(unused)] use crate::layout::{self, AlignPair};
 #[allow(unused)] use crate::theme::DrawCx;
 #[allow(unused)] use kas_macros as macros;
@@ -91,6 +91,17 @@ pub trait Tile: Layout {
     fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
         let _ = cx;
         Role::Unknown
+    }
+
+    /// Specify additional role properties for child `index`
+    ///
+    /// Role properties (for example [`RoleCxExt::set_label`]) may be specified
+    /// by a widget for itself in [`Self::role`] or by a parent in this method.
+    ///
+    /// The default implementation does nothing.
+    #[inline]
+    fn role_child_properties(&self, cx: &mut dyn RoleCx, index: usize) {
+        let _ = (cx, index);
     }
 
     /// Get child indices available to recursion
