@@ -7,9 +7,9 @@
 
 use super::TextClass;
 #[allow(unused)] use super::{DrawCx, SizeCx};
-use crate::cast::Cast;
+use crate::cast::{Cast, CastFloat};
 #[allow(unused)] use crate::event::ConfigCx;
-use crate::geom::{Rect, Size};
+use crate::geom::{Rect, Size, Vec2};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::text::fonts::FontSelector;
 use crate::text::format::{EditableText, FormattableText};
@@ -38,6 +38,9 @@ use crate::{Action, Layout};
 /// -   (Optionally) check size requirements by calling [`SizeCx::text_rules`]
 /// -   Set the size and prepare by calling [`Self::set_rect`]
 /// -   Draw by calling [`DrawCx::text`] (and/or other text methods)
+///
+/// The size according to [`<Self as Layout>::rect`] may be adjusted to that of
+/// the text; see [`Self::set_align`].
 #[derive(Clone, Debug)]
 pub struct Text<T: FormattableText> {
     rect: Rect,
@@ -294,6 +297,9 @@ impl<T: FormattableText> Text<T> {
 
     /// Set text alignment
     ///
+    /// When vertical alignment is [`Align::Default`], [`Self::prepare`] will
+    /// set the vertical size of this [`Layout`] to that of the text.
+    ///
     /// It is necessary to [`prepare`][Self::prepare] the text after calling this.
     #[inline]
     pub fn set_align(&mut self, align: (Align, Align)) {
@@ -458,6 +464,12 @@ impl<T: FormattableText> Text<T> {
         if self.status <= Status::Wrapped {
             self.display
                 .vertically_align(self.rect.size.1.cast(), self.align.1);
+            if self.align.1 == Align::Default {
+                let (_, br) = self.display.bounding_box();
+                if let Ok(height) = br.1.try_cast_ceil() {
+                    self.rect.size.1 = height;
+                }
+            }
         }
 
         self.status = Status::Ready;
@@ -497,7 +509,8 @@ impl<T: FormattableText> Text<T> {
     /// Alignment and size do affect the result.
     #[inline]
     pub fn bounding_box(&self) -> Result<(Vec2, Vec2), NotReady> {
-        Ok(self.wrapped_display()?.bounding_box())
+        let (tl, br) = self.wrapped_display()?.bounding_box();
+        Ok((tl.into(), br.into()))
     }
     /// Get the number of lines (after wrapping)
     ///
@@ -539,7 +552,7 @@ impl<T: FormattableText> Text<T> {
     /// See [`TextDisplay::text_index_nearest`].
     #[inline]
     pub fn text_index_nearest(&self, pos: Vec2) -> Result<usize, NotReady> {
-        Ok(self.display()?.text_index_nearest(pos))
+        Ok(self.display()?.text_index_nearest(pos.into()))
     }
 
     /// Find the text index nearest horizontal-coordinate `x` on `line`
