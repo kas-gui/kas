@@ -836,14 +836,11 @@ mod EditField {
             let mut rect = self.rect();
             rect.size = rect.size.max(self.text_size);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
-                if self.selection.is_empty() {
-                    draw.text(rect, &self.text);
-                } else {
-                    // TODO(opt): we could cache the selection rectangles here to make
-                    // drawing more efficient (self.text.highlight_lines(range) output).
-                    // The same applies to the edit marker below.
-                    draw.text_selected(rect, &self.text, self.selection.range());
-                }
+                // TODO(opt): we could cache the selection rectangles here to make
+                // drawing more efficient (self.text.highlight_lines(range) output).
+                // The same applies to the edit marker below.
+                draw.text_selected(rect, &self.text, self.selection.range());
+
                 if self.editable && draw.ev_state().has_key_focus(self.id_ref()).0 {
                     draw.text_cursor(rect, &self.text, self.selection.edit_pos());
                 }

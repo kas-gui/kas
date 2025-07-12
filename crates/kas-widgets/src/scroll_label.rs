@@ -63,14 +63,10 @@ mod ScrollLabel {
         fn draw(&self, mut draw: DrawCx) {
             let rect = Rect::new(self.rect().pos, self.text_size);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
-                if self.selection.is_empty() {
-                    draw.text(rect, &self.text);
-                } else {
-                    // TODO(opt): we could cache the selection rectangles here to make
-                    // drawing more efficient (self.text.highlight_lines(range) output).
-                    // The same applies to the edit marker below.
-                    draw.text_selected(rect, &self.text, self.selection.range());
-                }
+                // TODO(opt): we could cache the selection rectangles here to make
+                // drawing more efficient (self.text.highlight_lines(range) output).
+                // The same applies to the edit marker below.
+                draw.text_selected(rect, &self.text, self.selection.range());
             });
             draw.with_pass(|mut draw| {
                 self.bar.draw(draw.re());
