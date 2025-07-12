@@ -43,6 +43,9 @@ const MASK_BITS: u64 = 0xFFFF_FFFF_FFFF_FF00;
 
 const MASK_PTR: u64 = 0xFFFF_FFFF_FFFF_FFFC;
 
+const LEN_MASK: usize = 0xF_FFFF;
+const LEN_INCR: usize = LEN_MASK + 1;
+
 /// Integer or pointer to a reference-counted slice.
 ///
 /// Use `Self::get_ptr` to determine the variant used. When reading a pointer,
@@ -84,7 +87,7 @@ impl IntOrPtr {
 
     fn get_slice(&self) -> Option<&[usize]> {
         self.get_ptr().map(|p| unsafe {
-            let len = *p.offset(1);
+            let len = *p.offset(1) & LEN_MASK;
             let p = p.offset(2);
             slice::from_raw_parts(p, len)
         })
@@ -105,28 +108,33 @@ impl IntOrPtr {
     fn new_iter<I: Clone + Iterator<Item = usize>>(iter: I) -> Self {
         let ref_count = 1;
         let len = iter.clone().count();
-        let v: Vec<usize> = once(ref_count).chain(once(len)).chain(iter).collect();
-        let x = hash(&v);
+        let mut v: Vec<usize> = once(ref_count).chain(once(len)).chain(iter).collect();
 
         let mut p: Option<*mut usize> = None;
         let pp = &mut p;
-        DB.with_borrow_mut(move |db| match db.entry(x) {
-            Entry::Occupied(entry) => {
-                let p = *entry.get();
-                let slice = unsafe { slice::from_raw_parts(p.offset(2), *p.offset(1)) };
-                if slice == &v[2..] {
-                    unsafe { increment_rc(p) };
-                    *pp = Some(p);
-                } else {
-                    // Hash collision: do not use the DB
-                    let p = Box::leak(v.into_boxed_slice()) as *mut [usize] as *mut usize;
-                    *pp = Some(p);
+        DB.with_borrow_mut(move |db| {
+            loop {
+                let x = hash(&v);
+                match db.entry(x) {
+                    Entry::Occupied(entry) => {
+                        let p = *entry.get();
+                        let slice = unsafe { slice::from_raw_parts(p.offset(2), *p.offset(1)) };
+                        if slice == &v[2..] {
+                            unsafe { increment_rc(p) };
+                            *pp = Some(p);
+                            break;
+                        } else {
+                            // Hash collision: tweak the representation and retry
+                            v[1] = v[1].wrapping_add(LEN_INCR);
+                        }
+                    }
+                    Entry::Vacant(entry) => {
+                        let p = Box::leak(v.into_boxed_slice()) as *mut [usize] as *mut usize;
+                        *pp = Some(p);
+                        entry.insert(p);
+                        break;
+                    }
                 }
-            }
-            Entry::Vacant(entry) => {
-                let p = Box::leak(v.into_boxed_slice()) as *mut [usize] as *mut usize;
-                *pp = Some(p);
-                entry.insert(p);
             }
         });
 
@@ -215,7 +223,7 @@ impl Drop for IntOrPtr {
                     *p = ref_count - 1;
                 } else {
                     // len+2 because path len does not include ref_count or len "fields"
-                    let len = *p.offset(1) + 2;
+                    let len = (*p.offset(1) & LEN_MASK) + 2;
                     let slice = slice::from_raw_parts_mut(p, len);
 
                     let x = hash(slice);
@@ -587,21 +595,23 @@ impl Id {
     ///
     /// -   `Some(Id::INVALID)` where `!id.is_valid()`
     /// -   `Some(id)` where `id` uses the internal (non-allocated) representation
-    /// -   Either `None` or `Some(id2)` where `id == id2` where `id` uses an
-    ///     allocated representation, excepting the unlikely case of hash
-    ///     collision (in this case the resulting `id2` represents another path)
+    /// -   `Some(id)` where `id` uses an allocated representation and the original `id` still
+    ///     exists (on the same thread).
+    /// -   `Some(id)` (probably) where `id` uses an allocated representation, has been freed then
+    ///     reconstructed (on the same thread) before calling this method.
+    ///     (There is a tiny chance of hash collision in this case.)
     ///
     /// This method will return `None` where:
     ///
     /// -   `n == 0`
     /// -   The originating `id` used an allocating representation and has
-    ///     been deallocated
+    ///     been deallocated without reconstruction
     /// -   The originating `id` used an allocating representation and was
     ///     constructed on another thread (excepting the case where an `Id` with
     ///     the same hash was constructed on this thread)
     ///
     /// Bad / random inputs may yield either `None` or `Some(bad_id)` and in the
-    /// latter case operations on `bad_id` may panic, but is memory safe.
+    /// latter case operations on `bad_id` may panic, but are memory safe.
     pub fn try_from_u64(n: u64) -> Option<Id> {
         IntOrPtr::try_from_u64(n).map(Id)
     }
