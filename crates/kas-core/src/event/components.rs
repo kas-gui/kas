@@ -560,6 +560,18 @@ impl TextInput {
         }
     }
 
+    /// Call on [`Scroll::Kinetic`]
+    #[inline]
+    pub fn kinetic_start(&mut self, start: KineticStart) -> Offset {
+        self.kinetic.start(start)
+    }
+
+    /// Stop kinetic scrolling
+    #[inline]
+    pub fn kinetic_stop(&mut self) {
+        self.kinetic.stop();
+    }
+
     /// Call to call [`EventCx::set_scroll`] with the correct parameter
     ///
     /// Parameter `kinetic` should be passed from [`TextInputAction::Pan`] or be
