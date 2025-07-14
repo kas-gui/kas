@@ -190,7 +190,7 @@ impl<'a> EventCx<'a> {
     /// frame before a long sleep.
     pub(crate) fn frame_update(&mut self, mut widget: Node<'_>) {
         self.need_frame_update = false;
-        log::debug!(target: "kas_core::event", "Processing frame update");
+        log::trace!(target: "kas_core::event", "Processing frame update");
         if let Some((target, affine)) = self.mouse.frame_update() {
             self.send_event(widget.re(), target, Event::Pan(affine));
         }
