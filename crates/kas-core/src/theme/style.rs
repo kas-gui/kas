@@ -47,25 +47,10 @@ pub enum MarginStyle {
 /// Style of marks
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum MarkStyle {
-    /// An arrowhead/angle-bracket/triangle pointing in the given direction
-    Point(Direction),
+    /// A chevron (i.e. arrow without stalk) pointing in the given direction
+    Chevron(Direction),
     /// A cross rotated 45°
     X,
-}
-
-impl MarkStyle {
-    /// A descriptive label
-    ///
-    /// This may be used for accessibility purposes.
-    pub fn label(self) -> &'static str {
-        match self {
-            MarkStyle::Point(Direction::Right) => "right",
-            MarkStyle::Point(Direction::Down) => "down",
-            MarkStyle::Point(Direction::Left) => "left",
-            MarkStyle::Point(Direction::Up) => "up",
-            MarkStyle::X => "X",
-        }
-    }
 }
 
 /// Various features which may be sized and drawn

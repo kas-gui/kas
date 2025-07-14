@@ -144,6 +144,13 @@ impl From<String> for TextOrSource<'static> {
     }
 }
 
+impl<'a> From<&'a String> for TextOrSource<'a> {
+    #[inline]
+    fn from(text: &'a String) -> Self {
+        Self::Borrowed(text)
+    }
+}
+
 impl From<Id> for TextOrSource<'static> {
     #[inline]
     fn from(id: Id) -> Self {

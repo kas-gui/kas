@@ -33,7 +33,7 @@ mod ComboBox {
     /// [`kas::messages::SetIndex`] may be used to set the selected entry.
     #[widget]
     #[layout(
-        frame!(row! [self.label, Mark::new(MarkStyle::Point(Direction::Down))])
+        frame!(row! [self.label, Mark::new(MarkStyle::Chevron(Direction::Down), "Expand")])
             .with_style(FrameStyle::Button)
             .align(AlignHints::CENTER)
     )]

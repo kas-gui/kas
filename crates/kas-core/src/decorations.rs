@@ -172,6 +172,7 @@ mod MarkButton {
     pub(crate) struct MarkButton<M: Clone + Debug + 'static> {
         core: widget_core!(),
         style: MarkStyle,
+        label: String,
         msg: M,
     }
 
@@ -179,10 +180,11 @@ mod MarkButton {
         /// Construct
         ///
         /// A clone of `msg` is sent as a message on click.
-        pub fn new(style: MarkStyle, msg: M) -> Self {
+        pub fn new(style: MarkStyle, label: impl ToString, msg: M) -> Self {
             MarkButton {
                 core: Default::default(),
                 style,
+                label: label.to_string(),
                 msg,
             }
         }
@@ -200,7 +202,7 @@ mod MarkButton {
 
     impl Tile for Self {
         fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
-            cx.set_label(self.style.label());
+            cx.set_label(&self.label);
             Role::Button
         }
     }
@@ -241,9 +243,9 @@ mod TitleBarButtons {
     #[derive(Clone, Default)]
     #[widget]
     #[layout(row! [
-        MarkButton::new(MarkStyle::Point(Direction::Down), TitleBarButton::Minimize),
-        MarkButton::new(MarkStyle::Point(Direction::Up), TitleBarButton::Maximize),
-        MarkButton::new(MarkStyle::X, TitleBarButton::Close),
+        MarkButton::new(MarkStyle::Chevron(Direction::Down), "Minimize", TitleBarButton::Minimize),
+        MarkButton::new(MarkStyle::Chevron(Direction::Up), "Maximize", TitleBarButton::Maximize),
+        MarkButton::new(MarkStyle::X, "Close", TitleBarButton::Close),
     ])]
     pub struct TitleBarButtons {
         core: widget_core!(),

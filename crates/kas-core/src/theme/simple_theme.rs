@@ -159,7 +159,7 @@ where
 
     fn draw_mark(&mut self, rect: Rect, style: MarkStyle, col: Rgba) {
         match style {
-            MarkStyle::Point(dir) => {
+            MarkStyle::Chevron(dir) => {
                 let size = match dir.is_horizontal() {
                     true => Size(self.w.dims.mark / 2, self.w.dims.mark),
                     false => Size(self.w.dims.mark, self.w.dims.mark / 2),

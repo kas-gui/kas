@@ -22,13 +22,15 @@ mod Mark {
     pub struct Mark {
         core: widget_core!(),
         style: MarkStyle,
+        label: String,
     }
     impl Self {
         /// Construct
-        pub fn new(style: MarkStyle) -> Self {
+        pub fn new(style: MarkStyle, label: impl ToString) -> Self {
             Mark {
                 core: Default::default(),
                 style,
+                label: label.to_string(),
             }
         }
 
@@ -56,7 +58,7 @@ mod Mark {
 
     impl Tile for Self {
         fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
-            cx.set_label(self.style.label());
+            cx.set_label(&self.label);
             Role::Indicator
         }
     }
@@ -79,6 +81,7 @@ mod MarkButton {
     pub struct MarkButton<M: Clone + Debug + 'static> {
         core: widget_core!(),
         style: MarkStyle,
+        label: String,
         msg: M,
     }
 
@@ -86,10 +89,11 @@ mod MarkButton {
         /// Construct
         ///
         /// A clone of `msg` is sent as a message on click.
-        pub fn new_msg(style: MarkStyle, msg: M) -> Self {
+        pub fn new_msg(style: MarkStyle, label: impl ToString, msg: M) -> Self {
             MarkButton {
                 core: Default::default(),
                 style,
+                label: label.to_string(),
                 msg,
             }
         }
@@ -107,7 +111,7 @@ mod MarkButton {
 
     impl Tile for Self {
         fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
-            cx.set_label(self.style.label());
+            cx.set_label(&self.label);
             Role::Button
         }
     }

@@ -231,7 +231,7 @@ impl<D: 'static> ThemeSize for Window<D> {
             Feature::Separator => {
                 return SizeRules::fixed_splat(self.dims.frame, 0);
             }
-            Feature::Mark(MarkStyle::Point(dir)) => {
+            Feature::Mark(MarkStyle::Chevron(dir)) => {
                 let w = match dir.is_vertical() == axis_is_vertical {
                     true => self.dims.mark / 2 + i32::conv_ceil(self.dims.mark_line),
                     false => self.dims.mark + i32::conv_ceil(self.dims.mark_line),
