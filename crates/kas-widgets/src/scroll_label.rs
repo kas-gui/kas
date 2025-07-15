@@ -6,7 +6,7 @@
 //! Scrollable and selectable label
 
 use super::{ScrollBar, ScrollMsg};
-use kas::event::components::{TextInput, TextInputAction};
+use kas::event::components::{ScrollComponent, TextInput, TextInputAction};
 use kas::event::{Command, CursorIcon, FocusSource, Scroll};
 use kas::prelude::*;
 use kas::text::SelectionHelper;
@@ -215,18 +215,17 @@ mod ScrollLabel {
     #[widget]
     pub struct ScrollLabel<T: FormattableText + 'static> {
         core: widget_core!(),
-        offset: Offset,
-        max_offset: Offset,
+        scroll: ScrollComponent,
         #[widget]
         label: SelectableLabel<T>,
         #[widget]
-        bar: ScrollBar<kas::dir::Down>,
+        vert_bar: ScrollBar<kas::dir::Down>,
     }
 
     impl Layout for Self {
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let mut rules = self.label.size_rules(sizer.re(), axis);
-            let _ = self.bar.size_rules(sizer.re(), axis);
+            let _ = self.vert_bar.size_rules(sizer.re(), axis);
             if axis.is_vertical() {
                 rules.reduce_min_to((sizer.dpem() * 4.0).cast_ceil());
             }
@@ -237,22 +236,24 @@ mod ScrollLabel {
             widget_set_rect!(rect);
             self.label.set_rect(cx, rect, hints);
 
-            let inner_size = Offset::conv(self.label.rect().size);
-            let self_size = Offset::conv(self.rect().size);
-            self.max_offset = (inner_size - self_size).max(Offset::ZERO);
-            self.offset = self.offset.min(self.max_offset);
+            let _ = self
+                .scroll
+                .set_sizes(self.rect().size, self.label.rect().size);
 
             let w = cx.size_cx().scroll_bar_width().min(rect.size.0);
             rect.pos.0 += rect.size.0 - w;
             rect.size.0 = w;
-            self.bar.set_rect(cx, rect, AlignHints::NONE);
-            self.bar.set_limits(cx, self.max_offset.1, rect.size.1);
-            self.bar.set_value(cx, self.offset.1);
+            self.vert_bar.set_rect(cx, rect, AlignHints::NONE);
+            self.vert_bar
+                .set_limits(cx, self.scroll.max_offset().1, rect.size.1);
+            self.vert_bar.set_value(cx, self.scroll.offset().1);
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            draw.with_clip_region(self.rect(), self.offset, |draw| self.label.draw(draw));
-            draw.with_pass(|draw| self.bar.draw(draw));
+            draw.with_clip_region(self.rect(), self.scroll.offset(), |draw| {
+                self.label.draw(draw)
+            });
+            draw.with_pass(|draw| self.vert_bar.draw(draw));
         }
     }
 
@@ -265,7 +266,9 @@ mod ScrollLabel {
         }
 
         fn probe(&self, coord: Coord) -> Id {
-            self.bar.try_probe(coord).unwrap_or_else(|| self.label.id())
+            self.vert_bar
+                .try_probe(coord)
+                .unwrap_or_else(|| self.label.id())
         }
     }
 
@@ -275,10 +278,9 @@ mod ScrollLabel {
         pub fn new(text: T) -> Self {
             ScrollLabel {
                 core: Default::default(),
-                offset: Offset::ZERO,
-                max_offset: Offset::ZERO,
+                scroll: Default::default(),
                 label: SelectableLabel::new(text),
-                bar: ScrollBar::new().with_invisible(true),
+                vert_bar: ScrollBar::new().with_invisible(true),
             }
         }
 
@@ -287,40 +289,12 @@ mod ScrollLabel {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, cx: &mut EventState, text: T) {
-            if !self.label.set_text(text) {
-                return;
+            if self.label.set_text(text) {
+                self.vert_bar
+                    .set_limits(cx, self.scroll.max_offset().1, self.rect().size.1);
+
+                cx.redraw(self);
             }
-
-            let inner_size = Offset::conv(self.label.rect().size);
-            let self_size = Offset::conv(self.rect().size);
-            self.max_offset = (inner_size - self_size).max(Offset::ZERO);
-            self.offset = self.offset.min(self.max_offset);
-            self.bar
-                .set_limits(cx, self.max_offset.1, self.rect().size.1);
-
-            cx.redraw(self);
-        }
-
-        // Pan by given delta.
-        fn pan_delta(&mut self, cx: &mut EventCx, mut delta: Offset, kinetic: bool) {
-            let new_offset = (self.offset - delta)
-                .min(self.max_scroll_offset())
-                .max(Offset::ZERO);
-            if new_offset != self.offset {
-                delta -= self.offset - new_offset;
-                self.set_offset(cx, new_offset);
-            }
-
-            self.label
-                .input_handler
-                .set_scroll_residual(cx, delta, kinetic);
-        }
-
-        /// Set offset, updating the scroll bar
-        fn set_offset(&mut self, cx: &mut EventState, offset: Offset) {
-            self.offset = offset;
-            // unnecessary: cx.redraw(self);
-            self.bar.set_value(cx, offset.1);
         }
 
         /// Get text contents
@@ -345,45 +319,22 @@ mod ScrollLabel {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
-            match event {
-                // TODO: scroll by Event::Command(_)
-                Event::Scroll(delta) => {
-                    self.pan_delta(cx, delta.as_offset(cx), false);
-                    Used
-                }
-                _ => Unused,
-            }
+            self.scroll
+                .scroll_by_event(cx, event, self.id(), self.rect())
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-            if let Some(ScrollMsg(y)) = cx.try_pop() {
-                let y = y.clamp(0, self.max_scroll_offset().1);
-                self.offset.1 = y;
-                cx.redraw(self);
-            } else if let Some((delta, kinetic)) = cx.try_pop() {
-                self.pan_delta(cx, delta, kinetic);
+            if cx.last_child() == Some(widget_index![self.vert_bar])
+                && let Some(ScrollMsg(y)) = cx.try_pop()
+            {
+                let offset = Offset(self.scroll.offset().0, y);
+                let action = self.scroll.set_offset(offset);
+                cx.action(self, action);
             }
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, scroll: Scroll) {
-            match scroll {
-                Scroll::None | Scroll::Scrolled => (),
-                Scroll::Offset(delta) => self.pan_delta(cx, delta, false),
-                Scroll::Kinetic(start) => {
-                    let delta = self.label.input_handler.kinetic_start(start);
-                    self.pan_delta(cx, delta, true);
-                }
-                Scroll::Rect(rect) => {
-                    self.label.input_handler.kinetic_stop();
-                    let window_rect = self.rect();
-                    let v = rect.pos - window_rect.pos;
-                    let off = Offset::conv(rect.size) - Offset::conv(window_rect.size);
-                    let offset = self.offset.max(v + off).min(v);
-                    self.set_offset(cx, offset);
-
-                    cx.set_scroll(Scroll::Rect(rect - self.offset));
-                }
-            }
+            self.scroll.scroll(cx, self.id(), self.rect(), scroll);
         }
     }
 
@@ -394,20 +345,21 @@ mod ScrollLabel {
         }
 
         fn max_scroll_offset(&self) -> Offset {
-            self.max_offset
+            self.scroll.max_offset()
         }
 
         fn scroll_offset(&self) -> Offset {
-            self.offset
+            self.scroll.offset()
         }
 
         fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
-            let new_offset = offset.min(self.max_scroll_offset()).max(Offset::ZERO);
-            if new_offset != self.offset {
-                self.set_offset(cx, new_offset);
-                // No widget moves so do not need to report Action::REGION_MOVED
+            let action = self.scroll.set_offset(offset);
+            let offset = self.scroll.offset();
+            if !action.is_empty() {
+                cx.action(&self, action);
+                self.vert_bar.set_value(cx, offset.1);
             }
-            new_offset
+            offset
         }
     }
 }
