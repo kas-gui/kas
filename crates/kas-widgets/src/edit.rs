@@ -6,7 +6,7 @@
 //! The [`EditField`] and [`EditBox`] widgets, plus supporting items
 
 use crate::{ScrollBar, ScrollMsg};
-use kas::event::components::{TextInput, TextInputAction};
+use kas::event::components::{ScrollComponent, TextInput, TextInputAction};
 use kas::event::{Command, CursorIcon, ElementState, FocusSource, ImePurpose, PhysicalKey, Scroll};
 use kas::geom::Vec2;
 use kas::messages::SetValueString;
@@ -347,10 +347,11 @@ mod EditBox {
     #[widget]
     pub struct EditBox<G: EditGuard = DefaultGuard<()>> {
         core: widget_core!(),
+        scroll: ScrollComponent,
         #[widget]
         inner: EditField<G>,
         #[widget(&())]
-        bar: ScrollBar<kas::dir::Down>,
+        vert_bar: ScrollBar<kas::dir::Down>,
         frame_offset: Offset,
         frame_size: Size,
         inner_margin: i32,
@@ -361,7 +362,7 @@ mod EditBox {
             axis.sub_other(self.frame_size.extract(axis.flipped()));
 
             let mut rules = self.inner.size_rules(sizer.re(), axis);
-            let bar_rules = self.bar.size_rules(sizer.re(), axis);
+            let bar_rules = self.vert_bar.size_rules(sizer.re(), axis);
             if axis.is_horizontal() && self.multi_line() {
                 self.inner_margin = rules.margins_i32().1.max(bar_rules.margins_i32().0);
                 rules.append(bar_rules);
@@ -388,9 +389,12 @@ mod EditBox {
                 bar_rect = Rect::new(Coord(x0, rect.pos.1), Size(bar_width, rect.size.1));
                 rect.size.0 = (rect.size.0 - bar_width - self.inner_margin).max(0);
             }
-            self.bar.set_rect(cx, bar_rect, AlignHints::NONE);
+            self.vert_bar.set_rect(cx, bar_rect, AlignHints::NONE);
 
             self.inner.set_rect(cx, rect, hints);
+            let _ = self
+                .scroll
+                .set_sizes(self.rect().size, self.inner.rect().size);
             self.update_scroll_bar(cx);
         }
 
@@ -404,9 +408,11 @@ mod EditBox {
             };
             draw_inner.frame(self.rect(), FrameStyle::EditBox, bg);
 
-            self.inner.draw(draw_inner);
-            if self.inner.max_scroll_offset().1 > 0 {
-                self.bar.draw(draw.re());
+            draw_inner.with_clip_region(self.rect(), self.scroll.offset(), |draw| {
+                self.inner.draw(draw);
+            });
+            if self.scroll.max_offset().1 > 0 {
+                self.vert_bar.draw(draw.re());
             }
         }
     }
@@ -416,14 +422,22 @@ mod EditBox {
             Role::Border
         }
 
+        fn translation(&self, index: usize) -> Offset {
+            if index == widget_index!(self.inner) {
+                self.scroll.offset()
+            } else {
+                Offset::ZERO
+            }
+        }
+
         fn probe(&self, coord: Coord) -> Id {
-            if self.inner.max_scroll_offset().1 > 0 {
-                if let Some(id) = self.bar.try_probe(coord) {
+            if self.scroll.max_offset().1 > 0 {
+                if let Some(id) = self.vert_bar.try_probe(coord) {
                     return id;
                 }
             }
 
-            // If coord is over self but not over self.bar, we assign
+            // If coord is over self but not over self.vert_bar, we assign
             // the event to self.inner without further question.
             self.inner.id()
         }
@@ -432,10 +446,22 @@ mod EditBox {
     impl Events for Self {
         type Data = G::Data;
 
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
+            let used = self
+                .scroll
+                .scroll_by_event(cx, event, self.id(), self.rect());
+            self.update_scroll_bar(cx);
+            used
+        }
+
         fn handle_messages(&mut self, cx: &mut EventCx<'_>, data: &G::Data) {
-            if let Some(ScrollMsg(y)) = cx.try_pop() {
-                self.inner
-                    .set_scroll_offset(cx, Offset(self.inner.view_offset.0, y));
+            if cx.last_child() == Some(widget_index![self.vert_bar])
+                && let Some(ScrollMsg(y)) = cx.try_pop()
+            {
+                let offset = Offset(self.scroll.offset().0, y);
+                let action = self.scroll.set_offset(offset);
+                cx.action(&self, action);
+                self.update_scroll_bar(cx);
             }
 
             if self.is_editable()
@@ -447,7 +473,12 @@ mod EditBox {
             }
         }
 
-        fn handle_scroll(&mut self, cx: &mut EventCx<'_>, _: &G::Data, _: Scroll) {
+        fn handle_scroll(&mut self, cx: &mut EventCx<'_>, _: &G::Data, scroll: Scroll) {
+            // Inner may have resized itself, hence we update sizes now.
+            let _ = self
+                .scroll
+                .set_sizes(self.rect().size, self.inner.rect().size);
+            self.scroll.scroll(cx, self.id(), self.rect(), scroll);
             self.update_scroll_bar(cx);
         }
     }
@@ -458,8 +489,9 @@ mod EditBox {
         pub fn new(guard: G) -> Self {
             EditBox {
                 core: Default::default(),
+                scroll: Default::default(),
                 inner: EditField::new(guard),
-                bar: Default::default(),
+                vert_bar: Default::default(),
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
                 inner_margin: Default::default(),
@@ -467,10 +499,10 @@ mod EditBox {
         }
 
         fn update_scroll_bar(&mut self, cx: &mut EventState) {
-            let max_offset = self.inner.max_scroll_offset().1;
-            self.bar
+            let max_offset = self.scroll.max_offset().1;
+            self.vert_bar
                 .set_limits(cx, max_offset, self.inner.rect().size.1);
-            self.bar.set_value(cx, self.inner.view_offset.1);
+            self.vert_bar.set_value(cx, self.scroll.offset().1);
         }
 
         /// Get text contents
@@ -772,12 +804,10 @@ mod EditField {
     #[widget]
     pub struct EditField<G: EditGuard = DefaultGuard<()>> {
         core: widget_core!(),
-        view_offset: Offset,
         editable: bool,
         width: (f32, f32),
         lines: (f32, f32),
         text: Text<String>,
-        text_size: Size,
         selection: SelectionHelper,
         edit_x_coord: Option<f32>,
         old_state: Option<(String, usize, usize)>,
@@ -791,6 +821,11 @@ mod EditField {
     }
 
     impl Layout for Self {
+        #[inline]
+        fn rect(&self) -> Rect {
+            self.text.rect()
+        }
+
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
             let (min, ideal) = if axis.is_horizontal() {
                 let dpem = sizer.dpem();
@@ -816,33 +851,28 @@ mod EditField {
         }
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, mut hints: AlignHints) {
-            widget_set_rect!(rect);
             hints.vert = Some(if self.multi_line() {
                 Align::Default
             } else {
                 Align::Center
             });
             self.text.set_rect(cx, rect, hints);
-            self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
-            self.view_offset = self.view_offset.min(self.max_scroll_offset());
             if self.current.is_ime() {
                 self.set_ime_cursor_area(cx);
             }
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            let mut rect = self.rect();
-            rect.size = rect.size.max(self.text_size);
-            draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
-                // TODO(opt): we could cache the selection rectangles here to make
-                // drawing more efficient (self.text.highlight_lines(range) output).
-                // The same applies to the edit marker below.
-                draw.text_selected(rect, &self.text, self.selection.range());
+            let rect = self.rect();
 
-                if self.editable && draw.ev_state().has_key_focus(self.id_ref()).0 {
-                    draw.text_cursor(rect, &self.text, self.selection.edit_pos());
-                }
-            });
+            // TODO(opt): we could cache the selection rectangles here to make
+            // drawing more efficient (self.text.highlight_lines(range) output).
+            // The same applies to the edit marker below.
+            draw.text_selected(rect, &self.text, self.selection.range());
+
+            if self.editable && draw.ev_state().has_key_focus(self.id_ref()).0 {
+                draw.text_cursor(rect, &self.text, self.selection.edit_pos());
+            }
         }
     }
 
@@ -904,7 +934,7 @@ mod EditField {
                 }
                 Event::KeyFocus => {
                     self.has_key_focus = true;
-                    cx.set_scroll(Scroll::Rect(self.rect()));
+                    self.set_view_offset_from_edit_pos(cx);
                     G::focus_gained(self, cx, data);
                     Used
                 }
@@ -991,14 +1021,6 @@ mod EditField {
                     self.prepare_text(cx);
                     Used
                 }
-                Event::Scroll(delta) => {
-                    // In single-line mode we do not handle purely vertical
-                    // scrolling; this improves compatibility with SpinBox.
-                    if !self.multi_line() && delta.is_vertical() {
-                        return Unused;
-                    }
-                    self.pan_delta(cx, delta.as_offset(cx), false)
-                }
                 Event::PressStart { press } if press.is_tertiary() => press
                     .grab(self.id(), kas::event::GrabMode::Click)
                     .complete(cx),
@@ -1066,36 +1088,6 @@ mod EditField {
         }
     }
 
-    impl Scrollable for Self {
-        fn scroll_axes(&self, size: Size) -> (bool, bool) {
-            let max = self.max_scroll_offset();
-            (max.0 > size.0, max.1 > size.1)
-        }
-
-        fn max_scroll_offset(&self) -> Offset {
-            let text_size = Offset::conv(self.text_size);
-            let self_size = Offset::conv(self.rect().size);
-            (text_size - self_size).max(Offset::ZERO)
-        }
-
-        fn scroll_offset(&self) -> Offset {
-            self.view_offset
-        }
-
-        fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
-            let new_offset = offset.min(self.max_scroll_offset()).max(Offset::ZERO);
-            if new_offset != self.view_offset {
-                self.view_offset = new_offset;
-                if self.current.is_ime() {
-                    self.set_ime_cursor_area(cx);
-                }
-                // No widget moves so do not need to report Action::REGION_MOVED
-                cx.redraw(self);
-            }
-            new_offset
-        }
-    }
-
     impl Default for Self
     where
         G: Default,
@@ -1112,12 +1104,10 @@ mod EditField {
         pub fn new(guard: G) -> EditField<G> {
             EditField {
                 core: Default::default(),
-                view_offset: Default::default(),
                 editable: true,
                 width: (8.0, 16.0),
                 lines: (1.0, 1.0),
                 text: Text::default().with_class(TextClass::Edit(false)),
-                text_size: Default::default(),
                 selection: Default::default(),
                 edit_x_coord: None,
                 old_state: None,
@@ -1156,12 +1146,6 @@ mod EditField {
             self.current.clear_active();
             self.selection.set_max_len(self.text.str_len());
             cx.redraw(&self);
-            self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
-            let view_offset = self.view_offset.min(self.max_scroll_offset());
-            if view_offset != self.view_offset {
-                cx.action(&self, Action::SCROLLED);
-                self.view_offset = view_offset;
-            }
             if self.current.is_ime() {
                 self.set_ime_cursor_area(cx);
             }
@@ -1172,7 +1156,7 @@ mod EditField {
         fn set_ime_cursor_area(&self, cx: &mut EventState) {
             if let Ok(display) = self.text.display() {
                 if let Some(mut rect) = self.selection.cursor_rect(display) {
-                    rect.pos += Offset::conv(self.rect().pos) - self.view_offset;
+                    rect.pos += Offset::conv(self.rect().pos);
                     cx.set_ime_cursor_area(self.id_ref(), rect);
                 }
             }
@@ -1383,21 +1367,11 @@ impl<G: EditGuard> EditField<G> {
     }
 
     fn prepare_text(&mut self, cx: &mut EventCx) {
-        let start = std::time::Instant::now();
-
-        if !self.text.prepare() {
-            return;
+        if self.text.prepare() {
+            cx.redraw(&self);
         }
 
-        self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
-
-        cx.redraw(&self);
         self.set_view_offset_from_edit_pos(cx);
-
-        log::trace!(
-            target: "kas_perf::widgets::edit", "prepare_text: {}μs",
-            start.elapsed().as_micros(),
-        );
     }
 
     fn trim_paste(&self, text: &str) -> Range<usize> {
@@ -1756,7 +1730,7 @@ impl<G: EditGuard> EditField<G> {
     }
 
     fn set_edit_pos_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {
-        let rel_pos = (coord - self.rect().pos + self.view_offset).cast();
+        let rel_pos = (coord - self.rect().pos).cast();
         if let Ok(pos) = self.text.text_index_nearest(rel_pos) {
             if pos != self.selection.edit_pos() {
                 self.selection.set_edit_pos(pos);
@@ -1774,23 +1748,6 @@ impl<G: EditGuard> EditField<G> {
         }
     }
 
-    // Pan by given delta.
-    fn pan_delta(&mut self, cx: &mut EventCx, mut delta: Offset, kinetic: bool) -> IsUsed {
-        let new_offset = (self.view_offset - delta)
-            .min(self.max_scroll_offset())
-            .max(Offset::ZERO);
-        if new_offset != self.view_offset {
-            delta -= self.view_offset - new_offset;
-            self.view_offset = new_offset;
-            if self.current.is_ime() {
-                self.set_ime_cursor_area(cx);
-            }
-        }
-
-        // self.input_handler.set_scroll_residual(cx, delta, kinetic);
-        Used
-    }
-
     /// Update view_offset after edit_pos changes
     ///
     /// A redraw is assumed since edit_pos moved.
@@ -1802,24 +1759,10 @@ impl<G: EditGuard> EditField<G> {
             .ok()
             .and_then(|mut m| m.next_back())
         {
-            let bounds = Vec2::conv(self.text.size());
-            let min_x = marker.pos.0 - bounds.0;
-            let min_y = marker.pos.1 - marker.descent - bounds.1;
-            let max_x = marker.pos.0;
-            let max_y = marker.pos.1 - marker.ascent;
-            let min = Offset(min_x.cast_ceil(), min_y.cast_ceil());
-            let max = Offset(max_x.cast_floor(), max_y.cast_floor());
-
-            let max = max.min(self.max_scroll_offset());
-
-            let new_offset = self.view_offset.max(min).min(max);
-            if new_offset != self.view_offset {
-                self.view_offset = new_offset;
-                cx.set_scroll(Scroll::Scrolled);
-            }
-        }
-        if self.current.is_ime() {
-            self.set_ime_cursor_area(cx);
+            let y0 = (marker.pos.1 - marker.ascent).cast_floor();
+            let pos = self.rect().pos + Offset(marker.pos.0.cast_nearest(), y0);
+            let size = Size(0, i32::conv_ceil(marker.pos.1 - marker.descent) - y0);
+            cx.set_scroll(Scroll::Rect(Rect { pos, size }));
         }
     }
 }
