@@ -184,10 +184,6 @@ mod SelectableLabel {
                 event => match self.input_handler.handle(cx, self.id(), event) {
                     TextInputAction::Used | TextInputAction::Finish => Used,
                     TextInputAction::Unused => Unused,
-                    TextInputAction::Pan(delta, kinetic) => {
-                        cx.push((delta, kinetic));
-                        Used
-                    }
                     TextInputAction::Focus { coord, action } => {
                         self.set_edit_pos_from_coord(cx, coord);
                         self.selection.action(&self.text, action);

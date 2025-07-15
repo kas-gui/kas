@@ -1029,7 +1029,6 @@ mod EditField {
                 event => match self.input_handler.handle(cx, self.id(), event) {
                     TextInputAction::Used => Used,
                     TextInputAction::Unused => Unused,
-                    TextInputAction::Pan(delta, kinetic) => self.pan_delta(cx, delta, kinetic),
                     TextInputAction::Focus { coord, action }
                         if self.current.is_select() || action.anchor =>
                     {
@@ -1807,7 +1806,7 @@ impl<G: EditGuard> EditField<G> {
             }
         }
 
-        self.input_handler.set_scroll_residual(cx, delta, kinetic);
+        // self.input_handler.set_scroll_residual(cx, delta, kinetic);
         Used
     }
 

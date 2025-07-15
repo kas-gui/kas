@@ -89,6 +89,7 @@ impl Kinetic {
         let d = self.rest + start.rest;
         let delta = Offset::conv_trunc(d);
         self.rest = d - Vec2::conv(delta);
+        self.t_step = Instant::now();
         delta
     }
 
@@ -273,8 +274,11 @@ impl ScrollComponent {
             }
             Scroll::Kinetic(start) => {
                 let delta = self.kinetic.start(start);
-                let delta = self.scroll_self_by_delta(cx, id, delta);
+                let delta = self.scroll_self_by_delta(cx, id.clone(), delta);
                 if delta == Offset::ZERO {
+                    if self.kinetic.is_scrolling() {
+                        cx.request_frame_timer(id, TIMER_KINETIC);
+                    }
                     cx.set_scroll(Scroll::Scrolled);
                 } else {
                     cx.set_scroll(Scroll::Kinetic(self.kinetic.stop_with_residual(delta)));
@@ -406,20 +410,19 @@ impl ScrollComponent {
     }
 }
 
-#[impl_default(TouchPhase::None)]
+#[impl_default(Phase::None)]
 #[derive(Clone, Debug, PartialEq)]
-enum TouchPhase {
+enum Phase {
     None,
-    Start(u64, Coord), // id, coord
-    Pan(u64),          // id
-    Cursor(u64),       // id
+    Start(PressSource, Coord), // source, coord
+    Pan(PressSource),          // source
+    Cursor(PressSource),       // source
 }
 
 /// Handles text selection and panning from mouse and touch events
 #[derive(Clone, Debug, Default)]
 pub struct TextInput {
-    touch_phase: TouchPhase,
-    kinetic: Kinetic,
+    phase: Phase,
 }
 
 /// Result of [`TextInput::handle`]
@@ -428,10 +431,6 @@ pub enum TextInputAction {
     Used,
     /// Event not used
     Unused,
-    /// Pan text using the given `delta`
-    ///
-    /// The second payload, `kinetic`, should be passed to [`TextInput::set_scroll_residual`].
-    Pan(Offset, bool),
     /// Set the text cursor near to `coord` (mouse or touch position)
     ///
     /// If `action.anchor`, this is a new set-focus action; the selection anchor
@@ -470,16 +469,18 @@ impl TextInput {
             Event::PressStart { press } if press.is_primary() => {
                 let mut action = Action::Used;
                 let icon = match *press {
-                    PressSource::Touch(touch_id) => {
-                        self.touch_phase = TouchPhase::Start(touch_id, press.coord);
+                    PressSource::Touch(_) => {
+                        self.phase = Phase::Start(*press, press.coord);
                         let delay = cx.config().event().touch_select_delay();
                         cx.request_timer(w_id.clone(), TIMER_SELECT, delay);
                         None
                     }
                     PressSource::Mouse(..) if cx.config_enable_mouse_text_pan() => {
+                        self.phase = Phase::Pan(*press);
                         Some(CursorIcon::Grabbing)
                     }
                     PressSource::Mouse(_, repeats) => {
+                        self.phase = Phase::Cursor(*press);
                         action = Action::Focus {
                             coord: press.coord,
                             action: SelectionAction {
@@ -495,52 +496,47 @@ impl TextInput {
                     .grab(w_id, GrabMode::Grab)
                     .with_opt_icon(icon)
                     .complete(cx);
-                self.kinetic.press_start(press.source);
                 action
             }
-            Event::PressMove { press, delta } if press.is_primary() => {
-                self.kinetic.press_move(press.source);
-                match press.source {
-                    PressSource::Touch(touch_id) => match self.touch_phase {
-                        TouchPhase::Start(id, start_coord) if id == touch_id => {
-                            let delta = press.coord - start_coord;
-                            if cx.config_test_pan_thresh(delta) {
-                                self.touch_phase = TouchPhase::Pan(id);
-                                Action::Pan(delta, false)
-                            } else {
-                                Action::Used
-                            }
-                        }
-                        TouchPhase::Pan(id) if id == touch_id => Action::Pan(delta, false),
-                        _ => Action::Focus {
-                            coord: press.coord,
-                            action: SelectionAction::new(false, false, 1),
-                        },
-                    },
-                    PressSource::Mouse(..) if cx.config_enable_mouse_text_pan() => {
-                        Action::Pan(delta, false)
+            Event::PressMove { press, delta } => match self.phase {
+                Phase::Start(source, start_coord) if *press == source => {
+                    let delta = press.coord - start_coord;
+                    if cx.config_test_pan_thresh(delta) {
+                        self.phase = Phase::Pan(source);
+                        cx.set_scroll(Scroll::Offset(delta));
                     }
-                    PressSource::Mouse(_, repeats) => Action::Focus {
+                    Action::Used
+                }
+                Phase::Pan(source) if *press == source => {
+                    cx.set_scroll(Scroll::Offset(delta));
+                    Action::Used
+                }
+                Phase::Cursor(source) if *press == source => {
+                    let repeats = match *press {
+                        PressSource::Touch(_) => 1,
+                        PressSource::Mouse(_, n) => n,
+                    };
+                    Action::Focus {
                         coord: press.coord,
                         action: SelectionAction::new(false, false, repeats),
-                    },
+                    }
                 }
-            }
-            Event::PressEnd { press, .. } if press.is_primary() => {
-                if let Some(velocity) = cx.press_velocity(press.source)
-                    && self.kinetic.press_end(press.source, velocity)
-                    && (matches!(press.source, PressSource::Touch(id) if self.touch_phase == TouchPhase::Pan(id))
-                        || matches!(press.source, PressSource::Mouse(..) if cx.config_enable_mouse_text_pan()))
+                _ => Action::Used,
+            },
+            Event::PressEnd { press, .. } => {
+                if let Phase::Pan(source) = self.phase
+                    && *press == source
+                    && let Some(vel) = cx.press_velocity(source)
                 {
-                    self.touch_phase = TouchPhase::None;
-                    cx.request_frame_timer(w_id, TIMER_KINETIC);
-                    return Action::Used;
+                    let rest = Vec2::ZERO;
+                    cx.set_scroll(Scroll::Kinetic(KineticStart { vel, rest }));
                 }
+                self.phase = Phase::None;
                 Action::Finish
             }
-            Event::Timer(TIMER_SELECT) => match self.touch_phase {
-                TouchPhase::Start(touch_id, coord) => {
-                    self.touch_phase = TouchPhase::Cursor(touch_id);
+            Event::Timer(TIMER_SELECT) => match self.phase {
+                Phase::Start(touch_id, coord) => {
+                    self.phase = Phase::Cursor(touch_id);
                     Action::Focus {
                         coord,
                         action: SelectionAction::new(true, !cx.modifiers().shift_key(), 1),
@@ -548,40 +544,7 @@ impl TextInput {
                 }
                 _ => Action::Unused,
             },
-            Event::Timer(TIMER_KINETIC) => {
-                if let Some(delta) = self.kinetic.step(cx) {
-                    cx.request_frame_timer(w_id, TIMER_KINETIC);
-                    Action::Pan(delta, true)
-                } else {
-                    Action::Finish
-                }
-            }
             _ => Action::Unused,
         }
-    }
-
-    /// Call on [`Scroll::Kinetic`]
-    #[inline]
-    pub fn kinetic_start(&mut self, start: KineticStart) -> Offset {
-        self.kinetic.start(start)
-    }
-
-    /// Stop kinetic scrolling
-    #[inline]
-    pub fn kinetic_stop(&mut self) {
-        self.kinetic.stop();
-    }
-
-    /// Call to call [`EventCx::set_scroll`] with the correct parameter
-    ///
-    /// Parameter `kinetic` should be passed from [`TextInputAction::Pan`] or be
-    /// `false` for direct (non-kinetic) scrolling.
-    pub fn set_scroll_residual(&mut self, cx: &mut EventCx, delta: Offset, kinetic: bool) {
-        let scroll = match kinetic {
-            _ if delta == Offset::ZERO => Scroll::Scrolled,
-            false => Scroll::Offset(delta),
-            true => Scroll::Kinetic(self.kinetic.stop_with_residual(delta)),
-        };
-        cx.set_scroll(scroll);
     }
 }

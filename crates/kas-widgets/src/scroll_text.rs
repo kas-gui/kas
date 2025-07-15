@@ -136,7 +136,7 @@ mod ScrollText {
                 self.set_offset(cx, new_offset);
             }
 
-            self.input_handler.set_scroll_residual(cx, delta, kinetic);
+            // self.input_handler.set_scroll_residual(cx, delta, kinetic);
             Used
         }
 
@@ -240,7 +240,6 @@ mod ScrollText {
                 event => match self.input_handler.handle(cx, self.id(), event) {
                     TextInputAction::Used | TextInputAction::Finish => Used,
                     TextInputAction::Unused => Unused,
-                    TextInputAction::Pan(delta, kinetic) => self.pan_delta(cx, delta, kinetic),
                     TextInputAction::Focus { coord, action } => {
                         self.set_edit_pos_from_coord(cx, coord);
                         self.selection.action(&self.text, action);

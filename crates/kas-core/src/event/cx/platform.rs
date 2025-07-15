@@ -162,7 +162,10 @@ impl EventState {
             cx.poll_futures(win.as_node(data));
 
             // Finally, clear the region_moved flag (mouse and touch sub-systems handle this).
-            cx.action.remove(Action::REGION_MOVED);
+            if cx.action.contains(Action::REGION_MOVED) {
+                cx.action.remove(Action::REGION_MOVED);
+                cx.action.insert(Action::REDRAW);
+            }
         });
 
         if let Some(icon) = self.mouse.update_hover_icon() {
