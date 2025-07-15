@@ -40,7 +40,7 @@ pub fn _send<W: Events>(
         do_handle_event = true;
     } else {
         if let Some(index) = widget.find_child_index(&id) {
-            let translation = widget.translation();
+            let translation = widget.translation(index);
             let mut _found = false;
             if let Some(mut node) = widget.as_node(data).get_child(index) {
                 is_used = node._send(cx, id.clone(), event.clone() + translation);

@@ -569,7 +569,7 @@ mod MatrixView {
         }
 
         #[inline]
-        fn translation(&self) -> Offset {
+        fn translation(&self, _: usize) -> Offset {
             self.scroll_offset()
         }
 

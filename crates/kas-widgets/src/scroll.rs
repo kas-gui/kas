@@ -131,7 +131,7 @@ mod ScrollRegion {
         }
 
         #[inline]
-        fn translation(&self) -> Offset {
+        fn translation(&self, _: usize) -> Offset {
             self.scroll_offset()
         }
 
@@ -141,7 +141,7 @@ mod ScrollRegion {
             }
 
             self.inner
-                .try_probe(coord + self.translation())
+                .try_probe(coord + self.scroll_offset())
                 .unwrap_or_else(|| self.id())
         }
     }

@@ -317,6 +317,14 @@ mod ScrollText {
             }
         }
 
+        fn translation(&self, index: usize) -> Offset {
+            if index == widget_index!(self.label) {
+                self.scroll.offset()
+            } else {
+                Offset::ZERO
+            }
+        }
+
         fn probe(&self, coord: Coord) -> Id {
             self.vert_bar
                 .try_probe(coord)

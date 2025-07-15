@@ -180,11 +180,12 @@ pub trait Tile: Layout {
         unimplemented!() // make rustdoc show that this is a provided method
     }
 
-    /// Get translation of children relative to this widget
+    /// Get translation of child `index` relative to this widget
     ///
     /// Usually this is zero; only widgets with scrollable or offset content
     /// *and* child widgets need to implement this.
-    /// Such widgets must also implement [`Events::handle_scroll`].
+    /// Such widgets must also implement [`Events::handle_scroll`] and
+    /// [`Tile::probe`].
     ///
     /// Affects event handling via [`Tile::probe`] and affects the positioning
     /// of pop-up menus. [`Layout::draw`] must be implemented directly using
@@ -192,7 +193,8 @@ pub trait Tile: Layout {
     ///
     /// Default implementation: return [`Offset::ZERO`]
     #[inline]
-    fn translation(&self) -> Offset {
+    fn translation(&self, index: usize) -> Offset {
+        let _ = index;
         Offset::ZERO
     }
 
@@ -218,11 +220,14 @@ pub trait Tile: Layout {
     /// The callee may usually assume that it occupies `coord` and may thus
     /// return its own [`Id`] when no child occupies the input `coord`.
     ///
+    /// If the [`Self::translation`] is non-zero for any child, then the
+    /// coordinate passed to that child must be translated:
+    /// `coord + translation`.
+    ///
     /// ## Default implementation
     ///
     /// The `#[widget]` macro may implement this method as:
     /// ```ignore
-    /// let coord = coord + self.translation();
     /// MacroDefinedLayout::try_probe(self, coord).unwrap_or_else(|| self.id())
     /// ```
     fn probe(&self, coord: Coord) -> Id
@@ -311,26 +316,13 @@ pub trait TileExt: Tile {
         let mut translation = Offset::ZERO;
         loop {
             if widget.eq_id(id) {
-                if widget.translation() != Offset::ZERO {
-                    // Unvalidated: does this cause issues with the parent's event handlers?
-                    log::warn!(
-                        "Parent of pop-up {} has non-zero translation",
-                        widget.identify()
-                    );
-                }
-
                 let rect = widget.rect();
                 return Some((rect, translation));
-            } else if let Some(child) = widget
-                .find_child_index(id)
-                .and_then(|i| widget.get_child(i))
-            {
-                translation += widget.translation();
-                widget = child;
-                continue;
-            } else {
-                return None;
             }
+
+            let index = widget.find_child_index(id)?;
+            translation += widget.translation(index);
+            widget = widget.get_child(index)?;
         }
     }
 }
