@@ -5,7 +5,7 @@
 
 //! Scroll region
 
-use kas::event::{Scroll, components::ScrollComponent};
+use kas::event::{CursorIcon, Scroll, components::ScrollComponent};
 use kas::prelude::*;
 use std::fmt::Debug;
 
@@ -136,6 +136,10 @@ mod ScrollRegion {
         }
 
         fn probe(&self, coord: Coord) -> Id {
+            if self.scroll.is_kinetic_scrolling() {
+                return self.id();
+            }
+
             self.inner
                 .try_probe(coord + self.translation())
                 .unwrap_or_else(|| self.id())
@@ -144,6 +148,12 @@ mod ScrollRegion {
 
     impl Events for Self {
         type Data = W::Data;
+
+        fn hover_icon(&self) -> Option<CursorIcon> {
+            self.scroll
+                .is_kinetic_scrolling()
+                .then_some(CursorIcon::AllScroll)
+        }
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.register_nav_fallback(self.id());
