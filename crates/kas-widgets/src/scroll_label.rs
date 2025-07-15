@@ -14,17 +14,17 @@ use kas::text::format::FormattableText;
 use kas::theme::{Text, TextClass};
 
 #[impl_self]
-mod SelectableLabel {
+mod SelectableText {
     /// A text label supporting selection
     ///
     /// Line-wrapping is enabled; default alignment is derived from the script
     /// (usually top-left).
-    #[derive(Clone, Default, Debug)]
     #[widget]
     #[layout(self.text)]
-    pub struct SelectableLabel<T: FormattableText + 'static> {
+    pub struct SelectableText<A, T: FormattableText + 'static> {
         core: widget_core!(),
         text: Text<T>,
+        text_fn: Option<Box<dyn Fn(&ConfigCx, &A) -> T>>,
         selection: SelectionHelper,
         has_sel_focus: bool,
         input_handler: TextInput,
@@ -54,17 +54,51 @@ mod SelectableLabel {
         }
     }
 
-    impl Self {
-        /// Construct a `SelectableLabel` with the given inital `text`
+    impl<T: FormattableText + 'static> SelectableText<(), T> {
+        /// Construct a `SelectableText` with the given inital `text`
+        ///
+        /// The text is set from input data on update.
         #[inline]
         pub fn new(text: T) -> Self {
-            SelectableLabel {
+            SelectableText {
                 core: Default::default(),
                 text: Text::new(text, TextClass::LabelScroll),
+                text_fn: None,
                 selection: SelectionHelper::new(0, 0),
                 has_sel_focus: false,
                 input_handler: Default::default(),
             }
+        }
+
+        /// Set or replace the text derivation function
+        ///
+        /// The text is set from input data on update.
+        #[inline]
+        pub fn with_fn<A>(
+            self,
+            text_fn: impl Fn(&ConfigCx, &A) -> T + 'static,
+        ) -> SelectableText<A, T> {
+            SelectableText {
+                core: self.core,
+                text: self.text,
+                text_fn: Some(Box::new(text_fn)),
+                selection: self.selection,
+                has_sel_focus: self.has_sel_focus,
+                input_handler: self.input_handler,
+            }
+        }
+    }
+
+    impl Self {
+        /// Construct an `SelectableText` with the given text derivation function
+        ///
+        /// The text is set from input data on update.
+        #[inline]
+        pub fn new_fn(text_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self
+        where
+            T: Default,
+        {
+            SelectableText::<(), T>::new(T::default()).with_fn(text_fn)
         }
 
         /// Set text in an existing `Label`
@@ -123,7 +157,7 @@ mod SelectableLabel {
         }
     }
 
-    impl SelectableLabel<String> {
+    impl SelectableText<(), String> {
         /// Set text contents from a string
         #[inline]
         pub fn set_string(&mut self, cx: &mut EventState, string: String) {
@@ -135,7 +169,7 @@ mod SelectableLabel {
     }
 
     impl Events for Self {
-        type Data = ();
+        type Data = A;
 
         #[inline]
         fn hover_icon(&self) -> Option<CursorIcon> {
@@ -144,6 +178,20 @@ mod SelectableLabel {
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.text_configure(&mut self.text);
+        }
+
+        fn update(&mut self, cx: &mut ConfigCx, data: &A) {
+            if let Some(method) = self.text_fn.as_ref() {
+                let text = method(cx, data);
+                if text.as_str() == self.text.as_str() {
+                    // NOTE(opt): avoiding re-preparation of text is a *huge*
+                    // optimisation. Move into kas-text?
+                    return;
+                }
+                self.text.set_text(text);
+                self.text.prepare();
+                cx.action(self, Action::SET_RECT);
+            }
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
@@ -201,20 +249,28 @@ mod SelectableLabel {
     }
 }
 
+/// A text label supporting selection
+///
+/// Line-wrapping is enabled; default alignment is derived from the script
+/// (usually top-left).
+pub type SelectableLabel<T> = SelectableText<(), T>;
+
 #[impl_self]
-mod ScrollLabel {
+mod ScrollText {
     /// A text label supporting scrolling and selection
+    ///
+    /// This widget is a wrapper around [`SelectableText`] enabling scrolling
+    /// and adding a vertical scroll bar.
     ///
     /// Line-wrapping is enabled; default alignment is derived from the script
     /// (usually top-left).
-    #[derive(Clone, Default, Debug)]
     #[widget]
-    pub struct ScrollLabel<T: FormattableText + 'static> {
+    pub struct ScrollText<A, T: FormattableText + 'static> {
         core: widget_core!(),
         scroll: ScrollComponent,
         #[widget]
-        label: SelectableLabel<T>,
-        #[widget]
+        label: SelectableText<A, T>,
+        #[widget = &()]
         vert_bar: ScrollBar<kas::dir::Down>,
     }
 
@@ -268,16 +324,47 @@ mod ScrollLabel {
         }
     }
 
-    impl Self {
-        /// Construct an `ScrollLabel` with the given inital `text`
+    impl<T: FormattableText + 'static> ScrollText<(), T> {
+        /// Construct an `ScrollText` with the given inital `text`
+        ///
+        /// The text is set from input data on update.
         #[inline]
         pub fn new(text: T) -> Self {
-            ScrollLabel {
+            ScrollText {
                 core: Default::default(),
                 scroll: Default::default(),
-                label: SelectableLabel::new(text),
+                label: SelectableText::new(text),
                 vert_bar: ScrollBar::new().with_invisible(true),
             }
+        }
+
+        /// Set or replace the text derivation function
+        ///
+        /// The text is set from input data on update.
+        #[inline]
+        pub fn with_fn<A>(
+            self,
+            text_fn: impl Fn(&ConfigCx, &A) -> T + 'static,
+        ) -> ScrollText<A, T> {
+            ScrollText {
+                core: self.core,
+                scroll: self.scroll,
+                label: self.label.with_fn(text_fn),
+                vert_bar: self.vert_bar,
+            }
+        }
+    }
+
+    impl Self {
+        /// Construct an `ScrollText` with the given text derivation function
+        ///
+        /// The text is set from input data on update.
+        #[inline]
+        pub fn new_fn(text_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self
+        where
+            T: Default,
+        {
+            ScrollText::<(), T>::new(T::default()).with_fn(text_fn)
         }
 
         /// Replace text
@@ -299,7 +386,7 @@ mod ScrollLabel {
         }
     }
 
-    impl ScrollLabel<String> {
+    impl ScrollText<(), String> {
         /// Set text contents from a string
         pub fn set_string(&mut self, cx: &mut EventState, string: String) {
             self.label.set_string(cx, string);
@@ -307,7 +394,7 @@ mod ScrollLabel {
     }
 
     impl Events for Self {
-        type Data = ();
+        type Data = A;
 
         #[inline]
         fn hover_icon(&self) -> Option<CursorIcon> {
@@ -359,3 +446,12 @@ mod ScrollLabel {
         }
     }
 }
+
+/// A text label supporting scrolling and selection
+///
+/// This widget is a wrapper around [`SelectableText`] enabling scrolling
+/// and adding a vertical scroll bar.
+///
+/// Line-wrapping is enabled; default alignment is derived from the script
+/// (usually top-left).
+pub type ScrollLabel<T> = ScrollText<(), T>;
