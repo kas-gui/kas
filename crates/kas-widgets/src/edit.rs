@@ -391,12 +391,20 @@ mod EditBox {
             self.bar.set_rect(cx, bar_rect, AlignHints::NONE);
 
             self.inner.set_rect(cx, rect, hints);
-            self.inner.set_outer_rect(outer_rect, FrameStyle::EditBox);
             self.update_scroll_bar(cx);
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            self.inner.draw(draw.re());
+            let mut draw_inner = draw.re();
+            draw_inner.set_id(self.inner.id());
+            let bg = if self.inner.has_error() {
+                Background::Error
+            } else {
+                Background::Default
+            };
+            draw_inner.frame(self.rect(), FrameStyle::EditBox, bg);
+
+            self.inner.draw(draw_inner);
             if self.inner.max_scroll_offset().1 > 0 {
                 self.bar.draw(draw.re());
             }
@@ -764,8 +772,6 @@ mod EditField {
     #[widget]
     pub struct EditField<G: EditGuard = DefaultGuard<()>> {
         core: widget_core!(),
-        outer_rect: Rect,
-        frame_style: FrameStyle,
         view_offset: Offset,
         editable: bool,
         width: (f32, f32),
@@ -811,7 +817,6 @@ mod EditField {
 
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, mut hints: AlignHints) {
             widget_set_rect!(rect);
-            self.outer_rect = rect;
             hints.vert = Some(if self.multi_line() {
                 Align::Default
             } else {
@@ -826,13 +831,6 @@ mod EditField {
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            let bg = if self.has_error() {
-                Background::Error
-            } else {
-                Background::Default
-            };
-            draw.frame(self.outer_rect, self.frame_style, bg);
-
             let mut rect = self.rect();
             rect.size = rect.size.max(self.text_size);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
@@ -1114,8 +1112,6 @@ mod EditField {
         pub fn new(guard: G) -> EditField<G> {
             EditField {
                 core: Default::default(),
-                outer_rect: Rect::ZERO,
-                frame_style: FrameStyle::None,
                 view_offset: Default::default(),
                 editable: true,
                 width: (8.0, 16.0),
@@ -1261,21 +1257,6 @@ impl<A: 'static> EditField<StringGuard<A>> {
 }
 
 impl<G: EditGuard> EditField<G> {
-    /// Set outer rect
-    ///
-    /// Optionally, call this immediately after [`Self::set_rect`] with the
-    /// "outer" rect and frame style. In this case, a frame will be drawn using
-    /// this `outer_rect` and `style`. This allows the "error state" background
-    /// to correctly fill the frame.
-    ///
-    /// Any other widgets painted over the `outer_rect` should be drawn after
-    /// the `EditField`.
-    #[inline]
-    pub fn set_outer_rect(&mut self, outer_rect: Rect, style: FrameStyle) {
-        self.outer_rect = outer_rect;
-        self.frame_style = style;
-    }
-
     /// Set the initial text (inline)
     ///
     /// This method should only be used on a new `EditField`.

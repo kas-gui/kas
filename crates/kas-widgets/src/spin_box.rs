@@ -9,7 +9,7 @@ use crate::{EditField, EditGuard, MarkButton};
 use kas::event::Command;
 use kas::messages::{SetValueF64, SetValueString};
 use kas::prelude::*;
-use kas::theme::{FrameStyle, MarkStyle, Text, TextClass};
+use kas::theme::{Background, FrameStyle, MarkStyle, Text, TextClass};
 use std::ops::RangeInclusive;
 
 /// Requirements on type used by [`SpinBox`]
@@ -346,11 +346,19 @@ mod SpinBox {
     impl Layout for Self {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             kas::MacroDefinedLayout::set_rect(self, cx, rect, hints);
-            self.edit.set_outer_rect(rect, FrameStyle::EditBox);
         }
 
         fn draw(&self, mut draw: DrawCx) {
-            self.edit.draw(draw.re());
+            let mut draw_edit = draw.re();
+            draw_edit.set_id(self.edit.id());
+            let bg = if self.edit.has_error() {
+                Background::Error
+            } else {
+                Background::Default
+            };
+            draw_edit.frame(self.rect(), FrameStyle::EditBox, bg);
+
+            self.edit.draw(draw_edit);
             self.unit.draw(draw.re());
             self.b_up.draw(draw.re());
             self.b_down.draw(draw.re());
