@@ -9,7 +9,7 @@ use super::TextClass;
 #[allow(unused)] use super::{DrawCx, SizeCx};
 use crate::cast::{Cast, CastFloat};
 #[allow(unused)] use crate::event::ConfigCx;
-use crate::geom::{Rect, Size, Vec2};
+use crate::geom::{Rect, Vec2};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::text::fonts::FontSelector;
 use crate::text::format::{EditableText, FormattableText};
@@ -131,6 +131,9 @@ impl<T: FormattableText> Text<T> {
 
     /// Set text class (inline)
     ///
+    /// `TextClass::Edit(false)` has special handling: line wrapping is disabled
+    /// and the width of self is set to that of the text.
+    ///
     /// Default: `TextClass::Label(true)`
     #[inline]
     pub fn with_class(mut self, class: TextClass) -> Self {
@@ -206,6 +209,9 @@ impl<T: FormattableText> Text<T> {
     /// Set text class
     ///
     /// This controls line-wrapping, font and font size selection.
+    ///
+    /// `TextClass::Edit(false)` has special handling: line wrapping is disabled
+    /// and the width of self is set to that of the text.
     ///
     /// Default: `TextClass::Label(true)`
     #[inline]
@@ -311,12 +317,6 @@ impl<T: FormattableText> Text<T> {
             }
             self.align = align;
         }
-    }
-
-    /// Get text size
-    #[inline]
-    pub fn size(&self) -> Size {
-        self.rect.size
     }
 
     /// Get the base directionality of the text
@@ -457,8 +457,22 @@ impl<T: FormattableText> Text<T> {
         debug_assert!(self.status >= Status::LevelRuns);
 
         if self.status == Status::LevelRuns {
-            let bounds: Vec2 = self.rect.size.cast();
-            self.display.prepare_lines(bounds.0, bounds.0, self.align.0);
+            let (wrap_width, align_width);
+            if self.class == TextClass::Edit(false) {
+                // TODO(opt): ideally we'd prepare lines with align_width=0,
+                // take the width from bounding_box() and offset. But kas-text
+                // doesn't support user-supplied offsetting.
+                wrap_width = f32::INFINITY;
+                align_width = self.display.measure_width(wrap_width);
+                if let Ok(width) = align_width.try_cast_ceil() {
+                    self.rect.size.0 = width;
+                }
+            } else {
+                wrap_width = self.rect.size.0.cast();
+                align_width = wrap_width;
+            }
+            self.display
+                .prepare_lines(wrap_width, align_width, self.align.0);
         }
 
         if self.status <= Status::Wrapped {

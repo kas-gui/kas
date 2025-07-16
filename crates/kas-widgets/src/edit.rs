@@ -1570,7 +1570,7 @@ impl<G: EditGuard> EditField<G> {
                     v.0 = x;
                 }
                 const FACTOR: f32 = 2.0 / 3.0;
-                let mut h_dist = f32::conv(self.text.size().1) * FACTOR;
+                let mut h_dist = f32::conv(self.text.rect().size.1) * FACTOR;
                 if cmd == Command::PageUp {
                     h_dist *= -1.0;
                 }
