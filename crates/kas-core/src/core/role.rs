@@ -11,6 +11,8 @@ use crate::dir::Direction;
 #[allow(unused)] use crate::event::EventState;
 use crate::event::Key;
 use crate::geom::Offset;
+#[allow(unused)]
+use crate::messages::{DecrementStep, IncrementStep, SetValueF64};
 
 /// Describes a widget's purpose and capabilities
 ///
@@ -110,6 +112,12 @@ pub enum Role<'a> {
     /// A slider input
     ///
     /// Note that values may not be finite; for example `max: f64::INFINITY`.
+    ///
+    /// ### Messages
+    ///
+    /// [`SetValueF64`] may be used to set the input value.
+    ///
+    /// [`IncrementStep`] and [`DecrementStep`] change the value by one step.
     Slider {
         /// Minimum value
         min: f64,
@@ -123,6 +131,12 @@ pub enum Role<'a> {
     /// A spinner: numeric edit box with up and down buttons
     ///
     /// Note that values may not be finite; for example `max: f64::INFINITY`.
+    ///
+    /// ### Messages
+    ///
+    /// [`SetValueF64`] may be used to set the input value.
+    ///
+    /// [`IncrementStep`] and [`DecrementStep`] change the value by one step.
     SpinButton {
         /// Minimum value
         min: f64,

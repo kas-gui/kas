@@ -7,7 +7,7 @@
 
 use crate::{EditField, EditGuard, MarkButton};
 use kas::event::Command;
-use kas::messages::{SetValueF64, SetValueString};
+use kas::messages::{DecrementStep, IncrementStep, SetValueF64, SetValueString};
 use kas::prelude::*;
 use kas::theme::{Background, FrameStyle, MarkStyle, Text, TextClass};
 use std::ops::RangeInclusive;
@@ -198,6 +198,8 @@ mod SpinBox {
     /// ### Messages
     ///
     /// [`SetValueF64`] may be used to set the input value.
+    ///
+    /// [`IncrementStep`] and [`DecrementStep`] change the value by one step.
     ///
     /// [`SetValueString`] may be used to set the input as a text value.
     #[widget]
@@ -445,6 +447,10 @@ mod SpinBox {
                         None
                     }
                 }
+            } else if let Some(IncrementStep) = cx.try_pop() {
+                Some(self.edit.guard.value.add_step(self.edit.guard.step))
+            } else if let Some(DecrementStep) = cx.try_pop() {
+                Some(self.edit.guard.value.sub_step(self.edit.guard.step))
             } else if let Some(SetValueString(string)) = cx.try_pop() {
                 self.edit.set_string(cx, string);
                 SpinGuard::edit(&mut self.edit, cx, data);

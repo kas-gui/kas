@@ -27,6 +27,14 @@ use crate::event::PhysicalKey;
 #[derive(Copy, Clone, Debug)]
 pub struct Activate(pub Option<PhysicalKey>);
 
+/// Increment value by one step
+#[derive(Copy, Clone, Debug)]
+pub struct IncrementStep;
+
+/// Decrement value by one step
+#[derive(Copy, Clone, Debug)]
+pub struct DecrementStep;
+
 /// Set an input value from `f64`
 ///
 /// This message may be used to set a numeric value to an input field.
