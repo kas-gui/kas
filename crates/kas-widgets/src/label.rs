@@ -271,7 +271,11 @@ mod AccessLabel {
 
     impl Tile for Self {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
-            Role::Label(self.text.as_str())
+            if let Some(key) = self.text.text().key() {
+                Role::AccessLabel(self.text.as_str(), key.clone())
+            } else {
+                Role::Label(self.text.as_str())
+            }
         }
     }
 

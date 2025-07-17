@@ -366,6 +366,15 @@ mod SpinBox {
     }
 
     impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::SpinButton {
+                min: self.edit.guard.start.cast(),
+                max: self.edit.guard.end.cast(),
+                step: self.edit.guard.step.cast(),
+                value: self.edit.guard.value.cast(),
+            }
+        }
+
         fn probe(&self, coord: Coord) -> Id {
             self.b_up
                 .try_probe(coord)

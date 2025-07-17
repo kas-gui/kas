@@ -301,6 +301,15 @@ mod Slider {
     }
 
     impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::Slider {
+                min: self.range.0.cast(),
+                max: self.range.1.cast(),
+                step: self.step.cast(),
+                value: self.value.cast(),
+            }
+        }
+
         fn probe(&self, coord: Coord) -> Id {
             if self.on_move.is_some() {
                 if let Some(id) = self.grip.try_probe(coord) {
