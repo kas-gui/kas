@@ -881,9 +881,9 @@ mod EditField {
     impl Tile for Self {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             // TODO: this is also a ScrollRegion!
-            Role::Text {
+            Role::TextInput {
                 text: self.text.as_str(),
-                editable: self.editable,
+                multi_line: self.multi_line(),
                 edit_pos: self.selection.edit_pos(),
                 sel_pos: self.selection.sel_pos(),
             }

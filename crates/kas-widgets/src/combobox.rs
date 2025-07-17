@@ -51,7 +51,11 @@ mod ComboBox {
 
     impl Tile for Self {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
-            Role::ComboBox(self.active, self.label.as_str())
+            Role::ComboBox {
+                active: self.active,
+                text: self.label.as_str(),
+                expanded: self.popup.is_open(),
+            }
         }
 
         fn nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {

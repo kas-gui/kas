@@ -9,6 +9,7 @@ use crate::Id;
 #[allow(unused)] use crate::Tile;
 use crate::dir::Direction;
 #[allow(unused)] use crate::event::EventState;
+use crate::event::Key;
 use crate::geom::Offset;
 
 /// Describes a widget's purpose and capabilities
@@ -27,6 +28,8 @@ pub enum Role<'a> {
     Unknown,
     /// A text label with the given contents, usually (but not necessarily) short and fixed
     Label(&'a str),
+    /// A text label with an access key
+    AccessLabel(&'a str, Key),
     /// A push button
     ///
     /// ### Messages
@@ -67,22 +70,13 @@ pub enum Role<'a> {
     Image,
     /// A canvas
     Canvas,
-    /// Text
-    ///
-    /// ### Messages
-    ///
-    /// If (but only if) `editable`, this item supports:
-    ///
-    /// [`kas::messages::SetValueString`] may be used to replace the entire
-    /// text.
-    Text {
+    /// A text label supporting selection
+    TextLabel {
         /// Text contents
         ///
         /// NOTE: it is likely that the representation here changes to
         /// accomodate more complex texts and potentially other details.
         text: &'a str,
-        /// Whether the text is editable
-        editable: bool,
         /// The cursor index within `contents`
         edit_pos: usize,
         /// The selection index. Equals `cursor` if the selection is empty.
@@ -90,6 +84,54 @@ pub enum Role<'a> {
         /// call this the selection anchor but Kas does not; see
         /// [`kas::text::SelectionHelper`].)
         sel_pos: usize,
+    },
+    /// Editable text
+    ///
+    /// ### Messages
+    ///
+    /// [`kas::messages::SetValueString`] may be used to replace the entire
+    /// text.
+    TextInput {
+        /// Text contents
+        ///
+        /// NOTE: it is likely that the representation here changes to
+        /// accomodate more complex texts and potentially other details.
+        text: &'a str,
+        /// Whether the text input supports multi-line text
+        multi_line: bool,
+        /// The cursor index within `contents`
+        edit_pos: usize,
+        /// The selection index. Equals `cursor` if the selection is empty.
+        /// May be less than or greater than `cursor`. (Aside: some toolkits
+        /// call this the selection anchor but Kas does not; see
+        /// [`kas::text::SelectionHelper`].)
+        sel_pos: usize,
+    },
+    /// A slider input
+    ///
+    /// Note that values may not be finite; for example `max: f64::INFINITY`.
+    Slider {
+        /// Minimum value
+        min: f64,
+        /// Maximum value
+        max: f64,
+        /// Step
+        step: f64,
+        /// Current value
+        value: f64,
+    },
+    /// A spinner: numeric edit box with up and down buttons
+    ///
+    /// Note that values may not be finite; for example `max: f64::INFINITY`.
+    SpinButton {
+        /// Minimum value
+        min: f64,
+        /// Maximum value
+        max: f64,
+        /// Step
+        step: f64,
+        /// Current value
+        value: f64,
     },
     /// A progress bar
     ///
@@ -102,7 +144,10 @@ pub enum Role<'a> {
     /// # Messages
     ///
     /// [`kas::messages::Activate`] may be used to open the menu.
-    Menu,
+    Menu {
+        /// True if the menu is open
+        expanded: bool,
+    },
     /// A drop-down combination box
     ///
     /// Includes the index and text of the active entry
@@ -110,7 +155,14 @@ pub enum Role<'a> {
     /// # Messages
     ///
     /// [`kas::messages::SetIndex`] may be used to set the selected entry.
-    ComboBox(usize, &'a str),
+    ComboBox {
+        /// Index of the current choice
+        active: usize,
+        /// Text of the current choice
+        text: &'a str,
+        /// True if the menu is open
+        expanded: bool,
+    },
     /// A window
     Window,
     /// The special bar at the top of a window titling contents and usually embedding window controls
@@ -126,7 +178,7 @@ pub enum TextOrSource<'a> {
     /// A reference to another widget able to a text value
     ///
     /// It is expected that the given [`Id`] refers to a widget with role
-    /// [`Role::Label`] or [`Role::Text`].
+    /// [`Role::Label`] or [`Role::TextLabel`].
     Source(Id),
 }
 

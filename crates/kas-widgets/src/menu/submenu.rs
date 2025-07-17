@@ -114,7 +114,9 @@ mod SubMenu {
 
     impl Tile for Self {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
-            Role::Menu
+            Role::Menu {
+                expanded: self.popup.is_open(),
+            }
         }
 
         fn nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {

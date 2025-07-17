@@ -45,9 +45,8 @@ mod SelectableText {
 
     impl Tile for Self {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
-            Role::Text {
+            Role::TextLabel {
                 text: self.text.as_str(),
-                editable: false,
                 edit_pos: self.selection.edit_pos(),
                 sel_pos: self.selection.sel_pos(),
             }
