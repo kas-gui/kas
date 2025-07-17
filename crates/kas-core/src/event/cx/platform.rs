@@ -224,7 +224,7 @@ impl<'a> EventCx<'a> {
         };
 
         // TODO: implement remaining actions
-        use crate::messages::{self, Erased, SetValueF64, SetValueString};
+        use crate::messages::{self, Erased, SetValueF64, SetValueText};
         use accesskit::{Action as AKA, ActionData};
         match request.action {
             AKA::Click => {
@@ -282,7 +282,7 @@ impl<'a> EventCx<'a> {
             AKA::SetSequentialFocusNavigationStartingPoint => (),
             AKA::SetValue => {
                 let msg = match request.data {
-                    Some(ActionData::Value(text)) => Erased::new(SetValueString(text.into())),
+                    Some(ActionData::Value(text)) => Erased::new(SetValueText(text.into())),
                     Some(ActionData::NumericValue(n)) => Erased::new(SetValueF64(n)),
                     _ => return,
                 };
