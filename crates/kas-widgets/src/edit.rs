@@ -827,19 +827,21 @@ mod EditField {
         }
 
         fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let (min, ideal) = if axis.is_horizontal() {
+            let (min, mut ideal): (i32, i32);
+            if axis.is_horizontal() {
                 let dpem = sizer.dpem();
-                (
-                    (self.width.0 * dpem).cast_ceil(),
-                    (self.width.1 * dpem).cast_ceil(),
-                )
+                min = (self.width.0 * dpem).cast_ceil();
+                ideal = (self.width.1 * dpem).cast_ceil();
             } else {
+                // TODO: line height depends on the font; 1em is not a good
+                // approximation. This code also misses inter-line spacing.
                 let dpem = sizer.dpem();
-                (
-                    (self.lines.0 * dpem).cast_ceil(),
-                    (self.lines.1 * dpem).cast_ceil(),
-                )
+                min = (self.lines.0 * dpem).cast_ceil();
+                ideal = (self.lines.1 * dpem).cast_ceil();
             };
+
+            let rules = self.text.size_rules(sizer.re(), axis);
+            ideal = ideal.max(rules.ideal_size());
 
             let margins = sizer.text_margins().extract(axis);
             let stretch = if axis.is_horizontal() || self.multi_line() {
