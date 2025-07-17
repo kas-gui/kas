@@ -199,7 +199,7 @@ mod Window {
                 return None;
             }
             for (_, popup, translation) in self.popups.iter().rev() {
-                if let Some(widget) = self.inner.find_widget(&popup.id)
+                if let Some(widget) = self.inner.find_tile(&popup.id)
                     && let Some(id) = widget.try_probe(coord + *translation)
                 {
                     return Some(id);
@@ -232,7 +232,7 @@ mod Window {
             }
             self.inner.draw(draw.re());
             for (_, popup, translation) in &self.popups {
-                if let Some(child) = self.inner.find_widget(&popup.id) {
+                if let Some(child) = self.inner.find_tile(&popup.id) {
                     let clip_rect = child.rect() - *translation;
                     draw.with_overlay(clip_rect, *translation, |draw| {
                         child.draw(draw);
@@ -517,7 +517,7 @@ impl<Data: 'static> Window<Data> {
             (pos, size)
         };
 
-        let Some((c, t)) = self.inner.as_tile().find_widget_rect(&popup.parent) else {
+        let Some((c, t)) = self.inner.as_tile().find_tile_rect(&popup.parent) else {
             return;
         };
         *translation = t;
