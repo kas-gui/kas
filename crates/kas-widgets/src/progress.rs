@@ -88,6 +88,12 @@ mod ProgressBar {
         }
     }
 
+    impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::ProgressBar(self.value)
+        }
+    }
+
     impl Events for Self {
         type Data = A;
 

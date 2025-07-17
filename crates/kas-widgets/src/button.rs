@@ -17,7 +17,7 @@ mod Button {
     ///
     /// Default alignment of content is centered.
     ///
-    /// # Messages
+    /// ### Messages
     ///
     /// [`kas::messages::Activate`] may be used to trigger the button.
     #[widget]
@@ -98,6 +98,11 @@ mod Button {
     }
 
     impl Tile for Self {
+        fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
+            cx.set_label(self.inner.id());
+            Role::Button
+        }
+
         fn probe(&self, _: Coord) -> Id {
             self.id()
         }

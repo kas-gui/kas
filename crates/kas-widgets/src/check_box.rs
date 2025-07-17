@@ -76,6 +76,12 @@ mod CheckBox {
         }
     }
 
+    impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::CheckBox(self.state)
+        }
+    }
+
     impl Self {
         /// Construct a check box
         ///
@@ -209,6 +215,12 @@ mod CheckButton {
     }
 
     impl Tile for Self {
+        fn role_child_properties(&self, cx: &mut dyn RoleCx, index: usize) {
+            if index == widget_index!(self.inner) {
+                cx.set_label(self.label.id());
+            }
+        }
+
         fn nav_next(&self, _: bool, from: Option<usize>) -> Option<usize> {
             from.xor(Some(widget_index!(self.inner)))
         }

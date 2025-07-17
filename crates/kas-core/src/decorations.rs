@@ -74,6 +74,12 @@ mod Border {
         fn draw(&self, _: DrawCx) {}
     }
 
+    impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::Border
+        }
+    }
+
     impl Events for Self {
         type Data = ();
 
@@ -126,6 +132,12 @@ mod Label {
         }
     }
 
+    impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::Label(self.text.as_str())
+        }
+    }
+
     impl Events for Self {
         type Data = ();
 
@@ -151,11 +163,16 @@ mod MarkButton {
     /// This button is not keyboard navigable; only mouse/touch interactive.
     ///
     /// Uses stretch policy [`Stretch::Low`].
+    ///
+    /// ### Messages
+    ///
+    /// [`kas::messages::Activate`] may be used to trigger the button.
     #[derive(Clone, Debug)]
     #[widget]
     pub(crate) struct MarkButton<M: Clone + Debug + 'static> {
         core: widget_core!(),
         style: MarkStyle,
+        label: String,
         msg: M,
     }
 
@@ -163,10 +180,11 @@ mod MarkButton {
         /// Construct
         ///
         /// A clone of `msg` is sent as a message on click.
-        pub fn new(style: MarkStyle, msg: M) -> Self {
+        pub fn new(style: MarkStyle, label: impl ToString, msg: M) -> Self {
             MarkButton {
                 core: Default::default(),
                 style,
+                label: label.to_string(),
                 msg,
             }
         }
@@ -182,6 +200,13 @@ mod MarkButton {
         }
     }
 
+    impl Tile for Self {
+        fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
+            cx.set_label(&self.label);
+            Role::Button
+        }
+    }
+
     impl Events for Self {
         const REDRAW_ON_HOVER: bool = true;
 
@@ -192,6 +217,13 @@ mod MarkButton {
                 cx.push(self.msg.clone());
                 Used
             })
+        }
+
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(kas::messages::Activate(code)) = cx.try_pop() {
+                cx.push(self.msg.clone());
+                cx.depress_with_key(self.id(), code);
+            }
         }
     }
 }
@@ -211,9 +243,9 @@ mod TitleBarButtons {
     #[derive(Clone, Default)]
     #[widget]
     #[layout(row! [
-        MarkButton::new(MarkStyle::Point(Direction::Down), TitleBarButton::Minimize),
-        MarkButton::new(MarkStyle::Point(Direction::Up), TitleBarButton::Maximize),
-        MarkButton::new(MarkStyle::X, TitleBarButton::Close),
+        MarkButton::new(MarkStyle::Chevron(Direction::Down), "Minimize", TitleBarButton::Minimize),
+        MarkButton::new(MarkStyle::Chevron(Direction::Up), "Maximize", TitleBarButton::Maximize),
+        MarkButton::new(MarkStyle::X, "Close", TitleBarButton::Close),
     ])]
     pub struct TitleBarButtons {
         core: widget_core!(),
@@ -285,6 +317,13 @@ mod TitleBar {
         /// Set the title
         pub fn set_title(&mut self, cx: &mut EventState, title: String) {
             self.title.set_string(cx, title)
+        }
+    }
+
+    impl Tile for Self {
+        fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
+            cx.set_label(self.title.id());
+            Role::TitleBar
         }
     }
 

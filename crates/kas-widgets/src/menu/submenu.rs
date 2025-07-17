@@ -54,7 +54,7 @@ mod SubMenu {
             SubMenu {
                 core: Default::default(),
                 label: AccessLabel::new(label).with_class(TextClass::MenuLabel),
-                mark: Mark::new(MarkStyle::Point(direction)),
+                mark: Mark::new(MarkStyle::Chevron(direction), "Open"),
                 popup: Popup::new(MenuView::new(list), direction),
             }
         }
@@ -113,6 +113,10 @@ mod SubMenu {
     }
 
     impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::Menu
+        }
+
         fn nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None

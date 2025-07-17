@@ -30,10 +30,10 @@ mod ComboBox {
     ///
     /// # Messages
     ///
-    /// [`kas::messages::SetIndex`] may be used to change the page.
+    /// [`kas::messages::SetIndex`] may be used to set the selected entry.
     #[widget]
     #[layout(
-        frame!(row! [self.label, Mark::new(MarkStyle::Point(Direction::Down))])
+        frame!(row! [self.label, Mark::new(MarkStyle::Chevron(Direction::Down), "Expand")])
             .with_style(FrameStyle::Button)
             .align(AlignHints::CENTER)
     )]
@@ -50,6 +50,10 @@ mod ComboBox {
     }
 
     impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::ComboBox(self.active, self.label.as_str())
+        }
+
         fn nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None

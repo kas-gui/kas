@@ -330,6 +330,14 @@ mod ScrollBar {
     }
 
     impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::ScrollBar {
+                direction: self.direction.as_direction(),
+                value: self.value,
+                max_value: self.max_value,
+            }
+        }
+
         fn probe(&self, coord: Coord) -> Id {
             if self.invisible && self.max_value == 0 {
                 return self.id();

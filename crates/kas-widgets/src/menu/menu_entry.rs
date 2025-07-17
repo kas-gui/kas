@@ -41,6 +41,11 @@ mod MenuEntry {
     }
 
     impl Tile for Self {
+        fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
+            cx.set_label(self.label.id());
+            Role::Button
+        }
+
         fn probe(&self, _: Coord) -> Id {
             self.id()
         }
@@ -141,6 +146,12 @@ mod MenuToggle {
     }
 
     impl Tile for Self {
+        fn role_child_properties(&self, cx: &mut dyn RoleCx, index: usize) {
+            if index == widget_index!(self.checkbox) {
+                cx.set_label(self.label.id());
+            }
+        }
+
         fn probe(&self, _: Coord) -> Id {
             self.checkbox.id()
         }

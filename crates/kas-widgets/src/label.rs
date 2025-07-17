@@ -14,10 +14,11 @@ use kas::theme::{Text, TextClass};
 mod Label {
     /// A text label
     ///
-    /// `Label` derives its contents from input data. Use [`Text`](crate::Text)
-    /// instead for fixed contents.
+    /// `Label` text is set at construction time. It may also be set by
+    /// [`Self::set_text`] or [`Self::set_string`]. See also
+    /// [`Text`](crate::Text) which derives its contents from input data.
     ///
-    /// A text label. Vertical alignment defaults to centred, horizontal
+    /// Vertical alignment defaults to centred, horizontal
     /// alignment depends on the script direction if not specified.
     /// Line-wrapping is enabled by default.
     ///
@@ -116,6 +117,12 @@ mod Label {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.text
                 .set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
+        }
+    }
+
+    impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::Label(self.text.as_str())
         }
     }
 
@@ -259,6 +266,12 @@ mod AccessLabel {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             self.text
                 .set_rect(cx, rect, hints.combine(AlignHints::VERT_CENTER));
+        }
+    }
+
+    impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::Label(self.text.as_str())
         }
     }
 

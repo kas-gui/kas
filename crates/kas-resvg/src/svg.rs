@@ -268,6 +268,12 @@ mod Svg {
         }
     }
 
+    impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::Image
+        }
+    }
+
     impl Events for Self {
         type Data = ();
 

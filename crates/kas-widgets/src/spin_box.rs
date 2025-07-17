@@ -232,8 +232,16 @@ mod SpinBox {
                 edit: EditField::new(SpinGuard::new(range, Box::new(state_fn)))
                     .with_width_em(3.0, 8.0),
                 unit: Default::default(),
-                b_up: MarkButton::new_msg(MarkStyle::Point(Direction::Up), SpinBtn::Up),
-                b_down: MarkButton::new_msg(MarkStyle::Point(Direction::Down), SpinBtn::Down),
+                b_up: MarkButton::new_msg(
+                    MarkStyle::Chevron(Direction::Up),
+                    "Increment",
+                    SpinBtn::Up,
+                ),
+                b_down: MarkButton::new_msg(
+                    MarkStyle::Chevron(Direction::Down),
+                    "Decrement",
+                    SpinBtn::Down,
+                ),
                 on_change: None,
             }
         }
