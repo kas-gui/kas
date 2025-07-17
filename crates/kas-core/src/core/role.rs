@@ -210,6 +210,120 @@ impl From<Id> for TextOrSource<'static> {
     }
 }
 
+#[cfg(feature = "accesskit")]
+impl<'a> Role<'a> {
+    /// Construct an AccessKit [`Role`] from self
+    pub(crate) fn as_accesskit_role(&self) -> accesskit::Role {
+        use accesskit::Role as R;
+
+        match self {
+            // TODO: do we want to automatically use role GenericContainer?
+            // Role::Unknown if has_children => R::GenericContainer,
+            Role::Unknown => R::Unknown,
+            Role::Label(_) | Role::AccessLabel(_, _) | Role::TextLabel { .. } => R::Label,
+            Role::Button => R::Button,
+            Role::CheckBox(_) => R::CheckBox,
+            Role::RadioButton(_) => R::RadioButton,
+            Role::Tab => R::Tab,
+            Role::Border => R::Unknown,
+            Role::ScrollRegion { .. } => R::ScrollView,
+            Role::ScrollBar { .. } => R::ScrollBar,
+            Role::Indicator => R::Unknown,
+            Role::Image => R::Image,
+            Role::Canvas => R::Canvas,
+            Role::TextInput {
+                multi_line: false, ..
+            } => R::TextInput,
+            Role::TextInput {
+                multi_line: true, ..
+            } => R::MultilineTextInput,
+            Role::Slider { .. } => R::Slider,
+            Role::SpinButton { .. } => R::SpinButton,
+            Role::ProgressBar(_) => R::ProgressIndicator,
+            Role::MenuBar => R::MenuBar,
+            Role::Menu { .. } => R::Menu,
+            Role::ComboBox { .. } => R::ComboBox,
+            Role::Window => R::Window,
+            Role::TitleBar => R::TitleBar,
+        }
+    }
+
+    /// Construct an AccessKit [`Node`] from self
+    ///
+    /// This will set node properties as provided by self, but not those provided by the parent.
+    pub(crate) fn as_accesskit_node(&self) -> accesskit::Node {
+        use crate::cast::Cast;
+
+        let mut node = accesskit::Node::new(self.as_accesskit_role());
+
+        match *self {
+            Role::Unknown | Role::Button | Role::Tab | Role::Border => (),
+            Role::Indicator | Role::Image | Role::Canvas => (),
+            Role::MenuBar | Role::Window | Role::TitleBar => (),
+            Role::Label(text) | Role::TextLabel { text, .. } | Role::TextInput { text, .. } => {
+                node.set_value(text)
+            }
+            Role::AccessLabel(text, ref key) => {
+                node.set_value(text);
+                if let Some(text) = key.to_text() {
+                    node.set_access_key(text);
+                }
+            }
+            Role::CheckBox(state) | Role::RadioButton(state) => node.set_toggled(state.into()),
+            Role::ScrollRegion { offset, max_offset } => {
+                node.set_scroll_x(offset.0.cast());
+                node.set_scroll_y(offset.1.cast());
+                node.set_scroll_x_min(0.0);
+                node.set_scroll_y_min(0.0);
+                node.set_scroll_x_max(max_offset.0.cast());
+                node.set_scroll_y_max(max_offset.1.cast());
+            }
+            Role::ScrollBar {
+                direction,
+                value,
+                max_value,
+            } => {
+                node.set_orientation(direction.into());
+                node.set_numeric_value(value.cast());
+                node.set_min_numeric_value(0.0);
+                node.set_max_numeric_value(max_value.cast());
+            }
+            Role::Slider {
+                min,
+                max,
+                step,
+                value,
+            }
+            | Role::SpinButton {
+                min,
+                max,
+                step,
+                value,
+            } => {
+                if min.is_finite() {
+                    node.set_min_numeric_value(min);
+                }
+                if max.is_finite() {
+                    node.set_max_numeric_value(max);
+                }
+                if step.is_finite() {
+                    node.set_numeric_value_step(step);
+                }
+                node.set_numeric_value(value);
+            }
+            Role::ProgressBar(value) => {
+                node.set_max_numeric_value(1.0);
+                node.set_numeric_value(value.cast());
+            }
+            Role::ComboBox { expanded, .. } | Role::Menu { expanded } => {
+                node.set_expanded(expanded);
+            }
+        }
+
+        node
+    }
+}
+
 /// Context through which additional role properties may be specified
 ///
 /// Unlike other widget method contexts, this is a trait; the caller provides an
