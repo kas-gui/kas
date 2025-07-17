@@ -108,7 +108,7 @@ mod ScrollRegion {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
             let child_size = (rect.size - self.frame_size).max(self.min_child_size);
-            let child_rect = Rect::new(rect.pos + self.offset, child_size);
+            let child_rect = Rect::new(rect.pos, child_size);
             self.inner.set_rect(cx, child_rect, hints);
             let _ = self
                 .scroll
