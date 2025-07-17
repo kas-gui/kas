@@ -224,7 +224,7 @@ impl<'a> EventCx<'a> {
         };
 
         // TODO: implement remaining actions
-        use crate::messages::{Erased, SetValueF64, SetValueString};
+        use crate::messages::{self, Erased, SetValueF64, SetValueString};
         use accesskit::{Action as AKA, ActionData};
         match request.action {
             AKA::Click => {
@@ -234,7 +234,12 @@ impl<'a> EventCx<'a> {
             AKA::Blur => (),
             AKA::Collapse | AKA::Expand => (), // TODO: open/close menus
             AKA::CustomAction => (),
-            AKA::Decrement | AKA::Increment => (),
+            AKA::Decrement => {
+                self.send_or_replay(widget, id, Erased::new(messages::DecrementStep));
+            }
+            AKA::Increment => {
+                self.send_or_replay(widget, id, Erased::new(messages::IncrementStep));
+            }
             AKA::HideTooltip | AKA::ShowTooltip => (),
             AKA::ReplaceSelectedText => (),
             AKA::ScrollDown | AKA::ScrollLeft | AKA::ScrollRight | AKA::ScrollUp => {
