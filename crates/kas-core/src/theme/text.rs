@@ -39,7 +39,7 @@ use crate::{Action, Layout};
 /// -   Set the size and prepare by calling [`Self::set_rect`]
 /// -   Draw by calling [`DrawCx::text`] (and/or other text methods)
 ///
-/// The size according to [`<Self as Layout>::rect`] may be adjusted to that of
+/// The size according to [`Self::rect`] may be adjusted to that of
 /// the text; see [`Self::set_align`].
 #[derive(Clone, Debug)]
 pub struct Text<T: FormattableText> {

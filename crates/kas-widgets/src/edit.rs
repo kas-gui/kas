@@ -1577,7 +1577,7 @@ impl<G: EditGuard> EditField<G> {
                     h_dist *= -1.0;
                 }
                 v.1 += h_dist;
-                Action::Move(self.text.text_index_nearest(v.into())?, Some(v.0))
+                Action::Move(self.text.text_index_nearest(v)?, Some(v.0))
             }
             Command::Delete | Command::DelBack if editable && have_sel => {
                 Action::Delete(selection.clone())
