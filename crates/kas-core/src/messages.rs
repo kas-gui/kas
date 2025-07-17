@@ -45,7 +45,14 @@ pub struct SetValueF64(pub f64);
 ///
 /// This message may be used to set a text value to an input field.
 #[derive(Clone, Debug)]
-pub struct SetValueString(pub String);
+pub struct SetValueText(pub String);
+
+/// Replace selected text in an input value
+///
+/// This acts the same as typing or pasting the text: replace an existing
+/// selection or insert at the cursor position.
+#[derive(Clone, Debug)]
+pub struct ReplaceSelectedText(pub String);
 
 /// Set an index
 #[derive(Clone, Debug)]

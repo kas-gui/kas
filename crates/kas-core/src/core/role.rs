@@ -91,8 +91,9 @@ pub enum Role<'a> {
     ///
     /// ### Messages
     ///
-    /// [`kas::messages::SetValueString`] may be used to replace the entire
-    /// text.
+    /// [`kas::messages::SetValueText`] may be used to replace the entire
+    /// text. [`kas::messages::ReplaceSelectedText`] may be used to insert text
+    /// at `edit_pos`, replacing all text between `edit_pos` and `sel_pos`.
     TextInput {
         /// Text contents
         ///
