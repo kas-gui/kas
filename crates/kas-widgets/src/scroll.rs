@@ -5,7 +5,7 @@
 
 //! Scroll region
 
-use kas::event::{Scroll, components::ScrollComponent};
+use kas::event::{CursorIcon, Scroll, components::ScrollComponent};
 use kas::prelude::*;
 use std::fmt::Debug;
 
@@ -108,7 +108,7 @@ mod ScrollRegion {
         fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
             widget_set_rect!(rect);
             let child_size = (rect.size - self.frame_size).max(self.min_child_size);
-            let child_rect = Rect::new(rect.pos + self.offset, child_size);
+            let child_rect = Rect::new(rect.pos, child_size);
             self.inner.set_rect(cx, child_rect, hints);
             let _ = self
                 .scroll
@@ -131,19 +131,29 @@ mod ScrollRegion {
         }
 
         #[inline]
-        fn translation(&self) -> Offset {
+        fn translation(&self, _: usize) -> Offset {
             self.scroll_offset()
         }
 
         fn probe(&self, coord: Coord) -> Id {
+            if self.scroll.is_kinetic_scrolling() {
+                return self.id();
+            }
+
             self.inner
-                .try_probe(coord + self.translation())
+                .try_probe(coord + self.scroll_offset())
                 .unwrap_or_else(|| self.id())
         }
     }
 
     impl Events for Self {
         type Data = W::Data;
+
+        fn hover_icon(&self) -> Option<CursorIcon> {
+            self.scroll
+                .is_kinetic_scrolling()
+                .then_some(CursorIcon::AllScroll)
+        }
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.register_nav_fallback(self.id());

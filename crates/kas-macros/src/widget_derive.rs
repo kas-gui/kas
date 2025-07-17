@@ -432,8 +432,8 @@ fn derive_widget(attr_span: Span, args: DeriveArgs, scope: &mut Scope) -> Result
             self.#inner.nav_next(reverse, from)
         }
         #[inline]
-        fn translation(&self) -> ::kas::geom::Offset {
-            self.#inner.translation()
+        fn translation(&self, index: usize) -> ::kas::geom::Offset {
+            self.#inner.translation(index)
         }
         #[inline]
         fn probe(&self, coord: ::kas::geom::Coord) -> ::kas::Id

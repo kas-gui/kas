@@ -14,7 +14,7 @@ use crate::event::{ConfigCx, EventState};
 use crate::geom::{Offset, Rect};
 use crate::text::{Effect, TextDisplay, format::FormattableText};
 use crate::{Id, Tile, autoimpl};
-use std::ops::{Bound, Range, RangeBounds};
+use std::ops::Range;
 use std::time::Instant;
 
 /// Optional background colour
@@ -255,27 +255,20 @@ impl<'a> DrawCx<'a> {
     /// Other than visually highlighting the selection, this method behaves
     /// identically to [`Self::text`]. It is likely to be replaced in the
     /// future by a higher-level API.
-    pub fn text_selected<T: FormattableText, R: RangeBounds<usize>>(
+    pub fn text_selected<T: FormattableText>(
         &mut self,
         rect: Rect,
         text: &Text<T>,
-        range: R,
+        range: Range<usize>,
     ) {
+        if range.is_empty() {
+            return self.text(rect, text);
+        }
+
         let Ok(display) = text.display() else {
             return;
         };
 
-        let start = match range.start_bound() {
-            Bound::Included(n) => *n,
-            Bound::Excluded(n) => *n + 1,
-            Bound::Unbounded => 0,
-        };
-        let end = match range.end_bound() {
-            Bound::Included(n) => *n + 1,
-            Bound::Excluded(n) => *n,
-            Bound::Unbounded => usize::MAX,
-        };
-        let range = Range { start, end };
         self.h
             .text_selected_range(&self.id, rect, display, range, text.class());
     }
@@ -546,6 +539,6 @@ mod test {
         let _scale = draw.size_cx().scale_factor();
 
         let text = crate::theme::Text::new("sample", TextClass::Label(false));
-        draw.text_selected(Rect::ZERO, &text, ..)
+        draw.text_selected(Rect::ZERO, &text, 0..6)
     }
 }

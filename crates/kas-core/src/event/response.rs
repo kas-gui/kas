@@ -96,5 +96,9 @@ pub enum Scroll {
     /// Start kinetic scrolling
     Kinetic(KineticStart),
     /// Focus the given rect
+    ///
+    /// This is specified in the child's coordinate space. It is assumed that
+    /// any parent with non-zero translation will intercept this value and
+    /// either consume or translate it.
     Rect(Rect),
 }

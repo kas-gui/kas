@@ -6,81 +6,45 @@
 //! Scrollable and selectable label
 
 use super::{ScrollBar, ScrollMsg};
-use kas::event::components::{TextInput, TextInputAction};
+use kas::event::components::{ScrollComponent, TextInput, TextInputAction};
 use kas::event::{Command, CursorIcon, FocusSource, Scroll};
-use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::SelectionHelper;
 use kas::text::format::FormattableText;
 use kas::theme::{Text, TextClass};
 
 #[impl_self]
-mod ScrollLabel {
-    /// A static text label supporting scrolling and selection
+mod SelectableText {
+    /// A text label supporting selection
     ///
     /// Line-wrapping is enabled; default alignment is derived from the script
     /// (usually top-left).
-    #[derive(Clone, Default, Debug)]
     #[widget]
-    pub struct ScrollLabel<T: FormattableText + 'static> {
+    #[layout(self.text)]
+    pub struct SelectableText<A, T: FormattableText + 'static> {
         core: widget_core!(),
-        view_offset: Offset,
         text: Text<T>,
-        text_size: Size,
+        text_fn: Option<Box<dyn Fn(&ConfigCx, &A) -> T>>,
         selection: SelectionHelper,
         has_sel_focus: bool,
         input_handler: TextInput,
-        #[widget]
-        bar: ScrollBar<kas::dir::Down>,
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            let mut rules = sizer.text_rules(&mut self.text, axis);
-            let _ = self.bar.size_rules(sizer.re(), axis);
-            if axis.is_vertical() {
-                rules.reduce_min_to((sizer.dpem() * 4.0).cast_ceil());
-            }
-            rules.with_stretch(Stretch::Low)
-        }
-
-        fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect, hints: AlignHints) {
-            widget_set_rect!(rect);
-            self.text.set_rect(cx, rect, hints);
-            self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
-
-            let max_offset = self.max_scroll_offset();
-            self.view_offset = self.view_offset.min(max_offset);
-
-            let w = cx.size_cx().scroll_bar_width().min(rect.size.0);
-            rect.pos.0 += rect.size.0 - w;
-            rect.size.0 = w;
-            self.bar.set_rect(cx, rect, AlignHints::NONE);
-            self.bar.set_limits(cx, max_offset.1, rect.size.1);
-            self.bar.set_value(cx, self.view_offset.1);
-        }
-
         fn draw(&self, mut draw: DrawCx) {
-            let rect = Rect::new(self.rect().pos, self.text_size);
-            draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
-                if self.selection.is_empty() {
-                    draw.text(rect, &self.text);
-                } else {
-                    // TODO(opt): we could cache the selection rectangles here to make
-                    // drawing more efficient (self.text.highlight_lines(range) output).
-                    // The same applies to the edit marker below.
-                    draw.text_selected(rect, &self.text, self.selection.range());
-                }
-            });
-            draw.with_pass(|mut draw| {
-                self.bar.draw(draw.re());
-            });
+            if self.selection.is_empty() {
+                draw.text(self.rect(), &self.text);
+            } else {
+                // TODO(opt): we could cache the selection rectangles here to make
+                // drawing more efficient (self.text.highlight_lines(range) output).
+                // The same applies to the edit marker below.
+                draw.text_selected(self.rect(), &self.text, self.selection.range());
+            }
         }
     }
 
     impl Tile for Self {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
-            // TODO: this is both a ScrollRegion and Text!
             Role::Text {
                 text: self.text.as_str(),
                 editable: false,
@@ -88,55 +52,75 @@ mod ScrollLabel {
                 sel_pos: self.selection.sel_pos(),
             }
         }
+    }
 
-        fn probe(&self, coord: Coord) -> Id {
-            self.bar.try_probe(coord).unwrap_or_else(|| self.id())
+    impl<T: FormattableText + 'static> SelectableText<(), T> {
+        /// Construct a `SelectableText` with the given inital `text`
+        ///
+        /// The text is set from input data on update.
+        #[inline]
+        pub fn new(text: T) -> Self {
+            SelectableText {
+                core: Default::default(),
+                text: Text::new(text, TextClass::LabelScroll),
+                text_fn: None,
+                selection: SelectionHelper::new(0, 0),
+                has_sel_focus: false,
+                input_handler: Default::default(),
+            }
+        }
+
+        /// Set or replace the text derivation function
+        ///
+        /// The text is set from input data on update.
+        #[inline]
+        pub fn with_fn<A>(
+            self,
+            text_fn: impl Fn(&ConfigCx, &A) -> T + 'static,
+        ) -> SelectableText<A, T> {
+            SelectableText {
+                core: self.core,
+                text: self.text,
+                text_fn: Some(Box::new(text_fn)),
+                selection: self.selection,
+                has_sel_focus: self.has_sel_focus,
+                input_handler: self.input_handler,
+            }
         }
     }
 
     impl Self {
-        /// Construct an `ScrollLabel` with the given inital `text`
+        /// Construct an `SelectableText` with the given text derivation function
+        ///
+        /// The text is set from input data on update.
         #[inline]
-        pub fn new(text: T) -> Self {
-            ScrollLabel {
-                core: Default::default(),
-                view_offset: Default::default(),
-                text: Text::new(text, TextClass::LabelScroll),
-                text_size: Size::ZERO,
-                selection: SelectionHelper::new(0, 0),
-                has_sel_focus: false,
-                input_handler: Default::default(),
-                bar: ScrollBar::new().with_invisible(true),
-            }
+        pub fn new_fn(text_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self
+        where
+            T: Default,
+        {
+            SelectableText::<(), T>::new(T::default()).with_fn(text_fn)
         }
 
         /// Set text in an existing `Label`
         ///
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
-        pub fn set_text(&mut self, cx: &mut EventState, text: T) {
+        pub fn set_text(&mut self, text: T) -> bool {
             self.text.set_text(text);
             if !self.text.prepare() {
-                return;
+                return false;
             }
 
-            self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
-            let max_offset = self.max_scroll_offset();
-            self.bar.set_limits(cx, max_offset.1, self.rect().size.1);
-            self.view_offset = self.view_offset.min(max_offset);
-
             self.selection.set_max_len(self.text.str_len());
-
-            cx.redraw(self);
+            true
         }
 
         fn set_edit_pos_from_coord(&mut self, cx: &mut EventCx, coord: Coord) {
-            let rel_pos = (coord - self.rect().pos + self.view_offset).cast();
+            let rel_pos = (coord - self.rect().pos).cast();
             if let Ok(pos) = self.text.text_index_nearest(rel_pos) {
                 if pos != self.selection.edit_pos() {
                     self.selection.set_edit_pos(pos);
                     self.set_view_offset_from_edit_pos(cx, pos);
-                    self.bar.set_value(cx, self.view_offset.1);
                     cx.redraw(self);
                 }
             }
@@ -149,20 +133,6 @@ mod ScrollLabel {
             }
         }
 
-        // Pan by given delta.
-        fn pan_delta(&mut self, cx: &mut EventCx, mut delta: Offset, kinetic: bool) -> IsUsed {
-            let new_offset = (self.view_offset - delta)
-                .min(self.max_scroll_offset())
-                .max(Offset::ZERO);
-            if new_offset != self.view_offset {
-                delta -= self.view_offset - new_offset;
-                self.set_offset(cx, new_offset);
-            }
-
-            self.input_handler.set_scroll_residual(cx, delta, kinetic);
-            Used
-        }
-
         /// Update view_offset from edit_pos
         ///
         /// This method is mostly identical to its counterpart in `EditField`.
@@ -173,39 +143,23 @@ mod ScrollLabel {
                 .ok()
                 .and_then(|mut m| m.next_back())
             {
-                let bounds = Vec2::conv(self.text.size());
-                let min_x = marker.pos.0 - bounds.0;
-                let min_y = marker.pos.1 - marker.descent - bounds.1;
-                let max_x = marker.pos.0;
-                let max_y = marker.pos.1 - marker.ascent;
-                let min = Offset(min_x.cast_ceil(), min_y.cast_ceil());
-                let max = Offset(max_x.cast_floor(), max_y.cast_floor());
-
-                let max = max.min(self.max_scroll_offset());
-
-                let new_offset = self.view_offset.max(min).min(max);
-                if new_offset != self.view_offset {
-                    self.view_offset = new_offset;
-                    cx.set_scroll(Scroll::Scrolled);
-                }
+                let y0 = (marker.pos.1 - marker.ascent).cast_floor();
+                let pos = Coord(marker.pos.0.cast_nearest(), y0);
+                let size = Size(0, i32::conv_ceil(marker.pos.1 - marker.descent) - y0);
+                cx.set_scroll(Scroll::Rect(Rect { pos, size }));
             }
         }
 
-        /// Set offset, updating the scroll bar
-        fn set_offset(&mut self, cx: &mut EventState, offset: Offset) {
-            self.view_offset = offset;
-            // unnecessary: cx.redraw(self);
-            self.bar.set_value(cx, offset.1);
-        }
-
         /// Get text contents
+        #[inline]
         pub fn as_str(&self) -> &str {
             self.text.as_str()
         }
     }
 
-    impl ScrollLabel<String> {
+    impl SelectableText<(), String> {
         /// Set text contents from a string
+        #[inline]
         pub fn set_string(&mut self, cx: &mut EventState, string: String) {
             if self.text.set_string(string) {
                 self.text.prepare();
@@ -215,7 +169,7 @@ mod ScrollLabel {
     }
 
     impl Events for Self {
-        type Data = ();
+        type Data = A;
 
         #[inline]
         fn hover_icon(&self) -> Option<CursorIcon> {
@@ -224,6 +178,20 @@ mod ScrollLabel {
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.text_configure(&mut self.text);
+        }
+
+        fn update(&mut self, cx: &mut ConfigCx, data: &A) {
+            if let Some(method) = self.text_fn.as_ref() {
+                let text = method(cx, data);
+                if text.as_str() == self.text.as_str() {
+                    // NOTE(opt): avoiding re-preparation of text is a *huge*
+                    // optimisation. Move into kas-text?
+                    return;
+                }
+                self.text.set_text(text);
+                self.text.prepare();
+                cx.action(self, Action::SET_RECT);
+            }
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
@@ -246,7 +214,6 @@ mod ScrollLabel {
                         cx.set_clipboard((self.text.as_str()[range]).to_string());
                         Used
                     }
-                    // TODO: scroll by command
                     _ => Unused,
                 },
                 Event::SelFocus(source) => {
@@ -262,11 +229,9 @@ mod ScrollLabel {
                     cx.redraw(self);
                     Used
                 }
-                Event::Scroll(delta) => self.pan_delta(cx, delta.as_offset(cx), false),
                 event => match self.input_handler.handle(cx, self.id(), event) {
                     TextInputAction::Used | TextInputAction::Finish => Used,
                     TextInputAction::Unused => Unused,
-                    TextInputAction::Pan(delta, kinetic) => self.pan_delta(cx, delta, kinetic),
                     TextInputAction::Focus { coord, action } => {
                         self.set_edit_pos_from_coord(cx, coord);
                         self.selection.action(&self.text, action);
@@ -281,13 +246,186 @@ mod ScrollLabel {
                 },
             }
         }
+    }
+}
 
-        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-            if let Some(ScrollMsg(y)) = cx.try_pop() {
-                let y = y.clamp(0, self.max_scroll_offset().1);
-                self.view_offset.1 = y;
+/// A text label supporting selection
+///
+/// Line-wrapping is enabled; default alignment is derived from the script
+/// (usually top-left).
+pub type SelectableLabel<T> = SelectableText<(), T>;
+
+#[impl_self]
+mod ScrollText {
+    /// A text label supporting scrolling and selection
+    ///
+    /// This widget is a wrapper around [`SelectableText`] enabling scrolling
+    /// and adding a vertical scroll bar.
+    ///
+    /// Line-wrapping is enabled; default alignment is derived from the script
+    /// (usually top-left).
+    #[widget]
+    pub struct ScrollText<A, T: FormattableText + 'static> {
+        core: widget_core!(),
+        scroll: ScrollComponent,
+        #[widget]
+        label: SelectableText<A, T>,
+        #[widget = &()]
+        vert_bar: ScrollBar<kas::dir::Down>,
+    }
+
+    impl Layout for Self {
+        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
+            let mut rules = self.label.size_rules(sizer.re(), axis);
+            let _ = self.vert_bar.size_rules(sizer.re(), axis);
+            if axis.is_vertical() {
+                rules.reduce_min_to((sizer.dpem() * 4.0).cast_ceil());
+            }
+            rules.with_stretch(Stretch::Low)
+        }
+
+        fn set_rect(&mut self, cx: &mut ConfigCx, mut rect: Rect, hints: AlignHints) {
+            widget_set_rect!(rect);
+            self.label.set_rect(cx, rect, hints);
+
+            let _ = self
+                .scroll
+                .set_sizes(self.rect().size, self.label.rect().size);
+
+            let w = cx.size_cx().scroll_bar_width().min(rect.size.0);
+            rect.pos.0 += rect.size.0 - w;
+            rect.size.0 = w;
+            self.vert_bar.set_rect(cx, rect, AlignHints::NONE);
+            self.vert_bar
+                .set_limits(cx, self.scroll.max_offset().1, rect.size.1);
+            self.vert_bar.set_value(cx, self.scroll.offset().1);
+        }
+
+        fn draw(&self, mut draw: DrawCx) {
+            draw.with_clip_region(self.rect(), self.scroll.offset(), |draw| {
+                self.label.draw(draw)
+            });
+            draw.with_pass(|draw| self.vert_bar.draw(draw));
+        }
+    }
+
+    impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::ScrollRegion {
+                offset: self.scroll_offset(),
+                max_offset: self.max_scroll_offset(),
+            }
+        }
+
+        fn translation(&self, index: usize) -> Offset {
+            if index == widget_index!(self.label) {
+                self.scroll.offset()
+            } else {
+                Offset::ZERO
+            }
+        }
+
+        fn probe(&self, coord: Coord) -> Id {
+            self.vert_bar
+                .try_probe(coord)
+                .unwrap_or_else(|| self.label.id())
+        }
+    }
+
+    impl<T: FormattableText + 'static> ScrollText<(), T> {
+        /// Construct an `ScrollText` with the given inital `text`
+        ///
+        /// The text is set from input data on update.
+        #[inline]
+        pub fn new(text: T) -> Self {
+            ScrollText {
+                core: Default::default(),
+                scroll: Default::default(),
+                label: SelectableText::new(text),
+                vert_bar: ScrollBar::new().with_invisible(true),
+            }
+        }
+
+        /// Set or replace the text derivation function
+        ///
+        /// The text is set from input data on update.
+        #[inline]
+        pub fn with_fn<A>(
+            self,
+            text_fn: impl Fn(&ConfigCx, &A) -> T + 'static,
+        ) -> ScrollText<A, T> {
+            ScrollText {
+                core: self.core,
+                scroll: self.scroll,
+                label: self.label.with_fn(text_fn),
+                vert_bar: self.vert_bar,
+            }
+        }
+    }
+
+    impl Self {
+        /// Construct an `ScrollText` with the given text derivation function
+        ///
+        /// The text is set from input data on update.
+        #[inline]
+        pub fn new_fn(text_fn: impl Fn(&ConfigCx, &A) -> T + 'static) -> Self
+        where
+            T: Default,
+        {
+            ScrollText::<(), T>::new(T::default()).with_fn(text_fn)
+        }
+
+        /// Replace text
+        ///
+        /// Note: this must not be called before fonts have been initialised
+        /// (usually done by the theme when the main loop starts).
+        pub fn set_text(&mut self, cx: &mut EventState, text: T) {
+            if self.label.set_text(text) {
+                self.vert_bar
+                    .set_limits(cx, self.scroll.max_offset().1, self.rect().size.1);
+
                 cx.redraw(self);
             }
+        }
+
+        /// Get text contents
+        pub fn as_str(&self) -> &str {
+            self.label.as_str()
+        }
+    }
+
+    impl ScrollText<(), String> {
+        /// Set text contents from a string
+        pub fn set_string(&mut self, cx: &mut EventState, string: String) {
+            self.label.set_string(cx, string);
+        }
+    }
+
+    impl Events for Self {
+        type Data = A;
+
+        #[inline]
+        fn hover_icon(&self) -> Option<CursorIcon> {
+            Some(CursorIcon::Text)
+        }
+
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
+            self.scroll
+                .scroll_by_event(cx, event, self.id(), self.rect())
+        }
+
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if cx.last_child() == Some(widget_index![self.vert_bar])
+                && let Some(ScrollMsg(y)) = cx.try_pop()
+            {
+                let offset = Offset(self.scroll.offset().0, y);
+                let action = self.scroll.set_offset(offset);
+                cx.action(self, action);
+            }
+        }
+
+        fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, scroll: Scroll) {
+            self.scroll.scroll(cx, self.id(), self.rect(), scroll);
         }
     }
 
@@ -298,22 +436,30 @@ mod ScrollLabel {
         }
 
         fn max_scroll_offset(&self) -> Offset {
-            let text_size = Offset::conv(self.text_size);
-            let self_size = Offset::conv(self.rect().size);
-            (text_size - self_size).max(Offset::ZERO)
+            self.scroll.max_offset()
         }
 
         fn scroll_offset(&self) -> Offset {
-            self.view_offset
+            self.scroll.offset()
         }
 
         fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
-            let new_offset = offset.min(self.max_scroll_offset()).max(Offset::ZERO);
-            if new_offset != self.view_offset {
-                self.set_offset(cx, new_offset);
-                // No widget moves so do not need to report Action::REGION_MOVED
+            let action = self.scroll.set_offset(offset);
+            let offset = self.scroll.offset();
+            if !action.is_empty() {
+                cx.action(&self, action);
+                self.vert_bar.set_value(cx, offset.1);
             }
-            new_offset
+            offset
         }
     }
 }
+
+/// A text label supporting scrolling and selection
+///
+/// This widget is a wrapper around [`SelectableText`] enabling scrolling
+/// and adding a vertical scroll bar.
+///
+/// Line-wrapping is enabled; default alignment is derived from the script
+/// (usually top-left).
+pub type ScrollLabel<T> = ScrollText<(), T>;

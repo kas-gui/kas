@@ -605,7 +605,6 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         });
 
         probe = quote! {
-            let coord = coord + ::kas::Tile::translation(self);
             ::kas::MacroDefinedLayout::try_probe(self, coord)
                     .unwrap_or_else(|| ::kas::Tile::id(self))
         };

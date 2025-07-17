@@ -361,10 +361,7 @@ impl<D: 'static> ThemeSize for Window<D> {
         } else {
             let wrap_width = axis.other().map(|w| w.cast()).unwrap_or(f32::INFINITY);
             let bound: i32 = text.measure_height(wrap_width).cast_ceil();
-
-            let line_height = self.dims.dpem.cast_ceil();
-            let min = bound.max(line_height);
-            SizeRules::new(min, min, margins, Stretch::Filler)
+            SizeRules::new(bound, bound, margins, Stretch::Filler)
         }
     }
 }

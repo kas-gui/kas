@@ -8,7 +8,7 @@
 use crate::{DataClerk, DataKey, Driver, SelectionMode, SelectionMsg};
 use kas::NavAdvance;
 use kas::event::components::ScrollComponent;
-use kas::event::{Command, FocusSource, Scroll, TimerHandle};
+use kas::event::{Command, CursorIcon, FocusSource, Scroll, TimerHandle};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
@@ -588,11 +588,15 @@ mod ListView {
         }
 
         #[inline]
-        fn translation(&self) -> Offset {
+        fn translation(&self, _: usize) -> Offset {
             self.scroll_offset()
         }
 
         fn probe(&self, coord: Coord) -> Id {
+            if self.scroll.is_kinetic_scrolling() {
+                return self.id();
+            }
+
             let coord = coord + self.scroll.offset();
             for child in &self.widgets[..self.cur_len.cast()] {
                 if child.key.is_some()
@@ -606,6 +610,12 @@ mod ListView {
     }
 
     impl Events for Self {
+        fn hover_icon(&self) -> Option<CursorIcon> {
+            self.scroll
+                .is_kinetic_scrolling()
+                .then_some(CursorIcon::AllScroll)
+        }
+
         #[inline]
         fn make_child_id(&mut self, _: usize) -> Id {
             // We configure children in update_widgets and do not want this method to be called
