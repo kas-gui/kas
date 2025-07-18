@@ -11,6 +11,8 @@ use crate::dir::Direction;
 #[allow(unused)] use crate::event::EventState;
 use crate::event::Key;
 use crate::geom::Offset;
+#[allow(unused)]
+use crate::messages::{DecrementStep, IncrementStep, SetValueF64};
 
 /// Describes a widget's purpose and capabilities
 ///
@@ -191,7 +193,7 @@ pub enum TextOrSource<'a> {
     /// A reference to another widget able to a text value
     ///
     /// It is expected that the given [`Id`] refers to a widget with role
-    /// [`Role::Label`] or [`Role::Text`].
+    /// [`Role::Label`] or [`Role::TextLabel`].
     Source(Id),
 }
 
