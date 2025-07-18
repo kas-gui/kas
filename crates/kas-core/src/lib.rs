@@ -34,6 +34,9 @@ pub use action::Action;
 pub use kas_macros::{autoimpl, extends, impl_default};
 pub use kas_macros::{cell_collection, collection, impl_anon, impl_scope, impl_self};
 pub use kas_macros::{layout, widget, widget_index, widget_set_rect};
+#[cfg(feature = "accesskit")]
+#[doc(inline)]
+pub(crate) use popup::POPUP_INNER_INDEX;
 #[doc(inline)] pub use popup::Popup;
 #[doc(inline)] pub(crate) use popup::PopupDescriptor;
 #[doc(inline)] pub(crate) use root::WindowIdFactory;
