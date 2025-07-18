@@ -62,11 +62,11 @@ pub(crate) fn window_nodes<Data: 'static>(root: &Window<Data>) -> (Vec<(NodeId, 
     let mut children = push_all_children(root.as_tile(), &mut nodes);
 
     for popup in root.iter_popups() {
-        if let Some(tile) = root.find_tile(&popup.parent)
-            && let Some(index) = tile.find_child_index(&popup.id)
-            && let Some(id) = push_child(tile, index, &mut nodes)
-        {
-            children.push(id);
+        if let Some(tile) = root.find_tile(&popup.id) {
+            let index = crate::POPUP_INNER_INDEX;
+            if let Some(id) = push_child(tile, index, &mut nodes) {
+                children.push(id);
+            }
         }
     }
 
