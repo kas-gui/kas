@@ -7,7 +7,7 @@
 
 use super::{GripMsg, GripPart};
 use kas::event::{Command, FocusSource};
-use kas::messages::SetValueF64;
+use kas::messages::{DecrementStep, IncrementStep, SetValueF64};
 use kas::prelude::*;
 use kas::theme::Feature;
 use std::fmt::Debug;
@@ -67,6 +67,8 @@ mod Slider {
     /// ### Messages
     ///
     /// [`SetValueF64`] may be used to set the input value.
+    ///
+    /// [`IncrementStep`] and [`DecrementStep`] change the value by one step.
     #[autoimpl(Debug ignore self.state_fn, self.on_move)]
     #[widget]
     pub struct Slider<A, T: SliderValue, D: Directional = Direction> {
@@ -301,6 +303,15 @@ mod Slider {
     }
 
     impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::Slider {
+                min: self.range.0.cast(),
+                max: self.range.1.cast(),
+                step: self.step.cast(),
+                value: self.value.cast(),
+            }
+        }
+
         fn probe(&self, coord: Coord) -> Id {
             if self.on_move.is_some() {
                 if let Some(id) = self.grip.try_probe(coord) {
@@ -384,17 +395,23 @@ mod Slider {
                 }
                 Some(GripMsg::PressEnd(_)) => (),
                 None => {
+                    let mut new_value = None;
                     if let Some(SetValueF64(v)) = cx.try_pop() {
-                        match v.try_cast_approx() {
-                            Ok(value) => {
-                                if self.set_value(cx, value) {
-                                    if let Some(ref f) = self.on_move {
-                                        f(cx, data, self.value);
-                                    }
-                                }
-                            }
-                            Err(err) => log::warn!("Slider failed to handle SetValueF64: {err}"),
-                        }
+                        new_value = v
+                            .try_cast_approx()
+                            .map_err(|err| log::warn!("Slider failed to handle SetValueF64: {err}"))
+                            .ok();
+                    } else if let Some(IncrementStep) = cx.try_pop() {
+                        new_value = Some(self.value + self.step);
+                    } else if let Some(DecrementStep) = cx.try_pop() {
+                        new_value = Some(self.value - self.step);
+                    }
+
+                    if let Some(value) = new_value
+                        && self.set_value(cx, value)
+                        && let Some(ref f) = self.on_move
+                    {
+                        f(cx, data, self.value);
                     }
                 }
             }

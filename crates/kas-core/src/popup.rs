@@ -21,6 +21,8 @@ pub(crate) struct PopupDescriptor {
     pub direction: Direction,
 }
 
+pub(crate) const POPUP_INNER_INDEX: usize = 0;
+
 #[impl_self]
 mod Popup {
     /// A popup (e.g. menu or tooltip)
@@ -50,12 +52,8 @@ mod Popup {
 
     impl Tile for Self {
         fn child_indices(&self) -> ChildIndices {
-            let start = widget_index!(self.inner);
-            let mut end = start;
-            if self.win_id.is_some() {
-                end += 1;
-            }
-            (start..end).into()
+            // Child is not visible. We handle configuration and updates directly.
+            (0..0).into()
         }
 
         fn find_child_index(&self, id: &Id) -> Option<usize> {
@@ -72,6 +70,21 @@ mod Popup {
 
         fn configure(&mut self, cx: &mut ConfigCx) {
             cx.new_access_layer(self.id(), true);
+        }
+
+        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+            if self.win_id.is_some() {
+                let id = self.make_child_id(widget_index!(self.inner));
+                if id.is_valid() {
+                    cx.configure(self.inner.as_node(data), id);
+                }
+            }
+        }
+
+        fn update_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+            if self.win_id.is_some() {
+                cx.update(self.inner.as_node(data));
+            }
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &W::Data, event: Event) -> IsUsed {
@@ -144,7 +157,9 @@ mod Popup {
                 return false;
             }
 
-            let id = self.make_child_id(widget_index!(self.inner));
+            let index = widget_index!(self.inner);
+            assert_eq!(index, POPUP_INNER_INDEX);
+            let id = self.make_child_id(index);
             cx.configure(self.inner.as_node(data), id);
 
             self.win_id = Some(cx.add_popup(kas::PopupDescriptor {

@@ -15,14 +15,14 @@ use kas_macros::autoimpl;
 #[allow(unused)] use crate::theme::DrawCx;
 #[allow(unused)] use kas_macros as macros;
 
-/// Positioning and drawing routines for [`Widget`]s
+/// A sizable, drawable, identifiable, introspectible 2D tree object
 ///
 /// `Tile` is a super-trait of [`Widget`] which:
 ///
-/// -   Has no [`Data`](Widget::Data) parameter
-/// -   Supports read-only tree reflection: [`Self::get_child`]
-/// -   Provides some basic operations: [`Self::id_ref`]
-/// -   Covers sizing and drawing operations from [`Layout`]
+/// -   Is a sub-trait of [`Layout`]: is sizable and drawable
+/// -   Has no [`Data`](Widget::Data) parameter or event-handling methods
+/// -   Has an [identifier](Self::identify) and [`Self::role`]
+/// -   Supports read-only tree reflection: [`Self::child_indices`], [`Self::get_child`]
 ///
 /// `Tile` may not be implemented directly; it will be implemented by the
 /// [`#widget`] macro.
@@ -296,9 +296,9 @@ pub trait TileExt: Tile {
     ///
     /// Since `id` represents a path, this operation is normally `O(d)` where
     /// `d` is the depth of the path (depending on widget implementations).
-    fn find_widget(&self, id: &Id) -> Option<&dyn Tile> {
+    fn find_tile(&self, id: &Id) -> Option<&dyn Tile> {
         if let Some(child) = self.find_child_index(id).and_then(|i| self.get_child(i)) {
-            child.find_widget(id)
+            child.find_tile(id)
         } else if self.eq_id(id) {
             Some(self.as_tile())
         } else {
@@ -311,7 +311,7 @@ pub trait TileExt: Tile {
     /// The [`Rect`] is returned in the widgets own coordinate space where this
     /// space is translated by the [`Offset`] returned. The result is thus
     /// `rect + translation` in the caller's coordinate space.
-    fn find_widget_rect(&self, id: &Id) -> Option<(Rect, Offset)> {
+    fn find_tile_rect(&self, id: &Id) -> Option<(Rect, Offset)> {
         let mut widget = self.as_tile();
         let mut translation = Offset::ZERO;
         loop {

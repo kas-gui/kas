@@ -84,6 +84,14 @@ where
             ProxyAction::WakeAsync => {
                 // We don't need to do anything here since about_to_wait will poll all futures.
             }
+            #[cfg(feature = "accesskit")]
+            ProxyAction::AccessKit(window_id, event) => {
+                if let Some(id) = self.id_map.get(&window_id)
+                    && let Some(window) = self.windows.get_mut(id)
+                {
+                    window.accesskit_event(&mut self.state, event);
+                }
+            }
         }
     }
 
