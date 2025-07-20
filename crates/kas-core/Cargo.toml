@@ -22,7 +22,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 # about target platforms).
 minimal = ["wayland"]
 # All standard test target features
-stable = ["minimal", "clipboard", "markdown", "spawn", "x11", "serde", "toml", "yaml", "json", "ron", "macros_log", "image"]
+stable = ["minimal", "clipboard", "markdown", "spawn", "x11", "serde", "toml", "yaml", "json", "ron", "macros_log", "image", "accesskit"]
 # Enables all "recommended" features for nightly rustc
 nightly = ["stable", "nightly-diagnostics"]
 # Additional, less recommendation-worthy features
