@@ -45,8 +45,16 @@ pub enum Role<'a> {
     /// [`kas::messages::Activate`] may be used to toggle the state.
     CheckBox(bool),
     /// A radio button
+    ///
+    /// ### Messages
+    ///
+    /// [`kas::messages::Activate`] may be used to toggle the state.
     RadioButton(bool),
     /// A tab handle
+    ///
+    /// ### Messages
+    ///
+    /// [`kas::messages::Activate`] may be used to activate the tab.
     Tab,
     /// A visible border surrounding or between other items
     Border,
@@ -268,15 +276,23 @@ impl<'a> Role<'a> {
     /// This will set node properties as provided by self, but not those provided by the parent.
     pub(crate) fn as_accesskit_node(&self, tile: &dyn Tile) -> accesskit::Node {
         use crate::cast::Cast;
+        use accesskit::Action;
 
         let mut node = accesskit::Node::new(self.as_accesskit_role());
         node.set_bounds(tile.rect().cast());
+        // TODO: if NAVIGABLE, node.add_action(Action::Focus);
 
         match *self {
-            Role::Unknown | Role::Button | Role::Tab | Role::Border => (),
+            Role::Unknown | Role::Border => (),
+            Role::Button | Role::Tab => {
+                node.add_action(Action::Click);
+            }
             Role::Indicator | Role::Image | Role::Canvas => (),
             Role::MenuBar | Role::Window | Role::TitleBar => (),
-            Role::Label(text) | Role::TextLabel { text, .. } | Role::TextInput { text, .. } => {
+            Role::Label(text) | Role::TextLabel { text, .. } => node.set_value(text),
+            Role::TextInput { text, .. } => {
+                node.add_action(Action::SetValue);
+                node.add_action(Action::ReplaceSelectedText);
                 node.set_value(text)
             }
             Role::AccessLabel(text, ref key) => {
@@ -285,8 +301,15 @@ impl<'a> Role<'a> {
                     node.set_access_key(text);
                 }
             }
-            Role::CheckBox(state) | Role::RadioButton(state) => node.set_toggled(state.into()),
+            Role::CheckBox(state) | Role::RadioButton(state) => {
+                node.add_action(Action::Click);
+                node.set_toggled(state.into());
+            }
             Role::ScrollRegion { offset, max_offset } => {
+                node.add_action(Action::ScrollDown);
+                node.add_action(Action::ScrollLeft);
+                node.add_action(Action::ScrollRight);
+                node.add_action(Action::ScrollUp);
                 node.set_scroll_x(offset.0.cast());
                 node.set_scroll_y(offset.1.cast());
                 node.set_scroll_x_min(0.0);
@@ -316,6 +339,9 @@ impl<'a> Role<'a> {
                 step,
                 value,
             } => {
+                node.add_action(Action::SetValue);
+                node.add_action(Action::Increment);
+                node.add_action(Action::Decrement);
                 if min.is_finite() {
                     node.set_min_numeric_value(min);
                 }
