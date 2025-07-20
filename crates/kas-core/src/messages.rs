@@ -58,6 +58,14 @@ pub struct ReplaceSelectedText(pub String);
 #[derive(Clone, Debug)]
 pub struct SetIndex(pub usize);
 
+/// Expand a collapsible list or open a menu
+#[derive(Clone, Debug)]
+pub struct Expand;
+
+/// Collapse a collapsible list or close a menu
+#[derive(Clone, Debug)]
+pub struct Collapse;
+
 /// Request selection of the sender
 ///
 /// This is only useful when pushed by a child widget or sent to a child widget

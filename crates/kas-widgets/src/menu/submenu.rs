@@ -10,6 +10,7 @@ use crate::{AccessLabel, Mark};
 use kas::Popup;
 use kas::event::{Command, FocusSource};
 use kas::layout::{self, RulesSetter, RulesSolver};
+use kas::messages::{Activate, Collapse, Expand};
 use kas::prelude::*;
 use kas::theme::{FrameStyle, MarkStyle, TextClass};
 
@@ -20,6 +21,9 @@ mod SubMenu {
     /// # Messages
     ///
     /// [`kas::messages::Activate`] may be used to open the sub-menu.
+    ///
+    /// [`kas::messages::Expand`] and [`kas::messages::Collapse`] may be used to
+    /// open and close the menu.
     #[widget]
     #[layout(self.label)]
     pub struct SubMenu<const TOP_LEVEL: bool, Data> {
@@ -147,9 +151,13 @@ mod SubMenu {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Data) {
-            if let Some(kas::messages::Activate(code)) = cx.try_pop() {
+            if let Some(Activate(code)) = cx.try_pop() {
                 self.popup.open(cx, data, self.id());
                 cx.depress_with_key(self.id(), code);
+            } else if let Some(Expand) = cx.try_pop() {
+                self.popup.open(cx, data, self.id());
+            } else if let Some(Collapse) = cx.try_pop() {
+                self.popup.close(cx);
             } else {
                 self.popup.close(cx);
             }

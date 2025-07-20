@@ -167,6 +167,9 @@ pub enum Role<'a> {
     /// # Messages
     ///
     /// [`kas::messages::Activate`] may be used to open the menu.
+    ///
+    /// [`kas::messages::Expand`] and [`kas::messages::Collapse`] may be used to
+    /// open and close the menu.
     Menu {
         /// True if the menu is open
         expanded: bool,
@@ -178,6 +181,9 @@ pub enum Role<'a> {
     /// # Messages
     ///
     /// [`kas::messages::SetIndex`] may be used to set the selected entry.
+    ///
+    /// [`kas::messages::Expand`] and [`kas::messages::Collapse`] may be used to
+    /// open and close the menu.
     ComboBox {
         /// Index of the current choice
         active: usize,
@@ -358,6 +364,8 @@ impl<'a> Role<'a> {
                 node.set_numeric_value(value.cast());
             }
             Role::ComboBox { expanded, .. } | Role::Menu { expanded } => {
+                node.add_action(Action::Expand);
+                node.add_action(Action::Collapse);
                 node.set_expanded(expanded);
             }
         }
