@@ -53,6 +53,10 @@ mod ComboBox {
     }
 
     impl Tile for Self {
+        fn navigable(&self) -> bool {
+            true
+        }
+
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::ComboBox {
                 active: self.active,
@@ -73,7 +77,6 @@ mod ComboBox {
 
     impl Events for Self {
         const REDRAW_ON_HOVER: bool = true;
-        const NAVIGABLE: bool = true;
 
         type Data = A;
 

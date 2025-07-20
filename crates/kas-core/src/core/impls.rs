@@ -122,7 +122,7 @@ pub fn _nav_next<W: Events>(
     focus: Option<&Id>,
     advance: NavAdvance,
 ) -> Option<Id> {
-    if !W::NAVIGABLE {
+    if !widget.navigable() {
         nav_next_non_nav(widget.as_node(data), cx, focus, advance)
     } else {
         nav_next_nav(widget.as_node(data), cx, focus, advance)

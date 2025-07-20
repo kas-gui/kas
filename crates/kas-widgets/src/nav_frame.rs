@@ -40,9 +40,13 @@ mod NavFrame {
         }
     }
 
-    impl Events for Self {
-        const NAVIGABLE: bool = true;
+    impl Tile for Self {
+        fn navigable(&self) -> bool {
+            true
+        }
+    }
 
+    impl Events for Self {
         type Data = W::Data;
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {

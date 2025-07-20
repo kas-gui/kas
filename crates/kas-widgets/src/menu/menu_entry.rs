@@ -41,6 +41,10 @@ mod MenuEntry {
     }
 
     impl Tile for Self {
+        fn navigable(&self) -> bool {
+            true
+        }
+
         fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
             cx.set_label(self.label.id());
             Role::Button
@@ -77,8 +81,6 @@ mod MenuEntry {
     }
 
     impl Events for Self {
-        const NAVIGABLE: bool = true;
-
         type Data = ();
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {

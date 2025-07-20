@@ -117,6 +117,10 @@ mod SubMenu {
     }
 
     impl Tile for Self {
+        fn navigable(&self) -> bool {
+            !TOP_LEVEL
+        }
+
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::Menu {
                 expanded: self.popup.is_open(),
@@ -134,8 +138,6 @@ mod SubMenu {
     }
 
     impl Events for Self {
-        const NAVIGABLE: bool = !TOP_LEVEL;
-
         type Data = Data;
 
         fn handle_event(&mut self, cx: &mut EventCx, data: &Data, event: Event) -> IsUsed {

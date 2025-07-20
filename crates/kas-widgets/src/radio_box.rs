@@ -32,7 +32,6 @@ mod RadioBox {
 
     impl Events for Self {
         const REDRAW_ON_HOVER: bool = true;
-        const NAVIGABLE: bool = true;
 
         type Data = A;
 
@@ -77,6 +76,10 @@ mod RadioBox {
     }
 
     impl Tile for Self {
+        fn navigable(&self) -> bool {
+            true
+        }
+
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::RadioButton(self.state)
         }

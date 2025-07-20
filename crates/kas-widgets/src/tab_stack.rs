@@ -45,6 +45,10 @@ mod Tab {
     }
 
     impl Tile for Self {
+        fn navigable(&self) -> bool {
+            true
+        }
+
         fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
             cx.set_label(self.label.id());
             Role::Tab
@@ -57,7 +61,6 @@ mod Tab {
 
     impl Events for Self {
         const REDRAW_ON_HOVER: bool = true;
-        const NAVIGABLE: bool = true;
 
         type Data = ();
 

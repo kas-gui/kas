@@ -526,7 +526,7 @@ impl EventState {
     /// globally then nothing happens, otherwise widget `id` should receive
     /// [`Event::NavFocus`].
     ///
-    /// Normally, [`Events::NAVIGABLE`] will be true for widget `id` but this
+    /// Normally, [`Tile::navigable`] will return true for widget `id` but this
     /// is not checked or required. For example, a `ScrollLabel` can receive
     /// focus on text selection with the mouse.
     pub fn set_nav_focus(&mut self, id: Id, source: FocusSource) {
@@ -539,7 +539,7 @@ impl EventState {
     /// Advance the navigation focus
     ///
     /// If `target == Some(id)`, this looks for the next widget from `id`
-    /// (inclusive) which is navigable ([`Events::NAVIGABLE`]). Otherwise where
+    /// (inclusive) which is [navigable](Tile::navigable). Otherwise where
     /// some widget `id` has [`nav_focus`](Self::nav_focus) this looks for the
     /// next navigable widget *excluding* `id`. If no reference is available,
     /// this instead looks for the first navigable widget.
