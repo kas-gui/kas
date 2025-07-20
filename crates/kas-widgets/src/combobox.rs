@@ -9,7 +9,7 @@ use crate::adapt::AdaptEvents;
 use crate::{Column, Label, Mark, menu::MenuEntry};
 use kas::Popup;
 use kas::event::{Command, FocusSource};
-use kas::messages::SetIndex;
+use kas::messages::{Collapse, Expand, SetIndex};
 use kas::prelude::*;
 use kas::theme::FrameStyle;
 use kas::theme::{MarkStyle, TextClass};
@@ -31,6 +31,9 @@ mod ComboBox {
     /// # Messages
     ///
     /// [`kas::messages::SetIndex`] may be used to set the selected entry.
+    ///
+    /// [`kas::messages::Expand`] and [`kas::messages::Collapse`] may be used to
+    /// open and close the menu.
     #[widget]
     #[layout(
         frame!(row! [self.label, Mark::new(MarkStyle::Chevron(Direction::Down), "Expand")])
@@ -51,7 +54,11 @@ mod ComboBox {
 
     impl Tile for Self {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
-            Role::ComboBox(self.active, self.label.as_str())
+            Role::ComboBox {
+                active: self.active,
+                text: self.label.as_str(),
+                expanded: self.popup.is_open(),
+            }
         }
 
         fn nav_next(&self, _: bool, _: Option<usize>) -> Option<usize> {
@@ -87,14 +94,6 @@ mod ComboBox {
         }
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &A, event: Event) -> IsUsed {
-            let open_popup = |s: &mut Self, cx: &mut EventCx, source: FocusSource| {
-                if s.popup.open(cx, &(), s.id()) {
-                    if let Some(w) = s.popup.inner.inner.get_child(s.active) {
-                        cx.next_nav_focus(w.id(), false, source);
-                    }
-                }
-            };
-
             match event {
                 Event::Command(cmd, code) => {
                     if self.popup.is_open() {
@@ -119,7 +118,7 @@ mod ComboBox {
                         let last = self.len().saturating_sub(1);
                         match cmd {
                             cmd if cmd.is_activate() => {
-                                open_popup(self, cx, FocusSource::Key);
+                                self.open_popup(cx, FocusSource::Key);
                                 cx.depress_with_key(self.id(), code);
                             }
                             Command::Up => self.set_active(cx, self.active.saturating_sub(1)),
@@ -166,7 +165,7 @@ mod ComboBox {
                     }
                 }
                 Event::CursorMove { press } | Event::PressMove { press, .. } => {
-                    open_popup(self, cx, FocusSource::Pointer);
+                    self.open_popup(cx, FocusSource::Pointer);
                     let cond = self.popup.rect().contains(press.coord);
                     let target = if cond { press.id } else { None };
                     cx.set_grab_depress(press.source, target.clone());
@@ -179,7 +178,7 @@ mod ComboBox {
                     if let Some(id) = press.id {
                         if self.eq_id(&id) {
                             if self.opening {
-                                open_popup(self, cx, FocusSource::Pointer);
+                                self.open_popup(cx, FocusSource::Pointer);
                                 return Used;
                             }
                         } else if self.popup.is_open() && self.popup.is_ancestor_of(&id) {
@@ -202,6 +201,20 @@ mod ComboBox {
                     if let Some(msg) = cx.try_pop() {
                         (f)(cx, msg);
                     }
+                }
+            } else if let Some(Expand) = cx.try_pop() {
+                self.open_popup(cx, FocusSource::Synthetic);
+            } else if let Some(Collapse) = cx.try_pop() {
+                self.popup.close(cx);
+            }
+        }
+    }
+
+    impl Self {
+        fn open_popup(&mut self, cx: &mut EventCx, source: FocusSource) {
+            if self.popup.open(cx, &(), self.id()) {
+                if let Some(w) = self.popup.inner.inner.get_child(self.active) {
+                    cx.next_nav_focus(w.id(), false, source);
                 }
             }
         }

@@ -36,7 +36,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 # markdown, resvg. Recommended also: clipboard, ron (or some config format).
 minimal = ["wgpu", "wayland", "vulkan", "dx12", "metal"]
 # All recommended features for optimal experience
-default = ["minimal", "view", "image", "resvg", "clipboard", "markdown", "shaping", "spawn"]
+default = ["minimal", "view", "image", "resvg", "clipboard", "markdown", "shaping", "spawn", "accesskit"]
 # All standard test target features
 stable = ["default", "x11", "serde", "toml", "yaml", "json", "ron", "macros_log"]
 # Enables all "recommended" features for nightly rustc
@@ -75,6 +75,9 @@ internal_doc = ["kas-core/internal_doc", "kas-wgpu?/internal_doc"]
 
 # Enables clipboard read/write
 clipboard = ["kas-core/clipboard"]
+
+# Enable AccessKit integration
+accesskit = ["kas-core/accesskit"]
 
 # Enable Markdown parsing
 markdown = ["kas-core/markdown"]

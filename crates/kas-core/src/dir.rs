@@ -151,6 +151,17 @@ bitflags! {
     }
 }
 
+#[cfg(feature = "accesskit")]
+impl From<Direction> for accesskit::Orientation {
+    #[inline]
+    fn from(dir: Direction) -> Self {
+        match dir {
+            Direction::Right | Direction::Left => accesskit::Orientation::Horizontal,
+            Direction::Down | Direction::Up => accesskit::Orientation::Vertical,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

@@ -9,7 +9,7 @@ use crate::{ScrollBar, ScrollMsg};
 use kas::event::components::{ScrollComponent, TextInput, TextInputAction};
 use kas::event::{Command, CursorIcon, ElementState, FocusSource, ImePurpose, PhysicalKey, Scroll};
 use kas::geom::Vec2;
-use kas::messages::SetValueString;
+use kas::messages::{ReplaceSelectedText, SetValueText};
 use kas::prelude::*;
 use kas::text::{NotReady, SelectionHelper};
 use kas::theme::{Background, FrameStyle, Text, TextClass};
@@ -340,7 +340,8 @@ mod EditBox {
     ///
     /// ### Messages
     ///
-    /// [`SetValueString`] may be used to replace the entire text, where
+    /// [`SetValueText`] may be used to replace the entire text and
+    /// [`ReplaceSelectedText`] may be used to replace selected text, where
     /// [`Self::is_editable`]. This triggers the action handlers
     /// [`EditGuard::edit`] followed by [`EditGuard::activate`].
     #[autoimpl(Clone, Default, Debug where G: trait)]
@@ -465,12 +466,13 @@ mod EditBox {
             }
 
             if self.is_editable()
-                && let Some(SetValueString(string)) = cx.try_pop()
+                && let Some(SetValueText(string)) = cx.try_pop()
             {
                 self.set_string(cx, string);
                 G::edit(&mut self.inner, cx, data);
                 G::activate(&mut self.inner, cx, data);
             }
+            // TODO: pass ReplaceSelectedText to inner widget?
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx<'_>, _: &G::Data, scroll: Scroll) {
@@ -797,7 +799,8 @@ mod EditField {
     ///
     /// ### Messages
     ///
-    /// [`SetValueString`] may be used to replace the entire text, where
+    /// [`SetValueText`] may be used to replace the entire text and
+    /// [`ReplaceSelectedText`] may be used to replace selected text, where
     /// [`Self::is_editable`]. This triggers the action handlers
     /// [`EditGuard::edit`] followed by [`EditGuard::activate`].
     #[autoimpl(Clone, Debug where G: trait)]
@@ -881,9 +884,9 @@ mod EditField {
     impl Tile for Self {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             // TODO: this is also a ScrollRegion!
-            Role::Text {
+            Role::TextInput {
                 text: self.text.as_str(),
-                editable: self.editable,
+                multi_line: self.multi_line(),
                 edit_pos: self.selection.edit_pos(),
                 sel_pos: self.selection.sel_pos(),
             }
@@ -970,7 +973,9 @@ mod EditField {
                 },
                 Event::Key(event, false) if event.state == ElementState::Pressed => {
                     if let Some(text) = &event.text {
-                        self.received_text(cx, data, text)
+                        let used = self.received_text(cx, text);
+                        G::edit(self, cx, data);
+                        used
                     } else {
                         let opt_cmd = cx
                             .config()
@@ -1082,8 +1087,12 @@ mod EditField {
                 return;
             }
 
-            if let Some(SetValueString(string)) = cx.try_pop() {
+            if let Some(SetValueText(string)) = cx.try_pop() {
                 self.set_string(cx, string);
+                G::edit(self, cx, data);
+                G::activate(self, cx, data);
+            } else if let Some(ReplaceSelectedText(text)) = cx.try_pop() {
+                self.received_text(cx, &text);
                 G::edit(self, cx, data);
                 G::activate(self, cx, data);
             }
@@ -1152,6 +1161,13 @@ mod EditField {
                 self.set_ime_cursor_area(cx);
             }
             self.set_error_state(cx, false);
+        }
+
+        /// Replace selected text
+        ///
+        /// This method does not call action handlers on the [`EditGuard`].
+        pub fn replace_selection(&mut self, cx: &mut EventCx, text: &str) {
+            self.received_text(cx, text);
         }
 
         // Call only if self.ime_focus
@@ -1392,7 +1408,7 @@ impl<G: EditGuard> EditField<G> {
         0..end
     }
 
-    fn received_text(&mut self, cx: &mut EventCx, data: &G::Data, text: &str) -> IsUsed {
+    fn received_text(&mut self, cx: &mut EventCx, text: &str) -> IsUsed {
         if !self.editable || self.current.is_active_ime() {
             return Unused;
         }
@@ -1420,8 +1436,6 @@ impl<G: EditGuard> EditField<G> {
         self.edit_x_coord = None;
 
         self.prepare_text(cx);
-
-        G::edit(self, cx, data);
         Used
     }
 

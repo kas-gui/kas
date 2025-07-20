@@ -199,7 +199,7 @@ mod Window {
                 return None;
             }
             for (_, popup, translation) in self.popups.iter().rev() {
-                if let Some(widget) = self.inner.find_widget(&popup.id)
+                if let Some(widget) = self.inner.find_tile(&popup.id)
                     && let Some(id) = widget.try_probe(coord + *translation)
                 {
                     return Some(id);
@@ -232,7 +232,7 @@ mod Window {
             }
             self.inner.draw(draw.re());
             for (_, popup, translation) in &self.popups {
-                if let Some(child) = self.inner.find_widget(&popup.id) {
+                if let Some(child) = self.inner.find_tile(&popup.id) {
                     let clip_rect = child.rect() - *translation;
                     draw.with_overlay(clip_rect, *translation, |draw| {
                         child.draw(draw);
@@ -457,7 +457,7 @@ impl<Data: 'static> Window<Data> {
         let index = self.popups.len();
         self.popups.push((id, popup, Offset::ZERO));
         self.resize_popup(cx, data, index);
-        cx.action(Id::ROOT, Action::REGION_MOVED);
+        cx.action(self.id(), Action::REGION_MOVED);
     }
 
     /// Trigger closure of a pop-up
@@ -467,7 +467,7 @@ impl<Data: 'static> Window<Data> {
         for i in 0..self.popups.len() {
             if id == self.popups[i].0 {
                 self.popups.remove(i);
-                cx.action(Id::ROOT, Action::REGION_MOVED);
+                cx.action(self.id(), Action::REGION_MOVED);
                 return;
             }
         }
@@ -481,6 +481,12 @@ impl<Data: 'static> Window<Data> {
         for i in 0..self.popups.len() {
             self.resize_popup(cx, data, i);
         }
+    }
+
+    /// Iterate over popups
+    #[cfg(feature = "accesskit")]
+    pub(crate) fn iter_popups(&self) -> impl Iterator<Item = &kas::PopupDescriptor> {
+        self.popups.iter().map(|(_, popup, _)| popup)
     }
 }
 
@@ -517,7 +523,7 @@ impl<Data: 'static> Window<Data> {
             (pos, size)
         };
 
-        let Some((c, t)) = self.inner.as_tile().find_widget_rect(&popup.parent) else {
+        let Some((c, t)) = self.inner.as_tile().find_tile_rect(&popup.parent) else {
             return;
         };
         *translation = t;

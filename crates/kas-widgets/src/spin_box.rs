@@ -7,7 +7,7 @@
 
 use crate::{EditField, EditGuard, MarkButton};
 use kas::event::Command;
-use kas::messages::{SetValueF64, SetValueString};
+use kas::messages::{DecrementStep, IncrementStep, ReplaceSelectedText, SetValueF64, SetValueText};
 use kas::prelude::*;
 use kas::theme::{Background, FrameStyle, MarkStyle, Text, TextClass};
 use std::ops::RangeInclusive;
@@ -199,7 +199,10 @@ mod SpinBox {
     ///
     /// [`SetValueF64`] may be used to set the input value.
     ///
-    /// [`SetValueString`] may be used to set the input as a text value.
+    /// [`IncrementStep`] and [`DecrementStep`] change the value by one step.
+    ///
+    /// [`SetValueText`] may be used to set the input as a text value.
+    /// [`ReplaceSelectedText`] may be used to replace the selected text.
     #[widget]
     #[layout(
         frame!(row![self.edit, self.unit, column! [self.b_up, self.b_down]])
@@ -366,6 +369,15 @@ mod SpinBox {
     }
 
     impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::SpinButton {
+                min: self.edit.guard.start.cast(),
+                max: self.edit.guard.end.cast(),
+                step: self.edit.guard.step.cast(),
+                value: self.edit.guard.value.cast(),
+            }
+        }
+
         fn probe(&self, coord: Coord) -> Id {
             self.b_up
                 .try_probe(coord)
@@ -436,8 +448,16 @@ mod SpinBox {
                         None
                     }
                 }
-            } else if let Some(SetValueString(string)) = cx.try_pop() {
+            } else if let Some(IncrementStep) = cx.try_pop() {
+                Some(self.edit.guard.value.add_step(self.edit.guard.step))
+            } else if let Some(DecrementStep) = cx.try_pop() {
+                Some(self.edit.guard.value.sub_step(self.edit.guard.step))
+            } else if let Some(SetValueText(string)) = cx.try_pop() {
                 self.edit.set_string(cx, string);
+                SpinGuard::edit(&mut self.edit, cx, data);
+                self.edit.guard.parsed
+            } else if let Some(ReplaceSelectedText(text)) = cx.try_pop() {
+                self.edit.replace_selection(cx, &text);
                 SpinGuard::edit(&mut self.edit, cx, data);
                 self.edit.guard.parsed
             } else {

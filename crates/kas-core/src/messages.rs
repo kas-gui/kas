@@ -27,6 +27,14 @@ use crate::event::PhysicalKey;
 #[derive(Copy, Clone, Debug)]
 pub struct Activate(pub Option<PhysicalKey>);
 
+/// Increment value by one step
+#[derive(Copy, Clone, Debug)]
+pub struct IncrementStep;
+
+/// Decrement value by one step
+#[derive(Copy, Clone, Debug)]
+pub struct DecrementStep;
+
 /// Set an input value from `f64`
 ///
 /// This message may be used to set a numeric value to an input field.
@@ -37,11 +45,26 @@ pub struct SetValueF64(pub f64);
 ///
 /// This message may be used to set a text value to an input field.
 #[derive(Clone, Debug)]
-pub struct SetValueString(pub String);
+pub struct SetValueText(pub String);
+
+/// Replace selected text in an input value
+///
+/// This acts the same as typing or pasting the text: replace an existing
+/// selection or insert at the cursor position.
+#[derive(Clone, Debug)]
+pub struct ReplaceSelectedText(pub String);
 
 /// Set an index
 #[derive(Clone, Debug)]
 pub struct SetIndex(pub usize);
+
+/// Expand a collapsible list or open a menu
+#[derive(Clone, Debug)]
+pub struct Expand;
+
+/// Collapse a collapsible list or close a menu
+#[derive(Clone, Debug)]
+pub struct Collapse;
 
 /// Request selection of the sender
 ///
