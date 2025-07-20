@@ -160,6 +160,22 @@ mod MenuToggle {
     impl Events for Self {
         type Data = A;
 
+        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+            let id = self.make_child_id(widget_index!(self.checkbox));
+            if id.is_valid() {
+                cx.configure(self.checkbox.as_node(data), id);
+
+                if let Some(key) = self.label.access_key() {
+                    cx.add_access_key(self.checkbox.id_ref(), key.clone());
+                }
+            }
+
+            let id = self.make_child_id(widget_index!(self.label));
+            if id.is_valid() {
+                cx.configure(self.label.as_node(&()), id);
+            }
+        }
+
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
             if let Some(kas::messages::Activate(code)) = cx.try_pop() {
                 self.checkbox.toggle(cx, data);

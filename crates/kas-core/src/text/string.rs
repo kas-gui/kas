@@ -95,8 +95,8 @@ impl AccessString {
     }
 
     /// Get the key binding, if any
-    pub fn key(&self) -> Option<&Key> {
-        self.key.as_ref()
+    pub fn key(&self) -> Option<Key> {
+        self.key.clone()
     }
 
     /// Get the text

@@ -337,13 +337,24 @@ impl EventState {
         }
     }
 
-    /// Adds an access key for a widget
+    /// Register `id` as handler of an access `key`
     ///
     /// An *access key* (also known as mnemonic) is a shortcut key able to
-    /// directly open menus,
-    /// activate buttons, etc. A user triggers the key by pressing `Alt+Key`,
-    /// or (if `alt_bypass` is enabled) by simply pressing the key.
-    /// The widget with this `id` then receives [`Command::Activate`].
+    /// directly open menus, activate buttons, etc. By default, when the user
+    /// presses (and holds) key <kbd>Alt</kbd>, access keys in labels will be
+    /// underlined and when the user presses the corresponding key then the
+    /// widget registered as handler for that access key will receive navigation
+    /// focus and [`Command::Activate`].
+    ///
+    /// If `id` itself cannot support navigation focus or handle
+    /// [`Command::Activate`], then ancestors of `id` will have the opportunity
+    /// to receive navigation focus and handle this [`Event::Command`].
+    ///
+    /// If multiple widgets attempt to register themselves as handlers of the
+    /// same `key`, then only the first succeeds.
+    ///
+    /// [`Self::enable_alt_bypass`] allows usage of access keys without
+    /// <kbd>Alt</kbd>.
     ///
     /// Note that access keys may be automatically derived from labels:
     /// see [`crate::text::AccessString`].

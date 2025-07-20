@@ -122,5 +122,21 @@ mod WithLabel {
 
     impl Events for Self {
         type Data = W::Data;
+
+        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+            let id = self.make_child_id(widget_index!(self.inner));
+            if id.is_valid() {
+                cx.configure(self.inner.as_node(data), id);
+
+                if let Some(key) = self.label.access_key() {
+                    cx.add_access_key(self.inner.id_ref(), key.clone());
+                }
+            }
+
+            let id = self.make_child_id(widget_index!(self.label));
+            if id.is_valid() {
+                cx.configure(self.label.as_node(&()), id);
+            }
+        }
     }
 }
