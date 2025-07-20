@@ -266,10 +266,11 @@ impl<'a> Role<'a> {
     /// Construct an AccessKit [`Node`] from self
     ///
     /// This will set node properties as provided by self, but not those provided by the parent.
-    pub(crate) fn as_accesskit_node(&self) -> accesskit::Node {
+    pub(crate) fn as_accesskit_node(&self, tile: &dyn Tile) -> accesskit::Node {
         use crate::cast::Cast;
 
         let mut node = accesskit::Node::new(self.as_accesskit_role());
+        node.set_bounds(tile.rect().cast());
 
         match *self {
             Role::Unknown | Role::Button | Role::Tab | Role::Border => (),

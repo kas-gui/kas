@@ -27,7 +27,7 @@ impl RoleCx for WalkCx {
 fn push_child(parent: &dyn Tile, index: usize, nodes: &mut Vec<(NodeId, Node)>) -> Option<NodeId> {
     if let Some(child) = parent.get_child(index) {
         let mut cx = WalkCx::default();
-        let mut node = child.role(&mut cx).as_accesskit_node();
+        let mut node = child.role(&mut cx).as_accesskit_node(child);
         parent.role_child_properties(&mut cx, index);
 
         if let Some(label) = cx.label.take() {
@@ -71,7 +71,7 @@ pub(crate) fn window_nodes<Data: 'static>(root: &Window<Data>) -> (Vec<(NodeId, 
     }
 
     let mut cx = WalkCx::default();
-    let mut node = root.role(&mut cx).as_accesskit_node();
+    let mut node = root.role(&mut cx).as_accesskit_node(root);
     node.set_children(children);
 
     if let Some(label) = cx.label.take() {
