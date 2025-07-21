@@ -213,6 +213,10 @@ mod Grid {
     }
 
     impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::None
+        }
+
         fn probe(&self, coord: Coord) -> Id {
             for n in 0..self.widgets.len() {
                 if let Some(child) = self.widgets.get_tile(n) {

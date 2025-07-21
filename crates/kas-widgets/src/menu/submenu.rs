@@ -357,6 +357,10 @@ mod MenuView {
     }
 
     impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::None
+        }
+
         #[inline]
         fn child_indices(&self) -> ChildIndices {
             (0..self.list.len()).into()
