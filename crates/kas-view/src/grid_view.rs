@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Matrix view controller
+//! Grid view controller
 
 use super::*;
 use kas::NavAdvance;
@@ -31,24 +31,24 @@ struct WidgetData<K, W> {
     widget: W,
 }
 
-/// Index of a matrix cell
+/// Index of a grid cell
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct MatrixIndex {
+pub struct GridIndex {
     pub col: u32,
     pub row: u32,
 }
 
-impl MatrixIndex {
+impl GridIndex {
     /// Zero
-    pub const ZERO: MatrixIndex = MatrixIndex { col: 0, row: 0 };
+    pub const ZERO: GridIndex = GridIndex { col: 0, row: 0 };
 
     /// Construct, copying `x` to both fields
     pub const fn splat(x: u32) -> Self {
-        MatrixIndex { col: x, row: x }
+        GridIndex { col: x, row: x }
     }
 }
 
-impl crate::DataKey for MatrixIndex {
+impl crate::DataKey for GridIndex {
     fn make_id(&self, parent: &Id) -> Id {
         parent
             .make_child(self.col.cast())
@@ -59,18 +59,18 @@ impl crate::DataKey for MatrixIndex {
         let mut iter = child.iter_keys_after(parent);
         let col = iter.next().map(|i| i.cast())?;
         let row = iter.next().map(|i| i.cast())?;
-        Some(MatrixIndex { col, row })
+        Some(GridIndex { col, row })
     }
 }
 
 #[impl_self]
-mod MatrixView {
-    /// View controller for 2D indexable data (matrix)
+mod GridView {
+    /// View controller for 2D indexable data (grid)
     ///
     /// This widget generates a view over a list of data items via a
     /// [`DataClerk`]. "View widgets" are constructed via a [`Driver`]
     /// to represent visible data items. These view widgets are reassigned as
-    /// required when the matrix is scrolled, keeping the number of widgets in
+    /// required when the grid is scrolled, keeping the number of widgets in
     /// use roughly proportional to the number of data items within the view.
     ///
     /// Each view widget has an [`Id`] corresponding to its current data
@@ -85,7 +85,7 @@ mod MatrixView {
     /// emit [`kas::messages::Select`] to have themselves be selected.
     #[derive(Clone, Debug)]
     #[widget]
-    pub struct MatrixView<C: DataClerk<MatrixIndex>, V: Driver<C::Key, C::Item>> {
+    pub struct GridView<C: DataClerk<GridIndex>, V: Driver<C::Key, C::Item>> {
         core: widget_core!(),
         frame_offset: Offset,
         frame_size: Size,
@@ -96,8 +96,8 @@ mod MatrixView {
         ideal_len: Dim,
         alloc_len: Dim,
         data_len: Size,
-        cur_len: MatrixIndex,
-        first_data: MatrixIndex,
+        cur_len: GridIndex,
+        first_data: GridIndex,
         child_size_min: Size,
         child_size_ideal: Size,
         child_inter_margin: Size,
@@ -113,7 +113,7 @@ mod MatrixView {
     impl Self {
         /// Construct a new instance
         pub fn new(clerk: C, driver: V) -> Self {
-            MatrixView {
+            GridView {
                 core: Default::default(),
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
@@ -124,8 +124,8 @@ mod MatrixView {
                 ideal_len: Dim { cols: 3, rows: 5 },
                 alloc_len: Dim::default(),
                 data_len: Size::ZERO,
-                cur_len: MatrixIndex::ZERO,
-                first_data: MatrixIndex::ZERO,
+                cur_len: GridIndex::ZERO,
+                first_data: GridIndex::ZERO,
                 child_size_min: Size::ZERO,
                 child_size_ideal: Size::ZERO,
                 child_inter_margin: Size::ZERO,
@@ -304,19 +304,19 @@ mod MatrixView {
                 u32::conv(u64::conv(offset.0) / u64::conv(skip.0)).min(data_len.col - col_len);
             let first_row =
                 u32::conv(u64::conv(offset.1) / u64::conv(skip.1)).min(data_len.row - row_len);
-            self.cur_len = MatrixIndex {
+            self.cur_len = GridIndex {
                 col: col_len.cast(),
                 row: row_len.cast(),
             };
             debug_assert!(self.cur_end() <= self.widgets.len());
 
-            let start = MatrixIndex {
+            let start = GridIndex {
                 col: first_col,
                 row: first_row,
             };
             self.first_data = start;
 
-            let end = MatrixIndex {
+            let end = GridIndex {
                 col: first_col + col_len,
                 row: first_row + row_len,
             };
@@ -325,7 +325,7 @@ mod MatrixView {
             let solver = self.position_solver();
             for row in start.row..end.row {
                 for col in start.col..end.col {
-                    let cell = MatrixIndex { col, row };
+                    let cell = GridIndex { col, row };
                     let i = solver.data_to_child(cell);
                     if let Some(key) = self.clerk.key(data, cell) {
                         let id = key.make_id(self.id_ref());
@@ -360,7 +360,7 @@ mod MatrixView {
             }
 
             let dur = (Instant::now() - time).as_micros();
-            log::trace!(target: "kas_perf::view::matrix_view", "update_widgets: {dur}μs");
+            log::trace!(target: "kas_perf::view::grid_view", "update_widgets: {dur}μs");
             solver
         }
 
@@ -686,7 +686,7 @@ mod MatrixView {
                         _ => None,
                     };
                     return if let Some((col, row)) = data_index {
-                        let cell = MatrixIndex { col, row };
+                        let cell = GridIndex { col, row };
                         // Set nav focus and update scroll position
                         let action = self.scroll.focus_rect(cx, solver.rect(cell), self.rect());
                         if !action.is_empty() {
@@ -834,7 +834,7 @@ mod MatrixView {
             focus: Option<&Id>,
             advance: NavAdvance,
         ) -> Option<Id> {
-            if cx.is_disabled(self.id_ref()) || self.cur_len == MatrixIndex::ZERO {
+            if cx.is_disabled(self.id_ref()) || self.cur_len == GridIndex::ZERO {
                 return None;
             }
 
@@ -868,7 +868,7 @@ mod MatrixView {
                         if cell.col + 1 < len.col {
                             cell.col += 1;
                         } else if cell.row + 1 < len.row {
-                            cell = MatrixIndex {
+                            cell = GridIndex {
                                 col: 0,
                                 row: cell.row + 1,
                             };
@@ -879,7 +879,7 @@ mod MatrixView {
                         if cell.col > 0 {
                             cell.col -= 1;
                         } else if cell.row > 0 {
-                            cell = MatrixIndex {
+                            cell = GridIndex {
                                 col: len.col - 1,
                                 row: cell.row - 1,
                             };
@@ -888,9 +888,9 @@ mod MatrixView {
                         }
                     }
                 } else if !reverse {
-                    cell = MatrixIndex::ZERO;
+                    cell = GridIndex::ZERO;
                 } else {
-                    cell = MatrixIndex {
+                    cell = GridIndex {
                         col: len.col - 1,
                         row: len.row - 1,
                     };
@@ -929,20 +929,20 @@ struct PositionSolver {
     pos_start: Coord,
     skip: Size,
     size: Size,
-    first_data: MatrixIndex,
-    cur_len: MatrixIndex,
+    first_data: GridIndex,
+    cur_len: GridIndex,
 }
 
 impl PositionSolver {
     /// Map a data index to child index
-    fn data_to_child(&self, cell: MatrixIndex) -> usize {
+    fn data_to_child(&self, cell: GridIndex) -> usize {
         let col_len: usize = self.cur_len.col.cast();
         let row_len: usize = self.cur_len.row.cast();
         (cell.col as usize % col_len) + (cell.row as usize % row_len) * col_len
     }
 
     /// Map a child index to a data index
-    fn child_to_data(&self, index: usize) -> MatrixIndex {
+    fn child_to_data(&self, index: usize) -> GridIndex {
         let col_len = self.cur_len.col;
         let row_len = self.cur_len.row;
         let ci: u32 = (index % usize::conv(col_len)).cast();
@@ -955,11 +955,11 @@ impl PositionSolver {
         if row < self.first_data.row {
             row += row_len;
         }
-        MatrixIndex { col, row }
+        GridIndex { col, row }
     }
 
     /// Rect of data item (ci, ri)
-    fn rect(&self, MatrixIndex { col, row }: MatrixIndex) -> Rect {
+    fn rect(&self, GridIndex { col, row }: GridIndex) -> Rect {
         let pos = self.pos_start + self.skip.cwise_mul(Size(col.cast(), row.cast()));
         Rect::new(pos, self.size)
     }

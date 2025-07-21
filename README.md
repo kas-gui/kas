@@ -10,7 +10,7 @@ KAS is a stateful, pure-Rust GUI toolkit supporting:
 
 - [x] Mostly declarative UI descriptions
 - [x] Stateful widgets (e.g. selection range or a pure-UI counter)
-- [x] Virtual scrolling (list or matrix), including support for external data sources
+- [x] Virtual scrolling (list or grid), including support for external data sources
 - [x] Theme abstraction including theme-driven animations and sizing
 - [ ] Multiple renderer backends
 - [ ] Integrated i18n support

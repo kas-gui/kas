@@ -26,7 +26,7 @@
 //! -   [`Stack`], [`TabStack`]: a stack of widgets in the same rect
 //! -   [`List`]: a row / column of children
 //! -   [`Splitter`]: like [`List`] but with resizing handles
-//! -   [`Grid`]: a container using matrix layout
+//! -   [`Grid`]: a container using grid layout
 //!
 //! ## Controls
 //!
