@@ -21,7 +21,6 @@ struct SelectEntry(usize);
 
 #[derive(Clone, Debug)]
 enum Control {
-    None,
     SetLen(usize),
     DecrLen,
     IncrLen,
@@ -32,6 +31,7 @@ enum Control {
 
 #[derive(Debug)]
 struct Data {
+    ver: u64,
     len: usize,
     active: usize,
     dir: Direction,
@@ -41,6 +41,7 @@ struct Data {
 impl Data {
     fn new(len: usize) -> Self {
         Data {
+            ver: 0,
             len,
             active: 0,
             dir: Direction::Down,
@@ -55,8 +56,8 @@ impl Data {
             .unwrap_or_else(|| format!("Entry #{}", index + 1))
     }
     fn handle(&mut self, control: Control) {
+        self.ver = self.ver.wrapping_add(1);
         let len = match control {
-            Control::None => return,
             Control::SetLen(len) => len,
             Control::DecrLen => self.len.saturating_sub(1),
             Control::IncrLen => self.len.saturating_add(1),
@@ -143,6 +144,7 @@ mod ListEntry {
 #[derive(Default)]
 struct Clerk {
     start: usize,
+    ver: u64,
     items: Vec<Item>,
 }
 impl DataClerk<usize> for Clerk {
@@ -157,7 +159,7 @@ impl DataClerk<usize> for Clerk {
     fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, data: &Self::Data, range: Range<usize>) {
         let len = range.len();
         let update_range;
-        if range.len() == self.items.len() {
+        if self.ver == data.ver && range.len() == self.items.len() {
             if range.start == self.start {
                 return;
             } else if range.start > self.start {
@@ -166,6 +168,8 @@ impl DataClerk<usize> for Clerk {
                 update_range = range.start..self.start;
             }
         } else {
+            // If the data version has changed, we must update all items
+            self.ver = data.ver;
             self.items.resize(len, Item::default());
             update_range = range.clone();
         }
@@ -212,7 +216,7 @@ fn main() -> kas::runner::Result<()> {
         EditBox::parser(|n| *n, Control::SetLen),
         row![
             // This button is just a click target; it doesn't do anything!
-            Button::label_msg("Set", Control::None),
+            Button::label("Set"),
             Button::label_msg("−", Control::DecrLen),
             Button::label_msg("+", Control::IncrLen),
             Button::label_msg("↓↑", Control::Reverse),
