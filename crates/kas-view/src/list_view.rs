@@ -37,6 +37,8 @@ mod ListItem {
     #[layout(frame!(self.inner).with_style(kas::theme::FrameStyle::NavFocus))]
     struct ListItem<W: Widget> {
         core: widget_core!(),
+        index: usize,
+        selected: Option<bool>,
         /// The inner widget
         #[widget]
         inner: W,
@@ -48,12 +50,21 @@ mod ListItem {
         fn new(inner: W) -> Self {
             ListItem {
                 core: Default::default(),
+                index: 0,
+                selected: None,
                 inner,
             }
         }
     }
 
     impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::OptionListItem {
+                index: Some(self.index),
+                selected: self.selected,
+            }
+        }
+
         fn navigable(&self) -> bool {
             true
         }
@@ -233,12 +244,14 @@ mod ListView {
             match mode {
                 SelectionMode::None if !self.selection.is_empty() => {
                     self.selection.clear();
+                    self.update_selected_items();
                     cx.redraw(self);
                 }
                 SelectionMode::Single if self.selection.len() > 1 => {
                     if let Some(first) = self.selection.iter().next().cloned() {
                         self.selection.retain(|item| *item == first);
                     }
+                    self.update_selected_items();
                     cx.redraw(self);
                 }
                 _ => (),
@@ -294,6 +307,7 @@ mod ListView {
         pub fn clear_selected(&mut self, cx: &mut EventState) {
             if !self.selection.is_empty() {
                 self.selection.clear();
+                self.update_selected_items();
                 cx.redraw(self);
             }
         }
@@ -315,6 +329,7 @@ mod ListView {
             }
             let r = self.selection.insert(key);
             if r {
+                self.update_selected_items();
                 cx.redraw(self);
             }
             r
@@ -327,6 +342,7 @@ mod ListView {
         pub fn deselect(&mut self, cx: &mut EventState, key: &C::Key) -> bool {
             let r = self.selection.remove(key);
             if r {
+                self.update_selected_items();
                 cx.redraw(self);
             }
             r
@@ -344,8 +360,26 @@ mod ListView {
                     .iter()
                     .any(|widget| widget.key.as_ref() == Some(key))
             });
+            self.update_selected_items();
             if len != self.selection.len() {
                 cx.redraw(self);
+            }
+        }
+
+        // TODO(opt): some usages only require one item be updated
+        fn update_selected_items(&mut self) {
+            let unselected = match self.sel_mode {
+                SelectionMode::None | SelectionMode::Single => None,
+                SelectionMode::Multiple => Some(false),
+            };
+            for w in &mut self.widgets {
+                if let Some(ref key) = w.key {
+                    if self.selection.contains(key) {
+                        w.item.selected = Some(true);
+                    } else {
+                        w.item.selected = unselected;
+                    }
+                }
             }
         }
 
@@ -412,6 +446,7 @@ mod ListView {
                 let id = key.make_id(self.id_ref());
                 let w = &mut self.widgets[i % solver.cur_len];
                 if w.key.as_ref() != Some(&key) {
+                    w.item.index = i;
                     self.driver.set_key(&mut w.item.inner, &key);
 
                     if let Some(item) = self.clerk.item(data, &key) {
@@ -620,6 +655,12 @@ mod ListView {
     }
 
     impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::OptionList {
+                len: Some(self.data_len.cast()),
+            }
+        }
+
         #[inline]
         fn child_indices(&self) -> ChildIndices {
             (0..self.cur_len.cast()).into()
@@ -853,6 +894,7 @@ mod ListView {
                         cx.redraw(&self);
                         self.selection.clear();
                         self.selection.insert(key.clone());
+                        self.update_selected_items();
                         cx.push(SelectionMsg::Select(key));
                     }
                     SelectionMode::Multiple => {
@@ -863,6 +905,7 @@ mod ListView {
                             self.selection.insert(key.clone());
                             cx.push(SelectionMsg::Select(key));
                         }
+                        self.update_selected_items();
                     }
                 }
             }

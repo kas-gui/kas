@@ -175,6 +175,32 @@ pub enum Role<'a> {
     ///
     /// The reported value should be between `0.0` and `1.0`.
     ProgressBar(f32),
+    /// A list of possibly selectable items
+    ///
+    /// Note that this role should only be used where it is desirable to expose
+    /// the list as an element. In other cases (where a list is used merely as
+    /// a tool to place elements next to each other), use [`Role::None`].
+    ///
+    /// Child nodes should (but are not required to) use [`Role::OptionListItem`].
+    OptionList {
+        /// The number of items in the list, if available
+        len: Option<usize>,
+    },
+    /// An item within a list
+    OptionListItem {
+        /// Index in the list, if available
+        ///
+        /// Note that this may change frequently, thus is not a useful key.
+        index: Option<usize>,
+        /// Whether the item is currently selected, if applicable.
+        ///
+        /// > When deciding whether to set this value to `false` or `None`,
+        /// consider whether it would be appropriate for a screen reader to
+        /// announce “not selected”.
+        ///
+        /// See also [`accesskit::Node::is_selected`](https://docs.rs/accesskit/latest/accesskit/struct.Node.html#method.is_selected).
+        selected: Option<bool>,
+    },
     /// A menu bar
     MenuBar,
     /// An openable menu
@@ -270,7 +296,6 @@ impl<'a> Role<'a> {
             Role::CheckBox(_) => R::CheckBox,
             Role::RadioButton(_) => R::RadioButton,
             Role::Tab => R::Tab,
-            Role::Border => R::Unknown,
             Role::ScrollRegion { .. } => R::ScrollView,
             Role::ScrollBar { .. } => R::ScrollBar,
             Role::Indicator => R::Unknown,
@@ -285,6 +310,9 @@ impl<'a> Role<'a> {
             Role::Slider { .. } => R::Slider,
             Role::SpinButton { .. } => R::SpinButton,
             Role::ProgressBar(_) => R::ProgressIndicator,
+            Role::Border => R::Unknown,
+            Role::OptionList { .. } => R::ListBox,
+            Role::OptionListItem { .. } => R::ListBoxOption,
             Role::MenuBar => R::MenuBar,
             Role::Menu { .. } => R::Menu,
             Role::ComboBox { .. } => R::ComboBox,
@@ -381,6 +409,19 @@ impl<'a> Role<'a> {
             Role::ProgressBar(value) => {
                 node.set_max_numeric_value(1.0);
                 node.set_numeric_value(value.cast());
+            }
+            Role::OptionList { len } => {
+                if let Some(len) = len {
+                    node.set_size_of_set(len);
+                }
+            }
+            Role::OptionListItem { index, selected } => {
+                if let Some(index) = index {
+                    node.set_position_in_set(index);
+                }
+                if let Some(state) = selected {
+                    node.set_selected(state);
+                }
             }
             Role::ComboBox { expanded, .. } | Role::Menu { expanded } => {
                 node.add_action(Action::Expand);
