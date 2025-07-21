@@ -23,6 +23,10 @@ log = []
 # Enable reporting of warnings from proc-macros
 nightly = ["proc-macro-error2/nightly"]
 
+# Enable pedantic warnings. These should be replaced with individual lints,
+# depending on the outcome of RFC 1566 (proc macro diagnostics).
+nightly-pedantic = ["nightly"]
+
 [dependencies]
 quote = "1.0"
 proc-macro2 = { version = "1.0" }

@@ -829,6 +829,11 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             tile_impl.items.push(Verbatim(methods));
         }
 
+        #[cfg(feature = "nightly-pedantic")]
+        if !has_item("role") {
+            emit_warning!(tile_impl, "[pedantic] `fn role` is not defined");
+        }
+
         if !has_item("child_indices") {
             if let Some(method) = fn_child_indices {
                 tile_impl.items.push(Verbatim(method));
@@ -854,6 +859,9 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             tile_impl.items.push(Verbatim(fn_probe));
         }
     } else {
+        #[cfg(feature = "nightly-pedantic")]
+        emit_warning!(attr_span, "[pedantic] `fn Tile::role` is not defined");
+
         if fn_child_indices.is_none() {
             emit_error!(
                 attr_span, "refusing to generate fn Tile::child_indices";
