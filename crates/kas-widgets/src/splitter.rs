@@ -240,6 +240,10 @@ mod Splitter {
     }
 
     impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::Splitter
+        }
+
         #[inline]
         fn child_indices(&self) -> ChildIndices {
             (0..self.widgets.len() + self.grips.len()).into()

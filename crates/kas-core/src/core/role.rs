@@ -207,6 +207,8 @@ pub enum Role<'a> {
         /// True if the menu is open
         expanded: bool,
     },
+    /// A list of variable-size children with resizing grips
+    Splitter,
     /// A window
     Window,
     /// The special bar at the top of a window titling contents and usually embedding window controls
@@ -286,6 +288,7 @@ impl<'a> Role<'a> {
             Role::MenuBar => R::MenuBar,
             Role::Menu { .. } => R::Menu,
             Role::ComboBox { .. } => R::ComboBox,
+            Role::Splitter => R::Splitter,
             Role::Window => R::Window,
             Role::TitleBar => R::TitleBar,
         }
@@ -305,7 +308,7 @@ impl<'a> Role<'a> {
         }
 
         match *self {
-            Role::None | Role::Unknown | Role::Border | Role::Grip => (),
+            Role::None | Role::Unknown | Role::Border | Role::Grip | Role::Splitter => (),
             Role::Button | Role::Tab => {
                 node.add_action(Action::Click);
             }
