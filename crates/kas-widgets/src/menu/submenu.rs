@@ -208,9 +208,9 @@ const MENU_VIEW_COLS: u32 = 5;
 const fn menu_view_row_info(row: u32) -> layout::GridCellInfo {
     layout::GridCellInfo {
         col: 0,
-        col_end: MENU_VIEW_COLS,
+        last_col: MENU_VIEW_COLS - 1,
         row,
-        row_end: row + 1,
+        last_row: row,
     }
 }
 

@@ -36,29 +36,29 @@ impl<T: Clone + Default> DefaultWithLen for Vec<T> {
 pub struct GridDimensions {
     /// The number of columns
     ///
-    /// This equals the maximum [`GridCellInfo::col_end`] of the colliection.
+    /// This is one greater than the maximum [`GridCellInfo::last_col`] value.
     pub cols: u32,
     /// The number of cells spanning more than one column
     pub col_spans: u32,
     /// The number of rows
     ///
-    /// This equals the maximum [`GridCellInfo::row_end`] of the colliection.
+    /// This is one greater than the maximum [`GridCellInfo::last_row`] value.
     pub rows: u32,
     /// The number of cells spanning more than one row
     pub row_spans: u32,
 }
 
-/// Per-child information
+/// Grid cell index and span information
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct GridCellInfo {
     /// Column index (first column when in a span)
     pub col: u32,
-    /// One-past-last index of column span (`col_end = col + 1` without span)
-    pub col_end: u32,
+    /// Last column index of span (`last_col = col` without span)
+    pub last_col: u32,
     /// Row index (first row when in a span)
     pub row: u32,
-    /// One-past-last index of row span (`row_end = row + 1` without span)
-    pub row_end: u32,
+    /// One-past-last index of row span (`last_row = row` without span)
+    pub last_row: u32,
 }
 
 impl GridCellInfo {
@@ -66,9 +66,9 @@ impl GridCellInfo {
     pub fn new(col: u32, row: u32) -> Self {
         GridCellInfo {
             col,
-            col_end: col + 1,
+            last_col: col,
             row,
-            row_end: row + 1,
+            last_row: row,
         }
     }
 }
@@ -150,12 +150,12 @@ where
     ) {
         if self.axis.has_fixed {
             if self.axis.is_horizontal() {
-                self.axis.other_axis = ((info.row + 1)..info.row_end)
+                self.axis.other_axis = ((info.row + 1)..=info.last_row)
                     .fold(storage.heights()[usize::conv(info.row)], |h, i| {
                         h + storage.heights()[usize::conv(i)]
                     });
             } else {
-                self.axis.other_axis = ((info.col + 1)..info.col_end)
+                self.axis.other_axis = ((info.col + 1)..=info.last_col)
                     .fold(storage.widths()[usize::conv(info.col)], |w, i| {
                         w + storage.widths()[usize::conv(i)]
                     });
@@ -163,20 +163,20 @@ where
         }
         let child_rules = child_rules(self.axis);
         if self.axis.is_horizontal() {
-            if info.col_end > info.col + 1 {
+            if info.last_col > info.col {
                 let span = &mut self.col_spans.as_mut()[self.next_col_span];
                 span.0.max_with(child_rules);
                 span.1 = info.col;
-                span.2 = info.col_end;
+                span.2 = info.last_col + 1;
                 self.next_col_span += 1;
             } else {
                 storage.width_rules()[usize::conv(info.col)].max_with(child_rules);
             }
-        } else if info.row_end > info.row + 1 {
+        } else if info.last_row > info.row {
             let span = &mut self.row_spans.as_mut()[self.next_row_span];
             span.0.max_with(child_rules);
             span.1 = info.row;
-            span.2 = info.row_end;
+            span.2 = info.last_row + 1;
             self.next_row_span += 1;
         } else {
             storage.height_rules()[usize::conv(info.row)].max_with(child_rules);
@@ -300,10 +300,10 @@ impl<CT: RowTemp, RT: RowTemp, S: GridStorage> RulesSetter for GridSetter<CT, RT
         let y = self.h_offsets.as_mut()[usize::conv(info.row)];
         let pos = self.pos + Offset(x, y);
 
-        let i1 = usize::conv(info.col_end) - 1;
+        let i1 = usize::conv(info.last_col);
         let w = storage.widths()[i1] + self.w_offsets.as_mut()[i1]
             - self.w_offsets.as_mut()[usize::conv(info.col)];
-        let i1 = usize::conv(info.row_end) - 1;
+        let i1 = usize::conv(info.last_row);
         let h = storage.heights()[i1] + self.h_offsets.as_mut()[i1]
             - self.h_offsets.as_mut()[usize::conv(info.row)];
         let size = Size(w, h);
