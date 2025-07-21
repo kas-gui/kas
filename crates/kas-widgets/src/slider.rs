@@ -303,6 +303,10 @@ mod Slider {
     }
 
     impl Tile for Self {
+        fn navigable(&self) -> bool {
+            true
+        }
+
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::Slider {
                 min: self.range.0.cast(),
@@ -324,7 +328,6 @@ mod Slider {
 
     impl Events for Self {
         const REDRAW_ON_HOVER: bool = true;
-        const NAVIGABLE: bool = true;
 
         type Data = A;
 

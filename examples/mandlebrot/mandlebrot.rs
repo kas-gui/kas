@@ -356,9 +356,13 @@ mod Mandlebrot {
         }
     }
 
-    impl Events for Mandlebrot {
-        const NAVIGABLE: bool = true;
+    impl Tile for Self {
+        fn navigable(&self) -> bool {
+            true
+        }
+    }
 
+    impl Events for Mandlebrot {
         type Data = i32;
 
         fn configure(&mut self, cx: &mut ConfigCx) {

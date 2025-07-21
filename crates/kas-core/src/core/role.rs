@@ -286,7 +286,9 @@ impl<'a> Role<'a> {
 
         let mut node = accesskit::Node::new(self.as_accesskit_role());
         node.set_bounds(tile.rect().cast());
-        // TODO: if NAVIGABLE, node.add_action(Action::Focus);
+        if tile.navigable() {
+            node.add_action(Action::Focus);
+        }
 
         match *self {
             Role::Unknown | Role::Border => (),

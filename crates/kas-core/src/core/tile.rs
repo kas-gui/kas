@@ -83,6 +83,13 @@ pub trait Tile: Layout {
         unimplemented!() // make rustdoc show that this is a provided method
     }
 
+    /// Whether this widget supports navigation focus
+    ///
+    /// By default this is false.
+    fn navigable(&self) -> bool {
+        false
+    }
+
     /// Describe the widget's role
     ///
     /// This descriptor supports accessibility tooling and UI introspection.

@@ -61,14 +61,6 @@ pub trait Events: Widget + Sized {
     /// animations.)
     const REDRAW_ON_HOVER: bool = false;
 
-    /// Is this widget navigable via <kbd>Tab</kbd> key?
-    ///
-    /// Note that when this is `false` then the widget will not receive
-    /// navigation focus via the <kbd>Tab</kbd> key, but it may still receive
-    /// navigation focus through some other means, for example a keyboard
-    /// shortcut or a mouse click.
-    const NAVIGABLE: bool = false;
-
     /// The mouse cursor icon to use on hover
     ///
     /// Defaults to `None`.

@@ -33,7 +33,6 @@ mod CheckBox {
 
     impl Events for Self {
         const REDRAW_ON_HOVER: bool = true;
-        const NAVIGABLE: bool = true;
 
         type Data = A;
 
@@ -77,6 +76,10 @@ mod CheckBox {
     }
 
     impl Tile for Self {
+        fn navigable(&self) -> bool {
+            true
+        }
+
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::CheckBox(self.state)
         }
@@ -232,6 +235,22 @@ mod CheckButton {
 
     impl Events for Self {
         type Data = A;
+
+        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+            let id = self.make_child_id(widget_index!(self.inner));
+            if id.is_valid() {
+                cx.configure(self.inner.as_node(data), id);
+
+                if let Some(key) = self.label.access_key() {
+                    cx.add_access_key(self.inner.id_ref(), key.clone());
+                }
+            }
+
+            let id = self.make_child_id(widget_index!(self.label));
+            if id.is_valid() {
+                cx.configure(self.label.as_node(&()), id);
+            }
+        }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
             if let Some(kas::messages::Activate(code)) = cx.try_pop() {

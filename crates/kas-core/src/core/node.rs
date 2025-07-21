@@ -10,11 +10,13 @@ use crate::event::{ConfigCx, Event, EventCx, IsUsed};
 use crate::geom::Rect;
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::SizeCx;
+use crate::util::IdentifyWidget;
 use crate::{Id, NavAdvance, Tile};
 
 #[cfg(not(feature = "unsafe_node"))]
 trait NodeT {
     fn id_ref(&self) -> &Id;
+    fn identify(&self) -> IdentifyWidget<'_>;
     fn rect(&self) -> Rect;
 
     fn clone_node(&mut self) -> Node<'_>;
@@ -44,6 +46,9 @@ trait NodeT {
 impl<'a, T> NodeT for (&'a mut dyn Widget<Data = T>, &'a T) {
     fn id_ref(&self) -> &Id {
         self.0.id_ref()
+    }
+    fn identify(&self) -> IdentifyWidget<'_> {
+        self.0.identify()
     }
     fn rect(&self) -> Rect {
         self.0.rect()
@@ -165,6 +170,14 @@ impl<'a> Node<'a> {
     #[inline]
     pub fn id(&self) -> Id {
         self.id_ref().clone()
+    }
+
+    /// Return a [`Display`]-able widget identifier
+    ///
+    /// [`Display`]: std::fmt::Display
+    #[inline]
+    pub fn identify(&self) -> IdentifyWidget<'_> {
+        self.0.identify()
     }
 
     /// Test widget identifier for equality

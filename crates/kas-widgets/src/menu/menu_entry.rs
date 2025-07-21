@@ -41,6 +41,10 @@ mod MenuEntry {
     }
 
     impl Tile for Self {
+        fn navigable(&self) -> bool {
+            true
+        }
+
         fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
             cx.set_label(self.label.id());
             Role::Button
@@ -77,8 +81,6 @@ mod MenuEntry {
     }
 
     impl Events for Self {
-        const NAVIGABLE: bool = true;
-
         type Data = ();
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
@@ -159,6 +161,22 @@ mod MenuToggle {
 
     impl Events for Self {
         type Data = A;
+
+        fn configure_recurse(&mut self, cx: &mut ConfigCx, data: &Self::Data) {
+            let id = self.make_child_id(widget_index!(self.checkbox));
+            if id.is_valid() {
+                cx.configure(self.checkbox.as_node(data), id);
+
+                if let Some(key) = self.label.access_key() {
+                    cx.add_access_key(self.checkbox.id_ref(), key.clone());
+                }
+            }
+
+            let id = self.make_child_id(widget_index!(self.label));
+            if id.is_valid() {
+                cx.configure(self.label.as_node(&()), id);
+            }
+        }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Self::Data) {
             if let Some(kas::messages::Activate(code)) = cx.try_pop() {

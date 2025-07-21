@@ -6,6 +6,7 @@
 //! Fixed text widgets
 
 use super::adapt::MapAny;
+use kas::event::Key;
 use kas::prelude::*;
 use kas::text::format::FormattableText;
 use kas::theme::{Text, TextClass};
@@ -171,14 +172,35 @@ impl<'a> From<&'a str> for Label<String> {
 mod AccessLabel {
     /// A label supporting an access key
     ///
-    /// An `AccessLabel` is a variant of [`Label`] supporting [`AccessString`],
-    /// for example "&Edit" binds an action to <kbd>Alt+E</kbd>. When the
-    /// corresponding key-sequence is pressed this widget sends the message
-    /// [`kas::messages::Activate`] which should be handled by a parent.
+    /// An `AccessLabel` is a variant of [`Label`] supporting an access key,
+    /// for example "&Edit" binds an action to <kbd>Alt+E</kbd> since by default
+    /// <kbd>Alt</kbd> must be held to use access keys.
+    /// The access key is parsed from the input `text` (see [`AccessString`])
+    /// and underlined when <kbd>Alt</kbd> is held.
     ///
-    /// A text label. Vertical alignment defaults to centred, horizontal
+    /// Vertical alignment defaults to centred, horizontal
     /// alignment depends on the script direction if not specified.
     /// Line-wrapping is enabled by default.
+    ///
+    /// ### Action bindings
+    ///
+    /// The access key may be registered explicitly by calling
+    /// [`EventState::add_access_key`] using [`Self::access_key`].
+    ///
+    /// A parent widget (e.g. a push-button) registering itself as recipient of
+    /// the access key is mostly equivalent to allowing the `AccessLabel` to
+    /// register itself handler of its access key. Note that `AccessLabel` will
+    /// attempt to register itself but fail if another widget registers itself
+    /// first. `AccessLabel` will however not handle any events, thus an
+    /// ancestor should handle `Event::Command(Command::Activate)` and
+    /// navigation focus.
+    ///
+    /// A parent widget may register a different child (sibling of the
+    /// `AccessLabel`) as handler of access key. This is complicated since (a)
+    /// the registration must be made before the `AccessLabel` configures itself
+    /// and (b) the [`Id`] of the sibling widget must be known. This can still
+    /// be achieved using a custom [`Events::configure_recurse`] implementation;
+    /// see for example the implementation of [`crate::CheckButton`].
     #[derive(Clone, Debug, Default)]
     #[widget]
     #[layout(self.text)]
@@ -260,6 +282,13 @@ mod AccessLabel {
             let act = self.text.reprepare_action();
             cx.action(self, act);
         }
+
+        /// Get this label's access key, if any
+        ///
+        /// This key is parsed from the text.
+        pub fn access_key(&self) -> Option<Key> {
+            self.text.text().key()
+        }
     }
 
     impl Layout for Self {
@@ -287,16 +316,6 @@ mod AccessLabel {
 
             if let Some(key) = self.text.text().key() {
                 cx.add_access_key(self.id_ref(), key.clone());
-            }
-        }
-
-        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
-            match event {
-                Event::Command(cmd, code) if cmd.is_activate() => {
-                    cx.push(kas::messages::Activate(code));
-                    Used
-                }
-                _ => Unused,
             }
         }
     }

@@ -98,6 +98,10 @@ mod Button {
     }
 
     impl Tile for Self {
+        fn navigable(&self) -> bool {
+            true
+        }
+
         fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
             cx.set_label(self.inner.id());
             Role::Button
@@ -110,7 +114,6 @@ mod Button {
 
     impl Events for Self {
         const REDRAW_ON_HOVER: bool = true;
-        const NAVIGABLE: bool = true;
 
         type Data = W::Data;
 
