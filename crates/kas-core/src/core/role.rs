@@ -26,7 +26,17 @@ use crate::messages::{DecrementStep, IncrementStep, SetValueF64};
 /// below. See also [`EventState::send`] and related functions.
 #[non_exhaustive]
 pub enum Role<'a> {
+    /// The widget does not present any semantics under introspection
+    ///
+    /// This is equivalent to the [ARIA presentation role]: the widget will be
+    /// ignored by accessibility tools, while child widgets remain visible.
+    ///
+    /// [ARIA presentation role]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/presentation_role
+    None,
     /// Role is unspecified or no listed role is applicable
+    ///
+    /// Unlike [`Role::None`], the widget and its attached properties (e.g.
+    /// label) will be visible to accessibility tools.
     Unknown,
     /// A text label with the given contents, usually (but not necessarily) short and fixed
     Label(&'a str),
@@ -251,8 +261,7 @@ impl<'a> Role<'a> {
         use accesskit::Role as R;
 
         match self {
-            // TODO: do we want to automatically use role GenericContainer?
-            // Role::Unknown if has_children => R::GenericContainer,
+            Role::None => R::GenericContainer,
             Role::Unknown | Role::Grip => R::Unknown,
             Role::Label(_) | Role::AccessLabel(_, _) | Role::TextLabel { .. } => R::Label,
             Role::Button => R::Button,
@@ -296,7 +305,7 @@ impl<'a> Role<'a> {
         }
 
         match *self {
-            Role::Unknown | Role::Border | Role::Grip => (),
+            Role::None | Role::Unknown | Role::Border | Role::Grip => (),
             Role::Button | Role::Tab => {
                 node.add_action(Action::Click);
             }

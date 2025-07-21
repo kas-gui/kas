@@ -94,7 +94,11 @@ pub trait Tile: Layout {
     ///
     /// This descriptor supports accessibility tooling and UI introspection.
     ///
-    /// The default implementation simply returns [`Role::Unknown`].
+    /// ## Default implementation
+    ///
+    /// If the widget has children with macro-defined layout, the `#[widget]`
+    /// macro will implement this method to return [`Role::None`]; otherwise,
+    /// the default implementation simply returns [`Role::Unknown`].
     fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
         let _ = cx;
         Role::Unknown
