@@ -6,13 +6,13 @@
 //! Widget roles
 
 use crate::Id;
-#[allow(unused)] use crate::Tile;
 use crate::dir::Direction;
 #[allow(unused)] use crate::event::EventState;
 use crate::event::Key;
 use crate::geom::Offset;
 #[allow(unused)]
 use crate::messages::{DecrementStep, IncrementStep, SetValueF64};
+#[allow(unused)] use crate::{Layout, Tile};
 
 /// Describes a widget's purpose and capabilities
 ///
@@ -118,6 +118,11 @@ pub enum Role<'a> {
         /// [`kas::text::SelectionHelper`].)
         sel_pos: usize,
     },
+    /// A gripable handle
+    ///
+    /// This is a part of a slider, scroll-bar, splitter or similar widget which
+    /// can be dragged by the mouse. Its [`Layout::rect`] may be queried.
+    Grip,
     /// A slider input
     ///
     /// Note that values may not be finite; for example `max: f64::INFINITY`.
@@ -248,7 +253,7 @@ impl<'a> Role<'a> {
         match self {
             // TODO: do we want to automatically use role GenericContainer?
             // Role::Unknown if has_children => R::GenericContainer,
-            Role::Unknown => R::Unknown,
+            Role::Unknown | Role::Grip => R::Unknown,
             Role::Label(_) | Role::AccessLabel(_, _) | Role::TextLabel { .. } => R::Label,
             Role::Button => R::Button,
             Role::CheckBox(_) => R::CheckBox,
@@ -291,7 +296,7 @@ impl<'a> Role<'a> {
         }
 
         match *self {
-            Role::Unknown | Role::Border => (),
+            Role::Unknown | Role::Border | Role::Grip => (),
             Role::Button | Role::Tab => {
                 node.add_action(Action::Click);
             }
