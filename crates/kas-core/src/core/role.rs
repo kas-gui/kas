@@ -10,6 +10,7 @@ use crate::dir::Direction;
 #[allow(unused)] use crate::event::EventState;
 use crate::event::Key;
 use crate::geom::Offset;
+use crate::layout::GridCellInfo;
 #[allow(unused)]
 use crate::messages::{DecrementStep, IncrementStep, SetValueF64};
 #[allow(unused)] use crate::{Layout, Tile};
@@ -183,15 +184,41 @@ pub enum Role<'a> {
     ///
     /// Child nodes should (but are not required to) use [`Role::OptionListItem`].
     OptionList {
-        /// The number of items in the list, if available
+        /// The number of items in the list, if known
         len: Option<usize>,
     },
     /// An item within a list
     OptionListItem {
-        /// Index in the list, if available
+        /// Index in the list, if known
         ///
         /// Note that this may change frequently, thus is not a useful key.
         index: Option<usize>,
+        /// Whether the item is currently selected, if applicable.
+        ///
+        /// > When deciding whether to set this value to `false` or `None`,
+        /// consider whether it would be appropriate for a screen reader to
+        /// announce “not selected”.
+        ///
+        /// See also [`accesskit::Node::is_selected`](https://docs.rs/accesskit/latest/accesskit/struct.Node.html#method.is_selected).
+        selected: Option<bool>,
+    },
+    /// A grid of possibly selectable items
+    ///
+    /// Note that this role should only be used where it is desirable to expose
+    /// the grid as an element. In other cases (where a grid is used merely as
+    /// a tool to place elements next to each other), use [`Role::None`].
+    ///
+    /// Child nodes should (but are not required to) use [`Role::GridCell`].
+    Grid {
+        /// The number of columns in the grid, if known
+        columns: Option<usize>,
+        /// The number of rows in the grid, if known
+        rows: Option<usize>,
+    },
+    /// An item within a list
+    GridCell {
+        /// Grid cell index and span, if known
+        info: Option<GridCellInfo>,
         /// Whether the item is currently selected, if applicable.
         ///
         /// > When deciding whether to set this value to `false` or `None`,
@@ -313,6 +340,8 @@ impl<'a> Role<'a> {
             Role::Border => R::Unknown,
             Role::OptionList { .. } => R::ListBox,
             Role::OptionListItem { .. } => R::ListBoxOption,
+            Role::Grid { .. } => R::Grid,
+            Role::GridCell { .. } => R::Cell,
             Role::MenuBar => R::MenuBar,
             Role::Menu { .. } => R::Menu,
             Role::ComboBox { .. } => R::ComboBox,
@@ -418,6 +447,29 @@ impl<'a> Role<'a> {
             Role::OptionListItem { index, selected } => {
                 if let Some(index) = index {
                     node.set_position_in_set(index);
+                }
+                if let Some(state) = selected {
+                    node.set_selected(state);
+                }
+            }
+            Role::Grid { columns, rows } => {
+                if let Some(cols) = columns {
+                    node.set_column_count(cols);
+                }
+                if let Some(rows) = rows {
+                    node.set_row_count(rows);
+                }
+            }
+            Role::GridCell { info, selected } => {
+                if let Some(info) = info {
+                    node.set_column_index(info.col.cast());
+                    if info.last_col > info.col {
+                        node.set_column_span((info.last_col + 1 - info.col).cast());
+                    }
+                    node.set_row_index(info.row.cast());
+                    if info.last_row > info.row {
+                        node.set_row_span((info.last_row + 1 - info.row).cast());
+                    }
                 }
                 if let Some(state) = selected {
                     node.set_selected(state);

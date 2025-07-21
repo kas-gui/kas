@@ -9,7 +9,7 @@ use super::*;
 use kas::NavAdvance;
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, CursorIcon, FocusSource, Scroll, TimerHandle};
-use kas::layout::solve_size_rules;
+use kas::layout::{GridCellInfo, solve_size_rules};
 use kas::prelude::*;
 use kas::theme::SelectionStyle;
 #[allow(unused)] // doc links
@@ -25,10 +25,79 @@ struct Dim {
     cols: i32,
 }
 
-#[derive(Clone, Debug, Default)]
-struct WidgetData<K, W> {
+#[impl_self]
+mod GridCell {
+    /// A wrapper for selectable items
+    ///
+    /// This widget adds a thin frame around contents, supporting navigation
+    /// focus and activation.
+    ///
+    /// # Messages
+    ///
+    /// When activated, this widget pushes [`Select`] to the message stack.
+    ///
+    /// [`Select`]: kas::messages::Select
+    #[derive(Clone, Default)]
+    #[widget]
+    #[layout(frame!(self.inner).with_style(kas::theme::FrameStyle::NavFocus))]
+    struct GridCell<W: Widget> {
+        core: widget_core!(),
+        col: u32,
+        row: u32,
+        selected: Option<bool>,
+        /// The inner widget
+        #[widget]
+        inner: W,
+    }
+
+    impl Self {
+        /// Construct a frame
+        #[inline]
+        fn new(inner: W) -> Self {
+            GridCell {
+                core: Default::default(),
+                col: 0,
+                row: 0,
+                selected: None,
+                inner,
+            }
+        }
+    }
+
+    impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::GridCell {
+                info: Some(GridCellInfo::new(self.col, self.row)),
+                selected: self.selected,
+            }
+        }
+
+        fn navigable(&self) -> bool {
+            true
+        }
+    }
+
+    impl Events for Self {
+        type Data = W::Data;
+
+        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
+            match event {
+                Event::Command(cmd, code) if cmd.is_activate() => {
+                    cx.depress_with_key(self.id(), code);
+                    cx.push(kas::messages::Select);
+                    Used
+                }
+                _ => Unused,
+            }
+        }
+    }
+}
+
+#[derive(Clone, Default)]
+#[autoimpl(Debug ignore self.item where K: trait)]
+struct WidgetData<K, W: Widget> {
     key: Option<K>,
-    widget: W,
+    item: GridCell<W>,
 }
 
 /// Index of a grid cell
@@ -331,14 +400,14 @@ mod GridView {
                         let id = key.make_id(self.id_ref());
                         let w = &mut self.widgets[i];
                         if w.key.as_ref() != Some(&key) {
-                            self.driver.set_key(&mut w.widget, &key);
+                            self.driver.set_key(&mut w.item.inner, &key);
 
                             if let Some(item) = self.clerk.item(data, &key) {
-                                cx.configure(w.widget.as_node(item), id);
+                                cx.configure(w.item.as_node(item), id);
 
                                 w.key = Some(key);
                                 solve_size_rules(
-                                    &mut w.widget,
+                                    &mut w.item,
                                     cx.size_cx(),
                                     Some(self.child_size.0),
                                     Some(self.child_size.1),
@@ -347,11 +416,11 @@ mod GridView {
                                 w.key = None; // disables drawing and clicking
                             }
                         } else if full && let Some(item) = self.clerk.item(data, &key) {
-                            cx.update(w.widget.as_node(item));
+                            cx.update(w.item.as_node(item));
                         }
 
                         if w.key.is_some() {
-                            w.widget.set_rect(cx, solver.rect(cell), self.align_hints);
+                            w.item.set_rect(cx, solver.rect(cell), self.align_hints);
                         }
                     } else {
                         self.widgets[i].key = None;
@@ -427,7 +496,7 @@ mod GridView {
             let mut rules = SizeRules::EMPTY;
             for w in self.widgets.iter_mut() {
                 if w.key.is_some() {
-                    let child_rules = w.widget.size_rules(sizer.re(), axis);
+                    let child_rules = w.item.size_rules(sizer.re(), axis);
                     child_size_min = child_size_min.min(child_rules.min_size());
                     rules = rules.max(child_rules);
                 }
@@ -489,7 +558,7 @@ mod GridView {
                 );
                 self.widgets.resize_with(req_widgets, || WidgetData {
                     key: None,
-                    widget: self.driver.make(&C::Key::default()),
+                    item: GridCell::new(self.driver.make(&C::Key::default())),
                 });
 
                 cx.request_frame_timer(self.id(), TIMER_UPDATE_WIDGETS);
@@ -516,7 +585,7 @@ mod GridView {
                     let w = &mut self.widgets[i];
                     if w.key.is_some() {
                         let pos = pos_start + skip.cwise_mul(Size(ci.cast(), ri.cast()));
-                        w.widget
+                        w.item
                             .set_rect(cx, Rect::new(pos, child_size), self.align_hints);
                     }
                 }
@@ -532,11 +601,11 @@ mod GridView {
                     if let Some(ref key) = child.key {
                         // Note: we don't know which widgets within 0..num are
                         // visible, so check intersection before drawing:
-                        if rect.intersection(&child.widget.rect()).is_some() {
+                        if rect.intersection(&child.item.rect()).is_some() {
                             if self.selection.contains(key) {
-                                draw.selection(child.widget.rect(), self.sel_style);
+                                draw.selection(child.item.rect(), self.sel_style);
                             }
-                            child.widget.draw(draw.re());
+                            child.item.draw(draw.re());
                         }
                     }
                 }
@@ -545,6 +614,13 @@ mod GridView {
     }
 
     impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::Grid {
+                columns: Some(self.data_len.0.cast()),
+                rows: Some(self.data_len.1.cast()),
+            }
+        }
+
         #[inline]
         fn child_indices(&self) -> ChildIndices {
             (0..self.cur_end()).into()
@@ -553,7 +629,7 @@ mod GridView {
             self.widgets
                 .get(index)
                 .filter(|w| w.key.is_some())
-                .map(|w| w.widget.as_tile())
+                .map(|w| w.item.as_tile())
         }
         fn find_child_index(&self, id: &Id) -> Option<usize> {
             let key = C::Key::reconstruct_key(self.id_ref(), id);
@@ -582,7 +658,7 @@ mod GridView {
             let coord = coord + self.scroll.offset();
             for child in &self.widgets[..num] {
                 if child.key.is_some()
-                    && let Some(id) = child.widget.try_probe(coord)
+                    && let Some(id) = child.item.try_probe(coord)
                 {
                     return id;
                 }
@@ -613,7 +689,7 @@ mod GridView {
                 let len = self.ideal_len.cols * self.ideal_len.rows;
                 self.widgets.resize_with(len.cast(), || WidgetData {
                     key: None,
-                    widget: self.driver.make(&C::Key::default()),
+                    item: GridCell::new(self.driver.make(&C::Key::default())),
                 });
                 self.alloc_len = self.ideal_len;
             }
@@ -628,7 +704,7 @@ mod GridView {
                     && let Some(item) = self.clerk.item(data, key)
                 {
                     let id = key.make_id(&id);
-                    cx.configure(w.widget.as_node(item), id);
+                    cx.configure(w.item.as_node(item), id);
                 }
             }
         }
@@ -703,7 +779,7 @@ mod GridView {
                         }
 
                         if w.key.is_some() {
-                            cx.next_nav_focus(w.widget.id(), false, FocusSource::Key);
+                            cx.next_nav_focus(w.item.id(), false, FocusSource::Key);
                         }
                         Used
                     } else {
@@ -719,7 +795,7 @@ mod GridView {
                     if let Some((index, ref key)) = self.press_target {
                         let w = &mut self.widgets[index];
                         if w.key.as_ref().map(|k| k == key).unwrap_or(false) {
-                            cx.next_nav_focus(w.widget.id(), false, FocusSource::Pointer);
+                            cx.next_nav_focus(w.item.id(), false, FocusSource::Pointer);
                         }
                     }
 
@@ -736,7 +812,7 @@ mod GridView {
                             && !matches!(self.sel_mode, SelectionMode::None)
                             && !self.scroll.is_kinetic_scrolling()
                             && w.key.as_ref().map(|k| k == key).unwrap_or(false)
-                            && w.widget.rect().contains(press.coord + self.scroll.offset())
+                            && w.item.rect().contains(press.coord + self.scroll.offset())
                         {
                             cx.push(kas::messages::Select);
                         }
@@ -820,7 +896,7 @@ mod GridView {
                 && let Some(ref key) = w.key
                 && let Some(item) = self.clerk.item(data, key)
             {
-                return Some(w.widget.as_node(item));
+                return Some(w.item.as_node(item));
             }
 
             None
