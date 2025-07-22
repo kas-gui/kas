@@ -80,7 +80,7 @@ impl DataClerk<GridIndex> for TableCache {
 fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
-    let table = GridView::new(TableCache::default(), driver::NavView)
+    let table = GridView::new(TableCache::default(), driver::View)
         .with_num_visible(12, 12)
         .with_selection_mode(SelectionMode::Single);
     let table = ScrollBars::new(table);

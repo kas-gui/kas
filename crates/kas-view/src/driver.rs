@@ -9,16 +9,15 @@
 //! controllers. Implementations define the view (using widgets) and
 //! message handling (mapping widget messages to actions).
 //!
-//! Several implementations are provided to cover simpler cases:
-//!
-//! -   [`View`] is the default, providing a simple read-only view over content
-//! -   [`NavView`] is like [`View`], but using keyboard navigable widgets
+//! A basic implementation is provided: [`View`] provides a simple read-only
+//! view over content (text labels in all cases except `bool`, which uses a
+//! read-only [`CheckBox`]).
 //!
 //! Intended usage is to import the module name rather than its contents, thus
 //! allowing referal to e.g. `driver::View`.
 
 use kas::prelude::*;
-use kas_widgets::{CheckBox, NavFrame, Text};
+use kas_widgets::{CheckBox, Text};
 use std::default::Default;
 
 /// View widget driver
@@ -85,17 +84,6 @@ pub trait Driver<Key, Item> {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct View;
 
-/// Default view widget constructor supporting keyboard navigation
-///
-/// This struct implements [`Driver`], using a default widget for the data type
-/// which also supports keyboard navigation:
-///
-/// -   [`kas_widgets::NavFrame`] around a [`kas_widgets::Text`] for `String`, `&str`,
-///     integer and float types
-/// -   [`kas_widgets::CheckBox`] (read-only) for the bool type
-#[derive(Clone, Copy, Debug, Default)]
-pub struct NavView;
-
 macro_rules! impl_via_to_string {
     ($t:ty) => {
         impl<Key> Driver<Key, $t> for View {
@@ -105,15 +93,6 @@ macro_rules! impl_via_to_string {
             }
             fn set_key(&mut self, _: &mut Self::Widget, _: &Key) {
                 // Text has no metadata that needs to be reset
-            }
-        }
-        impl<Key> Driver<Key, $t> for NavView {
-            type Widget = NavFrame<Text<$t, String>>;
-            fn make(&mut self, _: &Key) -> Self::Widget {
-                NavFrame::new(Text::new(|_, data: &$t| data.to_string()))
-            }
-            fn set_key(&mut self, _: &mut Self::Widget, _: &Key) {
-                // NavFrame and Text have no metadata that needs to be reset
             }
         }
     };
@@ -128,16 +107,6 @@ impl_via_to_string!(u8, u16, u32, u64, u128, usize);
 impl_via_to_string!(f32, f64);
 
 impl<Key> Driver<Key, bool> for View {
-    type Widget = CheckBox<bool>;
-    fn make(&mut self, _: &Key) -> Self::Widget {
-        CheckBox::new(|_, data: &bool| *data).with_editable(false)
-    }
-    fn set_key(&mut self, _: &mut Self::Widget, _: &Key) {
-        // CheckBox has no metadata that needs to be reset
-    }
-}
-
-impl<Key> Driver<Key, bool> for NavView {
     type Widget = CheckBox<bool>;
     fn make(&mut self, _: &Key) -> Self::Widget {
         CheckBox::new(|_, data: &bool| *data).with_editable(false)
