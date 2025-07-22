@@ -65,7 +65,8 @@ mod GridCell {
     }
 
     impl Tile for Self {
-        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+        fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
+            cx.set_label(self.inner.id());
             Role::GridCell {
                 info: Some(GridCellInfo::new(self.col, self.row)),
                 selected: self.selected,

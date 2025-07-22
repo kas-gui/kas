@@ -58,7 +58,8 @@ mod ListItem {
     }
 
     impl Tile for Self {
-        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+        fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
+            cx.set_label(self.inner.id());
             Role::OptionListItem {
                 index: Some(self.index),
                 selected: self.selected,
