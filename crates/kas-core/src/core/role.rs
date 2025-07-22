@@ -398,6 +398,7 @@ impl<'a> Role<'a> {
                 node.set_scroll_y_min(0.0);
                 node.set_scroll_x_max(max_offset.0.cast());
                 node.set_scroll_y_max(max_offset.1.cast());
+                node.set_clips_children();
             }
             Role::ScrollBar {
                 direction,

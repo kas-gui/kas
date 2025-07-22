@@ -420,7 +420,10 @@ mod EditBox {
 
     impl Tile for Self {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
-            Role::Border
+            Role::ScrollRegion {
+                offset: self.scroll_offset(),
+                max_offset: self.max_scroll_offset(),
+            }
         }
 
         fn translation(&self, index: usize) -> Offset {
@@ -482,6 +485,31 @@ mod EditBox {
                 .set_sizes(self.rect().size, self.inner.rect().size);
             self.scroll.scroll(cx, self.id(), self.rect(), scroll);
             self.update_scroll_bar(cx);
+        }
+    }
+
+    impl Scrollable for Self {
+        fn scroll_axes(&self, size: Size) -> (bool, bool) {
+            let max = self.max_scroll_offset();
+            (max.0 > size.0, max.1 > size.1)
+        }
+
+        fn max_scroll_offset(&self) -> Offset {
+            self.scroll.max_offset()
+        }
+
+        fn scroll_offset(&self) -> Offset {
+            self.scroll.offset()
+        }
+
+        fn set_scroll_offset(&mut self, cx: &mut EventCx, offset: Offset) -> Offset {
+            let action = self.scroll.set_offset(offset);
+            let offset = self.scroll.offset();
+            if !action.is_empty() {
+                cx.action(&self, action);
+                self.vert_bar.set_value(cx, offset.1);
+            }
+            offset
         }
     }
 
@@ -887,7 +915,6 @@ mod EditField {
         }
 
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
-            // TODO: this is also a ScrollRegion!
             Role::TextInput {
                 text: self.text.as_str(),
                 multi_line: self.multi_line(),
