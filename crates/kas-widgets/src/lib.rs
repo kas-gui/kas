@@ -21,7 +21,7 @@
 //!
 //! ## Container widgets
 //!
-//! -   [`Frame`], [`NavFrame`]: frames around content
+//! -   [`Frame`]: a frame around content
 //! -   [`ScrollRegion`], [`ScrollBarRegion`]: larger on the inside
 //! -   [`Stack`], [`TabStack`]: a stack of widgets in the same rect
 //! -   [`List`]: a row / column of children

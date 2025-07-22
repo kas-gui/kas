@@ -196,8 +196,8 @@ pub enum Role<'a> {
         /// Whether the item is currently selected, if applicable.
         ///
         /// > When deciding whether to set this value to `false` or `None`,
-        /// consider whether it would be appropriate for a screen reader to
-        /// announce “not selected”.
+        /// > consider whether it would be appropriate for a screen reader to
+        /// > announce “not selected”.
         ///
         /// See also [`accesskit::Node::is_selected`](https://docs.rs/accesskit/latest/accesskit/struct.Node.html#method.is_selected).
         selected: Option<bool>,
@@ -222,8 +222,8 @@ pub enum Role<'a> {
         /// Whether the item is currently selected, if applicable.
         ///
         /// > When deciding whether to set this value to `false` or `None`,
-        /// consider whether it would be appropriate for a screen reader to
-        /// announce “not selected”.
+        /// > consider whether it would be appropriate for a screen reader to
+        /// > announce “not selected”.
         ///
         /// See also [`accesskit::Node::is_selected`](https://docs.rs/accesskit/latest/accesskit/struct.Node.html#method.is_selected).
         selected: Option<bool>,
