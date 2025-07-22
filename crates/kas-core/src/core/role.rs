@@ -156,6 +156,8 @@ pub enum Role<'a> {
         step: f64,
         /// Current value
         value: f64,
+        /// Orientation (direction of increasing values)
+        direction: Direction,
     },
     /// A spinner: numeric edit box with up and down buttons
     ///
@@ -177,9 +179,12 @@ pub enum Role<'a> {
         value: f64,
     },
     /// A progress bar
-    ///
-    /// The reported value should be between `0.0` and `1.0`.
-    ProgressBar(f32),
+    ProgressBar {
+        /// The reported value should be between `0.0` and `1.0`.
+        fraction: f32,
+        /// Orientation (direction of increasing values)
+        direction: Direction,
+    },
     /// A list of possibly selectable items
     ///
     /// Note that this role should only be used where it is desirable to expose
@@ -190,6 +195,8 @@ pub enum Role<'a> {
     OptionList {
         /// The number of items in the list, if known
         len: Option<usize>,
+        /// Orientation
+        direction: Direction,
     },
     /// An item within a list
     OptionListItem {
@@ -340,7 +347,7 @@ impl<'a> Role<'a> {
             } => R::MultilineTextInput,
             Role::Slider { .. } => R::Slider,
             Role::SpinButton { .. } => R::SpinButton,
-            Role::ProgressBar(_) => R::ProgressIndicator,
+            Role::ProgressBar { .. } => R::ProgressIndicator,
             Role::Border => R::Unknown,
             Role::OptionList { .. } => R::ListBox,
             Role::OptionListItem { .. } => R::ListBoxOption,
@@ -420,6 +427,7 @@ impl<'a> Role<'a> {
                 max,
                 step,
                 value,
+                ..
             }
             | Role::SpinButton {
                 min,
@@ -440,15 +448,23 @@ impl<'a> Role<'a> {
                     node.set_numeric_value_step(step);
                 }
                 node.set_numeric_value(value);
+                if let Role::Slider { direction, .. } = self {
+                    node.set_orientation((*direction).into());
+                }
             }
-            Role::ProgressBar(value) => {
+            Role::ProgressBar {
+                fraction,
+                direction,
+            } => {
                 node.set_max_numeric_value(1.0);
-                node.set_numeric_value(value.cast());
+                node.set_numeric_value(fraction.cast());
+                node.set_orientation(direction.into());
             }
-            Role::OptionList { len } => {
+            Role::OptionList { len, direction } => {
                 if let Some(len) = len {
                     node.set_size_of_set(len);
                 }
+                node.set_orientation(direction.into());
             }
             Role::OptionListItem { index, selected } => {
                 if let Some(index) = index {

@@ -313,6 +313,7 @@ mod Slider {
                 max: self.range.1.cast(),
                 step: self.step.cast(),
                 value: self.value.cast(),
+                direction: self.direction.as_direction(),
             }
         }
 

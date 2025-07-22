@@ -90,7 +90,10 @@ mod ProgressBar {
 
     impl Tile for Self {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
-            Role::ProgressBar(self.value)
+            Role::ProgressBar {
+                fraction: self.value,
+                direction: self.direction.as_direction(),
+            }
         }
     }
 

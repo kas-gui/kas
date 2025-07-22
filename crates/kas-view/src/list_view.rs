@@ -659,6 +659,7 @@ mod ListView {
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::OptionList {
                 len: Some(self.data_len.cast()),
+                direction: self.direction.as_direction(),
             }
         }
 
