@@ -344,6 +344,8 @@ mod EditBox {
     /// [`ReplaceSelectedText`] may be used to replace selected text, where
     /// [`Self::is_editable`]. This triggers the action handlers
     /// [`EditGuard::edit`] followed by [`EditGuard::activate`].
+    ///
+    /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
     #[autoimpl(Clone, Default, Debug where G: trait)]
     #[widget]
     pub struct EditBox<G: EditGuard = DefaultGuard<()>> {
@@ -466,14 +468,14 @@ mod EditBox {
                 let action = self.scroll.set_offset(offset);
                 cx.action(&self, action);
                 self.update_scroll_bar(cx);
-            }
-
-            if self.is_editable()
+            } else if self.is_editable()
                 && let Some(SetValueText(string)) = cx.try_pop()
             {
                 self.set_string(cx, string);
                 G::edit(&mut self.inner, cx, data);
                 G::activate(&mut self.inner, cx, data);
+            } else if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
+                self.set_scroll_offset(cx, offset);
             }
             // TODO: pass ReplaceSelectedText to inner widget?
         }

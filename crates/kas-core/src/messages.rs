@@ -11,11 +11,11 @@
 //! [`Erased`] is the type-erasure container allowing any type supporting
 //! [`Any`] + [`Debug`] to be sent or placed on the message stack.
 
+use crate::event::PhysicalKey;
 #[allow(unused)] use crate::event::{EventCx, EventState};
+use crate::geom::Offset;
 use std::any::Any;
 use std::fmt::Debug;
-
-use crate::event::PhysicalKey;
 
 /// Synthetically trigger a "click" action
 ///
@@ -75,6 +75,10 @@ pub struct Collapse;
 /// Example: a list supports selection; a child emits this to cause itself to be selected.
 #[derive(Clone, Debug)]
 pub struct Select;
+
+/// Set the scroll offset
+#[derive(Clone, Debug)]
+pub struct SetScrollOffset(pub Offset);
 
 trait AnyDebug: Any + Debug {}
 impl<T: Any + Debug> AnyDebug for T {}

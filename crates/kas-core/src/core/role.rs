@@ -70,6 +70,10 @@ pub enum Role<'a> {
     /// A visible border surrounding or between other items
     Border,
     /// A scrollable region
+    ///
+    /// ### Messages
+    ///
+    /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
     ScrollRegion {
         /// The current scroll offset (from zero to `max_offset`)
         offset: Offset,
@@ -392,6 +396,7 @@ impl<'a> Role<'a> {
                 node.add_action(Action::ScrollLeft);
                 node.add_action(Action::ScrollRight);
                 node.add_action(Action::ScrollUp);
+                node.add_action(Action::SetScrollOffset);
                 node.set_scroll_x(offset.0.cast());
                 node.set_scroll_y(offset.1.cast());
                 node.set_scroll_x_min(0.0);
