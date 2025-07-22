@@ -54,7 +54,9 @@ jobs:
           cargo test --manifest-path crates/kas-dylib/Cargo.toml --features kas-core/wayland
           cargo test --manifest-path crates/kas-dylib/Cargo.toml --all-features --features kas-core/x11
       - name: Test kas
-        run: cargo test --features nightly -Zwarnings --config 'build.warnings="deny"'
+        run: |
+          cargo test --lib --bins --features nightly,nightly-diagnostics-pedantic -Zwarnings --config 'build.warnings="deny"'
+          cargo test --benches --examples --tests --features nightly -Zwarnings --config 'build.warnings="deny"'
       - name: Test kas (experimental; some warnings may be expected)
         run: cargo test --features nightly,experimental
       - name: Test examples/mandlebrot
