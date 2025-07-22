@@ -14,6 +14,16 @@ struct WalkCx {
     labelled_by: Option<NodeId>,
 }
 
+impl WalkCx {
+    fn apply_to_node(mut self, node: &mut Node) {
+        if let Some(label) = self.label.take() {
+            node.set_label(label);
+        } else if let Some(id) = self.labelled_by.take() {
+            node.set_labelled_by(vec![id]);
+        }
+    }
+}
+
 impl RoleCx for WalkCx {
     fn set_label_impl(&mut self, label: TextOrSource<'_>) {
         match label {
@@ -37,14 +47,10 @@ fn push_child(
         parent.role_child_properties(&mut cx, index);
 
         let mut node = role.as_accesskit_node(child);
+        cx.apply_to_node(&mut node);
+
         if has_scrollable_parent {
             node.add_action(Action::ScrollIntoView);
-        }
-
-        if let Some(label) = cx.label.take() {
-            node.set_label(label);
-        } else if let Some(id) = cx.labelled_by.take() {
-            node.set_labelled_by(vec![id]);
         }
 
         let children =
@@ -88,13 +94,8 @@ pub(crate) fn window_nodes<Data: 'static>(root: &Window<Data>) -> (Vec<(NodeId, 
 
     let mut cx = WalkCx::default();
     let mut node = root.role(&mut cx).as_accesskit_node(root);
+    cx.apply_to_node(&mut node);
     node.set_children(children);
-
-    if let Some(label) = cx.label.take() {
-        node.set_label(label);
-    } else if let Some(id) = cx.labelled_by.take() {
-        node.set_labelled_by(vec![id]);
-    }
 
     let root_id = root.id_ref().into();
     nodes.push((root_id, node));
