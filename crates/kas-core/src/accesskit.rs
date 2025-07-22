@@ -5,8 +5,8 @@
 
 //! AccessKit widget integration
 
-use crate::{RoleCx, TextOrSource, Tile, TileExt, Window};
-use accesskit::{Node, NodeId};
+use crate::{Role, RoleCx, TextOrSource, Tile, TileExt, Window};
+use accesskit::{Action, Node, NodeId};
 
 #[derive(Default)]
 struct WalkCx {
@@ -24,11 +24,22 @@ impl RoleCx for WalkCx {
     }
 }
 
-fn push_child(parent: &dyn Tile, index: usize, nodes: &mut Vec<(NodeId, Node)>) -> Option<NodeId> {
+fn push_child(
+    parent: &dyn Tile,
+    index: usize,
+    nodes: &mut Vec<(NodeId, Node)>,
+    has_scrollable_parent: bool,
+) -> Option<NodeId> {
     if let Some(child) = parent.get_child(index) {
         let mut cx = WalkCx::default();
-        let mut node = child.role(&mut cx).as_accesskit_node(child);
+        let role = child.role(&mut cx);
+        let child_is_scrollable = matches!(role, Role::ScrollRegion { .. });
         parent.role_child_properties(&mut cx, index);
+
+        let mut node = role.as_accesskit_node(child);
+        if has_scrollable_parent {
+            node.add_action(Action::ScrollIntoView);
+        }
 
         if let Some(label) = cx.label.take() {
             node.set_label(label);
@@ -36,7 +47,8 @@ fn push_child(parent: &dyn Tile, index: usize, nodes: &mut Vec<(NodeId, Node)>) 
             node.set_labelled_by(vec![id]);
         }
 
-        let children = push_all_children(child, nodes);
+        let children =
+            push_all_children(child, nodes, has_scrollable_parent || child_is_scrollable);
         if !children.is_empty() {
             node.set_children(children);
         }
@@ -49,22 +61,26 @@ fn push_child(parent: &dyn Tile, index: usize, nodes: &mut Vec<(NodeId, Node)>) 
     }
 }
 
-fn push_all_children(tile: &dyn Tile, nodes: &mut Vec<(NodeId, Node)>) -> Vec<NodeId> {
+fn push_all_children(
+    tile: &dyn Tile,
+    nodes: &mut Vec<(NodeId, Node)>,
+    has_scrollable_parent: bool,
+) -> Vec<NodeId> {
     tile.child_indices()
         .into_iter()
-        .flat_map(|index| push_child(tile, index, nodes))
+        .flat_map(|index| push_child(tile, index, nodes, has_scrollable_parent))
         .collect()
 }
 
 /// Returns a list of nodes and the root node's identifier
 pub(crate) fn window_nodes<Data: 'static>(root: &Window<Data>) -> (Vec<(NodeId, Node)>, NodeId) {
     let mut nodes = vec![];
-    let mut children = push_all_children(root.as_tile(), &mut nodes);
+    let mut children = push_all_children(root.as_tile(), &mut nodes, false);
 
     for popup in root.iter_popups() {
         if let Some(tile) = root.find_tile(&popup.id) {
             let index = crate::POPUP_INNER_INDEX;
-            if let Some(id) = push_child(tile, index, &mut nodes) {
+            if let Some(id) = push_child(tile, index, &mut nodes, false) {
                 children.push(id);
             }
         }
