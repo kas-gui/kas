@@ -619,7 +619,8 @@ mod GridView {
     }
 
     impl Tile for Self {
-        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+        fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
+            cx.set_scroll_offset(self.scroll_offset(), self.max_scroll_offset());
             Role::Grid {
                 columns: Some(self.data_len.0.cast()),
                 rows: Some(self.data_len.1.cast()),

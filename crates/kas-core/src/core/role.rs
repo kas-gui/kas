@@ -7,8 +7,8 @@
 
 use crate::Id;
 use crate::dir::Direction;
-#[allow(unused)] use crate::event::EventState;
 use crate::event::Key;
+#[allow(unused)] use crate::event::{Event, EventState};
 use crate::geom::Offset;
 use crate::layout::GridCellInfo;
 #[allow(unused)]
@@ -70,6 +70,8 @@ pub enum Role<'a> {
     /// A visible border surrounding or between other items
     Border,
     /// A scrollable region
+    ///
+    /// The widget should support [`Event::Scroll`].
     ///
     /// ### Messages
     ///
@@ -399,18 +401,7 @@ impl<'a> Role<'a> {
                 node.set_toggled(state.into());
             }
             Role::ScrollRegion { offset, max_offset } => {
-                node.add_action(Action::ScrollDown);
-                node.add_action(Action::ScrollLeft);
-                node.add_action(Action::ScrollRight);
-                node.add_action(Action::ScrollUp);
-                node.add_action(Action::SetScrollOffset);
-                node.set_scroll_x(offset.0.cast());
-                node.set_scroll_y(offset.1.cast());
-                node.set_scroll_x_min(0.0);
-                node.set_scroll_y_min(0.0);
-                node.set_scroll_x_max(max_offset.0.cast());
-                node.set_scroll_y_max(max_offset.1.cast());
-                node.set_clips_children();
+                crate::accesskit::apply_scroll_props_to_node(offset, max_offset, &mut node);
             }
             Role::ScrollBar {
                 direction,
@@ -520,6 +511,13 @@ pub trait RoleCx {
     /// not the primary value, for example an image's alternate text or a label
     /// next to a control.
     fn set_label_impl(&mut self, label: TextOrSource<'_>);
+
+    /// Set scroll offset
+    ///
+    /// This sets the current `scroll_offset` and the `max_scroll_offset`. The
+    /// minimum offset is assumed to be zero. It is expected that this supports
+    /// setting the scroll offset and [`Event::Scroll`].
+    fn set_scroll_offset(&mut self, scroll_offset: Offset, max_scroll_offset: Offset);
 }
 
 /// Convenience methods over a [`RoleCx`]

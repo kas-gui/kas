@@ -5,13 +5,39 @@
 
 //! AccessKit widget integration
 
+use crate::cast::Cast;
+use crate::geom::Offset;
 use crate::{Role, RoleCx, TextOrSource, Tile, TileExt, Window};
 use accesskit::{Action, Node, NodeId};
+
+pub(crate) fn apply_scroll_props_to_node(offset: Offset, max_offset: Offset, node: &mut Node) {
+    if offset.1 < max_offset.1 {
+        node.add_action(Action::ScrollDown);
+    }
+    if offset.0 > 0 {
+        node.add_action(Action::ScrollLeft);
+    }
+    if offset.0 < max_offset.0 {
+        node.add_action(Action::ScrollRight);
+    }
+    if offset.1 > 0 {
+        node.add_action(Action::ScrollUp);
+    }
+    node.add_action(Action::SetScrollOffset);
+    node.set_scroll_x(offset.0.cast());
+    node.set_scroll_y(offset.1.cast());
+    node.set_scroll_x_min(0.0);
+    node.set_scroll_y_min(0.0);
+    node.set_scroll_x_max(max_offset.0.cast());
+    node.set_scroll_y_max(max_offset.1.cast());
+    node.set_clips_children();
+}
 
 #[derive(Default)]
 struct WalkCx {
     label: Option<String>,
     labelled_by: Option<NodeId>,
+    scroll_offset: Option<(Offset, Offset)>,
 }
 
 impl WalkCx {
@@ -20,6 +46,9 @@ impl WalkCx {
             node.set_label(label);
         } else if let Some(id) = self.labelled_by.take() {
             node.set_labelled_by(vec![id]);
+        }
+        if let Some((offset, max_offset)) = self.scroll_offset.take() {
+            apply_scroll_props_to_node(offset, max_offset, node);
         }
     }
 }
@@ -31,6 +60,10 @@ impl RoleCx for WalkCx {
             TextOrSource::Owned(s) => self.label = Some(s),
             TextOrSource::Source(id) => self.labelled_by = Some(id.into()),
         }
+    }
+
+    fn set_scroll_offset(&mut self, offset: Offset, max_offset: Offset) {
+        self.scroll_offset = Some((offset, max_offset));
     }
 }
 
