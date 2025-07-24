@@ -833,10 +833,12 @@ mod EditField {
     /// [`ReplaceSelectedText`] may be used to replace selected text, where
     /// [`Self::is_editable`]. This triggers the action handlers
     /// [`EditGuard::edit`] followed by [`EditGuard::activate`].
-    #[autoimpl(Clone, Debug where G: trait)]
+    #[derive(Clone, Debug)]
     #[widget]
     pub struct EditField<G: EditGuard = DefaultGuard<()>> {
         core: widget_core!(),
+        #[cfg(feature = "accesskit")]
+        id0: Id,
         editable: bool,
         width: (f32, f32),
         lines: (f32, f32),
@@ -917,6 +919,50 @@ mod EditField {
         }
 
         fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            #[cfg(feature = "accesskit")]
+            {
+                use kas::accesskit::{
+                    Action, Node, Role, TextDirection, TextPosition, TextSelection,
+                };
+
+                let role = match self.multi_line() {
+                    false => Role::TextInput,
+                    true => Role::MultilineTextInput,
+                };
+                let mut node = Node::new(role);
+                let bounds = self.rect().cast();
+                node.set_bounds(bounds);
+                node.add_action(Action::Focus);
+                node.add_action(Action::SetValue);
+                node.add_action(Action::ReplaceSelectedText);
+
+                let text0id = (&self.id0).into();
+                let mut text0 = Node::new(Role::TextRun);
+                text0.set_bounds(bounds);
+                // TODO: set properties character_lengths, character_positions, character_widths, word_lengths
+                text0.set_value(self.text.as_str());
+                text0.set_text_direction(match self.text.text_is_rtl() {
+                    false => TextDirection::LeftToRight,
+                    true => TextDirection::RightToLeft,
+                });
+
+                node.push_child(text0id);
+                node.set_text_selection(TextSelection {
+                    anchor: TextPosition {
+                        node: text0id,
+                        character_index: self.selection.sel_pos(),
+                    },
+                    focus: TextPosition {
+                        node: text0id,
+                        character_index: self.selection.edit_pos(),
+                    },
+                });
+
+                let extra = vec![(text0id, text0)];
+                return kas::Role::AccesskitVerbatim { node, extra };
+            }
+
+            #[cfg(not(feature = "accesskit"))]
             Role::TextInput {
                 text: self.text.as_str(),
                 multi_line: self.multi_line(),
@@ -941,6 +987,11 @@ mod EditField {
         }
 
         fn configure(&mut self, cx: &mut ConfigCx) {
+            #[cfg(feature = "accesskit")]
+            {
+                self.id0 = self.id_ref().make_child(0);
+            }
+
             cx.text_configure(&mut self.text);
             G::configure(self, cx);
         }
@@ -1147,6 +1198,8 @@ mod EditField {
         pub fn new(guard: G) -> EditField<G> {
             EditField {
                 core: Default::default(),
+                #[cfg(feature = "accesskit")]
+                id0: Default::default(),
                 editable: true,
                 width: (8.0, 16.0),
                 lines: (1.0, 1.0),
