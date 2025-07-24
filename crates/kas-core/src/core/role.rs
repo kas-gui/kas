@@ -277,8 +277,22 @@ pub enum Role<'a> {
     Splitter,
     /// A window
     Window,
-    /// The special bar at the top of a window titling contents and usually embedding window controls
+    /// The special bar at the top of a window titling contents and usually
+    /// embedding window controls
     TitleBar,
+    /// Return a tree of AccessKit nodes
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
+    #[cfg(feature = "accesskit")]
+    AccesskitVerbatim {
+        /// The node corresponding to this widget
+        node: accesskit::Node,
+        /// Additional nodes
+        ///
+        /// These must all be a descendant of the `node` above and be distinct
+        /// from any children found through [`Tile::child_indices`].
+        extra: Vec<(accesskit::NodeId, accesskit::Node)>,
+    },
 }
 
 /// A copy-on-write text value or a reference to another source
@@ -361,6 +375,8 @@ impl<'a> Role<'a> {
             Role::Splitter => R::Splitter,
             Role::Window => R::Window,
             Role::TitleBar => R::TitleBar,
+            #[cfg(feature = "accesskit")]
+            Role::AccesskitVerbatim { .. } => unreachable!(),
         }
     }
 
@@ -493,6 +509,8 @@ impl<'a> Role<'a> {
                 node.add_action(Action::Collapse);
                 node.set_expanded(expanded);
             }
+            #[cfg(feature = "accesskit")]
+            Role::AccesskitVerbatim { .. } => unreachable!(),
         }
 
         node

@@ -7,8 +7,8 @@
 
 use crate::cast::Cast;
 use crate::geom::Offset;
-use crate::{Role, RoleCx, TextOrSource, Tile, TileExt, Window};
-use accesskit::{Action, Node, NodeId};
+use crate::{RoleCx, TextOrSource, Tile, TileExt, Window};
+pub use accesskit::*;
 
 pub(crate) fn apply_scroll_props_to_node(offset: Offset, max_offset: Offset, node: &mut Node) {
     if offset.1 < max_offset.1 {
@@ -76,10 +76,17 @@ fn push_child(
     if let Some(child) = parent.get_child(index) {
         let mut cx = WalkCx::default();
         let role = child.role(&mut cx);
-        let child_is_scrollable = matches!(role, Role::ScrollRegion { .. });
+        let child_is_scrollable = matches!(role, crate::Role::ScrollRegion { .. });
         parent.role_child_properties(&mut cx, index);
 
-        let mut node = role.as_accesskit_node(child);
+        let mut node;
+        if let crate::Role::AccesskitVerbatim { node: n, extra } = role {
+            nodes.extend(extra);
+            node = n;
+        } else {
+            node = role.as_accesskit_node(child);
+        }
+
         cx.apply_to_node(&mut node);
 
         if has_scrollable_parent {
