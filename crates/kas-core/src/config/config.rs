@@ -36,13 +36,16 @@ pub enum ConfigMsg {
 #[derive(Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Config {
+    #[cfg_attr(feature = "serde", serde(default))]
     pub event: EventConfig,
 
+    #[cfg_attr(feature = "serde", serde(default))]
     pub font: FontConfig,
 
     #[cfg_attr(feature = "serde", serde(default = "Shortcuts::platform_defaults"))]
     pub shortcuts: Shortcuts,
 
+    #[cfg_attr(feature = "serde", serde(default))]
     pub theme: ThemeConfig,
 
     #[cfg_attr(feature = "serde", serde(skip))]
