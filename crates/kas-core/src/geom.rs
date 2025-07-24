@@ -645,7 +645,7 @@ impl std::ops::SubAssign<Offset> for Rect {
 
 #[cfg(feature = "accesskit")]
 mod accesskit_impls {
-    use super::{Coord, Rect};
+    use super::{Coord, Offset, Rect};
     use crate::cast::{Cast, CastApprox, Conv, ConvApprox, Result};
 
     impl ConvApprox<accesskit::Point> for Coord {
@@ -673,6 +673,15 @@ mod accesskit_impls {
             let p2 = Coord(rect.x1.try_cast_approx()?, rect.y1.try_cast_approx()?);
             let size = (p2 - pos).cast();
             Ok(Rect { pos, size })
+        }
+    }
+
+    impl ConvApprox<accesskit::Point> for Offset {
+        fn try_conv_approx(point: accesskit::Point) -> Result<Self> {
+            Ok(Offset(
+                point.x.try_cast_approx()?,
+                point.y.try_cast_approx()?,
+            ))
         }
     }
 }

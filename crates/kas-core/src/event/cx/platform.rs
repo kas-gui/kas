@@ -277,7 +277,12 @@ impl<'a> EventCx<'a> {
                 };
                 self.replay_scroll(widget, id, scroll);
             }
-            AKA::SetScrollOffset => (),
+            AKA::SetScrollOffset => {
+                if let Some(ActionData::SetScrollOffset(point)) = request.data {
+                    let msg = kas::messages::SetScrollOffset(point.cast_approx());
+                    self.send_or_replay(widget, id, Erased::new(msg));
+                }
+            }
             AKA::SetTextSelection => (),
             AKA::SetSequentialFocusNavigationStartingPoint => (),
             AKA::SetValue => {

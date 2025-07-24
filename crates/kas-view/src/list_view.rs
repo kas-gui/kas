@@ -114,6 +114,10 @@ mod ListView {
     /// Optionally, data items may be selected; see [`Self::set_selection_mode`].
     /// If enabled, [`SelectionMsg`] messages are reported; view widgets may
     /// emit [`kas::messages::Select`] to have themselves be selected.
+    ///
+    /// ### Messages
+    ///
+    /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
     #[derive(Clone, Debug)]
     #[widget]
     pub struct ListView<C: DataClerk<usize>, V, D = Direction>
@@ -656,9 +660,11 @@ mod ListView {
     }
 
     impl Tile for Self {
-        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+        fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
+            cx.set_scroll_offset(self.scroll_offset(), self.max_scroll_offset());
             Role::OptionList {
                 len: Some(self.data_len.cast()),
+                direction: self.direction.as_direction(),
             }
         }
 
@@ -868,6 +874,11 @@ mod ListView {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &C::Data) {
+            if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
+                self.set_scroll_offset(cx, offset);
+                return;
+            }
+
             let mut opt_key = None;
             if let Some(index) = cx.last_child() {
                 // Message is from a child

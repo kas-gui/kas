@@ -263,6 +263,10 @@ mod ScrollText {
     ///
     /// Line-wrapping is enabled; default alignment is derived from the script
     /// (usually top-left).
+    ///
+    /// ### Messages
+    ///
+    /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
     #[widget]
     pub struct ScrollText<A, T: FormattableText + 'static> {
         core: widget_core!(),
@@ -420,6 +424,8 @@ mod ScrollText {
                 let offset = Offset(self.scroll.offset().0, y);
                 let action = self.scroll.set_offset(offset);
                 cx.action(self, action);
+            } else if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
+                self.set_scroll_offset(cx, offset);
             }
         }
 

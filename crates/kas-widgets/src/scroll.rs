@@ -23,6 +23,10 @@ mod ScrollRegion {
     ///
     /// Scroll bars are not included; use [`ScrollBarRegion`] if you want those.
     ///
+    /// ### Messages
+    ///
+    /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
+    ///
     /// [`ScrollBarRegion`]: crate::ScrollBarRegion
     #[derive(Clone, Debug, Default)]
     #[widget]
@@ -162,6 +166,12 @@ mod ScrollRegion {
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             self.scroll
                 .scroll_by_event(cx, event, self.id(), self.rect())
+        }
+
+        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
+            if let Some(kas::messages::SetScrollOffset(offset)) = cx.try_pop() {
+                self.set_scroll_offset(cx, offset);
+            }
         }
 
         fn handle_scroll(&mut self, cx: &mut EventCx, _: &Self::Data, scroll: Scroll) {
