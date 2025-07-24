@@ -12,7 +12,7 @@ use crate::cast::{Cast, CastFloat};
 use crate::geom::{Rect, Vec2};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::text::fonts::FontSelector;
-use crate::text::format::{EditableText, FormattableText};
+use crate::text::format::FormattableText;
 use crate::text::*;
 use crate::{Action, Layout};
 
@@ -596,7 +596,7 @@ impl Text<String> {
     /// [`Text::set_text`]. This may change in the future (TODO).
     #[inline]
     pub fn insert_char(&mut self, index: usize, c: char) {
-        self.text.insert_char(index, c);
+        self.text.insert(index, c);
         self.set_max_status(Status::New);
     }
 
@@ -626,7 +626,7 @@ impl Text<String> {
             return false; // no change
         }
 
-        self.text.set_string(text);
+        self.text = text;
         self.set_max_status(Status::New);
         true
     }
@@ -640,7 +640,7 @@ impl Text<String> {
     /// [`Text::set_text`]. This may change in the future (TODO).
     #[inline]
     pub fn swap_string(&mut self, string: &mut String) {
-        self.text.swap_string(string);
+        std::mem::swap(&mut self.text, string);
         self.set_max_status(Status::New);
     }
 }
