@@ -38,30 +38,30 @@ impl NameGenerator {
 #[derive(Copy, Clone, Debug)]
 pub struct CellInfo {
     pub col: u32,
-    pub col_end: u32,
+    pub last_col: u32,
     pub row: u32,
-    pub row_end: u32,
+    pub last_row: u32,
 }
 
 impl CellInfo {
     pub fn new(col: u32, row: u32) -> Self {
         CellInfo {
             col,
-            col_end: col + 1,
+            last_col: col,
             row,
-            row_end: row + 1,
+            last_row: row,
         }
     }
 }
 
 impl Parse for CellInfo {
     fn parse(input: ParseStream) -> Result<Self> {
-        fn parse_end(input: ParseStream, start: u32) -> Result<u32> {
+        fn parse_last(input: ParseStream, start: u32) -> Result<u32> {
             if input.parse::<Token![..=]>().is_ok() {
                 let lit = input.parse::<LitInt>()?;
                 let n: u32 = lit.base10_parse()?;
                 if n >= start {
-                    Ok(n + 1)
+                    Ok(n)
                 } else {
                     Err(Error::new(lit.span(), format!("expected value >= {start}")))
                 }
@@ -71,14 +71,14 @@ impl Parse for CellInfo {
                 let n: u32 = lit.base10_parse()?;
 
                 if plus.is_ok() {
-                    Ok(start + n)
+                    Ok(start + n - 1)
                 } else if n > start {
-                    Ok(n)
+                    Ok(n - 1)
                 } else {
                     Err(Error::new(lit.span(), format!("expected value > {start}")))
                 }
             } else {
-                Ok(start + 1)
+                Ok(start)
             }
         }
 
@@ -86,32 +86,32 @@ impl Parse for CellInfo {
         let _ = parenthesized!(inner in input);
 
         let col = inner.parse::<LitInt>()?.base10_parse()?;
-        let col_end = parse_end(&inner, col)?;
+        let last_col = parse_last(&inner, col)?;
 
         let _ = inner.parse::<Token![,]>()?;
 
         let row = inner.parse::<LitInt>()?.base10_parse()?;
-        let row_end = parse_end(&inner, row)?;
+        let last_row = parse_last(&inner, row)?;
 
         Ok(CellInfo {
             row,
-            row_end,
+            last_row,
             col,
-            col_end,
+            last_col,
         })
     }
 }
 
 impl ToTokens for CellInfo {
     fn to_tokens(&self, toks: &mut Toks) {
-        let (col, col_end) = (self.col, self.col_end);
-        let (row, row_end) = (self.row, self.row_end);
+        let (col, last_col) = (self.col, self.last_col);
+        let (row, last_row) = (self.row, self.last_row);
         toks.append_all(quote! {
             ::kas::layout::GridCellInfo {
                 col: #col,
-                col_end: #col_end,
+                last_col: #last_col,
                 row: #row,
-                row_end: #row_end,
+                last_row: #last_row,
             }
         });
     }
@@ -127,12 +127,12 @@ pub struct GridDimensions {
 
 impl GridDimensions {
     pub fn update(&mut self, cell: &CellInfo) {
-        self.cols = self.cols.max(cell.col_end);
-        if cell.col_end - cell.col > 1 {
+        self.cols = self.cols.max(cell.last_col + 1);
+        if cell.last_col > cell.col {
             self.col_spans += 1;
         }
-        self.rows = self.rows.max(cell.row_end);
-        if cell.row_end - cell.row > 1 {
+        self.rows = self.rows.max(cell.last_row + 1);
+        if cell.last_row > cell.row {
             self.row_spans += 1;
         }
     }

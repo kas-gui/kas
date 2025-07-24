@@ -21,12 +21,12 @@
 //!
 //! ## Container widgets
 //!
-//! -   [`Frame`], [`NavFrame`]: frames around content
+//! -   [`Frame`]: a frame around content
 //! -   [`ScrollRegion`], [`ScrollBarRegion`]: larger on the inside
 //! -   [`Stack`], [`TabStack`]: a stack of widgets in the same rect
 //! -   [`List`]: a row / column of children
 //! -   [`Splitter`]: like [`List`] but with resizing handles
-//! -   [`Grid`]: a container using matrix layout
+//! -   [`Grid`]: a container using grid layout
 //!
 //! ## Controls
 //!
@@ -80,7 +80,6 @@ mod label;
 mod list;
 mod mark;
 pub mod menu;
-mod nav_frame;
 mod progress;
 mod radio_box;
 mod scroll;
@@ -109,7 +108,6 @@ pub use grip::{GripMsg, GripPart};
 pub use label::{AccessLabel, Label};
 pub use list::*;
 pub use mark::{Mark, MarkButton};
-pub use nav_frame::NavFrame;
 pub use progress::ProgressBar;
 pub use radio_box::{RadioBox, RadioButton};
 pub use scroll::ScrollRegion;

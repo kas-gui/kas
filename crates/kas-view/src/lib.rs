@@ -24,7 +24,7 @@
 //! This crate provides the following **view controllers**:
 //!
 //! -   [`ListView`] constructs a row or column view over items indexed by type `usize`
-//! -   [`MatrixView`] constructs a table over items indexed by type `(u32, u32)`
+//! -   [`GridView`] constructs a table over items indexed by type `(u32, u32)`
 //!
 //! ## Driver
 //!
@@ -45,10 +45,10 @@ pub use driver::Driver;
 mod list_view;
 pub use list_view::ListView;
 
-mod matrix_view;
-pub use matrix_view::{MatrixIndex, MatrixView};
+mod grid_view;
+pub use grid_view::{GridIndex, GridView};
 
-/// Used to notify selection and deselection of [`ListView`] and [`MatrixView`] children
+/// Used to notify selection and deselection of [`ListView`] and [`GridView`] children
 #[derive(Clone, Debug)]
 pub enum SelectionMsg<K> {
     /// Selection of item

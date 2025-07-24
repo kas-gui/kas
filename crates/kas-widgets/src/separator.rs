@@ -42,6 +42,12 @@ mod Separator {
         }
     }
 
+    impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::Border
+        }
+    }
+
     impl Events for Self {
         type Data = A;
     }

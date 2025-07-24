@@ -51,6 +51,8 @@ dynamic = ["dep:kas-dylib"]
 
 # Enables better proc-macro diagnostics (including warnings); nightly only.
 nightly-diagnostics = ["kas-core/nightly-diagnostics"]
+# Enables all proc-macro diagnostics, including pedantic warnings; nightly only.
+nightly-diagnostics-pedantic = ["nightly-diagnostics", "kas-core/nightly-diagnostics-pedantic"]
 
 # Use full specialization
 spec = ["kas-core/spec"]

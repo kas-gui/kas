@@ -21,6 +21,12 @@ mod Filler {
         vert: Stretch,
     }
 
+    impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::None
+        }
+    }
+
     impl Layout for Filler {
         fn size_rules(&mut self, _: SizeCx, axis: AxisInfo) -> SizeRules {
             let stretch = if axis.is_horizontal() { self.horiz } else { self.vert };

@@ -213,6 +213,10 @@ mod Grid {
     }
 
     impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::None
+        }
+
         fn probe(&self, coord: Coord) -> Id {
             for n in 0..self.widgets.len() {
                 if let Some(child) = self.widgets.get_tile(n) {
@@ -373,9 +377,9 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     pub fn push_cell_span(&mut self, col: u32, row: u32, col_span: u32, row_span: u32, widget: W) {
         let info = GridCellInfo {
             col,
-            col_end: col + col_span,
+            last_col: col + col_span - 1,
             row,
-            row_end: row + row_span,
+            last_row: row + row_span - 1,
         };
         self.push(info, widget);
     }
@@ -459,7 +463,7 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     /// Get the first index of a child occupying the given cell, if any
     pub fn find_child_cell(&self, col: u32, row: u32) -> Option<usize> {
         for (i, (info, _)) in self.0.iter().enumerate() {
-            if info.col <= col && col < info.col_end && info.row <= row && row < info.row_end {
+            if info.col <= col && col <= info.last_col && info.row <= row && row <= info.last_row {
                 return Some(i);
             }
         }

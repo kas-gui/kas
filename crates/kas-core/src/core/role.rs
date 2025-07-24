@@ -6,13 +6,14 @@
 //! Widget roles
 
 use crate::Id;
-#[allow(unused)] use crate::Tile;
 use crate::dir::Direction;
 #[allow(unused)] use crate::event::EventState;
 use crate::event::Key;
 use crate::geom::Offset;
+use crate::layout::GridCellInfo;
 #[allow(unused)]
 use crate::messages::{DecrementStep, IncrementStep, SetValueF64};
+#[allow(unused)] use crate::{Layout, Tile};
 
 /// Describes a widget's purpose and capabilities
 ///
@@ -26,7 +27,17 @@ use crate::messages::{DecrementStep, IncrementStep, SetValueF64};
 /// below. See also [`EventState::send`] and related functions.
 #[non_exhaustive]
 pub enum Role<'a> {
+    /// The widget does not present any semantics under introspection
+    ///
+    /// This is equivalent to the [ARIA presentation role]: the widget will be
+    /// ignored by accessibility tools, while child widgets remain visible.
+    ///
+    /// [ARIA presentation role]: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/presentation_role
+    None,
     /// Role is unspecified or no listed role is applicable
+    ///
+    /// Unlike [`Role::None`], the widget and its attached properties (e.g.
+    /// label) will be visible to accessibility tools.
     Unknown,
     /// A text label with the given contents, usually (but not necessarily) short and fixed
     Label(&'a str),
@@ -118,6 +129,11 @@ pub enum Role<'a> {
         /// [`kas::text::SelectionHelper`].)
         sel_pos: usize,
     },
+    /// A gripable handle
+    ///
+    /// This is a part of a slider, scroll-bar, splitter or similar widget which
+    /// can be dragged by the mouse. Its [`Layout::rect`] may be queried.
+    Grip,
     /// A slider input
     ///
     /// Note that values may not be finite; for example `max: f64::INFINITY`.
@@ -160,6 +176,58 @@ pub enum Role<'a> {
     ///
     /// The reported value should be between `0.0` and `1.0`.
     ProgressBar(f32),
+    /// A list of possibly selectable items
+    ///
+    /// Note that this role should only be used where it is desirable to expose
+    /// the list as an element. In other cases (where a list is used merely as
+    /// a tool to place elements next to each other), use [`Role::None`].
+    ///
+    /// Child nodes should (but are not required to) use [`Role::OptionListItem`].
+    OptionList {
+        /// The number of items in the list, if known
+        len: Option<usize>,
+    },
+    /// An item within a list
+    OptionListItem {
+        /// Index in the list, if known
+        ///
+        /// Note that this may change frequently, thus is not a useful key.
+        index: Option<usize>,
+        /// Whether the item is currently selected, if applicable.
+        ///
+        /// > When deciding whether to set this value to `false` or `None`,
+        /// > consider whether it would be appropriate for a screen reader to
+        /// > announce “not selected”.
+        ///
+        /// See also [`accesskit::Node::is_selected`](https://docs.rs/accesskit/latest/accesskit/struct.Node.html#method.is_selected).
+        selected: Option<bool>,
+    },
+    /// A grid of possibly selectable items
+    ///
+    /// Note that this role should only be used where it is desirable to expose
+    /// the grid as an element. In other cases (where a grid is used merely as
+    /// a tool to place elements next to each other), use [`Role::None`].
+    ///
+    /// Child nodes should (but are not required to) use [`Role::GridCell`].
+    Grid {
+        /// The number of columns in the grid, if known
+        columns: Option<usize>,
+        /// The number of rows in the grid, if known
+        rows: Option<usize>,
+    },
+    /// An item within a list
+    GridCell {
+        /// Grid cell index and span, if known
+        info: Option<GridCellInfo>,
+        /// Whether the item is currently selected, if applicable.
+        ///
+        /// > When deciding whether to set this value to `false` or `None`,
+        /// > consider whether it would be appropriate for a screen reader to
+        /// > announce “not selected”.
+        ///
+        /// See also [`accesskit::Node::is_selected`](https://docs.rs/accesskit/latest/accesskit/struct.Node.html#method.is_selected).
+        selected: Option<bool>,
+    },
     /// A menu bar
     MenuBar,
     /// An openable menu
@@ -192,6 +260,8 @@ pub enum Role<'a> {
         /// True if the menu is open
         expanded: bool,
     },
+    /// A list of variable-size children with resizing grips
+    Splitter,
     /// A window
     Window,
     /// The special bar at the top of a window titling contents and usually embedding window controls
@@ -246,15 +316,13 @@ impl<'a> Role<'a> {
         use accesskit::Role as R;
 
         match self {
-            // TODO: do we want to automatically use role GenericContainer?
-            // Role::Unknown if has_children => R::GenericContainer,
-            Role::Unknown => R::Unknown,
+            Role::None => R::GenericContainer,
+            Role::Unknown | Role::Grip => R::Unknown,
             Role::Label(_) | Role::AccessLabel(_, _) | Role::TextLabel { .. } => R::Label,
             Role::Button => R::Button,
             Role::CheckBox(_) => R::CheckBox,
             Role::RadioButton(_) => R::RadioButton,
             Role::Tab => R::Tab,
-            Role::Border => R::Unknown,
             Role::ScrollRegion { .. } => R::ScrollView,
             Role::ScrollBar { .. } => R::ScrollBar,
             Role::Indicator => R::Unknown,
@@ -269,9 +337,15 @@ impl<'a> Role<'a> {
             Role::Slider { .. } => R::Slider,
             Role::SpinButton { .. } => R::SpinButton,
             Role::ProgressBar(_) => R::ProgressIndicator,
+            Role::Border => R::Unknown,
+            Role::OptionList { .. } => R::ListBox,
+            Role::OptionListItem { .. } => R::ListBoxOption,
+            Role::Grid { .. } => R::Grid,
+            Role::GridCell { .. } => R::Cell,
             Role::MenuBar => R::MenuBar,
             Role::Menu { .. } => R::Menu,
             Role::ComboBox { .. } => R::ComboBox,
+            Role::Splitter => R::Splitter,
             Role::Window => R::Window,
             Role::TitleBar => R::TitleBar,
         }
@@ -291,7 +365,7 @@ impl<'a> Role<'a> {
         }
 
         match *self {
-            Role::Unknown | Role::Border => (),
+            Role::None | Role::Unknown | Role::Border | Role::Grip | Role::Splitter => (),
             Role::Button | Role::Tab => {
                 node.add_action(Action::Click);
             }
@@ -364,6 +438,42 @@ impl<'a> Role<'a> {
             Role::ProgressBar(value) => {
                 node.set_max_numeric_value(1.0);
                 node.set_numeric_value(value.cast());
+            }
+            Role::OptionList { len } => {
+                if let Some(len) = len {
+                    node.set_size_of_set(len);
+                }
+            }
+            Role::OptionListItem { index, selected } => {
+                if let Some(index) = index {
+                    node.set_position_in_set(index);
+                }
+                if let Some(state) = selected {
+                    node.set_selected(state);
+                }
+            }
+            Role::Grid { columns, rows } => {
+                if let Some(cols) = columns {
+                    node.set_column_count(cols);
+                }
+                if let Some(rows) = rows {
+                    node.set_row_count(rows);
+                }
+            }
+            Role::GridCell { info, selected } => {
+                if let Some(info) = info {
+                    node.set_column_index(info.col.cast());
+                    if info.last_col > info.col {
+                        node.set_column_span((info.last_col + 1 - info.col).cast());
+                    }
+                    node.set_row_index(info.row.cast());
+                    if info.last_row > info.row {
+                        node.set_row_span((info.last_row + 1 - info.row).cast());
+                    }
+                }
+                if let Some(state) = selected {
+                    node.set_selected(state);
+                }
             }
             Role::ComboBox { expanded, .. } | Role::Menu { expanded } => {
                 node.add_action(Action::Expand);

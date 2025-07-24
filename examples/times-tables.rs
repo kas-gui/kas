@@ -1,7 +1,7 @@
 //! Do you know your times tables?
 
 use kas::prelude::*;
-use kas::view::{DataClerk, MatrixIndex, MatrixView, SelectionMode, SelectionMsg, driver};
+use kas::view::{DataClerk, GridIndex, GridView, SelectionMode, SelectionMsg, driver};
 use kas::widgets::{EditBox, ScrollBars, column, row};
 use std::ops::Range;
 
@@ -21,12 +21,12 @@ fn product(x: u32, y: u32) -> u64 {
     x * y
 }
 
-impl DataClerk<MatrixIndex> for TableCache {
+impl DataClerk<GridIndex> for TableCache {
     /// Our table is square; it's size is input.
     type Data = u32;
 
     /// We re-usize the index as our key.
-    type Key = MatrixIndex;
+    type Key = GridIndex;
 
     /// Data items are `u64` since e.g. 65536² is not representable by `u32`.
     type Item = u64;
@@ -35,17 +35,11 @@ impl DataClerk<MatrixIndex> for TableCache {
         self.dim = *dim;
     }
 
-    fn len(&self, _: &Self::Data) -> MatrixIndex {
-        MatrixIndex::splat(self.dim)
+    fn len(&self, _: &Self::Data) -> GridIndex {
+        GridIndex::splat(self.dim)
     }
 
-    fn prepare_range(
-        &mut self,
-        _: &mut ConfigCx,
-        _: Id,
-        _: &Self::Data,
-        range: Range<MatrixIndex>,
-    ) {
+    fn prepare_range(&mut self, _: &mut ConfigCx, _: Id, _: &Self::Data, range: Range<GridIndex>) {
         // This is a simple hack to cache contents for the given range for usage by item()
         let x_len = usize::conv(range.end.col - range.start.col);
         let y_len = usize::conv(range.end.row - range.start.row);
@@ -68,14 +62,14 @@ impl DataClerk<MatrixIndex> for TableCache {
         }
     }
 
-    fn key(&self, _: &Self::Data, index: MatrixIndex) -> Option<Self::Key> {
+    fn key(&self, _: &Self::Data, index: GridIndex) -> Option<Self::Key> {
         Some(index)
     }
 
     fn item(&self, _: &Self::Data, key: &Self::Key) -> Option<&Self::Item> {
         // We are required to return a reference, otherwise we would simply
         // calculate the value here!
-        let MatrixIndex { col, row } = *key;
+        let GridIndex { col, row } = *key;
         let xrel = usize::conv(col - self.col_start);
         let yrel = usize::conv(row - self.row_start);
         let i = xrel + yrel * self.col_len;
@@ -86,7 +80,7 @@ impl DataClerk<MatrixIndex> for TableCache {
 fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
-    let table = MatrixView::new(TableCache::default(), driver::NavView)
+    let table = GridView::new(TableCache::default(), driver::View)
         .with_num_visible(12, 12)
         .with_selection_mode(SelectionMode::Single);
     let table = ScrollBars::new(table);
@@ -102,7 +96,7 @@ fn main() -> kas::runner::Result<()> {
         .with_state(12)
         .on_message(|_, dim, SetLen(len)| *dim = len)
         .on_message(|_, _, selection| match selection {
-            SelectionMsg::<MatrixIndex>::Select(MatrixIndex { col, row }) => {
+            SelectionMsg::<GridIndex>::Select(GridIndex { col, row }) => {
                 println!("{} × {} = {}", col + 1, row + 1, product(col, row));
             }
             _ => (),

@@ -611,8 +611,8 @@ fn filter_list() -> Box<dyn Widget<Data = AppData>> {
             core: widget_core!(),
             #[widget(&())] filter: EditBox<MonthYearFilterGuard> =
                 EditBox::default().with_multi_line(false),
-            #[widget(&self.filter.guard().0)] list: ListView<MonthsClerk, driver::NavView, Down> =
-                ListView::new(clerk, driver::NavView),
+            #[widget(&self.filter.guard().0)] list: ListView<MonthsClerk, driver::View, Down> =
+                ListView::new(clerk, driver::View),
         }
 
         impl Events for Self {

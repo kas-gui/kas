@@ -346,11 +346,20 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         #core_path.status.require_rect(&#core_path._id);
     };
 
+    let mut fn_role = None;
     let mut fn_child_indices = None;
     let mut fn_get_child = None;
     let mut fn_child_node = None;
     let get_child_span = get_child.as_ref().map(|item| item.span());
     if get_child.is_none() && child_node.is_none() {
+        if !children.is_empty() {
+            fn_role = Some(quote! {
+                fn role(&self, _: &mut dyn ::kas::RoleCx) -> ::kas::Role<'_> {
+                    ::kas::Role::None
+                }
+            });
+        }
+
         if collection.is_none() {
             let mut get_rules = quote! {};
             for (index, child) in children.iter().enumerate() {
@@ -829,6 +838,15 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             tile_impl.items.push(Verbatim(methods));
         }
 
+        if !has_item("role") {
+            if let Some(method) = fn_role {
+                tile_impl.items.push(Verbatim(method));
+            } else {
+                #[cfg(feature = "nightly-pedantic")]
+                emit_warning!(tile_impl, "[pedantic] `fn role` is not defined");
+            }
+        }
+
         if !has_item("child_indices") {
             if let Some(method) = fn_child_indices {
                 tile_impl.items.push(Verbatim(method));
@@ -854,6 +872,11 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
             tile_impl.items.push(Verbatim(fn_probe));
         }
     } else {
+        #[cfg(feature = "nightly-pedantic")]
+        if fn_role.is_none() {
+            emit_warning!(attr_span, "[pedantic] `fn Tile::role` is not defined");
+        }
+
         if fn_child_indices.is_none() {
             emit_error!(
                 attr_span, "refusing to generate fn Tile::child_indices";
@@ -872,6 +895,7 @@ pub fn widget(attr_span: Span, scope: &mut Scope) -> Result<()> {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Tile for #impl_target {
                 #required_tile_methods
+                #fn_role
                 #fn_get_child
                 #fn_child_indices
                 #fn_nav_next

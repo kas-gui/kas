@@ -30,6 +30,8 @@ experimental = ["dark-light", "unsafe_node"]
 
 # Enables better proc-macro diagnostics (including warnings); nightly only.
 nightly-diagnostics = ["kas-macros/nightly"]
+# Enables all proc-macro diagnostics, including pedantic warnings; nightly only.
+nightly-diagnostics-pedantic = ["nightly-diagnostics", "kas-macros/nightly-pedantic"]
 
 # Use full specialization
 spec = []

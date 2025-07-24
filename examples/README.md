@@ -99,7 +99,7 @@ A variant of [Counter](#Counter), demonstrating multiple windows and the
 
 ### Times-tables
 
-A simple demonstration of the `MatrixView` widget.
+A simple demonstration of the `GridView` widget.
 
 ![Times-tables](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/times-tables.png)
 

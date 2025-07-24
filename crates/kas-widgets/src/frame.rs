@@ -84,7 +84,7 @@ mod Frame {
         /// The default style is [`FrameStyle::Frame`].
         ///
         /// Note: using [`FrameStyle::NavFocus`] does not automatically make
-        /// this widget interactive. Use [`NavFrame`](crate::NavFrame) for that.
+        /// this widget interactive.
         #[inline]
         #[must_use]
         pub fn with_style(mut self, style: FrameStyle) -> Self {

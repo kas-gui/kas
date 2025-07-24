@@ -93,6 +93,12 @@ mod GripPart {
         fn draw(&self, _: DrawCx) {}
     }
 
+    impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::Grip
+        }
+    }
+
     impl Events for GripPart {
         const REDRAW_ON_HOVER: bool = true;
 

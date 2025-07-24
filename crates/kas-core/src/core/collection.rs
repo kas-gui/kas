@@ -141,16 +141,19 @@ pub trait CellCollection: Collection {
     /// The default implementation calculates this from [`Self::cell_info`].
     fn grid_dimensions(&self) -> GridDimensions {
         let mut dim = GridDimensions::default();
+        let (mut last_col, mut last_row) = (0, 0);
         for cell_info in self.iter_cell_info(..) {
-            dim.cols = dim.cols.max(cell_info.col_end);
-            dim.rows = dim.rows.max(cell_info.row_end);
-            if cell_info.col_end - cell_info.col > 1 {
+            last_col = last_col.max(cell_info.last_col);
+            last_row = last_row.max(cell_info.last_row);
+            if cell_info.last_col > cell_info.col {
                 dim.col_spans += 1;
             }
-            if cell_info.row_end - cell_info.row > 1 {
+            if cell_info.last_row > cell_info.row {
                 dim.row_spans += 1;
             }
         }
+        dim.cols = last_col + 1;
+        dim.rows = last_row + 1;
         dim
     }
 }

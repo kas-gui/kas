@@ -118,6 +118,10 @@ mod Stack {
     }
 
     impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::None
+        }
+
         #[inline]
         fn child_indices(&self) -> ChildIndices {
             let mut end = self.active;
