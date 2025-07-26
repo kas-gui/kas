@@ -316,6 +316,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 
     let ui = float![
         Button::label_msg("↻", MsgDirection)
+            .with_hidden_label("rotate")
             .map_any()
             .pack(AlignHints::TOP_RIGHT),
         Splitter::new(collection![

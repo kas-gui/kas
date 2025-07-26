@@ -140,3 +140,47 @@ mod WithLabel {
         }
     }
 }
+
+#[impl_self]
+mod WithHiddenLabel {
+    /// A wrapper widget with a hidden label
+    ///
+    /// This label is not normally visible but may be read by accessibility
+    /// tools and tooltips.
+    #[derive(Clone, Default)]
+    #[derive_widget]
+    pub struct WithHiddenLabel<W: Widget> {
+        #[widget]
+        inner: W,
+        label: String,
+    }
+
+    impl Self {
+        /// Wrap `inner`, adding a hidden `label`
+        #[inline]
+        pub fn new<T: ToString>(inner: W, label: T) -> Self {
+            WithHiddenLabel {
+                inner,
+                label: label.to_string(),
+            }
+        }
+
+        /// Take inner
+        #[inline]
+        pub fn take_inner(self) -> W {
+            self.inner
+        }
+
+        /// Set the label
+        pub fn set_label<T: ToString>(&mut self, text: T) {
+            self.label = text.to_string();
+        }
+    }
+
+    impl Tile for Self {
+        fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
+            cx.set_label(&self.label);
+            self.inner.role(cx)
+        }
+    }
+}
