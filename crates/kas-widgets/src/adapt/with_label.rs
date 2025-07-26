@@ -64,7 +64,7 @@ mod WithLabel {
 
         /// Get the direction
         #[inline]
-        pub fn direction(&self) -> Direction {
+        pub fn label_direction(&self) -> Direction {
             self.dir.as_direction()
         }
 
@@ -76,7 +76,7 @@ mod WithLabel {
 
         /// Get whether line-wrapping is enabled
         #[inline]
-        pub fn wrap(&self) -> bool {
+        pub fn label_wrap(&self) -> bool {
             self.label.wrap()
         }
 
@@ -84,22 +84,22 @@ mod WithLabel {
         ///
         /// By default this is enabled.
         #[inline]
-        pub fn set_wrap(&mut self, wrap: bool) {
+        pub fn set_label_wrap(&mut self, wrap: bool) {
             self.label.set_wrap(wrap);
         }
 
         /// Enable/disable line wrapping (inline)
         #[inline]
-        pub fn with_wrap(mut self, wrap: bool) -> Self {
+        pub fn with_label_wrap(mut self, wrap: bool) -> Self {
             self.label.set_wrap(wrap);
             self
         }
 
-        /// Set text
+        /// Set label text
         ///
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
-        pub fn set_text<T: Into<AccessString>>(&mut self, cx: &mut EventState, text: T) {
+        pub fn set_label_text<T: Into<AccessString>>(&mut self, cx: &mut EventState, text: T) {
             self.label.set_text(cx, text.into());
         }
     }
