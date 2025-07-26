@@ -28,8 +28,8 @@ use crate::theme::{ThemeDraw, ThemeSize};
 // Also the maximum inner radius of circular borders to overlap with this rect.
 const BG_SHRINK_FACTOR: f32 = 1.0 - std::f32::consts::FRAC_1_SQRT_2;
 
-// Shadow enlargement on hover
-const SHADOW_HOVER: f32 = 1.1;
+// Shadow enlargement on mouse over
+const SHADOW_MOUSE_OVER: f32 = 1.1;
 // Shadow enlargement for pop-ups
 const SHADOW_POPUP: f32 = 1.2;
 
@@ -37,7 +37,7 @@ const SHADOW_POPUP: f32 = 1.2;
 enum ShadowStyle {
     None,
     Normal,
-    Hover,
+    MouseOver,
 }
 
 /// A theme with flat (unshaded) rendering
@@ -169,9 +169,9 @@ where
 
         if shadow != ShadowStyle::None {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
-            if shadow == ShadowStyle::Hover {
-                a *= SHADOW_HOVER;
-                b *= SHADOW_HOVER;
+            if shadow == ShadowStyle::MouseOver {
+                a *= SHADOW_MOUSE_OVER;
+                b *= SHADOW_MOUSE_OVER;
             }
             let shadow_outer = Quad::from_coords(a + inner.a, b + inner.b);
             let col1 = if self.cols.is_dark { col_frame } else { Rgba::BLACK };
@@ -201,7 +201,7 @@ where
         self.draw
             .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
 
-        if !state.disabled() && !self.cols.is_dark && (state.nav_focus() || state.hover()) {
+        if !state.disabled() && !self.cols.is_dark && (state.nav_focus() || state.under_mouse()) {
             let r = 0.5 * self.w.dims.button_frame as f32;
             let y = outer.b.1 - r;
             let a = Vec2(outer.a.0 + r, y);
@@ -356,7 +356,7 @@ where
                     () if (self.cols.is_dark || state.disabled() || state.depress()) => {
                         ShadowStyle::None
                     }
-                    () if state.hover() => ShadowStyle::Hover,
+                    () if state.under_mouse() => ShadowStyle::MouseOver,
                     _ => ShadowStyle::Normal,
                 };
 
@@ -387,7 +387,7 @@ where
 
         let shadow = match () {
             () if (self.cols.is_dark || state.disabled() || state.depress()) => ShadowStyle::None,
-            () if state.hover() => ShadowStyle::Hover,
+            () if state.under_mouse() => ShadowStyle::MouseOver,
             _ => ShadowStyle::Normal,
         };
 
@@ -406,8 +406,8 @@ where
         if !(self.cols.is_dark || state.disabled() || state.depress()) {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
             let mut mult = 0.65;
-            if state.hover() {
-                mult *= SHADOW_HOVER;
+            if state.under_mouse() {
+                mult *= SHADOW_MOUSE_OVER;
             }
             a *= mult;
             b *= mult;
@@ -494,8 +494,8 @@ where
         if !self.cols.is_dark && !state.contains(InputState::DISABLED | InputState::DEPRESS) {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
             let mut mult = 0.6;
-            if state.hover() {
-                mult *= SHADOW_HOVER;
+            if state.under_mouse() {
+                mult *= SHADOW_MOUSE_OVER;
             }
             a *= mult;
             b *= mult;

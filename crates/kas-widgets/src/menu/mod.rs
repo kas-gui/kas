@@ -47,7 +47,7 @@ pub struct SubItems<'a> {
 
 /// Trait governing menus, sub-menus and menu-entries
 ///
-/// Implementations will automatically receive nav focus on mouse-hover, thus
+/// Implementations will automatically receive nav focus on mouse-over, thus
 /// should ensure that [`Tile::probe`] returns the identifier of the widget
 /// which should be focussed, and that this widget has [`Tile::navigable`]
 /// return true.

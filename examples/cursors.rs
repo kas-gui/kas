@@ -22,7 +22,7 @@ mod CursorWidget {
 
     impl Tile for Self {
         fn probe(&self, _: Coord) -> Id {
-            // Steal mouse focus: hover points to self, not self.label
+            // This widget takes mouse focus, not self.label
             self.id()
         }
     }
@@ -30,7 +30,7 @@ mod CursorWidget {
     impl Events for Self {
         type Data = ();
 
-        fn hover_icon(&self) -> Option<CursorIcon> {
+        fn mouse_over_icon(&self) -> Option<CursorIcon> {
             Some(self.cursor)
         }
     }

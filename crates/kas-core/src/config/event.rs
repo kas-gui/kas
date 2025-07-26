@@ -150,7 +150,7 @@ impl<'a> EventWindowConfig<'a> {
         Ref::map(self.0.config.borrow(), |c| &c.event)
     }
 
-    /// Delay before opening/closing menus on mouse hover
+    /// Delay before opening/closing menus on mouse over
     #[inline]
     pub fn menu_delay(&self) -> Duration {
         Duration::from_millis(self.base().menu_delay_ms.cast())

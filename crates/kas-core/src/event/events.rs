@@ -202,10 +202,10 @@ pub enum Event<'a> {
     ImeFocus,
     /// Notification that a widget has lost IME focus
     LostImeFocus,
-    /// Notification that a widget gains or loses mouse hover
+    /// Notification that the mouse moves over or leaves a widget
     ///
-    /// The payload is `true` when focus is gained, `false` when lost.
-    MouseHover(bool),
+    /// The state is `true` on mouse over, `false` when the mouse leaves.
+    MouseOver(bool),
 }
 
 impl<'a> std::ops::Add<Offset> for Event<'a> {
@@ -291,8 +291,8 @@ impl<'a> Event<'a> {
             CursorMove { .. } | PressStart { .. } => false,
             Pan { .. } | PressMove { .. } | PressEnd { .. } => true,
             Timer(_) | PopupClosed(_) => true,
-            NavFocus { .. } | SelFocus(_) | KeyFocus | ImeFocus | MouseHover(true) => false,
-            LostNavFocus | LostKeyFocus | LostSelFocus | LostImeFocus | MouseHover(false) => true,
+            NavFocus { .. } | SelFocus(_) | KeyFocus | ImeFocus | MouseOver(true) => false,
+            LostNavFocus | LostKeyFocus | LostSelFocus | LostImeFocus | MouseOver(false) => true,
         }
     }
 
@@ -332,7 +332,7 @@ impl<'a> Event<'a> {
             SelFocus(_) | LostSelFocus => false,
             KeyFocus | LostKeyFocus => false,
             ImeFocus | LostImeFocus => false,
-            MouseHover(_) => true,
+            MouseOver(_) => true,
         }
     }
 }

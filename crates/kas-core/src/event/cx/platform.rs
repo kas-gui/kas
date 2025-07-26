@@ -194,7 +194,7 @@ impl EventState {
             }
         });
 
-        if let Some(icon) = self.mouse.update_hover_icon() {
+        if let Some(icon) = self.mouse.update_cursor_icon() {
             window.set_cursor_icon(icon);
         }
 

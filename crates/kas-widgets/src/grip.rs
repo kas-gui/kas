@@ -100,12 +100,12 @@ mod GripPart {
     }
 
     impl Events for GripPart {
-        const REDRAW_ON_HOVER: bool = true;
+        const REDRAW_ON_MOUSE_OVER: bool = true;
 
         type Data = ();
 
         #[inline]
-        fn hover_icon(&self) -> Option<CursorIcon> {
+        fn mouse_over_icon(&self) -> Option<CursorIcon> {
             Some(CursorIcon::Grab)
         }
 

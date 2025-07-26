@@ -117,7 +117,7 @@ mod MarkButton {
     }
 
     impl Events for Self {
-        const REDRAW_ON_HOVER: bool = true;
+        const REDRAW_ON_MOUSE_OVER: bool = true;
 
         type Data = ();
 
