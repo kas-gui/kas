@@ -20,48 +20,53 @@ mod EventConfig {
     /// TODO: support undo and/or revert to saved values.
     #[widget]
     #[layout(grid! {
-        (0, 0) => "Menu delay:",
+        (0, 0) => "Hover delay:",
         (1, 0) => self.menu_delay,
 
-        (0, 1) => "Touch-selection delay:",
-        (1, 1) => self.touch_select_delay,
+        (0, 1) => "Menu delay:",
+        (1, 1) => self.menu_delay,
 
-        (0, 2) => "Kinetic scrolling timeout:",
-        (1, 2) => self.kinetic_timeout,
+        (0, 2) => "Touch-selection delay:",
+        (1, 2) => self.touch_select_delay,
 
-        (0, 3) => "Kinetic decay (relative):",
-        (1, 3) => self.kinetic_decay_mul,
+        (0, 3) => "Kinetic scrolling timeout:",
+        (1, 3) => self.kinetic_timeout,
 
-        (0, 4) => "Kinetic decay (absolute):",
-        (1, 4) => self.kinetic_decay_sub,
+        (0, 4) => "Kinetic decay (relative):",
+        (1, 4) => self.kinetic_decay_mul,
 
-        (0, 5) => "Kinetic decay when grabbed:",
-        (1, 5) => self.kinetic_grab_sub,
+        (0, 5) => "Kinetic decay (absolute):",
+        (1, 5) => self.kinetic_decay_sub,
 
-        (0, 6) => "Scroll wheel distance:",
-        (1, 6) => self.scroll_dist_em,
+        (0, 6) => "Kinetic decay when grabbed:",
+        (1, 6) => self.kinetic_grab_sub,
 
-        (0, 7) => "Pan distance threshold:",
-        (1, 7) => self.pan_dist_thresh,
+        (0, 7) => "Scroll wheel distance:",
+        (1, 7) => self.scroll_dist_em,
 
-        (0, 8) => "Mouse pan:",
-        (1, 8) => self.mouse_pan,
+        (0, 8) => "Pan distance threshold:",
+        (1, 8) => self.pan_dist_thresh,
 
-        (0, 9) => "Mouse text pan:",
-        (1, 9) => self.mouse_text_pan,
+        (0, 9) => "Mouse pan:",
+        (1, 9) => self.mouse_pan,
 
-        (1, 10) => self.mouse_wheel_actions,
+        (0, 10) => "Mouse text pan:",
+        (1, 10) => self.mouse_text_pan,
 
-        (1, 11) => self.mouse_nav_focus,
+        (1, 11) => self.mouse_wheel_actions,
 
-        (1, 12) => self.touch_nav_focus,
+        (1, 12) => self.mouse_nav_focus,
 
-        (0, 13) => "Restore default values:",
-        (1, 13) => Button::label_msg("&Reset", EventConfigMsg::ResetToDefault),
+        (1, 13) => self.touch_nav_focus,
+
+        (0, 14) => "Restore default values:",
+        (1, 14) => Button::label_msg("&Reset", EventConfigMsg::ResetToDefault),
     })]
     #[impl_default(EventConfig::new())]
     pub struct EventConfig {
         core: widget_core!(),
+        #[widget]
+        hover_delay: SpinBox<(), u32>,
         #[widget]
         menu_delay: SpinBox<(), u32>,
         #[widget]
@@ -112,6 +117,12 @@ mod EventConfig {
 
             EventConfig {
                 core: Default::default(),
+                hover_delay: SpinBox::new(0..=10_000, |cx, _| {
+                    cx.config().base().event.menu_delay_ms
+                })
+                .with_step(100)
+                .with_msg(EventConfigMsg::HoverDelay)
+                .with_unit("ms"),
                 menu_delay: SpinBox::new(0..=5_000, |cx, _| cx.config().base().event.menu_delay_ms)
                     .with_step(50)
                     .with_msg(EventConfigMsg::MenuDelay)
