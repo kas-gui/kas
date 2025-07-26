@@ -32,7 +32,6 @@ mod ListItem {
     /// When activated, this widget pushes [`Select`] to the message stack.
     ///
     /// [`Select`]: kas::messages::Select
-    #[derive(Clone, Default)]
     #[widget]
     #[layout(frame!(self.inner).with_style(kas::theme::FrameStyle::NavFocus))]
     struct ListItem<W: Widget> {
@@ -87,7 +86,6 @@ mod ListItem {
     }
 }
 
-#[derive(Clone, Default)]
 #[autoimpl(Debug ignore self.item where K: trait)]
 struct WidgetData<K, W: Widget> {
     key: Option<K>,
@@ -118,7 +116,7 @@ mod ListView {
     /// ### Messages
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
-    #[derive(Clone, Debug)]
+    #[derive(Debug)]
     #[widget]
     pub struct ListView<C: DataClerk<usize>, V, D = Direction>
     where

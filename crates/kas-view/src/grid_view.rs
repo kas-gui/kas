@@ -37,7 +37,6 @@ mod GridCell {
     /// When activated, this widget pushes [`Select`] to the message stack.
     ///
     /// [`Select`]: kas::messages::Select
-    #[derive(Clone, Default)]
     #[widget]
     #[layout(frame!(self.inner).with_style(kas::theme::FrameStyle::NavFocus))]
     struct GridCell<W: Widget> {
@@ -94,7 +93,6 @@ mod GridCell {
     }
 }
 
-#[derive(Clone, Default)]
 #[autoimpl(Debug ignore self.item where K: trait)]
 struct WidgetData<K, W: Widget> {
     key: Option<K>,
@@ -157,7 +155,7 @@ mod GridView {
     /// ### Messages
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
-    #[derive(Clone, Debug)]
+    #[derive(Debug)]
     #[widget]
     pub struct GridView<C: DataClerk<GridIndex>, V: Driver<C::Key, C::Item>> {
         core: widget_core!(),
