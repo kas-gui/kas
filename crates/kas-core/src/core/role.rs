@@ -45,17 +45,32 @@ pub enum Role<'a> {
     AccessLabel(&'a str, Key),
     /// A push button
     ///
+    /// ### Label
+    ///
+    /// If no label is set explicitly then a label is inferred from children of
+    /// the widget.
+    ///
     /// ### Messages
     ///
     /// [`kas::messages::Activate`] may be used to trigger the button.
     Button,
     /// A checkable box
     ///
+    /// ### Label
+    ///
+    /// If no label is set explicitly then a label is inferred from children of
+    /// the widget.
+    ///
     /// ### Messages
     ///
     /// [`kas::messages::Activate`] may be used to toggle the state.
     CheckBox(bool),
     /// A radio button
+    ///
+    /// ### Label
+    ///
+    /// If no label is set explicitly then a label is inferred from children of
+    /// the widget.
     ///
     /// ### Messages
     ///
