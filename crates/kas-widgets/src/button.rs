@@ -102,8 +102,7 @@ mod Button {
             true
         }
 
-        fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
-            cx.set_label(self.inner.id());
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
             Role::Button
         }
 

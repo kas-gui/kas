@@ -16,6 +16,7 @@
 //! Intended usage is to import the module name rather than its contents, thus
 //! allowing referal to e.g. `driver::View`.
 
+use kas::TextOrSource;
 use kas::prelude::*;
 use kas_widgets::{CheckBox, Text};
 use std::default::Default;
@@ -73,6 +74,18 @@ pub trait Driver<Key, Item> {
     fn set_key(&mut self, widget: &mut Self::Widget, key: &Key) {
         *widget = self.make(key);
     }
+
+    /// Whether the `Widget` wrapper should be keyboard navigable
+    fn navigable(widget: &Self::Widget) -> bool;
+
+    /// Get optional label for widgets
+    ///
+    /// This allows accessibility tools to read an item's label on focus. For complex
+    /// widgets supporting focus this may not be wanted. Defaults to `None`.
+    fn label(widget: &Self::Widget) -> Option<TextOrSource<'_>> {
+        let _ = widget;
+        None
+    }
 }
 
 /// Default view widget constructor
@@ -94,6 +107,12 @@ macro_rules! impl_via_to_string {
             fn set_key(&mut self, _: &mut Self::Widget, _: &Key) {
                 // Text has no metadata that needs to be reset
             }
+            fn navigable(_: &Self::Widget) -> bool {
+                true
+            }
+            fn label(widget: &Self::Widget) -> Option<TextOrSource<'_>> {
+                Some(widget.id().into())
+            }
         }
     };
     ($t:ty, $($tt:ty),+) => {
@@ -113,5 +132,8 @@ impl<Key> Driver<Key, bool> for View {
     }
     fn set_key(&mut self, _: &mut Self::Widget, _: &Key) {
         // CheckBox has no metadata that needs to be reset
+    }
+    fn navigable(_: &Self::Widget) -> bool {
+        false
     }
 }

@@ -64,7 +64,7 @@ mod WithLabel {
 
         /// Get the direction
         #[inline]
-        pub fn direction(&self) -> Direction {
+        pub fn label_direction(&self) -> Direction {
             self.dir.as_direction()
         }
 
@@ -76,7 +76,7 @@ mod WithLabel {
 
         /// Get whether line-wrapping is enabled
         #[inline]
-        pub fn wrap(&self) -> bool {
+        pub fn label_wrap(&self) -> bool {
             self.label.wrap()
         }
 
@@ -84,22 +84,22 @@ mod WithLabel {
         ///
         /// By default this is enabled.
         #[inline]
-        pub fn set_wrap(&mut self, wrap: bool) {
+        pub fn set_label_wrap(&mut self, wrap: bool) {
             self.label.set_wrap(wrap);
         }
 
         /// Enable/disable line wrapping (inline)
         #[inline]
-        pub fn with_wrap(mut self, wrap: bool) -> Self {
+        pub fn with_label_wrap(mut self, wrap: bool) -> Self {
             self.label.set_wrap(wrap);
             self
         }
 
-        /// Set text
+        /// Set label text
         ///
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
-        pub fn set_text<T: Into<AccessString>>(&mut self, cx: &mut EventState, text: T) {
+        pub fn set_label_text<T: Into<AccessString>>(&mut self, cx: &mut EventState, text: T) {
             self.label.set_text(cx, text.into());
         }
     }
@@ -137,6 +137,50 @@ mod WithLabel {
             if id.is_valid() {
                 cx.configure(self.label.as_node(&()), id);
             }
+        }
+    }
+}
+
+#[impl_self]
+mod WithHiddenLabel {
+    /// A wrapper widget with a hidden label
+    ///
+    /// This label is not normally visible but may be read by accessibility
+    /// tools and tooltips.
+    #[derive(Clone, Default)]
+    #[derive_widget]
+    pub struct WithHiddenLabel<W: Widget> {
+        #[widget]
+        inner: W,
+        label: String,
+    }
+
+    impl Self {
+        /// Wrap `inner`, adding a hidden `label`
+        #[inline]
+        pub fn new<T: ToString>(inner: W, label: T) -> Self {
+            WithHiddenLabel {
+                inner,
+                label: label.to_string(),
+            }
+        }
+
+        /// Take inner
+        #[inline]
+        pub fn take_inner(self) -> W {
+            self.inner
+        }
+
+        /// Set the label
+        pub fn set_label<T: ToString>(&mut self, text: T) {
+            self.label = text.to_string();
+        }
+    }
+
+    impl Tile for Self {
+        fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
+            cx.set_label(&self.label);
+            self.inner.role(cx)
         }
     }
 }

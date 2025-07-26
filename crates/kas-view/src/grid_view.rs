@@ -37,23 +37,22 @@ mod GridCell {
     /// When activated, this widget pushes [`Select`] to the message stack.
     ///
     /// [`Select`]: kas::messages::Select
-    #[derive(Clone, Default)]
     #[widget]
     #[layout(frame!(self.inner).with_style(kas::theme::FrameStyle::NavFocus))]
-    struct GridCell<W: Widget> {
+    struct GridCell<K, I, V: Driver<K, I>> {
         core: widget_core!(),
         col: u32,
         row: u32,
         selected: Option<bool>,
         /// The inner widget
         #[widget]
-        inner: W,
+        inner: V::Widget,
     }
 
     impl Self {
         /// Construct a frame
         #[inline]
-        fn new(inner: W) -> Self {
+        fn new(inner: V::Widget) -> Self {
             GridCell {
                 core: Default::default(),
                 col: 0,
@@ -66,7 +65,9 @@ mod GridCell {
 
     impl Tile for Self {
         fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
-            cx.set_label(self.inner.id());
+            if let Some(label) = V::label(&self.inner) {
+                cx.set_label(label);
+            }
             Role::GridCell {
                 info: Some(GridCellInfo::new(self.col, self.row)),
                 selected: self.selected,
@@ -74,12 +75,12 @@ mod GridCell {
         }
 
         fn navigable(&self) -> bool {
-            true
+            V::navigable(&self.inner)
         }
     }
 
     impl Events for Self {
-        type Data = W::Data;
+        type Data = I;
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
@@ -94,11 +95,10 @@ mod GridCell {
     }
 }
 
-#[derive(Clone, Default)]
 #[autoimpl(Debug ignore self.item where K: trait)]
-struct WidgetData<K, W: Widget> {
+struct WidgetData<K, I, V: Driver<K, I>> {
     key: Option<K>,
-    item: GridCell<W>,
+    item: GridCell<K, I, V>,
 }
 
 /// Index of a grid cell
@@ -157,7 +157,7 @@ mod GridView {
     /// ### Messages
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
-    #[derive(Clone, Debug)]
+    #[derive(Debug)]
     #[widget]
     pub struct GridView<C: DataClerk<GridIndex>, V: Driver<C::Key, C::Item>> {
         core: widget_core!(),
@@ -165,7 +165,7 @@ mod GridView {
         frame_size: Size,
         clerk: C,
         driver: V,
-        widgets: Vec<WidgetData<C::Key, V::Widget>>,
+        widgets: Vec<WidgetData<C::Key, C::Item, V>>,
         align_hints: AlignHints,
         ideal_len: Dim,
         alloc_len: Dim,

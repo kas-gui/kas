@@ -19,4 +19,4 @@ pub use adapt_widget::*;
 #[doc(inline)] pub use kas::hidden::MapAny;
 pub use kas::hidden::{Align, Pack};
 pub use reserve::{Margins, Reserve};
-pub use with_label::WithLabel;
+pub use with_label::{WithHiddenLabel, WithLabel};

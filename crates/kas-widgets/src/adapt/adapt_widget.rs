@@ -186,6 +186,17 @@ pub trait AdaptWidget: Widget + Sized {
         WithLabel::new_dir(self, direction, label)
     }
 
+    /// Construct a wrapper widget adding a hidden label
+    ///
+    /// This label is not normally visible but may be read by accessibility
+    /// tools and tooltips.
+    ///
+    /// Returns a wrapper around the input widget.
+    #[must_use]
+    fn with_hidden_label<T: ToString>(self, label: T) -> WithHiddenLabel<Self> {
+        WithHiddenLabel::new(self, label)
+    }
+
     /// Construct an [`Adapt`] widget over input
     #[inline]
     #[must_use]

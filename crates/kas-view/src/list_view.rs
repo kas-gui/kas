@@ -32,22 +32,21 @@ mod ListItem {
     /// When activated, this widget pushes [`Select`] to the message stack.
     ///
     /// [`Select`]: kas::messages::Select
-    #[derive(Clone, Default)]
     #[widget]
     #[layout(frame!(self.inner).with_style(kas::theme::FrameStyle::NavFocus))]
-    struct ListItem<W: Widget> {
+    struct ListItem<K, I, V: Driver<K, I>> {
         core: widget_core!(),
         index: usize,
         selected: Option<bool>,
         /// The inner widget
         #[widget]
-        inner: W,
+        inner: V::Widget,
     }
 
     impl Self {
         /// Construct a frame
         #[inline]
-        fn new(inner: W) -> Self {
+        fn new(inner: V::Widget) -> Self {
             ListItem {
                 core: Default::default(),
                 index: 0,
@@ -59,7 +58,9 @@ mod ListItem {
 
     impl Tile for Self {
         fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
-            cx.set_label(self.inner.id());
+            if let Some(label) = V::label(&self.inner) {
+                cx.set_label(label);
+            }
             Role::OptionListItem {
                 index: Some(self.index),
                 selected: self.selected,
@@ -67,12 +68,12 @@ mod ListItem {
         }
 
         fn navigable(&self) -> bool {
-            true
+            V::navigable(&self.inner)
         }
     }
 
     impl Events for Self {
-        type Data = W::Data;
+        type Data = I;
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
@@ -87,11 +88,10 @@ mod ListItem {
     }
 }
 
-#[derive(Clone, Default)]
 #[autoimpl(Debug ignore self.item where K: trait)]
-struct WidgetData<K, W: Widget> {
+struct WidgetData<K, I, V: Driver<K, I>> {
     key: Option<K>,
-    item: ListItem<W>,
+    item: ListItem<K, I, V>,
 }
 
 #[impl_self]
@@ -118,7 +118,7 @@ mod ListView {
     /// ### Messages
     ///
     /// [`kas::messages::SetScrollOffset`] may be used to set the scroll offset.
-    #[derive(Clone, Debug)]
+    #[derive(Debug)]
     #[widget]
     pub struct ListView<C: DataClerk<usize>, V, D = Direction>
     where
@@ -130,7 +130,7 @@ mod ListView {
         frame_size: Size,
         clerk: C,
         driver: V,
-        widgets: Vec<WidgetData<C::Key, V::Widget>>,
+        widgets: Vec<WidgetData<C::Key, C::Item, V>>,
         alloc_len: u32,
         data_len: u32,
         /// The number of widgets in use (cur_len ≤ alloc_len ≤ widgets.len())

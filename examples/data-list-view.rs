@@ -206,6 +206,10 @@ impl Driver<usize, Item> for MyDriver {
             edit: EditBox::new(ListEntryGuard(n)),
         }
     }
+
+    fn navigable(_: &Self::Widget) -> bool {
+        false
+    }
 }
 
 fn main() -> kas::runner::Result<()> {

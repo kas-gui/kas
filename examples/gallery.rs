@@ -14,7 +14,6 @@ use chrono::Datelike;
 use kas::collection;
 use kas::config::{ConfigMsg, ThemeConfigMsg};
 use kas::dir::{Down, Right};
-use kas::event::Key;
 use kas::prelude::*;
 use kas::resvg::Svg;
 use kas::theme::MarginStyle;
@@ -154,33 +153,29 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
             EditBox::new(Guard).with_text("length must not be a multiple of 8!"),
         ],
         row![
-            "Button (text)",
+            "Button",
             Button::label_msg("&Press me", Item::Button).map_any()
         ],
         row![
-            "Button (image)",
+            "Button row",
             row![
                 Button::new_msg(
-                    img_light.clone(),
+                    img_light.clone().with_label(Right, "lig&ht"),
                     ConfigMsg::Theme(ThemeConfigMsg::SetActiveScheme("light".to_string()))
                 )
-                .with_background("#B38DF9".parse().unwrap())
-                .with_access_key(Key::Character("h".into())),
+                .with_background("#B38DF9".parse().unwrap()),
                 Button::new_msg(
-                    img_light,
+                    img_light.with_label(Right, "&blue"),
                     ConfigMsg::Theme(ThemeConfigMsg::SetActiveScheme("blue".to_string()))
                 )
-                .with_background("#7CDAFF".parse().unwrap())
-                .with_access_key(Key::Character("b".into())),
+                .with_background("#7CDAFF".parse().unwrap()),
                 Button::new_msg(
-                    img_dark,
+                    img_dark.with_label(Right, "dar&k"),
                     ConfigMsg::Theme(ThemeConfigMsg::SetActiveScheme("dark".to_string()))
                 )
-                .with_background("#E77346".parse().unwrap())
-                .with_access_key(Key::Character("k".into())),
+                .with_background("#E77346".parse().unwrap()),
             ]
-            .map_any()
-            .pack(AlignHints::CENTER),
+            .map_any(),
         ],
         row![
             "CheckButton",
@@ -321,6 +316,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 
     let ui = float![
         Button::label_msg("↻", MsgDirection)
+            .with_hidden_label("rotate")
             .map_any()
             .pack(AlignHints::TOP_RIGHT),
         Splitter::new(collection![
