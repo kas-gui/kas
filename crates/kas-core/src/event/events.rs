@@ -332,7 +332,7 @@ impl<'a> Event<'a> {
             SelFocus(_) | LostSelFocus => false,
             KeyFocus | LostKeyFocus => false,
             ImeFocus | LostImeFocus => false,
-            MouseOver(_) => true,
+            MouseOver(_) => false,
         }
     }
 }

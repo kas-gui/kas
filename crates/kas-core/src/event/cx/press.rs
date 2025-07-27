@@ -11,6 +11,7 @@ pub(crate) mod velocity;
 
 #[allow(unused)] use super::{Event, EventState}; // for doc-links
 use super::{EventCx, IsUsed};
+#[allow(unused)] use crate::Events; // for doc-links
 use crate::event::{CursorIcon, MouseButton, Unused, Used};
 use crate::geom::{Coord, Vec2};
 use crate::{Action, Id};
@@ -280,7 +281,7 @@ impl EventState {
 
     /// Set the cursor icon
     ///
-    /// This is normally called when handling [`Event::MouseOver`]. In other
+    /// This is normally called from [`Events::handle_mouse_over`]. In other
     /// cases, calling this method may be ineffective. The cursor is
     /// automatically "unset" when the widget is no longer under the mouse.
     ///
