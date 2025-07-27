@@ -61,7 +61,7 @@ struct PanGrab {
 }
 
 #[derive(Default)]
-pub(in crate::event::cx) struct Touch {
+pub(crate) struct Touch {
     pub(super) touch_grab: SmallVec<[TouchGrab; MAX_TOUCHES]>,
     pan_grab: SmallVec<[PanGrab; MAX_PANS]>,
     velocity: [velocity::Samples; MAX_VELOCITY],

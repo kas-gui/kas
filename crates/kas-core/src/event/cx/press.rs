@@ -15,8 +15,8 @@ use super::{EventCx, IsUsed};
 use crate::event::{CursorIcon, MouseButton, Unused, Used};
 use crate::geom::{Coord, Vec2};
 use crate::{Action, Id};
-pub(super) use mouse::Mouse;
-pub(super) use touch::Touch;
+pub(crate) use mouse::Mouse;
+pub(crate) use touch::Touch;
 
 /// Controls the types of events delivered by [`Press::grab`]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]

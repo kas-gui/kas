@@ -157,7 +157,7 @@ impl<'a> EventWindowConfig<'a> {
         Ref::map(self.0.config.borrow(), |c| &c.event)
     }
 
-    /// Delay before sending [`Event::MouseHover`]
+    /// Delay before mouse hover action (show tooltip)
     #[inline]
     pub fn hover_delay(&self) -> Duration {
         Duration::from_millis(self.base().hover_delay_ms.cast())

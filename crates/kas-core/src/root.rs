@@ -266,6 +266,10 @@ mod Window {
                     cx.drag_window();
                     Used
                 }
+                Event::Timer(handle) if handle == crate::event::Mouse::TIMER_HOVER => {
+                    // TODO
+                    Used
+                }
                 _ => Unused,
             }
         }

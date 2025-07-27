@@ -6,7 +6,7 @@
 //! Event handling: mouse events
 
 use super::{GrabMode, Press, PressSource, velocity};
-use crate::event::{Event, EventCx, EventState, FocusSource, ScrollDelta};
+use crate::event::{Event, EventCx, EventState, FocusSource, ScrollDelta, TimerHandle};
 use crate::geom::{Affine, Coord, DVec2};
 use crate::{Action, Id, NavAdvance, Node, Widget, Window};
 use cast::{Cast, CastApprox, ConvApprox};
@@ -60,7 +60,7 @@ pub(super) struct MouseGrab {
     cancel: bool,
 }
 
-pub(in crate::event::cx) struct Mouse {
+pub(crate) struct Mouse {
     pub(super) over: Option<Id>, // widget under the mouse
     pub(super) icon: CursorIcon,
     old_icon: CursorIcon,
@@ -93,6 +93,8 @@ impl Default for Mouse {
 }
 
 impl Mouse {
+    pub(crate) const TIMER_HOVER: TimerHandle = TimerHandle::new(1 << 59, false);
+
     /// Clear all focus and grabs on `target`
     pub(in crate::event::cx) fn cancel_event_focus(&mut self, target: &Id) {
         if let Some(grab) = self.grab.as_mut()
@@ -161,7 +163,7 @@ impl Mouse {
     }
 
     /// Returns `true` on success
-    pub(crate) fn start_grab(
+    pub(in crate::event::cx) fn start_grab(
         &mut self,
         button: MouseButton,
         repetitions: u32,
@@ -230,7 +232,7 @@ impl EventState {
 impl<'a> EventCx<'a> {
     // Clear old `over` id, set new `over`, send events.
     // If there is a popup, only permit descendants of that.
-    fn set_over(&mut self, mut widget: Node<'_>, mut w_id: Option<Id>) {
+    fn set_over(&mut self, mut window: Node<'_>, mut w_id: Option<Id>) {
         if let Some(ref id) = w_id
             && let Some(popup) = self.popups.last()
             && !popup.1.id.is_ancestor_of(id)
@@ -242,18 +244,20 @@ impl<'a> EventCx<'a> {
             log::trace!("set_over: w_id={w_id:?}");
             self.mouse.icon = Default::default();
             if let Some(id) = self.mouse.over.take() {
-                self.send_event(widget.re(), id, Event::MouseOver(false));
+                self.send_event(window.re(), id, Event::MouseOver(false));
             }
             self.mouse.over = w_id.clone();
+            let delay = self.config().event().hover_delay();
+            self.request_timer(window.id(), Mouse::TIMER_HOVER, delay);
 
             if let Some(id) = w_id {
-                self.send_event(widget, id, Event::MouseOver(true));
+                self.send_event(window, id, Event::MouseOver(true));
             }
         }
     }
 
     // Clears mouse grab and pan grab, resets cursor and redraws
-    fn remove_mouse_grab(&mut self, node: Node<'_>, success: bool) {
+    fn remove_mouse_grab(&mut self, window: Node<'_>, success: bool) {
         let mut to_send = None;
         let last_pin;
         let redraw;
@@ -287,7 +291,7 @@ impl<'a> EventCx<'a> {
 
         // We must send Event::PressEnd before removing the grab
         if let Some((id, event)) = to_send {
-            self.send_event(node, id, event);
+            self.send_event(window, id, event);
         }
         self.mouse.last_pin = last_pin;
         self.opt_action(redraw, Action::REDRAW);
@@ -367,21 +371,21 @@ impl<'a> EventCx<'a> {
     pub(in crate::event::cx) fn handle_cursor_entered(&mut self) {}
 
     /// Handle mouse cursor leaving the app.
-    pub(in crate::event::cx) fn handle_cursor_left(&mut self, node: Node<'_>) {
+    pub(in crate::event::cx) fn handle_cursor_left(&mut self, window: Node<'_>) {
         self.mouse.last_click_button = FAKE_MOUSE_BUTTON;
 
         if self.mouse.grab.is_none() {
             // If there's a mouse grab, we will continue to receive
             // coordinates; if not, set a fake coordinate off the window
             self.mouse.last_coord = Coord(-1, -1);
-            self.set_over(node, None);
+            self.set_over(window, None);
         }
     }
 
     /// Handle a mouse wheel event.
     pub(in crate::event::cx) fn handle_mouse_wheel(
         &mut self,
-        node: Node<'_>,
+        window: Node<'_>,
         delta: MouseScrollDelta,
     ) {
         self.mouse.last_click_button = FAKE_MOUSE_BUTTON;
@@ -396,14 +400,14 @@ impl<'a> EventCx<'a> {
             }
         });
         if let Some(id) = self.mouse.over.clone() {
-            self.send_event(node, id, event);
+            self.send_event(window, id, event);
         }
     }
 
     /// Handle a mouse click / release.
     pub(in crate::event::cx) fn handle_mouse_input(
         &mut self,
-        mut node: Node<'_>,
+        mut window: Node<'_>,
         state: ElementState,
         button: MouseButton,
     ) {
@@ -424,7 +428,7 @@ impl<'a> EventCx<'a> {
             .map(|g| g.button == button)
             .unwrap_or(false)
         {
-            self.remove_mouse_grab(node.re(), true);
+            self.remove_mouse_grab(window.re(), true);
         }
 
         if state == ElementState::Pressed {
@@ -434,7 +438,7 @@ impl<'a> EventCx<'a> {
                     self.mouse.last_pin = None;
                 }
                 if self.config.event().mouse_nav_focus()
-                    && let Some(id) = self.nav_next(node.re(), Some(&start_id), NavAdvance::None)
+                    && let Some(id) = self.nav_next(window.re(), Some(&start_id), NavAdvance::None)
                 {
                     self.set_nav_focus(id, FocusSource::Pointer);
                 }
@@ -447,7 +451,7 @@ impl<'a> EventCx<'a> {
                 coord: self.mouse.last_coord,
             };
             let event = Event::PressStart { press };
-            self.send_popup_first(node, self.mouse.over.clone(), event);
+            self.send_popup_first(window, self.mouse.over.clone(), event);
         }
     }
 }

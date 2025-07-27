@@ -6,7 +6,7 @@
 //! Event context state
 
 use linear_map::{LinearMap, set::LinearSet};
-use press::{Mouse, Touch};
+pub(crate) use press::{Mouse, Touch};
 use smallvec::SmallVec;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::future::Future;
