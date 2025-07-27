@@ -6,13 +6,13 @@
 //! Window widgets
 
 use crate::cast::Cast;
-use crate::decorations::{Border, Decorations, TitleBar};
-use crate::dir::Directional;
+use crate::decorations::{Border, Decorations, Label, TitleBar};
+use crate::dir::{Direction, Directional};
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, ResizeDirection, Scroll, Unused, Used};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
-use crate::{Action, Events, Icon, Id, Layout, Role, RoleCx, Tile, TileExt, Widget};
+use crate::{Action, Events, Icon, Id, Layout, Popup, Role, RoleCx, Tile, TileExt, Widget};
 use kas_macros::{impl_self, widget_set_rect};
 use smallvec::SmallVec;
 use std::num::NonZeroU32;
@@ -56,6 +56,12 @@ pub enum WindowCommand {
     SetIcon(Option<Icon>),
 }
 
+pub(crate) trait WindowErased {
+    fn as_tile(&self) -> &dyn Tile;
+    fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String);
+    fn close_tooltip(&mut self, cx: &mut EventCx);
+}
+
 #[impl_self]
 mod Window {
     /// The window widget
@@ -75,6 +81,8 @@ mod Window {
         transparent: bool,
         #[widget]
         inner: Box<dyn Widget<Data = Data>>,
+        #[widget(&())]
+        tooltip: Popup<Label>,
         #[widget(&())]
         title_bar: TitleBar,
         #[widget(&())]
@@ -304,6 +312,21 @@ mod Window {
         }
     }
 
+    impl WindowErased for Self {
+        fn as_tile(&self) -> &dyn Tile {
+            self
+        }
+
+        fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String) {
+            self.tooltip.inner.set_string(cx, text);
+            self.tooltip.open(cx, &(), id);
+        }
+
+        fn close_tooltip(&mut self, cx: &mut EventCx) {
+            self.tooltip.close(cx);
+        }
+    }
+
     impl std::fmt::Debug for Self {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("Window")
@@ -330,6 +353,7 @@ impl<Data: 'static> Window<Data> {
             drag_anywhere: true,
             transparent: false,
             inner: ui,
+            tooltip: Popup::new(Label::default(), Direction::Down),
             title_bar: TitleBar::new(title),
             b_w: Border::new(ResizeDirection::West),
             b_e: Border::new(ResizeDirection::East),
