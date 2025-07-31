@@ -275,7 +275,7 @@ mod Window {
                     Used
                 }
                 Event::Timer(handle) if handle == crate::event::Mouse::TIMER_HOVER => {
-                    // TODO
+                    cx.hover_timer_expiry(self);
                     Used
                 }
                 _ => Unused,

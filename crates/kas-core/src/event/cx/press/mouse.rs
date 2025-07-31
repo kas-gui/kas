@@ -8,7 +8,8 @@
 use super::{GrabMode, Press, PressSource, velocity};
 use crate::event::{Event, EventCx, EventState, FocusSource, ScrollDelta, TimerHandle};
 use crate::geom::{Affine, Coord, DVec2};
-use crate::{Action, Id, NavAdvance, Node, Widget, Window};
+use crate::root::WindowErased;
+use crate::{Action, Id, NavAdvance, Node, TileExt, Widget, Window};
 use cast::{Cast, CastApprox, ConvApprox};
 use std::time::{Duration, Instant};
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
@@ -70,6 +71,7 @@ pub(crate) struct Mouse {
     last_click_timeout: Instant,
     last_pin: Option<(Id, DVec2)>,
     pub(super) grab: Option<MouseGrab>,
+    tooltip_source: Option<Id>,
     last_position: DVec2,
     pub(super) samples: velocity::Samples,
 }
@@ -86,6 +88,7 @@ impl Default for Mouse {
             last_click_timeout: Instant::now(),
             last_pin: None,
             grab: None,
+            tooltip_source: None,
             last_position: DVec2::ZERO,
             samples: Default::default(),
         }
@@ -329,7 +332,18 @@ impl<'a> EventCx<'a> {
         let coord = position.cast_approx();
 
         let id = win.try_probe(coord);
-        self.set_over(win.as_node(data), id.clone());
+        self.tooltip_motion(win, &id);
+        self.handle_cursor_moved_(id, win.as_node(data), coord, position);
+    }
+
+    pub(in crate::event::cx) fn handle_cursor_moved_(
+        &mut self,
+        id: Option<Id>,
+        mut window: Node<'_>,
+        coord: Coord,
+        position: DVec2,
+    ) {
+        self.set_over(window.re(), id.clone());
 
         if let Some(grab) = self.mouse.grab.as_mut() {
             match &mut grab.details {
@@ -343,7 +357,7 @@ impl<'a> EventCx<'a> {
                     };
                     let delta = coord - self.mouse.last_coord;
                     let event = Event::PressMove { press, delta };
-                    self.send_event(win.as_node(data), target, event);
+                    self.send_event(window.re(), target, event);
                 }
                 GrabDetails::Pan(details) => {
                     details.c1 = position;
@@ -358,7 +372,7 @@ impl<'a> EventCx<'a> {
                 coord,
             };
             let event = Event::CursorMove { press };
-            self.send_event(win.as_node(data), popup_id, event);
+            self.send_event(window, popup_id, event);
         } else {
             // We don't forward move events without a grab
         }
@@ -452,6 +466,44 @@ impl<'a> EventCx<'a> {
             };
             let event = Event::PressStart { press };
             self.send_popup_first(window, self.mouse.over.clone(), event);
+        }
+    }
+
+    /// Call on TIMER_HOVER expiry
+    pub(crate) fn hover_timer_expiry(&mut self, win: &mut dyn WindowErased) {
+        match (self.mouse.over_id(), &self.mouse.tooltip_source) {
+            (None, None) => (),
+            (None, Some(_)) => {
+                win.close_tooltip(self);
+                self.mouse.tooltip_source = None;
+            }
+            (Some(id), Some(source)) if id == source => (),
+            (Some(id), _) => {
+                if let Some(text) = win.as_tile().find_tile(&id).and_then(|tile| tile.tooltip()) {
+                    win.show_tooltip(self, id.clone(), text.to_string());
+                    self.mouse.tooltip_source = Some(id);
+                } else {
+                    win.close_tooltip(self);
+                    self.mouse.tooltip_source = None;
+                }
+            }
+        }
+    }
+
+    fn tooltip_motion(&mut self, win: &mut dyn WindowErased, id: &Option<Id>) {
+        match &mut self.mouse.tooltip_source {
+            Some(source) if *source != id => {
+                if let Some(id) = id.as_ref()
+                    && let Some(text) = win.as_tile().find_tile(id).and_then(|tile| tile.tooltip())
+                {
+                    win.show_tooltip(self, id.clone(), text.to_string());
+                    self.mouse.tooltip_source = Some(id.clone());
+                } else {
+                    let delay = self.config().event().hover_delay();
+                    self.request_timer(win.as_tile().id(), Mouse::TIMER_HOVER, delay);
+                }
+            }
+            _ => (),
         }
     }
 }
