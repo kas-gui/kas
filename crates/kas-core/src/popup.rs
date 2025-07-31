@@ -8,7 +8,7 @@
 use crate::dir::Direction;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};
 use crate::layout::Align;
-use crate::{ChildIndices, Events, Id, Tile, TileExt, Widget, WindowId};
+use crate::{ChildIndices, Events, Id, Tile, Widget, WindowId};
 use kas_macros::{impl_self, widget_index};
 
 #[allow(unused)] use crate::event::EventState;
@@ -97,21 +97,8 @@ mod Popup {
             }
         }
 
-        fn handle_event(&mut self, cx: &mut EventCx, _: &W::Data, event: Event) -> IsUsed {
+        fn handle_event(&mut self, _: &mut EventCx, _: &W::Data, event: Event) -> IsUsed {
             match event {
-                Event::PressStart { press } => {
-                    if press
-                        .id
-                        .as_ref()
-                        .map(|id| self.is_ancestor_of(id))
-                        .unwrap_or(false)
-                    {
-                        Unused
-                    } else {
-                        self.close(cx);
-                        Unused
-                    }
-                }
                 Event::PopupClosed(_) => {
                     self.win_id = None;
                     Used

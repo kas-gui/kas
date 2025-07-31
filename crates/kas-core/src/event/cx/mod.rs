@@ -419,26 +419,17 @@ impl<'a> EventCx<'a> {
         used
     }
 
-    fn send_popup_first(&mut self, mut widget: Node<'_>, id: Option<Id>, event: Event) {
-        while let Some(pid) = self
-            .popups
-            .last()
-            .filter(|popup| popup.is_sized)
-            .map(|state| state.desc.id.clone())
-        {
-            let mut target = pid;
-            if let Some(id) = id.clone()
-                && target.is_ancestor_of(&id)
+    // Closes any popup which is not an ancestor of `id`
+    fn close_non_ancestors_of(&mut self, id: Option<&Id>) {
+        for index in (0..self.popups.len()).rev() {
+            if let Some(id) = id
+                && self.popups[index].desc.id.is_ancestor_of(id)
             {
-                target = id;
+                continue;
             }
-            log::trace!("send_popup_first: id={target}: {event:?}");
-            if self.send_event(widget.re(), target, event.clone()) {
-                return;
-            }
-        }
-        if let Some(id) = id {
-            self.send_event(widget, id, event);
+
+            let id = self.close_popup(index);
+            self.runner.close_window(id);
         }
     }
 

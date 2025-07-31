@@ -104,17 +104,8 @@ pub enum Event<'a> {
     /// Call [`Press::grab`] in order to "grab" corresponding motion
     /// and release events.
     ///
-    /// This event is sent in exactly two cases, in this order:
-    ///
-    /// 1.  When a [`Popup`] is open. A [`Popup`] will close itself if
-    ///     `press.id` is not a descendant of itself, but will still return
-    ///     [`Unused`]. The parent (or an ancestor) of the
-    ///     [`Popup`] should handle this event.
-    /// 2.  If a widget is found under the mouse when pressed or where a touch
-    ///     event starts, this event is sent to the widget.
-    ///
-    /// If `start_id` is `None`, then no widget was found at the coordinate and
-    /// the event will only be delivered to pop-up layer owners.
+    /// This event is sent to the widget under the mouse or touch position. If
+    /// no such widget is found, this event is not sent.
     PressStart { press: Press },
     /// Movement of mouse or a touch press
     ///

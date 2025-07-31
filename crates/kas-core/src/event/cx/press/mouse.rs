@@ -451,26 +451,30 @@ impl<'a> EventCx<'a> {
         }
 
         if state == ElementState::Pressed {
-            if let Some(start_id) = self.mouse.over.clone() {
+            let start_id = self.mouse.over.clone();
+            self.close_non_ancestors_of(start_id.as_ref());
+
+            if let Some(id) = start_id {
                 // No mouse grab but have a widget under the mouse
-                if matches!(self.mouse.last_pin.as_ref(), Some((id, _)) if *id != start_id) {
+                if matches!(self.mouse.last_pin.as_ref(), Some((pin_id, _)) if *pin_id != id) {
                     self.mouse.last_pin = None;
                 }
+
                 if self.config.event().mouse_nav_focus()
-                    && let Some(id) = self.nav_next(window.re(), Some(&start_id), NavAdvance::None)
+                    && let Some(id) = self.nav_next(window.re(), Some(&id), NavAdvance::None)
                 {
                     self.set_nav_focus(id, FocusSource::Pointer);
                 }
-            }
 
-            let source = PressSource::Mouse(button, self.mouse.last_click_repetitions);
-            let press = Press {
-                source,
-                id: self.mouse.over.clone(),
-                coord: self.mouse.last_coord,
-            };
-            let event = Event::PressStart { press };
-            self.send_popup_first(window, self.mouse.over.clone(), event);
+                let source = PressSource::Mouse(button, self.mouse.last_click_repetitions);
+                let press = Press {
+                    source,
+                    id: Some(id.clone()),
+                    coord: self.mouse.last_coord,
+                };
+                let event = Event::PressStart { press };
+                self.send_event(window, id, event);
+            }
         }
     }
 

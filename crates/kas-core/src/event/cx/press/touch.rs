@@ -320,21 +320,23 @@ impl<'a> EventCx<'a> {
         match touch.phase {
             TouchPhase::Started => {
                 let start_id = win.try_probe(coord);
-                if let Some(id) = start_id.as_ref() {
+                self.close_non_ancestors_of(start_id.as_ref());
+
+                if let Some(id) = start_id {
                     if self.config.event().touch_nav_focus()
                         && let Some(id) =
-                            self.nav_next(win.as_node(data), Some(id), NavAdvance::None)
+                            self.nav_next(win.as_node(data), Some(&id), NavAdvance::None)
                     {
                         self.set_nav_focus(id, FocusSource::Pointer);
                     }
 
                     let press = Press {
                         source,
-                        id: start_id.clone(),
+                        id: Some(id.clone()),
                         coord,
                     };
                     let event = Event::PressStart { press };
-                    self.send_popup_first(win.as_node(data), start_id, event);
+                    self.send_event(win.as_node(data), id, event);
                 }
             }
             TouchPhase::Moved => {
