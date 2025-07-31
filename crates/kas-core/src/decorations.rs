@@ -201,6 +201,10 @@ mod MarkButton {
     }
 
     impl Tile for Self {
+        fn tooltip(&self) -> Option<&str> {
+            Some(&self.label)
+        }
+
         fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
             cx.set_label(&self.label);
             Role::Button

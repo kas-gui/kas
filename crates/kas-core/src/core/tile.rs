@@ -90,6 +90,16 @@ pub trait Tile: Layout {
         false
     }
 
+    /// Tooltip
+    ///
+    /// This is shown on mouse hover and may or may not use the same text as the
+    /// label defined by the role.
+    ///
+    /// By default this is `None`.
+    fn tooltip(&self) -> Option<&str> {
+        None
+    }
+
     /// Describe the widget's role
     ///
     /// This descriptor supports accessibility tooling and UI introspection.
