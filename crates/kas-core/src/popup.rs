@@ -7,6 +7,7 @@
 
 use crate::dir::Direction;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};
+use crate::layout::Align;
 use crate::{ChildIndices, Events, Id, Tile, TileExt, Widget, WindowId};
 use kas_macros::{impl_self, widget_index};
 
@@ -18,7 +19,15 @@ pub(crate) struct PopupDescriptor {
     pub id: Id,
     /// Visual parent: what the popup is placed next to
     pub parent: Id,
+    /// Direction to place relative to [`Self::parent`]
     pub direction: Direction,
+    /// Alignment relative to [`Self::parent`]
+    ///
+    /// This applies to the opposite axis to the direction; for example if
+    /// [`Self::direction`] is [`Direction::Right`] then this is vertical
+    /// alignment. In this case, [`Align::TL`] would imply that the top of the
+    /// popup would be aligned to the top of the parent.
+    pub align: Align,
 }
 
 pub(crate) const POPUP_INNER_INDEX: usize = 0;
@@ -44,6 +53,7 @@ mod Popup {
     pub struct Popup<W: Widget> {
         core: widget_core!(),
         direction: Direction,
+        align: Align,
         /// The inner widget
         #[widget]
         pub inner: W,
@@ -118,10 +128,11 @@ mod Popup {
 
     impl Self {
         /// Construct a popup over a `W: Widget`
-        pub fn new(inner: W, direction: Direction) -> Self {
+        pub fn new(inner: W, direction: Direction, align: Align) -> Self {
             Popup {
                 core: Default::default(),
                 direction,
+                align,
                 inner,
                 win_id: None,
             }
@@ -135,6 +146,16 @@ mod Popup {
         /// Set direction
         pub fn set_direction(&mut self, direction: Direction) {
             self.direction = direction;
+        }
+
+        /// Get alignment
+        pub fn alignment(&self) -> Align {
+            self.align
+        }
+
+        /// Set alignment
+        pub fn set_alignment(&mut self, align: Align) {
+            self.align = align;
         }
 
         /// Query whether the popup is open
@@ -153,12 +174,15 @@ mod Popup {
         /// Returns `true` when the popup is newly opened. In this case, the
         /// caller may wish to call [`EventState::next_nav_focus`] next.
         pub fn open(&mut self, cx: &mut EventCx, data: &W::Data, parent: Id) -> bool {
+            let desc = kas::PopupDescriptor {
+                id: self.id(),
+                parent,
+                direction: self.direction,
+                align: self.align,
+            };
+
             if let Some(id) = self.win_id {
-                cx.reposition_popup(id, kas::PopupDescriptor {
-                    id: self.id(),
-                    parent,
-                    direction: self.direction,
-                });
+                cx.reposition_popup(id, desc);
                 return false;
             }
 
@@ -167,11 +191,7 @@ mod Popup {
             let id = self.make_child_id(index);
             cx.configure(self.inner.as_node(data), id);
 
-            self.win_id = Some(cx.add_popup(kas::PopupDescriptor {
-                id: self.id(),
-                parent,
-                direction: self.direction,
-            }));
+            self.win_id = Some(cx.add_popup(desc));
 
             true
         }
