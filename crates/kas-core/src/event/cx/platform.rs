@@ -394,7 +394,7 @@ impl<'a> EventCx<'a> {
                     self.action(win.id(), Action::REDRAW);
                 } else {
                     // Window focus lost: close all popups
-                    while let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
+                    while let Some(id) = self.popups.last().map(|state| state.id) {
                         self.close_window(id);
                     }
                 }

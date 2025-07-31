@@ -238,7 +238,7 @@ impl<'a> EventCx<'a> {
     fn set_over(&mut self, mut window: Node<'_>, mut w_id: Option<Id>) {
         if let Some(ref id) = w_id
             && let Some(popup) = self.popups.last()
-            && !popup.1.id.is_ancestor_of(id)
+            && !popup.desc.id.is_ancestor_of(id)
         {
             w_id = None;
         }
@@ -365,7 +365,12 @@ impl<'a> EventCx<'a> {
                     self.need_frame_update = true;
                 }
             }
-        } else if let Some(popup_id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
+        } else if let Some(popup_id) = self
+            .popups
+            .last()
+            .filter(|popup| popup.is_sized)
+            .map(|state| state.desc.id.clone())
+        {
             let press = Press {
                 source: PressSource::Mouse(FAKE_MOUSE_BUTTON, 0),
                 id,

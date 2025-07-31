@@ -266,7 +266,7 @@ impl EventState {
             }
         }
         for popup in &self.popups {
-            if *w_id == popup.1.parent {
+            if *w_id == popup.desc.parent {
                 return true;
             }
         }

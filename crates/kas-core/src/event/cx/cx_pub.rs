@@ -775,8 +775,13 @@ impl<'a> EventCx<'a> {
 
         let parent_id = self.window.window_id();
         let id = self.runner.add_popup(parent_id, popup.clone());
-        let nav_focus = self.nav_focus.clone();
-        self.popups.push((id, popup, nav_focus));
+        let old_nav_focus = self.nav_focus.clone();
+        self.popups.push(PopupState {
+            id,
+            desc: popup,
+            old_nav_focus,
+            is_sized: false,
+        });
         self.clear_nav_focus();
         id
     }
@@ -816,7 +821,7 @@ impl<'a> EventCx<'a> {
     /// the popup was open.
     pub fn close_window(&mut self, mut id: WindowId) {
         for (index, p) in self.popups.iter().enumerate() {
-            if p.0 == id {
+            if p.id == id {
                 id = self.close_popup(index);
                 break;
             }

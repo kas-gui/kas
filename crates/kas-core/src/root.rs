@@ -497,6 +497,7 @@ impl<Data: 'static> Window<Data> {
         };
 
         self.resize_popup(cx, data, index);
+        cx.confirm_popup_is_sized(id);
         cx.action(self.id(), Action::REGION_MOVED);
     }
 
