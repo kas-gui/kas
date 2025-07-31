@@ -240,7 +240,7 @@ mod Window {
             }
             self.inner.draw(draw.re());
             for (_, popup, translation) in &self.popups {
-                if let Some(child) = self.inner.find_tile(&popup.id) {
+                if let Some(child) = self.find_tile(&popup.id) {
                     let clip_rect = child.rect() - *translation;
                     draw.with_overlay(clip_rect, *translation, |draw| {
                         child.draw(draw);
@@ -523,7 +523,7 @@ impl<Data: 'static> Window<Data> {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
         let r = self.rect();
-        let (_, ref mut popup, ref mut translation) = self.popups[index];
+        let popup = self.popups[index].1.clone();
 
         let is_reversed = popup.direction.is_reversed();
         let place_in = |rp, rs: i32, cp: i32, cs: i32, ideal, m: (u16, u16)| -> (i32, i32) {
@@ -551,12 +551,12 @@ impl<Data: 'static> Window<Data> {
             (pos, size)
         };
 
-        let Some((c, t)) = self.inner.as_tile().find_tile_rect(&popup.parent) else {
+        let Some((c, t)) = self.as_tile().find_tile_rect(&popup.parent) else {
             return;
         };
-        *translation = t;
+        self.popups[index].2 = t;
         let r = r + t; // work in translated coordinate space
-        let result = self.inner.as_node(data).find_node(&popup.id, |mut node| {
+        let result = self.as_node(data).find_node(&popup.id, |mut node| {
             let mut cache = layout::SolveCache::find_constraints(node.re(), cx.size_cx());
             let ideal = cache.ideal(false);
             let m = cache.margins();
