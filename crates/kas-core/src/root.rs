@@ -482,8 +482,20 @@ impl<Data: 'static> Window<Data> {
         id: WindowId,
         popup: kas::PopupDescriptor,
     ) {
-        let index = self.popups.len();
-        self.popups.push((id, popup, Offset::ZERO));
+        let index = 'index: {
+            for i in 0..self.popups.len() {
+                if self.popups[i].0 == id {
+                    debug_assert_eq!(self.popups[i].1.id, popup.id);
+                    self.popups[i].1 = popup;
+                    break 'index i;
+                }
+            }
+
+            let len = self.popups.len();
+            self.popups.push((id, popup, Offset::ZERO));
+            len
+        };
+
         self.resize_popup(cx, data, index);
         cx.action(self.id(), Action::REGION_MOVED);
     }

@@ -142,7 +142,7 @@ mod Popup {
             self.win_id.is_some()
         }
 
-        /// Open the popup
+        /// Open or reposition the popup
         ///
         /// The popup is positioned next to the `parent`'s rect in the specified
         /// direction (if this is not possible, the direction may be reversed).
@@ -153,7 +153,12 @@ mod Popup {
         /// Returns `true` when the popup is newly opened. In this case, the
         /// caller may wish to call [`EventState::next_nav_focus`] next.
         pub fn open(&mut self, cx: &mut EventCx, data: &W::Data, parent: Id) -> bool {
-            if self.win_id.is_some() {
+            if let Some(id) = self.win_id {
+                cx.reposition_popup(id, kas::PopupDescriptor {
+                    id: self.id(),
+                    parent,
+                    direction: self.direction,
+                });
                 return false;
             }
 

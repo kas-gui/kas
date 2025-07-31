@@ -139,6 +139,9 @@ pub(crate) trait RunnerT {
     /// that `Some` result does not guarantee the operation succeeded).
     fn add_popup(&mut self, parent_id: WindowId, popup: crate::PopupDescriptor) -> WindowId;
 
+    /// Resize and reposition an existing pop-up
+    fn reposition_popup(&mut self, id: WindowId, popup: kas::PopupDescriptor);
+
     /// Add a window
     ///
     /// Toolkits typically allow windows to be added directly, before start of
@@ -211,6 +214,10 @@ impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for Shared
         self.pending
             .push_back(Pending::AddPopup(parent_id, id, popup));
         id
+    }
+
+    fn reposition_popup(&mut self, id: WindowId, popup: kas::PopupDescriptor) {
+        self.pending.push_back(Pending::RepositionPopup(id, popup));
     }
 
     unsafe fn add_window(&mut self, window: kas::Window<()>, data_type_id: TypeId) -> WindowId {

@@ -428,6 +428,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         state.handle_messages(&mut messages);
     }
 
+    /// Add or reposition a pop-up
     pub(super) fn add_popup(
         &mut self,
         state: &mut State<A, G, T>,
