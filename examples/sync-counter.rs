@@ -7,8 +7,8 @@
 //!
 //! Each window shares the counter, but has its own increment step.
 
-use kas::Window;
 use kas::widgets::{AdaptWidget, Button, Label, Slider, column, format_data, row};
+use kas::window::Window;
 
 #[derive(Clone, Debug)]
 struct Increment(i32);

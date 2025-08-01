@@ -14,7 +14,7 @@ use super::{EventCx, IsUsed, Unused, Used};
 use super::{Key, KeyEvent, NamedKey, PhysicalKey, Press};
 use crate::geom::{Affine, Offset};
 #[allow(unused)] use crate::{Events, Popup};
-use crate::{Id, WindowId, dir::Direction};
+use crate::{Id, dir::Direction, window::WindowId};
 
 /// Events addressed to a widget
 ///

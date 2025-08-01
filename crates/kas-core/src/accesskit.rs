@@ -7,7 +7,8 @@
 
 use crate::cast::Cast;
 use crate::geom::Offset;
-use crate::{Role, RoleCx, TextOrSource, Tile, TileExt, Window};
+use crate::window::Window;
+use crate::{Role, RoleCx, TextOrSource, Tile, TileExt};
 use accesskit::{Action, Node, NodeId};
 
 pub(crate) fn apply_scroll_props_to_node(offset: Offset, max_offset: Offset, node: &mut Node) {

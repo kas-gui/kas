@@ -8,7 +8,7 @@
 use super::*;
 #[cfg(feature = "accesskit")] use crate::cast::CastApprox;
 use crate::theme::ThemeSize;
-use crate::{Tile, TileExt, Window};
+use crate::{Tile, TileExt, window::Window};
 use std::task::Poll;
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]

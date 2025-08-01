@@ -21,7 +21,7 @@ use crate::geom::{Rect, Size};
 use crate::messages::Erased;
 use crate::runner::{MessageStack, Platform, RunnerT, WindowDataErased};
 use crate::util::WidgetHierarchy;
-use crate::{Action, Id, NavAdvance, Node, WindowId};
+use crate::{Action, Id, NavAdvance, Node, window::WindowId};
 
 mod config;
 mod cx_pub;

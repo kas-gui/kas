@@ -8,7 +8,7 @@
 use super::{AppData, GraphicsInstance, Platform, ProxyAction, Result, State};
 use crate::config::{Config, ConfigFactory};
 use crate::theme::Theme;
-use crate::{WindowId, WindowIdFactory};
+use crate::window::{WindowId, WindowIdFactory};
 use std::cell::RefCell;
 use std::rc::Rc;
 use winit::event_loop::{EventLoop, EventLoopProxy};

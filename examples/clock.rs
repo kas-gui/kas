@@ -174,7 +174,7 @@ fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
     let window = Window::new(Clock::new(), "Clock")
-        .with_decorations(kas::decorations::Decorations::None)
+        .with_decorations(kas::window::Decorations::None)
         .with_transparent(true);
 
     Runner::with_theme(Default::default())

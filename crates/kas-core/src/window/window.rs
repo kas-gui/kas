@@ -5,8 +5,9 @@
 
 //! Window widgets
 
+use super::{Decorations, WindowId};
 use crate::cast::Cast;
-use crate::decorations::{Border, Decorations, Label, TitleBar};
+use crate::decorations::{Border, Label, TitleBar};
 use crate::dir::{Direction, Directional};
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, ResizeDirection, Scroll, Unused, Used};
 use crate::geom::{Coord, Offset, Rect, Size};
@@ -15,35 +16,6 @@ use crate::theme::{DrawCx, FrameStyle, SizeCx};
 use crate::{Action, Events, Icon, Id, Layout, Popup, Role, RoleCx, Tile, TileExt, Widget};
 use kas_macros::{impl_self, widget_set_rect};
 use smallvec::SmallVec;
-use std::num::NonZeroU32;
-
-/// Identifier for a window or pop-up
-///
-/// Identifiers should always be unique.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct WindowId(NonZeroU32);
-
-impl WindowId {
-    pub(crate) fn get(self) -> u32 {
-        self.0.get()
-    }
-}
-
-/// Constructor for [`WindowId`]
-#[derive(Default)]
-pub(crate) struct WindowIdFactory(u32);
-
-impl WindowIdFactory {
-    /// Get the next identifier
-    ///
-    /// TODO(opt): this should recycle used identifiers since Id does not
-    /// efficiently represent large numbers.
-    pub(crate) fn make_next(&mut self) -> WindowId {
-        let id = self.0 + 1;
-        self.0 = id;
-        WindowId(NonZeroU32::new(id).unwrap())
-    }
-}
 
 /// Commands supported by the [`Window`]
 ///

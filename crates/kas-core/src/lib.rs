@@ -27,7 +27,7 @@ mod action;
 mod core;
 pub mod decorations;
 mod popup;
-mod root;
+pub mod window;
 
 pub use crate::core::*;
 pub use action::Action;
@@ -39,9 +39,6 @@ pub use kas_macros::{layout, widget, widget_index, widget_set_rect};
 pub(crate) use popup::POPUP_INNER_INDEX;
 #[doc(inline)] pub use popup::Popup;
 #[doc(inline)] pub(crate) use popup::PopupDescriptor;
-#[doc(inline)] pub(crate) use root::WindowIdFactory;
-#[doc(inline)]
-pub use root::{Window, WindowCommand, WindowId};
 
 // public implementations:
 pub mod config;

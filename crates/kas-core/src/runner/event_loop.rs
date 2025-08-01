@@ -8,7 +8,7 @@
 use super::{AppData, GraphicsInstance, Pending, State};
 use super::{ProxyAction, Window};
 use crate::theme::Theme;
-use crate::{Action, WindowId};
+use crate::{Action, window::WindowId};
 use std::collections::HashMap;
 use std::time::Instant;
 use winit::application::ApplicationHandler;

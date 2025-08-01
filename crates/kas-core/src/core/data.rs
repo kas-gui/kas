@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Widget data types
+//! Core data types
 
 use super::Id;
 #[allow(unused)] use super::Widget;

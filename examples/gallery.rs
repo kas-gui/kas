@@ -18,6 +18,7 @@ use kas::prelude::*;
 use kas::resvg::Svg;
 use kas::theme::MarginStyle;
 use kas::widgets::{column, *};
+use kas::window::WindowCommand;
 use std::ops::Range;
 
 #[derive(Debug, Default)]
