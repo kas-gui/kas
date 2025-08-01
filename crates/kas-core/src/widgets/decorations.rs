@@ -7,7 +7,7 @@
 //!
 //! Note: due to definition in kas-core, some widgets must be duplicated.
 
-use super::Label;
+use super::{Label, MarkButton};
 use crate::event::{CursorIcon, ResizeDirection};
 use crate::prelude::*;
 use crate::theme::MarkStyle;
@@ -77,82 +77,6 @@ mod Border {
     }
 }
 
-#[impl_self]
-mod MarkButton {
-    /// A mark which is also a button
-    ///
-    /// This button is not keyboard navigable; only mouse/touch interactive.
-    ///
-    /// Uses stretch policy [`Stretch::Low`].
-    ///
-    /// ### Messages
-    ///
-    /// [`kas::messages::Activate`] may be used to trigger the button.
-    #[derive(Clone, Debug)]
-    #[widget]
-    pub(crate) struct MarkButton<M: Clone + Debug + 'static> {
-        core: widget_core!(),
-        style: MarkStyle,
-        label: String,
-        msg: M,
-    }
-
-    impl Self {
-        /// Construct
-        ///
-        /// A clone of `msg` is sent as a message on click.
-        pub fn new(style: MarkStyle, label: impl ToString, msg: M) -> Self {
-            MarkButton {
-                core: Default::default(),
-                style,
-                label: label.to_string(),
-                msg,
-            }
-        }
-    }
-
-    impl Layout for Self {
-        fn size_rules(&mut self, sizer: SizeCx, axis: AxisInfo) -> SizeRules {
-            sizer.feature(self.style.into(), axis)
-        }
-
-        fn draw(&self, mut draw: DrawCx) {
-            draw.mark(self.rect(), self.style);
-        }
-    }
-
-    impl Tile for Self {
-        fn tooltip(&self) -> Option<&str> {
-            Some(&self.label)
-        }
-
-        fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
-            cx.set_label(&self.label);
-            Role::Button
-        }
-    }
-
-    impl Events for Self {
-        const REDRAW_ON_MOUSE_OVER: bool = true;
-
-        type Data = ();
-
-        fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
-            event.on_activate(cx, self.id(), |cx| {
-                cx.push(self.msg.clone());
-                Used
-            })
-        }
-
-        fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-            if let Some(kas::messages::Activate(code)) = cx.try_pop() {
-                cx.push(self.msg.clone());
-                cx.depress_with_key(self.id(), code);
-            }
-        }
-    }
-}
-
 #[derive(Copy, Clone, Debug)]
 enum TitleBarButton {
     Minimize,
@@ -168,9 +92,9 @@ mod TitleBarButtons {
     #[derive(Clone, Default)]
     #[widget]
     #[layout(row! [
-        MarkButton::new(MarkStyle::Chevron(Direction::Down), "Minimize", TitleBarButton::Minimize),
-        MarkButton::new(MarkStyle::Chevron(Direction::Up), "Maximize", TitleBarButton::Maximize),
-        MarkButton::new(MarkStyle::X, "Close", TitleBarButton::Close),
+        MarkButton::new_msg(MarkStyle::Chevron(Direction::Down), "Minimize", TitleBarButton::Minimize),
+        MarkButton::new_msg(MarkStyle::Chevron(Direction::Up), "Maximize", TitleBarButton::Maximize),
+        MarkButton::new_msg(MarkStyle::X, "Close", TitleBarButton::Close),
     ])]
     pub struct TitleBarButtons {
         core: widget_core!(),

@@ -11,6 +11,8 @@
 pub mod adapt;
 mod decorations;
 mod label;
+mod mark;
 
 #[doc(inline)] pub use decorations::*;
 pub use label::Label;
+pub use mark::{Mark, MarkButton};
