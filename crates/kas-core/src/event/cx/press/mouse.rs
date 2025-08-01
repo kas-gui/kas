@@ -241,14 +241,7 @@ impl EventState {
 impl<'a> EventCx<'a> {
     // Clear old `over` id, set new `over`, send events.
     // If there is a popup, only permit descendants of that.
-    fn set_over(&mut self, mut window: Node<'_>, mut w_id: Option<Id>) {
-        if let Some(ref id) = w_id
-            && let Some(popup) = self.popups.last()
-            && !popup.desc.id.is_ancestor_of(id)
-        {
-            w_id = None;
-        }
-
+    fn set_over(&mut self, mut window: Node<'_>, w_id: Option<Id>) {
         if self.mouse.over != w_id {
             log::trace!("set_over: w_id={w_id:?}");
             self.mouse.icon = Default::default();
