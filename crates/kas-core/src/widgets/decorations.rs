@@ -7,10 +7,10 @@
 //!
 //! Note: due to definition in kas-core, some widgets must be duplicated.
 
+use super::Label;
 use crate::event::{CursorIcon, ResizeDirection};
 use crate::prelude::*;
 use crate::theme::MarkStyle;
-use crate::theme::{Text, TextClass};
 use kas_macros::impl_self;
 use std::fmt::Debug;
 
@@ -72,59 +72,6 @@ mod Border {
                     Used
                 }
                 _ => Unused,
-            }
-        }
-    }
-}
-
-#[impl_self]
-mod Label {
-    /// A simple label
-    #[derive(Clone, Debug, Default)]
-    #[widget]
-    #[layout(self.text)]
-    pub(crate) struct Label {
-        core: widget_core!(),
-        text: Text<String>,
-    }
-
-    impl Self {
-        /// Construct from `text`
-        #[inline]
-        fn new(text: impl ToString) -> Self {
-            Label {
-                core: Default::default(),
-                text: Text::new(text.to_string(), TextClass::Label(false)),
-            }
-        }
-    }
-
-    impl Layout for Self {
-        fn set_rect(&mut self, cx: &mut ConfigCx, rect: Rect, hints: AlignHints) {
-            self.text
-                .set_rect(cx, rect, hints.combine(AlignHints::CENTER));
-        }
-    }
-
-    impl Tile for Self {
-        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
-            Role::Label(self.text.as_str())
-        }
-    }
-
-    impl Events for Self {
-        type Data = ();
-
-        fn configure(&mut self, cx: &mut ConfigCx) {
-            cx.text_configure(&mut self.text);
-        }
-    }
-
-    impl Self {
-        /// Set text from a string
-        pub fn set_string(&mut self, cx: &mut EventState, string: String) {
-            if self.text.set_string(string) {
-                cx.action(self.id(), self.text.reprepare_action());
             }
         }
     }
@@ -271,7 +218,7 @@ mod TitleBar {
     pub struct TitleBar {
         core: widget_core!(),
         #[widget]
-        title: Label,
+        title: Label<String>,
         #[widget]
         buttons: TitleBarButtons,
     }
@@ -282,14 +229,14 @@ mod TitleBar {
         pub fn new(title: impl ToString) -> Self {
             TitleBar {
                 core: Default::default(),
-                title: Label::new(title),
+                title: Label::new(title.to_string()),
                 buttons: Default::default(),
             }
         }
 
         /// Get the title
         pub fn title(&self) -> &str {
-            self.title.text.as_str()
+            self.title.as_str()
         }
 
         /// Set the title

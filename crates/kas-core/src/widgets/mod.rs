@@ -10,5 +10,7 @@
 
 pub mod adapt;
 mod decorations;
+mod label;
 
 #[doc(inline)] pub use decorations::*;
+pub use label::Label;

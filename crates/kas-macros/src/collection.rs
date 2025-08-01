@@ -161,8 +161,8 @@ impl Item {
         if input.peek(LitStr) {
             let text: LitStr = input.parse()?;
             let span = text.span();
-            let mut ty = quote! { ::kas::hidden::StrLabel };
-            let mut def = quote_spanned! {span=> ::kas::hidden::StrLabel::new(#text) };
+            let mut ty = quote! { ::kas::widgets::Label<&'static str> };
+            let mut def = quote_spanned! {span=> ::kas::widgets::Label::new(#text) };
 
             if input.peek(Token![.]) && input.peek2(kw::align) {
                 let _: Token![.] = input.parse()?;

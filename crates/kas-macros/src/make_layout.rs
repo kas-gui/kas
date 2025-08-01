@@ -621,9 +621,9 @@ impl Layout {
                 let span = text.span();
                 fields
                     .ty_toks
-                    .append_all(quote! { #ident: ::kas::hidden::StrLabel, });
+                    .append_all(quote! { #ident: ::kas::widgets::Label<&'static str>, });
                 fields.def_toks.append_all(
-                    quote_spanned! {span=> #ident: ::kas::hidden::StrLabel::new(#text), },
+                    quote_spanned! {span=> #ident: ::kas::widgets::Label::new(#text), },
                 );
             }
         }

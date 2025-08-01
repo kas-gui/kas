@@ -40,9 +40,6 @@ pub mod dir;
 pub mod draw;
 pub mod event;
 pub mod geom;
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-pub mod hidden;
 pub mod layout;
 pub mod messages;
 pub mod prelude;

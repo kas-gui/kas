@@ -64,6 +64,7 @@ pub mod adapt;
 #[doc(no_inline)]
 pub use adapt::{Adapt, AdaptWidget, AdaptWidgetAny};
 
+mod access_label;
 mod button;
 mod check_box;
 mod combobox;
@@ -76,7 +77,6 @@ mod frame;
 mod grid;
 mod grip;
 mod image;
-mod label;
 mod list;
 mod mark;
 pub mod menu;
@@ -97,6 +97,7 @@ mod text;
 
 pub use crate::image::Image;
 #[cfg(feature = "image")] pub use crate::image::ImageError;
+pub use access_label::AccessLabel;
 pub use button::Button;
 pub use check_box::{CheckBox, CheckButton};
 pub use combobox::ComboBox;
@@ -107,7 +108,6 @@ pub use float::Float;
 pub use frame::Frame;
 pub use grid::Grid;
 pub use grip::{GripMsg, GripPart};
-pub use label::{AccessLabel, Label};
 pub use list::*;
 pub use mark::{Mark, MarkButton};
 pub use progress::ProgressBar;

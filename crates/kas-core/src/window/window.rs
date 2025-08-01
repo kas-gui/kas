@@ -46,7 +46,7 @@ mod Window {
         #[widget]
         inner: Box<dyn Widget<Data = Data>>,
         #[widget(&())]
-        tooltip: Popup<Label>,
+        tooltip: Popup<Label<String>>,
         #[widget(&())]
         title_bar: TitleBar,
         #[widget(&())]
