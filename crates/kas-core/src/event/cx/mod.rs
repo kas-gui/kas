@@ -6,7 +6,7 @@
 //! Event context state
 
 use linear_map::{LinearMap, set::LinearSet};
-use press::{Mouse, Touch};
+pub(crate) use press::{Mouse, Touch};
 use smallvec::SmallVec;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::future::Future;
@@ -55,6 +55,13 @@ enum PendingNavFocus {
 
 type AccessLayer = (bool, HashMap<Key, Id>);
 
+struct PopupState {
+    id: WindowId,
+    desc: crate::PopupDescriptor,
+    old_nav_focus: Option<Id>,
+    is_sized: bool,
+}
+
 /// Event context state
 ///
 /// This struct encapsulates window-specific event-handling state and handling.
@@ -95,8 +102,7 @@ pub struct EventState {
     mouse: Mouse,
     touch: Touch,
     access_layers: BTreeMap<Id, AccessLayer>,
-    // For each: (WindowId of popup, popup descriptor, old nav focus)
-    popups: SmallVec<[(WindowId, crate::PopupDescriptor, Option<Id>); 16]>,
+    popups: SmallVec<[PopupState; 16]>,
     popup_removed: SmallVec<[(Id, WindowId); 16]>,
     time_updates: Vec<(Instant, Id, TimerHandle)>,
     frame_updates: LinearSet<(Id, TimerHandle)>,
@@ -143,14 +149,17 @@ impl EventState {
     // The caller must call `runner.close_window(window_id)`.
     #[must_use]
     fn close_popup(&mut self, index: usize) -> WindowId {
-        let (window_id, popup, onf) = self.popups.remove(index);
-        self.popup_removed.push((popup.id, window_id));
+        let state = self.popups.remove(index);
+        if state.is_sized {
+            self.popup_removed.push((state.desc.id, state.id));
+        }
+        self.mouse.tooltip_popup_close(&state.desc.parent);
 
-        if let Some(id) = onf {
+        if let Some(id) = state.old_nav_focus {
             self.set_nav_focus(id, FocusSource::Synthetic);
         }
 
-        window_id
+        state.id
     }
 
     /// Clear all focus and grabs on `target`
@@ -193,6 +202,14 @@ impl EventState {
 
         self.mouse.cancel_event_focus(target);
         self.touch.cancel_event_focus(target);
+    }
+
+    pub(crate) fn confirm_popup_is_sized(&mut self, id: WindowId) {
+        for popup in &mut self.popups {
+            if popup.id == id {
+                popup.is_sized = true;
+            }
+        }
     }
 }
 
@@ -265,7 +282,11 @@ impl<'a> EventCx<'a> {
                 return;
             }
 
-            if let Some(id) = self.popups.last().map(|popup| popup.1.id.clone())
+            if let Some(id) = self
+                .popups
+                .last()
+                .filter(|popup| popup.is_sized)
+                .map(|popup| popup.desc.id.clone())
                 && send(self, id, cmd)
             {
                 return;
@@ -278,9 +299,9 @@ impl<'a> EventCx<'a> {
             }
 
             if matches!(cmd, Command::Debug) {
-                let hover = self.mouse.hover();
-                let hier = WidgetHierarchy::new(widget.as_tile(), hover.clone());
-                log::debug!("Widget heirarchy (filter={hover:?}): {hier}");
+                let over_id = self.mouse.over_id();
+                let hier = WidgetHierarchy::new(widget.as_tile(), over_id.clone());
+                log::debug!("Widget heirarchy (filter={over_id:?}): {hier}");
                 return;
             }
         }
@@ -288,7 +309,8 @@ impl<'a> EventCx<'a> {
         // Next priority goes to access keys when Alt is held or alt_bypass is true
         let mut target = None;
         for id in (self.popups.iter().rev())
-            .map(|(_, popup, _)| popup.id.clone())
+            .filter(|popup| popup.is_sized)
+            .map(|state| state.desc.id.clone())
             .chain(std::iter::once(widget.id()))
         {
             if let Some(layer) = self.access_layers.get(&id) {
@@ -313,7 +335,7 @@ impl<'a> EventCx<'a> {
             let shift = self.modifiers.shift_key();
             self.next_nav_focus_impl(widget.re(), None, shift, FocusSource::Key);
         } else if opt_cmd == Some(Command::Escape)
-            && let Some(id) = self.popups.last().map(|(id, _, _)| *id)
+            && let Some(id) = self.popups.last().map(|desc| desc.id)
         {
             self.close_window(id);
         }
@@ -398,21 +420,17 @@ impl<'a> EventCx<'a> {
         used
     }
 
-    fn send_popup_first(&mut self, mut widget: Node<'_>, id: Option<Id>, event: Event) {
-        while let Some(pid) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
-            let mut target = pid;
-            if let Some(id) = id.clone()
-                && target.is_ancestor_of(&id)
+    // Closes any popup which is not an ancestor of `id`
+    fn close_non_ancestors_of(&mut self, id: Option<&Id>) {
+        for index in (0..self.popups.len()).rev() {
+            if let Some(id) = id
+                && self.popups[index].desc.id.is_ancestor_of(id)
             {
-                target = id;
+                continue;
             }
-            log::trace!("send_popup_first: id={target}: {event:?}");
-            if self.send_event(widget.re(), target, event.clone()) {
-                return;
-            }
-        }
-        if let Some(id) = id {
-            self.send_event(widget, id, event);
+
+            let id = self.close_popup(index);
+            self.runner.close_window(id);
         }
     }
 
@@ -530,7 +548,12 @@ impl<'a> EventCx<'a> {
             return;
         }
 
-        if let Some(id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
+        if let Some(id) = self
+            .popups
+            .last()
+            .filter(|popup| popup.is_sized)
+            .map(|state| state.desc.id.clone())
+        {
             if id.is_ancestor_of(widget.id_ref()) {
                 // do nothing
             } else if let Some(r) = widget.find_node(&id, |node| {

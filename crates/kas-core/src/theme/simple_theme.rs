@@ -145,7 +145,7 @@ where
         let inner = outer.shrink(self.w.dims.button_frame as f32);
         self.draw.frame(outer, inner, self.cols.frame);
 
-        if !state.disabled() && !self.cols.is_dark && (state.nav_focus() || state.hover()) {
+        if !state.disabled() && !self.cols.is_dark && (state.nav_focus() || state.under_mouse()) {
             let mut line = outer;
             line.a.1 = line.b.1 - self.w.dims.button_frame as f32;
             let col = if state.nav_focus() {
@@ -452,7 +452,7 @@ where
             self.cols.text_disabled
         } else {
             let is_depressed = self.ev.is_depressed(id);
-            if self.ev.is_hovered(id) || is_depressed {
+            if self.ev.is_under_mouse(id) || is_depressed {
                 self.draw.rect(rect.cast(), self.cols.accent_soft);
             }
             if is_depressed { self.cols.accent } else { self.cols.text }

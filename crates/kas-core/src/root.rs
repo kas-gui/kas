@@ -6,13 +6,13 @@
 //! Window widgets
 
 use crate::cast::Cast;
-use crate::decorations::{Border, Decorations, TitleBar};
-use crate::dir::Directional;
+use crate::decorations::{Border, Decorations, Label, TitleBar};
+use crate::dir::{Direction, Directional};
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, ResizeDirection, Scroll, Unused, Used};
 use crate::geom::{Coord, Offset, Rect, Size};
-use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
+use crate::layout::{self, Align, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
-use crate::{Action, Events, Icon, Id, Layout, Role, RoleCx, Tile, TileExt, Widget};
+use crate::{Action, Events, Icon, Id, Layout, Popup, Role, RoleCx, Tile, TileExt, Widget};
 use kas_macros::{impl_self, widget_set_rect};
 use smallvec::SmallVec;
 use std::num::NonZeroU32;
@@ -56,6 +56,12 @@ pub enum WindowCommand {
     SetIcon(Option<Icon>),
 }
 
+pub(crate) trait WindowErased {
+    fn as_tile(&self) -> &dyn Tile;
+    fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String);
+    fn close_tooltip(&mut self, cx: &mut EventCx);
+}
+
 #[impl_self]
 mod Window {
     /// The window widget
@@ -75,6 +81,8 @@ mod Window {
         transparent: bool,
         #[widget]
         inner: Box<dyn Widget<Data = Data>>,
+        #[widget(&())]
+        tooltip: Popup<Label>,
         #[widget(&())]
         title_bar: TitleBar,
         #[widget(&())]
@@ -232,7 +240,7 @@ mod Window {
             }
             self.inner.draw(draw.re());
             for (_, popup, translation) in &self.popups {
-                if let Some(child) = self.inner.find_tile(&popup.id) {
+                if let Some(child) = self.find_tile(&popup.id) {
                     let clip_rect = child.rect() - *translation;
                     draw.with_overlay(clip_rect, *translation, |draw| {
                         child.draw(draw);
@@ -264,6 +272,10 @@ mod Window {
             match event {
                 Event::PressStart { .. } if self.drag_anywhere => {
                     cx.drag_window();
+                    Used
+                }
+                Event::Timer(handle) if handle == crate::event::Mouse::TIMER_HOVER => {
+                    cx.hover_timer_expiry(self);
                     Used
                 }
                 _ => Unused,
@@ -300,6 +312,21 @@ mod Window {
         }
     }
 
+    impl WindowErased for Self {
+        fn as_tile(&self) -> &dyn Tile {
+            self
+        }
+
+        fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String) {
+            self.tooltip.inner.set_string(cx, text);
+            self.tooltip.open(cx, &(), id, false);
+        }
+
+        fn close_tooltip(&mut self, cx: &mut EventCx) {
+            self.tooltip.close(cx);
+        }
+    }
+
     impl std::fmt::Debug for Self {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("Window")
@@ -326,6 +353,7 @@ impl<Data: 'static> Window<Data> {
             drag_anywhere: true,
             transparent: false,
             inner: ui,
+            tooltip: Popup::new(Label::default(), Direction::Down, Align::Center),
             title_bar: TitleBar::new(title),
             b_w: Border::new(ResizeDirection::West),
             b_e: Border::new(ResizeDirection::East),
@@ -454,9 +482,22 @@ impl<Data: 'static> Window<Data> {
         id: WindowId,
         popup: kas::PopupDescriptor,
     ) {
-        let index = self.popups.len();
-        self.popups.push((id, popup, Offset::ZERO));
+        let index = 'index: {
+            for i in 0..self.popups.len() {
+                if self.popups[i].0 == id {
+                    debug_assert_eq!(self.popups[i].1.id, popup.id);
+                    self.popups[i].1 = popup;
+                    break 'index i;
+                }
+            }
+
+            let len = self.popups.len();
+            self.popups.push((id, popup, Offset::ZERO));
+            len
+        };
+
         self.resize_popup(cx, data, index);
+        cx.confirm_popup_is_sized(id);
         cx.action(self.id(), Action::REGION_MOVED);
     }
 
@@ -495,7 +536,7 @@ impl<Data: 'static> Window<Data> {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
         let r = self.rect();
-        let (_, ref mut popup, ref mut translation) = self.popups[index];
+        let popup = self.popups[index].1.clone();
 
         let is_reversed = popup.direction.is_reversed();
         let place_in = |rp, rs: i32, cp: i32, cs: i32, ideal, m: (u16, u16)| -> (i32, i32) {
@@ -517,28 +558,37 @@ impl<Data: 'static> Window<Data> {
                 (cp + cs + m.0, after)
             }
         };
-        let place_out = |rp, rs, cp: i32, cs, ideal: i32| -> (i32, i32) {
-            let pos = cp.min(rp + rs - ideal).max(rp);
-            let size = ideal.max(cs).min(rs);
+        let place_out = |rp, rs, cp: i32, cs, ideal: i32, align| -> (i32, i32) {
+            let mut size = ideal.max(cs).min(rs);
+            let pos = match align {
+                Align::Default | Align::TL => cp,
+                Align::BR => cp + cs,
+                Align::Center => cp + (cs - size) / 2,
+                Align::Stretch => {
+                    size = size.max(cs);
+                    cp
+                }
+            };
+            let pos = pos.min(rp + rs - size).max(rp);
             (pos, size)
         };
 
-        let Some((c, t)) = self.inner.as_tile().find_tile_rect(&popup.parent) else {
+        let Some((c, t)) = self.as_tile().find_tile_rect(&popup.parent) else {
             return;
         };
-        *translation = t;
+        self.popups[index].2 = t;
         let r = r + t; // work in translated coordinate space
-        let result = self.inner.as_node(data).find_node(&popup.id, |mut node| {
+        let result = self.as_node(data).find_node(&popup.id, |mut node| {
             let mut cache = layout::SolveCache::find_constraints(node.re(), cx.size_cx());
             let ideal = cache.ideal(false);
             let m = cache.margins();
 
             let rect = if popup.direction.is_horizontal() {
                 let (x, w) = place_in(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0, m.horiz);
-                let (y, h) = place_out(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1);
+                let (y, h) = place_out(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1, popup.align);
                 Rect::new(Coord(x, y), Size::new(w, h))
             } else {
-                let (x, w) = place_out(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0);
+                let (x, w) = place_out(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0, popup.align);
                 let (y, h) = place_in(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1, m.vert);
                 Rect::new(Coord(x, y), Size::new(w, h))
             };

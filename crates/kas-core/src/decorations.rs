@@ -83,7 +83,7 @@ mod Border {
     impl Events for Self {
         type Data = ();
 
-        fn hover_icon(&self) -> Option<CursorIcon> {
+        fn mouse_over_icon(&self) -> Option<CursorIcon> {
             if self.resizable {
                 Some(self.direction.into())
             } else {
@@ -201,6 +201,10 @@ mod MarkButton {
     }
 
     impl Tile for Self {
+        fn tooltip(&self) -> Option<&str> {
+            Some(&self.label)
+        }
+
         fn role(&self, cx: &mut dyn RoleCx) -> Role<'_> {
             cx.set_label(&self.label);
             Role::Button
@@ -208,7 +212,7 @@ mod MarkButton {
     }
 
     impl Events for Self {
-        const REDRAW_ON_HOVER: bool = true;
+        const REDRAW_ON_MOUSE_OVER: bool = true;
 
         type Data = ();
 

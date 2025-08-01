@@ -104,17 +104,8 @@ pub enum Event<'a> {
     /// Call [`Press::grab`] in order to "grab" corresponding motion
     /// and release events.
     ///
-    /// This event is sent in exactly two cases, in this order:
-    ///
-    /// 1.  When a [`Popup`] is open. A [`Popup`] will close itself if
-    ///     `press.id` is not a descendant of itself, but will still return
-    ///     [`Unused`]. The parent (or an ancestor) of the
-    ///     [`Popup`] should handle this event.
-    /// 2.  If a widget is found under the mouse when pressed or where a touch
-    ///     event starts, this event is sent to the widget.
-    ///
-    /// If `start_id` is `None`, then no widget was found at the coordinate and
-    /// the event will only be delivered to pop-up layer owners.
+    /// This event is sent to the widget under the mouse or touch position. If
+    /// no such widget is found, this event is not sent.
     PressStart { press: Press },
     /// Movement of mouse or a touch press
     ///
@@ -202,10 +193,10 @@ pub enum Event<'a> {
     ImeFocus,
     /// Notification that a widget has lost IME focus
     LostImeFocus,
-    /// Notification that a widget gains or loses mouse hover
+    /// Notification that the mouse moves over or leaves a widget
     ///
-    /// The payload is `true` when focus is gained, `false` when lost.
-    MouseHover(bool),
+    /// The state is `true` on mouse over, `false` when the mouse leaves.
+    MouseOver(bool),
 }
 
 impl<'a> std::ops::Add<Offset> for Event<'a> {
@@ -291,8 +282,8 @@ impl<'a> Event<'a> {
             CursorMove { .. } | PressStart { .. } => false,
             Pan { .. } | PressMove { .. } | PressEnd { .. } => true,
             Timer(_) | PopupClosed(_) => true,
-            NavFocus { .. } | SelFocus(_) | KeyFocus | ImeFocus | MouseHover(true) => false,
-            LostNavFocus | LostKeyFocus | LostSelFocus | LostImeFocus | MouseHover(false) => true,
+            NavFocus { .. } | SelFocus(_) | KeyFocus | ImeFocus | MouseOver(true) => false,
+            LostNavFocus | LostKeyFocus | LostSelFocus | LostImeFocus | MouseOver(false) => true,
         }
     }
 
@@ -332,7 +323,7 @@ impl<'a> Event<'a> {
             SelFocus(_) | LostSelFocus => false,
             KeyFocus | LostKeyFocus => false,
             ImeFocus | LostImeFocus => false,
-            MouseHover(_) => true,
+            MouseOver(_) => false,
         }
     }
 }

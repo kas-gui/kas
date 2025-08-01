@@ -26,8 +26,8 @@ pub enum ScrollBarMode {
     ///
     /// Parameters: `(horiz_is_visible, vert_is_visible)`.
     Fixed(bool, bool),
-    /// Enabled scroll bars float over content and are only drawn when hovered
-    /// over by the mouse. Disabled scroll bars are fully hidden.
+    /// Enabled scroll bars float over content and are only drawn on mouse over.
+    /// Disabled scroll bars are fully hidden.
     ///
     /// Parameters: `(horiz_is_enabled, vert_is_enabled)`.
     Invisible(bool, bool),
@@ -66,7 +66,7 @@ mod ScrollBar {
         max_value: i32,
         value: i32,
         invisible: bool,
-        is_hovered: bool,
+        is_under_mouse: bool,
         force_visible: bool,
         #[widget]
         grip: GripPart,
@@ -116,7 +116,7 @@ mod ScrollBar {
                 max_value: 0,
                 value: 0,
                 invisible: false,
-                is_hovered: false,
+                is_under_mouse: false,
                 force_visible: false,
                 grip: GripPart::new(),
             }
@@ -130,7 +130,7 @@ mod ScrollBar {
 
         /// Set invisible property
         ///
-        /// An "invisible" scroll bar is only drawn on mouse-hover
+        /// An "invisible" scroll bar is only drawn on mouse-over
         #[inline]
         pub fn set_invisible(&mut self, invisible: bool) {
             self.invisible = invisible;
@@ -138,7 +138,7 @@ mod ScrollBar {
 
         /// Set invisible property (inline)
         ///
-        /// An "invisible" scroll bar is only drawn on mouse-hover
+        /// An "invisible" scroll bar is only drawn on mouse-over
         #[inline]
         pub fn with_invisible(mut self, invisible: bool) -> Self {
             self.invisible = invisible;
@@ -224,7 +224,7 @@ mod ScrollBar {
                 self.value = value;
                 self.grip.set_offset(cx, self.offset());
             }
-            if !self.is_hovered {
+            if !self.is_under_mouse {
                 self.force_visible = true;
                 let delay = cx.config().event().touch_select_delay();
                 cx.request_timer(self.id(), TIMER_HIDE, delay);
@@ -347,14 +347,14 @@ mod ScrollBar {
     }
 
     impl Events for Self {
-        const REDRAW_ON_HOVER: bool = true;
+        const REDRAW_ON_MOUSE_OVER: bool = true;
 
         type Data = ();
 
         fn handle_event(&mut self, cx: &mut EventCx, _: &Self::Data, event: Event) -> IsUsed {
             match event {
                 Event::Timer(TIMER_HIDE) => {
-                    if !self.is_hovered {
+                    if !self.is_under_mouse {
                         self.force_visible = false;
                         cx.redraw(self);
                     }
@@ -365,14 +365,14 @@ mod ScrollBar {
                     self.apply_grip_offset(cx, offset);
                     Used
                 }
-                Event::MouseHover(true) => {
-                    self.is_hovered = true;
+                Event::MouseOver(true) => {
+                    self.is_under_mouse = true;
                     self.force_visible = true;
                     cx.redraw(self);
                     Used
                 }
-                Event::MouseHover(false) => {
-                    self.is_hovered = false;
+                Event::MouseOver(false) => {
+                    self.is_under_mouse = false;
                     let delay = cx.config().event().touch_select_delay();
                     cx.request_timer(self.id(), TIMER_HIDE, delay);
                     Used
@@ -446,7 +446,7 @@ mod ScrollBars {
         /// Set fixed, invisible bars (inline)
         ///
         /// In this mode scroll bars are either enabled but invisible until
-        /// hovered by the mouse or disabled completely.
+        /// mouse over or disabled completely.
         #[inline]
         pub fn with_invisible_bars(mut self, horiz: bool, vert: bool) -> Self
         where
@@ -662,7 +662,7 @@ mod ScrollBarRegion {
         /// Set fixed, invisible bars (inline)
         ///
         /// In this mode scroll bars are either enabled but invisible until
-        /// hovered by the mouse or disabled completely.
+        /// mouse over or disabled completely.
         #[inline]
         pub fn with_invisible_bars(self, horiz: bool, vert: bool) -> Self
         where

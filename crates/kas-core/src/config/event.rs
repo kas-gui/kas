@@ -7,6 +7,7 @@
 
 use crate::Action;
 use crate::cast::{Cast, CastFloat};
+#[allow(unused)] use crate::event::Event;
 use crate::event::ModifiersState;
 use crate::geom::Offset;
 #[cfg(feature = "serde")]
@@ -18,6 +19,7 @@ use std::time::Duration;
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum EventConfigMsg {
+    HoverDelay(u32),
     MenuDelay(u32),
     TouchSelectDelay(u32),
     KineticTimeout(u32),
@@ -55,6 +57,9 @@ pub enum EventConfigMsg {
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct EventConfig {
+    #[cfg_attr(feature = "serde", serde(default = "defaults::hover_delay_ms"))]
+    pub hover_delay_ms: u32,
+
     #[cfg_attr(feature = "serde", serde(default = "defaults::menu_delay_ms"))]
     pub menu_delay_ms: u32,
 
@@ -96,6 +101,7 @@ pub struct EventConfig {
 impl Default for EventConfig {
     fn default() -> Self {
         EventConfig {
+            hover_delay_ms: defaults::hover_delay_ms(),
             menu_delay_ms: defaults::menu_delay_ms(),
             touch_select_delay_ms: defaults::touch_select_delay_ms(),
             kinetic_timeout_ms: defaults::kinetic_timeout_ms(),
@@ -116,6 +122,7 @@ impl Default for EventConfig {
 impl EventConfig {
     pub(super) fn change_config(&mut self, msg: EventConfigMsg) -> Action {
         match msg {
+            EventConfigMsg::HoverDelay(v) => self.hover_delay_ms = v,
             EventConfigMsg::MenuDelay(v) => self.menu_delay_ms = v,
             EventConfigMsg::TouchSelectDelay(v) => self.touch_select_delay_ms = v,
             EventConfigMsg::KineticTimeout(v) => self.kinetic_timeout_ms = v,
@@ -150,7 +157,13 @@ impl<'a> EventWindowConfig<'a> {
         Ref::map(self.0.config.borrow(), |c| &c.event)
     }
 
-    /// Delay before opening/closing menus on mouse hover
+    /// Delay before mouse hover action (show tooltip)
+    #[inline]
+    pub fn hover_delay(&self) -> Duration {
+        Duration::from_millis(self.base().hover_delay_ms.cast())
+    }
+
+    /// Delay before opening/closing menus on mouse over
     #[inline]
     pub fn menu_delay(&self) -> Duration {
         Duration::from_millis(self.base().menu_delay_ms.cast())
@@ -288,6 +301,9 @@ impl MousePan {
 mod defaults {
     use super::MousePan;
 
+    pub fn hover_delay_ms() -> u32 {
+        1000
+    }
     pub fn menu_delay_ms() -> u32 {
         250
     }

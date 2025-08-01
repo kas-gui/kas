@@ -18,7 +18,7 @@ use crate::theme::SizeCx;
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
 #[allow(unused)] use crate::{Events, Layout, Tile}; // for doc-links
-use crate::{HasId, Window};
+use crate::{HasId, PopupDescriptor, Window};
 
 impl EventState {
     /// Get the platform
@@ -752,7 +752,7 @@ impl<'a> EventCx<'a> {
         self.scroll = scroll;
     }
 
-    /// Add an overlay (pop-up)
+    /// Add a pop-up
     ///
     /// A pop-up is a box used for things like tool-tips and menus which is
     /// drawn on top of other content and has focus for input.
@@ -770,15 +770,38 @@ impl<'a> EventCx<'a> {
     ///
     /// A pop-up may be closed by calling [`EventCx::close_window`] with
     /// the [`WindowId`] returned by this method.
-    pub(crate) fn add_popup(&mut self, popup: crate::PopupDescriptor) -> WindowId {
+    pub(crate) fn add_popup(&mut self, popup: PopupDescriptor, set_focus: bool) -> WindowId {
         log::trace!(target: "kas_core::event", "add_popup: {popup:?}");
 
         let parent_id = self.window.window_id();
         let id = self.runner.add_popup(parent_id, popup.clone());
-        let nav_focus = self.nav_focus.clone();
-        self.popups.push((id, popup, nav_focus));
-        self.clear_nav_focus();
+        let mut old_nav_focus = None;
+        if set_focus {
+            old_nav_focus = self.nav_focus.clone();
+            self.clear_nav_focus();
+        }
+        self.popups.push(PopupState {
+            id,
+            desc: popup,
+            old_nav_focus,
+            is_sized: false,
+        });
         id
+    }
+
+    /// Resize and reposition an existing pop-up
+    ///
+    /// This method takes a new [`PopupDescriptor`]. Its first field, `id`, is
+    /// expected to remain unchanged but other fields may differ.
+    pub(crate) fn reposition_popup(&mut self, id: WindowId, desc: PopupDescriptor) {
+        self.runner.reposition_popup(id, desc.clone());
+        for popup in self.popups.iter_mut() {
+            if popup.id == id {
+                debug_assert_eq!(popup.desc.id, desc.id);
+                popup.desc = desc;
+                break;
+            }
+        }
     }
 
     /// Add a window
@@ -808,7 +831,7 @@ impl<'a> EventCx<'a> {
     /// the popup was open.
     pub fn close_window(&mut self, mut id: WindowId) {
         for (index, p) in self.popups.iter().enumerate() {
-            if p.0 == id {
+            if p.id == id {
                 id = self.close_popup(index);
                 break;
             }

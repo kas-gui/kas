@@ -674,7 +674,7 @@ mod GridView {
     }
 
     impl Events for Self {
-        fn hover_icon(&self) -> Option<CursorIcon> {
+        fn mouse_over_icon(&self) -> Option<CursorIcon> {
             self.scroll
                 .is_kinetic_scrolling()
                 .then_some(CursorIcon::AllScroll)

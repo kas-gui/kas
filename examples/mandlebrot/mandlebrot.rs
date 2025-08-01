@@ -357,6 +357,10 @@ mod Mandlebrot {
     }
 
     impl Tile for Self {
+        fn role(&self, _: &mut dyn RoleCx) -> Role<'_> {
+            Role::Unknown
+        }
+
         fn navigable(&self) -> bool {
             true
         }

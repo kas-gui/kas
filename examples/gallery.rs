@@ -113,7 +113,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
         struct {
             core: widget_core!(),
             #[widget] text: Text<Data, String> = format_data!(data: &Data, "{}", &data.text),
-            #[widget(&())] popup: Popup<TextEdit> = Popup::new(TextEdit::new("", true), Direction::Down),
+            #[widget(&())] popup: Popup<TextEdit> = Popup::new(TextEdit::new("", true), Direction::Down, Align::TL),
         }
         impl Events for Self {
             type Data = Data;
@@ -126,7 +126,7 @@ fn widgets() -> Box<dyn Widget<Data = AppData>> {
                     // let ed = TextEdit::new(text, true);
                     // cx.add_window::<()>(ed.into_window("Edit text"));
                     // TODO: cx.add_modal(..)
-                    self.popup.open(cx, &(), self.id());
+                    self.popup.open(cx, &(), self.id(), true);
                 } else if let Some(result) = cx.try_pop() {
                     match result {
                         TextEditResult::Cancel => (),

@@ -104,7 +104,7 @@ impl<'a> DrawCx<'a> {
     /// Set the identity of the current widget
     ///
     /// This struct tracks the [`Id`] of the calling widget to allow evaluation
-    /// of widget state (e.g. is disabled, is hovered, has key focus).
+    /// of widget state (e.g. is disabled, is under the mouse, has key focus).
     /// Usually you don't need to worry about this since the `#[widget]` macro
     /// injects a call to this method at the start of [`Layout::draw`].
     pub fn set_id(&mut self, id: Id) {

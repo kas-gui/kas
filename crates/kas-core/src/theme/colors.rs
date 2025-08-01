@@ -25,12 +25,12 @@ bitflags::bitflags! {
         ///
         /// All other states should be ignored when disabled.
         const DISABLED = 1 << 0;
-        /// "Hover" is true if the mouse is over this element
-        const HOVER = 1 << 2;
+        /// True if the mouse is over this element
+        const UNDER_MOUSE = 1 << 2;
         /// Elements such as buttons, handles and menu entries may be depressed
         /// (visually pushed) by a click or touch event or an access key.
         /// This is often visualised by a darker colour and/or by offsetting
-        /// graphics. The `hover` state should be ignored when depressed.
+        /// graphics. Depressed items typically ignore the `UNDER_MOUSE` state.
         const DEPRESS = 1 << 3;
         /// Keyboard navigation of UIs moves a "focus" from widget to widget.
         const NAV_FOCUS = 1 << 4;
@@ -60,8 +60,8 @@ impl InputState {
         if ev.is_disabled(id) {
             state |= InputState::DISABLED;
         }
-        if ev.is_hovered(id) {
-            state |= InputState::HOVER;
+        if ev.is_under_mouse(id) {
+            state |= InputState::UNDER_MOUSE;
         }
         if ev.has_nav_focus(id) {
             state |= InputState::NAV_FOCUS;
@@ -75,11 +75,12 @@ impl InputState {
         state
     }
 
-    /// Construct, setting all components, also setting hover from `id2`
+    /// Construct as [`Self::new_all`], but also set [`InputState::UNDER_MOUSE`]
+    /// if `id2` is under the mouse pointer.
     pub fn new2(ev: &EventState, id: &Id, id2: &Id) -> Self {
         let mut state = Self::new_all(ev, id);
-        if ev.is_hovered(id2) {
-            state |= InputState::HOVER;
+        if ev.is_under_mouse(id2) {
+            state |= InputState::UNDER_MOUSE;
         }
         state
     }
@@ -90,10 +91,10 @@ impl InputState {
         self.contains(InputState::DISABLED)
     }
 
-    /// Extract `HOVER` bit
+    /// Extract `UNDER_MOUSE` bit
     #[inline]
-    pub fn hover(self) -> bool {
-        self.contains(InputState::HOVER)
+    pub fn under_mouse(self) -> bool {
+        self.contains(InputState::UNDER_MOUSE)
     }
 
     /// Extract `DEPRESS` bit
@@ -282,7 +283,7 @@ impl ColorsLinear {
             col.average()
         } else if state.depress() {
             col.multiply(MULT_DEPRESS)
-        } else if state.hover() || state.key_focus() {
+        } else if state.under_mouse() || state.key_focus() {
             col.multiply(MULT_HIGHLIGHT).max(MIN_HIGHLIGHT)
         } else {
             col

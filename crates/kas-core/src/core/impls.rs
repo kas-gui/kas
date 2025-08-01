@@ -28,8 +28,8 @@ pub fn _send<W: Events>(
         // Side-effects of receiving events at the target widget.
         // These actions do not affect is_used or event propagation.
         match &event {
-            Event::MouseHover(state) => {
-                widget.handle_hover(cx, *state);
+            Event::MouseOver(state) => {
+                widget.handle_mouse_over(cx, *state);
             }
             Event::NavFocus(FocusSource::Key) => {
                 cx.set_scroll(Scroll::Rect(widget.rect()));

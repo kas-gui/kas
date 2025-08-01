@@ -181,6 +181,15 @@ where
                         .add_popup(&mut self.state, id, popup);
                     self.popups.insert(id, parent_id);
                 }
+                Pending::RepositionPopup(id, popup) => {
+                    if let Some(parent_id) = self.popups.get(&id) {
+                        self.windows.get_mut(parent_id).unwrap().add_popup(
+                            &mut self.state,
+                            id,
+                            popup,
+                        );
+                    }
+                }
                 Pending::AddWindow(id, mut window) => {
                     log::debug!("Pending: adding window {}", window.widget.title());
                     if !self.suspended {

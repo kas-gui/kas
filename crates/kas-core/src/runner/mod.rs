@@ -172,6 +172,7 @@ impl AppData for () {
 #[crate::autoimpl(Debug)]
 enum Pending<A: AppData, G: GraphicsInstance, T: kas::theme::Theme<G::Shared>> {
     AddPopup(WindowId, WindowId, kas::PopupDescriptor),
+    RepositionPopup(WindowId, kas::PopupDescriptor),
     // NOTE: we don't need G, T here if we construct the Window later.
     // But this way we can pass a single boxed value.
     AddWindow(WindowId, Box<Window<A, G, T>>),
@@ -424,7 +425,7 @@ mod test {
     fn size_of_pending() {
         assert_eq!(
             std::mem::size_of::<Pending<(), AGB, crate::theme::SimpleTheme>>(),
-            32
+            40
         );
     }
 }

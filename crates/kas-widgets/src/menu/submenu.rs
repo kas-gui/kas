@@ -59,12 +59,12 @@ mod SubMenu {
                 core: Default::default(),
                 label: AccessLabel::new(label).with_class(TextClass::MenuLabel),
                 mark: Mark::new(MarkStyle::Chevron(direction), "Open"),
-                popup: Popup::new(MenuView::new(list), direction),
+                popup: Popup::new(MenuView::new(list), direction, Align::TL),
             }
         }
 
         fn open_menu(&mut self, cx: &mut EventCx, data: &Data, set_focus: bool) {
-            if self.popup.open(cx, data, self.id()) {
+            if self.popup.open(cx, data, self.id(), true) {
                 if set_focus {
                     cx.next_nav_focus(self.id(), false, FocusSource::Key);
                 }
@@ -154,10 +154,10 @@ mod SubMenu {
 
         fn handle_messages(&mut self, cx: &mut EventCx, data: &Data) {
             if let Some(Activate(code)) = cx.try_pop() {
-                self.popup.open(cx, data, self.id());
+                self.popup.open(cx, data, self.id(), true);
                 cx.depress_with_key(self.id(), code);
             } else if let Some(Expand) = cx.try_pop() {
-                self.popup.open(cx, data, self.id());
+                self.popup.open(cx, data, self.id(), true);
             } else if let Some(Collapse) = cx.try_pop() {
                 self.popup.close(cx);
             } else {

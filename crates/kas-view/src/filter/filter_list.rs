@@ -94,7 +94,7 @@ mod FilterBoxListView {
         /// Set fixed, invisible bars (inline)
         ///
         /// In this mode scroll bars are either enabled but invisible until
-        /// hovered by the mouse or disabled completely.
+        /// under the mouse or disabled completely.
         #[inline]
         pub fn with_invisible_bars(mut self, horiz: bool, vert: bool) -> Self
         where

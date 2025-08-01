@@ -11,11 +11,12 @@ pub(crate) mod velocity;
 
 #[allow(unused)] use super::{Event, EventState}; // for doc-links
 use super::{EventCx, IsUsed};
+#[allow(unused)] use crate::Events; // for doc-links
 use crate::event::{CursorIcon, MouseButton, Unused, Used};
 use crate::geom::{Coord, Vec2};
 use crate::{Action, Id};
-pub(super) use mouse::Mouse;
-pub(super) use touch::Touch;
+pub(crate) use mouse::Mouse;
+pub(crate) use touch::Touch;
 
 /// Controls the types of events delivered by [`Press::grab`]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -265,7 +266,7 @@ impl EventState {
             }
         }
         for popup in &self.popups {
-            if *w_id == popup.1.parent {
+            if *w_id == popup.desc.parent {
                 return true;
             }
         }
@@ -274,21 +275,21 @@ impl EventState {
 
     /// Get whether the widget is under the mouse cursor
     #[inline]
-    pub fn is_hovered(&self, w_id: &Id) -> bool {
-        self.mouse.grab.is_none() && *w_id == self.mouse.hover
+    pub fn is_under_mouse(&self, w_id: &Id) -> bool {
+        self.mouse.grab.is_none() && *w_id == self.mouse.over
     }
 
     /// Set the cursor icon
     ///
-    /// This is normally called when handling [`Event::MouseHover`]. In other
+    /// This is normally called from [`Events::handle_mouse_over`]. In other
     /// cases, calling this method may be ineffective. The cursor is
-    /// automatically "unset" when the widget is no longer hovered.
+    /// automatically "unset" when the widget is no longer under the mouse.
     ///
     /// See also [`EventCx::set_grab_cursor`]: if a mouse grab
     /// ([`Press::grab`]) is active, its icon takes precedence.
-    pub fn set_hover_cursor(&mut self, icon: CursorIcon) {
+    pub fn set_mouse_over_icon(&mut self, icon: CursorIcon) {
         // Note: this is acted on by EventState::update
-        self.mouse.hover_icon = icon;
+        self.mouse.icon = icon;
     }
 
     /// Set a grab's depress target

@@ -931,12 +931,12 @@ mod EditField {
     }
 
     impl Events for Self {
-        const REDRAW_ON_HOVER: bool = true;
+        const REDRAW_ON_MOUSE_OVER: bool = true;
 
         type Data = G::Data;
 
         #[inline]
-        fn hover_icon(&self) -> Option<CursorIcon> {
+        fn mouse_over_icon(&self) -> Option<CursorIcon> {
             Some(CursorIcon::Text)
         }
 

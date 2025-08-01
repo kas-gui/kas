@@ -171,7 +171,7 @@ mod SelectableText {
         type Data = A;
 
         #[inline]
-        fn hover_icon(&self) -> Option<CursorIcon> {
+        fn mouse_over_icon(&self) -> Option<CursorIcon> {
             Some(CursorIcon::Text)
         }
 
@@ -408,7 +408,7 @@ mod ScrollText {
         type Data = A;
 
         #[inline]
-        fn hover_icon(&self) -> Option<CursorIcon> {
+        fn mouse_over_icon(&self) -> Option<CursorIcon> {
             Some(CursorIcon::Text)
         }
 

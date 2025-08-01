@@ -54,18 +54,18 @@ use kas_macros::autoimpl;
 ///
 /// [`#widget`]: macros::widget
 pub trait Events: Widget + Sized {
-    /// Does this widget have a different appearance when hovered?
+    /// Does this widget have a different appearance on mouse over?
     ///
-    /// If `true`, then mouse hover and loss of mouse hover will cause a redraw.
-    /// (Note that [`Layout::draw`] can infer the hover state and start
-    /// animations.)
-    const REDRAW_ON_HOVER: bool = false;
+    /// If `true`, then the mouse moving over and leaving the widget will cause
+    /// a redraw. (Note that [`Layout::draw`] can infer the mouse-over state and
+    /// start animations.)
+    const REDRAW_ON_MOUSE_OVER: bool = false;
 
-    /// The mouse cursor icon to use on hover
+    /// The mouse cursor icon to use on mouse over
     ///
     /// Defaults to `None`.
     #[inline]
-    fn hover_icon(&self) -> Option<CursorIcon> {
+    fn mouse_over_icon(&self) -> Option<CursorIcon> {
         None
     }
 
@@ -166,15 +166,18 @@ pub trait Events: Widget + Sized {
 
     /// Mouse focus handler
     ///
-    /// Called when mouse hover state changes. (This is a low-level alternative
-    /// to [`Self::REDRAW_ON_HOVER`] and [`Self::hover_icon`].)
+    /// Called when mouse moves over or leaves this widget.
+    /// (This is a low-level alternative
+    /// to [`Self::REDRAW_ON_MOUSE_OVER`] and [`Self::mouse_over_icon`].)
+    ///
+    /// `state` is true when the mouse is over this widget.
     #[inline]
-    fn handle_hover(&mut self, cx: &mut EventCx, is_hovered: bool) {
-        if Self::REDRAW_ON_HOVER {
+    fn handle_mouse_over(&mut self, cx: &mut EventCx, state: bool) {
+        if Self::REDRAW_ON_MOUSE_OVER {
             cx.redraw(&self);
         }
-        if is_hovered && let Some(icon) = self.hover_icon() {
-            cx.set_hover_cursor(icon);
+        if state && let Some(icon) = self.mouse_over_icon() {
+            cx.set_mouse_over_icon(icon);
         }
     }
 
