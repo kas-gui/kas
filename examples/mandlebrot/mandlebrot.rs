@@ -7,13 +7,12 @@
 //!
 //! Demonstrates use of a custom draw pipe.
 
-use kas::decorations::TitleBarButtons;
 use kas::draw::{Draw, DrawIface, PassId};
 use kas::event::{self, Command};
 use kas::geom::{Affine, DVec2, Linear, Vec2, Vec3};
 use kas::prelude::*;
 use kas::widgets::adapt::Reserve;
-use kas::widgets::{Label, Slider, Text, format_value};
+use kas::widgets::{Label, Slider, Text, TitleBarButtons, format_value};
 use kas::window::Decorations;
 use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawPipe};
 use kas_wgpu::wgpu;

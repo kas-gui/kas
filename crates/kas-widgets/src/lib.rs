@@ -8,6 +8,8 @@
 //! ## Complex widgets
 //!
 //! -   [`EventConfig`] provides an editor for event configuration
+//! -   [`TitleBar`] is a window title-bar (including buttons)
+//! -   [`TitleBarButtons`] is the standard minimize/maximize/close button cluster on a title-bar
 //!
 //! ## Sub-modules
 //!
@@ -90,6 +92,8 @@ mod splitter;
 mod stack;
 mod tab_stack;
 mod text;
+
+#[doc(inline)] pub use kas::widgets::*;
 
 pub use crate::image::Image;
 #[cfg(feature = "image")] pub use crate::image::ImageError;

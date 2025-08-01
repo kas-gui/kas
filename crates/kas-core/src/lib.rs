@@ -25,7 +25,7 @@ extern crate self as kas;
 #[cfg(feature = "accesskit")] pub(crate) mod accesskit;
 mod action;
 mod core;
-pub mod decorations;
+pub mod widgets;
 pub mod window;
 
 pub use crate::core::*;

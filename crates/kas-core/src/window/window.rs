@@ -7,12 +7,12 @@
 
 use super::{Decorations, Popup, PopupDescriptor, WindowId};
 use crate::cast::Cast;
-use crate::decorations::{Border, Label, TitleBar};
 use crate::dir::{Direction, Directional};
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, ResizeDirection, Scroll, Unused, Used};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, Align, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
+use crate::widgets::{Border, Label, TitleBar};
 use crate::{Action, Events, Icon, Id, Layout, Role, RoleCx, Tile, TileExt, Widget};
 use kas_macros::{impl_self, widget_set_rect};
 use smallvec::SmallVec;

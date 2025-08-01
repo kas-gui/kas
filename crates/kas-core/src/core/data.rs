@@ -6,7 +6,7 @@
 //! Core data types
 
 use super::Id;
-#[allow(unused)] use super::Widget;
+#[allow(unused)] use crate::Widget;
 use crate::geom::Rect;
 use std::ops::Range;
 
