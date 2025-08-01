@@ -214,6 +214,12 @@ impl Mouse {
         }
         true
     }
+
+    pub(in crate::event::cx) fn tooltip_popup_close(&mut self, id: &Id) {
+        if self.tooltip_source.as_ref() == Some(id) {
+            self.tooltip_source = None;
+        }
+    }
 }
 
 impl EventState {
@@ -507,9 +513,6 @@ impl<'a> EventCx<'a> {
                 {
                     win.show_tooltip(self, id.clone(), text.to_string());
                     self.mouse.tooltip_source = Some(id.clone());
-                } else {
-                    let delay = self.config().event().hover_delay();
-                    self.request_timer(win.as_tile().id(), Mouse::TIMER_HOVER, delay);
                 }
             }
             _ => (),

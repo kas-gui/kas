@@ -153,6 +153,7 @@ impl EventState {
         if state.is_sized {
             self.popup_removed.push((state.desc.id, state.id));
         }
+        self.mouse.tooltip_popup_close(&state.desc.parent);
 
         if let Some(id) = state.old_nav_focus {
             self.set_nav_focus(id, FocusSource::Synthetic);
