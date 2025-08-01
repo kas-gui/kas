@@ -8,6 +8,7 @@
 //! This is a minimal widget library intended to cover the needs of windows and
 //! window decorations.
 
+pub mod adapt;
 mod decorations;
 
 #[doc(inline)] pub use decorations::*;
