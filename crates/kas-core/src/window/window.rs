@@ -17,17 +17,6 @@ use crate::{Action, Events, Icon, Id, Layout, Role, RoleCx, Tile, TileExt, Widge
 use kas_macros::{impl_self, widget_set_rect};
 use smallvec::SmallVec;
 
-/// Commands supported by the [`Window`]
-///
-/// This may be sent as a message from any widget in the window.
-#[derive(Clone, Debug)]
-pub enum WindowCommand {
-    /// Change the window's title
-    SetTitle(String),
-    /// Change the window's icon
-    SetIcon(Option<Icon>),
-}
-
 pub(crate) trait WindowErased {
     fn as_tile(&self) -> &dyn Tile;
     fn show_tooltip(&mut self, cx: &mut EventCx, id: Id, text: String);
@@ -41,8 +30,11 @@ mod Window {
     /// This widget is the root of any UI tree used as a window. It manages
     /// window decorations.
     ///
-    /// To change window properties at run-time, send a [`WindowCommand`] from a
-    /// child widget.
+    /// # Messages
+    ///
+    /// [`kas::messages::SetWindowTitle`] may be used to set the title.
+    ///
+    /// [`kas::messages::SetWindowIcon`] may be used to set the icon.
     #[widget]
     pub struct Window<Data: 'static> {
         core: widget_core!(),
@@ -255,26 +247,21 @@ mod Window {
         }
 
         fn handle_messages(&mut self, cx: &mut EventCx, _: &Self::Data) {
-            if let Some(cmd) = cx.try_pop() {
-                match cmd {
-                    WindowCommand::SetTitle(title) => {
-                        self.title_bar.set_title(cx, title);
-                        if self.decorations == Decorations::Server
-                            && let Some(w) = cx.winit_window()
-                        {
-                            w.set_title(self.title());
-                        }
-                    }
-                    WindowCommand::SetIcon(icon) => {
-                        if self.decorations == Decorations::Server
-                            && let Some(w) = cx.winit_window()
-                        {
-                            w.set_window_icon(icon);
-                            return; // do not set self.icon
-                        }
-                        self.icon = icon;
-                    }
+            if let Some(kas::messages::SetWindowTitle(title)) = cx.try_pop() {
+                self.title_bar.set_title(cx, title);
+                if self.decorations == Decorations::Server
+                    && let Some(w) = cx.winit_window()
+                {
+                    w.set_title(self.title());
                 }
+            } else if let Some(kas::messages::SetWindowIcon(icon)) = cx.try_pop() {
+                if self.decorations == Decorations::Server
+                    && let Some(w) = cx.winit_window()
+                {
+                    w.set_window_icon(icon);
+                    return; // do not set self.icon
+                }
+                self.icon = icon;
             }
         }
 
