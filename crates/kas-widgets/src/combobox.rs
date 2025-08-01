@@ -215,7 +215,7 @@ mod ComboBox {
 
     impl Self {
         fn open_popup(&mut self, cx: &mut EventCx, source: FocusSource) {
-            if self.popup.open(cx, &(), self.id()) {
+            if self.popup.open(cx, &(), self.id(), true) {
                 if let Some(w) = self.popup.inner.inner.get_child(self.active) {
                     cx.next_nav_focus(w.id(), false, source);
                 }

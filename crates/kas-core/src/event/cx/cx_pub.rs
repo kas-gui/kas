@@ -770,19 +770,22 @@ impl<'a> EventCx<'a> {
     ///
     /// A pop-up may be closed by calling [`EventCx::close_window`] with
     /// the [`WindowId`] returned by this method.
-    pub(crate) fn add_popup(&mut self, popup: PopupDescriptor) -> WindowId {
+    pub(crate) fn add_popup(&mut self, popup: PopupDescriptor, set_focus: bool) -> WindowId {
         log::trace!(target: "kas_core::event", "add_popup: {popup:?}");
 
         let parent_id = self.window.window_id();
         let id = self.runner.add_popup(parent_id, popup.clone());
-        let old_nav_focus = self.nav_focus.clone();
+        let mut old_nav_focus = None;
+        if set_focus {
+            old_nav_focus = self.nav_focus.clone();
+            self.clear_nav_focus();
+        }
         self.popups.push(PopupState {
             id,
             desc: popup,
             old_nav_focus,
             is_sized: false,
         });
-        self.clear_nav_focus();
         id
     }
 
@@ -790,8 +793,15 @@ impl<'a> EventCx<'a> {
     ///
     /// This method takes a new [`PopupDescriptor`]. Its first field, `id`, is
     /// expected to remain unchanged but other fields may differ.
-    pub(crate) fn reposition_popup(&mut self, id: WindowId, popup: PopupDescriptor) {
-        self.runner.reposition_popup(id, popup);
+    pub(crate) fn reposition_popup(&mut self, id: WindowId, desc: PopupDescriptor) {
+        self.runner.reposition_popup(id, desc.clone());
+        for popup in self.popups.iter_mut() {
+            if popup.id == id {
+                debug_assert_eq!(popup.desc.id, desc.id);
+                popup.desc = desc;
+                break;
+            }
+        }
     }
 
     /// Add a window

@@ -160,7 +160,13 @@ mod Popup {
         ///
         /// Returns `true` when the popup is newly opened. In this case, the
         /// caller may wish to call [`EventState::next_nav_focus`] next.
-        pub fn open(&mut self, cx: &mut EventCx, data: &W::Data, parent: Id) -> bool {
+        pub fn open(
+            &mut self,
+            cx: &mut EventCx,
+            data: &W::Data,
+            parent: Id,
+            set_focus: bool,
+        ) -> bool {
             let desc = kas::PopupDescriptor {
                 id: self.id(),
                 parent,
@@ -178,7 +184,7 @@ mod Popup {
             let id = self.make_child_id(index);
             cx.configure(self.inner.as_node(data), id);
 
-            self.win_id = Some(cx.add_popup(desc));
+            self.win_id = Some(cx.add_popup(desc, set_focus));
 
             true
         }
