@@ -17,13 +17,6 @@ use crate::theme::SizeCx;
 #[allow(unused)] use crate::{Events, Layout, Tile}; // for doc-links
 
 impl EventState {
-    /// True if [AccessKit](https://accesskit.dev/) is enabled
-    #[cfg(feature = "accesskit")]
-    #[inline]
-    pub(crate) fn accesskit_is_enabled(&self) -> bool {
-        self.accesskit_is_enabled
-    }
-
     /// Check whether a widget is disabled
     ///
     /// A widget is disabled if any ancestor is.

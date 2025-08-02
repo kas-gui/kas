@@ -25,6 +25,7 @@ use crate::{Action, Id, Node};
 use key::{AccessLayer, PendingSelFocus};
 use nav::PendingNavFocus;
 
+#[cfg(feature = "accesskit")] mod accessibility;
 mod config;
 mod cx_pub;
 mod key;
