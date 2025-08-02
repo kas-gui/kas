@@ -8,7 +8,7 @@
 use linear_map::{LinearMap, set::LinearSet};
 pub(crate) use press::{Mouse, Touch};
 use smallvec::SmallVec;
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{BTreeMap, VecDeque};
 use std::future::Future;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
@@ -20,29 +20,20 @@ use crate::config::WindowConfig;
 use crate::geom::{Rect, Size};
 use crate::messages::Erased;
 use crate::runner::{MessageStack, Platform, RunnerT, WindowDataErased};
-use crate::util::WidgetHierarchy;
 use crate::window::{PopupDescriptor, WindowId};
-use crate::{Action, Id, NavAdvance, Node};
+use crate::{Action, Id, Node};
+use key::{AccessLayer, PendingSelFocus};
 use nav::PendingNavFocus;
 
 mod config;
 mod cx_pub;
+mod key;
 mod nav;
 mod platform;
 mod press;
 
 pub use config::ConfigCx;
 pub use press::{GrabBuilder, GrabMode, Press, PressSource};
-
-#[derive(Debug)]
-struct PendingSelFocus {
-    target: Option<Id>,
-    key_focus: bool,
-    ime: Option<ImePurpose>,
-    source: FocusSource,
-}
-
-type AccessLayer = (bool, HashMap<Key, Id>);
 
 struct PopupState {
     id: WindowId,
@@ -109,28 +100,6 @@ pub struct EventState {
 }
 
 impl EventState {
-    #[inline]
-    fn key_focus(&self) -> Option<Id> {
-        if self.key_focus { self.sel_focus.clone() } else { None }
-    }
-
-    fn clear_key_focus(&mut self) {
-        if self.key_focus {
-            if let Some(ref mut pending) = self.pending_sel_focus {
-                if pending.target == self.sel_focus {
-                    pending.key_focus = false;
-                }
-            } else {
-                self.pending_sel_focus = Some(PendingSelFocus {
-                    target: None,
-                    key_focus: false,
-                    ime: None,
-                    source: FocusSource::Synthetic,
-                });
-            }
-        }
-    }
-
     // Remove popup at index and return its [`WindowId`]
     //
     // Panics if `index` is out of bounds.
@@ -153,26 +122,7 @@ impl EventState {
 
     /// Clear all focus and grabs on `target`
     fn cancel_event_focus(&mut self, target: &Id) {
-        if let Some(id) = self.sel_focus.as_ref()
-            && target.is_ancestor_of(id)
-        {
-            if let Some(pending) = self.pending_sel_focus.as_mut() {
-                if pending.target.as_ref() == Some(id) {
-                    pending.target = None;
-                    pending.key_focus = false;
-                } else {
-                    // We have a new focus target, hence the old one will be cleared
-                }
-            } else {
-                self.pending_sel_focus = Some(PendingSelFocus {
-                    target: None,
-                    key_focus: false,
-                    ime: None,
-                    source: FocusSource::Synthetic,
-                });
-            }
-        }
-
+        self.clear_sel_socus_on(target);
         self.clear_nav_focus_on(target);
         self.mouse.cancel_event_focus(target);
         self.touch.cancel_event_focus(target);
@@ -215,106 +165,6 @@ impl<'a> DerefMut for EventCx<'a> {
 }
 
 impl<'a> EventCx<'a> {
-    fn start_key_event(&mut self, mut widget: Node<'_>, vkey: Key, code: PhysicalKey) {
-        log::trace!(
-            "start_key_event: widget={}, vkey={vkey:?}, physical_key={code:?}",
-            widget.id()
-        );
-
-        let opt_cmd = self.config.shortcuts().try_match(self.modifiers, &vkey);
-
-        if Some(Command::Exit) == opt_cmd {
-            self.runner.exit();
-            return;
-        } else if Some(Command::Close) == opt_cmd {
-            self.handle_close();
-            return;
-        } else if let Some(cmd) = opt_cmd {
-            let mut targets = vec![];
-            let mut send = |_self: &mut Self, id: Id, cmd| -> bool {
-                if !targets.contains(&id) {
-                    let event = Event::Command(cmd, Some(code));
-                    let used = _self.send_event(widget.re(), id.clone(), event);
-                    targets.push(id);
-                    used
-                } else {
-                    false
-                }
-            };
-
-            if (self.key_focus || cmd.suitable_for_sel_focus())
-                && let Some(id) = self.sel_focus.clone()
-                && send(self, id, cmd)
-            {
-                return;
-            }
-
-            if !self.modifiers.alt_key()
-                && let Some(id) = self.nav_focus.clone()
-                && send(self, id, cmd)
-            {
-                return;
-            }
-
-            if let Some(id) = self
-                .popups
-                .last()
-                .filter(|popup| popup.is_sized)
-                .map(|popup| popup.desc.id.clone())
-                && send(self, id, cmd)
-            {
-                return;
-            }
-
-            if let Some(id) = self.nav_fallback.clone()
-                && send(self, id, cmd)
-            {
-                return;
-            }
-
-            if matches!(cmd, Command::Debug) {
-                let over_id = self.mouse.over_id();
-                let hier = WidgetHierarchy::new(widget.as_tile(), over_id.clone());
-                log::debug!("Widget heirarchy (filter={over_id:?}): {hier}");
-                return;
-            }
-        }
-
-        // Next priority goes to access keys when Alt is held or alt_bypass is true
-        let mut target = None;
-        for id in (self.popups.iter().rev())
-            .filter(|popup| popup.is_sized)
-            .map(|state| state.desc.id.clone())
-            .chain(std::iter::once(widget.id()))
-        {
-            if let Some(layer) = self.access_layers.get(&id) {
-                // but only when Alt is held or alt-bypass is enabled:
-                if (self.modifiers == ModifiersState::ALT
-                    || layer.0 && self.modifiers == ModifiersState::empty())
-                    && let Some(id) = layer.1.get(&vkey).cloned()
-                {
-                    target = Some(id);
-                    break;
-                }
-            }
-        }
-
-        if let Some(id) = target {
-            if let Some(id) = self.nav_next(widget.re(), Some(&id), NavAdvance::None) {
-                self.set_nav_focus(id, FocusSource::Key);
-            }
-            let event = Event::Command(Command::Activate, Some(code));
-            self.send_event(widget, id, event);
-        } else if self.config.nav_focus && opt_cmd == Some(Command::Tab) {
-            let shift = self.modifiers.shift_key();
-            self.next_nav_focus_impl(widget.re(), None, shift, FocusSource::Key);
-        } else if opt_cmd == Some(Command::Escape)
-            && let Some(id) = self.popups.last().map(|desc| desc.id)
-        {
-            self.close_window(id);
-        }
-    }
-
     pub(crate) fn post_send(&mut self, index: usize) -> Option<Scroll> {
         self.last_child = Some(index);
         (self.scroll != Scroll::None).then_some(self.scroll.clone())
@@ -415,64 +265,5 @@ impl<'a> EventCx<'a> {
             id = self.close_popup(index);
         }
         self.runner.close_window(id);
-    }
-
-    // Set selection focus to `wid` immediately; if `key_focus` also set that
-    fn set_sel_focus(
-        &mut self,
-        window: &dyn WindowDataErased,
-        mut widget: Node<'_>,
-        pending: PendingSelFocus,
-    ) {
-        let PendingSelFocus {
-            target,
-            key_focus,
-            ime,
-            source,
-        } = pending;
-        let target_is_new = target != self.sel_focus;
-        let old_key_focus = self.key_focus;
-        self.key_focus = key_focus;
-
-        log::trace!("set_sel_focus: target={target:?}, key_focus={key_focus}");
-
-        if let Some(id) = self.sel_focus.clone() {
-            if self.ime.is_some() && (ime.is_none() || target_is_new) {
-                window.set_ime_allowed(None);
-                self.old_ime_target = Some(id.clone());
-                self.ime = None;
-                self.ime_cursor_area = Rect::ZERO;
-            }
-
-            if old_key_focus && (!key_focus || target_is_new) {
-                // If widget has key focus, this is lost
-                self.send_event(widget.re(), id.clone(), Event::LostKeyFocus);
-            }
-
-            if target.is_none() {
-                // Retain selection focus without a new target
-                return;
-            } else if target_is_new {
-                // Selection focus is lost if another widget receives key focus
-                self.send_event(widget.re(), id, Event::LostSelFocus);
-            }
-        }
-
-        if let Some(id) = target.clone() {
-            if target_is_new {
-                self.send_event(widget.re(), id.clone(), Event::SelFocus(source));
-            }
-
-            if key_focus && (!old_key_focus || target_is_new) {
-                self.send_event(widget.re(), id.clone(), Event::KeyFocus);
-            }
-
-            if ime.is_some() && (ime != self.ime || target_is_new) {
-                window.set_ime_allowed(ime);
-                self.ime = ime;
-            }
-        }
-
-        self.sel_focus = target;
     }
 }
