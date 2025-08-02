@@ -62,12 +62,6 @@ impl EventState {
         (sel_focus && self.key_focus, sel_focus)
     }
 
-    /// Get whether this widget has navigation focus
-    #[inline]
-    pub fn has_nav_focus(&self, w_id: &Id) -> bool {
-        *w_id == self.nav_focus
-    }
-
     /// Check whether a widget is disabled
     ///
     /// A widget is disabled if any ancestor is.
@@ -284,22 +278,6 @@ impl EventState {
         self.action |= action;
     }
 
-    /// Attempts to set a fallback to receive [`Event::Command`]
-    ///
-    /// In case a navigation key is pressed (see [`Command`]) but no widget has
-    /// navigation focus, then, if a fallback has been set, that widget will
-    /// receive the key via [`Event::Command`].
-    ///
-    /// Only one widget can be a fallback, and the *first* to set itself wins.
-    /// This is primarily used to allow scroll-region widgets to
-    /// respond to navigation keys when no widget has focus.
-    pub fn register_nav_fallback(&mut self, id: Id) {
-        if self.nav_fallback.is_none() {
-            log::debug!(target: "kas_core::event","register_nav_fallback: id={id}");
-            self.nav_fallback = Some(id);
-        }
-    }
-
     fn access_layer_for_id(&mut self, id: &Id) -> Option<&mut AccessLayer> {
         let root = &Id::ROOT;
         for (k, v) in self.access_layers.range_mut(root..=id).rev() {
@@ -499,64 +477,6 @@ impl EventState {
             ime: None,
             source,
         });
-    }
-
-    /// Get the current navigation focus, if any
-    ///
-    /// This is the widget selected by navigating the UI with the Tab key.
-    ///
-    /// Note: changing navigation focus (e.g. via [`Self::clear_nav_focus`],
-    /// [`Self::set_nav_focus`] or [`Self::next_nav_focus`]) does not
-    /// immediately affect the result of this method.
-    #[inline]
-    pub fn nav_focus(&self) -> Option<&Id> {
-        self.nav_focus.as_ref()
-    }
-
-    /// Clear navigation focus
-    pub fn clear_nav_focus(&mut self) {
-        self.pending_nav_focus = PendingNavFocus::Set {
-            target: None,
-            source: FocusSource::Synthetic,
-        };
-    }
-
-    /// Set navigation focus directly
-    ///
-    /// If `id` already has navigation focus or navigation focus is disabled
-    /// globally then nothing happens, otherwise widget `id` should receive
-    /// [`Event::NavFocus`].
-    ///
-    /// Normally, [`Tile::navigable`] will return true for widget `id` but this
-    /// is not checked or required. For example, a `ScrollLabel` can receive
-    /// focus on text selection with the mouse.
-    pub fn set_nav_focus(&mut self, id: Id, source: FocusSource) {
-        self.pending_nav_focus = PendingNavFocus::Set {
-            target: Some(id),
-            source,
-        };
-    }
-
-    /// Advance the navigation focus
-    ///
-    /// If `target == Some(id)`, this looks for the next widget from `id`
-    /// (inclusive) which is [navigable](Tile::navigable). Otherwise where
-    /// some widget `id` has [`nav_focus`](Self::nav_focus) this looks for the
-    /// next navigable widget *excluding* `id`. If no reference is available,
-    /// this instead looks for the first navigable widget.
-    ///
-    /// If `reverse`, instead search for the previous or last navigable widget.
-    pub fn next_nav_focus(
-        &mut self,
-        target: impl Into<Option<Id>>,
-        reverse: bool,
-        source: FocusSource,
-    ) {
-        self.pending_nav_focus = PendingNavFocus::Next {
-            target: target.into(),
-            reverse,
-            source,
-        };
     }
 
     /// Send a message to `id`

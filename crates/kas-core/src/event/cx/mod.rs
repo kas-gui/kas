@@ -23,9 +23,11 @@ use crate::runner::{MessageStack, Platform, RunnerT, WindowDataErased};
 use crate::util::WidgetHierarchy;
 use crate::window::{PopupDescriptor, WindowId};
 use crate::{Action, Id, NavAdvance, Node};
+use nav::PendingNavFocus;
 
 mod config;
 mod cx_pub;
+mod nav;
 mod platform;
 mod press;
 
@@ -38,20 +40,6 @@ struct PendingSelFocus {
     key_focus: bool,
     ime: Option<ImePurpose>,
     source: FocusSource,
-}
-
-#[crate::impl_default(PendingNavFocus::None)]
-enum PendingNavFocus {
-    None,
-    Set {
-        target: Option<Id>,
-        source: FocusSource,
-    },
-    Next {
-        target: Option<Id>,
-        reverse: bool,
-        source: FocusSource,
-    },
 }
 
 type AccessLayer = (bool, HashMap<Key, Id>);
@@ -185,22 +173,7 @@ impl EventState {
             }
         }
 
-        if let Some(id) = self.nav_focus.as_ref()
-            && target.is_ancestor_of(id)
-        {
-            if matches!(&self.pending_nav_focus, PendingNavFocus::Set { target, .. } if target.as_ref() == Some(id))
-            {
-                self.pending_nav_focus = PendingNavFocus::None;
-            }
-
-            if matches!(self.pending_nav_focus, PendingNavFocus::None) {
-                self.pending_nav_focus = PendingNavFocus::Set {
-                    target: None,
-                    source: FocusSource::Synthetic,
-                };
-            }
-        }
-
+        self.clear_nav_focus_on(target);
         self.mouse.cancel_event_focus(target);
         self.touch.cancel_event_focus(target);
     }
@@ -444,19 +417,6 @@ impl<'a> EventCx<'a> {
         self.runner.close_window(id);
     }
 
-    // Call Widget::_nav_next
-    #[inline]
-    fn nav_next(
-        &mut self,
-        mut widget: Node<'_>,
-        focus: Option<&Id>,
-        advance: NavAdvance,
-    ) -> Option<Id> {
-        log::trace!(target: "kas_core::event", "nav_next: focus={focus:?}, advance={advance:?}");
-
-        widget._nav_next(&mut self.config_cx(), focus, advance)
-    }
-
     // Set selection focus to `wid` immediately; if `key_focus` also set that
     fn set_sel_focus(
         &mut self,
@@ -514,77 +474,5 @@ impl<'a> EventCx<'a> {
         }
 
         self.sel_focus = target;
-    }
-
-    /// Set navigation focus immediately
-    fn set_nav_focus_impl(&mut self, mut widget: Node, target: Option<Id>, source: FocusSource) {
-        if target == self.nav_focus || !self.config.nav_focus {
-            return;
-        }
-
-        self.clear_key_focus();
-
-        if let Some(old) = self.nav_focus.take() {
-            self.action(&old, Action::REDRAW);
-            self.send_event(widget.re(), old, Event::LostNavFocus);
-        }
-
-        self.nav_focus = target.clone();
-        log::debug!(target: "kas_core::event", "nav_focus = {target:?}");
-        if let Some(id) = target {
-            self.action(&id, Action::REDRAW);
-            self.send_event(widget, id, Event::NavFocus(source));
-        }
-    }
-
-    /// Advance the keyboard navigation focus immediately
-    fn next_nav_focus_impl(
-        &mut self,
-        mut widget: Node,
-        target: Option<Id>,
-        reverse: bool,
-        source: FocusSource,
-    ) {
-        if !self.config.nav_focus || (target.is_some() && target == self.nav_focus) {
-            return;
-        }
-
-        if let Some(id) = self
-            .popups
-            .last()
-            .filter(|popup| popup.is_sized)
-            .map(|state| state.desc.id.clone())
-        {
-            if id.is_ancestor_of(widget.id_ref()) {
-                // do nothing
-            } else if let Some(r) = widget.find_node(&id, |node| {
-                self.next_nav_focus_impl(node, target, reverse, source)
-            }) {
-                return r;
-            } else {
-                log::warn!(
-                    target: "kas_core::event",
-                    "next_nav_focus: have open pop-up which is not a child of widget",
-                );
-                return;
-            }
-        }
-
-        let advance = if !reverse {
-            NavAdvance::Forward(target.is_some())
-        } else {
-            NavAdvance::Reverse(target.is_some())
-        };
-        let focus = target.or_else(|| self.nav_focus.clone());
-
-        // Whether to restart from the beginning on failure
-        let restart = focus.is_some();
-
-        let mut opt_id = self.nav_next(widget.re(), focus.as_ref(), advance);
-        if restart && opt_id.is_none() {
-            opt_id = self.nav_next(widget.re(), None, advance);
-        }
-
-        self.set_nav_focus_impl(widget, opt_id, source);
     }
 }
