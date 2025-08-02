@@ -9,7 +9,7 @@ use cast::CastApprox;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use super::{EventCx, IsUsed, Unused, Used};
+use super::{EventCx, IsUsed, TimerHandle, Unused, Used};
 #[allow(unused)] use super::{EventState, GrabMode};
 use super::{Key, KeyEvent, NamedKey, PhysicalKey, Press};
 use crate::geom::{Affine, Offset};
@@ -588,33 +588,6 @@ impl Command {
             Command::Down => Some(Direction::Down),
             _ => None,
         }
-    }
-}
-
-/// A timer handle
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct TimerHandle(i64);
-impl TimerHandle {
-    /// Construct a new handle
-    ///
-    /// The code must be positive. If a widget uses multiple timers, each must
-    /// have a unique code.
-    ///
-    /// When a timer update is requested multiple times before delivery using
-    /// the same `TimerHandle`, these requests are merged, choosing the
-    /// earliest time if `earliest`, otherwise the latest time.
-    pub const fn new(code: i64, earliest: bool) -> Self {
-        assert!(code >= 0);
-        if earliest {
-            TimerHandle(-code - 1)
-        } else {
-            TimerHandle(code)
-        }
-    }
-
-    /// Check whether this timer chooses the earliest time when merging
-    pub fn earliest(self) -> bool {
-        self.0 < 0
     }
 }
 

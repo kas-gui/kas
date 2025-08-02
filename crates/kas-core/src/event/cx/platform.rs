@@ -7,7 +7,7 @@
 
 use super::*;
 use crate::theme::ThemeSize;
-use crate::{Tile, TileExt, window::Window};
+use crate::{Tile, window::Window};
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
@@ -82,15 +82,6 @@ impl EventState {
 
         ConfigCx::new(sizer, self).configure(win.as_node(data), id);
         self.action |= Action::REGION_MOVED;
-    }
-
-    /// Get the next resume time
-    pub(crate) fn next_resume(&self) -> Option<Instant> {
-        self.time_updates.last().map(|time| time.0)
-    }
-
-    pub(crate) fn need_frame_update(&self) -> bool {
-        self.need_frame_update || !self.frame_updates.is_empty() || !self.fut_messages.is_empty()
     }
 
     /// Construct a [`EventCx`] referring to this state
@@ -188,56 +179,6 @@ impl EventState {
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
 impl<'a> EventCx<'a> {
-    /// Pre-draw / pre-sleep
-    ///
-    /// This method should be called once per frame as well as after the last
-    /// frame before a long sleep.
-    pub(crate) fn frame_update(&mut self, mut widget: Node<'_>) {
-        self.need_frame_update = false;
-        log::trace!(target: "kas_core::event", "Processing frame update");
-        if let Some((target, affine)) = self.mouse.frame_update() {
-            self.send_event(widget.re(), target, Event::Pan(affine));
-        }
-        self.touch_frame_update(widget.re());
-
-        let frame_updates = std::mem::take(&mut self.frame_updates);
-        for (id, handle) in frame_updates.into_iter() {
-            self.send_event(widget.re(), id, Event::Timer(handle));
-        }
-
-        // Set IME cursor area, if moved.
-        if self.ime.is_some()
-            && let Some(target) = self.sel_focus.as_ref()
-            && let Some((mut rect, translation)) = widget.as_tile().find_tile_rect(target)
-        {
-            if self.ime_cursor_area.size != Size::ZERO {
-                rect = self.ime_cursor_area;
-            }
-            rect += translation;
-            if rect != self.last_ime_rect {
-                self.window.set_ime_cursor_area(rect);
-                self.last_ime_rect = rect;
-            }
-        }
-    }
-
-    /// Update widgets due to timer
-    pub(crate) fn update_timer(&mut self, mut widget: Node<'_>) {
-        let now = Instant::now();
-
-        // assumption: time_updates are sorted in reverse order
-        while !self.time_updates.is_empty() {
-            if self.time_updates.last().unwrap().0 > now {
-                break;
-            }
-
-            let update = self.time_updates.pop().unwrap();
-            self.send_event(widget.re(), update.1, Event::Timer(update.2));
-        }
-
-        self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
-    }
-
     /// Handle a winit `WindowEvent`.
     ///
     /// Note that some event types are not handled, since for these

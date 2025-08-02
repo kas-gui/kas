@@ -17,7 +17,7 @@ use std::time::Instant;
 use super::*;
 use crate::cast::Cast;
 use crate::config::WindowConfig;
-use crate::geom::{Rect, Size};
+use crate::geom::Rect;
 use crate::messages::Erased;
 use crate::runner::{MessageStack, Platform, RunnerT, WindowDataErased};
 use crate::window::{PopupDescriptor, WindowId};
@@ -32,9 +32,11 @@ mod nav;
 mod platform;
 mod press;
 mod send;
+mod timer;
 mod window;
 
 pub use press::{GrabBuilder, GrabMode, Press, PressSource};
+pub use timer::TimerHandle;
 
 struct PopupState {
     id: WindowId,

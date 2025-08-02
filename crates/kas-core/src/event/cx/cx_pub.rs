@@ -5,8 +5,6 @@
 
 //! Event manager — public API
 
-use std::time::Duration;
-
 use super::*;
 use crate::HasId;
 use crate::cast::Conv;
@@ -98,61 +96,6 @@ impl EventState {
             self.action(&target, Action::REDRAW);
             self.disabled.push(target);
         }
-    }
-
-    /// Schedule a timed update
-    ///
-    /// Widget updates may be used for delayed action. For animation, prefer to
-    /// use [`Draw::animate`](crate::draw::Draw::animate) or
-    /// [`Self::request_frame_timer`].
-    ///
-    /// Widget `id` will receive [`Event::Timer`] with this `handle` at
-    /// approximately `time = now + delay` (or possibly a little later due to
-    /// frame-rate limiters and processing time).
-    ///
-    /// Requesting an update with `delay == 0` is valid, except from an
-    /// [`Event::Timer`] handler (where it may cause an infinite loop).
-    ///
-    /// Multiple timer requests with the same `id` and `handle` are merged
-    /// (see [`TimerHandle`] documentation).
-    pub fn request_timer(&mut self, id: Id, handle: TimerHandle, delay: Duration) {
-        let time = Instant::now() + delay;
-        if let Some(row) = self
-            .time_updates
-            .iter_mut()
-            .find(|row| row.1 == id && row.2 == handle)
-        {
-            let earliest = handle.earliest();
-            if earliest && row.0 <= time || !earliest && row.0 >= time {
-                return;
-            }
-
-            row.0 = time;
-        } else {
-            log::trace!(
-                target: "kas_core::event",
-                "request_timer: update {id} at now+{}ms",
-                delay.as_millis()
-            );
-            self.time_updates.push((time, id, handle));
-        }
-
-        self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
-    }
-
-    /// Schedule a frame timer update
-    ///
-    /// Widget `id` will receive [`Event::Timer`] with this `handle` either
-    /// before or soon after the next frame is drawn.
-    ///
-    /// This may be useful for animations which mutate widget state. Animations
-    /// which don't mutate widget state may use
-    /// [`Draw::animate`](crate::draw::Draw::animate) instead.
-    ///
-    /// It is expected that `handle.earliest() == true` (style guide).
-    pub fn request_frame_timer(&mut self, id: Id, handle: TimerHandle) {
-        debug_assert!(handle.earliest());
-        self.frame_updates.insert((id, handle));
     }
 
     /// Notify that a widget must be redrawn
