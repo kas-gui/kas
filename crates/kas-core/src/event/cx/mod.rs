@@ -31,6 +31,7 @@ mod key;
 mod nav;
 mod platform;
 mod press;
+mod send;
 
 pub use config::ConfigCx;
 pub use press::{GrabBuilder, GrabMode, Press, PressSource};
@@ -165,85 +166,6 @@ impl<'a> DerefMut for EventCx<'a> {
 }
 
 impl<'a> EventCx<'a> {
-    pub(crate) fn post_send(&mut self, index: usize) -> Option<Scroll> {
-        self.last_child = Some(index);
-        (self.scroll != Scroll::None).then_some(self.scroll.clone())
-    }
-
-    /// Send a few message types as an Event, replay other messages as if pushed by `id`
-    ///
-    /// Optionally, push `msg` and set `scroll` as if pushed/set by `id`.
-    fn send_or_replay(&mut self, mut widget: Node<'_>, id: Id, msg: Erased) {
-        if msg.is::<Command>() {
-            let cmd = *msg.downcast().unwrap();
-            if !self.send_event(widget, id, Event::Command(cmd, None)) {
-                match cmd {
-                    Command::Exit => self.runner.exit(),
-                    Command::Close => self.handle_close(),
-                    _ => (),
-                }
-            }
-        } else if msg.is::<ScrollDelta>() {
-            let event = Event::Scroll(*msg.downcast().unwrap());
-            self.send_event(widget, id, event);
-        } else {
-            debug_assert!(self.scroll == Scroll::None);
-            debug_assert!(self.last_child.is_none());
-            self.messages.set_base();
-            log::trace!(target: "kas_core::event", "replay: id={id}: {msg:?}");
-
-            self.target_is_disabled = false;
-            self.push_erased(msg);
-            widget._replay(self, id);
-            self.last_child = None;
-            self.scroll = Scroll::None;
-        }
-    }
-
-    /// Replay a scroll action
-    #[cfg(feature = "accesskit")]
-    fn replay_scroll(&mut self, mut widget: Node<'_>, id: Id, scroll: Scroll) {
-        log::trace!(target: "kas_core::event", "replay_scroll: id={id}: {scroll:?}");
-        debug_assert!(self.scroll == Scroll::None);
-        debug_assert!(self.last_child.is_none());
-        self.scroll = scroll;
-        self.messages.set_base();
-
-        self.target_is_disabled = false;
-        widget._replay(self, id);
-        self.last_child = None;
-        self.scroll = Scroll::None;
-    }
-
-    // Call Widget::_send; returns true when event is used
-    fn send_event(&mut self, mut widget: Node<'_>, mut id: Id, event: Event) -> bool {
-        debug_assert!(self.scroll == Scroll::None);
-        debug_assert!(self.last_child.is_none());
-        self.messages.set_base();
-        log::trace!(target: "kas_core::event", "send_event: id={id}: {event:?}");
-
-        // TODO(opt): we should be able to use binary search here
-        let mut disabled = false;
-        if !event.pass_when_disabled() {
-            for d in &self.disabled {
-                if d.is_ancestor_of(&id) {
-                    id = d.clone();
-                    disabled = true;
-                }
-            }
-            if disabled {
-                log::trace!(target: "kas_core::event", "target is disabled; sending to ancestor {id}");
-            }
-        }
-        self.target_is_disabled = disabled;
-
-        let used = widget._send(self, id, event) == Used;
-
-        self.last_child = None;
-        self.scroll = Scroll::None;
-        used
-    }
-
     // Closes any popup which is not an ancestor of `id`
     fn close_non_ancestors_of(&mut self, id: Option<&Id>) {
         for index in (0..self.popups.len()).rev() {

@@ -9,7 +9,6 @@ use super::*;
 #[cfg(feature = "accesskit")] use crate::cast::CastApprox;
 use crate::theme::ThemeSize;
 use crate::{Tile, TileExt, window::Window};
-use std::task::Poll;
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(docsrs, doc(cfg(internal_doc)))]
@@ -345,26 +344,6 @@ impl<'a> EventCx<'a> {
         }
 
         self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
-    }
-
-    fn poll_futures(&mut self, mut widget: Node<'_>) {
-        let mut i = 0;
-        while i < self.state.fut_messages.len() {
-            let (_, fut) = &mut self.state.fut_messages[i];
-            let mut cx = std::task::Context::from_waker(self.runner.waker());
-            match fut.as_mut().poll(&mut cx) {
-                Poll::Pending => {
-                    i += 1;
-                }
-                Poll::Ready(msg) => {
-                    let (id, _) = self.state.fut_messages.remove(i);
-
-                    // Replay message. This could push another future; if it
-                    // does we should poll it immediately to start its work.
-                    self.send_or_replay(widget.re(), id, msg);
-                }
-            }
-        }
     }
 
     /// Handle a winit `WindowEvent`.
