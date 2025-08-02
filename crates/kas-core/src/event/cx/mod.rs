@@ -8,56 +8,39 @@
 use linear_map::{LinearMap, set::LinearSet};
 pub(crate) use press::{Mouse, Touch};
 use smallvec::SmallVec;
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{BTreeMap, VecDeque};
 use std::future::Future;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::time::Instant;
 
 use super::*;
-use crate::cast::Cast;
-use crate::config::WindowConfig;
-use crate::geom::{Rect, Size};
+use crate::cast::{Cast, Conv};
+use crate::config::{ConfigMsg, WindowConfig};
+use crate::draw::DrawShared;
+use crate::geom::{Offset, Rect, Vec2};
 use crate::messages::Erased;
 use crate::runner::{MessageStack, Platform, RunnerT, WindowDataErased};
-use crate::util::WidgetHierarchy;
-use crate::{Action, Id, NavAdvance, Node, WindowId};
+use crate::theme::{SizeCx, ThemeSize};
+use crate::window::{PopupDescriptor, Window, WindowId};
+use crate::{Action, HasId, Id, Node};
+use key::{AccessLayer, PendingSelFocus};
+use nav::PendingNavFocus;
 
-mod config;
-mod cx_pub;
-mod platform;
+#[cfg(feature = "accesskit")] mod accessibility;
+mod key;
+mod nav;
 mod press;
+mod send;
+mod timer;
+mod window;
 
-pub use config::ConfigCx;
 pub use press::{GrabBuilder, GrabMode, Press, PressSource};
-
-#[derive(Debug)]
-struct PendingSelFocus {
-    target: Option<Id>,
-    key_focus: bool,
-    ime: Option<ImePurpose>,
-    source: FocusSource,
-}
-
-#[crate::impl_default(PendingNavFocus::None)]
-enum PendingNavFocus {
-    None,
-    Set {
-        target: Option<Id>,
-        source: FocusSource,
-    },
-    Next {
-        target: Option<Id>,
-        reverse: bool,
-        source: FocusSource,
-    },
-}
-
-type AccessLayer = (bool, HashMap<Key, Id>);
+pub use timer::TimerHandle;
 
 struct PopupState {
     id: WindowId,
-    desc: crate::PopupDescriptor,
+    desc: PopupDescriptor,
     old_nav_focus: Option<Id>,
     is_sized: bool,
 }
@@ -120,96 +103,273 @@ pub struct EventState {
 }
 
 impl EventState {
+    /// Construct per-window event state
     #[inline]
-    fn key_focus(&self) -> Option<Id> {
-        if self.key_focus { self.sel_focus.clone() } else { None }
-    }
-
-    fn clear_key_focus(&mut self) {
-        if self.key_focus {
-            if let Some(ref mut pending) = self.pending_sel_focus {
-                if pending.target == self.sel_focus {
-                    pending.key_focus = false;
-                }
-            } else {
-                self.pending_sel_focus = Some(PendingSelFocus {
-                    target: None,
-                    key_focus: false,
-                    ime: None,
-                    source: FocusSource::Synthetic,
-                });
-            }
+    pub(crate) fn new(window_id: WindowId, config: WindowConfig, platform: Platform) -> Self {
+        EventState {
+            window_id,
+            config,
+            platform,
+            disabled: vec![],
+            window_has_focus: false,
+            #[cfg(feature = "accesskit")]
+            accesskit_is_enabled: false,
+            modifiers: ModifiersState::empty(),
+            key_focus: false,
+            ime: None,
+            old_ime_target: None,
+            ime_cursor_area: Rect::ZERO,
+            last_ime_rect: Rect::ZERO,
+            sel_focus: None,
+            nav_focus: None,
+            nav_fallback: None,
+            key_depress: Default::default(),
+            mouse: Default::default(),
+            touch: Default::default(),
+            access_layers: Default::default(),
+            popups: Default::default(),
+            popup_removed: Default::default(),
+            time_updates: vec![],
+            frame_updates: Default::default(),
+            need_frame_update: false,
+            send_queue: Default::default(),
+            fut_messages: vec![],
+            pending_update: None,
+            pending_sel_focus: None,
+            pending_nav_focus: PendingNavFocus::None,
+            action: Action::empty(),
         }
     }
 
-    // Remove popup at index and return its [`WindowId`]
-    //
-    // Panics if `index` is out of bounds.
-    //
-    // The caller must call `runner.close_window(window_id)`.
-    #[must_use]
-    fn close_popup(&mut self, index: usize) -> WindowId {
-        let state = self.popups.remove(index);
-        if state.is_sized {
-            self.popup_removed.push((state.desc.id, state.id));
-        }
-        self.mouse.tooltip_popup_close(&state.desc.parent);
+    /// Update scale factor
+    pub(crate) fn update_config(&mut self, scale_factor: f32) {
+        self.config.update(scale_factor);
+    }
 
-        if let Some(id) = state.old_nav_focus {
-            self.set_nav_focus(id, FocusSource::Synthetic);
-        }
+    /// Configure a widget tree
+    ///
+    /// This should be called by the toolkit on the widget tree when the window
+    /// is created (before or after resizing).
+    ///
+    /// This method calls [`ConfigCx::configure`] in order to assign
+    /// [`Id`] identifiers and call widgets' [`Events::configure`]
+    /// method. Additionally, it updates the [`EventState`] to account for
+    /// renamed and removed widgets.
+    pub(crate) fn full_configure<A>(
+        &mut self,
+        sizer: &dyn ThemeSize,
+        win: &mut Window<A>,
+        data: &A,
+    ) {
+        let id = Id::ROOT.make_child(self.window_id.get().cast());
 
-        state.id
+        log::debug!(target: "kas_core::event", "full_configure of Window{id}");
+
+        // These are recreated during configure:
+        self.access_layers.clear();
+        self.nav_fallback = None;
+
+        self.new_access_layer(id.clone(), false);
+
+        ConfigCx::new(sizer, self).configure(win.as_node(data), id);
+        self.action |= Action::REGION_MOVED;
+    }
+
+    /// Construct a [`EventCx`] referring to this state
+    ///
+    /// Invokes the given closure on this [`EventCx`].
+    #[inline]
+    pub(crate) fn with<'a, F: FnOnce(&mut EventCx)>(
+        &'a mut self,
+        runner: &'a mut dyn RunnerT,
+        window: &'a dyn WindowDataErased,
+        messages: &'a mut MessageStack,
+        f: F,
+    ) {
+        let mut cx = EventCx {
+            state: self,
+            runner,
+            window,
+            messages,
+            target_is_disabled: false,
+            last_child: None,
+            scroll: Scroll::None,
+        };
+        f(&mut cx);
     }
 
     /// Clear all focus and grabs on `target`
     fn cancel_event_focus(&mut self, target: &Id) {
-        if let Some(id) = self.sel_focus.as_ref()
-            && target.is_ancestor_of(id)
-        {
-            if let Some(pending) = self.pending_sel_focus.as_mut() {
-                if pending.target.as_ref() == Some(id) {
-                    pending.target = None;
-                    pending.key_focus = false;
-                } else {
-                    // We have a new focus target, hence the old one will be cleared
-                }
-            } else {
-                self.pending_sel_focus = Some(PendingSelFocus {
-                    target: None,
-                    key_focus: false,
-                    ime: None,
-                    source: FocusSource::Synthetic,
-                });
-            }
-        }
-
-        if let Some(id) = self.nav_focus.as_ref()
-            && target.is_ancestor_of(id)
-        {
-            if matches!(&self.pending_nav_focus, PendingNavFocus::Set { target, .. } if target.as_ref() == Some(id))
-            {
-                self.pending_nav_focus = PendingNavFocus::None;
-            }
-
-            if matches!(self.pending_nav_focus, PendingNavFocus::None) {
-                self.pending_nav_focus = PendingNavFocus::Set {
-                    target: None,
-                    source: FocusSource::Synthetic,
-                };
-            }
-        }
-
+        self.clear_sel_socus_on(target);
+        self.clear_nav_focus_on(target);
         self.mouse.cancel_event_focus(target);
         self.touch.cancel_event_focus(target);
     }
 
-    pub(crate) fn confirm_popup_is_sized(&mut self, id: WindowId) {
-        for popup in &mut self.popups {
-            if popup.id == id {
-                popup.is_sized = true;
+    /// Check whether a widget is disabled
+    ///
+    /// A widget is disabled if any ancestor is.
+    #[inline]
+    pub fn is_disabled(&self, w_id: &Id) -> bool {
+        // TODO(opt): we should be able to use binary search here
+        for id in &self.disabled {
+            if id.is_ancestor_of(w_id) {
+                return true;
             }
         }
+        false
+    }
+
+    /// Access event-handling configuration
+    #[inline]
+    pub fn config(&self) -> &WindowConfig {
+        &self.config
+    }
+
+    /// Is mouse panning enabled?
+    #[inline]
+    pub fn config_enable_pan(&self, source: PressSource) -> bool {
+        source.is_touch()
+            || source.is_primary()
+                && self
+                    .config
+                    .event()
+                    .mouse_pan()
+                    .is_enabled_with(self.modifiers())
+    }
+
+    /// Is mouse text panning enabled?
+    #[inline]
+    pub fn config_enable_mouse_text_pan(&self) -> bool {
+        self.config
+            .event()
+            .mouse_text_pan()
+            .is_enabled_with(self.modifiers())
+    }
+
+    /// Test pan threshold against config, adjusted for scale factor
+    ///
+    /// Returns true when `dist` is large enough to switch to pan mode.
+    #[inline]
+    pub fn config_test_pan_thresh(&self, dist: Offset) -> bool {
+        Vec2::conv(dist).abs().max_comp() >= self.config.event().pan_dist_thresh()
+    }
+
+    /// Update event configuration
+    #[inline]
+    pub fn change_config(&mut self, msg: ConfigMsg) {
+        self.action |= self.config.change_config(msg);
+    }
+
+    /// Set/unset a widget as disabled
+    ///
+    /// Disabled status applies to all descendants and blocks reception of
+    /// events ([`Unused`] is returned automatically when the
+    /// recipient or any ancestor is disabled).
+    ///
+    /// Disabling a widget clears navigation, selection and key focus when the
+    /// target is disabled, and also cancels press/pan grabs.
+    pub fn set_disabled(&mut self, target: Id, disable: bool) {
+        if disable {
+            self.cancel_event_focus(&target);
+        }
+
+        for (i, id) in self.disabled.iter().enumerate() {
+            if target == id {
+                if !disable {
+                    self.redraw(target);
+                    self.disabled.remove(i);
+                }
+                return;
+            }
+        }
+        if disable {
+            self.action(&target, Action::REDRAW);
+            self.disabled.push(target);
+        }
+    }
+
+    /// Notify that a widget must be redrawn
+    ///
+    /// This is equivalent to calling [`Self::action`] with [`Action::REDRAW`].
+    #[inline]
+    pub fn redraw(&mut self, id: impl HasId) {
+        self.action(id, Action::REDRAW);
+    }
+
+    /// Notify that a widget must be resized
+    ///
+    /// This is equivalent to calling [`Self::action`] with [`Action::RESIZE`].
+    #[inline]
+    pub fn resize(&mut self, id: impl HasId) {
+        self.action(id, Action::RESIZE);
+    }
+
+    /// Notify that widgets under self may have moved
+    #[inline]
+    pub fn region_moved(&mut self) {
+        // Do not take id: this always applies to the whole window
+        self.action |= Action::REGION_MOVED;
+    }
+
+    /// Terminate the GUI
+    #[inline]
+    pub fn exit(&mut self) {
+        self.send(Id::ROOT, Command::Exit);
+    }
+
+    /// Notify that an [`Action`] should happen
+    ///
+    /// This causes the given action to happen after event handling.
+    ///
+    /// Whenever a widget is added, removed or replaced, a reconfigure action is
+    /// required. Should a widget's size requirements change, these will only
+    /// affect the UI after a reconfigure action.
+    #[inline]
+    pub fn action(&mut self, id: impl HasId, action: Action) {
+        fn inner(cx: &mut EventState, id: Id, mut action: Action) {
+            if action.contains(Action::UPDATE) {
+                cx.request_update(id);
+                action.remove(Action::UPDATE);
+            }
+
+            // TODO(opt): handle sub-tree SCROLLED. This is probably equivalent to using `_replay` without a message but with `scroll = Scroll::Scrolled`.
+            // TODO(opt): handle sub-tree SET_RECT and RESIZE.
+            // NOTE: our draw system is incompatible with partial redraws, and
+            // in any case redrawing is extremely fast.
+
+            cx.action |= action;
+        }
+        inner(self, id.has_id(), action)
+    }
+
+    /// Pass an [action](Self::action) given some `id`
+    #[inline]
+    pub(crate) fn opt_action(&mut self, id: Option<Id>, action: Action) {
+        if let Some(id) = id {
+            self.action(id, action);
+        }
+    }
+
+    /// Notify that an [`Action`] should happen for the whole window
+    ///
+    /// Using [`Self::action`] with a widget `id` instead of this method is
+    /// potentially more efficient (supports future optimisations), but not
+    /// always possible.
+    #[inline]
+    pub fn window_action(&mut self, action: Action) {
+        self.action |= action;
+    }
+
+    /// Request update to widget `id`
+    ///
+    /// This will call [`Events::update`] on `id`.
+    pub fn request_update(&mut self, id: Id) {
+        self.pending_update = if let Some(id2) = self.pending_update.take() {
+            Some(id.common_ancestor(&id2))
+        } else {
+            Some(id)
+        };
     }
 }
 
@@ -241,349 +401,44 @@ impl<'a> DerefMut for EventCx<'a> {
 }
 
 impl<'a> EventCx<'a> {
-    fn start_key_event(&mut self, mut widget: Node<'_>, vkey: Key, code: PhysicalKey) {
-        log::trace!(
-            "start_key_event: widget={}, vkey={vkey:?}, physical_key={code:?}",
-            widget.id()
-        );
-
-        let opt_cmd = self.config.shortcuts().try_match(self.modifiers, &vkey);
-
-        if Some(Command::Exit) == opt_cmd {
-            self.runner.exit();
-            return;
-        } else if Some(Command::Close) == opt_cmd {
-            self.handle_close();
-            return;
-        } else if let Some(cmd) = opt_cmd {
-            let mut targets = vec![];
-            let mut send = |_self: &mut Self, id: Id, cmd| -> bool {
-                if !targets.contains(&id) {
-                    let event = Event::Command(cmd, Some(code));
-                    let used = _self.send_event(widget.re(), id.clone(), event);
-                    targets.push(id);
-                    used
-                } else {
-                    false
-                }
-            };
-
-            if (self.key_focus || cmd.suitable_for_sel_focus())
-                && let Some(id) = self.sel_focus.clone()
-                && send(self, id, cmd)
-            {
-                return;
-            }
-
-            if !self.modifiers.alt_key()
-                && let Some(id) = self.nav_focus.clone()
-                && send(self, id, cmd)
-            {
-                return;
-            }
-
-            if let Some(id) = self
-                .popups
-                .last()
-                .filter(|popup| popup.is_sized)
-                .map(|popup| popup.desc.id.clone())
-                && send(self, id, cmd)
-            {
-                return;
-            }
-
-            if let Some(id) = self.nav_fallback.clone()
-                && send(self, id, cmd)
-            {
-                return;
-            }
-
-            if matches!(cmd, Command::Debug) {
-                let over_id = self.mouse.over_id();
-                let hier = WidgetHierarchy::new(widget.as_tile(), over_id.clone());
-                log::debug!("Widget heirarchy (filter={over_id:?}): {hier}");
-                return;
-            }
-        }
-
-        // Next priority goes to access keys when Alt is held or alt_bypass is true
-        let mut target = None;
-        for id in (self.popups.iter().rev())
-            .filter(|popup| popup.is_sized)
-            .map(|state| state.desc.id.clone())
-            .chain(std::iter::once(widget.id()))
-        {
-            if let Some(layer) = self.access_layers.get(&id) {
-                // but only when Alt is held or alt-bypass is enabled:
-                if (self.modifiers == ModifiersState::ALT
-                    || layer.0 && self.modifiers == ModifiersState::empty())
-                    && let Some(id) = layer.1.get(&vkey).cloned()
-                {
-                    target = Some(id);
-                    break;
-                }
-            }
-        }
-
-        if let Some(id) = target {
-            if let Some(id) = self.nav_next(widget.re(), Some(&id), NavAdvance::None) {
-                self.set_nav_focus(id, FocusSource::Key);
-            }
-            let event = Event::Command(Command::Activate, Some(code));
-            self.send_event(widget, id, event);
-        } else if self.config.nav_focus && opt_cmd == Some(Command::Tab) {
-            let shift = self.modifiers.shift_key();
-            self.next_nav_focus_impl(widget.re(), None, shift, FocusSource::Key);
-        } else if opt_cmd == Some(Command::Escape)
-            && let Some(id) = self.popups.last().map(|desc| desc.id)
-        {
-            self.close_window(id);
-        }
-    }
-
-    pub(crate) fn post_send(&mut self, index: usize) -> Option<Scroll> {
-        self.last_child = Some(index);
-        (self.scroll != Scroll::None).then_some(self.scroll.clone())
-    }
-
-    /// Send a few message types as an Event, replay other messages as if pushed by `id`
+    /// Configure a widget
     ///
-    /// Optionally, push `msg` and set `scroll` as if pushed/set by `id`.
-    fn send_or_replay(&mut self, mut widget: Node<'_>, id: Id, msg: Erased) {
-        if msg.is::<Command>() {
-            let cmd = *msg.downcast().unwrap();
-            if !self.send_event(widget, id, Event::Command(cmd, None)) {
-                match cmd {
-                    Command::Exit => self.runner.exit(),
-                    Command::Close => self.handle_close(),
-                    _ => (),
-                }
-            }
-        } else if msg.is::<ScrollDelta>() {
-            let event = Event::Scroll(*msg.downcast().unwrap());
-            self.send_event(widget, id, event);
-        } else {
-            debug_assert!(self.scroll == Scroll::None);
-            debug_assert!(self.last_child.is_none());
-            self.messages.set_base();
-            log::trace!(target: "kas_core::event", "replay: id={id}: {msg:?}");
-
-            self.target_is_disabled = false;
-            self.push_erased(msg);
-            widget._replay(self, id);
-            self.last_child = None;
-            self.scroll = Scroll::None;
-        }
-    }
-
-    /// Replay a scroll action
-    #[cfg(feature = "accesskit")]
-    fn replay_scroll(&mut self, mut widget: Node<'_>, id: Id, scroll: Scroll) {
-        log::trace!(target: "kas_core::event", "replay_scroll: id={id}: {scroll:?}");
-        debug_assert!(self.scroll == Scroll::None);
-        debug_assert!(self.last_child.is_none());
-        self.scroll = scroll;
-        self.messages.set_base();
-
-        self.target_is_disabled = false;
-        widget._replay(self, id);
-        self.last_child = None;
-        self.scroll = Scroll::None;
-    }
-
-    // Call Widget::_send; returns true when event is used
-    fn send_event(&mut self, mut widget: Node<'_>, mut id: Id, event: Event) -> bool {
-        debug_assert!(self.scroll == Scroll::None);
-        debug_assert!(self.last_child.is_none());
-        self.messages.set_base();
-        log::trace!(target: "kas_core::event", "send_event: id={id}: {event:?}");
-
-        // TODO(opt): we should be able to use binary search here
-        let mut disabled = false;
-        if !event.pass_when_disabled() {
-            for d in &self.disabled {
-                if d.is_ancestor_of(&id) {
-                    id = d.clone();
-                    disabled = true;
-                }
-            }
-            if disabled {
-                log::trace!(target: "kas_core::event", "target is disabled; sending to ancestor {id}");
-            }
-        }
-        self.target_is_disabled = disabled;
-
-        let used = widget._send(self, id, event) == Used;
-
-        self.last_child = None;
-        self.scroll = Scroll::None;
-        used
-    }
-
-    // Closes any popup which is not an ancestor of `id`
-    fn close_non_ancestors_of(&mut self, id: Option<&Id>) {
-        for index in (0..self.popups.len()).rev() {
-            if let Some(id) = id
-                && self.popups[index].desc.id.is_ancestor_of(id)
-            {
-                continue;
-            }
-
-            let id = self.close_popup(index);
-            self.runner.close_window(id);
-        }
-    }
-
-    fn handle_close(&mut self) {
-        let mut id = self.window_id;
-        if !self.popups.is_empty() {
-            let index = self.popups.len() - 1;
-            id = self.close_popup(index);
-        }
-        self.runner.close_window(id);
-    }
-
-    // Call Widget::_nav_next
+    /// Note that, when handling events, this method returns the *old* state.
+    ///
+    /// This is a shortcut to [`ConfigCx::configure`].
     #[inline]
-    fn nav_next(
-        &mut self,
-        mut widget: Node<'_>,
-        focus: Option<&Id>,
-        advance: NavAdvance,
-    ) -> Option<Id> {
-        log::trace!(target: "kas_core::event", "nav_next: focus={focus:?}, advance={advance:?}");
-
-        widget._nav_next(&mut self.config_cx(), focus, advance)
+    pub fn configure(&mut self, mut widget: Node<'_>, id: Id) {
+        widget._configure(&mut self.config_cx(), id);
     }
 
-    // Set selection focus to `wid` immediately; if `key_focus` also set that
-    fn set_sel_focus(
-        &mut self,
-        window: &dyn WindowDataErased,
-        mut widget: Node<'_>,
-        pending: PendingSelFocus,
-    ) {
-        let PendingSelFocus {
-            target,
-            key_focus,
-            ime,
-            source,
-        } = pending;
-        let target_is_new = target != self.sel_focus;
-        let old_key_focus = self.key_focus;
-        self.key_focus = key_focus;
-
-        log::trace!("set_sel_focus: target={target:?}, key_focus={key_focus}");
-
-        if let Some(id) = self.sel_focus.clone() {
-            if self.ime.is_some() && (ime.is_none() || target_is_new) {
-                window.set_ime_allowed(None);
-                self.old_ime_target = Some(id.clone());
-                self.ime = None;
-                self.ime_cursor_area = Rect::ZERO;
-            }
-
-            if old_key_focus && (!key_focus || target_is_new) {
-                // If widget has key focus, this is lost
-                self.send_event(widget.re(), id.clone(), Event::LostKeyFocus);
-            }
-
-            if target.is_none() {
-                // Retain selection focus without a new target
-                return;
-            } else if target_is_new {
-                // Selection focus is lost if another widget receives key focus
-                self.send_event(widget.re(), id, Event::LostSelFocus);
-            }
-        }
-
-        if let Some(id) = target.clone() {
-            if target_is_new {
-                self.send_event(widget.re(), id.clone(), Event::SelFocus(source));
-            }
-
-            if key_focus && (!old_key_focus || target_is_new) {
-                self.send_event(widget.re(), id.clone(), Event::KeyFocus);
-            }
-
-            if ime.is_some() && (ime != self.ime || target_is_new) {
-                window.set_ime_allowed(ime);
-                self.ime = ime;
-            }
-        }
-
-        self.sel_focus = target;
+    /// Update a widget
+    ///
+    /// [`Events::update`] will be called recursively on each child and finally
+    /// `self`. If a widget stores state which it passes to children as input
+    /// data, it should call this (or [`ConfigCx::update`]) after mutating the state.
+    #[inline]
+    pub fn update(&mut self, mut widget: Node<'_>) {
+        widget._update(&mut self.config_cx());
     }
 
-    /// Set navigation focus immediately
-    fn set_nav_focus_impl(&mut self, mut widget: Node, target: Option<Id>, source: FocusSource) {
-        if target == self.nav_focus || !self.config.nav_focus {
-            return;
-        }
-
-        self.clear_key_focus();
-
-        if let Some(old) = self.nav_focus.take() {
-            self.action(&old, Action::REDRAW);
-            self.send_event(widget.re(), old, Event::LostNavFocus);
-        }
-
-        self.nav_focus = target.clone();
-        log::debug!(target: "kas_core::event", "nav_focus = {target:?}");
-        if let Some(id) = target {
-            self.action(&id, Action::REDRAW);
-            self.send_event(widget, id, Event::NavFocus(source));
-        }
+    /// Get a [`SizeCx`]
+    ///
+    /// Warning: sizes are calculated using the window's current scale factor.
+    /// This may change, even without user action, since some platforms
+    /// always initialize windows with scale factor 1.
+    /// See also notes on [`Events::configure`].
+    pub fn size_cx(&self) -> SizeCx<'_> {
+        SizeCx::new(self.window.theme_size())
     }
 
-    /// Advance the keyboard navigation focus immediately
-    fn next_nav_focus_impl(
-        &mut self,
-        mut widget: Node,
-        target: Option<Id>,
-        reverse: bool,
-        source: FocusSource,
-    ) {
-        if !self.config.nav_focus || (target.is_some() && target == self.nav_focus) {
-            return;
-        }
+    /// Get a [`ConfigCx`]
+    pub fn config_cx(&mut self) -> ConfigCx<'_> {
+        let size = self.window.theme_size();
+        ConfigCx::new(size, self.state)
+    }
 
-        if let Some(id) = self
-            .popups
-            .last()
-            .filter(|popup| popup.is_sized)
-            .map(|state| state.desc.id.clone())
-        {
-            if id.is_ancestor_of(widget.id_ref()) {
-                // do nothing
-            } else if let Some(r) = widget.find_node(&id, |node| {
-                self.next_nav_focus_impl(node, target, reverse, source)
-            }) {
-                return r;
-            } else {
-                log::warn!(
-                    target: "kas_core::event",
-                    "next_nav_focus: have open pop-up which is not a child of widget",
-                );
-                return;
-            }
-        }
-
-        let advance = if !reverse {
-            NavAdvance::Forward(target.is_some())
-        } else {
-            NavAdvance::Reverse(target.is_some())
-        };
-        let focus = target.or_else(|| self.nav_focus.clone());
-
-        // Whether to restart from the beginning on failure
-        let restart = focus.is_some();
-
-        let mut opt_id = self.nav_next(widget.re(), focus.as_ref(), advance);
-        if restart && opt_id.is_none() {
-            opt_id = self.nav_next(widget.re(), None, advance);
-        }
-
-        self.set_nav_focus_impl(widget, opt_id, source);
+    /// Get a [`DrawShared`]
+    pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
+        self.runner.draw_shared()
     }
 }

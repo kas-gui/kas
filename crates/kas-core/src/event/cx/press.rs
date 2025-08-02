@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Event handling: events
+//! Event handling: mouse and touch events
 
 mod mouse;
 mod touch;

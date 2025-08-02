@@ -7,6 +7,7 @@
 
 mod collection;
 mod data;
+mod events;
 mod layout;
 mod node;
 mod role;
@@ -21,6 +22,7 @@ pub mod impls;
 
 pub use collection::{CellCollection, Collection};
 pub use data::*;
+pub use events::Events;
 pub use layout::*;
 pub use node::Node;
 pub use role::{Role, RoleCx, RoleCxExt, TextOrSource};

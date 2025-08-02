@@ -8,14 +8,14 @@
 //! Start by constructing a [`Runner`] or its [`Default`](type@Default)
 //! type-def (requires a backend be enabled, e.g. "wgpu").
 
-pub use kas_core::runner::*;
-use kas_core::theme::FlatTheme;
-use kas_wgpu::draw::CustomPipeBuilder;
-
-use crate::WindowId;
 use crate::config::{AutoFactory, Config, ConfigFactory};
 use crate::draw::DrawSharedImpl;
 use crate::theme::Theme;
+use crate::window::{Window, WindowId};
+pub use kas_core::runner::{AppData, ClosedError, Error, MessageStack, Platform, Proxy, Result};
+use kas_core::runner::{GraphicsInstance, PreLaunchState};
+use kas_core::theme::FlatTheme;
+use kas_wgpu::draw::CustomPipeBuilder;
 use std::cell::{Ref, RefMut};
 
 /// Builder for a [`Runner`]'s graphics instance
@@ -146,7 +146,7 @@ pub struct Runner<
     graphics: G,
     state: PreLaunchState,
     theme: T,
-    windows: Vec<Box<Window<Data, G, T>>>,
+    windows: Vec<Box<kas_core::runner::Window<Data, G, T>>>,
 }
 
 /// Inherenet associated types of [`Runner`]
@@ -231,9 +231,9 @@ where
 
     /// Assume ownership of and display a window
     #[inline]
-    pub fn add(&mut self, window: crate::Window<Data>) -> WindowId {
+    pub fn add(&mut self, window: Window<Data>) -> WindowId {
         let id = self.state.next_window_id();
-        let win = Box::new(Window::new(
+        let win = Box::new(kas_core::runner::Window::new(
             self.state.config().clone(),
             self.state.platform(),
             id,
@@ -245,7 +245,7 @@ where
 
     /// Assume ownership of and display a window, inline
     #[inline]
-    pub fn with(mut self, window: crate::Window<Data>) -> Self {
+    pub fn with(mut self, window: Window<Data>) -> Self {
         let _ = self.add(window);
         self
     }

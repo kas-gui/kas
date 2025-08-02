@@ -10,14 +10,14 @@ use super::shared::State;
 use super::{AppData, GraphicsInstance, MessageStack, Platform};
 use crate::cast::{Cast, Conv};
 use crate::config::{Config, WindowConfig};
-use crate::decorations::Decorations;
 use crate::draw::PassType;
 use crate::draw::{AnimationState, color::Rgba};
 use crate::event::{ConfigCx, CursorIcon, EventState};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::SolveCache;
 use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, ThemeSize, Window as _};
-use crate::{Action, Tile, Widget, WindowId, autoimpl};
+use crate::window::{Decorations, PopupDescriptor, Window as WindowWidget, WindowId};
+use crate::{Action, Tile, Widget, autoimpl};
 use std::cell::RefCell;
 use std::mem::take;
 use std::rc::Rc;
@@ -52,7 +52,7 @@ struct WindowData<G: GraphicsInstance, T: Theme<G::Shared>> {
 #[autoimpl(Debug ignore self._data, self.widget, self.ev_state, self.window)]
 pub struct Window<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> {
     _data: std::marker::PhantomData<A>,
-    pub(super) widget: kas::Window<A>,
+    pub(super) widget: WindowWidget<A>,
     ev_state: EventState,
     window: Option<WindowData<G, T>>,
 }
@@ -64,7 +64,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         config: Rc<RefCell<Config>>,
         platform: Platform,
         window_id: WindowId,
-        widget: kas::Window<A>,
+        widget: WindowWidget<A>,
     ) -> Self {
         let config = WindowConfig::new(config);
         Window {
@@ -433,7 +433,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         &mut self,
         state: &mut State<A, G, T>,
         id: WindowId,
-        popup: kas::PopupDescriptor,
+        popup: PopupDescriptor,
     ) {
         let Some(ref window) = self.window else {
             return;

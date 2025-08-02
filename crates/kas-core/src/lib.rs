@@ -25,23 +25,14 @@ extern crate self as kas;
 #[cfg(feature = "accesskit")] pub(crate) mod accesskit;
 mod action;
 mod core;
-pub mod decorations;
-mod popup;
-mod root;
+pub mod widgets;
+pub mod window;
 
 pub use crate::core::*;
 pub use action::Action;
 pub use kas_macros::{autoimpl, extends, impl_default};
 pub use kas_macros::{cell_collection, collection, impl_anon, impl_scope, impl_self};
 pub use kas_macros::{layout, widget, widget_index, widget_set_rect};
-#[cfg(feature = "accesskit")]
-#[doc(inline)]
-pub(crate) use popup::POPUP_INNER_INDEX;
-#[doc(inline)] pub use popup::Popup;
-#[doc(inline)] pub(crate) use popup::PopupDescriptor;
-#[doc(inline)] pub(crate) use root::WindowIdFactory;
-#[doc(inline)]
-pub use root::{Window, WindowCommand, WindowId};
 
 // public implementations:
 pub mod config;
@@ -49,9 +40,6 @@ pub mod dir;
 pub mod draw;
 pub mod event;
 pub mod geom;
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(docsrs, doc(cfg(internal_doc)))]
-pub mod hidden;
 pub mod layout;
 pub mod messages;
 pub mod prelude;

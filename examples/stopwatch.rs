@@ -7,7 +7,6 @@
 
 use std::time::{Duration, Instant};
 
-use kas::decorations::Decorations;
 use kas::event::TimerHandle;
 use kas::prelude::*;
 use kas::widgets::{Button, format_data, row};
@@ -58,7 +57,7 @@ fn main() -> kas::runner::Result<()> {
     env_logger::init();
 
     let window = Window::new(make_window(), "Stopwatch")
-        .with_decorations(Decorations::Border)
+        .with_decorations(kas::window::Decorations::Border)
         .with_transparent(true)
         .with_restrictions(true, true);
 

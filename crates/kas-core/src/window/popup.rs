@@ -8,7 +8,8 @@
 use crate::dir::Direction;
 use crate::event::{ConfigCx, Event, EventCx, IsUsed, Scroll, Unused, Used};
 use crate::layout::Align;
-use crate::{ChildIndices, Events, Id, Tile, Widget, WindowId};
+use crate::window::WindowId;
+use crate::{ChildIndices, Events, Id, Tile, Widget};
 use kas_macros::{impl_self, widget_index};
 
 #[allow(unused)] use crate::event::EventState;
@@ -167,7 +168,7 @@ mod Popup {
             parent: Id,
             set_focus: bool,
         ) -> bool {
-            let desc = kas::PopupDescriptor {
+            let desc = PopupDescriptor {
                 id: self.id(),
                 parent,
                 direction: self.direction,

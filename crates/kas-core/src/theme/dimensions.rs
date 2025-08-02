@@ -148,7 +148,7 @@ impl Dimensions {
     }
 }
 
-/// A convenient implementation of [`crate::Window`]
+/// A convenient implementation of [`crate::window::Window`]
 pub struct Window<D> {
     pub config: Rc<RefCell<Config>>,
     pub dims: Dimensions,

@@ -14,6 +14,7 @@
 use crate::event::PhysicalKey;
 #[allow(unused)] use crate::event::{EventCx, EventState};
 use crate::geom::Offset;
+use crate::window::Icon;
 use std::any::Any;
 use std::fmt::Debug;
 
@@ -79,6 +80,13 @@ pub struct Select;
 /// Set the scroll offset
 #[derive(Clone, Debug)]
 pub struct SetScrollOffset(pub Offset);
+
+/// Change the window's title
+#[derive(Clone, Debug)]
+pub struct SetWindowTitle(pub String);
+/// Change the window's icon
+#[derive(Clone, Debug)]
+pub struct SetWindowIcon(pub Option<Icon>);
 
 trait AnyDebug: Any + Debug {}
 impl<T: Any + Debug> AnyDebug for T {}
