@@ -138,7 +138,7 @@ mod TitleBar {
     /// A window's title bar (part of decoration)
     #[derive(Clone, Default)]
     #[widget]
-    #[layout(row! [self.title, self.buttons])]
+    #[layout(row! [self.title.align(AlignHints::CENTER), self.buttons])]
     pub struct TitleBar {
         core: widget_core!(),
         #[widget]
