@@ -57,7 +57,7 @@
 pub mod components;
 mod config_cx;
 mod cx;
-mod events;
+mod event;
 mod response;
 
 pub use smol_str::SmolStr;
@@ -68,5 +68,5 @@ pub use winit::window::{CursorIcon, ImePurpose, ResizeDirection}; // used by Key
 #[allow(unused)] use crate::{Events, Widget};
 pub use config_cx::ConfigCx;
 pub use cx::*;
-pub use events::*;
+pub use event::*;
 pub use response::{IsUsed, Scroll, Unused, Used};
