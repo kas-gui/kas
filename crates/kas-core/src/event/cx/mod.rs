@@ -32,6 +32,7 @@ mod nav;
 mod platform;
 mod press;
 mod send;
+mod window;
 
 pub use config::ConfigCx;
 pub use press::{GrabBuilder, GrabMode, Press, PressSource};
@@ -101,40 +102,12 @@ pub struct EventState {
 }
 
 impl EventState {
-    // Remove popup at index and return its [`WindowId`]
-    //
-    // Panics if `index` is out of bounds.
-    //
-    // The caller must call `runner.close_window(window_id)`.
-    #[must_use]
-    fn close_popup(&mut self, index: usize) -> WindowId {
-        let state = self.popups.remove(index);
-        if state.is_sized {
-            self.popup_removed.push((state.desc.id, state.id));
-        }
-        self.mouse.tooltip_popup_close(&state.desc.parent);
-
-        if let Some(id) = state.old_nav_focus {
-            self.set_nav_focus(id, FocusSource::Synthetic);
-        }
-
-        state.id
-    }
-
     /// Clear all focus and grabs on `target`
     fn cancel_event_focus(&mut self, target: &Id) {
         self.clear_sel_socus_on(target);
         self.clear_nav_focus_on(target);
         self.mouse.cancel_event_focus(target);
         self.touch.cancel_event_focus(target);
-    }
-
-    pub(crate) fn confirm_popup_is_sized(&mut self, id: WindowId) {
-        for popup in &mut self.popups {
-            if popup.id == id {
-                popup.is_sized = true;
-            }
-        }
     }
 }
 
@@ -162,30 +135,5 @@ impl<'a> Deref for EventCx<'a> {
 impl<'a> DerefMut for EventCx<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.state
-    }
-}
-
-impl<'a> EventCx<'a> {
-    // Closes any popup which is not an ancestor of `id`
-    fn close_non_ancestors_of(&mut self, id: Option<&Id>) {
-        for index in (0..self.popups.len()).rev() {
-            if let Some(id) = id
-                && self.popups[index].desc.id.is_ancestor_of(id)
-            {
-                continue;
-            }
-
-            let id = self.close_popup(index);
-            self.runner.close_window(id);
-        }
-    }
-
-    fn handle_close(&mut self) {
-        let mut id = self.window_id;
-        if !self.popups.is_empty() {
-            let index = self.popups.len() - 1;
-            id = self.close_popup(index);
-        }
-        self.runner.close_window(id);
     }
 }
