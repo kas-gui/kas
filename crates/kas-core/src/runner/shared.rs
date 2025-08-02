@@ -11,7 +11,7 @@ use crate::draw::{DrawShared, DrawSharedImpl};
 use crate::theme::Theme;
 #[cfg(feature = "clipboard")]
 use crate::util::warn_about_error;
-use crate::window::{Window as WindowWidget, WindowId, WindowIdFactory};
+use crate::window::{PopupDescriptor, Window as WindowWidget, WindowId, WindowIdFactory};
 use crate::{Action, draw};
 use std::any::TypeId;
 use std::cell::RefCell;
@@ -137,10 +137,10 @@ pub(crate) trait RunnerT {
     ///
     /// Returns `None` if window creation is not currently available (but note
     /// that `Some` result does not guarantee the operation succeeded).
-    fn add_popup(&mut self, parent_id: WindowId, popup: crate::PopupDescriptor) -> WindowId;
+    fn add_popup(&mut self, parent_id: WindowId, popup: PopupDescriptor) -> WindowId;
 
     /// Resize and reposition an existing pop-up
-    fn reposition_popup(&mut self, id: WindowId, popup: kas::PopupDescriptor);
+    fn reposition_popup(&mut self, id: WindowId, popup: PopupDescriptor);
 
     /// Add a window
     ///
@@ -209,14 +209,14 @@ pub(crate) trait RunnerT {
 }
 
 impl<Data: AppData, G: GraphicsInstance, T: Theme<G::Shared>> RunnerT for SharedState<Data, G, T> {
-    fn add_popup(&mut self, parent_id: WindowId, popup: kas::PopupDescriptor) -> WindowId {
+    fn add_popup(&mut self, parent_id: WindowId, popup: PopupDescriptor) -> WindowId {
         let id = self.window_id_factory.make_next();
         self.pending
             .push_back(Pending::AddPopup(parent_id, id, popup));
         id
     }
 
-    fn reposition_popup(&mut self, id: WindowId, popup: kas::PopupDescriptor) {
+    fn reposition_popup(&mut self, id: WindowId, popup: PopupDescriptor) {
         self.pending.push_back(Pending::RepositionPopup(id, popup));
     }
 

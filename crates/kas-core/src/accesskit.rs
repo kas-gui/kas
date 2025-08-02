@@ -7,7 +7,7 @@
 
 use crate::cast::Cast;
 use crate::geom::Offset;
-use crate::window::Window;
+use crate::window::{POPUP_INNER_INDEX, Window};
 use crate::{Role, RoleCx, TextOrSource, Tile, TileExt};
 use accesskit::{Action, Node, NodeId};
 
@@ -119,7 +119,7 @@ pub(crate) fn window_nodes<Data: 'static>(root: &Window<Data>) -> (Vec<(NodeId, 
 
     for popup in root.iter_popups() {
         if let Some(tile) = root.find_tile(&popup.id) {
-            let index = crate::POPUP_INNER_INDEX;
+            let index = POPUP_INNER_INDEX;
             if let Some(id) = push_child(tile, index, &mut nodes, false) {
                 children.push(id);
             }

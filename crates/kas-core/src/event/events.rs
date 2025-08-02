@@ -13,7 +13,7 @@ use super::{EventCx, IsUsed, Unused, Used};
 #[allow(unused)] use super::{EventState, GrabMode};
 use super::{Key, KeyEvent, NamedKey, PhysicalKey, Press};
 use crate::geom::{Affine, Offset};
-#[allow(unused)] use crate::{Events, Popup};
+#[allow(unused)] use crate::{Events, window::Popup};
 use crate::{Id, dir::Direction, window::WindowId};
 
 /// Events addressed to a widget

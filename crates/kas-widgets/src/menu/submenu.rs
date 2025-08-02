@@ -7,12 +7,12 @@
 
 use super::{BoxedMenu, Menu, SubItems};
 use crate::{AccessLabel, Mark};
-use kas::Popup;
 use kas::event::{Command, FocusSource};
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::messages::{Activate, Collapse, Expand};
 use kas::prelude::*;
 use kas::theme::{FrameStyle, MarkStyle, TextClass};
+use kas::window::Popup;
 
 #[impl_self]
 mod SubMenu {

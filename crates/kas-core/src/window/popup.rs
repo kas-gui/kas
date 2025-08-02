@@ -168,7 +168,7 @@ mod Popup {
             parent: Id,
             set_focus: bool,
         ) -> bool {
-            let desc = kas::PopupDescriptor {
+            let desc = PopupDescriptor {
                 id: self.id(),
                 parent,
                 direction: self.direction,

@@ -12,7 +12,7 @@ mod shared;
 mod window;
 
 use crate::messages::Erased;
-use crate::window::WindowId;
+use crate::window::{PopupDescriptor, WindowId};
 use event_loop::Loop;
 pub(crate) use shared::RunnerT;
 use shared::State;
@@ -171,8 +171,8 @@ impl AppData for () {
 
 #[crate::autoimpl(Debug)]
 enum Pending<A: AppData, G: GraphicsInstance, T: kas::theme::Theme<G::Shared>> {
-    AddPopup(WindowId, WindowId, kas::PopupDescriptor),
-    RepositionPopup(WindowId, kas::PopupDescriptor),
+    AddPopup(WindowId, WindowId, PopupDescriptor),
+    RepositionPopup(WindowId, PopupDescriptor),
     // NOTE: we don't need G, T here if we construct the Window later.
     // But this way we can pass a single boxed value.
     AddWindow(WindowId, Box<Window<A, G, T>>),

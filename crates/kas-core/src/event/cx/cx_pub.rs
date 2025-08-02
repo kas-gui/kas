@@ -10,6 +10,7 @@ use std::future::IntoFuture;
 use std::time::Duration;
 
 use super::*;
+use crate::HasId;
 use crate::cast::Conv;
 use crate::config::ConfigMsg;
 use crate::draw::DrawShared;
@@ -17,8 +18,8 @@ use crate::geom::{Offset, Vec2};
 use crate::theme::SizeCx;
 #[cfg(all(wayland_platform, feature = "clipboard"))]
 use crate::util::warn_about_error;
+use crate::window::{PopupDescriptor, Window};
 #[allow(unused)] use crate::{Events, Layout, Tile}; // for doc-links
-use crate::{HasId, PopupDescriptor, window::Window};
 
 impl EventState {
     /// Get the platform

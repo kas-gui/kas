@@ -16,7 +16,7 @@ use crate::event::{ConfigCx, CursorIcon, EventState};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::SolveCache;
 use crate::theme::{DrawCx, SizeCx, Theme, ThemeDraw, ThemeSize, Window as _};
-use crate::window::{Decorations, Window as WindowWidget, WindowId};
+use crate::window::{Decorations, PopupDescriptor, Window as WindowWidget, WindowId};
 use crate::{Action, Tile, Widget, autoimpl};
 use std::cell::RefCell;
 use std::mem::take;
@@ -433,7 +433,7 @@ impl<A: AppData, G: GraphicsInstance, T: Theme<G::Shared>> Window<A, G, T> {
         &mut self,
         state: &mut State<A, G, T>,
         id: WindowId,
-        popup: kas::PopupDescriptor,
+        popup: PopupDescriptor,
     ) {
         let Some(ref window) = self.window else {
             return;

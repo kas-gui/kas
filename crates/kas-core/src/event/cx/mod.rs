@@ -21,7 +21,8 @@ use crate::geom::{Rect, Size};
 use crate::messages::Erased;
 use crate::runner::{MessageStack, Platform, RunnerT, WindowDataErased};
 use crate::util::WidgetHierarchy;
-use crate::{Action, Id, NavAdvance, Node, window::WindowId};
+use crate::window::{PopupDescriptor, WindowId};
+use crate::{Action, Id, NavAdvance, Node};
 
 mod config;
 mod cx_pub;
@@ -57,7 +58,7 @@ type AccessLayer = (bool, HashMap<Key, Id>);
 
 struct PopupState {
     id: WindowId,
-    desc: crate::PopupDescriptor,
+    desc: PopupDescriptor,
     old_nav_focus: Option<Id>,
     is_sized: bool,
 }

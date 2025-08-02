@@ -5,7 +5,7 @@
 
 //! Window widgets
 
-use super::{Decorations, WindowId};
+use super::{Decorations, Popup, PopupDescriptor, WindowId};
 use crate::cast::Cast;
 use crate::decorations::{Border, Label, TitleBar};
 use crate::dir::{Direction, Directional};
@@ -13,7 +13,7 @@ use crate::event::{ConfigCx, Event, EventCx, IsUsed, ResizeDirection, Scroll, Un
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, Align, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawCx, FrameStyle, SizeCx};
-use crate::{Action, Events, Icon, Id, Layout, Popup, Role, RoleCx, Tile, TileExt, Widget};
+use crate::{Action, Events, Icon, Id, Layout, Role, RoleCx, Tile, TileExt, Widget};
 use kas_macros::{impl_self, widget_set_rect};
 use smallvec::SmallVec;
 
@@ -76,7 +76,7 @@ mod Window {
         bar_h: i32,
         dec_offset: Offset,
         dec_size: Size,
-        popups: SmallVec<[(WindowId, kas::PopupDescriptor, Offset); 16]>,
+        popups: SmallVec<[(WindowId, PopupDescriptor, Offset); 16]>,
     }
 
     impl Layout for Self {
@@ -452,7 +452,7 @@ impl<Data: 'static> Window<Data> {
         cx: &mut ConfigCx,
         data: &Data,
         id: WindowId,
-        popup: kas::PopupDescriptor,
+        popup: PopupDescriptor,
     ) {
         let index = 'index: {
             for i in 0..self.popups.len() {
@@ -498,7 +498,7 @@ impl<Data: 'static> Window<Data> {
 
     /// Iterate over popups
     #[cfg(feature = "accesskit")]
-    pub(crate) fn iter_popups(&self) -> impl Iterator<Item = &kas::PopupDescriptor> {
+    pub(crate) fn iter_popups(&self) -> impl Iterator<Item = &PopupDescriptor> {
         self.popups.iter().map(|(_, popup, _)| popup)
     }
 }

@@ -8,7 +8,6 @@
 //! ## Complex widgets
 //!
 //! -   [`EventConfig`] provides an editor for event configuration
-//! -   [`kas::Popup`] is the root of any popup
 //!
 //! ## Sub-modules
 //!

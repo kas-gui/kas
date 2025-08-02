@@ -18,7 +18,7 @@ use kas::prelude::*;
 use kas::resvg::Svg;
 use kas::theme::MarginStyle;
 use kas::widgets::{column, *};
-use kas::window::WindowCommand;
+use kas::window::{Popup, WindowCommand};
 use std::ops::Range;
 
 #[derive(Debug, Default)]
@@ -27,7 +27,6 @@ struct AppData {
 }
 
 fn widgets() -> Box<dyn Widget<Data = AppData>> {
-    use kas::Popup;
     use kas::widgets::dialog::{TextEdit, TextEditResult};
 
     // A real app might use async loading of resources here (Svg permits loading

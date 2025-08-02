@@ -5,8 +5,14 @@
 
 //! Special window widgets
 
+mod popup;
 mod window;
 
+#[cfg(feature = "accesskit")]
+#[doc(inline)]
+pub(crate) use popup::POPUP_INNER_INDEX;
+#[doc(inline)] pub use popup::Popup;
+#[doc(inline)] pub(crate) use popup::PopupDescriptor;
 pub use window::*;
 
 use std::num::NonZeroU32;
