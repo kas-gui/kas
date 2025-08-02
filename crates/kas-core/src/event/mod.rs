@@ -55,6 +55,7 @@
 //! [`Id`]: crate::Id
 
 pub mod components;
+mod config_cx;
 mod cx;
 mod events;
 mod response;
@@ -65,6 +66,7 @@ pub use winit::keyboard::{Key, ModifiersState, NamedKey, PhysicalKey};
 pub use winit::window::{CursorIcon, ImePurpose, ResizeDirection}; // used by Key
 
 #[allow(unused)] use crate::{Events, Widget};
+pub use config_cx::ConfigCx;
 pub use cx::*;
 pub use events::*;
 pub use response::{IsUsed, Scroll, Unused, Used};

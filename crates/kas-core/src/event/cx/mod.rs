@@ -26,7 +26,6 @@ use key::{AccessLayer, PendingSelFocus};
 use nav::PendingNavFocus;
 
 #[cfg(feature = "accesskit")] mod accessibility;
-mod config;
 mod cx_pub;
 mod key;
 mod nav;
@@ -35,7 +34,6 @@ mod press;
 mod send;
 mod window;
 
-pub use config::ConfigCx;
 pub use press::{GrabBuilder, GrabMode, Press, PressSource};
 
 struct PopupState {

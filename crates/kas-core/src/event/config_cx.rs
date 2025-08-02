@@ -5,8 +5,7 @@
 
 //! Configuration context
 
-use super::PendingNavFocus;
-use crate::event::{EventState, FocusSource};
+use crate::event::EventState;
 use crate::geom::Rect;
 use crate::layout::AlignPair;
 use crate::text::format::FormattableText;
@@ -46,23 +45,6 @@ impl<'a> ConfigCx<'a> {
     #[inline]
     pub fn ev_state(&mut self) -> &mut EventState {
         self.ev
-    }
-
-    /// Disable or enable navigation focus
-    ///
-    /// When nav focus is disabled, [`EventState::nav_focus`] always returns
-    /// `None`. Any existing focus is immediately cleared. Both
-    /// [`EventState::set_nav_focus`] and [`EventState::next_nav_focus`] will fail to
-    /// do anything. Input such as the <kbd>Tab</kbd> key and mouse click
-    /// will not set navigation focus.
-    pub fn disable_nav_focus(&mut self, disabled: bool) {
-        self.ev.config.nav_focus = !disabled;
-        if disabled {
-            self.pending_nav_focus = PendingNavFocus::Set {
-                target: None,
-                source: FocusSource::Synthetic,
-            };
-        }
     }
 
     /// Configure a widget
