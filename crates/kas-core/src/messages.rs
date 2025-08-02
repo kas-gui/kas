@@ -11,10 +11,10 @@
 //! [`Erased`] is the type-erasure container allowing any type supporting
 //! [`Any`] + [`Debug`] to be sent or placed on the message stack.
 
-use crate::Icon;
 use crate::event::PhysicalKey;
 #[allow(unused)] use crate::event::{EventCx, EventState};
 use crate::geom::Offset;
+use crate::window::Icon;
 use std::any::Any;
 use std::fmt::Debug;
 

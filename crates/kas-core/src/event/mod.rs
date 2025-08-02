@@ -63,7 +63,7 @@ mod response;
 pub use smol_str::SmolStr;
 pub use winit::event::{ElementState, KeyEvent, MouseButton};
 pub use winit::keyboard::{Key, ModifiersState, NamedKey, PhysicalKey};
-pub use winit::window::{CursorIcon, ImePurpose, ResizeDirection}; // used by Key
+pub use winit::window::{CursorIcon, ImePurpose}; // used by Key
 
 #[allow(unused)] use crate::{Events, Widget};
 pub use config_cx::ConfigCx;

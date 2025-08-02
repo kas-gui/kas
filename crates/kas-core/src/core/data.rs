@@ -10,8 +10,6 @@ use super::Id;
 use crate::geom::Rect;
 use std::ops::Range;
 
-pub use winit::window::Icon;
-
 /// An opaque type indexible over `usize`
 ///
 /// Currently, the only supported representation is a range. Construct using
